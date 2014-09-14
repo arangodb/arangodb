@@ -29,9 +29,9 @@
 
 #include "Ahuacatl/ahuacatl-index.h"
 
-#include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
-#include "BasicsC/string-buffer.h"
+#include "Basics/logging.h"
+#include "Basics/tri-strings.h"
+#include "Basics/string-buffer.h"
 
 #include "Ahuacatl/ahuacatl-access-optimiser.h"
 #include "Ahuacatl/ahuacatl-context.h"

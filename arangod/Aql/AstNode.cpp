@@ -60,7 +60,8 @@ std::unordered_map<int, std::string const> const AstNode::Operators{
   { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LE),       "<=" },
   { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GT),       ">" },
   { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GE),       ">=" },
-  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_IN),       "IN" }
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_IN),       "IN" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NIN),      "NOT IN" }
 };
 
 std::unordered_map<int, std::string const> const AstNode::TypeNames{ 
@@ -96,6 +97,7 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
   { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GT),       "compare >" },
   { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GE),       "compare >=" },
   { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_IN),       "compare in" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NIN),      "compare not in" },
   { static_cast<int>(NODE_TYPE_OPERATOR_TERNARY),         "ternary" },
   { static_cast<int>(NODE_TYPE_SUBQUERY),                 "subquery" },
   { static_cast<int>(NODE_TYPE_ATTRIBUTE_ACCESS),         "attribute access" },
@@ -240,6 +242,7 @@ AstNode::AstNode (Ast* ast,
     case NODE_TYPE_OPERATOR_BINARY_GT:
     case NODE_TYPE_OPERATOR_BINARY_GE:
     case NODE_TYPE_OPERATOR_BINARY_IN:
+    case NODE_TYPE_OPERATOR_BINARY_NIN:
     case NODE_TYPE_OPERATOR_TERNARY:
     case NODE_TYPE_SUBQUERY:
     case NODE_TYPE_BOUND_ATTRIBUTE_ACCESS:
@@ -671,7 +674,8 @@ bool AstNode::isComparisonOperator () const {
           type == NODE_TYPE_OPERATOR_BINARY_LE ||
           type == NODE_TYPE_OPERATOR_BINARY_GT ||
           type == NODE_TYPE_OPERATOR_BINARY_GE ||
-          type == NODE_TYPE_OPERATOR_BINARY_IN);
+          type == NODE_TYPE_OPERATOR_BINARY_IN ||
+          type == NODE_TYPE_OPERATOR_BINARY_NIN);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -735,8 +739,9 @@ bool AstNode::canThrow () const {
     return true;
   }
 
-  if (type == NODE_TYPE_OPERATOR_BINARY_IN) {
-    // the IN operator can throw (if rhs is not a list)
+  if (type == NODE_TYPE_OPERATOR_BINARY_IN ||
+      type == NODE_TYPE_OPERATOR_BINARY_NIN) {
+    // the IN and NOT IN operators can throw (if rhs is not a list)
     return true;
   }
   
@@ -796,6 +801,14 @@ bool AstNode::isDeterministic () const {
 
   // everything else is deterministic
   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone a node, recursively
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* AstNode::clone (Ast* ast) const {
+  return ast->clone(this);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -915,7 +928,8 @@ void AstNode::append (triagens::basics::StringBuffer* buffer) const {
       type == NODE_TYPE_OPERATOR_BINARY_LE ||
       type == NODE_TYPE_OPERATOR_BINARY_GT ||
       type == NODE_TYPE_OPERATOR_BINARY_GE ||
-      type == NODE_TYPE_OPERATOR_BINARY_IN) {
+      type == NODE_TYPE_OPERATOR_BINARY_IN ||
+      type == NODE_TYPE_OPERATOR_BINARY_NIN) {
     TRI_ASSERT(numMembers() == 2);
     auto it = Operators.find(type);
     TRI_ASSERT(it != Operators.end());

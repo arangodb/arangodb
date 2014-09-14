@@ -28,17 +28,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
-#include "BasicsC/win-utils.h"
+#include "Basics/win-utils.h"
 #endif
 
 #include "datafile.h"
 
-#include "BasicsC/conversions.h"
-#include "BasicsC/hashes.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/memory-map.h"
-#include "BasicsC/tri-strings.h"
-#include "BasicsC/files.h"
+#include "Basics/conversions.h"
+#include "Basics/hashes.h"
+#include "Basics/logging.h"
+#include "Basics/memory-map.h"
+#include "Basics/tri-strings.h"
+#include "Basics/files.h"
 #include "VocBase/server.h"
 
 

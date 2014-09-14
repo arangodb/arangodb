@@ -37,7 +37,7 @@
 #include "Basics/Common.h"
 
 #include "Basics/AssociativeArray.h"
-#include "BasicsC/hashes.h"
+#include "Basics/hashes.h"
 
 namespace triagens {
   namespace basics {

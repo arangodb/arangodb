@@ -1,5 +1,6 @@
 /*jshint strict: false */
-/*global require, exports, assertTrue, assertEqual, fail, AQL_EXECUTE, AQL_PARSE */
+/*global require, exports, assertTrue, assertEqual, fail, 
+  AQL_EXECUTE, AQL_PARSE, AQL_EXPLAIN, AQL_EXECUTEJSON */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief aql test helper functions
@@ -477,7 +478,6 @@ function findReferencedNodes(plan, testNode) {
 }
 
 function getQueryMultiplePlansAndExecutions (query, bindVars, debug) {
-  var plan;
   var i;
   var plans = [];
   var allPlans = [];
@@ -485,8 +485,9 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, debug) {
   var paramNone     = { optimizer: { rules: [ "-all" ]},  verbosePlans: true};
   var paramAllPlans = { allPlans : true, verbosePlans: true};
 
-  if (debug === undefined)
+  if (debug === undefined) {
     debug = false;
+  }
 
   // first fetch the unmodified version
   if (debug) {
@@ -506,7 +507,7 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, debug) {
       require("internal").print("Optimized Plan ["+(i+1)+"]:");
       printYaml(allPlans.plans [i]);
     }
-    plans[i+1] = {'plan':allPlans.plans[i]};
+    plans[i + 1] = {'plan': allPlans.plans[i]};
   }
   // Now execute each of these variations.
   for (i=0; i < plans.length; i++) {

@@ -28,7 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
-#include "BasicsC/win-utils.h"
+#include "Basics/win-utils.h"
 #endif
 
 #include "v8-utils.h"
@@ -39,15 +39,15 @@
 #include "Basics/Nonce.h"
 #include "Basics/RandomGenerator.h"
 #include "Basics/StringUtils.h"
-#include "BasicsC/conversions.h"
-#include "BasicsC/csv.h"
-#include "BasicsC/files.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/process-utils.h"
-#include "BasicsC/string-buffer.h"
-#include "BasicsC/tri-strings.h"
-#include "BasicsC/tri-zip.h"
-#include "BasicsC/utf8-helper.h"
+#include "Basics/conversions.h"
+#include "Basics/csv.h"
+#include "Basics/files.h"
+#include "Basics/logging.h"
+#include "Basics/process-utils.h"
+#include "Basics/string-buffer.h"
+#include "Basics/tri-strings.h"
+#include "Basics/tri-zip.h"
+#include "Basics/utf8-helper.h"
 #include "Basics/FileUtils.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/SslInterface.h"

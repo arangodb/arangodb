@@ -30,7 +30,7 @@
 
 #include "hash-index.h"
 
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "ShapedJson/shape-accessor.h"
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/document-collection.h"

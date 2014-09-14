@@ -30,7 +30,7 @@
 #include "Aql/V8Expression.h"
 #include "Aql/Executor.h"
 #include "Aql/Variable.h"
-#include "BasicsC/json.h"
+#include "Basics/json.h"
 #include "V8/v8-conv.h"
 
 using namespace triagens::aql;

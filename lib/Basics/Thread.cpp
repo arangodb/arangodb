@@ -31,14 +31,14 @@
 #include "Thread.h"
 
 #ifdef _WIN32
-#include "BasicsC/win-utils.h"
+#include "Basics/win-utils.h"
 #endif
 
 #include <errno.h>
 #include <signal.h>
 
 #include "Basics/ConditionLocker.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 
 
 using namespace triagens::basics;

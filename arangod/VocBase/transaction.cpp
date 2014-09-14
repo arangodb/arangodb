@@ -29,9 +29,9 @@
 
 #include "transaction.h"
 
-#include "BasicsC/conversions.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/conversions.h"
+#include "Basics/logging.h"
+#include "Basics/tri-strings.h"
 
 #include "Utils/Exception.h"
 #include "VocBase/collection.h"

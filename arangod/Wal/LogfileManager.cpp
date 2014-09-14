@@ -28,9 +28,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LogfileManager.h"
-#include "BasicsC/hashes.h"
-#include "BasicsC/json.h"
-#include "BasicsC/logging.h"
+#include "Basics/hashes.h"
+#include "Basics/json.h"
+#include "Basics/logging.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/JsonHelper.h"

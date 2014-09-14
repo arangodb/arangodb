@@ -35,7 +35,7 @@
 #include "Ahuacatl/ahuacatl-explain.h"
 
 #include "Basics/Utf8Helper.h"
-#include "BasicsC/conversions.h"
+#include "Basics/conversions.h"
 #include "Basics/json-utilities.h"
 #include "V8/v8-conv.h"
 #include "Utils/transactions.h"
@@ -54,7 +54,6 @@
 #include "unicode/timezone.h"
 
 #include "v8-vocbase.h"
-#include "v8-vocbaseprivate.h"
 #include "v8-vocindex.h"
 
 using namespace std;

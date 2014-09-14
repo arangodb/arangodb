@@ -35,7 +35,7 @@
 #include "Aql/Variable.h"
 #include "V8/v8-globals.h"
 
-struct TRI_json_s;
+struct TRI_json_t;
 
 namespace triagens {
   namespace basics {
@@ -87,7 +87,7 @@ namespace triagens {
 /// @brief executes an expression directly
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_json_s* executeExpression (AstNode const*);
+        struct TRI_json_t* executeExpression (AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a reference to a built-in function

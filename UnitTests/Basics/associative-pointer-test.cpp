@@ -27,10 +27,10 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "BasicsC/associative.h"
-#include "BasicsC/hashes.h"
-#include "BasicsC/tri-strings.h"
-#include "BasicsC/conversions.h"
+#include "Basics/associative.h"
+#include "Basics/hashes.h"
+#include "Basics/tri-strings.h"
+#include "Basics/conversions.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    private macros

@@ -1,4 +1,4 @@
-/*global require, assertTrue, assertEqual, AQL_EXECUTE, AQL_EXPLAIN, loopmax */
+/*global require, assertTrue, assertEqual, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -26,6 +26,7 @@
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
+
 var internal = require("internal");
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
@@ -33,7 +34,6 @@ var isEqual = helper.isEqual;
 var findExecutionNodes = helper.findExecutionNodes;
 var findReferencedNodes = helper.findReferencedNodes;
 var getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -137,14 +137,7 @@ function optimizerRuleTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      var loopto;
-      if (typeof loopmax === 'undefined') {
-        loopto = 10;
-      }
-      else {
-        loopto = loopmax;
-      }
-      /// require("internal").print("loopto: " + loopto + "\n");
+      var loopto = 10;
 
       internal.db._drop(colName);
       skiplist = internal.db._create(colName);
@@ -161,6 +154,7 @@ function optimizerRuleTestSuite() {
       skiplist.ensureSkiplist("d");
       skiplist.ensureIndex({ type: "hash", fields: [ "c" ], unique: false });
 
+      internal.db._drop(colNameOther);
       skiplist2 = internal.db._create(colNameOther);
       for (j = 1; j <= loopto; ++j) {
         for (i = 1; i <= loopto; ++i) {
@@ -212,9 +206,9 @@ function optimizerRuleTestSuite() {
         var result = AQL_EXPLAIN(query[0], { }, paramIndexFromSort);
         assertEqual([], result.plan.rules, query);
         if (query[1]) {
-          allresults = getQueryMultiplePlansAndExecutions(query[0], {});
+          var allresults = getQueryMultiplePlansAndExecutions(query[0], {});
           for (j = 1; j <= allresults.length; j++) {
-            AssertTrue(isEqual(allresults.results[0],
+            assertTrue(isEqual(allresults.results[0],
                                allresults.results[j]),
                        "whether the execution of this plan gave the right results: " +
                        allresults.plans[j]);
@@ -256,7 +250,7 @@ function optimizerRuleTestSuite() {
         AQL_EXECUTEJSON(allresults.plans[0].plan, paramNone);
 
         for (j = 1; j <= allresults.length; j++) {
-          AssertTrue(isEqual(allresults.results[0],
+          assertTrue(isEqual(allresults.results[0],
                              allresults.results[j]),
                      "whether the execution of this plan gave the right results: " +
                      allresults.plans[j]);
@@ -291,7 +285,7 @@ function optimizerRuleTestSuite() {
 
         allresults = getQueryMultiplePlansAndExecutions(query, {});
         for (j = 1; j <= allresults.length; j++) {
-          AssertTrue(isEqual(allresults.results[0],
+          assertTrue(isEqual(allresults.results[0],
                              allresults.results[j]),
                      "whether the execution of this plan gave the right results: " +
                      allresults.plans[j]);
@@ -350,7 +344,7 @@ function optimizerRuleTestSuite() {
       }
       allresults = getQueryMultiplePlansAndExecutions(query, {});
       for (j = 1; j <= allresults.length; j++) {
-        AssertTrue(isEqual(allresults.results[0],
+        assertTrue(isEqual(allresults.results[0],
                            allresults.results[j]),
                    "whether the execution of this plan gave the right results: " +
                    allresults.plans[j]);
@@ -420,7 +414,7 @@ function optimizerRuleTestSuite() {
       }
       allresults = getQueryMultiplePlansAndExecutions(query, {});
       for (j = 1; j <= allresults.length; j++) {
-        AssertTrue(isEqual(allresults.results[0],
+        assertTrue(isEqual(allresults.results[0],
                            allresults.results[j]),
                    "whether the execution of this plan gave the right results: " +
                    allresults.plans[j]);
@@ -496,7 +490,7 @@ function optimizerRuleTestSuite() {
       }
       allresults = getQueryMultiplePlansAndExecutions(query, {});
       for (j = 1; j <= allresults.length; j++) {
-        AssertTrue(isEqual(allresults.results[0],
+        assertTrue(isEqual(allresults.results[0],
                            allresults.results[j]),
                    "whether the execution of this plan gave the right results: " +
                    allresults.plans[j]);
@@ -574,7 +568,7 @@ function optimizerRuleTestSuite() {
       }
       allresults = getQueryMultiplePlansAndExecutions(query, {});
       for (j = 1; j <= allresults.length; j++) {
-        AssertTrue(isEqual(allresults.results[0],
+        assertTrue(isEqual(allresults.results[0],
                            allresults.results[j]),
                    "whether the execution of this plan gave the right results: " +
                    allresults.plans[j]);
@@ -622,7 +616,7 @@ function optimizerRuleTestSuite() {
       }
       allresults = getQueryMultiplePlansAndExecutions(query, {});
       for (j = 1; j <= allresults.length; j++) {
-        AssertTrue(isEqual(allresults.results[0],
+        assertTrue(isEqual(allresults.results[0],
                            allresults.results[j]),
                    "whether the execution of this plan gave the right results: " +
                    allresults.plans[j]);
@@ -664,7 +658,7 @@ function optimizerRuleTestSuite() {
 
       allresults = getQueryMultiplePlansAndExecutions(query, {});
       for (j = 1; j <= allresults.length; j++) {
-        AssertTrue(isEqual(allresults.results[0],
+        assertTrue(isEqual(allresults.results[0],
                            allresults.results[j]),
                    "whether the execution of this plan gave the right results: " +
                    allresults.plans[j]);
@@ -705,7 +699,7 @@ function optimizerRuleTestSuite() {
 
       allresults = getQueryMultiplePlansAndExecutions(query, {});
       for (j = 1; j <= allresults.length; j++) {
-        AssertTrue(isEqual(allresults.results[0],
+        assertTrue(isEqual(allresults.results[0],
                            allresults.results[j]),
                    "whether the execution of this plan gave the right results: " +
                    allresults.plans[j]);
@@ -745,9 +739,9 @@ function optimizerRuleTestSuite() {
 
       assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
 
-      allresults = getQueryMultiplePlansAndExecutions(query, {});
+      var allresults = getQueryMultiplePlansAndExecutions(query, {});
       for (j = 1; j <= allresults.length; j++) {
-        AssertTrue(isEqual(allresults.results[0],
+        assertTrue(isEqual(allresults.results[0],
                            allresults.results[j]),
                    "whether the execution of this plan gave the right results: " +
                    allresults.plans[j]);
@@ -784,9 +778,9 @@ function optimizerRuleTestSuite() {
       hasNoIndexRangeNode(XPresult);
 
       assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
-      allresults = getQueryMultiplePlansAndExecutions(query, {});
+      var allresults = getQueryMultiplePlansAndExecutions(query, {});
       for (j = 1; j <= allresults.length; j++) {
-        AssertTrue(isEqual(allresults.results[0],
+        assertTrue(isEqual(allresults.results[0],
                            allresults.results[j]),
                    "whether the execution of this plan gave the right results: " +
                    allresults.plans[j]);
@@ -799,75 +793,80 @@ function optimizerRuleTestSuite() {
     ///   greater than + less than filter spanning a range. TODO: doesn't work now.
     ////////////////////////////////////////////////////////////////////////////////
     testRangeBandstop: function () {
-// TODO: OR  isn't implemented
-//        var query = "FOR v IN " + colName + " FILTER v.a < 5 || v.a > 10 RETURN [v.a, v.b]";
-//
-//        var XPresult;
-//        var QResults=[];
-//
-//        // the index we will compare to sorts by a & b, so we need to
-//        // re-sort the result here to accomplish similarity.
-//        QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
-//
-//        // -> use-index-range alone.
-//        QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
-//
-//        XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
-//        assertEqual([ secondRuleName ], XPresult.plan.rules);
-//        // the sortnode and its calculation node should be there.
-//        hasCalculationNodes(XPresult, 2);
-//
-//        // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
-//        var RAs = getRangeAttributes(XPresult);
-//        require("internal").print(RAs);
-//        var first = getRangeAttribute(RAs[0], "v", "a", 1);
-//        
-//        require("internal").print(first);
-//        assertEqual(first.low.bound.vType, "int", "Type is int");
-//        assertEqual(first.low.bound.value, 5, "proper value was set");
-//
-//        require("internal").print(QResults[0]);
-//        require("internal").print(QResults[1]);              
-//        assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
+      var query = "FOR v IN " + colName + " FILTER v.a < 5 || v.a > 10 RETURN [v.a, v.b]";
+
+      var XPresult;
+      var QResults=[];
+
+      // the index we will compare to sorts by a & b, so we need to
+      // re-sort the result here to accomplish similarity.
+      QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
+
+      // -> use-index-range alone.
+      QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
+
+      XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
+      assertEqual([ ], XPresult.plan.rules);
+
+      // TODO: activate the following once OR is implemented
+      // assertEqual([ secondRuleName ], XPresult.plan.rules);
+
+      // the sortnode and its calculation node should be there.
+      assertEqual(0, findExecutionNodes(XPresult, "IndexRangeNode").length);
+
+      /*
+      // TODO: activate the following once OR is implemented
+      // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
+      hasIndexRangeNode_WithRanges(XPresult, false);
+      var RAs = getRangeAttributes(XPresult);
+      var first = getRangeAttribute(RAs[0], "v", "a", 1);
+        
+      assertEqual(first.low.bound.vType, "int", "Type is int");
+      assertEqual(first.low.bound.value, 5, "proper value was set");
+
+      assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
+      */
     },
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test in detail that an index range can be used for an or combined 
     ///   greater than + less than filter spanning multiple ranges. TODO: doesn't work now.
     ////////////////////////////////////////////////////////////////////////////////
+
     testMultiRangeBandpass: function () {
-// TODO: OR  isn't implemented
-//          var query = "FOR v IN " + colName +
-//                 " FILTER ((v.a > 3 && v.a < 5) || (v.a > 4 && v.a < 7)) RETURN [v.a, v.b]";
-//
-//          var XPresult;
-//          var QResults=[];
-//
-//          // the index we will compare to sorts by a & b, so we need to
-//          // re-sort the result here to accomplish similarity.
-//          QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
-//
-//          // -> use-index-range alone.
-//          QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
-//
-//          XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
-//          assertEqual([ secondRuleName ], XPresult.plan.rules);
-//          // the sortnode and its calculation node should be there.
-//          hasCalculationNodes(XPresult, 2);
-//
-//          // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
-//          var RAs = getRangeAttributes(XPresult);
-////          require("internal").print(RAs);
-//          var first = getRangeAttribute(RAs[0], "v", "a", 1);
-//          
-////          require("internal").print(first);
-//          assertEqual(first.low.bound.vType, "int", "Type is int");
-//          assertEqual(first.low.bound.value, 4, "proper value was set");
-//          assertEqual(first.high.bound.vType, "int", "Type is int");
-//          assertEqual(first.high.bound.value, 10, "proper value was set");
-//
-//          assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
-      
+      var query = "FOR v IN " + colName +
+                  " FILTER ((v.a > 3 && v.a < 5) || (v.a > 4 && v.a < 7)) RETURN [v.a, v.b]";
+
+      var XPresult;
+      var QResults=[];
+
+      // the index we will compare to sorts by a & b, so we need to
+      // re-sort the result here to accomplish similarity.
+      QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
+
+      // -> use-index-range alone.
+      QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
+
+      XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
+      assertEqual([ ], XPresult.plan.rules);
+      // TODO: activate the following once OR is implemented
+
+      // the sortnode and its calculation node should be there.
+      assertEqual(0, findExecutionNodes(XPresult, "IndexRangeNode").length);
+      hasCalculationNodes(XPresult, 2);
+
+      /*
+      // TODO: activate the following once OR is implemented
+      // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
+      var RAs = getRangeAttributes(XPresult);
+      var first = getRangeAttribute(RAs[0], "v", "a", 1);
+
+      assertEqual(first.low.bound.vType, "int", "Type is int");
+      assertEqual(first.low.bound.value, 4, "proper value was set");
+      assertEqual(first.high.bound.vType, "int", "Type is int");
+      assertEqual(first.high.bound.value, 10, "proper value was set");
+      assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
+      */
     }
 
   };

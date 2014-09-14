@@ -31,12 +31,12 @@
 #define ARANGODB_AHUACATL_AHUACATL__ACCESS__OPTIMISER_H 1
 
 #include "Basics/Common.h"
-#include "BasicsC/string-buffer.h"
+#include "Basics/string-buffer.h"
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
 
 struct TRI_aql_context_s;
-struct TRI_json_s;
+struct TRI_json_t;
 struct TRI_vector_pointer_s;
 
 // -----------------------------------------------------------------------------
@@ -96,7 +96,7 @@ TRI_aql_reference_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_aql_range_s {
-  struct TRI_json_s* _value;
+  struct TRI_json_t* _value;
   TRI_aql_range_e    _type;
 }
 TRI_aql_range_t;
@@ -111,7 +111,7 @@ typedef struct TRI_aql_field_access_s {
   TRI_aql_access_e _type;
 
   union {
-    struct TRI_json_s* _value;    // used for TRI_AQL_ACCESS_EXACT, TRI_AQL_ACCESS_LIST
+    struct TRI_json_t* _value;    // used for TRI_AQL_ACCESS_EXACT, TRI_AQL_ACCESS_LIST
 
     TRI_aql_range_t _singleRange; // used for TRI_AQL_ACCESS_RANGE_SINGLE
 

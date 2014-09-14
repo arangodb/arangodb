@@ -104,6 +104,9 @@ The current list of keywords is:
 - DESC
 - IN
 - INTO
+- NOT
+- AND
+- OR
 - NULL
 - TRUE
 - FALSE

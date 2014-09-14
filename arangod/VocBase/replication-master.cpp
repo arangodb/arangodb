@@ -29,8 +29,8 @@
 
 #include "replication-master.h"
 
-#include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/logging.h"
+#include "Basics/tri-strings.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           REPLICATION MASTER INFO

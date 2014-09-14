@@ -31,7 +31,7 @@
 #define ARANGODB_AHUACATL_AHUACATL__STATEMENTLIST_H 1
 
 #include "Basics/Common.h"
-#include "BasicsC/vector.h"
+#include "Basics/vector.h"
 
 struct TRI_aql_node_t;
 

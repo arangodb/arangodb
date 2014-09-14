@@ -30,9 +30,9 @@
 #include "RestDocumentHandler.h"
 
 #include "Basics/StringUtils.h"
-#include "BasicsC/conversions.h"
-#include "BasicsC/json.h"
-#include "BasicsC/string-buffer.h"
+#include "Basics/conversions.h"
+#include "Basics/json.h"
+#include "Basics/string-buffer.h"
 #include "Basics/json-utilities.h"
 #include "Rest/HttpRequest.h"
 #include "VocBase/document-collection.h"

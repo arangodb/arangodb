@@ -29,7 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
-#include "BasicsC/win-utils.h"
+#include "Basics/win-utils.h"
 #endif
 
 #include "Scheduler.h"
@@ -37,8 +37,8 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
-#include "BasicsC/json.h"
-#include "BasicsC/logging.h"
+#include "Basics/json.h"
+#include "Basics/logging.h"
 #include "Scheduler/SchedulerThread.h"
 #include "Scheduler/Task.h"
 

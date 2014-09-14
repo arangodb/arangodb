@@ -20,18 +20,12 @@ def wrap(string, width=80, ind1=0, ind2=0, prefix=''):
 
 # generate javascript file from errors
 def genJsFile(errors):
-  jslint = "/*jslint indent: 2,\n"\
-           "         nomen: true,\n"\
-           "         maxlen: 240,\n"\
-           "         sloppy: true,\n"\
-           "         vars: true,\n"\
-           "         white: true,\n"\
-           "         plusplus: true */\n"\
-           "/*global require */\n\n"
+  jslint = "/*jshint maxlen: 240 */\n/*global require */\n\n"
 
   out = jslint \
       + prologue\
       + "(function () {\n"\
+      + "  \"use strict\";\n"\
       + "  var internal = require(\"internal\");\n"\
       + "\n"\
       + "  internal.errors = {\n"
@@ -66,10 +60,9 @@ def genCFile(errors, filename):
   headerfile = os.path.splitext(filename)[0] + ".h"
 
   impl = prologue\
-         + "#include <BasicsC/common.h>\n"\
+         + "#include <Basics/Common.h>\n"\
          + "#include \"" + headerfile + "\"\n"\
          + "\n"\
-         + docstart\
          + "void TRI_InitialiseErrorMessages (void) {\n"
 
   # print individual errors
@@ -79,8 +72,7 @@ def genCFile(errors, filename):
            + "  REG_ERROR(" + e[0] + ", \"" + msg + "\");\n"
 
   impl = impl\
-       + "}\n"\
-       + docend
+       + "}\n"
 
   return impl
 
@@ -105,13 +97,8 @@ def genCHeaderFile(errors):
            + "#ifndef TRIAGENS_BASICS_C_VOC_ERRORS_H\n"\
            + "#define TRIAGENS_BASICS_C_VOC_ERRORS_H 1\n"\
            + "\n"\
-           + "#ifdef __cplusplus\n"\
-           + "extern \"C\" {\n"\
-           + "#endif\n"\
-           + "\n"\
            + wiki\
            + "\n"\
-           + docstart\
            + "////////////////////////////////////////////////////////////////////////////////\n"\
            + "/// @brief helper macro to define an error string\n"\
            + "////////////////////////////////////////////////////////////////////////////////\n"\
@@ -140,11 +127,6 @@ def genCHeaderFile(errors):
            + "\n"
 
   header = header\
-         + docend\
-         + "#ifdef __cplusplus\n"\
-         + "}\n"\
-         + "#endif\n"\
-         + "\n"\
          + "#endif\n"\
          + "\n"
 
@@ -157,20 +139,6 @@ prologue = "////////////////////////////////////////////////////////////////////
          + "////////////////////////////////////////////////////////////////////////////////\n"\
          + "\n"
   
-docstart = "////////////////////////////////////////////////////////////////////////////////\n"\
-         + "/// @addtogroup VocError\n"\
-         + "/// @{\n"\
-         + "////////////////////////////////////////////////////////////////////////////////\n"\
-         + "\n"
-  
-docend   = "\n"\
-         + "////////////////////////////////////////////////////////////////////////////////\n"\
-         + "/// @}\n"\
-         + "////////////////////////////////////////////////////////////////////////////////\n"\
-         + "\n"
-
-
-
 if len(sys.argv) < 3:
   print >> sys.stderr, "usage: %s <sourcefile> <outfile>" % sys.argv[0]
   sys.exit()
@@ -208,7 +176,7 @@ if extension == ".js":
   out = genJsFile(errorsList)
 elif extension == ".h":
   out = genCHeaderFile(errorsList)
-elif extension == ".c":
+elif extension == ".cpp":
   out = genCFile(errorsList, filename)
 else:
   print >> sys.stderr, "usage: %s <sourcefile> <outfile>" % sys.argv[0]

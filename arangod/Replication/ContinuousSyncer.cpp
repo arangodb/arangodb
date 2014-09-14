@@ -29,7 +29,7 @@
 
 #include "ContinuousSyncer.h"
 
-#include "BasicsC/json.h"
+#include "Basics/json.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/StringBuffer.h"
 #include "Rest/HttpRequest.h"

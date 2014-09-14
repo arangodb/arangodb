@@ -29,7 +29,7 @@
 
 #include "Logfile.h"
 #include "Basics/FileUtils.h"
-#include "BasicsC/files.h"
+#include "Basics/files.h"
 
 using namespace triagens::wal;
 

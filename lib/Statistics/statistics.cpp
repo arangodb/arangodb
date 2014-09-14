@@ -29,7 +29,7 @@
 
 #include "statistics.h"
 
-#include "BasicsC/locks.h"
+#include "Basics/locks.h"
 
 #ifdef TRI_HAVE_MACOS_MEM_STATS
 #include <sys/types.h>

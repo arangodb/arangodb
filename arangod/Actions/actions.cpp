@@ -34,7 +34,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/delete_object.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Rest/HttpRequest.h"
 
 using namespace std;

@@ -30,9 +30,9 @@
 #include "RestReplicationHandler.h"
 
 #include "Basics/JsonHelper.h"
-#include "BasicsC/conversions.h"
-#include "BasicsC/files.h"
-#include "BasicsC/logging.h"
+#include "Basics/conversions.h"
+#include "Basics/files.h"
+#include "Basics/logging.h"
 #include "HttpServer/HttpServer.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"

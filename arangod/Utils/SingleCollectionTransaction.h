@@ -32,8 +32,8 @@
 
 #include "Basics/Common.h"
 
-#include "BasicsC/logging.h"
-#include "BasicsC/voc-errors.h"
+#include "Basics/logging.h"
+#include "Basics/voc-errors.h"
 #include "Basics/StringUtils.h"
 #include "Utils/Transaction.h"
 

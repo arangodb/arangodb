@@ -38,7 +38,7 @@
 #include <openssl/ssl.h>
 
 #include "Basics/ssl-helper.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Scheduler/Scheduler.h"
 
 // -----------------------------------------------------------------------------

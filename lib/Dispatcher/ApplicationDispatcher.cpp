@@ -28,12 +28,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
-#include "BasicsC/win-utils.h"
+#include "Basics/win-utils.h"
 #endif
 
 #include "ApplicationDispatcher.h"
 
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Dispatcher/Dispatcher.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/PeriodicTask.h"

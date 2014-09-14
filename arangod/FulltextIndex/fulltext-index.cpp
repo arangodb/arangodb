@@ -29,8 +29,8 @@
 
 #include "fulltext-index.h"
 
-#include "BasicsC/locks.h"
-#include "BasicsC/logging.h"
+#include "Basics/locks.h"
+#include "Basics/logging.h"
 
 #include "fulltext-handles.h"
 #include "fulltext-list.h"

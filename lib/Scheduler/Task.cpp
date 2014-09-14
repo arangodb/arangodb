@@ -30,7 +30,7 @@
 
 #include "Task.h"
 
-#include "BasicsC/json.h"
+#include "Basics/json.h"
 #include "Scheduler/Scheduler.h"
 
 using namespace triagens::rest;

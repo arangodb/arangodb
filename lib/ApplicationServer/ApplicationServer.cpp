@@ -28,7 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
-#include "BasicsC/win-utils.h"
+#include "Basics/win-utils.h"
 #endif
 
 #include "ApplicationServer.h"
@@ -44,10 +44,10 @@
 #include "Basics/RandomGenerator.h"
 #include "Basics/StringUtils.h"
 #include "Basics/delete_object.h"
-#include "BasicsC/conversions.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/files.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/conversions.h"
+#include "Basics/logging.h"
+#include "Basics/files.h"
+#include "Basics/tri-strings.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;

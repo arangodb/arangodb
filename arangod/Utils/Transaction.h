@@ -45,9 +45,9 @@
 #include "VocBase/voc-shaper.h"
 #include "VocBase/voc-types.h"
 
-#include "BasicsC/logging.h"
-#include "BasicsC/random.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/logging.h"
+#include "Basics/random.h"
+#include "Basics/tri-strings.h"
 
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/DocumentHelper.h"
