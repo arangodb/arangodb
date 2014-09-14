@@ -845,6 +845,9 @@ int ArangoServer::startupServer () {
 
   if (startServer) {
 
+    // start with enabled maintenance mode
+    HttpHandlerFactory::setMaintenance(true);
+
     // create the server
     _applicationEndpointServer->buildServers();
 
@@ -918,6 +921,10 @@ int ArangoServer::startupServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::runServer (TRI_vocbase_t* vocbase) {
+
+  // disabled maintenance mode
+  HttpHandlerFactory::setMaintenance(false);
+
   // just wait until we are signalled
   _applicationServer->wait();
 
@@ -938,6 +945,10 @@ int ArangoServer::runConsole (TRI_vocbase_t* vocbase) {
   }
 #endif
 
+  // disabled maintenance mode
+  HttpHandlerFactory::setMaintenance(false);
+
+  // just wait until we are signalled
   _applicationServer->wait();
 
 #ifdef __APPLE__
