@@ -27,7 +27,7 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 
 #include "Ahuacatl/ahuacatl-access-optimiser.h"
 #include "Ahuacatl/ahuacatl-codegen.h"

@@ -32,7 +32,7 @@
 #define ARANGODB_BASICS_UTF8HELPER_H 1
 
 #include "Basics/Common.h"
-#include "BasicsC/vector.h"
+#include "Basics/vector.h"
 
 #include "unicode/coll.h"
 

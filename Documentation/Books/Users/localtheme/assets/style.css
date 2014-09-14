@@ -2909,3 +2909,11 @@ div.example_show_button {
   position: relative;
   top: -10px;
 }
+
+.book .book-body .page-wrapper .page-inner section.normal .deprecated{
+background-color: rgba(240,240,0,0.4);
+}
+
+.book .book-body .page-wrapper .page-inner section.normal .deprecated pre{
+background-color: rgba(240,240,0,0.4);
+}

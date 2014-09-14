@@ -12,8 +12,8 @@
 #include <stdlib.h>
 
 #include <Basics/Common.h>
-#include <BasicsC/conversions.h>
-#include <BasicsC/tri-strings.h>
+#include <Basics/conversions.h>
+#include <Basics/tri-strings.h>
 
 #include "Aql/AstNode.h"
 #include "Aql/Parser.h"
@@ -581,6 +581,9 @@ operator_binary:
     }
   | expression T_IN expression {
       $$ = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_IN, $1, $3);
+    }
+  | expression T_NOT T_IN expression {
+      $$ = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_NIN, $1, $4);
     }
   ;
 

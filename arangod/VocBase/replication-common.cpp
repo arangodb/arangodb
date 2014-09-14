@@ -29,8 +29,8 @@
 
 #include "replication-common.h"
 
-#include "BasicsC/files.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/files.h"
+#include "Basics/tri-strings.h"
 #include "VocBase/collection.h"
 #include "VocBase/vocbase.h"
 

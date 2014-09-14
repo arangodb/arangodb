@@ -184,13 +184,12 @@ function optimizerRuleTestSuite () {
         assertTrue(planDisabled.plan.rules.indexOf(ruleName) === -1, query[0]);
         assertEqual(resultDisabled, query[1]);
 
-
         assertTrue(plansEnabled.plans.length > 1);
 
         // iterate over all plans
         var withRule = 0;
         plansEnabled.plans.forEach(function(plan) {
-          var resultEnabled  = AQL_EXECUTEJSON(plan).json;
+          var resultEnabled = AQL_EXECUTEJSON(plan).json;
           assertTrue(isEqual(resultDisabled, resultEnabled), query[0]);
           if (plan.rules.indexOf(ruleName) !== -1) {
             withRule++;

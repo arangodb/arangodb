@@ -282,7 +282,7 @@ CalculationNode* ExecutionPlan::createTemporaryCalculation (AstNode const* expre
   TRI_ASSERT(out != nullptr);
 
   // generate a temporary calculation node
-  auto expr = new Expression(_ast->query()->executor(), const_cast<AstNode*>(expression));
+  auto expr = new Expression(_ast, const_cast<AstNode*>(expression));
 
   try {
     auto en = new CalculationNode(this, nextId(), expr, out);
@@ -431,7 +431,7 @@ ExecutionNode* ExecutionPlan::fromNodeLet (ExecutionNode* previous,
   }
   else {
     // operand is some misc expression, including references to other variables
-    auto expr = new Expression(_ast->query()->executor(), const_cast<AstNode*>(expression));
+    auto expr = new Expression(_ast, const_cast<AstNode*>(expression));
 
     try {
       en = registerNode(new CalculationNode(this, nextId(), expr, v));

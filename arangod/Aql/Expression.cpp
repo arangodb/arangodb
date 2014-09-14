@@ -36,7 +36,7 @@
 #include "Aql/Variable.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/StringBuffer.h"
-#include "BasicsC/json.h"
+#include "Basics/json.h"
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/document-collection.h"
 #include "Utils/Exception.h"
@@ -53,14 +53,16 @@ using JsonHelper = triagens::basics::JsonHelper;
 /// @brief create the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-Expression::Expression (Executor* executor,
+Expression::Expression (Ast* ast,
                         AstNode const* node)
-  : _executor(executor),
+  : _ast(ast),
+    _executor(_ast->query()->executor()),
     _node(node),
     _type(UNPROCESSED),
     _canThrow(true),
     _isDeterministic(false) {
 
+  TRI_ASSERT(_ast != nullptr);
   TRI_ASSERT(_executor != nullptr);
   TRI_ASSERT(_node != nullptr);
 }
@@ -71,12 +73,7 @@ Expression::Expression (Executor* executor,
 
 Expression::Expression (Ast* ast,
                         triagens::basics::Json const& json)
-  : _executor(ast->query()->executor()),
-    _node(new AstNode(ast, json.get("expression"))),
-    _type(UNPROCESSED) {
-
-  TRI_ASSERT(_executor != nullptr);
-  TRI_ASSERT(_node != nullptr);
+  : Expression(ast, new AstNode(ast, json.get("expression"))) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -120,7 +117,6 @@ AqlValue Expression::execute (AQL_TRANSACTION_V8* trx,
     analyzeExpression();
   }
 
-  AqlValue ret;
   TRI_ASSERT(_type != UNPROCESSED);
 
   // and execute
@@ -133,7 +129,7 @@ AqlValue Expression::execute (AQL_TRANSACTION_V8* trx,
     case V8: {
       TRI_ASSERT(_func != nullptr);
       try {
-        ret = _func->execute(trx, docColls, argv, startPos, vars, regs);
+        return _func->execute(trx, docColls, argv, startPos, vars, regs);
       }
       catch (triagens::arango::Exception& ex) {
         ex.addToMessage("\nwhile evaluating expression");
@@ -143,8 +139,6 @@ AqlValue Expression::execute (AQL_TRANSACTION_V8* trx,
 #endif
         throw ex;
       }
-      return ret;
-
     }
 
     case SIMPLE: {
@@ -164,7 +158,10 @@ AqlValue Expression::execute (AQL_TRANSACTION_V8* trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 void Expression::replaceVariables (std::unordered_map<VariableId, Variable const*> const& replacements) {
-//  ast->replaceVariables(_node, replacements);
+  _node = _ast->clone(_node);
+  TRI_ASSERT(_node != nullptr);
+
+  _ast->replaceVariables(const_cast<AstNode*>(_node), replacements);
     
   if (_type == V8) {
     delete _func;

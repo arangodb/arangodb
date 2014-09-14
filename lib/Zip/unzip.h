@@ -428,8 +428,6 @@ extern uLong ZEXPORT unzGetOffset (unzFile file);
 extern int ZEXPORT unzSetOffset64 (unzFile file, ZPOS64_T pos);
 extern int ZEXPORT unzSetOffset (unzFile file, uLong pos);
 
-
-
 #ifdef __cplusplus
 }
 #endif

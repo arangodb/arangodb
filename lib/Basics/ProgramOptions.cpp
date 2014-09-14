@@ -29,9 +29,9 @@
 
 #include "ProgramOptions.h"
 
-#include "BasicsC/tri-strings.h"
-#include "BasicsC/conversions.h"
-#include "BasicsC/logging.h"
+#include "Basics/tri-strings.h"
+#include "Basics/conversions.h"
+#include "Basics/logging.h"
 #include "Basics/Exceptions.h"
 
 #include "ProgramOptions/program-options.h"

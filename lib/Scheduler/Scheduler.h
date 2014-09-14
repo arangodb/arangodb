@@ -33,7 +33,7 @@
 
 #include "Basics/Common.h"
 
-#include "BasicsC/socket-utils.h"
+#include "Basics/socket-utils.h"
 #include "Scheduler/TaskManager.h"
 
 #include "Basics/Mutex.h"
@@ -42,7 +42,7 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_json_s;
+struct TRI_json_t;
 
 namespace triagens {
   namespace basics {
@@ -149,13 +149,13 @@ namespace triagens {
 /// @brief get all user tasks
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_json_s* getUserTasks ();
+        struct TRI_json_t* getUserTasks ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a single user task
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_json_s* getUserTask (std::string const&);
+        struct TRI_json_t* getUserTask (std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unregister and delete a user task by id

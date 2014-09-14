@@ -30,8 +30,8 @@
 #include "RestEdgeHandler.h"
 
 #include "Basics/StringUtils.h"
-#include "BasicsC/conversions.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/conversions.h"
+#include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"

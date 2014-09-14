@@ -39,7 +39,7 @@
 
 #include "Basics/Common.h"
 
-#include "BasicsC/string-buffer.h"
+#include "Basics/string-buffer.h"
 #include "Zip/zip.h"
 
 // -----------------------------------------------------------------------------

@@ -29,8 +29,8 @@
 
 #include "CollectorThread.h"
 #include "Basics/MutexLocker.h"
-#include "BasicsC/hashes.h"
-#include "BasicsC/logging.h"
+#include "Basics/hashes.h"
+#include "Basics/logging.h"
 #include "Basics/ConditionLocker.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/DatabaseGuard.h"

@@ -33,7 +33,7 @@
 #include "Admin/RestJobHandler.h"
 #include "Admin/RestHandlerCreator.h"
 #include "Basics/ProgramOptionsDescription.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/PathHandler.h"
 #include "Rest/HttpResponse.h"

@@ -31,11 +31,11 @@
 
 #include <regex.h>
 
-#include "BasicsC/conversions.h"
-#include "BasicsC/files.h"
-#include "BasicsC/json.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/conversions.h"
+#include "Basics/files.h"
+#include "Basics/json.h"
+#include "Basics/logging.h"
+#include "Basics/tri-strings.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"

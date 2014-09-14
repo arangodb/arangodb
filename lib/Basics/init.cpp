@@ -29,12 +29,12 @@
 
 #include "init.h"
 
-#include "BasicsC/files.h"
-#include "BasicsC/hashes.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/process-utils.h"
-#include "BasicsC/random.h"
-#include "BasicsC/socket-utils.h"
+#include "Basics/files.h"
+#include "Basics/hashes.h"
+#include "Basics/logging.h"
+#include "Basics/process-utils.h"
+#include "Basics/random.h"
+#include "Basics/socket-utils.h"
 #include "ShapedJson/json-shaper.h"
 
 // -----------------------------------------------------------------------------

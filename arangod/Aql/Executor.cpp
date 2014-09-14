@@ -58,6 +58,7 @@ std::unordered_map<int, std::string const> const Executor::InternalFunctionNames
   { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LT),    "RELATIONAL_LESS" },
   { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LE),    "RELATIONAL_LESSEQUAL" },
   { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_IN),    "RELATIONAL_IN" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NIN),   "RELATIONAL_NOT_IN" },
   { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_PLUS),  "ARITHMETIC_PLUS" },
   { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_MINUS), "ARITHMETIC_MINUS" },
   { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_TIMES), "ARITHMETIC_TIMES" },
@@ -805,6 +806,7 @@ void Executor::generateCodeNode (AstNode const* node) {
     case NODE_TYPE_OPERATOR_BINARY_GT:
     case NODE_TYPE_OPERATOR_BINARY_GE:
     case NODE_TYPE_OPERATOR_BINARY_IN:
+    case NODE_TYPE_OPERATOR_BINARY_NIN:
     case NODE_TYPE_OPERATOR_BINARY_PLUS:
     case NODE_TYPE_OPERATOR_BINARY_MINUS:
     case NODE_TYPE_OPERATOR_BINARY_TIMES:

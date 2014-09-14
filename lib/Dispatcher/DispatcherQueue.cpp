@@ -29,13 +29,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
-#include "BasicsC/win-utils.h"
+#include "Basics/win-utils.h"
 #endif
 
 #include "DispatcherQueue.h"
 
 #include "Basics/ConditionLocker.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Dispatcher/DispatcherThread.h"
 
 using namespace triagens::rest;

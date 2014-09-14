@@ -29,8 +29,8 @@
 
 #include "Basics/JsonHelper.h"
 
-#include "BasicsC/conversions.h"
-#include "BasicsC/string-buffer.h"
+#include "Basics/conversions.h"
+#include "Basics/string-buffer.h"
 
 using namespace triagens::basics;
 

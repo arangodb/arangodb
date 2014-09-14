@@ -32,7 +32,7 @@
 
 #include "Basics/Common.h"
 
-#include "BasicsC/skip-list.h"
+#include "Basics/skip-list.h"
 
 #include "IndexIterators/index-iterator.h"
 #include "IndexOperators/index-operator.h"

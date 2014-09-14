@@ -34,7 +34,7 @@
 #include "Basics/Common.h"
 #include "Scheduler/Task.h"
 
-struct TRI_json_s;
+struct TRI_json_t;
 
 namespace triagens {
   namespace rest {
@@ -77,7 +77,7 @@ namespace triagens {
 /// @brief get a task specific description in JSON format
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void getDescription (struct TRI_json_s*);
+        virtual void getDescription (struct TRI_json_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resets the timer

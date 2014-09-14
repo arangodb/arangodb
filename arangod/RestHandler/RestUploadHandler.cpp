@@ -30,8 +30,8 @@
 #include "RestUploadHandler.h"
 
 #include "Basics/FileUtils.h"
-#include "BasicsC/files.h"
-#include "BasicsC/logging.h"
+#include "Basics/files.h"
+#include "Basics/logging.h"
 #include "HttpServer/HttpServer.h"
 #include "Rest/HttpRequest.h"
 

@@ -30,7 +30,7 @@
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Executor.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 #include "Utils/Exception.h"
 #include "VocBase/collection.h"
 
@@ -45,6 +45,21 @@ using namespace triagens::aql;
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode const Ast::NopNode = { NODE_TYPE_NOP }; 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief inverse comparison operators
+////////////////////////////////////////////////////////////////////////////////
+
+std::unordered_map<int, AstNodeType> const Ast::ReverseOperators{ 
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_EQ), NODE_TYPE_OPERATOR_BINARY_NE },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NE), NODE_TYPE_OPERATOR_BINARY_EQ },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GT), NODE_TYPE_OPERATOR_BINARY_LE },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GE), NODE_TYPE_OPERATOR_BINARY_LT },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LT), NODE_TYPE_OPERATOR_BINARY_GE },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LE), NODE_TYPE_OPERATOR_BINARY_GT },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_IN), NODE_TYPE_OPERATOR_BINARY_NIN },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NIN), NODE_TYPE_OPERATOR_BINARY_IN }
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -835,8 +850,8 @@ void Ast::injectBindParameters (BindParameters& parameters) {
 /// @brief replace variables
 ////////////////////////////////////////////////////////////////////////////////
 
-void Ast::replaceVariables (AstNode* node,
-                            std::unordered_map<VariableId, Variable const*> const& replacements) {
+AstNode* Ast::replaceVariables (AstNode* node,
+                                std::unordered_map<VariableId, Variable const*> const& replacements) {
   auto func = [&](AstNode* node, void*) -> AstNode* {
     if (node == nullptr) {
       return nullptr;
@@ -848,7 +863,7 @@ void Ast::replaceVariables (AstNode* node,
       if (variable != nullptr) {
         auto it = replacements.find(variable->id);
         if (it != replacements.end()) {
-          node = createNode(NODE_TYPE_REFERENCE);
+          // overwrite the node in place
           node->setData((*it).second);
         }
       }
@@ -858,8 +873,7 @@ void Ast::replaceVariables (AstNode* node,
     return node;
   };
 
-  // optimization
-  _root = traverse(node, func, nullptr);
+  return traverse(node, func, nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -894,7 +908,8 @@ void Ast::optimize () {
         node->type == NODE_TYPE_OPERATOR_BINARY_LE ||
         node->type == NODE_TYPE_OPERATOR_BINARY_GT ||
         node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
-        node->type == NODE_TYPE_OPERATOR_BINARY_IN) {
+        node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
+        node->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
       return optimizeBinaryOperatorRelational(node);
     }
     
@@ -975,6 +990,59 @@ std::unordered_set<Variable*> Ast::getReferencedVariables (AstNode const* node) 
 
 void Ast::addNode (AstNode* node) {
   _nodes.push_back(node);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief recursively clone a node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::clone (AstNode const* node) {
+  auto type = node->type;
+  auto copy = createNode(type);
+
+  // special handling for certain node types
+  // copy payload...
+  if (type == NODE_TYPE_COLLECTION ||
+      type == NODE_TYPE_PARAMETER ||
+      type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+      type == NODE_TYPE_ARRAY_ELEMENT ||
+      type == NODE_TYPE_FCALL_USER) {
+    copy->setStringValue(node->getStringValue());
+  }
+  else if (type == NODE_TYPE_VARIABLE ||
+           type == NODE_TYPE_REFERENCE ||
+           type == NODE_TYPE_FCALL) {
+    copy->setData(node->getData());
+  }
+  else if (type == NODE_TYPE_SORT_ELEMENT) {
+    copy->setBoolValue(node->getBoolValue());
+  }
+  else if (type == NODE_TYPE_VALUE) {
+    switch (node->value.type) {
+      case VALUE_TYPE_BOOL:
+        copy->setBoolValue(node->getBoolValue());
+        break;
+      case VALUE_TYPE_INT:
+        copy->setIntValue(node->getIntValue());
+        break;
+      case VALUE_TYPE_DOUBLE:
+        copy->setDoubleValue(node->getDoubleValue());
+        break;
+      case VALUE_TYPE_STRING:
+        copy->setStringValue(node->getStringValue());
+        break;
+      default: {
+      }
+    }
+  }
+
+  // recursively clone subnodes
+  size_t const n = node->numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    copy->addMember(clone(node->getMember(i)));
+  }
+
+  return copy;
 }
 
 // -----------------------------------------------------------------------------
@@ -1069,6 +1137,33 @@ AstNode* Ast::optimizeUnaryOperatorArithmetic (AstNode* node) {
 /// the unary NOT operation will be replaced with the result of the operation
 ////////////////////////////////////////////////////////////////////////////////
 
+AstNode* Ast::optimizeNotExpression (AstNode* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_UNARY_NOT);
+  TRI_ASSERT(node->numMembers() == 1);
+
+  AstNode* operand = node->getMember(0);
+
+  if (operand->isComparisonOperator()) {
+    // remove the NOT and reverse the operation, e.g. NOT (a == b) => (a != b)
+    TRI_ASSERT(operand->numMembers() == 2);
+    auto lhs = operand->getMember(0);
+    auto rhs = operand->getMember(1);
+
+    auto it = ReverseOperators.find(static_cast<int>(operand->type));
+    TRI_ASSERT(it != ReverseOperators.end());
+
+    return createNodeBinaryOperator((*it).second, lhs, rhs); 
+  }
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimizes the unary operator NOT
+/// the unary NOT operation will be replaced with the result of the operation
+////////////////////////////////////////////////////////////////////////////////
+
 AstNode* Ast::optimizeUnaryOperatorLogical (AstNode* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_UNARY_NOT);
@@ -1077,7 +1172,7 @@ AstNode* Ast::optimizeUnaryOperatorLogical (AstNode* node) {
   AstNode* operand = node->getMember(0);
   if (! operand->isConstant()) {
     // operand is dynamic, cannot statically optimize it
-    return node;
+    return optimizeNotExpression(node);
   }
 
   if (! operand->isBoolValue()) {
@@ -1179,9 +1274,10 @@ AstNode* Ast::optimizeBinaryOperatorRelational (AstNode* node) {
     return node;
   }
   
-  if (node->type == NODE_TYPE_OPERATOR_BINARY_IN &&
-      rhs->type != NODE_TYPE_LIST) {
-    // right operand of IN must be a list
+  if (rhs->type != NODE_TYPE_LIST &&
+      (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
+       node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
+    // right operand of IN or NOT IN must be a list
     _query->registerError(TRI_ERROR_QUERY_LIST_EXPECTED);
     return node;
   }

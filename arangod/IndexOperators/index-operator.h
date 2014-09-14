@@ -32,7 +32,7 @@
 
 #include "Basics/Common.h"
 
-#include "BasicsC/json.h"
+#include "Basics/json.h"
 #include "ShapedJson/json-shaper.h"
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/vocbase.h"

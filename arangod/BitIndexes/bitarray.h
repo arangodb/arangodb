@@ -32,8 +32,8 @@
 #define ARANGODB_BIT_INDEXES_BITARRAY_H 1
 
 #include "Basics/Common.h"
-#include "BasicsC/locks.h"
-#include "BasicsC/vector.h"
+#include "Basics/locks.h"
+#include "Basics/vector.h"
 #include "BitIndexes/bitarrayIndex.h"
 
 #define BITARRAY_MASTER_TABLE_BLOCKSIZE 8

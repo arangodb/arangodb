@@ -32,7 +32,7 @@
 
 #include "Basics/Common.h"
 
-#include "BasicsC/json.h"
+#include "Basics/json.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -51,20 +51,23 @@
 /// in this case.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CompareValuesJson (const TRI_json_t* const, const TRI_json_t* const,
+int TRI_CompareValuesJson (TRI_json_t const*, 
+                           TRI_json_t const*,
                            bool useUTF8 = true);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if two json values are the same
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CheckSameValueJson (const TRI_json_t* const, const TRI_json_t* const);
+bool TRI_CheckSameValueJson (TRI_json_t const*, 
+                             TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if a json value is contained in a json list
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CheckInListJson (const TRI_json_t* const, const TRI_json_t* const);
+bool TRI_CheckInListJson (TRI_json_t const*, 
+                          TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the elements of a list that are between the specified bounds
@@ -78,11 +81,11 @@ bool TRI_CheckInListJson (const TRI_json_t* const, const TRI_json_t* const);
 /// whether the bounds values are part of the range (true) or not (false)
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_BetweenListJson (const TRI_json_t* const,
-                                 const TRI_json_t* const,
-                                 const bool,
-                                 const TRI_json_t* const,
-                                 const bool);
+TRI_json_t* TRI_BetweenListJson (TRI_json_t const*,
+                                 TRI_json_t const*,
+                                 bool,
+                                 TRI_json_t const*,
+                                 bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief uniquify a sorted json list into a new list
@@ -91,7 +94,7 @@ TRI_json_t* TRI_BetweenListJson (const TRI_json_t* const,
 /// otherwise the result is unpredictable.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_UniquifyListJson (const TRI_json_t* const);
+TRI_json_t* TRI_UniquifyListJson (TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the union of two sorted json lists into a new list
@@ -100,9 +103,9 @@ TRI_json_t* TRI_UniquifyListJson (const TRI_json_t* const);
 /// both input lists are already sorted. otherwise the result is unpredictable.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_UnionizeListsJson (const TRI_json_t* const,
-                                   const TRI_json_t* const,
-                                   const bool);
+TRI_json_t* TRI_UnionizeListsJson (TRI_json_t const*,
+                                   TRI_json_t const*,
+                                   bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the intersection of two sorted json lists into a new list
@@ -111,9 +114,9 @@ TRI_json_t* TRI_UnionizeListsJson (const TRI_json_t* const,
 /// both input lists are already sorted. otherwise the result is unpredictable.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_IntersectListsJson (const TRI_json_t* const,
-                                    const TRI_json_t* const,
-                                    const bool);
+TRI_json_t* TRI_IntersectListsJson (TRI_json_t const*,
+                                    TRI_json_t const*,
+                                    bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sorts a json list in place
@@ -132,9 +135,9 @@ bool TRI_HasDuplicateKeyJson (TRI_json_t const*);
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* TRI_MergeJson (TRI_memory_zone_t*,
-                           const TRI_json_t* const,
-                           const TRI_json_t* const,
-                           const bool);
+                           TRI_json_t const*,
+                           TRI_json_t const*,
+                           bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compute a hash value for a JSON document.

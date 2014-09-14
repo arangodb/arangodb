@@ -29,9 +29,9 @@
 
 #include "VocBase/general-cursor.h"
 
-#include "BasicsC/json.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/vector.h"
+#include "Basics/json.h"
+#include "Basics/logging.h"
+#include "Basics/vector.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      cursor store

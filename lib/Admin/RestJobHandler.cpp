@@ -30,8 +30,8 @@
 #include "RestJobHandler.h"
 
 #include "Basics/StringUtils.h"
-#include "BasicsC/conversions.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/conversions.h"
+#include "Basics/tri-strings.h"
 #include "Dispatcher/Dispatcher.h"
 #include "HttpServer/AsyncJobManager.h"
 #include "Rest/HttpRequest.h"

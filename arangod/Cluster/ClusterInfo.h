@@ -39,7 +39,7 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
-struct TRI_json_s;
+struct TRI_json_t;
 struct TRI_memory_zone_s;
 struct TRI_server_s;
 
@@ -71,7 +71,7 @@ namespace triagens {
 
         CollectionInfo ();
 
-        CollectionInfo (struct TRI_json_s*);
+        CollectionInfo (struct TRI_json_t*);
 
         CollectionInfo (CollectionInfo const&);
 
@@ -293,7 +293,7 @@ namespace triagens {
 
         CollectionInfoCurrent ();
 
-        CollectionInfoCurrent (ShardID const&, struct TRI_json_s*);
+        CollectionInfoCurrent (ShardID const&, struct TRI_json_t*);
 
         CollectionInfoCurrent (CollectionInfoCurrent const&);
 
@@ -1043,9 +1043,9 @@ namespace triagens {
         _uniqid;
 
         // Cached data from the agency, we reload whenever necessary:
-        std::map<DatabaseID, struct TRI_json_s*> _plannedDatabases;
+        std::map<DatabaseID, struct TRI_json_t*> _plannedDatabases;
               // from Plan/Databases
-        std::map<DatabaseID, std::map<ServerID, struct TRI_json_s*> >
+        std::map<DatabaseID, std::map<ServerID, struct TRI_json_t*> >
               _currentDatabases;        // from Current/Databases
 
         AllCollections                  _collections;

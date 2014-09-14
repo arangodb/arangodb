@@ -33,7 +33,7 @@
 #include "Basics/Common.h"
 
 struct TRI_aql_context_s;
-struct TRI_json_s;
+struct TRI_json_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -43,7 +43,7 @@ typedef struct TRI_aql_explain_s {
   struct TRI_aql_context_s* _context;
   size_t _count;
   size_t _level;
-  struct TRI_json_s* _result;
+  struct TRI_json_t* _result;
 }
 TRI_aql_explain_t;
 
@@ -57,7 +57,7 @@ TRI_aql_explain_t;
 /// note: the caller of this function must free the returned json_t
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_json_s* TRI_ExplainAql (struct TRI_aql_context_s* const);
+struct TRI_json_t* TRI_ExplainAql (struct TRI_aql_context_s* const);
 
 #endif
 

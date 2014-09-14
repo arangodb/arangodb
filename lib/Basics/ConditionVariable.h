@@ -33,7 +33,7 @@
 
 #include "Basics/Common.h"
 
-#include "BasicsC/locks.h"
+#include "Basics/locks.h"
 
 namespace triagens {
   namespace basics {

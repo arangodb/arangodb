@@ -29,11 +29,11 @@
 
 #include "key-generator.h"
 
-#include "BasicsC/conversions.h"
-#include "BasicsC/json.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
-#include "BasicsC/voc-errors.h"
+#include "Basics/conversions.h"
+#include "Basics/json.h"
+#include "Basics/logging.h"
+#include "Basics/tri-strings.h"
+#include "Basics/voc-errors.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 

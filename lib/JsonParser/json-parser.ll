@@ -28,9 +28,9 @@
 
 #include "Basics/Common.h"
 
-#include "BasicsC/json.h"
-#include "BasicsC/tri-strings.h"
-#include "BasicsC/logging.h"
+#include "Basics/json.h"
+#include "Basics/tri-strings.h"
+#include "Basics/logging.h"
 
 #ifdef _WIN32
 #define YY_NO_UNISTD_H 1
@@ -474,9 +474,6 @@ static bool ParseObject (yyscan_t scanner, TRI_json_t* result, int c) {
 /// @brief parses a json string
 ////////////////////////////////////////////////////////////////////////////////
 
-// Note: This function is mentioned in lib/BasicsC/json.h and therefore needs
-//       C linkage. Maybe, one day we can change this.
-extern "C"
 TRI_json_t* TRI_Json2String (TRI_memory_zone_t* zone, char const* text, char** error) {
   TRI_json_t* object;
   YY_BUFFER_STATE buf;
@@ -539,9 +536,6 @@ TRI_json_t* TRI_Json2String (TRI_memory_zone_t* zone, char const* text, char** e
 /// @brief parses a json string
 ////////////////////////////////////////////////////////////////////////////////
 
-// Note: This function is mentioned in lib/BasicsC/json.h and therefore needs
-//       C linkage. Maybe, one day we can change this.
-extern "C"
 TRI_json_t* TRI_JsonString (TRI_memory_zone_t* zone, char const* text) {
   return TRI_Json2String(zone, text, 0);
 }
@@ -550,9 +544,6 @@ TRI_json_t* TRI_JsonString (TRI_memory_zone_t* zone, char const* text) {
 /// @brief parses a json file
 ////////////////////////////////////////////////////////////////////////////////
 
-// Note: This function is mentioned in lib/BasicsC/json.h and therefore needs
-//       C linkage. Maybe, one day we can change this.
-extern "C"
 TRI_json_t* TRI_JsonFile (TRI_memory_zone_t* zone, char const* path, char** error) {
   FILE* in;
   TRI_json_t* object;

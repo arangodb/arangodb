@@ -32,7 +32,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
-#include "BasicsC/json.h"
+#include "Basics/json.h"
 
 namespace triagens {
   namespace basics {

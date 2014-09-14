@@ -33,7 +33,7 @@
 
 #include "Basics/Common.h"
 
-#include "BasicsC/threads.h"
+#include "Basics/threads.h"
 
 namespace triagens {
   namespace basics {

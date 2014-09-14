@@ -31,7 +31,7 @@
 #define ARANGODB_AQL_QUERY_RESULT_H 1
 
 #include "Basics/Common.h"
-#include "BasicsC/json.h"
+#include "Basics/json.h"
 
 namespace triagens {
   namespace aql {
