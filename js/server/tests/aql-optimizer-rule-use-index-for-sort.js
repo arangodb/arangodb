@@ -189,17 +189,17 @@ function optimizerRuleTestSuite() {
 
       var queries = [ 
 
-        ["FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]",true],
+        ["FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]", true],
         // todo: we use an index anyways right now.
         // currently only ASC supported.
-        // "FOR v IN " + colName + " SORT v.a DESC RETURN [v.a, v.b]",true],
-        ["FOR v IN " + colName + " SORT v.b, v.a  RETURN [v.a]",true],
-        ["FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]",true],
-        ["FOR v IN " + colName + " SORT v.a + 1 RETURN [v.a]",false],// this will throw...
-        ["FOR v IN " + colName + " SORT CONCAT(TO_STRING(v.a), \"lol\") RETURN [v.a]",true],
+        // "FOR v IN " + colName + " SORT v.a DESC RETURN [v.a, v.b]", true],
+        ["FOR v IN " + colName + " SORT v.b, v.a  RETURN [v.a]", true],
+        ["FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]", true],
+        ["FOR v IN " + colName + " SORT v.a + 1 RETURN [v.a]", false],// this will throw...
+        ["FOR v IN " + colName + " SORT CONCAT(TO_STRING(v.a), \"lol\") RETURN [v.a]", true],
         // TODO: limit blocks sort atm.
-        ["FOR v IN " + colName + " FILTER v.a > 2 LIMIT 3 SORT v.a RETURN [v.a]  ",true],
-        ["FOR v IN " + colName + " FOR w IN " + colNameOther + " SORT v.a RETURN [v.a]",true]
+        ["FOR v IN " + colName + " FILTER v.a > 2 LIMIT 3 SORT v.a RETURN [v.a]", false],
+        ["FOR v IN " + colName + " FOR w IN " + colNameOther + " SORT v.a RETURN [v.a]", true]
       ];
 
       queries.forEach(function(query) {
