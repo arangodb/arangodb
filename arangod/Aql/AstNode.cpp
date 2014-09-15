@@ -497,6 +497,68 @@ TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone,
   return node;
 }
 
+std::string AstNode::toInfoString (TRI_memory_zone_t* zone) const {
+  std::string ret;
+
+  ret += std::string(" of Type '");
+  ret += getTypeString();
+  ret += std::string("' ");
+
+  if (type == NODE_TYPE_COLLECTION ||
+      type == NODE_TYPE_PARAMETER ||
+      type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+      type == NODE_TYPE_ARRAY_ELEMENT ||
+      type == NODE_TYPE_FCALL_USER) {
+    // dump "name" of node
+    ret += std::string(" by Name ");
+    ret += getStringValue();
+  }
+
+  if (type == NODE_TYPE_FCALL) {
+    auto func = static_cast<Function*>(getData());
+    ret += std::string(" by Name '");
+    ret += func->externalName;
+    ret += std::string("' with Parameters");
+  }
+
+  if (type == NODE_TYPE_VALUE) {
+    // dump value of "value" node
+    ret += std::string(" with Value(s) ");
+    /// TODO: auto v = toJsonValue(zone);
+  }
+
+  if (type == NODE_TYPE_VARIABLE ||
+      type == NODE_TYPE_REFERENCE) {
+    auto variable = static_cast<Variable*>(getData());
+    ret += std::string(" by Name(");
+    ret += variable->name;
+    ret += std::string(") ");
+  }
+  
+  // dump sub-nodes 
+  size_t const n = members._length;
+
+  if (n > 0) {
+    ret += std::string("(");
+    try {
+      for (size_t i = 0; i < n; ++i) {
+        auto member = getMember(i);
+        if (member != nullptr && member->type != NODE_TYPE_NOP) {
+          ret += member->toInfoString(zone);
+        }
+      }
+    }
+    catch (...) {
+      ret += std::string("Invalid Subnode!");
+    }
+    
+    ret += std::string(")");
+  }
+
+  return ret;
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a JSON representation of the node to the JSON list specified
 /// in the first argument
