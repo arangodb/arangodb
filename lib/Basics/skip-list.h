@@ -49,8 +49,9 @@
 
 typedef struct TRI_skiplist_node_s {
     struct TRI_skiplist_node_s** next;
-    int height;
+    struct TRI_skiplist_node_s* prev;
     void *doc;
+    int height;
 } TRI_skiplist_node_t;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -96,6 +97,7 @@ typedef void (*TRI_skiplist_free_func_t)(void*);
 
 typedef struct TRI_skiplist_s {
     TRI_skiplist_node_t* start;
+    TRI_skiplist_node_t* end;
     TRI_skiplist_cmp_elm_elm_t cmp_elm_elm;
     TRI_skiplist_cmp_key_elm_t cmp_key_elm;
     void* cmpdata;   // will be the first argument
@@ -138,6 +140,12 @@ void TRI_FreeSkipList (TRI_skiplist_t* sl);
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_skiplist_node_t* TRI_SkipListStartNode (TRI_skiplist_t* sl);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the end node
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_skiplist_node_t* TRI_SkipListEndNode (TRI_skiplist_t* sl);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the successor node or NULL if last node
