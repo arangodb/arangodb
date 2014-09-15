@@ -803,41 +803,6 @@ TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_
                                                         bool*);
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    BITARRAY INDEX
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds a bitarray index
-///
-/// Note that the caller must hold at least a read-lock.
-/// Also note that the only the set of attributes are used to distinguish
-/// a bitarray index -- that is, a bitarray is considered to be the same if
-/// the attributes match irrespective of the possible values for an attribute.
-/// Finally observe that there is no notion of uniqueness for a bitarray index.
-/// TODO: allow changes to possible values to be made at run-time.
-////////////////////////////////////////////////////////////////////////////////
-
-struct TRI_index_s* TRI_LookupBitarrayIndexDocumentCollection (TRI_document_collection_t*,
-                                                               const TRI_vector_pointer_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures that a bitarray index exists
-////////////////////////////////////////////////////////////////////////////////
-
-struct TRI_index_s* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_t*,
-                                                               TRI_idx_iid_t,
-                                                               const TRI_vector_pointer_t*,
-                                                               const TRI_vector_pointer_t*,
-                                                               bool,
-                                                               bool*,
-                                                               int*,
-                                                               char**);
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                         GEO INDEX
 // -----------------------------------------------------------------------------
 
