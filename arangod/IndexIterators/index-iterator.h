@@ -48,9 +48,7 @@
 // Essentially an interator consists of a sequence of 'intervals'. The iterator
 // iterators over each 'interval'. The exact meaning of an 'interval' will
 // vary with the type of index that the iterator is used for. For example,
-// in a Skiplist Index, 'intervals' are actual intervals with end points. For
-// a Bitarray index there is only one 'interval' which consists of a vector list
-// of document handles.
+// in a Skiplist Index, 'intervals' are actual intervals with end points. 
 // .............................................................................
 
 typedef struct TRI_index_iterator_interval_s {

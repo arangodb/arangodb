@@ -645,7 +645,7 @@ void IndexRangeNode::toJsonHelper (triagens::basics::Json& nodes,
     }
     ranges.add(range);
   }
-      
+
   // Now put info about vocbase and cid in there
   json("database", triagens::basics::Json(_vocbase->_name))
       ("collection", triagens::basics::Json(_collection->name))
@@ -653,13 +653,22 @@ void IndexRangeNode::toJsonHelper (triagens::basics::Json& nodes,
       ("ranges", ranges);
   
   TRI_json_t* idxJson = _index->json(_index);
+
   if (idxJson != nullptr) {
     try {
       TRI_json_t* copy = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson);
+
+      if (copy == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
+
       json.set("index", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, copy));
     }
     catch (...) {
+      TRI_FreeJson(TRI_CORE_MEM_ZONE, idxJson);
+      throw;
     }
+
     TRI_FreeJson(TRI_CORE_MEM_ZONE, idxJson);
   }
 
@@ -681,14 +690,14 @@ IndexRangeNode::IndexRangeNode (ExecutionPlan* plan,
     _ranges() {
 
   triagens::basics::Json rangeListJson(TRI_UNKNOWN_MEM_ZONE, JsonHelper::checkAndGetListValue(json.json(), "ranges"));
-  for(size_t i = 0; i < rangeListJson.size(); i++){ //loop over the ranges . . .
+  for (size_t i = 0; i < rangeListJson.size(); i++) { //loop over the ranges . . .
     _ranges.emplace_back();
     triagens::basics::Json rangeJson(rangeListJson.at(static_cast<int>(i)));
-    for(size_t j = 0; j < rangeJson.size(); j++){
+    for (size_t j = 0; j < rangeJson.size(); j++) {
       _ranges.at(i).emplace_back(rangeJson.at(static_cast<int>(j)));
     }
   }
-  
+
   // now the index . . . 
   // TODO the following could be a constructor method for
   // an Index object when these are actually used

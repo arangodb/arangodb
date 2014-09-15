@@ -84,8 +84,6 @@ add_executable(
     Aql/Variable.cpp
     Aql/VariableGenerator.cpp
     Aql/ModificationOptions.cpp
-    BitIndexes/bitarray.cpp
-    BitIndexes/bitarrayIndex.cpp
     CapConstraint/cap-constraint.cpp
     Cluster/AgencyComm.cpp
     Cluster/ApplicationCluster.cpp

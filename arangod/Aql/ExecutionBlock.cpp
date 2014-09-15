@@ -1524,16 +1524,21 @@ void IndexRangeBlock::readSkiplistIndex (IndexOrCondition const& ranges) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_NO_INDEX);
   }
 
-  while (true) { 
-    TRI_skiplist_index_element_t* indexElement = skiplistIterator->_next(skiplistIterator);
+  try {
+    while (true) { 
+      TRI_skiplist_index_element_t* indexElement = skiplistIterator->_next(skiplistIterator);
 
-    if (indexElement == nullptr) {
-      break;
+      if (indexElement == nullptr) {
+        break;
+      }
+      _documents.push_back(*(indexElement->_document));
     }
-    _documents.push_back(*(indexElement->_document));
+    TRI_FreeSkiplistIterator(skiplistIterator);
   }
-
-  TRI_FreeSkiplistIterator(skiplistIterator);
+  catch (...) {
+    TRI_FreeSkiplistIterator(skiplistIterator);
+    throw;
+  }
 }
 
 

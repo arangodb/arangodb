@@ -1189,8 +1189,7 @@ public:
 ////////////////////////////////////////////////////////////////////////////////
 
   SortAnalysis (SortNode* node)
-    : sortNodeID(node->id())
-  {
+    : sortNodeID(node->id()) {
     auto sortParams = node->getCalcNodePairs();
 
     for (size_t n = 0; n < sortParams.size(); n++) {
@@ -1232,29 +1231,12 @@ public:
     if (_sortNodeData.size() == 0) {
       return false;
     }
-    size_t j;
-    for (j = 0; j < _sortNodeData.size(); j ++) {
+    for (size_t j = 0; j < _sortNodeData.size(); j ++) {
       if (_sortNodeData[j]->variableName.length() == 0) {
         return false;
       }
     }
 
-    /*  are we all from one variable? * /
-    int j = 0;
-    for (; (j < _sortNodeData.size() && 
-            sortNodeData[j]->variableName.length() == 0);
-         j ++);
-    last = sortNodeData[j];
-    j ++;
-    for (j < _sortNodeData.size(); j++) {
-      if (sortNodeData[j]->variableName.length)
-      if (last->variableName != sortNodeData[j]->variableName) {
-        return false;
-      }
-      last = sortNodeData[j];
-    }
-     alle nodes gesetzt, ja.
-    */ 
     return true;
   }
 
@@ -1317,10 +1299,42 @@ class SortToIndexNode : public WalkerWorker<ExecutionNode> {
   }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check if an enumerate collection or index range node is part of an
+/// outer loop
+////////////////////////////////////////////////////////////////////////////////
+
+  bool hasPreviousEnumerations (ExecutionNode* node) const {
+    while (node != nullptr) {
+      auto deps = node->getDependencies();
+      if (deps.size() != 1) {
+        return false;
+      }
+      node = deps[0];
+      TRI_ASSERT(node != nullptr);
+
+      if (node->getType() == EN::ENUMERATE_COLLECTION ||
+          node->getType() == EN::INDEX_RANGE ||
+          node->getType() == EN::ENUMERATE_LIST) {
+        // we are contained in an outer loop
+        // TODO: potential optimization: check if the outer loop has 0 or 1 
+        // iterations. in this case it is still possible to remove the sort
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief if the sort is already done by an indexrange, remove the sort.
 ////////////////////////////////////////////////////////////////////////////////
 
   bool handleIndexRangeNode (IndexRangeNode* node) {
+    if (hasPreviousEnumerations(node)) {
+      // index range contained in an outer loop. must not optimize away the sort!
+      return true;
+    }
+
     auto variableName = node->getVariablesSetHere()[0]->name;
     auto result = _sortNode->getAttrsForVariableName(variableName);
 
@@ -1335,7 +1349,13 @@ class SortToIndexNode : public WalkerWorker<ExecutionNode> {
 /// @brief check whether we can sort via an index.
 ////////////////////////////////////////////////////////////////////////////////
 
-  bool handleEnumerateCollectionNode (EnumerateCollectionNode* node, Optimizer::RuleLevel level) {
+  bool handleEnumerateCollectionNode (EnumerateCollectionNode* node, 
+                                      Optimizer::RuleLevel level) {
+    if (hasPreviousEnumerations(node)) {
+      // index range contained in an outer loop. must not optimize away the sort!
+      return true;
+    }
+
     auto variableName = node->getVariablesSetHere()[0]->name;
     auto result = _sortNode->getAttrsForVariableName(variableName);
 

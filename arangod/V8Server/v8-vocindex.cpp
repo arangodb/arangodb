@@ -127,96 +127,6 @@ static v8::Handle<v8::Value> IndexRep (string const& collectionName,
 /// @brief process the fields list and add them to the json
 ////////////////////////////////////////////////////////////////////////////////
 
-int ProcessBitarrayIndexFields (v8::Handle<v8::Object> const obj,
-                                TRI_json_t* json,
-                                bool create) {
-  vector<string> fields;
-
-  TRI_json_t* fieldJson = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
-
-  if (fieldJson == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  int res = TRI_ERROR_NO_ERROR;
-
-  if (obj->Has(TRI_V8_SYMBOL("fields")) && obj->Get(TRI_V8_SYMBOL("fields"))->IsArray()) {
-    // "fields" is a list of fields
-    v8::Handle<v8::Array> fieldList = v8::Handle<v8::Array>::Cast(obj->Get(TRI_V8_SYMBOL("fields")));
-
-    const uint32_t n = fieldList->Length();
-
-    for (uint32_t i = 0; i < n; ++i) {
-      if (! fieldList->Get(i)->IsArray()) {
-        res = TRI_ERROR_BAD_PARAMETER;
-        break;
-      }
-
-      v8::Handle<v8::Array> fieldPair = v8::Handle<v8::Array>::Cast(fieldList->Get(i));
-
-      if (fieldPair->Length() != 2) {
-        res = TRI_ERROR_BAD_PARAMETER;
-        break;
-      }
-
-      const string f = TRI_ObjectToString(fieldPair->Get(0));
-
-      if (f.empty() || (create && f[0] == '_')) {
-        // accessing internal attributes is disallowed
-        res = TRI_ERROR_BAD_PARAMETER;
-        break;
-      }
-
-      if (std::find(fields.begin(), fields.end(), f) != fields.end()) {
-        // duplicate attribute name
-        res = TRI_ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_ATTRIBUTES;
-        break;
-      }
-
-      if (! fieldPair->Get(1)->IsArray()) {
-        // parameter at uneven position must be a list
-        res = TRI_ERROR_BAD_PARAMETER;
-        break;
-      }
-
-      fields.push_back(f);
-
-      TRI_json_t* pair = TRI_CreateList2Json(TRI_UNKNOWN_MEM_ZONE, 2);
-
-      if (pair == 0) {
-        res = TRI_ERROR_OUT_OF_MEMORY;
-        break;
-      }
-
-      // key
-      TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, pair, TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, f.c_str(), f.size()));
-
-      // value
-      TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, pair, TRI_ObjectToJson(fieldPair->Get(1)));
-
-      // add the pair to the fields list
-      TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, fieldJson, pair);
-    }
-  }
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, fieldJson);
-    return res;
-  }
-
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", fieldJson);
-
-  if (fields.empty()) {
-    return TRI_ERROR_BAD_PARAMETER;
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief process the fields list and add them to the json
-////////////////////////////////////////////////////////////////////////////////
-
 int ProcessIndexFields (v8::Handle<v8::Object> const obj,
                         TRI_json_t* json,
                         int numFields,
@@ -370,22 +280,6 @@ static int EnhanceJsonIndexSkiplist (v8::Handle<v8::Object> const obj,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief enhances the json of a bitarray index
-////////////////////////////////////////////////////////////////////////////////
-
-static int EnhanceJsonIndexBitarray (v8::Handle<v8::Object> const obj,
-                                     TRI_json_t* json,
-                                     bool create) {
-  int res = ProcessBitarrayIndexFields(obj, json, create);
-  ProcessIndexUndefinedFlag(obj, json);
-
-  // bitarrays are always non-unique
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief enhances the json of a fulltext index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -518,7 +412,8 @@ static int EnhanceIndexJson (v8::Arguments const& argv,
     }
 
     case TRI_IDX_TYPE_PRIMARY_INDEX:
-    case TRI_IDX_TYPE_EDGE_INDEX: {
+    case TRI_IDX_TYPE_EDGE_INDEX: 
+    case TRI_IDX_TYPE_BITARRAY_INDEX: {
       break;
     }
 
@@ -533,9 +428,6 @@ static int EnhanceIndexJson (v8::Arguments const& argv,
       break;
     case TRI_IDX_TYPE_SKIPLIST_INDEX:
       res = EnhanceJsonIndexSkiplist(obj, json, create);
-      break;
-    case TRI_IDX_TYPE_BITARRAY_INDEX:
-      res = EnhanceJsonIndexBitarray(obj, json, create);
       break;
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
       res = EnhanceJsonIndexFulltext(obj, json, create);
@@ -638,35 +530,12 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
   if (TRI_IsListJson(value)) {
     // note: "fields" is not mandatory for all index types
 
-    if (type == TRI_IDX_TYPE_BITARRAY_INDEX) {
-      // copy all field names (attributes) plus the values (json)
-      for (size_t i = 0; i < value->_value._objects._length; ++i) {
-        // add attribute
-        TRI_json_t const* v = TRI_LookupListJson(value, i);
+    // copy all field names (attributes)
+    for (size_t i = 0; i < value->_value._objects._length; ++i) {
+      TRI_json_t const* v = static_cast<TRI_json_t const*>(TRI_AtVector(&value->_value._objects, i));
 
-        if (TRI_IsListJson(v) && v->_value._objects._length == 2) {
-          // key
-          TRI_json_t const* key = TRI_LookupListJson(v, 0);
-          if (TRI_IsStringJson(key)) {
-            TRI_PushBackVectorPointer(&attributes, key->_value._string.data);
-          }
-
-          // value
-          TRI_json_t const* value = TRI_LookupListJson(v, 1);
-          if (TRI_IsListJson(value)) {
-            TRI_PushBackVectorPointer(&values, (void*) value);
-          }
-        }
-      }
-    }
-    else {
-      // copy all field names (attributes)
-      for (size_t i = 0; i < value->_value._objects._length; ++i) {
-        TRI_json_t const* v = static_cast<TRI_json_t const*>(TRI_AtVector(&value->_value._objects, i));
-
-        TRI_ASSERT(TRI_IsStringJson(v));
-        TRI_PushBackVectorPointer(&attributes, v->_value._string.data);
-      }
+      TRI_ASSERT(TRI_IsStringJson(v));
+      TRI_PushBackVectorPointer(&attributes, v->_value._string.data);
     }
   }
 
@@ -698,7 +567,8 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
     case TRI_IDX_TYPE_UNKNOWN:
     case TRI_IDX_TYPE_PRIMARY_INDEX:
     case TRI_IDX_TYPE_EDGE_INDEX:
-    case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX: {
+    case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX: 
+    case TRI_IDX_TYPE_BITARRAY_INDEX: {
       // these indexes cannot be created directly
       TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
     }
@@ -824,42 +694,6 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
                                                         (char const*) TRI_AtVectorPointer(&attributes, 0),
                                                         false,
                                                         minWordLength);
-      }
-      break;
-    }
-
-    case TRI_IDX_TYPE_BITARRAY_INDEX: {
-      TRI_ASSERT(attributes._length > 0);
-
-      bool supportUndefined = false;
-      TRI_json_t* value = TRI_LookupArrayJson(json, "undefined");
-      if (TRI_IsBooleanJson(value)) {
-        supportUndefined = value->_value._boolean;
-      }
-
-      if (create) {
-        int errorCode = TRI_ERROR_NO_ERROR;
-        char* errorStr = 0;
-
-        idx = TRI_EnsureBitarrayIndexDocumentCollection(document,
-                                                        iid,
-                                                        &attributes,
-                                                        &values,
-                                                        supportUndefined,
-                                                        &created,
-                                                        &errorCode,
-                                                        &errorStr);
-        if (errorCode != 0) {
-          TRI_set_errno(errorCode);
-        }
-
-        if (errorStr != 0) {
-          TRI_FreeString(TRI_CORE_MEM_ZONE, errorStr);
-        }
-      }
-      else {
-        idx = TRI_LookupBitarrayIndexDocumentCollection(document,
-                                                        &attributes);
       }
       break;
     }
@@ -1262,7 +1096,6 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
 /// - *hash*: hash index
 /// - *skiplist*: skiplist index
 /// - *fulltext*: fulltext index
-/// - *bitarray*: bitarray index
 /// - *geo1*: geo index, with one attribute
 /// - *geo2*: geo index, with two attributes
 /// - *cap*: cap constraint
