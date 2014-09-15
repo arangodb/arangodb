@@ -262,9 +262,10 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialise, int memoryPro
 
 
 int TRI_UNMMFile(void* memoryAddress,  size_t numOfBytesToUnMap, int fileDescriptor, void** mmHandle) {
-  bool ok = UnmapViewOfFile(memoryAddress);
+  // UnmapViewOfFile: If the function succeeds, the return value is nonzero.
+  bool ok = (UnmapViewOfFile(memoryAddress) != 0);
   ok = (CloseHandle(*mmHandle) && ok);
-  if (!ok) {
+  if (! ok) {
     return TRI_ERROR_SYS_ERROR;
   }
   return TRI_ERROR_NO_ERROR;

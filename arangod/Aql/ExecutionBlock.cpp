@@ -511,7 +511,7 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
         }
         else {
           if (! getBlock(atLeast - skipped,
-                         std::max(atMost - skipped, DefaultBatchSize))) {
+                         (std::max)(atMost - skipped, DefaultBatchSize))) {
             _done = true;
             break; // must still put things in the result from the collector . . .
           }
@@ -746,7 +746,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome (size_t, // atLeast,
   size_t const curRegs = cur->getNrRegs();
 
   size_t available = _documents.size() - _posInAllDocs;
-  size_t toSend = std::min(atMost, available);
+  size_t toSend = (std::min)(atMost, available);
 
   unique_ptr<AqlItemBlock> res(new AqlItemBlock(toSend, _varOverview->nrRegs[_depth]));
   // automatically freed if we throw
@@ -756,7 +756,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome (size_t, // atLeast,
   inheritRegisters(cur, res.get(), _pos);
 
   // set our collection for our output register
-  res->setDocumentCollection(curRegs, _trx->documentCollection(_collection->cid()));
+  res->setDocumentCollection(static_cast<triagens::aql::RegisterId>(curRegs), _trx->documentCollection(_collection->cid()));
 
   for (size_t j = 0; j < toSend; j++) {
     if (j > 0) {
@@ -771,7 +771,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome (size_t, // atLeast,
     // The result is in the first variable of this depth,
     // we do not need to do a lookup in _varOverview->varInfo,
     // but can just take cur->getNrRegs() as registerId:
-    res->setValue(j, curRegs,
+    res->setValue(j, static_cast<triagens::aql::RegisterId>(curRegs),
                   AqlValue(reinterpret_cast<TRI_df_marker_t
                            const*>(_documents[_posInAllDocs++].getDataPtr())));
     // No harm done, if the setValue throws!
@@ -1095,7 +1095,7 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t, // atLeast
   size_t const curRegs = cur->getNrRegs();
 
   size_t available = _documents.size() - _posInDocs;
-  size_t toSend = std::min(atMost, available);
+  size_t toSend = (std::min)(atMost, available);
 
   unique_ptr<AqlItemBlock> res(new AqlItemBlock(toSend, _varOverview->nrRegs[_depth]));
   // automatically freed if we throw
@@ -1105,7 +1105,7 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t, // atLeast
   inheritRegisters(cur, res.get(), _pos);
 
   // set our collection for our output register
-  res->setDocumentCollection(curRegs, _trx->documentCollection(_collection->cid()));
+  res->setDocumentCollection(static_cast<triagens::aql::RegisterId>(curRegs), _trx->documentCollection(_collection->cid()));
 
   for (size_t j = 0; j < toSend; j++) {
     if (j > 0) {
@@ -1120,7 +1120,7 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t, // atLeast
     // The result is in the first variable of this depth,
     // we do not need to do a lookup in _varOverview->varInfo,
     // but can just take cur->getNrRegs() as registerId:
-    res->setValue(j, curRegs,
+    res->setValue(j, static_cast<triagens::aql::RegisterId>(curRegs),
                   AqlValue(reinterpret_cast<TRI_df_marker_t
                            const*>(_documents[_posInDocs++].getDataPtr())));
     // No harm done, if the setValue throws!
@@ -1184,7 +1184,7 @@ size_t IndexRangeBlock::skipSome (size_t atLeast,
     AqlItemBlock* cur = _buffer.front();
 
     size_t available = _documents.size() - _posInDocs;
-    size_t toSkip = std::min(atMost - skipped, available);
+    size_t toSkip = (std::min)(atMost - skipped, available);
 
     _posInDocs += toSkip;
     skipped += toSkip;
@@ -1633,7 +1633,7 @@ AqlItemBlock* EnumerateListBlock::getSome (size_t, size_t atMost) {
       res = nullptr;
     }
     else {
-      size_t toSend = std::min(atMost, sizeInVar - _index);
+      size_t toSend = (std::min)(atMost, sizeInVar - _index);
 
       // create the result
       res.reset(new AqlItemBlock(toSend, _varOverview->nrRegs[_depth]));
@@ -1770,7 +1770,7 @@ AqlValue EnumerateListBlock::getAqlValue (AqlValue inVarReg) {
       // FIXME: is this correct? What if the copy works, but the
       // new throws? Is this then a leak? What if the new works
       // but the AqlValue temporary cannot be made?
-      return AqlValue(new Json(inVarReg._json->at(_index++).copy()));
+      return AqlValue(new Json(inVarReg._json->at(static_cast<int>(_index++)).copy()));
     }
     case AqlValue::RANGE: {
       return AqlValue(new Json(static_cast<double>(inVarReg._range->at(_index++))));
@@ -2472,7 +2472,7 @@ void SortBlock::doSorting () {
     // install the rearranged values from _buffer into newbuffer
 
     while (count < sum) {
-      size_t sizeNext = std::min(sum - count, DefaultBatchSize);
+      size_t sizeNext = (std::min)(sum - count, DefaultBatchSize);
       AqlItemBlock* next = new AqlItemBlock(sizeNext, nrregs);
       try {
         newbuffer.push_back(next);

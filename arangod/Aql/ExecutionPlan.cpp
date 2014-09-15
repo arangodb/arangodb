@@ -114,12 +114,12 @@ void ExecutionPlan::getCollectionsFromJson(Ast *ast,
   }
     
   for (size_t i = 0; i < size; i++) {
-    Json oneJsonCollection = jsonCollectionList.at(i);
-    auto typeStr = JsonHelper::checkAndGetStringValue(oneJsonCollection.json(), "type");
+    Json oneJsonCollection = jsonCollectionList.at(static_cast<int>(i));
+    auto typeStr = triagens::basics::JsonHelper::checkAndGetStringValue(oneJsonCollection.json(), "type");
       
     ast->query()->collections()->add(
-                                     JsonHelper::checkAndGetStringValue(oneJsonCollection.json(), "name"),
-                                     TRI_GetTransactionTypeFromStr(JsonHelper::checkAndGetStringValue(oneJsonCollection.json(), "type").c_str()));
+                                     triagens::basics::JsonHelper::checkAndGetStringValue(oneJsonCollection.json(), "name"),
+                                     TRI_GetTransactionTypeFromStr(triagens::basics::JsonHelper::checkAndGetStringValue(oneJsonCollection.json(), "type").c_str()));
  }
 
 }
@@ -996,7 +996,7 @@ void ExecutionPlan::checkLinkage () {
 /// @brief helper struct for findVarUsage
 ////////////////////////////////////////////////////////////////////////////////
 
-struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
+struct triagens::aql::VarUsageFinder : public WalkerWorker<ExecutionNode> {
 
     std::unordered_set<Variable const*> _usedLater;
     std::unordered_set<Variable const*> _valid;
@@ -1219,7 +1219,7 @@ ExecutionNode* ExecutionPlan::fromJson (Json const& json) {
   auto const size = nodes.size();
 
   for (size_t i = 0; i < size; i++) {
-    Json oneJsonNode = nodes.at(i);
+    Json oneJsonNode = nodes.at(static_cast<int>(i));
 
     if (! oneJsonNode.isArray()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json node is not an array");
@@ -1244,24 +1244,24 @@ ExecutionNode* ExecutionPlan::fromJson (Json const& json) {
   // all nodes have been created. now add the dependencies
 
   for (size_t i = 0; i < size; i++) {
-    Json oneJsonNode = nodes.at(i);
+    Json oneJsonNode = nodes.at(static_cast<int>(i));
 
     if (! oneJsonNode.isArray()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json node is not an array");
     }
    
     // read the node's own id 
-    auto thisId = JsonHelper::checkAndGetNumericValue<size_t>(oneJsonNode.json(), "id");
+    auto thisId = triagens::basics::JsonHelper::checkAndGetNumericValue<size_t>(oneJsonNode.json(), "id");
     auto thisNode = getNodeById(thisId);
 
     // now re-link the dependencies
     Json dependencies = oneJsonNode.get("dependencies");
-    if (JsonHelper::isList(dependencies.json())) {
+    if (triagens::basics::JsonHelper::isList(dependencies.json())) {
       size_t const nDependencies = dependencies.size();
 
       for (size_t j = 0; j < nDependencies; j ++) {
-        if (JsonHelper::isNumber(dependencies.at(j).json())) {
-          auto depId = JsonHelper::getNumericValue<size_t>(dependencies.at(j).json(), 0);
+        if (triagens::basics::JsonHelper::isNumber(dependencies.at(static_cast<int>(j)).json())) {
+          auto depId = triagens::basics::JsonHelper::getNumericValue<size_t>(dependencies.at(static_cast<int>(j)).json(), 0);
           thisNode->addDependency(getNodeById(depId));
         }
       }

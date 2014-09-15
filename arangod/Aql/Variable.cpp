@@ -32,7 +32,6 @@
 
 using namespace triagens::aql;
 using namespace triagens::basics;
-using Json = triagens::basics::Json;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -49,7 +48,7 @@ Variable::Variable (std::string const& name,
     id(id) {
 }
 
-Variable::Variable (Json const& json)
+Variable::Variable (triagens::basics::Json const& json)
   : Variable(JsonHelper::checkAndGetStringValue(json.json(), "name"), JsonHelper::checkAndGetNumericValue<VariableId>(json.json(), "id")) {
 }
 
@@ -68,10 +67,10 @@ Variable::~Variable () {
 /// @brief return a JSON representation of the variable
 ////////////////////////////////////////////////////////////////////////////////
 
-Json Variable::toJson () const {
-  Json json(triagens::basics::Json::Array, 2);
-  json("id", Json(static_cast<double>(id)))
-      ("name", Json(name));
+triagens::basics::Json Variable::toJson () const {
+  triagens::basics::Json json(triagens::basics::Json::Array, 2);
+  json("id", triagens::basics::Json(static_cast<double>(id)))
+      ("name", triagens::basics::Json(name));
 
   return json;
 }
