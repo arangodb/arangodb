@@ -960,6 +960,17 @@ bool IndexRangeBlock::readIndex () {
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
   IndexOrCondition const* condition = &en->_ranges;
    
+#if 0
+  // ONLY FOR DEBUGGING
+  std::cout << "Hallole\n";
+  for (auto& x : *condition) {
+    std::cout << "OR\n";
+    for (auto& y : x) {
+      std::cout << y.toString() << std::endl;
+    }
+  }
+#endif
+
   // Find out about the actual values for the bounds in the variable bound case:
   if (! _allBoundsConstant) {
     // The following are needed to evaluate expressions with local data from
@@ -1075,76 +1086,91 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t, // atLeast
     return nullptr;
   }
 
-  if (_buffer.empty()) {
-    if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
-      _done = true;
-      return nullptr;
+  unique_ptr<AqlItemBlock> res(nullptr);
+
+  do {
+    // repeatedly try to get more stuff from upstream
+    // note that the value of the variable we have to loop over
+    // can contain zero entries, in which case we have to
+    // try again!
+
+    if (_buffer.empty()) {
+      if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
+        _done = true;
+        return nullptr;
+      }
+      _pos = 0;           // this is in the first block
+
+      // This is a new item, so let's read the index if bounds are variable:
+      if (! _allBoundsConstant) {
+        readIndex();
+      }
+
+      _posInDocs = 0;     // position in _documents . . .
     }
-    _pos = 0;           // this is in the first block
 
-    // This is a new item, so let's read the index if bounds are variable:
-    if (! _allBoundsConstant) {
-      readIndex();
-    }
+    // If we get here, we do have _buffer.front() and _pos points into it
+    AqlItemBlock* cur = _buffer.front();
+    size_t const curRegs = cur->getNrRegs();
 
-    _posInDocs = 0;     // position in _documents . . .
-  }
+    size_t available = _documents.size() - _posInDocs;
+    size_t toSend = std::min(atMost, available);
 
-  // If we get here, we do have _buffer.front() and _pos points into it
-  AqlItemBlock* cur = _buffer.front();
-  size_t const curRegs = cur->getNrRegs();
+    if (toSend > 0) {
 
-  size_t available = _documents.size() - _posInDocs;
-  size_t toSend = std::min(atMost, available);
+      res.reset(new AqlItemBlock(toSend, _varOverview->nrRegs[_depth]));
 
-  unique_ptr<AqlItemBlock> res(new AqlItemBlock(toSend, _varOverview->nrRegs[_depth]));
-  // automatically freed if we throw
-  TRI_ASSERT(curRegs <= res->getNrRegs());
+      // automatically freed should we throw
+      TRI_ASSERT(curRegs <= res->getNrRegs());
 
-  // only copy 1st row of registers inherited from previous frame(s)
-  inheritRegisters(cur, res.get(), _pos);
+      // only copy 1st row of registers inherited from previous frame(s)
+      inheritRegisters(cur, res.get(), _pos);
 
-  // set our collection for our output register
-  res->setDocumentCollection(curRegs, _trx->documentCollection(_collection->cid()));
+      // set our collection for our output register
+      res->setDocumentCollection(curRegs, _trx->documentCollection(_collection->cid()));
 
-  for (size_t j = 0; j < toSend; j++) {
-    if (j > 0) {
-      // re-use already copied aqlvalues
-      for (RegisterId i = 0; i < curRegs; i++) {
-        res->setValue(j, i, res->getValue(0, i));
-        // Note: if this throws, then all values will be deleted
-        // properly since the first one is.
+      for (size_t j = 0; j < toSend; j++) {
+        if (j > 0) {
+          // re-use already copied aqlvalues
+          for (RegisterId i = 0; i < curRegs; i++) {
+            res->setValue(j, i, res->getValue(0, i));
+            // Note: if this throws, then all values will be deleted
+            // properly since the first one is.
+          }
+        }
+
+        // The result is in the first variable of this depth,
+        // we do not need to do a lookup in _varOverview->varInfo,
+        // but can just take cur->getNrRegs() as registerId:
+        res->setValue(j, curRegs,
+                      AqlValue(reinterpret_cast<TRI_df_marker_t
+                               const*>(_documents[_posInDocs++].getDataPtr())));
+        // No harm done, if the setValue throws!
       }
     }
 
-    // The result is in the first variable of this depth,
-    // we do not need to do a lookup in _varOverview->varInfo,
-    // but can just take cur->getNrRegs() as registerId:
-    res->setValue(j, curRegs,
-                  AqlValue(reinterpret_cast<TRI_df_marker_t
-                           const*>(_documents[_posInDocs++].getDataPtr())));
-    // No harm done, if the setValue throws!
-  }
+    // Advance read position:
+    if (_posInDocs >= _documents.size()) {
+      // we have exhausted our local documents buffer,
 
-  // Advance read position:
-  if (_posInDocs >= _documents.size()) {
-    // we have exhausted our local documents buffer,
+      _posInDocs = 0;
 
-    if (++_pos >= cur->size()) {
-      _buffer.pop_front();  // does not throw
-      delete cur;
-      _pos = 0;
+      if (++_pos >= cur->size()) {
+        _buffer.pop_front();  // does not throw
+        delete cur;
+        _pos = 0;
+      }
+
+      // let's read the index if bounds are variable:
+      if (! _buffer.empty() && ! _allBoundsConstant) {
+        readIndex();
+      }
+      // If _buffer is empty, then we will fetch a new block in the next call
+      // and then read the index.
+      
     }
-
-    // let's read the index if bounds are variable:
-    if (! _buffer.empty() && ! _allBoundsConstant) {
-      readIndex();
-    }
-    _posInDocs = 0;
-    
-    // If _buffer is empty, then we will fetch a new block in the next call
-    // and then read the index.
   }
+  while (res.get() == nullptr);
 
   // Clear out registers no longer needed later:
   clearRegisters(res.get());

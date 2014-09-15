@@ -767,24 +767,49 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             for (auto v : varsSetHere) {
               varsDefined.erase(v);
             }
+#if 0
+            // ONLY FOR DEBUGGING
+            std::cout << "Pondering...\n";
+            std::cout << "Variable defined here:";
+            for (auto v : varsDefined) {
+              std::cout << v->name;
+            }
+            std::cout << std::endl;
+#endif
             for (auto& x : *map) {
               auto worker = [&] (std::list<RangeInfoBound>& bounds) -> void {
-                for (auto it = bounds.begin(); it != bounds.end(); ++it) {
+                for (auto it = bounds.begin(); it != bounds.end(); ) {
                   AstNode const* a = it->getExpressionAst(_plan->getAst());
                   std::unordered_set<Variable*> varsUsed
                       = Ast::getReferencedVariables(a);
                   bool bad = false;
                   for (auto v : varsUsed) {
+#if 0
+                    std::cout << "Variable used:" << v->name << std::endl;
+#endif
                     if (varsDefined.find(const_cast<Variable const*>(v))
                         == varsDefined.end()) {
+#if 0
+                      std::cout << "bad\n";
+#endif
                       bad = true;
                     }
                   }
                   if (bad) {
+#if 0
+                    std::cout << "was bad\n";
+#endif
                     it = bounds.erase(it);
+                  }
+                  else {
+                    it++;
                   }
                 }
               };
+#if 0
+              std::cout << "lows:" << x.second._lows.size() 
+                        << "highs:" << x.second._highs.size() << "\n";
+#endif
               worker(x.second._lows);
               worker(x.second._highs);
             }
