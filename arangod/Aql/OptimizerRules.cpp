@@ -25,7 +25,7 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#define DISABLE_VARIABLE_BOUNDS 1
+//#define DISABLE_VARIABLE_BOUNDS 1
 
 #include "Aql/OptimizerRules.h"
 #include "Aql/ExecutionNode.h"
@@ -760,7 +760,14 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             // Remove all variable bounds that are no longer defined here:
             std::unordered_set<Variable const*> varsDefined 
                 = node->getVarsValid();
-            for (auto x : *map) {
+            // Take out the variable we define only here, because we are
+            // not allowed to use it in a variable bound expression:
+            std::vector<Variable const*> varsSetHere
+                = node->getVariablesSetHere();
+            for (auto v : varsSetHere) {
+              varsDefined.erase(v);
+            }
+            for (auto& x : *map) {
               auto worker = [&] (std::list<RangeInfoBound>& bounds) -> void {
                 for (auto it = bounds.begin(); it != bounds.end(); ++it) {
                   AstNode const* a = it->getExpressionAst(_plan->getAst());
@@ -781,6 +788,19 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
               worker(x.second._lows);
               worker(x.second._highs);
             }
+            // Now remove empty conditions:
+            for (auto it = map->begin(); it != map->end(); ) {
+              if (it->second._lows.empty() &&
+                  it->second._highs.empty() &&
+                  ! it->second._lowConst.isDefined() &&
+                  ! it->second._highConst.isDefined()) {
+                it = map->erase(it);
+              }
+              else {
+                it++;
+              }
+            }
+
             // check the first components of <map> against indexes of <node>...
             std::unordered_set<std::string> attrs;
             
