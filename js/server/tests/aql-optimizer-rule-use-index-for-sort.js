@@ -172,8 +172,8 @@ function optimizerRuleTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-      internal.db._drop(colName);
-      internal.db._drop(colNameOther);
+      // internal.db._drop(colName);
+      //internal.db._drop(colNameOther);
       skiplist = null;
     },
 
