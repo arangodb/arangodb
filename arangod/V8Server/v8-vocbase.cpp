@@ -3483,6 +3483,7 @@ static v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* cont
   }
 
   TRI_ASSERT(codeLength > 0);
+
   // execute code
   v8::Handle<v8::Value> result = TRI_ExecuteJavaScriptString(v8::Context::GetCurrent(),
                                                              v8::String::New(code, (int) codeLength),
