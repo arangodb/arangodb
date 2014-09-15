@@ -431,6 +431,7 @@ namespace triagens {
         explicit Json (bool x, autofree_e autofree = AUTOFREE) 
           : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
           _json = TRI_CreateBooleanJson(_zone, x);
+
           if (_json == nullptr) {
             throw JsonException("Json: out of memory");
           }
@@ -443,10 +444,10 @@ namespace triagens {
         explicit Json (TRI_memory_zone_t* z, bool x, autofree_e autofree = AUTOFREE) 
           : _zone(z), _json(nullptr), _autofree(autofree) {
           _json = TRI_CreateBooleanJson(_zone, x);
+
           if (_json == nullptr) {
             throw JsonException("Json: out of memory");
           }
-          std::cout << "SHOULDN'T BE HERE!\n";
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -456,6 +457,7 @@ namespace triagens {
         explicit Json (int32_t x, autofree_e autofree = AUTOFREE) 
           : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
           _json = TRI_CreateNumberJson(_zone, static_cast<double>(x));
+
           if (_json == nullptr) {
             throw JsonException("Json: out of memory");
           }
@@ -468,6 +470,7 @@ namespace triagens {
         explicit Json (TRI_memory_zone_t* z, int32_t x, autofree_e autofree = AUTOFREE) 
           : _zone(z), _json(nullptr), _autofree(autofree) {
           _json = TRI_CreateNumberJson(_zone, static_cast<double>(x));
+
           if (_json == nullptr) {
             throw JsonException("Json: out of memory");
           }
@@ -480,6 +483,7 @@ namespace triagens {
         explicit Json (double x, autofree_e autofree = AUTOFREE) 
           : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
           _json = TRI_CreateNumberJson(_zone, x);
+
           if (_json == nullptr) {
             throw JsonException("Json: out of memory");
           }
@@ -492,6 +496,7 @@ namespace triagens {
         explicit Json (TRI_memory_zone_t* z, double x, autofree_e autofree = AUTOFREE) 
           : _zone(z), _json(nullptr), _autofree(autofree) {
           _json = TRI_CreateNumberJson(_zone, x);
+
           if (_json == nullptr) {
             throw JsonException("Json: out of memory");
           }
@@ -504,6 +509,7 @@ namespace triagens {
         explicit Json (char const* x, autofree_e autofree = AUTOFREE) 
           : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
           _json = TRI_CreateStringCopyJson(_zone, x);
+
           if (_json == nullptr) {
             throw JsonException("Json: out of memory");
           }
@@ -516,6 +522,7 @@ namespace triagens {
         explicit Json (TRI_memory_zone_t* z, char const* x, autofree_e autofree = AUTOFREE) 
           : _zone(z), _json(nullptr), _autofree(autofree) {
           _json = TRI_CreateStringCopyJson(_zone, x);
+
           if (_json == nullptr) {
             throw JsonException("Json: out of memory");
           }
@@ -528,6 +535,7 @@ namespace triagens {
         explicit Json (std::string const x, autofree_e autofree = AUTOFREE) 
           : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
           _json = TRI_CreateString2CopyJson(_zone, x.c_str(), x.size());
+
           if (_json == nullptr) {
             throw JsonException("Json: out of memory");
           }
@@ -540,6 +548,7 @@ namespace triagens {
         explicit Json (TRI_memory_zone_t* z, std::string const& x, autofree_e autofree = AUTOFREE) 
           : _zone(z), _json(nullptr), _autofree(autofree) {
           _json = TRI_CreateString2CopyJson(_zone, x.c_str(), x.size());
+
           if (_json == nullptr) {
             throw JsonException("Json: out of memory");
           }
@@ -581,7 +590,7 @@ namespace triagens {
 /// the reference.
 ////////////////////////////////////////////////////////////////////////////////
 
-        Json (Json const&) = delete;
+        //Json (Json const&) = delete;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief move constructor, note that in the AUTOFREE case this steals

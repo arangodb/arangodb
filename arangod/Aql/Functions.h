@@ -33,6 +33,8 @@
 #include "Basics/Common.h"
 #include "Aql/AqlValue.h"
 
+#include <functional>
+
 namespace triagens {
   namespace aql {
 

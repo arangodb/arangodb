@@ -39,9 +39,8 @@
 
 #ifdef TRI_MISSING_MEMRCHR
 
-void * memrchr (const void *block, int c, size_t size)
-{
-  const unsigned char *p = block;
+void * memrchr(const void *block, int c, size_t size) {
+  const unsigned char *p = static_cast<const unsigned char*>(block);
 
   if (size)
     {

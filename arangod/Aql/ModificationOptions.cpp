@@ -52,7 +52,7 @@ triagens::basics::Json ModificationOptions::toJson (TRI_memory_zone_t* zone) {
     json = Json(Json::Array, 1)
       ("modificationFlags", flags);
   }
-  catch (std::exception& e) {
+  catch (std::exception&) {
     return Json();
   }
 

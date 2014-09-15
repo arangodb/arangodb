@@ -192,7 +192,6 @@ static TRI_shape_path_t const* FindShapePathByName (TRI_shaper_t* shaper,
   char* end;
   char* prev;
   char* ptr;
-  void const* f;
   void const* p;
 
   TRI_ASSERT(name != nullptr);
@@ -287,10 +286,16 @@ static TRI_shape_path_t const* FindShapePathByName (TRI_shaper_t* shaper,
 
   TRI_Free(shaper->_memoryZone, aids);
 
-  f = TRI_InsertKeyAssociativeSynced(&shaper->_attributePathsByName, name, result, false);
+  void const* f = TRI_InsertKeyAssociativeSynced(&shaper->_attributePathsByName, name, result, false);
+  if (f != nullptr) {
+    LOG_WARNING("duplicate shape path %lu", (unsigned long) result->_pid);
+  }
   TRI_ASSERT(f == nullptr);
 
   f = TRI_InsertKeyAssociativeSynced(&shaper->_attributePathsByPid, &result->_pid, result, false);
+  if (f != nullptr) {
+    LOG_WARNING("duplicate shape path %lu", (unsigned long)result->_pid);
+  }
   TRI_ASSERT(f == nullptr);
 
   // return pid
