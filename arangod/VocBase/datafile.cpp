@@ -749,7 +749,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename,
   int fd;
   int res;
   ssize_t len;
-  struct stat status;
+  TRI_stat_t status;
   TRI_df_header_marker_t header;
   void* mmHandle;
 
@@ -785,7 +785,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename,
   }
 
   // check that file is not too small
-  size = status.st_size;
+  size = static_cast<TRI_voc_size_t>(status.st_size);
 
   if (size < sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t)) {
     TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
