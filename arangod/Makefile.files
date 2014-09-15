@@ -65,8 +65,6 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/Variable.cpp \
 	arangod/Aql/VariableGenerator.cpp \
 	arangod/Aql/ModificationOptions.cpp \
-	arangod/BitIndexes/bitarray.cpp \
-	arangod/BitIndexes/bitarrayIndex.cpp \
 	arangod/CapConstraint/cap-constraint.cpp \
 	arangod/Cluster/AgencyComm.cpp \
 	arangod/Cluster/ApplicationCluster.cpp \
