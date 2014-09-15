@@ -112,7 +112,7 @@ function optimizerRuleTestSuite () {
         var plans = AQL_EXPLAIN(query[0], { }, opts).plans;
         plans.forEach(function(plan) {
           var result = AQL_EXECUTEJSON(plan, { optimizer: { rules: [ "-all" ] } }).json;
-          // assertEqual(query[1], result);
+          assertEqual(query[1], result, query[0]);
         });
       });
     }
