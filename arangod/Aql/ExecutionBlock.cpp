@@ -966,7 +966,7 @@ bool IndexRangeBlock::readIndex () {
     // the current incoming item:
     AqlItemBlock* cur = _buffer.front();
     vector<AqlValue>& data(cur->getData());
-    vector<TRI_document_collection_t const*> docColls(cur->getDocumentCollections());
+    vector<TRI_document_collection_t const*>& docColls(cur->getDocumentCollections());
     RegisterId nrRegs = cur->getNrRegs();
 
     auto newCondition = new IndexOrCondition();
