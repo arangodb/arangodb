@@ -107,11 +107,11 @@ void ExecutionPlan::getCollectionsFromJson(Ast *ast,
 {
   Json jsonCollectionList = json.get("collections");
 
-  auto const size = jsonCollectionList.size();
-
   if (! jsonCollectionList.isList()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json collections is not list");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json node \"collections\" not found or not a list");
   }
+
+  auto const size = jsonCollectionList.size();
     
   for (size_t i = 0; i < size; i++) {
     Json oneJsonCollection = jsonCollectionList.at(static_cast<int>(i));

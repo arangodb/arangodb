@@ -680,10 +680,10 @@ IndexRangeNode::IndexRangeNode (ExecutionPlan* plan,
     _outVariable(varFromJson(plan->getAst(), json, "outVariable")), 
     _ranges() {
 
-  triagens::basics::Json rangesJson(TRI_UNKNOWN_MEM_ZONE, JsonHelper::checkAndGetListValue(json.json(), "ranges"));
-  for(size_t i = 0; i < rangesJson.size(); i++){ //loop over the ranges . . .
+  triagens::basics::Json rangeListJson(TRI_UNKNOWN_MEM_ZONE, JsonHelper::checkAndGetListValue(json.json(), "ranges"));
+  for(size_t i = 0; i < rangeListJson.size(); i++){ //loop over the ranges . . .
     _ranges.emplace_back();
-    triagens::basics::Json rangeJson(rangesJson.at(static_cast<int>(i)));
+    triagens::basics::Json rangeJson(rangeListJson.at(static_cast<int>(i)));
     for(size_t j = 0; j < rangeJson.size(); j++){
       _ranges.at(i).emplace_back(rangeJson.at(static_cast<int>(j)));
     }
