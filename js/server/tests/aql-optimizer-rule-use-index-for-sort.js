@@ -26,6 +26,7 @@
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
+var PY = function (plan) { require("internal").print(require("js-yaml").safeDump(plan));};
 
 var internal = require("internal");
 var jsunity = require("jsunity");
@@ -192,13 +193,13 @@ function optimizerRuleTestSuite() {
         // todo: we use an index anyways right now.
         // currently only ASC supported.
         // "FOR v IN " + colName + " SORT v.a DESC RETURN [v.a, v.b]",true],
-        ["FOR v IN " + colName + " SORT v.b, v.a  RETURN [v.a, v.b]",true],
+        ["FOR v IN " + colName + " SORT v.b, v.a  RETURN [v.a]",true],
         ["FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]",true],
-        ["FOR v IN " + colName + " SORT v.a + 1 RETURN [v.a, v.b]",false],// this will throw...
-        ["FOR v IN " + colName + " SORT CONCAT(TO_STRING(v.a), \"lol\") RETURN [v.a, v.b]",true],
+        ["FOR v IN " + colName + " SORT v.a + 1 RETURN [v.a]",false],// this will throw...
+        ["FOR v IN " + colName + " SORT CONCAT(TO_STRING(v.a), \"lol\") RETURN [v.a]",true],
         // TODO: limit blocks sort atm.
-        ["FOR v IN " + colName + " FILTER v.a > 2 LIMIT 3 SORT v.a RETURN [v.a, v.b]  ",true],
-        ["FOR v IN " + colName + " FOR w IN " + colNameOther + " SORT v.a RETURN [v.a, v.b]",true]
+        ["FOR v IN " + colName + " FILTER v.a > 2 LIMIT 3 SORT v.a RETURN [v.a]  ",true],
+        ["FOR v IN " + colName + " FOR w IN " + colNameOther + " SORT v.a RETURN [v.a]",true]
       ];
 
       queries.forEach(function(query) {
@@ -207,11 +208,14 @@ function optimizerRuleTestSuite() {
         assertEqual([], result.plan.rules, query);
         if (query[1]) {
           var allresults = getQueryMultiplePlansAndExecutions(query[0], {});
-          for (j = 1; j <= allresults.length; j++) {
+          for (j = 1; j < allresults.results.length; j++) {
             assertTrue(isEqual(allresults.results[0],
                                allresults.results[j]),
-                       "whether the execution of this plan gave the right results: " +
-                       allresults.plans[j]);
+                       "whether the execution of " + query[0] +
+                       " this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
+                       " Should be: '" + JSON.stringify(allresults.results[0]) +
+                       "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
+                      );
           }
         }
       });
@@ -249,11 +253,14 @@ function optimizerRuleTestSuite() {
         allresults = getQueryMultiplePlansAndExecutions(query, {});
         AQL_EXECUTEJSON(allresults.plans[0].plan, paramNone);
 
-        for (j = 1; j <= allresults.length; j++) {
-          assertTrue(isEqual(allresults.results[0],
-                             allresults.results[j]),
-                     "whether the execution of this plan gave the right results: " +
-                     allresults.plans[j]);
+        for (j = 1; j < allresults.results.length; j++) {
+            assertTrue(isEqual(allresults.results[0],
+                               allresults.results[j]),
+                       "whether the execution of " + query[0] +
+                       " this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
+                       " Should be: '" + JSON.stringify(allresults.results[0]) +
+                       "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
+                      );
         }
         i++;
       });
@@ -284,11 +291,14 @@ function optimizerRuleTestSuite() {
         assertTrue(isEqual(QResults[0], QResults[1]), "Result " + i + " is Equal?");
 
         allresults = getQueryMultiplePlansAndExecutions(query, {});
-        for (j = 1; j <= allresults.length; j++) {
+        for (j = 1; j < allresults.results.length; j++) {
           assertTrue(isEqual(allresults.results[0],
                              allresults.results[j]),
-                     "whether the execution of this plan gave the right results: " +
-                     allresults.plans[j]);
+                     "whether the execution of " + query[0] +
+                     " this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
+                     " Should be: '" + JSON.stringify(allresults.results[0]) +
+                     "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
+                    );
         }
         i++;
       });
@@ -343,11 +353,14 @@ function optimizerRuleTestSuite() {
         assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + " is Equal?");
       }
       allresults = getQueryMultiplePlansAndExecutions(query, {});
-      for (j = 1; j <= allresults.length; j++) {
+      for (j = 1; j < allresults.results.length; j++) {
         assertTrue(isEqual(allresults.results[0],
                            allresults.results[j]),
-                   "whether the execution of this plan gave the right results: " +
-                   allresults.plans[j]);
+                   "whether the execution of " + query[0] +
+                   " this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
+                   " Should be: '" + JSON.stringify(allresults.results[0]) +
+                   "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
+                  );
       }
     },
 
@@ -413,11 +426,14 @@ function optimizerRuleTestSuite() {
         assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + " is Equal?");
       }
       allresults = getQueryMultiplePlansAndExecutions(query, {});
-      for (j = 1; j <= allresults.length; j++) {
+      for (j = 1; j < allresults.results.length; j++) {
         assertTrue(isEqual(allresults.results[0],
                            allresults.results[j]),
-                   "whether the execution of this plan gave the right results: " +
-                   allresults.plans[j]);
+                   "whether the execution of " + query[0] +
+                   " this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
+                   " Should be: '" + JSON.stringify(allresults.results[0]) +
+                   "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
+                  );
       }
     },
 
@@ -489,11 +505,14 @@ function optimizerRuleTestSuite() {
         assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + " is Equal?");
       }
       allresults = getQueryMultiplePlansAndExecutions(query, {});
-      for (j = 1; j <= allresults.length; j++) {
+      for (j = 1; j < allresults.results.length; j++) {
         assertTrue(isEqual(allresults.results[0],
                            allresults.results[j]),
-                   "whether the execution of this plan gave the right results: " +
-                   allresults.plans[j]);
+                   "whether the execution of " + query[0] +
+                   " this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
+                   " Should be: '" + JSON.stringify(allresults.results[0]) +
+                   "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
+                  );
       }
     },
 
@@ -567,7 +586,7 @@ function optimizerRuleTestSuite() {
         assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + " is Equal?");
       }
       allresults = getQueryMultiplePlansAndExecutions(query, {});
-      for (j = 1; j <= allresults.length; j++) {
+      for (j = 1; j < allresults.results.length; j++) {
         assertTrue(isEqual(allresults.results[0],
                            allresults.results[j]),
                    "whether the execution of this plan gave the right results: " +
@@ -615,11 +634,14 @@ function optimizerRuleTestSuite() {
         assertTrue(isEqual(QResults[0].sort(sortArray), QResults[i]), "Result " + i + " is Equal?");
       }
       allresults = getQueryMultiplePlansAndExecutions(query, {});
-      for (j = 1; j <= allresults.length; j++) {
+      for (j = 1; j < allresults.results.length; j++) {
         assertTrue(isEqual(allresults.results[0],
                            allresults.results[j]),
-                   "whether the execution of this plan gave the right results: " +
-                   allresults.plans[j]);
+                   "whether the execution of " + query[0] +
+                   " this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
+                   " Should be: '" + JSON.stringify(allresults.results[0]) +
+                   "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
+                  );
       }
     },
 
@@ -657,11 +679,14 @@ function optimizerRuleTestSuite() {
       assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
 
       allresults = getQueryMultiplePlansAndExecutions(query, {});
-      for (j = 1; j <= allresults.length; j++) {
+      for (j = 1; j < allresults.results.length; j++) {
         assertTrue(isEqual(allresults.results[0],
                            allresults.results[j]),
-                   "whether the execution of this plan gave the right results: " +
-                   allresults.plans[j]);
+                   "whether the execution of " + query[0] +
+                   " this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
+                   " Should be: '" + JSON.stringify(allresults.results[0]) +
+                   "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
+                  );
       }
     },
 
@@ -698,11 +723,14 @@ function optimizerRuleTestSuite() {
       assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
 
       allresults = getQueryMultiplePlansAndExecutions(query, {});
-      for (j = 1; j <= allresults.length; j++) {
+      for (j = 1; j < allresults.results.length; j++) {
         assertTrue(isEqual(allresults.results[0],
                            allresults.results[j]),
-                   "whether the execution of this plan gave the right results: " +
-                   allresults.plans[j]);
+                   "whether the execution of " + query[0] +
+                   " this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
+                   " Should be: '" + JSON.stringify(allresults.results[0]) +
+                   "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
+                  );
       }
     },
 
@@ -740,7 +768,7 @@ function optimizerRuleTestSuite() {
       assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
 
       var allresults = getQueryMultiplePlansAndExecutions(query, {});
-      for (j = 1; j <= allresults.length; j++) {
+      for (j = 1; j < allresults.results.length; j++) {
         assertTrue(isEqual(allresults.results[0],
                            allresults.results[j]),
                    "whether the execution of this plan gave the right results: " +
@@ -779,11 +807,14 @@ function optimizerRuleTestSuite() {
 
       assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
       var allresults = getQueryMultiplePlansAndExecutions(query, {});
-      for (j = 1; j <= allresults.length; j++) {
+      for (j = 1; j < allresults.results.length; j++) {
         assertTrue(isEqual(allresults.results[0],
                            allresults.results[j]),
-                   "whether the execution of this plan gave the right results: " +
-                   allresults.plans[j]);
+                   "whether the execution of " + query[0] +
+                   " this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
+                   " Should be: '" + JSON.stringify(allresults.results[0]) +
+                   "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
+                  );
       }
     },
 
