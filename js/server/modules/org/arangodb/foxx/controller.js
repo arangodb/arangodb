@@ -414,6 +414,43 @@ extend(Controller.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_controller_common
+///
+/// `FoxxController#common(callback)`
+///
+/// Lets you define common properties shared by all route handlers of this
+/// controller. You can use this to define common error responses shared by all
+/// routes this controller defines.
+///
+/// @EXAMPLES
+///
+/// ```js
+/// app.common(function(routeHandler) {
+///   routeHandler.errorResponse(Unauthorized, 401, 'Not authenticated.');
+///   routeHandler.errorResponse(NotFound, 404, 'Document could not be found.');
+///   routeHandler.errorResponse(ServerError, 500, 'Something went wrong.');
+/// });
+/// ```
+///
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+  common: function (callback) {
+    'use strict';
+    _.each(
+      ['head', 'get', 'post', 'put', 'patch', 'delete', 'del'],
+      function (method) {
+        var defineRouteHandler = this[method];
+        this[method] = function () {
+          var routeHandler = defineRouteHandler.apply(this, arguments);
+          callback(routeHandler);
+        };
+      },
+      this
+    );
+  },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_around
 ///
 /// `FoxxController#around(path, callback)`
