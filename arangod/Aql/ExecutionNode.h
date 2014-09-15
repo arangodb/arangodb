@@ -423,7 +423,8 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getVarsUsedLater
+/// @brief getVarsUsedLater, this returns the set of variables that will be
+/// used later than this node, i.e. in the repeated parents.
 ////////////////////////////////////////////////////////////////////////////////
 
         std::unordered_set<Variable const*> const& getVarsUsedLater () const {
@@ -440,7 +441,9 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getVarsValid
+/// @brief getVarsValid, this returns the set of variables that is valid 
+/// for items leaving this node, this includes those that will be set here
+/// (see getVariablesSetHere).
 ////////////////////////////////////////////////////////////////////////////////
 
         std::unordered_set<Variable const*> const& getVarsValid () const {
