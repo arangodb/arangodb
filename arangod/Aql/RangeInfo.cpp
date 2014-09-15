@@ -139,22 +139,22 @@ RangeInfo::RangeInfo (triagens::basics::Json const& json)
     _defined(true),
     _equality(basics::JsonHelper::checkAndGetBooleanValue(json.json(), "equality")) {
 
-  triagens::basics::Json lows = json.get("lows");
-  if (! lows.isList()) {
+  triagens::basics::Json jsonLowList = json.get("lows");
+  if (! jsonLowList.isList()) {
     THROW_INTERNAL_ERROR("low attribute must be a list");
   }
-  triagens::basics::Json highs = json.get("highs");
-  if (! highs.isList()) {
+  triagens::basics::Json jsonHighList = json.get("highs");
+  if (! jsonHighList.isList()) {
     THROW_INTERNAL_ERROR("high attribute must be a list");
   }
   // If an exception is thrown from within these loops, then the
   // vectors _low and _high will be destroyed properly, so no 
   // try/catch is needed.
-  for (size_t i = 0; i < lows.size(); i++) {
-    _lows.emplace_back(lows.at(static_cast<int>(i)));
+  for (size_t i = 0; i < jsonLowList.size(); i++) {
+    _lows.emplace_back(jsonLowList.at(static_cast<int>(i)));
   }
-  for (size_t i = 0; i < highs.size(); i++) {
-    _highs.emplace_back(highs.at(static_cast<int>(i)));
+  for (size_t i = 0; i < jsonHighList.size(); i++) {
+    _highs.emplace_back(jsonHighList.at(static_cast<int>(i)));
   }
   _lowConst.assign(json.get("lowConst"));
   _highConst.assign(json.get("highConst"));

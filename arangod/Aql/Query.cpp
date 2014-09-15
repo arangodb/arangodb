@@ -276,7 +276,7 @@ QueryResult Query::execute () {
     // Now plan and all derived plans belong to the optimizer
     plan = opt.stealBest(); // Now we own the best one again
     TRI_ASSERT(plan != nullptr);
-    /* // for debugging of serialisation/deserialisation . . .
+    /* // for debugging of serialisation/deserialisation . . . * /
     auto JsonPlan = plan->toJson(parser.ast(),TRI_UNKNOWN_MEM_ZONE, true);
     auto JsonString = JsonPlan.toString();
     std::cout << "original plan: \n" << JsonString << "\n";
@@ -285,9 +285,9 @@ QueryResult Query::execute () {
                                                          JsonPlan);
     otherPlan->getCost(); 
     auto otherJsonString =
-      otherPlan->toJson(TRI_UNKNOWN_MEM_ZONE, true).toString(); 
+      otherPlan->toJson(parser.ast(), TRI_UNKNOWN_MEM_ZONE, true).toString(); 
     std::cout << "deserialised plan: \n" << otherJsonString << "\n";
-    TRI_ASSERT(otherJsonString == JsonString);*/
+    TRI_ASSERT(otherJsonString == JsonString);//*/
 
     triagens::basics::Json json(triagens::basics::Json::List);
     triagens::basics::Json stats;
