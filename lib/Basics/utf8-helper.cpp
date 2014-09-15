@@ -146,7 +146,7 @@ char* TRI_normalize_utf8_to_NFC (TRI_memory_zone_t* zone,
   }
 
   // continue in TR_normalize_utf16_to_NFC
-  utf8Dest = TRI_normalize_utf16_to_NFC(zone, utf16, (int32_t) utf16Length, outLength);
+  utf8Dest = TRI_normalize_utf16_to_NFC(zone, (const uint16_t*) utf16, (int32_t) utf16Length, outLength);
   TRI_Free(zone, utf16);
 
   return utf8Dest;

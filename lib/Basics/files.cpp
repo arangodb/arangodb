@@ -1458,7 +1458,7 @@ char* TRI_GetAbsolutePath (char const* fileName, char const* currentWorkingDirec
     }
   }
 
-  if (!ok) {
+  if (! ok) {
     return NULL;
   }
 
@@ -1473,14 +1473,20 @@ char* TRI_GetAbsolutePath (char const* fileName, char const* currentWorkingDirec
   if (currentWorkingDirectory[cwdLength - 1] == '\\' ||
       currentWorkingDirectory[cwdLength - 1] == '/') {
     // we do not require a backslash
-    result = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (cwdLength + fileLength + 1) * sizeof(char), false);
+    result = static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (cwdLength + fileLength + 1) * sizeof(char), false));
+    if (result == nullptr) {
+      return nullptr;
+    }
     memcpy(result, currentWorkingDirectory, cwdLength);
     memcpy(result + cwdLength, fileName, fileLength);
     result[cwdLength + fileLength] = '\0';
   }
   else {
     // we do require a backslash
-    result = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (cwdLength + fileLength + 2) * sizeof(char), false);
+    result = static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (cwdLength + fileLength + 2) * sizeof(char), false));
+    if (result == nullptr) {
+      return nullptr;
+    }
     memcpy(result, currentWorkingDirectory, cwdLength);
     result[cwdLength] = '\\';
     memcpy(result + cwdLength + 1, fileName, fileLength);
@@ -1825,7 +1831,7 @@ char* TRI_GetTempPath () {
   {
     size_t j;
     size_t pathSize = _tcsclen(tempPathName);
-    char* temp = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, pathSize + 1, false);
+    char* temp = static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, pathSize + 1, false));
 
     if (temp == NULL) {
       LOG_FATAL_AND_EXIT("Out of memory");

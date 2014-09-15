@@ -47,8 +47,6 @@
 
 #include "lib/Basics/json-utilities.h"
 
-using Json = triagens::basics::Json;
-
 namespace triagens {
   namespace basics {
     class StringBuffer;
@@ -1094,8 +1092,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost () {
-          return 1.005 * std::min(static_cast<double>(_limit), 
-            _dependencies.at(0)->getCost());
+          return 1.005 * (std::min)(static_cast<double>(_limit), _dependencies.at(0)->getCost());
           //FIXME improve this estimate . . .
         }
 

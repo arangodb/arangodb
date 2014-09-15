@@ -1582,7 +1582,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
         break;
       }
       else {
-        documents->Set(j, doc);
+        documents->Set(static_cast<uint32_t>(j), doc);
       }
     }
   }

@@ -287,8 +287,8 @@ TRI_json_t* Executor::executeExpression (AstNode const* node) {
   HandleV8Error(tryCatch, func);
 
   // execute the function
-  v8::Handle<v8::Value> args[] = { };
-  v8::Handle<v8::Value> result = v8::Handle<v8::Function>::Cast(func)->Call(v8::Object::New(), 0, args);
+  v8::Handle<v8::Value> args;
+  v8::Handle<v8::Value> result = v8::Handle<v8::Function>::Cast(func)->Call(v8::Object::New(), 0, &args);
  
   // exit if execution raised an error
   HandleV8Error(tryCatch, result);

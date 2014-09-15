@@ -270,7 +270,7 @@ AqlItemBlock* AqlItemBlock::slice (std::vector<size_t>& chosen,
 /// any more.
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlItemBlock* AqlItemBlock::steal (vector<size_t>& chosen, 
+AqlItemBlock* AqlItemBlock::steal (std::vector<size_t>& chosen, 
                                    size_t from, size_t to) {
   TRI_ASSERT(from < to && to <= chosen.size());
 

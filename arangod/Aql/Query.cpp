@@ -336,7 +336,7 @@ QueryResult Query::execute () {
   catch (triagens::arango::Exception const& ex) {
     return QueryResult(ex.code(), ex.message());
   }
-  catch (std::bad_alloc const& ex) {
+  catch (std::bad_alloc const&) {
     return QueryResult(TRI_ERROR_OUT_OF_MEMORY, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
   }
   catch (std::exception const& ex) {
@@ -435,7 +435,7 @@ QueryResult Query::explain () {
   catch (triagens::arango::Exception const& ex) {
     return QueryResult(ex.code(), ex.message());
   }
-  catch (std::bad_alloc const& ex) {
+  catch (std::bad_alloc const&) {
     return QueryResult(TRI_ERROR_OUT_OF_MEMORY, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
   }
   catch (std::exception const& ex) {

@@ -259,7 +259,7 @@ AstNode::AstNode (Ast* ast,
   if (subNodes.isList()) {
     size_t const len = subNodes.size();
     for (size_t i = 0; i < len; i++) {
-      Json subNode = subNodes.at(i);
+      Json subNode(subNodes.at(static_cast<int>(i)));
       addMember(new AstNode(ast, subNode));
     }
   }

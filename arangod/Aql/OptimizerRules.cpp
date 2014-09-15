@@ -467,7 +467,7 @@ class triagens::aql::RedundantCalculationsReplacer : public WalkerWorker<Executi
         case EN::SORT: {
           auto node = static_cast<SortNode*>(en);
           for (auto variable : node->_elements) {
-            variable.second = Variable::replace(variable.first, _replacements);
+            variable.first = Variable::replace(variable.first, _replacements);
           }
           break;
         }
