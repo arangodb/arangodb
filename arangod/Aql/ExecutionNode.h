@@ -774,7 +774,6 @@ namespace triagens {
       friend class ExecutionBlock;
       friend class EnumerateListBlock;
       friend class RedundantCalculationsReplacer;
-      friend struct VarUsageFinder;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
