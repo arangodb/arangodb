@@ -1004,49 +1004,40 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
         auto lhs = node->getMember(0);
         auto rhs = node->getMember(1);
-        bool found = false;
-        AstNode const* val = nullptr;
-        if(rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+        if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
           buildRangeInfo(rhs, enumCollVar, attr);
           if (! enumCollVar.empty()) {
             // Found a multiple attribute access of a variable
 #ifdef DISABLE_VARIABLE_BOUNDS
             if (lhs->type == NODE_TYPE_VALUE) {
 #endif
-              val = lhs;
-              found = true;
+              _ranges->insert(enumCollVar, attr.substr(0, attr.size() - 1), 
+                              RangeInfoBound(lhs, true), RangeInfoBound(lhs, true), true);
 #ifdef DISABLE_VARIABLE_BOUNDS
             }
-            else {
-              enumCollVar.clear();
-              attr.clear();
-            }
+
 #endif
           }
         }
-        if (! found && lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+          
+        enumCollVar.clear();
+        attr.clear();
+
+        if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
           buildRangeInfo(lhs, enumCollVar, attr);
           if (! enumCollVar.empty()) {
             // Found a multiple attribute access of a variable
 #ifdef DISABLE_VARIABLE_BOUNDS
             if (rhs->type == NODE_TYPE_VALUE) {
 #endif
-              val = rhs;
-              found = true;
+              _ranges->insert(enumCollVar, attr.substr(0, attr.size() - 1), 
+                              RangeInfoBound(rhs, true), RangeInfoBound(rhs, true), true);
 #ifdef DISABLE_VARIABLE_BOUNDS
-            }
-            else {
-              enumCollVar.clear();
-              attr.clear();
             }
 #endif
           }
         }
         
-        if (found) {
-          _ranges->insert(enumCollVar, attr.substr(0, attr.size() - 1), 
-              RangeInfoBound(val, true), RangeInfoBound(val, true), true);
-        }
         enumCollVar.clear();
         attr.clear();
         return;
