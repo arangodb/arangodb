@@ -996,7 +996,7 @@ void ExecutionPlan::checkLinkage () {
 /// @brief helper struct for findVarUsage
 ////////////////////////////////////////////////////////////////////////////////
 
-struct triagens::aql::VarUsageFinder : public WalkerWorker<ExecutionNode> {
+struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
 
     std::unordered_set<Variable const*> _usedLater;
     std::unordered_set<Variable const*> _valid;
@@ -1045,7 +1045,7 @@ struct triagens::aql::VarUsageFinder : public WalkerWorker<ExecutionNode> {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ExecutionPlan::findVarUsage () {
-  VarUsageFinder finder;
+  ::VarUsageFinder finder;
   root()->walk(&finder);
   _varSetBy = finder._varSetBy;
   _varUsageComputed = true;
