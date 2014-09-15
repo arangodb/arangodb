@@ -33,9 +33,7 @@
 
 #include "Aql/AstNode.h"
 
-#include "lib/Basics/json-utilities.h"
-
-using Json = triagens::basics::Json;
+#include "Basics/json-utilities.h"
 
 namespace triagens {
   namespace aql {
@@ -66,13 +64,13 @@ namespace triagens {
             _defined(false),
             _expressionAst(nullptr) {
           if (bound->type == NODE_TYPE_VALUE) {
-            _bound = Json(TRI_UNKNOWN_MEM_ZONE,
-                          bound->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
+            _bound = triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE,
+                                            bound->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
             _isConstant = true;
           }
           else {
-            _bound = Json(TRI_UNKNOWN_MEM_ZONE,
-                          bound->toJson(TRI_UNKNOWN_MEM_ZONE, true));
+            _bound = triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE,
+                                            bound->toJson(TRI_UNKNOWN_MEM_ZONE, true));
             _isConstant = false;
             _expressionAst = bound;
           }
@@ -87,7 +85,7 @@ namespace triagens {
                                                              "isConstant")),
             _defined(true),
             _expressionAst(nullptr) {
-          Json bound = json.get("bound");
+          triagens::basics::Json bound = json.get("bound");
           if (! bound.isEmpty()) {
             _bound = bound;
           }
@@ -127,7 +125,7 @@ namespace triagens {
 
         void assign (basics::Json const& json) {
           _defined = false;   // keep it undefined in case of an exception
-          Json bound = json.get("bound");
+          triagens::basics::Json bound = json.get("bound");
           if (! bound.isEmpty()) {
             _bound = bound;
           }
@@ -143,14 +141,14 @@ namespace triagens {
           _defined = false;  // keep it undefined in case of an exception
           _include = include;
           if (bound->type == NODE_TYPE_VALUE) {
-            _bound = Json(TRI_UNKNOWN_MEM_ZONE,
-                          bound->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
+            _bound = triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE,
+                                            bound->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
             _isConstant = true;
             _expressionAst = nullptr;
           }
           else {
-            _bound = Json(TRI_UNKNOWN_MEM_ZONE,
-                          bound->toJson(TRI_UNKNOWN_MEM_ZONE, true));
+            _bound = triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE,
+                                            bound->toJson(TRI_UNKNOWN_MEM_ZONE, true));
             _isConstant = false;
             _expressionAst = bound;
           }
@@ -170,13 +168,13 @@ namespace triagens {
 /// @brief toJson
 ////////////////////////////////////////////////////////////////////////////////
 
-        Json toJson () const {
-          Json item(basics::Json::Array, 3);
+        triagens::basics::Json toJson() const {
+          triagens::basics::Json item(basics::Json::Array, 3);
           if (! _bound.isEmpty()) {
             item("bound", _bound.copy());
           }
-          item("include", Json(_include))
-              ("isConstant", Json(! _defined || _isConstant));
+          item("include", triagens::basics::Json(_include))
+              ("isConstant", triagens::basics::Json(!_defined || _isConstant));
           return item;
         }
 
@@ -185,7 +183,8 @@ namespace triagens {
 /// RangeInfos and only for constant values
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_index_operator_t* toIndexOperator (bool high, Json parameters,
+        TRI_index_operator_t* toIndexOperator (bool high, 
+                                               triagens::basics::Json parameters,
             TRI_shaper_t* shaper) const {
 
           TRI_ASSERT(_isConstant);
@@ -234,7 +233,7 @@ namespace triagens {
 /// @brief getter for bound
 ////////////////////////////////////////////////////////////////////////////////
 
-        Json const& bound () const {
+        triagens::basics::Json const& bound() const {
           return _bound;
         }
 
@@ -278,7 +277,7 @@ namespace triagens {
 
       private:
 
-        Json _bound;
+        triagens::basics::Json _bound;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _include, flag indicating whether or not bound is included
@@ -399,7 +398,7 @@ namespace triagens {
 /// @brief toJson
 ////////////////////////////////////////////////////////////////////////////////
         
-        Json toJson () const;
+        triagens::basics::Json toJson () const;
         
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toString
@@ -602,13 +601,13 @@ namespace triagens {
 /// @brief toJson
 ////////////////////////////////////////////////////////////////////////////////
     
-        Json toJson () const {
-          Json list(Json::List);
+        triagens::basics::Json toJson() const {
+          triagens::basics::Json list(triagens::basics::Json::List);
           for (auto x : _ranges) {
             for (auto y: x.second) {
-              Json item(Json::Array);
-              item("variable", Json(x.first))
-                  ("attribute name", Json(y.first))
+              triagens::basics::Json item(triagens::basics::Json::Array);
+              item("variable", triagens::basics::Json(x.first))
+                  ("attribute name", triagens::basics::Json(y.first))
                   ("range info", y.second.toJson());
               list(item);
             }

@@ -1025,7 +1025,7 @@ static v8::Handle<v8::Value> JS_ExecuteAqlJson (v8::Arguments const& argv) {
   queryResult.json = nullptr;
   
   TRI_general_cursor_t* cursor = TRI_CreateGeneralCursor(vocbase, cursorResult, doCount,
-      batchSize, ttl, extra);
+      static_cast<TRI_general_cursor_length_t>(batchSize), ttl, extra);
 
   if (cursor == nullptr) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursorResult);
@@ -1156,7 +1156,7 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
   queryResult.json = nullptr;
   
   TRI_general_cursor_t* cursor = TRI_CreateGeneralCursor(vocbase, cursorResult, doCount,
-      batchSize, ttl, extra);
+      static_cast<TRI_general_cursor_length_t>(batchSize), ttl, extra);
 
   if (cursor == nullptr) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursorResult);

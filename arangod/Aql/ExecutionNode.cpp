@@ -34,6 +34,7 @@
 
 using namespace triagens::basics;
 using namespace triagens::aql;
+using Json = triagens::basics::Json;
 
 const static bool Optional = true;
 
@@ -90,7 +91,7 @@ void ExecutionNode::validateType (int type) {
 }
 
 ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
-                                               Json const& oneNode) {
+                                               triagens::basics::Json const& oneNode) {
   auto JsonString = oneNode.toString();
 
   int nodeTypeID = JsonHelper::checkAndGetNumericValue<int>(oneNode.json(), "typeID");
@@ -113,7 +114,7 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
     case SUBQUERY: 
       return new SubqueryNode(plan, oneNode);
     case SORT: {
-      Json jsonElements = oneNode.get("elements");
+      triagens::basics::Json jsonElements = oneNode.get("elements");
       if (! jsonElements.isList()){
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected value for SortNode elements");
       }
@@ -121,7 +122,7 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
       std::vector<std::pair<Variable const*, bool>> elements;
       elements.reserve(len);
       for (size_t i = 0; i < len; i++) {
-        Json oneJsonElement = jsonElements.at(i);
+        triagens::basics::Json oneJsonElement = jsonElements.at(static_cast<int>(i));
         bool ascending = JsonHelper::checkAndGetBooleanValue(oneJsonElement.json(), "ascending");
         Variable *v = varFromJson(plan->getAst(), oneJsonElement, "inVariable");
         elements.push_back(std::make_pair(v, ascending));
@@ -135,7 +136,7 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
 
       Variable *outVariable = varFromJson(plan->getAst(), oneNode, "outVariable", Optional);
 
-      Json jsonAggregates = oneNode.get("aggregates");
+      triagens::basics::Json jsonAggregates = oneNode.get("aggregates");
       if (! jsonAggregates.isList()){
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "missing node type in valueTypeNames"); 
       }
@@ -145,7 +146,7 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
 
       aggregateVariables.reserve(len);
       for (size_t i = 0; i < len; i++) {
-        Json oneJsonAggregate = jsonAggregates.at(i);
+        triagens::basics::Json oneJsonAggregate = jsonAggregates.at(static_cast<int>(i));
         Variable* outVariable = varFromJson(plan->getAst(), oneJsonAggregate, "outVariable");
         Variable* inVariable =  varFromJson(plan->getAst(), oneJsonAggregate, "inVariable");
 
@@ -206,18 +207,18 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
 /// @brief toJson, export an ExecutionNode to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-Json ExecutionNode::toJson (TRI_memory_zone_t* zone,
-                            bool verbose) const {
-  Json json;
-  Json nodes;
+triagens::basics::Json ExecutionNode::toJson (TRI_memory_zone_t* zone,
+                                              bool verbose) const {
+  triagens::basics::Json json;
+  triagens::basics::Json nodes;
   try {
-    nodes = Json(Json::List, 10);
+    nodes = triagens::basics::Json(triagens::basics::Json::List, 10);
     toJsonHelper(nodes, zone, verbose);
-    json = Json(Json::Array, 1)
+    json = triagens::basics::Json(triagens::basics::Json::Array, 1)
              ("nodes", nodes);
   }
-  catch (std::exception& e) {
-    return Json();
+  catch (std::exception&) {
+    return triagens::basics::Json();
   }
 
   return json;
@@ -359,9 +360,9 @@ bool ExecutionNode::walk (WalkerWorker<ExecutionNode>* worker) {
 
 Variable* ExecutionNode::varFromJson (Ast* ast,
                                       triagens::basics::Json const& base,
-                                      const char *variableName,
+                                      const char* variableName,
                                       bool optional) {
-  Json variableJson = base.get(variableName);
+  triagens::basics::Json variableJson = base.get(variableName);
 
   if (variableJson.isEmpty()) {
     if (optional) {
@@ -382,34 +383,34 @@ Variable* ExecutionNode::varFromJson (Ast* ast,
 /// @brief toJsonHelper, for a generic node
 ////////////////////////////////////////////////////////////////////////////////
 
-Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Json& nodes,
-                                         TRI_memory_zone_t* zone,
-                                         bool verbose) const {
+triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Json& nodes,
+                                                           TRI_memory_zone_t* zone,
+                                                           bool verbose) const {
   size_t const n = _dependencies.size();
   for (size_t i = 0; i < n; i++) {
     _dependencies[i]->toJsonHelper(nodes, zone, verbose);
   }
 
-  Json json;
-  json = Json(Json::Array, 2)
-              ("type", Json(getTypeString()));
+  triagens::basics::Json json;
+  json = triagens::basics::Json(triagens::basics::Json::Array, 2)
+              ("type", triagens::basics::Json(getTypeString()));
   if (verbose) {
-    json ("typeID", Json(static_cast<int>(getType())));
+    json("typeID", triagens::basics::Json(static_cast<int>(getType())));
   }
-  Json deps(Json::List, n);
+  triagens::basics::Json deps(triagens::basics::Json::List, n);
   for (size_t i = 0; i < n; i++) {
-    deps(Json(static_cast<double>(_dependencies[i]->id())));
+    deps(triagens::basics::Json(static_cast<double>(_dependencies[i]->id())));
   }
   json("dependencies", deps);
-  Json parents(Json::List, _parents.size());
+  triagens::basics::Json parents(triagens::basics::Json::List, _parents.size());
   for (size_t i = 0; i < _parents.size(); i++) {
-    parents(Json(static_cast<double>(_parents[i]->id())));
+    parents(triagens::basics::Json(static_cast<double>(_parents[i]->id())));
   }
   if (verbose) {
     json("parents", parents);
   }
-  json("id", Json(static_cast<double>(id())));
-  json("estimatedCost", Json(_estimatedCost));
+  json("id", triagens::basics::Json(static_cast<double>(id())));
+  json("estimatedCost", triagens::basics::Json(_estimatedCost));
 
   return json;
 }
@@ -423,14 +424,14 @@ Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Json& nodes,
 ////////////////////////////////////////////////////////////////////////////////
 
 SingletonNode::SingletonNode (ExecutionPlan* plan, 
-                              basics::Json const& base)
+                              triagens::basics::Json const& base)
   : ExecutionNode(plan, base) {
 }
 
 void SingletonNode::toJsonHelper (triagens::basics::Json& nodes,
                                   TRI_memory_zone_t* zone,
                                   bool verbose) const {
-  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
   if (json.isEmpty()) {
     return;
   }
@@ -444,7 +445,7 @@ void SingletonNode::toJsonHelper (triagens::basics::Json& nodes,
 // -----------------------------------------------------------------------------
 
 EnumerateCollectionNode::EnumerateCollectionNode (ExecutionPlan* plan,
-                                                  basics::Json const& base)
+                                                  triagens::basics::Json const& base)
   : ExecutionNode(plan, base),
     _vocbase(plan->getAst()->query()->vocbase()),
     _collection(plan->getAst()->query()->collections()->get(JsonHelper::checkAndGetStringValue(base.json(), "collection"))),
@@ -458,15 +459,15 @@ EnumerateCollectionNode::EnumerateCollectionNode (ExecutionPlan* plan,
 void EnumerateCollectionNode::toJsonHelper (triagens::basics::Json& nodes,
                                             TRI_memory_zone_t* zone,
                                             bool verbose) const {
-  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
 
   if (json.isEmpty()) {
     return;
   }
 
   // Now put info about vocbase and cid in there
-  json("database", Json(_vocbase->_name))
-      ("collection", Json(_collection->name))
+  json("database", triagens::basics::Json(_vocbase->_name))
+    ("collection", triagens::basics::Json(_collection->name))
       ("outVariable", _outVariable->toJson());
 
   // And add it:
@@ -596,7 +597,7 @@ std::vector<EnumerateCollectionNode::IndexMatch>
 // -----------------------------------------------------------------------------
 
 EnumerateListNode::EnumerateListNode (ExecutionPlan* plan,
-                                      basics::Json const& base)
+                                      triagens::basics::Json const& base)
   : ExecutionNode(plan, base),
     _inVariable(varFromJson(plan->getAst(), base, "inVariable")),
     _outVariable(varFromJson(plan->getAst(), base, "outVariable")) {
@@ -609,7 +610,7 @@ EnumerateListNode::EnumerateListNode (ExecutionPlan* plan,
 void EnumerateListNode::toJsonHelper (triagens::basics::Json& nodes,
                                       TRI_memory_zone_t* zone,
                                       bool verbose) const {
-  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
   if (json.isEmpty()) {
     return;
   }
@@ -627,7 +628,7 @@ void EnumerateListNode::toJsonHelper (triagens::basics::Json& nodes,
 void IndexRangeNode::toJsonHelper (triagens::basics::Json& nodes,
                                    TRI_memory_zone_t* zone,
                                    bool verbose) const {
-  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  
+  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));
   // call base class method
 
   if (json.isEmpty()) {
@@ -635,10 +636,10 @@ void IndexRangeNode::toJsonHelper (triagens::basics::Json& nodes,
   }
 
   // put together the range info . . .
-  Json ranges(Json::List, _ranges.size());
+  triagens::basics::Json ranges(triagens::basics::Json::List, _ranges.size());
 
   for (auto x : _ranges) {
-    Json range(Json::List, x.size());
+    triagens::basics::Json range(triagens::basics::Json::List, x.size());
     for(auto y : x) {
       range.add(y.toJson());
     }
@@ -646,8 +647,8 @@ void IndexRangeNode::toJsonHelper (triagens::basics::Json& nodes,
   }
       
   // Now put info about vocbase and cid in there
-  json("database", Json(_vocbase->_name))
-      ("collection", Json(_collection->name))
+  json("database", triagens::basics::Json(_vocbase->_name))
+      ("collection", triagens::basics::Json(_collection->name))
       ("outVariable", _outVariable->toJson())
       ("ranges", ranges);
   
@@ -655,7 +656,7 @@ void IndexRangeNode::toJsonHelper (triagens::basics::Json& nodes,
   if (idxJson != nullptr) {
     try {
       TRI_json_t* copy = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson);
-      json.set("index", Json(TRI_UNKNOWN_MEM_ZONE, copy));
+      json.set("index", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, copy));
     }
     catch (...) {
     }
@@ -671,7 +672,7 @@ void IndexRangeNode::toJsonHelper (triagens::basics::Json& nodes,
 ////////////////////////////////////////////////////////////////////////////////
 
 IndexRangeNode::IndexRangeNode (ExecutionPlan* plan,
-                                basics::Json const& json)
+                                triagens::basics::Json const& json)
   : ExecutionNode(plan, json),
     _vocbase(plan->getAst()->query()->vocbase()),
     _collection(plan->getAst()->query()->collections()->get(JsonHelper::checkAndGetStringValue(json.json(), 
@@ -679,12 +680,12 @@ IndexRangeNode::IndexRangeNode (ExecutionPlan* plan,
     _outVariable(varFromJson(plan->getAst(), json, "outVariable")), 
     _ranges() {
 
-  Json rangesJson(TRI_UNKNOWN_MEM_ZONE, JsonHelper::checkAndGetListValue(json.json(), "ranges"));
-  for(size_t i = 0; i < rangesJson.size(); i++){ //loop over the ranges . . .
+  triagens::basics::Json rangeListJson(TRI_UNKNOWN_MEM_ZONE, JsonHelper::checkAndGetListValue(json.json(), "ranges"));
+  for(size_t i = 0; i < rangeListJson.size(); i++){ //loop over the ranges . . .
     _ranges.emplace_back();
-    Json rangeJson(rangesJson.at(i));
+    triagens::basics::Json rangeJson(rangeListJson.at(static_cast<int>(i)));
     for(size_t j = 0; j < rangeJson.size(); j++){
-      _ranges.at(i).emplace_back(rangeJson.at(j));
+      _ranges.at(i).emplace_back(rangeJson.at(static_cast<int>(j)));
     }
   }
   
@@ -805,10 +806,11 @@ std::vector<Variable const*> IndexRangeNode::getVariablesUsedHere () const {
 // --SECTION--                                              methods of LimitNode
 // -----------------------------------------------------------------------------
 
-LimitNode::LimitNode (ExecutionPlan* plan, basics::Json const& base)
+LimitNode::LimitNode (ExecutionPlan* plan, 
+                      triagens::basics::Json const& base)
   : ExecutionNode(plan, base) {
-  _offset = JsonHelper::checkAndGetNumericValue<double>(base.json(), "offset");
-  _limit = JsonHelper::checkAndGetNumericValue<double>(base.json(), "limit");
+  _offset = JsonHelper::checkAndGetNumericValue<decltype(_offset)>(base.json(), "offset");
+  _limit = JsonHelper::checkAndGetNumericValue<decltype(_limit)>(base.json(), "limit");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -818,13 +820,13 @@ LimitNode::LimitNode (ExecutionPlan* plan, basics::Json const& base)
 void LimitNode::toJsonHelper (triagens::basics::Json& nodes,
                               TRI_memory_zone_t* zone,
                               bool verbose) const {
-  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
   if (json.isEmpty()) {
     return;
   }
   // Now put info about offset and limit in
-  json("offset", Json(static_cast<double>(_offset)))
-      ("limit",  Json(static_cast<double>(_limit)));
+  json("offset", triagens::basics::Json(static_cast<double>(_offset)))
+      ("limit", triagens::basics::Json(static_cast<double>(_limit)));
 
   // And add it:
   nodes(json);
@@ -835,7 +837,7 @@ void LimitNode::toJsonHelper (triagens::basics::Json& nodes,
 // -----------------------------------------------------------------------------
 
 CalculationNode::CalculationNode (ExecutionPlan* plan,
-                                  basics::Json const& base)
+                                  triagens::basics::Json const& base)
   : ExecutionNode(plan, base),
     _outVariable(varFromJson(plan->getAst(), base, "outVariable")),
     _expression(new Expression(plan->getAst(), base)) {
@@ -848,14 +850,14 @@ CalculationNode::CalculationNode (ExecutionPlan* plan,
 void CalculationNode::toJsonHelper (triagens::basics::Json& nodes,
                                     TRI_memory_zone_t* zone,
                                     bool verbose) const {
-  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
   if (json.isEmpty()) {
     return;
   }
   
   json("expression", _expression->toJson(TRI_UNKNOWN_MEM_ZONE, verbose))
       ("outVariable", _outVariable->toJson())
-      ("canThrow", Json(_expression->canThrow()));
+      ("canThrow", triagens::basics::Json(_expression->canThrow()));
 
 
   // And add it:
@@ -867,7 +869,7 @@ void CalculationNode::toJsonHelper (triagens::basics::Json& nodes,
 // -----------------------------------------------------------------------------
 
 SubqueryNode::SubqueryNode (ExecutionPlan* plan,
-                            basics::Json const& base)
+                            triagens::basics::Json const& base)
   : ExecutionNode(plan, base),
     _subquery(nullptr),
     _outVariable(varFromJson(plan->getAst(), base, "outVariable")) {
@@ -880,7 +882,7 @@ SubqueryNode::SubqueryNode (ExecutionPlan* plan,
 void SubqueryNode::toJsonHelper (triagens::basics::Json& nodes,
                                  TRI_memory_zone_t* zone,
                                  bool verbose) const {
-  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
   if (json.isEmpty()) {
     return;
   }
@@ -997,7 +999,8 @@ bool SubqueryNode::canThrow () {
 // --SECTION--                                             methods of FilterNode
 // -----------------------------------------------------------------------------
 
-FilterNode::FilterNode (ExecutionPlan* plan, basics::Json const& base)
+FilterNode::FilterNode (ExecutionPlan* plan, 
+                        triagens::basics::Json const& base)
   : ExecutionNode(plan, base),
     _inVariable(varFromJson(plan->getAst(), base, "inVariable")) {
 }
@@ -1009,7 +1012,7 @@ FilterNode::FilterNode (ExecutionPlan* plan, basics::Json const& base)
 void FilterNode::toJsonHelper (triagens::basics::Json& nodes,
                                TRI_memory_zone_t* zone,
                                bool verbose) const {
-  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
   if (json.isEmpty()) {
     return;
   }
@@ -1025,7 +1028,7 @@ void FilterNode::toJsonHelper (triagens::basics::Json& nodes,
 // -----------------------------------------------------------------------------
 
 SortNode::SortNode (ExecutionPlan* plan,
-                    basics::Json const& base,
+                    triagens::basics::Json const& base,
                     std::vector<std::pair<Variable const*, bool>> const& elements,
                     bool stable)
   : ExecutionNode(plan, base),
@@ -1040,20 +1043,20 @@ SortNode::SortNode (ExecutionPlan* plan,
 void SortNode::toJsonHelper (triagens::basics::Json& nodes,
                              TRI_memory_zone_t* zone,
                              bool verbose) const {
-  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
 
   if (json.isEmpty()) {
     return;
   }
-  Json values(Json::List, _elements.size());
+  triagens::basics::Json values(triagens::basics::Json::List, _elements.size());
   for (auto it = _elements.begin(); it != _elements.end(); ++it) {
-    Json element(Json::Array);
+    triagens::basics::Json element(triagens::basics::Json::Array);
     element("inVariable", (*it).first->toJson())
-           ("ascending", Json((*it).second));
+      ("ascending", triagens::basics::Json((*it).second));
     values(element);
   }
   json("elements", values);
-  json("stable", Json(_stable));
+  json("stable", triagens::basics::Json(_stable));
 
   // And add it:
   nodes(json);
@@ -1152,7 +1155,7 @@ SortInformation SortNode::getSortInformation (ExecutionPlan* plan,
 // -----------------------------------------------------------------------------
 
 AggregateNode::AggregateNode (ExecutionPlan* plan,
-                              basics::Json const& base,
+                              triagens::basics::Json const& base,
                               Variable const* outVariable,
                               std::unordered_map<VariableId, std::string const> const& variableMap,
                               std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables)
@@ -1169,14 +1172,14 @@ AggregateNode::AggregateNode (ExecutionPlan* plan,
 void AggregateNode::toJsonHelper (triagens::basics::Json& nodes,
                                   TRI_memory_zone_t* zone,
                                   bool verbose) const {
-  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
   if (json.isEmpty()) {
     return;
   }
 
-  Json values(Json::List, _aggregateVariables.size());
+  triagens::basics::Json values(triagens::basics::Json::List, _aggregateVariables.size());
   for (auto it = _aggregateVariables.begin(); it != _aggregateVariables.end(); ++it) {
-    Json variable(Json::Array);
+    triagens::basics::Json variable(triagens::basics::Json::Array);
     variable("outVariable", (*it).first->toJson())
             ("inVariable", (*it).second->toJson());
     values(variable);
@@ -1241,7 +1244,8 @@ std::vector<Variable const*> AggregateNode::getVariablesUsedHere () const {
 // --SECTION--                                             methods of ReturnNode
 // -----------------------------------------------------------------------------
 
-ReturnNode::ReturnNode (ExecutionPlan* plan, basics::Json const& base)
+ReturnNode::ReturnNode (ExecutionPlan* plan, 
+                        triagens::basics::Json const& base)
   : ExecutionNode(plan, base),
     _inVariable(varFromJson(plan->getAst(), base, "inVariable")) {
 }
@@ -1253,7 +1257,7 @@ ReturnNode::ReturnNode (ExecutionPlan* plan, basics::Json const& base)
 void ReturnNode::toJsonHelper (triagens::basics::Json& nodes,
                                TRI_memory_zone_t* zone,
                                bool verbose) const {
-  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
 
   if (json.isEmpty()) {
     return;
@@ -1270,7 +1274,7 @@ void ReturnNode::toJsonHelper (triagens::basics::Json& nodes,
 // -----------------------------------------------------------------------------
 
 ModificationNode::ModificationNode (ExecutionPlan* plan,
-                                    basics::Json const& base)
+                                    triagens::basics::Json const& base)
   : ExecutionNode(plan, base), 
     _vocbase(plan->getAst()->query()->vocbase()),
     _collection(plan->getAst()->query()->collections()->get(JsonHelper::checkAndGetStringValue(base.json(), "collection"))),
@@ -1283,7 +1287,8 @@ ModificationNode::ModificationNode (ExecutionPlan* plan,
 // --SECTION--                                             methods of RemoveNode
 // -----------------------------------------------------------------------------
 
-RemoveNode::RemoveNode (ExecutionPlan* plan, basics::Json const& base)
+RemoveNode::RemoveNode (ExecutionPlan* plan, 
+                        triagens::basics::Json const& base)
   : ModificationNode(plan, base),
     _inVariable(varFromJson(plan->getAst(), base, "inVariable")),
     _outVariable(varFromJson(plan->getAst(), base, "outVariable", Optional)) {
@@ -1296,15 +1301,15 @@ RemoveNode::RemoveNode (ExecutionPlan* plan, basics::Json const& base)
 void RemoveNode::toJsonHelper (triagens::basics::Json& nodes,
                                TRI_memory_zone_t* zone,
                                bool verbose) const {
-  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
 
   if (json.isEmpty()) {
     return;
   }
 
   // Now put info about vocbase and cid in there
-  json("database", Json(_vocbase->_name))
-      ("collection", Json(_collection->name))
+  json("database", triagens::basics::Json(_vocbase->_name))
+      ("collection", triagens::basics::Json(_collection->name))
       ("inVariable", _inVariable->toJson());
   
   // output variable might be empty
@@ -1320,7 +1325,8 @@ void RemoveNode::toJsonHelper (triagens::basics::Json& nodes,
 // --SECTION--                                             methods of InsertNode
 // -----------------------------------------------------------------------------
 
-InsertNode::InsertNode (ExecutionPlan* plan, basics::Json const& base)
+InsertNode::InsertNode (ExecutionPlan* plan, 
+                        triagens::basics::Json const& base)
   : ModificationNode(plan, base),
     _inVariable(varFromJson(plan->getAst(), base, "inVariable")),
     _outVariable(varFromJson(plan->getAst(), base, "outVariable", Optional)) {
@@ -1333,15 +1339,15 @@ InsertNode::InsertNode (ExecutionPlan* plan, basics::Json const& base)
 void InsertNode::toJsonHelper (triagens::basics::Json& nodes,
                                TRI_memory_zone_t* zone,
                                bool verbose) const {
-  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
 
   if (json.isEmpty()) {
     return;
   }
 
   // Now put info about vocbase and cid in there
-  json("database", Json(_vocbase->_name))
-      ("collection", Json(_collection->name))
+  json("database", triagens::basics::Json(_vocbase->_name))
+      ("collection", triagens::basics::Json(_collection->name))
       ("inVariable", _inVariable->toJson());
   
   // output variable might be empty
@@ -1357,7 +1363,8 @@ void InsertNode::toJsonHelper (triagens::basics::Json& nodes,
 // --SECTION--                                             methods of UpdateNode
 // -----------------------------------------------------------------------------
 
-UpdateNode::UpdateNode (ExecutionPlan* plan, basics::Json const& base)
+UpdateNode::UpdateNode (ExecutionPlan* plan, 
+                        triagens::basics::Json const& base)
   : ModificationNode(plan, base),
     _inDocVariable(varFromJson(plan->getAst(), base, "inDocVariable")),
     _inKeyVariable(varFromJson(plan->getAst(), base, "inKeyVariable", Optional)),
@@ -1371,15 +1378,15 @@ UpdateNode::UpdateNode (ExecutionPlan* plan, basics::Json const& base)
 void UpdateNode::toJsonHelper (triagens::basics::Json& nodes,
                                TRI_memory_zone_t* zone,
                                bool verbose) const {
-  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
 
   if (json.isEmpty()) {
     return;
   }
 
   // Now put info about vocbase and cid in there
-  json("database", Json(_vocbase->_name))
-      ("collection", Json(_collection->name))
+  json("database", triagens::basics::Json(_vocbase->_name))
+      ("collection", triagens::basics::Json(_collection->name))
       ("inDocVariable", _inDocVariable->toJson());
   
   // inKeyVariable might be empty
@@ -1400,7 +1407,8 @@ void UpdateNode::toJsonHelper (triagens::basics::Json& nodes,
 // --SECTION--                                            methods of ReplaceNode
 // -----------------------------------------------------------------------------
 
-ReplaceNode::ReplaceNode (ExecutionPlan* plan, basics::Json const& base)
+ReplaceNode::ReplaceNode (ExecutionPlan* plan, 
+                          triagens::basics::Json const& base)
   : ModificationNode(plan, base),
     _inDocVariable(varFromJson(plan->getAst(), base, "inDocVariable")),
     _inKeyVariable(varFromJson(plan->getAst(), base, "inKeyVariable", Optional)),
@@ -1414,15 +1422,15 @@ ReplaceNode::ReplaceNode (ExecutionPlan* plan, basics::Json const& base)
 void ReplaceNode::toJsonHelper (triagens::basics::Json& nodes,
                                 TRI_memory_zone_t* zone,
                                 bool verbose) const {
-  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
 
   if (json.isEmpty()) {
     return;
   }
 
   // Now put info about vocbase and cid in there
-  json("database", Json(_vocbase->_name))
-      ("collection", Json(_collection->name))
+  json("database", triagens::basics::Json(_vocbase->_name))
+      ("collection", triagens::basics::Json(_collection->name))
       ("inDocVariable", _inDocVariable->toJson());
   
   // inKeyVariable might be empty
@@ -1450,7 +1458,7 @@ void ReplaceNode::toJsonHelper (triagens::basics::Json& nodes,
 void NoResultsNode::toJsonHelper (triagens::basics::Json& nodes,
                                   TRI_memory_zone_t* zone,
                                   bool verbose) const {
-  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
   if (json.isEmpty()) {
     return;
   }

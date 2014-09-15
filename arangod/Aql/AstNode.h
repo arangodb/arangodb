@@ -386,7 +386,7 @@ namespace triagens {
 /// @brief return the bool value of a node
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline int64_t getBoolValue () const {
+        inline bool getBoolValue () const {
           return value.value._bool;
         }
 

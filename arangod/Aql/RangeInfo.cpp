@@ -26,10 +26,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <Basics/Common.h>
+#include "Basics/JsonHelper.h"
 #include "Aql/RangeInfo.h"
 
 using namespace triagens::basics;
 using namespace triagens::aql;
+using Json = triagens::basics::Json;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3-way comparison of the tightness of upper or lower constant
@@ -130,29 +132,29 @@ AstNode const* RangeInfoBound::getExpressionAst(Ast* ast) const {
 /// @brief constructor from JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-RangeInfo::RangeInfo (basics::Json const& json) :
-  _var(basics::JsonHelper::checkAndGetStringValue(json.json(), "variable")),
-  _attr(basics::JsonHelper::checkAndGetStringValue(json.json(), "attr")),
-  _valid(basics::JsonHelper::checkAndGetBooleanValue(json.json(), "valid")),
-  _defined(true),
-  _equality(basics::JsonHelper::checkAndGetBooleanValue(json.json(), "equality")) {
+RangeInfo::RangeInfo (triagens::basics::Json const& json) 
+  : _var(basics::JsonHelper::checkAndGetStringValue(json.json(), "variable")),
+    _attr(basics::JsonHelper::checkAndGetStringValue(json.json(), "attr")),
+    _valid(basics::JsonHelper::checkAndGetBooleanValue(json.json(), "valid")),
+    _defined(true),
+    _equality(basics::JsonHelper::checkAndGetBooleanValue(json.json(), "equality")) {
 
-  Json lows = json.get("lows");
-  if (! lows.isList()) {
+  triagens::basics::Json jsonLowList = json.get("lows");
+  if (! jsonLowList.isList()) {
     THROW_INTERNAL_ERROR("low attribute must be a list");
   }
-  Json highs = json.get("highs");
-  if (! highs.isList()) {
+  triagens::basics::Json jsonHighList = json.get("highs");
+  if (! jsonHighList.isList()) {
     THROW_INTERNAL_ERROR("high attribute must be a list");
   }
   // If an exception is thrown from within these loops, then the
   // vectors _low and _high will be destroyed properly, so no 
   // try/catch is needed.
-  for (size_t i = 0; i < lows.size(); i++) {
-    _lows.emplace_back(lows.at(i));
+  for (size_t i = 0; i < jsonLowList.size(); i++) {
+    _lows.emplace_back(jsonLowList.at(static_cast<int>(i)));
   }
-  for (size_t i = 0; i < highs.size(); i++) {
-    _highs.emplace_back(highs.at(i));
+  for (size_t i = 0; i < jsonHighList.size(); i++) {
+    _highs.emplace_back(jsonHighList.at(static_cast<int>(i)));
   }
   _lowConst.assign(json.get("lowConst"));
   _highConst.assign(json.get("highConst"));
@@ -162,24 +164,24 @@ RangeInfo::RangeInfo (basics::Json const& json) :
 /// @brief toJson for a RangeInfo
 ////////////////////////////////////////////////////////////////////////////////
 
-Json RangeInfo::toJson () const {
-  Json item(basics::Json::Array);
-  item("variable", Json(_var))
-      ("attr", Json(_attr))
+triagens::basics::Json RangeInfo::toJson() const {
+  triagens::basics::Json item(basics::Json::Array);
+  item("variable", triagens::basics::Json(_var))
+      ("attr", triagens::basics::Json(_attr))
       ("lowConst", _lowConst.toJson())
       ("highConst", _highConst.toJson());
-  Json lowList(Json::List, _lows.size());
+  triagens::basics::Json lowList(triagens::basics::Json::List, _lows.size());
   for (auto l : _lows) {
     lowList(l.toJson());
   }
   item("lows", lowList);
-  Json highList(Json::List, _highs.size());
+  triagens::basics::Json highList(triagens::basics::Json::List, _highs.size());
   for (auto h : _highs) {
     highList(h.toJson());
   }
   item("highs", highList);
-  item("valid", Json(_valid));
-  item("equality", Json(_equality));
+  item("valid", triagens::basics::Json(_valid));
+  item("equality", triagens::basics::Json(_equality));
   return item;
 }
         

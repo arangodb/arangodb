@@ -517,7 +517,7 @@ static int GenerateMessage (char* buffer,
   // check if we must display the line number
   // .............................................................................
 
-  sln = ShowLineNumber;
+  sln = ShowLineNumber > 0;
 
   switch (level) {
     case TRI_LOG_LEVEL_DEBUG:

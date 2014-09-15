@@ -360,7 +360,7 @@ v8::Handle<v8::Value> AqlValue::toV8 (AQL_TRANSACTION_V8* trx,
       
       for (uint32_t i = 0; i < n; ++i) {
         // is it safe to use a double here (precision loss)?
-        result->Set(i, v8::Number::New(_range->at(static_cast<size_t>(i))));
+        result->Set(i, v8::Number::New(static_cast<double>(_range->at(static_cast<size_t>(i)))));
       }
 
       return result;

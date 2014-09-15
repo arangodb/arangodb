@@ -26,8 +26,6 @@
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-var PY = function (plan) { require("internal").print(require("js-yaml").safeDump(plan));};
-
 var internal = require("internal");
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
@@ -186,20 +184,20 @@ function optimizerRuleTestSuite() {
 
 
     testRuleNoEffect : function () {
-
+      var j;
       var queries = [ 
 
-        ["FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]",true],
+        ["FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]", true],
         // todo: we use an index anyways right now.
         // currently only ASC supported.
-        // "FOR v IN " + colName + " SORT v.a DESC RETURN [v.a, v.b]",true],
-        ["FOR v IN " + colName + " SORT v.b, v.a  RETURN [v.a]",true],
-        ["FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]",true],
-        ["FOR v IN " + colName + " SORT v.a + 1 RETURN [v.a]",false],// this will throw...
-        ["FOR v IN " + colName + " SORT CONCAT(TO_STRING(v.a), \"lol\") RETURN [v.a]",true],
+        // "FOR v IN " + colName + " SORT v.a DESC RETURN [v.a, v.b]", true],
+        ["FOR v IN " + colName + " SORT v.b, v.a  RETURN [v.a]", true],
+        ["FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]", true],
+        ["FOR v IN " + colName + " SORT v.a + 1 RETURN [v.a]", false],// this will throw...
+        ["FOR v IN " + colName + " SORT CONCAT(TO_STRING(v.a), \"lol\") RETURN [v.a]", true],
         // TODO: limit blocks sort atm.
-        ["FOR v IN " + colName + " FILTER v.a > 2 LIMIT 3 SORT v.a RETURN [v.a]  ",true],
-        ["FOR v IN " + colName + " FOR w IN " + colNameOther + " SORT v.a RETURN [v.a]",true]
+        ["FOR v IN " + colName + " FILTER v.a > 2 LIMIT 3 SORT v.a RETURN [v.a]", false],
+        ["FOR v IN " + colName + " FOR w IN " + colNameOther + " SORT v.a RETURN [v.a]", true]
       ];
 
       queries.forEach(function(query) {
@@ -211,8 +209,8 @@ function optimizerRuleTestSuite() {
           for (j = 1; j < allresults.results.length; j++) {
             assertTrue(isEqual(allresults.results[0],
                                allresults.results[j]),
-                       "whether the execution of " + query[0] +
-                       " this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
+                       "whether the execution of '" + query[0] +
+                       "' this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
                        " Should be: '" + JSON.stringify(allresults.results[0]) +
                        "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
                       );
@@ -251,13 +249,11 @@ function optimizerRuleTestSuite() {
         assertTrue(isEqual(QResults[0], QResults[1]), "Result " + i + " is Equal?");
 
         allresults = getQueryMultiplePlansAndExecutions(query, {});
-        AQL_EXECUTEJSON(allresults.plans[0].plan, paramNone);
-
         for (j = 1; j < allresults.results.length; j++) {
             assertTrue(isEqual(allresults.results[0],
                                allresults.results[j]),
-                       "whether the execution of " + query[0] +
-                       " this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
+                       "whether the execution of '" + query +
+                       "' this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
                        " Should be: '" + JSON.stringify(allresults.results[0]) +
                        "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
                       );
@@ -290,12 +286,12 @@ function optimizerRuleTestSuite() {
         QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort ).json;
         assertTrue(isEqual(QResults[0], QResults[1]), "Result " + i + " is Equal?");
 
-        allresults = getQueryMultiplePlansAndExecutions(query, {});
+        var allresults = getQueryMultiplePlansAndExecutions(query, {});
         for (j = 1; j < allresults.results.length; j++) {
           assertTrue(isEqual(allresults.results[0],
                              allresults.results[j]),
-                     "whether the execution of " + query[0] +
-                     " this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
+                     "whether the execution of '" + query +
+                     "' this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
                      " Should be: '" + JSON.stringify(allresults.results[0]) +
                      "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
                     );
@@ -352,15 +348,28 @@ function optimizerRuleTestSuite() {
       for (i = 1; i < 3; i++) {
         assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + " is Equal?");
       }
-      allresults = getQueryMultiplePlansAndExecutions(query, {});
+      var allresults = getQueryMultiplePlansAndExecutions(query, {});
       for (j = 1; j < allresults.results.length; j++) {
-        assertTrue(isEqual(allresults.results[0],
-                           allresults.results[j]),
-                   "whether the execution of " + query[0] +
-                   " this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
-                   " Should be: '" + JSON.stringify(allresults.results[0]) +
-                   "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
-                  );
+        if (findExecutionNodes(allresults.plans[j], "IndexRangeNode").length === 0) {
+          // This plan didn't sort by the index, so we need to re-sort the result by v.a and v.b
+          assertTrue(isEqual(allresults.results[0].json.sort(sortArray),
+                             allresults.results[j].json.sort(sortArray)),
+                     "whether the execution of '" + query +
+                     "' this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
+                     " Should be: '" + JSON.stringify(allresults.results[0]) +
+                     "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
+                    );
+
+        }
+        else {
+          assertTrue(isEqual(allresults.results[0].json.sort(sortArray),
+                             allresults.results[j].json),
+                     "whether the execution of '" + query +
+                     "' this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
+                     " Should be: '" + JSON.stringify(allresults.results[0]) +
+                     "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
+                    );
+        }
       }
     },
 
@@ -375,7 +384,7 @@ function optimizerRuleTestSuite() {
       // no index can be used for v.c -> sort has to remain in place!
       var XPresult;
       var QResults=[];
-      var i;
+      var i, j;
 
       // the index we will compare to sorts by a & b, so we need to
       // re-sort the result here to accomplish similarity.
@@ -425,12 +434,12 @@ function optimizerRuleTestSuite() {
       for (i = 1; i < 4; i++) {
         assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + " is Equal?");
       }
-      allresults = getQueryMultiplePlansAndExecutions(query, {});
+      var allresults = getQueryMultiplePlansAndExecutions(query, {});
       for (j = 1; j < allresults.results.length; j++) {
         assertTrue(isEqual(allresults.results[0],
                            allresults.results[j]),
-                   "whether the execution of " + query[0] +
-                   " this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
+                   "whether the execution of '" + query +
+                   "' this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
                    " Should be: '" + JSON.stringify(allresults.results[0]) +
                    "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
                   );
@@ -504,12 +513,12 @@ function optimizerRuleTestSuite() {
       for (i = 1; i < 5; i++) {
         assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + " is Equal?");
       }
-      allresults = getQueryMultiplePlansAndExecutions(query, {});
+      var allresults = getQueryMultiplePlansAndExecutions(query, {});
       for (j = 1; j < allresults.results.length; j++) {
-        assertTrue(isEqual(allresults.results[0],
-                           allresults.results[j]),
-                   "whether the execution of " + query[0] +
-                   " this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
+        assertTrue(isEqual(allresults.results[0].json.sort(sortArray),
+                           allresults.results[j].json.sort(sortArray)),
+                   "whether the execution of '" + query +
+                   "' this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
                    " Should be: '" + JSON.stringify(allresults.results[0]) +
                    "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
                   );
@@ -585,12 +594,15 @@ function optimizerRuleTestSuite() {
       for (i = 1; i < 5; i++) {
         assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + " is Equal?");
       }
-      allresults = getQueryMultiplePlansAndExecutions(query, {});
+      var allresults = getQueryMultiplePlansAndExecutions(query, {});
       for (j = 1; j < allresults.results.length; j++) {
         assertTrue(isEqual(allresults.results[0],
                            allresults.results[j]),
-                   "whether the execution of this plan gave the right results: " +
-                   allresults.plans[j]);
+                   "whether the execution of '" + query +
+                   "' this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
+                   " Should be: '" + JSON.stringify(allresults.results[0]) +
+                   "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
+                  );
       }
     },
 
@@ -605,7 +617,7 @@ function optimizerRuleTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
     testRangeEquals: function () {
 
-      var query = "FOR v IN " + colName + " FILTER v.a == 1 RETURN [v.a, v.b, v.c]";
+      var query = "FOR v IN " + colName + " FILTER v.a == 1 RETURN [v.a, v.b]";
 
       var XPresult;
       var QResults=[];
@@ -633,12 +645,12 @@ function optimizerRuleTestSuite() {
       for (i = 1; i < 2; i++) {
         assertTrue(isEqual(QResults[0].sort(sortArray), QResults[i]), "Result " + i + " is Equal?");
       }
-      allresults = getQueryMultiplePlansAndExecutions(query, {});
+      var allresults = getQueryMultiplePlansAndExecutions(query, {});
       for (j = 1; j < allresults.results.length; j++) {
-        assertTrue(isEqual(allresults.results[0],
-                           allresults.results[j]),
-                   "whether the execution of " + query[0] +
-                   " this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
+          assertTrue(isEqual(allresults.results[0].json.sort(sortArray),
+                             allresults.results[j].json.sort(sortArray)),
+                   "whether the execution of '" + query +
+                   "' this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
                    " Should be: '" + JSON.stringify(allresults.results[0]) +
                    "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
                   );
@@ -678,12 +690,12 @@ function optimizerRuleTestSuite() {
 
       assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
 
-      allresults = getQueryMultiplePlansAndExecutions(query, {});
+      var allresults = getQueryMultiplePlansAndExecutions(query, {});
       for (j = 1; j < allresults.results.length; j++) {
-        assertTrue(isEqual(allresults.results[0],
-                           allresults.results[j]),
-                   "whether the execution of " + query[0] +
-                   " this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
+        assertTrue(isEqual(allresults.results[0].json.sort(sortArray),
+                           allresults.results[j].json.sort(sortArray)),
+                   "whether the execution of '" + query +
+                   "' this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
                    " Should be: '" + JSON.stringify(allresults.results[0]) +
                    "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
                   );
@@ -722,12 +734,12 @@ function optimizerRuleTestSuite() {
 
       assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
 
-      allresults = getQueryMultiplePlansAndExecutions(query, {});
+      var allresults = getQueryMultiplePlansAndExecutions(query, {});
       for (j = 1; j < allresults.results.length; j++) {
-        assertTrue(isEqual(allresults.results[0],
-                           allresults.results[j]),
-                   "whether the execution of " + query[0] +
-                   " this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
+        assertTrue(isEqual(allresults.results[0].json.sort(sortArray),
+                           allresults.results[j].json.sort(sortArray)),
+                   "whether the execution of '" + query +
+                   "' this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
                    " Should be: '" + JSON.stringify(allresults.results[0]) +
                    "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
                   );
@@ -769,10 +781,13 @@ function optimizerRuleTestSuite() {
 
       var allresults = getQueryMultiplePlansAndExecutions(query, {});
       for (j = 1; j < allresults.results.length; j++) {
-        assertTrue(isEqual(allresults.results[0],
-                           allresults.results[j]),
-                   "whether the execution of this plan gave the right results: " +
-                   allresults.plans[j]);
+        assertTrue(isEqual(allresults.results[0].json.sort(sortArray),
+                           allresults.results[j].json.sort(sortArray)),
+                   "whether the execution of '" + query +
+                   "' this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
+                   " Should be: '" + JSON.stringify(allresults.results[0]) +
+                   "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
+                  );
       }
     },
 
@@ -810,8 +825,8 @@ function optimizerRuleTestSuite() {
       for (j = 1; j < allresults.results.length; j++) {
         assertTrue(isEqual(allresults.results[0],
                            allresults.results[j]),
-                   "whether the execution of " + query[0] +
-                   " this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
+                   "whether the execution of '" + query +
+                   "' this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
                    " Should be: '" + JSON.stringify(allresults.results[0]) +
                    "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
                   );
