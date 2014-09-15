@@ -97,6 +97,8 @@ Wraps a given value in an AQL Simple Reference.
 
 If the value is not a JavaScript string or not a well-formed simple reference, an *AQLError* will be thrown.
 
+If the value is an *ArangoCollection*, its *name* property will be used instead.
+
 If the value is already an AQL Simple Reference, its value is wrapped instead.
 
 *Examples*
@@ -117,6 +119,13 @@ Invalid values:
 * `foo bar`
 * `foo-bar`
 * `foo[bar]`
+
+ArangoDB collection objects can be passed directly:
+
+```js
+var myUserCollection = applicationContext.collection('users');
+var users = db._query(qb.for('u').in(myUserCollection).return('u')).toArray();
+```
 
 ### AQL Expressions
 

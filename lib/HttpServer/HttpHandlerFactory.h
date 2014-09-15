@@ -46,7 +46,6 @@ namespace triagens {
     class HttpHandler;
     class HttpRequest;
     class HttpResponse;
-    class MaintenanceCallback;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          class HttpHandlerFactory
@@ -129,6 +128,18 @@ namespace triagens {
         virtual ~HttpHandlerFactory ();
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                             static public methods
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets maintenance mode
+////////////////////////////////////////////////////////////////////////////////
+
+        static void setMaintenance (bool);
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
@@ -171,14 +182,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual HttpHandler* createHandler (HttpRequest*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a maintenance handler
-///
-/// Note the maintenance callback is deleted, after it is fired.
-////////////////////////////////////////////////////////////////////////////////
-
-        void addMaintenanceCallback (MaintenanceCallback*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a path and constructor to the factory
@@ -271,12 +274,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         create_fptr _notFound;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief list of maintenance callbacks
-////////////////////////////////////////////////////////////////////////////////
-
-        vector<MaintenanceCallback*> _maintenanceCallbacks;
     };
   }
 }
