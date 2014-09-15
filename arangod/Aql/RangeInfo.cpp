@@ -162,7 +162,7 @@ RangeInfo::RangeInfo (basics::Json const& json) :
 /// @brief toJson for a RangeInfo
 ////////////////////////////////////////////////////////////////////////////////
 
-Json RangeInfo::toJson () {
+Json RangeInfo::toJson () const {
   Json item(basics::Json::Array);
   item("variable", Json(_var))
       ("attr", Json(_attr))
