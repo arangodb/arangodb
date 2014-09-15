@@ -221,6 +221,8 @@ namespace triagens {
         TRI_json_t* toJson (TRI_memory_zone_t*,
                             bool) const;
 
+      std::string toInfoString (TRI_memory_zone_t* zone) const;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a JSON representation of the node to the JSON list specified
 /// in the first argument
