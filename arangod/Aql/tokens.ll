@@ -384,25 +384,24 @@ namespace triagens {
   * whitespace etc.
   * --------------------------------------------------------------------------- */
 
-[ \t\r\n]+ {
+[ \t\r]+ {
   /* whitespace is ignored */ 
+}
+
+[\n] {
+  yycolumn = 0;
 }
 
 <INITIAL>"//" {
   BEGIN(COMMENT_SINGLE);
 }
 
-<COMMENT_SINGLE>\r?\n {
+<COMMENT_SINGLE>\n {
   yylineno++;
   BEGIN(INITIAL);
 }
 
-<COMMENT_SINGLE>\r {
-  yylineno++;
-  BEGIN(INITIAL);
-}
-
-<COMMENT_SINGLE>[^*\r\n]+ { 
+<COMMENT_SINGLE>[^*\n]+ { 
   // eat comment in chunks
 }
 
@@ -414,7 +413,7 @@ namespace triagens {
   BEGIN(INITIAL);
 }
 
-<COMMENT_MULTI>[^*\r\n]+ { 
+<COMMENT_MULTI>[^*\n]+ { 
   // eat comment in chunks
 }
 
@@ -422,15 +421,10 @@ namespace triagens {
   // eat the lone star
 }
 
-<COMMENT_MULTI>\r?\n {
+<COMMENT_MULTI>\n {
   yylineno++;
 }
 
-<COMMENT_MULTI>\r {
-  yylineno++;
-}
-
- 
 . {
   /* anything else is returned as it is */
   return (int) yytext[0];

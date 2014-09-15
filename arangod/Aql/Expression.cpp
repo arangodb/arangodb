@@ -142,7 +142,8 @@ AqlValue Expression::execute (AQL_TRANSACTION_V8* trx,
     }
 
     case SIMPLE: {
-      return executeSimpleExpression(_node, nullptr, trx, docColls, argv, startPos, vars, regs);
+      TRI_document_collection_t const* myCollection = nullptr;
+      return executeSimpleExpression(_node, &myCollection, trx, docColls, argv, startPos, vars, regs);
     }
  
     case UNPROCESSED: {
