@@ -239,9 +239,16 @@ extend(RequestContext.prototype, {
       type = attributes.type,
       required = attributes.required,
       description = attributes.description,
-      constraint = type,
-      regexType = type,
-      cfg;
+      constraint, regexType, cfg;
+
+    if (attributes.isJoi) {
+      type = attributes;
+      required = undefined;
+      description = undefined;
+    }
+
+    constraint = type;
+    regexType = type;
 
     // deprecated: assume type.describe is always a function
     if (type && typeof type.describe === 'function') {
@@ -319,8 +326,15 @@ extend(RequestContext.prototype, {
     var type = attributes.type,
       required = attributes.required,
       description = attributes.description,
-      constraint = type,
-      cfg;
+      constraint, cfg;
+
+    if (attributes.isJoi) {
+      type = attributes;
+      required = undefined;
+      description = undefined;
+    }
+
+    constraint = type;
 
     // deprecated: assume type.describe is always a function
     if (type && typeof type.describe === 'function') {
