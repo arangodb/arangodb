@@ -87,6 +87,7 @@ static TRI_skiplist_node_t* SkipListAllocNode (TRI_skiplist_t* sl,
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, newNode);
     return nullptr;
   }
+  newNode->prev = nullptr;
 
   sl->_memoryUsed += sizeof(TRI_skiplist_node_t) +
                      sizeof(TRI_skiplist_node_t*) * newNode->height;
@@ -291,15 +292,26 @@ TRI_skiplist_t* TRI_InitSkipList (TRI_skiplist_cmp_elm_elm_t cmp_elm_elm,
   sl->_memoryUsed = sizeof(TRI_skiplist_t);
 
   sl->start = SkipListAllocNode(sl, TRI_SKIPLIST_MAX_HEIGHT);
-
   if (nullptr == sl->start) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE,sl);
     return nullptr;
   }
 
+  sl->end = SkipListAllocNode(sl, 1);
+
+  if (nullptr == sl->end) {
+    SkipListFreeNnode(sl, sl->start);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, sl);
+    return nullptr;
+  }
 
   sl->start->height = 1;
-  sl->start->next[0] = nullptr;
+  sl->start->next[0] = sl->end;
+  sl->start->prev = nullptr;
+
+  sl->end->height = 1;
+  sl->end->next[0] = nullptr;
+  sl->end->prev = start;
 
   sl->cmp_elm_elm = cmp_elm_elm;
   sl->cmp_key_elm = cmp_key_elm;
@@ -343,7 +355,15 @@ TRI_skiplist_node_t* TRI_SkipListStartNode (TRI_skiplist_t* sl) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the successor node or nullptr if last node
+/// @brief return the end node
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_skiplist_node_t* TRI_SkipListEndNode (TRI_skiplist_t* sl) {
+  return sl->end;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the successor node or sl->end if last node
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_skiplist_node_t* TRI_SkipListNextNode (TRI_skiplist_node_t* node) {
