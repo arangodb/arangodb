@@ -371,8 +371,10 @@ extend(Controller.prototype, {
       url: {match: path},
       action: {
         callback: function (req, res, opts, next) {
-          func(req, res, opts);
-          next();
+          var result = func(req, res, opts);
+          if (result !== false) {
+            next();
+          }
         }
       }
     });
