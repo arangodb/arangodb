@@ -584,69 +584,6 @@ function get_api_index (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_post_api_index_bitarray
-/// @brief creates a bitarray
-///
-/// @RESTHEADER{POST /_api/index, Create bitarray index}
-///
-/// @RESTQUERYPARAMETERS
-///
-/// @RESTQUERYPARAM{collection-name,string,required}
-/// The collection name.
-///
-/// @RESTBODYPARAM{index-details,json,required}
-///
-/// @RESTDESCRIPTION
-///
-/// Creates a bitarray index for the collection *collection-name*, if
-/// it does not already exist. The call expects an object containing the index
-/// details.
-///
-/// - *type*: must be equal to *"bitarray"*.
-///
-/// - *fields*: A list of pairs. A pair consists of an attribute path followed by a list of values.
-///
-/// - *unique*: Must always be set to *false*.
-///
-/// @RESTRETURNCODES
-///
-/// @RESTRETURNCODE{200}
-/// If the index already exists, then a *HTTP 200* is
-/// returned.
-///
-/// @RESTRETURNCODE{201}
-/// If the index does not already exist and could be created, then a *HTTP 201*
-/// is returned.
-///
-/// @RESTRETURNCODE{404}
-/// If the *collection-name* is unknown, then a *HTTP 404* is returned.
-///
-/// @EXAMPLES
-///
-/// Creating a bitarray index:
-///
-/// @EXAMPLE_ARANGOSH_RUN{RestIndexCreateNewBitarray}
-///     var cn = "products";
-///     db._drop(cn);
-///     db._create(cn, { waitForSync: true });
-///
-///     var url = "/_api/index?collection=" + cn;
-///     var body = '{ ' +
-///       '"type" : "bitarray", ' +
-///       '"unique" : false, ' +
-///       '"fields" : [ "x", [0,1,[]], "y", ["a","b",[]] ] ' +
-///     '}';
-///
-///     var response = logCurlRequest('POST', url, body);
-///
-///     assert(response.code === 201);
-///
-///     logJsonResponse(response);
-/// @END_EXAMPLE_ARANGOSH_RUN
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_post_api_index
 /// @brief creates an index
 ///
@@ -688,7 +625,6 @@ function get_api_index (req, res) {
 /// the *unique* attribute with these types may lead to an error:
 /// - cap constraints
 /// - fulltext indexes
-/// - bitarray indexes
 ///
 /// **Note**: Unique indexes on non-shard keys are not supported in a
 /// cluster.
@@ -741,21 +677,6 @@ function post_api_index (req, res) {
   // with old geo index API
   if (body.hasOwnProperty("constraint") && ! body.hasOwnProperty("unique")) {
     body.unique = body.constraint;
-  }
-
-  // rewrite bitarray fields
-  if (body.type === "bitarray") {
-    if (typeof body.fields === "object" &&
-        Array.isArray(body.fields) &&
-        body.fields.length > 0) {
-      if (! Array.isArray(body.fields[0])) {
-        var f = [ ], i;
-        for (i = 0; i < body.fields.length; i += 2) {
-          f.push([ body.fields[i], body.fields[i + 1] ]);
-        }
-        body.fields = f;
-      }
-    }
   }
 
   // create the index

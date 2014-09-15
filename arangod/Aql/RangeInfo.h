@@ -63,6 +63,7 @@ namespace triagens {
             _include(include), 
             _defined(false),
             _expressionAst(nullptr) {
+
           if (bound->type == NODE_TYPE_VALUE) {
             _bound = triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE,
                                             bound->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
@@ -77,17 +78,19 @@ namespace triagens {
           _defined = true;
         }
         
-        RangeInfoBound (basics::Json const& json) 
+        RangeInfoBound (triagens::basics::Json const& json) 
           : _bound(),
             _include(basics::JsonHelper::checkAndGetBooleanValue(json.json(),
                                                                  "include")),
             _isConstant(basics::JsonHelper::checkAndGetBooleanValue(json.json(),
                                                              "isConstant")),
-            _defined(true),
+            _defined(false),
             _expressionAst(nullptr) {
           triagens::basics::Json bound = json.get("bound");
+
           if (! bound.isEmpty()) {
             _bound = bound;
+            _defined = true;
           }
         }
       
@@ -100,11 +103,11 @@ namespace triagens {
         }
 
         RangeInfoBound (RangeInfoBound const& copy) 
-            : _bound(copy._bound.copy()), 
-              _include(copy._include), 
-              _isConstant(copy._isConstant), 
-              _defined(copy._defined),
-              _expressionAst(nullptr) {
+          : _bound(copy._bound.copy()), 
+            _include(copy._include), 
+            _isConstant(copy._isConstant), 
+            _defined(copy._defined),
+            _expressionAst(nullptr) {
         } 
           
 ////////////////////////////////////////////////////////////////////////////////
@@ -128,12 +131,12 @@ namespace triagens {
           triagens::basics::Json bound = json.get("bound");
           if (! bound.isEmpty()) {
             _bound = bound;
+            _defined = true;
           }
           _include = basics::JsonHelper::checkAndGetBooleanValue(
                            json.json(), "include");
           _isConstant = basics::JsonHelper::checkAndGetBooleanValue(
                            json.json(), "isConstant");
-          _defined = true;
           _expressionAst = nullptr;
         }
 
@@ -185,7 +188,7 @@ namespace triagens {
 
         TRI_index_operator_t* toIndexOperator (bool high, 
                                                triagens::basics::Json parameters,
-            TRI_shaper_t* shaper) const {
+                                               TRI_shaper_t* shaper) const {
 
           TRI_ASSERT(_isConstant);
 
@@ -209,8 +212,9 @@ namespace triagens {
           }
           parameters.add(_bound.copy());
           size_t nr = parameters.size();
-          return TRI_CreateIndexOperator(op, NULL, NULL, parameters.steal(),
-              shaper, NULL, nr, NULL);
+
+          return TRI_CreateIndexOperator(op, nullptr, nullptr, parameters.steal(),
+              shaper, nullptr, nr, nullptr);
         } 
 
 ////////////////////////////////////////////////////////////////////////////////

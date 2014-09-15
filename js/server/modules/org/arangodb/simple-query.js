@@ -230,15 +230,7 @@ function supportsQuery (idx, attributes) {
   var i, n;
   var fields;
 
-  if (idx.type === "bitarray") {
-    fields = [ ];
-    for (i = 0; i < idx.fields.length; ++i) {
-      fields.push(idx.fields[i][0]);
-    }
-  }
-  else {
-    fields = idx.fields;
-  }
+  fields = idx.fields;
 
   n = fields.length;
   for (i = 0; i < n; ++i) {
@@ -369,7 +361,6 @@ function byExample (data) {
         fields.push([ k, [ normalized[k] ] ]);
       }
     }
-    checks.push({ type: "bitarray", fields: fields });
 
     for (k = 0; k < checks.length; ++k) {
       if (data._type !== undefined && data._type !== checks[k].type) {
@@ -391,8 +382,6 @@ function byExample (data) {
         return collection.BY_EXAMPLE_HASH(idx.id, normalized, skip, limit);
       case "skiplist":
         return collection.BY_EXAMPLE_SKIPLIST(idx.id, normalized, skip, limit);
-      case "bitarray":
-        return collection.BY_EXAMPLE_BITARRAY(idx.id, normalized, skip, limit);
     }
   }
 
@@ -442,9 +431,6 @@ SimpleQueryByExample.prototype.execute = function () {
             break;
           case "skiplist":
             method = "by-example-skiplist";
-            break;
-          case "bitarray":
-            method = "by-example-bitarray";
             break;
         }
       }
@@ -563,8 +549,6 @@ function byCondition (data) {
   switch (data._type) {
     case "skiplist":
       return collection.BY_CONDITION_SKIPLIST(index, condition, skip, limit);
-    case "bitarray":
-      return collection.BY_CONDITION_BITARRAY(index, condition, skip, limit);
   }
 
   // an index type is required, but no index will be used
@@ -605,9 +589,6 @@ SimpleQueryByCondition.prototype.execute = function () {
         switch (this._type) {
           case "skiplist":
             method = "by-condition-skiplist";
-            break;
-          case "bitarray":
-            method = "by-condition-bitarray";
             break;
         }
       }

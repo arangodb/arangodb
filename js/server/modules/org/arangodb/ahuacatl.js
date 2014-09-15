@@ -1252,52 +1252,6 @@ function GET_DOCUMENTS_EDGE_LIST (collection, att, values) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get documents from the specified collection using a bitarray
-////////////////////////////////////////////////////////////////////////////////
-
-function GET_DOCUMENTS_BITARRAY (collection, idx, example) {
-  "use strict";
-
-  if (isCoordinator) {
-    return COLLECTION(collection).byConditionBitarray(idx, example).toArray();
-  }
-
-  return COLLECTION(collection).BY_CONDITION_BITARRAY(idx, example).documents;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get documents from the specified collection using a bitarray
-/// (multiple index values) TODO: replace by 'IN index operator'
-////////////////////////////////////////////////////////////////////////////////
-
-function GET_DOCUMENTS_BITARRAY_LIST (collection, idx, attribute, values) {
-  "use strict";
-
-  var result = [ ], c;
-
-  c = COLLECTION(collection);
-
-  values.forEach(function (value) {
-    var example = { }, documents;
-
-    example[attribute] = value;
-
-    if (isCoordinator) {
-      documents = c.byExampleBitarray(idx, example).toArray();
-    }
-    else {
-      documents = c.BY_EXAMPLE_BITARRAY(idx, example).documents;
-    }
-
-    documents.forEach(function (doc) {
-      result.push(doc);
-    });
-  });
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get documents from the specified collection using a skiplist
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -7278,8 +7232,6 @@ exports.GET_DOCUMENTS_HASH = GET_DOCUMENTS_HASH;
 exports.GET_DOCUMENTS_HASH_LIST = GET_DOCUMENTS_HASH_LIST;
 exports.GET_DOCUMENTS_EDGE = GET_DOCUMENTS_EDGE;
 exports.GET_DOCUMENTS_EDGE_LIST = GET_DOCUMENTS_EDGE_LIST;
-exports.GET_DOCUMENTS_BITARRAY = GET_DOCUMENTS_BITARRAY;
-exports.GET_DOCUMENTS_BITARRAY_LIST = GET_DOCUMENTS_BITARRAY_LIST;
 exports.GET_DOCUMENTS_SKIPLIST = GET_DOCUMENTS_SKIPLIST;
 exports.GET_DOCUMENTS_SKIPLIST_LIST = GET_DOCUMENTS_SKIPLIST_LIST;
 exports.COLLECTIONS = COLLECTIONS;

@@ -554,23 +554,6 @@
 ///   Will be raised when the client could not write data.
 /// - 2003: @LIT{could not read from server}
 ///   Will be raised when the client could not read data.
-/// - 3402: @LIT{bitarray index update warning - attribute missing in revised document}
-///   Will be raised when an attempt to update a document results in the
-///   revised document not having one or more attributes which are required by
-///   the bitarray index.
-/// - 3411: @LIT{bitarray index remove failure - item missing in index}
-///   Will be raised when an attempt to remove a document from a bitarray index
-///   fails when document can not be located within that index.
-/// - 3413: @LIT{bitarray index insert failure - document attribute value unsupported in index}
-///   Will be raised when an attempt to insert a document into a bitarray index
-///   fails due to the fact that one or more values for an index attribute is
-///   not supported within that index.
-/// - 3415: @LIT{bitarray index creation failure - one or more index attributes are duplicated.}
-///   Will be raised when an attempt to create an index with two or more index
-///   attributes repeated.
-/// - 3417: @LIT{bitarray index creation failure - one or more index attribute values are duplicated.}
-///   Will be raised when an attempt to create an index with two or more index
-///   attribute values repeated.
 /// - 10000: @LIT{element not inserted into structure, because key already exists}
 ///   Will be returned if the element was not insert because the key already
 ///   exists.
@@ -2956,66 +2939,6 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_SIMPLE_CLIENT_COULD_NOT_READ                                  (2003)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3402: ERROR_ARANGO_INDEX_BITARRAY_UPDATE_ATTRIBUTE_MISSING
-///
-/// bitarray index update warning - attribute missing in revised document
-///
-/// Will be raised when an attempt to update a document results in the revised
-/// document not having one or more attributes which are required by the
-/// bitarray index.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_ARANGO_INDEX_BITARRAY_UPDATE_ATTRIBUTE_MISSING          (3402)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3411: ERROR_ARANGO_INDEX_BITARRAY_REMOVE_ITEM_MISSING
-///
-/// bitarray index remove failure - item missing in index
-///
-/// Will be raised when an attempt to remove a document from a bitarray index
-/// fails when document can not be located within that index.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_ARANGO_INDEX_BITARRAY_REMOVE_ITEM_MISSING               (3411)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3413: ERROR_ARANGO_INDEX_BITARRAY_INSERT_ITEM_UNSUPPORTED_VALUE
-///
-/// bitarray index insert failure - document attribute value unsupported in
-/// index
-///
-/// Will be raised when an attempt to insert a document into a bitarray index
-/// fails due to the fact that one or more values for an index attribute is not
-/// supported within that index.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_ARANGO_INDEX_BITARRAY_INSERT_ITEM_UNSUPPORTED_VALUE     (3413)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3415: ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_ATTRIBUTES
-///
-/// bitarray index creation failure - one or more index attributes are
-/// duplicated.
-///
-/// Will be raised when an attempt to create an index with two or more index
-/// attributes repeated.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_ATTRIBUTES (3415)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3417: ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_VALUES
-///
-/// bitarray index creation failure - one or more index attribute values are
-/// duplicated.
-///
-/// Will be raised when an attempt to create an index with two or more index
-/// attribute values repeated.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_VALUES (3417)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 10000: RESULT_KEY_EXISTS

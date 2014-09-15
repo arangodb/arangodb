@@ -36,7 +36,6 @@
 
 #include "Basics/associative-multi.h"
 #include "Basics/json.h"
-#include "BitIndexes/bitarrayIndex.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "GeoIndex/GeoIndex.h"
 #include "IndexIterators/index-iterator.h"
@@ -73,7 +72,7 @@ typedef enum {
   TRI_IDX_TYPE_FULLTEXT_INDEX,
   TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX, // DEPRECATED and not functional anymore
   TRI_IDX_TYPE_SKIPLIST_INDEX,
-  TRI_IDX_TYPE_BITARRAY_INDEX,
+  TRI_IDX_TYPE_BITARRAY_INDEX,       // DEPRECATED and not functional anymore
   TRI_IDX_TYPE_CAP_CONSTRAINT
 }
 TRI_idx_type_e;
@@ -224,20 +223,6 @@ typedef struct TRI_cap_constraint_s {
   int64_t _size;
 }
 TRI_cap_constraint_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief bitarray index
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_bitarray_index_s {
-  TRI_index_t base;
-
-  BitarrayIndex* _bitarrayIndex;
-  TRI_vector_t _paths;            // a list of shape pid which identifies the fields of the index
-  TRI_vector_t _values;           // a list of json objects which match the list of attributes used by the index
-  bool _supportUndef;             // allows documents which do not match the attribute list to be indexed
-}
-TRI_bitarray_index_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief index query result
@@ -484,48 +469,6 @@ void TRI_DestroyFulltextIndex (TRI_index_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeFulltextIndex (TRI_index_t*);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    BITARRAY INDEX
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns an iterator for a lookup query
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_index_iterator_t* TRI_LookupBitarrayIndex (TRI_index_t*,
-                                               TRI_index_operator_t*,
-                                               bool (*filter) (TRI_index_iterator_t*) );
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a bitarray index
-////////////////////////////////////////////////////////////////////////////////
-
-  TRI_index_t* TRI_CreateBitarrayIndex (struct TRI_document_collection_t*,
-                                      TRI_idx_iid_t,
-                                      TRI_vector_pointer_t*,
-                                      TRI_vector_t*,
-                                      TRI_vector_pointer_t*,
-                                      bool,
-                                      int*,
-                                      char**);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees the memory allocated, but does not free the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyBitarrayIndex (TRI_index_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees the memory allocated and frees the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeBitarrayIndex (TRI_index_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief index comparator, used by the coordinator to detect if two index
