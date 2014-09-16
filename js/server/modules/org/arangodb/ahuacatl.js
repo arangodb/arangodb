@@ -191,7 +191,6 @@ function FILTER (list, examples) {
 
   for (i = 0; i < list.length; ++i) {
     var element = list[i];
-
     if (MATCHES(element, examples, false)) {
       result.push(element);
     }
@@ -3855,7 +3854,6 @@ function MATCHES (element, examples, returnIndex) {
   if (! Array.isArray(examples)) {
     examples = [ examples ];
   }
-
   if (examples.length === 0) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "MATCHES");
   }
@@ -3865,7 +3863,6 @@ function MATCHES (element, examples, returnIndex) {
   for (i = 0; i < examples.length; ++i) {
     var example = examples[i];
     var result = true;
-
     if (TYPEWEIGHT(example) !== TYPEWEIGHT_DOCUMENT) {
       THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "MATCHES");
     }
@@ -5992,6 +5989,11 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
       options.startVertexCollectionRestriction = options.vertexCollectionRestriction;
     }
   }
+  if (options.neighborExamples) {
+    if (typeof options.neighborExamples === "string") {
+      options.neighborExamples = {_id : options.neighborExamples};
+    }
+  }
   var neighbors = [],
     params = TRAVERSAL_PARAMS(),
     factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
@@ -6000,14 +6002,12 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
   params.paths = true;
   params.visitor = TRAVERSAL_NEIGHBOR_VISITOR;
   var fromVertices = RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options);
-
   if (options.edgeExamples) {
     params.followEdges = options.edgeExamples;
   }
   if (options.edgeCollectionRestriction) {
     params.edgeCollectionRestriction = options.edgeCollectionRestriction;
   }
-
   fromVertices.forEach(function (v) {
     var e = TRAVERSAL_FUNC("GRAPH_NEIGHBORS",
       factory,
