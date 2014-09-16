@@ -102,6 +102,7 @@ ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast* ast) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan from JSON
 ////////////////////////////////////////////////////////////////////////////////
+
 void ExecutionPlan::getCollectionsFromJson(Ast *ast, 
                                            triagens::basics::Json const& json)
 {
@@ -153,7 +154,7 @@ triagens::basics::Json ExecutionPlan::toJson (Ast* ast,
   triagens::basics::Json rules(Json::List);
   auto const&& appliedRules = Optimizer::translateRules(_appliedRules);
   for (auto r : appliedRules) {
-    rules.add(Json(r));
+    rules.add(triagens::basics::Json(r));
   }
   result.set("rules", rules);
 
@@ -168,6 +169,8 @@ triagens::basics::Json ExecutionPlan::toJson (Ast* ast,
 
   }
   result.set("collections", jsonCollectionList);
+  result.set("estimatedCost", triagens::basics::Json(_root->getCost()));
+
   return result;
 }
 

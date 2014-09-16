@@ -719,8 +719,8 @@ bool IndexRangeNode::MatchesIndex (IndexMatchVec pattern) const {
         
 double IndexRangeNode::estimateCost () { 
   // the cost of the enumerate collection node we are replacing . . .
-  double dependencyCost = _dependencies.at(0)->getCost();
-  double oldCost = static_cast<double>(_collection->count()) * dependencyCost; 
+  double const dependencyCost = _dependencies.at(0)->getCost();
+  double const oldCost = static_cast<double>(_collection->count()) * dependencyCost; 
 
   TRI_ASSERT(! _ranges.empty());
   
@@ -749,26 +749,51 @@ double IndexRangeNode::estimateCost () {
 
     if (_index->_unique && 
         count == _index->_fields._length) {
-      // unique index, all attributes compared using eq (==) operator
       if (_ranges.at(0).back().is1ValueRangeInfo()) {
+        // unique index, all attributes compared using eq (==) operator
         return dependencyCost;
       }
     }
 
     double cost = oldCost;
     for (auto x: _ranges.at(0)) { //only doing the 1-d case so far
-      if (x._lowConst.isDefined() && x._highConst.isDefined()) {
-        if (x.is1ValueRangeInfo()) {
-          cost /= 100;
-        }
-        else {
-          cost /= 10;
-        }
+      if (x.is1ValueRangeInfo()) {
+        // equality lookup
+        cost /= 100;
+        continue;
       }
-      else if (x._lowConst.isDefined() || x._highConst.isDefined()) {
+
+      bool hasLowerBound = false;
+      bool hasUpperBound = false;
+
+      if (x._lowConst.isDefined() || x._lows.size() > 0) {
+        hasLowerBound = true;
+      }
+      if (x._highConst.isDefined() || x._highs.size() > 0) {
+        hasUpperBound = true;
+      }
+
+      if (hasLowerBound && hasUpperBound) {
+        // both lower and upper bounds defined
+        cost /= 10;
+      }
+      else if (hasLowerBound || hasUpperBound) {
+        // either only low or high bound defined
         cost /= 2;
       }
+
+      // each bound (const and dynamic) counts!
+      size_t const numBounds = x._lows.size() + 
+                               x._highs.size() + 
+                               (x._lowConst.isDefined() ? 1 : 0) + 
+                               (x._highConst.isDefined() ? 1 : 0);
+
+      for (size_t j = 0; j < numBounds; ++j) {
+        // each dynamic bound again reduces the cost
+        cost *= 0.95;
+      }
     }
+
     return cost;
   }
 

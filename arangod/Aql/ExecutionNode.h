@@ -356,6 +356,19 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual void appendAsString (std::string& st, int indent = 0);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalidate the cost estimation for the node and its dependencies
+////////////////////////////////////////////////////////////////////////////////
+        
+        void invalidateCost () {
+          _estimatedCostSet = false;
+          
+          for (auto dep : _dependencies) {
+            dep->invalidateCost();
+          }
+        }
+
        
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief estimate the cost of the node . . .
@@ -535,6 +548,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         double _estimatedCost;
+
         bool _estimatedCostSet;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -688,7 +702,7 @@ namespace triagens {
 /// its unique dependency
 ////////////////////////////////////////////////////////////////////////////////
         
-        double estimateCost () { 
+        double estimateCost () override { 
           return static_cast<double>(_collection->count()) * _dependencies.at(0)->getCost(); 
           //FIXME improve this estimate . . .
         }
@@ -828,7 +842,7 @@ namespace triagens {
 /// @brief the cost of an enumerate list node is . . . FIXME
 ////////////////////////////////////////////////////////////////////////////////
         
-        double estimateCost () {
+        double estimateCost () override {
           return 1000 * _dependencies.at(0)->getCost(); 
           //FIXME improve this estimate . . .
         }
@@ -979,7 +993,7 @@ namespace triagens {
 /// @brief estimateCost
 ////////////////////////////////////////////////////////////////////////////////
 
-        double estimateCost ();
+        double estimateCost () override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether the pattern matches this nodes index
@@ -1093,7 +1107,7 @@ namespace triagens {
 /// the dependency . . .
 ////////////////////////////////////////////////////////////////////////////////
         
-        double estimateCost () {
+        double estimateCost () override {
           return 1.005 * (std::min)(static_cast<double>(_limit), _dependencies.at(0)->getCost());
           //FIXME improve this estimate . . .
         }
@@ -1201,7 +1215,7 @@ namespace triagens {
 //  times a constant
 ////////////////////////////////////////////////////////////////////////////////
         
-        double estimateCost () {
+        double estimateCost () override {
           return 2 * _dependencies.at(0)->getCost(); 
           //FIXME improve this estimate . . . 
         }
@@ -1341,7 +1355,7 @@ namespace triagens {
 /// times a small constant
 ////////////////////////////////////////////////////////////////////////////////
         
-        double estimateCost () {
+        double estimateCost () override {
           return 1.005 * _dependencies.at(0)->getCost();
           //FIXME improve this estimate . . .
         }
@@ -1451,7 +1465,7 @@ namespace triagens {
 /// @brief the cost of a filter node is . . . FIXME
 ////////////////////////////////////////////////////////////////////////////////
         
-        double estimateCost () {
+        double estimateCost () override {
           return _dependencies.at(0)->getCost() * 0.105;
           //FIXME! 0.005 is the cost of doing the filter node under the
           //assumption that it returns 10% of the results of its dependency
@@ -1608,7 +1622,7 @@ namespace triagens {
 /// @brief the cost of a sort node is . . . FIXME
 ////////////////////////////////////////////////////////////////////////////////
         
-        double estimateCost () {
+        double estimateCost () override {
           double depCost = _dependencies.at(0)->getCost();
           if (depCost <= 2.0) {
             return depCost;
@@ -1736,7 +1750,7 @@ namespace triagens {
 /// @brief the cost of an aggregate node is . . . FIXME
 ////////////////////////////////////////////////////////////////////////////////
         
-        double estimateCost () {
+        double estimateCost () override {
           return 2 * _dependencies.at(0)->getCost();
           //FIXME improve this estimate . . .
         }
@@ -1858,7 +1872,7 @@ namespace triagens {
 /// @brief the cost of a return node is the cost of its only dependency . . .
 ////////////////////////////////////////////////////////////////////////////////
         
-        double estimateCost () {
+        double estimateCost () override {
           return _dependencies.at(0)->getCost();
         }
 
@@ -2016,7 +2030,7 @@ namespace triagens {
 /// dependency
 ////////////////////////////////////////////////////////////////////////////////
         
-        double estimateCost () {
+        double estimateCost () override {
           return _dependencies.at(0)->getCost();
           // TODO: improve this estimate!
         }
@@ -2131,7 +2145,7 @@ namespace triagens {
 /// dependency
 ////////////////////////////////////////////////////////////////////////////////
         
-        double estimateCost () {
+        double estimateCost () override {
           return 1000 * _dependencies.at(0)->getCost(); //FIXME change this!
         }
 
@@ -2247,7 +2261,7 @@ namespace triagens {
 /// dependency
 ////////////////////////////////////////////////////////////////////////////////
         
-        double estimateCost () {
+        double estimateCost () override {
           return 1000 * _dependencies.at(0)->getCost(); //FIXME change this!
         }
 
@@ -2375,7 +2389,7 @@ namespace triagens {
 /// dependency
 ////////////////////////////////////////////////////////////////////////////////
         
-        double estimateCost () {
+        double estimateCost () override {
           return 1000 * _dependencies.at(0)->getCost(); //FIXME change this!
         }
 
@@ -2488,7 +2502,7 @@ namespace triagens {
 /// @brief the cost of a NoResults is 0
 ////////////////////////////////////////////////////////////////////////////////
         
-        double estimateCost () {
+        double estimateCost () override {
           return 0;
         }
 

@@ -70,6 +70,7 @@ bool Optimizer::addPlan (ExecutionPlan* plan,
   if (wasModified) {
     // register which rules modified / created the plan
     plan->addAppliedRule(_currentRule);
+    plan->invalidateCost();
   }
 
   if (_newPlans.size() > maxNumberOfPlans) {
