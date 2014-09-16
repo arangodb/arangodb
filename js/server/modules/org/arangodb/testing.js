@@ -148,7 +148,7 @@ function makeAuthorisationHeaders (options) {
                                                       options.password)}};
 }
 
-function startInstance (protocol, options, addArgs) {
+function startInstance (protocol, options, addArgs, testname) {
   // protocol must be one of ["tcp", "ssl", "unix"]
   var topDir = findTopDir();
   var instanceInfo = {};
@@ -211,7 +211,17 @@ function startInstance (protocol, options, addArgs) {
     if (addArgs !== undefined) {
       args = args.concat(addArgs);
     }
-    instanceInfo.pid = executeExternal(fs.join("bin","arangod"), args);
+    if (typeof(options.valgrind) === 'string') {
+      var run = fs.join("bin","arangod");
+      var valgrindopts = options.valgrindargs.concat(
+        ["--xml-file="+options.valgrindXmlFileBase + '_' + testname + '.xml']);
+      var newargs=valgrindopts.concat([run]).concat(args);      
+      var cmdline = options.valgrind;
+      instanceInfo.pid = executeExternal(cmdline, newargs);
+    }
+    else {
+      instanceInfo.pid = executeExternal(fs.join("bin","arangod"), args);
+    }
   }
 
   // Wait until the server/coordinator is up:
@@ -396,8 +406,8 @@ function runArangoshCmd (options, instanceInfo, cmds) {
   return executeAndWait(arangosh, args);
 }
 
-function performTests(options, testList) {
-  var instanceInfo = startInstance("tcp",options);
+function performTests(options, testList, testname) {
+  var instanceInfo = startInstance("tcp",options, [], testname);
   var results = {};
   var i;
   var te;
@@ -425,22 +435,28 @@ function performTests(options, testList) {
 
 testFuncs.shell_server = function (options) {
   findTests();
-  return performTests(options, tests_shell_server);
+  return performTests(options, tests_shell_server, 'tests_shell_server');
 };
 
 testFuncs.shell_server_only = function (options) {
   findTests();
-  return performTests(options, tests_shell_server_only);
+  return performTests(options,
+                      tests_shell_server_only,
+                      'tests_shell_server_only');
 };
 
 testFuncs.shell_server_ahuacatl = function(options) {
   findTests();
   if (!options.skipAhuacatl) {
     if (options.skipRanges) {
-      return performTests(options, tests_shell_server_ahuacatl);
+      return performTests(options,
+                          tests_shell_server_ahuacatl,
+                          'tests_shell_server_ahuacatl');
     }
-    return performTests(options, tests_shell_server_ahuacatl.concat(
-                                 tests_shell_server_ahuacatl_extended));
+    return performTests(options,
+                        tests_shell_server_ahuacatl.concat(
+                          tests_shell_server_ahuacatl_extended),
+                        'tests_shell_server_ahuacatl_extended');
   }
   return "skipped";
 };
@@ -449,17 +465,21 @@ testFuncs.shell_server_aql = function(options) {
   findTests();
   if (!options.skipAql) {
     if (options.skipRanges) {
-      return performTests(options, tests_shell_server_aql);
+      return performTests(options,
+                          tests_shell_server_aql,
+                          'tests_shell_server_aql');
     }
-    return performTests(options, tests_shell_server_aql.concat(
-                                 tests_shell_server_aql_extended));
+    return performTests(options,
+                        tests_shell_server_aql.concat(
+                          tests_shell_server_aql_extended),
+                        'tests_shell_server_aql_extended');
   }
   return "skipped";
 };
 
 testFuncs.shell_client = function(options) {
   findTests();
-  var instanceInfo = startInstance("tcp",options);
+  var instanceInfo = startInstance("tcp",options, [], "shell_client");
   var results = {};
   var i;
   var te;
@@ -526,7 +546,7 @@ testFuncs.boost = function (options) {
 };
 
 testFuncs.single = function (options) {
-  var instanceInfo = startInstance("tcp",options);
+  var instanceInfo = startInstance("tcp",options, [], "single");
   var result = { };
   if (options.test !== undefined) {
     var te = options.test;
@@ -556,10 +576,10 @@ testFuncs.single = function (options) {
 function rubyTests (options, ssl) {
   var instanceInfo;
   if (ssl) {
-    instanceInfo = startInstance("ssl",options);
+    instanceInfo = startInstance("ssl",options, [], "rubyTestsSsl");
   }
   else {
-    instanceInfo = startInstance("tcp",options);
+    instanceInfo = startInstance("tcp",options, [], "rubyTestsTcp");
   }
 
   var tmpname = fs.getTempFile()+".rb";
@@ -708,7 +728,7 @@ testFuncs.importing = function (options) {
     return {"ok":true, "skipped":0};
   }
 
-  var instanceInfo = startInstance("tcp",options);
+  var instanceInfo = startInstance("tcp",options, "importing");
 
   var result = {};
   try {
@@ -755,7 +775,7 @@ testFuncs.upgrade = function (options) {
 
   // We use the PortFinder to find a free port for our subinstance,
   // to this end, we have to fake a dummy dispatcher:
-  var dispatcher = {endpoint: "tcp://localhost:", avoidPorts: {}, id: "me"};
+  var dispatcher = {endpoint: "tcp://localhost:", avoidPorts: [], id: "me"};
   var pf = new PortFinder([8529],dispatcher);
   var port = pf.next();
   var args = makeTestingArgs();
@@ -780,7 +800,7 @@ testFuncs.upgrade = function (options) {
 
 testFuncs.foxx_manager = function (options) {
   print("foxx_manager tests...");
-  var instanceInfo = startInstance("tcp",options);
+  var instanceInfo = startInstance("tcp",options, [], "foxx_manager");
   var results = {};
 
   results.update = runArangoshCmd(options, instanceInfo,
@@ -809,7 +829,7 @@ testFuncs.dump = function (options) {
     cluster = "";
   }
   print("dump tests...");
-  var instanceInfo = startInstance("tcp",options);
+  var instanceInfo = startInstance("tcp",options, [], "dump_test");
   var results = {};
   results.setup = runInArangosh(options, instanceInfo,
        makePath("js/server/tests/dump-setup"+cluster+".js"));
@@ -853,7 +873,7 @@ var benchTodo = [
 
 testFuncs.arangob = function (options) {
   print("arangob tests...");
-  var instanceInfo = startInstance("tcp",options);
+  var instanceInfo = startInstance("tcp",options, [], "arangobench");
   var results = {};
   var i,r;
   for (i = 0; i < benchTodo.length; i++) {
@@ -877,7 +897,8 @@ testFuncs.arangob = function (options) {
 testFuncs.authentication = function (options) {
   print("Authentication tests...");
   var instanceInfo = startInstance("tcp",options,
-                       ["--server.disable-authentication", "false"]);
+                                   ["--server.disable-authentication", "false"],
+                                  "authtest");
   var results = {};
   results.auth = runInArangosh(options, instanceInfo,
                                fs.join("js","client","tests","auth.js"));
@@ -903,7 +924,8 @@ testFuncs.authentication_parameters = function (options) {
   // With full authentication:
   var instanceInfo = startInstance("tcp",options,
                        ["--server.disable-authentication", "false",
-                        "--server.authenticate-system-only", "false"]);
+                        "--server.authenticate-system-only", "false"],
+                                  "authparams");
   var r;
   var i;
   var re = [];
@@ -923,7 +945,8 @@ testFuncs.authentication_parameters = function (options) {
   // Only system authentication:
   instanceInfo = startInstance("tcp",options,
                    ["--server.disable-authentication", "false",
-                    "--server.authenticate-system-only", "true"]);
+                    "--server.authenticate-system-only", "true"],
+                              "authparams2");
   re = [];
   for (i = 0;i < urlsTodo.length;i++) {
     r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false});
@@ -941,7 +964,8 @@ testFuncs.authentication_parameters = function (options) {
   // No authentication:
   instanceInfo = startInstance("tcp",options,
                    ["--server.disable-authentication", "true",
-                    "--server.authenticate-system-only", "true"]);
+                    "--server.authenticate-system-only", "true"],
+                              "authparams3");
   re = [];
   for (i = 0;i < urlsTodo.length;i++) {
     r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false});

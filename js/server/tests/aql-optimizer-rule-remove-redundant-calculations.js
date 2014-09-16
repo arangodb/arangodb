@@ -30,6 +30,7 @@ var jsunity = require("jsunity");
 var errors = require("internal").errors;
 var helper = require("org/arangodb/aql-helper");
 var isEqual = helper.isEqual;
+var getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -81,17 +82,32 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRuleNoEffect : function () {
-      var queries = [ 
-        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET a = i.a LET b = i.b RETURN [ a, b ]",
-        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET a = LENGTH(i), b = LENGTH(i) + 1 RETURN [ a, b ]",
-        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET a = MAX(i) RETURN MIN(i)",
-        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET a = RAND(), b = RAND() RETURN [ a, b ]",
-        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET a = MAX(i) COLLECT x = a LET i = RAND() LET a = i.a RETURN a"
+      var j;
+      var collection = "{ a: [1,2] }, { a: [2,7] }, { a: [3,25] }";
+      var queryList = [ 
+        ["FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET a = i.a LET b = i.b RETURN [ a, b ]", true],
+        ["FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET a = LENGTH(i), b = LENGTH(i) + 1 RETURN [ a, b ]", true],
+        ["FOR i IN [ " + collection + " ] LET a = MAX(i.a) RETURN MIN(i.a)", true],
+        ["FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET a = RAND(), b = RAND() RETURN [ a, b ]", false],
+        ["FOR i IN [ " + collection + " ] LET c = MAX(i.a) COLLECT d = c LET i = RAND() LET b = i.a RETURN d",true]
       ];
 
-      queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { }, paramEnabled);
-        assertEqual([ ], result.plan.rules, query);
+      queryList.forEach(function(query) {
+        var result = AQL_EXPLAIN(query[0], { }, paramEnabled);
+        var blarg = AQL_EXECUTE(query[0], { }, paramEnabled);
+        assertEqual([ ], result.plan.rules, query[0]);
+        var allresults = getQueryMultiplePlansAndExecutions(query[0], {});
+        if (query[1]) {
+          for (j = 1; j < allresults.results.length; j++) {
+            assertTrue(isEqual(allresults.results[0],
+                               allresults.results[j]),
+                       "whether the execution of '" + query +
+                       "' this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
+                       " Should be: '" + JSON.stringify(allresults.results[0]) +
+                       "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
+                      );
+          }
+        }
       });
     },
 
@@ -100,12 +116,14 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRuleHasEffect : function () {
+      var j;
+      var collection = "{ a: [1,2] }, { a: [2,7] }, { a: [3,25] }";
       var queries = [ 
         "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET a = i.a LET b = i.a RETURN [ a, b ]",
         "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET a = LENGTH(i), b = LENGTH(i) RETURN [ a, b ]",
-        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET a = MAX(i) RETURN MAX(i)",
+        "FOR i IN [ " + collection + " ] LET a = MAX(i.a) RETURN MAX(i.a)",
         "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET a = IS_NUMBER(i), b = IS_NUMBER(i) RETURN [ a, b ]",
-        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET a = MAX(i) COLLECT x = a LET i = x.a, j = x.a RETURN [ i, j ]",
+        "FOR i IN [ " + collection + " ] LET a = MAX(i.a) COLLECT x = a LET i = x.a, j = x.a RETURN [ i, j ]",
         "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a, i.a RETURN i",
         "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET x = i.a SORT i.a RETURN x"
       ]
@@ -113,6 +131,16 @@ function optimizerRuleTestSuite () {
       queries.forEach(function(query) {
         var result = AQL_EXPLAIN(query, { }, paramEnabled);
         assertEqual([ ruleName ], result.plan.rules, query);
+        var allresults = getQueryMultiplePlansAndExecutions(query, {});
+        for (j = 1; j < allresults.results.length; j++) {
+            assertTrue(isEqual(allresults.results[0],
+                               allresults.results[j]),
+                       "whether the execution of '" + query +
+                       "' this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
+                       " Should be: '" + JSON.stringify(allresults.results[0]) +
+                       "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
+                      );
+        }
       });
     },
 
@@ -121,6 +149,7 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testPlans : function () {
+      var i;
       var query = "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET x = i.a RETURN i.a";
       var actual = AQL_EXPLAIN(query, null, paramEnabled);
       var nodes = helper.getLinearizedPlan(actual).reverse(), node;
@@ -140,6 +169,16 @@ function optimizerRuleTestSuite () {
       
       node = nodes[3];
       assertEqual("EnumerateListNode", node.type);
+      var allresults = getQueryMultiplePlansAndExecutions(query, {});
+      for (j = 1; j < allresults.results.length; j++) {
+        assertTrue(isEqual(allresults.results[0],
+                           allresults.results[j]),
+                   "whether the execution of '" + query +
+                   "' this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
+                   " Should be: '" + JSON.stringify(allresults.results[0]) +
+                   "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
+                  );
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -172,6 +211,16 @@ function optimizerRuleTestSuite () {
 
         assertEqual(resultDisabled, query[1], query[0]);
         assertEqual(resultEnabled, query[1], query[0]);
+        var allresults = getQueryMultiplePlansAndExecutions(query[0], {});
+        for (j = 1; j < allresults.results.length; j++) {
+            assertTrue(isEqual(allresults.results[0],
+                               allresults.results[j]),
+                       "whether the execution of '" + query[0] +
+                       "' this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
+                       " Should be: '" + JSON.stringify(allresults.results[0]) +
+                       "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
+                      );
+        }
       });
     }
 

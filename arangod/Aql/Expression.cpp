@@ -134,10 +134,6 @@ AqlValue Expression::execute (AQL_TRANSACTION_V8* trx,
       catch (triagens::arango::Exception& ex) {
         ex.addToMessage("\nwhile evaluating expression");
         ex.addToMessage(_node->toInfoString(TRI_UNKNOWN_MEM_ZONE));
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-        ex.addToMessage("\n");
-        ex.addToMessage(toJson(TRI_UNKNOWN_MEM_ZONE, true).toString());
-#endif
         throw ex;
       }
     }
@@ -394,10 +390,17 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     AqlValue resultHigh = executeSimpleExpression(high, &myCollection, trx, docColls, argv, startPos, vars, regs);
 
     if (! resultLow.isNumber() || ! resultHigh.isNumber()) {
+      resultLow.destroy();
+      resultHigh.destroy();
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid data type for range");
     }
     
-    return AqlValue(resultLow.toNumber<int64_t>(), resultHigh.toNumber<int64_t>());
+    AqlValue res = AqlValue(resultLow.toNumber<int64_t>(), resultHigh.toNumber<int64_t>());
+
+    resultLow.destroy();
+    resultHigh.destroy();
+
+    return res;
   }
   
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unhandled type in simple expression");
