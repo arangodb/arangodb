@@ -105,7 +105,7 @@ function explainSuite () {
       assertTrue(Array.isArray(actual.plan.nodes));
       assertTrue(actual.plan.hasOwnProperty("rules"));
       assertTrue(Array.isArray(actual.plan.rules));
-      assertFalse(actual.plan.hasOwnProperty("estimatedCost"));
+      assertTrue(actual.plan.hasOwnProperty("estimatedCost"));
       
       actual.plan.nodes.forEach(function(node) {
         assertTrue(node.hasOwnProperty("type"));
