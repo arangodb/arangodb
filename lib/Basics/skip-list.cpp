@@ -30,6 +30,8 @@
 #include "Basics/random.h"
 #include "skip-list.h"
 
+using namespace triagens::basics;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         SKIP LIST
 // -----------------------------------------------------------------------------
@@ -39,10 +41,10 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Select a node height randomly
+/// @brief randomHeight, select a node height randomly
 ////////////////////////////////////////////////////////////////////////////////
 
-static int RandomHeight (void) {
+static int randomHeight (void) {
   int height = 1;
   int count;
   while (true) {   // will be left by return when the right height is found
@@ -60,37 +62,32 @@ static int RandomHeight (void) {
 /// random height is taken.
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_skiplist_node_t* SkipListAllocNode (TRI_skiplist_t* sl,
-                                               int height) {
-  TRI_skiplist_node_t* newNode;
-  newNode = static_cast<TRI_skiplist_node_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
-                                            sizeof(TRI_skiplist_node_t),
-                                            false));
-  if (nullptr == newNode) {
-    return newNode;
-  }
+SkipListNode* SkipList::allocNode (int height) {
+  SkipListNode* newNode = new SkipListNode();
 
-  newNode->doc = nullptr;
+  newNode->_doc = nullptr;
 
   if (0 == height) {
-    newNode->height = RandomHeight();
+    newNode->_height = randomHeight();
   }
   else {
-    newNode->height = height;
+    newNode->_height = height;
   }
 
-  newNode->next = (TRI_skiplist_node_t**)
-              TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
-                           sizeof(TRI_skiplist_node_t*) * newNode->height,
-                           true);
-  if (nullptr == newNode->next) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, newNode);
-    return nullptr;
+  try {
+    newNode->_next = new SkipListNode*[newNode->_height];
   }
-  newNode->prev = nullptr;
+  catch (...) {
+    delete newNode;
+    throw;
+  }
+  for (int i = 0; i < newNode->_height; i++) {
+    newNode->_next[i] = nullptr;
+  }
+  newNode->_prev = nullptr;
 
-  sl->_memoryUsed += sizeof(TRI_skiplist_node_t) +
-                     sizeof(TRI_skiplist_node_t*) * newNode->height;
+  _memoryUsed += sizeof(SkipListNode) +
+                 sizeof(SkipListNode*) * newNode->_height;
 
   return newNode;
 }
@@ -99,49 +96,47 @@ static TRI_skiplist_node_t* SkipListAllocNode (TRI_skiplist_t* sl,
 /// @brief Free function for a node.
 ////////////////////////////////////////////////////////////////////////////////
 
-static void SkipListFreeNode (TRI_skiplist_t* sl,
-                              TRI_skiplist_node_t* node) {
+void SkipList::freeNode (SkipListNode* node) {
   // update memory usage
-  sl->_memoryUsed -= sizeof(TRI_skiplist_node_t) +
-                     sizeof(TRI_skiplist_node_t*) * node->height;
-
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, node->next);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, node);
+  _memoryUsed -= sizeof(SkipListNode) +
+                 sizeof(SkipListNode*) * node->_height;
+  delete[] node->_next;
+  delete node;
 }
 
-//
-// The following function is the main search engine for our skiplists.
-// It is used in the insertion and removal functions. See below for
-// a tiny variation which is used in the right lookup function.
-// This function does the following:
-// The skiplist sl is searched for the largest document m that is less
-// than doc. It uses preorder comparison if cmp is TRI_CMP_PREORDER
-// and proper order comparison if cmp is TRI_CMP_TOTORDER. At the end,
-// (*pos)[0] points to the node containing m and *next points to the
-// node following (*pos)[0], or is nullptr if there is no such node. The
-// array *pos contains for each level lev in 0..sl->start->height-1
-// at (*pos)[lev] the pointer to the node that contains the largest
-// document that is less than doc amongst those nodes that have height >
-// lev.
-//
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookupLess
+/// The following function is the main search engine for our skiplists.
+/// It is used in the insertion and removal functions. See below for
+/// a tiny variation which is used in the right lookup function.
+/// This function does the following:
+/// The skiplist sl is searched for the largest document m that is less
+/// than doc. It uses preorder comparison if cmp is SKIPLIST_CMP_PREORDER
+/// and proper order comparison if cmp is SKIPLIST_CMP_TOTORDER. At the end,
+/// (*pos)[0] points to the node containing m and *next points to the
+/// node following (*pos)[0], or is nullptr if there is no such node. The
+/// array *pos contains for each level lev in 0.._start->_height-1
+/// at (*pos)[lev] the pointer to the node that contains the largest
+/// document that is less than doc amongst those nodes that have height >
+/// lev.
+////////////////////////////////////////////////////////////////////////////////
 
-static int LookupLess (TRI_skiplist_t *sl,
-                       void *doc,
-                       TRI_skiplist_node_t* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
-                       TRI_skiplist_node_t** next,
-                       TRI_cmp_type_e cmptype) {
+int SkipList::lookupLess (void* doc,
+                          SkipListNode* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
+                          SkipListNode** next,
+                          SkipListCmpType cmptype) const {
   int lev;
   int cmp = 0;  // just in case to avoid undefined values
-  TRI_skiplist_node_t *cur;
+  SkipListNode* cur;
 
-  cur = sl->start;
-  for (lev = sl->start->height-1; lev >= 0; lev--) {
+  cur = _start;
+  for (lev = _start->_height-1; lev >= 0; lev--) {
     while (true) {   // will be left by break
-      *next = cur->next[lev];
+      *next = cur->_next[lev];
       if (nullptr == *next) {
         break;
       }
-      cmp = sl->cmp_elm_elm(sl->cmpdata,(*next)->doc,doc,cmptype);
+      cmp = _cmp_elm_elm(_cmpdata,(*next)->_doc,doc,cmptype);
       if (cmp >= 0) {
         break;
       }
@@ -155,36 +150,36 @@ static int LookupLess (TRI_skiplist_t *sl,
   return cmp;
 }
 
-//
-// The following function is nearly as LookupScript above, but
-// finds the largest document m that is less than or equal to doc.
-// It uses preorder comparison if cmp is TRI_CMP_PREORDER
-// and proper order comparison if cmp is TRI_CMP_TOTORDER. At the end,
-// (*pos)[0] points to the node containing m and *next points to the
-// node following (*pos)[0], or is nullptr if there is no such node. The
-// array *pos contains for each level lev in 0..sl->start->height-1
-// at (*pos)[lev] the pointer to the node that contains the largest
-// document that is less than or equal to doc amongst those nodes
-// that have height > lev.
-//
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookupLessOrEq
+/// The following function is nearly as LookupScript above, but
+/// finds the largest document m that is less than or equal to doc.
+/// It uses preorder comparison if cmp is SKIPLIST_CMP_PREORDER
+/// and proper order comparison if cmp is SKIPLIST_CMP_TOTORDER. At the end,
+/// (*pos)[0] points to the node containing m and *next points to the
+/// node following (*pos)[0], or is nullptr if there is no such node. The
+/// array *pos contains for each level lev in 0.._start->_height-1
+/// at (*pos)[lev] the pointer to the node that contains the largest
+/// document that is less than or equal to doc amongst those nodes
+/// that have height > lev.
+////////////////////////////////////////////////////////////////////////////////
 
-static int LookupLessOrEq (TRI_skiplist_t *sl,
-                           void *doc,
-                           TRI_skiplist_node_t* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
-                           TRI_skiplist_node_t** next,
-                           TRI_cmp_type_e cmptype) {
+int SkipList::lookupLessOrEq (void* doc,
+                              SkipListNode* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
+                              SkipListNode** next,
+                              SkipListCmpType cmptype) const {
   int lev;
   int cmp = 0;  // just in case to avoid undefined values
-  TRI_skiplist_node_t *cur;
+  SkipListNode* cur;
 
-  cur = sl->start;
-  for (lev = sl->start->height-1; lev >= 0; lev--) {
+  cur = _start;
+  for (lev = _start->_height-1; lev >= 0; lev--) {
     while (true) {   // will be left by break
-      *next = cur->next[lev];
+      *next = cur->_next[lev];
       if (nullptr == *next) {
         break;
       }
-      cmp = sl->cmp_elm_elm(sl->cmpdata,(*next)->doc,doc,cmptype);
+      cmp = _cmp_elm_elm(_cmpdata,(*next)->_doc,doc,cmptype);
       if (cmp > 0) {
         break;
       }
@@ -198,29 +193,29 @@ static int LookupLessOrEq (TRI_skiplist_t *sl,
   return cmp;
 }
 
-//
-// We have two more very similar functions which look up documents if
-// only a key is given. This implies using the cmp_key_elm function
-// and using the preorder only. Otherwise, they behave identically
-// as the two previous ones.
-//
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookupKeyLess
+/// We have two more very similar functions which look up documents if
+/// only a key is given. This implies using the cmp_key_elm function
+/// and using the preorder only. Otherwise, they behave identically
+/// as the two previous ones.
+////////////////////////////////////////////////////////////////////////////////
 
-static int LookupKeyLess (TRI_skiplist_t *sl,
-                          void *key,
-                          TRI_skiplist_node_t* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
-                          TRI_skiplist_node_t** next) {
+int SkipList::lookupKeyLess (void* key,
+                             SkipListNode* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
+                             SkipListNode** next) const {
   int lev;
   int cmp = 0;  // just in case to avoid undefined values
-  TRI_skiplist_node_t *cur;
+  SkipListNode* cur;
 
-  cur = sl->start;
-  for (lev = sl->start->height-1; lev >= 0; lev--) {
+  cur = _start;
+  for (lev = _start->_height-1; lev >= 0; lev--) {
     while (true) {   // will be left by break
-      *next = cur->next[lev];
+      *next = cur->_next[lev];
       if (nullptr == *next) {
         break;
       }
-      cmp = sl->cmp_key_elm(sl->cmpdata,key,(*next)->doc);
+      cmp = _cmp_key_elm(_cmpdata,key,(*next)->_doc);
       if (cmp <= 0) {
         break;
       }
@@ -234,22 +229,25 @@ static int LookupKeyLess (TRI_skiplist_t *sl,
   return cmp;
 }
 
-static int LookupKeyLessOrEq (TRI_skiplist_t *sl,
-                        void *key,
-                        TRI_skiplist_node_t* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
-                        TRI_skiplist_node_t** next) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookupKeyLessOrEq
+////////////////////////////////////////////////////////////////////////////////
+
+int SkipList::lookupKeyLessOrEq (void* key,
+                                 SkipListNode* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
+                                 SkipListNode** next) const {
   int lev;
   int cmp = 0;  // just in case to avoid undefined values
-  TRI_skiplist_node_t *cur;
+  SkipListNode* cur;
 
-  cur = sl->start;
-  for (lev = sl->start->height-1; lev >= 0; lev--) {
+  cur = _start;
+  for (lev = _start->_height-1; lev >= 0; lev--) {
     while (true) {   // will be left by break
-      *next = cur->next[lev];
+      *next = cur->_next[lev];
       if (nullptr == *next) {
         break;
       }
-      cmp = sl->cmp_key_elm(sl->cmpdata,key,(*next)->doc);
+      cmp = _cmp_key_elm(_cmpdata,key,(*next)->_doc);
       if (cmp < 0) {
         break;
       }
@@ -275,99 +273,46 @@ static int LookupKeyLessOrEq (TRI_skiplist_t *sl,
 /// otherwise.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_skiplist_t* TRI_InitSkipList (TRI_skiplist_cmp_elm_elm_t cmp_elm_elm,
-                                  TRI_skiplist_cmp_key_elm_t cmp_key_elm,
-                                  void *cmpdata,
-                                  TRI_skiplist_free_func_t freefunc,
-                                  bool unique) {
-  TRI_skiplist_t* sl;
-
-  sl = (TRI_skiplist_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
-                                      sizeof(TRI_skiplist_t), false);
-  if (nullptr == sl) {
-    return nullptr;
-  }
-
+SkipList::SkipList (SkipListCmpElmElm cmp_elm_elm,
+                    SkipListCmpKeyElm cmp_key_elm,
+                    void* cmpdata,
+                    SkipListFreeFunc freefunc,
+                    bool unique) 
+    : _cmp_elm_elm(cmp_elm_elm), _cmp_key_elm(cmp_key_elm), _cmpdata(cmpdata),
+      _free(freefunc), _unique(unique), _nrUsed(0) {
+  
   // set initial memory usage
-  sl->_memoryUsed = sizeof(TRI_skiplist_t);
+  _memoryUsed = sizeof(SkipList);
 
-  sl->start = SkipListAllocNode(sl, TRI_SKIPLIST_MAX_HEIGHT);
-  if (nullptr == sl->start) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE,sl);
-    return nullptr;
-  }
+  _start = allocNode(TRI_SKIPLIST_MAX_HEIGHT);
+    // Note that this can throw
+  _end = _start;
 
-  sl->end = SkipListAllocNode(sl, 1);
-
-  if (nullptr == sl->end) {
-    SkipListFreeNnode(sl, sl->start);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, sl);
-    return nullptr;
-  }
-
-  sl->start->height = 1;
-  sl->start->next[0] = sl->end;
-  sl->start->prev = nullptr;
-
-  sl->end->height = 1;
-  sl->end->next[0] = nullptr;
-  sl->end->prev = start;
-
-  sl->cmp_elm_elm = cmp_elm_elm;
-  sl->cmp_key_elm = cmp_key_elm;
-  sl->cmpdata = cmpdata;
-  sl->free = freefunc;
-  sl->unique = unique;
-  sl->nrUsed = 0;
-
-  return sl;
+  _start->_height = 1;
+  _start->_next[0] = nullptr;
+  _start->_prev = nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees a skiplist and all its documents
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeSkipList (TRI_skiplist_t* sl) {
-  TRI_skiplist_node_t* p;
-  TRI_skiplist_node_t* next;
+SkipList::~SkipList () {
+  SkipListNode* p;
+  SkipListNode* next;
 
   // First call free for all documents and free all nodes other than start:
-  p = sl->start->next[0];
+  p = _start->_next[0];
   while (nullptr != p) {
-    if (nullptr != sl->free) {
-      sl->free(p->doc);
+    if (nullptr != _free) {
+      _free(p->_doc);
     }
-    next = p->next[0];
-    SkipListFreeNode(sl, p);
+    next = p->_next[0];
+    freeNode(p);
     p = next;
   }
 
-  SkipListFreeNode(sl, sl->start);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE,sl);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the start node
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_skiplist_node_t* TRI_SkipListStartNode (TRI_skiplist_t* sl) {
-  return sl->start;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the end node
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_skiplist_node_t* TRI_SkipListEndNode (TRI_skiplist_t* sl) {
-  return sl->end;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the successor node or sl->end if last node
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_skiplist_node_t* TRI_SkipListNextNode (TRI_skiplist_node_t* node) {
-  return node->next[0];
+  freeNode(_start);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -383,14 +328,14 @@ TRI_skiplist_node_t* TRI_SkipListNextNode (TRI_skiplist_node_t* node) {
 /// total order. In the latter two cases nothing is inserted.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SkipListInsert (TRI_skiplist_t *sl, void *doc) {
+int SkipList::insert (void* doc) {
   int lev;
-  TRI_skiplist_node_t* pos[TRI_SKIPLIST_MAX_HEIGHT];
-  TRI_skiplist_node_t* next = nullptr;  // to please the compiler
-  TRI_skiplist_node_t* newNode;
+  SkipListNode* pos[TRI_SKIPLIST_MAX_HEIGHT];
+  SkipListNode* next = nullptr;  // to please the compiler
+  SkipListNode* newNode;
   int cmp;
 
-  cmp = LookupLess(sl,doc,&pos,&next,TRI_CMP_TOTORDER);
+  cmp = lookupLess(doc,&pos,&next,SKIPLIST_CMP_TOTORDER);
   // Now pos[0] points to the largest node whose document is less than
   // doc. next is the next node and can be nullptr if there is none. doc is
   // in the skiplist iff next != nullptr and cmp == 0 and in this case it
@@ -401,42 +346,54 @@ int TRI_SkipListInsert (TRI_skiplist_t *sl, void *doc) {
   }
 
   // Uniqueness test if wanted:
-  if (sl->unique) {
-    if ((pos[0] != sl->start &&
-         0 == sl->cmp_elm_elm(sl->cmpdata,doc,pos[0]->doc,TRI_CMP_PREORDER)) ||
+  if (_unique) {
+    if ((pos[0] != _start &&
+         0 == _cmp_elm_elm(_cmpdata,doc,pos[0]->_doc,SKIPLIST_CMP_PREORDER)) ||
         (nullptr != next &&
-         0 == sl->cmp_elm_elm(sl->cmpdata,doc,next->doc,TRI_CMP_PREORDER))) {
+         0 == _cmp_elm_elm(_cmpdata,doc,next->_doc,SKIPLIST_CMP_PREORDER))) {
       return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
     }
   }
 
-  newNode = SkipListAllocNode(sl, 0);
-
-  if (nullptr == newNode) {
+  try {
+    newNode = allocNode(0);
+  }
+  catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  if (newNode->height > sl->start->height) {
+  if (newNode->_height > _start->_height) {
     // The new levels where not considered in the above search,
     // therefore pos is not set on these levels.
-    for (lev = sl->start->height; lev < newNode->height; lev++) {
-      pos[lev] = sl->start;
+    for (lev = _start->_height; lev < newNode->_height; lev++) {
+      pos[lev] = _start;
     }
-    // Note that sl->start is already initialised with nullptr to the top!
-    sl->start->height = newNode->height;
+    // Note that _start is already initialised with nullptr to the top!
+    _start->_height = newNode->_height;
   }
 
-  newNode->doc = doc;
+  newNode->_doc = doc;
 
   // Now insert between newNode and next:
-  for (lev = 0; lev < newNode->height; lev++) {
-    // Note the order from bottom to top. The element is inserted as soon
-    // as it is inserted at level 0, the rest is performance optimisation.
-    newNode->next[lev] = pos[lev]->next[lev];
-    pos[lev]->next[lev] = newNode;
+  newNode->_next[0] = pos[0]->_next[0];
+  pos[0]->_next[0] = newNode;
+  newNode->_prev = pos[0]->_next[0];
+  if (newNode->_next[0] == nullptr) {
+    // a new last node
+    _end = newNode;
+  }
+  else {
+    newNode->_next[0]->_prev = newNode;
   }
 
-  sl->nrUsed++;
+  // Now the element is successfully inserted, the rest is performance
+  // optimisation:
+  for (lev = 1; lev < newNode->_height; lev++) {
+    newNode->_next[lev] = pos[lev]->_next[lev];
+    pos[lev]->_next[lev] = newNode;
+  }
+
+  _nrUsed++;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -450,13 +407,13 @@ int TRI_SkipListInsert (TRI_skiplist_t *sl, void *doc) {
 /// In the latter two cases nothing is removed.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SkipListRemove (TRI_skiplist_t *sl, void *doc) {
+int SkipList::remove (void* doc) {
   int lev;
-  TRI_skiplist_node_t* pos[TRI_SKIPLIST_MAX_HEIGHT];
-  TRI_skiplist_node_t* next = nullptr;  // to please the compiler
+  SkipListNode* pos[TRI_SKIPLIST_MAX_HEIGHT];
+  SkipListNode* next = nullptr;  // to please the compiler
   int cmp;
 
-  cmp = LookupLess(sl,doc,&pos,&next,TRI_CMP_TOTORDER);
+  cmp = lookupLess(doc,&pos,&next,SKIPLIST_CMP_TOTORDER);
   // Now pos[0] points to the largest node whose document is less than
   // doc. next points to the next node and can be nullptr if there is none.
   // doc is in the skiplist iff next != nullptr and cmp == 0 and in this
@@ -466,40 +423,31 @@ int TRI_SkipListRemove (TRI_skiplist_t *sl, void *doc) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
   }
 
-  if (nullptr != sl->free) {
-    sl->free(next->doc);
+  if (nullptr != _free) {
+    _free(next->_doc);
   }
 
   // Now delete where next points to:
-  for (lev = next->height-1; lev >= 0; lev--) {
-      // Note the order from top to bottom. The element remains in the
-      // skiplist as long as we are at a level > 0, only some optimisations
-      // in performance vanish before that. Only when we have removed it at
-      // level 0, it is really gone.
-      pos[lev]->next[lev] = next->next[lev];
+  for (lev = next->_height-1; lev > 0; lev--) {
+    // Note the order from top to bottom. The element remains in the
+    // skiplist as long as we are at a level > 0, only some optimisations
+    // in performance vanish before that. Only when we have removed it at
+    // level 0, it is really gone.
+    pos[lev]->_next[lev] = next->_next[lev];
+  }
+  if (next->_next[0] == nullptr) {
+    // We were the last, so adjust _end
+    _end = next->_prev;
+  }
+  else {
+    next->_next[0]->_prev = next->_prev;
   }
 
-  SkipListFreeNode(sl, next);
+  freeNode(next);
 
-  sl->nrUsed--;
+  _nrUsed--;
 
   return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the number of entries in the skiplist.
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t TRI_SkipListGetNrUsed (TRI_skiplist_t const* sl) {
-  return sl->nrUsed;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the memory used by the index
-////////////////////////////////////////////////////////////////////////////////
-
-size_t TRI_SkipListMemoryUsage (TRI_skiplist_t const* sl) {
-  return sl->_memoryUsed;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -510,12 +458,12 @@ size_t TRI_SkipListMemoryUsage (TRI_skiplist_t const* sl) {
 /// if doc is not in the skiplist.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_skiplist_node_t* TRI_SkipListLookup (TRI_skiplist_t *sl, void *doc) {
-  TRI_skiplist_node_t* pos[TRI_SKIPLIST_MAX_HEIGHT];
-  TRI_skiplist_node_t* next = nullptr; // to please the compiler
+SkipListNode* SkipList::lookup (void* doc) const {
+  SkipListNode* pos[TRI_SKIPLIST_MAX_HEIGHT];
+  SkipListNode* next = nullptr; // to please the compiler
   int cmp;
 
-  cmp = LookupLess(sl,doc,&pos,&next,TRI_CMP_TOTORDER);
+  cmp = lookupLess(doc,&pos,&next,SKIPLIST_CMP_TOTORDER);
   // Now pos[0] points to the largest node whose document is less than
   // doc. next points to the next node and can be nullptr if there is none.
   // doc is in the skiplist iff next != nullptr and cmp == 0 and in this
@@ -533,11 +481,11 @@ TRI_skiplist_node_t* TRI_SkipListLookup (TRI_skiplist_t *sl, void *doc) {
 /// Only comparisons using the preorder are done.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_skiplist_node_t* TRI_SkipListLeftLookup (TRI_skiplist_t *sl, void *doc) {
-  TRI_skiplist_node_t* pos[TRI_SKIPLIST_MAX_HEIGHT];
-  TRI_skiplist_node_t* next;
+SkipListNode* SkipList::leftLookup (void* doc) const {
+  SkipListNode* pos[TRI_SKIPLIST_MAX_HEIGHT];
+  SkipListNode* next;
 
-  LookupLess(sl,doc,&pos,&next,TRI_CMP_PREORDER);
+  lookupLess(doc,&pos,&next,SKIPLIST_CMP_PREORDER);
   // Now pos[0] points to the largest node whose document is less than
   // doc in the preorder. next points to the next node and can be nullptr
   // if there is none. doc is in the skiplist iff next != nullptr and cmp
@@ -552,11 +500,11 @@ TRI_skiplist_node_t* TRI_SkipListLeftLookup (TRI_skiplist_t *sl, void *doc) {
 /// Only comparisons using the preorder are done.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_skiplist_node_t* TRI_SkipListRightLookup (TRI_skiplist_t *sl, void *doc) {
-  TRI_skiplist_node_t* pos[TRI_SKIPLIST_MAX_HEIGHT];
-  TRI_skiplist_node_t* next;
+SkipListNode* SkipList::rightLookup (void* doc) const {
+  SkipListNode* pos[TRI_SKIPLIST_MAX_HEIGHT];
+  SkipListNode* next;
 
-  LookupLessOrEq(sl,doc,&pos,&next,TRI_CMP_PREORDER);
+  lookupLessOrEq(doc,&pos,&next,SKIPLIST_CMP_PREORDER);
   // Now pos[0] points to the largest node whose document is less than
   // or equal to doc in the preorder. next points to the next node and
   // can be nullptr if there is none. doc is in the skiplist iff next !=
@@ -571,11 +519,11 @@ TRI_skiplist_node_t* TRI_SkipListRightLookup (TRI_skiplist_t *sl, void *doc) {
 /// Only comparisons using the preorder are done using cmp_key_elm.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_skiplist_node_t* TRI_SkipListLeftKeyLookup (TRI_skiplist_t *sl, void *key) {
-  TRI_skiplist_node_t* pos[TRI_SKIPLIST_MAX_HEIGHT];
-  TRI_skiplist_node_t* next;
+SkipListNode* SkipList::leftKeyLookup (void* key) const {
+  SkipListNode* pos[TRI_SKIPLIST_MAX_HEIGHT];
+  SkipListNode* next;
 
-  LookupKeyLess(sl,key,&pos,&next);
+  lookupKeyLess(key,&pos,&next);
   // Now pos[0] points to the largest node whose document is less than
   // key in the preorder. next points to the next node and can be nullptr
   // if there is none. doc is in the skiplist iff next != nullptr and cmp
@@ -590,12 +538,11 @@ TRI_skiplist_node_t* TRI_SkipListLeftKeyLookup (TRI_skiplist_t *sl, void *key) {
 /// Only comparisons using the preorder are done using cmp_key_elm.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_skiplist_node_t* TRI_SkipListRightKeyLookup (TRI_skiplist_t *sl,
-                                                 void *key) {
-  TRI_skiplist_node_t* pos[TRI_SKIPLIST_MAX_HEIGHT];
-  TRI_skiplist_node_t* next;
+SkipListNode* SkipList::rightKeyLookup (void* key) const {
+  SkipListNode* pos[TRI_SKIPLIST_MAX_HEIGHT];
+  SkipListNode* next;
 
-  LookupKeyLessOrEq(sl,key,&pos,&next);
+  lookupKeyLessOrEq(key,&pos,&next);
   // Now pos[0] points to the largest node whose document is less than
   // or equal to key in the preorder. next points to the next node and
   // can be nullptr if there is none. doc is in the skiplist iff next !=
