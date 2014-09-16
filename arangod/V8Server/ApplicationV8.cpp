@@ -223,10 +223,18 @@ void ApplicationV8::V8Context::handleGlobalContextMethods () {
     bool allowUseDatabase = v8g->_allowUseDatabase;
     v8g->_allowUseDatabase = true;
 
+    v8::TryCatch tryCatch;
+
     TRI_ExecuteJavaScriptString(_context,
                                 v8::String::New(func.c_str(), (int) func.size()),
                                 v8::String::New("global context method"),
                                 false);
+
+    if (tryCatch.HasCaught()) {
+      if (tryCatch.CanContinue()) {
+        TRI_LogV8Exception(&tryCatch);
+      }
+    }
 
     v8g->_allowUseDatabase = allowUseDatabase;
   }
