@@ -388,7 +388,8 @@ void TRI_FreeEdgeIndex (TRI_index_t*);
 // -----------------------------------------------------------------------------
 
 TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t*,
-                                                  TRI_index_operator_t*);
+                                                  TRI_index_operator_t*,
+                                                  bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a skiplist index

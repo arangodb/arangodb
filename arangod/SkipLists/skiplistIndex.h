@@ -98,10 +98,11 @@ typedef struct TRI_skiplist_iterator_s {
                  // if there are no intervals (yet), in any case, if
                  // _cursor is NULL, then there are (currently) no more
                  // documents in the iterator.
-  bool  (*_hasNext) (struct TRI_skiplist_iterator_s*);
-  TRI_skiplist_index_element_t* (*_next)(struct TRI_skiplist_iterator_s*);
-  TRI_skiplist_index_element_t* (*_nexts)(struct TRI_skiplist_iterator_s*,
-                                          int64_t jumpSize);
+  bool  (*hasNext) (struct TRI_skiplist_iterator_s const*);
+  TRI_skiplist_index_element_t* (*next)(struct TRI_skiplist_iterator_s*);
+
+  // TODO: currently not used. remove?
+  // TRI_skiplist_index_element_t* (*nexts)(struct TRI_skiplist_iterator_s*, int64_t jumpSize);
 }
 TRI_skiplist_iterator_t;
 
@@ -138,8 +139,10 @@ int SkiplistIndex_assignMethod (void*, TRI_index_method_assignment_type_e);
 SkiplistIndex* SkiplistIndex_new (struct TRI_document_collection_t*,
                                   size_t, bool);
 
-TRI_skiplist_iterator_t* SkiplistIndex_find (SkiplistIndex*, TRI_vector_t*,
-                                             TRI_index_operator_t*);
+TRI_skiplist_iterator_t* SkiplistIndex_find (SkiplistIndex*, 
+                                             TRI_vector_t*,
+                                             TRI_index_operator_t*,
+                                             bool);
 
 int SkiplistIndex_insert (SkiplistIndex*, TRI_skiplist_index_element_t*);
 

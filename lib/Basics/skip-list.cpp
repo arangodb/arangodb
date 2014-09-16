@@ -377,7 +377,7 @@ int SkipList::insert (void* doc) {
   // Now insert between newNode and next:
   newNode->_next[0] = pos[0]->_next[0];
   pos[0]->_next[0] = newNode;
-  newNode->_prev = pos[0]->_next[0];
+  newNode->_prev = pos[0];
   if (newNode->_next[0] == nullptr) {
     // a new last node
     _end = newNode;

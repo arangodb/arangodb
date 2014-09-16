@@ -1512,7 +1512,8 @@ void IndexRangeBlock::readSkiplistIndex (IndexOrCondition const& ranges) {
     }
   }
 
-  TRI_skiplist_iterator_t* skiplistIterator = TRI_LookupSkiplistIndex(idx, skiplistOperator);
+  bool reverse = false; // TODO: currently only forward iteration supported. FIXME
+  TRI_skiplist_iterator_t* skiplistIterator = TRI_LookupSkiplistIndex(idx, skiplistOperator, reverse);
   //skiplistOperator is deleted by the prev line 
   
   if (skiplistIterator == nullptr) {
@@ -1526,7 +1527,7 @@ void IndexRangeBlock::readSkiplistIndex (IndexOrCondition const& ranges) {
 
   try {
     while (true) { 
-      TRI_skiplist_index_element_t* indexElement = skiplistIterator->_next(skiplistIterator);
+      TRI_skiplist_index_element_t* indexElement = skiplistIterator->next(skiplistIterator);
 
       if (indexElement == nullptr) {
         break;
