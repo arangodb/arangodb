@@ -755,7 +755,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           std::unordered_map<std::string, RangeInfo>* map
               = _ranges->find(var->name);        
               // check if we have any ranges with this var
-          
+
           if (map != nullptr) {
             // Remove all variable bounds that are no longer defined here:
             std::unordered_set<Variable const*> varsDefined 
@@ -814,7 +814,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
               worker(x.second._highs);
             }
             // Now remove empty conditions:
-            for (auto it = map->begin(); it != map->end(); ) {
+            for (auto it = map->begin(); it != map->end(); /* no hoisting */ ) {
               if (it->second._lows.empty() &&
                   it->second._highs.empty() &&
                   ! it->second._lowConst.isDefined() &&
@@ -833,15 +833,14 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
 
             for(auto x: *map) {
               valid &= x.second.isValid(); 
-              if (!valid) {
+              if (! valid) {
                 break;
               }
               attrs.insert(x.first);
             }
-
+               
             if (! _canThrow) {
               if (! valid) { // ranges are not valid . . . 
-                
                 auto newPlan = _plan->clone();
                 try {
                   auto parents = newPlan->getNodeById(node->id())->getParents();
@@ -878,7 +877,8 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                   // followed by a single <, >, >=, or <= if a skip index in the
                   // order of the fields of the index.
                   auto idx = idxs.at(i);
-
+                  TRI_ASSERT(idx != nullptr);
+               
                   if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX) {
                     bool handled = false;
                     auto range = map->find(std::string(TRI_VOC_ATTRIBUTE_ID));
@@ -947,6 +947,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                   else if (idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
                     size_t j = 0;
                     auto range = map->find(std::string(idx->_fields._buffer[0]));
+                    TRI_ASSERT(range != map->end());
                     rangeInfo.at(0).push_back(range->second);
                     bool equality = range->second.is1ValueRangeInfo();
                     while (++j < prefixes.at(i) && equality) {
@@ -958,6 +959,10 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                   
                   if (! rangeInfo.at(0).empty()) {
                     auto newPlan = _plan->clone();
+                    if (newPlan == nullptr) {
+                      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+                    }
+
                     try {
                       ExecutionNode* newNode = new IndexRangeNode(newPlan, newPlan->nextId(), node->vocbase(), 
                         node->collection(), node->outVariable(), idx, rangeInfo);
@@ -1008,15 +1013,8 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           buildRangeInfo(rhs, enumCollVar, attr);
           if (! enumCollVar.empty()) {
             // Found a multiple attribute access of a variable
-#ifdef DISABLE_VARIABLE_BOUNDS
-            if (lhs->type == NODE_TYPE_VALUE) {
-#endif
-              _ranges->insert(enumCollVar, attr.substr(0, attr.size() - 1), 
-                              RangeInfoBound(lhs, true), RangeInfoBound(lhs, true), true);
-#ifdef DISABLE_VARIABLE_BOUNDS
-            }
-
-#endif
+            _ranges->insert(enumCollVar, attr.substr(0, attr.size() - 1), 
+                            RangeInfoBound(lhs, true), RangeInfoBound(lhs, true), true);
           }
         }
           
@@ -1027,27 +1025,22 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           buildRangeInfo(lhs, enumCollVar, attr);
           if (! enumCollVar.empty()) {
             // Found a multiple attribute access of a variable
-#ifdef DISABLE_VARIABLE_BOUNDS
-            if (rhs->type == NODE_TYPE_VALUE) {
-#endif
-              _ranges->insert(enumCollVar, attr.substr(0, attr.size() - 1), 
-                              RangeInfoBound(rhs, true), RangeInfoBound(rhs, true), true);
-#ifdef DISABLE_VARIABLE_BOUNDS
-            }
-#endif
+            _ranges->insert(enumCollVar, attr.substr(0, attr.size() - 1), 
+                            RangeInfoBound(rhs, true), RangeInfoBound(rhs, true), true);
           }
         }
         
         enumCollVar.clear();
         attr.clear();
+
         return;
       }
 
-      if(node->type == NODE_TYPE_OPERATOR_BINARY_LT || 
-         node->type == NODE_TYPE_OPERATOR_BINARY_GT ||
-         node->type == NODE_TYPE_OPERATOR_BINARY_LE ||
-         node->type == NODE_TYPE_OPERATOR_BINARY_GE) {
-        
+      if (node->type == NODE_TYPE_OPERATOR_BINARY_LT || 
+          node->type == NODE_TYPE_OPERATOR_BINARY_GT ||
+          node->type == NODE_TYPE_OPERATOR_BINARY_LE ||
+          node->type == NODE_TYPE_OPERATOR_BINARY_GE) {
+      
         bool include = (node->type == NODE_TYPE_OPERATOR_BINARY_LE ||
                         node->type == NODE_TYPE_OPERATOR_BINARY_GE);
         
@@ -1063,55 +1056,40 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           buildRangeInfo(rhs, enumCollVar, attr);
           if (! enumCollVar.empty()) {
             // Constant value on the left, so insert a constant condition:
-#ifdef DISABLE_VARIABLE_BOUNDS
-            if (lhs->type == NODE_TYPE_VALUE) {
-#endif
-              if (node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
-                  node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
-                high.assign(lhs, include);
-              } 
-              else {
-                low.assign(lhs, include);
-              }
-              _ranges->insert(enumCollVar, attr.substr(0, attr.size()-1), 
-                              low, high, false);
-#ifdef DISABLE_VARIABLE_BOUNDS
-            }
+            if (node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
+                node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
+              high.assign(lhs, include);
+            } 
             else {
-              enumCollVar.clear();
-              attr.clear();
+              low.assign(lhs, include);
             }
-#endif
+            _ranges->insert(enumCollVar, attr.substr(0, attr.size() - 1), 
+                            low, high, false);
           }
+          enumCollVar.clear();
+          attr.clear();
         }
-        else if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+
+        if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
           // Attribute access on the left:
           // First find out whether there is a multiple attribute access
           // of a variable on the left:
           buildRangeInfo(lhs, enumCollVar, attr);
           if (! enumCollVar.empty()) {
             // Constant value on the right, so insert a constant condition:
-#ifdef DISABLE_VARIABLE_BOUNDS
-            if (rhs->type == NODE_TYPE_VALUE) {
-#endif
-              if (node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
-                  node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
-                low.assign(rhs, include);
-              } 
-              else {
-                high.assign(rhs, include);
-              }
-              _ranges->insert(enumCollVar, attr.substr(0, attr.size()-1), 
-                              low, high, false);
-#ifdef DISABLE_VARIABLE_BOUNDS
-            }
+            if (node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
+                node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
+              low.assign(rhs, include);
+            } 
             else {
-              enumCollVar.clear();
-              attr.clear();
+              high.assign(rhs, include);
             }
-#endif
+            _ranges->insert(enumCollVar, attr.substr(0, attr.size() - 1), 
+                            low, high, false);
           }
         }
+
+        return;
       }
       
       if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
