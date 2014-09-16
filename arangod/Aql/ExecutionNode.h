@@ -1936,6 +1936,14 @@ namespace triagens {
         ModificationNode (ExecutionPlan*,
                           basics::Json const& json);
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief export to JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void toJsonHelper (triagens::basics::Json& json,
+                                   TRI_memory_zone_t* zone,
+                                   bool) const override;
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
 // -----------------------------------------------------------------------------
