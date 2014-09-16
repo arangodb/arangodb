@@ -210,8 +210,29 @@ void Query::registerError (int code,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an AQL query 
 ////////////////////////////////////////////////////////////////////////////////
+enum executionstate {
+  PARSING          = 0,
+  OPTIMIZING_AST   = 1,
+  OPTIMIZING       = 2,
+  DESERIALIZING    = 3,
+  EXECUTING        = 4,
+  NOSTATE          = 5
+};
+
+const std::string parseStates[] ={
+  "while parsing: ",
+  "while doing static optimisations: ",
+  "while optimizing: ",
+  "while deserializing JSON: ",
+  "while executing query: ",
+  ""
+};
+const std::string &getStateString(executionstate state) {
+  return parseStates[state];
+}
 
 QueryResult Query::execute () {
+  executionstate state = PARSING;
   try {
     ExecutionPlan* plan;
     Parser parser(this);
@@ -220,7 +241,9 @@ QueryResult Query::execute () {
       parser.parse();
       // put in bind parameters
       parser.ast()->injectBindParameters(_bindParameters);
+
       // optimize the ast
+      state = OPTIMIZING_AST;
       parser.ast()->optimize();
       // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE, false)) << "\n";
     }
@@ -239,10 +262,11 @@ QueryResult Query::execute () {
       plan = ExecutionPlan::instanciateFromAst(parser.ast());
       if (plan == nullptr) {
         // oops
-        return QueryResult(TRI_ERROR_INTERNAL);
+        return QueryResult(TRI_ERROR_INTERNAL, "failed to create query execution engine");
       }
     }
     else {
+      state = DESERIALIZING;
       ExecutionPlan::getCollectionsFromJson(parser.ast(), _queryJson);
 
       // creating the plan may have produced some collections
@@ -265,13 +289,15 @@ QueryResult Query::execute () {
       }
 
     }
-    
+
     // get enabled/disabled rules
     std::vector<std::string> rules(getRulesFromOptions());
 
     // Run the query optimiser:
     triagens::aql::Optimizer opt;
     opt.createPlans(plan, rules);  
+
+    state = EXECUTING;
 
     // Now plan and all derived plans belong to the optimizer
     plan = opt.stealBest(); // Now we own the best one again
@@ -334,16 +360,16 @@ QueryResult Query::execute () {
     return result;
   }
   catch (triagens::arango::Exception const& ex) {
-    return QueryResult(ex.code(), ex.message());
+    return QueryResult(ex.code(), getStateString(state) + ex.message());
   }
   catch (std::bad_alloc const&) {
-    return QueryResult(TRI_ERROR_OUT_OF_MEMORY, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+    return QueryResult(TRI_ERROR_OUT_OF_MEMORY, getStateString(state) + TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
   }
   catch (std::exception const& ex) {
-    return QueryResult(TRI_ERROR_INTERNAL, ex.what());
+    return QueryResult(TRI_ERROR_INTERNAL, getStateString(state) + ex.what());
   }
   catch (...) {
-    return QueryResult(TRI_ERROR_INTERNAL, TRI_errno_string(TRI_ERROR_INTERNAL));
+    return QueryResult(TRI_ERROR_INTERNAL, getStateString(state) + TRI_errno_string(TRI_ERROR_INTERNAL));
   }
 }
 
@@ -369,6 +395,7 @@ QueryResult Query::parse () {
 ////////////////////////////////////////////////////////////////////////////////
 
 QueryResult Query::explain () {
+  executionstate state = PARSING;
   try {
     ExecutionPlan* plan;
     Parser parser(this);
@@ -376,6 +403,8 @@ QueryResult Query::explain () {
     parser.parse();
     // put in bind parameters
     parser.ast()->injectBindParameters(_bindParameters);
+
+    state = OPTIMIZING_AST;
     // optimize the ast
     parser.ast()->optimize();
     // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE)) << "\n";
@@ -433,16 +462,16 @@ QueryResult Query::explain () {
     return result;
   }
   catch (triagens::arango::Exception const& ex) {
-    return QueryResult(ex.code(), ex.message());
+    return QueryResult(ex.code(), getStateString(state) + ex.message());
   }
   catch (std::bad_alloc const&) {
-    return QueryResult(TRI_ERROR_OUT_OF_MEMORY, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+    return QueryResult(TRI_ERROR_OUT_OF_MEMORY, getStateString(state) + TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
   }
   catch (std::exception const& ex) {
-    return QueryResult(TRI_ERROR_INTERNAL, ex.what());
+    return QueryResult(TRI_ERROR_INTERNAL, getStateString(state) + ex.what());
   }
   catch (...) {
-    return QueryResult(TRI_ERROR_INTERNAL, TRI_errno_string(TRI_ERROR_INTERNAL));
+    return QueryResult(TRI_ERROR_INTERNAL, getStateString(state) + TRI_errno_string(TRI_ERROR_INTERNAL));
   }
 }
 
