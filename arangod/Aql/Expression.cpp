@@ -143,7 +143,8 @@ AqlValue Expression::execute (AQL_TRANSACTION_V8* trx,
     }
 
     case SIMPLE: {
-      return executeSimpleExpression(_node, nullptr, trx, docColls, argv, startPos, vars, regs);
+      TRI_document_collection_t const* myCollection = nullptr;
+      return executeSimpleExpression(_node, &myCollection, trx, docColls, argv, startPos, vars, regs);
     }
  
     case UNPROCESSED: {
@@ -393,10 +394,17 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     AqlValue resultHigh = executeSimpleExpression(high, &myCollection, trx, docColls, argv, startPos, vars, regs);
 
     if (! resultLow.isNumber() || ! resultHigh.isNumber()) {
+      resultLow.destroy();
+      resultHigh.destroy();
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid data type for range");
     }
     
-    return AqlValue(resultLow.toNumber<int64_t>(), resultHigh.toNumber<int64_t>());
+    AqlValue res = AqlValue(resultLow.toNumber<int64_t>(), resultHigh.toNumber<int64_t>());
+
+    resultLow.destroy();
+    resultHigh.destroy();
+
+    return res;
   }
   
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unhandled type in simple expression");
