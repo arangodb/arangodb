@@ -356,24 +356,28 @@ static TRI_skiplist_index_element_t* SkiplistIterationPrev (
   // use the current cursor and move jumpSize backward
   // ...........................................................................
 
+  triagens::basics::SkipListNode* result = nullptr; 
+
   for (int64_t j = 0; j < jumpSize; ++j) {
     while (true) {   // will be left by break
+      if (iterator->_cursor == interval->_leftEndPoint) {
+        if (iterator->_currentInterval == 0) {
+          iterator->_cursor = nullptr;  // exhausted
+          return nullptr;
+        }
+        --iterator->_currentInterval;
+        interval = GetInterval(iterator);
+        iterator->_cursor = interval->_rightEndPoint;
+      }
+
+      result = iterator->_cursor;
       iterator->_cursor = iterator->_cursor->prevNode();
-      if (iterator->_cursor != interval->_leftEndPoint) {
-        // Note that _cursor can be NULL here!
-        break;   // we found a prev one
-      }
-      if (iterator->_currentInterval == 0) {
-        iterator->_cursor = nullptr;  // exhausted
-        return nullptr;
-      }
-      --iterator->_currentInterval;
-      interval = GetInterval(iterator);
-      iterator->_cursor = interval->_rightEndPoint;
+      break;   // we found a prev one
     }
   }
 
-  return static_cast<TRI_skiplist_index_element_t*>(iterator->_cursor->document());
+  TRI_ASSERT(result != nullptr);
+  return static_cast<TRI_skiplist_index_element_t*>(result->document()); //iterator->_cursor->document());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -806,7 +810,11 @@ static void SkiplistIndex_findHelper (SkiplistIndex* skiplistIndex,
     case TRI_GE_INDEX_OPERATOR: {
       temp = skiplistIndex->skiplist->leftKeyLookup(&values);
       interval._leftEndPoint = temp;
+#ifdef CIRCUS_IS_IN_TOWN
+      interval._rightEndPoint = skiplistIndex->skiplist->endNode();
+#else
       interval._rightEndPoint = nullptr;
+#endif
 
       if (skiplistIndex_findHelperIntervalValid(skiplistIndex,&interval)) {
         TRI_PushBackVector(resultIntervalList, &interval);
@@ -817,7 +825,11 @@ static void SkiplistIndex_findHelper (SkiplistIndex* skiplistIndex,
     case TRI_GT_INDEX_OPERATOR: {
       temp = skiplistIndex->skiplist->rightKeyLookup(&values);
       interval._leftEndPoint = temp;
+#ifdef CIRCUS_IS_IN_TOWN
+      interval._rightEndPoint = skiplistIndex->skiplist->endNode();
+#else
       interval._rightEndPoint = nullptr;
+#endif
 
       if (skiplistIndex_findHelperIntervalValid(skiplistIndex,&interval)) {
         TRI_PushBackVector(resultIntervalList, &interval);

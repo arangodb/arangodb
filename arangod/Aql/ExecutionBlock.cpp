@@ -1300,7 +1300,7 @@ void IndexRangeBlock::readPrimaryIndex (IndexOrCondition const& ranges) {
 
 void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
-  TRI_index_t* idx = en->_index;
+  TRI_index_t* idx = const_cast<TRI_index_t*>(en->_index);
   TRI_ASSERT(idx != nullptr);
   TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
              
@@ -1451,7 +1451,7 @@ void IndexRangeBlock::readEdgeIndex (IndexOrCondition const& ranges) {
 
 void IndexRangeBlock::readSkiplistIndex (IndexOrCondition const& ranges) {
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
-  TRI_index_t* idx = en->_index;
+  TRI_index_t* idx = const_cast<TRI_index_t*>(en->_index);
   TRI_ASSERT(idx != nullptr);
   
   TRI_shaper_t* shaper = _collection->documentCollection()->getShaper(); 
@@ -1461,7 +1461,7 @@ void IndexRangeBlock::readSkiplistIndex (IndexOrCondition const& ranges) {
 
   Json parameters(Json::List); 
   size_t i = 0;
-  for (;i < ranges.at(0).size(); i++) {
+  for (; i < ranges.at(0).size(); i++) {
     // ranges.at(0) corresponds to a prefix of idx->_fields . . .
     // TODO only doing case with a single OR (i.e. ranges.size()==1 at the
     // moment ...
@@ -1512,8 +1512,7 @@ void IndexRangeBlock::readSkiplistIndex (IndexOrCondition const& ranges) {
     }
   }
 
-  bool reverse = false; // TODO: currently only forward iteration supported. FIXME
-  TRI_skiplist_iterator_t* skiplistIterator = TRI_LookupSkiplistIndex(idx, skiplistOperator, reverse);
+  TRI_skiplist_iterator_t* skiplistIterator = TRI_LookupSkiplistIndex(idx, skiplistOperator, en->_reverse);
   //skiplistOperator is deleted by the prev line 
   
   if (skiplistIterator == nullptr) {

@@ -196,12 +196,12 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inspect one index; only skiplist indices which match attrs in sequence.
-/// @returns a a qualification how good they match;
+/// returns a a qualification how good they match;
 ///      match->index==nullptr means no match at all.
 ////////////////////////////////////////////////////////////////////////////////
 
         enum MatchType {
-          FULL_MATCH,
+          FORWARD_MATCH,
           REVERSE_MATCH,
           NOT_COVERED_IDX,
           NOT_COVERED_ATTR,
@@ -209,16 +209,22 @@ namespace triagens {
         };
 
         struct IndexMatch {
-          TRI_index_t* index;     // The index concerned; if null, this is a nonmatch.
-          vector<MatchType> Match;// qualification of the attrs match quality
-          bool fullmatch;         // do all critereons match
+          IndexMatch () 
+            : index(nullptr),
+              doesMatch(false),
+              reverse(false) {
+          }
+
+          TRI_index_t const* index;        // The index concerned; if null, this is a nonmatch.
+          std::vector<MatchType> matches;  // qualification of the attrs match quality
+          bool doesMatch;                  // do all criteria match?
+          bool reverse;                    // reverse index scan required
         };
 
         typedef std::vector<std::pair<std::string, bool>> IndexMatchVec;
 
-        static IndexMatch CompareIndex (TRI_index_t* idx,
-                                        IndexMatchVec &attrs);
-
+        static IndexMatch CompareIndex (TRI_index_t const* idx,
+                                        IndexMatchVec const& attrs);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replace a dependency, returns true if the pointer was found and 
@@ -738,7 +744,7 @@ namespace triagens {
 ///    the specified indexes.
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<IndexMatch> getIndicesOrdered (IndexMatchVec &attrs) const;
+        std::vector<IndexMatch> getIndicesOrdered (IndexMatchVec const& attrs) const;
 
         TRI_vocbase_t* vocbase () const {
           return _vocbase;
@@ -910,27 +916,20 @@ namespace triagens {
                         TRI_vocbase_t* vocbase, 
                         Collection* collection,
                         Variable const* outVariable,
-                        TRI_index_t* index, 
-                        std::vector<std::vector<RangeInfo>> const ranges)
+                        TRI_index_t const* index, 
+                        std::vector<std::vector<RangeInfo>> const& ranges,
+                        bool reverse)
           : ExecutionNode(plan, id), 
             _vocbase(vocbase), 
             _collection(collection),
             _outVariable(outVariable),
             _index(index),
-            _ranges(ranges) {
+            _ranges(ranges),
+            _reverse(reverse) {
           TRI_ASSERT(_vocbase != nullptr);
           TRI_ASSERT(_collection != nullptr);
           TRI_ASSERT(_outVariable != nullptr);
           TRI_ASSERT(_index != nullptr);
-          /*
-          std::cout << "Hallole" << std::endl;
-          for (auto x : ranges) {
-            std::cout << "Or Entry:" << std::endl;
-            for (auto y : x) {
-              std::cout << y.toString() << std::endl;
-            }
-          }
-          */
         }
 
         IndexRangeNode (ExecutionPlan*, basics::Json const& base);
@@ -968,7 +967,7 @@ namespace triagens {
             }
           }
           auto c = new IndexRangeNode(plan, _id, _vocbase, _collection, 
-                                      _outVariable, _index, ranges);
+                                      _outVariable, _index, ranges, _reverse);
           cloneDependencies(plan, c);
           return static_cast<ExecutionNode*>(c);
         }
@@ -999,7 +998,15 @@ namespace triagens {
 /// @brief check whether the pattern matches this nodes index
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool MatchesIndex (IndexMatchVec pattern) const;
+        IndexMatch MatchesIndex (IndexMatchVec const& pattern) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a reverse index traversal is used
+////////////////////////////////////////////////////////////////////////////////
+
+        void reverse (bool value) {
+          _reverse = value;
+        }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -1029,13 +1036,19 @@ namespace triagens {
 /// @brief the index
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_index_t* _index;
+        TRI_index_t const* _index;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the range info
 ////////////////////////////////////////////////////////////////////////////////
         
         std::vector<std::vector<RangeInfo>> _ranges;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief use a reverse index scan
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _reverse;
     };
 
 // -----------------------------------------------------------------------------

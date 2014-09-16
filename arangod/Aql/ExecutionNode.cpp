@@ -255,40 +255,52 @@ void ExecutionNode::appendAsString (std::string& st, int indent) {
 /// @returns a a qualification how good they match;
 ///      match->index==nullptr means no match at all.
 ////////////////////////////////////////////////////////////////////////////////
-ExecutionNode::IndexMatch
-ExecutionNode::CompareIndex (TRI_index_t* idx,
-                             ExecutionNode::IndexMatchVec& attrs)
-{
-  IndexMatch match;
-  match.index = nullptr; // while null, this is a non-match.
 
-  if ((idx->_type != TRI_IDX_TYPE_SKIPLIST_INDEX) || (attrs.size() == 0)) {
-    match.fullmatch = false;
+ExecutionNode::IndexMatch ExecutionNode::CompareIndex (TRI_index_t const* idx,
+                                                       ExecutionNode::IndexMatchVec const& attrs) {
+  IndexMatch match;
+
+  if (idx->_type != TRI_IDX_TYPE_SKIPLIST_INDEX || 
+      attrs.empty()) {
     return match;
   }
 
-  match.fullmatch = idx->_fields._length >= attrs.size();
+  size_t const n = attrs.size();
+  match.doesMatch = (idx->_fields._length >= n);
 
   size_t interestingCount = 0;
+  size_t forwardCount = 0;
+  size_t backwardCount = 0;
   size_t j = 0;
 
-  for (;
-       ((j < idx->_fields._length) && (j < attrs.size()));
-       j++) {
-    if(std::string(idx->_fields._buffer[j]) == attrs[j].first) {
-      // index always is ASC.
+  for (; (j < idx->_fields._length && j < n); j++) {
+    if (std::string(idx->_fields._buffer[j]) == attrs[j].first) {
       if (attrs[j].second) {
-        match.Match.push_back(FULL_MATCH);
+        // ascending
+        match.matches.push_back(FORWARD_MATCH);
+        ++forwardCount;
+        if (backwardCount > 0) {
+          match.doesMatch = false;
+        }
       }
       else {
-        match.Match.push_back(REVERSE_MATCH);
-        match.fullmatch = false;
+        // descending
+        match.matches.push_back(REVERSE_MATCH);
+#ifdef CIRCUS_IS_IN_TOWN
+        ++backwardCount;
+        if (forwardCount > 0) {
+          match.doesMatch = false;
+        }
+#else
+        match.doesMatch = false;
+#endif
+        match.reverse = true;
       }
-      interestingCount ++;
+      ++interestingCount;
     }
     else {
-      match.Match.push_back(NO_MATCH);
-      match.fullmatch = false;
+      match.matches.push_back(NO_MATCH);
+      match.doesMatch = false;
     }
   }
 
@@ -297,14 +309,14 @@ ExecutionNode::CompareIndex (TRI_index_t* idx,
 
     if (j < idx->_fields._length) { // more index fields
       for (; j < idx->_fields._length; j++) {
-        match.Match.push_back(NOT_COVERED_IDX);
+        match.matches.push_back(NOT_COVERED_IDX);
       }
     }
     else if (j < attrs.size()) { // more sorts
       for (; j < attrs.size(); j++) {
-        match.Match.push_back(NOT_COVERED_ATTR);
+        match.matches.push_back(NOT_COVERED_ATTR);
       }
-      match.fullmatch = false;
+      match.doesMatch = false;
     }
   }
   return match;
@@ -574,7 +586,7 @@ void EnumerateCollectionNode::getIndexesForIndexRangeNode
 }
 
 std::vector<EnumerateCollectionNode::IndexMatch> 
-    EnumerateCollectionNode::getIndicesOrdered (IndexMatchVec &attrs) const {
+    EnumerateCollectionNode::getIndicesOrdered (IndexMatchVec const& attrs) const {
 
   std::vector<IndexMatch> out;
   TRI_document_collection_t* document = _collection->documentCollection();
@@ -672,6 +684,8 @@ void IndexRangeNode::toJsonHelper (triagens::basics::Json& nodes,
     TRI_FreeJson(TRI_CORE_MEM_ZONE, idxJson);
   }
 
+  json("reverse", triagens::basics::Json(_reverse));
+
   // And add it:
   nodes(json);
 }
@@ -687,7 +701,8 @@ IndexRangeNode::IndexRangeNode (ExecutionPlan* plan,
     _collection(plan->getAst()->query()->collections()->get(JsonHelper::checkAndGetStringValue(json.json(), 
             "collection"))),
     _outVariable(varFromJson(plan->getAst(), json, "outVariable")), 
-    _ranges() {
+    _ranges(),
+    _reverse(false) {
 
   triagens::basics::Json rangeListJson(TRI_UNKNOWN_MEM_ZONE, JsonHelper::checkAndGetListValue(json.json(), "ranges"));
   for (size_t i = 0; i < rangeListJson.size(); i++) { //loop over the ranges . . .
@@ -705,11 +720,11 @@ IndexRangeNode::IndexRangeNode (ExecutionPlan* plan,
   auto iid = JsonHelper::checkAndGetStringValue(index, "id");
 
   _index = TRI_LookupIndex(_collection->documentCollection(), basics::StringUtils::uint64(iid)); 
+  _reverse = JsonHelper::checkAndGetBooleanValue(json.json(), "reverse");
 }
 
-bool IndexRangeNode::MatchesIndex (IndexMatchVec pattern) const {
-  auto match = CompareIndex(_index, pattern);
-  return match.fullmatch;
+ExecutionNode::IndexMatch IndexRangeNode::MatchesIndex (IndexMatchVec const& pattern) const {
+  return CompareIndex(_index, pattern);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
