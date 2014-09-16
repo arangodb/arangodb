@@ -56,7 +56,7 @@ namespace triagens {
           nullMeansRemove(false) {
       }
 
-      triagens::basics::Json toJson (TRI_memory_zone_t* zone);
+      void toJson (triagens::basics::Json& json, TRI_memory_zone_t* zone) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables

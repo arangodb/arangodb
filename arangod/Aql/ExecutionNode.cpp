@@ -1317,6 +1317,22 @@ ModificationNode::ModificationNode (ExecutionPlan* plan,
   TRI_ASSERT(_collection != nullptr);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson
+////////////////////////////////////////////////////////////////////////////////
+
+void ModificationNode::toJsonHelper (triagens::basics::Json& json,
+                                     TRI_memory_zone_t* zone,
+                                     bool) const {
+
+  // Now put info about vocbase and cid in there
+  json("database", triagens::basics::Json(_vocbase->_name))
+      ("collection", triagens::basics::Json(_collection->name));
+
+  _options.toJson(json, zone);
+}
+
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                             methods of RemoveNode
 // -----------------------------------------------------------------------------
@@ -1342,10 +1358,10 @@ void RemoveNode::toJsonHelper (triagens::basics::Json& nodes,
   }
 
   // Now put info about vocbase and cid in there
-  json("database", triagens::basics::Json(_vocbase->_name))
-      ("collection", triagens::basics::Json(_collection->name))
-      ("inVariable", _inVariable->toJson());
+  json("inVariable", _inVariable->toJson());
   
+  ModificationNode::toJsonHelper(json, zone, verbose);
+
   // output variable might be empty
   if (_outVariable != nullptr) {
     json("outVariable", _outVariable->toJson());
@@ -1380,10 +1396,10 @@ void InsertNode::toJsonHelper (triagens::basics::Json& nodes,
   }
 
   // Now put info about vocbase and cid in there
-  json("database", triagens::basics::Json(_vocbase->_name))
-      ("collection", triagens::basics::Json(_collection->name))
-      ("inVariable", _inVariable->toJson());
-  
+  json("inVariable", _inVariable->toJson()); 
+
+  ModificationNode::toJsonHelper(json, zone, verbose);
+
   // output variable might be empty
   if (_outVariable != nullptr) {
     json("outVariable", _outVariable->toJson());
@@ -1419,10 +1435,10 @@ void UpdateNode::toJsonHelper (triagens::basics::Json& nodes,
   }
 
   // Now put info about vocbase and cid in there
-  json("database", triagens::basics::Json(_vocbase->_name))
-      ("collection", triagens::basics::Json(_collection->name))
-      ("inDocVariable", _inDocVariable->toJson());
+  json("inDocVariable", _inDocVariable->toJson());
   
+  ModificationNode::toJsonHelper(json, zone, verbose);
+
   // inKeyVariable might be empty
   if (_inKeyVariable != nullptr) {
     json("inKeyVariable", _inKeyVariable->toJson());
@@ -1463,10 +1479,10 @@ void ReplaceNode::toJsonHelper (triagens::basics::Json& nodes,
   }
 
   // Now put info about vocbase and cid in there
-  json("database", triagens::basics::Json(_vocbase->_name))
-      ("collection", triagens::basics::Json(_collection->name))
-      ("inDocVariable", _inDocVariable->toJson());
-  
+  json("inDocVariable", _inDocVariable->toJson());
+
+  ModificationNode::toJsonHelper(json, zone, verbose);
+
   // inKeyVariable might be empty
   if (_inKeyVariable != nullptr) {
     json("inKeyVariable", _inKeyVariable->toJson());

@@ -38,25 +38,15 @@ ModificationOptions::ModificationOptions (Json const& json) {
   nullMeansRemove = JsonHelper::getBooleanValue(array.json(), "nullMeansRemove", false);
 }
 
-triagens::basics::Json ModificationOptions::toJson (TRI_memory_zone_t* zone) {
-  Json json;
+void ModificationOptions::toJson (triagens::basics::Json& json,
+                                  TRI_memory_zone_t* zone) const {
   Json flags;
+  flags = Json(Json::Array, 3)
+    ("ignoreErrors", Json(ignoreErrors))
+    ("waitForSync", Json(waitForSync))
+    ("nullMeansRemove", Json(nullMeansRemove));
 
-  try {
-
-    flags = Json(Json::Array, 3)
-      ("ignoreErrors", Json(ignoreErrors))
-      ("waitForSync", Json(waitForSync))
-      ("nullMeansRemove", Json(nullMeansRemove));
-
-    json = Json(Json::Array, 1)
-      ("modificationFlags", flags);
-  }
-  catch (std::exception&) {
-    return Json();
-  }
-
-  return json;
+  json ("modificationFlags", flags);
 }
 
 
