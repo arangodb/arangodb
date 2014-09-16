@@ -20,10 +20,19 @@
         lastUpdate: joi.number().integer().required()
       }
     }),
+    sessions;
+
+  if (applicationContext.mount.indexOf('/_system/') === 0) {
+    sessions = new Foxx.Repository(
+      db._collection('_sessions'),
+      {model: Session}
+    );
+  } else {
     sessions = new Foxx.Repository(
       applicationContext.collection('sessions'),
       {model: Session}
     );
+  }
 
   function generateSessionId() {
     var sid = '';
