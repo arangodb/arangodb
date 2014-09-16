@@ -84,7 +84,7 @@ etc/arangodb/*.conf
 js/common/bootstrap/errors.js
 lib/Basics/local-configuration.h
 lib/Basics/stamp-h2
-lib/Basics/voc-errors.c
+lib/Basics/voc-errors.cpp
 lib/Basics/voc-errors.h
 lib/JsonParser/json-parser.c
 lib/JsonParser/json-parser.cpp
