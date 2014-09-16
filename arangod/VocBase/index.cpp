@@ -1308,7 +1308,6 @@ static int SkiplistIndexHelper (const TRI_skiplist_index_t* skiplistIndex,
 static int InsertSkiplistIndex (TRI_index_t* idx,
                                 TRI_doc_mptr_t const* doc,
                                 bool isRollback) {
-  TRI_skiplist_index_element_t skiplistElement;
   TRI_skiplist_index_t* skiplistIndex;
   int res;
 
@@ -1328,6 +1327,7 @@ static int InsertSkiplistIndex (TRI_index_t* idx,
   // These will be used for comparisions
   // ...........................................................................
 
+  TRI_skiplist_index_element_t skiplistElement;
   skiplistElement._subObjects = static_cast<TRI_shaped_sub_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_sub_t) * skiplistIndex->_paths._length, false));
 
   if (skiplistElement._subObjects == nullptr) {

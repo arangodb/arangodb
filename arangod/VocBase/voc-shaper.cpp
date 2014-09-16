@@ -1150,7 +1150,7 @@ int TRI_CompareShapeTypes (char const* leftDocument,
   // left is either a shaped json or a shaped sub object
   if (leftDocument != nullptr) {
     left._sid = leftObject->_sid;
-    left._data.length = (uint32_t) leftObject->_length;
+    left._data.length = leftObject->_length;
     left._data.data = const_cast<char*>(leftDocument) + leftObject->_offset;
   }
   else {
@@ -1160,7 +1160,7 @@ int TRI_CompareShapeTypes (char const* leftDocument,
   // right is either a shaped json or a shaped sub object
   if (rightDocument != nullptr) {
     right._sid = rightObject->_sid;
-    right._data.length = (uint32_t) rightObject->_length;
+    right._data.length = rightObject->_length;
     right._data.data = const_cast<char*>(rightDocument) + rightObject->_offset;
   }
   else {
