@@ -505,10 +505,6 @@ TRI_index_t* TRI_CreateGeo1Index (TRI_document_collection_t* document,
   geo->_longitude  = 0;
   geo->_geoJson    = geoJson;
 
-  GeoIndex_assignMethod(&(idx->indexQuery), TRI_INDEX_METHOD_ASSIGNMENT_QUERY);
-  GeoIndex_assignMethod(&(idx->indexQueryFree), TRI_INDEX_METHOD_ASSIGNMENT_FREE);
-  GeoIndex_assignMethod(&(idx->indexQueryResult), TRI_INDEX_METHOD_ASSIGNMENT_RESULT);
-
   return idx;
 }
 
@@ -558,10 +554,6 @@ TRI_index_t* TRI_CreateGeo2Index (TRI_document_collection_t* document,
   geo->_location   = 0;
   geo->_latitude   = latitude;
   geo->_longitude  = longitude;
-
-  GeoIndex_assignMethod(&(idx->indexQuery), TRI_INDEX_METHOD_ASSIGNMENT_QUERY);
-  GeoIndex_assignMethod(&(idx->indexQueryFree), TRI_INDEX_METHOD_ASSIGNMENT_FREE);
-  GeoIndex_assignMethod(&(idx->indexQueryResult), TRI_INDEX_METHOD_ASSIGNMENT_RESULT);
 
   return idx;
 }

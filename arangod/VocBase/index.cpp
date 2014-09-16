@@ -1583,23 +1583,6 @@ TRI_index_t* TRI_CreateSkiplistIndex (TRI_document_collection_t* document,
     return nullptr;
   }
 
-  // ...........................................................................
-  // Assign the function calls used by the query engine
-  // ...........................................................................
-
-  int result = SkiplistIndex_assignMethod(&(idx->indexQuery), TRI_INDEX_METHOD_ASSIGNMENT_QUERY);
-  result = result || SkiplistIndex_assignMethod(&(idx->indexQueryFree), TRI_INDEX_METHOD_ASSIGNMENT_FREE);
-  result = result || SkiplistIndex_assignMethod(&(idx->indexQueryResult), TRI_INDEX_METHOD_ASSIGNMENT_RESULT);
-
-  if (result != TRI_ERROR_NO_ERROR) {
-    TRI_DestroyVector(&skiplistIndex->_paths);
-    TRI_DestroyVectorString(&idx->_fields);
-    SkiplistIndex_free(skiplistIndex->_skiplistIndex);
-    TRI_Free(TRI_CORE_MEM_ZONE, skiplistIndex);
-    LOG_WARNING("skiplist index creation failed -- internal error when assigning function calls");
-    return nullptr;
-  }
-
   return idx;
 }
 

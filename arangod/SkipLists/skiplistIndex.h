@@ -34,7 +34,6 @@
 
 #include "Basics/skip-list.h"
 
-#include "IndexIterators/index-iterator.h"
 #include "IndexOperators/index-operator.h"
 #include "ShapedJson/shaped-json.h"
 
