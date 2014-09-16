@@ -88,7 +88,7 @@ static int FillIndexSearchValueByHashIndexElement (TRI_hash_index_t* hashIndex,
 static int AllocateSubObjectsHashIndexElement (TRI_hash_index_t const* idx,
                                                TRI_hash_index_element_t* element,
                                                size_t* elementSize) {
-  *elementSize = idx->_paths._length * sizeof(TRI_shaped_sub_t);
+  *elementSize = NumPaths(idx) * sizeof(TRI_shaped_sub_t);
 
   element->_subObjects = static_cast<TRI_shaped_sub_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, *elementSize, false));
 
