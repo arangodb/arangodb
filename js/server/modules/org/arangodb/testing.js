@@ -407,7 +407,7 @@ function runArangoshCmd (options, instanceInfo, cmds) {
 }
 
 function performTests(options, testList, testname) {
-  var instanceInfo = startInstance("tcp",options, [], testname);
+  var instanceInfo = startInstance("tcp", options, [], testname);
   var results = {};
   var i;
   var te;
@@ -479,7 +479,7 @@ testFuncs.shell_server_aql = function(options) {
 
 testFuncs.shell_client = function(options) {
   findTests();
-  var instanceInfo = startInstance("tcp",options, [], "shell_client");
+  var instanceInfo = startInstance("tcp", options, [], "shell_client");
   var results = {};
   var i;
   var te;
@@ -546,7 +546,7 @@ testFuncs.boost = function (options) {
 };
 
 testFuncs.single = function (options) {
-  var instanceInfo = startInstance("tcp",options, [], "single");
+  var instanceInfo = startInstance("tcp", options, [], "single");
   var result = { };
   if (options.test !== undefined) {
     var te = options.test;
@@ -576,10 +576,10 @@ testFuncs.single = function (options) {
 function rubyTests (options, ssl) {
   var instanceInfo;
   if (ssl) {
-    instanceInfo = startInstance("ssl",options, [], "rubyTestsSsl");
+    instanceInfo = startInstance("ssl", options, [], "rubyTestsSsl");
   }
   else {
-    instanceInfo = startInstance("tcp",options, [], "rubyTestsTcp");
+    instanceInfo = startInstance("tcp", options, [], "rubyTestsTcp");
   }
 
   var tmpname = fs.getTempFile()+".rb";
@@ -728,7 +728,7 @@ testFuncs.importing = function (options) {
     return {"ok":true, "skipped":0};
   }
 
-  var instanceInfo = startInstance("tcp",options, "importing");
+  var instanceInfo = startInstance("tcp", options, [ ], "importing");
 
   var result = {};
   try {
@@ -800,7 +800,7 @@ testFuncs.upgrade = function (options) {
 
 testFuncs.foxx_manager = function (options) {
   print("foxx_manager tests...");
-  var instanceInfo = startInstance("tcp",options, [], "foxx_manager");
+  var instanceInfo = startInstance("tcp", options, [], "foxx_manager");
   var results = {};
 
   results.update = runArangoshCmd(options, instanceInfo,
@@ -896,9 +896,9 @@ testFuncs.arangob = function (options) {
 
 testFuncs.authentication = function (options) {
   print("Authentication tests...");
-  var instanceInfo = startInstance("tcp",options,
+  var instanceInfo = startInstance("tcp", options,
                                    ["--server.disable-authentication", "false"],
-                                  "authtest");
+                                   "authtest");
   var results = {};
   results.auth = runInArangosh(options, instanceInfo,
                                fs.join("js","client","tests","auth.js"));
@@ -922,10 +922,10 @@ testFuncs.authentication_parameters = function (options) {
   print("Authentication with parameters tests...");
   var results = {};
   // With full authentication:
-  var instanceInfo = startInstance("tcp",options,
+  var instanceInfo = startInstance("tcp", options,
                        ["--server.disable-authentication", "false",
                         "--server.authenticate-system-only", "false"],
-                                  "authparams");
+                       "authparams");
   var r;
   var i;
   var re = [];
@@ -943,10 +943,10 @@ testFuncs.authentication_parameters = function (options) {
   shutdownInstance(instanceInfo,options);
   print("done.");
   // Only system authentication:
-  instanceInfo = startInstance("tcp",options,
+  instanceInfo = startInstance("tcp", options,
                    ["--server.disable-authentication", "false",
                     "--server.authenticate-system-only", "true"],
-                              "authparams2");
+                   "authparams2");
   re = [];
   for (i = 0;i < urlsTodo.length;i++) {
     r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false});
@@ -962,10 +962,10 @@ testFuncs.authentication_parameters = function (options) {
   shutdownInstance(instanceInfo,options);
   print("done.");
   // No authentication:
-  instanceInfo = startInstance("tcp",options,
+  instanceInfo = startInstance("tcp", options,
                    ["--server.disable-authentication", "true",
                     "--server.authenticate-system-only", "true"],
-                              "authparams3");
+                   "authparams3");
   re = [];
   for (i = 0;i < urlsTodo.length;i++) {
     r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false});

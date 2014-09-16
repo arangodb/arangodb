@@ -600,14 +600,6 @@ TRI_index_t* TRI_CreateHashIndex (TRI_document_collection_t* document,
     return nullptr;
   }
 
-  // ...........................................................................
-  // Assign the function calls used by the query engine
-  // ...........................................................................
-
-  idx->indexQuery = nullptr;
-  idx->indexQueryFree = nullptr;
-  idx->indexQueryResult = nullptr;
-
   return idx;
 }
 

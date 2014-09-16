@@ -14,10 +14,20 @@
         userData: joi.object().required()
       }
     }),
+    users;
+
+  if (applicationContext.mount.indexOf('/_system/') === 0) {
+    users = new Foxx.Repository(
+      db._collection('_users'),
+      {model: User}
+    );
+  } else {
     users = new Foxx.Repository(
       applicationContext.collection('users'),
       {model: User}
     );
+  }
+
 
   function resolve(username) {
     var user = users.firstExample({user: username});

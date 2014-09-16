@@ -262,48 +262,6 @@ static int CopyElement (SkiplistIndex* skiplistindex,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Some static helper functions:
-// These are assigned to some callback hooks but do not seem to be used,
-// which is good because otherwise the TRI_ASSERT(false) statements would
-// bite!
-////////////////////////////////////////////////////////////////////////////////
-
-static int SkiplistIndex_queryMethodCall (void* theIndex,
-                                          TRI_index_operator_t* indexOperator,
-                                          TRI_index_challenge_t* challenge,
-                                          void* data) {
-  SkiplistIndex* slIndex = (SkiplistIndex*)(theIndex);
-  if (slIndex == nullptr || indexOperator == nullptr) {
-    return TRI_ERROR_INTERNAL;
-  }
-  TRI_ASSERT(false);
-  return TRI_ERROR_NO_ERROR;
-}
-
-static TRI_index_iterator_t* SkiplistIndex_resultMethodCall (
-                   void* theIndex,
-                   TRI_index_operator_t* indexOperator,
-                   void* data,
-                   bool (*filter) (TRI_index_iterator_t*)) {
-  SkiplistIndex* slIndex = (SkiplistIndex*)(theIndex);
-  if (slIndex == nullptr || indexOperator == nullptr) {
-    return nullptr;
-  }
-  TRI_ASSERT(false);
-  return nullptr;
-}
-
-static int SkiplistIndex_freeMethodCall (void* theIndex,
-                                         void* data) {
-  SkiplistIndex* slIndex = (SkiplistIndex*)(theIndex);
-  if (slIndex == nullptr) {
-    return TRI_ERROR_INTERNAL;
-  }
-  TRI_ASSERT(false);
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Attempts to determine if there is a next document within an
 /// interval - without advancing the iterator.
 ////////////////////////////////////////////////////////////////////////////////
@@ -430,44 +388,6 @@ static TRI_skiplist_index_element_t* SkiplistNextsIterationCallback(
 // -----------------------------------------------------------------------------
 // --SECTION--                           skiplistIndex     common public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Assigns a static function call to a function pointer used by
-/// the Query Engine, seems not to be used at this stage...
-////////////////////////////////////////////////////////////////////////////////
-
-int SkiplistIndex_assignMethod (void* methodHandle,
-                                TRI_index_method_assignment_type_e methodType) {
-  switch (methodType) {
-
-    case TRI_INDEX_METHOD_ASSIGNMENT_FREE : {
-      TRI_index_query_free_method_call_t* call =
-             (TRI_index_query_free_method_call_t*)(methodHandle);
-      *call = SkiplistIndex_freeMethodCall;
-      break;
-    }
-
-    case TRI_INDEX_METHOD_ASSIGNMENT_QUERY : {
-      TRI_index_query_method_call_t* call =
-             (TRI_index_query_method_call_t*)(methodHandle);
-      *call = SkiplistIndex_queryMethodCall;
-      break;
-    }
-
-    case TRI_INDEX_METHOD_ASSIGNMENT_RESULT : {
-      TRI_index_query_result_method_call_t* call =
-             (TRI_index_query_result_method_call_t*)(methodHandle);
-      *call = SkiplistIndex_resultMethodCall;
-      break;
-    }
-
-    default : {
-      TRI_ASSERT(false);
-    }
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Free a skiplist iterator

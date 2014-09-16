@@ -85,6 +85,29 @@ do the same for all routes of a controller. For this purpose
 use the *allRoutes* object of the according controller.
 The following methods are available.
 
+*Examples*
+
+Provide an error response for all routes handled by this controller:
+
+```js
+ctrl.allRoutes
+.errorResponse(Unauthorized, 401, 'Not authenticated.')
+.errorResponse(NotFound, 404, 'Document not found.')
+.errorResponse(ImATeapot, 418, 'I\'m a teapot.');
+
+ctrl.get('/some/route', function (req, res) {
+  // ...
+  throw new NotFound('The document does not exist');
+  // ...
+}); // no errorResponse needed here
+
+ctrl.get('/another/route', function (req, res) {
+  // ...
+  throw new NotFound('I made you a cookie but I ated it');
+  // ...
+}); // no errorResponse needed here either
+```
+
 !SUBSECTION Buffer Error Response
 <!-- js/server/modules/org/arangodb/foxx/request_context.js -->
 @startDocuBlock JSF_foxx_RequestContextBuffer_errorResponse
