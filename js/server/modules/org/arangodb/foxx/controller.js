@@ -346,7 +346,11 @@ extend(Controller.prototype, {
 /// The before function takes a *path* on which it should watch and a
 /// function that it should execute before the routing takes place. If you do
 /// omit the path, the function will be executed before each request, no matter
-/// the path.  Your function gets a Request and a Response object.
+/// the path. Your function gets a Request and a Response object.
+///
+/// If your callback returns the Boolean value *false*, the route handling
+/// will not proceed. You can use this to intercept invalid or unauthorized
+/// requests and prevent them from being passed to the matching routes.
 ///
 /// @EXAMPLES
 ///
@@ -371,8 +375,10 @@ extend(Controller.prototype, {
       url: {match: path},
       action: {
         callback: function (req, res, opts, next) {
-          func(req, res, opts);
-          next();
+          var result = func(req, res, opts);
+          if (result !== false) {
+            next();
+          }
         }
       }
     });
