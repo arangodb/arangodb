@@ -1199,7 +1199,8 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator,
 // .............................................................................
 
 TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t* idx,
-                                                  TRI_index_operator_t* slOperator) {
+                                                  TRI_index_operator_t* slOperator,
+                                                  bool reverse) {
   TRI_skiplist_index_t* skiplistIndex = (TRI_skiplist_index_t*) idx;
 
   // .........................................................................
@@ -1219,7 +1220,8 @@ TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t* idx,
   TRI_skiplist_iterator_t* iteratorResult;
   iteratorResult = SkiplistIndex_find(skiplistIndex->_skiplistIndex,
                                       &skiplistIndex->_paths,
-                                      slOperator);
+                                      slOperator, 
+                                      reverse);
 
   // .........................................................................
   // we must deallocate any memory we allocated in FillLookupSLOperator

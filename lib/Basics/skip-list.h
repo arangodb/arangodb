@@ -57,11 +57,14 @@ namespace triagens {
         void* _doc;
         int _height;
       public:
-        void* document() {
+        void* document () {
           return _doc;
         }
-        SkipListNode* nextNode() {
+        SkipListNode* nextNode () {
           return _next[0];
+        }
+        SkipListNode* prevNode () {
+          return _prev;
         }
     };
 

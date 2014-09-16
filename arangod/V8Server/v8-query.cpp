@@ -588,7 +588,7 @@ static int SetupSearchValue (TRI_vector_t const* paths,
 
 static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
                                                    std::string const& signature,
-                                                   const query_t type) {
+                                                   query_t type) {
   v8::HandleScope scope;
 
   // expecting index, example, skip, and limit
@@ -609,6 +609,10 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
     TRI_V8_TYPE_ERROR(scope, msg.c_str());
   }
 
+  bool reverse = false;
+  if (argv.Length() > 4) {
+    reverse = TRI_ObjectToBoolean(argv[4]);
+  }
 
   TRI_vocbase_col_t const* col;
   col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
@@ -675,7 +679,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
     TRI_V8_EXCEPTION(scope, TRI_ERROR_BAD_PARAMETER);
   }
 
-  TRI_skiplist_iterator_t* skiplistIterator = TRI_LookupSkiplistIndex(idx, skiplistOperator);
+  TRI_skiplist_iterator_t* skiplistIterator = TRI_LookupSkiplistIndex(idx, skiplistOperator, reverse);
 
   if (skiplistIterator == nullptr) {
     int res = TRI_errno();
@@ -696,7 +700,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   }
 
   while (limit > 0) {
-    TRI_skiplist_index_element_t* indexElement = skiplistIterator->_next(skiplistIterator);
+    TRI_skiplist_index_element_t* indexElement = skiplistIterator->next(skiplistIterator);
 
     if (indexElement == nullptr) {
       break;
@@ -1561,7 +1565,7 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ByConditionSkiplist (v8::Arguments const& argv) {
-  std::string const signature("BY_CONDITION_SKIPLIST(<index>, <conditions>, <skip>, <limit>)");
+  std::string const signature("BY_CONDITION_SKIPLIST(<index>, <conditions>, <skip>, <limit>, <reverse>)");
 
   return ExecuteSkiplistQuery(argv, signature, QUERY_CONDITION);
 }
@@ -1571,7 +1575,7 @@ static v8::Handle<v8::Value> JS_ByConditionSkiplist (v8::Arguments const& argv) 
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ByExampleSkiplist (v8::Arguments const& argv) {
-  std::string const signature("BY_EXAMPLE_SKIPLIST(<index>, <example>, <skip>, <limit>)");
+  std::string const signature("BY_EXAMPLE_SKIPLIST(<index>, <example>, <skip>, <limit>, <reverse>)");
 
   return ExecuteSkiplistQuery(argv, signature, QUERY_EXAMPLE);
 }
