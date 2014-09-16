@@ -220,13 +220,23 @@ extend(RequestContext.prototype, {
 ///
 /// You can also provide a description of this parameter.
 ///
-/// @EXAMPLES
+/// *Examples*
+///
+/// ```js
+/// app.get("/foxx/:id", function {
+///   // Do something
+/// }).pathParam("id", type: joi.number().integer().required().description("Id of the Foxx"));
+/// ```
+///
+/// You can also pass in a configuration object instead:
 ///
 /// ```js
 /// app.get("/foxx/:id", function {
 ///   // Do something
 /// }).pathParam("id", {
-///   type: joi.number().integer().required().description("Id of the Foxx")
+///   type: joi.number().integer(),
+///   required: true,
+///   description: "Id of the Foxx"
 /// });
 /// ```
 /// @endDocuBlock
@@ -313,6 +323,19 @@ extend(RequestContext.prototype, {
 /// ```js
 /// app.get("/foxx", function {
 ///   // Do something
+/// }).queryParam("id",
+///   joi.number().integer()
+///   .required()
+///   .description("Id of the Foxx")
+///   .meta({allowMultiple: false})
+/// });
+/// ```
+///
+/// You can also pass in a configuration object instead:
+///
+/// ```js
+/// app.get("/foxx", function {
+///   // Do something
 /// }).queryParam("id", {
 ///   type: joi.number().integer().required().description("Id of the Foxx"),
 ///   allowMultiple: false
@@ -326,12 +349,14 @@ extend(RequestContext.prototype, {
     var type = attributes.type,
       required = attributes.required,
       description = attributes.description,
+      allowMultiple = attributes.allowMultiple,
       constraint, cfg;
 
     if (attributes.isJoi) {
       type = attributes;
       required = undefined;
       description = undefined;
+      allowMultiple = undefined;
     }
 
     constraint = type;
@@ -344,6 +369,9 @@ extend(RequestContext.prototype, {
       if (typeof description === 'string') {
         constraint = constraint.description(description);
       }
+      if (typeof allowMultiple === 'boolean') {
+        constraint = constraint.meta({allowMultiple: allowMultiple});
+      }
       this.constraints.queryParams[paramName] = constraint;
       cfg = constraint.describe();
       if (Array.isArray(cfg)) {
@@ -352,8 +380,18 @@ extend(RequestContext.prototype, {
       } else {
         type = cfg.type;
       }
-      required = Boolean(cfg.flags && cfg.flags.presense === 'required');
+      required = Boolean(cfg.flags && cfg.flags.presence === 'required');
       description = cfg.description;
+      if (cfg.meta) {
+        if (!Array.isArray(cfg.meta)) {
+          cfg.meta = [cfg.meta];
+        }
+        _.each(cfg.meta, function (meta) {
+          if (meta && typeof meta.allowMultiple === 'boolean') {
+            allowMultiple = meta.allowMultiple;
+          }
+        });
+      }
       if (
         type === 'number' &&
           _.isArray(cfg.rules) &&
@@ -370,7 +408,7 @@ extend(RequestContext.prototype, {
       description,
       type,
       required,
-      attributes.allowMultiple
+      Boolean(allowMultiple)
     );
     return this;
   },
