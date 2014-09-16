@@ -34,7 +34,6 @@
 
 #include "Basics/skip-list.h"
 
-#include "IndexIterators/index-iterator.h"
 #include "IndexOperators/index-operator.h"
 #include "ShapedJson/shaped-json.h"
 
@@ -50,7 +49,7 @@ struct TRI_document_collection_t;
 // -----------------------------------------------------------------------------
 
 typedef struct {
-  TRI_skiplist_t* skiplist;
+  triagens::basics::SkipList* skiplist;
   bool unique;
   struct TRI_document_collection_t* _collection;
   size_t _numFields;
@@ -77,15 +76,15 @@ TRI_skiplist_index_element_t;
 /// @brief Iterator structure for skip list. We require a start and stop node
 ///
 /// Intervals are open in the sense that both end points are not members
-/// of the interval. This means that one has to use TRI_SkipListNextNode
+/// of the interval. This means that one has to use SkipList::nextNode
 /// on the start node to get the first element and that the stop node
 /// can be NULL. Note that it is ensured that all intervals in an iterator
 /// are non-empty.
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_skiplist_iterator_interval_s {
-  TRI_skiplist_node_t* _leftEndPoint;
-  TRI_skiplist_node_t* _rightEndPoint;
+  triagens::basics::SkipListNode* _leftEndPoint;
+  triagens::basics::SkipListNode* _rightEndPoint;
 }
 TRI_skiplist_iterator_interval_t;
 
@@ -93,7 +92,7 @@ typedef struct TRI_skiplist_iterator_s {
   SkiplistIndex* _index;
   TRI_vector_t _intervals;
   size_t _currentInterval; // starts with 0, current interval used
-  TRI_skiplist_node_t* _cursor;
+  triagens::basics::SkipListNode* _cursor;
                  // always holds the last node returned, initially equal to
                  // the _leftEndPoint of the first interval, can be NULL
                  // if there are no intervals (yet), in any case, if
