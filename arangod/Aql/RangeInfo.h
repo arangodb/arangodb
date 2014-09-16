@@ -575,8 +575,10 @@ namespace triagens {
 /// bounds are variable and can only be computed at runtime.
 ////////////////////////////////////////////////////////////////////////////////
     
-        void insert (std::string var, std::string name, 
-                     RangeInfoBound low, RangeInfoBound high,
+        void insert (std::string const& var, 
+                     std::string const& name, 
+                     RangeInfoBound low, 
+                     RangeInfoBound high,
                      bool equality);
 
 ////////////////////////////////////////////////////////////////////////////////

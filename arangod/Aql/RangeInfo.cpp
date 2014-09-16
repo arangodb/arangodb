@@ -113,7 +113,7 @@ void RangeInfoBound::andCombineUpperBounds (RangeInfoBound const& that) {
 /// (if needed) nodes are registered with the ast
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode const* RangeInfoBound::getExpressionAst(Ast* ast) const {
+AstNode const* RangeInfoBound::getExpressionAst (Ast* ast) const {
   if (_expressionAst != nullptr) {
     return _expressionAst;
   }
@@ -195,7 +195,6 @@ triagens::basics::Json RangeInfo::toJson() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RangesInfo::insert (RangeInfo newRange) { 
-  
   TRI_ASSERT(newRange.isDefined());
 
   std::unordered_map<std::string, RangeInfo>* oldMap = find(newRange._var);
@@ -224,10 +223,9 @@ void RangesInfo::insert (RangeInfo newRange) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RangeInfo::fuse (RangeInfo const& that) {
-
   TRI_ASSERT(_var == that._var);
   TRI_ASSERT(_attr == that._attr);
-
+    
   if (! isValid()) { 
     // intersection of the empty set with any set is empty!
     return;
@@ -281,16 +279,18 @@ void RangeInfo::fuse (RangeInfo const& that) {
       }
     }
   }
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief  insert if there is no range corresponding to variable name <var>,
 /// and attribute <name>, and otherwise intersection with existing range
 ////////////////////////////////////////////////////////////////////////////////
 
-void RangesInfo::insert (std::string var, std::string name, 
-                         RangeInfoBound low, RangeInfoBound high,
+void RangesInfo::insert (std::string const& var, 
+                         std::string const& name, 
+                         RangeInfoBound low, 
+                         RangeInfoBound high,
                          bool equality) { 
   insert(RangeInfo(var, name, low, high, equality));
-};
+}
 
