@@ -869,8 +869,8 @@ TRI_shaped_json_t;
 
 typedef struct TRI_shaped_sub_s {
   TRI_shape_sid_t _sid;
-  size_t _offset;
-  size_t _length;
+  uint32_t _offset;
+  uint32_t _length;
 }
 TRI_shaped_sub_t;
 
