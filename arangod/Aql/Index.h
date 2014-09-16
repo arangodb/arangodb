@@ -42,7 +42,7 @@ namespace triagens {
 // --SECTION--                                                 struct Index
 // -----------------------------------------------------------------------------
 
-    struct Index{
+    struct Index {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -52,8 +52,8 @@ namespace triagens {
       Index (Index const&) = delete;
       Index () = delete;
       
-      Index (TRI_idx_iid_t id, Collection const* collection) :
-        _id(id), _collection(collection){
+      Index (TRI_idx_iid_t id, Collection const* collection) 
+        : _id(id), _collection(collection){
       }
       
       ~Index() {

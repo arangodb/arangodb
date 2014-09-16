@@ -25,8 +25,6 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-//#define DISABLE_VARIABLE_BOUNDS 1
-
 #include "Aql/OptimizerRules.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Indexes.h"
@@ -965,7 +963,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
 
                     try {
                       ExecutionNode* newNode = new IndexRangeNode(newPlan, newPlan->nextId(), node->vocbase(), 
-                        node->collection(), node->outVariable(), idx, rangeInfo);
+                        node->collection(), node->outVariable(), idx, rangeInfo, false);
                       newPlan->registerNode(newNode);
                       newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
                       _opt->addPlan(newPlan, _level, true);
@@ -1248,7 +1246,7 @@ public:
 /// the plan.
 ////////////////////////////////////////////////////////////////////////////////
 
-  void removeSortNodeFromPlan (ExecutionPlan *newPlan) {
+  void removeSortNodeFromPlan (ExecutionPlan* newPlan) {
     newPlan->unlinkNode(newPlan->getNodeById(sortNodeID));
   }
 };
@@ -1278,10 +1276,16 @@ class SortToIndexNode : public WalkerWorker<ExecutionNode> {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if an enumerate collection or index range node is part of an
-/// outer loop
+/// outer loop - this is necessary to ensure that the overall query result
+/// does not change by replacing a SortNode with an IndexRangeNode
+/// Example:
+/// FOR i IN [ 1, 2 ] FOR j IN collectionWithIndex SORT j.indexdedAttr RETURN j
+/// this must not be optimized because removing the sort and using the index
+/// would only guarantee the sortedness within each iteration of the outer for
+/// loop but not for the total result
 ////////////////////////////////////////////////////////////////////////////////
 
-  bool hasPreviousEnumerations (ExecutionNode* node) const {
+  bool isInnerLoop (ExecutionNode const* node) const {
     while (node != nullptr) {
       auto deps = node->getDependencies();
       if (deps.size() != 1) {
@@ -1308,7 +1312,7 @@ class SortToIndexNode : public WalkerWorker<ExecutionNode> {
 ////////////////////////////////////////////////////////////////////////////////
 
   bool handleIndexRangeNode (IndexRangeNode* node) {
-    if (hasPreviousEnumerations(node)) {
+    if (isInnerLoop(node)) {
       // index range contained in an outer loop. must not optimize away the sort!
       return true;
     }
@@ -1316,7 +1320,11 @@ class SortToIndexNode : public WalkerWorker<ExecutionNode> {
     auto variableName = node->getVariablesSetHere()[0]->name;
     auto result = _sortNode->getAttrsForVariableName(variableName);
 
-    if (node->MatchesIndex(result.first)) {
+    auto const& match = node->MatchesIndex(result.first);
+    if (match.doesMatch) {
+      if (match.reverse) {
+        node->reverse(true); 
+      } 
       _sortNode->removeSortNodeFromPlan(_plan);
       planModified = true;
     }
@@ -1329,7 +1337,7 @@ class SortToIndexNode : public WalkerWorker<ExecutionNode> {
 
   bool handleEnumerateCollectionNode (EnumerateCollectionNode* node, 
                                       Optimizer::RuleLevel level) {
-    if (hasPreviousEnumerations(node)) {
+    if (isInnerLoop(node)) {
       // index range contained in an outer loop. must not optimize away the sort!
       return true;
     }
@@ -1349,17 +1357,18 @@ class SortToIndexNode : public WalkerWorker<ExecutionNode> {
       // are checking equality)
       auto newPlan = _plan->clone();
       try {
-        ExecutionNode* newNode = new IndexRangeNode( newPlan,
+        ExecutionNode* newNode = new IndexRangeNode(newPlan,
                                       newPlan->nextId(),
                                       node->vocbase(), 
                                       node->collection(),
                                       node->outVariable(),
-                                      idx.index,/// TODO: estimate cost on match quality
-                                      result.second);
+                                      idx.index, /// TODO: estimate cost on match quality
+                                      result.second,
+                                      (idx.doesMatch && idx.reverse));
         newPlan->registerNode(newNode);
         newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
 
-        if (idx.fullmatch) { // if the index superseedes the sort, remove it.
+        if (idx.doesMatch) { // if the index superseedes the sort, remove it.
           _sortNode->removeSortNodeFromPlan(newPlan);
           _opt->addPlan(newPlan, Optimizer::RuleLevel::pass5, true);
         }
