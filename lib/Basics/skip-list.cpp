@@ -136,7 +136,7 @@ int SkipList::lookupLess (void* doc,
       if (nullptr == *next) {
         break;
       }
-      cmp = _cmp_elm_elm(_cmpdata,(*next)->_doc,doc,cmptype);
+      cmp = _cmp_elm_elm(_cmpdata, (*next)->_doc, doc, cmptype);
       if (cmp >= 0) {
         break;
       }
@@ -179,7 +179,7 @@ int SkipList::lookupLessOrEq (void* doc,
       if (nullptr == *next) {
         break;
       }
-      cmp = _cmp_elm_elm(_cmpdata,(*next)->_doc,doc,cmptype);
+      cmp = _cmp_elm_elm(_cmpdata, (*next)->_doc, doc, cmptype);
       if (cmp > 0) {
         break;
       }
@@ -215,7 +215,7 @@ int SkipList::lookupKeyLess (void* key,
       if (nullptr == *next) {
         break;
       }
-      cmp = _cmp_key_elm(_cmpdata,key,(*next)->_doc);
+      cmp = _cmp_key_elm(_cmpdata, key, (*next)->_doc);
       if (cmp <= 0) {
         break;
       }
@@ -247,7 +247,7 @@ int SkipList::lookupKeyLessOrEq (void* key,
       if (nullptr == *next) {
         break;
       }
-      cmp = _cmp_key_elm(_cmpdata,key,(*next)->_doc);
+      cmp = _cmp_key_elm(_cmpdata, key, (*next)->_doc);
       if (cmp < 0) {
         break;
       }
@@ -428,7 +428,7 @@ int SkipList::remove (void* doc) {
   }
 
   // Now delete where next points to:
-  for (lev = next->_height-1; lev > 0; lev--) {
+  for (lev = next->_height-1; lev >= 0; lev--) {
     // Note the order from top to bottom. The element remains in the
     // skiplist as long as we are at a level > 0, only some optimisations
     // in performance vanish before that. Only when we have removed it at
