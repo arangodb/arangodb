@@ -514,6 +514,21 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(context.constraints.urlParams, {id: constraint});
     },
 
+    testDefinePathParamShorthand: function () {
+      var constraint = joi.number().integer().description("Id of the Foxx"),
+        context = app.get('/foxx/:id', function () {
+          //nothing
+        }).pathParam("id", constraint);
+
+      assertEqual(routes.length, 1);
+      assertEqual(routes[0].url.constraint.id, "/[0-9]+/");
+      assertEqual(routes[0].docs.parameters[0].paramType, "path");
+      assertEqual(routes[0].docs.parameters[0].name, "id");
+      assertEqual(routes[0].docs.parameters[0].description, "Id of the Foxx");
+      assertEqual(routes[0].docs.parameters[0].dataType, "integer");
+      assertEqual(context.constraints.urlParams, {id: constraint});
+    },
+
     testDefinePathCaseParam: function () {
       var constraint = joi.number().integer().description("Id of the Foxx"),
         context = app.get('/foxx/:idParam', function () {
@@ -592,9 +607,55 @@ function DocumentationAndConstraintsSpec () {
         context = app.get('/foxx', function () {
           //nothing
         }).queryParam("a", {
-          type: constraint,
-          allowMultiple: true
+          type: constraint
         });
+
+      assertEqual(routes.length, 1);
+      assertEqual(routes[0].docs.parameters[0].paramType, "query");
+      assertEqual(routes[0].docs.parameters[0].name, "a");
+      assertEqual(routes[0].docs.parameters[0].description, "The value of an a");
+      assertEqual(routes[0].docs.parameters[0].dataType, "integer");
+      assertEqual(routes[0].docs.parameters[0].required, false);
+      assertEqual(routes[0].docs.parameters[0].allowMultiple, false);
+      assertEqual(context.constraints.queryParams, {a: constraint});
+    },
+
+    testDefineQueryParamWithOverrides: function () {
+      var constraint = joi.number().integer(),
+        context = app.get('/foxx', function () {
+          //nothing
+        }).queryParam("a", {
+          type: constraint,
+          description: "The value of an a",
+          allowMultiple: true,
+          required: true
+        });
+
+      assertEqual(routes.length, 1);
+      assertEqual(routes[0].docs.parameters[0].paramType, "query");
+      assertEqual(routes[0].docs.parameters[0].name, "a");
+      assertEqual(routes[0].docs.parameters[0].description, "The value of an a");
+      assertEqual(routes[0].docs.parameters[0].dataType, "integer");
+      print(0)
+      assertEqual(routes[0].docs.parameters[0].required, true);
+      print(1)
+      assertEqual(routes[0].docs.parameters[0].allowMultiple, true);
+      print(2)
+      assertEqual(context.constraints.queryParams, {
+        a: constraint
+        .description("The value of an a")
+        .meta({allowMultiple: true})
+        .required()
+      });
+    },
+
+    testDefineQueryParamShorthand: function () {
+      var constraint = joi.number().integer()
+      .description("The value of an a")
+      .meta({allowMultiple: true}),
+        context = app.get('/foxx', function () {
+          //nothing
+        }).queryParam("a", constraint);
 
       assertEqual(routes.length, 1);
       assertEqual(routes[0].docs.parameters[0].paramType, "query");
