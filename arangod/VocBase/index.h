@@ -38,7 +38,6 @@
 #include "Basics/json.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "GeoIndex/GeoIndex.h"
-#include "IndexIterators/index-iterator.h"
 #include "IndexOperators/index-operator.h"
 #include "ShapedJson/shaped-json.h"
 #include "SkipLists/skiplistIndex.h"
@@ -127,30 +126,6 @@ typedef struct TRI_index_s {
   // the following functions are called by the query machinery which attempting to determine an
   // appropriate index and when using the index to obtain a result set.
   // .........................................................................................
-
-  // stores the usefulness of this index for the indicated query in the struct TRI_index_challenge_s
-  // returns integer which maps to set of errors.
-  // the actual type is:
-  // int (*indexQuery) (void*, struct TRI_index_operator_s*, struct TRI_index_challenge_s*, void*);
-  // first parameter is the specific index structure, e.g. HashIndex, SkiplistIndex etc
-  // fourth parameter is any internal storage which is/will be allocated as a consequence of this call
-  TRI_index_query_method_call_t indexQuery;
-
-  // returns the result set in an iterator
-  // the actual type is:
-  // TRI_index_iterator_t* (*indexQueryResult) (void*, struct TRI_index_operator_s*, void*, bool (*filter) (TRI_index_iterator_t*) );
-  // first parameter is the specific index structure, e.g. HashIndex, SkiplistIndex etc
-  // third parameter is any internal storage might have been allocated as a consequence of this or the indexQuery call above
-  // fourth parameter a filter which the index iterator should apply
-  TRI_index_query_result_method_call_t indexQueryResult;
-
-  // during the query or result function call, the index may have created and used
-  // additional storage, this method attempts to free this if required.
-  // the actual type is:
-  // void (*indexQueryFree) (struct TRI_index_s*, void*);
-  // second parameter is any internal storage might have been allocated as a consequence of the indexQuery
-  // or indexQueryResult calls above
-  TRI_index_query_free_method_call_t indexQueryFree;
 }
 TRI_index_t;
 

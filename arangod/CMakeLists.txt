@@ -105,7 +105,6 @@ add_executable(
     GeoIndex/geo-index.cpp
     HashIndex/hash-array.cpp
     HashIndex/hash-index.cpp
-    IndexIterators/index-iterator.cpp
     IndexOperators/index-operator.cpp
     Replication/ContinuousSyncer.cpp
     Replication/InitialSyncer.cpp
