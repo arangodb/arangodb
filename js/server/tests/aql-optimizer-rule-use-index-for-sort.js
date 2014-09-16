@@ -771,7 +771,7 @@ function optimizerRuleTestSuite() {
       // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
       var RAs = getRangeAttributes(XPresult);
       var first = getRangeAttribute(RAs[0], "v", "a", 1);
-      
+     
       assertEqual(first.highs.length, 0, "no variable high bounds");
       assertEqual(first.lows.length, 0, "no variable low bounds");
       assertEqual(first.lowConst.bound, 4, "proper value was set");

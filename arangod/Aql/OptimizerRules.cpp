@@ -985,7 +985,9 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       return false;
     }
 
-    void buildRangeInfo (AstNode const* node, std::string& enumCollVar, std::string& attr) {
+    void buildRangeInfo (AstNode const* node, 
+                         std::string& enumCollVar, 
+                         std::string& attr) {
       if (node->type == NODE_TYPE_REFERENCE) {
         auto x = static_cast<Variable*>(node->getData());
         auto setter = _plan->getVarSetBy(x->id);
@@ -997,9 +999,10 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       }
       
       if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        char const* attributeName = node->getStringValue();
         buildRangeInfo(node->getMember(0), enumCollVar, attr);
+
         if (! enumCollVar.empty()) {
+          char const* attributeName = node->getStringValue();
           attr.append(attributeName);
           attr.push_back('.');
         }
@@ -1015,24 +1018,22 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             // Found a multiple attribute access of a variable
             _ranges->insert(enumCollVar, attr.substr(0, attr.size() - 1), 
                             RangeInfoBound(lhs, true), RangeInfoBound(lhs, true), true);
+        
+            enumCollVar.clear();
+            attr.clear();
           }
         }
           
-        enumCollVar.clear();
-        attr.clear();
-
         if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
           buildRangeInfo(lhs, enumCollVar, attr);
           if (! enumCollVar.empty()) {
             // Found a multiple attribute access of a variable
             _ranges->insert(enumCollVar, attr.substr(0, attr.size() - 1), 
                             RangeInfoBound(rhs, true), RangeInfoBound(rhs, true), true);
+            enumCollVar.clear();
+            attr.clear();
           }
         }
-        
-        enumCollVar.clear();
-        attr.clear();
-
         return;
       }
 
@@ -1046,8 +1047,6 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         
         auto lhs = node->getMember(0);
         auto rhs = node->getMember(1);
-        RangeInfoBound low;
-        RangeInfoBound high;
 
         if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
           // Attribute access on the right:
@@ -1055,6 +1054,9 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           // of a variable on the right:
           buildRangeInfo(rhs, enumCollVar, attr);
           if (! enumCollVar.empty()) {
+            RangeInfoBound low;
+            RangeInfoBound high;
+          
             // Constant value on the left, so insert a constant condition:
             if (node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
                 node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
@@ -1065,9 +1067,10 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             }
             _ranges->insert(enumCollVar, attr.substr(0, attr.size() - 1), 
                             low, high, false);
+          
+            enumCollVar.clear();
+            attr.clear();
           }
-          enumCollVar.clear();
-          attr.clear();
         }
 
         if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
@@ -1076,6 +1079,9 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           // of a variable on the left:
           buildRangeInfo(lhs, enumCollVar, attr);
           if (! enumCollVar.empty()) {
+            RangeInfoBound low;
+            RangeInfoBound high;
+          
             // Constant value on the right, so insert a constant condition:
             if (node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
                 node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
@@ -1086,6 +1092,9 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             }
             _ranges->insert(enumCollVar, attr.substr(0, attr.size() - 1), 
                             low, high, false);
+
+            enumCollVar.clear();
+            attr.clear();
           }
         }
 
@@ -1102,9 +1111,9 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         buildRangeInfo(node->getMember(1), enumCollVar, attr);
       }
       */
+      // default case
       attr = "";
       enumCollVar = "";
-      return;
     }
 };
 
