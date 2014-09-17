@@ -27,12 +27,19 @@
 
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRules.h"
+#include "Cluster/ServerState.h"
 
 using namespace triagens::aql;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               the optimizer class
 // -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            static initializations
+// -----------------------------------------------------------------------------
+        
+triagens::basics::Mutex Optimizer::SetupLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 // @brief list of all rules
@@ -46,6 +53,10 @@ std::map<int, Optimizer::Rule> Optimizer::_rules;
 
 std::unordered_map<std::string, int> Optimizer::_ruleLookup;
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 // @brief constructor, this will initialize the rules database
 ////////////////////////////////////////////////////////////////////////////////
@@ -55,6 +66,10 @@ Optimizer::Optimizer () {
     setupRules();
   }
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 // @brief add a plan to the optimizer
@@ -139,7 +154,8 @@ int Optimizer::createPlans (ExecutionPlan* plan,
         */
 
         level = (*it).first;
-        if (disabledIds.find(level) != disabledIds.end()) {
+        if (disabledIds.find(level) != disabledIds.end() &&
+            (*it).second.canBeDisabled) {
           // we picked a disabled rule
           level = it->first;
 
@@ -151,7 +167,7 @@ int Optimizer::createPlans (ExecutionPlan* plan,
         _currentRule = level;
 
         try {
-          res = it->second.func(this, p, &(it->second));
+          res = (*it).second.func(this, p, &(it->second));
         }
         catch (...) {
           delete p;
@@ -290,7 +306,12 @@ std::unordered_set<int> Optimizer::getDisabledRuleIds (std::vector<std::string> 
 ////////////////////////////////////////////////////////////////////////////////
 
 void Optimizer::setupRules () {
-  TRI_ASSERT(_rules.empty());
+  MUTEX_LOCKER(SetupLock);
+  
+  if (! _rules.empty()) {
+    // race condition... prevent duplicate registration of rules
+    return;
+  }
 
   // List all the rules in the system here:
   // lower level values mean earlier rule execution
@@ -306,18 +327,21 @@ void Optimizer::setupRules () {
   // inner loops etc.)
   registerRule("move-calculations-up",
                moveCalculationsUpRule,
-               moveCalculationsUpRule_pass1);
+               moveCalculationsUpRule_pass1, 
+               true);
 
   // move filters up the dependency chain (to make result sets as small
   // as possible as early as possible)
   registerRule("move-filters-up",
                moveFiltersUpRule,
-               moveFiltersUpRule_pass1);
+               moveFiltersUpRule_pass1,
+               true);
   
   // remove redundant calculations
   registerRule("remove-redundant-calculations", 
                removeRedundantCalculationsRule,
-               removeRedundantCalculationsRule_pass1);
+               removeRedundantCalculationsRule_pass1, 
+               true);
 
   //////////////////////////////////////////////////////////////////////////////
   /// "Pass 2": try to remove redundant or unnecessary nodes
@@ -329,17 +353,20 @@ void Optimizer::setupRules () {
   // filters that are always false will be replaced with a NoResults node
   registerRule("remove-unnecessary-filters",
                removeUnnecessaryFiltersRule,
-               removeUnnecessaryFiltersRule_pass2);
+               removeUnnecessaryFiltersRule_pass2,
+               true);
   
   // remove calculations that are never necessary
   registerRule("remove-unnecessary-calculations", 
                removeUnnecessaryCalculationsRule,
-               removeUnnecessaryCalculationsRule_pass2);
+               removeUnnecessaryCalculationsRule_pass2,
+               true);
 
   // remove redundant sort blocks
   registerRule("remove-redundant-sorts",
                removeRedundantSorts,
-               removeRedundantSorts_pass2);
+               removeRedundantSorts_pass2,
+               true);
 
   //////////////////////////////////////////////////////////////////////////////
   /// "Pass 3": interchange EnumerateCollection nodes in all possible ways
@@ -349,7 +376,8 @@ void Optimizer::setupRules () {
 
   registerRule("interchange-adjacent-enumerations", 
                interchangeAdjacentEnumerations,
-               interchangeAdjacentEnumerations_pass3);
+               interchangeAdjacentEnumerations_pass3,
+               true);
 
   //////////////////////////////////////////////////////////////////////////////
   // "Pass 4": moving nodes "up" (potentially outside loops) (second try):
@@ -360,13 +388,15 @@ void Optimizer::setupRules () {
   // inner loops etc.)
   registerRule("move-calculations-up-2",
                moveCalculationsUpRule,
-               moveCalculationsUpRule_pass4);
+               moveCalculationsUpRule_pass4,
+               true);
 
   // move filters up the dependency chain (to make result sets as small
   // as possible as early as possible)
   registerRule("move-filters-up-2",
                moveFiltersUpRule,
-               moveFiltersUpRule_pass4);
+               moveFiltersUpRule_pass4,
+               true);
 
   //////////////////////////////////////////////////////////////////////////////
   /// "Pass 5": try to remove redundant or unnecessary nodes (second try)
@@ -378,17 +408,20 @@ void Optimizer::setupRules () {
   // filters that are always false will be replaced with a NoResults node
   registerRule("remove-unnecessary-filters-2",
                removeUnnecessaryFiltersRule,
-               removeUnnecessaryFiltersRule_pass5);
+               removeUnnecessaryFiltersRule_pass5,
+               true);
   
   // remove calculations that are never necessary
   registerRule("remove-unnecessary-calculations-2", 
                removeUnnecessaryCalculationsRule,
-               removeUnnecessaryCalculationsRule_pass5);
+               removeUnnecessaryCalculationsRule_pass5,
+               true);
 
   // remove redundant sort blocks
   registerRule("remove-redundant-sorts-2",
                removeRedundantSorts,
-               removeRedundantSorts_pass5);
+               removeRedundantSorts_pass5,
+               true);
 
   //////////////////////////////////////////////////////////////////////////////
   /// "Pass 6": use indexes if possible for FILTER and/or SORT nodes
@@ -398,18 +431,22 @@ void Optimizer::setupRules () {
   // try to find a filter after an enumerate collection and find an index . . . 
   registerRule("use-index-range",
                useIndexRange,
-               useIndexRange_pass6);
+               useIndexRange_pass6,
+               true);
 
   // try to find sort blocks which are superseeded by indexes
   registerRule("use-index-for-sort",
                useIndexForSort,
-               useIndexForSort_pass6);
+               useIndexForSort_pass6,
+               true);
 
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// END OF OPTIMISATIONS
-  //////////////////////////////////////////////////////////////////////////////
-
+  if (triagens::arango::ServerState::instance()->isCoordinator()) {
+    // distribute operations in cluster
+    registerRule("distribute-in-cluster",
+                 distributeInCluster,
+                 distributeInCluster_pass10,
+                 false);
+  }
 }
 
 // Local Variables:

@@ -2541,8 +2541,11 @@ namespace triagens {
 
       public:
  
-        RemoteNode (ExecutionPlan* plan, size_t id) 
-          : ExecutionNode(plan, id) {
+        RemoteNode (ExecutionPlan* plan, 
+                    size_t id,
+                    std::string const& destination) 
+          : ExecutionNode(plan, id),
+            _destination(destination) {
         }
 
         RemoteNode (ExecutionPlan*, triagens::basics::Json const& base);
@@ -2568,7 +2571,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone (ExecutionPlan* plan) const {
-          auto c = new RemoteNode(plan, _id);
+          auto c = new RemoteNode(plan, _id, _destination);
           cloneDependencies(plan, c);
           return static_cast<ExecutionNode*>(c);
         }
@@ -2580,6 +2583,18 @@ namespace triagens {
         double estimateCost () {
           return 1;
         }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remote destination identifier (shard id or server id)
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _destination;
 
     };
 

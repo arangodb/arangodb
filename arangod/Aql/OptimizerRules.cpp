@@ -1435,6 +1435,7 @@ int triagens::aql::useIndexForSort (Optimizer* opt,
       }
     }
   }
+
   opt->addPlan(plan,
                planModified ? Optimizer::RuleLevel::pass5 : rule->level,
                planModified);
@@ -1463,11 +1464,11 @@ static bool nextPermutationTuple (std::vector<size_t>& data,
   for (size_t i = starts.size(); i-- != 0; ) {
     std::vector<size_t>::iterator from = begin + starts[i];
     std::vector<size_t>::iterator to;
-    if (i == starts.size()-1) {
+    if (i == starts.size() - 1) {
       to = data.end();
     }
     else {
-      to = begin + starts[i+1];
+      to = begin + starts[i + 1];
     }
     if (std::next_permutation(from, to)) {
       return true;
@@ -1589,6 +1590,73 @@ int triagens::aql::interchangeAdjacentEnumerations (Optimizer* opt,
     } 
     while (nextPermutationTuple(permTuple, starts));
   }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief distribute operations in cluster
+/// this rule inserts scatter, gather and remote nodes so operations on sharded
+/// collections actually work
+/// it will change plans in place
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::distributeInCluster (Optimizer* opt,
+                                        ExecutionPlan* plan,
+                                        Optimizer::Rule const* rule) {
+  bool wasModified = false;
+
+  if (triagens::arango::ServerState::instance()->isCoordinator()) {
+    // we are a coordinator. now look in the plan for nodes of type
+    // EnumerateCollectionNode and IndexRangeNode
+    auto root = plan->root();
+
+    std::vector<ExecutionNode*> stack;
+    for (auto dep : root->getDependencies()) {
+      stack.push_back(dep);
+    }
+
+    while (! stack.empty()) {
+      auto current = stack.back();
+      stack.pop_back();
+
+      if (current->getType() == triagens::aql::ExecutionNode::ENUMERATE_COLLECTION ||
+          current->getType() == triagens::aql::ExecutionNode::INDEX_RANGE) {
+        // found something we need to replace (in place)
+        /*
+        ExecutionNode* newNode;
+        
+        newNode = new ScatterNode(newPlan, newPlan->nextId());
+        plan->registerNode(newNode);
+        
+        newNode = new RemoteNode(newPlan, newPlan->nextId());
+        plan->registerNode(newNode);
+        
+        newNode = new GatherNode(newPlan, newPlan->nextId());
+        plan->registerNode(newNode);
+        
+        newNode = new RemoteNode(newPlan, newPlan->nextId());
+        plan->registerNode(newNode);
+
+        wasModified = true;
+        */
+      }
+      
+      auto deps = current->getDependencies();
+
+      if (deps.size() != 1) {
+        // node either has no or more than one dependency. we don't know what to do and must abort
+        // note: this will also handle Singleton nodes
+        break;
+      }
+       
+      for (auto dep : deps) {
+        stack.push_back(dep);
+      }
+    }
+  }
+          
+  opt->addPlan(plan, rule->level, wasModified);
 
   return TRI_ERROR_NO_ERROR;
 }
