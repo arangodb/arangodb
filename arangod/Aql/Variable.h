@@ -111,22 +111,8 @@ namespace triagens {
 /// @brief replace a variable by another
 ////////////////////////////////////////////////////////////////////////////////
 
-      static Variable* replace (Variable*,
-                                std::unordered_map<VariableId, Variable const*> const&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief replace a variable by another
-////////////////////////////////////////////////////////////////////////////////
-
       static Variable const* replace (Variable const*,
                                       std::unordered_map<VariableId, Variable const*> const&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compares two variables, using their ids
-////////////////////////////////////////////////////////////////////////////////
-
-      static bool Comparator (Variable const*, 
-                              Variable const*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables
