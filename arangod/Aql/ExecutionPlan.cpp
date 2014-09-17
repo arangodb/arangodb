@@ -103,8 +103,8 @@ ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast* ast) {
 /// @brief create an execution plan from JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-void ExecutionPlan::getCollectionsFromJson(Ast *ast, 
-                                           triagens::basics::Json const& json)
+void ExecutionPlan::getCollectionsFromJson (Ast *ast, 
+                                            triagens::basics::Json const& json)
 {
   Json jsonCollectionList = json.get("collections");
 
@@ -122,9 +122,7 @@ void ExecutionPlan::getCollectionsFromJson(Ast *ast,
                                      triagens::basics::JsonHelper::checkAndGetStringValue(oneJsonCollection.json(), "name"),
                                      TRI_GetTransactionTypeFromStr(triagens::basics::JsonHelper::checkAndGetStringValue(oneJsonCollection.json(), "type").c_str()));
  }
-
 }
-
 
 ExecutionPlan* ExecutionPlan::instanciateFromJson (Ast* ast,
                                                    triagens::basics::Json const& json) {

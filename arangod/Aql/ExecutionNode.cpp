@@ -63,6 +63,9 @@ std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{
   { static_cast<int>(INSERT),                       "InsertNode" },
   { static_cast<int>(UPDATE),                       "UpdateNode" },
   { static_cast<int>(REPLACE),                      "ReplaceNode" },
+  { static_cast<int>(REMOTE),                       "RemoteNode" },
+  { static_cast<int>(SCATTER),                      "ScatterNode" },
+  { static_cast<int>(GATHER),                       "GatherNode" },
   { static_cast<int>(NORESULTS),                    "NoResultsNode" }
 };
           
@@ -395,7 +398,7 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
 
   triagens::basics::Json json;
   json = triagens::basics::Json(triagens::basics::Json::Array, 2)
-              ("type", triagens::basics::Json(getTypeString()));
+    ("type", triagens::basics::Json(getTypeString()));
   if (verbose) {
     json("typeID", triagens::basics::Json(static_cast<int>(getType())));
   }
@@ -1532,8 +1535,7 @@ void NoResultsNode::toJsonHelper (triagens::basics::Json& nodes,
 
 RemoteNode::RemoteNode (ExecutionPlan* plan,
                         triagens::basics::Json const& json)
-  : ExecutionNode(plan, json),
-    _destination(JsonHelper::checkAndGetStringValue(json.json(), "destination")) {
+  : ExecutionNode(plan, json) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1547,8 +1549,6 @@ void RemoteNode::toJsonHelper (triagens::basics::Json& nodes,
   if (json.isEmpty()) {
     return;
   }
-
-  json.set("destination", triagens::basics::Json(_destination));
 
   // And add it:
   nodes(json);

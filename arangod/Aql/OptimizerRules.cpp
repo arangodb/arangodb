@@ -1606,6 +1606,7 @@ int triagens::aql::distributeInCluster (Optimizer* opt,
                                         Optimizer::Rule const* rule) {
   bool wasModified = false;
 
+#if 0
   if (triagens::arango::ServerState::instance()->isCoordinator()) {
     // we are a coordinator. now look in the plan for nodes of type
     // EnumerateCollectionNode and IndexRangeNode
@@ -1622,24 +1623,43 @@ int triagens::aql::distributeInCluster (Optimizer* opt,
 
       if (current->getType() == triagens::aql::ExecutionNode::ENUMERATE_COLLECTION ||
           current->getType() == triagens::aql::ExecutionNode::INDEX_RANGE) {
-        // found something we need to replace (in place)
-        /*
-        ExecutionNode* newNode;
-        
-        newNode = new ScatterNode(newPlan, newPlan->nextId());
-        plan->registerNode(newNode);
-        
-        newNode = new RemoteNode(newPlan, newPlan->nextId());
-        plan->registerNode(newNode);
-        
-        newNode = new GatherNode(newPlan, newPlan->nextId());
-        plan->registerNode(newNode);
-        
-        newNode = new RemoteNode(newPlan, newPlan->nextId());
-        plan->registerNode(newNode);
+        // found something we need to replace in the plan
 
+        auto const& parents = current->getParents();
+        auto const& deps = current->getDependencies();
+        TRI_ASSERT(deps.size() == 1);
+
+        // unlink the collection node
+        plan->unlinkNode(current);
+
+        // insert a scatter node
+        ExecutionNode* scatterNode = new ScatterNode(plan, plan->nextId());
+        plan->registerNode(scatterNode);
+        scatterNode->addDependency(deps[0]);
+
+        // insert a remote node
+        ExecutionNode* remoteNode = new RemoteNode(plan, plan->nextId());
+        plan->registerNode(remoteNode);
+        remoteNode->addDependency(scatterNode);
+        
+        // re-link with the remote node
+        TRI_ASSERT(parents.size() == 1);
+        current->addDependency(remoteNode);
+
+        // insert anoter remote node
+        remoteNode = new RemoteNode(plan, plan->nextId());
+        plan->registerNode(remoteNode);
+        remoteNode->addDependency(current);
+       
+        // insert a gather node 
+        ExecutionNode* gatherNode = new GatherNode(plan, plan->nextId());
+        plan->registerNode(gatherNode);
+        gatherNode->addDependency(remoteNode);
+       
+        // and now link the gather node with the rest of the plan
+        parents[0]->replaceDependency(deps[0], gatherNode);
+         
         wasModified = true;
-        */
       }
       
       auto deps = current->getDependencies();
@@ -1655,7 +1675,8 @@ int triagens::aql::distributeInCluster (Optimizer* opt,
       }
     }
   }
-          
+#endif
+   
   opt->addPlan(plan, rule->level, wasModified);
 
   return TRI_ERROR_NO_ERROR;

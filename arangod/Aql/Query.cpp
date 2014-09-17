@@ -206,29 +206,32 @@ void Query::registerError (int code,
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an AQL query 
 ////////////////////////////////////////////////////////////////////////////////
+
 enum executionstate {
   PARSING          = 0,
   OPTIMIZING_AST   = 1,
-  OPTIMIZING       = 2,
-  DESERIALIZING    = 3,
-  EXECUTING        = 4,
-  NOSTATE          = 5
+  INSTANCIATING    = 2,
+  OPTIMIZING       = 3,
+  DESERIALIZING    = 4,
+  EXECUTING        = 5,
+  NOSTATE          = 6
 };
 
-const std::string parseStates[] ={
+static const std::string ParseStates[] = {
   "while parsing: ",
   "while doing static optimisations: ",
+  "while instanciating: ",
   "while optimizing: ",
   "while deserializing JSON: ",
   "while executing query: ",
   ""
 };
-const std::string &getStateString(executionstate state) {
-  return parseStates[state];
+
+static std::string const& getStateString (executionstate state) {
+  return ParseStates[state];
 }
 
 QueryResult Query::execute () {
@@ -259,6 +262,7 @@ QueryResult Query::execute () {
         return transactionError(res, trx);
       }
 
+      state = INSTANCIATING;
       plan = ExecutionPlan::instanciateFromAst(parser.ast());
       if (plan == nullptr) {
         // oops
@@ -287,13 +291,13 @@ QueryResult Query::execute () {
         // oops
         return QueryResult(TRI_ERROR_INTERNAL);
       }
-
     }
 
     // get enabled/disabled rules
     std::vector<std::string> rules(getRulesFromOptions());
 
     // Run the query optimiser:
+    state = OPTIMIZING;
     triagens::aql::Optimizer opt;
     opt.createPlans(plan, rules);  
 
@@ -419,6 +423,7 @@ QueryResult Query::explain () {
       return transactionError(res, trx);
     }
 
+    state = INSTANCIATING;
     plan = ExecutionPlan::instanciateFromAst(parser.ast());
     if (plan == nullptr) {
       // oops
@@ -426,6 +431,7 @@ QueryResult Query::explain () {
     }
 
     // Run the query optimiser:
+    state = OPTIMIZING;
     triagens::aql::Optimizer opt;
 
     // get enabled/disabled rules
