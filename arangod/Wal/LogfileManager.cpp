@@ -1598,7 +1598,7 @@ int LogfileManager::writeShutdownInfo (bool writeShutdownTime) {
     TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "shutdownTime", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, t.c_str(), t.size()));
   }
 
-  if (! TRI_SaveJson(filename.c_str(), json, false)) {
+  if (! TRI_SaveJson(filename.c_str(), json, true)) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     LOG_ERROR("unable to write WAL state file '%s'", filename.c_str());
 
