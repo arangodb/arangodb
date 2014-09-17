@@ -971,6 +971,8 @@ bool IndexRangeBlock::readIndex () {
   }
 #endif
 
+  IndexOrCondition* newCondition = nullptr;
+
   // Find out about the actual values for the bounds in the variable bound case:
   if (! _allBoundsConstant) {
     // The following are needed to evaluate expressions with local data from
@@ -980,7 +982,7 @@ bool IndexRangeBlock::readIndex () {
     vector<TRI_document_collection_t const*>& docColls(cur->getDocumentCollections());
     RegisterId nrRegs = cur->getNrRegs();
 
-    auto newCondition = new IndexOrCondition();
+    newCondition = new IndexOrCondition();
     try {
       newCondition->push_back(std::vector<RangeInfo>());
       size_t posInExpressions = 0;
@@ -1043,21 +1045,34 @@ bool IndexRangeBlock::readIndex () {
     condition = newCondition;
   }
   
-  if (en->_index->_type == TRI_IDX_TYPE_PRIMARY_INDEX) {
-    readPrimaryIndex(*condition);
+  try {
+    if (en->_index->_type == TRI_IDX_TYPE_PRIMARY_INDEX) {
+      readPrimaryIndex(*condition);
+    }
+    else if (en->_index->_type == TRI_IDX_TYPE_HASH_INDEX) {
+      readHashIndex(*condition);
+    }
+    else if (en->_index->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
+      readSkiplistIndex(*condition);
+    }
+    else if (en->_index->_type == TRI_IDX_TYPE_EDGE_INDEX) {
+      readEdgeIndex(*condition);
+    }
+    else {
+      TRI_ASSERT(false);
+    }
   }
-  else if (en->_index->_type == TRI_IDX_TYPE_HASH_INDEX) {
-    readHashIndex(*condition);
+  catch (...) {
+    if (newCondition != nullptr) {
+      delete newCondition;
+    }
+    throw;
+  }      
+
+  if (newCondition != nullptr) {
+    delete newCondition;
   }
-  else if (en->_index->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
-    readSkiplistIndex(*condition);
-  }
-  else if (en->_index->_type == TRI_IDX_TYPE_EDGE_INDEX) {
-    readEdgeIndex(*condition);
-  }
-  else {
-    TRI_ASSERT(false);
-  }
+
   return (!_documents.empty());
 }
 
