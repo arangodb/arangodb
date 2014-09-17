@@ -1005,15 +1005,32 @@ int TRI_Stringify2Json (TRI_string_buffer_t* buffer, TRI_json_t const* object) {
 /// @brief prints a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_PrintJson (int fd, TRI_json_t const* object) {
+bool TRI_PrintJson (int fd, 
+                    TRI_json_t const* object,
+                    bool appendNewline) {
   TRI_string_buffer_t buffer;
   char const* p;
   size_t n;
+
+  if (object == NULL) {
+    // sanity check
+    return false;
+  }
 
   TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
   if (StringifyJson(buffer._memoryZone, &buffer, object, true) != TRI_ERROR_NO_ERROR) {
     TRI_AnnihilateStringBuffer(&buffer);
     return false;
+  }
+
+  if (TRI_LengthStringBuffer(&buffer) == 0) {
+    // should not happen
+    return false;
+  }
+
+  if (appendNewline) {
+    // add the newline here so we only need one write operation in the ideal case
+    TRI_AppendCharStringBuffer(&buffer, '\n');
   }
 
   p = TRI_BeginStringBuffer(&buffer);
@@ -1045,7 +1062,6 @@ bool TRI_SaveJson (char const* filename,
   char* tmp;
   int fd;
   int res;
-  ssize_t m;
 
   tmp = TRI_Concatenate2String(filename, ".tmp");
 
@@ -1065,18 +1081,7 @@ bool TRI_SaveJson (char const* filename,
     return false;
   }
 
-  if (! TRI_PrintJson(fd, object)) {
-    TRI_CLOSE(fd);
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG_ERROR("cannot write to json file '%s': %s", tmp, TRI_LAST_ERROR_STR);
-    TRI_UnlinkFile(tmp);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
-    return false;
-  }
-
-  m = TRI_WRITE(fd, "\n", 1);
-
-  if (m <= 0) {
+  if (! TRI_PrintJson(fd, object, true)) {
     TRI_CLOSE(fd);
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     LOG_ERROR("cannot write to json file '%s': %s", tmp, TRI_LAST_ERROR_STR);

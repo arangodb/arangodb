@@ -750,7 +750,7 @@ static int RenameCollection (TRI_vocbase_t* vocbase,
 
     TRI_CopyString(info._name, newName, sizeof(info._name) - 1);
 
-    res = TRI_SaveCollectionInfo(collection->_path, &info, false);
+    res = TRI_SaveCollectionInfo(collection->_path, &info, vocbase->_settings.forceSyncProperties);
 
     TRI_FreeCollectionInfoOptions(&info);
 
@@ -2035,7 +2035,6 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
 
   else if (collection->_status == TRI_VOC_COL_STATUS_UNLOADED) {
     TRI_col_info_t info;
-    char* tmpFile;
 
     int res = TRI_LoadCollectionInfo(collection->_path, &info, true);
 
@@ -2046,22 +2045,10 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
       return TRI_set_errno(res);
     }
 
-    // remove dangling .json.tmp file if it exists
-    tmpFile = TRI_Concatenate4String(collection->_path, TRI_DIR_SEPARATOR_STR, TRI_VOC_PARAMETER_FILE, ".tmp");
-
-    if (tmpFile != nullptr) {
-      if (TRI_ExistsFile(tmpFile)) {
-        TRI_UnlinkFile(tmpFile);
-        LOG_DEBUG("removing dangling temporary file '%s'", tmpFile);
-      }
-      TRI_FreeString(TRI_CORE_MEM_ZONE, tmpFile);
-    }
-
     if (! info._deleted) {
       info._deleted = true;
 
-      // dropping a collection does not need to be synced
-      res = TRI_SaveCollectionInfo(collection->_path, &info, false);
+      res = TRI_SaveCollectionInfo(collection->_path, &info, vocbase->_settings.forceSyncProperties);
       TRI_FreeCollectionInfoOptions(&info);
 
       if (res != TRI_ERROR_NO_ERROR) {
