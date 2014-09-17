@@ -710,21 +710,15 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         }
         case EN::SUBQUERY:        
           break;
-        case EN::FILTER:{
+        case EN::FILTER: {
           std::vector<Variable const*> inVar = en->getVariablesUsedHere();
           TRI_ASSERT(inVar.size() == 1);
           _varIds.insert(inVar[0]->id);
           break;
         }
-        case EN::INTERSECTION:
         case EN::AGGREGATE:
-        case EN::LOOKUP_JOIN:
-        case EN::MERGE_JOIN:
-        case EN::LOOKUP_INDEX_UNIQUE:
-        case EN::LOOKUP_INDEX_RANGE:
-        case EN::LOOKUP_FULL_COLLECTION:
-        case EN::CONCATENATION:
-        case EN::MERGE:
+        case EN::SCATTER:
+        case EN::GATHER:
         case EN::REMOTE:
           // in these cases we simply ignore the intermediate nodes, note
           // that we have taken care of nodes that could throw exceptions
@@ -1396,23 +1390,17 @@ class SortToIndexNode : public WalkerWorker<ExecutionNode> {
     case EN::FILTER:
       return false;                           // skip. we don't care.
 
-    case EN::INTERSECTION:
     case EN::SINGLETON:
     case EN::AGGREGATE:
-    case EN::LOOKUP_JOIN:
-    case EN::MERGE_JOIN:
-    case EN::LOOKUP_INDEX_UNIQUE:
-    case EN::LOOKUP_INDEX_RANGE:
-    case EN::LOOKUP_FULL_COLLECTION:
-    case EN::CONCATENATION:
-    case EN::MERGE:
-    case EN::REMOTE:
     case EN::INSERT:
     case EN::REMOVE:
     case EN::REPLACE:
     case EN::UPDATE:
     case EN::RETURN:
     case EN::NORESULTS:
+    case EN::SCATTER:
+    case EN::GATHER:
+    case EN::REMOTE:
     case EN::ILLEGAL:
     case EN::LIMIT:                      // LIMIT is criterion to stop
       return true;  // abort.
