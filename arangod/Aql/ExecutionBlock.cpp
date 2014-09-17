@@ -3402,26 +3402,16 @@ void ExecutionBlock::VarOverview::after (ExecutionBlock *eb) {
     case ExecutionNode::SINGLETON:
     case ExecutionNode::FILTER:
     case ExecutionNode::LIMIT:
+    case ExecutionNode::SCATTER: 
+    case ExecutionNode::GATHER: 
+    case ExecutionNode::REMOTE: 
     case ExecutionNode::NORESULTS: {
       // these node types do not produce any new registers
       break;
     }
 
-    case ExecutionNode::INTERSECTION: 
-    case ExecutionNode::LOOKUP_JOIN:
-    case ExecutionNode::MERGE_JOIN:
-    case ExecutionNode::LOOKUP_INDEX_UNIQUE:
-    case ExecutionNode::LOOKUP_INDEX_RANGE:
-    case ExecutionNode::LOOKUP_FULL_COLLECTION:
-    case ExecutionNode::CONCATENATION:
-    case ExecutionNode::MERGE:
-    case ExecutionNode::REMOTE: {
-      // TODO: these node types need to be implemented!
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "node type not implemented");
-    }
-    
     case ExecutionNode::ILLEGAL: {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "node type not implemented");
     }
   }
 

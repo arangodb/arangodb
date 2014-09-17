@@ -133,7 +133,6 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
       return new SortNode(plan, oneNode, elements, stable);
     }
     case AGGREGATE: {
-
       Variable *outVariable = varFromJson(plan->getAst(), oneNode, "outVariable", Optional);
 
       triagens::basics::Json jsonAggregates = oneNode.get("aggregates");
@@ -173,14 +172,8 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
       return new NoResultsNode(plan, oneNode);
     case INDEX_RANGE:
       return new IndexRangeNode(plan, oneNode);
-    case INTERSECTION:
-    case LOOKUP_JOIN:
-    case MERGE_JOIN:
-    case LOOKUP_INDEX_UNIQUE:
-    case LOOKUP_INDEX_RANGE:
-    case LOOKUP_FULL_COLLECTION:
-    case CONCATENATION:
-    case MERGE:
+    case SCATTER: 
+    case GATHER: 
     case REMOTE: {
       // TODO: handle these types of nodes
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "unhandled node type");
@@ -1523,6 +1516,81 @@ void ReplaceNode::toJsonHelper (triagens::basics::Json& nodes,
 void NoResultsNode::toJsonHelper (triagens::basics::Json& nodes,
                                   TRI_memory_zone_t* zone,
                                   bool verbose) const {
+  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+  if (json.isEmpty()) {
+    return;
+  }
+
+  // And add it:
+  nodes(json);
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             methods of RemoteNode
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson, for RemoteNode
+////////////////////////////////////////////////////////////////////////////////
+
+RemoteNode::RemoteNode (ExecutionPlan* plan, 
+                        triagens::basics::Json const& base)
+  : ExecutionNode(plan, base) {
+}
+
+void RemoteNode::toJsonHelper (triagens::basics::Json& nodes,
+                               TRI_memory_zone_t* zone,
+                               bool verbose) const {
+  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+  if (json.isEmpty()) {
+    return;
+  }
+
+  // And add it:
+  nodes(json);
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            methods of ScatterNode
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson, for ScatterNode
+////////////////////////////////////////////////////////////////////////////////
+
+ScatterNode::ScatterNode (ExecutionPlan* plan, 
+                          triagens::basics::Json const& base)
+  : ExecutionNode(plan, base) {
+}
+
+void ScatterNode::toJsonHelper (triagens::basics::Json& nodes,
+                                TRI_memory_zone_t* zone,
+                                bool verbose) const {
+  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+  if (json.isEmpty()) {
+    return;
+  }
+
+  // And add it:
+  nodes(json);
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             methods of GatherNode
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson, for GatherNode
+////////////////////////////////////////////////////////////////////////////////
+
+GatherNode::GatherNode (ExecutionPlan* plan, 
+                        triagens::basics::Json const& base)
+  : ExecutionNode(plan, base) {
+}
+
+void GatherNode::toJsonHelper (triagens::basics::Json& nodes,
+                               TRI_memory_zone_t* zone,
+                               bool verbose) const {
   triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
   if (json.isEmpty()) {
     return;
