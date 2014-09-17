@@ -65,6 +65,9 @@
 ///   - `skipRanges`: if set to true the ranges tests are skipped
 ///   - `valgrind`: if set to true the arangods are run with the valgrind
 ///     memory checker
+///   - `valgrindXmlFileBase`: string to prepend to the xml report name
+///   - `valgrindargs`: commandline parameters to add to valgrind
+///   - `extraargs`: extra commandline arguments to add to arangod
 ///   - `cluster`: if set to true the tests are run with the coordinator
 ///     of a small local cluster
 ///   - `test`: path to single test to execute for "single" test target
@@ -207,6 +210,9 @@ function startInstance (protocol, options, addArgs, testname) {
     if (protocol === "ssl") {
       args.push("--server.keyfile");
       args.push(fs.join("UnitTests","server.pem"));
+    }
+    if (typeof(options.extraargs) === 'object') {
+      args = args.concat(options.extraargs);
     }
     if (addArgs !== undefined) {
       args = args.concat(addArgs);
