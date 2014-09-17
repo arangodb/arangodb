@@ -108,6 +108,7 @@ SERVER_START :=
 SERVER_OPT := \
 	--configuration none \
 	--database.maximal-journal-size 1048576 \
+	--database.force-sync-properties false \
 	--javascript.app-path @top_srcdir@/js/apps \
 	--javascript.startup-directory @top_srcdir@/js \
         --log.file "" \

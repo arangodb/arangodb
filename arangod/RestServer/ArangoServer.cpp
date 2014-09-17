@@ -283,6 +283,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _databasePath(),
     _defaultMaximalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
     _defaultWaitForSync(false),
+    _forceSyncProperties(true),
     _disableReplicationApplier(false),
     _server(nullptr) {
 
@@ -416,7 +417,6 @@ void ArangoServer::buildApplicationServer () {
     ("server.disable-replication-logger", &ignoreOpt, "start with replication logger turned off")
     ("database.force-sync-shapes", &ignoreOpt, "force syncing of shape data to disk, will use waitForSync value of collection when turned off (deprecated)")
     ("database.remove-on-drop", &ignoreOpt, "wipe a collection from disk after dropping")
-    ("database.force-sync-properties", &ignoreOpt, "force syncing of collection properties to disk, will use waitForSync value of collection when turned off")
   ;
 
   // .............................................................................
@@ -503,6 +503,7 @@ void ArangoServer::buildApplicationServer () {
   additional["DATABASE Options:help-admin"]
     ("database.maximal-journal-size", &_defaultMaximalSize, "default maximal journal size, can be overwritten when creating a collection")
     ("database.wait-for-sync", &_defaultWaitForSync, "default wait-for-sync behavior, can be overwritten when creating a collection")
+    ("database.force-sync-properties", &_forceSyncProperties, "force syncing of collection properties to disk, will use waitForSync value of collection when turned off")
   ;
 
   // .............................................................................
@@ -1097,6 +1098,7 @@ void ArangoServer::openDatabases (bool checkVersion,
   defaults.requireAuthentication            = ! _disableAuthentication;
   defaults.requireAuthenticationUnixSockets = ! _disableAuthenticationUnixSockets;
   defaults.authenticateSystemOnly           = _authenticateSystemOnly;
+  defaults.forceSyncProperties              = _forceSyncProperties;
 
   TRI_ASSERT(_server != nullptr);
 

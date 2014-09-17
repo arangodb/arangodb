@@ -331,8 +331,8 @@ int TRI_LoadCollectionInfo (char const*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_SaveCollectionInfo (char const*,
-                            const TRI_col_info_t* const,
-                            const bool);
+                            TRI_col_info_t const* const,
+                            bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates the parameter info block

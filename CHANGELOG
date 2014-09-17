@@ -1,6 +1,26 @@
 v2.2.4 (2014-XX-XX)
 -------------------
 
+* fixed issue #1020
+
+  This requires re-introducing the startup option `--database.force-sync-properties`.
+
+  This option can again be used to force fsyncs of collection, index and database properties 
+  stored as JSON strings on disk in files named `parameter.json`. Syncing these files after
+  a write may be necessary if the underlying storage does not sync file contents by itself
+  in a "sensible" amount of time after a file has been written and closed.
+
+  The default value is `true` so collection, index and database properties will always be
+  synced to disk immediately. This affects creating, renaming and dropping collections as 
+  well as creating and dropping databases and indexes. Each of these operations will perform
+  an additional fsync on the `parameter.json` file if the option is set to `true`. 
+
+  It might be sensible to set this option to `false` for workloads that create and drop a 
+  lot of collections (e.g. test runs).
+
+  Document operations such as creating, updating and dropping documents are not affected
+  by this option.
+
 * fixed issue #1016: AQL editor bug
 
 * fixed issue #1014: WITHIN function returns wrong distance
