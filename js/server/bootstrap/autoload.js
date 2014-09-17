@@ -40,6 +40,7 @@
   return {
     startup: function () {
       var internal = require("internal");
+      var console = require("console");
       var db = internal.db;
 
       db._useDatabase("_system");
@@ -47,16 +48,16 @@
       var databases = db._listDatabases();
       var i;
 
-      try {
-        for (i = 0;  i < databases.length;  ++i) {
-          db._useDatabase(databases[i]);
+      for (i = 0;  i < databases.length;  ++i) {
+        var name = databases[i];
 
+        try {
+          db._useDatabase(name);
           internal.autoloadModules();
         }
-      }
-      catch (err) {
-        db._useDatabase("_system");
-        throw err;
+        catch (err) {
+          console.info("trying to autoload new database %s, ignored", name);
+        }
       }
 
       return true;

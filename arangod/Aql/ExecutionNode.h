@@ -79,25 +79,19 @@ namespace triagens {
           ENUMERATE_LIST          =  4, 
           FILTER                  =  5, 
           LIMIT                   =  6, 
-          INTERSECTION            =  7,
-          CALCULATION             =  9, 
-          SUBQUERY                = 10, 
-          SORT                    = 11, 
-          AGGREGATE               = 12, 
-          LOOKUP_JOIN             = 13,
-          MERGE_JOIN              = 14,
-          LOOKUP_INDEX_UNIQUE     = 15,
-          LOOKUP_INDEX_RANGE      = 17,
-          LOOKUP_FULL_COLLECTION  = 18,
-          CONCATENATION           = 19,
-          MERGE                   = 20,
-          REMOTE                  = 21,
-          INSERT                  = 22,
-          REMOVE                  = 23,
-          REPLACE                 = 24,
-          UPDATE                  = 25,
-          RETURN                  = 26,
-          NORESULTS               = 27
+          CALCULATION             =  7, 
+          SUBQUERY                =  8, 
+          SORT                    =  9, 
+          AGGREGATE               = 10, 
+          SCATTER                 = 11,
+          GATHER                  = 12,
+          REMOTE                  = 13,
+          INSERT                  = 14,
+          REMOVE                  = 15,
+          REPLACE                 = 16,
+          UPDATE                  = 17,
+          RETURN                  = 18,
+          NORESULTS               = 19
         };
 
 // -----------------------------------------------------------------------------
@@ -140,7 +134,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static ExecutionNode* fromJsonFactory (ExecutionPlan* plan,
-                                               basics::Json const& json);
+                                               triagens::basics::Json const& json);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the node's id
@@ -374,7 +368,6 @@ namespace triagens {
             dep->invalidateCost();
           }
         }
-
        
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief estimate the cost of the node . . .
@@ -603,7 +596,7 @@ namespace triagens {
           : ExecutionNode(plan, id) {
         }
 
-        SingletonNode (ExecutionPlan*, basics::Json const& base);
+        SingletonNode (ExecutionPlan*, triagens::basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -675,7 +668,7 @@ namespace triagens {
         }
 
         EnumerateCollectionNode (ExecutionPlan* plan,
-                                 basics::Json const& base);
+                                 triagens::basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -816,7 +809,7 @@ namespace triagens {
           TRI_ASSERT(_outVariable != nullptr);
         }
         
-        EnumerateListNode (ExecutionPlan*, basics::Json const& base);
+        EnumerateListNode (ExecutionPlan*, triagens::basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -932,7 +925,7 @@ namespace triagens {
           TRI_ASSERT(_index != nullptr);
         }
 
-        IndexRangeNode (ExecutionPlan*, basics::Json const& base);
+        IndexRangeNode (ExecutionPlan*, triagens::basics::Json const& base);
 
         ~IndexRangeNode () {
         }
@@ -1087,7 +1080,7 @@ namespace triagens {
             _limit(limit) {
         }
         
-        LimitNode (ExecutionPlan*, basics::Json const& base);
+        LimitNode (ExecutionPlan*, triagens::basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -1168,7 +1161,7 @@ namespace triagens {
           TRI_ASSERT(_outVariable != nullptr);
         }
 
-        CalculationNode (ExecutionPlan*, basics::Json const& base);
+        CalculationNode (ExecutionPlan*, triagens::basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -1304,7 +1297,7 @@ namespace triagens {
       public:
 
         SubqueryNode (ExecutionPlan*,
-                      basics::Json const& base);
+                      triagens::basics::Json const& base);
 
         SubqueryNode (ExecutionPlan* plan,
                       size_t id,
@@ -1446,7 +1439,7 @@ namespace triagens {
           TRI_ASSERT(_inVariable != nullptr);
         }
         
-        FilterNode (ExecutionPlan*, basics::Json const& base);
+        FilterNode (ExecutionPlan*, triagens::basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -1593,7 +1586,7 @@ namespace triagens {
         }
         
         SortNode (ExecutionPlan* plan,
-                  basics::Json const& base,
+                  triagens::basics::Json const& base,
                   std::vector<std::pair<Variable const*, bool>> const& elements,
                   bool stable);
 
@@ -1728,7 +1721,7 @@ namespace triagens {
         }
         
         AggregateNode (ExecutionPlan*,
-                       basics::Json const& base,
+                       triagens::basics::Json const& base,
                        Variable const* outVariable,
                        std::unordered_map<VariableId, std::string const> const& variableMap,
                        std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables);
@@ -1853,7 +1846,7 @@ namespace triagens {
           TRI_ASSERT(_inVariable != nullptr);
         }
 
-        ReturnNode (ExecutionPlan*, basics::Json const& base);
+        ReturnNode (ExecutionPlan*, triagens::basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -1947,7 +1940,7 @@ namespace triagens {
         }
 
         ModificationNode (ExecutionPlan*,
-                          basics::Json const& json);
+                          triagens::basics::Json const& json);
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2018,7 +2011,7 @@ namespace triagens {
           // _outVariable might be a nullptr
         }
         
-        RemoveNode (ExecutionPlan*, basics::Json const& base);
+        RemoveNode (ExecutionPlan*, triagens::basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -2132,7 +2125,7 @@ namespace triagens {
           // _outVariable might be a nullptr
         }
         
-        InsertNode (ExecutionPlan*, basics::Json const& base);
+        InsertNode (ExecutionPlan*, triagens::basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -2249,7 +2242,7 @@ namespace triagens {
           // _outVariable might be a nullptr
         }
         
-        UpdateNode (ExecutionPlan*, basics::Json const& base);
+        UpdateNode (ExecutionPlan*, triagens::basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -2375,7 +2368,7 @@ namespace triagens {
           // _outVariable might be a nullptr
         }
 
-        ReplaceNode (ExecutionPlan*, basics::Json const& base);
+        ReplaceNode (ExecutionPlan*, triagens::basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -2489,7 +2482,7 @@ namespace triagens {
           : ExecutionNode(plan, id) {
         }
 
-        NoResultsNode (ExecutionPlan* plan, basics::Json const& base)
+        NoResultsNode (ExecutionPlan* plan, triagens::basics::Json const& base)
           : ExecutionNode(plan, base) {
         }
 
@@ -2525,6 +2518,189 @@ namespace triagens {
         
         double estimateCost () override {
           return 0;
+        }
+
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  class RemoteNode
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class RemoteNode
+////////////////////////////////////////////////////////////////////////////////
+
+    class RemoteNode : public ExecutionNode {
+      
+      friend class ExecutionBlock;
+      friend class RemoteBlock;
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor with an id
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+ 
+        RemoteNode (ExecutionPlan* plan, size_t id) 
+          : ExecutionNode(plan, id) {
+        }
+
+        RemoteNode (ExecutionPlan*, triagens::basics::Json const& base);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type of the node
+////////////////////////////////////////////////////////////////////////////////
+
+        NodeType getType () const override {
+          return REMOTE;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief export to JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void toJsonHelper (triagens::basics::Json&,
+                                   TRI_memory_zone_t*,
+                                   bool) const override;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone ExecutionNode recursively
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual ExecutionNode* clone (ExecutionPlan* plan) const {
+          auto c = new RemoteNode(plan, _id);
+          cloneDependencies(plan, c);
+          return static_cast<ExecutionNode*>(c);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the cost of a remote node is 1
+////////////////////////////////////////////////////////////////////////////////
+        
+        double estimateCost () {
+          return 1;
+        }
+
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 class ScatterNode
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class ScatterNode
+////////////////////////////////////////////////////////////////////////////////
+
+    class ScatterNode : public ExecutionNode {
+      
+      friend class ExecutionBlock;
+      friend class ScatterBlock;
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor with an id
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+ 
+        ScatterNode (ExecutionPlan* plan, size_t id) 
+          : ExecutionNode(plan, id) {
+        }
+
+        ScatterNode (ExecutionPlan*, triagens::basics::Json const& base);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type of the node
+////////////////////////////////////////////////////////////////////////////////
+
+        NodeType getType () const override {
+          return SCATTER;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief export to JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void toJsonHelper (triagens::basics::Json&,
+                                   TRI_memory_zone_t*,
+                                   bool) const override;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone ExecutionNode recursively
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual ExecutionNode* clone (ExecutionPlan* plan) const {
+          auto c = new ScatterNode(plan, _id);
+          cloneDependencies(plan, c);
+          return static_cast<ExecutionNode*>(c);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the cost of a scatter node is 1
+////////////////////////////////////////////////////////////////////////////////
+        
+        double estimateCost () {
+          return 1;
+        }
+
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  class GatherNode
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class GatherNode
+////////////////////////////////////////////////////////////////////////////////
+
+    class GatherNode : public ExecutionNode {
+      
+      friend class ExecutionBlock;
+      friend class GatherBlock;
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor with an id
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+ 
+        GatherNode (ExecutionPlan* plan, size_t id) 
+          : ExecutionNode(plan, id) {
+        }
+
+        GatherNode (ExecutionPlan*, triagens::basics::Json const& base);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type of the node
+////////////////////////////////////////////////////////////////////////////////
+
+        NodeType getType () const override {
+          return GATHER;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief export to JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void toJsonHelper (triagens::basics::Json&,
+                                   TRI_memory_zone_t*,
+                                   bool) const override;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone ExecutionNode recursively
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual ExecutionNode* clone (ExecutionPlan* plan) const {
+          auto c = new GatherNode(plan, _id);
+          cloneDependencies(plan, c);
+          return static_cast<ExecutionNode*>(c);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the cost of a gather node is 1
+////////////////////////////////////////////////////////////////////////////////
+        
+        double estimateCost () {
+          return 1;
         }
 
     };
