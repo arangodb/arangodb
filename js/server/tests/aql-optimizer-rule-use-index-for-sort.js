@@ -188,9 +188,6 @@ function optimizerRuleTestSuite() {
       var queries = [ 
 
         ["FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]", true],
-        // todo: we use an index anyways right now.
-        // currently only ASC supported.
-        // "FOR v IN " + colName + " SORT v.a DESC RETURN [v.a, v.b]", true],
         ["FOR v IN " + colName + " SORT v.b, v.a  RETURN [v.a]", true],
         ["FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]", true],
         ["FOR v IN " + colName + " SORT v.a + 1 RETURN [v.a]", false],// this will throw...
@@ -227,9 +224,8 @@ function optimizerRuleTestSuite() {
     testRuleHasEffect : function () {
       var allresults;
       var queries = [ 
-        // currently only ASC supported, but we use the index range anyways.
-        // todo: this may change.
         "FOR v IN " + colName + " SORT v.d DESC RETURN [v.d]",
+        "FOR v IN " + colName + " SORT v.d ASC RETURN [v.d]",
 
         "FOR v IN " + colName + " SORT v.d FILTER v.a > 2 LIMIT 3 RETURN [v.d]  ",
         "FOR v IN " + colName + " FOR w IN 1..10 SORT v.d RETURN [v.d]",
