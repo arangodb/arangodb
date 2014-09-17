@@ -1186,7 +1186,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       char* filename = TRI_Concatenate2File(collectionDirectory.c_str(), indexName);
       TRI_FreeString(TRI_CORE_MEM_ZONE, indexName);
       
-      bool ok = TRI_SaveJson(filename, json, false);
+      bool ok = TRI_SaveJson(filename, json, true);
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
       if (! ok) {

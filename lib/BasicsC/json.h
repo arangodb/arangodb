@@ -364,7 +364,7 @@ int TRI_Stringify2Json (struct TRI_string_buffer_s*, TRI_json_t const* object);
 /// @brief prints a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_PrintJson (int fd, TRI_json_t const*);
+bool TRI_PrintJson (int fd, TRI_json_t const*, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief saves a json object

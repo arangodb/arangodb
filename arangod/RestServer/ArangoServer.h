@@ -386,6 +386,25 @@ namespace triagens {
         bool _defaultWaitForSync;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief force syncing of collection properties to disk 
+/// @startDocuBlock databaseForceSyncProperties
+/// `--database.force-sync-properties boolean`
+///
+/// Force syncing of collection properties to disk after creating a collection
+/// or updating its properties.
+///
+/// If turned off, no fsync will happen for the collection and database 
+/// properties stored in `parameter.json` files in the file system. Turning
+/// off this option will speed up workloads that create and drop a lot of
+/// collections (e.g. test suites).
+///
+/// The default is *true*.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _forceSyncProperties;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief disable the replication applier on server startup
 /// @startDocuBlock serverDisableReplicationApplier
 /// `--server.disable-replication-applier flag`

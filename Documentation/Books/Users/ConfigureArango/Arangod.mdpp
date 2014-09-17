@@ -1,68 +1,68 @@
 !CHAPTER Command-Line Options for arangod
 
 !SUBSECTION Endpoint
-<!-- lib/HttpServer/ApplicationEndpointServer.h -->
 @startDocuBlock serverEndpoint
 
+
 !SUBSECTION Reuse address
-<!-- lib/HttpServer/ApplicationEndpointServer.h -->
 @startDocuBlock serverReuseAddress
 
+
 !SUBSECTION Disable authentication  
-<!-- arangod/RestServer/ArangoServer.h -->
 @startDocuBlock server_authentication
 
+
 !SUBSECTION Disable authentication-unix-sockets
-<!-- arangod/RestServer/ArangoServer.h -->
 @startDocuBlock serverAuthenticationDisable
 
+
 !SUBSECTION Authenticate system only
-<!-- arangod/RestServer/ArangoServer.h -->
 @startDocuBlock serverAuthenticateSystemOnly
 
+
 !SUBSECTION Disable replication-applier
-<!-- arangod/RestServer/ArangoServer.h -->
 @startDocuBlock serverDisableReplicationApplier
 
+
 !SUBSECTION Timeout
-<!-- lib/HttpServer/ApplicationEndpointServer.h -->
 @startDocuBlock keep_alive_timeout
 
+
 !SUBSECTION Default Api
-<!-- lib/HttpServer/ApplicationEndpointServer.h -->
 @startDocuBlock serverDefaultApi
 
-!SUBSECTION Allow method arrive
-<!-- lib/HttpServer/ApplicationEndpointServer.h -->
+
+!SUBSECTION Allow method override
 @startDocuBlock serverAllowMethod
 
+
 !SUBSECTION Keyfile
-<!-- lib/HttpServer/ApplicationEndpointServer.h -->
 @startDocuBlock serverKeyfile
 
+
 !SUBSECTION Cafile
-<!-- lib/HttpServer/ApplicationEndpointServer.h -->
 @startDocuBlock serverCafile
 
+
 !SUBSECTION SSL protocol
-<!-- lib/HttpServer/ApplicationEndpointServer.h -->
 @startDocuBlock serverSSLProtocol
 
+
 !SUBSECTION SSL Cache
-<!-- lib/HttpServer/ApplicationEndpointServer.h -->
 @startDocuBlock serverSSLCache
 
+
 !SUBSECTION SSL options
-<!-- lib/HttpServer/ApplicationEndpointServer.h -->
 @startDocuBlock serverSSLOptions
 
+
 !SUBSECTION SSL Cipher
-<!-- lib/HttpServer/ApplicationEndpointServer.h -->
 @startDocuBlock serverSSLCipher
 
+
 !SUBSECTION Backlog
-<!-- lib/HttpServer/ApplicationEndpointServer.h -->
 @startDocuBlock serverBacklog
+
 
 !SUBSECTION Disable statics 
 
@@ -75,25 +75,28 @@ Note: this option is only available when ArangoDB has not been compiled with
 the option *--disable-figures*.
 
 !SUBSECTION Directory
-<!-- lib/HttpServer/ApplicationEndpointServer.h -->
 @startDocuBlock DatabaseDirectory
 
+
 !SUBSECTION Journal size
-<!-- lib/HttpServer/ApplicationEndpointServer.h -->
 @startDocuBlock databaseMaximalJournalSize
 
+
 !SUBSECTION Wait for sync
-<!-- lib/HttpServer/ApplicationEndpointServer.h -->
 @startDocuBlock databaseWaitForSync
 
+
+!SUBSECTION Force syncing of properties
+@startDocuBlock databaseForceSyncProperties
+
+
 !SUBSECTION Frequency
-<!-- arangod/V8Server/ApplicationV8.h -->
 @startDocuBlock jsGcFrequency
 
+
 !SUBSECTION Startup gc-interval
-<!-- arangod/V8Server/ApplicationV8.h -->
 @startDocuBlock jsStartupGcInterval
 
+
 !SUBSECTION V8 options
-<!-- arangod/V8Server/ApplicationV8.h -->
 @startDocuBlock jsV8Options
