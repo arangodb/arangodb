@@ -761,7 +761,8 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             }
             for (auto& x : *map) {
               auto worker = [&] (std::list<RangeInfoBound>& bounds) -> void {
-                for (auto it = bounds.begin(); it != bounds.end(); ) {
+                for (auto it = bounds.begin(); it != bounds.end();
+                     /* no hoisting */) {
                   AstNode const* a = it->getExpressionAst(_plan->getAst());
                   std::unordered_set<Variable*> varsUsed
                       = Ast::getReferencedVariables(a);
