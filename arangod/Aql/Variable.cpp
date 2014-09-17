@@ -79,25 +79,6 @@ triagens::basics::Json Variable::toJson () const {
 /// @brief replace a variable by another
 ////////////////////////////////////////////////////////////////////////////////
 
-Variable* Variable::replace (Variable* variable,
-                             std::unordered_map<VariableId, Variable const*> const& replacements) {
-  while (variable != nullptr) {
-    auto it = replacements.find(variable->id);
-    if (it != replacements.end()) {
-      variable = const_cast<Variable*>((*it).second);
-    }
-    else {
-      break;
-    }
-  }
-
-  return variable;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief replace a variable by another
-////////////////////////////////////////////////////////////////////////////////
-
 Variable const* Variable::replace (Variable const* variable,
                                    std::unordered_map<VariableId, Variable const*> const& replacements) {
   while (variable != nullptr) {
@@ -111,15 +92,6 @@ Variable const* Variable::replace (Variable const* variable,
   }
 
   return variable;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compares two variables, using their ids
-////////////////////////////////////////////////////////////////////////////////
-    
-bool Variable::Comparator (Variable const* l, 
-                           Variable const* r) {
-  return l->id < r->id;
 }
 
 // -----------------------------------------------------------------------------

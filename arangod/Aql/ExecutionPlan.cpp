@@ -261,21 +261,6 @@ ExecutionNode* ExecutionPlan::registerNode (ExecutionNode* node) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief unregister a node to the plan
-////////////////////////////////////////////////////////////////////////////////
-
-void ExecutionPlan::unregisterNode (ExecutionNode* node) {
-  TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->id() > 0);
-
-  auto it = _ids.find(node->id());
-  TRI_ASSERT(it != _ids.end());
-  TRI_ASSERT(it->second == node);
-
-  _ids.erase(it);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a calculation node for an arbitrary expression
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -946,6 +931,7 @@ std::vector<ExecutionNode*> ExecutionPlan::findNodesOfType (
 /// @brief check linkage of execution plan
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 class LinkChecker : public WalkerWorker<ExecutionNode> {
 
   public:
@@ -994,6 +980,8 @@ void ExecutionPlan::checkLinkage () {
   LinkChecker checker;
   root()->walk(&checker);
 }
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper struct for findVarUsage

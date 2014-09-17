@@ -477,13 +477,18 @@ function findReferencedNodes(plan, testNode) {
   return matches;
 }
 
-function getQueryMultiplePlansAndExecutions (query, bindVars, debug) {
+function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug) {
   var i;
   var plans = [];
   var allPlans = [];
   var results = [];
+  var resetTest = false;
   var paramNone     = { optimizer: { rules: [ "-all" ]},  verbosePlans: true};
   var paramAllPlans = { allPlans : true, verbosePlans: true};
+
+  if (testObject !== undefined) {
+    resetTest = true;
+  }
 
   if (debug === undefined) {
     debug = false;
@@ -514,9 +519,21 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, debug) {
     if (debug) {
       require("internal").print("Executing Plan No: " + i + "\n");
     }
+    if (resetTest) {
+      if (debug) {
+        require("internal").print("\nFLUSHING\n");
+      }
+      testObject.tearDown();
+      testObject.setUp();
+      if (debug) {
+        require("internal").print("\n" + i + " FLUSH DONE\n");
+      }
+    }
+
     results[i] = AQL_EXECUTEJSON(plans[i].plan, paramNone);
+
     if (debug) {
-      require("internal").print("\nDONE\n");
+      require("internal").print("\n" + i + " DONE\n");
     }
   }
 
