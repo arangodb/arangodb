@@ -172,9 +172,10 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
       return new NoResultsNode(plan, oneNode);
     case INDEX_RANGE:
       return new IndexRangeNode(plan, oneNode);
+    case REMOTE:
+      return new RemoteNode(plan, oneNode);
     case SCATTER: 
-    case GATHER: 
-    case REMOTE: {
+    case GATHER: { 
       // TODO: handle these types of nodes
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "unhandled node type");
     }
@@ -1526,13 +1527,18 @@ void NoResultsNode::toJsonHelper (triagens::basics::Json& nodes,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for RemoteNode
+/// @brief constructor for RemoteNode from Json
 ////////////////////////////////////////////////////////////////////////////////
 
-RemoteNode::RemoteNode (ExecutionPlan* plan, 
-                        triagens::basics::Json const& base)
-  : ExecutionNode(plan, base) {
+RemoteNode::RemoteNode (ExecutionPlan* plan,
+                        triagens::basics::Json const& json)
+  : ExecutionNode(plan, json),
+    _destination(JsonHelper::checkAndGetStringValue(json.json(), "destination")) {
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson, for RemoteNode
+////////////////////////////////////////////////////////////////////////////////
 
 void RemoteNode::toJsonHelper (triagens::basics::Json& nodes,
                                TRI_memory_zone_t* zone,
@@ -1541,6 +1547,8 @@ void RemoteNode::toJsonHelper (triagens::basics::Json& nodes,
   if (json.isEmpty()) {
     return;
   }
+
+  json.set("destination", triagens::basics::Json(_destination));
 
   // And add it:
   nodes(json);
@@ -1551,13 +1559,17 @@ void RemoteNode::toJsonHelper (triagens::basics::Json& nodes,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for ScatterNode
+/// @brief construct a scatter node from JSON
 ////////////////////////////////////////////////////////////////////////////////
 
 ScatterNode::ScatterNode (ExecutionPlan* plan, 
                           triagens::basics::Json const& base)
   : ExecutionNode(plan, base) {
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson, for ScatterNode
+////////////////////////////////////////////////////////////////////////////////
 
 void ScatterNode::toJsonHelper (triagens::basics::Json& nodes,
                                 TRI_memory_zone_t* zone,
@@ -1576,13 +1588,17 @@ void ScatterNode::toJsonHelper (triagens::basics::Json& nodes,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for GatherNode
+/// @brief construct a gather node from JSON
 ////////////////////////////////////////////////////////////////////////////////
 
 GatherNode::GatherNode (ExecutionPlan* plan, 
                         triagens::basics::Json const& base)
   : ExecutionNode(plan, base) {
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson, for GatherNode
+////////////////////////////////////////////////////////////////////////////////
 
 void GatherNode::toJsonHelper (triagens::basics::Json& nodes,
                                TRI_memory_zone_t* zone,
