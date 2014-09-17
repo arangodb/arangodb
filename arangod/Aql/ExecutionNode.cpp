@@ -279,14 +279,10 @@ ExecutionNode::IndexMatch ExecutionNode::CompareIndex (TRI_index_t const* idx,
       else {
         // descending
         match.matches.push_back(REVERSE_MATCH);
-#ifdef CIRCUS_IS_IN_TOWN
         ++backwardCount;
         if (forwardCount > 0) {
           match.doesMatch = false;
         }
-#else
-        match.doesMatch = false;
-#endif
         match.reverse = true;
       }
       ++interestingCount;
