@@ -63,6 +63,9 @@ namespace triagens {
         SkipListNode* nextNode () {
           return _next[0];
         }
+        // Note that the prevNode of the first data node is the artificial
+        // _start node not containing data. This is contrary to the prevNode
+        // method of the SkipList class, which returns nullptr in that case.
         SkipListNode* prevNode () {
           return _prev;
         }
@@ -153,7 +156,10 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the start node
+/// @brief return the start node, note that this does not return the first 
+/// data node but the (internal) artificial node stored under _start. This
+/// is consistent behaviour with the leftLookup method given a key value
+/// of -infinity.
 ////////////////////////////////////////////////////////////////////////////////
 
         SkipListNode* startNode () const {
@@ -161,11 +167,14 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the end node
+/// @brief return the end node, note that for formal reasons this always
+/// returns a nullptr, which stands for the first value outside, in analogy
+/// to startNode(). One has to use prevNode(nullptr) to get the last node
+/// containing data.
 ////////////////////////////////////////////////////////////////////////////////
 
         SkipListNode* endNode () const {
-          return _end;
+          return nullptr;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -177,16 +186,13 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the predecessor node or nullptr if first node
+/// @brief return the predecessor node or _startNode() if first node,
+/// it is legal to call this with the nullptr to find the last node
+/// containing data, if there is one.
 ////////////////////////////////////////////////////////////////////////////////
 
         SkipListNode* prevNode (SkipListNode* node) const {
-          if (node->_prev == _start) {
-            return nullptr;
-          }
-          else {
-            return node->_prev;
-          }
+          return nullptr == node ? _end : node->_prev;
         }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -94,15 +94,18 @@ typedef struct TRI_skiplist_iterator_s {
   size_t _currentInterval; // starts with 0, current interval used
   triagens::basics::SkipListNode* _cursor;
                  // always holds the last node returned, initially equal to
-                 // the _leftEndPoint of the first interval, can be NULL
-                 // if there are no intervals (yet), in any case, if
-                 // _cursor is NULL, then there are (currently) no more
-                 // documents in the iterator.
+                 // the _leftEndPoint of the first interval (or the 
+                 // _rightEndPoint of the last interval in the reverse
+                 // case), can be nullptr if there are no intervals
+                 // (yet), or, in the reverse case, if the cursor is
+                 // at the end of the last interval. Additionally
+                 // in the non-reverse case _cursor is set to nullptr
+                 // if the cursor is exhausted.
+                 // See SkiplistNextIterationCallback and
+                 // SkiplistPrevIterationCallback for the exact
+                 // condition for the iterator to be exhausted.
   bool  (*hasNext) (struct TRI_skiplist_iterator_s const*);
   TRI_skiplist_index_element_t* (*next)(struct TRI_skiplist_iterator_s*);
-
-  // TODO: currently not used. remove?
-  // TRI_skiplist_index_element_t* (*nexts)(struct TRI_skiplist_iterator_s*, int64_t jumpSize);
 }
 TRI_skiplist_iterator_t;
 
