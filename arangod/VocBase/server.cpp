@@ -1073,7 +1073,7 @@ static int SaveDatabaseParameters (TRI_voc_tick_t id,
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
 
-  if (! TRI_SaveJson(file, json, false)) {
+  if (! TRI_SaveJson(file, json, true)) {
     LOG_ERROR("cannot save database information in file '%s'", file);
 
     TRI_FreeJson(TRI_CORE_MEM_ZONE, json);

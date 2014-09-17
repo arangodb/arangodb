@@ -50,6 +50,7 @@ typedef struct TRI_vocbase_defaults_s {
   bool              requireAuthentication;
   bool              requireAuthenticationUnixSockets;
   bool              authenticateSystemOnly;
+  bool              forceSyncProperties;
 }
 TRI_vocbase_defaults_t;
 
