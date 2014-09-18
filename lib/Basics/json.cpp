@@ -1079,7 +1079,9 @@ bool TRI_SaveJson (char const* filename,
   }
 
   // remove a potentially existing temporary file
-  TRI_UnlinkFile(tmp);
+  if (TRI_ExistsFile(tmp)) {
+    TRI_UnlinkFile(tmp);
+  }
 
   fd = TRI_CREATE(tmp, O_CREAT | O_TRUNC | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
 
@@ -1098,8 +1100,10 @@ bool TRI_SaveJson (char const* filename,
     TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
     return false;
   }
-
+  
   if (syncFile) {
+    LOG_TRACE("syncing tmp file '%s'", tmp);
+
     if (! TRI_fsync(fd)) {
       TRI_CLOSE(fd);
       TRI_set_errno(TRI_ERROR_SYS_ERROR);

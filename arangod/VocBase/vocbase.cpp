@@ -417,6 +417,8 @@ static bool DropCollectionCallback (TRI_collection_t* col,
       // perform the rename
       res = TRI_RenameFile(collection->_path, newFilename);
 
+      LOG_TRACE("renaming collection directory from '%s' to '%s'", collection->_path, newFilename);
+
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_ERROR("cannot rename dropped collection '%s' from '%s' to '%s': %s",
                   collection->_name,
@@ -2048,7 +2050,11 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
     if (! info._deleted) {
       info._deleted = true;
 
-      res = TRI_SaveCollectionInfo(collection->_path, &info, vocbase->_settings.forceSyncProperties);
+      // we don't need to fsync if we are in the recovery phase
+      bool doSync = (vocbase->_settings.forceSyncProperties &&
+                     ! triagens::wal::LogfileManager::instance()->isInRecovery());
+
+      res = TRI_SaveCollectionInfo(collection->_path, &info, doSync);
       TRI_FreeCollectionInfoOptions(&info);
 
       if (res != TRI_ERROR_NO_ERROR) {
