@@ -29,7 +29,8 @@
 
 #include "Aql/NodeFinder.h"
 
-using namespace triagens::aql;
+namespace triagens {
+  namespace aql {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -92,6 +93,9 @@ bool NodeFinder<std::vector<ExecutionNode::NodeType>>::before (ExecutionNode* en
   }
   return false;
 }
+
+  }  // namespace triagens::aql
+}  // namespace triagens
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
