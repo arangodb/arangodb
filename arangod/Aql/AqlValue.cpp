@@ -649,33 +649,27 @@ AqlValue AqlValue::CreateFromBlocks (AQL_TRANSACTION_V8* trx,
     totalSize += (*it)->size();
   }
 
-  auto json = new Json(Json::List, totalSize);
+  std::unique_ptr<Json> json(new Json(Json::List, totalSize));
 
-  try {
-    for (auto it = src.begin(); it != src.end(); ++it) {
-      auto current = (*it);
-      RegisterId const n = current->getNrRegs();
+  for (auto it = src.begin(); it != src.end(); ++it) {
+    auto current = (*it);
+    RegisterId const n = current->getNrRegs();
 
-      for (size_t i = 0; i < current->size(); ++i) {
-        Json values(Json::Array);
+    for (size_t i = 0; i < current->size(); ++i) {
+      Json values(Json::Array);
 
-        for (RegisterId j = 0; j < n; ++j) {
-          if (variableNames[j][0] != '\0') {
-            // temporaries don't have a name and won't be included
-            values.set(variableNames[j].c_str(), current->getValue(i, j).toJson(trx, current->getDocumentCollection(j)));
-          }
+      for (RegisterId j = 0; j < n; ++j) {
+        if (variableNames[j][0] != '\0') {
+          // temporaries don't have a name and won't be included
+          values.set(variableNames[j].c_str(), current->getValue(i, j).toJson(trx, current->getDocumentCollection(j)));
         }
-
-        json->add(values);
       }
-    }
 
-    return AqlValue(json);
+      json->add(values);
+    }
   }
-  catch (...) {
-    delete json;
-    throw;
-  }
+
+  return AqlValue(json.release());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

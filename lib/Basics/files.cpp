@@ -536,7 +536,22 @@ int TRI_CreateDirectory (char const* path) {
 
   if (res != TRI_ERROR_NO_ERROR) {
     // check errno
-    res = TRI_errno();
+    res = errno;
+    if (res != TRI_ERROR_NO_ERROR) {
+      if (res == ENOENT) {
+        res = TRI_ERROR_FILE_NOT_FOUND;
+      }
+      else if (res == EEXIST) {
+        res = TRI_ERROR_FILE_EXISTS;
+      }
+      else if (res == EPERM) {
+        res = TRI_ERROR_FORBIDDEN;
+      }
+      else {
+        // an unknown error type. will be translated into system error below
+        res = TRI_ERROR_NO_ERROR;
+      }
+    }
 
     // if errno doesn't indicate an error, return a system error
     if (res == TRI_ERROR_NO_ERROR) {

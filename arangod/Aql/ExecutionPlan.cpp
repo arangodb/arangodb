@@ -32,6 +32,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Expression.h"
+#include "Aql/NodeFinder.h"
 #include "Aql/Optimizer.h"
 #include "Aql/Query.h"
 #include "Aql/Variable.h"
@@ -888,39 +889,26 @@ ExecutionNode* ExecutionPlan::fromNode (AstNode const* node) {
 /// @brief find nodes of a certain type
 ////////////////////////////////////////////////////////////////////////////////
 
-class NodeFinder : public WalkerWorker<ExecutionNode> {
-
-    ExecutionNode::NodeType _lookingFor;
-
-    std::vector<ExecutionNode*>& _out;
-
-    bool _enterSubqueries;
-
-  public:
-    NodeFinder (ExecutionNode::NodeType lookingFor,
-                std::vector<ExecutionNode*>& out,
-                bool enterSubqueries) 
-      : _lookingFor(lookingFor), _out(out), _enterSubqueries(enterSubqueries) {
-    };
-
-    bool before (ExecutionNode* en) {
-      if (en->getType() == _lookingFor) {
-        _out.push_back(en);
-      }
-      return false;
-    }
-
-    bool enterSubquery (ExecutionNode*, ExecutionNode*) {
-      return _enterSubqueries;
-    }
-};
-
 std::vector<ExecutionNode*> ExecutionPlan::findNodesOfType (
                                   ExecutionNode::NodeType type,
                                   bool enterSubqueries) {
 
   std::vector<ExecutionNode*> result;
-  NodeFinder finder(type, result, enterSubqueries);
+  NodeFinder<ExecutionNode::NodeType> finder(type, result, enterSubqueries);
+  root()->walk(&finder);
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find nodes of a certain types
+////////////////////////////////////////////////////////////////////////////////
+
+std::vector<ExecutionNode*> ExecutionPlan::findNodesOfType (
+                                  std::vector<ExecutionNode::NodeType> const& types,
+                                  bool enterSubqueries) {
+
+  std::vector<ExecutionNode*> result;
+  NodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, result, enterSubqueries);
   root()->walk(&finder);
   return result;
 }
@@ -1064,23 +1052,27 @@ void ExecutionPlan::unlinkNodes (std::unordered_set<ExecutionNode*>& toRemove) {
 /// node and that one cannot remove the root node of the plan.
 ////////////////////////////////////////////////////////////////////////////////
 
-void ExecutionPlan::unlinkNode (ExecutionNode* node) {
+void ExecutionPlan::unlinkNode (ExecutionNode* node,
+                                bool allowUnlinkingRoot) {
   auto parents = node->getParents();
   if (parents.empty()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "Cannot unlink root node of plan.");
+    if (! allowUnlinkingRoot) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "Cannot unlink root node of plan.");
+    }
+    // adjust root node. the caller needs to make sure that a new root node gets inserted
+    _root = nullptr;
   }
-  else {
-    auto dep = node->getDependencies();
-    for (auto p : parents) {
-      p->removeDependency(node);
-      for (auto x : dep) {
-        p->addDependency(x);
-      }
+
+  auto dep = node->getDependencies();  // Intentionally copy the vector!
+  for (auto* p : parents) {
+    p->removeDependency(node);
+    for (auto* x : dep) {
+      p->addDependency(x);
     }
-    for (auto x : dep) {
-      node->removeDependency(x);
-    }
+  }
+  for (auto* x : dep) {
+    node->removeDependency(x);
   }
   _varUsageComputed = false;
 }
@@ -1098,14 +1090,15 @@ void ExecutionPlan::replaceNode (ExecutionNode* oldNode,
   TRI_ASSERT(oldNode != _root);
 
   std::vector<ExecutionNode*> deps = oldNode->getDependencies();
+    // Intentional copy
   
-  for (auto x : deps) {
+  for (auto* x : deps) {
     newNode->addDependency(x);
     oldNode->removeDependency(x);
   }
   
-  auto oldNodeParents = oldNode->getParents();
-  for (auto oldNodeParent : oldNodeParents) {
+  auto oldNodeParents = oldNode->getParents();  // Intentional copy
+  for (auto* oldNodeParent : oldNodeParents) {
     if(! oldNodeParent->replaceDependency(oldNode, newNode)){
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                   "Could not replace dependencies of an old node.");
@@ -1128,7 +1121,7 @@ void ExecutionPlan::insertDependency (ExecutionNode* oldNode,
   TRI_ASSERT(newNode->getDependencies().empty());
   TRI_ASSERT(oldNode->getDependencies().size() == 1);
 
-  auto oldDeps = oldNode->getDependencies();
+  auto oldDeps = oldNode->getDependencies();  // Intentional copy
   if (! oldNode->replaceDependency(oldDeps[0], newNode)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                 "Could not replace dependencies of an old node.");
