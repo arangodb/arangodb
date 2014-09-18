@@ -2541,7 +2541,8 @@ namespace triagens {
 
       public:
  
-        RemoteNode (ExecutionPlan* plan, size_t id) 
+        RemoteNode (ExecutionPlan* plan, 
+                    size_t id) 
           : ExecutionNode(plan, id) {
         }
 

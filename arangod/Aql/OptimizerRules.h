@@ -106,6 +106,12 @@ namespace triagens {
 
     int interchangeAdjacentEnumerations (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief distribute operations in cluster
+////////////////////////////////////////////////////////////////////////////////
+
+    int distributeInCluster (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+
   }  // namespace aql
 }  // namespace triagens
 
