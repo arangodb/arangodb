@@ -53,6 +53,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/Function.cpp \
 	arangod/Aql/Functions.cpp \
 	arangod/Aql/grammar.cpp \
+	arangod/Aql/NodeFinder.cpp \
 	arangod/Aql/Optimizer.cpp \
 	arangod/Aql/OptimizerRules.cpp \
 	arangod/Aql/Parser.cpp \
