@@ -1590,72 +1590,64 @@ int triagens::aql::distributeInCluster (Optimizer* opt,
   if (triagens::arango::ServerState::instance()->isCoordinator()) {
     // we are a coordinator. now look in the plan for nodes of type
     // EnumerateCollectionNode and IndexRangeNode
-    auto root = plan->root();
+    std::vector<ExecutionNode::NodeType> const types = { 
+      ExecutionNode::ENUMERATE_COLLECTION, 
+      ExecutionNode::INDEX_RANGE,
+      ExecutionNode::INSERT,
+      ExecutionNode::UPDATE,
+      ExecutionNode::REPLACE,
+      ExecutionNode::REMOVE
+    }; 
 
-    std::vector<ExecutionNode*> stack;
-    for (auto dep : root->getDependencies()) {
-      stack.push_back(dep);
-    }
+    std::vector<ExecutionNode*> nodes = plan->findNodesOfType(types, true);
 
-    while (! stack.empty()) {
-      auto current = stack.back();
-      stack.pop_back();
+    for (auto& node: nodes) {
+      // found a node we need to replace in the plan
 
-      if (current->getType() == triagens::aql::ExecutionNode::ENUMERATE_COLLECTION ||
-          current->getType() == triagens::aql::ExecutionNode::INDEX_RANGE) {
-        // found something we need to replace in the plan
+      auto parents = node->getParents();
+      auto deps = node->getDependencies();
+      TRI_ASSERT(deps.size() == 1);
 
-        auto const& parents = current->getParents();
-        auto const& deps = current->getDependencies();
-        TRI_ASSERT(deps.size() == 1);
+      // unlink the node
+      bool const isRootNode = plan->isRoot(node);
+      plan->unlinkNode(node, isRootNode);
 
-        // unlink the collection node
-        plan->unlinkNode(current);
+      // insert a scatter node
+      ExecutionNode* scatterNode = new ScatterNode(plan, plan->nextId());
+      plan->registerNode(scatterNode);
+      scatterNode->addDependency(deps[0]);
 
-        // insert a scatter node
-        ExecutionNode* scatterNode = new ScatterNode(plan, plan->nextId());
-        plan->registerNode(scatterNode);
-        scatterNode->addDependency(deps[0]);
-
-        // insert a remote node
-        ExecutionNode* remoteNode = new RemoteNode(plan, plan->nextId());
-        plan->registerNode(remoteNode);
-        remoteNode->addDependency(scatterNode);
+      // insert a remote node
+      ExecutionNode* remoteNode = new RemoteNode(plan, plan->nextId());
+      plan->registerNode(remoteNode);
+      remoteNode->addDependency(scatterNode);
         
-        // re-link with the remote node
-        TRI_ASSERT(parents.size() == 1);
-        current->addDependency(remoteNode);
+      // re-link with the remote node
+      node->addDependency(remoteNode);
 
-        // insert anoter remote node
-        remoteNode = new RemoteNode(plan, plan->nextId());
-        plan->registerNode(remoteNode);
-        remoteNode->addDependency(current);
+      // insert another remote node
+      remoteNode = new RemoteNode(plan, plan->nextId());
+      plan->registerNode(remoteNode);
+      remoteNode->addDependency(node);
+     
+      // insert a gather node 
+      ExecutionNode* gatherNode = new GatherNode(plan, plan->nextId());
+      plan->registerNode(gatherNode);
+      gatherNode->addDependency(remoteNode);
        
-        // insert a gather node 
-        ExecutionNode* gatherNode = new GatherNode(plan, plan->nextId());
-        plan->registerNode(gatherNode);
-        gatherNode->addDependency(remoteNode);
-       
-        // and now link the gather node with the rest of the plan
+      // and now link the gather node with the rest of the plan
+      if (parents.size() == 1) {
         parents[0]->replaceDependency(deps[0], gatherNode);
-         
-        wasModified = true;
       }
-      
-      auto deps = current->getDependencies();
 
-      if (deps.size() != 1) {
-        // node either has no or more than one dependency. we don't know what to do and must abort
-        // note: this will also handle Singleton nodes
-        break;
+      if (isRootNode) {
+        // if we replaced the root node, set a new root node
+        plan->root(gatherNode);
       }
-       
-      for (auto dep : deps) {
-        stack.push_back(dep);
-      }
+      wasModified = true;
     }
   }
-#endif
+#endif  
    
   opt->addPlan(plan, rule->level, wasModified);
 
