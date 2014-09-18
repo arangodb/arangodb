@@ -1415,6 +1415,7 @@ int triagens::aql::useIndexForSort (Optimizer* opt,
       }
     }
   }
+
   opt->addPlan(plan,
                planModified ? Optimizer::RuleLevel::pass5 : rule->level,
                planModified);
@@ -1443,11 +1444,11 @@ static bool nextPermutationTuple (std::vector<size_t>& data,
   for (size_t i = starts.size(); i-- != 0; ) {
     std::vector<size_t>::iterator from = begin + starts[i];
     std::vector<size_t>::iterator to;
-    if (i == starts.size()-1) {
+    if (i == starts.size() - 1) {
       to = data.end();
     }
     else {
-      to = begin + starts[i+1];
+      to = begin + starts[i + 1];
     }
     if (std::next_permutation(from, to)) {
       return true;
@@ -1569,6 +1570,94 @@ int triagens::aql::interchangeAdjacentEnumerations (Optimizer* opt,
     } 
     while (nextPermutationTuple(permTuple, starts));
   }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief distribute operations in cluster
+/// this rule inserts scatter, gather and remote nodes so operations on sharded
+/// collections actually work
+/// it will change plans in place
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::distributeInCluster (Optimizer* opt,
+                                        ExecutionPlan* plan,
+                                        Optimizer::Rule const* rule) {
+  bool wasModified = false;
+
+#if 0
+  if (triagens::arango::ServerState::instance()->isCoordinator()) {
+    // we are a coordinator. now look in the plan for nodes of type
+    // EnumerateCollectionNode and IndexRangeNode
+    auto root = plan->root();
+
+    std::vector<ExecutionNode*> stack;
+    for (auto dep : root->getDependencies()) {
+      stack.push_back(dep);
+    }
+
+    while (! stack.empty()) {
+      auto current = stack.back();
+      stack.pop_back();
+
+      if (current->getType() == triagens::aql::ExecutionNode::ENUMERATE_COLLECTION ||
+          current->getType() == triagens::aql::ExecutionNode::INDEX_RANGE) {
+        // found something we need to replace in the plan
+
+        auto const& parents = current->getParents();
+        auto const& deps = current->getDependencies();
+        TRI_ASSERT(deps.size() == 1);
+
+        // unlink the collection node
+        plan->unlinkNode(current);
+
+        // insert a scatter node
+        ExecutionNode* scatterNode = new ScatterNode(plan, plan->nextId());
+        plan->registerNode(scatterNode);
+        scatterNode->addDependency(deps[0]);
+
+        // insert a remote node
+        ExecutionNode* remoteNode = new RemoteNode(plan, plan->nextId());
+        plan->registerNode(remoteNode);
+        remoteNode->addDependency(scatterNode);
+        
+        // re-link with the remote node
+        TRI_ASSERT(parents.size() == 1);
+        current->addDependency(remoteNode);
+
+        // insert anoter remote node
+        remoteNode = new RemoteNode(plan, plan->nextId());
+        plan->registerNode(remoteNode);
+        remoteNode->addDependency(current);
+       
+        // insert a gather node 
+        ExecutionNode* gatherNode = new GatherNode(plan, plan->nextId());
+        plan->registerNode(gatherNode);
+        gatherNode->addDependency(remoteNode);
+       
+        // and now link the gather node with the rest of the plan
+        parents[0]->replaceDependency(deps[0], gatherNode);
+         
+        wasModified = true;
+      }
+      
+      auto deps = current->getDependencies();
+
+      if (deps.size() != 1) {
+        // node either has no or more than one dependency. we don't know what to do and must abort
+        // note: this will also handle Singleton nodes
+        break;
+      }
+       
+      for (auto dep : deps) {
+        stack.push_back(dep);
+      }
+    }
+  }
+#endif
+   
+  opt->addPlan(plan, rule->level, wasModified);
 
   return TRI_ERROR_NO_ERROR;
 }
