@@ -1586,7 +1586,6 @@ int triagens::aql::distributeInCluster (Optimizer* opt,
                                         Optimizer::Rule const* rule) {
   bool wasModified = false;
 
-#if 0
   if (triagens::arango::ServerState::instance()->isCoordinator()) {
     // we are a coordinator. now look in the plan for nodes of type
     // EnumerateCollectionNode and IndexRangeNode
@@ -1647,7 +1646,6 @@ int triagens::aql::distributeInCluster (Optimizer* opt,
       wasModified = true;
     }
   }
-#endif  
    
   opt->addPlan(plan, rule->level, wasModified);
 
