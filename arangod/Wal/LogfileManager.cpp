@@ -644,9 +644,9 @@ std::unordered_set<TRI_voc_tick_t> LogfileManager::getDroppedDatabases () {
 void LogfileManager::unregisterFailedTransactions (std::unordered_set<TRI_voc_tid_t> const& failedTransactions) {
   WRITE_LOCKER(_logfilesLock);
 
-  std::for_each(failedTransactions.begin(), failedTransactions.end(), [&] (TRI_voc_tid_t id) {
-    _failedTransactions.erase(id);
-  });
+  std::for_each(failedTransactions.begin(), failedTransactions.end(), 
+                [&] (TRI_voc_tid_t id) { _failedTransactions.erase(id);
+                });
 }
 
 ////////////////////////////////////////////////////////////////////////////////

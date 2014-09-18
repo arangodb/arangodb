@@ -1071,14 +1071,14 @@ void ExecutionPlan::unlinkNode (ExecutionNode* node) {
                                    "Cannot unlink root node of plan.");
   }
   else {
-    auto dep = node->getDependencies();
-    for (auto p : parents) {
+    auto dep = node->getDependencies();  // Intentionally copy the vector!
+    for (auto* p : parents) {
       p->removeDependency(node);
-      for (auto x : dep) {
+      for (auto* x : dep) {
         p->addDependency(x);
       }
     }
-    for (auto x : dep) {
+    for (auto* x : dep) {
       node->removeDependency(x);
     }
   }
@@ -1098,14 +1098,15 @@ void ExecutionPlan::replaceNode (ExecutionNode* oldNode,
   TRI_ASSERT(oldNode != _root);
 
   std::vector<ExecutionNode*> deps = oldNode->getDependencies();
+    // Intentional copy
   
-  for (auto x : deps) {
+  for (auto* x : deps) {
     newNode->addDependency(x);
     oldNode->removeDependency(x);
   }
   
-  auto oldNodeParents = oldNode->getParents();
-  for (auto oldNodeParent : oldNodeParents) {
+  auto oldNodeParents = oldNode->getParents();  // Intentional copy
+  for (auto* oldNodeParent : oldNodeParents) {
     if(! oldNodeParent->replaceDependency(oldNode, newNode)){
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                   "Could not replace dependencies of an old node.");
@@ -1128,7 +1129,7 @@ void ExecutionPlan::insertDependency (ExecutionNode* oldNode,
   TRI_ASSERT(newNode->getDependencies().empty());
   TRI_ASSERT(oldNode->getDependencies().size() == 1);
 
-  auto oldDeps = oldNode->getDependencies();
+  auto oldDeps = oldNode->getDependencies();  // Intentional copy
   if (! oldNode->replaceDependency(oldDeps[0], newNode)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                 "Could not replace dependencies of an old node.");

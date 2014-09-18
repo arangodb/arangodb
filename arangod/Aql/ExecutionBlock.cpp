@@ -3085,14 +3085,14 @@ void UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
     keyRegisterId = it->second.registerId;
   }
   
-  auto trxCollection = _trx->trxCollection(_collection->cid());
+  auto* trxCollection = _trx->trxCollection(_collection->cid());
 
   if (ep->_outVariable == nullptr) {
     // don't return anything
          
     // loop over all blocks
-    for (auto it = blocks.begin(); it != blocks.end(); ++it) {
-      auto res = (*it);
+    for (auto& b : blocks) {
+      auto* res = b;   // This is intentionally a copy!
       auto document = res->getDocumentCollection(docRegisterId);
       decltype(document) keyDocument = nullptr;
 
@@ -3166,7 +3166,7 @@ void UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
       // done with a block
 
       // now free it already
-      (*it) = nullptr;  
+      b = nullptr;  
       delete res;
     }
   }
@@ -3209,8 +3209,8 @@ void ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
     // don't return anything
          
     // loop over all blocks
-    for (auto it = blocks.begin(); it != blocks.end(); ++it) {
-      auto res = (*it);
+    for (auto& b : blocks) {
+      auto* res = b;  // This is intentionally a copy
       auto document = res->getDocumentCollection(registerId);
       decltype(document) keyDocument = nullptr;
 
@@ -3255,7 +3255,7 @@ void ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
       // done with a block
 
       // now free it already
-      (*it) = nullptr;  
+      b = nullptr;  
       delete res;
     }
   }
