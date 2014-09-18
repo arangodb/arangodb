@@ -637,14 +637,16 @@ bool RecoverState::InitialScanMarker (TRI_df_marker_t const* marker,
     // -----------------------------------------------------------------------------
     // drop markers 
     // -----------------------------------------------------------------------------
-   
+*/
+ 
     case TRI_WAL_MARKER_DROP_COLLECTION: {
       collection_drop_marker_t const* m = reinterpret_cast<collection_drop_marker_t const*>(marker);
       // note that the collection was dropped and doesn't need to be recovered
-      state->droppedCollections.insert(m->_collectionId);
+      state->droppedIds.insert(m->_collectionId);
       break;
     }
-    
+
+/*
     case TRI_WAL_MARKER_DROP_DATABASE: {
       database_drop_marker_t const* m = reinterpret_cast<database_drop_marker_t const*>(marker);
       // note that the database was dropped and doesn't need to be recovered
@@ -1130,7 +1132,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         parameters._maximalSize = static_cast<TRI_voc_size_t>(value->_value._number);
       }
       
-      int res = TRI_UpdateCollectionInfo(vocbase, document, &parameters);
+      int res = TRI_UpdateCollectionInfo(vocbase, document, &parameters, vocbase->_settings.forceSyncProperties);
 
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_WARNING("cannot change collection properties for collection %llu in database %llu: %s", 
@@ -1212,7 +1214,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       char* filename = TRI_Concatenate2File(collectionDirectory.c_str(), indexName);
       TRI_FreeString(TRI_CORE_MEM_ZONE, indexName);
       
-      bool ok = TRI_SaveJson(filename, json, true);
+      bool ok = TRI_SaveJson(filename, json, vocbase->_settings.forceSyncProperties);
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
       if (! ok) {
@@ -1303,7 +1305,19 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       triagens::arango::TransactionBase trx(true); 
 
       WaitForDeletion(vocbase, collectionId, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-      collection = TRI_CreateCollectionVocBase(vocbase, &info, collectionId, false);
+  
+      if (state->willBeDropped(collectionId)) {
+        // in case we detect that this collection is going to be deleted anyway, set
+        // the sync properties to false temporarily
+        bool oldSync = vocbase->_settings.forceSyncProperties;
+        vocbase->_settings.forceSyncProperties = false;
+        collection = TRI_CreateCollectionVocBase(vocbase, &info, collectionId, false);
+        vocbase->_settings.forceSyncProperties = oldSync;
+
+      }
+      else {
+        collection = TRI_CreateCollectionVocBase(vocbase, &info, collectionId, false);
+      }
 
       TRI_FreeCollectionInfoOptions(&info);
 
@@ -1491,7 +1505,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
 ////////////////////////////////////////////////////////////////////////////////
     
 int RecoverState::replayLogfile (Logfile* logfile) {
-  LOG_TRACE("replaying logfile '%s'", logfile->filename().c_str());
+  LOG_INFO("replaying WAL logfile '%s'", logfile->filename().c_str());
 
   if (! TRI_IterateDatafile(logfile->df(), &RecoverState::ReplayMarker, static_cast<void*>(this))) {
     LOG_WARNING("WAL inspection failed when scanning logfile '%s'", logfile->filename().c_str());

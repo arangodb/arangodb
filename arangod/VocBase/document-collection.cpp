@@ -2188,7 +2188,8 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   document->_keyGenerator = keyGenerator;
 
   // save the parameter block (within create, no need to lock)
-  int res = TRI_SaveCollectionInfo(collection->_directory, parameters, vocbase->_settings.forceSyncProperties);
+  bool doSync = vocbase->_settings.forceSyncProperties;
+  int res = TRI_SaveCollectionInfo(collection->_directory, parameters, doSync);
 
   if (res != TRI_ERROR_NO_ERROR) {
     // TODO: shouldn't we destroy &document->_allIndexes, free document->_headersPtr etc.?

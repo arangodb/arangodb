@@ -2008,7 +2008,8 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
 
   TRI_ASSERT(collection != nullptr);
 
-  if (! collection->_canDrop &&  ! triagens::wal::LogfileManager::instance()->isInRecovery()) {
+  if (! collection->_canDrop && 
+      ! triagens::wal::LogfileManager::instance()->isInRecovery()) {
     return TRI_set_errno(TRI_ERROR_FORBIDDEN);
   }
 
@@ -2111,8 +2112,11 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
 
   else if (collection->_status == TRI_VOC_COL_STATUS_LOADED || collection->_status == TRI_VOC_COL_STATUS_UNLOADING) {
     collection->_collection->_info._deleted = true;
+      
+    bool doSync = (vocbase->_settings.forceSyncProperties &&
+                   ! triagens::wal::LogfileManager::instance()->isInRecovery());
 
-    int res = TRI_UpdateCollectionInfo(vocbase, collection->_collection, nullptr);
+    int res = TRI_UpdateCollectionInfo(vocbase, collection->_collection, nullptr, doSync);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);

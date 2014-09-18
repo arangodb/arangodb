@@ -340,7 +340,8 @@ int TRI_SaveCollectionInfo (char const*,
 
 int TRI_UpdateCollectionInfo (TRI_vocbase_t*,
                               TRI_collection_t*,
-                              TRI_col_info_t const*);
+                              TRI_col_info_t const*,
+                              bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a collection
