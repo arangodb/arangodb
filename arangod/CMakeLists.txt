@@ -79,6 +79,7 @@ add_executable(
     Aql/Query.cpp
     Aql/QueryRegistry.cpp
     Aql/RangeInfo.cpp
+    Aql/RestAqlHandler.cpp
     Aql/Scopes.cpp
     Aql/Types.cpp
     Aql/tokens.cpp
