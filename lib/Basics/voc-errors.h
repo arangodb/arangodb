@@ -64,6 +64,8 @@
 /// - 26: @LIT{internal error if a legend for a marker does not yet exist in the same WAL file}
 ///   Will be raised internally, then fixed internally, and never come out to
 ///   the user.
+/// - 27: @LIT{file exists}
+///   Will be raised when a file already exists.
 /// - 400: @LIT{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
 /// - 401: @LIT{unauthorized}
@@ -860,6 +862,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_LEGEND_NOT_IN_WAL_FILE                                  (26)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 27: ERROR_FILE_EXISTS
+///
+/// file exists
+///
+/// Will be raised when a file already exists.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_FILE_EXISTS                                             (27)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 400: ERROR_HTTP_BAD_PARAMETER
