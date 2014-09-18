@@ -46,6 +46,69 @@
 using namespace triagens::aql;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                               static const values
+// -----------------------------------------------------------------------------
+
+static std::string const StateNames[] = {
+  "initialization",         // INITIALIZATION 
+  "parsing",                // PARSING
+  "ast optimization",       // AST_OPTIMIZATION
+  "plan instanciation",     // PLAN_INSTANCIATION
+  "plan optimization",      // PLAN_OPTIMIZATION
+  "execution",              // EXECUTION
+  "finalization"            // FINALIZATION
+};
+
+// make sure the state strings and the actual states match
+static_assert(sizeof(StateNames) / sizeof(char const*) == static_cast<size_t>(ExecutionState::INVALID_STATE), 
+              "invalid number of ExecutionState values");
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    struct Profile
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a profile
+////////////////////////////////////////////////////////////////////////////////
+      
+Profile::Profile () 
+  : results(static_cast<size_t>(INVALID_STATE)),
+    stamp(TRI_microtime()) {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enter a state
+////////////////////////////////////////////////////////////////////////////////
+
+void Profile::enter (ExecutionState state) {
+  double const now = TRI_microtime();
+
+  if (state != ExecutionState::INVALID_STATE) {
+    // record duration of state
+    results.push_back(std::make_pair(state, now - stamp)); 
+  }
+
+  // set timestamp
+  stamp = now;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert the profile to JSON
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* Profile::toJson (TRI_memory_zone_t*) {
+  triagens::basics::Json result(triagens::basics::Json::Array);
+  for (auto& it : results) {
+    result.set(StateNames[static_cast<int>(it.first)].c_str(), triagens::basics::Json(it.second));
+  }
+  return result.steal();
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       class Query
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
@@ -68,9 +131,16 @@ Query::Query (TRI_vocbase_t* vocbase,
     _options(options),
     _collections(vocbase),
     _strings(),
-    _ast(nullptr) {
+    _ast(nullptr),
+    _profile(nullptr),
+    _state(INVALID_STATE) {
 
   TRI_ASSERT(_vocbase != nullptr);
+
+  if (profiling()) {
+    _profile = new Profile;
+  }
+  enterState(INITIALIZATION);
   
   _ast = new Ast(this);
 
@@ -91,9 +161,16 @@ Query::Query (TRI_vocbase_t* vocbase,
     _options(options),
     _collections(vocbase),
     _strings(),
-    _ast(nullptr) {
+    _ast(nullptr),
+    _profile(nullptr),
+    _state(INVALID_STATE) {
 
   TRI_ASSERT(_vocbase != nullptr);
+
+  if (profiling()) {
+    _profile = new Profile;
+  }
+  enterState(INITIALIZATION);
 
   _ast = new Ast(this);
   _strings.reserve(32);
@@ -104,6 +181,11 @@ Query::Query (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 Query::~Query () {
+  if (_profile != nullptr) {
+    delete _profile;
+    _profile = nullptr;
+  }
+
   if (_options != nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _options);
     _options = nullptr;
@@ -210,32 +292,9 @@ void Query::registerError (int code,
 /// @brief execute an AQL query 
 ////////////////////////////////////////////////////////////////////////////////
 
-enum executionstate {
-  PARSING          = 0,
-  OPTIMIZING_AST   = 1,
-  INSTANCIATING    = 2,
-  OPTIMIZING       = 3,
-  DESERIALIZING    = 4,
-  EXECUTING        = 5,
-  NOSTATE          = 6
-};
-
-static const std::string ParseStates[] = {
-  "while parsing: ",
-  "while doing static optimisations: ",
-  "while instanciating: ",
-  "while optimizing: ",
-  "while deserializing JSON: ",
-  "while executing query: ",
-  ""
-};
-
-static std::string const& getStateString (executionstate state) {
-  return ParseStates[state];
-}
-
 QueryResult Query::execute () {
-  executionstate state = PARSING;
+  enterState(PARSING);
+
   try {
     ExecutionPlan* plan;
     Parser parser(this);
@@ -246,7 +305,7 @@ QueryResult Query::execute () {
       parser.ast()->injectBindParameters(_bindParameters);
 
       // optimize the ast
-      state = OPTIMIZING_AST;
+      enterState(AST_OPTIMIZATION);
       parser.ast()->optimize();
       // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE, false)) << "\n";
     }
@@ -262,7 +321,7 @@ QueryResult Query::execute () {
         return transactionError(res, trx);
       }
 
-      state = INSTANCIATING;
+      enterState(PLAN_INSTANCIATION);
       plan = ExecutionPlan::instanciateFromAst(parser.ast());
       if (plan == nullptr) {
         // oops
@@ -270,7 +329,7 @@ QueryResult Query::execute () {
       }
     }
     else {
-      state = DESERIALIZING;
+      enterState(PLAN_INSTANCIATION);
       ExecutionPlan::getCollectionsFromJson(parser.ast(), _queryJson);
 
       // creating the plan may have produced some collections
@@ -294,12 +353,10 @@ QueryResult Query::execute () {
     }
 
     // Run the query optimiser:
-    state = OPTIMIZING;
+    enterState(PLAN_OPTIMIZATION);
     triagens::aql::Optimizer opt(maxNumberOfPlans());
     // get enabled/disabled rules
     opt.createPlans(plan, getRulesFromOptions());  
-
-    state = EXECUTING;
 
     // Now plan and all derived plans belong to the optimizer
     plan = opt.stealBest(); // Now we own the best one again
@@ -317,6 +374,7 @@ QueryResult Query::execute () {
     std::cout << "deserialised plan: \n" << otherJsonString << "\n";
     TRI_ASSERT(otherJsonString == JsonString);//*/
 
+    enterState(EXECUTION);
     triagens::basics::Json json(triagens::basics::Json::List);
     triagens::basics::Json stats;
 
@@ -355,23 +413,30 @@ QueryResult Query::execute () {
 
     delete plan;
     trx.commit();
-    
+   
+    enterState(FINALIZATION); 
+
     QueryResult result(TRI_ERROR_NO_ERROR);
     result.json  = json.steal();
     result.stats = stats.steal(); 
+
+    if (_profile != nullptr) {
+      result.profile = _profile->toJson(TRI_UNKNOWN_MEM_ZONE);
+    }
+
     return result;
   }
   catch (triagens::arango::Exception const& ex) {
-    return QueryResult(ex.code(), getStateString(state) + ex.message());
+    return QueryResult(ex.code(), getStateString() + ex.message());
   }
   catch (std::bad_alloc const&) {
-    return QueryResult(TRI_ERROR_OUT_OF_MEMORY, getStateString(state) + TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+    return QueryResult(TRI_ERROR_OUT_OF_MEMORY, getStateString() + TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
   }
   catch (std::exception const& ex) {
-    return QueryResult(TRI_ERROR_INTERNAL, getStateString(state) + ex.what());
+    return QueryResult(TRI_ERROR_INTERNAL, getStateString() + ex.what());
   }
   catch (...) {
-    return QueryResult(TRI_ERROR_INTERNAL, getStateString(state) + TRI_errno_string(TRI_ERROR_INTERNAL));
+    return QueryResult(TRI_ERROR_INTERNAL, getStateString() + TRI_errno_string(TRI_ERROR_INTERNAL));
   }
 }
 
@@ -397,7 +462,8 @@ QueryResult Query::parse () {
 ////////////////////////////////////////////////////////////////////////////////
 
 QueryResult Query::explain () {
-  executionstate state = PARSING;
+  enterState(PARSING);
+
   try {
     ExecutionPlan* plan;
     Parser parser(this);
@@ -406,7 +472,7 @@ QueryResult Query::explain () {
     // put in bind parameters
     parser.ast()->injectBindParameters(_bindParameters);
 
-    state = OPTIMIZING_AST;
+    enterState(AST_OPTIMIZATION);
     // optimize the ast
     parser.ast()->optimize();
     // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE)) << "\n";
@@ -421,7 +487,7 @@ QueryResult Query::explain () {
       return transactionError(res, trx);
     }
 
-    state = INSTANCIATING;
+    enterState(PLAN_INSTANCIATION);
     plan = ExecutionPlan::instanciateFromAst(parser.ast());
     if (plan == nullptr) {
       // oops
@@ -429,13 +495,14 @@ QueryResult Query::explain () {
     }
 
     // Run the query optimiser:
-    state = OPTIMIZING;
+    enterState(PLAN_OPTIMIZATION);
     triagens::aql::Optimizer opt(maxNumberOfPlans());
-
     // get enabled/disabled rules
     opt.createPlans(plan, getRulesFromOptions());
       
     trx.commit();
+
+    enterState(FINALIZATION);
       
     QueryResult result(TRI_ERROR_NO_ERROR);
 
@@ -464,16 +531,16 @@ QueryResult Query::explain () {
     return result;
   }
   catch (triagens::arango::Exception const& ex) {
-    return QueryResult(ex.code(), getStateString(state) + ex.message());
+    return QueryResult(ex.code(), getStateString() + ex.message());
   }
   catch (std::bad_alloc const&) {
-    return QueryResult(TRI_ERROR_OUT_OF_MEMORY, getStateString(state) + TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+    return QueryResult(TRI_ERROR_OUT_OF_MEMORY, getStateString() + TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
   }
   catch (std::exception const& ex) {
-    return QueryResult(TRI_ERROR_INTERNAL, getStateString(state) + ex.what());
+    return QueryResult(TRI_ERROR_INTERNAL, getStateString() + ex.what());
   }
   catch (...) {
-    return QueryResult(TRI_ERROR_INTERNAL, getStateString(state) + TRI_errno_string(TRI_ERROR_INTERNAL));
+    return QueryResult(TRI_ERROR_INTERNAL, getStateString() + TRI_errno_string(TRI_ERROR_INTERNAL));
   }
 }
 
@@ -635,6 +702,27 @@ std::vector<std::string> Query::getRulesFromOptions () const {
   }
 
   return rules;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enter a new state
+////////////////////////////////////////////////////////////////////////////////
+
+void Query::enterState (ExecutionState state) {
+  if (_profile != nullptr) {
+    _profile->enter(_state);
+  }
+
+  // and adjust the state
+  _state = state;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a description of the query's current state
+////////////////////////////////////////////////////////////////////////////////
+
+std::string Query::getStateString () const {
+  return "in state " + StateNames[_state] + ": ";
 }
 
 // -----------------------------------------------------------------------------
