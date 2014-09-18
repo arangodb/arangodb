@@ -341,9 +341,10 @@ static bool SkiplistHasNextIterationCallback (TRI_skiplist_iterator_t const* ite
 /// @brief Jumps backwards by jumpSize and returns the document
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_skiplist_index_element_t* SkiplistIterationPrev (
-                               TRI_skiplist_iterator_t* iterator,
-                               int64_t jumpSize) {
+static TRI_skiplist_index_element_t* SkiplistPrevIterationCallback (
+                        TRI_skiplist_iterator_t* iterator) {
+  static const int64_t jumpSize = 1;
+
   TRI_ASSERT(jumpSize > 0);
 
   if (iterator == nullptr) {
@@ -386,9 +387,10 @@ static TRI_skiplist_index_element_t* SkiplistIterationPrev (
 /// @brief Jumps forwards by jumpSize and returns the document
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_skiplist_index_element_t* SkiplistIterationNext (
-                               TRI_skiplist_iterator_t* iterator,
-                               int64_t jumpSize) {
+static TRI_skiplist_index_element_t* SkiplistNextIterationCallback (
+                               TRI_skiplist_iterator_t* iterator) {
+  static const int64_t jumpSize = 1;
+
   TRI_ASSERT(jumpSize > 0);
 
   if (iterator == nullptr ||
@@ -421,24 +423,6 @@ static TRI_skiplist_index_element_t* SkiplistIterationNext (
   }
 
   return static_cast<TRI_skiplist_index_element_t*>(iterator->_cursor->document());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief default callback for jumping forward by 1
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_skiplist_index_element_t* SkiplistPrevIterationCallback (
-                        TRI_skiplist_iterator_t* iterator) {
-  return SkiplistIterationPrev(iterator, 1);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief default callback for jumping forward by 1
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_skiplist_index_element_t* SkiplistNextIterationCallback (
-                        TRI_skiplist_iterator_t* iterator) {
-  return SkiplistIterationNext(iterator, 1);
 }
 
 // -----------------------------------------------------------------------------
