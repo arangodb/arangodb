@@ -39,8 +39,8 @@ function optimizerRuleTestSuite () {
 
   // various choices to control the optimizer: 
   var paramNone   = { optimizer: { rules: [ "-all" ] } };
-  var paramEnabled    = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
-  var paramDisabled  = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
+  var paramEnabled    = { optimizer: { rules: [ "-all", "+" + ruleName, "+" + ruleName + "-2" ] } };
+  var paramDisabled  = { optimizer: { rules: [ "+all", "-" + ruleName, "-" + ruleName + "-2" ] } };
 
   return {
 
@@ -65,7 +65,12 @@ function optimizerRuleTestSuite () {
     testRuleDisabled : function () {
       var queries = [ 
         "FOR a IN [1] LET b=a+1 RETURN b+2",
-        "LET a = SLEEP(2) RETURN 1"
+        "LET a = SLEEP(2) RETURN 1",
+        "FOR a IN [1] LET x = (FOR b IN [1] RETURN b) RETURN a",
+        "LET x = (FOR k IN [1] RETURN k) RETURN 1",
+        "FOR i IN [1] LET a = i, b = a RETURN 1",
+        "FOR i IN [1] LET a = i, b = i RETURN a",
+        "FOR i IN [1] LET a = i, b = i RETURN b",
       ];
 
       queries.forEach(function(query) {
@@ -130,7 +135,18 @@ function optimizerRuleTestSuite () {
         "FOR a in [1,7,4,3,4,5,6,9,8] SORT a + 1 DESC RETURN a",
         "FOR a in [1,7,4,3,4,5,6,9,8] SORT a + 1 RETURN a",
         "FOR a in [1,7,4,3,4,5,6,9,8] SORT a + 1, SQRT(a) RETURN a",
-        "FOR a in [1,7,4,3,4,5,6,9,8] FILTER a != 4 RETURN a"
+        "FOR a in [1,7,4,3,4,5,6,9,8] FILTER a != 4 RETURN a",
+
+        // not used variables
+        "FOR i IN [1] LET a = i, b = a RETURN b",
+        "FOR i IN [1] LET a = i + 1, b = a + 1 RETURN b",
+        "FOR i IN [1] LET a = i, b = i RETURN [ a, b ]",
+        "FOR i IN [1] LET a = i + 1, b = i - 1 RETURN [ a, b ]",
+
+        // subqueries
+        "FOR i IN [1] LET x = (FOR j IN [1] RETURN j) RETURN x",
+        "FOR i IN [1] FOR j IN [1] LET x = (FOR k IN [1] RETURN k) RETURN x",
+        "LET x = (FOR k IN [1] RETURN k) RETURN x"
       ];
 
       queries.forEach(function(query) {
@@ -143,6 +159,7 @@ function optimizerRuleTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test that rule has an effect
     ////////////////////////////////////////////////////////////////////////////////
+
     testRuleHasEffect : function () {
       var queries = [ 
         // Const propagation:
@@ -193,12 +210,23 @@ function optimizerRuleTestSuite () {
         // String functions:
         "LET b = 'snth' LET a = CONCAT('aoeu', b) RETURN CONCAT(a, 'htns')",
         "LET a = 'aoeu' RETURN CONCAT(a, 'htns')",
-        "LET a = '' return CONCAT(a, 'htns')"
+        "LET a = '' return CONCAT(a, 'htns')",
+
+        // not used variables
+        "FOR i IN [1] LET a = i, b = i RETURN 1",
+        "FOR i IN [1] LET a = i, b = i RETURN a",
+        "FOR i IN [1] LET a = i, b = i RETURN b",
+        
+        // subqueries
+        "FOR i IN [1] LET x = (FOR j IN [1] RETURN j) RETURN i",
+        "FOR i IN [1] FOR j IN [1] LET x = (FOR k IN [1] RETURN k) RETURN i",
+        "FOR i IN [1] FOR j IN [1] LET x = (FOR k IN [1] RETURN k) RETURN j",
+        "LET x = (FOR k IN [1] RETURN k) RETURN 1"
       ];
 
       queries.forEach(function(query) {
         var result = AQL_EXPLAIN(query, { }, paramEnabled);
-        assertEqual([ ruleName ], result.plan.rules, query);
+        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
         result = AQL_EXPLAIN(query, { }, paramNone);
         var resultDisabled = AQL_EXECUTE(query, { }, paramDisabled).json;
         var resultEnabled  = AQL_EXECUTE(query, { }, paramEnabled).json;
@@ -269,12 +297,18 @@ function optimizerRuleTestSuite () {
         ["LET a = '' return CONCAT(a, 'htns')", ["SingletonNode", "CalculationNode", "ReturnNode"]],
 
         ["FOR i IN 1..10 LET a = 1 FILTER i == a RETURN i",
-         ["SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "ReturnNode" ]]
+         ["SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "ReturnNode" ]],
+
+        // subqueries
+        ["LET x = (FOR k IN [1] RETURN k) RETURN 1", ["SingletonNode", "CalculationNode", "ReturnNode"]],
+        ["FOR i IN [1] LET x = (FOR j IN [1] RETURN j) RETURN i", ["SingletonNode", "CalculationNode", "EnumerateListNode", "ReturnNode"]],
+        ["FOR i IN [1] FOR j IN [1] LET x = (FOR k IN [1] RETURN k) RETURN i", ["SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "EnumerateListNode", "ReturnNode"]],
+        ["FOR i IN [1] FOR j IN [1] LET x = (FOR k IN [1] RETURN k) RETURN j", ["SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "EnumerateListNode", "ReturnNode"]]
       ];
 
       plans.forEach(function(plan) {
         var result = AQL_EXPLAIN(plan[0], { }, paramEnabled);
-        assertEqual([ ruleName ], result.plan.rules, plan[0]);
+        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), plan[0]);
         assertEqual(plan[1], helper.getCompactPlan(result).map(function(node) { return node.type; }), plan[0]);
       });
     }

@@ -83,7 +83,7 @@ namespace triagens {
     int removeRedundantCalculationsRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remove a CalculationNode that is never needed
+/// @brief remove CalculationNodes and SubqueryNodes that are never needed
 ////////////////////////////////////////////////////////////////////////////////
 
     int removeUnnecessaryCalculationsRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);

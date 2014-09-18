@@ -293,13 +293,11 @@ QueryResult Query::execute () {
       }
     }
 
-    // get enabled/disabled rules
-    std::vector<std::string> rules(getRulesFromOptions());
-
     // Run the query optimiser:
     state = OPTIMIZING;
-    triagens::aql::Optimizer opt;
-    opt.createPlans(plan, rules);  
+    triagens::aql::Optimizer opt(maxNumberOfPlans());
+    // get enabled/disabled rules
+    opt.createPlans(plan, getRulesFromOptions());  
 
     state = EXECUTING;
 
@@ -432,12 +430,10 @@ QueryResult Query::explain () {
 
     // Run the query optimiser:
     state = OPTIMIZING;
-    triagens::aql::Optimizer opt;
+    triagens::aql::Optimizer opt(maxNumberOfPlans());
 
     // get enabled/disabled rules
-    std::vector<std::string> rules(getRulesFromOptions());
-
-    opt.createPlans(plan, rules);
+    opt.createPlans(plan, getRulesFromOptions());
       
     trx.commit();
       
@@ -570,10 +566,28 @@ bool Query::getBooleanOption (char const* option, bool defaultValue) const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief neatly format transaction errors to the user.
+/// @brief fetch a numeric value from the options
 ////////////////////////////////////////////////////////////////////////////////
 
-QueryResult Query::transactionError (int errorCode, AQL_TRANSACTION_V8 const& trx) const
+double Query::getNumericOption (char const* option, double defaultValue) const {  
+  if (! TRI_IsArrayJson(_options)) {
+    return defaultValue;
+  }
+
+  TRI_json_t const* valueJson = TRI_LookupArrayJson(_options, option);
+  if (! TRI_IsNumberJson(valueJson)) {
+    return defaultValue;
+  }
+
+  return valueJson->_value._number;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief neatly format transaction error to the user.
+////////////////////////////////////////////////////////////////////////////////
+
+QueryResult Query::transactionError (int errorCode, 
+                                     AQL_TRANSACTION_V8 const& trx) const
 {
   std::string err(TRI_errno_string(errorCode));
 
@@ -594,23 +608,29 @@ QueryResult Query::transactionError (int errorCode, AQL_TRANSACTION_V8 const& tr
 std::vector<std::string> Query::getRulesFromOptions () const {
   std::vector<std::string> rules;
 
-  if (TRI_IsArrayJson(_options)) {
-    TRI_json_t const* optJson = TRI_LookupArrayJson(_options, "optimizer");
+  if (! TRI_IsArrayJson(_options)) {
+    return rules;
+  }
+  
+  TRI_json_t const* optJson = TRI_LookupArrayJson(_options, "optimizer");
 
-    if (TRI_IsArrayJson(optJson)) {
-      TRI_json_t const* rulesJson = TRI_LookupArrayJson(optJson, "rules");
+  if (! TRI_IsArrayJson(optJson)) {
+    return rules;
+  }
+  
+  TRI_json_t const* rulesJson = TRI_LookupArrayJson(optJson, "rules");
 
-      if (TRI_IsListJson(rulesJson)) {
-        size_t const n = TRI_LengthListJson(rulesJson);
+  if (! TRI_IsListJson(rulesJson)) {
+    return rules;
+  }
+        
+  size_t const n = TRI_LengthListJson(rulesJson);
 
-        for (size_t i = 0; i < n; ++i) {
-          TRI_json_t const* rule = static_cast<TRI_json_t const*>(TRI_AtVector(&rulesJson->_value._objects, i));
+  for (size_t i = 0; i < n; ++i) {
+    TRI_json_t const* rule = static_cast<TRI_json_t const*>(TRI_AtVector(&rulesJson->_value._objects, i));
 
-          if (TRI_IsStringJson(rule)) {
-            rules.emplace_back(rule->_value._string.data, rule->_value._string.length - 1);
-          }
-        }
-      }
+    if (TRI_IsStringJson(rule)) {
+      rules.emplace_back(rule->_value._string.data, rule->_value._string.length - 1);
     }
   }
 
