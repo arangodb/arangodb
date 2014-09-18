@@ -208,6 +208,8 @@ unittests-recovery:
 	@echo "================================================================================"
 	@echo
 
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="leftover-database-directory"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="leftover-collection-directory"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="collection-unload"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="resume-recovery-multi-flush"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="resume-recovery-simple"
@@ -331,6 +333,7 @@ UnitTests_basics_suite_SOURCES = \
 	UnitTests/Basics/associative-pointer-test.cpp \
 	UnitTests/Basics/associative-multi-pointer-test.cpp \
 	UnitTests/Basics/associative-synced-test.cpp \
+	UnitTests/Basics/skiplist-test.cpp \
 	UnitTests/Basics/string-buffer-test.cpp \
 	UnitTests/Basics/string-utf8-normalize-test.cpp \
 	UnitTests/Basics/string-utf8-test.cpp \

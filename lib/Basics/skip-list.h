@@ -211,8 +211,7 @@ namespace triagens {
 /// @brief removes a document from a skiplist
 ///
 /// Comparison is done using proper order comparison. Returns 0 if all
-/// is well and -1 if the document was not found. In the latter two
-/// cases nothing is inserted.
+/// is well and TRI_ERROR_DOCUMENT_NOT_FOUND if the document was not found.
 ////////////////////////////////////////////////////////////////////////////////
 
         int remove (void* doc);
