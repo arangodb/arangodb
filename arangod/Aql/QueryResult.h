@@ -48,10 +48,12 @@ namespace triagens {
         details = other.details;
         json = other.json;
         stats = other.stats;
+        profile = other.profile;
         zone = other.zone;
 
-        other.json = nullptr;
-        other.stats = nullptr;
+        other.json    = nullptr;
+        other.stats   = nullptr;
+        other.profile = nullptr;
       }
 
       QueryResult (int code,
@@ -60,7 +62,8 @@ namespace triagens {
           details(details),
           zone(TRI_UNKNOWN_MEM_ZONE),
           json(nullptr),
-          stats(nullptr) {
+          stats(nullptr),
+          profile(nullptr) {
       }
       
       explicit QueryResult (int code)
@@ -78,6 +81,9 @@ namespace triagens {
         if (stats != nullptr) {
           TRI_FreeJson(zone, stats);
         }
+        if (profile != nullptr) {
+          TRI_FreeJson(zone, profile);
+        }
       }
 
       int                             code;
@@ -87,6 +93,7 @@ namespace triagens {
       TRI_memory_zone_t*              zone;
       TRI_json_t*                     json;
       TRI_json_t*                     stats;
+      TRI_json_t*                     profile;
     };
 
   }

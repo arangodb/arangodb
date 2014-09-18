@@ -1013,6 +1013,9 @@ static v8::Handle<v8::Value> JS_ExecuteAqlJson (v8::Arguments const& argv) {
     if (queryResult.stats != nullptr) {
       result->Set(TRI_V8_STRING("stats"), TRI_ObjectJson(queryResult.stats));
     }
+    if (queryResult.profile != nullptr) {
+      result->Set(TRI_V8_STRING("profile"), TRI_ObjectJson(queryResult.profile));
+    }
     return scope.Close(result);
   }
 
@@ -1143,6 +1146,9 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
     }
     if (queryResult.stats != nullptr) {
       result->Set(TRI_V8_STRING("stats"), TRI_ObjectJson(queryResult.stats));
+    }
+    if (queryResult.profile != nullptr) {
+      result->Set(TRI_V8_STRING("profile"), TRI_ObjectJson(queryResult.profile));
     }
     return scope.Close(result);
   }
