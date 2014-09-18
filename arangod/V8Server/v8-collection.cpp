@@ -2211,7 +2211,8 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
       newParameter._waitForSync = waitForSync;
 
       // try to write new parameter to file
-      int res = TRI_UpdateCollectionInfo(base->_vocbase, base, &newParameter);
+      bool doSync = base->_vocbase->_settings.forceSyncProperties;
+      int res = TRI_UpdateCollectionInfo(base->_vocbase, base, &newParameter, doSync);
 
       if (res != TRI_ERROR_NO_ERROR) {
         ReleaseCollection(collection);
