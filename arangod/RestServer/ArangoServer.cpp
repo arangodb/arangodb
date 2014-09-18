@@ -76,6 +76,7 @@
 #include "Cluster/ApplicationCluster.h"
 #include "Cluster/RestShardHandler.h"
 #include "Cluster/ClusterComm.h"
+#include "Aql/RestAqlHandler.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -132,6 +133,11 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
   // add "/shard-comm" handler
   factory->addPrefixHandler("/_api/shard-comm",
                             RestHandlerCreator<RestShardHandler>::createData<Dispatcher*>,
+                            dispatcher->dispatcher());
+
+  // add "/aql" handler
+  factory->addPrefixHandler("/_api/aql",
+                            RestHandlerCreator<RestAqlHandler>::createData<Dispatcher*>,
                             dispatcher->dispatcher());
 }
 
