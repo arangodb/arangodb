@@ -620,23 +620,36 @@ int triagens::aql::removeRedundantCalculationsRule (Optimizer* opt,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remove CalculationNode(s) that are never needed
+/// @brief remove CalculationNodes and SubqueryNodes that are never needed
 /// this modifies an existing plan in place
 ////////////////////////////////////////////////////////////////////////////////
 
 int triagens::aql::removeUnnecessaryCalculationsRule (Optimizer* opt, 
                                                       ExecutionPlan* plan,
                                                       Optimizer::Rule const* rule) {
-  std::vector<ExecutionNode*> nodes
-    = plan->findNodesOfType(triagens::aql::ExecutionNode::CALCULATION, true);
+  std::vector<ExecutionNode::NodeType> const types = {
+    triagens::aql::ExecutionNode::CALCULATION,
+    triagens::aql::ExecutionNode::SUBQUERY
+  };
+
+  std::vector<ExecutionNode*> nodes = plan->findNodesOfType(types, true);
   std::unordered_set<ExecutionNode*> toUnlink;
   for (auto n : nodes) {
-    auto nn = static_cast<CalculationNode*>(n);
+    if (n->getType() == triagens::aql::ExecutionNode::CALCULATION) {
+      auto nn = static_cast<CalculationNode*>(n);
 
-    if (nn->expression()->canThrow() ||
-        ! nn->expression()->isDeterministic()) {
-      // If this node can throw or is non-deterministic, we must not optimize it away!
-      continue;
+      if (nn->canThrow() ||
+          ! nn->expression()->isDeterministic()) {
+        // If this node can throw or is non-deterministic, we must not optimize it away!
+        continue;
+      }
+    }
+    else {
+      auto nn = static_cast<SubqueryNode*>(n);
+      if (nn->canThrow()) {
+        // subqueries that can throw must not be optimized away
+        continue;
+      }
     }
 
     auto outvar = n->getVariablesSetHere();
