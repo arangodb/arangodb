@@ -61,7 +61,9 @@ std::unordered_map<std::string, int> Optimizer::_ruleLookup;
 // @brief constructor, this will initialize the rules database
 ////////////////////////////////////////////////////////////////////////////////
 
-Optimizer::Optimizer () {
+Optimizer::Optimizer (int maxNumberOfPlans) 
+  : _maxNumberOfPlans(maxNumberOfPlans > 0 ? maxNumberOfPlans : DefaultMaxNumberOfPlans) {
+
   if (_rules.empty()) {
     setupRules();
   }
@@ -88,7 +90,7 @@ bool Optimizer::addPlan (ExecutionPlan* plan,
     plan->invalidateCost();
   }
 
-  if (_newPlans.size() > maxNumberOfPlans) {
+  if (_newPlans.size() >= _maxNumberOfPlans) {
     return false;
   }
   
@@ -194,7 +196,12 @@ int Optimizer::createPlans (ExecutionPlan* plan,
     // std::cout << "Least done level is " << leastDoneLevel << std::endl;
 
     // Stop if the result gets out of hand:
-    if (_plans.size() >= maxNumberOfPlans) {
+    if (_plans.size() >= _maxNumberOfPlans) {
+      // TODO: must iterate over all REQUIRED remaining transformation rules 
+      // because there are some rules which are required to make the query
+      // work in cluster mode
+      // rules that have their canBeDisabled flag set to false must still
+      // be carried out!
       break;
     }
   }
