@@ -365,7 +365,7 @@ namespace triagens {
               _json = TRI_CreateList2Json(_zone, size_hint);
               break;
             case Array:
-              _json = TRI_CreateArray2Json(_zone, 2*size_hint);
+              _json = TRI_CreateArray2Json(_zone, 2 * size_hint);
               break;
           }
           if (_json == nullptr) {
@@ -584,15 +584,6 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief delete the normal copy constructor, because we do not want
-/// invisible recursive copies to be taken of TRI_json_t* managed by this
-/// Json class. Also, we do not want a const copy constructor stealing
-/// the reference.
-////////////////////////////////////////////////////////////////////////////////
-
-        //Json (Json const&) = delete;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief move constructor, note that in the AUTOFREE case this steals
 /// the structure from j to allow returning Json objects by value without
 /// copying the whole structure.
@@ -755,6 +746,21 @@ namespace triagens {
             throw JsonException("Json is no list");
           }
           TRI_PushBack3ListJson(_zone, _json, sub.steal());
+          return *this;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reserve space for n additional items in a list
+////////////////////////////////////////////////////////////////////////////////
+
+        Json& reserve (size_t n) {
+          if (! TRI_IsListJson(_json)) {
+            throw JsonException("Json is no list");
+          }
+
+          if (TRI_ReserveVector(&_json->_value._objects, n) != TRI_ERROR_NO_ERROR) {
+            throw JsonException("Json: out of memory");
+          }
           return *this;
         }
 
