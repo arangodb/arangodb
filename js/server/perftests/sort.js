@@ -43,6 +43,7 @@ var ruleName = "sort";
 var colName = "perf_" + ruleName.replace(/-/g, "_");
 var colNameOther = colName + "_XX";
 var paramNone = { optimizer: { rules: [ "-all" ] } };
+var paramProfile = {  profile : true };
 
 // various choices to control the optimizer: 
 /*
@@ -62,15 +63,21 @@ var skiplist2;
 
 var oldApi = function (query, plan, bindVars) {
   db._query(query, bindVars)
+  return {};
 };
 var newApi = function (query, plan, bindVars) {
-  AQL_EXECUTE(query, bindVars);
+  var ret = AQL_EXECUTE(query, bindVars, paramProfile);
+  return ret.profile;
 };
+/*
 var newApiUnoptimized = function (query, plan, bindVars) {
   AQL_EXECUTE(query, bindVars, paramNone);
+  return {};
 };
 var newApiUnoptimized = function (query, plan, bindVars) {
+  return {};
 };
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set up
@@ -138,27 +145,27 @@ var tearDown = function () {
 var testRuleNoEffect1 = function (testParams, testMethodStr, testMethod) {
   var query = "FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]";
 
-  testMethod.executeQuery(query, {}, {});
+  return testMethod.executeQuery(query, {}, {});
 };
 var testRuleNoEffect2 = function (testParams, testMethodStr, testMethod) {
   var query =  "FOR v IN " + colName + " SORT v.a DESC RETURN [v.a, v.b]";
 
-  testMethod.executeQuery(query, {}, {});
+  return testMethod.executeQuery(query, {}, {});
 };
 var testRuleNoEffect3 = function (testParams, testMethodStr, testMethod) {
   var query = "FOR v IN " + colName + " SORT v.b, v.a  RETURN [v.a]";
 
-  testMethod.executeQuery(query, {}, {});
+  return testMethod.executeQuery(query, {}, {});
 };
 var testRuleNoEffect4 = function (testParams, testMethodStr, testMethod) {
   var query =  "FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]";
 
-  testMethod.executeQuery(query, {}, {});
+  return testMethod.executeQuery(query, {}, {});
 };
 var testRuleNoEffect5 = function (testParams, testMethodStr, testMethod) {
   var query = "FOR v IN " + colName + " SORT CONCAT(TO_STRING(v.a), \"lol\") RETURN [v.a]";
 
-  testMethod.executeQuery(query, {}, {});
+  return testMethod.executeQuery(query, {}, {});
 };
 
 
@@ -168,27 +175,27 @@ var testRuleNoEffect5 = function (testParams, testMethodStr, testMethod) {
 var testRuleHasEffect1 = function (testParams, testMethodStr, testMethod) {
   var query = "FOR v IN " + colName + " SORT v.d DESC RETURN [v.d]";
 
-  testMethod.executeQuery(query, {}, {});
+  return testMethod.executeQuery(query, {}, {});
 };
 var testRuleHasEffect2 = function (testParams, testMethodStr, testMethod) {
   var query = "FOR v IN " + colName + " SORT v.d ASC RETURN [v.d]";
 
-  testMethod.executeQuery(query, {}, {});
+  return testMethod.executeQuery(query, {}, {});
 };
 var testRuleHasEffect3 = function (testParams, testMethodStr, testMethod) {
   var query = "FOR v IN " + colName + " SORT v.d FILTER v.a > 2 LIMIT 3 RETURN [v.d]  ";
 
-  testMethod.executeQuery(query, {}, {});
+  return testMethod.executeQuery(query, {}, {});
 };
 var testRuleHasEffect4 = function (testParams, testMethodStr, testMethod) {
   var query = "FOR v IN " + colName + " FOR w IN 1..10 SORT v.d RETURN [v.d]";
 
-  testMethod.executeQuery(query, {}, {});
+  return testMethod.executeQuery(query, {}, {});
 };
 var testRuleHasEffect5 = function (testParams, testMethodStr, testMethod) {
   var query = "FOR v IN " + colName + " LET x = (FOR w IN " + colNameOther + " RETURN w.f ) SORT v.a RETURN [v.a]";
 
-  testMethod.executeQuery(query, {}, {});
+  return testMethod.executeQuery(query, {}, {});
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -198,14 +205,14 @@ var testRuleHasEffect5 = function (testParams, testMethodStr, testMethod) {
 var testRuleHasEffectButSortsStill1 = function (testParams, testMethodStr, testMethod) {
   var query = "FOR v IN " + colName + " FILTER v.a == 1 SORT v.a, v.c RETURN [v.a, v.b, v.c]";
 
-  testMethod.executeQuery(query, {}, {});
+  return testMethod.executeQuery(query, {}, {});
 };
 
 var testRuleHasEffectButSortsStill2 = function (testParams, testMethodStr, testMethod) {
   var query = "FOR v IN " + colName + " LET x = (FOR w IN " 
     + colNameOther + " SORT w.j, w.h RETURN  w.f ) SORT v.a RETURN [v.a]";
 
-  testMethod.executeQuery(query, {}, {});
+  return testMethod.executeQuery(query, {}, {});
 };
 
 
@@ -219,7 +226,7 @@ var testRuleHasEffectButSortsStill2 = function (testParams, testMethodStr, testM
 var testSortIndexable = function (testParams, testMethodStr, testMethod) {
   var query = "FOR v IN " + colName + " SORT v.a RETURN [v.a, v.b]";
 
-  testMethod.executeQuery(query, {}, {});
+  return testMethod.executeQuery(query, {}, {});
 };
 
 
@@ -231,7 +238,7 @@ var testSortMoreThanIndexed = function (testParams, testMethodStr, testMethod) {
   var query = "FOR v IN " + colName + " FILTER v.a == 1 SORT v.a, v.c RETURN [v.a, v.b, v.c]";
   // no index can be used for v.c -> sort has to remain in place!
 
-  testMethod.executeQuery(query, {}, {});
+  return testMethod.executeQuery(query, {}, {});
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -241,7 +248,7 @@ var testSortMoreThanIndexed = function (testParams, testMethodStr, testMethod) {
 var testRangeSuperseedsSort = function (testParams, testMethodStr, testMethod) {
   var query = "FOR v IN " + colName + " FILTER v.a == 1 SORT v.a RETURN [v.a, v.b, v.c]";
 
-  testMethod.executeQuery(query, {}, {});
+  return testMethod.executeQuery(query, {}, {});
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -251,7 +258,7 @@ var testRangeSuperseedsSort = function (testParams, testMethodStr, testMethod) {
 var testRangeSuperseedsSort2 = function (testParams, testMethodStr, testMethod) {
   var query = "FOR v IN " + colName + " FILTER v.a == 1 SORT v.a, v.b RETURN [v.a, v.b, v.c]";
 
-  testMethod.executeQuery(query, {}, {});
+  return testMethod.executeQuery(query, {}, {});
 };
 
 
@@ -266,7 +273,7 @@ var testRangeSuperseedsSort2 = function (testParams, testMethodStr, testMethod) 
 var testRangeEquals = function (testParams, testMethodStr, testMethod) {
 
   var query = "FOR v IN " + colName + " FILTER v.a == 1 RETURN [v.a, v.b]";
-  testMethod.executeQuery(query, {}, {});
+  return testMethod.executeQuery(query, {}, {});
 };
 
 
@@ -275,7 +282,7 @@ var testRangeEquals = function (testParams, testMethodStr, testMethod) {
 ////////////////////////////////////////////////////////////////////////////////
 var testRangeLessThan = function (testParams, testMethodStr, testMethod) {
   var query = "FOR v IN " + colName + " FILTER v.a < 5 RETURN [v.a, v.b]";
-  testMethod.executeQuery(query, {}, {});
+  return testMethod.executeQuery(query, {}, {});
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -283,7 +290,7 @@ var testRangeLessThan = function (testParams, testMethodStr, testMethod) {
 ////////////////////////////////////////////////////////////////////////////////
 var testRangeGreaterThan = function (testParams, testMethodStr, testMethod) {
   var query = "FOR v IN " + colName + " FILTER v.a > 5 RETURN [v.a, v.b]";
-  testMethod.executeQuery(query, {}, {});
+  return testMethod.executeQuery(query, {}, {});
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -292,7 +299,7 @@ var testRangeGreaterThan = function (testParams, testMethodStr, testMethod) {
 ////////////////////////////////////////////////////////////////////////////////
 var testRangeBandpass = function (testParams, testMethodStr, testMethod) {
   var query = "FOR v IN " + colName + " FILTER v.a > 4 && v.a < 10 RETURN [v.a, v.b]";
-  testMethod.executeQuery(query, {}, {});
+  return testMethod.executeQuery(query, {}, {});
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -304,7 +311,7 @@ var testRangeBandpass = function (testParams, testMethodStr, testMethod) {
 
 var testRangeBandpassInvalid = function (testParams, testMethodStr, testMethod) {
   var query = "FOR v IN " + colName + " FILTER v.a > 7 && v.a < 4 RETURN [v.a, v.b]";
-  testMethod.executeQuery(query, {}, {});
+  return testMethod.executeQuery(query, {}, {});
 };
 
 
@@ -314,7 +321,7 @@ var testRangeBandpassInvalid = function (testParams, testMethodStr, testMethod) 
 ////////////////////////////////////////////////////////////////////////////////
 var testRangeBandstop = function (testParams, testMethodStr, testMethod) {
   var query = "FOR v IN " + colName + " FILTER v.a < 5 || v.a > 10 RETURN [v.a, v.b]";
-  testMethod.executeQuery(query, {}, {});
+  return testMethod.executeQuery(query, {}, {});
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -325,7 +332,7 @@ var testRangeBandstop = function (testParams, testMethodStr, testMethod) {
 var testMultiRangeBandpass = function (testParams, testMethodStr, testMethod) {
   var query = "FOR v IN " + colName +
     " FILTER ((v.a > 3 && v.a < 5) || (v.a > 4 && v.a < 7)) RETURN [v.a, v.b]";
-  testMethod.executeQuery(query, {}, {});
+  return testMethod.executeQuery(query, {}, {});
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -385,12 +392,13 @@ var optimizerRuleTestSuite = [
 ];
 
 var loadTestRunner = require("loadtestrunner");
-db=require("internal").db;
-skiplist  = db[colName].load();
-skiplist2 = db[colNameOther].load();
+//db=require("internal").db;
+//skiplist  = db[colName].load();
+//skiplist2 = db[colNameOther].load();
 
 
-loadTestRunner.loadTestRunner(optimizerRuleTestSuite, testOptions, testMethods);
+var ret = loadTestRunner.loadTestRunner(optimizerRuleTestSuite, testOptions, testMethods);
+require("internal").print(JSON.stringify(ret));
 
 // Local Variables:
 // mode: outline-minor

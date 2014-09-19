@@ -10,19 +10,23 @@ var loadTestRunner = function (tests, options, testMethods) {
 
   // calculate statistical values from series
   var calc = function (values, options) {
+    var times = [];
     var sum = function (values) {
-      return values.reduce(function (previous, current) {
+      return times.reduce(function (previous, current) {
         return previous + current;
       });
     };
-    values.sort();
+    for (var i = 0; i < values.length; i++) {
+      times[i] = values[i].time;
+    }
+    times.sort();
     var n = values.length;
     var result = { 
-      min: values[0], 
-      max: values[n - 1],
-      sum: sum(values),
-      avg: sum(values) / n,
-      har: sum(values.slice(options.strip, n - options.strip)) / (n - 2 * options.strip)
+      min: times[0], 
+      max: times[n - 1],
+      sum: sum(times),
+      avg: sum(times) / n,
+      har: sum(times.slice(options.strip, n - options.strip)) / (n - 2 * options.strip)
     };
     return result;
   };
@@ -32,20 +36,21 @@ var loadTestRunner = function (tests, options, testMethods) {
   // will return series of execution times (not including setup/teardown)
   var measure = function (test, options) {
     var timedExecution = function (testMethodName, testMethodsOptions) { 
+      var ret = {};
       var start = time();
-      test.func(test.params, testMethodName, testMethodsOptions); 
-      return time() - start; 
+      ret = test.func(test.params, testMethodName, testMethodsOptions); 
+      ret.time = time() - start;
+      return ret;
     }; 
 
-    var results = [ ], i;
+    var results = {};
+    var i;
     var oneTestMethod;
     for (oneTestMethod in testMethods) {
       if (testMethods.hasOwnProperty(oneTestMethod)) {
         results[oneTestMethod] = [];
       }
     }
-    
-
 
     if (typeof test.setup === "function") {
 
@@ -53,8 +58,9 @@ var loadTestRunner = function (tests, options, testMethods) {
     }
 
     for (oneTestMethod in testMethods) {
-      for (i = 0; i < options.runs; ++i) {
-        if (testMethods.hasOwnProperty(oneTestMethod)) {
+      if (testMethods.hasOwnProperty(oneTestMethod)) {
+        results[oneTestMethod] = [];
+        for (i = 0; i < options.runs; ++i) {
           results[oneTestMethod][i] = timedExecution(oneTestMethod, testMethods[oneTestMethod]);
         }
       }
@@ -63,7 +69,6 @@ var loadTestRunner = function (tests, options, testMethods) {
     if (typeof test.teardown === "function") {
       test.teardown();
     }
-
     return results;
   };
 
@@ -84,7 +89,10 @@ var loadTestRunner = function (tests, options, testMethods) {
         cellLength = 12, 
         sep = " | ",
         lineLength = headLength + 2 * runsLength + 5 * cellLength + 5 * sep.length - 1;
-    
+
+    var results = {};
+    var test;
+
     print(pad("test name", headLength, "right") + sep +  
           pad("runs", runsLength, "left") + sep +
           pad("total (s)", cellLength, "left") + sep +
@@ -99,7 +107,7 @@ var loadTestRunner = function (tests, options, testMethods) {
     var i, baseline;
 
     for (i = 0; i < tests.length; ++i) {
-      var test = tests[i];
+      test = tests[i];
       if ((typeof(test.func) !== "function") &&
           (typeof(test.setup) === "function")){
         test.setup(options);
@@ -107,10 +115,14 @@ var loadTestRunner = function (tests, options, testMethods) {
     }
 
     for (i = 0; i < tests.length; ++i) {
-      var test = tests[i];
+      test = tests[i];
       if (typeof(test.func) === "function") {
-        var resultSet = measure(test, options)
+        var resultSet;
+        resultSet  = measure(test, options);
+        results[test.name] = resultSet;
+
         var oneResult;
+
         for (oneResult in resultSet) {
           if (resultSet.hasOwnProperty(oneResult)) {
             var stats = calc(resultSet[oneResult], options);
@@ -136,15 +148,16 @@ var loadTestRunner = function (tests, options, testMethods) {
       }
     }
     for (i = 0; i < tests.length; ++i) {
-      var test = tests[i];
+      test = tests[i];
       if ((typeof(test.func) !== "function") &&
           (typeof(test.teardown) === "function")){
         test.teardown(options);
       }
     }
+    return results;
   };
 
-  run(tests, options);
+  return run(tests, options);
 };
 
 
