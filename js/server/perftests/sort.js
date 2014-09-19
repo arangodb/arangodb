@@ -83,7 +83,6 @@ var newApiUnoptimized = function (query, plan, bindVars) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var setUp = function (options) {
-  require("internal").print("--------------------------------------------------------------------------------");
   var loopto = options.dbcols;
 
   internal.db._drop(colName);
@@ -100,7 +99,10 @@ var setUp = function (options) {
   skiplist.ensureSkiplist("a", "b");
   skiplist.ensureSkiplist("d");
 //  skiplist.ensureIndex({ type: "hash", fields: [ "c" ], unique: false });
-
+  if (skiplist.count() != ((loopto*loopto) + 2*loopto)) {
+    throw "1: not all planned entries made it to disk, bailing out. Expecting: " + ((loopto*loopto) + 2*loopto) + "got: " + skiplist2.count();
+  }
+    
   internal.db._drop(colNameOther);
   skiplist2 = internal.db._create(colNameOther);
   for (j = 1; j <= loopto; ++j) {
@@ -112,6 +114,9 @@ var setUp = function (options) {
   }
   skiplist2.ensureSkiplist("f", "g");
   skiplist2.ensureSkiplist("i");
+  if (skiplist2.count() != ((loopto*loopto) + 2*loopto)) {
+    throw "2: not all planned entries made it to disk, bailing out. Expecting: " + ((loopto*loopto) + 2*loopto) + "got: " + skiplist2.count();
+  }
 //  skiplist2.ensureIndex({ type: "hash", fields: [ "h" ], unique: false });
 };
 
@@ -326,27 +331,20 @@ var testMultiRangeBandpass = function (testParams, testMethodStr, testMethod) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
-/*
-  jsunity.run(optimizerRuleTestSuite);
-  require("internal").print(JSON.stringify(jsunity));
-  var ret = jsunity.done();
-  require("internal").print(JSON.stringify(jsunity.results));
-*/
-
 
 
 var testOptions = {
   dbcols: 500,
-  runs: 50,   // number of runs for each test
+  runs: 5,   // number of runs for each test
   strip: 1,   // how many min/max extreme values to ignore
   digits: 4   // result display digits
 };
 
 var testMethods = {
   ahuacatl : {executeQuery: oldApi},
-  aql2Optimized : {executeQuery: newApi},
-  aql2UnOptimized : {executeQuery: newApiUnoptimized},
+  aql2Optimized : {executeQuery: newApi}
 /*
+  aql2UnOptimized : {executeQuery: newApiUnoptimized},
   aql2Explain : {executeQuery: newApiUnoptimized, forceRuns: 1}
   
   */
@@ -387,6 +385,10 @@ var optimizerRuleTestSuite = [
 ];
 
 var loadTestRunner = require("loadtestrunner");
+db=require("internal").db;
+skiplist  = db[colName].load();
+skiplist2 = db[colNameOther].load();
+
 
 loadTestRunner.loadTestRunner(optimizerRuleTestSuite, testOptions, testMethods);
 
