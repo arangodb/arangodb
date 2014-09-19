@@ -40,6 +40,7 @@
 #include "Rest/OperationMode.h"
 
 #include "VocBase/vocbase.h"
+#include "HttpServer/HttpHandlerFactory.h"
 
 struct TRI_server_s;
 struct TRI_vocbase_defaults_s;
@@ -165,6 +166,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void closeDatabases ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief defineHandlers, define "_api" and "_admin" handlers
+////////////////////////////////////////////////////////////////////////////////
+
+        void defineHandlers (triagens::rest::HttpHandlerFactory* factory);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

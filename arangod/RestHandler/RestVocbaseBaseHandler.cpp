@@ -38,7 +38,6 @@
 #include "ShapedJson/shaped-json.h"
 #include "Utils/DocumentHelper.h"
 #include "VocBase/document-collection.h"
-#include "RestServer/VocbaseContext.h"
 
 using namespace std;
 using namespace triagens::basics;
