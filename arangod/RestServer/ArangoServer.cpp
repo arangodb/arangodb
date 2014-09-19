@@ -137,8 +137,8 @@ void ArangoServer::defineHandlers (HttpHandlerFactory* factory) {
 
   // add "/aql" handler
   factory->addPrefixHandler("/_api/aql",
-                            RestHandlerCreator<RestAqlHandler>::createData<ApplicationV8*>,
-                            _applicationV8);
+                            RestHandlerCreator<aql::RestAqlHandler>::createData<std::pair<ApplicationV8*, aql::QueryRegistry*>*>,
+                            _pairForAql);
 
   // And now the "_admin" handlers
 
@@ -286,7 +286,9 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _forceSyncProperties(true),
     _disableReplicationApplier(false),
     _developmentMode(false),
-    _server(nullptr) {
+    _server(nullptr),
+    _queryRegistry(nullptr),
+    _pairForAql(nullptr) {
 
   char* p = TRI_GetTempPath();
   // copy the string
@@ -836,9 +838,18 @@ int ArangoServer::startupServer () {
     _applicationV8->prepareServer();
   }
 
-  // .............................................................................
+  // ...........................................................................
+  // create QueryRegistry
+  // ...........................................................................
+
+  _queryRegistry = new aql::QueryRegistry();
+  _pairForAql = new std::pair<ApplicationV8*, aql::QueryRegistry*>;
+  _pairForAql->first = _applicationV8;
+  _pairForAql->second = _queryRegistry;
+
+  // ...........................................................................
   // create endpoints and handlers
-  // .............................................................................
+  // ...........................................................................
 
   // we pass the options by reference, so keep them until shutdown
   RestActionHandler::action_options_t httpOptions;
@@ -903,6 +914,11 @@ int ArangoServer::startupServer () {
   }
 
   _applicationServer->stop();
+
+  delete _queryRegistry;
+  _queryRegistry = nullptr;
+  delete _pairForAql;
+  _pairForAql = nullptr;
 
   closeDatabases();
 

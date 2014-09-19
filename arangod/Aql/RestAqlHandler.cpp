@@ -41,6 +41,7 @@
 using namespace std;
 using namespace triagens::arango;
 using namespace triagens::rest;
+using namespace triagens::aql;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public constants
@@ -61,11 +62,12 @@ const string RestAqlHandler::QUEUE_NAME = "STANDARD";
 ////////////////////////////////////////////////////////////////////////////////
 
 RestAqlHandler::RestAqlHandler (triagens::rest::HttpRequest* request,
-                                ApplicationV8* applicationV8)
+                   std::pair<ApplicationV8*, QueryRegistry*>* pair)
   : RestBaseHandler(request),
-    _applicationV8(applicationV8),
+    _applicationV8(pair->first),
     _context(static_cast<VocbaseContext*>(request->getRequestContext())),
-    _vocbase(_context->getVocbase()) {
+    _vocbase(_context->getVocbase()),
+    _queryRegistry(pair->second) {
 }
 
 // -----------------------------------------------------------------------------

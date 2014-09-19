@@ -35,6 +35,7 @@
 #include "Admin/RestBaseHandler.h"
 #include "V8Server/ApplicationV8.h"
 #include "RestServer/VocbaseContext.h"
+#include "Aql/QueryRegistry.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -47,7 +48,7 @@ struct TRI_vocbase_s;
 // -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace arango {
+  namespace aql {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shard control request handler
@@ -66,7 +67,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         RestAqlHandler (rest::HttpRequest* request,
-                        ApplicationV8* applicationV8);
+                        std::pair<arango::ApplicationV8*, QueryRegistry*>* pair);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
@@ -108,19 +109,25 @@ namespace triagens {
 /// @brief _applicationV8
 ////////////////////////////////////////////////////////////////////////////////
 
-        ApplicationV8* _applicationV8;
+        arango::ApplicationV8* _applicationV8;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request context
 ////////////////////////////////////////////////////////////////////////////////
 
-        VocbaseContext* _context;
+        arango::VocbaseContext* _context;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the vocbase
 ////////////////////////////////////////////////////////////////////////////////
 
         struct TRI_vocbase_s* _vocbase;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief our query registry
+////////////////////////////////////////////////////////////////////////////////
+
+        QueryRegistry* _queryRegistry;
 
     };
   }
