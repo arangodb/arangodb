@@ -67,6 +67,7 @@ static v8::Handle<v8::Object> AddBasicDocumentAttributes (CollectionNameResolver
                                                           TRI_voc_cid_t cid,
                                                           TRI_df_marker_t const* marker,
                                                           v8::Handle<v8::Object> result) {
+  v8::HandleScope scope;
   TRI_ASSERT(marker != nullptr);
 
   // buffer that we'll use for generating _id, _key, _rev, _from and _to values
@@ -135,7 +136,7 @@ static v8::Handle<v8::Object> AddBasicDocumentAttributes (CollectionNameResolver
     result->ForceSet(v8g->_ToKey, v8::String::New(buffer, (int) (len + keyLength + 1)));
   }
 
-  return result;
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -190,6 +191,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (triagens::arango::CollectionNameResolv
                                           TRI_voc_cid_t cid,
                                           TRI_document_collection_t* collection,
                                           void const* data) {
+  v8::HandleScope scope;
   TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(data);
   TRI_ASSERT(marker != nullptr);
   TRI_ASSERT(barrier != nullptr);
@@ -254,7 +256,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (triagens::arango::CollectionNameResolv
     result->SetInternalField(SLOT_BARRIER, (*it).second);
   }
 
-  return AddBasicDocumentAttributes(resolver, v8g, cid, marker, result);
+  return scope.Close(AddBasicDocumentAttributes(resolver, v8g, cid, marker, result));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -503,7 +505,7 @@ static v8::Handle<v8::Value> MapSetNamedShapedJson (v8::Local<v8::String> name,
 
   // remove pointer to marker, so the object becomes stand-alone
   self->SetInternalField(SLOT_CLASS, v8::External::New(nullptr));
-  
+
   // and now use the regular property setter
   return scope.Close(v8::Handle<v8::Value>());
 }
