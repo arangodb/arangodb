@@ -211,6 +211,28 @@ bool AqlValue::isNumber () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the AqlValue contains a boolean value
+////////////////////////////////////////////////////////////////////////////////
+
+bool AqlValue::isBoolean () const {
+  switch (_type) {
+    case JSON: {
+      TRI_json_t const* json = _json->json();
+      return TRI_IsBooleanJson(json);
+    }
+
+    case SHAPED: 
+    case DOCVEC: 
+    case RANGE: 
+    case EMPTY: {
+      return false;
+    }
+  }
+
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the AqlValue contains a list value
 ////////////////////////////////////////////////////////////////////////////////
 
