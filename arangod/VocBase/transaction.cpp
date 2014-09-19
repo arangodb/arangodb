@@ -61,10 +61,18 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not a transaction consists of a single operation
+/// @brief returns whether the collection is currently locked
 ////////////////////////////////////////////////////////////////////////////////
 
-static triagens::wal::LogfileManager* GetLogfileManager () {
+static inline bool IsLocked (TRI_transaction_collection_t const* trxCollection) {
+  return (trxCollection->_lockType != TRI_TRANSACTION_NONE);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the logfile manager
+////////////////////////////////////////////////////////////////////////////////
+
+static inline triagens::wal::LogfileManager* GetLogfileManager () {
   return triagens::wal::LogfileManager::instance();
 }
 
@@ -268,7 +276,7 @@ static TRI_transaction_collection_t* CreateCollection (TRI_transaction_t* trx,
   trxCollection->_barrier          = nullptr;
   trxCollection->_operations       = nullptr;
   trxCollection->_originalRevision = 0;
-  trxCollection->_locked           = false;
+  trxCollection->_lockType         = TRI_TRANSACTION_NONE;
   trxCollection->_compactionLocked = false;
   trxCollection->_waitForSync      = false;
 
@@ -325,7 +333,7 @@ static int LockCollection (TRI_transaction_collection_t* trxCollection,
 
   TRI_ASSERT(trxCollection->_collection != nullptr);
   TRI_ASSERT(trxCollection->_collection->_collection != nullptr);
-  TRI_ASSERT(trxCollection->_locked == false);
+  TRI_ASSERT(! IsLocked(trxCollection));
 
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
 
@@ -355,7 +363,7 @@ static int LockCollection (TRI_transaction_collection_t* trxCollection,
   }
 
   if (res == TRI_ERROR_NO_ERROR) {
-    trxCollection->_locked = true;
+    trxCollection->_lockType = type;
   }
 
   return res;
@@ -378,7 +386,7 @@ static int UnlockCollection (TRI_transaction_collection_t* trxCollection,
 
   TRI_ASSERT(trxCollection->_collection != nullptr);
   TRI_ASSERT(trxCollection->_collection->_collection != nullptr);
-  TRI_ASSERT(trxCollection->_locked == true);
+  TRI_ASSERT(IsLocked(trxCollection));
 
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
 
@@ -387,7 +395,20 @@ static int UnlockCollection (TRI_transaction_collection_t* trxCollection,
     return TRI_ERROR_NO_ERROR;
   }
 
-  if (type == TRI_TRANSACTION_READ) {
+  if (type == TRI_TRANSACTION_READ && 
+      trxCollection->_lockType == TRI_TRANSACTION_WRITE) {
+    // do not remove a write-lock if a read-unlock was requested!
+    return TRI_ERROR_NO_ERROR;
+  }
+  else if (type == TRI_TRANSACTION_WRITE && 
+           trxCollection->_lockType == TRI_TRANSACTION_READ) {
+    // we should never try to write-unlock a collection that we have only read-locked
+    LOG_ERROR("logic error in UnlockCollection");
+    TRI_ASSERT(false);
+    return TRI_ERROR_INTERNAL;
+  }
+
+  if (trxCollection->_lockType == TRI_TRANSACTION_READ) {
     LOG_TRX(trxCollection->_transaction,
             nestingLevel,
             "read-unlocking collection %llu",
@@ -402,7 +423,7 @@ static int UnlockCollection (TRI_transaction_collection_t* trxCollection,
     document->endWrite(document);
   }
 
-  trxCollection->_locked = false;
+  trxCollection->_lockType = TRI_TRANSACTION_NONE;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -475,7 +496,7 @@ static int UseCollections (TRI_transaction_t* trx,
       shouldLock = (trxCollection->_accessType == TRI_TRANSACTION_WRITE) && (! IsSingleOperationTransaction(trx));
     }
 
-    if (shouldLock && ! trxCollection->_locked) {
+    if (shouldLock && ! IsLocked(trxCollection)) {
       // r/w lock the collection
       int res = LockCollection(trxCollection, trxCollection->_accessType, nestingLevel);
 
@@ -502,7 +523,7 @@ static int UnuseCollections (TRI_transaction_t* trx,
   while (i-- > 0) {
     TRI_transaction_collection_t* trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
 
-    if (trxCollection->_locked &&
+    if (IsLocked(trxCollection) &&
         (nestingLevel == 0 || trxCollection->_nestingLevel == nestingLevel)) {
       // unlock our own r/w locks
       UnlockCollection(trxCollection, trxCollection->_accessType, nestingLevel);
@@ -518,7 +539,7 @@ static int UnuseCollections (TRI_transaction_t* trx,
         trxCollection->_compactionLocked = false;
       }
 
-      trxCollection->_locked = false;
+      trxCollection->_lockType = TRI_TRANSACTION_NONE;
     }
   }
 
@@ -789,6 +810,22 @@ void TRI_FreeTransaction (TRI_transaction_t* trx) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the transaction type from a string
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_transaction_type_e TRI_GetTransactionTypeFromStr (char const* s) {
+  if (TRI_EqualString(s, "read")) {
+    return TRI_TRANSACTION_READ;
+  }
+  else if (TRI_EqualString(s, "write")) {
+    return TRI_TRANSACTION_WRITE;
+  }
+  else {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the collection from a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -939,7 +976,7 @@ int TRI_LockCollectionTransaction (TRI_transaction_collection_t* trxCollection,
     return TRI_ERROR_INTERNAL;
   }
 
-  if (trxCollection->_locked) {
+  if (IsLocked(trxCollection)) {
     // already locked
     return TRI_ERROR_NO_ERROR;
   }
@@ -955,16 +992,17 @@ int TRI_UnlockCollectionTransaction (TRI_transaction_collection_t* trxCollection
                                      TRI_transaction_type_e accessType,
                                      int nestingLevel) {
 
-  if (accessType == TRI_TRANSACTION_WRITE && trxCollection->_accessType != TRI_TRANSACTION_WRITE) {
-    // wrong lock type
+  if (accessType == TRI_TRANSACTION_WRITE && 
+      trxCollection->_accessType != TRI_TRANSACTION_WRITE) {
+    // wrong lock type: write-unlock requested but collection is read-only
     return TRI_ERROR_INTERNAL;
   }
 
-  if (! trxCollection->_locked) {
+  if (! IsLocked(trxCollection)) {
     // already unlocked
     return TRI_ERROR_NO_ERROR;
   }
-
+  
   return UnlockCollection(trxCollection, accessType, nestingLevel);
 }
 
@@ -972,7 +1010,7 @@ int TRI_UnlockCollectionTransaction (TRI_transaction_collection_t* trxCollection
 /// @brief check if a collection is locked in a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsLockedCollectionTransaction (TRI_transaction_collection_t* trxCollection,
+bool TRI_IsLockedCollectionTransaction (TRI_transaction_collection_t const* trxCollection,
                                         TRI_transaction_type_e accessType,
                                         int nestingLevel) {
 
@@ -983,7 +1021,15 @@ bool TRI_IsLockedCollectionTransaction (TRI_transaction_collection_t* trxCollect
     return false;
   }
 
-  return trxCollection->_locked;
+  return IsLocked(trxCollection);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check if a collection is locked in a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsLockedCollectionTransaction (TRI_transaction_collection_t const* trxCollection) {
+  return IsLocked(trxCollection);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1171,7 +1217,7 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
 int TRI_BeginTransaction (TRI_transaction_t* trx,
                           TRI_transaction_hint_t hints,
                           int nestingLevel) {
-  LOG_TRX(trx, nestingLevel, "%s transaction", "beginning");
+  LOG_TRX(trx, nestingLevel, "%s %s transaction", "beginning", (trx->_type == TRI_TRANSACTION_READ ? "read" : "write"));
 
   if (nestingLevel == 0) {
     TRI_ASSERT(trx->_status == TRI_TRANSACTION_CREATED);
@@ -1237,7 +1283,7 @@ int TRI_BeginTransaction (TRI_transaction_t* trx,
 
 int TRI_CommitTransaction (TRI_transaction_t* trx,
                            int nestingLevel) {
-  LOG_TRX(trx, nestingLevel, "%s transaction", "committing");
+  LOG_TRX(trx, nestingLevel, "%s %s transaction", "committing", (trx->_type == TRI_TRANSACTION_READ ? "read" : "write"));
 
   TRI_ASSERT(trx->_status == TRI_TRANSACTION_RUNNING);
 
@@ -1269,7 +1315,7 @@ int TRI_CommitTransaction (TRI_transaction_t* trx,
 
 int TRI_AbortTransaction (TRI_transaction_t* trx,
                           int nestingLevel) {
-  LOG_TRX(trx, nestingLevel, "%s transaction", "aborting");
+  LOG_TRX(trx, nestingLevel, "%s %s transaction", "aborting", (trx->_type == TRI_TRANSACTION_READ ? "read" : "write"));
 
   TRI_ASSERT(trx->_status == TRI_TRANSACTION_RUNNING);
 
