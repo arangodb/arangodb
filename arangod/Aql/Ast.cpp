@@ -1269,6 +1269,30 @@ AstNode* Ast::optimizeBinaryOperatorRelational (AstNode* node) {
   
   bool const lhsIsConst = lhs->isConstant(); 
   bool const rhsIsConst = rhs->isConstant(); 
+
+  if (! lhs->canThrow() &&
+      rhs->type == NODE_TYPE_LIST &&
+      rhs->numMembers() <= 1 &&
+      (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
+       node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
+
+    // turn an IN or a NOT IN with few members into an equality comparison
+    if (rhs->numMembers() == 0) {
+      // IN with no members returns false
+      // NOT IN with no members returns true
+      return createNodeValueBool(node->type == NODE_TYPE_OPERATOR_BINARY_NIN);
+    }
+    else if (rhs->numMembers() == 1) {
+      // IN with a single member becomes equality
+      // NOT IN with a single members becomes unequality
+      if (node->type == NODE_TYPE_OPERATOR_BINARY_IN) {
+        return createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, lhs, rhs->getMember(0));
+      }
+      return createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_NE, lhs, rhs->getMember(0));
+    }
+    // fall-through intentional
+  }
+
   
   if (! rhsIsConst) {
     return node;
