@@ -96,7 +96,8 @@ function singleAttributeTestSuite () {
         [ "FOR i IN " + cn + " FILTER i.value2 IN [ 2, 3 ] FOR j IN " + cn + " FILTER i.value2 == j.value2 SORT j.value2 RETURN j.value2", [ 2, 3 ], true ],
         [ "FOR i IN " + cn + " FILTER i.value2 IN [ 2, 3 ] FOR j IN " + cn + " FILTER j.value2 >= i.value2 FILTER j.value2 <= i.value2 + 1 SORT j.value2 RETURN j.value2", [ 2, 3, 3, 4 ], true ],
         [ "FOR i IN " + cn + " FILTER i.value2 IN [ 2, 3 ] FOR j IN " + cn + " FILTER i.value2 <= j.value2 FILTER i.value2 + 1 >= j.value2 SORT j.value2 RETURN j.value2", [ 2, 3, 3, 4 ], true ],
-        [ "FOR i IN " + cn + " FILTER i.value2 IN [ 2, 3 ] FOR j IN " + cn + " FILTER j.value2 IN [ i.value2 ] SORT j.value2 RETURN j.value2", [ 2, 3 ], false ],
+        [ "FOR i IN " + cn + " FILTER i.value2 IN [ 2, 3 ] FOR j IN " + cn + " FILTER j.value2 IN [ i.value2 ] SORT j.value2 RETURN j.value2", [ 2, 3 ], true ],
+        [ "FOR i IN " + cn + " FILTER i.value2 >= 97 FOR j IN " + cn + " FILTER j.value2 == i.value2 SORT j.value2 RETURN j.value2", [ 97, 98, 99 ], true ],
         [ "FOR i IN " + cn + " FILTER i.value2 >= 97 FOR j IN " + cn + " FILTER j.value2 IN [ i.value2 ] SORT j.value2 RETURN j.value2", [ 97, 98, 99 ], true ],
         [ "FOR i IN " + cn + " FILTER i.value2 >= 97 FOR j IN " + cn + " FILTER j.value2 >= i.value2 SORT j.value2 RETURN j.value2", [ 97, 98, 98, 99, 99, 99 ], true ],
         [ "FOR i IN " + cn + " FILTER i.value2 >= 97 FOR j IN " + cn + " FILTER i.value2 <= j.value2 SORT j.value2 RETURN j.value2", [ 97, 98, 98, 99, 99, 99 ], true ]
@@ -285,7 +286,7 @@ function nestedAttributeTestSuite () {
         [ "FOR i IN " + cn + " FILTER i.value1.value2 IN [ 2, 3 ] FOR j IN " + cn + " FILTER i.value1.value2 == j.value1.value2 SORT j.value1.value2 RETURN j.value1.value2", [ 2, 3 ], true ],
         [ "FOR i IN " + cn + " FILTER i.value1.value2 IN [ 2, 3 ] FOR j IN " + cn + " FILTER j.value1.value2 >= i.value1.value2 FILTER j.value1.value2 <= i.value1.value2 + 1 SORT j.value1.value2 RETURN j.value1.value2", [ 2, 3, 3, 4 ], true ],
         [ "FOR i IN " + cn + " FILTER i.value1.value2 IN [ 2, 3 ] FOR j IN " + cn + " FILTER i.value1.value2 <= j.value1.value2 FILTER i.value1.value2 + 1 >= j.value1.value2 SORT j.value1.value2 RETURN j.value1.value2", [ 2, 3, 3, 4 ], true ],
-        [ "FOR i IN " + cn + " FILTER i.value1.value2 IN [ 2, 3 ] FOR j IN " + cn + " FILTER j.value1.value2 IN [ i.value1.value2 ] SORT j.value1.value2 RETURN j.value1.value2", [ 2, 3 ], false ],
+        [ "FOR i IN " + cn + " FILTER i.value1.value2 IN [ 2, 3 ] FOR j IN " + cn + " FILTER j.value1.value2 IN [ i.value1.value2 ] SORT j.value1.value2 RETURN j.value1.value2", [ 2, 3 ], true ],
         [ "FOR i IN " + cn + " FILTER i.value1.value2 >= 97 FOR j IN " + cn + " FILTER j.value1.value2 IN [ i.value1.value2 ] SORT j.value1.value2 RETURN j.value1.value2", [ 97, 98, 99 ], true ],
         [ "FOR i IN " + cn + " FILTER i.value1.value2 >= 97 FOR j IN " + cn + " FILTER j.value1.value2 >= i.value1.value2 SORT j.value1.value2 RETURN j.value1.value2", [ 97, 98, 98, 99, 99, 99 ], true ],
         [ "FOR i IN " + cn + " FILTER i.value1.value2 >= 97 FOR j IN " + cn + " FILTER i.value1.value2 <= j.value1.value2 SORT j.value1.value2 RETURN j.value1.value2", [ 97, 98, 98, 99, 99, 99 ], true ]
