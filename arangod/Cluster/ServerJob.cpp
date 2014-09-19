@@ -128,7 +128,7 @@ bool ServerJob::execute () {
 
   MUTEX_LOCKER(ExecutorLock);
 
-  ApplicationV8::V8Context* context = _applicationV8->enterContext("STANDARD", vocbase, nullptr, false, true);
+  ApplicationV8::V8Context* context = _applicationV8->enterContext("STANDARD", vocbase, false, true);
 
   if (context == nullptr) {
     TRI_ReleaseDatabaseServer(_server, vocbase);

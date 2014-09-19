@@ -129,7 +129,7 @@ void RestAqlHandler::getInfoQuery () {
 }
 
 triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
-  auto context = _applicationV8->enterContext("STANDARD", _vocbase, nullptr,
+  auto context = _applicationV8->enterContext("STANDARD", _vocbase,
                                               false, false);
   if (nullptr == context) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL,

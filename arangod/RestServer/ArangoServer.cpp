@@ -995,7 +995,7 @@ int ArangoServer::runConsole (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::runUnitTests (TRI_vocbase_t* vocbase) {
-  ApplicationV8::V8Context* context = _applicationV8->enterContext("STANDARD", vocbase, 0, true, true);
+  ApplicationV8::V8Context* context = _applicationV8->enterContext("STANDARD", vocbase, true, true);
 
   v8::Context::Scope contextScope(context->_context);
 
@@ -1044,7 +1044,7 @@ int ArangoServer::runUnitTests (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::runScript (TRI_vocbase_t* vocbase) {
-  ApplicationV8::V8Context* context = _applicationV8->enterContext("STANDARD", vocbase, 0, true, true);
+  ApplicationV8::V8Context* context = _applicationV8->enterContext("STANDARD", vocbase, true, true);
 
   v8::HandleScope globalScope;
 
