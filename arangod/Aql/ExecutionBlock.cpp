@@ -960,17 +960,6 @@ bool IndexRangeBlock::readIndex () {
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
   IndexOrCondition const* condition = &en->_ranges;
    
-#if 0
-  // ONLY FOR DEBUGGING
-  std::cout << "Hallole\n";
-  for (auto& x : *condition) {
-    std::cout << "OR\n";
-    for (auto& y : x) {
-      std::cout << y.toString() << std::endl;
-    }
-  }
-#endif
-
   std::unique_ptr<IndexOrCondition> newCondition;
 
   // Find out about the actual values for the bounds in the variable bound case:
