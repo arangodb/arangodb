@@ -164,7 +164,7 @@ RangeInfo::RangeInfo (triagens::basics::Json const& json)
 /// @brief toJson for a RangeInfo
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json RangeInfo::toJson() const {
+triagens::basics::Json RangeInfo::toJson () const {
   triagens::basics::Json item(basics::Json::Array);
   item("variable", triagens::basics::Json(_var))
       ("attr", triagens::basics::Json(_attr))
@@ -278,6 +278,11 @@ void RangeInfo::fuse (RangeInfo const& that) {
         _equality = true;  // Can only be at most one value
       }
     }
+  }
+  else {
+    // equality flag needs to be reset if the fused range no more
+    // is an equality lookup
+    _equality = false;
   }
 }
 

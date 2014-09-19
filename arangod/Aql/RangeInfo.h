@@ -271,7 +271,7 @@ namespace triagens {
 /// (if needed) nodes are registered with the ast
 ////////////////////////////////////////////////////////////////////////////////
 
-        AstNode const* getExpressionAst(Ast* ast) const;
+        AstNode const* getExpressionAst (Ast* ast) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _bound as Json, this is either for constant values 
@@ -334,11 +334,11 @@ namespace triagens {
 /// @brief constructors
 ////////////////////////////////////////////////////////////////////////////////
 
-        RangeInfo ( std::string var,
-                    std::string attr,
-                    RangeInfoBound low, 
-                    RangeInfoBound high,
-                    bool equality)
+        RangeInfo (std::string const& var,
+                   std::string const& attr,
+                   RangeInfoBound low, 
+                   RangeInfoBound high,
+                   bool equality)
           : _var(var), _attr(attr), _valid(true), _defined(true),
             _equality(equality) {
 
@@ -396,7 +396,7 @@ namespace triagens {
 /// @brief delete assignment operator
 ////////////////////////////////////////////////////////////////////////////////
         
-        RangeInfo& operator= ( RangeInfo const& copy ) = delete;
+        RangeInfo& operator= (RangeInfo const& copy) = delete;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson
@@ -537,8 +537,8 @@ namespace triagens {
         
       public:
         
-        RangesInfo( const RangesInfo& copy ) = delete;
-        RangesInfo& operator= ( RangesInfo const& copy ) = delete;
+        RangesInfo (const RangesInfo& copy) = delete;
+        RangesInfo& operator= (RangesInfo const& copy) = delete;
         
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default constructor
@@ -559,7 +559,7 @@ namespace triagens {
 /// ownership is not transferred
 ////////////////////////////////////////////////////////////////////////////////
     
-        std::unordered_map<std::string, RangeInfo>* find (std::string var) {
+        std::unordered_map<std::string, RangeInfo>* find (std::string const& var) {
           auto it = _ranges.find(var);
           if (it == _ranges.end()) {
             return nullptr;
