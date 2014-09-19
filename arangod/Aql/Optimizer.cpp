@@ -61,7 +61,7 @@ std::unordered_map<std::string, int> Optimizer::_ruleLookup;
 // @brief constructor, this will initialize the rules database
 ////////////////////////////////////////////////////////////////////////////////
 
-Optimizer::Optimizer (int maxNumberOfPlans) 
+Optimizer::Optimizer (size_t maxNumberOfPlans) 
   : _maxNumberOfPlans(maxNumberOfPlans > 0 ? maxNumberOfPlans : DefaultMaxNumberOfPlans) {
 
   if (_rules.empty()) {

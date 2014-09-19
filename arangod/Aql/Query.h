@@ -230,8 +230,12 @@ namespace triagens {
 /// @brief maximum number of plans to produce
 ////////////////////////////////////////////////////////////////////////////////
 
-        int maxNumberOfPlans () const { 
-          return static_cast<int>(getNumericOption("maxNumberOfPlans", 0.0));
+        size_t maxNumberOfPlans () const { 
+          double value = getNumericOption("maxNumberOfPlans", 0.0);
+          if (value > 0) {
+            return static_cast<size_t>(value);
+          }
+          return 0;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
