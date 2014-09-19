@@ -94,6 +94,31 @@ string const& RestAqlHandler::queue () const {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
+void RestAqlHandler::createQuery () {
+  _response = createResponse(triagens::rest::HttpResponse::OK);
+  _response->setContentType("application/json; charset=utf-8");
+  _response->body().appendText("{\"a\":12}");
+
+}
+
+void RestAqlHandler::deleteQuery () {
+  _response = createResponse(triagens::rest::HttpResponse::OK);
+  _response->setContentType("application/json; charset=utf-8");
+  _response->body().appendText("{\"b\":12}");
+}
+
+void RestAqlHandler::useQuery () {
+  _response = createResponse(triagens::rest::HttpResponse::OK);
+  _response->setContentType("application/json; charset=utf-8");
+  _response->body().appendText("{\"c\":12}");
+}
+
+void RestAqlHandler::getInfoQuery () {
+  _response = createResponse(triagens::rest::HttpResponse::OK);
+  _response->setContentType("application/json; charset=utf-8");
+  _response->body().appendText("{\"d\":12}");
+}
+
 triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
   auto context = _applicationV8->enterContext("STANDARD", _vocbase, nullptr,
                                               false, false);
@@ -102,9 +127,41 @@ triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
                   "cannot enter V8 context");
   }
   else {
-    _response = createResponse(triagens::rest::HttpResponse::OK);
-    _response->setContentType("application/json; charset=utf-8");
-    _response->body().appendText("{\"a\":12}");
+    // extract the sub-request type
+    HttpRequest::HttpRequestType type = _request->requestType();
+
+    // execute one of the CRUD methods
+    switch (type) {
+      case HttpRequest::HTTP_REQUEST_POST: {
+        createQuery(); 
+        break;
+      }
+      case HttpRequest::HTTP_REQUEST_DELETE: {
+        deleteQuery();
+        break;
+      }
+      case HttpRequest::HTTP_REQUEST_PUT: {
+        useQuery();
+        break;
+      }
+      case HttpRequest::HTTP_REQUEST_GET: {
+        getInfoQuery();
+        break;
+      }
+      case HttpRequest::HTTP_REQUEST_HEAD: {
+        _response = createResponse(triagens::rest::HttpResponse::METHOD_NOT_ALLOWED);
+        break;
+      }
+      case HttpRequest::HTTP_REQUEST_PATCH:
+      case HttpRequest::HTTP_REQUEST_OPTIONS:
+      case HttpRequest::HTTP_REQUEST_ILLEGAL: {
+        generateError(HttpResponse::METHOD_NOT_ALLOWED, 
+                      TRI_ERROR_NOT_IMPLEMENTED,
+                      "illegal method for /_api/aql");
+        break;
+      }
+    }
+
   }
 
   _applicationV8->exitContext(context);
