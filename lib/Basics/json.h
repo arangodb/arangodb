@@ -250,7 +250,7 @@ void TRI_FreeJson (TRI_memory_zone_t*, TRI_json_t*);
 /// @brief determines the length of a list json
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t TRI_LengthListJson ( TRI_json_t const*);
+size_t TRI_LengthListJson (TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determines whether the JSON passed is of type array

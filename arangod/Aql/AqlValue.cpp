@@ -264,6 +264,43 @@ bool AqlValue::isArray () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the length of an AqlValue containing a list
+////////////////////////////////////////////////////////////////////////////////
+
+size_t AqlValue::listSize () const {
+  switch (_type) {
+    case JSON: {
+      TRI_json_t const* json = _json->json();
+      if (TRI_IsListJson(json)) {
+        return TRI_LengthListJson(json);
+      }
+      return 0;
+    }
+
+    case DOCVEC: {
+      TRI_ASSERT(_vector != nullptr);
+      // calculate the result list length
+      size_t totalSize = 0;
+      for (auto it = _vector->begin(); it != _vector->end(); ++it) {
+        totalSize += (*it)->size();
+      }
+      return totalSize;
+    }
+
+    case RANGE: {
+      TRI_ASSERT(_range != nullptr);
+      return _range->size();
+    }
+       
+    case SHAPED: 
+    case EMPTY: {
+    }
+  }
+
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get a string representation of the AqlValue
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -690,14 +727,55 @@ int AqlValue::Compare (AQL_TRANSACTION_V8* trx,
       return 1;
     }
 
-    if (left._type == AqlValue::JSON && right._type == AqlValue::SHAPED) {
-      triagens::basics::Json rjson = right.toJson(trx, rightcoll);
+    // JSON against x
+    if (left._type == AqlValue::JSON && 
+        (right._type == AqlValue::SHAPED ||
+         right._type == AqlValue::RANGE ||
+         right._type == AqlValue::DOCVEC)) {
+        triagens::basics::Json rjson = right.toJson(trx, rightcoll);
       return TRI_CompareValuesJson(left._json->json(), rjson.json(), true);
     }
-
-    if (left._type == AqlValue::SHAPED && right._type == AqlValue::JSON) {
+    
+    // SHAPED against x
+    if (left._type == AqlValue::SHAPED) {
       triagens::basics::Json ljson = left.toJson(trx, leftcoll);
-      return TRI_CompareValuesJson(ljson.json(), right._json->json(), true);
+
+      if (right._type == AqlValue::JSON) {
+        return TRI_CompareValuesJson(ljson.json(), right._json->json(), true);
+      }
+      else if (right._type == AqlValue::RANGE ||
+               right._type == AqlValue::DOCVEC) {
+        triagens::basics::Json rjson = right.toJson(trx, rightcoll);
+        return TRI_CompareValuesJson(ljson.json(), rjson.json(), true);
+      }
+    }
+
+    // RANGE against x
+    if (left._type == AqlValue::RANGE) {
+      triagens::basics::Json ljson = left.toJson(trx, leftcoll);
+
+      if (right._type == AqlValue::JSON) {
+        return TRI_CompareValuesJson(ljson.json(), right._json->json(), true);
+      }
+      else if (right._type == AqlValue::SHAPED ||
+               right._type == AqlValue::DOCVEC) {
+        triagens::basics::Json rjson = right.toJson(trx, rightcoll);
+        return TRI_CompareValuesJson(ljson.json(), rjson.json(), true);
+      }
+    }
+    
+    // DOCVEC against x
+    if (left._type == AqlValue::DOCVEC) {
+      triagens::basics::Json ljson = left.toJson(trx, leftcoll);
+
+      if (right._type == AqlValue::JSON) {
+        return TRI_CompareValuesJson(ljson.json(), right._json->json(), true);
+      }
+      else if (right._type == AqlValue::SHAPED ||
+               right._type == AqlValue::RANGE) {
+        triagens::basics::Json rjson = right.toJson(trx, rightcoll);
+        return TRI_CompareValuesJson(ljson.json(), rjson.json(), true);
+      }
     }
 
     // No other comparisons are defined

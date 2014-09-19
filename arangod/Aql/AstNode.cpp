@@ -672,6 +672,18 @@ bool AstNode::isSimple () const {
     return (getMember(0)->isSimple() && getMember(1)->isSimple()); 
   }
 
+  if (type == NODE_TYPE_OPERATOR_BINARY_EQ ||
+      type == NODE_TYPE_OPERATOR_BINARY_NE ||
+      type == NODE_TYPE_OPERATOR_BINARY_LT ||
+      type == NODE_TYPE_OPERATOR_BINARY_LE ||
+      type == NODE_TYPE_OPERATOR_BINARY_GT ||
+      type == NODE_TYPE_OPERATOR_BINARY_GE ||
+      type == NODE_TYPE_OPERATOR_BINARY_IN ||
+      type == NODE_TYPE_OPERATOR_BINARY_NIN) {
+    // a comparison operator is simple if both bounds are simple
+    return (getMember(0)->isSimple() && getMember(1)->isSimple()); 
+  }
+
   return false;
 }
 

@@ -382,12 +382,13 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
   }
 
   else if (node->type == NODE_TYPE_RANGE) {
-    TRI_document_collection_t const* myCollection = nullptr;
+    TRI_document_collection_t const* leftCollection = nullptr;
+    TRI_document_collection_t const* rightCollection = nullptr;
 
     auto low = node->getMember(0);
     auto high = node->getMember(1);
-    AqlValue resultLow = executeSimpleExpression(low, &myCollection, trx, docColls, argv, startPos, vars, regs);
-    AqlValue resultHigh = executeSimpleExpression(high, &myCollection, trx, docColls, argv, startPos, vars, regs);
+    AqlValue resultLow = executeSimpleExpression(low, &leftCollection, trx, docColls, argv, startPos, vars, regs);
+    AqlValue resultHigh = executeSimpleExpression(high, &rightCollection, trx, docColls, argv, startPos, vars, regs);
 
     if (! resultLow.isNumber() || ! resultHigh.isNumber()) {
       resultLow.destroy();
@@ -401,6 +402,78 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     resultHigh.destroy();
 
     return res;
+  }
+  
+  else if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ ||
+           node->type == NODE_TYPE_OPERATOR_BINARY_NE ||
+           node->type == NODE_TYPE_OPERATOR_BINARY_LT ||
+           node->type == NODE_TYPE_OPERATOR_BINARY_LE ||
+           node->type == NODE_TYPE_OPERATOR_BINARY_GT ||
+           node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
+           node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
+           node->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
+    TRI_document_collection_t const* leftCollection = nullptr;
+    AqlValue left  = executeSimpleExpression(node->getMember(0), &leftCollection, trx, docColls, argv, startPos, vars, regs);
+    TRI_document_collection_t const* rightCollection = nullptr;
+    AqlValue right = executeSimpleExpression(node->getMember(1), &rightCollection, trx, docColls, argv, startPos, vars, regs);
+
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
+        node->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
+      // IN and NOT IN
+      if (! right.isList()) {
+        // right operand must be a list
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_LIST_EXPECTED);
+      }
+    
+      size_t const n = right.listSize();
+
+      for (size_t i = 0; i < n; ++i) {
+        auto listItem = right.extractListMember(trx, rightCollection, i);
+        AqlValue listItemValue(&listItem);
+
+        int compareResult = AqlValue::Compare(trx, left, leftCollection, listItemValue, nullptr);
+
+        if (compareResult == 0) {
+          // item found in the list
+          left.destroy();
+          right.destroy();
+      
+          // found
+          return AqlValue(new triagens::basics::Json(node->type == NODE_TYPE_OPERATOR_BINARY_IN));
+        }
+      }
+       
+      left.destroy();
+      right.destroy();
+    
+      // not found
+      return AqlValue(new triagens::basics::Json(node->type != NODE_TYPE_OPERATOR_BINARY_IN));
+    }
+
+    // all other comparison operators
+    int compareResult = AqlValue::Compare(trx, left, leftCollection, right, rightCollection);
+    left.destroy();
+    right.destroy();
+
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
+      return AqlValue(new triagens::basics::Json(compareResult == 0));
+    }
+    else if (node->type == NODE_TYPE_OPERATOR_BINARY_NE) {
+      return AqlValue(new triagens::basics::Json(compareResult != 0));
+    }
+    else if (node->type == NODE_TYPE_OPERATOR_BINARY_LT) {
+    return AqlValue(new triagens::basics::Json(compareResult < 0));
+    }
+    else if (node->type == NODE_TYPE_OPERATOR_BINARY_LE) {
+      return AqlValue(new triagens::basics::Json(compareResult <= 0));
+    }
+    else if (node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
+      return AqlValue(new triagens::basics::Json(compareResult > 0));
+    }
+    else if (node->type == NODE_TYPE_OPERATOR_BINARY_GE) {
+      return AqlValue(new triagens::basics::Json(compareResult >= 0));
+    }
+    // fall-through intentional
   }
   
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unhandled type in simple expression");
