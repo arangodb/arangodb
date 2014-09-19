@@ -1087,10 +1087,12 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
   TRI_json_t* extra = nullptr;
 
   if (argv.Length() > 1) {
-    if (! argv[1]->IsObject()) {
+    if (! argv[1]->IsUndefined() && ! argv[1]->IsNull() && ! argv[1]->IsObject()) {
       TRI_V8_TYPE_ERROR(scope, "expecting object for <bindvalues>");
     }
-    parameters = TRI_ObjectToJson(argv[1]);
+    if (argv[1]->IsObject()) {
+      parameters = TRI_ObjectToJson(argv[1]);
+    }
   }
     
   if (argv.Length() > 2) {
