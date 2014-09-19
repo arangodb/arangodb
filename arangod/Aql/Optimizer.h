@@ -317,8 +317,8 @@ namespace triagens {
 /// @brief constructor, this will initialize the rules database
 ////////////////////////////////////////////////////////////////////////////////
 
-        Optimizer (int);   // the .cpp file includes Aql/OptimizerRules.h
-                           // and add all methods there to the rules database
+        Optimizer (size_t);   // the .cpp file includes Aql/OptimizerRules.h
+                              // and add all methods there to the rules database
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -504,13 +504,13 @@ namespace triagens {
 /// @brief maximal number of plans to produce
 ////////////////////////////////////////////////////////////////////////////////
 
-        int const _maxNumberOfPlans;
+        size_t const _maxNumberOfPlans;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default value for maximal number of plans to produce
 ////////////////////////////////////////////////////////////////////////////////
 
-        static int const DefaultMaxNumberOfPlans = 1000;
+        static size_t const DefaultMaxNumberOfPlans = 1000;
 
     };
 
