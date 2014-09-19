@@ -698,6 +698,8 @@ bool EnumerateCollectionBlock::moreDocuments () {
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
+  
+  _engine->_stats.scannedFull += static_cast<int64_t>(_documents.size());
 
   return (! _documents.empty());
 }
@@ -863,7 +865,6 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
   for (auto r : attrRanges) {
     _allBoundsConstant &= r.isConstant();
   }
-
 }
 
 IndexRangeBlock::~IndexRangeBlock () {
@@ -1273,6 +1274,8 @@ void IndexRangeBlock::readPrimaryIndex (IndexOrCondition const& ranges) {
   }
 
   if (! key.empty()) {
+    ++_engine->_stats.scannedIndex;
+
     auto found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyPrimaryIndex(primaryIndex, key.c_str()));
     if (found != nullptr) {
       _documents.push_back(*found);
@@ -1341,11 +1344,18 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
   destroySearchValue();
   
   size_t const n = list._length;
-  for (size_t i = 0; i < n; ++i) {
-    _documents.push_back(*(list._documents[i]));
-  }
+  try {
+    for (size_t i = 0; i < n; ++i) {
+      _documents.push_back(*(list._documents[i]));
+    }
   
-  TRI_DestroyIndexResult(&list);
+    _engine->_stats.scannedIndex += static_cast<int64_t>(n);
+    TRI_DestroyIndexResult(&list);
+  }
+  catch (...) {
+    TRI_DestroyIndexResult(&list);
+    throw;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1395,6 +1405,8 @@ void IndexRangeBlock::readEdgeIndex (IndexOrCondition const& ranges) {
       for (auto it : result) {
         _documents.push_back((it));
       }
+  
+      _engine->_stats.scannedIndex += static_cast<int64_t>(result.size());
     }
   }
 }
@@ -1518,6 +1530,7 @@ void IndexRangeBlock::readSkiplistIndex (IndexOrCondition const& ranges) {
         break;
       }
       _documents.push_back(*(indexElement->_document));
+      ++_engine->_stats.scannedIndex;
     }
     TRI_FreeSkiplistIterator(skiplistIterator);
   }
