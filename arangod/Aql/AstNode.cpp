@@ -664,6 +664,10 @@ bool AstNode::isSimple () const {
     return (getMember(0)->isSimple() && getMember(1)->isSimple()); 
   }
   
+  if (type == NODE_TYPE_OPERATOR_UNARY_NOT) {
+    return getMember(0)->isSimple(); 
+  }
+  
   if (type == NODE_TYPE_FCALL) {
     // some functions have C++ handlers
     // check if the called function is one of them

@@ -404,6 +404,22 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     return res;
   }
   
+  else if (node->type == NODE_TYPE_OPERATOR_UNARY_NOT) {
+    TRI_document_collection_t const* myCollection = nullptr;
+    AqlValue operand = executeSimpleExpression(node->getMember(0), &myCollection, trx, docColls, argv, startPos, vars, regs);
+    
+    bool operandIsBoolean = operand.isBoolean();
+    bool operandIsTrue    = operand.isTrue();
+      
+    operand.destroy();
+
+    if (! operandIsBoolean) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE);
+    }
+
+    return AqlValue(new triagens::basics::Json(! operandIsTrue));
+  }
+  
   else if (node->type == NODE_TYPE_OPERATOR_BINARY_AND ||
            node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
     TRI_document_collection_t const* leftCollection = nullptr;
