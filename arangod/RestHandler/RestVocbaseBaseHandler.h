@@ -40,6 +40,7 @@
 
 #include "Rest/HttpResponse.h"
 #include "Utils/transactions.h"
+#include "RestServer/VocbaseContext.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations

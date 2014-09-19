@@ -51,7 +51,6 @@
 #include "Dispatcher/Dispatcher.h"
 #include "HttpServer/ApplicationEndpointServer.h"
 #include "HttpServer/AsyncJobManager.h"
-#include "HttpServer/HttpHandlerFactory.h"
 #include "Rest/InitialiseRest.h"
 #include "Rest/OperationMode.h"
 #include "Rest/Version.h"
@@ -91,16 +90,17 @@ bool ALLOW_USE_DATABASE_IN_REST_ACTIONS;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief define "_api" handlers
+/// @brief define "_api" and "_admin" handlers
 ////////////////////////////////////////////////////////////////////////////////
 
-static void DefineApiHandlers (HttpHandlerFactory* factory,
-                               ApplicationAdminServer* admin,
-                               ApplicationDispatcher* dispatcher,
-                               AsyncJobManager* jobManager) {
-
+void ArangoServer::defineHandlers (HttpHandlerFactory* factory) {
+  // First the "_api" handlers:
+ 
   // add "/version" handler
-  admin->addBasicHandlers(factory, "/_api", dispatcher->dispatcher(), jobManager);
+  _applicationAdminServer->addBasicHandlers(
+      factory, "/_api",
+      _applicationDispatcher->dispatcher(),
+      _jobManager);
 
   // add a upgrade warning
   factory->addPrefixHandler("/_msg/please-upgrade",
@@ -133,34 +133,28 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
   // add "/shard-comm" handler
   factory->addPrefixHandler("/_api/shard-comm",
                             RestHandlerCreator<RestShardHandler>::createData<Dispatcher*>,
-                            dispatcher->dispatcher());
+                            _applicationDispatcher->dispatcher());
 
   // add "/aql" handler
   factory->addPrefixHandler("/_api/aql",
-                            RestHandlerCreator<RestAqlHandler>::createData<Dispatcher*>,
-                            dispatcher->dispatcher());
-}
+                            RestHandlerCreator<RestAqlHandler>::createData<ApplicationV8*>,
+                            _applicationV8);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief define "admin" handlers
-////////////////////////////////////////////////////////////////////////////////
+  // And now the "_admin" handlers
 
-static void DefineAdminHandlers (HttpHandlerFactory* factory,
-                                 ApplicationAdminServer* admin,
-                                 ApplicationDispatcher* dispatcher,
-                                 AsyncJobManager* jobManager,
-                                 ApplicationServer* applicationServer) {
-
-  // add "/version" handler
-  admin->addBasicHandlers(factory, "/_admin", dispatcher->dispatcher(), jobManager);
+  // add "/_admin/version" handler
+  _applicationAdminServer->addBasicHandlers(
+      factory, "/_admin", 
+      _applicationDispatcher->dispatcher(),
+      _jobManager);
 
   // add "/_admin/shutdown" handler
   factory->addPrefixHandler("/_admin/shutdown",
                    RestHandlerCreator<RestShutdownHandler>::createData<void*>,
-                   static_cast<void*>(applicationServer));
+                   static_cast<void*>(_applicationServer));
 
   // add admin handlers
-  admin->addHandlers(factory, "/_admin");
+  _applicationAdminServer->addHandlers(factory, "/_admin");
 
 }
 
@@ -861,8 +855,7 @@ int ArangoServer::startupServer () {
 
     HttpHandlerFactory* handlerFactory = _applicationEndpointServer->getHandlerFactory();
 
-    DefineApiHandlers(handlerFactory, _applicationAdminServer, _applicationDispatcher, _jobManager);
-    DefineAdminHandlers(handlerFactory, _applicationAdminServer, _applicationDispatcher, _jobManager, _applicationServer);
+    defineHandlers(handlerFactory);
 
     // add action handler
     handlerFactory->addPrefixHandler(

@@ -30,7 +30,6 @@
 #include "RestAqlHandler.h"
 
 #include "Basics/ConditionLocker.h"
-#include "Dispatcher/Dispatcher.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 
@@ -62,10 +61,11 @@ const string RestAqlHandler::QUEUE_NAME = "STANDARD";
 ////////////////////////////////////////////////////////////////////////////////
 
 RestAqlHandler::RestAqlHandler (triagens::rest::HttpRequest* request,
-                                Dispatcher* data)
+                                ApplicationV8* applicationV8)
   : RestBaseHandler(request),
-    _dispatcher(data) {
-  TRI_ASSERT(_dispatcher != 0);
+    _applicationV8(applicationV8),
+    _context(static_cast<VocbaseContext*>(request->getRequestContext())),
+    _vocbase(_context->getVocbase()) {
 }
 
 // -----------------------------------------------------------------------------
@@ -93,9 +93,20 @@ string const& RestAqlHandler::queue () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
-  _response = createResponse(triagens::rest::HttpResponse::OK);
-  _response->setContentType("application/json; charset=utf-8");
-  _response->body().appendText("{\"a\":12}");
+  auto context = _applicationV8->enterContext("STANDARD", _vocbase, nullptr,
+                                              false, false);
+  if (nullptr == context) {
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                  "cannot enter V8 context");
+  }
+  else {
+    _response = createResponse(triagens::rest::HttpResponse::OK);
+    _response->setContentType("application/json; charset=utf-8");
+    _response->body().appendText("{\"a\":12}");
+  }
+
+  _applicationV8->exitContext(context);
+
   return status_t(HANDLER_DONE);
 }
 
