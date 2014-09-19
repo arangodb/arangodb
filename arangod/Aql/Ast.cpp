@@ -1270,12 +1270,14 @@ AstNode* Ast::optimizeBinaryOperatorRelational (AstNode* node) {
   bool const lhsIsConst = lhs->isConstant(); 
   bool const rhsIsConst = rhs->isConstant(); 
 
+  /*
+    currently disabled becauses it makes some tests fail
+    TODO: investigate
   if (! lhs->canThrow() &&
       rhs->type == NODE_TYPE_LIST &&
       rhs->numMembers() <= 1 &&
       (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
        node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
-
     // turn an IN or a NOT IN with few members into an equality comparison
     if (rhs->numMembers() == 0) {
       // IN with no members returns false
@@ -1292,8 +1294,8 @@ AstNode* Ast::optimizeBinaryOperatorRelational (AstNode* node) {
     }
     // fall-through intentional
   }
+  */
 
-  
   if (! rhsIsConst) {
     return node;
   }
