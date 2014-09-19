@@ -343,7 +343,7 @@ function FileSystemSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_SYS_ERROR.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_FILE_EXISTS.code, err.errorNum);
       }
 
       // remove all stuff we created for testing
