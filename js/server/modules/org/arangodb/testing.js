@@ -279,6 +279,7 @@ var tests_shell_server_ahuacatl;
 var tests_shell_server_ahuacatl_extended;
 var tests_shell_server_aql;
 var tests_shell_server_aql_extended;
+var tests_shell_server_aql_performance;
 
 function findTests () {
   if (foundTests) {
@@ -346,6 +347,14 @@ function findTests () {
             function(x) {
               return fs.join(makePath("js/server/tests"),x);
             }).sort();
+  tests_shell_server_aql_performance = 
+            _.filter(fs.list(makePath("js/server/perftests")),
+            function (p) {
+              return p.substr(-3) === ".js";
+            }).map(
+            function(x) {
+              return fs.join(makePath("js/server/perftests"),x);
+            }).sort();
 
   tests_shell_server = tests_shell_common.concat(tests_shell_server_only);
   tests_shell_client = tests_shell_common.concat(tests_shell_client_only);
@@ -369,9 +378,13 @@ function runThere (options, instanceInfo, file) {
     var o = makeAuthorisationHeaders(options);
     o.method = "POST";
     o.timeout = 24*3600;
+    o.returnBodyOnError = true
     r = download(instanceInfo.url+"/_admin/execute?returnAsJSON=true",t,o);
     if (!r.error && r.code === 200) {
       r = JSON.parse(r.body);
+    }
+    else {
+      print("Error on the remote arangod:\n" + r.body);
     }
   }
   catch (err) {
@@ -481,6 +494,13 @@ testFuncs.shell_server_aql = function(options) {
                         'tests_shell_server_aql_extended');
   }
   return "skipped";
+};
+
+testFuncs.shell_server_perf = function(options) {
+  findTests();
+  return performTests(options,
+                      tests_shell_server_aql_performance,
+                      'tests_shell_server_aql_performance');
 };
 
 testFuncs.shell_client = function(options) {
@@ -936,7 +956,7 @@ testFuncs.authentication_parameters = function (options) {
   var i;
   var re = [];
   for (i = 0;i < urlsTodo.length;i++) {
-    r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false});
+    r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false,returnBodyOnError:true});
     re.push(r.code);
   }
   if (_.isEqual(re,[401, 401, 401, 401, 401, 401, 401])) {
@@ -955,7 +975,7 @@ testFuncs.authentication_parameters = function (options) {
                    "authparams2");
   re = [];
   for (i = 0;i < urlsTodo.length;i++) {
-    r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false});
+    r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false,returnBodyOnError:true});
     re.push(r.code);
   }
   if (_.isEqual(re, [401, 401, 401, 401, 401, 404, 404])) {
@@ -974,7 +994,7 @@ testFuncs.authentication_parameters = function (options) {
                    "authparams3");
   re = [];
   for (i = 0;i < urlsTodo.length;i++) {
-    r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false});
+    r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false,returnBodyOnError:true});
     re.push(r.code);
   }
   if (_.isEqual(re, [404, 404, 200, 301, 301, 404, 404])) {
@@ -997,6 +1017,7 @@ var allTests =
     "shell_server",
     "shell_server_ahuacatl",
     "shell_server_aql",
+    "shell_server_perf",
     "http_server",
     "ssl_server",
     "shell_client",
