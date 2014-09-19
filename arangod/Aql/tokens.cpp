@@ -972,7 +972,7 @@ yy_find_action:
 		if ( yy_act != YY_END_OF_BUFFER && yy_rule_can_match_eol[yy_act] )
 			{
 			int yyl;
-			for ( yyl = 0; yyl < yyleng; ++yyl )
+			for ( yyl = 0; yyl < (int) yyleng; ++yyl )
 				if ( yytext[yyl] == '\n' )
 					   
     do{ yylineno++;
