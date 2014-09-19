@@ -43,6 +43,8 @@ using namespace triagens::arango;
 using namespace triagens::rest;
 using namespace triagens::aql;
 
+using Json = triagens::basics::Json;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public constants
 // -----------------------------------------------------------------------------
@@ -95,6 +97,13 @@ string const& RestAqlHandler::queue () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestAqlHandler::createQuery () {
+#if 0
+  Json queryJson(parseJsonBody());
+  if (queryJson.isEmpty()) {
+    return;
+  }
+#endif
+  
   _response = createResponse(triagens::rest::HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
   _response->body().appendText("{\"a\":12}");

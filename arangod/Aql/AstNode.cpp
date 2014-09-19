@@ -657,6 +657,16 @@ bool AstNode::isSimple () const {
   if (type == NODE_TYPE_VALUE) {
     return true;
   }
+
+  if (type == NODE_TYPE_OPERATOR_BINARY_AND ||
+      type == NODE_TYPE_OPERATOR_BINARY_OR) {
+    // a logical operator is simple if its operands are simple
+    return (getMember(0)->isSimple() && getMember(1)->isSimple()); 
+  }
+  
+  if (type == NODE_TYPE_OPERATOR_UNARY_NOT) {
+    return getMember(0)->isSimple(); 
+  }
   
   if (type == NODE_TYPE_FCALL) {
     // some functions have C++ handlers
