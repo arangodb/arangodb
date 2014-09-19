@@ -171,7 +171,7 @@ static int HashIndexHelper (TRI_hash_index_t const* hashIndex,
 
       shapedSub._sid    = shapedObject._sid;
       shapedSub._length = shapedObject._data.length;
-      shapedSub._offset = ((char const*) shapedObject._data.data) - ptr;
+      shapedSub._offset = static_cast<uint32_t>(((char const*) shapedObject._data.data) - ptr);
     }
 
     // store the json shaped sub-object -- this is what will be hashed

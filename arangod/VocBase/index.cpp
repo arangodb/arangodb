@@ -1297,7 +1297,7 @@ static int SkiplistIndexHelper (const TRI_skiplist_index_t* skiplistIndex,
 
     skiplistElement->_subObjects[j]._sid = shapedObject._sid;
     skiplistElement->_subObjects[j]._length = shapedObject._data.length;
-    skiplistElement->_subObjects[j]._offset = ((char const*) shapedObject._data.data) - ptr;
+    skiplistElement->_subObjects[j]._offset = static_cast<uint32_t>(((char const*) shapedObject._data.data) - ptr);
   }
 
   return TRI_ERROR_NO_ERROR;

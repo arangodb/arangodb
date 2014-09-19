@@ -49,7 +49,7 @@ using namespace triagens::aql;
 // --SECTION--                                               static const values
 // -----------------------------------------------------------------------------
 
-static std::string const StateNames[] = {
+static std::string StateNames[] = {
   "initialization",         // INITIALIZATION 
   "parsing",                // PARSING
   "ast optimization",       // AST_OPTIMIZATION
@@ -60,7 +60,7 @@ static std::string const StateNames[] = {
 };
 
 // make sure the state strings and the actual states match
-static_assert(sizeof(StateNames) / sizeof(char const*) == static_cast<size_t>(ExecutionState::INVALID_STATE), 
+static_assert(sizeof(StateNames) / sizeof(std::string) == static_cast<size_t>(ExecutionState::INVALID_STATE), 
               "invalid number of ExecutionState values");
 
 // -----------------------------------------------------------------------------
