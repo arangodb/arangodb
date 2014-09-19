@@ -149,12 +149,11 @@ class v8_action_t : public TRI_action_t {
       ApplicationV8::V8Context* context = GlobalV8Dealer->enterContext(
         "STANDARD",
         vocbase,
-        request,
         ! allowEngineReset,
         allowUseDatabaseInRestActions);
 
       // note: the context might be 0 in case of shut-down
-      if (context == 0) {
+      if (context == nullptr) {
         return result;
       }
 

@@ -334,9 +334,8 @@ void ApplicationV8::setVocbase (TRI_vocbase_t* vocbase) {
 /// @brief enters a context
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationV8::V8Context* ApplicationV8::enterContext (const string& name,
+ApplicationV8::V8Context* ApplicationV8::enterContext (std::string const& name,
                                                        TRI_vocbase_s* vocbase,
-                                                       triagens::rest::HttpRequest* request,
                                                        bool initialise,
                                                        bool allowUseDatabase) {
   CONDITION_LOCKER(guard, _contextCondition);
