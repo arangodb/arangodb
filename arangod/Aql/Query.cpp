@@ -372,10 +372,10 @@ QueryResult Query::execute () {
     auto otherJsonString =
       otherPlan->toJson(parser.ast(), TRI_UNKNOWN_MEM_ZONE, true).toString(); 
     std::cout << "deserialised plan: \n" << otherJsonString << "\n";
-    TRI_ASSERT(otherJsonString == JsonString);//*/
+    TRI_ASSERT(otherJsonString == JsonString); */
 
     enterState(EXECUTION);
-    triagens::basics::Json json(triagens::basics::Json::List);
+    triagens::basics::Json json(triagens::basics::Json::List, 16);
     triagens::basics::Json stats;
 
     try { 
@@ -387,6 +387,9 @@ QueryResult Query::execute () {
         while (nullptr != (value = engine->getSome(1, ExecutionBlock::DefaultBatchSize))) {
           auto doc = value->getDocumentCollection(0);
           size_t const n = value->size();
+          // reserve space for n additional results at once
+          json.reserve(n);
+
           for (size_t i = 0; i < n; ++i) {
             AqlValue val = value->getValue(i, 0);
 
