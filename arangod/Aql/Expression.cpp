@@ -295,10 +295,10 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
   }
   
   else if (node->type == NODE_TYPE_LIST) {
-    auto list = new Json(Json::List);
+    size_t const n = node->numMembers();
+    auto list = new Json(Json::List, n);
 
     try {
-      size_t const n = node->numMembers();
       for (size_t i = 0; i < n; ++i) {
         auto member = node->getMember(i);
         TRI_document_collection_t const* myCollection = nullptr;
@@ -316,10 +316,10 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
   }
 
   else if (node->type == NODE_TYPE_ARRAY) {
-    auto resultArray = new Json(Json::Array);
+    size_t const n = node->numMembers();
+    auto resultArray = new Json(Json::Array, n);
 
     try {
-      size_t const n = node->numMembers();
       for (size_t i = 0; i < n; ++i) {
         auto member = node->getMember(i);
         TRI_document_collection_t const* myCollection = nullptr;
