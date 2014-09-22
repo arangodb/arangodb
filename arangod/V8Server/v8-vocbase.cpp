@@ -7076,7 +7076,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a document
-/// @startDocuBlock documentsDocumentRemove
+/// @startDocuBlock documentsCollectionRemove
 /// `collection.remove(document)`
 ///
 /// Removes a document. If there is revision mismatch, then an error is thrown.
@@ -8745,7 +8745,7 @@ static v8::Handle<v8::Value> JS_CreateEdgeCollectionVocbase (v8::Arguments const
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a document
-/// @startDocuBlock documentsCollectionRemove
+/// @startDocuBlock documentsDocumentRemove
 /// `db._remove(document)`
 ///
 /// Removes a document. If there is revision mismatch, then an error is thrown.
