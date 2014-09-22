@@ -385,8 +385,21 @@ static v8::Handle<v8::Array> KeysOfShapedJson (const v8::AccessorInfo& info) {
   qtr += n * sizeof(TRI_shape_sid_t);
   aids = (TRI_shape_aid_t const*) qtr;
 
-  v8::Handle<v8::Array> result = v8::Array::New((int) n);
+  TRI_df_marker_type_t type = static_cast<TRI_df_marker_t const*>(marker)->_type;
+  bool isEdge = (type == TRI_DOC_MARKER_KEY_EDGE || type == TRI_WAL_MARKER_EDGE);
+   
+  v8::Handle<v8::Array> result = v8::Array::New((int) n + 3 + (isEdge ? 2 : 0));
   uint32_t count = 0;
+  
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+  result->Set(count++, v8g->_IdKey);
+  result->Set(count++, v8g->_RevKey);
+  result->Set(count++, v8g->_KeyKey);
+
+  if (isEdge) {
+    result->Set(count++, v8g->_FromKey);
+    result->Set(count++, v8g->_ToKey);
+  }
 
   for (TRI_shape_size_t i = 0;  i < n;  ++i, ++aids) {
     char const* att = shaper->lookupAttributeId(shaper, *aids);
@@ -395,11 +408,6 @@ static v8::Handle<v8::Array> KeysOfShapedJson (const v8::AccessorInfo& info) {
       result->Set(count++, v8::String::New(att));
     }
   }
-
-  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
-  result->Set(count++, v8g->_IdKey);
-  result->Set(count++, v8g->_RevKey);
-  result->Set(count++, v8g->_KeyKey);
 
   return scope.Close(result);
 }
@@ -426,9 +434,28 @@ static void CopyAttributes (v8::Handle<v8::Object> self,
     return;
   }
 
+  // copy _key and _rev
+
+  // _key
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+  char buffer[TRI_VOC_KEY_MAX_LENGTH + 1];
+  char const* docKey = TRI_EXTRACT_MARKER_KEY(static_cast<TRI_df_marker_t const*>(marker));
+  TRI_ASSERT(docKey != nullptr);
+  size_t keyLength = strlen(docKey);
+  memcpy(buffer, docKey, keyLength);
+  self->ForceSet(v8g->_KeyKey, v8::String::New(buffer, (int) keyLength));
+
+   // _rev  
+  TRI_voc_rid_t rid = TRI_EXTRACT_MARKER_RID(static_cast<TRI_df_marker_t const*>(marker));
+  TRI_ASSERT(rid > 0);
+  size_t len = TRI_StringUInt64InPlace((uint64_t) rid, (char*) &buffer);
+  self->ForceSet(v8g->_RevKey, v8::String::New((char const*) buffer, (int) len));
+
   TRI_array_shape_t const* s;
   TRI_shape_aid_t const* aids;
   char const* qtr;
+
+  // finally insert the dynamic attributes from the shaped json
 
   // shape is an array
   s = (TRI_array_shape_t const*) shape;
