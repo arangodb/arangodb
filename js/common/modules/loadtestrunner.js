@@ -1,5 +1,12 @@
 /*global require, exports
 */
+var measurements = ["time",
+                    "ast optimization",
+                    "plan instanciation",
+                    "parsing",
+                    "plan optimization",
+                    "execution",
+                    "initialization"];
 
 var loadTestRunner = function (tests, options, testMethods) {
   "use strict";
@@ -10,25 +17,32 @@ var loadTestRunner = function (tests, options, testMethods) {
 
   // calculate statistical values from series
   var calc = function (values, options) {
+    var resultList = {};
+    var i, j;
     var times = [];
-    var sum = function (values) {
+    var sum = function (times) {
       return times.reduce(function (previous, current) {
         return previous + current;
       });
     };
-    for (var i = 0; i < values.length; i++) {
-      times[i] = values[i].time;
+    for (i = 0; i < measurements.length; i++) {
+      if (values[0].hasOwnProperty(measurements[i])) {
+        times = [];
+        for (j = 0; j < values.length; j++) {
+          times[j] = values[j][measurements[i]];
+        }
+        times.sort();
+        var n = values.length;
+        resultList[measurements[i]] = { 
+          min: times[0], 
+          max: times[n - 1],
+          sum: sum(times),
+          avg: sum(times) / n,
+          har: sum(times.slice(options.strip, n - options.strip)) / (n - 2 * options.strip)
+        };
+      }
     }
-    times.sort();
-    var n = values.length;
-    var result = { 
-      min: times[0], 
-      max: times[n - 1],
-      sum: sum(times),
-      avg: sum(times) / n,
-      har: sum(times.slice(options.strip, n - options.strip)) / (n - 2 * options.strip)
-    };
-    return result;
+    return resultList;
   };
 
   // execute callback function as many times as we have runs
@@ -104,7 +118,7 @@ var loadTestRunner = function (tests, options, testMethods) {
  
     print(new Array(lineLength).join("-"));
 
-    var i, baseline;
+    var i, j, baseline;
 
     for (i = 0; i < tests.length; ++i) {
       test = tests[i];
@@ -126,23 +140,30 @@ var loadTestRunner = function (tests, options, testMethods) {
         for (oneResult in resultSet) {
           if (resultSet.hasOwnProperty(oneResult)) {
             var stats = calc(resultSet[oneResult], options);
+            results[test.name][oneResult][0].calced = stats;
 
-            if (i === 0) {
-              stats.rat = 100;
-              baseline = stats.har;
+            for (j = 0; j < measurements.length;j ++) {
+              if (stats.hasOwnProperty(measurements[j])) {
+                if (i === 0) {
+                  stats[measurements[j]].rat = 100;
+                  baseline = stats[measurements[j]].har;
+                }
+                else {
+                  stats[measurements[j]].rat = 100 * stats[measurements[j]].har / baseline;
+                }
+                var name = test.name + ' ' + oneResult;
+                print(pad(name , headLength, "right") + sep +  
+                      pad(String(options.runs), runsLength, "left") + sep +
+                      pad(stats[measurements[j]].sum.toFixed(options.digits), cellLength, "left") + sep +
+                      pad(stats[measurements[j]].min.toFixed(options.digits), cellLength, "left") + sep +
+                      pad(stats[measurements[j]].max.toFixed(options.digits), cellLength, "left") + sep + 
+                      pad(stats[measurements[j]].avg.toFixed(options.digits), cellLength, "left") + sep + 
+                      pad(stats[measurements[j]].har.toFixed(options.digits), cellLength, "left") + sep + 
+                      pad(stats[measurements[j]].rat.toFixed(2), runsLength, "left") + sep + measurements[j]);
+              }
             }
-            else {
-              stats.rat = 100 * stats.har / baseline;
-            }
-            var name = test.name + ' ' + oneResult;
-            print(pad(name , headLength, "right") + sep +  
-                  pad(String(options.runs), runsLength, "left") + sep +
-                  pad(stats.sum.toFixed(options.digits), cellLength, "left") + sep +
-                  pad(stats.min.toFixed(options.digits), cellLength, "left") + sep +
-                  pad(stats.max.toFixed(options.digits), cellLength, "left") + sep + 
-                  pad(stats.avg.toFixed(options.digits), cellLength, "left") + sep + 
-                  pad(stats.har.toFixed(options.digits), cellLength, "left") + sep + 
-                  pad(stats.rat.toFixed(2), runsLength, "left")); 
+
+            print(new Array(lineLength).join("-"));
           }
         }
       }
