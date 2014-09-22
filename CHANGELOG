@@ -1,6 +1,8 @@
 v2.2.4 (2014-XX-XX)
 -------------------
 
+* fixed issue #1025: Traversal not as expected in undirected graph
+
 * fixed issue #1020
 
   This requires re-introducing the startup option `--database.force-sync-properties`.
