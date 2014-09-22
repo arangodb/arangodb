@@ -43,7 +43,11 @@ function DownloadSuite () {
   var tempName;
 
   buildUrl = function (append) {
-    return "http://www.arangodb.org/arango-test-hook.php" + append;
+    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:') + "/_admin/echo" + append;
+  };
+  
+  buildUrlBroken = function (append) {
+    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:') + "/_not-there" + append;
   };
 
   return {
@@ -92,7 +96,7 @@ function DownloadSuite () {
 
       result = JSON.parse(response.body);
       assertEqual("GET", result.requestType);
-      assertEqual(0, Object.getOwnPropertyNames(result.parameter).length);
+      assertEqual(0, Object.getOwnPropertyNames(result.parameters).length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -102,14 +106,14 @@ function DownloadSuite () {
     testGetParams : function () {
       var result, response = internal.download(buildUrl("?foo=1&bar=2&code=201"));
 
-      assertEqual(201, response.code);
+      assertEqual(200, response.code);
 
       result = JSON.parse(response.body);
       assertEqual("GET", result.requestType);
-      assertEqual(3, Object.getOwnPropertyNames(result.parameter).length);
-      assertEqual("1", result.parameter["foo"]);
-      assertEqual("2", result.parameter["bar"]);
-      assertEqual("201", result.parameter["code"]);
+      assertEqual(3, Object.getOwnPropertyNames(result.parameters).length);
+      assertEqual("1", result.parameters["foo"]);
+      assertEqual("2", result.parameters["bar"]);
+      assertEqual("201", result.parameters["code"]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -123,9 +127,9 @@ function DownloadSuite () {
 
       result = JSON.parse(fs.read(tempName));
       assertEqual("GET", result.requestType);
-      assertEqual(2, Object.getOwnPropertyNames(result.parameter).length);
-      assertEqual("1", result.parameter["foo"]);
-      assertEqual("baz", result.parameter["bar"]);
+      assertEqual(2, Object.getOwnPropertyNames(result.parameters).length);
+      assertEqual("1", result.parameters["foo"]);
+      assertEqual("baz", result.parameters["bar"]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -133,7 +137,7 @@ function DownloadSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetErrorNoReturn : function () {
-      var response = internal.download(buildUrl("?foo=1&bar=baz&code=404"), undefined, { }, tempName );
+      var response = internal.download(buildUrlBroken("?foo=1&bar=baz&code=404"), undefined, { }, tempName );
 
       assertEqual(404, response.code);
 
@@ -145,16 +149,13 @@ function DownloadSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetErrorDirect : function () {
-      var result, response = internal.download(buildUrl("?foo=1&bar=baz&code=404"), undefined, { returnBodyOnError: true });
+      var result, response = internal.download(buildUrlBroken("?foo=1&bar=baz&code=404"), undefined, { returnBodyOnError: true });
 
       assertEqual(404, response.code);
-      
+     
       result = JSON.parse(response.body);
-      assertEqual("GET", result.requestType);
-      assertEqual(3, Object.getOwnPropertyNames(result.parameter).length);
-      assertEqual("1", result.parameter["foo"]);
-      assertEqual("baz", result.parameter["bar"]);
-      assertEqual("404", result.parameter["code"]);
+      assertTrue(result.error);
+      assertEqual(404, result.code);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -162,16 +163,13 @@ function DownloadSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetErrorSave : function () {
-      var result, response = internal.download(buildUrl("?foo=1&bar=baz&code=404"), undefined, { returnBodyOnError: true }, tempName);
+      var result, response = internal.download(buildUrlBroken("?foo=1&bar=baz&code=404"), undefined, { returnBodyOnError: true }, tempName);
 
       assertEqual(404, response.code);
       
       result = JSON.parse(fs.read(tempName));
-      assertEqual("GET", result.requestType);
-      assertEqual(3, Object.getOwnPropertyNames(result.parameter).length);
-      assertEqual("1", result.parameter["foo"]);
-      assertEqual("baz", result.parameter["bar"]);
-      assertEqual("404", result.parameter["code"]);
+      assertTrue(result.error);
+      assertEqual(404, result.code);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -202,7 +200,7 @@ function DownloadSuite () {
       
       result = JSON.parse(response.body);
       assertEqual("POST", result.requestType);
-      assertEqual(0, Object.getOwnPropertyNames(result.parameter).length);
+      assertEqual(0, Object.getOwnPropertyNames(result.parameters).length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -212,15 +210,14 @@ function DownloadSuite () {
     testPost : function () {
       var result, response = internal.download(buildUrl("?foo=1&bar=2&code=202"), "meow=1&baz=bam", { method: "POST", headers: { "Content-Type" : "application/x-www-form-urlencoded" } });
 
-      assertEqual(202, response.code);
+      assertEqual(200, response.code);
 
       result = JSON.parse(response.body);
       assertEqual("POST", result.requestType);
-      assertEqual(3, Object.getOwnPropertyNames(result.parameter).length);
-      assertEqual("1", result.parameter["foo"]);
-      assertEqual("2", result.parameter["bar"]);
-      assertEqual("202", result.parameter["code"]);
-      
+      assertEqual(3, Object.getOwnPropertyNames(result.parameters).length);
+      assertEqual("1", result.parameters["foo"]);
+      assertEqual("2", result.parameters["bar"]);
+      assertEqual("202", result.parameters["code"]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -234,8 +231,8 @@ function DownloadSuite () {
 
       result = JSON.parse(response.body);
       assertEqual("POST", result.requestType);
-      assertEqual(1, Object.getOwnPropertyNames(result.parameter).length);
-      assertEqual("200", result.parameter["code"]);
+      assertEqual(1, Object.getOwnPropertyNames(result.parameters).length);
+      assertEqual("200", result.parameters["code"]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -249,8 +246,8 @@ function DownloadSuite () {
 
       result = JSON.parse(response.body);
       assertEqual("POST", result.requestType);
-      assertEqual(1, Object.getOwnPropertyNames(result.parameter).length);
-      assertEqual("200", result.parameter["code"]);
+      assertEqual(1, Object.getOwnPropertyNames(result.parameters).length);
+      assertEqual("200", result.parameters["code"]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -264,7 +261,7 @@ function DownloadSuite () {
 
       result = JSON.parse(response.body);
       assertEqual("PUT", result.requestType);
-      assertEqual(0, Object.getOwnPropertyNames(result.parameter).length);
+      assertEqual(0, Object.getOwnPropertyNames(result.parameters).length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -278,7 +275,7 @@ function DownloadSuite () {
 
       result = JSON.parse(response.body);
       assertEqual("PATCH", result.requestType);
-      assertEqual(0, Object.getOwnPropertyNames(result.parameter).length);
+      assertEqual(0, Object.getOwnPropertyNames(result.parameters).length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -304,7 +301,7 @@ function DownloadSuite () {
 
       result = JSON.parse(response.body);
       assertEqual("DELETE", result.requestType);
-      assertEqual(0, Object.getOwnPropertyNames(result.parameter).length);
+      assertEqual(0, Object.getOwnPropertyNames(result.parameters).length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

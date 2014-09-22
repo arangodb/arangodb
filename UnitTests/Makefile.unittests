@@ -423,7 +423,6 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-collection-noncluster.js \
                @top_srcdir@/js/common/tests/shell-database.js \
                @top_srcdir@/js/common/tests/shell-document.js \
-               @top_srcdir@/js/common/tests/shell-download.js \
                @top_srcdir@/js/common/tests/shell-edge.js \
                @top_srcdir@/js/common/tests/shell-errors.js \
                @top_srcdir@/js/common/tests/shell-fs.js \
@@ -633,6 +632,7 @@ unittests-shell-client-readonly:
 	@echo
 
 SHELL_CLIENT_ONLY = \
+               @top_srcdir@/js/client/tests/shell-download.js \
 	       @top_srcdir@/js/client/tests/shell-endpoints.js \
 	       @top_srcdir@/js/client/tests/shell-fm.js \
 	       @top_srcdir@/js/client/tests/shell-client.js

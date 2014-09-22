@@ -711,6 +711,7 @@ _.each([
       functionName: functionName,
       argumentList: arguments
     });
+    return this;
   });
 });
 
