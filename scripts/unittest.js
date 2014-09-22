@@ -1,3 +1,6 @@
+var internalMembers = ["code", "error", "status", "duration", "failed", "total"];
+
+
 function resultsToXml(results) {
   function xmlEscape(s) {
     return s.replace(/[<>&"]/g, function (c) {
@@ -28,30 +31,34 @@ function resultsToXml(results) {
     return this;
   };
 
-  xml.elem("testsuite", {
-    errors: 0,
-    failures: results.failed,
-    name: results.suiteName,
-    tests: results.total,
-    time: results.duration
-  });
-
   for (var i in  results.shell_server_aql) {
-    var result = results.shell_server_aql[i];
-    var success = (typeof(result) === 'boolean')? result : false;
-
-    xml.elem("testcase", {
+    xml.elem("testsuite", {
+      errors: 0,
+      failures: results.shell_server_aql[i].failed,
       name: i,
-      time: 0.0
-    }, success);
-    
-    if (!success) {
-      xml.elem("failure", { message: result.message }, true)
-        .elem("/testcase");
-    }
-  }
+      tests: results.shell_server_aql[i].total,
+      time: results.shell_server_aql[i].duration
+    });
 
-  xml.elem("/testsuite");
+    for (var j in  results.shell_server_aql[i]) {
+      if (internalMembers.indexOf(j) === -1) {
+        var result = results.shell_server_aql[i][j].status;
+        var success = (typeof(result) === 'boolean')? result : false;
+        
+        xml.elem("testcase", {
+          name: j,
+          time: 0.0
+        }, success);
+      
+        if (!success) {
+          xml.elem("failure", { message: results.shell_server_aql[i][j].message }, true)
+            .elem("/testcase");
+        }
+      }
+    }
+
+    xml.elem("/testsuite");
+  }
 
   return xml.join("");
 }
