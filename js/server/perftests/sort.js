@@ -392,13 +392,15 @@ var optimizerRuleTestSuite = [
 ];
 
 var loadTestRunner = require("loadtestrunner");
+var repgen = require("reportgenerator");
 //db=require("internal").db;
 //skiplist  = db[colName].load();
 //skiplist2 = db[colNameOther].load();
 
 
 var ret = loadTestRunner.loadTestRunner(optimizerRuleTestSuite, testOptions, testMethods);
-require("internal").print(JSON.stringify(ret));
+//require("internal").print(JSON.stringify(ret));
+repgen.reportGenerator("sort", ret, "blarg")
 
 // Local Variables:
 // mode: outline-minor
