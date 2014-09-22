@@ -716,7 +716,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           if (_varIds.find(outvar[0]->id) != _varIds.end()) {
             auto node = static_cast<CalculationNode*>(en);
             std::string attr;
-            std::string enumCollVar;
+            Variable const* enumCollVar = nullptr;
             buildRangeInfo(node->expression()->node(), enumCollVar, attr);
           }
           break;
@@ -788,6 +788,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                   }
                   if (bad) {
                     it = bounds.erase(it);
+                    x.second.revokeEquality();  // just to be sure
                   }
                   else {
                     it++;
@@ -971,14 +972,14 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
     }
 
     void buildRangeInfo (AstNode const* node, 
-                         std::string& enumCollVar, 
+                         Variable const*& enumCollVar,
                          std::string& attr) {
       if (node->type == NODE_TYPE_REFERENCE) {
         auto x = static_cast<Variable*>(node->getData());
         auto setter = _plan->getVarSetBy(x->id);
         if (setter != nullptr && 
             setter->getType() == triagens::aql::ExecutionNode::ENUMERATE_COLLECTION) {
-          enumCollVar = x->name;
+          enumCollVar = x;
         }
         return;
       }
@@ -986,7 +987,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
         buildRangeInfo(node->getMember(0), enumCollVar, attr);
 
-        if (! enumCollVar.empty()) {
+        if (enumCollVar != nullptr) {
           char const* attributeName = node->getStringValue();
           attr.append(attributeName);
           attr.push_back('.');
@@ -999,23 +1000,38 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         auto rhs = node->getMember(1);
         if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
           buildRangeInfo(rhs, enumCollVar, attr);
-          if (! enumCollVar.empty()) {
-            // Found a multiple attribute access of a variable
-            _ranges->insert(enumCollVar, attr.substr(0, attr.size() - 1), 
-                            RangeInfoBound(lhs, true), RangeInfoBound(lhs, true), true);
-        
-            enumCollVar.clear();
+          if (enumCollVar != nullptr) {
+            std::unordered_set<Variable*> varsUsed 
+                = Ast::getReferencedVariables(lhs);
+            if (varsUsed.find(const_cast<Variable*>(enumCollVar)) 
+                == varsUsed.end()) {
+              // Found a multiple attribute access of a variable and an
+              // expression which does not involve that variable:
+              _ranges->insert(enumCollVar->name, 
+                              attr.substr(0, attr.size() - 1), 
+                              RangeInfoBound(lhs, true), 
+                              RangeInfoBound(lhs, true), true);
+            }
+            enumCollVar = nullptr;
             attr.clear();
           }
         }
           
         if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
           buildRangeInfo(lhs, enumCollVar, attr);
-          if (! enumCollVar.empty()) {
-            // Found a multiple attribute access of a variable
-            _ranges->insert(enumCollVar, attr.substr(0, attr.size() - 1), 
-                            RangeInfoBound(rhs, true), RangeInfoBound(rhs, true), true);
-            enumCollVar.clear();
+          if (enumCollVar != nullptr) {
+            std::unordered_set<Variable*> varsUsed 
+                = Ast::getReferencedVariables(rhs);
+            if (varsUsed.find(const_cast<Variable*>(enumCollVar)) 
+                == varsUsed.end()) {
+              // Found a multiple attribute access of a variable and an
+              // expression which does not involve that variable:
+              _ranges->insert(enumCollVar->name, 
+                              attr.substr(0, attr.size() - 1), 
+                              RangeInfoBound(rhs, true),
+                              RangeInfoBound(rhs, true), true);
+            }
+            enumCollVar = nullptr;
             attr.clear();
           }
         }
@@ -1038,7 +1054,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           // First find out whether there is a multiple attribute access
           // of a variable on the right:
           buildRangeInfo(rhs, enumCollVar, attr);
-          if (! enumCollVar.empty()) {
+          if (enumCollVar != nullptr) {
             RangeInfoBound low;
             RangeInfoBound high;
           
@@ -1050,10 +1066,10 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             else {
               low.assign(lhs, include);
             }
-            _ranges->insert(enumCollVar, attr.substr(0, attr.size() - 1), 
+            _ranges->insert(enumCollVar->name, attr.substr(0, attr.size() - 1), 
                             low, high, false);
           
-            enumCollVar.clear();
+            enumCollVar = nullptr;
             attr.clear();
           }
         }
@@ -1063,7 +1079,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           // First find out whether there is a multiple attribute access
           // of a variable on the left:
           buildRangeInfo(lhs, enumCollVar, attr);
-          if (! enumCollVar.empty()) {
+          if (enumCollVar != nullptr) {
             RangeInfoBound low;
             RangeInfoBound high;
           
@@ -1075,10 +1091,10 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             else {
               high.assign(rhs, include);
             }
-            _ranges->insert(enumCollVar, attr.substr(0, attr.size() - 1), 
+            _ranges->insert(enumCollVar->name, attr.substr(0, attr.size() - 1), 
                             low, high, false);
 
-            enumCollVar.clear();
+            enumCollVar = nullptr;
             attr.clear();
           }
         }
@@ -1097,8 +1113,8 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       }
       */
       // default case
-      attr = "";
-      enumCollVar = "";
+      attr.clear();
+      enumCollVar = nullptr;
     }
 };
 
