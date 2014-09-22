@@ -637,13 +637,13 @@ SHELL_CLIENT_ONLY = \
 	       @top_srcdir@/js/client/tests/shell-fm.js \
 	       @top_srcdir@/js/client/tests/shell-client.js
 
-SHELL_CLIENT = $(SHELL_COMMON) $(SHELL_CLIENT_ONLY)
+SHELL_CLIENT = $(SHELL_CLIENT_ONLY)
 
 .PHONY: unittests-shell-client
 UNITTESTS_CLIENT = $(addprefix --javascript.unit-tests ,$(SHELL_CLIENT))
 
 unittests-shell-client:
-	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint unix://$(VOCDIR)/arango.sock --server.disable-authentication true" PROTO=unix
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=unix
 
 	@echo
 	@echo "================================================================================"
@@ -651,7 +651,7 @@ unittests-shell-client:
 	@echo "================================================================================"
 	@echo
 
-	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock $(UNITTESTS_CLIENT) || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) $(UNITTESTS_CLIENT) || test "x$(FORCE)" == "x1"
 	sleep 2
 	kill `cat $(PIDFILE)`
 
