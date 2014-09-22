@@ -1,7 +1,7 @@
 v2.3.0 (XXXX-XX-XX)
 -------------------
 
-* fixed issue #1024: Stack traces are off-by-one
+* fixed issue #1027: Stack traces are off-by-one
 
 * added a _relation function in the general-graph module.
  
