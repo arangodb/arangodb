@@ -55,7 +55,7 @@ function resultsToXml(results, baseName) {
       
         if (!success) {
           xml.elem("failure");
-          xml.text(results.shell_server_aql[test][oneTest].message);
+          xml.text('<![CDATA[' + results.shell_server_aql[test][oneTest].message + ']]>\n');
           xml.elem("/failure");
           xml.elem("/testcase");
         }
