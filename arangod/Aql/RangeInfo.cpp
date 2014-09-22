@@ -261,6 +261,10 @@ void RangeInfo::fuse (RangeInfo const& that) {
     _highs.emplace_back(h);
   }
     
+  // If either range knows that it can be at most one value, then this is
+  // enough:
+  _equality |= that._equality;
+
   // check the new constant range bounds are valid:
   if (_lowConst.isDefined() && _highConst.isDefined()) {
     int cmp = TRI_CompareValuesJson(_lowConst.bound().json(), 
@@ -278,11 +282,6 @@ void RangeInfo::fuse (RangeInfo const& that) {
         _equality = true;  // Can only be at most one value
       }
     }
-  }
-  else {
-    // equality flag needs to be reset if the fused range no more
-    // is an equality lookup
-    _equality = false;
   }
 }
 
