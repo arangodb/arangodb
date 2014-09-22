@@ -545,15 +545,23 @@ function require (path) {
 
       for (key in sandbox) {
         if (sandbox.hasOwnProperty(key)) {
-          script += "var " + key + " = __myenv__['" + key + "'];";
+          // using `key` like below is not safe (imagine a key named `foo bar`!)
+          // TODO: fix this
+          script += "var " + key + " = __myenv__[" + JSON.stringify(key) + "];";
         }
       }
 
+      // put to together a function body for the code
       script += "delete __myenv__;"
-             +  "(function () {\n"
+             +  "(function () {"
              +  content
              +  "\n}());"
-             +  "\n});";
+             +  "});";
+      // note: at least one newline character must be used here, otherwise
+      // a script ending with a single-line comment (two forward slashes)
+      // would render the function tail invalid
+      // adding a newline at the end will create stack traces with a line number
+      // one higher than the last line in the script file
 
       var fun = internal.executeScript(script, undefined, filename);
 
@@ -1714,15 +1722,22 @@ function require (path) {
 
     for (key in sandbox) {
       if (sandbox.hasOwnProperty(key)) {
-        content += "var " + key + " = __myenv__['" + key + "'];";
+        // using `key` like below is not safe (imagine a key named `foo bar`!)
+        // TODO: fix this
+        content += "var " + key + " = __myenv__[" + JSON.stringify(key) + "];";
       }
     }
 
     content += "delete __myenv__;"
-             + "(function () {\n"
+             + "(function () {"
              + fileContent
              + "\n}());"
-             + "\n});";
+             + "});";
+    // note: at least one newline character must be used here, otherwise
+    // a script ending with a single-line comment (two forward slashes)
+    // would render the function tail invalid
+    // adding a newline at the end will create stack traces with a line number
+    // one higher than the last line in the script file
 
     var fun = internal.executeScript(content, undefined, full);
 
