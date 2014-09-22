@@ -1,6 +1,9 @@
 v2.3.0 (XXXX-XX-XX)
 -------------------
-* Added a _relation function in the general-graph module.
+
+* fixed issue #1024: Stack traces are off-by-one
+
+* added a _relation function in the general-graph module.
  
   This deprecated _directedRelation and _undirectedRelation.
   ArangoDB does not offer any constraints for undirected edges
