@@ -517,6 +517,7 @@ QueryResult Query::explain () {
   enterState(PARSING);
 
   try {
+    ExecutionPlan* plan = nullptr;
     Parser parser(this);
 
     parser.parse();
@@ -539,8 +540,8 @@ QueryResult Query::explain () {
     }
 
     enterState(PLAN_INSTANCIATION);
-    _plan = ExecutionPlan::instanciateFromAst(parser.ast());
-    if (_plan == nullptr) {
+    plan = ExecutionPlan::instanciateFromAst(parser.ast());
+    if (plan == nullptr) {
       // oops
       return QueryResult(TRI_ERROR_INTERNAL);
     }
@@ -549,7 +550,7 @@ QueryResult Query::explain () {
     enterState(PLAN_OPTIMIZATION);
     triagens::aql::Optimizer opt(maxNumberOfPlans());
     // get enabled/disabled rules
-    opt.createPlans(_plan, getRulesFromOptions());
+    opt.createPlans(plan, getRulesFromOptions());
       
     trx.commit();
 
@@ -571,13 +572,12 @@ QueryResult Query::explain () {
     }
     else {
       // Now plan and all derived plans belong to the optimizer
-      _plan = opt.stealBest(); // Now we own the best one again
-      TRI_ASSERT(_plan != nullptr);
+      plan = opt.stealBest(); // Now we own the best one again
+      TRI_ASSERT(plan != nullptr);
 
-      result.json = _plan->toJson(parser.ast(), TRI_UNKNOWN_MEM_ZONE, verbosePlans()).steal(); 
+      result.json = plan->toJson(parser.ast(), TRI_UNKNOWN_MEM_ZONE, verbosePlans()).steal(); 
 
-      delete _plan;
-      _plan = nullptr;
+      delete plan;
     }
     
     return result;
