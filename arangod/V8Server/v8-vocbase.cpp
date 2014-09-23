@@ -996,7 +996,7 @@ static v8::Handle<v8::Value> JS_ExecuteAqlJson (v8::Arguments const& argv) {
     options = TRI_ObjectToJson(argv[1]);
   }
 
-  triagens::aql::Query query(vocbase, Json(TRI_UNKNOWN_MEM_ZONE, queryjson), triagens::aql::AQL_QUERY_READ, options);
+  triagens::aql::Query query(vocbase, Json(TRI_UNKNOWN_MEM_ZONE, queryjson), options);
   
   auto queryResult = query.execute();
   
