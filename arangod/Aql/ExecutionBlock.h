@@ -1513,6 +1513,8 @@ public:
 
         int64_t remaining ();
 
+        AqlItemBlock* getSome (size_t, size_t);
+
       private:
 
         /*int getOrSkipSome (size_t atLeast,
@@ -1520,16 +1522,15 @@ public:
                            bool skipping,
                            AqlItemBlock*& result,
                            size_t& skipped);*/
-
+        
+        // the block is simple if we do not do merge sort . . .
         bool isSimple () {
-          auto en = static_cast<GatherNodeNode const*>(getPlanNode());
-          if (en.getElements().empty()) {
+          auto en = static_cast<GatherNode const*>(getPlanNode());
+          if (en->getElements().empty()) {
             return true;
           }
           return false;
         }
-
-        bool getBlock(size_t atLeast, size_t atMost);
 
         size_t _atDep = 0;
 
