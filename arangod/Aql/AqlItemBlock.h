@@ -29,6 +29,7 @@
 #define ARANGODB_AQL_AQL_ITEM_BLOCK_H 1
 
 #include "Basics/Common.h"
+#include "Basics/JsonHelper.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Types.h"
 #include "VocBase/document-collection.h"
@@ -277,6 +278,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static AqlItemBlock* concatenate (std::vector<AqlItemBlock*> const& blocks);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson, transfer a whole AqlItemBlock to Json, the result can
+/// be used to recreate the AqlItemBlock via the Json constructor
+////////////////////////////////////////////////////////////////////////////////
+
+        triagens::basics::Json toJson (AQL_TRANSACTION_V8* trx,
+                          TRI_document_collection_t const* document) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
