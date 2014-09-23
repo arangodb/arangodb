@@ -1507,27 +1507,23 @@ public:
 
         int initializeCursor (AqlItemBlock* items, size_t pos);
 
-        bool hasMore () {
-          return false;
-        }
+        //bool hasMore ();
 
-        int64_t count () const {
-          return 0;
-        }
+        int64_t count () const;
 
-        int64_t remaining () {
-          return 0;
-        }
+        int64_t remaining ();
 
       private:
 
-        int getOrSkipSome (size_t atLeast,
+        /*int getOrSkipSome (size_t atLeast,
                            size_t atMost,
                            bool skipping,
                            AqlItemBlock*& result,
-                           size_t& skipped) {
-          return 0;
-        }
+                           size_t& skipped);*/
+
+        bool getBlock(size_t atLeast, size_t atMost);
+
+        size_t _atDep = 0;
 
     };
 
