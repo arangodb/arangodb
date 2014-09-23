@@ -42,6 +42,7 @@
 ///   - "shell_server"
 ///   - "shell_server_ahuacatl"
 ///   - "shell_server_aql"
+///   - "shell_server_perf": bulk tests intended to get an overview of executiontime needed.
 ///   - "http_server"
 ///   - "ssl_server"
 ///   - "shell_client"
@@ -386,9 +387,11 @@ function runThere (options, instanceInfo, file) {
     if (!r.error && r.code === 200) {
       r = JSON.parse(r.body);
     }
+/*
     else {
       print("Error on the remote arangod:\n" + r.body);
     }
+*/
   }
   catch (err) {
     r = err;
@@ -442,7 +445,12 @@ function performTests(options, testList, testname) {
         (te.indexOf("-noncluster") === -1 || options.cluster === false) &&
         (te.indexOf("-disabled") === -1)) {
       var r = runThere(options, instanceInfo, te);
-      results[te] = r;
+      if (r.hasOwnProperty('status')) {
+        results[te] = r;
+      }
+      else {
+        results[te] = {status: false, message: r};
+      }
       if (r !== true && !options.force) {
         break;
       }
@@ -1053,13 +1061,22 @@ function unitTestPrettyPrintResults(r) {
             print("     " + test + ": Success");
           }
           else {
-            print("     " + test + ": Fail");
-            for (var oneTest in r[testrun][test]) {
-              if ((r[testrun][test].hasOwnProperty(oneTest)) && 
-                  (internalMembers.indexOf(oneTest) === -1) &&
-                  (!r[testrun][test][oneTest].status)) {
-                print("          -> " + oneTest + " Failed; Verbose message:");
-                print(r[testrun][test][oneTest].message);
+            if (r[testrun][test].hasOwnProperty('message')) {
+              print("     " + test + ": Fail - Whole testsuite failed!");
+              print(r[testrun][test].message);
+              if (r[testrun][test].message.hasOwnProperty('body')) {
+                print(r[testrun][test].message.body);
+              }
+            }
+            else {
+              print("     " + test + ": Fail");
+              for (var oneTest in r[testrun][test]) {
+                if ((r[testrun][test].hasOwnProperty(oneTest)) && 
+                    (internalMembers.indexOf(oneTest) === -1) &&
+                    (!r[testrun][test][oneTest].status)) {
+                  print("          -> " + oneTest + " Failed; Verbose message:");
+                  print(r[testrun][test][oneTest].message);
+                }
               }
             }
           }
@@ -1078,7 +1095,7 @@ var allTests =
     "shell_server",
     "shell_server_ahuacatl",
     "shell_server_aql",
-    "shell_server_perf",
+//    "shell_server_perf",
     "http_server",
     "ssl_server",
     "shell_client",
