@@ -387,7 +387,7 @@ static v8::Handle<v8::Array> KeysOfShapedJson (const v8::AccessorInfo& info) {
 
   TRI_df_marker_type_t type = static_cast<TRI_df_marker_t const*>(marker)->_type;
   bool isEdge = (type == TRI_DOC_MARKER_KEY_EDGE || type == TRI_WAL_MARKER_EDGE);
-
+  
   v8::Handle<v8::Array> result = v8::Array::New((int) n + 3 + (isEdge ? 2 : 0));
   uint32_t count = 0;
   
@@ -435,6 +435,8 @@ static void CopyAttributes (v8::Handle<v8::Object> self,
   }
     
   // copy _key and _rev
+
+  // _key
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
   char buffer[TRI_VOC_KEY_MAX_LENGTH + 1];
   char const* docKey = TRI_EXTRACT_MARKER_KEY(static_cast<TRI_df_marker_t const*>(marker));
@@ -442,13 +444,14 @@ static void CopyAttributes (v8::Handle<v8::Object> self,
   size_t keyLength = strlen(docKey);
   memcpy(buffer, docKey, keyLength);
   self->ForceSet(v8g->_KeyKey, v8::String::New(buffer, (int) keyLength));
-  
+
+   // _rev  
   TRI_voc_rid_t rid = TRI_EXTRACT_MARKER_RID(static_cast<TRI_df_marker_t const*>(marker));
   TRI_ASSERT(rid > 0);
   size_t len = TRI_StringUInt64InPlace((uint64_t) rid, (char*) &buffer);
   self->ForceSet(v8g->_RevKey, v8::String::New((char const*) buffer, (int) len));
 
-
+  // finally insert the dynamic attributes from the shaped json
   TRI_array_shape_t const* s;
   TRI_shape_aid_t const* aids;
   char const* qtr;
