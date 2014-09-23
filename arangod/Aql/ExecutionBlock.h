@@ -1525,6 +1525,8 @@ public:
 
         size_t _atDep = 0;
 
+        size_t _posInBlock = 0;
+
     };
 
   }  // namespace triagens::aql
