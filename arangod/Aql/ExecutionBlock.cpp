@@ -3463,6 +3463,138 @@ int NoResultsBlock::getOrSkipSome (size_t,   // atLeast
   return TRI_ERROR_NO_ERROR;
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 class GatherBlock
+// -----------------------------------------------------------------------------
+
+
+int GatherBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
+  int res = ExecutionBlock::initializeCursor(items, pos);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  // handle local data (if any) TODO
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+// is this correct?
+int64_t GatherBlock::count () const {
+  int64_t sum = 0;
+  for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
+    sum += (*it)->count();
+  }
+  return sum;
+}
+
+int64_t GatherBlock::remaining () {
+  int64_t sum = 0;
+  for (auto it = _buffer.begin(); it != _buffer.end(); ++it) {
+    sum += (*it)->size();
+  }
+  for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
+    sum += (*it)->remaining();
+  }
+  return sum;
+}
+
+bool GatherBlock::getBlock (size_t atLeast, size_t atMost) {
+  int64_t sum = 0;
+  while (sum < atLeast && _atDep < _dependencies.size()) {
+    AqlItemBlock* docs = _dependencies[_atDep]->getSome(atLeast, atMost);
+    try {
+      _buffer.push_back(docs);
+    }
+    catch (...) {
+      delete docs;
+      throw;
+    }
+    sum += docs->size();
+    if ( _dependencies[_atDep]->_done ){
+      ++_atDep;
+    }
+  }
+
+  if (sum == 0) {
+    return false;
+  }
+  
+  return true;
+}
+
+/*AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
+  
+  if (_done) {
+    return nullptr;
+  }
+
+  if (_buffer.empty()) {
+    if (! GatherBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
+      _done = true;
+      return nullptr;
+    }
+    _pos = 0;           // this is in the first block
+  }
+
+  // If we get here, we do have _buffer.front()
+  AqlItemBlock* cur = _buffer.front();
+  size_t const curRegs = cur->getNrRegs();
+
+  size_t available = _documents.size() - _posInAllDocs;
+  size_t toSend = (std::min)(atMost, available);
+
+  unique_ptr<AqlItemBlock> res(new AqlItemBlock(toSend, _varOverview->nrRegs[_depth]));
+  // automatically freed if we throw
+  TRI_ASSERT(curRegs <= res->getNrRegs());
+
+  // only copy 1st row of registers inherited from previous frame(s)
+  inheritRegisters(cur, res.get(), _pos);
+
+  // set our collection for our output register
+  res->setDocumentCollection(static_cast<triagens::aql::RegisterId>(curRegs), _trx->documentCollection(_collection->cid()));
+
+  for (size_t j = 0; j < toSend; j++) {
+    if (j > 0) {
+      // re-use already copied aqlvalues
+      for (RegisterId i = 0; i < curRegs; i++) {
+        res->setValue(j, i, res->getValue(0, i));
+        // Note: if this throws, then all values will be deleted
+        // properly since the first one is.
+      }
+    }
+
+    // The result is in the first variable of this depth,
+    // we do not need to do a lookup in _varOverview->varInfo,
+    // but can just take cur->getNrRegs() as registerId:
+    res->setValue(j, static_cast<triagens::aql::RegisterId>(curRegs),
+                  AqlValue(reinterpret_cast<TRI_df_marker_t
+                           const*>(_documents[_posInAllDocs++].getDataPtr())));
+    // No harm done, if the setValue throws!
+  }
+
+  // Advance read position:
+  if (_posInAllDocs >= _documents.size()) {
+    // we have exhausted our local documents buffer
+    _posInAllDocs = 0;
+
+    // fetch more documents into our buffer
+    if (! moreDocuments()) {
+      // nothing more to read, re-initialize fetching of documents
+      initializeDocuments();
+      if (++_pos >= cur->size()) {
+        _buffer.pop_front();  // does not throw
+        delete cur;
+        _pos = 0;
+      }
+    }
+  }
+  // Clear out registers no longer needed later:
+  clearRegisters(res.get());
+  return res.release();
+}*/
+
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
