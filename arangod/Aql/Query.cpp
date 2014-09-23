@@ -418,18 +418,6 @@ QueryResult Query::prepare () {
 QueryResult Query::execute () {
   QueryResult res = prepare();
   if (res.code != TRI_ERROR_NO_ERROR) {
-    if (_trx != nullptr) {
-      delete _trx;
-      _trx = nullptr;
-    }
-    if (_parser != nullptr) {
-      delete _parser;
-      _parser = nullptr;
-    }
-    if (_plan != nullptr) {
-      delete _plan;
-      _plan = nullptr;
-    }
     return res;
   }
 
