@@ -3543,6 +3543,28 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
 
 }
 
+size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
+  
+  if (_done) {
+    return 0;
+  }
+  
+  if (isSimple()) {
+    auto res = _dependencies.at(_atDep)->skipSome(atLeast, atMost);
+    while (res == 0 && _atDep < _dependencies.size() - 1) {
+      _atDep++;
+      res = _dependencies.at(_atDep)->skipSome(atLeast, atMost);
+    }
+    if (res == 0) {
+      _done = true;
+    }
+    return res;
+  //} else { // merge sort the results from the deps
+
+  }
+  return 0; // to keep the compiler happy
+
+}
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
