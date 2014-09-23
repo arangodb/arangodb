@@ -3524,7 +3524,7 @@ bool GatherBlock::getBlock (size_t atLeast, size_t atMost) {
   return true;
 }
 
-/*AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
+AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
   
   if (_done) {
     return nullptr;
@@ -3539,61 +3539,52 @@ bool GatherBlock::getBlock (size_t atLeast, size_t atMost) {
   }
 
   // If we get here, we do have _buffer.front()
-  AqlItemBlock* cur = _buffer.front();
-  size_t const curRegs = cur->getNrRegs();
 
-  size_t available = _documents.size() - _posInAllDocs;
-  size_t toSend = (std::min)(atMost, available);
+  cur = _buffer.front();
 
-  unique_ptr<AqlItemBlock> res(new AqlItemBlock(toSend, _varOverview->nrRegs[_depth]));
-  // automatically freed if we throw
-  TRI_ASSERT(curRegs <= res->getNrRegs());
-
-  // only copy 1st row of registers inherited from previous frame(s)
-  inheritRegisters(cur, res.get(), _pos);
-
-  // set our collection for our output register
-  res->setDocumentCollection(static_cast<triagens::aql::RegisterId>(curRegs), _trx->documentCollection(_collection->cid()));
-
-  for (size_t j = 0; j < toSend; j++) {
-    if (j > 0) {
-      // re-use already copied aqlvalues
-      for (RegisterId i = 0; i < curRegs; i++) {
-        res->setValue(j, i, res->getValue(0, i));
-        // Note: if this throws, then all values will be deleted
-        // properly since the first one is.
-      }
-    }
-
-    // The result is in the first variable of this depth,
-    // we do not need to do a lookup in _varOverview->varInfo,
-    // but can just take cur->getNrRegs() as registerId:
-    res->setValue(j, static_cast<triagens::aql::RegisterId>(curRegs),
-                  AqlValue(reinterpret_cast<TRI_df_marker_t
-                           const*>(_documents[_posInAllDocs++].getDataPtr())));
-    // No harm done, if the setValue throws!
-  }
-
-  // Advance read position:
-  if (_posInAllDocs >= _documents.size()) {
-    // we have exhausted our local documents buffer
-    _posInAllDocs = 0;
-
-    // fetch more documents into our buffer
-    if (! moreDocuments()) {
-      // nothing more to read, re-initialize fetching of documents
-      initializeDocuments();
-      if (++_pos >= cur->size()) {
-        _buffer.pop_front();  // does not throw
-        delete cur;
-        _pos = 0;
-      }
+  if ((cur.size() - _pos) > atLeast) {
+    // desired output is contained in single block in _buffer . . .
+    if ((cur.size() - _pos) > atMost) {
+      AqlItemBlock* res = cur.slice(_pos, _pos + atMost);
+      _pos += atMost;
+      return res;
+    } else {
+      AqlItemBlock* res = cur.slice(_pos, cur.size());
+      _pos = 0;
+      _buffer.pop_front();
+      return res;
     }
   }
-  // Clear out registers no longer needed later:
-  clearRegisters(res.get());
-  return res.release();
-}*/
+  
+  vector<AqlItemBlock*> collector;
+  collector.push_back(cur.slice(_pos, cur.size()));
+  
+  size_t nr = cur.size() - _pos;
+  
+  _buffer.pop_front();
+  _pos = 0;
+
+  while (!(_buffer.empty())) {
+    cur = _buffer.front();
+    if (cur.size() < (atMost - nr)) {
+      nr += cur.size();
+      collector.push_back(cur);
+      _buffer.pop_front();
+      _pos = 0;
+    } else {
+      nr += atMost - nr;
+      collector.push_back(cur.slice(0, atMost - nr));
+      _pos = atMost - nr;
+      break;
+    }
+  }
+
+  if (nr > atLeast) {
+    return collector.concatenate();
+  }
+
+
+}
 
 // Local Variables:
 // mode: outline-minor
