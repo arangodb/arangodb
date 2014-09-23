@@ -46,7 +46,7 @@ var generatePerfReport = function (reportName, testdata, longdesc) {
               x += '\t\t\t<success passed="yes" state="100" hasTimedOut="false" />\n';
               x += '\t\t\t<compiletime unit="s" mesure="1.0" isRelevant="false" />\n';
               x += '\t\t\t<performance unit="GFLOPs" mesure="1.0" isRelevant="false" />\n';
-              x += '\t\t\t<executiontime unit="s" mesure="'+ oneResultSet[measurements[0]].avg + '" isRelevant="false" />\n';
+              x += '\t\t\t<executiontime unit="s" mesure="'+ oneResultSet[measurements[0]].avg + '" isRelevant="true" />\n';
 
               x += '\t\t</result>\n';
               x = x + '\t</test>\n';
