@@ -134,13 +134,15 @@ var loadTestRunner = function (tests, options, testMethods) {
         var resultSet;
         resultSet  = measure(test, options);
         results[test.name] = resultSet;
+        results[test.name].status = true;
 
         var oneResult;
 
         for (oneResult in resultSet) {
-          if (resultSet.hasOwnProperty(oneResult)) {
+          if (resultSet.hasOwnProperty(oneResult) && (oneResult !== 'status')) {
             var stats = calc(resultSet[oneResult], options);
             results[test.name][oneResult][0].calced = stats;
+            results[test.name][oneResult].status = true;
 
             for (j = 0; j < measurements.length;j ++) {
               if (stats.hasOwnProperty(measurements[j])) {
@@ -175,6 +177,7 @@ var loadTestRunner = function (tests, options, testMethods) {
         test.teardown(options);
       }
     }
+    results.status = true;
     return results;
   };
 

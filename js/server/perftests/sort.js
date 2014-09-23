@@ -406,3 +406,4 @@ repgen.reportGenerator("sort", ret, "blarg")
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:
+return ret;

@@ -20,7 +20,7 @@ var generatePerfReport = function (reportName, testdata, longdesc) {
   for (var testname in testdata) {
     if (testdata.hasOwnProperty(testname)) {
       for (var testrunner in testdata[testname]) {
-        if (testdata[testname].hasOwnProperty(testrunner)) {
+        if (testdata[testname].hasOwnProperty(testrunner) && (testrunner !== 'status')) {
           var oneResultSet = testdata[testname][testrunner][0].calced;
 
 
