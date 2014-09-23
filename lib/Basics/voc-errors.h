@@ -421,6 +421,8 @@
 /// - 1576: @LIT{query options expected}
 ///    "Will be raised when an AQL data-modification query contains an invalid
 ///   options specification."
+/// - 1577: @LIT{JSON describing execution plan was bad}
+///    "Will be raised when an HTTP API for a query got an invalid JSON object."
 /// - 1580: @LIT{invalid user function name}
 ///   Will be raised when a user function with an invalid name is registered.
 /// - 1581: @LIT{invalid user function code}
@@ -2314,6 +2316,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_EXCEPTION_OPTIONS                                 (1576)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1577: ERROR_QUERY_BAD_JSON_PLAN
+///
+/// JSON describing execution plan was bad
+///
+///  "Will be raised when an HTTP API for a query got an invalid JSON object."
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_BAD_JSON_PLAN                                     (1577)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1580: ERROR_QUERY_FUNCTION_INVALID_NAME
