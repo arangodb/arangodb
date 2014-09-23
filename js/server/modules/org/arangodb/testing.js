@@ -1077,7 +1077,6 @@ function UnitTest (which, options) {
       for (i in r) {
         if (r.hasOwnProperty(i)) {
           if (r[i] !== 0 && r[i].status !== true) {
-            print(r);
             ok = false;
           }
         }
