@@ -151,7 +151,7 @@ int TRI_errno () {
 int TRI_errno () {
   tri_error_t* eptr;
 
-  eptr = static_cast<decltype<eptr>(pthread_getspecific(ErrorKey));
+  eptr = static_cast<decltype(eptr)>(pthread_getspecific(ErrorKey));
 
   if (eptr == nullptr) {
     return 0;
