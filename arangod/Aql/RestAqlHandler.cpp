@@ -38,6 +38,8 @@
 #include "GeneralServer/GeneralServerJob.h"
 #include "GeneralServer/GeneralServer.h"
 
+#include "V8Server/v8-vocbaseprivate.h"
+
 using namespace std;
 using namespace triagens::arango;
 using namespace triagens::rest;
@@ -93,17 +95,43 @@ string const& RestAqlHandler::queue () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
+/// createQuery, the body is a JSON with attributes "plan" for the execution
+/// plan and "options" for the options, all exactly as in
+/// AQL_EXECUTEJSON.
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestAqlHandler::createQuery () {
-#if 0
-  Json queryJson(parseJsonBody());
+  Json queryJson(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
   if (queryJson.isEmpty()) {
     return;
   }
-#endif
   
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+  if (vocbase == nullptr) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_INTERNAL, "cannot get vocbase from context");
+    return;
+  }
+
+  Json plan;
+  Json options;
+
+  try {
+    plan = queryJson.get("plan");
+  }
+  catch (...) {
+    generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
+      "body must be an object with attribute \"plan\"");
+    return;
+  }
+  try {
+    options = queryJson.get("options");
+  }
+  catch (...) {
+  }
+
+  auto query = new Query(vocbase, queryJson, options.steal());
+
   _response = createResponse(triagens::rest::HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
   _response->body().appendText("{\"a\":12}");
@@ -176,6 +204,35 @@ triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
   _applicationV8->exitContext(context);
 
   return status_t(HANDLER_DONE);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// parseJsonBody
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* RestAqlHandler::parseJsonBody () {
+  char* errmsg = nullptr;
+  TRI_json_t* json = _request->toJson(&errmsg);
+
+  if (json == nullptr) {
+    if (errmsg == nullptr) {
+      generateError(HttpResponse::BAD,
+                    TRI_ERROR_HTTP_CORRUPTED_JSON,
+                    "cannot parse json object");
+    }
+    else {
+      generateError(HttpResponse::BAD,
+                    TRI_ERROR_HTTP_CORRUPTED_JSON,
+                    errmsg);
+
+      TRI_FreeString(TRI_CORE_MEM_ZONE, errmsg);
+    }
+
+    return nullptr;
+  }
+
+  TRI_ASSERT(errmsg == nullptr);
+  return json;
 }
 
 // -----------------------------------------------------------------------------
