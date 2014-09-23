@@ -49,7 +49,8 @@ Parser::Parser (Query* query)
     _remainingLength(query->queryLength()),
     _offset(0),
     _marker(nullptr),
-    _stack() {
+    _stack(),
+    _type(AQL_QUERY_READ) {
   
   _stack.reserve(16);
 }
@@ -82,9 +83,7 @@ bool Parser::configureWriteQuery (QueryType type,
   }
 
   // check current query type
-  auto oldType = _query->type();
-
-  if (oldType != AQL_QUERY_READ) {
+  if (_type != AQL_QUERY_READ) {
     // already a data-modification query, cannot have two data-modification operations in one query
     _query->registerError(TRI_ERROR_QUERY_MULTI_MODIFY);
     return false;
@@ -97,8 +96,9 @@ bool Parser::configureWriteQuery (QueryType type,
     _query->registerError(TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS);
   }
 
-  // register type 
-  _query->type(type);
+  // register query type 
+  _type = type;
+
   return true;
 }
 
