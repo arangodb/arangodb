@@ -3467,7 +3467,6 @@ int NoResultsBlock::getOrSkipSome (size_t,   // atLeast
 // --SECTION--                                                 class GatherBlock
 // -----------------------------------------------------------------------------
 
-
 int GatherBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   int res = ExecutionBlock::initializeCursor(items, pos);
 
@@ -3480,7 +3479,6 @@ int GatherBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   return TRI_ERROR_NO_ERROR;
 }
 
-// is this correct?
 int64_t GatherBlock::count () const {
   int64_t sum = 0;
   for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
@@ -3491,9 +3489,6 @@ int64_t GatherBlock::count () const {
 
 int64_t GatherBlock::remaining () {
   int64_t sum = 0;
-  for (auto it = _buffer.begin(); it != _buffer.end(); ++it) {
-    sum += (*it)->size();
-  }
   for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
     sum += (*it)->remaining();
   }
@@ -3524,67 +3519,29 @@ int64_t GatherBlock::remaining () {
   return true;
 }*/
 
-/*AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
+AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
   
   if (_done) {
     return nullptr;
   }
-
-  if (_buffer.empty()) {
-    if (! GatherBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
+  
+  if (isSimple()) {
+    auto res = _dependencies.at(_atDep)->getSome(atLeast, atMost);
+    while (res == nullptr && _atDep < _dependencies.size() - 1) {
+      _atDep++;
+      res = _dependencies.at(_atDep)->getSome(atLeast, atMost);
+    }
+    if (res == nullptr) {
       _done = true;
       return nullptr;
     }
-    _pos = 0;           // this is in the first block
+    return res;
+  //} else { // merge sort the results from the deps
+
   }
+  return nullptr; // to keep the compiler happy
 
-  // If we get here, we do have _buffer.front()
-
-  cur = _buffer.front();
-
-  if ((cur.size() - _pos) > atLeast) {
-    // desired output is contained in single block in _buffer . . .
-    if ((cur.size() - _pos) > atMost) {
-      AqlItemBlock* res = cur.slice(_pos, _pos + atMost);
-      _pos += atMost;
-      return res;
-    } else {
-      AqlItemBlock* res = cur.slice(_pos, cur.size());
-      _pos = 0;
-      _buffer.pop_front();
-      return res;
-    }
-  }
-  
-  vector<AqlItemBlock*> collector;
-  collector.push_back(cur.slice(_pos, cur.size()));
-  
-  size_t nr = cur.size() - _pos;
-  
-  _buffer.pop_front();
-  _pos = 0;
-
-  while (!(_buffer.empty())) {
-    cur = _buffer.front();
-    if (cur.size() < (atMost - nr)) {
-      nr += cur.size();
-      collector.push_back(cur);
-      _buffer.pop_front();
-      _pos = 0;
-    } else {
-      nr += atMost - nr;
-      collector.push_back(cur.slice(0, atMost - nr));
-      _pos = atMost - nr;
-      break;
-    }
-  }
-
-  if (nr > atLeast) {
-    return collector.concatenate();
-  }
-
-
-}*/
+}
 
 // Local Variables:
 // mode: outline-minor
