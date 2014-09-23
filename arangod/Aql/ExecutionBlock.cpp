@@ -3500,7 +3500,7 @@ int64_t GatherBlock::remaining () {
   return sum;
 }
 
-bool GatherBlock::getBlock (size_t atLeast, size_t atMost) {
+/* bool GatherBlock::getBlock (size_t atLeast, size_t atMost) {
   int64_t sum = 0;
   while (sum < atLeast && _atDep < _dependencies.size()) {
     AqlItemBlock* docs = _dependencies[_atDep]->getSome(atLeast, atMost);
@@ -3522,9 +3522,9 @@ bool GatherBlock::getBlock (size_t atLeast, size_t atMost) {
   }
   
   return true;
-}
+}*/
 
-AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
+/*AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
   
   if (_done) {
     return nullptr;
@@ -3584,7 +3584,7 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
   }
 
 
-}
+}*/
 
 // Local Variables:
 // mode: outline-minor

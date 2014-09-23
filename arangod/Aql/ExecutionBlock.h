@@ -1521,11 +1521,18 @@ public:
                            AqlItemBlock*& result,
                            size_t& skipped);*/
 
+        bool isSimple () {
+          auto en = static_cast<GatherNodeNode const*>(getPlanNode());
+          if (en.getElements().empty()) {
+            return true;
+          }
+          return false;
+        }
+
         bool getBlock(size_t atLeast, size_t atMost);
 
         size_t _atDep = 0;
 
-        size_t _posInBlock = 0;
 
     };
 
