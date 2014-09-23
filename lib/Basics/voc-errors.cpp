@@ -171,6 +171,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_QUERY_MODIFY_IN_SUBQUERY, "modify operation in subquery");
   REG_ERROR(ERROR_QUERY_COMPILE_TIME_OPTIONS, "query options must be readable at query compile time");
   REG_ERROR(ERROR_QUERY_EXCEPTION_OPTIONS, "query options expected");
+  REG_ERROR(ERROR_QUERY_BAD_JSON_PLAN, "JSON describing execution plan was bad");
   REG_ERROR(ERROR_QUERY_FUNCTION_INVALID_NAME, "invalid user function name");
   REG_ERROR(ERROR_QUERY_FUNCTION_INVALID_CODE, "invalid user function code");
   REG_ERROR(ERROR_QUERY_FUNCTION_NOT_FOUND, "user function '%s()' not found");

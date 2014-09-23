@@ -23,7 +23,7 @@ runJSUnityTests = function (tests) {
     }
 
     try {
-      result = result && runTest(file);
+      result = result && runTest(file).status;
     } catch (err) {
       print("cannot run test file '" + file + "': " + err);
       print(err.stack);

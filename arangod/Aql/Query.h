@@ -49,6 +49,9 @@ namespace triagens {
     struct Variable;
     struct AstNode;
     class Ast;
+    class ExecutionPlan;
+    class Parser;
+    class ExecutionEngine;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -127,7 +130,6 @@ namespace triagens {
 
         Query (struct TRI_vocbase_s*,
                triagens::basics::Json queryStruct,
-               QueryType Type,
                struct TRI_json_t*);
 
         ~Query ();
@@ -160,22 +162,6 @@ namespace triagens {
 
         std::vector<std::string> collectionNames () const {
           return _collections.collectionNames();
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the query type
-////////////////////////////////////////////////////////////////////////////////
-
-        inline QueryType type () const {
-          return _type;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set the query type
-////////////////////////////////////////////////////////////////////////////////
-
-        void type (QueryType type) {
-          _type = type;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -251,6 +237,15 @@ namespace triagens {
 
         void registerError (int,
                             char const* = nullptr);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prepare an AQL query, this is a preparation for execute, but 
+/// execute calls it internally. The purpose of this separate method is
+/// to be able to only prepare a query from JSON and then store it in the
+/// QueryRegistry.
+////////////////////////////////////////////////////////////////////////////////
+
+        QueryResult prepare ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an AQL query 
@@ -335,6 +330,12 @@ namespace triagens {
 
         std::string getStateString () const;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cleanup plan and engine for current query
+////////////////////////////////////////////////////////////////////////////////
+
+        void cleanupPlanAndEngine ();
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -370,12 +371,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         triagens::basics::Json const _queryJson;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief type of the query
-////////////////////////////////////////////////////////////////////////////////
-
-        QueryType                  _type;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief bind parameters for the query
@@ -419,6 +414,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ExecutionState             _state;
+
+        ExecutionPlan*             _plan;
+
+        Parser*                    _parser;
+
+        AQL_TRANSACTION_V8*        _trx;
+
+        ExecutionEngine*           _engine;
     };
 
   }

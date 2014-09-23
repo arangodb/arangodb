@@ -30,6 +30,7 @@
 #include "RestAqlHandler.h"
 
 #include "Basics/ConditionLocker.h"
+#include "Basics/StringUtils.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 
@@ -37,6 +38,9 @@
 #include "HttpServer/HttpHandlerFactory.h"
 #include "GeneralServer/GeneralServerJob.h"
 #include "GeneralServer/GeneralServer.h"
+
+#include "VocBase/server.h"
+#include "V8Server/v8-vocbaseprivate.h"
 
 using namespace std;
 using namespace triagens::arango;
@@ -93,21 +97,76 @@ string const& RestAqlHandler::queue () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
+/// createQuery, the body is a JSON with attributes "plan" for the execution
+/// plan and "options" for the options, all exactly as in
+/// AQL_EXECUTEJSON.
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestAqlHandler::createQuery () {
-#if 0
-  Json queryJson(parseJsonBody());
+  Json queryJson(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
   if (queryJson.isEmpty()) {
     return;
   }
-#endif
   
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+  if (vocbase == nullptr) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_INTERNAL, "cannot get vocbase from context");
+    return;
+  }
+
+  Json plan;
+  Json options;
+
+  try {
+    plan = queryJson.get("plan").copy();
+  }
+  catch (...) {
+    generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
+      "body must be an object with attribute \"plan\"");
+    return;
+  }
+  try {
+    options = queryJson.get("options").copy();
+  }
+  catch (...) {
+  }
+
+  std::cout << "plan" << plan.toString() << std::endl;
+  std::cout << "options" << options.toString() << std::endl;
+
+  auto query = new Query(vocbase, plan, options.steal());
+  QueryResult res = query->prepare();
+  if (res.code != TRI_ERROR_NO_ERROR) {
+    generateError(HttpResponse::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN,
+      res.details);
+    delete query;
+    return;
+  }
+
+  // Now the query is ready to go, store it in the registry and return:
+  double ttl = 3600.0;
+  bool found;
+  char const* ttlstring = _request->header("ttl", found);
+  if (found) {
+    ttl = triagens::basics::StringUtils::doubleDecimal(ttlstring);
+  }
+  QueryId qId = TRI_NewTickServer();
+  try {
+    _queryRegistry->insert(vocbase, qId, query, ttl);
+  }
+  catch (...) {
+    generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
+        "could not keep query in registry");
+    delete query;
+    return;
+  }
+
   _response = createResponse(triagens::rest::HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
-  _response->body().appendText("{\"a\":12}");
-
+  _response->body().appendText("{\"queryId\":");
+  _response->body().appendInteger(qId);
+  _response->body().appendText("}");
 }
 
 void RestAqlHandler::deleteQuery () {
@@ -176,6 +235,35 @@ triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
   _applicationV8->exitContext(context);
 
   return status_t(HANDLER_DONE);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// parseJsonBody
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* RestAqlHandler::parseJsonBody () {
+  char* errmsg = nullptr;
+  TRI_json_t* json = _request->toJson(&errmsg);
+
+  if (json == nullptr) {
+    if (errmsg == nullptr) {
+      generateError(HttpResponse::BAD,
+                    TRI_ERROR_HTTP_CORRUPTED_JSON,
+                    "cannot parse json object");
+    }
+    else {
+      generateError(HttpResponse::BAD,
+                    TRI_ERROR_HTTP_CORRUPTED_JSON,
+                    errmsg);
+
+      TRI_FreeString(TRI_CORE_MEM_ZONE, errmsg);
+    }
+
+    return nullptr;
+  }
+
+  TRI_ASSERT(errmsg == nullptr);
+  return json;
 }
 
 // -----------------------------------------------------------------------------
