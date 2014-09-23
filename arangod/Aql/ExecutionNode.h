@@ -2703,6 +2703,35 @@ namespace triagens {
         double estimateCost () {
           return 1;
         }
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual std::vector<Variable const*> getVariablesUsedHere () const {
+          std::vector<Variable const*> v;
+          for (auto p : _elements) {
+            v.push_back(p.first);
+          }
+          return v;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get Variables Used Here including ASC/DESC
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<std::pair<Variable const*, bool>> getElements () const {
+          return _elements;
+        }
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pairs, consisting of variable and sort direction
+/// (true = ascending | false = descending)
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<std::pair<Variable const*, bool>> _elements;
 
     };
 
