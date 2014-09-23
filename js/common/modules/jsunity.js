@@ -36,18 +36,25 @@ var DURATION = 0;
 var RESULTS = {};
 
 var jsUnity = require("./jsunity/jsunity").jsUnity;
+var STARTTEST = 0.0;
 
 jsUnity.results.begin = function (total, suiteName) {
   print("Running " + (suiteName || "unnamed test suite"));
   print(" " + total + " test(s) found");
   print();
   RESULTS = {};
+  STARTTEST = jsUnity.env.getDate();
 };
 
 jsUnity.results.pass = function (index, testName) {
   print(internal.COLORS.COLOR_GREEN + " [PASSED] " + testName + internal.COLORS.COLOR_RESET);
   RESULTS[testName] = {};
   RESULTS[testName].status = true;
+
+  var newtime =  jsUnity.env.getDate();
+  RESULTS[testName].duration = newtime - STARTTEST;
+  STARTTEST = newtime;
+
 };
 
 jsUnity.results.fail = function (index, testName, message) {
@@ -55,6 +62,10 @@ jsUnity.results.fail = function (index, testName, message) {
   RESULTS[testName] = {};
   RESULTS[testName].status = false;
   RESULTS[testName].message = message;
+
+  var newtime =  jsUnity.env.getDate();
+  RESULTS[testName].duration = newtime - STARTTEST;
+  STARTTEST = newtime;
 
 };
 
