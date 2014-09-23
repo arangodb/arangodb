@@ -50,7 +50,7 @@ function resultsToXml(results, baseName) {
         
         xml.elem("testcase", {
           name: oneTest,
-          time: 0.0
+          time: results.shell_server_aql[test][oneTest].duration
         }, success);
       
         if (!success) {
