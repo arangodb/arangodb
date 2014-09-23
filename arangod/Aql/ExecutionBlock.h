@@ -1515,14 +1515,10 @@ public:
 
         AqlItemBlock* getSome (size_t, size_t);
 
+        size_t skipSome (size_t, size_t);
+
       private:
 
-        /*int getOrSkipSome (size_t atLeast,
-                           size_t atMost,
-                           bool skipping,
-                           AqlItemBlock*& result,
-                           size_t& skipped);*/
-        
         // the block is simple if we do not do merge sort . . .
         bool isSimple () {
           auto en = static_cast<GatherNode const*>(getPlanNode());
