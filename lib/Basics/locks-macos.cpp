@@ -43,16 +43,20 @@
 /// @brief initialises a new spin-lock
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef TRI_FAKE_SPIN_LOCKS
 void TRI_InitSpin (TRI_spin_t* spinLock) {
   *spinLock = 0;
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a spin-lock
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef TRI_FAKE_SPIN_LOCKS
 void TRI_DestroySpin (TRI_spin_t* spinLock) {
 }
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -62,17 +66,21 @@ void TRI_DestroySpin (TRI_spin_t* spinLock) {
 /// @brief locks spin-lock
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef TRI_FAKE_SPIN_LOCKS
 void TRI_LockSpin (TRI_spin_t* spinLock) {
   OSSpinLockLock(spinLock);
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unlocks spin-lock
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef TRI_FAKE_SPIN_LOCKS
 void TRI_UnlockSpin (TRI_spin_t* spinLock) {
   OSSpinLockUnlock(spinLock);
 }
+#endif
 
 #endif
 
