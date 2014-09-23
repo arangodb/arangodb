@@ -1077,6 +1077,7 @@ function UnitTest (which, options) {
       for (i in r) {
         if (r.hasOwnProperty(i)) {
           if (r[i] !== 0 && r[i].status !== true) {
+            print(r);
             ok = false;
           }
         }
@@ -1099,7 +1100,7 @@ function UnitTest (which, options) {
   for (i in r) {
     if (r.hasOwnProperty(i) &&
         (which !== "single" || i !== "test")) {
-      if (r[i] !== 0 && r[i] !== true) {
+      if (r[i] !== 0 && r[i].status !== true) {
         ok = false;
       }
     }
