@@ -29,12 +29,11 @@
 
 #include "Aql/Query.h"
 #include "Aql/ExecutionBlock.h"
+#include "Aql/Executor.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Executor.h"
-#include "Aql/Parser.h"
-#include "Aql/ExecutionEngine.h"
 #include "Aql/Optimizer.h"
+#include "Aql/Parser.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/json.h"
 #include "Basics/tri-strings.h"
@@ -132,7 +131,11 @@ Query::Query (TRI_vocbase_t* vocbase,
     _strings(),
     _ast(nullptr),
     _profile(nullptr),
-    _state(INVALID_STATE) {
+    _state(INVALID_STATE),
+    _plan(nullptr),
+    _parser(nullptr),
+    _trx(nullptr),
+    _engine(nullptr) {
 
   TRI_ASSERT(_vocbase != nullptr);
 
@@ -160,7 +163,11 @@ Query::Query (TRI_vocbase_t* vocbase,
     _strings(),
     _ast(nullptr),
     _profile(nullptr),
-    _state(INVALID_STATE) {
+    _state(INVALID_STATE),
+    _plan(nullptr),
+    _parser(nullptr),
+    _trx(nullptr),
+    _engine(nullptr) {
 
   TRI_ASSERT(_vocbase != nullptr);
 
@@ -178,6 +185,7 @@ Query::Query (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 Query::~Query () {
+  cleanupPlanAndEngine();
   if (_profile != nullptr) {
     delete _profile;
     _profile = nullptr;
@@ -286,64 +294,67 @@ void Query::registerError (int code,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief execute an AQL query 
+/// @brief prepare an AQL query, this is a preparation for execute, but 
+/// execute calls it internally. The purpose of this separate method is
+/// to be able to only prepare a query from JSON and then store it in the
+/// QueryRegistry.
 ////////////////////////////////////////////////////////////////////////////////
 
-QueryResult Query::execute () {
+QueryResult Query::prepare () {
   enterState(PARSING);
 
   try {
-    ExecutionPlan* plan;
-    Parser parser(this);
+    std::unique_ptr<Parser> parser(new Parser(this));
+    std::unique_ptr<ExecutionPlan> plan;
 
     if (_queryString != nullptr) {
-      parser.parse();
+      parser->parse();
       // put in bind parameters
-      parser.ast()->injectBindParameters(_bindParameters);
+      parser->ast()->injectBindParameters(_bindParameters);
 
       // optimize the ast
       enterState(AST_OPTIMIZATION);
-      parser.ast()->optimize();
-      // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE, false)) << "\n";
+      parser->ast()->optimize();
+      // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser->ast()->toJson(TRI_UNKNOWN_MEM_ZONE, false)) << "\n";
     }
 
     // create the transaction object, but do not start it yet
-    AQL_TRANSACTION_V8 trx(_vocbase, _collections.collections());
+    std::unique_ptr<AQL_TRANSACTION_V8> trx(new AQL_TRANSACTION_V8(_vocbase, _collections.collections()));
 
     if (_queryString != nullptr) {
       // we have an AST
-      int res = trx.begin();
+      int res = trx->begin();
 
       if (res != TRI_ERROR_NO_ERROR) {
-        return transactionError(res, trx);
+        return transactionError(res, *trx);
       }
 
       enterState(PLAN_INSTANCIATION);
-      plan = ExecutionPlan::instanciateFromAst(parser.ast());
-      if (plan == nullptr) {
+      plan.reset(ExecutionPlan::instanciateFromAst(parser->ast()));
+      if (plan.get() == nullptr) {
         // oops
         return QueryResult(TRI_ERROR_INTERNAL, "failed to create query execution engine");
       }
     }
     else {
       enterState(PLAN_INSTANCIATION);
-      ExecutionPlan::getCollectionsFromJson(parser.ast(), _queryJson);
+      ExecutionPlan::getCollectionsFromJson(parser->ast(), _queryJson);
 
       // creating the plan may have produced some collections
       // we need to add them to the transaction now (otherwise the query will fail)
-      int res = trx.addCollectionList(_collections.collections());
+      int res = trx->addCollectionList(_collections.collections());
       
       if (res == TRI_ERROR_NO_ERROR) {
-        res = trx.begin();
+        res = trx->begin();
       }
 
       if (res != TRI_ERROR_NO_ERROR) {
-        return transactionError(res, trx);
+        return transactionError(res, *trx);
       }
 
       // we have an execution plan in JSON format
-      plan = ExecutionPlan::instanciateFromJson(parser.ast(), _queryJson);
-      if (plan == nullptr) {
+      plan.reset(ExecutionPlan::instanciateFromJson(parser->ast(), _queryJson));
+      if (plan.get() == nullptr) {
         // oops
         return QueryResult(TRI_ERROR_INTERNAL);
       }
@@ -353,67 +364,104 @@ QueryResult Query::execute () {
     enterState(PLAN_OPTIMIZATION);
     triagens::aql::Optimizer opt(maxNumberOfPlans());
     // get enabled/disabled rules
-    opt.createPlans(plan, getRulesFromOptions());  
+    opt.createPlans(plan.release(), getRulesFromOptions());  
 
     // Now plan and all derived plans belong to the optimizer
-    plan = opt.stealBest(); // Now we own the best one again
-    TRI_ASSERT(plan != nullptr);
+    plan.reset(opt.stealBest()); // Now we own the best one again
+    TRI_ASSERT(plan.get() != nullptr);
     /* // for debugging of serialisation/deserialisation . . . * /
-    auto JsonPlan = plan->toJson(parser.ast(),TRI_UNKNOWN_MEM_ZONE, true);
+    auto JsonPlan = plan->toJson(parser->ast(),TRI_UNKNOWN_MEM_ZONE, true);
     auto JsonString = JsonPlan.toString();
     std::cout << "original plan: \n" << JsonString << "\n";
 
-    auto otherPlan = ExecutionPlan::instanciateFromJson (parser.ast(),
+    auto otherPlan = ExecutionPlan::instanciateFromJson (parser->ast(),
                                                          JsonPlan);
     otherPlan->getCost(); 
     auto otherJsonString =
-      otherPlan->toJson(parser.ast(), TRI_UNKNOWN_MEM_ZONE, true).toString(); 
+      otherPlan->toJson(parser->ast(), TRI_UNKNOWN_MEM_ZONE, true).toString(); 
     std::cout << "deserialised plan: \n" << otherJsonString << "\n";
     TRI_ASSERT(otherJsonString == JsonString); */
 
     enterState(EXECUTION);
+    ExecutionEngine* engine(ExecutionEngine::instanciateFromPlan(trx.get(), this, plan.get()));
+
+    // If all went well so far, then we keep _plan, _parser and _trx and
+    // return:
+    _plan = plan.release();
+    _parser = parser.release();
+    _trx = trx.release();
+    _engine = engine;
+    return QueryResult();
+  }
+  catch (triagens::arango::Exception const& ex) {
+    cleanupPlanAndEngine();
+    return QueryResult(ex.code(), getStateString() + ex.message());
+  }
+  catch (std::bad_alloc const&) {
+    cleanupPlanAndEngine();
+    return QueryResult(TRI_ERROR_OUT_OF_MEMORY, getStateString() + TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+  }
+  catch (std::exception const& ex) {
+    cleanupPlanAndEngine();
+    return QueryResult(TRI_ERROR_INTERNAL, getStateString() + ex.what());
+  }
+  catch (...) {
+    cleanupPlanAndEngine();
+    return QueryResult(TRI_ERROR_INTERNAL, getStateString() + TRI_errno_string(TRI_ERROR_INTERNAL));
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute an AQL query 
+////////////////////////////////////////////////////////////////////////////////
+
+QueryResult Query::execute () {
+  QueryResult res = prepare();
+  if (res.code != TRI_ERROR_NO_ERROR) {
+    if (_trx != nullptr) {
+      delete _trx;
+      _trx = nullptr;
+    }
+    if (_parser != nullptr) {
+      delete _parser;
+      _parser = nullptr;
+    }
+    if (_plan != nullptr) {
+      delete _plan;
+      _plan = nullptr;
+    }
+    return res;
+  }
+
+  // Now start the execution:
+  try {
     triagens::basics::Json json(triagens::basics::Json::List, 16);
     triagens::basics::Json stats;
 
-    try { 
-      auto engine = ExecutionEngine::instanciateFromPlan(&trx, this, plan);
+    AqlItemBlock* value;
 
-      try {
-        AqlItemBlock* value;
-    
-        while (nullptr != (value = engine->getSome(1, ExecutionBlock::DefaultBatchSize))) {
-          auto doc = value->getDocumentCollection(0);
-          size_t const n = value->size();
-          // reserve space for n additional results at once
-          json.reserve(n);
+    while (nullptr != (value = _engine->getSome(1, ExecutionBlock::DefaultBatchSize))) {
+      auto doc = value->getDocumentCollection(0);
+      size_t const n = value->size();
+      // reserve space for n additional results at once
+      json.reserve(n);
 
-          for (size_t i = 0; i < n; ++i) {
-            AqlValue val = value->getValue(i, 0);
+      for (size_t i = 0; i < n; ++i) {
+        AqlValue val = value->getValue(i, 0);
 
-            if (! val.isEmpty()) {
-              json.add(val.toJson(&trx, doc)); 
-            }
-          }
-          delete value;
+        if (! val.isEmpty()) {
+          json.add(val.toJson(_trx, doc)); 
         }
-
-        stats = engine->_stats.toJson();
-
-        delete engine;
       }
-      catch (...) {
-        delete engine;
-        throw;
-      }
-    }
-    catch (...) {
-      delete plan;
-      throw;
+      delete value;
     }
 
-    delete plan;
-    trx.commit();
+    stats = _engine->_stats.toJson();
+
+    _trx->commit();
    
+    cleanupPlanAndEngine();
+
     enterState(FINALIZATION); 
 
     QueryResult result(TRI_ERROR_NO_ERROR);
@@ -427,15 +475,19 @@ QueryResult Query::execute () {
     return result;
   }
   catch (triagens::arango::Exception const& ex) {
+    cleanupPlanAndEngine();
     return QueryResult(ex.code(), getStateString() + ex.message());
   }
   catch (std::bad_alloc const&) {
+    cleanupPlanAndEngine();
     return QueryResult(TRI_ERROR_OUT_OF_MEMORY, getStateString() + TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
   }
   catch (std::exception const& ex) {
+    cleanupPlanAndEngine();
     return QueryResult(TRI_ERROR_INTERNAL, getStateString() + ex.what());
   }
   catch (...) {
+    cleanupPlanAndEngine();
     return QueryResult(TRI_ERROR_INTERNAL, getStateString() + TRI_errno_string(TRI_ERROR_INTERNAL));
   }
 }
@@ -465,7 +517,6 @@ QueryResult Query::explain () {
   enterState(PARSING);
 
   try {
-    ExecutionPlan* plan;
     Parser parser(this);
 
     parser.parse();
@@ -488,8 +539,8 @@ QueryResult Query::explain () {
     }
 
     enterState(PLAN_INSTANCIATION);
-    plan = ExecutionPlan::instanciateFromAst(parser.ast());
-    if (plan == nullptr) {
+    _plan = ExecutionPlan::instanciateFromAst(parser.ast());
+    if (_plan == nullptr) {
       // oops
       return QueryResult(TRI_ERROR_INTERNAL);
     }
@@ -498,7 +549,7 @@ QueryResult Query::explain () {
     enterState(PLAN_OPTIMIZATION);
     triagens::aql::Optimizer opt(maxNumberOfPlans());
     // get enabled/disabled rules
-    opt.createPlans(plan, getRulesFromOptions());
+    opt.createPlans(_plan, getRulesFromOptions());
       
     trx.commit();
 
@@ -520,12 +571,13 @@ QueryResult Query::explain () {
     }
     else {
       // Now plan and all derived plans belong to the optimizer
-      plan = opt.stealBest(); // Now we own the best one again
-      TRI_ASSERT(plan != nullptr);
+      _plan = opt.stealBest(); // Now we own the best one again
+      TRI_ASSERT(_plan != nullptr);
 
-      result.json = plan->toJson(parser.ast(), TRI_UNKNOWN_MEM_ZONE, verbosePlans()).steal(); 
+      result.json = _plan->toJson(parser.ast(), TRI_UNKNOWN_MEM_ZONE, verbosePlans()).steal(); 
 
-      delete plan;
+      delete _plan;
+      _plan = nullptr;
     }
     
     return result;
@@ -723,6 +775,32 @@ void Query::enterState (ExecutionState state) {
 
 std::string Query::getStateString () const {
   return "in state " + StateNames[_state] + ": ";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cleanup plan and engine for current query
+////////////////////////////////////////////////////////////////////////////////
+
+void Query::cleanupPlanAndEngine () {
+  if (_engine != nullptr) {
+    delete _engine;
+    _engine = nullptr;
+  }
+
+  if (_trx != nullptr) {
+    delete _trx;
+    _trx = nullptr;
+  }
+
+  if (_parser != nullptr) {
+    delete _parser;
+    _parser = nullptr;
+  }
+
+  if (_plan != nullptr) {
+    delete _plan;
+    _plan = nullptr;
+  }
 }
 
 // -----------------------------------------------------------------------------
