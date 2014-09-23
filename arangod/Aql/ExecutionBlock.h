@@ -1481,6 +1481,56 @@ public:
 
     };
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    GatherBlock
+// -----------------------------------------------------------------------------
+
+    class GatherBlock : public ExecutionBlock {
+
+      public:
+
+        GatherBlock (ExecutionEngine* engine,
+                        GatherNode const* ep)
+          : ExecutionBlock(engine, ep) {
+        }
+
+        ~GatherBlock () {
+        }
+
+        int initialize () {
+          return ExecutionBlock::initialize();
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initializeCursor, store a copy of the register values coming from above
+////////////////////////////////////////////////////////////////////////////////
+
+        int initializeCursor (AqlItemBlock* items, size_t pos);
+
+        bool hasMore () {
+          return false;
+        }
+
+        int64_t count () const {
+          return 0;
+        }
+
+        int64_t remaining () {
+          return 0;
+        }
+
+      private:
+
+        int getOrSkipSome (size_t atLeast,
+                           size_t atMost,
+                           bool skipping,
+                           AqlItemBlock*& result,
+                           size_t& skipped) {
+          return 0;
+        }
+
+    };
+
   }  // namespace triagens::aql
 }  // namespace triagens
 
