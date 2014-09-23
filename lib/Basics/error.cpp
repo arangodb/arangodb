@@ -151,7 +151,7 @@ int TRI_errno () {
 int TRI_errno () {
   tri_error_t* eptr;
 
-  eptr = pthread_getspecific(ErrorKey);
+  eptr = static_cast<decltype<eptr>(pthread_getspecific(ErrorKey));
 
   if (eptr == nullptr) {
     return 0;
@@ -183,7 +183,7 @@ char const* TRI_last_error () {
 
   tri_error_t* eptr;
 
-  eptr = pthread_getspecific(ErrorKey);
+  eptr = static_cast<decltype(eptr)>(pthread_getspecific(ErrorKey));
 
   if (eptr == nullptr) {
     err = 0;
@@ -233,10 +233,10 @@ int TRI_set_errno (int error) {
   tri_error_t* eptr;
   int copyErrno = errno;
 
-  eptr = pthread_getspecific(ErrorKey);
+  eptr = static_cast<decltype(eptr)>(pthread_getspecific(ErrorKey));
 
   if (eptr == nullptr) {
-    eptr = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(tri_error_t), false);
+    eptr = static_cast<decltype(eptr)>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(tri_error_t), false));
     pthread_setspecific(ErrorKey, eptr);
   }
 
