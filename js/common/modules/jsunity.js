@@ -120,7 +120,7 @@ function Run (tests) {
   PASSED += result.passed;
   FAILED += result.failed;
   DURATION += result.duration;
-  return RESULTS;
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -145,7 +145,7 @@ function Done (suiteName) {
   FAILED = 0;
   DURATION = 0;
 
-  return RESULTS;//ok;
+  return RESULTS;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
