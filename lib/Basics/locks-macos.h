@@ -46,7 +46,9 @@
 
 #ifdef TRI_FAKE_SPIN_LOCKS
 
-#define TRI_spin_t phread_mutex_t
+#ifndef TRI_spin_t
+#define TRI_spin_t pthread_mutex_t
+#endif
 
 #else
 
