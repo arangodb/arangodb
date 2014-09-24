@@ -380,7 +380,6 @@ namespace triagens {
 
       LOG_TRACE("Request: %s", _writeBuffer.c_str());
 
-
       if (_state == DEAD) {
         _connection->resetNumConnectRetries();
       }
@@ -415,11 +414,21 @@ namespace triagens {
       char const* pos = (char*) memchr(ptr, '\n', remain);
 
       while (pos) {
+        if (pos > ptr && *(pos - 1) == '\r') {
+          // adjust eol position
+          --pos;
+        }
 
         if (*ptr == '\r' || *ptr == '\0') {
           // end of header found
+
           size_t len = pos - (_readBuffer.c_str() + _readBufferOffset);
           _readBufferOffset += (len + 1);
+
+          if (*pos == '\r') {
+            // adjust offset if line ended with \r\n
+            ++_readBufferOffset;
+          }
   //        _readBuffer.move_front(len + 1);
 
           if (_result->isChunked()) {
@@ -459,8 +468,15 @@ namespace triagens {
         else {
           size_t len = pos - ptr;
           _result->addHeaderField(ptr, len);
-          ptr += len + 1;
+
+          if (*pos == '\r') {
+            // adjust length if line ended with \r\n
+            // (header was already added so no harm is done)
+            ++len;
+          }
         
+          ptr += len + 1;
+          
           TRI_ASSERT(remain >= (len + 1));
           remain -= (len + 1);
 
@@ -519,26 +535,42 @@ namespace triagens {
     }
 
     bool SimpleHttpClient::readChunkedHeader () {
-      char* pos = (char*) memchr(_readBuffer.c_str() + _readBufferOffset, '\n', _readBuffer.length() - _readBufferOffset);
+      size_t remain = _readBuffer.length() - _readBufferOffset;
+      char const* ptr = _readBuffer.c_str() + _readBufferOffset;
+      char* pos = (char*) memchr(ptr, '\n', remain);
 
       while (pos) {
         // got a line
-        size_t len = pos - _readBuffer.c_str() + _readBufferOffset;
+        if (pos > ptr && *(pos - 1) == '\r') {
+          // adjust eol position
+          --pos;
+        }
+
+        size_t len = pos - (_readBuffer.c_str() + _readBufferOffset);
         string line(_readBuffer.c_str() + _readBufferOffset, len);
+        StringUtils::trimInPlace(line);
+
       //  _readBuffer.move_front(len + 1);
         _readBufferOffset += (len + 1);
+          
+        if (*pos == '\r') {
+          // adjust offset if line ended with \r\n
+          ++_readBufferOffset;
+          ++len;
+        }
 
-        string trimmed = StringUtils::trim(line);
-
-        if (trimmed == "\r" || trimmed == "") {
+        if (line[0] == '\r' || line.empty()) {
           // ignore empty lines
-          pos = (char*) memchr(_readBuffer.c_str() + _readBufferOffset, '\n', _readBuffer.length() - _readBufferOffset);
+          remain -= (len + 1);
+          ptr += len + 1;
+
+          pos = (char*) memchr(ptr, '\n', remain);
           continue;
         }
 
         uint32_t contentLength;
         try {
-          contentLength = static_cast<uint32_t>(std::stol(trimmed, nullptr, 16)); // C++11
+          contentLength = static_cast<uint32_t>(std::stol(line, nullptr, 16)); // C++11
         }
         catch (...) {
           setErrorMessage("found invalid content-length", true);
@@ -551,7 +583,6 @@ namespace triagens {
 
         if (contentLength == 0) {
           // OK: last content length found
-
           _result->setResultType(SimpleHttpResult::COMPLETE);
 
           _state = FINISHED;
