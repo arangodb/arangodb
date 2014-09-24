@@ -1022,31 +1022,33 @@ namespace triagens {
             return res;
           }
 
-          if (document->_primaryIndex._nrUsed == 0) {
-            // nothing to do
-            this->unlock(trxCollection, TRI_TRANSACTION_READ);
+          if (document->_primaryIndex._nrUsed > 0) {
+            if (orderBarrier(trxCollection) == nullptr) {
+              return TRI_ERROR_OUT_OF_MEMORY;
+            }
+            
+            docs.reserve(static_cast<size_t>(document->_primaryIndex._nrUsed) % static_cast<size_t>(numberOfPartitions));
+          
+            void** ptr = document->_primaryIndex._table;
+            void** end = ptr + document->_primaryIndex._nrAlloc;
+            *total = (uint32_t) document->_primaryIndex._nrUsed;
 
-            // READ-LOCK END
-            return TRI_ERROR_NO_ERROR;
-          }
+            // fetch documents, taking partition into account
+            for (; ptr < end; ++ptr) {
+              if (*ptr) {
+                TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
 
-          if (orderBarrier(trxCollection) == nullptr) {
-            return TRI_ERROR_OUT_OF_MEMORY;
-          }
+                if (d->_hash % numberOfPartitions == partitionId) {
+                  // correct partition
+                  docs.emplace_back(*d);
+                }
+              }
+            }
 
-          void** beg = document->_primaryIndex._table;
-          void** end = beg + document->_primaryIndex._nrAlloc;
-          void** ptr = beg;
-          *total = (uint32_t) document->_primaryIndex._nrUsed;
-
-          // fetch documents, taking partition into account
-          for (; ptr < end; ++ptr) {
-            if (*ptr) {
-              TRI_doc_mptr_t* d = (TRI_doc_mptr_t*) *ptr;
-
-              if (d->_hash % numberOfPartitions == partitionId) {
-                // correct partition
-                docs.emplace_back(*d);
+            for (;  ptr < end;  ++ptr) {
+              if (*ptr) {
+                TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
+                docs.push_back(*d);  // PROTECTED by trx in trxCollection
               }
             }
           }
