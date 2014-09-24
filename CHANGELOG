@@ -3,6 +3,9 @@ v2.3.0 (XXXX-XX-XX)
 
 * fixed issue #1027: Stack traces are off-by-one
 
+* fixed issue #1026: Modules loaded in different files within the same app 
+  should refer to the same module
+
 * fixed issue #1025: Traversal not as expected in undirected graph
 
 * added a _relation function in the general-graph module.

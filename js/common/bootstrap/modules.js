@@ -775,21 +775,19 @@ function require (path) {
     var dirname = fs.join(root, "node_modules", path);
     var filename = fs.join(dirname, "package.json");
 
-    if (fs.exists(filename)) {
-      var pkg = currentPackage.knownPackage(path);
+    var pkg = currentPackage.knownPackage(path);
 
-      if (pkg === null) {
+    if (pkg === null) {
+      if (fs.exists(filename)) {
         pkg = createPackageAndModule(currentModule, currentPackage, path, dirname, filename);
 
         if (pkg !== null) {
           currentPackage.definePackage(path, pkg);
         }
       }
-
-      return (pkg === null) ? null : pkg._packageModule;
     }
 
-    return null;
+    return (pkg === null) ? null : pkg._packageModule;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1069,7 +1067,7 @@ function require (path) {
   Package.prototype.knownPackage = function (id) {
     'use strict';
 
-    if (this._moduleCache.hasOwnProperty(id)) {
+    if (this._packageCache.hasOwnProperty(id)) {
       return this._packageCache[id];
     }
 
