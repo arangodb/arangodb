@@ -3557,7 +3557,7 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
   size_t index;         // an index of a non-empty buffer
   
   // pull more blocks from dependencies . . .
-  for (auto i = 0; i < _dependencies.size(); i++) {
+  for (size_t i = 0; i < _dependencies.size(); i++) {
     if (_buffer.at(i).empty()) {
       if (getBlock(i, atLeast, atMost)) {
         _pos.at(i) = make_pair(i,0);           
@@ -3598,8 +3598,7 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
       res->setDocumentCollection(i, example->getDocumentCollection(i));
     }
 
-    for (auto i = 0; i < toSend; i++) {
-      
+    for (size_t i = 0; i < toSend; i++) {
       // get the next smallest row from the buffer . . .
       std::pair<size_t, size_t> val = *(std::min_element(_pos.begin(), _pos.end(), ourLessThan));
       
