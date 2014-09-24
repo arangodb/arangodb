@@ -3573,7 +3573,7 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
     return nullptr;
   }
   
-  size_t toSend = std::min(available, atMost); //nr rows in outgoing block
+  size_t toSend = (std::min)(available, atMost); //nr rows in outgoing block
   
   // get collections for ourLessThan . . .
   std::vector<TRI_document_collection_t const*> colls;
@@ -3592,7 +3592,7 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
   size_t nrRegs = example->getNrRegs();
 
   try {
-    res = new AqlItemBlock(toSend, nrRegs);
+    res = new AqlItemBlock(toSend, static_cast<triagens::aql::RegisterId>(nrRegs));
     
     for (RegisterId i = 0; i < nrRegs; i++) {
       res->setDocumentCollection(i, example->getDocumentCollection(i));
