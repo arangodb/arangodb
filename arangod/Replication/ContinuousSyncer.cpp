@@ -29,7 +29,7 @@
 
 #include "ContinuousSyncer.h"
 
-#include "BasicsC/json.h"
+#include "Basics/json.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/StringBuffer.h"
 #include "Rest/HttpRequest.h"
@@ -555,8 +555,8 @@ int ContinuousSyncer::changeCollection (TRI_json_t const* json) {
   TRI_json_t const* collectionJson = TRI_LookupArrayJson(json, "collection");
 
   bool waitForSync = JsonHelper::getBooleanValue(collectionJson, "waitForSync", false);
-  bool doCompact = JsonHelper::getBooleanValue(collectionJson, "doCompact", true);
-  int maximalSize = JsonHelper::getNumericValue<int>(collectionJson, "maximalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
+  bool doCompact   = JsonHelper::getBooleanValue(collectionJson, "doCompact", true);
+  int maximalSize  = JsonHelper::getNumericValue<int>(collectionJson, "maximalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
 
   TRI_voc_cid_t cid = getCid(json);
   TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
@@ -575,7 +575,8 @@ int ContinuousSyncer::changeCollection (TRI_json_t const* json) {
     parameters._maximalSize = maximalSize;
     parameters._waitForSync = waitForSync;
 
-    return TRI_UpdateCollectionInfo(_vocbase, guard.collection()->_collection, &parameters);
+    bool doSync = _vocbase->_settings.forceSyncProperties;
+    return TRI_UpdateCollectionInfo(_vocbase, guard.collection()->_collection, &parameters, doSync);
   }
   catch (triagens::arango::Exception const& ex) {
     return ex.code();

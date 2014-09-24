@@ -3,8 +3,11 @@
 /* static programs have broken cxa_guard */
 #undef BROKEN_CXA_GUARD
 
-/* define if the Boost library is available */
-#undef HAVE_BOOST
+/* Define to 1 if you have the `backtrace' function. */
+#undef HAVE_BACKTRACE
+
+/* define if the compiler supports basic C++11 syntax */
+#undef HAVE_CXX11
 
 /* Define to 1 if you have the <ev.h> header file. */
 #undef HAVE_EV_H
@@ -85,8 +88,8 @@
 /* "" */
 #undef TRI_CONFIGURE_OPTIONS
 
-/* always true */
-#undef TRI_ENABLE_CLUSTER
+/* true if failure testing ins enabled */
+#undef TRI_ENABLE_FAILURE_TESTS
 
 /* true if figures are enabled */
 #undef TRI_ENABLE_FIGURES

@@ -21,6 +21,10 @@
 #ifndef _ZLIBIOAPI64_H
 #define _ZLIBIOAPI64_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifdef _Z_OF
 #undef OF
 #define OF _Z_OF
@@ -113,11 +117,6 @@ typedef unsigned long long int ZPOS64_T;
 #endif
 #endif
 
-
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 
 #define ZLIB_FILEFUNC_SEEK_CUR (1)

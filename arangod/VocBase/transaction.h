@@ -32,10 +32,10 @@
 
 #include "Basics/Common.h"
 
-#include "BasicsC/associative.h"
-#include "BasicsC/hashes.h"
-#include "BasicsC/locks.h"
-#include "BasicsC/vector.h"
+#include "Basics/associative.h"
+#include "Basics/hashes.h"
+#include "Basics/locks.h"
+#include "Basics/vector.h"
 
 #include "VocBase/datafile.h"
 #include "VocBase/voc-types.h"

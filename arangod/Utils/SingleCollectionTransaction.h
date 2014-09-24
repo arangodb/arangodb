@@ -32,8 +32,8 @@
 
 #include "Basics/Common.h"
 
-#include "BasicsC/logging.h"
-#include "BasicsC/voc-errors.h"
+#include "Basics/logging.h"
+#include "Basics/voc-errors.h"
 #include "Basics/StringUtils.h"
 #include "Utils/Transaction.h"
 
@@ -128,6 +128,8 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the underlying document collection
+/// note that we have two identical versions because this is called 
+/// in two different situations
 ////////////////////////////////////////////////////////////////////////////////
 
         inline TRI_document_collection_t* documentCollection () {
@@ -141,9 +143,15 @@ namespace triagens {
           return this->_documentCollection;
         }
 
+        inline TRI_document_collection_t* documentCollection (TRI_voc_cid_t) {
+          return documentCollection();
+        }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the barrier for the collection
 /// note that the barrier must already exist
+/// furthermore note that we have two calling conventions because this
+/// is called in two different ways
 ////////////////////////////////////////////////////////////////////////////////
 
          inline TRI_barrier_t* barrier () {
@@ -151,6 +159,10 @@ namespace triagens {
            TRI_ASSERT(trxCollection->_barrier != nullptr);
 
            return trxCollection->_barrier;
+         }
+
+         inline TRI_barrier_t* barrier (TRI_voc_cid_t) {
+           return barrier();
          }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -241,6 +253,14 @@ namespace triagens {
                   uint32_t* total) {
 
           return this->readSlice(this->trxCollection(), docs, skip, limit, total);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read all documents within a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+        int read (vector<TRI_doc_mptr_t*>& docs) {
+          return this->readSlice(this->trxCollection(), docs);
         }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -33,13 +33,15 @@
 #include "Basics/Common.h"
 
 #ifdef _WIN32
-  #include "BasicsC/win-utils.h"
+  #include "Basics/win-utils.h"
 #endif
 
 #include "Rest/AnyServer.h"
 #include "Rest/OperationMode.h"
 
 #include "VocBase/vocbase.h"
+#include "HttpServer/HttpHandlerFactory.h"
+#include "Aql/QueryRegistry.h"
 
 struct TRI_server_s;
 struct TRI_vocbase_defaults_s;
@@ -165,6 +167,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void closeDatabases ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief defineHandlers, define "_api" and "_admin" handlers
+////////////////////////////////////////////////////////////////////////////////
+
+        void defineHandlers (triagens::rest::HttpHandlerFactory* factory);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -502,6 +510,19 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         struct TRI_server_s* _server;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the server
+////////////////////////////////////////////////////////////////////////////////
+
+        aql::QueryRegistry* _queryRegistry;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ptr to pair of _applicationV8 and _queryRegistry for _api/aql handler
+/// this will be removed once we have a global struct with "everything useful"
+////////////////////////////////////////////////////////////////////////////////
+
+        std::pair<ApplicationV8*, aql::QueryRegistry*>* _pairForAql;
 
     };
   }

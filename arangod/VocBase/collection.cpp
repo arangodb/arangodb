@@ -31,11 +31,11 @@
 
 #include <regex.h>
 
-#include "BasicsC/conversions.h"
-#include "BasicsC/files.h"
-#include "BasicsC/json.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/conversions.h"
+#include "Basics/files.h"
+#include "Basics/json.h"
+#include "Basics/logging.h"
+#include "Basics/tri-strings.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
@@ -1374,7 +1374,8 @@ int TRI_SaveCollectionInfo (char const* path,
 
 int TRI_UpdateCollectionInfo (TRI_vocbase_t* vocbase,
                               TRI_collection_t* collection,
-                              TRI_col_info_t const* parameter) {
+                              TRI_col_info_t const* parameter,
+                              bool doSync) {
 
   TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION((TRI_document_collection_t*) collection);
 
@@ -1395,7 +1396,7 @@ int TRI_UpdateCollectionInfo (TRI_vocbase_t* vocbase,
 
   TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION((TRI_document_collection_t*) collection);
 
-  return TRI_SaveCollectionInfo(collection->_directory, &collection->_info, vocbase->_settings.forceSyncProperties);
+  return TRI_SaveCollectionInfo(collection->_directory, &collection->_info, doSync);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

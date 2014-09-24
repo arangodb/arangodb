@@ -31,9 +31,9 @@
 #ifndef ARANGODB_VOC_BASE_PRIMARY__INDEX_H
 #define ARANGODB_VOC_BASE_PRIMARY__INDEX_H 1
 
-#include "BasicsC/common.h"
-#include "BasicsC/hashes.h"
-#include "BasicsC/locks.h"
+#include "Basics/Common.h"
+#include "Basics/hashes.h"
+#include "Basics/locks.h"
 
 struct TRI_doc_mptr_t;
 

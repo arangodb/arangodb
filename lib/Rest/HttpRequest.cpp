@@ -30,10 +30,10 @@
 
 #include "HttpRequest.h"
 
-#include "BasicsC/conversions.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
-#include "BasicsC/utf8-helper.h"
+#include "Basics/conversions.h"
+#include "Basics/logging.h"
+#include "Basics/tri-strings.h"
+#include "Basics/utf8-helper.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 

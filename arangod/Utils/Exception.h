@@ -44,14 +44,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define THROW_ARANGO_EXCEPTION(code)                                           \
-  throw triagens::arango::Exception(code, "", __FILE__, __LINE__)
+  throw triagens::arango::Exception(code, __FILE__, __LINE__)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief throws an exception for internal errors
+/// @brief throws an arango exception with an error code and arbitrary 
+/// arguments (to be inserted in printf-style manner)
 ////////////////////////////////////////////////////////////////////////////////
 
-#define THROW_ARANGO_EXCEPTION_STRING(code, details)                           \
-  throw triagens::arango::Exception(code, details, __FILE__, __LINE__)
+#define THROW_ARANGO_EXCEPTION_PARAMS(code, ...)                               \
+  throw triagens::arango::Exception(code, triagens::arango::Exception::FillExceptionString(code, __VA_ARGS__), __FILE__, __LINE__)        
+////////////////////////////////////////////////////////////////////////////////
+/// @brief throws an arango exception with an error code and an already-built
+/// error message
+////////////////////////////////////////////////////////////////////////////////
+
+#define THROW_ARANGO_EXCEPTION_MESSAGE(code, message)                          \
+  throw triagens::arango::Exception(code, message, __FILE__, __LINE__)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -65,26 +73,43 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     class Exception : public virtual std::exception {
+
       public:
+
         Exception (int code,
-                   std::string const& details,
+                   char const* file,
+                   int line);
+        
+        Exception (int code,
+                   std::string const& errorMessage,
                    char const* file,
                    int line);
 
         ~Exception () throw ();
 
       public:
-        char const * what () const throw ();
 
-        std::string message () const throw ();
+        char const * what () const throw (); 
 
-        int code () const throw();
+        std::string message () const throw () {
+          return _errorMessage;
+        }
+        
+        int code () const throw () {
+          return _code;
+        }
+        
+        void addToMessage(std::string More) {
+          _errorMessage += More;
+        }
+
+        static std::string FillExceptionString (int, ...);
 
       protected:
-        std::string const _details;
-        char const* _file;
-        int const _line;
-        int const _code;
+        std::string       _errorMessage;
+        char const*       _file;
+        int const         _line;
+        int const         _code;
     };
 
   }

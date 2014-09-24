@@ -34,8 +34,8 @@
 
 #include <iostream>
 
-#include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/logging.h"
+#include "Basics/tri-strings.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
 
@@ -1344,7 +1344,7 @@ namespace triagens {
 
 
 /// replaces the contents of the sourceStr = "aaebbbbcce" where ever the occurence of
-/// fromStr = "bb" exists with the toStr = "dd". No recursion peformed on the replaced string
+/// fromStr = "bb" exists with the toStr = "dd". No recursion performed on the replaced string
 /// e.g. replace("aaebbbbcce","bb","dd") = "aaeddddcce"
 /// e.g. replace("aaebbbbcce","bb","bbb") = "aaebbbbbbcce"
 /// e.g. replace("aaebbbbcce","bbb","bb") = "aaebbbcce"
@@ -1352,12 +1352,12 @@ namespace triagens {
       string replace (string const& sourceStr, string const& fromStr, string const& toStr) {
         size_t fromLength   = fromStr.length();
         size_t toLength     = toStr.length();
-        size_t maxLength    = max (fromLength,toLength);
+        size_t maxLength    = max(fromLength,toLength);
         size_t sourceLength = sourceStr.length();
 
         // cannot perform a replace if the sourceStr = "" or fromStr = ""
         if (fromLength == 0 || sourceLength == 0) {
-          return (sourceStr);
+          return sourceStr;
         }
 
         // the max amount of memory is:

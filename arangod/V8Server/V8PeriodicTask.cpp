@@ -28,7 +28,7 @@
 
 #include "V8PeriodicTask.h"
 
-#include "BasicsC/json.h"
+#include "Basics/json.h"
 #include "Dispatcher/Dispatcher.h"
 #include "Scheduler/Scheduler.h"
 #include "V8/v8-conv.h"
@@ -66,7 +66,7 @@ V8PeriodicTask::V8PeriodicTask (string const& id,
     _parameters(parameters),
     _created(TRI_microtime()) {
 
-  TRI_ASSERT(vocbase != 0);
+  TRI_ASSERT(vocbase != nullptr);
 
   // increase reference counter for the database used
   TRI_UseVocBase(_vocbase);
@@ -80,7 +80,7 @@ V8PeriodicTask::~V8PeriodicTask () {
   // decrease reference counter for the database used
   TRI_ReleaseVocBase(_vocbase);
 
-  if (_parameters != 0) {
+  if (_parameters != nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _parameters);
   }
 }

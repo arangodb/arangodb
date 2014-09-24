@@ -33,7 +33,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 
 #include "Dispatcher/DispatcherQueue.h"
 #include "Dispatcher/DispatcherThread.h"
@@ -175,10 +175,10 @@ int Dispatcher::addJob (Job* job) {
   }
 
   // try to find a suitable queue
-  const string& name = job->queue();
+  string const& name = job->queue();
   DispatcherQueue* queue = lookupQueue(name);
 
-  if (queue == 0) {
+  if (queue == nullptr) {
     LOG_WARNING("unknown queue '%s'", name.c_str());
     return TRI_ERROR_QUEUE_UNKNOWN;
   }
@@ -201,9 +201,9 @@ int Dispatcher::addJob (Job* job) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Dispatcher::cancelJob (uint64_t jobId) {
-  MUTEX_LOCKER(_accessDispatcher);
-
   bool done = false;
+
+  MUTEX_LOCKER(_accessDispatcher);
 
   for (map<string, DispatcherQueue*>::iterator i = _queues.begin();  i != _queues.end() && ! done;  ++i) {
     DispatcherQueue* q = i->second;

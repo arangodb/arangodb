@@ -31,8 +31,8 @@
 #define ARANGODB_AHUACATL_AHUACATL__RESULT_H 1
 
 #include "Basics/Common.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/json.h"
+#include "Basics/logging.h"
+#include "Basics/json.h"
 
 #include "VocBase/general-cursor.h"
 

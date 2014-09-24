@@ -52,7 +52,7 @@
 struct TRI_cap_constraint_s;
 struct TRI_document_edge_s;
 struct TRI_index_s;
-struct TRI_json_s;
+struct TRI_json_t;
 
 class KeyGenerator;
 
@@ -126,6 +126,9 @@ struct TRI_doc_mptr_t {
                         _prev(nullptr),
                         _next(nullptr),
                         _dataptr(nullptr) {
+    }
+
+    virtual ~TRI_doc_mptr_t () {
     }
 
     void clear () {
@@ -506,17 +509,124 @@ size_t TRI_DocumentIteratorDocumentCollection (triagens::arango::TransactionBase
   TRI_UnlockCondition(&(a)->_journalsCondition)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the marker is an edge marker
+////////////////////////////////////////////////////////////////////////////////
+
+static inline bool TRI_IS_EDGE_MARKER (TRI_df_marker_t const* marker) {
+  return (marker->_type == TRI_DOC_MARKER_KEY_EDGE ||
+          marker->_type == TRI_WAL_MARKER_EDGE);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the pointer to the _from key from a marker
+////////////////////////////////////////////////////////////////////////////////
+
+static inline char const* TRI_EXTRACT_MARKER_FROM_KEY (TRI_df_marker_t const* marker) {
+  if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+    return ((char const*) marker) + ((TRI_doc_edge_key_marker_t const*) marker)->_offsetFromKey;  
+  }
+  else if (marker->_type == TRI_WAL_MARKER_EDGE) {
+    return ((char const*) marker) + ((triagens::wal::edge_marker_t const*) marker)->_offsetFromKey; 
+  }
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  // invalid marker type
+  TRI_ASSERT(false);
+#endif
+
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the pointer to the _to key from a marker
+////////////////////////////////////////////////////////////////////////////////
+
+static inline char const* TRI_EXTRACT_MARKER_TO_KEY (TRI_df_marker_t const* marker) {
+  if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+    return ((char const*) marker) + ((TRI_doc_edge_key_marker_t const*) marker)->_offsetToKey;  
+  }
+  else if (marker->_type == TRI_WAL_MARKER_EDGE) {
+    return ((char const*) marker) + ((triagens::wal::edge_marker_t const*) marker)->_offsetToKey; 
+  }
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  // invalid marker type
+  TRI_ASSERT(false);
+#endif
+
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the _from cid from a marker
+////////////////////////////////////////////////////////////////////////////////
+
+static inline TRI_voc_cid_t TRI_EXTRACT_MARKER_FROM_CID (TRI_df_marker_t const* marker) {
+  if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+    return ((TRI_doc_edge_key_marker_t const*) marker)->_fromCid;
+  }
+  else if (marker->_type == TRI_WAL_MARKER_EDGE) {
+    return ((triagens::wal::edge_marker_t const*) marker)->_fromCid;
+  }
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  // invalid marker type
+  TRI_ASSERT(false);
+#endif
+
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the _to cid from a marker
+////////////////////////////////////////////////////////////////////////////////
+
+static inline TRI_voc_cid_t TRI_EXTRACT_MARKER_TO_CID (TRI_df_marker_t const* marker) {
+  if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+    return ((TRI_doc_edge_key_marker_t const*) marker)->_toCid;  
+  }
+  else if (marker->_type == TRI_WAL_MARKER_EDGE) {
+    return ((triagens::wal::edge_marker_t const*) marker)->_toCid;
+  }
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  // invalid marker type
+  TRI_ASSERT(false);
+#endif
+
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the revision id from a marker
+////////////////////////////////////////////////////////////////////////////////
+
+static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID (TRI_df_marker_t const* marker) {
+  if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT || marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+    return ((TRI_doc_document_key_marker_t const*) marker)->_rid;  
+  }
+  else if (marker->_type == TRI_WAL_MARKER_DOCUMENT || marker->_type == TRI_WAL_MARKER_EDGE) {
+    return ((triagens::wal::document_marker_t const*) marker)->_revisionId; 
+  }
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  // invalid marker type
+  TRI_ASSERT(false);
+#endif
+
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the pointer to the key from a marker
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline char const* TRI_EXTRACT_MARKER_KEY (TRI_doc_mptr_t const* mptr) {
-  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());  // PROTECTED by TRI_EXTRACT_MARKER_KEY search
-
+static inline char const* TRI_EXTRACT_MARKER_KEY (TRI_df_marker_t const* marker) {
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT || marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    return ((char const*) mptr->getDataPtr()) + ((TRI_doc_document_key_marker_t const*) mptr->getDataPtr())->_offsetKey;  // PROTECTED by TRI_EXTRACT_MARKER_KEY search
+    return ((char const*) marker) + ((TRI_doc_document_key_marker_t const*) marker)->_offsetKey;  
   }
   else if (marker->_type == TRI_WAL_MARKER_DOCUMENT || marker->_type == TRI_WAL_MARKER_EDGE) {
-    return ((char const*) mptr->getDataPtr()) + ((triagens::wal::document_marker_t const*) mptr->getDataPtr())->_offsetKey;  // PROTECTED by TRI_EXTRACT_MARKER_KEY search
+    return ((char const*) marker) + ((triagens::wal::document_marker_t const*) marker)->_offsetKey; 
   }
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
@@ -531,22 +641,18 @@ static inline char const* TRI_EXTRACT_MARKER_KEY (TRI_doc_mptr_t const* mptr) {
 /// @brief extracts the pointer to the key from a marker
 ////////////////////////////////////////////////////////////////////////////////
 
+static inline char const* TRI_EXTRACT_MARKER_KEY (TRI_doc_mptr_t const* mptr) {
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());  // PROTECTED by TRI_EXTRACT_MARKER_KEY search
+  return TRI_EXTRACT_MARKER_KEY(marker);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the pointer to the key from a marker
+////////////////////////////////////////////////////////////////////////////////
+
 static inline char const* TRI_EXTRACT_MARKER_KEY (TRI_doc_mptr_copy_t const* mptr) {
   TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());  // PROTECTED by TRI_EXTRACT_MARKER_KEY search
-
-  if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT || marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-    return ((char const*) mptr->getDataPtr()) + ((TRI_doc_document_key_marker_t const*) mptr->getDataPtr())->_offsetKey;  // PROTECTED by TRI_EXTRACT_MARKER_KEY search
-  }
-  else if (marker->_type == TRI_WAL_MARKER_DOCUMENT || marker->_type == TRI_WAL_MARKER_EDGE) {
-    return ((char const*) mptr->getDataPtr()) + ((triagens::wal::document_marker_t const*) mptr->getDataPtr())->_offsetKey;  // PROTECTED by TRI_EXTRACT_MARKER_KEY search
-  }
-
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-  // invalid marker type
-  TRI_ASSERT(false);
-#endif
-
-  return nullptr;
+  return TRI_EXTRACT_MARKER_KEY(marker);
 }
 
 // -----------------------------------------------------------------------------
@@ -600,7 +706,7 @@ bool TRI_IsFullyCollectedDocumentCollection (TRI_document_collection_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t*,
-                                         struct TRI_json_s const*,
+                                         struct TRI_json_t const*,
                                          struct TRI_index_s**);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -695,41 +801,6 @@ TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_
                                                         size_t,
                                                         int64_t,
                                                         bool*);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    BITARRAY INDEX
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds a bitarray index
-///
-/// Note that the caller must hold at least a read-lock.
-/// Also note that the only the set of attributes are used to distinguish
-/// a bitarray index -- that is, a bitarray is considered to be the same if
-/// the attributes match irrespective of the possible values for an attribute.
-/// Finally observe that there is no notion of uniqueness for a bitarray index.
-/// TODO: allow changes to possible values to be made at run-time.
-////////////////////////////////////////////////////////////////////////////////
-
-struct TRI_index_s* TRI_LookupBitarrayIndexDocumentCollection (TRI_document_collection_t*,
-                                                               const TRI_vector_pointer_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures that a bitarray index exists
-////////////////////////////////////////////////////////////////////////////////
-
-struct TRI_index_s* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_t*,
-                                                               TRI_idx_iid_t,
-                                                               const TRI_vector_pointer_t*,
-                                                               const TRI_vector_pointer_t*,
-                                                               bool,
-                                                               bool*,
-                                                               int*,
-                                                               char**);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         GEO INDEX

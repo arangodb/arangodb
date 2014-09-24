@@ -45,9 +45,9 @@
 #include "VocBase/voc-shaper.h"
 #include "VocBase/voc-types.h"
 
-#include "BasicsC/logging.h"
-#include "BasicsC/random.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/logging.h"
+#include "Basics/random.h"
+#include "Basics/tri-strings.h"
 
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/DocumentHelper.h"
@@ -321,6 +321,17 @@ namespace triagens {
           }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the transaction collection for a document collection
+////////////////////////////////////////////////////////////////////////////////
+
+         TRI_transaction_collection_t* trxCollection (TRI_voc_cid_t cid) {
+           TRI_ASSERT(_trx != nullptr);
+           TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
+
+           return TRI_GetCollectionTransaction(_trx, cid, TRI_TRANSACTION_READ);
+         }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief order a barrier for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -344,6 +355,212 @@ namespace triagens {
 
            return trxCollection->_barrier;
          }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read all master pointers, using skip and limit and an internal
+/// offset into the primary index. this can be used for incremental access to
+/// the documents without restarting the index scan at the begin
+////////////////////////////////////////////////////////////////////////////////
+
+        int readIncremental (TRI_transaction_collection_t* trxCollection,
+                             std::vector<TRI_doc_mptr_copy_t>& docs,
+                             TRI_voc_size_t& internalSkip,
+                             TRI_voc_size_t batchSize,
+                             TRI_voc_ssize_t skip,
+                             TRI_voc_size_t limit,
+                             uint32_t* total) {
+
+          TRI_document_collection_t* document = documentCollection(trxCollection);
+
+          // READ-LOCK START
+          int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
+
+          if (document->_primaryIndex._nrUsed == 0) {
+            // nothing to do
+            this->unlock(trxCollection, TRI_TRANSACTION_READ);
+
+            // READ-LOCK END
+            return TRI_ERROR_NO_ERROR;
+          }
+
+          if (orderBarrier(trxCollection) == nullptr) {
+            return TRI_ERROR_OUT_OF_MEMORY;
+          }
+
+          void** beg = document->_primaryIndex._table;
+          void** end = beg + document->_primaryIndex._nrAlloc;
+
+          if (internalSkip > 0) {
+            beg += internalSkip;
+          }
+
+          void** ptr = beg;
+          uint32_t count = 0;
+          *total = (uint32_t) document->_primaryIndex._nrUsed;
+
+          // fetch documents, taking limit into account
+          for (; ptr < end && count < batchSize; ++ptr, ++internalSkip) {
+            if (*ptr) {
+              TRI_doc_mptr_t* d = (TRI_doc_mptr_t*) *ptr;
+
+              if (skip > 0) {
+                --skip;
+              }
+              else {
+                docs.emplace_back(*d);
+                if (++count >= limit) {
+                  break;
+                }
+              }
+            }
+          }
+
+          this->unlock(trxCollection, TRI_TRANSACTION_READ);
+          // READ-LOCK END
+
+          return TRI_ERROR_NO_ERROR;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief delete a single document
+////////////////////////////////////////////////////////////////////////////////
+
+        int remove (TRI_transaction_collection_t* trxCollection,
+                    std::string const& key,
+                    TRI_voc_rid_t rid,
+                    TRI_doc_update_policy_e policy,
+                    TRI_voc_rid_t expectedRevision,
+                    TRI_voc_rid_t* actualRevision,
+                    bool forceSync) {
+
+          TRI_doc_update_policy_t updatePolicy(policy, expectedRevision, actualRevision);
+
+          try {
+            return TRI_RemoveShapedJsonDocumentCollection(trxCollection,
+                                                          (TRI_voc_key_t) key.c_str(),
+                                                          rid,
+                                                          nullptr,
+                                                          &updatePolicy,
+                                                          ! isLocked(trxCollection, TRI_TRANSACTION_WRITE),
+                                                          forceSync);
+          }
+          catch (triagens::arango::Exception const& ex) {
+            return ex.code();
+          }
+          catch (...) {
+            return TRI_ERROR_INTERNAL;
+          }
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a single document, using JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        int create (TRI_transaction_collection_t* trxCollection,
+                    TRI_doc_mptr_copy_t* mptr,
+                    TRI_json_t const* json,
+                    void const* data,
+                    bool forceSync) {
+
+          TRI_voc_key_t key = 0;
+          int res = DocumentHelper::getKey(json, &key);
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
+
+          TRI_shaper_t* shaper = this->shaper(trxCollection);
+          TRI_memory_zone_t* zone = shaper->_memoryZone;
+          TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(shaper, json, true);
+
+          if (shaped == nullptr) {
+            return TRI_ERROR_ARANGO_SHAPER_FAILED;
+          }
+
+          res = create(trxCollection,
+                       key,
+                       0,
+                       mptr,
+                       shaped,
+                       data,
+                       forceSync);
+
+          TRI_FreeShapedJson(zone, shaped);
+
+          return res;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update a single document, using JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        int update (TRI_transaction_collection_t* trxCollection,
+                    std::string const& key,
+                    TRI_voc_rid_t rid,
+                    TRI_doc_mptr_copy_t* mptr,
+                    TRI_json_t* const json,
+                    TRI_doc_update_policy_e policy,
+                    TRI_voc_rid_t expectedRevision,
+                    TRI_voc_rid_t* actualRevision,
+                    bool forceSync) {
+
+          TRI_shaper_t* shaper = this->shaper(trxCollection);
+          TRI_memory_zone_t* zone = shaper->_memoryZone;
+          TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(shaper, json, true);
+
+          if (shaped == nullptr) {
+            return TRI_ERROR_ARANGO_SHAPER_FAILED;
+          }
+
+          if (orderBarrier(trxCollection) == nullptr) {
+            return TRI_ERROR_OUT_OF_MEMORY;
+          }
+
+          int res = update(trxCollection,
+                           key,
+                           rid,
+                           mptr,
+                           shaped,
+                           policy,
+                           expectedRevision,
+                           actualRevision,
+                           forceSync);
+
+          TRI_FreeShapedJson(zone, shaped);
+          return res;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read a single document, identified by key
+////////////////////////////////////////////////////////////////////////////////
+
+        int readSingle (TRI_transaction_collection_t* trxCollection,
+                        TRI_doc_mptr_copy_t* mptr,
+                        std::string const& key) {
+
+          TRI_ASSERT(mptr != nullptr);
+
+          if (orderBarrier(trxCollection) == nullptr) {
+            return TRI_ERROR_OUT_OF_MEMORY;
+          }
+
+          try {
+            return TRI_ReadShapedJsonDocumentCollection(trxCollection,
+                                                        (TRI_voc_key_t) key.c_str(),
+                                                        mptr,
+                                                        ! isLocked(trxCollection, TRI_TRANSACTION_READ));
+          }
+          catch (triagens::arango::Exception const& ex) {
+            return ex.code();
+          }
+          catch (...) {
+            return TRI_ERROR_INTERNAL;
+          }
+        }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
@@ -547,34 +764,6 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read a single document, identified by key
-////////////////////////////////////////////////////////////////////////////////
-
-        int readSingle (TRI_transaction_collection_t* trxCollection,
-                        TRI_doc_mptr_copy_t* mptr,
-                        std::string const& key) {
-
-          TRI_ASSERT(mptr != nullptr);
-
-          if (orderBarrier(trxCollection) == nullptr) {
-            return TRI_ERROR_OUT_OF_MEMORY;
-          }
-
-          try {
-            return TRI_ReadShapedJsonDocumentCollection(trxCollection,
-                                                        (TRI_voc_key_t) key.c_str(),
-                                                        mptr,
-                                                        ! isLocked(trxCollection, TRI_TRANSACTION_READ));
-          }
-          catch (triagens::arango::Exception const& ex) {
-            return ex.code();
-          }
-          catch (...) {
-            return TRI_ERROR_INTERNAL;
-          }
-        }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief read all documents
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -770,18 +959,11 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read all master pointers, using skip and limit and an internal
-/// offset into the primary index. this can be used for incremental access to
-/// the documents without restarting the index scan at the begin
+/// @brief read all master pointers
 ////////////////////////////////////////////////////////////////////////////////
 
-        int readIncremental (TRI_transaction_collection_t* trxCollection,
-                             std::vector<TRI_doc_mptr_copy_t>& docs,
-                             TRI_voc_size_t& internalSkip,
-                             TRI_voc_size_t batchSize,
-                             TRI_voc_ssize_t skip,
-                             TRI_voc_size_t limit,
-                             uint32_t* total) {
+        int readSlice (TRI_transaction_collection_t* trxCollection,
+                       std::vector<TRI_doc_mptr_t*>& docs) {
 
           TRI_document_collection_t* document = documentCollection(trxCollection);
 
@@ -795,7 +977,6 @@ namespace triagens {
           if (document->_primaryIndex._nrUsed == 0) {
             // nothing to do
             this->unlock(trxCollection, TRI_TRANSACTION_READ);
-
             // READ-LOCK END
             return TRI_ERROR_NO_ERROR;
           }
@@ -804,31 +985,14 @@ namespace triagens {
             return TRI_ERROR_OUT_OF_MEMORY;
           }
 
-          void** beg = document->_primaryIndex._table;
-          void** end = beg + document->_primaryIndex._nrAlloc;
-
-          if (internalSkip > 0) {
-            beg += internalSkip;
-          }
-
-          void** ptr = beg;
-          uint32_t count = 0;
-          *total = (uint32_t) document->_primaryIndex._nrUsed;
+          void** ptr = document->_primaryIndex._table;
+          void** end = ptr + document->_primaryIndex._nrAlloc;
 
           // fetch documents, taking limit into account
-          for (; ptr < end && count < batchSize; ++ptr, ++internalSkip) {
+          for (; ptr < end; ++ptr) {
             if (*ptr) {
               TRI_doc_mptr_t* d = (TRI_doc_mptr_t*) *ptr;
-
-              if (skip > 0) {
-                --skip;
-              }
-              else {
-                docs.emplace_back(*d);
-                if (++count >= limit) {
-                  break;
-                }
-              }
+              docs.push_back(d);
             }
           }
 
@@ -894,45 +1058,6 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a single document, using JSON
-////////////////////////////////////////////////////////////////////////////////
-
-        int create (TRI_transaction_collection_t* trxCollection,
-                    TRI_df_marker_type_e markerType,
-                    TRI_doc_mptr_copy_t* mptr,
-                    TRI_json_t const* json,
-                    void const* data,
-                    bool forceSync) {
-
-          TRI_voc_key_t key = 0;
-          int res = DocumentHelper::getKey(json, &key);
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            return res;
-          }
-
-          TRI_shaper_t* shaper = this->shaper(trxCollection);
-          TRI_memory_zone_t* zone = shaper->_memoryZone;
-          TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(shaper, json, true, isLocked(trxCollection, TRI_TRANSACTION_WRITE));
-
-          if (shaped == nullptr) {
-            return TRI_ERROR_ARANGO_SHAPER_FAILED;
-          }
-
-          res = create(trxCollection,
-                       key,
-                       0,
-                       mptr,
-                       shaped,
-                       data,
-                       forceSync);
-
-          TRI_FreeShapedJson(zone, shaped);
-
-          return res;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a single document, using shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -964,46 +1089,6 @@ namespace triagens {
           catch (...) {
             return TRI_ERROR_INTERNAL;
           }
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief update a single document, using JSON
-////////////////////////////////////////////////////////////////////////////////
-
-        int update (TRI_transaction_collection_t* trxCollection,
-                    std::string const& key,
-                    TRI_voc_rid_t rid,
-                    TRI_doc_mptr_copy_t* mptr,
-                    TRI_json_t* const json,
-                    TRI_doc_update_policy_e policy,
-                    TRI_voc_rid_t expectedRevision,
-                    TRI_voc_rid_t* actualRevision,
-                    bool forceSync) {
-
-          TRI_shaper_t* shaper = this->shaper(trxCollection);
-          TRI_memory_zone_t* zone = shaper->_memoryZone;
-          TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(shaper, json, true, isLocked(trxCollection, TRI_TRANSACTION_WRITE));
-
-          if (shaped == nullptr) {
-            return TRI_ERROR_ARANGO_SHAPER_FAILED;
-          }
-
-          if (orderBarrier(trxCollection) == nullptr) {
-            return TRI_ERROR_OUT_OF_MEMORY;
-          }
-
-          int res = update(trxCollection,
-                           key,
-                           rid,
-                           mptr,
-                           shaped,
-                           policy,
-                           expectedRevision,
-                           actualRevision,
-                           forceSync);
-
-          TRI_FreeShapedJson(zone, shaped);
-          return res;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1045,36 +1130,6 @@ namespace triagens {
           }
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief delete a single document
-////////////////////////////////////////////////////////////////////////////////
-
-        int remove (TRI_transaction_collection_t* trxCollection,
-                    std::string const& key,
-                    TRI_voc_rid_t rid,
-                    TRI_doc_update_policy_e policy,
-                    TRI_voc_rid_t expectedRevision,
-                    TRI_voc_rid_t* actualRevision,
-                    bool forceSync) {
-
-          TRI_doc_update_policy_t updatePolicy(policy, expectedRevision, actualRevision);
-
-          try {
-            return TRI_RemoveShapedJsonDocumentCollection(trxCollection,
-                                                          (TRI_voc_key_t) key.c_str(),
-                                                          rid,
-                                                          nullptr,
-                                                          &updatePolicy,
-                                                          ! isLocked(trxCollection, TRI_TRANSACTION_WRITE),
-                                                          forceSync);
-          }
-          catch (triagens::arango::Exception const& ex) {
-            return ex.code();
-          }
-          catch (...) {
-            return TRI_ERROR_INTERNAL;
-          }
-        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief truncate a collection

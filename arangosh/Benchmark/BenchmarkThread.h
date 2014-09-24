@@ -32,12 +32,12 @@
 
 #include "Basics/Common.h"
 
-#include "BasicsC/hashes.h"
+#include "Basics/hashes.h"
 
 #include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Rest/HttpResponse.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"

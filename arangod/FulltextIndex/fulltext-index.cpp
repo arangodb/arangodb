@@ -29,8 +29,8 @@
 
 #include "fulltext-index.h"
 
-#include "BasicsC/locks.h"
-#include "BasicsC/logging.h"
+#include "Basics/locks.h"
+#include "Basics/logging.h"
 
 #include "fulltext-handles.h"
 #include "fulltext-list.h"
@@ -1029,7 +1029,6 @@ static node_t* EnsureSubNode (index_t* const idx,
                               const node_char_t c) {
   uint32_t numFollowers;
   uint32_t numAllocated;
-  uint32_t start;
   uint32_t i;
 
 #if TRI_FULLTEXT_DEBUG
@@ -1046,6 +1045,7 @@ static node_t* EnsureSubNode (index_t* const idx,
 
     followerKeys = NodeFollowersKeys(node);
     // divide the search space in 2 halves
+    uint32_t start;
     if (numFollowers >= 8 && followerKeys[numFollowers / 2] < c) {
       start = numFollowers / 2;
     }

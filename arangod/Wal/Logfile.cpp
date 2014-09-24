@@ -29,7 +29,7 @@
 
 #include "Logfile.h"
 #include "Basics/FileUtils.h"
-#include "BasicsC/files.h"
+#include "Basics/files.h"
 
 using namespace triagens::wal;
 
@@ -109,6 +109,11 @@ Logfile* Logfile::openExisting (std::string const& filename,
                 TRI_errno_string(res));
       return nullptr;
     }
+
+    // cannot figure out the type of error
+    LOG_ERROR("unable to open logfile '%s'",
+              filename.c_str());
+    return nullptr;
   }
 
   StatusType status = StatusType::OPEN;

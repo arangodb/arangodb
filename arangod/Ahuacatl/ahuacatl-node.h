@@ -31,7 +31,7 @@
 #define ARANGODB_AHUACATL_AHUACATL__NODE_H 1
 
 #include "Basics/Common.h"
-#include "BasicsC/vector.h"
+#include "Basics/vector.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     public macros
@@ -123,6 +123,7 @@
 
 typedef enum {
   TRI_AQL_NODE_NOP = 0,
+  TRI_AQL_NODE_ROOT,
   TRI_AQL_NODE_RETURN_EMPTY,
   TRI_AQL_NODE_SCOPE_START,
   TRI_AQL_NODE_SCOPE_END,

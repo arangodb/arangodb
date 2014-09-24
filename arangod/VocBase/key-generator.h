@@ -43,7 +43,7 @@
 // --SECTION--                                              FORWARD DECLARATIONS
 // -----------------------------------------------------------------------------
 
-struct TRI_json_s;
+struct TRI_json_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public defines
@@ -107,13 +107,13 @@ class KeyGenerator {
 /// @brief get the generator type from JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-    static GeneratorType generatorType (struct TRI_json_s const*);
+    static GeneratorType generatorType (struct TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a key generator based on the options specified
 ////////////////////////////////////////////////////////////////////////////////
 
-    static KeyGenerator* factory (struct TRI_json_s const*);
+    static KeyGenerator* factory (struct TRI_json_t const*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -144,7 +144,7 @@ class KeyGenerator {
 /// @brief return a JSON representation of the generator
 ////////////////////////////////////////////////////////////////////////////////
 
-    virtual struct TRI_json_s* toJson (TRI_memory_zone_t*) const = 0;
+    virtual struct TRI_json_t* toJson (TRI_memory_zone_t*) const = 0;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected functions
@@ -243,7 +243,7 @@ class TraditionalKeyGenerator : public KeyGenerator {
 /// @brief return a JSON representation of the generator
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct TRI_json_s* toJson (TRI_memory_zone_t*) const;
+    struct TRI_json_t* toJson (TRI_memory_zone_t*) const;
 };
 
 // -----------------------------------------------------------------------------
@@ -321,7 +321,7 @@ class AutoIncrementKeyGenerator : public KeyGenerator {
 /// @brief return a JSON representation of the generator
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct TRI_json_s* toJson (TRI_memory_zone_t*) const;
+    struct TRI_json_t* toJson (TRI_memory_zone_t*) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

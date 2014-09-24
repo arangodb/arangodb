@@ -29,9 +29,9 @@
 
 #include "Basics/Common.h"
 
-#include "BasicsC/messages.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/messages.h"
+#include "Basics/logging.h"
+#include "Basics/tri-strings.h"
 #include "Rest/InitialiseRest.h"
 #include "RestServer/ArangoServer.h"
 
@@ -426,7 +426,7 @@ int main (int argc, char* argv[]) {
   TRI_GlobalEntryFunction();
   TRIAGENS_REST_INITIALISE(argc, argv);
 
-  // create and start a ArangoDB server
+  // create and start an ArangoDB server
 
 #ifdef _WIN32
 

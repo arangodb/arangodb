@@ -40,7 +40,7 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_json_s;
+struct TRI_json_t;
 struct TRI_server_s;
 struct TRI_vocbase_s;
 
@@ -120,45 +120,45 @@ namespace triagens {
 /// @brief starts a transaction, based on the JSON provided
 ////////////////////////////////////////////////////////////////////////////////
 
-        int startTransaction (struct TRI_json_s const*);
+        int startTransaction (struct TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief aborts a transaction, based on the JSON provided
 ////////////////////////////////////////////////////////////////////////////////
 
-        int abortTransaction (struct TRI_json_s const*);
+        int abortTransaction (struct TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief commits a transaction, based on the JSON provided
 ////////////////////////////////////////////////////////////////////////////////
 
-        int commitTransaction (struct TRI_json_s const*);
+        int commitTransaction (struct TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief process a document operation, based on the JSON provided
 ////////////////////////////////////////////////////////////////////////////////
 
         int processDocument (TRI_replication_operation_e,
-                             struct TRI_json_s const*,
+                             struct TRI_json_t const*,
                              std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a collection, based on the JSON provided
 ////////////////////////////////////////////////////////////////////////////////
 
-        int renameCollection (struct TRI_json_s const*);
+        int renameCollection (struct TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief changes the properties of a collection, based on the JSON provided
 ////////////////////////////////////////////////////////////////////////////////
 
-        int changeCollection (struct TRI_json_s const*);
+        int changeCollection (struct TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief apply a single marker from the continuous log
 ////////////////////////////////////////////////////////////////////////////////
 
-        int applyLogMarker (struct TRI_json_s const*,
+        int applyLogMarker (struct TRI_json_t const*,
                             bool&,
                             std::string&);
 

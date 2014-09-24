@@ -36,7 +36,7 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_json_s;
+struct TRI_json_t;
 struct TRI_vocbase_s;
 
 // -----------------------------------------------------------------------------
@@ -101,7 +101,7 @@ bool TRI_LoadAuthInfo (struct TRI_vocbase_s*);
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_PopulateAuthInfo (struct TRI_vocbase_s*,
-                           struct TRI_json_s const*);
+                           struct TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reload the authentication info

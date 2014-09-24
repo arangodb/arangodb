@@ -32,7 +32,7 @@
 #include "Basics/Common.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 
 #include "Rest/Endpoint.h"
 

@@ -29,7 +29,7 @@
 
 #include "ShellImplementation.h"
 
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 
 using namespace std;
 

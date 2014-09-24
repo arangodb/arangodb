@@ -38,10 +38,38 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Ahuacatl/ahuacatl-statementlist.cpp \
 	arangod/Ahuacatl/ahuacatl-tokens.cpp \
 	arangod/Ahuacatl/ahuacatl-variable.cpp \
-	arangod/BitIndexes/bitarray.cpp \
-	arangod/BitIndexes/bitarrayIndex.cpp \
+	arangod/Aql/AqlItemBlock.cpp \
+	arangod/Aql/AqlValue.cpp \
+	arangod/Aql/Ast.cpp \
+	arangod/Aql/AstNode.cpp \
+	arangod/Aql/BindParameters.cpp \
+	arangod/Aql/ExecutionBlock.cpp \
+	arangod/Aql/ExecutionEngine.cpp \
+	arangod/Aql/ExecutionNode.cpp \
+	arangod/Aql/ExecutionPlan.cpp \
+	arangod/Aql/ExecutionStats.cpp \
+	arangod/Aql/Executor.cpp \
+	arangod/Aql/Expression.cpp \
+	arangod/Aql/Function.cpp \
+	arangod/Aql/Functions.cpp \
+	arangod/Aql/grammar.cpp \
+	arangod/Aql/NodeFinder.cpp \
+	arangod/Aql/Optimizer.cpp \
+	arangod/Aql/OptimizerRules.cpp \
+	arangod/Aql/Parser.cpp \
+	arangod/Aql/Query.cpp \
+	arangod/Aql/QueryRegistry.cpp \
+	arangod/Aql/RangeInfo.cpp \
+	arangod/Aql/RestAqlHandler.cpp \
+	arangod/Aql/Scopes.cpp \
+	arangod/Aql/Types.cpp \
+	arangod/Aql/tokens.cpp \
+	arangod/Aql/V8Expression.cpp \
+	arangod/Aql/Variable.cpp \
+	arangod/Aql/VariableGenerator.cpp \
+	arangod/Aql/ModificationOptions.cpp \
 	arangod/CapConstraint/cap-constraint.cpp \
-        arangod/Cluster/AgencyComm.cpp \
+	arangod/Cluster/AgencyComm.cpp \
 	arangod/Cluster/ApplicationCluster.cpp \
 	arangod/Cluster/ClusterComm.cpp \
 	arangod/Cluster/ClusterInfo.cpp \
@@ -61,7 +89,6 @@ arangod_libarangod_a_SOURCES = \
 	arangod/GeoIndex/geo-index.cpp \
 	arangod/HashIndex/hash-array.cpp \
 	arangod/HashIndex/hash-index.cpp \
-	arangod/IndexIterators/index-iterator.cpp \
 	arangod/IndexOperators/index-operator.cpp \
 	arangod/Replication/ContinuousSyncer.cpp \
 	arangod/Replication/InitialSyncer.cpp \
@@ -92,6 +119,13 @@ arangod_libarangod_a_SOURCES = \
 	arangod/V8Server/v8-dispatcher.cpp \
 	arangod/V8Server/v8-query.cpp \
 	arangod/V8Server/v8-vocbase.cpp \
+	arangod/V8Server/v8-wrapshapedjson.cpp \
+	arangod/V8Server/v8-vocindex.cpp \
+	arangod/V8Server/v8-voccursor.cpp \
+	arangod/V8Server/v8-replication.cpp \
+	arangod/V8Server/v8-collection.cpp \
+	arangod/V8Server/v8-collection-util.cpp \
+	arangod/V8Server/v8-util.cpp \
 	arangod/VocBase/auth.cpp \
 	arangod/VocBase/barrier.cpp \
 	arangod/VocBase/cleanup.cpp \
@@ -165,20 +199,25 @@ endif
 ################################################################################
 
 FLEXXX_FILES += \
-        arangod/Ahuacatl/ahuacatl-tokens.cpp
+	arangod/Ahuacatl/ahuacatl-tokens.cpp \
+	arangod/Aql/tokens.cpp
 
 ################################################################################
 ### @brief bison
 ################################################################################
 
 BISON_FILES += \
-	arangod/Ahuacatl/ahuacatl-grammar.cpp
+	arangod/Ahuacatl/ahuacatl-grammar.cpp \
+	arangod/Aql/grammar.cpp
 
 if ENABLE_MAINTAINER_MODE
 
 CLEANUP += \
 	arangod/Ahuacatl/ahuacatl-grammar.h \
-	arangod/Ahuacatl/ahuacatl-grammar.cpp
+	arangod/Ahuacatl/ahuacatl-grammar.cpp \
+	arangod/Aql/grammar.h \
+	arangod/Aql/grammar.cpp
+
 endif
 
 ################################################################################

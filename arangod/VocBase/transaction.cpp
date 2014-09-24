@@ -29,9 +29,9 @@
 
 #include "transaction.h"
 
-#include "BasicsC/conversions.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/conversions.h"
+#include "Basics/logging.h"
+#include "Basics/tri-strings.h"
 
 #include "Utils/Exception.h"
 #include "VocBase/collection.h"
@@ -810,6 +810,22 @@ void TRI_FreeTransaction (TRI_transaction_t* trx) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the transaction type from a string
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_transaction_type_e TRI_GetTransactionTypeFromStr (char const* s) {
+  if (TRI_EqualString(s, "read")) {
+    return TRI_TRANSACTION_READ;
+  }
+  else if (TRI_EqualString(s, "write")) {
+    return TRI_TRANSACTION_WRITE;
+  }
+  else {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid transaction type");
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the collection from a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -886,7 +902,7 @@ int TRI_AddCollectionTransaction (TRI_transaction_t* trx,
   }
 
   // check if we already have got this collection in the _collections vector
-  size_t position;
+  size_t position = 0;
   TRI_transaction_collection_t* trxCollection = FindCollection(trx, cid, &position);
 
   if (trxCollection != nullptr) {

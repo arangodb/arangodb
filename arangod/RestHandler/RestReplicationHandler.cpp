@@ -30,9 +30,9 @@
 #include "RestReplicationHandler.h"
 
 #include "Basics/JsonHelper.h"
-#include "BasicsC/conversions.h"
-#include "BasicsC/files.h"
-#include "BasicsC/logging.h"
+#include "Basics/conversions.h"
+#include "Basics/files.h"
+#include "Basics/logging.h"
 #include "HttpServer/HttpServer.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
@@ -2181,7 +2181,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
 
     TRI_document_collection_t* document = trxCollection->_collection->_collection;
     TRI_memory_zone_t* zone = document->getShaper()->_memoryZone;  // PROTECTED by trx in trxCollection
-    TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(document->getShaper(), json, true, true);  // PROTECTED by trx in trxCollection
+    TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(document->getShaper(), json, true);  // PROTECTED by trx in trxCollection
     
     if (shaped == nullptr) {
       errorMsg = TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
@@ -2676,12 +2676,11 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
     ClusterCommResult* result;
     CoordTransactionID coordTransactionID = TRI_NewTickServer();
 
-    bool force = false;
     char const* value;
     string forceopt;
     value = _request->value("force");
     if (value != nullptr) {
-      force = StringUtils::boolean(value);
+      bool force = StringUtils::boolean(value);
       if (force) {
         forceopt = "&force=true";
       }

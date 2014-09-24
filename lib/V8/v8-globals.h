@@ -72,9 +72,8 @@ namespace triagens {
 
 #define TRI_V8_CURRENT_GLOBALS                                  \
   v8::Isolate* isolate = v8::Isolate::GetCurrent();             \
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData(); \
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData()); \
   while (0)
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for current v8 globals and scope
@@ -82,10 +81,9 @@ namespace triagens {
 
 #define TRI_V8_CURRENT_GLOBALS_AND_SCOPE                        \
   v8::Isolate* isolate = v8::Isolate::GetCurrent();             \
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData(); \
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData()); \
   v8::HandleScope scope;                                        \
   while (0)
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for throwing an exception with an error code
@@ -102,6 +100,14 @@ namespace triagens {
 #define TRI_V8_EXCEPTION_MESSAGE(scope, code, message)               \
   return scope.Close(v8::ThrowException(                             \
     TRI_CreateErrorObject(__FILE__, __LINE__, code, message, true)))
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortcut for throwing an exception and returning
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_V8_EXCEPTION_FULL(scope, code, message)                  \
+  return scope.Close(v8::ThrowException(                             \
+    TRI_CreateErrorObject(__FILE__, __LINE__, code, message, false)))
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for throwing a usage exception and returning
@@ -527,6 +533,12 @@ typedef struct TRI_v8_global_s {
   v8::Persistent<v8::String> JournalSizeKey;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief "keepNull" key name
+////////////////////////////////////////////////////////////////////////////////
+
+  v8::Persistent<v8::String> KeepNullKey;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief "keyOptions" key name
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -555,6 +567,12 @@ typedef struct TRI_v8_global_s {
 ////////////////////////////////////////////////////////////////////////////////
 
   v8::Persistent<v8::String> OperationIDKey;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief "overwrite" key
+////////////////////////////////////////////////////////////////////////////////
+
+  v8::Persistent<v8::String> OverwriteKey;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief "parameters" key name
@@ -627,6 +645,12 @@ typedef struct TRI_v8_global_s {
 ////////////////////////////////////////////////////////////////////////////////
 
   v8::Persistent<v8::String> ShardIDKey;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief "silent" key name
+////////////////////////////////////////////////////////////////////////////////
+
+  v8::Persistent<v8::String> SilentKey;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief "sleep" key

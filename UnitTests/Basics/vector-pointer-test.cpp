@@ -27,7 +27,7 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "BasicsC/vector.h"
+#include "Basics/vector.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    private macros

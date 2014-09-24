@@ -29,11 +29,11 @@
 
 #include "ArangoClient.h"
 
-#include "BasicsC/files.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/messages.h"
-#include "BasicsC/tri-strings.h"
-#include "BasicsC/terminal-utils.h"
+#include "Basics/files.h"
+#include "Basics/logging.h"
+#include "Basics/messages.h"
+#include "Basics/tri-strings.h"
+#include "Basics/terminal-utils.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/ProgramOptions.h"
