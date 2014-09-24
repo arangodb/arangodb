@@ -134,6 +134,7 @@ void QueryRegistry::close (TRI_vocbase_t* vocbase, QueryId id, double ttl) {
   triagens::arango::TransactionBase::increaseNumbers(1, 1);
 
   qi->_isOpen = false;
+  qi->_expires = TRI_microtime() + qi->_timeToLive;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -173,8 +174,29 @@ void QueryRegistry::destroy (TRI_vocbase_t* vocbase, QueryId id) {
 /// @brief expireQueries
 ////////////////////////////////////////////////////////////////////////////////
 
-void expireQueries () {
-  // TODO
+void QueryRegistry::expireQueries () {
+  WRITE_LOCKER(_lock);
+  std::vector<std::pair<TRI_vocbase_t*, QueryId>> toDelete;
+  double now = TRI_microtime();
+  for (auto& x : _queries) {
+    // x.first is a TRI_vocbase_t* and
+    // x.second is a std::unordered_map<QueryId, QueryInfo*>
+    for (auto& y : x.second) {
+      // y.first is a QueryId and
+      // y.second is a QueryInfo*
+      QueryInfo*& qi(y.second);
+      if (! qi->isOpen && now > qi->_expires) {
+        toDelete.emplace_back(x.first, y.first);
+      }
+    }
+  }
+  for (auto& p : toDelete) {
+    try {  // just in case
+      destroy(p.first, p.second);
+    }
+    catch (...) {
+    }
+  }
 }
 
 // -----------------------------------------------------------------------------
