@@ -59,7 +59,7 @@ var generatePerfReportGrinderCSV = function (reportName, testdata) {
       }
     }
   }
-  fs.write(reportName + "_perftest.log", x);
+  fs.write("out_" + reportName + "_perftest.log", x);
 
 };
 
