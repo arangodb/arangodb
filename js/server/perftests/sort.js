@@ -342,7 +342,7 @@ var testMultiRangeBandpass = function (testParams, testMethodStr, testMethod) {
 
 var testOptions = {
   dbcols: 500,
-  runs: 5,   // number of runs for each test
+  runs: 5,   // number of runs for each test Has to be at least 3, else calculations will fail.
   strip: 1,   // how many min/max extreme values to ignore
   digits: 4   // result display digits
 };
@@ -386,6 +386,7 @@ var optimizerRuleTestSuite = [
   { name: "RangeBandpass",               func: testRangeBandpass},
   { name: "RangeBandpassInvalid",        func: testRangeBandpassInvalid},
   { name: "RangeBandstop",               func: testRangeBandstop},
+
   { name: "MultiRangeBandpass",          func: testMultiRangeBandpass},
 
   { name: "teardown",    setup: null, teardown: tearDown, params: null, func: null}
