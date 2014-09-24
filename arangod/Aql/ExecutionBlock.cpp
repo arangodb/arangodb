@@ -3481,16 +3481,22 @@ int GatherBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 
 int64_t GatherBlock::count () const {
   int64_t sum = 0;
-  for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
-    sum += (*it)->count();
+  for (auto x: _dependencies) {
+    if (x->count() == -1) {
+      return -1;
+    }
+    sum += x->count();
   }
   return sum;
 }
 
 int64_t GatherBlock::remaining () {
   int64_t sum = 0;
-  for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
-    sum += (*it)->remaining();
+  for (auto x: _dependencies) {
+    if (x->remaining() == -1) {
+      return -1;
+    }
+    sum += x->remaining();
   }
   return sum;
 }
