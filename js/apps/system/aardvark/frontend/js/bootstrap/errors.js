@@ -176,6 +176,8 @@
     "ERROR_QUERY_COMPILE_TIME_OPTIONS" : { "code" : 1575, "message" : "query options must be readable at query compile time" }, 
     "ERROR_QUERY_EXCEPTION_OPTIONS" : { "code" : 1576, "message" : "query options expected" }, 
     "ERROR_QUERY_BAD_JSON_PLAN"    : { "code" : 1577, "message" : "JSON describing execution plan was bad" }, 
+    "ERROR_QUERY_NOT_FOUND"        : { "code" : 1578, "message" : "query ID not found" }, 
+    "ERROR_QUERY_IN_USE"           : { "code" : 1579, "message" : "query with this ID is in use" }, 
     "ERROR_QUERY_FUNCTION_INVALID_NAME" : { "code" : 1580, "message" : "invalid user function name" }, 
     "ERROR_QUERY_FUNCTION_INVALID_CODE" : { "code" : 1581, "message" : "invalid user function code" }, 
     "ERROR_QUERY_FUNCTION_NOT_FOUND" : { "code" : 1582, "message" : "user function '%s()' not found" }, 

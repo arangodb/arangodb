@@ -42,12 +42,13 @@
 #include "VocBase/server.h"
 #include "V8Server/v8-vocbaseprivate.h"
 
-using namespace std;
+#include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionBlock.h"
+
+using namespace triagens::basics;
 using namespace triagens::arango;
 using namespace triagens::rest;
 using namespace triagens::aql;
-
-using Json = triagens::basics::Json;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public constants
@@ -57,7 +58,7 @@ using Json = triagens::basics::Json;
 /// @brief name of the queue
 ////////////////////////////////////////////////////////////////////////////////
 
-const string RestAqlHandler::QUEUE_NAME = "STANDARD";
+const std::string RestAqlHandler::QUEUE_NAME = "STANDARD";
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -92,17 +93,17 @@ bool RestAqlHandler::isDirect () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& RestAqlHandler::queue () const {
+std::string const& RestAqlHandler::queue () const {
   return QUEUE_NAME;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// createQuery, the body is a JSON with attributes "plan" for the execution
-/// plan and "options" for the options, all exactly as in
-/// AQL_EXECUTEJSON.
+/// @brief POST method for /_api/aql/instanciate
+/// The body is a JSON with attributes "plan" for the execution plan and
+/// "options" for the options, all exactly as in AQL_EXECUTEJSON.
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestAqlHandler::createQuery () {
+void RestAqlHandler::createQueryFromJson () {
   Json queryJson(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
   if (queryJson.isEmpty()) {
     return;
@@ -118,19 +119,13 @@ void RestAqlHandler::createQuery () {
   Json plan;
   Json options;
 
-  try {
-    plan = queryJson.get("plan").copy();
-  }
-  catch (...) {
+  plan = queryJson.get("plan").copy();   // cannot throw
+  if (plan.isEmpty()) {
     generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
       "body must be an object with attribute \"plan\"");
     return;
   }
-  try {
-    options = queryJson.get("options").copy();
-  }
-  catch (...) {
-  }
+  options = queryJson.get("options").copy();
 
   auto query = new Query(vocbase, plan, options.steal());
   QueryResult res = query->prepare();
@@ -140,14 +135,13 @@ void RestAqlHandler::createQuery () {
     delete query;
     return;
   }
-  query->closeTransaction();
 
   // Now the query is ready to go, store it in the registry and return:
   double ttl = 3600.0;
   bool found;
   char const* ttlstring = _request->header("ttl", found);
   if (found) {
-    ttl = triagens::basics::StringUtils::doubleDecimal(ttlstring);
+    ttl = StringUtils::doubleDecimal(ttlstring);
   }
   QueryId qId = TRI_NewTickServer();
   try {
@@ -160,30 +154,281 @@ void RestAqlHandler::createQuery () {
     return;
   }
 
-  _response = createResponse(triagens::rest::HttpResponse::OK);
+  _response = createResponse(triagens::rest::HttpResponse::ACCEPTED);
   _response->setContentType("application/json; charset=utf-8");
-  _response->body().appendText("{\"queryId\":\"");
-  _response->body().appendInteger(qId);
-  _response->body().appendText("\"}");
+  Json answerBody(Json::Array, 2);
+  answerBody("queryId", Json(StringUtils::itoa(qId)))
+            ("ttl",     Json(ttl));
+  _response->body().appendText(answerBody.toString());
 }
 
-void RestAqlHandler::deleteQuery () {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief POST method for /_api/aql/parse
+/// The body is a Json with attributes "query" for the query string,
+/// "parameters" for the query parameters and "options" for the options.
+/// This does the same as AQL_PARSE with exactly these parameters and
+/// does not keep the query hanging around.
+////////////////////////////////////////////////////////////////////////////////
+
+void RestAqlHandler::parseQuery () {
   _response = createResponse(triagens::rest::HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
-  _response->body().appendText("{\"b\":12}");
+  Json answerBody(Json::Array, 1);
+  answerBody("bla", Json("Hallo"));
+  _response->body().appendText(answerBody.toString());
 }
 
-void RestAqlHandler::useQuery () {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief POST method for /_api/aql/explain
+/// The body is a Json with attributes "query" for the query string,
+/// "parameters" for the query parameters and "options" for the options.
+/// This does the same as AQL_EXPLAIN with exactly these parameters and
+/// does not keep the query hanging around.
+////////////////////////////////////////////////////////////////////////////////
+
+void RestAqlHandler::explainQuery () {
+  Json queryJson(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
+  if (queryJson.isEmpty()) {
+    return;
+  }
+  
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+  if (vocbase == nullptr) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_INTERNAL, "cannot get vocbase from context");
+    return;
+  }
+
+  Json queryString;
+  Json parameters;
+  Json options;
+
+  queryString = queryJson.get("plan").copy();       // cannot throw
+  if (queryString.isEmpty()) {
+    generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
+      "body must be an object with attribute \"plan\"");
+    return;
+  }
+  parameters = queryJson.get("parameters").copy();  // cannot throw
+  options = queryJson.get("options").copy();        // cannot throw
+
+  // ...
+
   _response = createResponse(triagens::rest::HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
-  _response->body().appendText("{\"c\":12}");
+  Json answerBody(Json::Array, 1);
+  answerBody("bla", Json("Hallo"));
+  _response->body().appendText(answerBody.toString());
 }
 
-void RestAqlHandler::getInfoQuery () {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief POST method for /_api/aql/query
+/// The body is a Json with attributes "query" for the query string,
+/// "parameters" for the query parameters and "options" for the options.
+/// This sets up the query as as AQL_EXECUTE would, but does not use
+/// the cursor API yet. Rather, the query is stored in the query registry
+/// for later use by PUT requests.
+////////////////////////////////////////////////////////////////////////////////
+
+void RestAqlHandler::createQueryFromString () {
   _response = createResponse(triagens::rest::HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
-  _response->body().appendText("{\"d\":12}");
+  Json answerBody(Json::Array, 1);
+  answerBody("bla", Json("Hallo"));
+  _response->body().appendText(answerBody.toString());
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief DELETE method for /_api/aql/<queryId>
+/// The query specified by <queryId> is deleted.
+////////////////////////////////////////////////////////////////////////////////
+
+void RestAqlHandler::deleteQuery (std::string const& idString) {
+  // the DELETE verb
+
+  QueryId qId;
+  TRI_vocbase_t* vocbase;
+  Query* query = nullptr;
+  if (findQuery(idString, qId, vocbase, query)) {
+    return;
+  }
+
+  _queryRegistry->destroy(vocbase, qId);
+
+  _response = createResponse(triagens::rest::HttpResponse::OK);
+  _response->setContentType("application/json; charset=utf-8");
+  Json answerBody(Json::Array, 2);
+  answerBody("error", Json(false))
+            ("queryId", Json(idString));
+  _response->body().appendText(answerBody.toString());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief PUT method for /_api/aql/<operation>/<queryId>, this is using 
+/// the part of the cursor API with side effects.
+/// <operation>: can be "getSome" or "skip".
+/// The body must be a Json with the following attributes:
+/// For the "getSome" operation one has to give:
+///   "atLeast": 
+///   "atMost": both must be positive integers, the cursor returns never 
+///             more than "atMost" items and tries to return at least
+///             "atLeast". Note that it is possible to return fewer than
+///             "atLeast", for example if there are only fewer items
+///             left. However, the implementation may return fewer items
+///             than "atLeast" for internal reasons, for example to avoid
+///             excessive copying. The result is the JSON representation of an 
+///             AqlItemBlock.
+///             If "atLeast" is not given it defaults to 1, if "atMost" is not
+///             given it defaults to ExecutionBlock::DefaultBatchSize.
+/// For the "skip" operation one should give:
+///   "number": must be a positive integer, the cursor skips as many items,
+///             possibly exhausting the cursor.
+///             The result is a JSON with the attributes "error" (boolean),
+///             "errorMessage" (if applicable) and "exhausted" (boolean)
+///             to indicate whether or not the cursor is exhausted.
+///             If "number" is not given it defaults to 1.
+////////////////////////////////////////////////////////////////////////////////
+
+void RestAqlHandler::useQuery (std::string const& operation,
+                               std::string const& idString) {
+  // the PUT verb
+
+  QueryId qId;
+  TRI_vocbase_t* vocbase;
+  Query* query = nullptr;
+  if (findQuery(idString, qId, vocbase, query)) {
+    return;
+  }
+
+  TRI_ASSERT(query->engine() != nullptr);
+
+  Json queryJson(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
+  if (queryJson.isEmpty()) {
+    _queryRegistry->close(vocbase, qId);
+    return;
+  }
+
+  Json answerBody(Json::Array, 2);
+
+  if (operation == "getSome") {
+    auto atLeast = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
+                                                         "atLeast", 1);
+    auto atMost = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
+                               "atMost", ExecutionBlock::DefaultBatchSize);
+    std::unique_ptr<AqlItemBlock> items(query->engine()->getSome(atLeast, atMost));
+    if (items.get() == nullptr) {
+      answerBody("items", Json(Json::Null));
+    }
+    else {
+      try {
+        answerBody("items", items->toJson(query->trx()));
+      }
+      catch (...) {
+        _queryRegistry->close(vocbase, qId);
+        generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                      "cannot transform AqlItemBlock to Json");
+        return;
+      }
+    }
+  }
+  else if (operation == "skip") {
+    auto number = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
+                                                         "number", 1);
+    try {
+      bool exhausted = query->engine()->skip(number);
+      answerBody("exhausted", Json(exhausted));
+    }
+    catch (...) {
+      _queryRegistry->close(vocbase, qId);
+      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                    "skip lead to an exception");
+      return;
+    }
+  }
+  else {
+    _queryRegistry->close(vocbase, qId);
+    generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+    return;
+  }
+
+  _queryRegistry->close(vocbase, qId);
+
+  _response = createResponse(triagens::rest::HttpResponse::OK);
+  _response->setContentType("application/json; charset=utf-8");
+  answerBody("error", Json(false));
+  _response->body().appendText(answerBody.toString());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief GET method for /_api/aql/<operation>/<queryId>, this is using
+/// the part of the cursor API without side effects. The operation must
+/// be one of "count", "remaining" and "hasMore". The result is a Json
+/// with, depending on the operation, the following attributes:
+///   for "count": the result has the attributes "error" (set to false)
+///                and "count" set to the total number of documents.
+///   for "remaining": the result has the attributes "error" (set to false)
+///                and "remaining" set to the total number of documents.
+///   for "hasMore": the result has the attributes "error" (set to false)
+///                  and "hasMore" set to a boolean value.
+/// Note that both "count" and "remaining" may return "unknown" if the
+/// internal cursor API returned -1.
+////////////////////////////////////////////////////////////////////////////////
+
+void RestAqlHandler::getInfoQuery (std::string const& operation,
+                                   std::string const& idString) {
+  // the GET verb
+
+  QueryId qId;
+  TRI_vocbase_t* vocbase;
+  Query* query = nullptr;
+  if (findQuery(idString, qId, vocbase, query)) {
+    return;
+  }
+
+  Json answerBody(Json::Array, 2);
+
+  TRI_ASSERT(query->engine() != nullptr);
+
+  int64_t number;
+  if (operation == "count") {
+    number = query->engine()->count();
+    if (number == -1) {
+      answerBody("count", Json("unknown"));
+    }
+    else {
+      answerBody("count", Json(static_cast<double>(number)));
+    }
+  }
+  else if (operation == "remaining") {
+    number = query->engine()->remaining();
+    if (number == -1) {
+      answerBody("remaining", Json("unknown"));
+    }
+    else {
+      answerBody("remaining", Json(static_cast<double>(number)));
+    }
+  }
+  else if (operation == "hasMore") {
+    bool hasMore = query->engine()->hasMore();
+    answerBody("hasMore", Json(hasMore));
+  }
+  else {
+    _queryRegistry->close(vocbase, qId);
+    generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+    return;
+  }
+
+  _queryRegistry->close(vocbase, qId);
+
+  _response = createResponse(triagens::rest::HttpResponse::OK);
+  _response->setContentType("application/json; charset=utf-8");
+  answerBody("error", Json(false));
+  _response->body().appendText(answerBody.toString());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes the handler
+////////////////////////////////////////////////////////////////////////////////
 
 triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
   auto context = _applicationV8->enterContext("STANDARD", _vocbase,
@@ -193,31 +438,62 @@ triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
                   "cannot enter V8 context");
   }
   else {
+    std::vector<std::string> const& suffix = _request->suffix();
+
     // extract the sub-request type
     HttpRequest::HttpRequestType type = _request->requestType();
 
     // execute one of the CRUD methods
     switch (type) {
       case HttpRequest::HTTP_REQUEST_POST: {
-        createQuery(); 
+        if (suffix.size() != 1) {
+          generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+        }
+        else if (suffix[0] == "instanciate") {
+          createQueryFromJson(); 
+        }
+        else if (suffix[0] == "parse") {
+          parseQuery();
+        }
+        else if (suffix[0] == "explain") {
+          explainQuery();
+        }
+        else if (suffix[0] == "query") {
+          createQueryFromString();
+        }
+        else {
+          generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+        }
         break;
       }
       case HttpRequest::HTTP_REQUEST_DELETE: {
-        deleteQuery();
+        if (suffix.size() != 1) {
+          generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+        }
+        else {
+          deleteQuery(suffix[0]);
+        }
         break;
       }
       case HttpRequest::HTTP_REQUEST_PUT: {
-        useQuery();
+        if (suffix.size() != 2) {
+          generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+        }
+        else {
+          useQuery(suffix[0], suffix[1]);
+        }
         break;
       }
       case HttpRequest::HTTP_REQUEST_GET: {
-        getInfoQuery();
+        if (suffix.size() != 2) {
+          generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+        }
+        else {
+          getInfoQuery(suffix[0], suffix[1]);
+        }
         break;
       }
-      case HttpRequest::HTTP_REQUEST_HEAD: {
-        _response = createResponse(triagens::rest::HttpResponse::METHOD_NOT_ALLOWED);
-        break;
-      }
+      case HttpRequest::HTTP_REQUEST_HEAD:
       case HttpRequest::HTTP_REQUEST_PATCH:
       case HttpRequest::HTTP_REQUEST_OPTIONS:
       case HttpRequest::HTTP_REQUEST_ILLEGAL: {
@@ -233,6 +509,42 @@ triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
   _applicationV8->exitContext(context);
 
   return status_t(HANDLER_DONE);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dig out vocbase from context and query from ID, handle errors
+////////////////////////////////////////////////////////////////////////////////
+
+bool RestAqlHandler::findQuery (std::string const& idString,
+                                QueryId& qId,
+                                TRI_vocbase_t*& vocbase,
+                                Query*& query) {
+  // get the vocbase from the context:
+  vocbase = GetContextVocBase();
+  if (vocbase == nullptr) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_INTERNAL, "cannot get vocbase from context");
+    return true;
+  }
+
+  qId = StringUtils::uint64(idString);
+
+  query = nullptr;
+
+  try {
+    query = _queryRegistry->open(vocbase, qId);
+  }
+  catch (...) {
+    generateError(HttpResponse::FORBIDDEN, TRI_ERROR_QUERY_IN_USE);
+    return true;
+  }
+
+  if (query == nullptr) {
+    generateError(HttpResponse::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND);
+    return true;
+  }
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -261,6 +573,14 @@ TRI_json_t* RestAqlHandler::parseJsonBody () {
   }
 
   TRI_ASSERT(errmsg == nullptr);
+
+  if (! TRI_IsArrayJson(json)) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "body of request must be a JSON array");
+    return nullptr;
+  }
+
   return json;
 }
 

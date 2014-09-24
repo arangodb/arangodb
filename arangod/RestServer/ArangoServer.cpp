@@ -846,6 +846,7 @@ int ArangoServer::startupServer () {
   _pairForAql = new std::pair<ApplicationV8*, aql::QueryRegistry*>;
   _pairForAql->first = _applicationV8;
   _pairForAql->second = _queryRegistry;
+  _server->_queryRegistry = static_cast<void*>(_queryRegistry);
 
   // ...........................................................................
   // create endpoints and handlers
@@ -914,6 +915,8 @@ int ArangoServer::startupServer () {
   }
 
   _applicationServer->stop();
+
+  _server->_queryRegistry = nullptr;
 
   delete _queryRegistry;
   _queryRegistry = nullptr;
