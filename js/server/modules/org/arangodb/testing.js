@@ -387,11 +387,10 @@ function runThere (options, instanceInfo, file) {
     if (!r.error && r.code === 200) {
       r = JSON.parse(r.body);
     }
-/*
-    else {
-      print("Error on the remote arangod:\n" + r.body);
+    if (file.indexOf("-spec") !== -1) {
+      // remoting a jasmine suite... 
+      r = {status: r, message: ''};
     }
-*/
   }
   catch (err) {
     r = err;
