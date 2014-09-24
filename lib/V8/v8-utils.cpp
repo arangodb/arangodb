@@ -704,12 +704,11 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
       result->Set(v8::String::New("message"), v8::String::New(returnMessage.c_str()));
 
       // process response headers
-      const map<string, string> responseHeaders = response->getHeaderFields();
-      map<string, string>::const_iterator it;
+      auto responseHeaders = response->getHeaderFields();
 
       v8::Handle<v8::Object> headers = v8::Object::New();
 
-      for (it = responseHeaders.begin(); it != responseHeaders.end(); ++it) {
+      for (auto it = responseHeaders.begin(); it != responseHeaders.end(); ++it) {
         headers->Set(v8::String::New((*it).first.c_str()), v8::String::New((*it).second.c_str()));
       }
 

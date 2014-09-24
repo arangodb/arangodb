@@ -1452,10 +1452,9 @@ v8::Handle<v8::Object> PrepareClusterCommResultForJS(
 
       // The headers:
       v8::Handle<v8::Object> h = v8::Object::New();
-      map<string,string> headers = res->result->getHeaderFields();
-      for (auto i = headers.begin(); i != headers.end(); ++i) {
-        h->Set(v8::String::New(i->first.c_str()),
-               v8::String::New(i->second.c_str()));
+      for (auto const& i : res->result->getHeaderFields()) {
+        h->Set(v8::String::New(i.first.c_str(), (int) i.first.size()),
+               v8::String::New(i.second.c_str(), (int) i.second.size()));
       }
       r->Set(v8::String::New("headers"), h);
 

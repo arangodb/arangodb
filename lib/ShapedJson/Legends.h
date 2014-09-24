@@ -237,11 +237,6 @@ namespace triagens {
       return 0;
     }
 
-    static TRI_shape_pid_t FailureFunction2 (TRI_shaper_t*, char const*, bool) {
-      TRI_ASSERT(false);
-      return 0;
-    }
-
     static TRI_shape_pid_t FailureFunction2 (TRI_shaper_t*, char const*) {
       TRI_ASSERT(false);
       return 0;
