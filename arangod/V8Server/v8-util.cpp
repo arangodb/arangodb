@@ -106,7 +106,7 @@ v8::Handle<v8::Object> CreateErrorObjectAhuacatl (TRI_aql_error_t* error) {
 
 static bool ParseDocumentHandle (v8::Handle<v8::Value> const arg,
                                  string& collectionName,
-                                 TRI_voc_key_t& key) {
+                                 std::unique_ptr<char[]>& key) {
   TRI_ASSERT(collectionName.empty());
 
   if (! arg->IsString()) {
@@ -124,13 +124,22 @@ static bool ParseDocumentHandle (v8::Handle<v8::Value> const arg,
   size_t split;
   if (TRI_ValidateDocumentIdKeyGenerator(*str, &split)) {
     collectionName = string(*str, split);
-    key = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, *str + split + 1, str.length() - split - 1);
+    auto const length = str.length() - split - 1;
+    auto buffer = new char[length + 1];
+    memcpy(buffer, *str + split + 1, length);
+    buffer[length] = '\0';
+    key.reset(buffer);
     return true;
   }
 
   // document key only
   if (TraditionalKeyGenerator::validateKey(*str)) {
-    key = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, *str, str.length());
+    auto const length = str.length();
+    auto buffer = new char[length + 1];
+    memcpy(buffer, *str, length);
+    buffer[length] = '\0';
+    key.reset(buffer);
+
     return true;
   }
 
@@ -143,7 +152,7 @@ static bool ParseDocumentHandle (v8::Handle<v8::Value> const arg,
 
 bool ExtractDocumentHandle (v8::Handle<v8::Value> const val,
                             string& collectionName,
-                            TRI_voc_key_t& key,
+                            std::unique_ptr<char[]>& key,
                             TRI_voc_rid_t& rid) {
   // reset the collection identifier and the revision
   collectionName = "";
