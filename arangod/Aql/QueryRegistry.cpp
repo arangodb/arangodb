@@ -160,6 +160,8 @@ void QueryRegistry::destroy (TRI_vocbase_t* vocbase, QueryId id) {
   // the debugging counters for transactions:
   if (! qi->_isOpen) {
     qi->_query->trx()->registerTransactionWithContext();
+    // Also, we need to count down the debugging counters for transactions:
+    triagens::arango::TransactionBase::increaseNumbers(1, 1);
   }
 
   // Now we can delete it:
@@ -175,18 +177,20 @@ void QueryRegistry::destroy (TRI_vocbase_t* vocbase, QueryId id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void QueryRegistry::expireQueries () {
-  WRITE_LOCKER(_lock);
   std::vector<std::pair<TRI_vocbase_t*, QueryId>> toDelete;
-  double now = TRI_microtime();
-  for (auto& x : _queries) {
-    // x.first is a TRI_vocbase_t* and
-    // x.second is a std::unordered_map<QueryId, QueryInfo*>
-    for (auto& y : x.second) {
-      // y.first is a QueryId and
-      // y.second is a QueryInfo*
-      QueryInfo*& qi(y.second);
-      if (! qi->_isOpen && now > qi->_expires) {
-        toDelete.emplace_back(x.first, y.first);
+  {
+    WRITE_LOCKER(_lock);
+    double now = TRI_microtime();
+    for (auto& x : _queries) {
+      // x.first is a TRI_vocbase_t* and
+      // x.second is a std::unordered_map<QueryId, QueryInfo*>
+      for (auto& y : x.second) {
+        // y.first is a QueryId and
+        // y.second is a QueryInfo*
+        QueryInfo*& qi(y.second);
+        if (! qi->_isOpen && now > qi->_expires) {
+          toDelete.emplace_back(x.first, y.first);
+        }
       }
     }
   }
