@@ -31,7 +31,7 @@ var jsunity = require("jsunity");
 var exports;
 var db = internal.db;
 //var helper = require("org/arangodb/aql-helper");
-var PY = function (plan) { require("internal").print(require("js-yaml").safeDump(plan));};
+//var PY = function (plan) { require("internal").print(require("js-yaml").safeDump(plan));};
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -42,7 +42,7 @@ var ruleName = "sort";
 //  var removeCalculationNodes = "remove-unnecessary-calculations-2";
 var colName = "perf_" + ruleName.replace(/-/g, "_");
 var colNameOther = colName + "_XX";
-var paramNone = { optimizer: { rules: [ "-all" ] } };
+//var paramNone = { optimizer: { rules: [ "-all" ] } };
 var paramProfile = {  profile : true };
 
 // various choices to control the optimizer: 
@@ -62,7 +62,7 @@ var skiplist;
 var skiplist2;
 
 var oldApi = function (query, plan, bindVars) {
-  db._query(query, bindVars)
+  db._query(query, bindVars);
   return {};
 };
 var newApi = function (query, plan, bindVars) {
@@ -106,7 +106,7 @@ var setUp = function (options) {
   skiplist.ensureSkiplist("a", "b");
   skiplist.ensureSkiplist("d");
 //  skiplist.ensureIndex({ type: "hash", fields: [ "c" ], unique: false });
-  if (skiplist.count() != ((loopto*loopto) + 2*loopto)) {
+  if (skiplist.count() !== ((loopto*loopto) + 2*loopto)) {
     throw "1: not all planned entries made it to disk, bailing out. Expecting: " + ((loopto*loopto) + 2*loopto) + "got: " + skiplist2.count();
   }
     
@@ -121,7 +121,7 @@ var setUp = function (options) {
   }
   skiplist2.ensureSkiplist("f", "g");
   skiplist2.ensureSkiplist("i");
-  if (skiplist2.count() != ((loopto*loopto) + 2*loopto)) {
+  if (skiplist2.count() !== ((loopto*loopto) + 2*loopto)) {
     throw "2: not all planned entries made it to disk, bailing out. Expecting: " + ((loopto*loopto) + 2*loopto) + "got: " + skiplist2.count();
   }
 //  skiplist2.ensureIndex({ type: "hash", fields: [ "h" ], unique: false });
@@ -271,7 +271,6 @@ var testRangeSuperseedsSort2 = function (testParams, testMethodStr, testMethod) 
 /// @brief test in detail that an index range can be used for an equality filter.
 ////////////////////////////////////////////////////////////////////////////////
 var testRangeEquals = function (testParams, testMethodStr, testMethod) {
-
   var query = "FOR v IN " + colName + " FILTER v.a == 1 RETURN [v.a, v.b]";
   return testMethod.executeQuery(query, {}, {});
 };
@@ -333,7 +332,7 @@ var testMultiRangeBandpass = function (testParams, testMethodStr, testMethod) {
   var query = "FOR v IN " + colName +
     " FILTER ((v.a > 3 && v.a < 5) || (v.a > 4 && v.a < 7)) RETURN [v.a, v.b]";
   return testMethod.executeQuery(query, {}, {});
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
@@ -356,10 +355,10 @@ var testMethods = {
   
   */
 
-}
+};
 
 var optimizerRuleTestSuite = [
-  { name: "setup",    setup: setUp, Teardown: null, params: null, func: null},
+  { name: "setup",    setUp: setUp, teardown: null, params: null, func: null},
 
   { name: "RuleNoEffect1",                func: testRuleNoEffect1},
   { name: "RuleNoEffect2",                func: testRuleNoEffect2},
@@ -389,7 +388,7 @@ var optimizerRuleTestSuite = [
 
   { name: "MultiRangeBandpass",          func: testMultiRangeBandpass},
 
-  { name: "teardown",    setup: null, teardown: tearDown, params: null, func: null}
+  { name: "teardown",    setUp: null, teardown: tearDown, params: null, func: null}
 ];
 
 var loadTestRunner = require("loadtestrunner");
@@ -401,10 +400,10 @@ var repgen = require("reportgenerator");
 
 var ret = loadTestRunner.loadTestRunner(optimizerRuleTestSuite, testOptions, testMethods);
 //require("internal").print(JSON.stringify(ret));
-repgen.reportGenerator("sort", ret, "blarg")
+repgen.generatePerfReportGrinderCSV("sort", ret);
 
+return ret;
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:
-return ret;
