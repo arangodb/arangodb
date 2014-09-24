@@ -1527,9 +1527,45 @@ public:
           }
           return false;
         }
+        // for the simple case . . .
+        size_t _atDep = 0; // the current dependency 
+        
+        // for the non-simple case . . .
+        bool getBlock (size_t i, size_t atLeast, size_t atMost);
+        std::pair<size_t,size_t> nextValue ();
 
-        size_t _atDep = 0;
+        std::vector<std::deque<AqlItemBlock*>> _buffer; 
+        // buffer the incoming values from each dependency separately
+        std::vector<std::pair<size_t, size_t>> _pos;
+        // pairs (i, _buffer.at(i)) 
+        std::vector<std::pair<RegisterId, bool>> _sortRegisters;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief OurLessThan
+////////////////////////////////////////////////////////////////////////////////
+
+        class OurLessThan {
+
+          public:
+            OurLessThan (AQL_TRANSACTION_V8* trx,
+                         std::vector<std::deque<AqlItemBlock*>>& buffer,
+                         std::vector<std::pair<RegisterId, bool>>& sortRegisters,
+                         std::vector<TRI_document_collection_t const*>& colls)
+              : _trx(trx),
+                _buffer(buffer),
+                _sortRegisters(sortRegisters),
+                _colls(colls) {
+            }
+
+            bool operator() (std::pair<size_t, size_t> const& a,
+                             std::pair<size_t, size_t> const& b);
+
+          private:
+            AQL_TRANSACTION_V8* _trx;
+            std::vector<std::deque<AqlItemBlock*>>& _buffer;
+            std::vector<std::pair<RegisterId, bool>>& _sortRegisters;
+            std::vector<TRI_document_collection_t const*>& _colls;
+        };
 
     };
 

@@ -3335,7 +3335,7 @@ static int PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
       pidnames[j]._name = static_cast<char*>(attributes->_buffer[j]);
 
       if (create) {
-        pidnames[j]._pid = shaper->findOrCreateAttributePathByName(shaper, pidnames[j]._name, true);
+        pidnames[j]._pid = shaper->findOrCreateAttributePathByName(shaper, pidnames[j]._name);
       }
       else {
         pidnames[j]._pid = shaper->lookupAttributePathByName(shaper, pidnames[j]._name);
@@ -3376,7 +3376,7 @@ static int PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
 
       TRI_shape_pid_t pid;
       if (create) {
-        pid = shaper->findOrCreateAttributePathByName(shaper, name, true);
+        pid = shaper->findOrCreateAttributePathByName(shaper, name);
       }
       else {
         pid = shaper->lookupAttributePathByName(shaper, name);
@@ -3613,7 +3613,7 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
   shaper = document->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (location != nullptr) {
-    loc = shaper->findOrCreateAttributePathByName(shaper, location, true);
+    loc = shaper->findOrCreateAttributePathByName(shaper, location);
 
     if (loc == 0) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -3622,7 +3622,7 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
   }
 
   if (latitude != nullptr) {
-    lat = shaper->findOrCreateAttributePathByName(shaper, latitude, true);
+    lat = shaper->findOrCreateAttributePathByName(shaper, latitude);
 
     if (lat == 0) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -3631,7 +3631,7 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
   }
 
   if (longitude != nullptr) {
-    lon = shaper->findOrCreateAttributePathByName(shaper, longitude, true);
+    lon = shaper->findOrCreateAttributePathByName(shaper, longitude);
 
     if (lon == 0) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
