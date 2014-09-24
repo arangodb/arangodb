@@ -3475,6 +3475,20 @@ int GatherBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   }
 
   // handle local data (if any) TODO
+  if(!isSimple()){
+    _buffer.reserve(_dependencies.size());
+
+    auto en = static_cast<GatherNode const*>(getPlanNode());
+
+    _sortRegisters.clear();
+
+    for( auto p: en->_elements){
+      //We know that staticAnalysis has been run, so _varOverview is set up
+      auto it = _varOverview->varInfo.find(p.first->id);
+      TRI_ASSERT(it != _varOverview->varInfo.end());
+      _sortRegisters.push_back(make_pair(it->second.registerId, p.second));
+    }
+  }
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -3500,30 +3514,23 @@ int64_t GatherBlock::remaining () {
   }
   return sum;
 }
-
-/* bool GatherBlock::getBlock (size_t atLeast, size_t atMost) {
-  int64_t sum = 0;
-  while (sum < atLeast && _atDep < _dependencies.size()) {
-    AqlItemBlock* docs = _dependencies[_atDep]->getSome(atLeast, atMost);
+// get blocks from dependencies.at(i) into _buffer.at(i)
+bool GatherBlock::getBlock (size_t i, size_t atLeast, size_t atMost) {
+  TRI_ASSERT(0 < i && i < _dependencies.size());
+  bool res = false;
+  AqlItemBlock* docs = _dependencies.at(i)->getSome(atLeast, atMost);
+  if (docs != nullptr) {
     try {
-      _buffer.push_back(docs);
+      _buffer.at(i).push_back(docs);
     }
     catch (...) {
       delete docs;
       throw;
     }
-    sum += docs->size();
-    if ( _dependencies[_atDep]->_done ){
-      ++_atDep;
-    }
+    res = true;
   }
-
-  if (sum == 0) {
-    return false;
-  }
-  
-  return true;
-}*/
+  return res;
+}
 
 AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
   
@@ -3542,9 +3549,30 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
       return nullptr;
     }
     return res;
-  //} else { // merge sort the results from the deps
-
   }
+ 
+  // the non-simple case . . .
+  size_t available = 0; 
+  for (auto i = 0; i < _dependencies.size(); i++) {
+    if (_buffer.at(i).empty()) {
+      if (getBlock(i, DefaultBatchSize, DefaultBatchSize)) {
+        _pos.at(i) = make_pair(i,0);           
+      }
+    }
+    available += _buffer.at(i).size();
+  }
+
+  if (available == 0) {
+    _done = true;
+    return nullptr;
+  }
+
+  size_t toSend = std::min(available, atMost);
+  
+  for (auto i = 0; i < toSend; i++) {
+    // copy nextValue() into the output block 
+  }
+
   return nullptr; // to keep the compiler happy
 
 }
@@ -3569,8 +3597,65 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
 
   }
   return 0; // to keep the compiler happy
-
 }
+
+// get the next pair (i, j) from _buffer, where i is for _buffer.at(i)
+// and j is for the jth row of _buffer.at(i).front()
+//
+// it is your responsibility to make sure that 
+// _buffer.at(i).empty() implies that _dependencies.at(i) is done. 
+
+std::pair<size_t,size_t> GatherBlock::nextValue () {
+  
+  //find first non-empty element of _buffer
+  size_t index;
+  for (index = 0; index < _buffer.size(); index++) {
+    if (!_buffer.empty()){
+      break;
+    }
+  }
+  
+  std::vector<TRI_document_collection_t const*> colls;
+  for (RegisterId i = 0; i < _sortRegisters.size(); i++) {
+    colls.push_back(_buffer.at(index).front()->getDocumentCollection(_sortRegisters[i].first));
+  }
+
+  // comparison function
+  OurLessThan ourLessThan(_trx, _buffer, _sortRegisters, colls);
+
+  std::pair<size_t, size_t> val = *std::min_element(_pos.begin(), _pos.end(), ourLessThan);
+  _pos.at(val.first).second++;
+  // handle the case this makes _pos.at(min).second++ over the end of the
+  // _buffer.at(min)
+
+  return val;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      class SortBlock::OurLessThan
+// -----------------------------------------------------------------------------
+
+bool GatherBlock::OurLessThan::operator() (std::pair<size_t, size_t> const& a,
+                                           std::pair<size_t, size_t> const& b) {
+  size_t i = 0;
+  for (auto reg : _sortRegisters) {
+    int cmp = AqlValue::Compare(_trx,
+                                _buffer.at(a.first).front()->getValue(a.second, reg.first),
+                                _colls[i],
+                                _buffer.at(b.first).front()->getValue(b.second, reg.first),
+                                _colls[i]);
+    if (cmp == -1) {
+      return reg.second;
+    } 
+    else if (cmp == 1) {
+      return ! reg.second;
+    }
+    i++;
+  }
+
+  return false;
+}
+
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
