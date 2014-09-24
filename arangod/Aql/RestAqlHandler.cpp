@@ -292,10 +292,64 @@ void RestAqlHandler::explainQuery () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestAqlHandler::createQueryFromString () {
-  _response = createResponse(triagens::rest::HttpResponse::OK);
+  Json queryJson(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
+  if (queryJson.isEmpty()) {
+    return;
+  }
+  
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+  if (vocbase == nullptr) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_INTERNAL, "cannot get vocbase from context");
+    return;
+  }
+
+  std::string queryString;
+  Json parameters;
+  Json options;
+
+  queryString = JsonHelper::getStringValue(queryJson.json(), "query", "");
+  if (queryString.empty()) {
+    generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
+      "body must be an object with attribute \"query\"");
+    return;
+  }
+  parameters = queryJson.get("parameters").copy();  // cannot throw
+  options = queryJson.get("options").copy();        // cannot throw
+
+  auto query = new Query(vocbase, queryString.c_str(), queryString.size(),
+                         parameters.steal(), options.steal());
+  QueryResult res = query->prepare();
+  if (res.code != TRI_ERROR_NO_ERROR) {
+    generateError(HttpResponse::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN,
+      res.details);
+    delete query;
+    return;
+  }
+
+  // Now the query is ready to go, store it in the registry and return:
+  double ttl = 3600.0;
+  bool found;
+  char const* ttlstring = _request->header("ttl", found);
+  if (found) {
+    ttl = StringUtils::doubleDecimal(ttlstring);
+  }
+  QueryId qId = TRI_NewTickServer();
+  try {
+    _queryRegistry->insert(vocbase, qId, query, ttl);
+  }
+  catch (...) {
+    generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
+        "could not keep query in registry");
+    delete query;
+    return;
+  }
+
+  _response = createResponse(triagens::rest::HttpResponse::ACCEPTED);
   _response->setContentType("application/json; charset=utf-8");
-  Json answerBody(Json::Array, 1);
-  answerBody("bla", Json("Hallo"));
+  Json answerBody(Json::Array, 2);
+  answerBody("queryId", Json(StringUtils::itoa(qId)))
+            ("ttl",     Json(ttl));
   _response->body().appendText(answerBody.toString());
 }
 
