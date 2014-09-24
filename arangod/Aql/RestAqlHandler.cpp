@@ -199,25 +199,42 @@ void RestAqlHandler::explainQuery () {
     return;
   }
 
-  Json queryString;
+  std::string queryString;
   Json parameters;
   Json options;
 
-  queryString = queryJson.get("plan").copy();       // cannot throw
-  if (queryString.isEmpty()) {
+  queryString = JsonHelper::getStringValue(queryJson.json(), "query", "");
+  if (queryString.empty()) {
     generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
-      "body must be an object with attribute \"plan\"");
+      "body must be an object with attribute \"query\"");
     return;
   }
   parameters = queryJson.get("parameters").copy();  // cannot throw
   options = queryJson.get("options").copy();        // cannot throw
 
-  // ...
+  auto query = new Query(vocbase, queryString.c_str(), queryString.size(),
+                         parameters.steal(), options.steal());
+  QueryResult res = query->explain();
+  if (res.code != TRI_ERROR_NO_ERROR) {
+    generateError(HttpResponse::BAD, res.code, res.details);
+    delete query;
+    return;
+  }
+
+  // Now prepare the answer:
+  Json answerBody(Json::Array, 1);
+  if (res.json != nullptr) {
+    if (query->allPlans()) {
+      answerBody("plans", Json(res.zone, res.json));
+    }
+    else {
+      answerBody("plan", Json(res.zone, res.json));
+    }
+  }
+  res.json = nullptr;
 
   _response = createResponse(triagens::rest::HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
-  Json answerBody(Json::Array, 1);
-  answerBody("bla", Json("Hallo"));
   _response->body().appendText(answerBody.toString());
 }
 
