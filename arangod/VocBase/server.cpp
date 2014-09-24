@@ -35,6 +35,7 @@
 
 #include <regex.h>
 
+#include "Aql/QueryRegistry.h"
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/hashes.h"
@@ -1493,6 +1494,12 @@ static void DatabaseManager (void* data) {
       }
 
       usleep(DATABASE_MANAGER_INTERVAL);
+      // The following is only necessary after a wait:
+      auto queryRegistry = static_cast<triagens::aql::QueryRegistry*>
+                                      (server->_queryRegistry);
+      if (queryRegistry != nullptr) {
+        queryRegistry->expireQueries();
+      }
     }
 
     // next iteration
@@ -1625,6 +1632,8 @@ int TRI_InitServer (TRI_server_t* server,
   TRI_InitMutex(&server->_createLock);
 
   server->_disableReplicationAppliers = disableAppliers;
+
+  server->_queryRegistry = nullptr;   // will be filled in later
 
   server->_initialised = true;
 
