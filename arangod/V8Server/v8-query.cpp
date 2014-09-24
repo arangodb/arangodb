@@ -906,7 +906,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
 
     for (uint32_t i = 0;  i < len; ++i) {
       TRI_voc_cid_t cid;
-      TRI_voc_key_t key = 0;
+      std::unique_ptr<char[]> key;
 
       res = TRI_ParseVertex(trx.resolver(), cid, key, vertices->Get(i));
 
@@ -915,11 +915,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
         continue;
       }
 
-      std::vector<TRI_doc_mptr_copy_t>&& edges = TRI_LookupEdgesDocumentCollection(document, direction, cid, key);
-
-      if (key != 0) {
-       TRI_FreeString(TRI_CORE_MEM_ZONE, key);
-      }
+      std::vector<TRI_doc_mptr_copy_t>&& edges = TRI_LookupEdgesDocumentCollection(document, direction, cid, key.get());
 
       for (size_t j = 0;  j < edges.size();  ++j) {
         v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, edges[j].getDataPtr());
@@ -945,7 +941,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
 
   // argument is a single vertex
   else {
-    TRI_voc_key_t key = nullptr;
+    std::unique_ptr<char[]> key;
     TRI_voc_cid_t cid;
 
     res = TRI_ParseVertex(trx.resolver(), cid, key, argv[0]);
@@ -954,13 +950,9 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
       TRI_V8_EXCEPTION(scope, res);
     }
 
-    std::vector<TRI_doc_mptr_copy_t>&& edges = TRI_LookupEdgesDocumentCollection(document, direction, cid, key);
+    std::vector<TRI_doc_mptr_copy_t>&& edges = TRI_LookupEdgesDocumentCollection(document, direction, cid, key.get());
 
     trx.finish(res);
-
-    if (key != nullptr) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, key);
-    }
 
     uint32_t const n = static_cast<uint32_t>(edges.size());
     documents = v8::Array::New(static_cast<int>(n));

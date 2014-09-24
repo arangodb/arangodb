@@ -2370,12 +2370,12 @@ static v8::Handle<v8::Value> JS_ListEndpoints (v8::Arguments const& argv) {
 
 int TRI_ParseVertex (CollectionNameResolver const* resolver,
                      TRI_voc_cid_t& cid,
-                     TRI_voc_key_t& key,
+                     std::unique_ptr<char[]>& key,
                      v8::Handle<v8::Value> const val) {
 
   v8::HandleScope scope;
 
-  TRI_ASSERT(key == nullptr);
+  TRI_ASSERT(key.get() == nullptr);
 
   // reset everything
   string collectionName;
@@ -2387,13 +2387,10 @@ int TRI_ParseVertex (CollectionNameResolver const* resolver,
   }
 
   // we have at least a key, we also might have a collection name
-  TRI_ASSERT(key != nullptr);
+  TRI_ASSERT(key.get() != nullptr);
 
   if (collectionName.empty()) {
     // we do not know the collection
-    TRI_FreeString(TRI_CORE_MEM_ZONE, key);
-    key = nullptr;
-
     return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
   }
 
@@ -2405,8 +2402,6 @@ int TRI_ParseVertex (CollectionNameResolver const* resolver,
   }
 
   if (cid == 0) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, key);
-    key = nullptr;
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
