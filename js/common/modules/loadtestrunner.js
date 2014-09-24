@@ -66,9 +66,9 @@ var loadTestRunner = function (tests, options, testMethods) {
       }
     }
 
-    if (typeof test.setup === "function") {
+    if (typeof test.setUp === "function") {
 
-      test.setup(options);
+      test.setUp(options);
     }
 
     for (oneTestMethod in testMethods) {
@@ -80,8 +80,8 @@ var loadTestRunner = function (tests, options, testMethods) {
       }
     }
 
-    if (typeof test.teardown === "function") {
-      test.teardown();
+    if (typeof test.tearDown === "function") {
+      test.tearDown();
     }
     return results;
   };
@@ -123,8 +123,8 @@ var loadTestRunner = function (tests, options, testMethods) {
     for (i = 0; i < tests.length; ++i) {
       test = tests[i];
       if ((typeof(test.func) !== "function") &&
-          (typeof(test.setup) === "function")){
-        test.setup(options);
+          (typeof(test.setUp) === "function")){
+        test.setUp(options);
       }
     }
 
@@ -179,8 +179,8 @@ var loadTestRunner = function (tests, options, testMethods) {
     for (i = 0; i < tests.length; ++i) {
       test = tests[i];
       if ((typeof(test.func) !== "function") &&
-          (typeof(test.teardown) === "function")){
-        test.teardown(options);
+          (typeof(test.tearDown) === "function")){
+        test.tearDown(options);
       }
     }
     results.status = true;

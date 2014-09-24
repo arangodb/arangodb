@@ -2,7 +2,7 @@
  */
 var fs = require("fs");
 
-var generatePerfReport = function (reportName, testdata, longdesc) {
+var generatePerfReportXML = function (reportName, testdata) {
   "use strict";
   var x = '<?xml version="1.0" encoding="UTF-8"?>\n' +
     '<report name="' + reportName + '" categ="' + reportName + '">\n' + 
@@ -40,4 +40,29 @@ var generatePerfReport = function (reportName, testdata, longdesc) {
 
 };
 
-exports.reportGenerator = generatePerfReport;
+var generatePerfReportGrinderCSV = function (reportName, testdata) {
+  "use strict";
+  var x = "Thread, Run, Test, Start time (ms since Epoch), Test time, Errors, HTTP response code, HTTP response length, HTTP response errors, Time to resolve host, Time to establish connection, Time to first byte, New connections\n";
+
+
+  for (var testname in testdata) {
+    if (testdata.hasOwnProperty(testname)) {
+      for (var testCalculation in testdata[testname]) {
+        if (testdata[testname].hasOwnProperty(testCalculation) &&
+            (testCalculation !== 'status'))
+        {
+          var s = testdata[testname][testCalculation].duration;
+          if (!isNaN(s)) {
+            x = x + '0, 0, ' + testname + '/' + testCalculation + ',' + require("internal").time() + ', ' + s + ', 0, 0, 0, 0, 0, 0, 0\n';
+          }
+        }
+      }
+    }
+  }
+  fs.write(reportName + "_perftest.log", x);
+
+};
+
+
+exports.reportGeneratorXML = generatePerfReportXML;
+exports.generatePerfReportGrinderCSV = generatePerfReportGrinderCSV;
