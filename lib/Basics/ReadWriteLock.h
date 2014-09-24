@@ -33,7 +33,7 @@
 
 #include "Basics/Common.h"
 
-#include "BasicsC/locks.h"
+#include "Basics/locks.h"
 
 #undef TRI_READ_WRITE_LOCK_COUNTER
 

@@ -30,12 +30,12 @@
 
 #include "Cluster/ClusterInfo.h"
 
-#include "BasicsC/conversions.h"
-#include "BasicsC/json.h"
-#include "BasicsC/json-utilities.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
-#include "BasicsC/vector.h"
+#include "Basics/conversions.h"
+#include "Basics/json.h"
+#include "Basics/logging.h"
+#include "Basics/tri-strings.h"
+#include "Basics/vector.h"
+#include "Basics/json-utilities.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"

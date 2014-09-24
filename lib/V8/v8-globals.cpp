@@ -88,6 +88,7 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     IsSystemKey(),
     IsVolatileKey(),
     JournalSizeKey(),
+    KeepNullKey(),
     KeyOptionsKey(),
     LengthKey(),
     LifeTimeKey(),
@@ -105,6 +106,7 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     SecureKey(),
     ServerKey(),
     ShardIDKey(),
+    SilentKey(),
     SleepKey(),
     StatusKey(),
     SuffixKey(),
@@ -167,11 +169,13 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
   IsSystemKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("isSystem"));
   IsVolatileKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("isVolatile"));
   JournalSizeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("journalSize"));
+  KeepNullKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("keepNull"));
   KeyOptionsKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("keyOptions"));
   LengthKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("length"));
   LifeTimeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("lifeTime"));
   NameKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("name"));
   OperationIDKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("operationID"));
+  OverwriteKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("overwrite"));
   ParametersKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("parameters"));
   PathKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("path"));
   PrefixKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("prefix"));
@@ -184,6 +188,7 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
   SecureKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("secure"));
   ServerKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("server"));
   ShardIDKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("shardID"));
+  SilentKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("silent"));
   SleepKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("sleep"));
   StatusKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("status"));
   SuffixKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("suffix"));
@@ -221,7 +226,7 @@ TRI_v8_global_s::~TRI_v8_global_s () {
 TRI_v8_global_t* TRI_CreateV8Globals(v8::Isolate* isolate) {
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
 
-  if (v8g == 0) {
+  if (v8g == nullptr) {
     v8g = new TRI_v8_global_t(isolate);
     isolate->SetData(v8g);
   }

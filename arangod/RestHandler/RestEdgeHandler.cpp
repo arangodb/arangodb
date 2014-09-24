@@ -30,8 +30,8 @@
 #include "RestEdgeHandler.h"
 
 #include "Basics/StringUtils.h"
-#include "BasicsC/conversions.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/conversions.h"
+#include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
@@ -237,9 +237,9 @@ bool RestEdgeHandler::createDocument () {
     return false;
   }
 
-  TRI_document_collection_t* primary = trx.documentCollection();
+  TRI_document_collection_t* document = trx.documentCollection();
 
-  if (primary->_info._type != TRI_COL_TYPE_EDGE) {
+  if (document->_info._type != TRI_COL_TYPE_EDGE) {
     // check if we are inserting with the EDGE handler into a non-EDGE collection
     generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);

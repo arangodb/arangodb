@@ -29,8 +29,8 @@
 
 #include "geo-index.h"
 
-#include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/logging.h"
+#include "Basics/tri-strings.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/voc-shaper.h"
 
@@ -478,7 +478,7 @@ TRI_index_t* TRI_CreateGeo1Index (TRI_document_collection_t* document,
 
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 
-  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_GEO1_INDEX, document, unique);
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_GEO1_INDEX, document, unique, false);
 
   idx->_ignoreNull = ignoreNull;
 
@@ -505,10 +505,6 @@ TRI_index_t* TRI_CreateGeo1Index (TRI_document_collection_t* document,
   geo->_longitude  = 0;
   geo->_geoJson    = geoJson;
 
-  GeoIndex_assignMethod(&(idx->indexQuery), TRI_INDEX_METHOD_ASSIGNMENT_QUERY);
-  GeoIndex_assignMethod(&(idx->indexQueryFree), TRI_INDEX_METHOD_ASSIGNMENT_FREE);
-  GeoIndex_assignMethod(&(idx->indexQueryResult), TRI_INDEX_METHOD_ASSIGNMENT_RESULT);
-
   return idx;
 }
 
@@ -532,8 +528,7 @@ TRI_index_t* TRI_CreateGeo2Index (TRI_document_collection_t* document,
 
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 
-  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_GEO2_INDEX, document, unique);
-
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_GEO2_INDEX, document, unique, false); 
   idx->_ignoreNull = ignoreNull;
 
   idx->memory   = MemoryGeoIndex;
@@ -559,10 +554,6 @@ TRI_index_t* TRI_CreateGeo2Index (TRI_document_collection_t* document,
   geo->_location   = 0;
   geo->_latitude   = latitude;
   geo->_longitude  = longitude;
-
-  GeoIndex_assignMethod(&(idx->indexQuery), TRI_INDEX_METHOD_ASSIGNMENT_QUERY);
-  GeoIndex_assignMethod(&(idx->indexQueryFree), TRI_INDEX_METHOD_ASSIGNMENT_FREE);
-  GeoIndex_assignMethod(&(idx->indexQueryResult), TRI_INDEX_METHOD_ASSIGNMENT_RESULT);
 
   return idx;
 }

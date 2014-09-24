@@ -30,7 +30,7 @@
 #include "RestBatchHandler.h"
 
 #include "Basics/StringUtils.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "HttpServer/HttpServer.h"
 #include "Rest/HttpRequest.h"
 

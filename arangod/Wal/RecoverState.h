@@ -94,6 +94,14 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if there will be a drop marker for the collection
+////////////////////////////////////////////////////////////////////////////////
+ 
+       bool willBeDropped (TRI_voc_cid_t collectionId) const { 
+        return (droppedIds.find(collectionId) != droppedIds.end());
+       }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if a database is dropped already
 ////////////////////////////////////////////////////////////////////////////////
  
@@ -300,6 +308,7 @@ namespace triagens {
       std::unordered_set<TRI_voc_tick_t>                                          remoteTransactionDatabases;
       std::unordered_set<TRI_voc_cid_t>                                           droppedCollections;
       std::unordered_set<TRI_voc_tick_t>                                          droppedDatabases;
+      std::unordered_set<TRI_voc_cid_t>                                           droppedIds;
 
       TRI_voc_tick_t                                                              lastTick;
       std::vector<Logfile*>                                                       logfilesToProcess;

@@ -38,7 +38,7 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_json_s;
+struct TRI_json_t;
 struct TRI_replication_applier_configuration_s;
 struct TRI_transaction_collection_s;
 struct TRI_vocbase_s;
@@ -185,8 +185,8 @@ namespace triagens {
 /// @brief handle the information about a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        int handleCollection (struct TRI_json_s const*,
-                              struct TRI_json_s const*,
+        int handleCollection (struct TRI_json_t const*,
+                              struct TRI_json_t const*,
                               std::string&,
                               sync_phase_e);
 
@@ -194,14 +194,14 @@ namespace triagens {
 /// @brief handle the inventory response of the master
 ////////////////////////////////////////////////////////////////////////////////
 
-        int handleInventoryResponse (struct TRI_json_s const*,
+        int handleInventoryResponse (struct TRI_json_t const*,
                                      std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterate over all collections from a list and apply an action
 ////////////////////////////////////////////////////////////////////////////////
 
-        int iterateCollections (struct TRI_json_s const*,
+        int iterateCollections (struct TRI_json_t const*,
                                 std::string&,
                                 sync_phase_e);
 

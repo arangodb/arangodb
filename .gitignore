@@ -70,15 +70,22 @@ UnitTests/geo_suite
 arangod/Ahuacatl/ahuacatl-grammar.c
 arangod/Ahuacatl/ahuacatl-grammar.cpp
 arangod/Ahuacatl/ahuacatl-grammar.h
+arangod/Ahuacatl/ahuacatl-grammar.hpp
 arangod/Ahuacatl/ahuacatl-grammar.output
 arangod/Ahuacatl/ahuacatl-tokens.cpp
+arangod/Aql/grammar.c
+arangod/Aql/grammar.cpp
+arangod/Aql/grammar.h
+arangod/Aql/grammar.hpp
+arangod/Aql/grammar.output
+arangod/Aql/tokens.cpp
 bin/
 etc/arangodb/*.conf
 js/common/bootstrap/errors.js
-lib/BasicsC/local-configuration.h
-lib/BasicsC/stamp-h2
-lib/BasicsC/voc-errors.c
-lib/BasicsC/voc-errors.h
+lib/Basics/local-configuration.h
+lib/Basics/stamp-h2
+lib/Basics/voc-errors.cpp
+lib/Basics/voc-errors.h
 lib/JsonParser/json-parser.c
 lib/JsonParser/json-parser.cpp
 lib/V8/v8-json.cpp
@@ -102,3 +109,5 @@ js/apps/*
 
 3rdParty/etcd/src/
 Documentation/Books/allComments.txt
+
+.gdb-history

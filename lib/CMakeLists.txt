@@ -15,25 +15,25 @@ include_directories(.)
 ################################################################################
 
 if (APPLE)
-  SET(LIB_ARANGO_APPLE BasicsC/locks-macos.c)
+  SET(LIB_ARANGO_APPLE Basics/locks-macos.cpp)
 endif ()
 
 if (MSVC)
   SET(LIB_ARANGO_MSVC
-      BasicsC/locks-win32.c
-      BasicsC/memory-map-win32.c
-      BasicsC/terminal-utils-win32.c
-      BasicsC/threads-win32.c
-      BasicsC/win-utils.c
+      Basics/locks-win32.cpp
+      Basics/memory-map-win32.cpp
+      Basics/terminal-utils-win32.cpp
+      Basics/threads-win32.cpp
+      Basics/win-utils.cpp
       Utilities/LinenoiseShell.cpp
-      Zip/iowin32.c
+      Zip/iowin32.cpp
   )
 else ()
   SET(LIB_ARANGO_POSIX
-      BasicsC/locks-posix.c
-      BasicsC/memory-map-posix.c
-      BasicsC/terminal-utils-posix.c
-      BasicsC/threads-posix.c
+      Basics/locks-posix.cpp
+      Basics/memory-map-posix.cpp
+      Basics/terminal-utils-posix.cpp
+      Basics/threads-posix.cpp
       Rest/EndpointUnixDomain.cpp
       Utilities/ReadlineShell.cpp
   )
@@ -45,61 +45,61 @@ add_library(
     ${LIB_ARANGO_APPLE}
     ${LIB_ARANGO_MSVC}
     ${LIB_ARANGO_POSIX}
+    Basics/application-exit.cpp
+    Basics/associative-multi.cpp
+    Basics/associative.cpp
     Basics/ConditionLocker.cpp
     Basics/ConditionVariable.cpp
+    Basics/conversions.cpp
+    Basics/csv.cpp
+    Basics/debugging.cpp
+    Basics/error.cpp
     Basics/Exceptions.cpp
+    Basics/fasthash.cpp
+    Basics/files.cpp
     Basics/FileUtils.cpp
+    Basics/hashes.cpp
+    Basics/init.cpp
     Basics/InitialiseBasics.cpp
+    Basics/json.cpp
+    Basics/json-utilities.cpp
     Basics/JsonHelper.cpp
+    Basics/linked-list.cpp
+    Basics/logging.cpp
+    Basics/memory.cpp
+    Basics/mimetypes.cpp
     Basics/Mutex.cpp
     Basics/MutexLocker.cpp
     Basics/Nonce.cpp
+    Basics/prime-numbers.cpp
+    Basics/process-utils.cpp
     Basics/ProgramOptions.cpp
     Basics/ProgramOptionsDescription.cpp
+    Basics/random.cpp
     Basics/RandomGenerator.cpp
     Basics/ReadLocker.cpp
     Basics/ReadUnlocker.cpp
     Basics/ReadWriteLock.cpp
+    Basics/skip-list.cpp
+    Basics/socket-utils.cpp
+    Basics/ssl-helper.cpp
+    Basics/string-buffer.cpp
     Basics/StringUtils.cpp
+    Basics/structures.cpp
+    Basics/system-functions.cpp
+    Basics/terminal-utils.cpp
     Basics/Thread.cpp
     Basics/Timing.cpp
+    Basics/tri-strings.cpp
+    Basics/tri-zip.cpp
     Basics/Utf8Helper.cpp
+    Basics/utf8-helper.cpp
+    Basics/vector.cpp
+    Basics/voc-errors.cpp
+    Basics/voc-mimetypes.cpp
     Basics/WriteLocker.cpp
     Basics/WriteUnlocker.cpp
-    Basics/ssl-helper.cpp
-    BasicsC/application-exit.c
-    BasicsC/associative-multi.c
-    BasicsC/associative.c
-    BasicsC/conversions.c
-    BasicsC/csv.c
-    BasicsC/debugging.c
-    BasicsC/error.c
-    BasicsC/fasthash.c
-    BasicsC/files.c
-    BasicsC/hashes.c
-    Basics/init.cpp
-    BasicsC/json.c
-    BasicsC/json-utilities.c
-    BasicsC/linked-list.c
-    BasicsC/logging.c
-    BasicsC/memory.c
-    BasicsC/mimetypes.c
-    BasicsC/prime-numbers.c
-    BasicsC/process-utils.c
-    BasicsC/random.c
-    BasicsC/skip-list.c
-    BasicsC/socket-utils.c
-    BasicsC/string-buffer.c
-    BasicsC/tri-strings.c
-    BasicsC/structures.c
-    BasicsC/system-functions.c
-    BasicsC/terminal-utils.c
-    BasicsC/utf8-helper.c
-    BasicsC/vector.c
-    BasicsC/voc-errors.c
-    BasicsC/voc-mimetypes.c
-    BasicsC/tri-zip.c
-    BasicsC/xxhash.c
+    Basics/xxhash.cpp
     JsonParser/json-parser.cpp
     ProgramOptions/program-options.cpp
     Rest/AnyServer.cpp
@@ -124,9 +124,9 @@ add_library(
     Utilities/LineEditor.cpp
     Utilities/ShellImplementation.cpp
     Utilities/ShellImplFactory.cpp
-    Zip/ioapi.c
-    Zip/unzip.c
-    Zip/zip.c
+    Zip/ioapi.cpp
+    Zip/unzip.cpp
+    Zip/zip.cpp
 )
 
 ################################################################################
@@ -194,6 +194,7 @@ add_library(
     STATIC
     V8/JSLoader.cpp
     V8/V8LineEditor.cpp
+    V8/V8StringConverter.cpp
     V8/v8-buffer.cpp
     V8/v8-conv.cpp
     V8/v8-execution.cpp
@@ -219,7 +220,7 @@ if (USE_MRUBY)
       STATIC
       MRuby/MRLoader.cpp
       MRuby/MRLineEditor.cpp
-      MRuby/mr-utils.c
+      MRuby/mr-utils.cpp
   )
 endif ()
 

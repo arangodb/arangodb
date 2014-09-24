@@ -12,66 +12,66 @@ lib_libarango_a_CPPFLAGS = \
 	$(AM_CPPFLAGS) 
 
 lib_libarango_a_SOURCES = \
+	lib/Basics/application-exit.cpp \
+	lib/Basics/associative-multi.cpp \
+	lib/Basics/associative.cpp \
 	lib/Basics/ConditionLocker.cpp \
 	lib/Basics/ConditionVariable.cpp \
+	lib/Basics/conversions.cpp \
+	lib/Basics/csv.cpp \
+	lib/Basics/debugging.cpp \
+	lib/Basics/error.cpp \
 	lib/Basics/Exceptions.cpp \
+	lib/Basics/fasthash.cpp \
+	lib/Basics/files.cpp \
 	lib/Basics/FileUtils.cpp \
+	lib/Basics/hashes.cpp \
+	lib/Basics/init.cpp \
 	lib/Basics/InitialiseBasics.cpp \
+	lib/Basics/json.cpp \
+	lib/Basics/json-utilities.cpp \
 	lib/Basics/JsonHelper.cpp \
+	lib/Basics/linked-list.cpp \
+	lib/Basics/locks-macos.cpp \
+	lib/Basics/locks-posix.cpp \
+	lib/Basics/logging.cpp \
+	lib/Basics/memory.cpp \
+	lib/Basics/memory-map-posix.cpp \
+	lib/Basics/mimetypes.cpp \
 	lib/Basics/Mutex.cpp \
 	lib/Basics/MutexLocker.cpp \
 	lib/Basics/Nonce.cpp \
+	lib/Basics/prime-numbers.cpp \
+	lib/Basics/process-utils.cpp \
 	lib/Basics/ProgramOptions.cpp \
 	lib/Basics/ProgramOptionsDescription.cpp \
+	lib/Basics/random.cpp \
 	lib/Basics/RandomGenerator.cpp \
 	lib/Basics/ReadLocker.cpp \
 	lib/Basics/ReadUnlocker.cpp \
 	lib/Basics/ReadWriteLock.cpp \
+	lib/Basics/skip-list.cpp \
+	lib/Basics/socket-utils.cpp \
+	lib/Basics/ssl-helper.cpp \
+	lib/Basics/string-buffer.cpp \
 	lib/Basics/StringUtils.cpp \
+	lib/Basics/structures.cpp \
+	lib/Basics/system-functions.cpp \
+	lib/Basics/terminal-utils-posix.cpp \
+	lib/Basics/terminal-utils.cpp \
 	lib/Basics/Thread.cpp \
+	lib/Basics/threads-posix.cpp \
 	lib/Basics/Timing.cpp \
+	lib/Basics/tri-strings.cpp \
+	lib/Basics/tri-zip.cpp \
 	lib/Basics/Utf8Helper.cpp \
+	lib/Basics/utf8-helper.cpp \
+	lib/Basics/vector.cpp \
+	lib/Basics/voc-errors.cpp \
+	lib/Basics/voc-mimetypes.cpp \
 	lib/Basics/WriteLocker.cpp \
 	lib/Basics/WriteUnlocker.cpp \
-	lib/Basics/ssl-helper.cpp \
-	lib/BasicsC/application-exit.c \
-	lib/BasicsC/associative-multi.c \
-	lib/BasicsC/associative.c \
-	lib/BasicsC/conversions.c \
-	lib/BasicsC/csv.c \
-	lib/BasicsC/debugging.c \
-	lib/BasicsC/error.c \
-	lib/BasicsC/fasthash.c \
-	lib/BasicsC/files.c \
-	lib/BasicsC/hashes.c \
-	lib/Basics/init.cpp \
-	lib/BasicsC/json.c \
-	lib/BasicsC/json-utilities.c \
-	lib/BasicsC/linked-list.c \
-	lib/BasicsC/locks-macos.c \
-	lib/BasicsC/locks-posix.c \
-	lib/BasicsC/logging.c \
-	lib/BasicsC/memory.c \
-	lib/BasicsC/memory-map-posix.c \
-	lib/BasicsC/mimetypes.c \
-	lib/BasicsC/prime-numbers.c \
-	lib/BasicsC/process-utils.c \
-	lib/BasicsC/random.c \
-	lib/BasicsC/skip-list.c \
-	lib/BasicsC/socket-utils.c \
-	lib/BasicsC/string-buffer.c \
-	lib/BasicsC/tri-strings.c \
-	lib/BasicsC/structures.c \
-	lib/BasicsC/system-functions.c \
-	lib/BasicsC/terminal-utils-posix.c \
-	lib/BasicsC/terminal-utils.c \
-	lib/BasicsC/threads-posix.c \
-	lib/BasicsC/utf8-helper.c \
-	lib/BasicsC/vector.c \
-	lib/BasicsC/voc-errors.c \
-	lib/BasicsC/voc-mimetypes.c \
-	lib/BasicsC/xxhash.c \
-	lib/BasicsC/tri-zip.c \
+	lib/Basics/xxhash.cpp \
 	lib/JsonParser/json-parser.cpp \
 	lib/ProgramOptions/program-options.cpp \
 	lib/Rest/AnyServer.cpp \
@@ -96,9 +96,9 @@ lib_libarango_a_SOURCES = \
 	lib/Utilities/ScriptLoader.cpp \
 	lib/Utilities/ShellImplFactory.cpp \
 	lib/Utilities/ShellImplementation.cpp \
-	lib/Zip/ioapi.c \
-	lib/Zip/unzip.c \
-	lib/Zip/zip.c
+	lib/Zip/ioapi.cpp \
+	lib/Zip/unzip.cpp \
+	lib/Zip/zip.cpp
 
 if ENABLE_READLINE
 
@@ -177,6 +177,7 @@ lib_libarango_fe_a_SOURCES = \
 lib_libarango_v8_a_SOURCES = \
 	lib/V8/JSLoader.cpp \
 	lib/V8/V8LineEditor.cpp \
+	lib/V8/V8StringConverter.cpp \
 	lib/V8/v8-buffer.cpp \
 	lib/V8/v8-conv.cpp \
 	lib/V8/v8-execution.cpp \
@@ -201,7 +202,7 @@ if ENABLE_MRUBY
 lib_libarango_mruby_a_SOURCES = \
 	lib/MRuby/MRLoader.cpp \
 	lib/MRuby/MRLineEditor.cpp \
-	lib/MRuby/mr-utils.c
+	lib/MRuby/mr-utils.cpp
 
 endif
 

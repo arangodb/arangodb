@@ -34,18 +34,18 @@
 
 #include "Admin/RestBaseHandler.h"
 
-#include "BasicsC/json.h"
-#include "BasicsC/json-utilities.h"
-#include "BasicsC/logging.h"
+#include "Basics/json.h"
+#include "Basics/logging.h"
+#include "Basics/json-utilities.h"
 
 #include "Rest/HttpResponse.h"
 #include "Utils/transactions.h"
+#include "RestServer/VocbaseContext.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_json_s;
 struct TRI_document_collection_t;
 struct TRI_vocbase_col_s;
 struct TRI_vocbase_s;
@@ -343,7 +343,7 @@ namespace triagens {
 /// @brief parses the body
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_json_s* parseJsonBody ();
+        TRI_json_t* parseJsonBody ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract a string attribute from a JSON array

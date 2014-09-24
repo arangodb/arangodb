@@ -30,12 +30,12 @@
 
 #include "shaped-json.h"
 
-#include "BasicsC/associative.h"
-#include "BasicsC/hashes.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/string-buffer.h"
-#include "BasicsC/tri-strings.h"
-#include "BasicsC/vector.h"
+#include "Basics/associative.h"
+#include "Basics/hashes.h"
+#include "Basics/logging.h"
+#include "Basics/string-buffer.h"
+#include "Basics/tri-strings.h"
+#include "Basics/vector.h"
 #include "ShapedJson/json-shaper.h"
 
 // #define DEBUG_JSON_SHAPER 1
@@ -44,7 +44,7 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-static bool FillShapeValueJson (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TRI_json_t const* json, size_t, bool, bool);
+static bool FillShapeValueJson (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TRI_json_t const* json, size_t, bool);
 static TRI_json_t* JsonShapeData (TRI_shaper_t* shaper, TRI_shape_t const* shape, char const* data, uint64_t size);
 static bool StringifyJsonShapeData (TRI_shaper_t* shaper, TRI_string_buffer_t* buffer, TRI_shape_t const* shape, char const* data, uint64_t size);
 
@@ -471,8 +471,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
                                 TRI_shape_value_t* dst,
                                 TRI_json_t const* json,
                                 size_t level,
-                                bool create,
-                                bool isLocked) {
+                                bool create) {
   size_t i, n;
   uint64_t total;
 
@@ -528,7 +527,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
 
   for (i = 0;  i < n;  ++i, ++p) {
     TRI_json_t const* el = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
-    bool ok = FillShapeValueJson(shaper, p, el, level + 1, create, isLocked);
+    bool ok = FillShapeValueJson(shaper, p, el, level + 1, create);
 
     if (! ok) {
       for (e = p, p = values;  p < e;  ++p) {
@@ -776,8 +775,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
                                  TRI_shape_value_t* dst,
                                  TRI_json_t const* json,
                                  size_t level,
-                                 bool create,
-                                 bool isLocked) {
+                                 bool create) {
   size_t i, n;
   uint64_t total;
 
@@ -856,7 +854,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
       TRI_json_t const* val = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, 2 * i + 1));
       TRI_ASSERT(val != nullptr);
 
-      ok = FillShapeValueJson(shaper, p, val, level + 1, create, isLocked);
+      ok = FillShapeValueJson(shaper, p, val, level + 1, create);
     }
 
     if (! ok) {
@@ -1025,8 +1023,7 @@ static bool FillShapeValueJson (TRI_shaper_t* shaper,
                                 TRI_shape_value_t* dst,
                                 TRI_json_t const* json,
                                 size_t level,
-                                bool create,
-                                bool isLocked) {
+                                bool create) {
   switch (json->_type) {
     case TRI_JSON_UNUSED:
       return false;
@@ -1045,10 +1042,10 @@ static bool FillShapeValueJson (TRI_shaper_t* shaper,
       return FillShapeValueString(shaper, dst, json);
 
     case TRI_JSON_ARRAY:
-      return FillShapeValueArray(shaper, dst, json, level, create, isLocked);
+      return FillShapeValueArray(shaper, dst, json, level, create);
 
     case TRI_JSON_LIST:
-      return FillShapeValueList(shaper, dst, json, level, create, isLocked);
+      return FillShapeValueList(shaper, dst, json, level, create);
   }
 
   return false;
@@ -2234,12 +2231,11 @@ void TRI_SortShapeValues (TRI_shape_value_t* values,
 
 TRI_shaped_json_t* TRI_ShapedJsonJson (TRI_shaper_t* shaper,
                                        TRI_json_t const* json,
-                                       bool create,
-                                       bool isLocked) {
+                                       bool create) {
   TRI_shape_value_t dst;
 
   dst._value = 0;
-  bool ok = FillShapeValueJson(shaper, &dst, json, 0, create, isLocked);
+  bool ok = FillShapeValueJson(shaper, &dst, json, 0, create);
 
   if (! ok) {
     return nullptr;

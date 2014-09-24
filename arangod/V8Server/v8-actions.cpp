@@ -34,11 +34,11 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
-#include "BasicsC/conversions.h"
-#include "BasicsC/files.h"
-#include "BasicsC/json.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/conversions.h"
+#include "Basics/files.h"
+#include "Basics/json.h"
+#include "Basics/logging.h"
+#include "Basics/tri-strings.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "V8/v8-conv.h"
@@ -149,12 +149,11 @@ class v8_action_t : public TRI_action_t {
       ApplicationV8::V8Context* context = GlobalV8Dealer->enterContext(
         "STANDARD",
         vocbase,
-        request,
         ! allowEngineReset,
         allowUseDatabaseInRestActions);
 
       // note: the context might be 0 in case of shut-down
-      if (context == 0) {
+      if (context == nullptr) {
         return result;
       }
 

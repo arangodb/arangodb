@@ -42,16 +42,15 @@
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/RandomGenerator.h"
 #include "Basics/Utf8Helper.h"
-#include "BasicsC/files.h"
+#include "Basics/files.h"
 #include "Basics/init.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/messages.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/logging.h"
+#include "Basics/messages.h"
+#include "Basics/tri-strings.h"
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "Dispatcher/Dispatcher.h"
 #include "HttpServer/ApplicationEndpointServer.h"
 #include "HttpServer/AsyncJobManager.h"
-#include "HttpServer/HttpHandlerFactory.h"
 #include "Rest/InitialiseRest.h"
 #include "Rest/OperationMode.h"
 #include "Rest/Version.h"
@@ -76,6 +75,7 @@
 #include "Cluster/ApplicationCluster.h"
 #include "Cluster/RestShardHandler.h"
 #include "Cluster/ClusterComm.h"
+#include "Aql/RestAqlHandler.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -90,16 +90,17 @@ bool ALLOW_USE_DATABASE_IN_REST_ACTIONS;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief define "_api" handlers
+/// @brief define "_api" and "_admin" handlers
 ////////////////////////////////////////////////////////////////////////////////
 
-static void DefineApiHandlers (HttpHandlerFactory* factory,
-                               ApplicationAdminServer* admin,
-                               ApplicationDispatcher* dispatcher,
-                               AsyncJobManager* jobManager) {
-
+void ArangoServer::defineHandlers (HttpHandlerFactory* factory) {
+  // First the "_api" handlers:
+ 
   // add "/version" handler
-  admin->addBasicHandlers(factory, "/_api", dispatcher->dispatcher(), jobManager);
+  _applicationAdminServer->addBasicHandlers(
+      factory, "/_api",
+      _applicationDispatcher->dispatcher(),
+      _jobManager);
 
   // add a upgrade warning
   factory->addPrefixHandler("/_msg/please-upgrade",
@@ -132,29 +133,28 @@ static void DefineApiHandlers (HttpHandlerFactory* factory,
   // add "/shard-comm" handler
   factory->addPrefixHandler("/_api/shard-comm",
                             RestHandlerCreator<RestShardHandler>::createData<Dispatcher*>,
-                            dispatcher->dispatcher());
-}
+                            _applicationDispatcher->dispatcher());
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief define "admin" handlers
-////////////////////////////////////////////////////////////////////////////////
+  // add "/aql" handler
+  factory->addPrefixHandler("/_api/aql",
+                            RestHandlerCreator<aql::RestAqlHandler>::createData<std::pair<ApplicationV8*, aql::QueryRegistry*>*>,
+                            _pairForAql);
 
-static void DefineAdminHandlers (HttpHandlerFactory* factory,
-                                 ApplicationAdminServer* admin,
-                                 ApplicationDispatcher* dispatcher,
-                                 AsyncJobManager* jobManager,
-                                 ApplicationServer* applicationServer) {
+  // And now the "_admin" handlers
 
-  // add "/version" handler
-  admin->addBasicHandlers(factory, "/_admin", dispatcher->dispatcher(), jobManager);
+  // add "/_admin/version" handler
+  _applicationAdminServer->addBasicHandlers(
+      factory, "/_admin", 
+      _applicationDispatcher->dispatcher(),
+      _jobManager);
 
   // add "/_admin/shutdown" handler
   factory->addPrefixHandler("/_admin/shutdown",
                    RestHandlerCreator<RestShutdownHandler>::createData<void*>,
-                   static_cast<void*>(applicationServer));
+                   static_cast<void*>(_applicationServer));
 
   // add admin handlers
-  admin->addHandlers(factory, "/_admin");
+  _applicationAdminServer->addHandlers(factory, "/_admin");
 
 }
 
@@ -285,7 +285,10 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _defaultWaitForSync(false),
     _forceSyncProperties(true),
     _disableReplicationApplier(false),
-    _server(nullptr) {
+    _developmentMode(false),
+    _server(nullptr),
+    _queryRegistry(nullptr),
+    _pairForAql(nullptr) {
 
   char* p = TRI_GetTempPath();
   // copy the string
@@ -835,9 +838,18 @@ int ArangoServer::startupServer () {
     _applicationV8->prepareServer();
   }
 
-  // .............................................................................
+  // ...........................................................................
+  // create QueryRegistry
+  // ...........................................................................
+
+  _queryRegistry = new aql::QueryRegistry();
+  _pairForAql = new std::pair<ApplicationV8*, aql::QueryRegistry*>;
+  _pairForAql->first = _applicationV8;
+  _pairForAql->second = _queryRegistry;
+
+  // ...........................................................................
   // create endpoints and handlers
-  // .............................................................................
+  // ...........................................................................
 
   // we pass the options by reference, so keep them until shutdown
   RestActionHandler::action_options_t httpOptions;
@@ -854,8 +866,7 @@ int ArangoServer::startupServer () {
 
     HttpHandlerFactory* handlerFactory = _applicationEndpointServer->getHandlerFactory();
 
-    DefineApiHandlers(handlerFactory, _applicationAdminServer, _applicationDispatcher, _jobManager);
-    DefineAdminHandlers(handlerFactory, _applicationAdminServer, _applicationDispatcher, _jobManager, _applicationServer);
+    defineHandlers(handlerFactory);
 
     // add action handler
     handlerFactory->addPrefixHandler(
@@ -903,6 +914,11 @@ int ArangoServer::startupServer () {
   }
 
   _applicationServer->stop();
+
+  delete _queryRegistry;
+  _queryRegistry = nullptr;
+  delete _pairForAql;
+  _pairForAql = nullptr;
 
   closeDatabases();
 
@@ -979,11 +995,8 @@ int ArangoServer::runConsole (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::runUnitTests (TRI_vocbase_t* vocbase) {
-  ApplicationV8::V8Context* context = _applicationV8->enterContext("STANDARD", vocbase, 0, true, true);
+  ApplicationV8::V8Context* context = _applicationV8->enterContext("STANDARD", vocbase, true, true);
 
-  v8::HandleScope globalScope;
-
-  v8::Local<v8::String> name(v8::String::New("(arango)"));
   v8::Context::Scope contextScope(context->_context);
 
   bool ok = false;
@@ -1000,6 +1013,8 @@ int ArangoServer::runUnitTests (TRI_vocbase_t* vocbase) {
 
     context->_context->Global()->Set(v8::String::New("SYS_UNIT_TESTS"), sysTestFiles);
     context->_context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
+  
+    v8::Local<v8::String> name(v8::String::New("(arango)"));
 
     // run tests
     char const* input = "require(\"org/arangodb/testrunner\").runCommandLineTests();";
@@ -1007,7 +1022,7 @@ int ArangoServer::runUnitTests (TRI_vocbase_t* vocbase) {
 
     if (tryCatch.HasCaught()) {
       if (tryCatch.CanContinue()) {
-        cout << TRI_StringifyV8Exception(&tryCatch);
+        std::cerr << TRI_StringifyV8Exception(&tryCatch);
       }
       else {
         // will stop, so need for v8g->_canceled = true;
@@ -1029,7 +1044,7 @@ int ArangoServer::runUnitTests (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::runScript (TRI_vocbase_t* vocbase) {
-  ApplicationV8::V8Context* context = _applicationV8->enterContext("STANDARD", vocbase, 0, true, true);
+  ApplicationV8::V8Context* context = _applicationV8->enterContext("STANDARD", vocbase, true, true);
 
   v8::HandleScope globalScope;
 

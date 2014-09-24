@@ -29,9 +29,9 @@
 
 #include "Ahuacatl/ahuacatl-index.h"
 
-#include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
-#include "BasicsC/string-buffer.h"
+#include "Basics/logging.h"
+#include "Basics/tri-strings.h"
+#include "Basics/string-buffer.h"
 
 #include "Ahuacatl/ahuacatl-access-optimiser.h"
 #include "Ahuacatl/ahuacatl-context.h"
@@ -192,17 +192,6 @@ static TRI_aql_index_t* PickIndex (TRI_aql_context_t* const context,
   }
 
 
-  if ( (isBetter == false) && (idx->_type == TRI_IDX_TYPE_BITARRAY_INDEX) &&
-       (pickedIndex->_idx->_type != TRI_IDX_TYPE_HASH_INDEX)              &&
-       (pickedIndex->_idx->_type != TRI_IDX_TYPE_SKIPLIST_INDEX) ) {
-    // .........................................................................
-    // If the index type is a bitarray index, use this -- but only if we have NOT
-    // located something better BEFORE.
-    // .........................................................................
-    isBetter = true;
-  }
-
-
   if ( (isBetter == false) && (idx->_unique == true) && (pickedIndex->_idx->_unique == false) ) {
     // .........................................................................
     // If the index is a unique one and the picked index is non-unique, then
@@ -265,6 +254,7 @@ static bool CanUseIndex (TRI_index_t const* idx) {
     case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:
     case TRI_IDX_TYPE_CAP_CONSTRAINT:
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
+    case TRI_IDX_TYPE_BITARRAY_INDEX:
       // ignore all these index types for now
       return false;
 
@@ -272,7 +262,6 @@ static bool CanUseIndex (TRI_index_t const* idx) {
     case TRI_IDX_TYPE_HASH_INDEX:
     case TRI_IDX_TYPE_EDGE_INDEX:
     case TRI_IDX_TYPE_SKIPLIST_INDEX:
-    case TRI_IDX_TYPE_BITARRAY_INDEX:
       // these indexes are valid candidates
       break;
   }
@@ -394,20 +383,6 @@ TRI_aql_index_t* TRI_DetermineIndexAql (TRI_aql_context_t* const context,
           }
 
           if (candidate->_type == TRI_AQL_ACCESS_LIST && numIndexFields != 1) {
-            // we found a list, but the index covers multiple attributes. that means we cannot use list access
-            continue;
-          }
-
-          TRI_PushBackVectorPointer(&matches, candidate);
-        }
-
-        else if (idx->_type == TRI_IDX_TYPE_BITARRAY_INDEX) {
-          if (! IsExactCandidate(candidate)) {
-            // wrong access type for hash index
-            continue;
-          }
-
-          if (candidate->_type == TRI_AQL_ACCESS_LIST) {
             // we found a list, but the index covers multiple attributes. that means we cannot use list access
             continue;
           }

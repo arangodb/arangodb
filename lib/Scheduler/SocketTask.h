@@ -40,10 +40,10 @@
 #include "Statistics/StatisticsAgent.h"
 
 #ifdef _WIN32
-  #include "BasicsC/win-utils.h"
+#include "Basics/win-utils.h"
 #endif
 
-#include "BasicsC/socket-utils.h"
+#include "Basics/socket-utils.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations

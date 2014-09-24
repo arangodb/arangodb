@@ -32,8 +32,8 @@
 #include "Basics/FileUtils.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/mimetypes.h"
+#include "Basics/logging.h"
+#include "Basics/mimetypes.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 

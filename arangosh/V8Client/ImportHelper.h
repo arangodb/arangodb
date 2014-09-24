@@ -35,17 +35,13 @@
 
 #include <regex.h>
 
-#include <string>
-#include <map>
-#include <sstream>
-
 #include <v8.h>
 
-#include "BasicsC/csv.h"
+#include "Basics/csv.h"
 #include "Basics/StringBuffer.h"
 
 #ifdef _WIN32
-#include "BasicsC/win-utils.h"
+#include "Basics/win-utils.h"
 #endif
 
 namespace triagens {

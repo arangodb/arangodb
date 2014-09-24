@@ -29,7 +29,6 @@ var jsunity = require("jsunity");
 var internal = require("internal");
 var helper = require("org/arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
-var getQueryExplanation = helper.getQueryExplanation;
 var assertQueryError = helper.assertQueryError;
 var errors = internal.errors;
 
@@ -103,10 +102,6 @@ function ahuacatlQueryOptimiserInTestSuite () {
       var expected = [ 'test5', 'test7' ];
       var actual = getQueryResults("LET parents = [ 'test5', 'test7' ] FOR c IN " + cn + " FILTER c._key IN parents SORT c._key RETURN c._key");
       assertEqual(expected, actual);
-
-      var explain = getQueryExplanation("LET parents = [ 'test5', 'test7' ] FOR c IN " + cn + " FILTER c._key IN parents SORT c._key RETURN c._key");
-      assertEqual("index", explain[1].expression.extra.accessType);
-      assertEqual("primary", explain[1].expression.extra.index.type);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -122,10 +117,6 @@ function ahuacatlQueryOptimiserInTestSuite () {
       var expected = [ 'test5', 'test7' ];
       var actual = getQueryResults("LET parents = (FOR c IN " + cn + " FILTER c._key IN [ 'test5', 'test7' ] RETURN c._key) FOR c IN " + cn + " FILTER c._key IN parents SORT c._key RETURN c._key");
       assertEqual(expected, actual);
-
-      var explain = getQueryExplanation("LET parents = (FOR c IN " + cn + " FILTER c._key IN [ 'test5', 'test7' ] RETURN c._key) FOR c IN " + cn + " FILTER c._key IN parents SORT c._key RETURN c._key");
-      assertEqual("index", explain[5].expression.extra.accessType);
-      assertEqual("primary", explain[5].expression.extra.index.type);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -172,10 +163,6 @@ function ahuacatlQueryOptimiserInTestSuite () {
       var expected = [ 'test5', 'test7' ];
       var actual = getQueryResults("LET parents = [ 'test5', 'test7' ] FOR c IN " + cn + " FILTER c.code IN parents SORT c.code RETURN c.code");
       assertEqual(expected, actual);
-      
-      var explain = getQueryExplanation("LET parents = [ 'test5', 'test7' ] FOR c IN " + cn + " FILTER c.code IN parents SORT c.code RETURN c.code");
-      assertEqual("index", explain[1].expression.extra.accessType);
-      assertEqual("hash", explain[1].expression.extra.index.type);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -192,10 +179,6 @@ function ahuacatlQueryOptimiserInTestSuite () {
       var expected = [ 'test5', 'test7' ];
       var actual = getQueryResults("LET parents = (FOR c IN " + cn + " FILTER c.code IN [ 'test5', 'test7' ] RETURN c.code) FOR c IN " + cn + " FILTER c.code IN parents SORT c.code RETURN c.code");
       assertEqual(expected, actual);
-      
-      var explain = getQueryExplanation("LET parents = (FOR c IN " + cn + " FILTER c.code IN [ 'test5', 'test7' ] RETURN c.code) FOR c IN " + cn + " FILTER c.code IN parents SORT c.code RETURN c.code");
-      assertEqual("index", explain[5].expression.extra.accessType);
-      assertEqual("hash", explain[5].expression.extra.index.type);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -244,10 +227,6 @@ function ahuacatlQueryOptimiserInTestSuite () {
       var expected = [ 'test5', 'test7' ];
       var actual = getQueryResults("LET parents = [ 'test5', 'test7' ] FOR c IN " + cn + " FILTER c.code IN parents SORT c.code RETURN c.code");
       assertEqual(expected, actual);
-      
-      var explain = getQueryExplanation("LET parents = [ 'test5', 'test7' ] FOR c IN " + cn + " FILTER c.code IN parents SORT c.code RETURN c.code");
-      assertEqual("index", explain[1].expression.extra.accessType);
-      assertEqual("skiplist", explain[1].expression.extra.index.type);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -264,10 +243,6 @@ function ahuacatlQueryOptimiserInTestSuite () {
       var expected = [ 'test5', 'test7' ];
       var actual = getQueryResults("LET parents = (FOR c IN " + cn + " FILTER c.code IN [ 'test5', 'test7' ] RETURN c.code) FOR c IN " + cn + " FILTER c.code IN parents SORT c.code RETURN c.code");
       assertEqual(expected, actual);
-      
-      var explain = getQueryExplanation("LET parents = (FOR c IN " + cn + " FILTER c.code IN [ 'test5', 'test7' ] RETURN c.code) FOR c IN " + cn + " FILTER c.code IN parents SORT c.code RETURN c.code");
-      assertEqual("index", explain[5].expression.extra.accessType);
-      assertEqual("skiplist", explain[5].expression.extra.index.type);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -324,10 +299,6 @@ function ahuacatlQueryOptimiserInTestSuite () {
       var actual = getQueryResults("LET parents = [ '" + cn + "/test5', '" + cn + "/test7' ] FOR c IN " + en + " FILTER c._from IN parents SORT c._to RETURN c._to");
       assertEqual(expected, actual);
       
-      var explain = getQueryExplanation("LET parents = [ '" + cn + "/test5', '" + cn + "/test7' ] FOR c IN " + en + " FILTER c._from IN parents SORT c._to RETURN c._to");
-      assertEqual("index", explain[1].expression.extra.accessType);
-      assertEqual("edge", explain[1].expression.extra.index.type);
-      
       internal.db._drop(en);
     },
 
@@ -352,10 +323,6 @@ function ahuacatlQueryOptimiserInTestSuite () {
       var expected = [ cn + '/test4', cn + '/test6' ];
       var actual = getQueryResults("LET parents = (FOR c IN " + cn + " FILTER c._key IN [ 'test5', 'test7' ] RETURN c._id) FOR c IN " + en + " FILTER c._from IN parents SORT c._to RETURN c._to");
       assertEqual(expected, actual);
-      
-      var explain = getQueryExplanation("LET parents = (FOR c IN " + cn + " FILTER c._key IN [ 'test5', 'test7' ] RETURN c._id) FOR c IN " + en + " FILTER c._from IN parents SORT c._to RETURN c._to");
-      assertEqual("index", explain[5].expression.extra.accessType);
-      assertEqual("edge", explain[5].expression.extra.index.type);
       
       internal.db._drop(en);
     },
@@ -408,24 +375,6 @@ function ahuacatlQueryOptimiserInTestSuite () {
       assertEqual(expected, actual);
       
       internal.db._drop(en);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check a ref access without any indexes
-////////////////////////////////////////////////////////////////////////////////
-
-    testBitarray : function () {
-      var colors = [ "black", "blue", "green", "red" ]; 
-      var expected =  [];
-
-      for (var i = 0; i < 100; ++i) { 
-        c.save({ value: colors[i % 4] }); 
-        expected.push(colors[Math.floor(i / 25)]);
-      } 
-      c.ensureBitarray("value", colors);
-      
-      var actual = getQueryResults("LET colors = UNIQUE((FOR x IN @@cn RETURN x.value)) FOR x IN @@cn FILTER x.value IN colors SORT x.value RETURN x.value", { "@cn" : cn });
-      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

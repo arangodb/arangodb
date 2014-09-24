@@ -29,8 +29,8 @@
 
 #include "Ahuacatl/ahuacatl-optimiser.h"
 
-#include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/logging.h"
+#include "Basics/tri-strings.h"
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-access-optimiser.h"

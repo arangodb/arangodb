@@ -253,7 +253,7 @@ sub formatFile ($$$) {
     }
 
     if ($isJavaScript == 0) {
-      if ($line =~ /^#include <((Admin|ApplicationServer|Basics|BasicsC|Dipatcher|GeneralServer|GeoIndex|Handler|Hpdf|HttpServer|JsonParserX|LineClient|LineServer|Logger|Rest|ResultGenerator|Scheduler|Server|Session|SessionVoc|Snapshot|Variant|VocBase)\/.*)>/) {
+      if ($line =~ /^#include <((Admin|ApplicationServer|Aql|Basics|Dipatcher|GeneralServer|GeoIndex|Handler|Hpdf|HttpServer|JsonParserX|LineClient|LineServer|Logger|Rest|ResultGenerator|Scheduler|Server|Session|SessionVoc|Snapshot|Variant|VocBase)\/.*)>/) {
 	$line = "#include \"$1\"";
       }
     }

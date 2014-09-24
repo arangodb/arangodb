@@ -27,8 +27,8 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "BasicsC/json-utilities.h"
-#include "BasicsC/string-buffer.h"
+#include "Basics/string-buffer.h"
+#include "Basics/json-utilities.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    private macros
@@ -81,6 +81,7 @@ BOOST_AUTO_TEST_CASE (tst_compare_values_equal) {
   TRI_json_t* l;
   TRI_json_t* r;
 
+  // With Utf8-mode:
   JSON_CHECK(0, TRI_CompareValuesJson, "null", "null");
   JSON_CHECK(0, TRI_CompareValuesJson, "false", "false");
   JSON_CHECK(0, TRI_CompareValuesJson, "true", "true");

@@ -32,7 +32,7 @@
 
 #include "Basics/Common.h"
 
-#include "BasicsC/json.h"
+#include "Basics/json.h"
 #include "ShapedJson/json-shaper.h"
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/vocbase.h"
@@ -40,6 +40,39 @@
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// Explanation of what an index operator is capable of and how one has to 
+/// use it:
+///
+/// An index operator is a binary tree of AND, OR or NOT nodes (with 2, 2
+/// and 1 child respectively, of type TRI_logical_index_operator_t) in 
+/// which the leaves are relational nodes (type TRI_relation_index_operator_t).
+/// These leaf nodes have a list of parameters. The length of this
+/// parameter list indicates how many of the attributes of the index
+/// are used, starting from the first and not skipping any. Depending
+/// on the type of index, only certain comparisons are allowed.
+///
+/// For example for a hash index, only the EQ relation is supported and 
+/// there must be exactly as many parameters as attributes used in the
+/// hash index. This is clear from how a hash index works.
+///
+/// For a skiplist index, an EQ node can have a parameter list of length
+/// k which must be at least 1 and at most the number of attributes
+/// given in the index. NE nodes are not (yet) supported. The other four
+/// relational nodes need a parameter list as above and the meaning is
+/// that the values 1..k-1 mean equality and k mean the relation given.
+/// This is again clear by how a skiplist index works, since for one
+/// relational condition it just wants to do a single lookup to find
+/// the boundary.
+///
+/// Note that OR and NOT nodes are not (yet) supported by the skiplist index.
+/// 
+/// Finally, note that the boundaries of LE, GE, LT and GT nodes can not
+/// be arrays or lists at this stage since these would potentially give
+/// rise to new shapes in the shaper which we must not allow. For EQ nodes,
+/// arbitrary JSON values are allowed as parameters.
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief select clause type

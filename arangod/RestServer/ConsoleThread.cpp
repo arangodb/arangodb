@@ -30,8 +30,8 @@
 #include "ConsoleThread.h"
 
 #include "ApplicationServer/ApplicationServer.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/logging.h"
+#include "Basics/tri-strings.h"
 #include "Rest/Version.h"
 #include "VocBase/vocbase.h"
 #include "V8/V8LineEditor.h"
@@ -88,7 +88,7 @@ void ConsoleThread::run () {
   usleep(100000);
 
   // enter V8 context
-  _context = _applicationV8->enterContext("STANDARD", _vocbase, 0, true, true);
+  _context = _applicationV8->enterContext("STANDARD", _vocbase, true, true);
 
   try {
     inner();

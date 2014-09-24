@@ -346,18 +346,18 @@ include UnitTests/Makefile.unittests
 if ENABLE_MAINTAINER_MODE
 
 BUILT_SOURCES += \
-	@top_srcdir@/lib/BasicsC/voc-errors.h \
-	@top_srcdir@/lib/BasicsC/voc-errors.c \
+	@top_srcdir@/lib/Basics/voc-errors.h \
+	@top_srcdir@/lib/Basics/voc-errors.cpp \
 	@top_srcdir@/js/common/bootstrap/errors.js
 
-@top_srcdir@/lib/BasicsC/voc-errors.h: lib/BasicsC/errors.dat
-	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat @top_srcdir@/lib/BasicsC/voc-errors.h
+@top_srcdir@/lib/Basics/voc-errors.h: lib/Basics/errors.dat
+	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/Basics/errors.dat @top_srcdir@/lib/Basics/voc-errors.h
 
-@top_srcdir@/lib/BasicsC/voc-errors.c: lib/BasicsC/errors.dat
-	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat @top_srcdir@/lib/BasicsC/voc-errors.c
+@top_srcdir@/lib/Basics/voc-errors.cpp: lib/Basics/errors.dat
+	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/Basics/errors.dat @top_srcdir@/lib/Basics/voc-errors.cpp
 
-@top_srcdir@/js/common/bootstrap/errors.js: lib/BasicsC/errors.dat
-	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/BasicsC/errors.dat js/common/bootstrap/errors.js
+@top_srcdir@/js/common/bootstrap/errors.js: lib/Basics/errors.dat
+	@top_srcdir@/config/build_errorfile.sh @top_srcdir@/config/generateErrorfile.py lib/Basics/errors.dat js/common/bootstrap/errors.js
 
 endif
 
@@ -368,18 +368,18 @@ endif
 if ENABLE_MAINTAINER_MODE
 
 BUILT_SOURCES += \
-	@top_srcdir@/lib/BasicsC/voc-mimetypes.h \
-	@top_srcdir@/lib/BasicsC/voc-mimetypes.c \
+	@top_srcdir@/lib/Basics/voc-mimetypes.h \
+	@top_srcdir@/lib/Basics/voc-mimetypes.cpp \
 	@top_srcdir@/js/common/modules/org/arangodb/mimetypes.js
 
-@top_srcdir@/lib/BasicsC/voc-mimetypes.h: lib/BasicsC/mimetypes.dat
-	@top_srcdir@/config/build_mimetypes.sh @top_srcdir@/config/generateMimetypes.py lib/BasicsC/mimetypes.dat @top_srcdir@/lib/BasicsC/voc-mimetypes.h
+@top_srcdir@/lib/Basics/voc-mimetypes.h: lib/Basics/mimetypes.dat
+	@top_srcdir@/config/build_mimetypes.sh @top_srcdir@/config/generateMimetypes.py lib/Basics/mimetypes.dat @top_srcdir@/lib/Basics/voc-mimetypes.h
 
-@top_srcdir@/lib/BasicsC/voc-mimetypes.c: lib/BasicsC/mimetypes.dat
-	@top_srcdir@/config/build_mimetypes.sh @top_srcdir@/config/generateMimetypes.py lib/BasicsC/mimetypes.dat @top_srcdir@/lib/BasicsC/voc-mimetypes.c
+@top_srcdir@/lib/Basics/voc-mimetypes.cpp: lib/Basics/mimetypes.dat
+	@top_srcdir@/config/build_mimetypes.sh @top_srcdir@/config/generateMimetypes.py lib/Basics/mimetypes.dat @top_srcdir@/lib/Basics/voc-mimetypes.cpp
 
-@top_srcdir@/js/common/modules/org/arangodb/mimetypes.js: lib/BasicsC/mimetypes.dat
-	@top_srcdir@/config/build_mimetypes.sh @top_srcdir@/config/generateMimetypes.py lib/BasicsC/mimetypes.dat js/common/modules/org/arangodb/mimetypes.js
+@top_srcdir@/js/common/modules/org/arangodb/mimetypes.js: lib/Basics/mimetypes.dat
+	@top_srcdir@/config/build_mimetypes.sh @top_srcdir@/config/generateMimetypes.py lib/Basics/mimetypes.dat js/common/modules/org/arangodb/mimetypes.js
 
 endif
 
@@ -393,6 +393,8 @@ distclean-local:
 
 clean-local:
 	rm -rf $(CLEANUP)
+	rm -rf `find -name \*.gcno`
+	rm -rf `find -name \*.gcda`
 
 superclean: clean
 	rm -rf arangod/*/.deps lib/*/.deps Makefile

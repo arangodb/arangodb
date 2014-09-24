@@ -82,7 +82,7 @@ void Handler::setDispatcherThread (DispatcherThread*) {
 /// @brief tries to cancel an execution
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Handler::cancel (bool running) {
+bool Handler::cancel (bool) {
   return false;
 }
 

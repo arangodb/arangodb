@@ -28,8 +28,8 @@
 
 #include "v8-dispatcher.h"
 
-#include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/logging.h"
+#include "Basics/tri-strings.h"
 #include "Basics/StringUtils.h"
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "Dispatcher/Dispatcher.h"
@@ -110,7 +110,7 @@ static DispatcherThread* CreateV8DispatcherThread (DispatcherQueue* queue, void*
 static v8::Handle<v8::Value> JS_RegisterTask (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  if (GlobalScheduler == 0 || GlobalDispatcher == 0) {
+  if (GlobalScheduler == nullptr || GlobalDispatcher == nullptr) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "no scheduler found");
   }
 
@@ -176,7 +176,7 @@ static v8::Handle<v8::Value> JS_RegisterTask (v8::Arguments const& argv) {
   }
 
   // extract the parameters
-  TRI_json_t* parameters = 0;
+  TRI_json_t* parameters = nullptr;
 
   if (obj->HasOwnProperty(TRI_V8_SYMBOL("params"))) {
     parameters = TRI_ObjectToJson(obj->Get(TRI_V8_SYMBOL("params")));
@@ -335,7 +335,7 @@ static v8::Handle<v8::Value> JS_GetTask (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_CreateNamedQueue (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  if (GlobalDispatcher == 0) {
+  if (GlobalDispatcher == nullptr) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "no dispatcher found");
   }
 
