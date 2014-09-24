@@ -171,10 +171,54 @@ void RestAqlHandler::createQueryFromJson () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestAqlHandler::parseQuery () {
+  Json queryJson(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
+  if (queryJson.isEmpty()) {
+    return;
+  }
+  
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+  if (vocbase == nullptr) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_INTERNAL, "cannot get vocbase from context");
+    return;
+  }
+
+  std::string queryString;
+
+  queryString = JsonHelper::getStringValue(queryJson.json(), "query", "");
+  if (queryString.empty()) {
+    generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
+      "body must be an object with attribute \"query\"");
+    return;
+  }
+
+  auto query = new Query(vocbase, queryString.c_str(), queryString.size(),
+                         nullptr, nullptr);
+  QueryResult res = query->parse();
+  if (res.code != TRI_ERROR_NO_ERROR) {
+    generateError(HttpResponse::BAD, res.code, res.details);
+    delete query;
+    return;
+  }
+
+  // Now prepare the answer:
+  Json answerBody(Json::Array, 4);
+  answerBody("parsed", Json(true));
+  Json collections(Json::List, res.collectionNames.size());
+  for (auto const& c : res.collectionNames) {
+    collections(Json(c));
+  }
+  answerBody("collections", collections);
+  Json bindVars(Json::List, res.bindParameters.size());
+  for (auto const& p : res.bindParameters) {
+    bindVars(Json(p));
+  }
+  answerBody("parameters", bindVars);
+  answerBody("ast", Json(res.zone, res.json));
+  res.json = nullptr;
+
   _response = createResponse(triagens::rest::HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
-  Json answerBody(Json::Array, 1);
-  answerBody("bla", Json("Hallo"));
   _response->body().appendText(answerBody.toString());
 }
 
