@@ -349,7 +349,7 @@ namespace triagens {
             }
           }
         }
-        if (! foundValue.empty() > 0) {
+        if (! foundValue.empty()) {
           _writeBuffer.appendText("Authorization: Basic ");
           _writeBuffer.appendText(foundValue);
           _writeBuffer.appendText("\r\n", 2);
