@@ -42,7 +42,9 @@
   db._drop("UnitTestsImportEdge");
 })();
 
-return true;
+return {
+  status: true
+}
 
 // Local Variables:
 // mode: outline-minor
