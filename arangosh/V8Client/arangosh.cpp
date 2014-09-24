@@ -517,14 +517,14 @@ static vector<string> ParseProgramOptions (int argc, char* argv[]) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void objectToMap (map<string, string>& myMap, v8::Handle<v8::Value> val) {
-  v8::Handle<v8::Object> v8Headers = val.As<v8::Object> ();
+  v8::Handle<v8::Object> v8Headers = val.As<v8::Object>();
 
   if (v8Headers->IsObject()) {
-    v8::Handle<v8::Array> props = v8Headers->GetPropertyNames();
+    v8::Handle<v8::Array> const props = v8Headers->GetPropertyNames();
 
     for (uint32_t i = 0; i < props->Length(); i++) {
       v8::Handle<v8::Value> key = props->Get(v8::Integer::New(i));
-      myMap[TRI_ObjectToString(key)] = TRI_ObjectToString(v8Headers->Get(key));
+      myMap.emplace(TRI_ObjectToString(key), TRI_ObjectToString(v8Headers->Get(key)));
     }
   }
 }
@@ -751,7 +751,7 @@ static v8::Handle<v8::Value> ClientConnection_httpGetAny (v8::Arguments const& a
   // get the connection
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
-  if (connection == 0) {
+  if (connection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
@@ -761,7 +761,6 @@ static v8::Handle<v8::Value> ClientConnection_httpGetAny (v8::Arguments const& a
   }
 
   TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, argv[0]);
-
   // check header fields
   map<string, string> headerFields;
 
@@ -798,7 +797,7 @@ static v8::Handle<v8::Value> ClientConnection_httpHeadAny (v8::Arguments const& 
   // get the connection
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
-  if (connection == 0) {
+  if (connection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
@@ -845,7 +844,7 @@ static v8::Handle<v8::Value> ClientConnection_httpDeleteAny (v8::Arguments const
   // get the connection
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
-  if (connection == 0) {
+  if (connection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
@@ -891,7 +890,7 @@ static v8::Handle<v8::Value> ClientConnection_httpOptionsAny (v8::Arguments cons
   // get the connection
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
-  if (connection == 0) {
+  if (connection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
@@ -938,7 +937,7 @@ static v8::Handle<v8::Value> ClientConnection_httpPostAny (v8::Arguments const& 
   // get the connection
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
-  if (connection == 0) {
+  if (connection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
@@ -985,7 +984,7 @@ static v8::Handle<v8::Value> ClientConnection_httpPutAny (v8::Arguments const& a
   // get the connection
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
-  if (connection == 0) {
+  if (connection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
@@ -1032,7 +1031,7 @@ static v8::Handle<v8::Value> ClientConnection_httpPatchAny (v8::Arguments const&
   // get the connection
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
-  if (connection == 0) {
+  if (connection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
@@ -1079,7 +1078,7 @@ static v8::Handle<v8::Value> ClientConnection_httpSendFile (v8::Arguments const&
   // get the connection
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
-  if (connection == 0) {
+  if (connection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
@@ -1099,7 +1098,7 @@ static v8::Handle<v8::Value> ClientConnection_httpSendFile (v8::Arguments const&
   size_t bodySize;
   char* body = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, infile.c_str(), &bodySize);
 
-  if (body == 0) {
+  if (body == nullptr) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "could not read file");
   }
 
@@ -1128,7 +1127,7 @@ static v8::Handle<v8::Value> ClientConnection_getEndpoint (v8::Arguments const& 
   // get the connection
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
-  if (connection == 0) {
+  if (connection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
@@ -1151,7 +1150,7 @@ static v8::Handle<v8::Value> ClientConnection_lastHttpReturnCode (v8::Arguments 
   // get the connection
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
-  if (connection == 0) {
+  if (connection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
@@ -1173,7 +1172,7 @@ static v8::Handle<v8::Value> ClientConnection_lastErrorMessage (v8::Arguments co
   // get the connection
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
-  if (connection == 0) {
+  if (connection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
@@ -1195,7 +1194,7 @@ static v8::Handle<v8::Value> ClientConnection_isConnected (v8::Arguments const& 
   // get the connection
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
-  if (connection == 0) {
+  if (connection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
@@ -1216,7 +1215,7 @@ static v8::Handle<v8::Value> ClientConnection_toString (v8::Arguments const& arg
   // get the connection
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
-  if (connection == 0) {
+  if (connection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
@@ -1248,7 +1247,7 @@ static v8::Handle<v8::Value> ClientConnection_getVersion (v8::Arguments const& a
   // get the connection
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
-  if (connection == 0) {
+  if (connection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
@@ -1269,7 +1268,7 @@ static v8::Handle<v8::Value> ClientConnection_getDatabaseName (v8::Arguments con
   // get the connection
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
-  if (connection == 0) {
+  if (connection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
@@ -1290,7 +1289,7 @@ static v8::Handle<v8::Value> ClientConnection_setDatabaseName (v8::Arguments con
   // get the connection
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
-  if (connection == 0) {
+  if (connection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
@@ -1489,7 +1488,7 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
 
     char* input = Console->prompt(promptError ? badPrompt.c_str() : goodPrompt.c_str());
 
-    if (input == 0) {
+    if (input == nullptr) {
       break;
     }
 
@@ -1511,7 +1510,7 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
     if (i == "help" || i == "help;") {
       TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
       input = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, "help()");
-      if (input == 0) {
+      if (input == nullptr) {
         LOG_FATAL_AND_EXIT("out of memory");
       }
     }
@@ -1565,7 +1564,7 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
 
   Console->close();
   delete Console;
-  Console = 0;
+  Console = nullptr;
 
   BaseClient.printLine("");
 

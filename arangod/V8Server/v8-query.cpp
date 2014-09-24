@@ -1123,13 +1123,13 @@ static v8::Handle<v8::Value> JS_NthQuery (v8::Arguments const& argv) {
   result->Set(v8::String::New("documents"), documents);
 
   for (size_t i = 0; i < n; ++i) {
-    v8::Handle<v8::Value> document = WRAP_SHAPED_JSON(trx, col->_cid, &docs[i]);
+    v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, docs[i].getDataPtr());
 
-    if (document.IsEmpty()) {
+    if (doc.IsEmpty()) {
       TRI_V8_EXCEPTION_MEMORY(scope);
     }
     else {
-      documents->Set(count++, document);
+      documents->Set(count++, doc);
     }
   }
 
