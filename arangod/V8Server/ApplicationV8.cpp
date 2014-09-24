@@ -52,6 +52,7 @@
 #include "V8Server/v8-actions.h"
 #include "V8Server/v8-dispatcher.h"
 #include "V8Server/v8-query.h"
+#include "V8Server/v8-user-structures.h"
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/server.h"
 #include "Cluster/ServerState.h"
@@ -1222,6 +1223,7 @@ bool ApplicationV8::prepareV8Instance (const string& name, size_t i, bool useAct
 
   TRI_InitV8VocBridge(context->_context, _server, _vocbase, &_startupLoader, i);
   TRI_InitV8Queries(context->_context);
+  TRI_InitV8UserStructures(context->_context);
 
   TRI_InitV8Cluster(context->_context);
   if (_dispatcher->dispatcher() != nullptr) {

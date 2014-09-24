@@ -135,16 +135,17 @@ add_executable(
     V8Server/V8QueueJob.cpp
     V8Server/V8TimerTask.cpp
     V8Server/v8-actions.cpp
-    V8Server/v8-dispatcher.cpp
-    V8Server/v8-query.cpp
-    V8Server/v8-vocbase.cpp
-    V8Server/v8-wrapshapedjson.cpp
-    V8Server/v8-vocindex.cpp
-    V8Server/v8-voccursor.cpp
-    V8Server/v8-replication.cpp
     V8Server/v8-collection.cpp
     V8Server/v8-collection-util.cpp
+    V8Server/v8-dispatcher.cpp
+    V8Server/v8-query.cpp
+    V8Server/v8-replication.cpp
+    V8Server/v8-user-structures.cpp
     V8Server/v8-util.cpp
+    V8Server/v8-vocbase.cpp
+    V8Server/v8-voccursor.cpp
+    V8Server/v8-vocindex.cpp
+    V8Server/v8-wrapshapedjson.cpp
     VocBase/auth.cpp
     VocBase/barrier.cpp
     VocBase/cleanup.cpp

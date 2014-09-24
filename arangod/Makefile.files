@@ -116,16 +116,17 @@ arangod_libarangod_a_SOURCES = \
 	arangod/V8Server/V8QueueJob.cpp \
 	arangod/V8Server/V8TimerTask.cpp \
 	arangod/V8Server/v8-actions.cpp \
-	arangod/V8Server/v8-dispatcher.cpp \
-	arangod/V8Server/v8-query.cpp \
-	arangod/V8Server/v8-vocbase.cpp \
-	arangod/V8Server/v8-wrapshapedjson.cpp \
-	arangod/V8Server/v8-vocindex.cpp \
-	arangod/V8Server/v8-voccursor.cpp \
-	arangod/V8Server/v8-replication.cpp \
 	arangod/V8Server/v8-collection.cpp \
 	arangod/V8Server/v8-collection-util.cpp \
+	arangod/V8Server/v8-dispatcher.cpp \
+	arangod/V8Server/v8-query.cpp \
+	arangod/V8Server/v8-replication.cpp \
+	arangod/V8Server/v8-vocbase.cpp \
+	arangod/V8Server/v8-vocindex.cpp \
+	arangod/V8Server/v8-voccursor.cpp \
+	arangod/V8Server/v8-user-structures.cpp \
 	arangod/V8Server/v8-util.cpp \
+	arangod/V8Server/v8-wrapshapedjson.cpp \
 	arangod/VocBase/auth.cpp \
 	arangod/VocBase/barrier.cpp \
 	arangod/VocBase/cleanup.cpp \
