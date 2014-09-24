@@ -132,9 +132,6 @@ void RestAqlHandler::createQuery () {
   catch (...) {
   }
 
-  std::cout << "plan" << plan.toString() << std::endl;
-  std::cout << "options" << options.toString() << std::endl;
-
   auto query = new Query(vocbase, plan, options.steal());
   QueryResult res = query->prepare();
   if (res.code != TRI_ERROR_NO_ERROR) {
@@ -143,6 +140,7 @@ void RestAqlHandler::createQuery () {
     delete query;
     return;
   }
+  query->closeTransaction();
 
   // Now the query is ready to go, store it in the registry and return:
   double ttl = 3600.0;
@@ -164,9 +162,9 @@ void RestAqlHandler::createQuery () {
 
   _response = createResponse(triagens::rest::HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
-  _response->body().appendText("{\"queryId\":");
+  _response->body().appendText("{\"queryId\":\"");
   _response->body().appendInteger(qId);
-  _response->body().appendText("}");
+  _response->body().appendText("\"}");
 }
 
 void RestAqlHandler::deleteQuery () {
