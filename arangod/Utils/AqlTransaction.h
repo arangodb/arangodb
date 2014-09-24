@@ -157,6 +157,24 @@ namespace triagens {
           return trxColl->_collection->_collection;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief registerTransaction
+////////////////////////////////////////////////////////////////////////////////
+
+        int registerTransactionWithContext () {
+          // This calls the method in the V8TransactionContext
+          return this->registerTransaction(this->_trx);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unregisterTransaction
+////////////////////////////////////////////////////////////////////////////////
+
+        int unregisterTransactionWithContext () {
+          // This calls the method in the V8TransactionContext
+          return this->unregisterTransaction();
+        }
+
     };
 
   }

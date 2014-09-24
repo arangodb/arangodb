@@ -284,8 +284,7 @@ namespace triagens {
 /// be used to recreate the AqlItemBlock via the Json constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        triagens::basics::Json toJson (AQL_TRANSACTION_V8* trx,
-                          TRI_document_collection_t const* document) const;
+        triagens::basics::Json toJson (AQL_TRANSACTION_V8* trx) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
