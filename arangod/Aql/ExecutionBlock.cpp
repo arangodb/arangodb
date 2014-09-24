@@ -3475,56 +3475,70 @@ int GatherBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   }
 
   // handle local data (if any) TODO
+  if(!isSimple()){
+    _buffer.reserve(_dependencies.size());
+
+    auto en = static_cast<GatherNode const*>(getPlanNode());
+
+    _sortRegisters.clear();
+
+    for( auto p: en->_elements){
+      //We know that staticAnalysis has been run, so _varOverview is set up
+      auto it = _varOverview->varInfo.find(p.first->id);
+      TRI_ASSERT(it != _varOverview->varInfo.end());
+      _sortRegisters.push_back(make_pair(it->second.registerId, p.second));
+    }
+  }
 
   return TRI_ERROR_NO_ERROR;
 }
 
 int64_t GatherBlock::count () const {
   int64_t sum = 0;
-  for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
-    sum += (*it)->count();
+  for (auto x: _dependencies) {
+    if (x->count() == -1) {
+      return -1;
+    }
+    sum += x->count();
   }
   return sum;
 }
 
 int64_t GatherBlock::remaining () {
   int64_t sum = 0;
-  for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
-    sum += (*it)->remaining();
+  for (auto x: _dependencies) {
+    if (x->remaining() == -1) {
+      return -1;
+    }
+    sum += x->remaining();
   }
   return sum;
 }
-
-/* bool GatherBlock::getBlock (size_t atLeast, size_t atMost) {
-  int64_t sum = 0;
-  while (sum < atLeast && _atDep < _dependencies.size()) {
-    AqlItemBlock* docs = _dependencies[_atDep]->getSome(atLeast, atMost);
+// get blocks from dependencies.at(i) into _buffer.at(i)
+bool GatherBlock::getBlock (size_t i, size_t atLeast, size_t atMost) {
+  TRI_ASSERT(0 < i && i < _dependencies.size());
+  bool res = false;
+  AqlItemBlock* docs = _dependencies.at(i)->getSome(atLeast, atMost);
+  if (docs != nullptr) {
     try {
-      _buffer.push_back(docs);
+      _buffer.at(i).push_back(docs);
     }
     catch (...) {
       delete docs;
       throw;
     }
-    sum += docs->size();
-    if ( _dependencies[_atDep]->_done ){
-      ++_atDep;
-    }
+    res = true;
   }
-
-  if (sum == 0) {
-    return false;
-  }
-  
-  return true;
-}*/
+  return res;
+}
 
 AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
   
   if (_done) {
     return nullptr;
   }
-  
+
+  // the simple case . . .  
   if (isSimple()) {
     auto res = _dependencies.at(_atDep)->getSome(atLeast, atMost);
     while (res == nullptr && _atDep < _dependencies.size() - 1) {
@@ -3536,11 +3550,100 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
       return nullptr;
     }
     return res;
-  //} else { // merge sort the results from the deps
-
   }
-  return nullptr; // to keep the compiler happy
+ 
+  // the non-simple case . . .
+  size_t available = 0; // nr of available rows
+  size_t index;         // an index of a non-empty buffer
+  
+  // pull more blocks from dependencies . . .
+  for (size_t i = 0; i < _dependencies.size(); i++) {
+    if (_buffer.at(i).empty()) {
+      if (getBlock(i, atLeast, atMost)) {
+        _pos.at(i) = make_pair(i,0);           
+      }
+    } else {
+      index = i;
+    }
+    available += _buffer.at(i).size();
+  }
+  
+  if (available == 0) {
+    _done = true;
+    return nullptr;
+  }
+  
+  size_t toSend = std::min(available, atMost); //nr rows in outgoing block
+  
+  // get collections for ourLessThan . . .
+  std::vector<TRI_document_collection_t const*> colls;
+  for (RegisterId i = 0; i < _sortRegisters.size(); i++) {
+    colls.push_back(_buffer.at(index).front()->getDocumentCollection(_sortRegisters[i].first));
+  }
+  
+  // the following is similar to AqlItemBlock's slice method . . .
+  std::unordered_map<AqlValue, AqlValue> cache;
+  // TODO: should we pre-reserve space for cache to avoid later re-allocations?
+  AqlItemBlock* res = nullptr;
+  
+  // comparison function 
+  OurLessThan ourLessThan(_trx, _buffer, _sortRegisters, colls);
+  AqlItemBlock* example =_buffer.at(index).front();
+  size_t nrRegs = example->getNrRegs();
 
+  try {
+    res = new AqlItemBlock(toSend, nrRegs);
+    
+    for (RegisterId i = 0; i < nrRegs; i++) {
+      res->setDocumentCollection(i, example->getDocumentCollection(i));
+    }
+
+    for (size_t i = 0; i < toSend; i++) {
+      // get the next smallest row from the buffer . . .
+      std::pair<size_t, size_t> val = *(std::min_element(_pos.begin(), _pos.end(), ourLessThan));
+      
+      // copy the row in to the outgoing block . . .
+      for (RegisterId col = 0; col < nrRegs; col++) {
+        AqlValue const& x(_buffer.at(val.first).front()->getValue(val.second, col));
+        if (! x.isEmpty()) {
+          auto it = cache.find(x);
+          if (it == cache.end()) {
+            AqlValue y = x.clone();
+            try {
+              res->setValue(i, col, y);
+            }
+            catch (...) {
+              y.destroy();
+              throw;
+            }
+            cache.emplace(x, y);
+          }
+          else {
+            res->setValue(i, col, it->second);
+          }
+        }
+      }
+
+      // renew the buffer and comparison function if necessary . . . 
+      _pos.at(val.first).second++;
+      if (_pos.at(val.first).second == _buffer.at(val.first).front()->size()) {
+        _buffer.at(val.first).pop_front();
+        if (_buffer.at(val.first).empty()) {
+          getBlock(val.first, DefaultBatchSize, DefaultBatchSize);
+          // FIXME does this have to be here? 
+          // renew the comparison function
+          OurLessThan ourLessThan(_trx, _buffer, _sortRegisters, colls);
+        }
+        _pos.at(val.first) = make_pair(val.first,0);
+      }
+    }
+  }
+  catch (...) {
+    delete res;
+    throw;
+  }
+
+  return res;
 }
 
 size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
@@ -3563,8 +3666,33 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
 
   }
   return 0; // to keep the compiler happy
-
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      class SortBlock::OurLessThan
+// -----------------------------------------------------------------------------
+
+bool GatherBlock::OurLessThan::operator() (std::pair<size_t, size_t> const& a,
+                                           std::pair<size_t, size_t> const& b) {
+  size_t i = 0;
+  for (auto reg : _sortRegisters) {
+    int cmp = AqlValue::Compare(_trx,
+                                _buffer.at(a.first).front()->getValue(a.second, reg.first),
+                                _colls[i],
+                                _buffer.at(b.first).front()->getValue(b.second, reg.first),
+                                _colls[i]);
+    if (cmp == -1) {
+      return reg.second;
+    } 
+    else if (cmp == 1) {
+      return ! reg.second;
+    }
+    i++;
+  }
+
+  return false;
+}
+
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
