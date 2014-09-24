@@ -29,6 +29,8 @@
 
 using namespace triagens::aql;
 
+using Json = triagens::basics::Json;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      AqlItemBlock
 // -----------------------------------------------------------------------------
@@ -367,6 +369,41 @@ AqlItemBlock* AqlItemBlock::concatenate (std::vector<AqlItemBlock*> const& block
   }
 
   return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson, transfer a whole AqlItemBlock to Json, the result can
+/// be used to recreate the AqlItemBlock via the Json constructor
+////////////////////////////////////////////////////////////////////////////////
+
+Json AqlItemBlock::toJson (AQL_TRANSACTION_V8* trx,
+                           TRI_document_collection_t const* document) const {
+  Json json(Json::Array, 3);
+  json("nrItems", Json(static_cast<double>(_nrItems)))
+      ("nrRegs", Json(static_cast<double>(_nrRegs)));
+  Json data(Json::List, _data.size());
+  std::unordered_map<AqlValue, size_t> table;
+
+  for (size_t i = 0; i < _data.size(); i++) {
+    AqlValue const& a(_data[i]);
+    if (a.isEmpty()) {
+      data(Json(Json::Null));
+    }
+    else {
+      auto it = table.find(a);
+      if (it == table.end()) {
+        Json copy(a.toJson(trx, document));
+        data(copy);
+        table.insert(make_pair(a, i));
+      }
+      else {
+        data(Json(Json::List, 1)
+                 (Json(static_cast<double>(it->second))));
+      }
+    }
+  }
+  json("data", data);
+  return json;
 }
 
 // Local Variables:
