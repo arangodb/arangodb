@@ -99,15 +99,15 @@ namespace triagens {
       }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief make a http request
+/// @brief make a http request, creating a new HttpResult object
 /// the caller has to delete the result object
 ////////////////////////////////////////////////////////////////////////////////
 
       SimpleHttpResult* request (rest::HttpRequest::HttpRequestType,
-                                 const string&,
-                                 const char*,
+                                 std::string const&,
+                                 char const*,
                                  size_t,
-                                 const map<string, string>&);
+                                 std::map<std::string, std::string> const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets username and password
@@ -214,8 +214,8 @@ namespace triagens {
 /// @brief rewrite a location URL
 ////////////////////////////////////////////////////////////////////////////////
 
-      string rewriteLocation (const string& location) {
-        if (_locationRewriter.func != 0) {
+      std::string rewriteLocation (std::string const& location) {
+        if (_locationRewriter.func != nullptr) {
           return _locationRewriter.func(_locationRewriter.data, location);
         }
 
@@ -240,10 +240,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       void setRequest (rest::HttpRequest::HttpRequestType method,
-                       const string& location,
-                       const char* body,
+                       std::string const& location,
+                       char const* body,
                        size_t bodyLength,
-                       const map<string, string>& headerFields);
+                       std::map<std::string, std::string> const& headerFields);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read the http header
@@ -294,6 +294,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       triagens::basics::StringBuffer _readBuffer;
+
+      size_t _readBufferOffset;
 
       double _requestTimeout;
 
