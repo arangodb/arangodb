@@ -484,6 +484,7 @@ QueryResult Query::execute () {
 /// @brief close transaction to suspend query
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 int Query::closeTransaction () {
   TRI_ASSERT(_trx != nullptr);
   _trx->commit();
@@ -491,11 +492,13 @@ int Query::closeTransaction () {
   _trx = nullptr;
   return TRI_ERROR_NO_ERROR;
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reopen transaction after suspend of query
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 int Query::reOpenTransaction () {
   TRI_ASSERT(_trx == nullptr);
   _trx = new AQL_TRANSACTION_V8(_vocbase, _collections.collections());
@@ -504,6 +507,7 @@ int Query::reOpenTransaction () {
   }
   return _trx->begin();
 }
+#endif 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse an AQL query

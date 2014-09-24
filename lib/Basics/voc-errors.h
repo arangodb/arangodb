@@ -423,6 +423,11 @@
 ///   options specification."
 /// - 1577: @LIT{JSON describing execution plan was bad}
 ///    "Will be raised when an HTTP API for a query got an invalid JSON object."
+/// - 1578: @LIT{query ID not found}
+///    "Will be raised when an Id of a query is not found by the HTTP API."
+/// - 1579: @LIT{query with this ID is in use}
+///    "Will be raised when an Id of a query is found by the HTTP API but the
+///   query is in use."
 /// - 1580: @LIT{invalid user function name}
 ///   Will be raised when a user function with an invalid name is registered.
 /// - 1581: @LIT{invalid user function code}
@@ -2326,6 +2331,27 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_BAD_JSON_PLAN                                     (1577)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1578: ERROR_QUERY_NOT_FOUND
+///
+/// query ID not found
+///
+///  "Will be raised when an Id of a query is not found by the HTTP API."
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_NOT_FOUND                                         (1578)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1579: ERROR_QUERY_IN_USE
+///
+/// query with this ID is in use
+///
+///  "Will be raised when an Id of a query is found by the HTTP API but the
+/// query is in use."
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_IN_USE                                            (1579)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1580: ERROR_QUERY_FUNCTION_INVALID_NAME

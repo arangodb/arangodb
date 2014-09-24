@@ -74,6 +74,7 @@ typedef struct TRI_server_s {
   bool                        _hasCreatedSystemDatabase;
 
   bool                        _initialised;
+  void*                       _queryRegistry;
 }
 TRI_server_t;
 
