@@ -186,7 +186,9 @@
 
 })();
 
-return true;
+return {
+  status: true
+};
 
 // Local Variables:
 // mode: outline-minor
