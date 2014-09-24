@@ -60,6 +60,11 @@ void QueryRegistry::insert (TRI_vocbase_t* vocbase,
     p->_timeToLive = ttl;
     p->_expires = TRI_microtime() + ttl;
     m->second.insert(make_pair(id, p.release()));
+    // A query that is being shelved must unregister its transaction
+    // with the current context:
+    query->trx()->unregisterTransactionWithContext();
+    // Also, we need to count down the debugging counters for transactions:
+    triagens::arango::TransactionBase::increaseNumbers(-1, -1);
   }
   else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -89,6 +94,13 @@ Query* QueryRegistry::open (TRI_vocbase_t* vocbase, QueryId id) {
                 "query with given vocbase and id is already open");
   }
   qi->_isOpen = true;
+
+  // A query that is being opened must register its transaction
+  // with the current context:
+  qi->_query->trx()->registerTransactionWithContext();
+  // Also, we need to count up the debugging counters for transactions:
+  triagens::arango::TransactionBase::increaseNumbers(1, 1);
+
   return qi->_query;
 }
 
@@ -114,6 +126,13 @@ void QueryRegistry::close (TRI_vocbase_t* vocbase, QueryId id, double ttl) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                 "query with given vocbase and id is not open");
   }
+
+  // A query that is being closed must unregister its transaction
+  // with the current context:
+  qi->_query->trx()->unregisterTransactionWithContext();
+  // Also, we need to count down the debugging counters for transactions:
+  triagens::arango::TransactionBase::increaseNumbers(1, 1);
+
   qi->_isOpen = false;
 }
 
@@ -134,8 +153,18 @@ void QueryRegistry::destroy (TRI_vocbase_t* vocbase, QueryId id) {
                 "query with given vocbase and id not found");
   }
   QueryInfo* qi = q->second;
+
+  // If the query is open, we can delete it right away, if not, we need
+  // to register the transaction with the current context and adjust
+  // the debugging counters for transactions:
+  if (! qi->_isOpen) {
+    qi->_query->trx()->registerTransactionWithContext();
+  }
+
+  // Now we can delete it:
   delete qi->_query;
   delete qi;
+
   q->second = nullptr;
   m->second.erase(q);
 }

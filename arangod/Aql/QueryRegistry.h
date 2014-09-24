@@ -80,7 +80,8 @@ namespace triagens {
 /// @brief open, find a query in the registry, if none is found, a nullptr
 /// is returned, otherwise, ownership of the query is transferred to the
 /// caller, however, the registry retains the entry and will open will
-/// succeed only once. Further calls to open block until it is closed.
+/// succeed only once. If an already open query with the given id is
+/// found, an exception is thrown.
 /// An open query can directly be destroyed by the destroy method.
 /// Note that an open query will not expire, so users should please
 /// protect against leaks. If an already open query is found, an exception

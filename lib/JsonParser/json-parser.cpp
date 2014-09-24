@@ -640,6 +640,10 @@ int tri_jsp_get_lineno (yyscan_t yyscanner );
 
 void tri_jsp_set_lineno (int line_number ,yyscan_t yyscanner );
 
+int tri_jsp_get_column  (yyscan_t yyscanner );
+
+void tri_jsp_set_column (int column_no ,yyscan_t yyscanner );
+
 /* Macros after this point can all be overridden by user definitions in
  * section 1.
  */

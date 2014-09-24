@@ -94,28 +94,83 @@ namespace triagens {
         status_t execute ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief POST method
+/// @brief POST method for /_api/aql/instanciate
+/// The body is a JSON with attributes "plan" for the execution plan and
+/// "options" for the options, all exactly as in AQL_EXECUTEJSON.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void createQuery ();
+        void createQueryFromJson ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief DELETE method
+/// @brief POST method for /_api/aql/parse
+/// The body is a Json with attributes "query" for the query string,
+/// "parameters" for the query parameters and "options" for the options.
+/// This does the same as AQL_PARSE with exactly these parameters and
+/// does not keep the query hanging around.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void deleteQuery ();
+        void parseQuery ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief PUT method
+/// @brief POST method for /_api/aql/explain
+/// The body is a Json with attributes "query" for the query string,
+/// "parameters" for the query parameters and "options" for the options.
+/// This does the same as AQL_EXPLAIN with exactly these parameters and
+/// does not keep the query hanging around.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void useQuery ();
+        void explainQuery ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief GET method
+/// @brief POST method for /_api/aql/query
+/// The body is a Json with attributes "query" for the query string,
+/// "parameters" for the query parameters and "options" for the options.
+/// This sets up the query as as AQL_EXECUTE would, but does not use
+/// the cursor API yet. Rather, the query is stored in the query registry
+/// for later use by PUT requests.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void getInfoQuery ();
+        void createQueryFromString ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief DELETE method for /_api/aql/<queryId>
+/// The query specified by <queryId> is deleted.
+////////////////////////////////////////////////////////////////////////////////
+
+        void deleteQuery (std::string const& idString);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief PUT method for /_api/aql/<operation>/<queryId>, this is using 
+/// the part of the cursor API with side effects.
+/// <operation>: can be "getSome" or "skip".
+/// The body must be a Json with the following attributes:
+/// For the "getSome" operation one has to give:
+///   "atLeast": 
+///   "atMost": both must be positive integers, the cursor returns never 
+///             more than "atMost" items and tries to return at least
+///             "atLeast". Note that it is possible to return fewer than
+///             "atLeast", for example if there are only fewer items
+///             left. However, the implementation may return fewer items
+///             than "atLeast" for internal reasons, for example to avoid
+///             excessive copying. The result is the JSON representation of an 
+///             AqlItemBlock.
+/// For the "skip" operation one has to give:
+///   "number": must be a positive integer, the cursor skips as many items,
+///             possibly exhausting the cursor.
+///             The result is a JSON with the attributes "error" (boolean),
+///             "errorMessage" (if applicable) and "exhausted" (boolean)
+///             to indicate whether or not the cursor is exhausted.
+////////////////////////////////////////////////////////////////////////////////
+
+        void useQuery (std::string const& operation,
+                       std::string const& idString);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief GET method for /_api/aql/<queryId>
+////////////////////////////////////////////////////////////////////////////////
+
+        void getInfoQuery (std::string const& operation,
+                           std::string const& idString);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -133,6 +188,15 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dig out vocbase from context and query from ID, handle errors
+////////////////////////////////////////////////////////////////////////////////
+
+        bool findQuery (std::string const& idString,
+                        QueryId& qId,
+                        TRI_vocbase_t*& vocbase,
+                        Query*& query);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief name of the queue
