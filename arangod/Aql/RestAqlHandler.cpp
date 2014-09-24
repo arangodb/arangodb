@@ -119,19 +119,13 @@ void RestAqlHandler::createQueryFromJson () {
   Json plan;
   Json options;
 
-  try {
-    plan = queryJson.get("plan").copy();
-  }
-  catch (...) {
+  plan = queryJson.get("plan").copy();   // cannot throw
+  if (plan.isEmpty()) {
     generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
       "body must be an object with attribute \"plan\"");
     return;
   }
-  try {
-    options = queryJson.get("options").copy();
-  }
-  catch (...) {
-  }
+  options = queryJson.get("options").copy();
 
   auto query = new Query(vocbase, plan, options.steal());
   QueryResult res = query->prepare();
@@ -193,6 +187,33 @@ void RestAqlHandler::parseQuery () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestAqlHandler::explainQuery () {
+  Json queryJson(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
+  if (queryJson.isEmpty()) {
+    return;
+  }
+  
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+  if (vocbase == nullptr) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_INTERNAL, "cannot get vocbase from context");
+    return;
+  }
+
+  Json queryString;
+  Json parameters;
+  Json options;
+
+  queryString = queryJson.get("plan").copy();       // cannot throw
+  if (queryString.isEmpty()) {
+    generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
+      "body must be an object with attribute \"plan\"");
+    return;
+  }
+  parameters = queryJson.get("parameters").copy();  // cannot throw
+  options = queryJson.get("options").copy();        // cannot throw
+
+  // ...
+
   _response = createResponse(triagens::rest::HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
   Json answerBody(Json::Array, 1);
