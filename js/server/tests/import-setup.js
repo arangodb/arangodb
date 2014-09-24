@@ -51,7 +51,9 @@
   db._createEdgeCollection("UnitTestsImportEdge");
 })();
 
-return true;
+return {
+  status: true
+};
 
 // Local Variables:
 // mode: outline-minor
