@@ -31,6 +31,7 @@
 #define ARANGODB_VOC_BASE_VOCBASE_H 1
 
 #include "Basics/Common.h"
+#include "Basics/ReadWriteLock.h"
 
 #include "Basics/associative.h"
 #include "Basics/locks.h"
@@ -307,6 +308,9 @@ typedef struct TRI_vocbase_s {
   TRI_associative_pointer_t  _collectionsById;    // collections by id
 
   TRI_read_write_lock_t      _inventoryLock;      // object lock needed when replication is assessing the state of the vocbase
+
+  // structures for user-defined volatile data
+  void*                      _userStructures;
 
   TRI_associative_pointer_t  _authInfo;
   TRI_associative_pointer_t  _authCache;

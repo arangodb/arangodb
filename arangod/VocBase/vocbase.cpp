@@ -57,6 +57,7 @@
 #include "VocBase/server.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase-defaults.h"
+#include "V8Server/v8-user-structures.h"
 #include "Wal/LogfileManager.h"
 
 #include "Ahuacatl/ahuacatl-functions.h"
@@ -1342,6 +1343,7 @@ TRI_vocbase_t* TRI_CreateInitialVocBase (TRI_server_t* server,
   vocbase->_hasCompactor       = false;
   vocbase->_isOwnAppsDirectory = true;
   vocbase->_replicationApplier = nullptr;
+  vocbase->_userStructures     = nullptr;
 
   vocbase->_oldTransactions    = nullptr;
 
@@ -1403,6 +1405,8 @@ TRI_vocbase_t* TRI_CreateInitialVocBase (TRI_server_t* server,
   TRI_InitCondition(&vocbase->_compactorCondition);
   TRI_InitCondition(&vocbase->_cleanupCondition);
 
+  TRI_CreateUserStructuresVocBase(vocbase);
+  
   return vocbase;
 }
 
@@ -1411,6 +1415,10 @@ TRI_vocbase_t* TRI_CreateInitialVocBase (TRI_server_t* server,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyInitialVocBase (TRI_vocbase_t* vocbase) {
+  if (vocbase->_userStructures != nullptr) {
+    TRI_FreeUserStructuresVocBase(vocbase);
+  }
+
   // free replication
   if (vocbase->_replicationApplier != nullptr) {
     TRI_FreeReplicationApplier(vocbase->_replicationApplier);
