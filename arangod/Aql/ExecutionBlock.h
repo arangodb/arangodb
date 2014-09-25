@@ -1482,7 +1482,7 @@ public:
     };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    GatherBlock
+// --SECTION--                                                       GatherBlock
 // -----------------------------------------------------------------------------
 
     class GatherBlock : public ExecutionBlock {
@@ -1490,7 +1490,7 @@ public:
       public:
 
         GatherBlock (ExecutionEngine* engine,
-                        GatherNode const* ep)
+                     GatherNode const* ep)
           : ExecutionBlock(engine, ep) {
         }
 
@@ -1507,11 +1507,11 @@ public:
 
         int initializeCursor (AqlItemBlock* items, size_t pos);
 
-        //bool hasMore ();
-
         int64_t count () const;
 
         int64_t remaining ();
+
+        bool hasMore ();
 
         AqlItemBlock* getSome (size_t, size_t);
 
@@ -1569,6 +1569,28 @@ public:
 
     };
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      ScatterBlock
+// -----------------------------------------------------------------------------
+
+    class ScatterBlock : public ExecutionBlock {
+
+      public:
+
+        ScatterBlock (ExecutionEngine* engine,
+                      ScatterNode const* ep, 
+                      size_t nrClients)
+          : ExecutionBlock(engine, ep) {
+        }
+
+        ~ScatterBlock () {
+        }
+
+        int initialize () {
+          return ExecutionBlock::initialize();
+        }
+
+    };
   }  // namespace triagens::aql
 }  // namespace triagens
 
