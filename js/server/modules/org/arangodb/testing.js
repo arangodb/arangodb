@@ -1083,7 +1083,7 @@ function unitTestPrettyPrintResults(r) {
       }
     }
   }
-  print("Overal state: " + ((r.all_ok === true) ? "Success" : "Fail"));
+  print("Overall state: " + ((r.all_ok === true) ? "Success" : "Fail"));
 }
 
 
