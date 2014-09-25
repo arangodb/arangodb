@@ -661,12 +661,17 @@ function rubyTests (options, ssl) {
         var r = statusExternal(pid, true);
 
         if (r.status === "TERMINATED") {
-          result[n] =  { status: (r.exit === 0), message: r.exit};
+          if (r.exit === 0) {
+            result[n] =  { status: true, message: "" };
+          }
+          else {
+            result[n] = { status: false, message: "exit code was " + r.exit};
+          }
         }
         else {
-          result[n] = { status: (r === 0), message: r.exit};
+          result[n] = { status: false, message: "irregular termination: " + r.status};
         }
-        if (r.exit !== 0 && !options.force) {
+        if (r.status === false && !options.force) {
           break;
         }
       }
