@@ -432,11 +432,12 @@ void RestAqlHandler::useQuery (std::string const& operation,
                                "atMost", ExecutionBlock::DefaultBatchSize);
     std::unique_ptr<AqlItemBlock> items(query->engine()->getSome(atLeast, atMost));
     if (items.get() == nullptr) {
-      answerBody("items", Json(Json::Null));
+      answerBody("exhausted", Json(true))
+                ("error", Json(false));
     }
     else {
       try {
-        answerBody("items", items->toJson(query->trx()));
+        answerBody = items->toJson(query->trx());
       }
       catch (...) {
         _queryRegistry->close(vocbase, qId);
@@ -451,7 +452,8 @@ void RestAqlHandler::useQuery (std::string const& operation,
                                                          "number", 1);
     try {
       bool exhausted = query->engine()->skip(number);
-      answerBody("exhausted", Json(exhausted));
+      answerBody("exhausted", Json(exhausted))
+                ("error", Json(false));
     }
     catch (...) {
       _queryRegistry->close(vocbase, qId);
@@ -470,7 +472,6 @@ void RestAqlHandler::useQuery (std::string const& operation,
 
   _response = createResponse(triagens::rest::HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
-  answerBody("error", Json(false));
   _response->body().appendText(answerBody.toString());
 }
 

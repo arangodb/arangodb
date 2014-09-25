@@ -374,38 +374,90 @@ AqlItemBlock* AqlItemBlock::concatenate (std::vector<AqlItemBlock*> const& block
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson, transfer a whole AqlItemBlock to Json, the result can
 /// be used to recreate the AqlItemBlock via the Json constructor
+/// Here is a description of the data format: The resulting Json has
+/// the following attributes:
+///  "nrItems": the number of rows of the AqlItemBlock
+///  "nrRegs":  the number of registers of the AqlItemBlock
+///  "error":   always set to false
+///  "data":    this contains the actual data in the form of a list of
+///             numbers. The AqlItemBlock is stored columnwise, starting
+///             from the first column (top to bottom) and going right.
+///             Each entry found is encoded in the following way:
+///               0.0  means a single empty entry
+///               -1.0 followed by a positive integer N (encoded as number)
+///                      means a run of that many empty entries
+///               -2.0 followed by two numbers LOW and HIGH means a range
+///                      and LOW and HIGH are the boundaries (inclusive)
+///               1.0 means a JSON entry at the "next" position in "raw"
+///                      the "next" position starts with 2 and is increased
+///                      by one for every 1.0 found in data
+///               integer values >= 2.0 mean a JSON entry, in this 
+///                      case the "raw" list contains an entry in the
+///                      corresponding position
+///  "raw":     List of actual values, positions 0 and 1 are always null
+///                      such that actual indices start at 2
 ////////////////////////////////////////////////////////////////////////////////
 
 Json AqlItemBlock::toJson (AQL_TRANSACTION_V8* trx) const {
-  Json json(Json::Array, 3);
+  Json json(Json::Array, 6);
   json("nrItems", Json(static_cast<double>(_nrItems)))
       ("nrRegs", Json(static_cast<double>(_nrRegs)));
   Json data(Json::List, _data.size());
-  std::unordered_map<AqlValue, size_t> table;
+  Json raw(Json::List, _data.size() + 2);
+       raw(Json(Json::Null))
+          (Json(Json::Null));  // Two nulls in the beginning such that 
+                               // indices start with 2
 
-  RegisterId column = 0;
-  for (size_t i = 0; i < _data.size(); i++) {
-    AqlValue const& a(_data[i]);
-    if (a.isEmpty()) {
-      data(Json(Json::Null));
-    }
-    else {
-      auto it = table.find(a);
-      if (it == table.end()) {
-        Json copy(a.toJson(trx, _docColls[column]));
-        data(copy);
-        table.insert(make_pair(a, i));
+  std::unordered_map<AqlValue, size_t> table;   // remember duplicates
+
+  size_t emptyCount = 0;  // here we count runs of empty AqlValues
+
+  auto commitEmpties = [&] () {  // this commits an empty run to the data
+    if (emptyCount > 0) {
+      if (emptyCount == 1) {
+        data(Json(0.0));
       }
       else {
-        data(Json(Json::List, 1)
-                 (Json(static_cast<double>(it->second))));
+        data(Json(-1.0))
+            (Json(static_cast<double>(emptyCount)));
+      }
+      emptyCount = 0;
+    }
+  };
+
+  size_t pos = 2;   // write position in raw
+  for (RegisterId column = 0; column < _nrRegs; column++) {
+    for (size_t i = 0; i < _data.size(); i++) {
+      AqlValue const& a(_data[i * _nrRegs + column]);
+      if (a.isEmpty()) {
+        emptyCount++;
+      }
+      else {
+        commitEmpties();
+        if (a._type == AqlValue::RANGE) {
+          data(Json(-2.0))
+              (Json(static_cast<double>(a._range->_low)))
+              (Json(static_cast<double>(a._range->_high)));
+        }
+        else {
+          auto it = table.find(a);
+          if (it == table.end()) {
+            raw(a.toJson(trx, _docColls[column]));
+            data(Json(1.0));
+            table.insert(make_pair(a, pos++));
+          }
+          else {
+            data(Json(static_cast<double>(it->second)));
+          }
+        }
       }
     }
-    if (++column == _nrRegs) {
-      column = 0;
-    }
   }
-  json("data", data);
+  commitEmpties();
+  json("data", data)
+      ("raw", raw)
+      ("error", Json(false))
+      ("exhausted", Json(false));
   return json;
 }
 
