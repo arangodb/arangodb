@@ -1119,7 +1119,7 @@ function unitTestPrettyPrintResults(r) {
   catch (x) {
     print("exception caught while pretty printing result: ");
     print(x.message);
-    print(JSON.toString(r));
+    print(JSON.stringify(r));
   }
 }
 
