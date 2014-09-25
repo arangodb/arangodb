@@ -1090,9 +1090,12 @@ function unitTestPrettyPrintResults(r) {
             else {
               if (r[testrun][test].hasOwnProperty('message')) {
                 print("     " + test + ": Fail - Whole testsuite failed!");
-                print(r[testrun][test].message);
-                if (r[testrun][test].message.hasOwnProperty('body')) {
+                if (typeof r[testrun][test].message === "object" &&
+                    r[testrun][test].message.hasOwnProperty('body')) {
                   print(r[testrun][test].message.body);
+                }
+                else {
+                  print(r[testrun][test].message);
                 }
               }
               else {
