@@ -30,6 +30,7 @@
 using namespace triagens::aql;
 
 using Json = triagens::basics::Json;
+using JsonHelper = triagens::basics::JsonHelper;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      AqlItemBlock
@@ -49,14 +50,11 @@ AqlItemBlock::AqlItemBlock (size_t nrItems,
 
   TRI_ASSERT(nrItems > 0);  // no, empty AqlItemBlocks are not allowed!
 
-  if (nrItems > 0 && nrRegs > 0) {
+  if (nrRegs > 0) {
     _data.reserve(nrItems * nrRegs);
     for (size_t i = 0; i < nrItems * nrRegs; ++i) {
       _data.emplace_back();
     }
-  }
- 
-  if (nrRegs > 0) {
     _docColls.reserve(nrRegs);
     for (size_t i = 0; i < nrRegs; ++i) {
       _docColls.push_back(nullptr);
@@ -65,23 +63,128 @@ AqlItemBlock::AqlItemBlock (size_t nrItems,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the block
-/// TODO: dtor is not exception-safe
+/// @brief create the block from Json, note that this can throw
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlItemBlock::~AqlItemBlock () {
-  for (size_t i = 0; i < _nrItems * _nrRegs; i++) {
-    if (! _data[i].isEmpty()) {
-      auto it = _valueCount.find(_data[i]);
-      if (it != _valueCount.end()) { // if we know it, we are still responsible
-        if (--(it->second) == 0) {
-          _data[i].destroy();
-          try {
-            _valueCount.erase(it);
+AqlItemBlock::AqlItemBlock (Json const& json) {
+  bool exhausted = JsonHelper::getBooleanValue(json.json(), "exhausted", false);
+  if (exhausted) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "exhausted must be false");
+  }
+  _nrItems = JsonHelper::getNumericValue<size_t>(json.json(), "nrItems", 0);
+  if (_nrItems == 0) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "nrItems must be > 0");
+  }
+  _nrRegs = JsonHelper::getNumericValue<RegisterId>(json.json(), "nrRegs", 0);
+
+  // Initialize the data vector:
+  if (_nrRegs > 0) {
+    _data.reserve(_nrItems * _nrRegs);
+    for (size_t i = 0; i < _nrItems * _nrRegs; ++i) {
+      _data.emplace_back();
+    }
+    _docColls.reserve(_nrRegs);
+    for (size_t i = 0; i < _nrRegs; ++i) {
+      _docColls.push_back(nullptr);
+    }
+  }
+
+  // Now put in the data:
+  Json data(json.get("data"));
+  Json raw(json.get("raw"));
+  size_t posInRaw = 2;
+  size_t posInData = 0;
+  int64_t emptyRun = 0;
+  std::vector<AqlValue> madeHere;
+  madeHere.reserve(raw.size());
+  madeHere.emplace_back();   // an empty AqlValue
+  madeHere.emplace_back();   // another empty AqlValue, indices start w. 2
+  try {
+    for (RegisterId column = 0; column < _nrRegs; column++) {
+      for (size_t i = 0; i < _nrItems; i++) {
+        if (emptyRun > 0) {
+          emptyRun--;
+        }
+        else {
+          Json dataEntry(data.at(posInData++));
+          if (! dataEntry.isNumber()) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
+                  "data must contain only numbers");
           }
-          catch (...) {
+          int64_t n = JsonHelper::getNumericValue<int64_t>(dataEntry.json(), 0);
+          if (n == 0) {
+            // empty, do nothing here
+          }
+          else if (n == -1) {
+            // empty run:
+            Json runLength(data.at(posInData++));
+            emptyRun = JsonHelper::getNumericValue<int64_t>(runLength.json(), 0);
+          }
+          else if (n == -2) {
+            Json lowBound(data.at(posInData++));
+            Json highBound(data.at(posInData++));
+            int64_t low = JsonHelper::getNumericValue<int64_t>(lowBound.json(), 0);
+            int64_t high = JsonHelper::getNumericValue<int64_t>(lowBound.json(), 0);
+            AqlValue a(low, high);
+            try {
+              setValue(i, column, a);
+            }
+            catch (...) {
+              a.destroy();
+              throw;
+            }
+          }
+          else if (n == 1) {
+            Json x(data.at(posInRaw++));
+            AqlValue a(new Json(TRI_UNKNOWN_MEM_ZONE, x.copy().steal()));
+            try {
+              setValue(i, column, a);  // if this throws, a is destroyed again
+            }
+            catch (...) {
+              a.destroy();
+              throw;
+            }
+            madeHere.push_back(a);
+          }
+          else if (n >= 2) {
+            setValue(i, column, madeHere[static_cast<size_t>(n)]);
+            // If this throws, all is OK, because it was already put into
+            // the block elsewhere.
+          }
+          else {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                    "found undefined data value");
           }
         }
+      }
+    }
+  }
+  catch (...) {
+    destroy();
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy the block, used in the destructor and elsewhere
+////////////////////////////////////////////////////////////////////////////////
+
+void AqlItemBlock::destroy () {
+  for (size_t i = 0; i < _nrItems * _nrRegs; i++) {
+    if (! _data[i].isEmpty()) {
+      try {   // can find() really throw???
+        auto it = _valueCount.find(_data[i]);
+        if (it != _valueCount.end()) { // if we know it, we are still responsible
+          if (--(it->second) == 0) {
+            _data[i].destroy();
+            try {
+              _valueCount.erase(it);
+            }
+            catch (...) {
+            }
+          }
+        }
+      }
+      catch (...) {
       }
       // Note that if we do not know it the thing it has been stolen from us!
     }
@@ -427,7 +530,7 @@ Json AqlItemBlock::toJson (AQL_TRANSACTION_V8* trx) const {
 
   size_t pos = 2;   // write position in raw
   for (RegisterId column = 0; column < _nrRegs; column++) {
-    for (size_t i = 0; i < _data.size(); i++) {
+    for (size_t i = 0; i < _nrItems; i++) {
       AqlValue const& a(_data[i * _nrRegs + column]);
       if (a.isEmpty()) {
         emptyCount++;
