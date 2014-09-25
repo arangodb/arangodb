@@ -454,6 +454,14 @@ void Optimizer::setupRules () {
                  distributeInCluster_pass10,
                  false);
   }
+
+  if (triagens::arango::ServerState::instance()->isCoordinator()) {
+    // distribute operations in cluster
+    registerRule("distribute-filtercalc-to-cluster",
+                 distributeFilternCalcToCluster,
+                 distributeFilternCalcToCluster_pass10,
+                 false);
+  }
 }
 
 // Local Variables:

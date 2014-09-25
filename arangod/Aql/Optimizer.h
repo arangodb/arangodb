@@ -136,8 +136,12 @@ namespace triagens {
 //////////////////////////////////////////////////////////////////////////////
 
         // make operations on sharded collections use scatter / gather / remote
-        distributeInCluster_pass10                = 1000
-
+        distributeInCluster_pass10                = 1000,
+          
+        // move FilterNodes & Calculation nodes inbetween
+        // scatter(remote) <-> gather(remote) so they're
+        // distributed to the cluster nodes.
+        distributeFilternCalcToCluster_pass10   = 1010
       };
     
       public:
