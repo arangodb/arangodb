@@ -1134,7 +1134,6 @@ var allTests =
     "shell_server",
     "shell_server_ahuacatl",
     "shell_server_aql",
-    "shell_server_perf",
     "http_server",
     "ssl_server",
     "shell_client",
