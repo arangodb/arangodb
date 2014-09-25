@@ -50,14 +50,7 @@ namespace triagens {
         QueryRegistry () {
         }
 
-        ~QueryRegistry () {
-          for (auto& m : _queries) {
-            for (auto& q : m.second) {
-              QueryInfo*& p = q.second;
-              delete p->_query;
-            }
-          }
-        }
+        ~QueryRegistry ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
