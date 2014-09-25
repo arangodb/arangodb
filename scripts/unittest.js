@@ -96,6 +96,7 @@ function main (argv) {
   catch (x) {
     print("Exception while serializing status xml!");
     print(x.message);
+    print(JSON.toString(r));
   }
 
   UnitTest.unitTestPrettyPrintResults(r);
