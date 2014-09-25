@@ -1580,7 +1580,7 @@ public:
         ScatterBlock (ExecutionEngine* engine,
                       ScatterNode const* ep, 
                       size_t nrClients)
-          : ExecutionBlock(engine, ep) {
+          : ExecutionBlock(engine, ep), _nrClients(nrClients){
         }
 
         ~ScatterBlock () {
@@ -1589,6 +1589,35 @@ public:
         int initialize () {
           return ExecutionBlock::initialize();
         }
+
+        //int initializeCursor (AqlItemBlock* items, size_t pos);
+
+        int64_t remaining () {
+          return _dependencies[0]->remaining();
+        }
+
+        virtual bool hasMore ();
+
+        virtual AqlItemBlock* getSome (size_t atLeast, size_t atMost) {
+          TRI_ASSERT(false);
+        }
+
+        virtual size_t skipSome (size_t atLeast, size_t atMost) {
+          TRI_ASSERT(false);
+        }
+       
+        bool hasMoreForClient (size_t clientId);
+        AqlItemBlock* getSomeForClient (size_t atLeast, size_t atMost, size_t clientId);
+        size_t skipSomeForClient (size_t atLeast, size_t atMost, size_t clientId);
+
+      private: 
+
+        //_posForClient.at(i).second is the nr of rows of
+        //_buffer.at(posForClient.at(i).first) sent to the client with id <i>.
+        std::vector<std::pair<size_t,size_t>> _posForClient; 
+        std::vector<bool> _doneForClient;
+        size_t _nrClients;
+
 
     };
   }  // namespace triagens::aql
