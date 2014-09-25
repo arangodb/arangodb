@@ -294,7 +294,7 @@ function CapConstraintSuite() {
       collection.truncate();
       assertEqual(0, collection.count());
 
-      testHelper.waitUnload(collection);
+      testHelper.waitUnload(collection, true);
 
       assertEqual(0, collection.count());
       assertEqual([ ], collection.toArray());
@@ -384,7 +384,7 @@ function CapConstraintSuite() {
       assertEqual(3, collection.count());
       assertEqual([ "abc", "bam", "baz" ], collection.toArray().map(fun).sort());
 
-      testHelper.waitUnload(collection);
+      testHelper.waitUnload(collection, true);
 
       assertEqual(3, collection.count());
       assertEqual([ "abc", "bam", "baz" ], collection.toArray().map(fun).sort());
@@ -420,7 +420,7 @@ function CapConstraintSuite() {
       assertEqual(5, collection.count());
       assertEqual([5, 6, 7, 8, 9], collection.toArray().map(fun).sort(nsort));
 
-      testHelper.waitUnload(collection);
+      testHelper.waitUnload(collection, true);
 
       assertEqual(5, collection.count());
       assertEqual([5, 6, 7, 8, 9], collection.toArray().map(fun).sort(nsort));
@@ -433,7 +433,7 @@ function CapConstraintSuite() {
       assertEqual(5, collection.count());
       assertEqual([7, 8, 9, 10, 11], collection.toArray().map(fun).sort(nsort));
 
-      testHelper.waitUnload(collection);
+      testHelper.waitUnload(collection, true);
 
       assertEqual(5, collection.count());
       assertEqual([7, 8, 9, 10, 11], collection.toArray().map(fun).sort(nsort));
@@ -476,7 +476,7 @@ function CapConstraintSuite() {
 
       collection.save({ n : 10 });
 
-      testHelper.waitUnload(collection);
+      testHelper.waitUnload(collection, true);
 
       assertEqual(5, collection.count());
       assertEqual([6, 7, 8, 9, 10], collection.toArray().map(fun).sort(nsort));
