@@ -3731,10 +3731,6 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
   return skipped;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      class SortBlock::OurLessThan
-// -----------------------------------------------------------------------------
-
 bool GatherBlock::OurLessThan::operator() (std::pair<size_t, size_t> const& a,
                                            std::pair<size_t, size_t> const& b) {
   size_t i = 0;
@@ -3754,6 +3750,91 @@ bool GatherBlock::OurLessThan::operator() (std::pair<size_t, size_t> const& a,
   }
 
   return false;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                class ScatterBlock
+// -----------------------------------------------------------------------------
+
+
+bool ScatterBlock::hasMoreForClient (size_t clientId){
+
+  TRI_ASSERT(0 <= clientId && clientId < _nrClients);
+  if (_doneForClient.at(clientId)) {
+    return false;
+  }
+
+  std::pair<size_t,size_t> pos = _posForClient.at(clientId); 
+  // (i, j) where i is the position in _buffer, and j is the position in
+  // _buffer.at(i) we are sending to <clientId>
+
+  if (pos.first > _buffer.size()) {
+    if (!getBlock(DefaultBatchSize, DefaultBatchSize)) {
+      _doneForClient.at(clientId) = true;
+      return false;
+    }
+  }
+  return true;
+}
+
+bool ScatterBlock::hasMore () {
+  
+  if (_done){
+    return false;
+  }
+
+  for(size_t i = 0; i < _nrClients; i++){
+    if (hasMoreForClient(i)){
+      return true;
+    }
+  }
+  return false;
+}
+
+AqlItemBlock* ScatterBlock::getSomeForClient (size_t atLeast, size_t atMost, size_t clientId){
+  TRI_ASSERT(0 <= clientId && clientId < _nrClients);
+  
+  if (_doneForClient.at(clientId)) {
+    return nullptr;
+  }
+  
+  std::pair<size_t, size_t> pos = _posForClient.at(clientId); 
+
+  // pull more blocks from dependency if necessary . . . 
+  if (pos.first > _buffer.size()) {
+    if (!getBlock(atLeast, atMost)) {
+      _doneForClient.at(clientId) = true;
+      return nullptr;
+    }
+  }
+  
+  size_t available = _buffer.at(pos.first)->size() - pos.second;
+  // available should be non-zero  
+  
+  size_t toSend = (std::min)(available, atMost); //nr rows in outgoing block
+  
+  AqlItemBlock* res = _buffer.at(pos.first)->slice(pos.second, pos.second + toSend);
+
+  // increment the position . . .
+  _posForClient.at(clientId).second += toSend;
+  
+  if (_posForClient.at(clientId).second == _buffer.at(_posForClient.at(clientId).first)->size()) {
+    _posForClient.at(clientId).first++;
+    _posForClient.at(clientId).second = 0;
+  }
+
+  // check if we can pop the front of the buffer . . . 
+  bool popit = true;
+  for (size_t i = 0; i < _nrClients; i++) {
+    if (_posForClient.at(i).first == 0) {
+      popit = false;
+      break;
+    }
+  }
+  if (popit) {
+    _buffer.pop_front();
+  }
+  return res;
 }
 
 // Local Variables:
