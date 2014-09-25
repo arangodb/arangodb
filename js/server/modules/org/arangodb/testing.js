@@ -402,10 +402,15 @@ function executeAndWait (cmd, args) {
   var pid = executeExternal(cmd, args);
   var res = statusExternal(pid, true);
   if (res.status === "TERMINATED") {
-    return { status: (res.exit === 0), message: ""};
+    if (res.exit === 0) {
+      return { status: true, message: "" };
+    }
+    else {
+      return { status: false, message: "exit code was " + res.exit};
+    }
   }
   else {
-    return { status: (res === 0), message: res.exit};
+    return { status: false, message: "irregular termination: " + res.status};
   }
 }
 
