@@ -81,13 +81,22 @@ function main (argv) {
   }
   var test = argv[1];
   var options = {};
+  var r;
   if (argv.length >= 3) {
     options = JSON.parse(argv[2]);
   }
   options.jsonReply = true;
   var UnitTest = require("org/arangodb/testing");
   start_pretty_print();
-  var r = UnitTest.UnitTest(test,options); 
+
+  try {
+    r = UnitTest.UnitTest(test,options); 
+  }
+  catch (x) {
+    print("Caught exception during test execution!");
+    print(x.message);
+    print(JSON.stringify(r);
+  }
   fs.write("UNITTEST_RESULT.json",JSON.stringify(r));
   fs.write("UNITTEST_RESULT_SUMMARY.txt",JSON.stringify(r.all_ok));
   try {
