@@ -35,6 +35,37 @@ using namespace triagens::aql;
 // --SECTION--                                           the QueryRegistry class
 // -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                          constructors/destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+QueryRegistry::~QueryRegistry () {
+  std::vector<std::pair<TRI_vocbase_t*, QueryId>> toDelete;
+  {
+    WRITE_LOCKER(_lock);
+    for (auto& x : _queries) {
+      // x.first is a TRI_vocbase_t* and
+      // x.second is a std::unordered_map<QueryId, QueryInfo*>
+      for (auto& y : x.second) {
+        // y.first is a QueryId and
+        // y.second is a QueryInfo*
+        toDelete.emplace_back(x.first, y.first);
+      }
+    }
+  }
+  for (auto& p : toDelete) {
+    try {  // just in case
+      destroy(p.first, p.second);
+    }
+    catch (...) {
+    }
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief insert
 ////////////////////////////////////////////////////////////////////////////////

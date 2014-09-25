@@ -816,17 +816,13 @@ static v8::Handle<v8::Value> JS_KeyspaceCreate (v8::Arguments const& argv) {
   std::unique_ptr<KeySpace> ptr(new KeySpace(static_cast<uint32_t>(size)));
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
-  bool result;
   {
     WRITE_LOCKER(h->lock);
 
     auto hash = GetKeySpace(vocbase, name);
 
     if (hash != nullptr) {
-      if (ignoreExisting) {
-        result = true;
-      }
-      else {
+      if (! ignoreExisting) {
         // TODO: change error code
         TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "hash already exists");
       }
