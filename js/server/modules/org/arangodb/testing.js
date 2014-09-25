@@ -1069,30 +1069,36 @@ testFuncs.authentication_parameters = function (options) {
 var internalMembers = ["code", "error", "status", "duration", "failed", "total"];
 
 function unitTestPrettyPrintResults(r) {
-  for (var testrun in r) {    
-    if (r.hasOwnProperty(testrun) && (testrun !== 'all_ok')) {
-      print("Testrun: " + testrun);
-      for (var test in  r[testrun]) {
-        if (r[testrun].hasOwnProperty(test) && (test !== 'ok')) {
-          if (r[testrun][test].status) {
-            print("     " + test + ": Success");
-          }
-          else {
-            if (r[testrun][test].hasOwnProperty('message')) {
-              print("     " + test + ": Fail - Whole testsuite failed!");
-              print(r[testrun][test].message);
-              if (r[testrun][test].message.hasOwnProperty('body')) {
-                print(r[testrun][test].message.body);
-              }
+  var testrun;
+  var test;
+  var oneTest;
+
+  try {
+    for (testrun in r) {    
+      if (r.hasOwnProperty(testrun) && (testrun !== 'all_ok')) {
+        print("Testrun: " + testrun);
+        for (test in  r[testrun]) {
+          if (r[testrun].hasOwnProperty(test) && (test !== 'ok')) {
+            if (r[testrun][test].status) {
+              print("     " + test + ": Success");
             }
             else {
-              print("     " + test + ": Fail");
-              for (var oneTest in r[testrun][test]) {
-                if ((r[testrun][test].hasOwnProperty(oneTest)) && 
-                    (internalMembers.indexOf(oneTest) === -1) &&
-                    (!r[testrun][test][oneTest].status)) {
-                  print("          -> " + oneTest + " Failed; Verbose message:");
-                  print(r[testrun][test][oneTest].message);
+              if (r[testrun][test].hasOwnProperty('message')) {
+                print("     " + test + ": Fail - Whole testsuite failed!");
+                print(r[testrun][test].message);
+                if (r[testrun][test].message.hasOwnProperty('body')) {
+                  print(r[testrun][test].message.body);
+                }
+              }
+              else {
+                print("     " + test + ": Fail");
+                for (oneTest in r[testrun][test]) {
+                  if ((r[testrun][test].hasOwnProperty(oneTest)) && 
+                      (internalMembers.indexOf(oneTest) === -1) &&
+                      (!r[testrun][test][oneTest].status)) {
+                    print("          -> " + oneTest + " Failed; Verbose message:");
+                    print(r[testrun][test][oneTest].message);
+                  }
                 }
               }
             }
@@ -1100,8 +1106,13 @@ function unitTestPrettyPrintResults(r) {
         }
       }
     }
+    print("Overall state: " + ((r.all_ok === true) ? "Success" : "Fail"));
   }
-  print("Overall state: " + ((r.all_ok === true) ? "Success" : "Fail"));
+  catch (x) {
+    print("exception caught while pretty printing result: ");
+    print(x.message);
+    print(JSON.toString(r));
+  }
 }
 
 
