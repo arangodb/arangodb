@@ -3531,6 +3531,22 @@ bool GatherBlock::getBlock (size_t i, size_t atLeast, size_t atMost) {
   return res;
 }
 
+bool GatherBlock::hasMore () {
+  if (_done) {
+    return false;
+  }
+  for (auto i = 0; i < _buffer.size(); i++){
+    if (!_buffer.at(i).empty()) {
+      return true;
+    } else if (getBlock(i, DefaultBatchSize, DefaultBatchSize)) {
+      _pos.at(i) = make_pair(i, 0);
+      return true;
+    }
+  }
+  _done = true;
+  return false;
+}
+
 AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
   
   if (_done) {
