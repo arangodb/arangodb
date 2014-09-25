@@ -46,6 +46,8 @@
 ///   - "http_server"
 ///   - "ssl_server"
 ///   - "shell_client"
+///   - "single_client" : run one test suite isolated via the arangosh
+///   - "single_server" : run one test suite on the server
 ///   - "dump"
 ///   - "arangob"
 ///   - "import"
@@ -74,8 +76,6 @@
 ///   - `cluster`: if set to true the tests are run with the coordinator
 ///     of a small local cluster
 ///   - `test`: path to single test to execute for "single" test target
-///   - `skipServer`: flag for "single" test target to skip the server test
-///   - `skipClient`: flag for "single" test target to skip the client test
 ///   - `cleanup`: if set to true (the default), the cluster data files
 ///     and logs are removed after termination of the test.
 ///   - `jasmineReportFormat`: this option is passed on to the `format`
@@ -111,8 +111,6 @@ var optionsDefaults = { "cluster": false,
                         "username": "root",
                         "password": "",
                         "test": undefined,
-                        "skipServer": false,
-                        "skipClient": false,
                         "cleanup": true,
                         "jsonReply": false};
 
@@ -588,32 +586,47 @@ testFuncs.boost = function (options) {
   return results;
 };
 
-testFuncs.single = function (options) {
+testFuncs.single_server = function (options) {
   var instanceInfo = startInstance("tcp", options, [], "single");
   var result = { };
   if (options.test !== undefined) {
     var te = options.test;
-    result.test = te;
-    if (!options.skipServer) {
-      print("\nTrying",te,"on server...");
-      result.server = runThere(options, instanceInfo, makePath(te));
-    }
-    if (!options.skipClient) {
-      var topDir = findTopDir();
-      var args = makeTestingArgsClient(options);
-      args.push("--server.endpoint");
-      args.push(instanceInfo.endpoint);
-      args.push("--javascript.unit-tests");
-      args.push(fs.join(topDir,te));
-      print("\nTrying",te,"on client...");
-      var arangosh = fs.join("bin","arangosh");
-      result.client = executeAndWait(arangosh, args);
-    }
+    print("\nTrying",te,"on server...");
+    result = {};
+    result[te] = runThere(options, instanceInfo, makePath(te));
+    print("Shutting down...");
+    shutdownInstance(instanceInfo,options);
+    print("done.");
+    return result
   }
-  print("Shutting down...");
-  shutdownInstance(instanceInfo,options);
-  print("done.");
-  return result;
+  else {
+    return { status: false, message: "No test specified!"};
+  }
+};
+
+testFuncs.single_client = function (options) {
+  var instanceInfo = startInstance("tcp", options, [], "single");
+  var result = { };
+  if (options.test !== undefined) {
+    var te = options.test;
+    var topDir = findTopDir();
+    var args = makeTestingArgsClient(options);
+    args.push("--server.endpoint");
+    args.push(instanceInfo.endpoint);
+    args.push("--javascript.unit-tests");
+    args.push(fs.join(topDir,te));
+    print("\nTrying",te,"on client...");
+    var arangosh = fs.join("bin","arangosh");
+    result = {};
+    result[te] = executeAndWait(arangosh, args);
+    print("Shutting down...");
+    shutdownInstance(instanceInfo,options);
+    print("done.");
+    return result
+  }
+  else {
+    return { status: false, message: "No test specified!"};
+  }
 };
 
 function rubyTests (options, ssl) {
