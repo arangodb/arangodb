@@ -674,12 +674,17 @@ function rubyTests (options, ssl) {
         var r = statusExternal(pid, true);
 
         if (r.status === "TERMINATED") {
-          result[n] =  { status: (r.exit === 0), message: r.exit};
+          if (r.exit === 0) {
+            result[n] =  { status: true, message: "" };
+          }
+          else {
+            result[n] = { status: false, message: "exit code was " + r.exit};
+          }
         }
         else {
-          result[n] = { status: (r === 0), message: r.exit};
+          result[n] = { status: false, message: "irregular termination: " + r.status};
         }
-        if (r.exit !== 0 && !options.force) {
+        if (r.status === false && !options.force) {
           break;
         }
       }
@@ -1085,9 +1090,12 @@ function unitTestPrettyPrintResults(r) {
             else {
               if (r[testrun][test].hasOwnProperty('message')) {
                 print("     " + test + ": Fail - Whole testsuite failed!");
-                print(r[testrun][test].message);
-                if (r[testrun][test].message.hasOwnProperty('body')) {
+                if (typeof r[testrun][test].message === "object" &&
+                    r[testrun][test].message.hasOwnProperty('body')) {
                   print(r[testrun][test].message.body);
+                }
+                else {
+                  print(r[testrun][test].message);
                 }
               }
               else {
@@ -1111,7 +1119,7 @@ function unitTestPrettyPrintResults(r) {
   catch (x) {
     print("exception caught while pretty printing result: ");
     print(x.message);
-    print(JSON.toString(r));
+    print(JSON.stringify(r));
   }
 }
 
