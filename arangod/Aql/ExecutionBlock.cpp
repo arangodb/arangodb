@@ -3474,7 +3474,6 @@ int GatherBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
     return res;
   }
 
-  // handle local data (if any) TODO
   if(!isSimple()){
     _buffer.reserve(_dependencies.size());
 
@@ -3630,7 +3629,7 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
         _buffer.at(val.first).pop_front();
         if (_buffer.at(val.first).empty()) {
           getBlock(val.first, DefaultBatchSize, DefaultBatchSize);
-          // FIXME does this have to be here? 
+          // FIXME does the below have to be here? 
           // renew the comparison function
           OurLessThan ourLessThan(_trx, _buffer, _sortRegisters, colls);
         }
@@ -3651,21 +3650,69 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
   if (_done) {
     return 0;
   }
-  
+  // the simple case . . .  
   if (isSimple()) {
-    auto res = _dependencies.at(_atDep)->skipSome(atLeast, atMost);
-    while (res == 0 && _atDep < _dependencies.size() - 1) {
+    auto skipped = _dependencies.at(_atDep)->skipSome(atLeast, atMost);
+    while (skipped == 0 && _atDep < _dependencies.size() - 1) {
       _atDep++;
-      res = _dependencies.at(_atDep)->skipSome(atLeast, atMost);
+      skipped = _dependencies.at(_atDep)->skipSome(atLeast, atMost);
     }
-    if (res == 0) {
+    if (skipped == 0) {
       _done = true;
     }
-    return res;
-  //} else { // merge sort the results from the deps
-
+    return skipped;
   }
-  return 0; // to keep the compiler happy
+
+  // the non-simple case . . .
+  size_t available = 0; // nr of available rows
+  size_t index;         // an index of a non-empty buffer
+  
+  // pull more blocks from dependencies . . .
+  for (size_t i = 0; i < _dependencies.size(); i++) {
+    if (_buffer.at(i).empty()) {
+      if (getBlock(i, atLeast, atMost)) {
+        _pos.at(i) = make_pair(i,0);           
+      }
+    } else {
+      index = i;
+    }
+    available += _buffer.at(i).size();
+  }
+  
+  if (available == 0) {
+    _done = true;
+    return 0;
+  }
+  
+  size_t skipped = (std::min)(available, atMost); //nr rows in outgoing block
+  
+  // get collections for ourLessThan . . .
+  std::vector<TRI_document_collection_t const*> colls;
+  for (RegisterId i = 0; i < _sortRegisters.size(); i++) {
+    colls.push_back(_buffer.at(index).front()->getDocumentCollection(_sortRegisters[i].first));
+  }
+  
+  // comparison function 
+  OurLessThan ourLessThan(_trx, _buffer, _sortRegisters, colls);
+
+  for (size_t i = 0; i < skipped; i++) {
+    // get the next smallest row from the buffer . . .
+    std::pair<size_t, size_t> val = *(std::min_element(_pos.begin(), _pos.end(), ourLessThan));
+    // renew the buffer and comparison function if necessary . . . 
+    _pos.at(val.first).second++;
+    if (_pos.at(val.first).second == _buffer.at(val.first).front()->size()) {
+      _buffer.at(val.first).pop_front();
+      if (_buffer.at(val.first).empty()) {
+        getBlock(val.first, DefaultBatchSize, DefaultBatchSize);
+        // FIXME does the below have to be here? 
+        // renew the comparison function
+        OurLessThan ourLessThan(_trx, _buffer, _sortRegisters, colls);
+      }
+      _pos.at(val.first) = make_pair(val.first,0);
+    }
+  }
+
+  return skipped;
 }
 
 // -----------------------------------------------------------------------------
