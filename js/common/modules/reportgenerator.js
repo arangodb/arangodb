@@ -53,7 +53,7 @@ var generatePerfReportGrinderCSV = function (reportName, testdata) {
         {
           var s = testdata[testname][testCalculation].duration;
           if (!isNaN(s)) {
-            x = x + '0, 0, ' + testname + '/' + testCalculation + ',' + require("internal").time() + ', ' + s + ', 0, 0, 0, 0, 0, 0, 0\n';
+            x = x + '0, 0, ' + testname + '/' + testCalculation + ',' + require("internal").time() + ', ' + s + ', 0, 0, 0, 0, 0, 0, 0, 0\n';
           }
         }
       }

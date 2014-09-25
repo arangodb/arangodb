@@ -997,6 +997,7 @@ testFuncs.authentication_parameters = function (options) {
   var i;
   var expectAuthFullRC = [401, 401, 401, 401, 401, 401, 401];
   var all_ok = true;
+  print("Starting Full test");
   results.auth_full = {};
   for (i = 0; i < urlsTodo.length; i++) {
     r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false,returnBodyOnError:true});
@@ -1013,9 +1014,9 @@ testFuncs.authentication_parameters = function (options) {
   }
   results.auth_full.status = all_ok;
 
-  print("Shutting down...");
+  print("Shutting down Full test...");
   shutdownInstance(instanceInfo,options);
-  print("done.");
+  print("done with Full test.");
   // Only system authentication:
   instanceInfo = startInstance("tcp", options,
                    ["--server.disable-authentication", "false",
@@ -1023,6 +1024,7 @@ testFuncs.authentication_parameters = function (options) {
                    "authparams2");
   var expectAuthSystemRC = [401, 401, 401, 401, 401, 404, 404];
   all_ok = true;
+  print("Starting System test");
   results.auth_system = {};
   for (i = 0;i < urlsTodo.length;i++) {
     r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false,returnBodyOnError:true});
@@ -1039,9 +1041,9 @@ testFuncs.authentication_parameters = function (options) {
   }
   results.auth_system.status = all_ok;
 
-  print("Shutting down...");
+  print("Shutting down System test...");
   shutdownInstance(instanceInfo,options);
-  print("done.");
+  print("done with System test.");
   // No authentication:
   instanceInfo = startInstance("tcp", options,
                    ["--server.disable-authentication", "true",
@@ -1050,6 +1052,7 @@ testFuncs.authentication_parameters = function (options) {
   var expectAuthNoneRC = [404, 404, 200, 301, 301, 404, 404];
   results.auth_none = {};
   all_ok = true;
+  print("Starting None test");
   for (i = 0;i < urlsTodo.length;i++) {
     r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false,returnBodyOnError:true});
     if (r.code === expectAuthNoneRC[i]) {
@@ -1065,9 +1068,9 @@ testFuncs.authentication_parameters = function (options) {
   }
   results.auth_none.status = all_ok;
 
-  print("Shutting down...");
+  print("Shutting down None test...");
   shutdownInstance(instanceInfo,options);
-  print("done.");
+  print("done with None test.");
   return results;
 };
 
@@ -1131,7 +1134,6 @@ var allTests =
     "shell_server",
     "shell_server_ahuacatl",
     "shell_server_aql",
-    "shell_server_perf",
     "http_server",
     "ssl_server",
     "shell_client",
