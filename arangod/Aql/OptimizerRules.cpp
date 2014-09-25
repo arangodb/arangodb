@@ -1681,6 +1681,88 @@ int triagens::aql::distributeInCluster (Optimizer* opt,
   return TRI_ERROR_NO_ERROR;
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief move filters up in the plan
+/// this rule modifies the plan in place
+/// filters are moved as far up in the plan as possible to make result sets
+/// as small as possible as early as possible
+/// filters are not pushed beyond limits
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::distributeFilternCalcToCluster (Optimizer* opt, 
+                                                   ExecutionPlan* plan,
+                                                   Optimizer::Rule const* rule) {
+  bool modified = false;
+
+  std::vector<ExecutionNode*> nodes
+    = plan->findNodesOfType(triagens::aql::ExecutionNode::GATHER, true);
+
+  
+  for (auto n : nodes) {
+    auto remoteNodeList = n->getDependencies();
+    TRI_ASSERT(remoteNodeList.size() > 0);
+    auto rn = remoteNodeList[0];
+    auto parents = n->getParents();
+    if (parents.size() < 1) {
+      continue;
+    }
+    while (1) {
+      bool stopSearching = false;
+
+      auto inspectNode = parents[0];
+
+      switch (inspectNode->getType()) {
+      case EN::ENUMERATE_LIST:
+      case EN::SINGLETON:
+      case EN::AGGREGATE:
+      case EN::INSERT:
+      case EN::REMOVE:
+      case EN::REPLACE:
+      case EN::UPDATE:
+        parents = inspectNode->getParents();
+        continue;
+      case EN::SUBQUERY:
+      case EN::RETURN:
+      case EN::NORESULTS:
+      case EN::SCATTER:
+      case EN::GATHER:
+      case EN::ILLEGAL:
+        //do break
+      case EN::REMOTE:
+      case EN::LIMIT:
+      case EN::SORT:
+      case EN::INDEX_RANGE:
+      case EN::ENUMERATE_COLLECTION:
+        stopSearching = true;
+        break;
+      case EN::CALCULATION:
+      case EN::FILTER:
+        // remember our cursor...
+        parents = inspectNode->getParents();
+        // then unlink the filter/calculator from the plan
+        plan->unlinkNode(inspectNode);
+        // and re-insert into plan in front of the remoteNode
+        plan->insertDependency(rn, inspectNode);
+
+        modified = true;
+        //ready to rumble!
+      };
+      if (stopSearching) {
+        break;
+      }
+    }
+  }
+  
+  if (modified) {
+    plan->findVarUsage();
+  }
+  
+  opt->addPlan(plan, rule->level, modified);
+  
+  return TRI_ERROR_NO_ERROR;
+}
+
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
