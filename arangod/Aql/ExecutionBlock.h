@@ -1638,19 +1638,31 @@ public:
 
     class RemoteBlock : public ExecutionBlock {
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructors/destructors
+////////////////////////////////////////////////////////////////////////////////
+
       public:
 
         RemoteBlock (ExecutionEngine* engine,
                      RemoteNode const* en,
                      std::string const& server,
-                     std::string const& ownName)
+                     std::string const& ownName,
+                     std::string const& queryId)
           : ExecutionBlock(engine, en),
             _server(server),
-            _ownName(ownName) {
+            _ownName(ownName),
+            _queryId(queryId) {
         }
 
         ~RemoteBlock () {
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief timeout
+////////////////////////////////////////////////////////////////////////////////
+
+        static double const defaultTimeOut;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize
@@ -1710,10 +1722,17 @@ public:
         std::string _server;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief our server, can be like "shard:S1000" or like "server:Claus"
+/// @brief our own identity, in case of the coordinator this is empty,
+/// in case of the DBservers, this is the shard ID as a string
 ////////////////////////////////////////////////////////////////////////////////
 
         std::string _ownName;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the ID of the query on the server as a string
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _queryId;
 
     };
 
