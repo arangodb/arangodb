@@ -1769,7 +1769,7 @@ static v8::Handle<v8::Value> JS_CreateDocumentCollectionVocbase (v8::Arguments c
   return CreateVocBase(argv, TRI_COL_TYPE_DOCUMENT);
 }
 
-dan////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new edge collection
 /// @startDocuBlock collectionCreateEdgeCollection
 /// `db._createEdgeCollection(collection-name)`
