@@ -3781,9 +3781,9 @@ ScatterBlock::ScatterBlock (ExecutionEngine* engine,
                             std::vector<std::string> shardIds)
                             : ExecutionBlock(engine, ep), 
                             _nrClients(shardIds.size()) {
-    for (auto i = 0; i < _nrClients; i++) {
-      _shardIdMap.insert(make_pair(shardIds.at(i), i));
-    }
+  for (size_t i = 0; i < _nrClients; i++) {
+    _shardIdMap.insert(make_pair(shardIds.at(i), i));
+  }
 }
 
 size_t ScatterBlock::getClientId(std::string shardId) {
