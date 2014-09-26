@@ -472,7 +472,7 @@ void EnumerateCollectionNode::toJsonHelper (triagens::basics::Json& nodes,
 
   // Now put info about vocbase and cid in there
   json("database", triagens::basics::Json(_vocbase->_name))
-    ("collection", triagens::basics::Json(_collection->name))
+      ("collection", triagens::basics::Json(_collection->name))
       ("outVariable", _outVariable->toJson());
 
   // And add it:
@@ -1564,7 +1564,8 @@ void RemoteNode::toJsonHelper (triagens::basics::Json& nodes,
 
 ScatterNode::ScatterNode (ExecutionPlan* plan, 
                           triagens::basics::Json const& base)
-  : ExecutionNode(plan, base) {
+  : ExecutionNode(plan, base),
+    _collection(plan->getAst()->query()->collections()->get(JsonHelper::checkAndGetStringValue(base.json(), "collection"))) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1578,6 +1579,9 @@ void ScatterNode::toJsonHelper (triagens::basics::Json& nodes,
   if (json.isEmpty()) {
     return;
   }
+  
+  json("database", triagens::basics::Json(_vocbase->_name))
+      ("collection", triagens::basics::Json(_collection->name));
 
   // And add it:
   nodes(json);
