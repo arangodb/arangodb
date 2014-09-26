@@ -135,7 +135,7 @@ AqlItemBlock::AqlItemBlock (Json const& json) {
             }
           }
           else if (n == 1) {
-            Json x(data.at(posInRaw++));
+            Json x(raw.at(posInRaw++));
             AqlValue a(new Json(TRI_UNKNOWN_MEM_ZONE, x.copy().steal()));
             try {
               setValue(i, column, a);  // if this throws, a is destroyed again
