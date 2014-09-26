@@ -93,10 +93,10 @@ void ExecutionNode::validateType (int type) {
   }
 }
 
-void ExecutionNode::getSortElements(SortElementVector elements,
-                            ExecutionPlan* plan,
-                            triagens::basics::Json const& oneNode,
-                            char const* which)
+void ExecutionNode::getSortElements(SortElementVector& elements,
+                                    ExecutionPlan* plan,
+                                    triagens::basics::Json const& oneNode,
+                                    char const* which)
 {
   triagens::basics::Json jsonElements = oneNode.get("elements");
   if (! jsonElements.isList()){

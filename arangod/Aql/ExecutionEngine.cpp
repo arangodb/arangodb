@@ -451,7 +451,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         // now we'll create a remote node for each shard and add it to the gather node
         auto&& shardIds = static_cast<GatherNode const*>((*en))->collection()->shardIds();
         for (auto shardId : shardIds) {
-          ExecutionBlock* r = new RemoteBlock(engine.get(), remoteNode, "shard:" + shardId, "");
+          // TODO: pass actual queryId into RemoteBlock
+          ExecutionBlock* r = new RemoteBlock(engine.get(), remoteNode, "shard:" + shardId, "", "" /*TODO*/);
       
           try {
             engine.get()->addBlock(r);

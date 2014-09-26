@@ -341,6 +341,9 @@
 /// - 1473: @LIT{could not truncate collection}
 ///   Will be raised if a coordinator cannot truncate all shards of a cluster
 ///   collection.
+/// - 1474: @LIT{error in cluster internal communication for AQL}
+///   Will be raised if the internal communication of the cluster for AQL
+///   produces an error.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -1995,6 +1998,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION                   (1473)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1474: ERROR_CLUSTER_AQL_COMMUNICATION
+///
+/// error in cluster internal communication for AQL
+///
+/// Will be raised if the internal communication of the cluster for AQL
+/// produces an error.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_AQL_COMMUNICATION                               (1474)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED
