@@ -3492,6 +3492,26 @@ int GatherBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   return TRI_ERROR_NO_ERROR;
 }
 
+int GatherBlock::shutdown() {
+  //don't call default shutdown method since it does the wrong thing to _buffer
+  for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
+    int res = (*it)->shutdown();
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+  }
+
+  for (std::deque<AqlItemBlock*> x: _buffer) {
+    for (AqlItemBlock* y: x) {
+      delete y;
+    }
+    x.clear();
+  }
+  _buffer.clear();
+  return TRI_ERROR_NO_ERROR;
+}
+
 int64_t GatherBlock::count () const {
   int64_t sum = 0;
   for (auto x: _dependencies) {
@@ -3724,7 +3744,7 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
         // renew the comparison function
         OurLessThan ourLessThan(_trx, _buffer, _sortRegisters, colls);
       }
-      _pos.at(val.first) = make_pair(val.first,0);
+      _pos.at(val.first) = make_pair(val.first, 0);
     }
   }
 
@@ -3756,10 +3776,25 @@ bool GatherBlock::OurLessThan::operator() (std::pair<size_t, size_t> const& a,
 // --SECTION--                                                class ScatterBlock
 // -----------------------------------------------------------------------------
 
+int ScatterBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
+  int res = ExecutionBlock::initializeCursor(items, pos);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  for (size_t i = 0; i < _nrClients; i++) {
+    _posForClient.push_back(std::make_pair(0, 0));
+    _doneForClient.push_back(false);
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
 
 bool ScatterBlock::hasMoreForClient (size_t clientId){
 
   TRI_ASSERT(0 <= clientId && clientId < _nrClients);
+
   if (_doneForClient.at(clientId)) {
     return false;
   }
@@ -3788,14 +3823,20 @@ bool ScatterBlock::hasMore () {
       return true;
     }
   }
+  _done = true;
   return false;
 }
 
-AqlItemBlock* ScatterBlock::getSomeForClient (size_t atLeast, size_t atMost, size_t clientId){
+int ScatterBlock::getOrSkipSomeForClient (size_t atLeast, 
+    size_t atMost, bool skipping, AqlItemBlock*& result, 
+    size_t& skipped, size_t clientId){
+  
+  TRI_ASSERT(0 < atLeast && atLeast <= atMost);
+  TRI_ASSERT(result == nullptr && skipped == 0);
   TRI_ASSERT(0 <= clientId && clientId < _nrClients);
   
   if (_doneForClient.at(clientId)) {
-    return nullptr;
+    return TRI_ERROR_NO_ERROR;
   }
   
   std::pair<size_t, size_t> pos = _posForClient.at(clientId); 
@@ -3804,37 +3845,68 @@ AqlItemBlock* ScatterBlock::getSomeForClient (size_t atLeast, size_t atMost, siz
   if (pos.first > _buffer.size()) {
     if (!getBlock(atLeast, atMost)) {
       _doneForClient.at(clientId) = true;
-      return nullptr;
+      return TRI_ERROR_NO_ERROR;
     }
   }
   
   size_t available = _buffer.at(pos.first)->size() - pos.second;
   // available should be non-zero  
   
-  size_t toSend = (std::min)(available, atMost); //nr rows in outgoing block
+  skipped = std::min(available, atMost); //nr rows in outgoing block
   
-  AqlItemBlock* res = _buffer.at(pos.first)->slice(pos.second, pos.second + toSend);
+  if(!skipping){ 
+    result = _buffer.at(pos.first)->slice(pos.second, pos.second + skipped);
+  }
 
   // increment the position . . .
-  _posForClient.at(clientId).second += toSend;
-  
+  _posForClient.at(clientId).second += skipped;
+
+  // check if we're done at current block in buffer . . .  
   if (_posForClient.at(clientId).second == _buffer.at(_posForClient.at(clientId).first)->size()) {
     _posForClient.at(clientId).first++;
     _posForClient.at(clientId).second = 0;
-  }
 
-  // check if we can pop the front of the buffer . . . 
-  bool popit = true;
-  for (size_t i = 0; i < _nrClients; i++) {
-    if (_posForClient.at(i).first == 0) {
-      popit = false;
-      break;
+    // check if we can pop the front of the buffer . . . 
+    bool popit = true;
+    for (size_t i = 0; i < _nrClients; i++) {
+      if (_posForClient.at(i).first == 0) {
+        popit = false;
+        break;
+      }
+    }
+    if (popit) {
+      delete(_buffer.front());
+      _buffer.pop_front();
+      // update the values in first coord of _posForClient
+      for (size_t i = 0; i < _nrClients; i++) {
+        _posForClient.at(i).first--;
+      }
+
     }
   }
-  if (popit) {
-    _buffer.pop_front();
+  return TRI_ERROR_NO_ERROR;
+}
+
+AqlItemBlock* ScatterBlock::getSomeForClient (
+                                  size_t atLeast, size_t atMost, size_t clientId) {
+  size_t skipped = 0;
+  AqlItemBlock* result = nullptr;
+  int out = getOrSkipSome(atLeast, atMost, false, result, skipped);
+  if (out != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(out);
   }
-  return res;
+  return result;
+}
+
+size_t ScatterBlock::skipSomeForClient (size_t atLeast, size_t atMost, size_t clientId) {
+  size_t skipped = 0;
+  AqlItemBlock* result = nullptr;
+  int out = getOrSkipSome(atLeast, atMost, true, result, skipped);
+  TRI_ASSERT(result == nullptr);
+  if (out != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(out);
+  }
+  return skipped;
 }
 
 // Local Variables:
