@@ -3535,7 +3535,7 @@ bool GatherBlock::hasMore () {
   if (_done) {
     return false;
   }
-  for (auto i = 0; i < _buffer.size(); i++){
+  for (size_t i = 0; i < _buffer.size(); i++){
     if (!_buffer.at(i).empty()) {
       return true;
     } else if (getBlock(i, DefaultBatchSize, DefaultBatchSize)) {
