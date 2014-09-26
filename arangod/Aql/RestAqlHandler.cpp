@@ -468,7 +468,7 @@ void RestAqlHandler::useQuery (std::string const& operation,
       }
     }
   }
-  else if (operation == "getSome") {
+  else if (operation == "skipSome") {
     auto atLeast = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
                                                          "atLeast", 1);
     auto atMost = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
