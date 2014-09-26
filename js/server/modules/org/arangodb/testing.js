@@ -402,9 +402,9 @@ function executeAndWait (cmd, args) {
   var startTime = time();
   var res = statusExternal(pid, true);
   var deltaTime = time() - startTime;
-  print("Finished: " + res.status + " Signal: " + res.exit + " Time Elapsed: " + deltaTime);
 
   if (res.status === "TERMINATED") {
+    print("Finished: " + res.status + " Exitcode: " + res.exit + " Time Elapsed: " + deltaTime);
     if (res.exit === 0) {
       return { status: true, message: "", duration: deltaTime};
     }
@@ -412,10 +412,19 @@ function executeAndWait (cmd, args) {
       return { status: false, message: "exit code was " + res.exit, duration: deltaTime};
     }
   }
-  else {
+  else if (res.status === "ABORTED") {
+    print("Finished: " + res.status + " Signal: " + res.signal + " Time Elapsed: " + deltaTime);
     return {
       status: false,
-      message: "irregular termination: " + res.status + "Exit-Signal: " + res.exit,
+      message: "irregular termination: " + res.status + " Exit-Signal: " + res.signal,
+      duration: deltaTime
+    };
+  }
+  else {
+    print("Finished: " + res.status + " Exitcode: " + res.exit + " Time Elapsed: " + deltaTime);
+    return {
+      status: false,
+      message: "irregular termination: " + res.status + " Exit-Code: " + res.exit,
       duration: deltaTime
     };
   }
@@ -683,19 +692,28 @@ function rubyTests (options, ssl) {
         var startTime = time();
         var r = statusExternal(pid, true);
         var deltaTime = time() - startTime;
-        print("Finished: " + r.status + " Signal: " + r.exit + " Time Elapsed: " + deltaTime);
         if (r.status === "TERMINATED") {
+          print("Finished: " + r.status + " Signal: " + r.exit + " Time Elapsed: " + deltaTime);
           if (r.exit === 0) {
             result[n] =  { status: true, message: "", duration: deltaTime };
           }
           else {
-            result[n] = { status: false, message: "exit code was " + r.exit, duration: deltaTime};
+            result[n] = { status: false, message: " exit code was " + r.exit, duration: deltaTime};
           }
         }
-        else {
+        else if (r.status === "ABORTED") {
+          print("Finished: " + r.status + " Signal: " + r.exit + " Time Elapsed: " + deltaTime);
           result[n] = {
             status: false,
-            message: "irregular termination: " + r.status + "Exit-Signal: " + r.exit,
+            message: "irregular termination: " + r.status + " Exit-Signal: " + r.signal,
+            duration: deltaTime
+          };
+        }
+        else {
+          print("Finished: " + r.status + " Exit Status: " + r.exit + " Time Elapsed: " + deltaTime);
+          result[n] = {
+            status: false,
+            message: "irregular termination: " + r.status + " Exit-code: " + r.exit,
             duration: deltaTime
           };
         }
