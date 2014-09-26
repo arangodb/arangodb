@@ -93,6 +93,27 @@ void ExecutionNode::validateType (int type) {
   }
 }
 
+void ExecutionNode::getSortElements(SortElementVector elements,
+                            ExecutionPlan* plan,
+                            triagens::basics::Json const& oneNode,
+                            char const* which)
+{
+  triagens::basics::Json jsonElements = oneNode.get("elements");
+  if (! jsonElements.isList()){
+    std::string error = std::string("unexpected value for ") +
+      std::string(which) + std::string(" elements");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, error);
+  }
+  size_t len = jsonElements.size();
+  elements.reserve(len);
+  for (size_t i = 0; i < len; i++) {
+    triagens::basics::Json oneJsonElement = jsonElements.at(static_cast<int>(i));
+    bool ascending = JsonHelper::checkAndGetBooleanValue(oneJsonElement.json(), "ascending");
+    Variable *v = varFromJson(plan->getAst(), oneJsonElement, "inVariable");
+    elements.push_back(std::make_pair(v, ascending));
+  }
+}
+
 ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
                                                triagens::basics::Json const& oneNode) {
   auto JsonString = oneNode.toString();
@@ -117,22 +138,9 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
     case SUBQUERY: 
       return new SubqueryNode(plan, oneNode);
     case SORT: {
-      triagens::basics::Json jsonElements = oneNode.get("elements");
-      if (! jsonElements.isList()){
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected value for SortNode elements");
-      }
-      size_t len = jsonElements.size();
-      std::vector<std::pair<Variable const*, bool>> elements;
-      elements.reserve(len);
-      for (size_t i = 0; i < len; i++) {
-        triagens::basics::Json oneJsonElement = jsonElements.at(static_cast<int>(i));
-        bool ascending = JsonHelper::checkAndGetBooleanValue(oneJsonElement.json(), "ascending");
-        Variable *v = varFromJson(plan->getAst(), oneJsonElement, "inVariable");
-        elements.push_back(std::make_pair(v, ascending));
-      }
-
+      SortElementVector elements;
       bool stable = JsonHelper::checkAndGetBooleanValue(oneNode.json(), "stable");
-
+      getSortElements(elements, plan, oneNode, "SortNode");
       return new SortNode(plan, oneNode, elements, stable);
     }
     case AGGREGATE: {
@@ -177,12 +185,13 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
       return new IndexRangeNode(plan, oneNode);
     case REMOTE:
       return new RemoteNode(plan, oneNode);
-    case SCATTER: 
-    case GATHER: { 
-      // TODO: handle these types of nodes
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "unhandled node type");
+    case GATHER: {
+      SortElementVector elements;
+      getSortElements(elements, plan, oneNode, "GatherNode");
+      return new GatherNode(plan, oneNode, elements);
     }
-
+    case SCATTER: 
+      return new ScatterNode(plan, oneNode);
     case ILLEGAL: {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid node type");
     }
@@ -472,7 +481,7 @@ void EnumerateCollectionNode::toJsonHelper (triagens::basics::Json& nodes,
 
   // Now put info about vocbase and cid in there
   json("database", triagens::basics::Json(_vocbase->_name))
-    ("collection", triagens::basics::Json(_collection->name))
+      ("collection", triagens::basics::Json(_collection->name))
       ("outVariable", _outVariable->toJson());
 
   // And add it:
@@ -1071,7 +1080,7 @@ void FilterNode::toJsonHelper (triagens::basics::Json& nodes,
 
 SortNode::SortNode (ExecutionPlan* plan,
                     triagens::basics::Json const& base,
-                    std::vector<std::pair<Variable const*, bool>> const& elements,
+                    SortElementVector const& elements,
                     bool stable)
   : ExecutionNode(plan, base),
     _elements(elements),
@@ -1108,7 +1117,7 @@ class SortNodeFindMyExpressions : public WalkerWorker<ExecutionNode> {
 
 public:
   size_t _foundCalcNodes;
-  std::vector<std::pair<Variable const*, bool>> _elms;
+  SortElementVector _elms;
   std::vector<std::pair<ExecutionNode*, bool>> _myVars;
 
   SortNodeFindMyExpressions(SortNode* me)
@@ -1564,7 +1573,8 @@ void RemoteNode::toJsonHelper (triagens::basics::Json& nodes,
 
 ScatterNode::ScatterNode (ExecutionPlan* plan, 
                           triagens::basics::Json const& base)
-  : ExecutionNode(plan, base) {
+  : ExecutionNode(plan, base),
+    _collection(plan->getAst()->query()->collections()->get(JsonHelper::checkAndGetStringValue(base.json(), "collection"))) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1578,6 +1588,9 @@ void ScatterNode::toJsonHelper (triagens::basics::Json& nodes,
   if (json.isEmpty()) {
     return;
   }
+  
+  json("database", triagens::basics::Json(_vocbase->_name))
+      ("collection", triagens::basics::Json(_collection->name));
 
   // And add it:
   nodes(json);
@@ -1592,8 +1605,10 @@ void ScatterNode::toJsonHelper (triagens::basics::Json& nodes,
 ////////////////////////////////////////////////////////////////////////////////
 
 GatherNode::GatherNode (ExecutionPlan* plan, 
-                        triagens::basics::Json const& base)
-  : ExecutionNode(plan, base) {
+                        triagens::basics::Json const& base,
+                        SortElementVector const& elements)
+  : ExecutionNode(plan, base),
+    _elements(elements) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////

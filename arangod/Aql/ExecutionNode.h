@@ -60,6 +60,12 @@ namespace triagens {
     class RedundantCalculationsReplacer;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief pairs, consisting of variable and sort direction
+/// (true = ascending | false = descending)
+////////////////////////////////////////////////////////////////////////////////
+    typedef std::vector<std::pair<Variable const*, bool>> SortElementVector;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief class ExecutionNode, abstract base class of all execution Nodes
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -503,6 +509,14 @@ namespace triagens {
                                       bool optional = false);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief factory for sort Elements from json.
+////////////////////////////////////////////////////////////////////////////////
+        static void getSortElements(SortElementVector elements,
+                                    ExecutionPlan* plan,
+                                    triagens::basics::Json const& oneNode,
+                                    char const* which);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief toJsonHelper, for a generic node
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -936,6 +950,22 @@ namespace triagens {
 
         NodeType getType () const override {
           return INDEX_RANGE;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the database
+////////////////////////////////////////////////////////////////////////////////
+        
+        TRI_vocbase_t* vocbase () const {
+          return _vocbase;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the collection
+////////////////////////////////////////////////////////////////////////////////
+
+        Collection* collection () const {
+          return _collection;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1578,7 +1608,7 @@ namespace triagens {
 
         SortNode (ExecutionPlan* plan,
                   size_t id,
-                  std::vector<std::pair<Variable const*, bool>> const& elements,
+                  SortElementVector const& elements,
                   bool stable) 
           : ExecutionNode(plan, id),
             _elements(elements),
@@ -1587,7 +1617,7 @@ namespace triagens {
         
         SortNode (ExecutionPlan* plan,
                   triagens::basics::Json const& base,
-                  std::vector<std::pair<Variable const*, bool>> const& elements,
+                  SortElementVector const& elements,
                   bool stable);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1654,7 +1684,7 @@ namespace triagens {
 /// @brief get Variables Used Here including ASC/DESC
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<std::pair<Variable const*, bool>> getElements () const {
+        SortElementVector getElements () const {
           return _elements;
         }
 
@@ -1678,7 +1708,7 @@ namespace triagens {
 /// (true = ascending | false = descending)
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<std::pair<Variable const*, bool>> _elements;
+        SortElementVector _elements;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// whether or not the sort is stable
@@ -1950,6 +1980,29 @@ namespace triagens {
         virtual void toJsonHelper (triagens::basics::Json& json,
                                    TRI_memory_zone_t* zone,
                                    bool) const override;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the database
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_vocbase_t* vocbase () const {
+          return _vocbase;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the collection
+////////////////////////////////////////////////////////////////////////////////
+
+        Collection* collection () const {
+          return _collection;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
 // -----------------------------------------------------------------------------
@@ -2608,8 +2661,13 @@ namespace triagens {
 
       public:
  
-        ScatterNode (ExecutionPlan* plan, size_t id) 
-          : ExecutionNode(plan, id) {
+        ScatterNode (ExecutionPlan* plan, 
+                     size_t id,
+                     TRI_vocbase_t* vocbase,
+                     Collection const* collection) 
+          : ExecutionNode(plan, id),
+            _vocbase(vocbase),
+            _collection(collection) {
         }
 
         ScatterNode (ExecutionPlan*, triagens::basics::Json const& base);
@@ -2635,7 +2693,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone (ExecutionPlan* plan) const {
-          auto c = new ScatterNode(plan, _id);
+          auto c = new ScatterNode(plan, _id, _vocbase, _collection);
           cloneDependencies(plan, c);
           return static_cast<ExecutionNode*>(c);
         }
@@ -2647,6 +2705,20 @@ namespace triagens {
         double estimateCost () {
           return 1;
         }
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the underlying database
+////////////////////////////////////////////////////////////////////////////////
+                                 
+        TRI_vocbase_t* _vocbase;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the underlying collection
+////////////////////////////////////////////////////////////////////////////////
+
+        Collection const* _collection;
 
     };
 
@@ -2673,7 +2745,9 @@ namespace triagens {
           : ExecutionNode(plan, id) {
         }
 
-        GatherNode (ExecutionPlan*, triagens::basics::Json const& base);
+        GatherNode (ExecutionPlan*,
+                    triagens::basics::Json const& base,
+                    SortElementVector const& elements);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -2725,11 +2799,11 @@ namespace triagens {
 /// @brief get Variables Used Here including ASC/DESC
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<std::pair<Variable const*, bool>> getElements () const {
+        SortElementVector getElements () const {
           return _elements;
         }
 
-        void setElements (std::vector<std::pair<Variable const*, bool>> const src) {
+        void setElements (SortElementVector const src) {
           _elements = src;
         }
 
@@ -2740,7 +2814,7 @@ namespace triagens {
 /// (true = ascending | false = descending)
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<std::pair<Variable const*, bool>> _elements;
+        SortElementVector _elements;
 
     };
 

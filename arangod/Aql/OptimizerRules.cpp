@@ -1640,8 +1640,33 @@ int triagens::aql::distributeInCluster (Optimizer* opt,
       bool const isRootNode = plan->isRoot(node);
       plan->unlinkNode(node, isRootNode);
 
+      auto const nodeType = node->getType();
+
+      // extract database and collection from plan node
+      TRI_vocbase_t* vocbase = nullptr;
+      Collection const* collection = nullptr;
+
+      if (nodeType == ExecutionNode::ENUMERATE_COLLECTION) {
+        vocbase = static_cast<EnumerateCollectionNode*>(node)->vocbase();
+        collection = static_cast<EnumerateCollectionNode*>(node)->collection();
+      }
+      else if (nodeType == ExecutionNode::INDEX_RANGE) {
+        vocbase = static_cast<IndexRangeNode*>(node)->vocbase();
+        collection = static_cast<IndexRangeNode*>(node)->collection();
+      }
+      else if (nodeType == ExecutionNode::INSERT ||
+               nodeType == ExecutionNode::UPDATE ||
+               nodeType == ExecutionNode::REPLACE ||
+               nodeType == ExecutionNode::REMOVE) {
+        vocbase = static_cast<ModificationNode*>(node)->vocbase();
+        collection = static_cast<ModificationNode*>(node)->collection();
+      }
+      else {
+        TRI_ASSERT(false);
+      }
+
       // insert a scatter node
-      ExecutionNode* scatterNode = new ScatterNode(plan, plan->nextId());
+      ExecutionNode* scatterNode = new ScatterNode(plan, plan->nextId(), vocbase, collection);
       plan->registerNode(scatterNode);
       scatterNode->addDependency(deps[0]);
 
