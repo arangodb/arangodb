@@ -28,18 +28,21 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Basics/StringUtils.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/json-utilities.h"
 #include "HashIndex/hash-index.h"
 #include "Utils/Exception.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/index.h"
 #include "VocBase/vocbase.h"
+#include "Cluster/ClusterComm.h"
 
 using namespace triagens::arango;
 using namespace triagens::aql;
 
 using Json = triagens::basics::Json;
 using JsonHelper = triagens::basics::JsonHelper;
+using StringBuffer = triagens::basics::StringBuffer;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            struct AggregatorGroup
@@ -3934,6 +3937,12 @@ size_t ScatterBlock::skipSomeForShard (size_t atLeast, size_t atMost, std::strin
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief timeout
+////////////////////////////////////////////////////////////////////////////////
+
+double const RemoteBlock::defaultTimeOut = 3600.0;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3970,7 +3979,61 @@ int RemoteBlock::shutdown () {
 AqlItemBlock* RemoteBlock::getSome (size_t atLeast,
                                     size_t atMost) {
 
-  return nullptr;
+  // For every call we simply forward via HTTP
+
+  ClusterComm* cc = ClusterComm::instance();
+  std::unique_ptr<ClusterCommResult> res;
+
+  // Later, we probably want to set these sensibly:
+  ClientTransactionID const clientTransactionId = "AQL";
+  CoordTransactionID const coordTransactionId = 1;
+
+  Json body(Json::Array, 2);
+  body("atLeast", Json(static_cast<double>(atLeast)))
+      ("atMost", Json(static_cast<double>(atMost)));
+  std::string bodyString(body.toString());
+  std::map<std::string, std::string> headers;
+
+  res.reset(cc->syncRequest(clientTransactionId,
+                            coordTransactionId,
+                            _server,
+                            rest::HttpRequest::HTTP_REQUEST_PUT,
+                            std::string("/_db/") 
+                              + _engine->getTransaction()->vocbase()->_name
+                              + "/_api/aql/getSome/" + _queryId,
+                            bodyString,
+                            headers,
+                            3600.0));
+
+  if (res->status == CL_COMM_TIMEOUT) {
+    // No reply, we give up:
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_TIMEOUT,
+           "timeout in cluster AQL operation");
+  }
+  if (res->status == CL_COMM_ERROR) {
+    // This could be a broken connection or an Http error:
+    if (res->result == nullptr || ! res->result->isComplete()) {
+      // there is no result
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_CONNECTION_LOST,
+             "lost connection within cluster");
+    }
+    // In this case a proper HTTP error was reported by the DBserver,
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
+  }
+
+  // If we get here, then res->result is the response which will be
+  // a serialized AqlItemBlock:
+  StringBuffer const& responseBodyBuf(res->result->getBody());
+  Json responseBodyJson(TRI_UNKNOWN_MEM_ZONE,
+                        TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
+                                       responseBodyBuf.begin()));
+  if (JsonHelper::getBooleanValue(responseBodyJson.json(), "exhausted", true)) {
+    return nullptr;
+  }
+  else {
+    auto items = new triagens::aql::AqlItemBlock(responseBodyJson);
+    return items;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
