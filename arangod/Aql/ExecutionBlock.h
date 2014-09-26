@@ -1516,6 +1516,9 @@ public:
         AqlItemBlock* getSome (size_t, size_t);
 
         size_t skipSome (size_t, size_t);
+        
+        // need our own shutdown method since our _buffer is different
+        int shutdown ();
 
       private:
 
@@ -1590,7 +1593,7 @@ public:
           return ExecutionBlock::initialize();
         }
 
-        //int initializeCursor (AqlItemBlock* items, size_t pos);
+        int initializeCursor (AqlItemBlock* items, size_t pos);
 
         int64_t remaining () {
           return _dependencies[0]->remaining();

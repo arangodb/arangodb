@@ -3492,6 +3492,26 @@ int GatherBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   return TRI_ERROR_NO_ERROR;
 }
 
+int GatherBlock::shutdown() {
+  //don't call default shutdown method since it does the wrong thing to _buffer
+  for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
+    int res = (*it)->shutdown();
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+  }
+
+  for (std::deque<AqlItemBlock*> x: _buffer) {
+    for (AqlItemBlock* y: x) {
+      delete y;
+    }
+    x.clear();
+  }
+  _buffer.clear();
+  return TRI_ERROR_NO_ERROR;
+}
+
 int64_t GatherBlock::count () const {
   int64_t sum = 0;
   for (auto x: _dependencies) {
@@ -3724,7 +3744,7 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
         // renew the comparison function
         OurLessThan ourLessThan(_trx, _buffer, _sortRegisters, colls);
       }
-      _pos.at(val.first) = make_pair(val.first,0);
+      _pos.at(val.first) = make_pair(val.first, 0);
     }
   }
 
@@ -3756,9 +3776,25 @@ bool GatherBlock::OurLessThan::operator() (std::pair<size_t, size_t> const& a,
 // --SECTION--                                                class ScatterBlock
 // -----------------------------------------------------------------------------
 
+int ScatterBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
+  int res = ExecutionBlock::initializeCursor(items, pos);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  for (size_t i = 0; i < _nrClients; i++) {
+    _posForClient.push_back(std::make_pair(0, 0));
+    _doneForClient.push_back(false);
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
 bool ScatterBlock::hasMoreForClient (size_t clientId){
 
   TRI_ASSERT(0 <= clientId && clientId < _nrClients);
+
   if (_doneForClient.at(clientId)) {
     return false;
   }
@@ -3787,6 +3823,7 @@ bool ScatterBlock::hasMore () {
       return true;
     }
   }
+  _done = true;
   return false;
 }
 
