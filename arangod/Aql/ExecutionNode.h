@@ -2724,6 +2724,10 @@ namespace triagens {
           return _elements;
         }
 
+        void setElements (std::vector<std::pair<Variable const*, bool>> const src) {
+          _elements = src;
+        }
+
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
