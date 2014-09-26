@@ -1366,7 +1366,7 @@ void IndexRangeBlock::readEdgeIndex (IndexOrCondition const& ranges) {
   TRI_document_collection_t* document = _collection->documentCollection();
      
   std::string key;
-  TRI_edge_direction_e direction;
+  TRI_edge_direction_e direction = TRI_EDGE_IN; // must set a default to satisfy compiler
    
   for (auto x: ranges.at(0)) {
     if (x._attr == std::string(TRI_VOC_ATTRIBUTE_FROM)) {
@@ -2251,10 +2251,9 @@ int AggregateBlock::getOrSkipSome (size_t atLeast,
   unique_ptr<AqlItemBlock> res;
 
   if(!skipping){
-    size_t const curRegs = cur->getNrRegs();
     res.reset(new AqlItemBlock(atMost, _varOverview->nrRegs[_depth]));
 
-    TRI_ASSERT(curRegs <= res->getNrRegs());
+    TRI_ASSERT(cur->getNrRegs() <= res->getNrRegs());
     inheritRegisters(cur, res.get(), _pos);
   }
 
@@ -3492,6 +3491,26 @@ int GatherBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   return TRI_ERROR_NO_ERROR;
 }
 
+int GatherBlock::shutdown() {
+  //don't call default shutdown method since it does the wrong thing to _buffer
+  for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
+    int res = (*it)->shutdown();
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+  }
+
+  for (std::deque<AqlItemBlock*> x: _buffer) {
+    for (AqlItemBlock* y: x) {
+      delete y;
+    }
+    x.clear();
+  }
+  _buffer.clear();
+  return TRI_ERROR_NO_ERROR;
+}
+
 int64_t GatherBlock::count () const {
   int64_t sum = 0;
   for (auto x: _dependencies) {
@@ -3535,7 +3554,7 @@ bool GatherBlock::hasMore () {
   if (_done) {
     return false;
   }
-  for (auto i = 0; i < _buffer.size(); i++){
+  for (size_t i = 0; i < _buffer.size(); i++){
     if (!_buffer.at(i).empty()) {
       return true;
     } else if (getBlock(i, DefaultBatchSize, DefaultBatchSize)) {
@@ -3724,7 +3743,7 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
         // renew the comparison function
         OurLessThan ourLessThan(_trx, _buffer, _sortRegisters, colls);
       }
-      _pos.at(val.first) = make_pair(val.first,0);
+      _pos.at(val.first) = make_pair(val.first, 0);
     }
   }
 
@@ -3756,9 +3775,45 @@ bool GatherBlock::OurLessThan::operator() (std::pair<size_t, size_t> const& a,
 // --SECTION--                                                class ScatterBlock
 // -----------------------------------------------------------------------------
 
-bool ScatterBlock::hasMoreForClient (size_t clientId){
 
-  TRI_ASSERT(0 <= clientId && clientId < _nrClients);
+ScatterBlock::ScatterBlock (ExecutionEngine* engine,
+                            ScatterNode const* ep, 
+                            std::vector<std::string> shardIds)
+                            : ExecutionBlock(engine, ep), 
+                            _nrClients(shardIds.size()) {
+  for (size_t i = 0; i < _nrClients; i++) {
+    _shardIdMap.insert(make_pair(shardIds.at(i), i));
+  }
+}
+
+size_t ScatterBlock::getClientId(std::string shardId) {
+  auto it = _shardIdMap.find(shardId);
+  if (it == _shardIdMap.end()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
+        "AQL: unknown shard id");
+  }
+  return ((*it).second);
+}
+
+int ScatterBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
+  int res = ExecutionBlock::initializeCursor(items, pos);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  for (size_t i = 0; i < _nrClients; i++) {
+    _posForClient.push_back(std::make_pair(0, 0));
+    _doneForClient.push_back(false);
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+bool ScatterBlock::hasMoreForShard (std::string shardId){
+  
+  size_t clientId = getClientId(shardId);
+  
   if (_doneForClient.at(clientId)) {
     return false;
   }
@@ -3782,21 +3837,23 @@ bool ScatterBlock::hasMore () {
     return false;
   }
 
-  for(size_t i = 0; i < _nrClients; i++){
-    if (hasMoreForClient(i)){
+  for(auto x: _shardIdMap) {
+    if (hasMoreForShard(x.first)){
       return true;
     }
   }
+  _done = true;
   return false;
 }
 
-int ScatterBlock::getOrSkipSomeForClient (size_t atLeast, 
+int ScatterBlock::getOrSkipSomeForShard (size_t atLeast, 
     size_t atMost, bool skipping, AqlItemBlock*& result, 
-    size_t& skipped, size_t clientId){
-  
+    size_t& skipped, std::string shardId){
+
   TRI_ASSERT(0 < atLeast && atLeast <= atMost);
   TRI_ASSERT(result == nullptr && skipped == 0);
-  TRI_ASSERT(0 <= clientId && clientId < _nrClients);
+  
+  size_t clientId = getClientId(shardId);
   
   if (_doneForClient.at(clientId)) {
     return TRI_ERROR_NO_ERROR;
@@ -3850,21 +3907,21 @@ int ScatterBlock::getOrSkipSomeForClient (size_t atLeast,
   return TRI_ERROR_NO_ERROR;
 }
 
-AqlItemBlock* ScatterBlock::getSomeForClient (
-                                  size_t atLeast, size_t atMost, size_t clientId) {
+AqlItemBlock* ScatterBlock::getSomeForShard (
+                                  size_t atLeast, size_t atMost, std::string shardId) {
   size_t skipped = 0;
   AqlItemBlock* result = nullptr;
-  int out = getOrSkipSome(atLeast, atMost, false, result, skipped);
+  int out = getOrSkipSomeForShard(atLeast, atMost, false, result, skipped, shardId);
   if (out != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(out);
   }
   return result;
 }
 
-size_t ScatterBlock::skipSomeForClient (size_t atLeast, size_t atMost, size_t clientId) {
+size_t ScatterBlock::skipSomeForShard (size_t atLeast, size_t atMost, std::string shardId) {
   size_t skipped = 0;
   AqlItemBlock* result = nullptr;
-  int out = getOrSkipSome(atLeast, atMost, true, result, skipped);
+  int out = getOrSkipSomeForShard(atLeast, atMost, true, result, skipped, shardId);
   TRI_ASSERT(result == nullptr);
   if (out != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(out);

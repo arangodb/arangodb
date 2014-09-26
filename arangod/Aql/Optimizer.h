@@ -141,7 +141,11 @@ namespace triagens {
         // move FilterNodes & Calculation nodes inbetween
         // scatter(remote) <-> gather(remote) so they're
         // distributed to the cluster nodes.
-        distributeFilternCalcToCluster_pass10   = 1010
+        distributeFilternCalcToCluster_pass10   = 1010,
+
+        // move SortNodes into the distribution.
+        // adjust gathernode to also contain the sort criterions.
+        distributeSortToCluster_pass10          = 1020
       };
     
       public:

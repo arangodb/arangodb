@@ -1132,6 +1132,75 @@ static v8::Handle<v8::Value> JS_NthQuery (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief selects documents from a collection, hashing the document key and
+/// only returning these documents which fall into a specific partition
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Nth2Query (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // expecting two arguments
+  if (argv.Length() != 2 || ! argv[0]->IsNumber() || ! argv[1]->IsNumber()) {
+    TRI_V8_EXCEPTION_USAGE(scope, "NTH2(<partitionId>, <numberOfPartitions>)");
+  }
+
+  TRI_vocbase_col_t const* col;
+  col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
+
+  if (col == nullptr) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
+  }
+
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
+
+  uint64_t const partitionId = TRI_ObjectToUInt64(argv[0], false);
+  uint64_t const numberOfPartitions = TRI_ObjectToUInt64(argv[1], false);
+
+  if (partitionId >= numberOfPartitions || numberOfPartitions == 0) {
+    TRI_V8_EXCEPTION_PARAMETER(scope, "invalid value for <partitionId> or <numberOfPartitions>");
+  }
+  
+  uint32_t total = 0;
+  vector<TRI_doc_mptr_copy_t> docs;
+
+  V8ReadTransaction trx(col->_vocbase, col->_cid);
+
+  int res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, res);
+  }
+
+  res = trx.readPartition(docs, partitionId, numberOfPartitions, &total);
+  TRI_ASSERT(docs.empty() || trx.hasBarrier());
+
+  res = trx.finish(res);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, res);
+  }
+
+  size_t const n = docs.size();
+  uint32_t count = 0;
+
+  // setup result
+  v8::Handle<v8::Object> result = v8::Object::New();
+  v8::Handle<v8::Array> documents = v8::Array::New((int) n);
+  // reserve full capacity in one go
+  result->Set(v8::String::New("documents"), documents);
+
+  for (size_t i = 0; i < n; ++i) {
+    char const* key = TRI_EXTRACT_MARKER_KEY(static_cast<TRI_df_marker_t const*>(docs[i].getDataPtr()));
+    documents->Set(count++, v8::String::New(key));
+  }
+
+  result->Set(v8::String::New("total"), v8::Number::New(total));
+  result->Set(v8::String::New("count"), v8::Number::New(count));
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief selects documents from a collection, using an offset into the
 /// primary index. this can be used for incremental access
 ////////////////////////////////////////////////////////////////////////////////
@@ -2406,6 +2475,7 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
   
   // internal method. not intended to be used by end-users
   TRI_AddMethodVocbase(rt, "NTH", JS_NthQuery, true);
+  TRI_AddMethodVocbase(rt, "NTH2", JS_Nth2Query, true);
 
   // internal method. not intended to be used by end-users
   TRI_AddMethodVocbase(rt, "OFFSET", JS_OffsetQuery, true);

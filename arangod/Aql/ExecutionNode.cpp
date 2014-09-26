@@ -1608,6 +1608,15 @@ void GatherNode::toJsonHelper (triagens::basics::Json& nodes,
     return;
   }
 
+  triagens::basics::Json values(triagens::basics::Json::List, _elements.size());
+  for (auto it = _elements.begin(); it != _elements.end(); ++it) {
+    triagens::basics::Json element(triagens::basics::Json::Array);
+    element("inVariable", (*it).first->toJson())
+      ("ascending", triagens::basics::Json((*it).second));
+    values(element);
+  }
+  json("elements", values);
+
   // And add it:
   nodes(json);
 }
