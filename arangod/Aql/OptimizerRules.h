@@ -113,6 +113,10 @@ namespace triagens {
     int distributeInCluster (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
     int distributeFilternCalcToCluster (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+
+    int distributeSortToCluster (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+
+    int distributeSortToCluster (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
   }  // namespace aql
 }  // namespace triagens
 

@@ -453,14 +453,18 @@ void Optimizer::setupRules () {
                  distributeInCluster,
                  distributeInCluster_pass10,
                  false);
-  }
 
-  if (triagens::arango::ServerState::instance()->isCoordinator()) {
     // distribute operations in cluster
     registerRule("distribute-filtercalc-to-cluster",
                  distributeFilternCalcToCluster,
                  distributeFilternCalcToCluster_pass10,
                  false);
+
+    registerRule("distribute-sort-to-cluster",
+                 distributeSortToCluster,
+                 distributeSortToCluster_pass10,
+                 false);
+
   }
 }
 
