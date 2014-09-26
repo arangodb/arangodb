@@ -31,7 +31,9 @@ function resultsToXml(results, baseName) {
             .text(xmlEscape(String(attrs[a]))).text("\"");
         }
 
-        close && this.text("/");
+        if (close) {
+          this.text("/");
+        }
         this.text(">\n");
 
         return this;
@@ -64,6 +66,13 @@ function resultsToXml(results, baseName) {
         }
       }
 
+      if ((!results[testrun][test].status)                 && 
+          results[testrun][test].hasOwnProperty('message')) 
+      {
+        xml.elem("failure");
+        xml.text('<![CDATA[' + JSON.stringify(results[testrun][test].message) + ']]>\n');
+        xml.elem("/failure");
+      }
       xml.elem("/testsuite");
       var fn = baseName + testrun.replace(/\//g, '_') + '_' + test.replace(/\//g, '_') + ".xml";
       //print('Writing: '+ fn);
