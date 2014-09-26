@@ -48,6 +48,11 @@ var users = require("org/arangodb/users");
 ///
 /// @RESTHEADER{GET /_api/user/{user}, Fetch User}
 ///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{user,string,optional}
+/// The name of the user
+///
 /// @RESTDESCRIPTION
 ///
 /// Fetches data about the specified user.
@@ -66,7 +71,7 @@ var users = require("org/arangodb/users");
 /// The user was found
 ///
 /// @RESTRETURNCODE{404}
-/// The user with user does not exist
+/// The user with the specified name does not exist
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -207,6 +212,11 @@ function post_api_user (req, res) {
 ///
 /// @RESTHEADER{PUT /_api/user/{user}, Replace User}
 ///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{user,string,optional}
+/// The name of the user
+///
 /// @RESTDESCRIPTION
 ///
 /// Replaces the data of an existing user. The name of an existing user must be specified in user.
@@ -295,6 +305,11 @@ function put_api_user (req, res) {
 ///
 /// @RESTHEADER{PATCH /_api/user/{user}, Update User}
 ///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{user,string,optional}
+/// The name of the user
+///
 /// @RESTDESCRIPTION
 ///
 /// Partially updates the data of an existing user. The name of an existing
@@ -382,6 +397,11 @@ function patch_api_user (req, res) {
 /// @startDocuBlock JSF_api_user_delete
 ///
 /// @RESTHEADER{DELETE /_api/user/{user}, Remove User}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{user,string,optional}
+/// The name of the user
 ///
 /// @RESTDESCRIPTION
 ///
