@@ -483,7 +483,8 @@ void RestAqlHandler::useQuery (std::string const& operation,
                     "skipSome lead to an exception");
       return;
     }
-    answerBody("skipped", Json(static_cast<double>(skipped)));
+    answerBody("skipped", Json(static_cast<double>(skipped)))
+              ("error", Json(false));
   }
   else if (operation == "skip") {
     auto number = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
