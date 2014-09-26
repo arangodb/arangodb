@@ -1366,7 +1366,7 @@ void IndexRangeBlock::readEdgeIndex (IndexOrCondition const& ranges) {
   TRI_document_collection_t* document = _collection->documentCollection();
      
   std::string key;
-  TRI_edge_direction_e direction;
+  TRI_edge_direction_e direction = TRI_EDGE_IN; // must set a default to satisfy compiler
    
   for (auto x: ranges.at(0)) {
     if (x._attr == std::string(TRI_VOC_ATTRIBUTE_FROM)) {
@@ -2251,10 +2251,9 @@ int AggregateBlock::getOrSkipSome (size_t atLeast,
   unique_ptr<AqlItemBlock> res;
 
   if(!skipping){
-    size_t const curRegs = cur->getNrRegs();
     res.reset(new AqlItemBlock(atMost, _varOverview->nrRegs[_depth]));
 
-    TRI_ASSERT(curRegs <= res->getNrRegs());
+    TRI_ASSERT(cur->getNrRegs() <= res->getNrRegs());
     inheritRegisters(cur, res.get(), _pos);
   }
 

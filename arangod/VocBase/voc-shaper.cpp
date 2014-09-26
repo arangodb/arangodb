@@ -374,9 +374,15 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper,
     TRI_shape_t const* result = reinterpret_cast<TRI_shape_t const*>(m);
 
     void* f = TRI_InsertKeyAssociativeSynced(&s->_shapeIds, &sid, (void*) m, false);
+    if (f != nullptr) {
+      LOG_ERROR("logic error when inserting shape");
+    }
     TRI_ASSERT(f == nullptr);
 
     f = TRI_InsertElementAssociativeSynced(&s->_shapeDictionary, (void*) m, false);
+    if (f != nullptr) {
+      LOG_ERROR("logic error when inserting shape");
+    }
     TRI_ASSERT(f == nullptr);
 
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
