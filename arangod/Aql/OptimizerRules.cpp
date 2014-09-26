@@ -1671,23 +1671,24 @@ int triagens::aql::distributeInCluster (Optimizer* opt,
       scatterNode->addDependency(deps[0]);
 
       // insert a remote node
-      ExecutionNode* remoteNode = new RemoteNode(plan, plan->nextId());
+      ExecutionNode* remoteNode = new RemoteNode(plan, plan->nextId(), vocbase, collection);
       plan->registerNode(remoteNode);
       remoteNode->addDependency(scatterNode);
         
       // re-link with the remote node
       node->addDependency(remoteNode);
+      
 
       // insert another remote node
-      remoteNode = new RemoteNode(plan, plan->nextId());
+      remoteNode = new RemoteNode(plan, plan->nextId(), vocbase, collection);
       plan->registerNode(remoteNode);
       remoteNode->addDependency(node);
-     
+      
       // insert a gather node 
-      ExecutionNode* gatherNode = new GatherNode(plan, plan->nextId());
+      ExecutionNode* gatherNode = new GatherNode(plan, plan->nextId(), vocbase, collection);
       plan->registerNode(gatherNode);
       gatherNode->addDependency(remoteNode);
-       
+
       // and now link the gather node with the rest of the plan
       if (parents.size() == 1) {
         parents[0]->replaceDependency(deps[0], gatherNode);
@@ -1737,41 +1738,43 @@ int triagens::aql::distributeFilternCalcToCluster (Optimizer* opt,
       auto inspectNode = parents[0];
 
       switch (inspectNode->getType()) {
-      case EN::ENUMERATE_LIST:
-      case EN::SINGLETON:
-      case EN::AGGREGATE:
-      case EN::INSERT:
-      case EN::REMOVE:
-      case EN::REPLACE:
-      case EN::UPDATE:
-        parents = inspectNode->getParents();
-        continue;
-      case EN::SUBQUERY:
-      case EN::RETURN:
-      case EN::NORESULTS:
-      case EN::SCATTER:
-      case EN::GATHER:
-      case EN::ILLEGAL:
-        //do break
-      case EN::REMOTE:
-      case EN::LIMIT:
-      case EN::SORT:
-      case EN::INDEX_RANGE:
-      case EN::ENUMERATE_COLLECTION:
-        stopSearching = true;
-        break;
-      case EN::CALCULATION:
-      case EN::FILTER:
-        // remember our cursor...
-        parents = inspectNode->getParents();
-        // then unlink the filter/calculator from the plan
-        plan->unlinkNode(inspectNode);
-        // and re-insert into plan in front of the remoteNode
-        plan->insertDependency(rn, inspectNode);
+        case EN::ENUMERATE_LIST:
+        case EN::SINGLETON:
+        case EN::AGGREGATE:
+        case EN::INSERT:
+        case EN::REMOVE:
+        case EN::REPLACE:
+        case EN::UPDATE:
+          parents = inspectNode->getParents();
+          continue;
+        case EN::SUBQUERY:
+        case EN::RETURN:
+        case EN::NORESULTS:
+        case EN::SCATTER:
+        case EN::GATHER:
+        case EN::ILLEGAL:
+          //do break
+        case EN::REMOTE:
+        case EN::LIMIT:
+        case EN::SORT:
+        case EN::INDEX_RANGE:
+        case EN::ENUMERATE_COLLECTION:
+          stopSearching = true;
+          break;
+        case EN::CALCULATION:
+        case EN::FILTER:
+          // remember our cursor...
+          parents = inspectNode->getParents();
+          // then unlink the filter/calculator from the plan
+          plan->unlinkNode(inspectNode);
+          // and re-insert into plan in front of the remoteNode
+          plan->insertDependency(rn, inspectNode);
 
-        modified = true;
-        //ready to rumble!
-      };
+          modified = true;
+          //ready to rumble!
+          break;
+      }
+
       if (stopSearching) {
         break;
       }

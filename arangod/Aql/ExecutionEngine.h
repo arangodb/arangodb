@@ -51,15 +51,14 @@ namespace triagens {
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
-      protected:
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the engine
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionEngine (AQL_TRANSACTION_V8* trx, Query* query);
-
-      public:
+        ExecutionEngine (AQL_TRANSACTION_V8* trx, 
+                         Query* query);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the engine, frees all assigned blocks
@@ -88,6 +87,15 @@ namespace triagens {
         ExecutionBlock* root () const {
           TRI_ASSERT(_root != nullptr);
           return _root;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the root block 
+////////////////////////////////////////////////////////////////////////////////
+        
+        void root (ExecutionBlock* root) {
+          TRI_ASSERT(root != nullptr);
+          _root = root;
         }
 
 ////////////////////////////////////////////////////////////////////////////////

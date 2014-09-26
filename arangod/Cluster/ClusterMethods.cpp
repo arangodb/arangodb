@@ -257,7 +257,7 @@ int usersOnCoordinator (std::string const& dbname,
           nrok++;
         }
 
-        if (json != 0) {
+        if (json != nullptr) {
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
         }
       }

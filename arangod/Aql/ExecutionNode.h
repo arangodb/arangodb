@@ -511,6 +511,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief factory for sort Elements from json.
 ////////////////////////////////////////////////////////////////////////////////
+
         static void getSortElements(SortElementVector elements,
                                     ExecutionPlan* plan,
                                     triagens::basics::Json const& oneNode,
@@ -753,13 +754,25 @@ namespace triagens {
 
         std::vector<IndexMatch> getIndicesOrdered (IndexMatchVec const& attrs) const;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the database
+////////////////////////////////////////////////////////////////////////////////
+
         TRI_vocbase_t* vocbase () const {
           return _vocbase;
         }
 
-        Collection* collection () const {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the collection
+////////////////////////////////////////////////////////////////////////////////
+
+        Collection const* collection () const {
           return _collection;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the out variable
+////////////////////////////////////////////////////////////////////////////////
 
         Variable const* outVariable () const {
           return _outVariable;
@@ -921,7 +934,7 @@ namespace triagens {
         IndexRangeNode (ExecutionPlan* plan,
                         size_t id,
                         TRI_vocbase_t* vocbase, 
-                        Collection* collection,
+                        Collection const* collection,
                         Variable const* outVariable,
                         TRI_index_t const* index, 
                         std::vector<std::vector<RangeInfo>> const& ranges,
@@ -964,7 +977,7 @@ namespace triagens {
 /// @brief return the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        Collection* collection () const {
+        Collection const* collection () const {
           return _collection;
         }
 
@@ -1047,7 +1060,7 @@ namespace triagens {
 /// @brief collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        Collection* _collection;
+        Collection const* _collection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief output variable
@@ -1372,7 +1385,7 @@ namespace triagens {
 /// @brief getter for subquery
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionNode* getSubquery () {
+        ExecutionNode* getSubquery () const {
           return _subquery;
         }
 
@@ -1999,7 +2012,7 @@ namespace triagens {
 /// @brief return the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        Collection* collection () const {
+        Collection const* collection () const {
           return _collection;
         }
 
@@ -2595,8 +2608,12 @@ namespace triagens {
       public:
  
         RemoteNode (ExecutionPlan* plan, 
-                    size_t id) 
-          : ExecutionNode(plan, id) {
+                    size_t id,
+                    TRI_vocbase_t* vocbase,
+                    Collection const* collection) 
+          : ExecutionNode(plan, id),
+            _vocbase(vocbase),
+            _collection(collection) {
         }
 
         RemoteNode (ExecutionPlan*, triagens::basics::Json const& base);
@@ -2622,7 +2639,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone (ExecutionPlan* plan) const {
-          auto c = new RemoteNode(plan, _id);
+          auto c = new RemoteNode(plan, _id, _vocbase, _collection);
           cloneDependencies(plan, c);
           return static_cast<ExecutionNode*>(c);
         }
@@ -2635,10 +2652,38 @@ namespace triagens {
           if (_dependencies.size() == 1) {
             return _dependencies[0]->estimateCost();
           }
-          else {
-            return 1;
-          }
+          return 1;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the database
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_vocbase_t* vocbase () const {
+          return _vocbase;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the collection
+////////////////////////////////////////////////////////////////////////////////
+
+        Collection const* collection () const {
+          return _collection;
+        }
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the underlying database
+////////////////////////////////////////////////////////////////////////////////
+                                 
+        TRI_vocbase_t* _vocbase;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the underlying collection
+////////////////////////////////////////////////////////////////////////////////
+
+        Collection const* _collection;
 
     };
 
@@ -2670,7 +2715,8 @@ namespace triagens {
             _collection(collection) {
         }
 
-        ScatterNode (ExecutionPlan*, triagens::basics::Json const& base);
+        ScatterNode (ExecutionPlan*, 
+                     triagens::basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -2704,6 +2750,22 @@ namespace triagens {
         
         double estimateCost () {
           return 1;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the database
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_vocbase_t* vocbase () const {
+          return _vocbase;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the collection
+////////////////////////////////////////////////////////////////////////////////
+
+        Collection const* collection () const {
+          return _collection;
         }
 
       private:
@@ -2741,8 +2803,13 @@ namespace triagens {
 
       public:
  
-        GatherNode (ExecutionPlan* plan, size_t id) 
-          : ExecutionNode(plan, id) {
+        GatherNode (ExecutionPlan* plan, 
+                    size_t id,
+                    TRI_vocbase_t* vocbase,
+                    Collection const* collection)
+          : ExecutionNode(plan, id),
+            _vocbase(vocbase),
+            _collection(collection) {
         }
 
         GatherNode (ExecutionPlan*,
@@ -2770,7 +2837,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone (ExecutionPlan* plan) const {
-          auto c = new GatherNode(plan, _id);
+          auto c = new GatherNode(plan, _id, _vocbase, _collection);
           cloneDependencies(plan, c);
           return static_cast<ExecutionNode*>(c);
         }
@@ -2807,6 +2874,23 @@ namespace triagens {
           _elements = src;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the database
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_vocbase_t* vocbase () const {
+          return _vocbase;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the collection
+////////////////////////////////////////////////////////////////////////////////
+
+        Collection const* collection () const {
+          return _collection;
+        }
+
+
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2815,6 +2899,18 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         SortElementVector _elements;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the underlying database
+////////////////////////////////////////////////////////////////////////////////
+                                 
+        TRI_vocbase_t* _vocbase;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the underlying collection
+////////////////////////////////////////////////////////////////////////////////
+
+        Collection const* _collection;
 
     };
 

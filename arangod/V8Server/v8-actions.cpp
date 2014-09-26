@@ -981,7 +981,7 @@ static v8::Handle<v8::Value> JS_ClusterTest (v8::Arguments const& argv) {
                          reqType, path, &body, false, headerFields,
                          new CallbackTest("Hello Callback"), timeout);
 
-    if (res == 0) {
+    if (res == nullptr) {
       TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL,
                                "couldn't queue async request");
     }
