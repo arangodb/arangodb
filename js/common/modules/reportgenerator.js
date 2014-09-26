@@ -42,7 +42,7 @@ var generatePerfReportXML = function (reportName, testdata) {
 
 var generatePerfReportGrinderCSV = function (reportName, testdata) {
   "use strict";
-  var x = "Thread, Run, Test, Start time (ms since Epoch), Test time, Errors, HTTP response code, HTTP response length, HTTP response errors, Time to resolve host, Time to establish connection, Time to first byte, New connections";
+  var x = "Thread, Run, Test 1, Start time (ms since Epoch), Test time, Errors, TPS , HTTP response length, HTTP response errors, Time to resolve host, Time to establish connection, Time to first byte, New connections";
 
 
   for (var testname in testdata) {
@@ -53,7 +53,7 @@ var generatePerfReportGrinderCSV = function (reportName, testdata) {
         {
           var s = testdata[testname][testCalculation].duration;
           if (!isNaN(s)) {
-            x = x + '\n0, 0, ' + testname + '/' + testCalculation + ',' + require("internal").time() + ', ' + s + ', 0, 0, 0, 0, 0, 0, 0, 0';
+            x = x + '\n0, 0, ' + testname + '/' + testCalculation + ',' + Math.floor(require("internal").time()*1000) + ', ' + Math.floor(s*1000) + ', 0, 0, 0, 0, 0, 0, 0, 0';
           }
         }
       }
