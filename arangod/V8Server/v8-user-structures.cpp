@@ -1162,7 +1162,7 @@ static v8::Handle<v8::Value> JS_KeySetCas (v8::Arguments const& argv) {
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   int res;
-  bool match;
+  bool match = false;
   {
     READ_LOCKER(h->lock);
 
@@ -1667,11 +1667,6 @@ void TRI_FreeUserStructuresVocBase (TRI_vocbase_t* vocbase) {
 
 void TRI_InitV8UserStructures (v8::Handle<v8::Context> context) {
   v8::HandleScope scope;
-
-  v8::Isolate* isolate = v8::Isolate::GetCurrent();
-  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData());
-
-  TRI_ASSERT(v8g != nullptr);
 
   TRI_AddGlobalFunctionVocbase(context, "KEYSPACE_CREATE", JS_KeyspaceCreate);
   TRI_AddGlobalFunctionVocbase(context, "KEYSPACE_DROP", JS_KeyspaceDrop);

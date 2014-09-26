@@ -1601,10 +1601,12 @@ public:
 
         virtual AqlItemBlock* getSome (size_t atLeast, size_t atMost) {
           TRI_ASSERT(false);
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
         }
 
         virtual size_t skipSome (size_t atLeast, size_t atMost) {
           TRI_ASSERT(false);
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
         }
        
         bool hasMoreForShard (std::string shardId);

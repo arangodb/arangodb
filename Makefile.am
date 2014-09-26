@@ -256,7 +256,7 @@ nobase_pkgdataACTIONS_DATA = $(shell find @srcdir@/js/actions -name "*.js" -prin
 nobase_pkgdataCOMMON_DATA = $(shell find @srcdir@/js/common -name "*.js" -print)
 nobase_pkgdataSERVER_DATA = $(shell find @srcdir@/js/server -name "*.js" -print)
 nobase_pkgdataCLIENT_DATA = $(shell find @srcdir@/js/client -name "*.js" -print)
-nobase_pkgdataNODE_DATA = $(shell find @srcdir@/js/node -type f "(" -name .travis.yml -o -name .npmignore -o -print ")")
+nobase_pkgdataNODE_DATA = $(shell find @srcdir@/js/node -type f "(" -name .travis.yml -o -name .npmignore -o -print ")" | grep -v "\(htmlparser2\|js-yaml\)/test/" )
 nobase_pkgdataAPPS_DATA = $(shell find @srcdir@/js/apps/system -type f "(" -path "*/test/*" -o -path "*/test_data/*" -o -path "*/coverage/*" -o -print ")")
 
 if ENABLE_MRUBY
