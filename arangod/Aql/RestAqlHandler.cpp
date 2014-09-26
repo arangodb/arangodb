@@ -396,6 +396,19 @@ void RestAqlHandler::deleteQuery (std::string const& idString) {
 ///             AqlItemBlock.
 ///             If "atLeast" is not given it defaults to 1, if "atMost" is not
 ///             given it defaults to ExecutionBlock::DefaultBatchSize.
+/// For the "skipSome" operation one has to give:
+///   "atLeast": 
+///   "atMost": both must be positive integers, the cursor skips never 
+///             more than "atMost" items and tries to skip at least
+///             "atLeast". Note that it is possible to skip fewer than
+///             "atLeast", for example if there are only fewer items
+///             left. However, the implementation may skip fewer items
+///             than "atLeast" for internal reasons, for example to avoid
+///             excessive copying. The result is a JSON object with a
+///             single attribute "skipped" containing the number of
+///             skipped items.
+///             If "atLeast" is not given it defaults to 1, if "atMost" is not
+///             given it defaults to ExecutionBlock::DefaultBatchSize.
 /// For the "skip" operation one should give:
 ///   "number": must be a positive integer, the cursor skips as many items,
 ///             possibly exhausting the cursor.
@@ -454,6 +467,23 @@ void RestAqlHandler::useQuery (std::string const& operation,
         return;
       }
     }
+  }
+  else if (operation == "getSome") {
+    auto atLeast = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
+                                                         "atLeast", 1);
+    auto atMost = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
+                               "atMost", ExecutionBlock::DefaultBatchSize);
+    size_t skipped;
+    try {
+      skipped = query->engine()->skipSome(atLeast, atMost);
+    }
+    catch (...) {
+      _queryRegistry->close(vocbase, qId);
+      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                    "skipSome lead to an exception");
+      return;
+    }
+    answerBody("skipped", Json(static_cast<double>(skipped)));
   }
   else if (operation == "skip") {
     auto number = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
