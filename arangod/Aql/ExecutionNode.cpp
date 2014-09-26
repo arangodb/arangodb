@@ -1543,8 +1543,10 @@ void NoResultsNode::toJsonHelper (triagens::basics::Json& nodes,
 ////////////////////////////////////////////////////////////////////////////////
 
 RemoteNode::RemoteNode (ExecutionPlan* plan,
-                        triagens::basics::Json const& json)
-  : ExecutionNode(plan, json) {
+                        triagens::basics::Json const& base)
+  : ExecutionNode(plan, base),
+    _vocbase(plan->getAst()->query()->vocbase()),
+    _collection(plan->getAst()->query()->collections()->get(JsonHelper::checkAndGetStringValue(base.json(), "collection"))) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1558,6 +1560,9 @@ void RemoteNode::toJsonHelper (triagens::basics::Json& nodes,
   if (json.isEmpty()) {
     return;
   }
+  
+  json("database", triagens::basics::Json(_vocbase->_name))
+      ("collection", triagens::basics::Json(_collection->name));
 
   // And add it:
   nodes(json);
@@ -1574,6 +1579,7 @@ void RemoteNode::toJsonHelper (triagens::basics::Json& nodes,
 ScatterNode::ScatterNode (ExecutionPlan* plan, 
                           triagens::basics::Json const& base)
   : ExecutionNode(plan, base),
+    _vocbase(plan->getAst()->query()->vocbase()),
     _collection(plan->getAst()->query()->collections()->get(JsonHelper::checkAndGetStringValue(base.json(), "collection"))) {
 }
 
@@ -1608,7 +1614,9 @@ GatherNode::GatherNode (ExecutionPlan* plan,
                         triagens::basics::Json const& base,
                         SortElementVector const& elements)
   : ExecutionNode(plan, base),
-    _elements(elements) {
+    _elements(elements),
+    _vocbase(plan->getAst()->query()->vocbase()),
+    _collection(plan->getAst()->query()->collections()->get(JsonHelper::checkAndGetStringValue(base.json(), "collection"))) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1622,12 +1630,15 @@ void GatherNode::toJsonHelper (triagens::basics::Json& nodes,
   if (json.isEmpty()) {
     return;
   }
+  
+  json("database", triagens::basics::Json(_vocbase->_name))
+      ("collection", triagens::basics::Json(_collection->name));
 
   triagens::basics::Json values(triagens::basics::Json::List, _elements.size());
   for (auto it = _elements.begin(); it != _elements.end(); ++it) {
     triagens::basics::Json element(triagens::basics::Json::Array);
     element("inVariable", (*it).first->toJson())
-      ("ascending", triagens::basics::Json((*it).second));
+           ("ascending", triagens::basics::Json((*it).second));
     values(element);
   }
   json("elements", values);

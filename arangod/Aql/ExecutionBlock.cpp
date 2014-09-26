@@ -852,7 +852,7 @@ size_t EnumerateCollectionBlock::skipSome (size_t atLeast, size_t atMost) {
 IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
                                   IndexRangeNode const* en)
   : ExecutionBlock(engine, en),
-    _collection(en->_collection),
+    _collection(en->collection()),
     _posInDocs(0),
     _allBoundsConstant(true) {
    
@@ -3775,18 +3775,18 @@ bool GatherBlock::OurLessThan::operator() (std::pair<size_t, size_t> const& a,
 // --SECTION--                                                class ScatterBlock
 // -----------------------------------------------------------------------------
 
-
 ScatterBlock::ScatterBlock (ExecutionEngine* engine,
                             ScatterNode const* ep, 
-                            std::vector<std::string> shardIds)
-                            : ExecutionBlock(engine, ep), 
-                            _nrClients(shardIds.size()) {
+                            std::vector<std::string> const& shardIds)
+  : ExecutionBlock(engine, ep), 
+    _nrClients(shardIds.size()) {
+  _shardIdMap.reserve(_nrClients);
   for (size_t i = 0; i < _nrClients; i++) {
-    _shardIdMap.insert(make_pair(shardIds.at(i), i));
+    _shardIdMap.emplace(std::make_pair(shardIds[i], i));
   }
 }
 
-size_t ScatterBlock::getClientId(std::string shardId) {
+size_t ScatterBlock::getClientId (std::string const& shardId) {
   auto it = _shardIdMap.find(shardId);
   if (it == _shardIdMap.end()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
@@ -3810,8 +3810,7 @@ int ScatterBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   return TRI_ERROR_NO_ERROR;
 }
 
-bool ScatterBlock::hasMoreForShard (std::string shardId){
-  
+bool ScatterBlock::hasMoreForShard (std::string const& shardId){
   size_t clientId = getClientId(shardId);
   
   if (_doneForClient.at(clientId)) {
@@ -3848,7 +3847,7 @@ bool ScatterBlock::hasMore () {
 
 int ScatterBlock::getOrSkipSomeForShard (size_t atLeast, 
     size_t atMost, bool skipping, AqlItemBlock*& result, 
-    size_t& skipped, std::string shardId){
+    size_t& skipped, std::string const& shardId){
 
   TRI_ASSERT(0 < atLeast && atLeast <= atMost);
   TRI_ASSERT(result == nullptr && skipped == 0);
@@ -3908,7 +3907,7 @@ int ScatterBlock::getOrSkipSomeForShard (size_t atLeast,
 }
 
 AqlItemBlock* ScatterBlock::getSomeForShard (
-                                  size_t atLeast, size_t atMost, std::string shardId) {
+                                 size_t atLeast, size_t atMost, std::string const& shardId) {
   size_t skipped = 0;
   AqlItemBlock* result = nullptr;
   int out = getOrSkipSomeForShard(atLeast, atMost, false, result, skipped, shardId);
@@ -3918,7 +3917,7 @@ AqlItemBlock* ScatterBlock::getSomeForShard (
   return result;
 }
 
-size_t ScatterBlock::skipSomeForShard (size_t atLeast, size_t atMost, std::string shardId) {
+size_t ScatterBlock::skipSomeForShard (size_t atLeast, size_t atMost, std::string const& shardId) {
   size_t skipped = 0;
   AqlItemBlock* result = nullptr;
   int out = getOrSkipSomeForShard(atLeast, atMost, true, result, skipped, shardId);
@@ -3930,7 +3929,7 @@ size_t ScatterBlock::skipSomeForShard (size_t atLeast, size_t atMost, std::strin
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                            class RemoteBlock
+// --SECTION--                                                 class RemoteBlock
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////

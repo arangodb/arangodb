@@ -691,7 +691,7 @@ public:
 /// @brief collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        Collection* _collection;
+        Collection const* _collection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document buffer
@@ -1289,7 +1289,7 @@ public:
 /// @brief collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        Collection* _collection;
+        Collection const* _collection;
 
     };
 
@@ -1582,7 +1582,7 @@ public:
 
         ScatterBlock (ExecutionEngine* engine,
                       ScatterNode const* ep, 
-                      std::vector<std::string> shardIds);
+                      std::vector<std::string> const& shardIds);
 
         ~ScatterBlock () {
         }
@@ -1609,22 +1609,22 @@ public:
           THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
         }
        
-        bool hasMoreForShard (std::string shardId);
+        bool hasMoreForShard (std::string const& shardId);
         
         int getOrSkipSomeForShard (size_t atLeast, size_t atMost, 
-            bool skipping, AqlItemBlock*& result, size_t& skipped, std::string shardId);
+            bool skipping, AqlItemBlock*& result, size_t& skipped, std::string const& shardId);
         
-        size_t skipSomeForShard (size_t atLeast, size_t atMost, std::string shardId);
+        size_t skipSomeForShard (size_t atLeast, size_t atMost, std::string const& shardId);
         
-        AqlItemBlock* getSomeForShard (size_t atLeast, size_t atMost, std::string shardId);
+        AqlItemBlock* getSomeForShard (size_t atLeast, size_t atMost, std::string const& shardId);
 
       private: 
         
-        size_t getClientId(std::string shardId);
+        size_t getClientId (std::string const& shardId);
 
         //_posForClient.at(i).second is the nr of rows of
         //_buffer.at(posForClient.at(i).first) sent to the client with id <i>.
-        std::vector<std::pair<size_t,size_t>> _posForClient; 
+        std::vector<std::pair<size_t, size_t>> _posForClient; 
         std::vector<bool> _doneForClient;
         std::unordered_map<std::string, size_t> _shardIdMap;
         size_t _nrClients;

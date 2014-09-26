@@ -186,8 +186,10 @@ ClusterCommResult* ClusterComm::asyncRequest (
   op->coordTransactionID   = coordTransactionID;
   do {
     op->operationID        = getOperationID();
-  } while (op->operationID == 0);   // just to make sure
-  if (destination.substr(0,6) == "shard:") {
+  } 
+  while (op->operationID == 0);   // just to make sure
+
+  if (destination.substr(0, 6) == "shard:") {
     op->shardID = destination.substr(6);
     op->serverID = ClusterInfo::instance()->getResponsibleServer(op->shardID);
     LOG_DEBUG("Responsible server: %s", op->serverID.c_str());

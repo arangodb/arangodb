@@ -116,7 +116,7 @@ namespace triagens {
 /// TODO: must be adjusted for clusters
 ////////////////////////////////////////////////////////////////////////////////
 
-      size_t count () {
+      size_t count () const {
         if (numDocuments == UNINITIALIZED) {
           auto document = documentCollection();
           // cache the result
@@ -130,7 +130,7 @@ namespace triagens {
 /// @brief returns the shard information for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-      std::map<std::string, std::string> shardIds () const {
+      std::map<std::string, std::string> shardInfo () const {
         auto clusterInfo = triagens::arango::ClusterInfo::instance();
         auto collectionInfo = clusterInfo->getCollection(std::string(vocbase->_name), name);
         if (collectionInfo.get() == nullptr) {
@@ -138,6 +138,24 @@ namespace triagens {
         }
 
         return collectionInfo.get()->shardIds();
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the shard ids of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+      std::vector<std::string> shardIds () const {
+        auto clusterInfo = triagens::arango::ClusterInfo::instance();
+        auto collectionInfo = clusterInfo->getCollection(std::string(vocbase->_name), name);
+        if (collectionInfo.get() == nullptr) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "collection not found");
+        }
+
+        std::vector<std::string> ids;
+        for (auto const& it : collectionInfo.get()->shardIds()) {
+          ids.emplace_back(it.first);
+        }
+        return ids;
       }
 
 // -----------------------------------------------------------------------------
@@ -148,7 +166,7 @@ namespace triagens {
       TRI_vocbase_t*          vocbase;
       TRI_vocbase_col_t*      collection;
       TRI_transaction_type_e  accessType;
-      int64_t                 numDocuments = UNINITIALIZED;
+      mutable int64_t         numDocuments = UNINITIALIZED;
 
       static int64_t const    UNINITIALIZED = -1;
     };
