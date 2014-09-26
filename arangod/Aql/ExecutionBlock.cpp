@@ -28,6 +28,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Basics/StringUtils.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/json-utilities.h"
 #include "HashIndex/hash-index.h"
 #include "Utils/Exception.h"
@@ -40,6 +41,7 @@ using namespace triagens::aql;
 
 using Json = triagens::basics::Json;
 using JsonHelper = triagens::basics::JsonHelper;
+using StringBuffer = triagens::basics::StringBuffer;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            struct AggregatorGroup
@@ -3933,6 +3935,34 @@ size_t ScatterBlock::skipSomeForShard (size_t atLeast, size_t atMost, std::strin
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief timeout
+////////////////////////////////////////////////////////////////////////////////
+
+double const RemoteBlock::defaultTimeOut = 3600.0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief local helper to throw an exception if a HTTP request went wrong
+////////////////////////////////////////////////////////////////////////////////
+
+static void throwExceptionAfterBadSyncRequest (ClusterCommResult* res) {
+  if (res->status == CL_COMM_TIMEOUT) {
+    // No reply, we give up:
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_TIMEOUT,
+           "timeout in cluster AQL operation");
+  }
+  if (res->status == CL_COMM_ERROR) {
+    // This could be a broken connection or an Http error:
+    if (res->result == nullptr || ! res->result->isComplete()) {
+      // there is no result
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_CONNECTION_LOST,
+             "lost connection within cluster");
+    }
+    // In this case a proper HTTP error was reported by the DBserver,
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3969,15 +3999,103 @@ int RemoteBlock::shutdown () {
 AqlItemBlock* RemoteBlock::getSome (size_t atLeast,
                                     size_t atMost) {
 
-  return nullptr;
+  // For every call we simply forward via HTTP
+
+  ClusterComm* cc = ClusterComm::instance();
+  std::unique_ptr<ClusterCommResult> res;
+
+  // Later, we probably want to set these sensibly:
+  ClientTransactionID const clientTransactionId = "AQL";
+  CoordTransactionID const coordTransactionId = 1;
+
+  Json body(Json::Array, 2);
+  body("atLeast", Json(static_cast<double>(atLeast)))
+      ("atMost", Json(static_cast<double>(atMost)));
+  std::string bodyString(body.toString());
+  std::map<std::string, std::string> headers;
+
+  res.reset(cc->syncRequest(clientTransactionId,
+                            coordTransactionId,
+                            _server,
+                            rest::HttpRequest::HTTP_REQUEST_PUT,
+                            std::string("/_db/") 
+                              + _engine->getTransaction()->vocbase()->_name
+                              + "/_api/aql/getSome/" + _queryId,
+                            bodyString,
+                            headers,
+                            3600.0));
+
+  throwExceptionAfterBadSyncRequest(res.get());
+
+  // If we get here, then res->result is the response which will be
+  // a serialized AqlItemBlock:
+  StringBuffer const& responseBodyBuf(res->result->getBody());
+  Json responseBodyJson(TRI_UNKNOWN_MEM_ZONE,
+                        TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
+                                       responseBodyBuf.begin()));
+  if (JsonHelper::getBooleanValue(responseBodyJson.json(), "exhausted", true)) {
+    return nullptr;
+  }
+  else {
+    auto items = new triagens::aql::AqlItemBlock(responseBodyJson);
+    return items;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief skipSome
 ////////////////////////////////////////////////////////////////////////////////
 
+ClusterCommResult* RemoteBlock::sendRequest (
+          rest::HttpRequest::HttpRequestType type,
+          std::string urlPart,
+          std::string const& body) {
+
+  ClusterComm* cc = ClusterComm::instance();
+
+  // Later, we probably want to set these sensibly:
+  ClientTransactionID const clientTransactionId = "AQL";
+  CoordTransactionID const coordTransactionId = 1;
+  std::map<std::string, std::string> headers;
+
+  return cc->syncRequest(clientTransactionId,
+                         coordTransactionId,
+                         _server,
+                         type,
+                         std::string("/_db/") 
+                           + _engine->getTransaction()->vocbase()->_name
+                           + urlPart + _queryId,
+                         body,
+                         headers,
+                         defaultTimeOut);
+}
+
 size_t RemoteBlock::skipSome (size_t atLeast, size_t atMost) {
-  return 0;
+  // For every call we simply forward via HTTP
+
+  Json body(Json::Array, 2);
+  body("atLeast", Json(static_cast<double>(atLeast)))
+      ("atMost", Json(static_cast<double>(atMost)));
+  std::string bodyString(body.toString());
+
+  std::unique_ptr<ClusterCommResult> res;
+  res.reset(sendRequest(rest::HttpRequest::HTTP_REQUEST_PUT,
+                        "/_api/aql/skipSome/",
+                        bodyString));
+  throwExceptionAfterBadSyncRequest(res.get());
+
+  // If we get here, then res->result is the response which will be
+  // a serialized AqlItemBlock:
+  StringBuffer const& responseBodyBuf(res->result->getBody());
+  Json responseBodyJson(TRI_UNKNOWN_MEM_ZONE,
+                        TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
+                                       responseBodyBuf.begin()));
+  if (JsonHelper::getBooleanValue(responseBodyJson.json(), "error", true)) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
+  }
+  size_t skipped = JsonHelper::getNumericValue<size_t>(responseBodyJson.json(),
+                                                       "skipped", 0);
+  return skipped;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

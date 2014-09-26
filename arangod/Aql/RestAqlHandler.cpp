@@ -381,7 +381,8 @@ void RestAqlHandler::deleteQuery (std::string const& idString) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief PUT method for /_api/aql/<operation>/<queryId>, this is using 
 /// the part of the cursor API with side effects.
-/// <operation>: can be "getSome" or "skip".
+/// <operation>: can be "getSome" or "skip" or "initializeCursor" or 
+/// "shutdown".
 /// The body must be a Json with the following attributes:
 /// For the "getSome" operation one has to give:
 ///   "atLeast": 
@@ -395,6 +396,19 @@ void RestAqlHandler::deleteQuery (std::string const& idString) {
 ///             AqlItemBlock.
 ///             If "atLeast" is not given it defaults to 1, if "atMost" is not
 ///             given it defaults to ExecutionBlock::DefaultBatchSize.
+/// For the "skipSome" operation one has to give:
+///   "atLeast": 
+///   "atMost": both must be positive integers, the cursor skips never 
+///             more than "atMost" items and tries to skip at least
+///             "atLeast". Note that it is possible to skip fewer than
+///             "atLeast", for example if there are only fewer items
+///             left. However, the implementation may skip fewer items
+///             than "atLeast" for internal reasons, for example to avoid
+///             excessive copying. The result is a JSON object with a
+///             single attribute "skipped" containing the number of
+///             skipped items.
+///             If "atLeast" is not given it defaults to 1, if "atMost" is not
+///             given it defaults to ExecutionBlock::DefaultBatchSize.
 /// For the "skip" operation one should give:
 ///   "number": must be a positive integer, the cursor skips as many items,
 ///             possibly exhausting the cursor.
@@ -402,6 +416,13 @@ void RestAqlHandler::deleteQuery (std::string const& idString) {
 ///             "errorMessage" (if applicable) and "exhausted" (boolean)
 ///             to indicate whether or not the cursor is exhausted.
 ///             If "number" is not given it defaults to 1.
+/// For the "initializeCursor" operation, one has to bind the following 
+/// attributes:
+///   "items": This is a serialised AqlItemBlock with usually only one row 
+///            and the correct number of columns.
+///   "pos":   The number of the row in "items" to take, usually 0.
+/// For the "shutdown" operation no additional arguments are required and
+/// an empty JSON object in the body is OK.
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestAqlHandler::useQuery (std::string const& operation,
@@ -447,9 +468,27 @@ void RestAqlHandler::useQuery (std::string const& operation,
       }
     }
   }
+  else if (operation == "getSome") {
+    auto atLeast = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
+                                                         "atLeast", 1);
+    auto atMost = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
+                               "atMost", ExecutionBlock::DefaultBatchSize);
+    size_t skipped;
+    try {
+      skipped = query->engine()->skipSome(atLeast, atMost);
+    }
+    catch (...) {
+      _queryRegistry->close(vocbase, qId);
+      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                    "skipSome lead to an exception");
+      return;
+    }
+    answerBody("skipped", Json(static_cast<double>(skipped)))
+              ("error", Json(false));
+  }
   else if (operation == "skip") {
     auto number = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
-                                                         "number", 1);
+                                                        "number", 1);
     try {
       bool exhausted = query->engine()->skip(number);
       answerBody("exhausted", Json(exhausted))
@@ -461,6 +500,38 @@ void RestAqlHandler::useQuery (std::string const& operation,
                     "skip lead to an exception");
       return;
     }
+  }
+  else if (operation == "initializeCursor") {
+    auto pos = JsonHelper::getNumericValue<size_t>(queryJson.json(),
+                                                   "pos", 0);
+    std::unique_ptr<AqlItemBlock> items;
+    int res;
+    try {
+      items.reset(new AqlItemBlock(queryJson.get("items")));
+      res = query->engine()->initializeCursor(items.get(), pos);
+    }
+    catch (...) {
+      _queryRegistry->close(vocbase, qId);
+      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                    "initializeCursor lead to an exception");
+      return;
+    }
+    answerBody("error", res == TRI_ERROR_NO_ERROR ? Json(false) : Json(true))
+              ("code", Json(static_cast<double>(res)));
+  }
+  else if (operation == "shutdown") {
+    int res;
+    try {
+      res = query->engine()->shutdown();
+    }
+    catch (...) {
+      _queryRegistry->close(vocbase, qId);
+      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                    "shutdown lead to an exception");
+      return;
+    }
+    answerBody("error", res == TRI_ERROR_NO_ERROR ? Json(false) : Json(true))
+              ("code", Json(static_cast<double>(res)));
   }
   else {
     _queryRegistry->close(vocbase, qId);

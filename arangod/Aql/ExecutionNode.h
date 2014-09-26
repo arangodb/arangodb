@@ -505,17 +505,17 @@ namespace triagens {
 
         static Variable* varFromJson (Ast* ast,
                                       triagens::basics::Json const& base,
-                                      const char *variableName,
+                                      char const* variableName,
                                       bool optional = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief factory for sort Elements from json.
 ////////////////////////////////////////////////////////////////////////////////
 
-        static void getSortElements(SortElementVector elements,
-                                    ExecutionPlan* plan,
-                                    triagens::basics::Json const& oneNode,
-                                    char const* which);
+        static void getSortElements (SortElementVector& elements,
+                                     ExecutionPlan* plan,
+                                     triagens::basics::Json const& oneNode,
+                                     char const* which);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toJsonHelper, for a generic node
@@ -1697,7 +1697,7 @@ namespace triagens {
 /// @brief get Variables Used Here including ASC/DESC
 ////////////////////////////////////////////////////////////////////////////////
 
-        SortElementVector getElements () const {
+        SortElementVector const & getElements () const {
           return _elements;
         }
 
@@ -2866,11 +2866,11 @@ namespace triagens {
 /// @brief get Variables Used Here including ASC/DESC
 ////////////////////////////////////////////////////////////////////////////////
 
-        SortElementVector getElements () const {
+        SortElementVector const & getElements () const {
           return _elements;
         }
 
-        void setElements (SortElementVector const src) {
+        void setElements (SortElementVector const & src) {
           _elements = src;
         }
 
@@ -2889,7 +2889,6 @@ namespace triagens {
         Collection const* collection () const {
           return _collection;
         }
-
 
       private:
 

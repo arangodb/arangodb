@@ -860,7 +860,7 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
   }
   if (res->status == CL_COMM_ERROR) {
     // This could be a broken connection or an Http error:
-    if (res->result == 0 || !res->result->isComplete()) {
+    if (res->result == nullptr || !res->result->isComplete()) {
       // there is no result
       delete res;
       generateError(HttpResponse::BAD, TRI_ERROR_CLUSTER_CONNECTION_LOST,

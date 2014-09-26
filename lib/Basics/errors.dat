@@ -180,6 +180,7 @@ ERROR_CLUSTER_UNSUPPORTED,1470,"unsupported operation or parameter","Will be rai
 ERROR_CLUSTER_ONLY_ON_COORDINATOR,1471,"this operation is only valid on a coordinator in a cluster","Will be raised if there is an attempt to run a coordinator-only operation on a different type of node."
 ERROR_CLUSTER_READING_PLAN_AGENCY,1472,"error reading Plan in agency","Will be raised if a coordinator or DBserver cannot read the Plan in the agency."
 ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION,1473,"could not truncate collection","Will be raised if a coordinator cannot truncate all shards of a cluster collection."
+ERROR_CLUSTER_AQL_COMMUNICATION,1474,"error in cluster internal communication for AQL","Will be raised if the internal communication of the cluster for AQL produces an error."
 
 ################################################################################
 ## ArangoDB query errors

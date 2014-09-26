@@ -39,6 +39,7 @@
 #include "Utils/AqlTransaction.h"
 #include "Utils/transactions.h"
 #include "Utils/V8TransactionContext.h"
+#include "Cluster/ClusterComm.h"
 
 namespace triagens {
   namespace aql {
@@ -1638,19 +1639,32 @@ public:
 
     class RemoteBlock : public ExecutionBlock {
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructors/destructors
+////////////////////////////////////////////////////////////////////////////////
+
       public:
 
         RemoteBlock (ExecutionEngine* engine,
                      RemoteNode const* en,
                      std::string const& server,
-                     std::string const& ownName)
+                     std::string const& ownName,
+                     std::string const& queryId)
           : ExecutionBlock(engine, en),
             _server(server),
-            _ownName(ownName) {
+            _ownName(ownName),
+            _queryId(queryId) {
+          TRI_ASSERT(! queryId.empty());
         }
 
         ~RemoteBlock () {
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief timeout
+////////////////////////////////////////////////////////////////////////////////
+
+        static double const defaultTimeOut;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize
@@ -1702,18 +1716,34 @@ public:
         int64_t remaining () final;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief our server, can be like "shard:S1000" or like "server:Claus"
+/// @brief internal method to send a request
 ////////////////////////////////////////////////////////////////////////////////
 
       private:
 
-        std::string _server;
+        triagens::arango::ClusterCommResult* sendRequest (
+                  rest::HttpRequest::HttpRequestType type,
+                  std::string urlPart,
+                  std::string const& body);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief our server, can be like "shard:S1000" or like "server:Claus"
 ////////////////////////////////////////////////////////////////////////////////
 
+        std::string _server;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief our own identity, in case of the coordinator this is empty,
+/// in case of the DBservers, this is the shard ID as a string
+////////////////////////////////////////////////////////////////////////////////
+
         std::string _ownName;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the ID of the query on the server as a string
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _queryId;
 
     };
 
