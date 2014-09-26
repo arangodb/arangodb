@@ -39,6 +39,7 @@
 #include "Utils/AqlTransaction.h"
 #include "Utils/transactions.h"
 #include "Utils/V8TransactionContext.h"
+#include "Cluster/ClusterComm.h"
 
 namespace triagens {
   namespace aql {
@@ -1714,10 +1715,19 @@ public:
         int64_t remaining () final;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief our server, can be like "shard:S1000" or like "server:Claus"
+/// @brief internal method to send a request
 ////////////////////////////////////////////////////////////////////////////////
 
       private:
+
+        triagens::arango::ClusterCommResult* sendRequest (
+                  rest::HttpRequest::HttpRequestType type,
+                  std::string urlPart,
+                  std::string const& body);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief our server, can be like "shard:S1000" or like "server:Claus"
+////////////////////////////////////////////////////////////////////////////////
 
         std::string _server;
 
