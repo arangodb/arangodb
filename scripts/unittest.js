@@ -1,4 +1,4 @@
-var internalMembers = ["code", "error", "status", "duration", "failed", "total"];
+var internalMembers = ["code", "error", "status", "duration", "failed", "total", "message"];
 var fs = require("fs");
 var print = require("internal").print;
 
