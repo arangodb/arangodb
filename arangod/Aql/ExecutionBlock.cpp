@@ -3483,7 +3483,7 @@ int GatherBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
     _sortRegisters.clear();
 
     for( auto p: en->_elements){
-      //We know that staticAnalysis has been run, so _varOverview is set up
+      // We know that staticAnalysis has been run, so _varOverview is set up
       auto it = _varOverview->varInfo.find(p.first->id);
       TRI_ASSERT(it != _varOverview->varInfo.end());
       _sortRegisters.push_back(make_pair(it->second.registerId, p.second));
@@ -3503,7 +3503,7 @@ int GatherBlock::shutdown() {
     }
   }
 
-  for (std::deque<AqlItemBlock*> x: _buffer) {
+  for (std::deque<AqlItemBlock*>& x: _buffer) {
     for (AqlItemBlock* y: x) {
       delete y;
     }
@@ -3534,10 +3534,10 @@ int64_t GatherBlock::remaining () {
   }
   return sum;
 }
+
 // get blocks from dependencies.at(i) into _buffer.at(i)
 bool GatherBlock::getBlock (size_t i, size_t atLeast, size_t atMost) {
   TRI_ASSERT(0 < i && i < _dependencies.size());
-  bool res = false;
   AqlItemBlock* docs = _dependencies.at(i)->getSome(atLeast, atMost);
   if (docs != nullptr) {
     try {
@@ -3547,9 +3547,9 @@ bool GatherBlock::getBlock (size_t i, size_t atLeast, size_t atMost) {
       delete docs;
       throw;
     }
-    res = true;
+    return true;
   }
-  return res;
+  return false;
 }
 
 bool GatherBlock::hasMore () {
@@ -3596,7 +3596,7 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
   for (size_t i = 0; i < _dependencies.size(); i++) {
     if (_buffer.at(i).empty()) {
       if (getBlock(i, atLeast, atMost)) {
-        _pos.at(i) = make_pair(i,0);           
+        _pos.at(i) = make_pair(i, 0);           
       }
     } else {
       index = i;
@@ -3609,7 +3609,7 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
     return nullptr;
   }
   
-  size_t toSend = (std::min)(available, atMost); //nr rows in outgoing block
+  size_t toSend = (std::min)(available, atMost); // nr rows in outgoing block
   
   // get collections for ourLessThan . . .
   std::vector<TRI_document_collection_t const*> colls;
@@ -3620,66 +3620,59 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
   // the following is similar to AqlItemBlock's slice method . . .
   std::unordered_map<AqlValue, AqlValue> cache;
   // TODO: should we pre-reserve space for cache to avoid later re-allocations?
-  AqlItemBlock* res = nullptr;
   
   // comparison function 
   OurLessThan ourLessThan(_trx, _buffer, _sortRegisters, colls);
   AqlItemBlock* example =_buffer.at(index).front();
   size_t nrRegs = example->getNrRegs();
 
-  try {
-    res = new AqlItemBlock(toSend, static_cast<triagens::aql::RegisterId>(nrRegs));
+  std::unique_ptr<AqlItemBlock> res(new AqlItemBlock(toSend, static_cast<triagens::aql::RegisterId>(nrRegs)));  // automatically deleted if things go wrong
     
-    for (RegisterId i = 0; i < nrRegs; i++) {
-      res->setDocumentCollection(i, example->getDocumentCollection(i));
-    }
-
-    for (size_t i = 0; i < toSend; i++) {
-      // get the next smallest row from the buffer . . .
-      std::pair<size_t, size_t> val = *(std::min_element(_pos.begin(), _pos.end(), ourLessThan));
-      
-      // copy the row in to the outgoing block . . .
-      for (RegisterId col = 0; col < nrRegs; col++) {
-        AqlValue const& x(_buffer.at(val.first).front()->getValue(val.second, col));
-        if (! x.isEmpty()) {
-          auto it = cache.find(x);
-          if (it == cache.end()) {
-            AqlValue y = x.clone();
-            try {
-              res->setValue(i, col, y);
-            }
-            catch (...) {
-              y.destroy();
-              throw;
-            }
-            cache.emplace(x, y);
-          }
-          else {
-            res->setValue(i, col, it->second);
-          }
-        }
-      }
-
-      // renew the buffer and comparison function if necessary . . . 
-      _pos.at(val.first).second++;
-      if (_pos.at(val.first).second == _buffer.at(val.first).front()->size()) {
-        _buffer.at(val.first).pop_front();
-        if (_buffer.at(val.first).empty()) {
-          getBlock(val.first, DefaultBatchSize, DefaultBatchSize);
-          // FIXME does the below have to be here? 
-          // renew the comparison function
-          OurLessThan ourLessThan(_trx, _buffer, _sortRegisters, colls);
-        }
-        _pos.at(val.first) = make_pair(val.first,0);
-      }
-    }
-  }
-  catch (...) {
-    delete res;
-    throw;
+  for (RegisterId i = 0; i < nrRegs; i++) {
+    res->setDocumentCollection(i, example->getDocumentCollection(i));
   }
 
-  return res;
+  for (size_t i = 0; i < toSend; i++) {
+    // get the next smallest row from the buffer . . .
+    std::pair<size_t, size_t> val = *(std::min_element(_pos.begin(), _pos.end(), ourLessThan));
+    
+    // copy the row in to the outgoing block . . .
+    for (RegisterId col = 0; col < nrRegs; col++) {
+      AqlValue const& x(_buffer.at(val.first).front()->getValue(val.second, col));
+      if (! x.isEmpty()) {
+        auto it = cache.find(x);
+        if (it == cache.end()) {
+          AqlValue y = x.clone();
+          try {
+            res->setValue(i, col, y);
+          }
+          catch (...) {
+            y.destroy();
+            throw;
+          }
+          cache.emplace(x, y);
+        }
+        else {
+          res->setValue(i, col, it->second);
+        }
+      }
+    }
+
+    // renew the buffer and comparison function if necessary . . . 
+    _pos.at(val.first).second++;
+    if (_pos.at(val.first).second == _buffer.at(val.first).front()->size()) {
+      _buffer.at(val.first).pop_front();
+      if (_buffer.at(val.first).empty()) {
+        getBlock(val.first, DefaultBatchSize, DefaultBatchSize);
+        // FIXME does the below have to be here? 
+        // renew the comparison function
+        OurLessThan ourLessThan(_trx, _buffer, _sortRegisters, colls);
+      }
+      _pos.at(val.first) = make_pair(val.first,0);
+    }
+  }
+
+  return res.release();
 }
 
 size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
@@ -3742,6 +3735,7 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
       if (_buffer.at(val.first).empty()) {
         getBlock(val.first, DefaultBatchSize, DefaultBatchSize);
         // FIXME does the below have to be here? 
+        // No, as far as I see, Max.
         // renew the comparison function
         OurLessThan ourLessThan(_trx, _buffer, _sortRegisters, colls);
       }
@@ -3834,11 +3828,11 @@ bool ScatterBlock::hasMoreForShard (std::string const& shardId){
 
 bool ScatterBlock::hasMore () {
   
-  if (_done){
+  if (_done) {
     return false;
   }
 
-  for(auto x: _shardIdMap) {
+  for (auto const& x: _shardIdMap) {
     if (hasMoreForShard(x.first)){
       return true;
     }
@@ -3963,6 +3957,34 @@ static void throwExceptionAfterBadSyncRequest (ClusterCommResult* res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief local helper to send a request
+////////////////////////////////////////////////////////////////////////////////
+
+ClusterCommResult* RemoteBlock::sendRequest (
+          rest::HttpRequest::HttpRequestType type,
+          std::string urlPart,
+          std::string const& body) const {
+
+  ClusterComm* cc = ClusterComm::instance();
+
+  // Later, we probably want to set these sensibly:
+  ClientTransactionID const clientTransactionId = "AQL";
+  CoordTransactionID const coordTransactionId = 1;
+  std::map<std::string, std::string> headers;
+
+  return cc->syncRequest(clientTransactionId,
+                         coordTransactionId,
+                         _server,
+                         type,
+                         std::string("/_db/") 
+                           + _engine->getTransaction()->vocbase()->_name
+                           + urlPart + _queryId,
+                         body,
+                         headers,
+                         defaultTimeOut);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3981,7 +4003,28 @@ int RemoteBlock::initialize () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int RemoteBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
-  return TRI_ERROR_NO_ERROR;
+  // For every call we simply forward via HTTP
+
+  Json body(Json::Array, 2);
+  body("pos", Json(static_cast<double>(pos)))
+      ("items", items->toJson(_engine->getTransaction()));
+  std::string bodyString(body.toString());
+
+  std::unique_ptr<ClusterCommResult> res;
+  res.reset(sendRequest(rest::HttpRequest::HTTP_REQUEST_PUT,
+                        "/_api/aql/initializeCursor/",
+                        bodyString));
+  throwExceptionAfterBadSyncRequest(res.get());
+
+  // If we get here, then res->result is the response which will be
+  // a serialized AqlItemBlock:
+  StringBuffer const& responseBodyBuf(res->result->getBody());
+  Json responseBodyJson(TRI_UNKNOWN_MEM_ZONE,
+                        TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
+                                       responseBodyBuf.begin()));
+  return JsonHelper::getNumericValue<int>
+              (responseBodyJson.json(), "code", TRI_ERROR_INTERNAL);
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3989,7 +4032,22 @@ int RemoteBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int RemoteBlock::shutdown () {
-  return TRI_ERROR_NO_ERROR;
+  // For every call we simply forward via HTTP
+
+  std::unique_ptr<ClusterCommResult> res;
+  res.reset(sendRequest(rest::HttpRequest::HTTP_REQUEST_PUT,
+                        "/_api/aql/shutdown/",
+                        string()));
+  throwExceptionAfterBadSyncRequest(res.get());
+
+  // If we get here, then res->result is the response which will be
+  // a serialized AqlItemBlock:
+  StringBuffer const& responseBodyBuf(res->result->getBody());
+  Json responseBodyJson(TRI_UNKNOWN_MEM_ZONE,
+                        TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
+                                       responseBodyBuf.begin()));
+  return JsonHelper::getNumericValue<int>
+              (responseBodyJson.json(), "code", TRI_ERROR_INTERNAL);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3998,33 +4056,17 @@ int RemoteBlock::shutdown () {
 
 AqlItemBlock* RemoteBlock::getSome (size_t atLeast,
                                     size_t atMost) {
-
   // For every call we simply forward via HTTP
-
-  ClusterComm* cc = ClusterComm::instance();
-  std::unique_ptr<ClusterCommResult> res;
-
-  // Later, we probably want to set these sensibly:
-  ClientTransactionID const clientTransactionId = "AQL";
-  CoordTransactionID const coordTransactionId = 1;
 
   Json body(Json::Array, 2);
   body("atLeast", Json(static_cast<double>(atLeast)))
       ("atMost", Json(static_cast<double>(atMost)));
   std::string bodyString(body.toString());
-  std::map<std::string, std::string> headers;
 
-  res.reset(cc->syncRequest(clientTransactionId,
-                            coordTransactionId,
-                            _server,
-                            rest::HttpRequest::HTTP_REQUEST_PUT,
-                            std::string("/_db/") 
-                              + _engine->getTransaction()->vocbase()->_name
-                              + "/_api/aql/getSome/" + _queryId,
-                            bodyString,
-                            headers,
-                            3600.0));
-
+  std::unique_ptr<ClusterCommResult> res;
+  res.reset(sendRequest(rest::HttpRequest::HTTP_REQUEST_PUT,
+                        "/_api/aql/getSome/",
+                        bodyString));
   throwExceptionAfterBadSyncRequest(res.get());
 
   // If we get here, then res->result is the response which will be
@@ -4045,30 +4087,6 @@ AqlItemBlock* RemoteBlock::getSome (size_t atLeast,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief skipSome
 ////////////////////////////////////////////////////////////////////////////////
-
-ClusterCommResult* RemoteBlock::sendRequest (
-          rest::HttpRequest::HttpRequestType type,
-          std::string urlPart,
-          std::string const& body) {
-
-  ClusterComm* cc = ClusterComm::instance();
-
-  // Later, we probably want to set these sensibly:
-  ClientTransactionID const clientTransactionId = "AQL";
-  CoordTransactionID const coordTransactionId = 1;
-  std::map<std::string, std::string> headers;
-
-  return cc->syncRequest(clientTransactionId,
-                         coordTransactionId,
-                         _server,
-                         type,
-                         std::string("/_db/") 
-                           + _engine->getTransaction()->vocbase()->_name
-                           + urlPart + _queryId,
-                         body,
-                         headers,
-                         defaultTimeOut);
-}
 
 size_t RemoteBlock::skipSome (size_t atLeast, size_t atMost) {
   // For every call we simply forward via HTTP
@@ -4103,7 +4121,23 @@ size_t RemoteBlock::skipSome (size_t atLeast, size_t atMost) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RemoteBlock::hasMore () {
-  return true;
+  // For every call we simply forward via HTTP
+  std::unique_ptr<ClusterCommResult> res;
+  res.reset(sendRequest(rest::HttpRequest::HTTP_REQUEST_GET,
+                        "/_api/aql/hasMore/",
+                        string()));
+  throwExceptionAfterBadSyncRequest(res.get());
+
+  // If we get here, then res->result is the response which will be
+  // a serialized AqlItemBlock:
+  StringBuffer const& responseBodyBuf(res->result->getBody());
+  Json responseBodyJson(TRI_UNKNOWN_MEM_ZONE,
+                        TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
+                                       responseBodyBuf.begin()));
+  if (JsonHelper::getBooleanValue(responseBodyJson.json(), "error", true)) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
+  }
+  return JsonHelper::getBooleanValue(responseBodyJson.json(), "hasMore", true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4111,7 +4145,24 @@ bool RemoteBlock::hasMore () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int64_t RemoteBlock::count () const {
-  return 0;
+  // For every call we simply forward via HTTP
+  std::unique_ptr<ClusterCommResult> res;
+  res.reset(sendRequest(rest::HttpRequest::HTTP_REQUEST_GET,
+                        "/_api/aql/count/",
+                        string()));
+  throwExceptionAfterBadSyncRequest(res.get());
+
+  // If we get here, then res->result is the response which will be
+  // a serialized AqlItemBlock:
+  StringBuffer const& responseBodyBuf(res->result->getBody());
+  Json responseBodyJson(TRI_UNKNOWN_MEM_ZONE,
+                        TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
+                                       responseBodyBuf.begin()));
+  if (JsonHelper::getBooleanValue(responseBodyJson.json(), "error", true)) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
+  }
+  return JsonHelper::getNumericValue<int64_t>
+               (responseBodyJson.json(), "count", 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4119,7 +4170,24 @@ int64_t RemoteBlock::count () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 int64_t RemoteBlock::remaining () {
-  return 0;
+  // For every call we simply forward via HTTP
+  std::unique_ptr<ClusterCommResult> res;
+  res.reset(sendRequest(rest::HttpRequest::HTTP_REQUEST_GET,
+                        "/_api/aql/remaining/",
+                        string()));
+  throwExceptionAfterBadSyncRequest(res.get());
+
+  // If we get here, then res->result is the response which will be
+  // a serialized AqlItemBlock:
+  StringBuffer const& responseBodyBuf(res->result->getBody());
+  Json responseBodyJson(TRI_UNKNOWN_MEM_ZONE,
+                        TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
+                                       responseBodyBuf.begin()));
+  if (JsonHelper::getBooleanValue(responseBodyJson.json(), "error", true)) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
+  }
+  return JsonHelper::getNumericValue<int64_t>
+               (responseBodyJson.json(), "remaining", 0);
 }
 
 // Local Variables:

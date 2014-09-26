@@ -1526,11 +1526,9 @@ public:
         // the block is simple if we do not do merge sort . . .
         bool isSimple () {
           auto en = static_cast<GatherNode const*>(getPlanNode());
-          if (en->getElements().empty()) {
-            return true;
-          }
-          return false;
+          return en->getElements().empty();
         }
+
         // for the simple case . . .
         size_t _atDep = 0; // the current dependency 
         
@@ -1724,7 +1722,7 @@ public:
         triagens::arango::ClusterCommResult* sendRequest (
                   rest::HttpRequest::HttpRequestType type,
                   std::string urlPart,
-                  std::string const& body);
+                  std::string const& body) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief our server, can be like "shard:S1000" or like "server:Claus"
