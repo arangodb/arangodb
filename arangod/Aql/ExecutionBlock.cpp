@@ -3756,7 +3756,6 @@ bool GatherBlock::OurLessThan::operator() (std::pair<size_t, size_t> const& a,
 // --SECTION--                                                class ScatterBlock
 // -----------------------------------------------------------------------------
 
-
 bool ScatterBlock::hasMoreForClient (size_t clientId){
 
   TRI_ASSERT(0 <= clientId && clientId < _nrClients);
@@ -3833,6 +3832,10 @@ AqlItemBlock* ScatterBlock::getSomeForClient (size_t atLeast, size_t atMost, siz
   }
   if (popit) {
     _buffer.pop_front();
+    // update the values in first coord of _posForClient
+    for (size_t i = 0; i < _nrClients; i++) {
+      _posForClient.at(i).first--;
+    }
   }
   return res;
 }
