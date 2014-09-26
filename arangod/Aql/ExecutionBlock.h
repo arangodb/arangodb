@@ -1607,8 +1607,13 @@ public:
         }
        
         bool hasMoreForClient (size_t clientId);
-        AqlItemBlock* getSomeForClient (size_t atLeast, size_t atMost, size_t clientId);
+        
+        int getOrSkipSomeForClient (size_t atLeast, size_t atMost, 
+            bool skipping, AqlItemBlock*& result, size_t& skipped, size_t clientId);
+        
         size_t skipSomeForClient (size_t atLeast, size_t atMost, size_t clientId);
+        
+        AqlItemBlock* getSomeForClient (size_t atLeast, size_t atMost, size_t clientId);
 
       private: 
 
