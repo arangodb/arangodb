@@ -31,6 +31,8 @@
 #define ARANGODB_AQL_COLLECTION_H 1
 
 #include "Basics/Common.h"
+#include "Cluster/ClusterInfo.h"
+#include "Utils/Exception.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
@@ -122,6 +124,20 @@ namespace triagens {
         }
 
         return static_cast<size_t>(numDocuments);
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the shard information for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+      std::map<std::string, std::string> shardIds () const {
+        auto clusterInfo = triagens::arango::ClusterInfo::instance();
+        auto collectionInfo = clusterInfo->getCollection(std::string(vocbase->_name), name);
+        if (collectionInfo.get() == nullptr) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "collection not found");
+        }
+
+        return collectionInfo.get()->shardIds();
       }
 
 // -----------------------------------------------------------------------------
