@@ -3781,9 +3781,9 @@ ScatterBlock::ScatterBlock (ExecutionEngine* engine,
                             std::vector<std::string> shardIds)
                             : ExecutionBlock(engine, ep), 
                             _nrClients(shardIds.size()) {
-    for (auto i = 0; i < _nrClients; i++) {
-      _shardIdMap.insert(make_pair(shardIds.at(i), i));
-    }
+  for (size_t i = 0; i < _nrClients; i++) {
+    _shardIdMap.insert(make_pair(shardIds.at(i), i));
+  }
 }
 
 size_t ScatterBlock::getClientId(std::string shardId) {
@@ -3927,6 +3927,82 @@ size_t ScatterBlock::skipSomeForShard (size_t atLeast, size_t atMost, std::strin
     THROW_ARANGO_EXCEPTION(out);
   }
   return skipped;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            class RemoteBlock
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize
+////////////////////////////////////////////////////////////////////////////////
+
+int RemoteBlock::initialize () {
+  int res = ExecutionBlock::initialize();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initializeCursor, could be called multiple times
+////////////////////////////////////////////////////////////////////////////////
+
+int RemoteBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shutdown, will be called exactly once for the whole query
+////////////////////////////////////////////////////////////////////////////////
+
+int RemoteBlock::shutdown () {
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getSome
+////////////////////////////////////////////////////////////////////////////////
+
+AqlItemBlock* RemoteBlock::getSome (size_t atLeast,
+                                    size_t atMost) {
+
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief skipSome
+////////////////////////////////////////////////////////////////////////////////
+
+size_t RemoteBlock::skipSome (size_t atLeast, size_t atMost) {
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hasMore
+////////////////////////////////////////////////////////////////////////////////
+
+bool RemoteBlock::hasMore () {
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief count
+////////////////////////////////////////////////////////////////////////////////
+
+int64_t RemoteBlock::count () const {
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remaining
+////////////////////////////////////////////////////////////////////////////////
+
+int64_t RemoteBlock::remaining () {
+  return 0;
 }
 
 // Local Variables:

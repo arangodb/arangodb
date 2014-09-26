@@ -2589,11 +2589,16 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the cost of a remote node is 1
+/// @brief the cost of a remote node is that of its dependency
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost () {
-          return 1;
+          if (_dependencies.size() == 1) {
+            return _dependencies[0]->estimateCost();
+          }
+          else {
+            return 1;
+          }
         }
 
     };
