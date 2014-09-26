@@ -35,7 +35,6 @@
 #include "VocBase/edge-collection.h"
 #include "VocBase/index.h"
 #include "VocBase/vocbase.h"
-#include "Cluster/ClusterComm.h"
 
 using namespace triagens::arango;
 using namespace triagens::aql;
@@ -3943,6 +3942,28 @@ size_t ScatterBlock::skipSomeForShard (size_t atLeast, size_t atMost, std::strin
 double const RemoteBlock::defaultTimeOut = 3600.0;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief local helper to throw an exception if a HTTP request went wrong
+////////////////////////////////////////////////////////////////////////////////
+
+static void throwExceptionAfterBadSyncRequest (ClusterCommResult* res) {
+  if (res->status == CL_COMM_TIMEOUT) {
+    // No reply, we give up:
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_TIMEOUT,
+           "timeout in cluster AQL operation");
+  }
+  if (res->status == CL_COMM_ERROR) {
+    // This could be a broken connection or an Http error:
+    if (res->result == nullptr || ! res->result->isComplete()) {
+      // there is no result
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_CONNECTION_LOST,
+             "lost connection within cluster");
+    }
+    // In this case a proper HTTP error was reported by the DBserver,
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4005,21 +4026,7 @@ AqlItemBlock* RemoteBlock::getSome (size_t atLeast,
                             headers,
                             3600.0));
 
-  if (res->status == CL_COMM_TIMEOUT) {
-    // No reply, we give up:
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_TIMEOUT,
-           "timeout in cluster AQL operation");
-  }
-  if (res->status == CL_COMM_ERROR) {
-    // This could be a broken connection or an Http error:
-    if (res->result == nullptr || ! res->result->isComplete()) {
-      // there is no result
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_CONNECTION_LOST,
-             "lost connection within cluster");
-    }
-    // In this case a proper HTTP error was reported by the DBserver,
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
-  }
+  throwExceptionAfterBadSyncRequest(res.get());
 
   // If we get here, then res->result is the response which will be
   // a serialized AqlItemBlock:
@@ -4040,48 +4047,43 @@ AqlItemBlock* RemoteBlock::getSome (size_t atLeast,
 /// @brief skipSome
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t RemoteBlock::skipSome (size_t atLeast, size_t atMost) {
-  // For every call we simply forward via HTTP
+ClusterCommResult* RemoteBlock::sendRequest (
+          rest::HttpRequest::HttpRequestType type,
+          std::string urlPart,
+          std::string const& body) {
 
   ClusterComm* cc = ClusterComm::instance();
-  std::unique_ptr<ClusterCommResult> res;
 
   // Later, we probably want to set these sensibly:
   ClientTransactionID const clientTransactionId = "AQL";
   CoordTransactionID const coordTransactionId = 1;
+  std::map<std::string, std::string> headers;
+
+  return cc->syncRequest(clientTransactionId,
+                         coordTransactionId,
+                         _server,
+                         type,
+                         std::string("/_db/") 
+                           + _engine->getTransaction()->vocbase()->_name
+                           + urlPart + _queryId,
+                         body,
+                         headers,
+                         defaultTimeOut);
+}
+
+size_t RemoteBlock::skipSome (size_t atLeast, size_t atMost) {
+  // For every call we simply forward via HTTP
 
   Json body(Json::Array, 2);
   body("atLeast", Json(static_cast<double>(atLeast)))
       ("atMost", Json(static_cast<double>(atMost)));
   std::string bodyString(body.toString());
-  std::map<std::string, std::string> headers;
 
-  res.reset(cc->syncRequest(clientTransactionId,
-                            coordTransactionId,
-                            _server,
-                            rest::HttpRequest::HTTP_REQUEST_PUT,
-                            std::string("/_db/") 
-                              + _engine->getTransaction()->vocbase()->_name
-                              + "/_api/aql/skipSome/" + _queryId,
-                            bodyString,
-                            headers,
-                            3600.0));
-
-  if (res->status == CL_COMM_TIMEOUT) {
-    // No reply, we give up:
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_TIMEOUT,
-           "timeout in cluster AQL operation");
-  }
-  if (res->status == CL_COMM_ERROR) {
-    // This could be a broken connection or an Http error:
-    if (res->result == nullptr || ! res->result->isComplete()) {
-      // there is no result
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_CONNECTION_LOST,
-             "lost connection within cluster");
-    }
-    // In this case a proper HTTP error was reported by the DBserver,
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
-  }
+  std::unique_ptr<ClusterCommResult> res;
+  res.reset(sendRequest(rest::HttpRequest::HTTP_REQUEST_PUT,
+                        "/_api/aql/skipSome/",
+                        bodyString));
+  throwExceptionAfterBadSyncRequest(res.get());
 
   // If we get here, then res->result is the response which will be
   // a serialized AqlItemBlock:
