@@ -2579,7 +2579,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost () {
-          return 1;
+          return _dependencies[0]->estimateCost();
         }
 
     };
