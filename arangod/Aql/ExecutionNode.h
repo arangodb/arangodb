@@ -60,6 +60,12 @@ namespace triagens {
     class RedundantCalculationsReplacer;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief pairs, consisting of variable and sort direction
+/// (true = ascending | false = descending)
+////////////////////////////////////////////////////////////////////////////////
+    typedef std::vector<std::pair<Variable const*, bool>> SortElementVector;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief class ExecutionNode, abstract base class of all execution Nodes
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -501,6 +507,14 @@ namespace triagens {
                                       triagens::basics::Json const& base,
                                       const char *variableName,
                                       bool optional = false);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief factory for sort Elements from json.
+////////////////////////////////////////////////////////////////////////////////
+        static void getSortElements(SortElementVector elements,
+                                    ExecutionPlan* plan,
+                                    triagens::basics::Json const& oneNode,
+                                    char const* which);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toJsonHelper, for a generic node
@@ -1578,7 +1592,7 @@ namespace triagens {
 
         SortNode (ExecutionPlan* plan,
                   size_t id,
-                  std::vector<std::pair<Variable const*, bool>> const& elements,
+                  SortElementVector const& elements,
                   bool stable) 
           : ExecutionNode(plan, id),
             _elements(elements),
@@ -1587,7 +1601,7 @@ namespace triagens {
         
         SortNode (ExecutionPlan* plan,
                   triagens::basics::Json const& base,
-                  std::vector<std::pair<Variable const*, bool>> const& elements,
+                  SortElementVector const& elements,
                   bool stable);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1654,7 +1668,7 @@ namespace triagens {
 /// @brief get Variables Used Here including ASC/DESC
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<std::pair<Variable const*, bool>> getElements () const {
+        SortElementVector getElements () const {
           return _elements;
         }
 
@@ -1678,7 +1692,7 @@ namespace triagens {
 /// (true = ascending | false = descending)
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<std::pair<Variable const*, bool>> _elements;
+        SortElementVector _elements;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// whether or not the sort is stable
@@ -2668,7 +2682,9 @@ namespace triagens {
           : ExecutionNode(plan, id) {
         }
 
-        GatherNode (ExecutionPlan*, triagens::basics::Json const& base);
+        GatherNode (ExecutionPlan*,
+                    triagens::basics::Json const& base,
+                    SortElementVector const& elements);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -2720,11 +2736,11 @@ namespace triagens {
 /// @brief get Variables Used Here including ASC/DESC
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<std::pair<Variable const*, bool>> getElements () const {
+        SortElementVector getElements () const {
           return _elements;
         }
 
-        void setElements (std::vector<std::pair<Variable const*, bool>> const src) {
+        void setElements (SortElementVector const src) {
           _elements = src;
         }
 
@@ -2735,7 +2751,7 @@ namespace triagens {
 /// (true = ascending | false = descending)
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<std::pair<Variable const*, bool>> _elements;
+        SortElementVector _elements;
 
     };
 
