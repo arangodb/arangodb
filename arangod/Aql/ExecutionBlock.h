@@ -1516,6 +1516,9 @@ public:
         AqlItemBlock* getSome (size_t, size_t);
 
         size_t skipSome (size_t, size_t);
+        
+        // need our own shutdown method since our _buffer is different
+        int shutdown ();
 
       private:
 
@@ -1579,9 +1582,7 @@ public:
 
         ScatterBlock (ExecutionEngine* engine,
                       ScatterNode const* ep, 
-                      size_t nrClients)
-          : ExecutionBlock(engine, ep), _nrClients(nrClients){
-        }
+                      std::vector<std::string> shardIds);
 
         ~ScatterBlock () {
         }
@@ -1590,7 +1591,7 @@ public:
           return ExecutionBlock::initialize();
         }
 
-        //int initializeCursor (AqlItemBlock* items, size_t pos);
+        int initializeCursor (AqlItemBlock* items, size_t pos);
 
         int64_t remaining () {
           return _dependencies[0]->remaining();
@@ -1600,27 +1601,32 @@ public:
 
         virtual AqlItemBlock* getSome (size_t atLeast, size_t atMost) {
           TRI_ASSERT(false);
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
         }
 
         virtual size_t skipSome (size_t atLeast, size_t atMost) {
           TRI_ASSERT(false);
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
         }
        
-        bool hasMoreForClient (size_t clientId);
+        bool hasMoreForShard (std::string shardId);
         
-        int getOrSkipSomeForClient (size_t atLeast, size_t atMost, 
-            bool skipping, AqlItemBlock*& result, size_t& skipped, size_t clientId);
+        int getOrSkipSomeForShard (size_t atLeast, size_t atMost, 
+            bool skipping, AqlItemBlock*& result, size_t& skipped, std::string shardId);
         
-        size_t skipSomeForClient (size_t atLeast, size_t atMost, size_t clientId);
+        size_t skipSomeForShard (size_t atLeast, size_t atMost, std::string shardId);
         
-        AqlItemBlock* getSomeForClient (size_t atLeast, size_t atMost, size_t clientId);
+        AqlItemBlock* getSomeForShard (size_t atLeast, size_t atMost, std::string shardId);
 
       private: 
+        
+        size_t getClientId(std::string shardId);
 
         //_posForClient.at(i).second is the nr of rows of
         //_buffer.at(posForClient.at(i).first) sent to the client with id <i>.
         std::vector<std::pair<size_t,size_t>> _posForClient; 
         std::vector<bool> _doneForClient;
+        std::unordered_map<std::string, size_t> _shardIdMap;
         size_t _nrClients;
 
 

@@ -597,7 +597,7 @@ testFuncs.single_server = function (options) {
     print("Shutting down...");
     shutdownInstance(instanceInfo,options);
     print("done.");
-    return result
+    return result;
   }
   else {
     return { status: false, message: "No test specified!"};
@@ -622,7 +622,7 @@ testFuncs.single_client = function (options) {
     print("Shutting down...");
     shutdownInstance(instanceInfo,options);
     print("done.");
-    return result
+    return result;
   }
   else {
     return { status: false, message: "No test specified!"};
