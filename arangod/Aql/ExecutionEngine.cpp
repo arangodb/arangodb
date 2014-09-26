@@ -217,6 +217,16 @@ struct Instanciator : public WalkerWorker<ExecutionNode> {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief add a block to the engine
+////////////////////////////////////////////////////////////////////////////////
+
+void ExecutionEngine::addBlock (ExecutionBlock* block) {
+  TRI_ASSERT(block != nullptr);
+
+  _blocks.push_back(block);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution engine from a plan
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -229,10 +239,9 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (AQL_TRANSACTION_V8* trx,
     if (! plan->varUsageComputed()) {
       plan->findVarUsage();
     }
-    auto inst = new Instanciator(engine);
-    plan->root()->walk(inst);
-    auto root = inst->root;
-    delete inst;
+    std::unique_ptr<Instanciator> inst(new Instanciator(engine));
+    plan->root()->walk(inst.get());
+    auto root = inst.get()->root;
 
     root->staticAnalysis();
     root->initialize();
@@ -246,20 +255,6 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (AQL_TRANSACTION_V8* trx,
     delete engine;
     throw;
   }
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add a block to the engine
-////////////////////////////////////////////////////////////////////////////////
-
-void ExecutionEngine::addBlock (ExecutionBlock* block) {
-  TRI_ASSERT(block != nullptr);
-
-  _blocks.push_back(block);
 }
 
 // -----------------------------------------------------------------------------

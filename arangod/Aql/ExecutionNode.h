@@ -939,6 +939,22 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the database
+////////////////////////////////////////////////////////////////////////////////
+        
+        TRI_vocbase_t* vocbase () const {
+          return _vocbase;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the collection
+////////////////////////////////////////////////////////////////////////////////
+
+        Collection* collection () const {
+          return _collection;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1950,6 +1966,29 @@ namespace triagens {
         virtual void toJsonHelper (triagens::basics::Json& json,
                                    TRI_memory_zone_t* zone,
                                    bool) const override;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the database
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_vocbase_t* vocbase () const {
+          return _vocbase;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the collection
+////////////////////////////////////////////////////////////////////////////////
+
+        Collection* collection () const {
+          return _collection;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
 // -----------------------------------------------------------------------------
@@ -2603,8 +2642,13 @@ namespace triagens {
 
       public:
  
-        ScatterNode (ExecutionPlan* plan, size_t id) 
-          : ExecutionNode(plan, id) {
+        ScatterNode (ExecutionPlan* plan, 
+                     size_t id,
+                     TRI_vocbase_t* vocbase,
+                     Collection const* collection) 
+          : ExecutionNode(plan, id),
+            _vocbase(vocbase),
+            _collection(collection) {
         }
 
         ScatterNode (ExecutionPlan*, triagens::basics::Json const& base);
@@ -2630,7 +2674,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone (ExecutionPlan* plan) const {
-          auto c = new ScatterNode(plan, _id);
+          auto c = new ScatterNode(plan, _id, _vocbase, _collection);
           cloneDependencies(plan, c);
           return static_cast<ExecutionNode*>(c);
         }
@@ -2642,6 +2686,20 @@ namespace triagens {
         double estimateCost () {
           return 1;
         }
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the underlying database
+////////////////////////////////////////////////////////////////////////////////
+                                 
+        TRI_vocbase_t* _vocbase;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the underlying collection
+////////////////////////////////////////////////////////////////////////////////
+
+        Collection const* _collection;
 
     };
 
