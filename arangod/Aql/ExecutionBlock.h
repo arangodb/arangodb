@@ -1490,71 +1490,135 @@ public:
 
       public:
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
         GatherBlock (ExecutionEngine* engine,
                      GatherNode const* ep)
           : ExecutionBlock(engine, ep) {
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
         ~GatherBlock () {
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize
+////////////////////////////////////////////////////////////////////////////////
 
         int initialize () {
           return ExecutionBlock::initialize();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initializeCursor, store a copy of the register values coming from above
+/// @brief initializeCursor
 ////////////////////////////////////////////////////////////////////////////////
 
         int initializeCursor (AqlItemBlock* items, size_t pos);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief count: the sum of the count() of the dependencies or -1 (if any
+/// dependency has count -1
+////////////////////////////////////////////////////////////////////////////////
+        
         int64_t count () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remaining: the sum of the remaining() of the dependencies or -1 (if
+/// any dependency has remaining -1
+////////////////////////////////////////////////////////////////////////////////
 
         int64_t remaining ();
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hasMore: true if any position of _buffer hasMore and false
+/// otherwise.
+////////////////////////////////////////////////////////////////////////////////
+
         bool hasMore ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getSome
+////////////////////////////////////////////////////////////////////////////////
 
         AqlItemBlock* getSome (size_t, size_t);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief skipSome
+////////////////////////////////////////////////////////////////////////////////
+
         size_t skipSome (size_t, size_t);
         
-        // need our own shutdown method since our _buffer is different
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shutdown: need our own method since our _buffer is different
+////////////////////////////////////////////////////////////////////////////////
+         
         int shutdown ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _pos: pairs (i, _buffer.at(i)), i.e. the same as the usual _pos but
+/// one pair per dependency
+////////////////////////////////////////////////////////////////////////////////
+        
+        std::vector<std::pair<size_t, size_t>> _gatherBlockPos;
+
+      protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _gatherBlockBuffer: buffer the incoming block from each dependency
+/// separately 
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<std::deque<AqlItemBlock*>> _gatherBlockBuffer; 
 
       private:
 
-        // the block is simple if we do not do merge sort . . .
+////////////////////////////////////////////////////////////////////////////////
+/// @brief isSimple: the block is simple if we do not do merge sort . . .
+////////////////////////////////////////////////////////////////////////////////
+        
         bool isSimple () {
           auto en = static_cast<GatherNode const*>(getPlanNode());
           return en->getElements().empty();
         }
 
-        // for the simple case . . .
-        size_t _atDep = 0; // the current dependency 
-        
-        // for the non-simple case . . .
-        bool getBlock (size_t i, size_t atLeast, size_t atMost);
-        std::pair<size_t,size_t> nextValue ();
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _atDep: currently pulling blocks from _dependencies.at(_atDep),
+/// simple case only
+////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<std::deque<AqlItemBlock*>> _buffer; 
-        // buffer the incoming values from each dependency separately
-        std::vector<std::pair<size_t, size_t>> _pos;
-        // pairs (i, _buffer.at(i)) 
+        size_t _atDep = 0;
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getBlock: from dependency i, non-simple case only 
+////////////////////////////////////////////////////////////////////////////////
+        
+        bool getBlock (size_t i, size_t atLeast, size_t atMost);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pairs, consisting of variable and sort direction
+/// (true = ascending | false = descending)
+////////////////////////////////////////////////////////////////////////////////
+        
         std::vector<std::pair<RegisterId, bool>> _sortRegisters;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief OurLessThan
+/// @brief OurLessThan: comparison method for elements of _gatherBlockPos
 ////////////////////////////////////////////////////////////////////////////////
 
         class OurLessThan {
 
           public:
             OurLessThan (AQL_TRANSACTION_V8* trx,
-                         std::vector<std::deque<AqlItemBlock*>>& buffer,
+                         std::vector<std::deque<AqlItemBlock*>>& gatherBlockBuffer,
                          std::vector<std::pair<RegisterId, bool>>& sortRegisters,
                          std::vector<TRI_document_collection_t const*>& colls)
               : _trx(trx),
-                _buffer(buffer),
+                _gatherBlockBuffer(gatherBlockBuffer),
                 _sortRegisters(sortRegisters),
                 _colls(colls) {
             }
@@ -1564,11 +1628,10 @@ public:
 
           private:
             AQL_TRANSACTION_V8* _trx;
-            std::vector<std::deque<AqlItemBlock*>>& _buffer;
+            std::vector<std::deque<AqlItemBlock*>>& _gatherBlockBuffer;
             std::vector<std::pair<RegisterId, bool>>& _sortRegisters;
             std::vector<TRI_document_collection_t const*>& _colls;
         };
-
     };
 
 // -----------------------------------------------------------------------------
