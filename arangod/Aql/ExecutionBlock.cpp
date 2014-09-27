@@ -3468,6 +3468,24 @@ int NoResultsBlock::getOrSkipSome (size_t,   // atLeast
 // --SECTION--                                                 class GatherBlock
 // -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+GatherBlock::~GatherBlock () {
+  for (std::deque<AqlItemBlock*>& x: _gatherBlockBuffer) {
+    for (AqlItemBlock* y: x) {
+      delete y;
+    }
+    x.clear();
+  }
+  _gatherBlockBuffer.clear();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize
+////////////////////////////////////////////////////////////////////////////////
+
 int GatherBlock::initialize () {
   int res = ExecutionBlock::initialize();
   if (res != TRI_ERROR_NO_ERROR) {
