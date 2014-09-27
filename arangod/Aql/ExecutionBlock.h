@@ -1510,9 +1510,7 @@ public:
 /// @brief initialize
 ////////////////////////////////////////////////////////////////////////////////
 
-        int initialize () {
-          return ExecutionBlock::initialize();
-        }
+        int initialize ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown: need our own method since our _buffer is different
