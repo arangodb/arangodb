@@ -910,6 +910,10 @@ public:
         }
 
         ~SubqueryBlock () {
+          if (_subquery!= nullptr) {
+            delete _subquery;
+            _subquery = nullptr;
+          }
         }
 
         int initialize ();
