@@ -3808,7 +3808,7 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
     } else {
       index = i;
     }
-    available += _gatherBlockBuffer.at(i).size();
+    available += _gatherBlockBuffer.at(i).size() - _gatherBlockPos.at(i).second;
   }
   
   if (available == 0) {
