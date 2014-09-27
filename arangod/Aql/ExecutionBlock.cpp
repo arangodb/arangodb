@@ -878,10 +878,34 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
 }
 
 IndexRangeBlock::~IndexRangeBlock () {
+
+  if (_collection != nullptr) {
+    delete _collection;
+    _collection = nullptr;
+  }
+  
+  // FIXME is it necessary to do anything to the TRI_doc_mptr_copy_t's in
+  // _documents ???
+  _documents.clear();
+
   for (auto e : _allVariableBoundExpressions) {
     delete e;
   }
   _allVariableBoundExpressions.clear();
+  
+  for (auto x : _inVars) {
+    for (auto y : x) {
+      delete y;
+    }
+    x.clear();
+  }
+  _inVars.clear();
+  
+  for (auto x : _inRegs) {
+    x.clear();
+  }
+  _inRegs.clear();
+
 }
 
 int IndexRangeBlock::initialize () {
