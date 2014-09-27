@@ -751,6 +751,10 @@ public:
         }
 
         ~EnumerateListBlock () {
+          if (_collection != nullptr) {
+            delete _collection;
+            _collection = nullptr;
+          }
         }
 
         int initialize ();
