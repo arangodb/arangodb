@@ -3476,7 +3476,7 @@ int GatherBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   }
 
   if(!isSimple()){
-    _buffer.reserve(_dependencies.size());
+    _gatherBlockBuffer.reserve(_dependencies.size());
 
     auto en = static_cast<GatherNode const*>(getPlanNode());
 
@@ -3494,7 +3494,7 @@ int GatherBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 }
 
 int GatherBlock::shutdown() {
-  //don't call default shutdown method since it does the wrong thing to _buffer
+  //don't call default shutdown method since it does the wrong thing to _gatherBlockBuffer
   for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
     int res = (*it)->shutdown();
 
@@ -3503,13 +3503,13 @@ int GatherBlock::shutdown() {
     }
   }
 
-  for (std::deque<AqlItemBlock*>& x: _buffer) {
+  for (std::deque<AqlItemBlock*>& x: _gatherBlockBuffer) {
     for (AqlItemBlock* y: x) {
       delete y;
     }
     x.clear();
   }
-  _buffer.clear();
+  _gatherBlockBuffer.clear();
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -3535,13 +3535,13 @@ int64_t GatherBlock::remaining () {
   return sum;
 }
 
-// get blocks from dependencies.at(i) into _buffer.at(i)
+// get blocks from dependencies.at(i) into _gatherBlockBuffer.at(i)
 bool GatherBlock::getBlock (size_t i, size_t atLeast, size_t atMost) {
   TRI_ASSERT(0 < i && i < _dependencies.size());
   AqlItemBlock* docs = _dependencies.at(i)->getSome(atLeast, atMost);
   if (docs != nullptr) {
     try {
-      _buffer.at(i).push_back(docs);
+      _gatherBlockBuffer.at(i).push_back(docs);
     }
     catch (...) {
       delete docs;
@@ -3556,11 +3556,11 @@ bool GatherBlock::hasMore () {
   if (_done) {
     return false;
   }
-  for (size_t i = 0; i < _buffer.size(); i++){
-    if (!_buffer.at(i).empty()) {
+  for (size_t i = 0; i < _gatherBlockBuffer.size(); i++){
+    if (!_gatherBlockBuffer.at(i).empty()) {
       return true;
     } else if (getBlock(i, DefaultBatchSize, DefaultBatchSize)) {
-      _pos.at(i) = make_pair(i, 0);
+      _gatherBlockPos.at(i) = make_pair(i, 0);
       return true;
     }
   }
@@ -3594,14 +3594,14 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
   
   // pull more blocks from dependencies . . .
   for (size_t i = 0; i < _dependencies.size(); i++) {
-    if (_buffer.at(i).empty()) {
+    if (_gatherBlockBuffer.at(i).empty()) {
       if (getBlock(i, atLeast, atMost)) {
-        _pos.at(i) = make_pair(i, 0);           
+        _gatherBlockPos.at(i) = make_pair(i, 0);           
       }
     } else {
       index = i;
     }
-    available += _buffer.at(i).size();
+    available += _gatherBlockBuffer.at(i).size();
   }
   
   if (available == 0) {
@@ -3614,7 +3614,7 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
   // get collections for ourLessThan . . .
   std::vector<TRI_document_collection_t const*> colls;
   for (RegisterId i = 0; i < _sortRegisters.size(); i++) {
-    colls.push_back(_buffer.at(index).front()->getDocumentCollection(_sortRegisters[i].first));
+    colls.push_back(_gatherBlockBuffer.at(index).front()->getDocumentCollection(_sortRegisters[i].first));
   }
   
   // the following is similar to AqlItemBlock's slice method . . .
@@ -3622,8 +3622,8 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
   // TODO: should we pre-reserve space for cache to avoid later re-allocations?
   
   // comparison function 
-  OurLessThan ourLessThan(_trx, _buffer, _sortRegisters, colls);
-  AqlItemBlock* example =_buffer.at(index).front();
+  OurLessThan ourLessThan(_trx, _gatherBlockBuffer, _sortRegisters, colls);
+  AqlItemBlock* example =_gatherBlockBuffer.at(index).front();
   size_t nrRegs = example->getNrRegs();
 
   std::unique_ptr<AqlItemBlock> res(new AqlItemBlock(toSend, static_cast<triagens::aql::RegisterId>(nrRegs)));  // automatically deleted if things go wrong
@@ -3634,11 +3634,11 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
 
   for (size_t i = 0; i < toSend; i++) {
     // get the next smallest row from the buffer . . .
-    std::pair<size_t, size_t> val = *(std::min_element(_pos.begin(), _pos.end(), ourLessThan));
+    std::pair<size_t, size_t> val = *(std::min_element(_gatherBlockPos.begin(), _gatherBlockPos.end(), ourLessThan));
     
     // copy the row in to the outgoing block . . .
     for (RegisterId col = 0; col < nrRegs; col++) {
-      AqlValue const& x(_buffer.at(val.first).front()->getValue(val.second, col));
+      AqlValue const& x(_gatherBlockBuffer.at(val.first).front()->getValue(val.second, col));
       if (! x.isEmpty()) {
         auto it = cache.find(x);
         if (it == cache.end()) {
@@ -3659,16 +3659,16 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
     }
 
     // renew the buffer and comparison function if necessary . . . 
-    _pos.at(val.first).second++;
-    if (_pos.at(val.first).second == _buffer.at(val.first).front()->size()) {
-      _buffer.at(val.first).pop_front();
-      if (_buffer.at(val.first).empty()) {
+    _gatherBlockPos.at(val.first).second++;
+    if (_gatherBlockPos.at(val.first).second == _gatherBlockBuffer.at(val.first).front()->size()) {
+      _gatherBlockBuffer.at(val.first).pop_front();
+      if (_gatherBlockBuffer.at(val.first).empty()) {
         getBlock(val.first, DefaultBatchSize, DefaultBatchSize);
         // FIXME does the below have to be here? 
         // renew the comparison function
-        OurLessThan ourLessThan(_trx, _buffer, _sortRegisters, colls);
+        OurLessThan ourLessThan(_trx, _gatherBlockBuffer, _sortRegisters, colls);
       }
-      _pos.at(val.first) = make_pair(val.first,0);
+      _gatherBlockPos.at(val.first) = make_pair(val.first,0);
     }
   }
 
@@ -3699,14 +3699,14 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
   
   // pull more blocks from dependencies . . .
   for (size_t i = 0; i < _dependencies.size(); i++) {
-    if (_buffer.at(i).empty()) {
+    if (_gatherBlockBuffer.at(i).empty()) {
       if (getBlock(i, atLeast, atMost)) {
-        _pos.at(i) = make_pair(i,0);           
+        _gatherBlockPos.at(i) = make_pair(i,0);           
       }
     } else {
       index = i;
     }
-    available += _buffer.at(i).size();
+    available += _gatherBlockBuffer.at(i).size();
   }
   
   if (available == 0) {
@@ -3719,27 +3719,27 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
   // get collections for ourLessThan . . .
   std::vector<TRI_document_collection_t const*> colls;
   for (RegisterId i = 0; i < _sortRegisters.size(); i++) {
-    colls.push_back(_buffer.at(index).front()->getDocumentCollection(_sortRegisters[i].first));
+    colls.push_back(_gatherBlockBuffer.at(index).front()->getDocumentCollection(_sortRegisters[i].first));
   }
   
   // comparison function 
-  OurLessThan ourLessThan(_trx, _buffer, _sortRegisters, colls);
+  OurLessThan ourLessThan(_trx, _gatherBlockBuffer, _sortRegisters, colls);
 
   for (size_t i = 0; i < skipped; i++) {
     // get the next smallest row from the buffer . . .
-    std::pair<size_t, size_t> val = *(std::min_element(_pos.begin(), _pos.end(), ourLessThan));
+    std::pair<size_t, size_t> val = *(std::min_element(_gatherBlockPos.begin(), _gatherBlockPos.end(), ourLessThan));
     // renew the buffer and comparison function if necessary . . . 
-    _pos.at(val.first).second++;
-    if (_pos.at(val.first).second == _buffer.at(val.first).front()->size()) {
-      _buffer.at(val.first).pop_front();
-      if (_buffer.at(val.first).empty()) {
+    _gatherBlockPos.at(val.first).second++;
+    if (_gatherBlockPos.at(val.first).second == _gatherBlockBuffer.at(val.first).front()->size()) {
+      _gatherBlockBuffer.at(val.first).pop_front();
+      if (_gatherBlockBuffer.at(val.first).empty()) {
         getBlock(val.first, DefaultBatchSize, DefaultBatchSize);
         // FIXME does the below have to be here? 
         // No, as far as I see, Max.
         // renew the comparison function
-        OurLessThan ourLessThan(_trx, _buffer, _sortRegisters, colls);
+        OurLessThan ourLessThan(_trx, _gatherBlockBuffer, _sortRegisters, colls);
       }
-      _pos.at(val.first) = make_pair(val.first, 0);
+      _gatherBlockPos.at(val.first) = make_pair(val.first, 0);
     }
   }
 
@@ -3751,9 +3751,9 @@ bool GatherBlock::OurLessThan::operator() (std::pair<size_t, size_t> const& a,
   size_t i = 0;
   for (auto reg : _sortRegisters) {
     int cmp = AqlValue::Compare(_trx,
-                                _buffer.at(a.first).front()->getValue(a.second, reg.first),
+                                _gatherBlockBuffer.at(a.first).front()->getValue(a.second, reg.first),
                                 _colls[i],
-                                _buffer.at(b.first).front()->getValue(b.second, reg.first),
+                                _gatherBlockBuffer.at(b.first).front()->getValue(b.second, reg.first),
                                 _colls[i]);
     if (cmp == -1) {
       return reg.second;
