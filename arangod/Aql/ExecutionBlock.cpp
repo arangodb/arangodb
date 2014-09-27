@@ -3815,6 +3815,10 @@ bool GatherBlock::OurLessThan::operator() (std::pair<size_t, size_t> const& a,
 // --SECTION--                                                class ScatterBlock
 // -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
 ScatterBlock::ScatterBlock (ExecutionEngine* engine,
                             ScatterNode const* ep, 
                             std::vector<std::string> const& shardIds)
@@ -3826,14 +3830,9 @@ ScatterBlock::ScatterBlock (ExecutionEngine* engine,
   }
 }
 
-size_t ScatterBlock::getClientId (std::string const& shardId) {
-  auto it = _shardIdMap.find(shardId);
-  if (it == _shardIdMap.end()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
-        "AQL: unknown shard id");
-  }
-  return ((*it).second);
-}
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initializeCursor
+////////////////////////////////////////////////////////////////////////////////
 
 int ScatterBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   int res = ExecutionBlock::initializeCursor(items, pos);
@@ -3849,6 +3848,29 @@ int ScatterBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 
   return TRI_ERROR_NO_ERROR;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hasMore: any more for any shard?
+////////////////////////////////////////////////////////////////////////////////
+
+bool ScatterBlock::hasMore () {
+  
+  if (_done) {
+    return false;
+  }
+
+  for (auto const& x: _shardIdMap) {
+    if (hasMoreForShard(x.first)){
+      return true;
+    }
+  }
+  _done = true;
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hasMoreForShard: any more for shard <shardId>?
+////////////////////////////////////////////////////////////////////////////////
 
 bool ScatterBlock::hasMoreForShard (std::string const& shardId){
   size_t clientId = getClientId(shardId);
@@ -3870,20 +3892,9 @@ bool ScatterBlock::hasMoreForShard (std::string const& shardId){
   return true;
 }
 
-bool ScatterBlock::hasMore () {
-  
-  if (_done) {
-    return false;
-  }
-
-  for (auto const& x: _shardIdMap) {
-    if (hasMoreForShard(x.first)){
-      return true;
-    }
-  }
-  _done = true;
-  return false;
-}
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getOrSkipSomeForShard
+////////////////////////////////////////////////////////////////////////////////
 
 int ScatterBlock::getOrSkipSomeForShard (size_t atLeast, 
     size_t atMost, bool skipping, AqlItemBlock*& result, 
@@ -3946,6 +3957,10 @@ int ScatterBlock::getOrSkipSomeForShard (size_t atLeast,
   return TRI_ERROR_NO_ERROR;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getSomeForShard
+////////////////////////////////////////////////////////////////////////////////
+
 AqlItemBlock* ScatterBlock::getSomeForShard (
                                  size_t atLeast, size_t atMost, std::string const& shardId) {
   size_t skipped = 0;
@@ -3957,6 +3972,10 @@ AqlItemBlock* ScatterBlock::getSomeForShard (
   return result;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief skipSomeForShard
+////////////////////////////////////////////////////////////////////////////////
+
 size_t ScatterBlock::skipSomeForShard (size_t atLeast, size_t atMost, std::string const& shardId) {
   size_t skipped = 0;
   AqlItemBlock* result = nullptr;
@@ -3966,6 +3985,20 @@ size_t ScatterBlock::skipSomeForShard (size_t atLeast, size_t atMost, std::strin
     THROW_ARANGO_EXCEPTION(out);
   }
   return skipped;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getClientId: get the number <clientId> (used internally)
+/// corresponding to <shardId>
+////////////////////////////////////////////////////////////////////////////////
+
+size_t ScatterBlock::getClientId (std::string const& shardId) {
+  auto it = _shardIdMap.find(shardId);
+  if (it == _shardIdMap.end()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
+        "AQL: unknown shard id");
+  }
+  return ((*it).second);
 }
 
 // -----------------------------------------------------------------------------
