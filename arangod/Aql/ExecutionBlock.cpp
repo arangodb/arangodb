@@ -3527,7 +3527,14 @@ int GatherBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
     return res;
   }
 
-
+  for (std::deque<AqlItemBlock*>& x: _gatherBlockBuffer) {
+    for (AqlItemBlock* y: x) {
+      delete y;
+    }
+    x.clear();
+  }
+  _gatherBlockBuffer.clear();
+  _done = false;
   return TRI_ERROR_NO_ERROR;
 }
 
