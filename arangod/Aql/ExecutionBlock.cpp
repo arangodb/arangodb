@@ -3693,7 +3693,7 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
     } else {
       index = i;
     }
-    available += _gatherBlockBuffer.at(i).size();
+    available += _gatherBlockBuffer.at(i).size() - _gatherBlockPos.at(i).second;
   }
   
   if (available == 0) {
@@ -4048,7 +4048,8 @@ int ScatterBlock::getOrSkipSomeForShard (size_t atLeast,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlItemBlock* ScatterBlock::getSomeForShard (
-                                 size_t atLeast, size_t atMost, std::string const& shardId) {
+                                 size_t atLeast, size_t atMost, std::string
+                                 const& shardId) {
   size_t skipped = 0;
   AqlItemBlock* result = nullptr;
   int out = getOrSkipSomeForShard(atLeast, atMost, false, result, skipped, shardId);
