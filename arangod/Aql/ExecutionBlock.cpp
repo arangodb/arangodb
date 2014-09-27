@@ -3469,11 +3469,12 @@ int NoResultsBlock::getOrSkipSome (size_t,   // atLeast
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initializeCursor
+/// @brief shutdown: need our own method since our _buffer is different
 ////////////////////////////////////////////////////////////////////////////////
 
 int GatherBlock::shutdown() {
-  //don't call default shutdown method since it does the wrong thing to _gatherBlockBuffer
+  // don't call default shutdown method since it does the wrong thing to
+  // _gatherBlockBuffer
   for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
     int res = (*it)->shutdown();
 
@@ -3491,6 +3492,10 @@ int GatherBlock::shutdown() {
   _gatherBlockBuffer.clear();
   return TRI_ERROR_NO_ERROR;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initializeCursor
+////////////////////////////////////////////////////////////////////////////////
 
 int GatherBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   int res = ExecutionBlock::initializeCursor(items, pos);
