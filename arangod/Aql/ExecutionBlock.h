@@ -1565,8 +1565,8 @@ public:
         size_t skipSome (size_t, size_t);
         
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _pos: pairs (i, _buffer.at(i)), i.e. the same as the usual _pos but
-/// one pair per dependency
+/// @brief _gatherBlockPos: pairs (i, _pos in _buffer.at(i)), i.e. the same as
+/// the usual _pos but one pair per dependency
 ////////////////////////////////////////////////////////////////////////////////
         
         std::vector<std::pair<size_t, size_t>> _gatherBlockPos;
