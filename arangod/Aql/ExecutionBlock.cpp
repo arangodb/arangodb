@@ -3762,9 +3762,6 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
       _gatherBlockBuffer.at(val.first).pop_front();
       if (_gatherBlockBuffer.at(val.first).empty()) {
         getBlock(val.first, DefaultBatchSize, DefaultBatchSize);
-        // FIXME does the below have to be here? 
-        // renew the comparison function
-        OurLessThan ourLessThan(_trx, _gatherBlockBuffer, _sortRegisters, colls);
       }
       _gatherBlockPos.at(val.first) = make_pair(val.first,0);
     }
@@ -3837,10 +3834,6 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
       _gatherBlockBuffer.at(val.first).pop_front();
       if (_gatherBlockBuffer.at(val.first).empty()) {
         getBlock(val.first, DefaultBatchSize, DefaultBatchSize);
-        // FIXME does the below have to be here? 
-        // No, as far as I see, Max.
-        // renew the comparison function
-        OurLessThan ourLessThan(_trx, _gatherBlockBuffer, _sortRegisters, colls);
       }
       _gatherBlockPos.at(val.first) = make_pair(val.first, 0);
     }
