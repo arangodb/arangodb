@@ -1873,6 +1873,111 @@ int triagens::aql::distributeSortToCluster (Optimizer* opt,
   
   return TRI_ERROR_NO_ERROR;
 }
+
+class ScatterToSingletonViaCalcOnlyFinder: public WalkerWorker<ExecutionNode> {
+  Optimizer* _opt;
+  ExecutionPlan* _plan;
+  bool _canThrow; 
+  Optimizer::RuleLevel _level;
+  RemoteNode* _remote;
+  ExecutionNode* _scatter;
+  
+  public: 
+    ScatterToSingletonViaCalcOnlyFinder (Optimizer* opt,
+                                         ExecutionPlan* plan,
+                                         Optimizer::RuleLevel level,
+                                         RemoteNode* nn)
+      : _opt(opt),
+        _plan(plan), 
+        _canThrow(false),
+        _level(level),
+        _remote(nn),
+        _scatter(nullptr){
+    };
+
+    ~ScatterToSingletonViaCalcOnlyFinder () {
+    }
+
+    bool before (ExecutionNode* en) {
+      _canThrow = (_canThrow || en->canThrow()); // can any node walked over throw?
+
+      switch (en->getType()) {
+        case EN::SCATTER:{
+          if (_scatter != nullptr) {
+            return true; // somehow found 2 scatter nodes . . .
+          }
+          _scatter = en;
+          return false; // continue . . .
+        }
+        case EN::CALCULATION: {
+          // do nothing, continue . . . 
+          return false;
+        }
+        case EN::SINGLETON: {
+          if (_scatter == nullptr) {
+            return true; // found no scatter nodes
+          }
+          auto newPlan = _plan->clone();
+          if (newPlan == nullptr) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+          }
+          try {
+            newPlan->unlinkNode(newPlan->getNodeById(_remote->id()));
+            newPlan->unlinkNode(newPlan->getNodeById(_scatter->id()));
+            _opt->addPlan(newPlan, _level, true);
+          }
+          catch (...) {
+            delete newPlan;
+            throw;
+          }
+          return false;
+        }
+        case EN::ENUMERATE_LIST:
+        case EN::SUBQUERY:        
+        case EN::FILTER: 
+        case EN::AGGREGATE:
+        case EN::GATHER:
+        case EN::REMOTE:
+        case EN::INSERT:
+        case EN::REMOVE:
+        case EN::REPLACE:
+        case EN::UPDATE:
+        case EN::RETURN:
+        case EN::NORESULTS:
+        case EN::ILLEGAL:
+        case EN::LIMIT:           
+        case EN::SORT:
+        case EN::INDEX_RANGE:
+        case EN::ENUMERATE_COLLECTION: {
+          // if we meet any of the above, then we abort . . .
+        }
+      }
+      return true;
+    }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief try to get rid of a RemoteNode->ScatterNode combination which has
+/// only a SingletonNode and possibly some CalculationNodes as dependencies
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::removeUnnecessaryRemoteScatter (Optimizer* opt, 
+                                  ExecutionPlan* plan, 
+                                  Optimizer::Rule const* rule) {
+  
+  std::vector<ExecutionNode*> nodes
+    = plan->findNodesOfType(triagens::aql::ExecutionNode::REMOTE, true);
+  
+  for (auto n : nodes) {
+    auto nn = static_cast<RemoteNode*>(n);
+    ScatterToSingletonViaCalcOnlyFinder finder(opt, plan, rule->level, nn);
+    nn->walk(&finder);
+  }
+  opt->addPlan(plan, rule->level, false);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
