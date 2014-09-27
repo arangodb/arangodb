@@ -680,6 +680,14 @@ EnumerateCollectionBlock::EnumerateCollectionBlock (ExecutionEngine* engine,
 }
 
 EnumerateCollectionBlock::~EnumerateCollectionBlock () {
+  if (_collection != nullptr) {
+    delete _collection;
+    _collection = nullptr;
+  }
+  
+  // FIXME is it necessary to do anything to the TRI_doc_mptr_copy_t's in
+  // _documents ???
+  _documents.clear();
 }
 
 bool EnumerateCollectionBlock::moreDocuments () {
