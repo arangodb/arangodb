@@ -3468,11 +3468,34 @@ int NoResultsBlock::getOrSkipSome (size_t,   // atLeast
 // --SECTION--                                                 class GatherBlock
 // -----------------------------------------------------------------------------
 
+int GatherBlock::initialize () {
+  int res = ExecutionBlock::initialize();
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  if(!isSimple()){
+    _gatherBlockBuffer.reserve(_dependencies.size());
+
+    auto en = static_cast<GatherNode const*>(getPlanNode());
+
+    _sortRegisters.clear();
+
+    for( auto p: en->_elements){
+      // We know that staticAnalysis has been run, so _varOverview is set up
+      auto it = _varOverview->varInfo.find(p.first->id);
+      TRI_ASSERT(it != _varOverview->varInfo.end());
+      _sortRegisters.push_back(make_pair(it->second.registerId, p.second));
+    }
+  }
+  return TRI_ERROR_NO_ERROR;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown: need our own method since our _buffer is different
 ////////////////////////////////////////////////////////////////////////////////
 
-int GatherBlock::shutdown() {
+int GatherBlock::shutdown () {
   // don't call default shutdown method since it does the wrong thing to
   // _gatherBlockBuffer
   for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
@@ -3504,20 +3527,6 @@ int GatherBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
     return res;
   }
 
-  if(!isSimple()){
-    _gatherBlockBuffer.reserve(_dependencies.size());
-
-    auto en = static_cast<GatherNode const*>(getPlanNode());
-
-    _sortRegisters.clear();
-
-    for( auto p: en->_elements){
-      // We know that staticAnalysis has been run, so _varOverview is set up
-      auto it = _varOverview->varInfo.find(p.first->id);
-      TRI_ASSERT(it != _varOverview->varInfo.end());
-      _sortRegisters.push_back(make_pair(it->second.registerId, p.second));
-    }
-  }
 
   return TRI_ERROR_NO_ERROR;
 }
