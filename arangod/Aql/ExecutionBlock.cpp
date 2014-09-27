@@ -684,10 +684,6 @@ EnumerateCollectionBlock::~EnumerateCollectionBlock () {
     delete _collection;
     _collection = nullptr;
   }
-  
-  // FIXME is it necessary to do anything to the TRI_doc_mptr_copy_t's in
-  // _documents ???
-  _documents.clear();
 }
 
 bool EnumerateCollectionBlock::moreDocuments () {
@@ -884,10 +880,6 @@ IndexRangeBlock::~IndexRangeBlock () {
     _collection = nullptr;
   }
   
-  // FIXME is it necessary to do anything to the TRI_doc_mptr_copy_t's in
-  // _documents ???
-  _documents.clear();
-
   for (auto e : _allVariableBoundExpressions) {
     delete e;
   }
@@ -900,12 +892,6 @@ IndexRangeBlock::~IndexRangeBlock () {
     x.clear();
   }
   _inVars.clear();
-  
-  for (auto x : _inRegs) {
-    x.clear();
-  }
-  _inRegs.clear();
-
 }
 
 int IndexRangeBlock::initialize () {
@@ -1874,8 +1860,6 @@ CalculationBlock::~CalculationBlock () {
     delete x;
   }
   _inVars.clear();
-  _inRegs.clear();
-
 }
 
 int CalculationBlock::initialize () {
@@ -2807,6 +2791,10 @@ ModificationBlock::ModificationBlock (ExecutionEngine* engine,
 }
 
 ModificationBlock::~ModificationBlock () {
+  if (_collection != nullptr) {
+    delete _collection;
+    _collection = nullptr;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
