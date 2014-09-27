@@ -837,8 +837,8 @@ public:
 
         }
 
-        ~CalculationBlock () {
-        }
+        ~CalculationBlock ();
+        
 
         int initialize ();
 

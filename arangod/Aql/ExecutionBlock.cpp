@@ -1863,6 +1863,21 @@ AqlValue EnumerateListBlock::getAqlValue (AqlValue inVarReg) {
 // --SECTION--                                            class CalculationBlock
 // -----------------------------------------------------------------------------
 
+CalculationBlock::~CalculationBlock () {
+
+  if (_expression != nullptr) {
+    delete _expression;
+    _expression = nullptr;
+  }
+
+  for (auto x : _inVars) {
+    delete x;
+  }
+  _inVars.clear();
+  _inRegs.clear();
+
+}
+
 int CalculationBlock::initialize () {
   int res = ExecutionBlock::initialize();
 
