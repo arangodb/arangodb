@@ -168,6 +168,14 @@ ExecutionEngine::~ExecutionEngine () {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// @brief whether or not we are a coordinator
+////////////////////////////////////////////////////////////////////////////////
+       
+bool ExecutionEngine::isCoordinator () {
+  return triagens::arango::ServerState::instance()->isCoordinator();
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                     walker class for ExecutionNode to instanciate
 // -----------------------------------------------------------------------------
@@ -531,7 +539,7 @@ void ExecutionEngine::addBlock (ExecutionBlock* block) {
 /// @brief create an execution engine from a plan
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* registry,
+ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegistry,
                                                        AQL_TRANSACTION_V8* trx,
                                                        Query* query,
                                                        ExecutionPlan* plan) {
@@ -544,10 +552,9 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* registry,
 
     ExecutionBlock* root = nullptr;
 
-    if (triagens::arango::ServerState::instance()->isCoordinator()) {
+    if (isCoordinator()) {
       // instanciate the engine on the coordinator
-      // TODO: must pass an instance of query registry to the coordinator instanciator!
-      std::unique_ptr<CoordinatorInstanciator> inst(new CoordinatorInstanciator(trx, query, nullptr));
+      std::unique_ptr<CoordinatorInstanciator> inst(new CoordinatorInstanciator(trx, query, queryRegistry));
       plan->root()->walk(inst.get());
 
       engine = inst.get()->buildEngines(); 
