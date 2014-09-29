@@ -223,7 +223,7 @@ function startInstance (protocol, options, addArgs, testname) {
     if (typeof(options.valgrind) === 'string') {
       var run = fs.join("bin","arangod");
       var valgrindopts = options.valgrindargs.concat(
-        ["--xml-file="+options.valgrindXmlFileBase + '_' + testname + '.xml']);
+        ["--xml-file="+options.valgrindXmlFileBase + '_' + testname + '%p.xml']);
       var newargs=valgrindopts.concat([run]).concat(args);      
       var cmdline = options.valgrind;
       instanceInfo.pid = executeExternal(cmdline, newargs);
