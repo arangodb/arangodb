@@ -2650,9 +2650,11 @@ namespace triagens {
         
         double estimateCost () {
           if (_dependencies.size() == 1) {
-            return _dependencies[0]->estimateCost();
+            // the 1.5 is an arbitrary factor to account for some overhead of the
+            // remote processing, HTTP communication etc.
+            return 1.5 * _dependencies[0]->estimateCost();
           }
-          return 1;
+          return 1.5;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
