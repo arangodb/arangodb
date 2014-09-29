@@ -4117,8 +4117,16 @@ int RemoteBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   // For every call we simply forward via HTTP
 
   Json body(Json::Array, 2);
-  body("pos", Json(static_cast<double>(pos)))
-      ("items", items->toJson(_engine->getTransaction()));
+  if (items == nullptr) {
+    // first call, items is still a nullptr
+    body("exhausted", Json(true))
+        ("error", Json(false));
+  }
+  else {
+    body("pos", Json(static_cast<double>(pos)))
+        ("items", items->toJson(_engine->getTransaction()));
+  }
+
   std::string bodyString(body.toString());
 
   std::unique_ptr<ClusterCommResult> res;

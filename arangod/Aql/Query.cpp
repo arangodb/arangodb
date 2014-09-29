@@ -732,7 +732,9 @@ QueryResult Query::transactionError (int errorCode,
     err += std::string(" (") + detail + std::string(")");
   }
 
-  err += std::string("\nwhile executing:\n") + _queryString + std::string("\n");
+  if (_queryString != nullptr) {
+    err += std::string("\nwhile executing:\n") + _queryString + std::string("\n");
+  }
 
   return QueryResult(errorCode, err);
 }
