@@ -680,10 +680,6 @@ EnumerateCollectionBlock::EnumerateCollectionBlock (ExecutionEngine* engine,
 }
 
 EnumerateCollectionBlock::~EnumerateCollectionBlock () {
-  if (_collection != nullptr) {
-    delete _collection;
-    _collection = nullptr;
-  }
 }
 
 bool EnumerateCollectionBlock::moreDocuments () {
@@ -875,23 +871,10 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
 
 IndexRangeBlock::~IndexRangeBlock () {
 
-  if (_collection != nullptr) {
-    delete _collection;
-    _collection = nullptr;
-  }
-  
   for (auto e : _allVariableBoundExpressions) {
     delete e;
   }
   _allVariableBoundExpressions.clear();
-  
-  for (auto x : _inVars) {
-    for (auto y : x) {
-      delete y;
-    }
-    x.clear();
-  }
-  _inVars.clear();
 }
 
 int IndexRangeBlock::initialize () {
@@ -1849,19 +1832,6 @@ AqlValue EnumerateListBlock::getAqlValue (AqlValue inVarReg) {
 // --SECTION--                                            class CalculationBlock
 // -----------------------------------------------------------------------------
 
-CalculationBlock::~CalculationBlock () {
-
-  if (_expression != nullptr) {
-    delete _expression;
-    _expression = nullptr;
-  }
-
-  for (auto x : _inVars) {
-    delete x;
-  }
-  _inVars.clear();
-}
-
 int CalculationBlock::initialize () {
   int res = ExecutionBlock::initialize();
 
@@ -2791,10 +2761,6 @@ ModificationBlock::ModificationBlock (ExecutionEngine* engine,
 }
 
 ModificationBlock::~ModificationBlock () {
-  if (_collection != nullptr) {
-    delete _collection;
-    _collection = nullptr;
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
