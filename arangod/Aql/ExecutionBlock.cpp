@@ -1543,7 +1543,6 @@ void IndexRangeBlock::readSkiplistIndex (IndexOrCondition const& ranges) {
   }
 }
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                          class EnumerateListBlock
 // -----------------------------------------------------------------------------
@@ -4088,7 +4087,7 @@ ClusterCommResult* RemoteBlock::sendRequest (
                          _server,
                          type,
                          std::string("/_db/") 
-                           + _engine->getTransaction()->vocbase()->_name
+                           + triagens::basics::StringUtils::urlEncode(_engine->getTransaction()->vocbase()->_name)
                            + urlPart + _queryId,
                          body,
                          headers,

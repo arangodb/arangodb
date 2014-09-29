@@ -121,11 +121,12 @@ static ExecutionBlock* createBlock (ExecutionEngine* engine,
                              static_cast<GatherNode const*>(en));
     }
     case ExecutionNode::REMOTE: {
+      auto remote = static_cast<RemoteNode const*>(en);
       return new RemoteBlock(engine,
-                             static_cast<RemoteNode const*>(en),
-                             "",  // TODO: server
-                             "",  // TODO: ownname
-                             ""); // TODO: queryId
+                             remote,
+                             remote->server(),
+                             remote->ownName(),
+                             remote->queryId());
     }
     case ExecutionNode::ILLEGAL: {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "illegal node type");
@@ -382,16 +383,23 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       while (current != nullptr) {
         bool stop = false;
 
+        auto clone = current->clone(&plan, false);
+        plan.registerNode(clone);
+        
         if (current->getType() == ExecutionNode::REMOTE) {
           // TODO: inject connectedID and coordinator server name into clone of RemoteNode
           // we'll stop after a remote
           stop = true;
+
+          // update the remote node with the information about the query
+          static_cast<RemoteNode*>(clone)->server("server:" + triagens::arango::ServerState::instance()->getId());
+          static_cast<RemoteNode*>(clone)->ownName(shardId);
+          static_cast<RemoteNode*>(clone)->queryId(connectedId);
         }
      
-        auto clone = current->clone(&plan, false);
-        plan.registerNode(clone);
       
         if (previous == nullptr) {
+          // set the root node
           plan.root(clone);
         }
 

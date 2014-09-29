@@ -2659,10 +2659,17 @@ namespace triagens {
         RemoteNode (ExecutionPlan* plan, 
                     size_t id,
                     TRI_vocbase_t* vocbase,
-                    Collection const* collection) 
+                    Collection const* collection,
+                    std::string const& server,
+                    std::string const& ownName,
+                    std::string const& queryId) 
           : ExecutionNode(plan, id),
             _vocbase(vocbase),
-            _collection(collection) {
+            _collection(collection),
+            _server(server),
+            _ownName(ownName),
+            _queryId(queryId) {
+          // note: server, ownName and queryId may be empty and filled later
         }
 
         RemoteNode (ExecutionPlan*, triagens::basics::Json const& base);
@@ -2689,7 +2696,7 @@ namespace triagens {
 
         virtual ExecutionNode* clone (ExecutionPlan* plan,
                                       bool withDependencies) const {
-          auto c = new RemoteNode(plan, _id, _vocbase, _collection);
+          auto c = new RemoteNode(plan, _id, _vocbase, _collection, _server, _ownName, _queryId);
           if (withDependencies) {
             cloneDependencies(plan, c);
           }
@@ -2725,6 +2732,62 @@ namespace triagens {
           return _collection;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the server name
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string server () const {
+          return _server;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the server name
+////////////////////////////////////////////////////////////////////////////////
+
+        void server (std::string const& server) {
+          _server = server;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return our own name
+////////////////////////////////////////////////////////////////////////////////
+        
+        std::string ownName () const {
+          return _ownName;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set our own name
+////////////////////////////////////////////////////////////////////////////////
+        
+        void ownName (std::string const& ownName) {
+          _ownName = ownName;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the query id
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string queryId () const {
+          return _queryId;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the query id
+////////////////////////////////////////////////////////////////////////////////
+
+        void queryId (std::string const& queryId) {
+          _queryId = queryId;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the query id
+////////////////////////////////////////////////////////////////////////////////
+
+        void queryId (QueryId queryId) {
+          _queryId = triagens::basics::StringUtils::itoa(queryId);
+        }
+
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2738,6 +2801,25 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         Collection const* _collection;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief our server, can be like "shard:S1000" or like "server:Claus"
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _server;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief our own identity, in case of the coordinator this is empty,
+/// in case of the DBservers, this is the shard ID as a string
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _ownName;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the ID of the query on the server as a string
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _queryId;
 
     };
 
