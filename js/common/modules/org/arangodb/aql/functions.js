@@ -264,7 +264,7 @@ var unregisterFunctionsGroup = function (group) {
 /// and are the same for repeated calls with the same input values). It is not
 /// used at the moment but may be used for optimizations later.
 ///
-/// The registered function is stored in the *_stystem* db's collection *_aqlfunctions*.
+/// The registered function is stored in the *_system* db's collection *_aqlfunctions*.
 ///
 /// @EXAMPLES
 ///
