@@ -233,7 +233,6 @@ struct Instanciator : public WalkerWorker<ExecutionNode> {
 // --SECTION--                     walker class for ExecutionNode to instanciate
 // -----------------------------------------------------------------------------
 
-
 struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   enum EngineLocation {
     COORDINATOR,
