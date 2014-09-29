@@ -30,6 +30,7 @@
 #include "ApplicationV8.h"
 
 #include "Actions/actions.h"
+#include "Aql/QueryRegistry.h"
 #include "ApplicationServer/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/FileUtils.h"
@@ -269,10 +270,12 @@ void ApplicationV8::V8Context::handleCancelationCleanup () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ApplicationV8::ApplicationV8 (TRI_server_t* server,
+                              triagens::aql::QueryRegistry* queryRegistry,
                               ApplicationScheduler* scheduler,
                               ApplicationDispatcher* dispatcher)
   : ApplicationFeature("V8"),
     _server(server),
+    _queryRegistry(queryRegistry),
     _startupPath(),
     _appPath(),
     _devAppPath(),
@@ -1221,7 +1224,7 @@ bool ApplicationV8::prepareV8Instance (const string& name, size_t i, bool useAct
 
   context->_context->Enter();
 
-  TRI_InitV8VocBridge(context->_context, _server, _vocbase, &_startupLoader, i);
+  TRI_InitV8VocBridge(context->_context, _queryRegistry, _server, _vocbase, &_startupLoader, i);
   TRI_InitV8Queries(context->_context);
   TRI_InitV8UserStructures(context->_context);
 
