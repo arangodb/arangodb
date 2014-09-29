@@ -254,7 +254,7 @@ var unregisterFunctionsGroup = function (group) {
 ///
 /// Registers an AQL user function, identified by a fully qualified function 
 /// name. The function code in *code* must be specified as a Javascript
-/// function or a string representation of a Javascript function. 
+/// function or a string representation of a Javascript function.
 ///
 /// If a function identified by *name* already exists, the previous function
 /// definition will be updated.
@@ -263,6 +263,8 @@ var unregisterFunctionsGroup = function (group) {
 /// function results are fully deterministic (i.e. depend solely on the input 
 /// and are the same for repeated calls with the same input values). It is not
 /// used at the moment but may be used for optimizations later.
+///
+/// The registered function is stored in the *_system* db's collection *_aqlfunctions*.
 ///
 /// @EXAMPLES
 ///
