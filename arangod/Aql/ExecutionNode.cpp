@@ -481,7 +481,7 @@ void EnumerateCollectionNode::toJsonHelper (triagens::basics::Json& nodes,
 
   // Now put info about vocbase and cid in there
   json("database", triagens::basics::Json(_vocbase->_name))
-      ("collection", triagens::basics::Json(_collection->name))
+      ("collection", triagens::basics::Json(_collection->getName()))
       ("outVariable", _outVariable->toJson());
 
   // And add it:
@@ -662,7 +662,7 @@ void IndexRangeNode::toJsonHelper (triagens::basics::Json& nodes,
 
   // Now put info about vocbase and cid in there
   json("database", triagens::basics::Json(_vocbase->_name))
-      ("collection", triagens::basics::Json(_collection->name))
+      ("collection", triagens::basics::Json(_collection->getName()))
       ("outVariable", _outVariable->toJson())
       ("ranges", ranges);
   
@@ -1344,7 +1344,7 @@ void ModificationNode::toJsonHelper (triagens::basics::Json& json,
 
   // Now put info about vocbase and cid in there
   json("database", triagens::basics::Json(_vocbase->_name))
-      ("collection", triagens::basics::Json(_collection->name));
+      ("collection", triagens::basics::Json(_collection->getName()));
 
   _options.toJson(json, zone);
 }
@@ -1562,7 +1562,7 @@ void RemoteNode::toJsonHelper (triagens::basics::Json& nodes,
   }
   
   json("database", triagens::basics::Json(_vocbase->_name))
-      ("collection", triagens::basics::Json(_collection->name));
+      ("collection", triagens::basics::Json(_collection->getName()));
 
   // And add it:
   nodes(json);
@@ -1596,7 +1596,7 @@ void ScatterNode::toJsonHelper (triagens::basics::Json& nodes,
   }
   
   json("database", triagens::basics::Json(_vocbase->_name))
-      ("collection", triagens::basics::Json(_collection->name));
+      ("collection", triagens::basics::Json(_collection->getName()));
 
   // And add it:
   nodes(json);
@@ -1632,7 +1632,7 @@ void GatherNode::toJsonHelper (triagens::basics::Json& nodes,
   }
   
   json("database", triagens::basics::Json(_vocbase->_name))
-      ("collection", triagens::basics::Json(_collection->name));
+      ("collection", triagens::basics::Json(_collection->getName()));
 
   triagens::basics::Json values(triagens::basics::Json::List, _elements.size());
   for (auto it = _elements.begin(); it != _elements.end(); ++it) {

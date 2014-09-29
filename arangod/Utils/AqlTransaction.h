@@ -112,9 +112,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int processCollectionCoordinator (triagens::aql::Collection* collection) {
-          TRI_voc_cid_t cid = this->resolver()->getCollectionIdCluster(collection->name);
+          TRI_voc_cid_t cid = this->resolver()->getCollectionIdCluster(collection->getName());
 
-          return this->addCollection(cid, collection->name.c_str(), collection->accessType);
+          return this->addCollection(cid, collection->getName().c_str(), collection->accessType);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -122,14 +122,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int processCollectionNormal (triagens::aql::Collection* collection) {
-          TRI_vocbase_col_t const* col = this->resolver()->getCollectionStruct(collection->name);
+          TRI_vocbase_col_t const* col = this->resolver()->getCollectionStruct(collection->getName());
           TRI_voc_cid_t cid = 0;
 
           if (col != nullptr) {
             cid = col->_cid;
           }
 
-          int res = this->addCollection(cid, collection->name.c_str(), collection->accessType);
+          int res = this->addCollection(cid, collection->getName().c_str(), collection->accessType);
 
           if (res == TRI_ERROR_NO_ERROR &&
               col != nullptr) {
