@@ -134,7 +134,7 @@ AqlValue Expression::execute (AQL_TRANSACTION_V8* trx,
       catch (triagens::arango::Exception& ex) {
         ex.addToMessage("\nwhile evaluating expression");
         ex.addToMessage(_node->toInfoString(TRI_UNKNOWN_MEM_ZONE));
-        throw ex;
+        throw;
       }
     }
 

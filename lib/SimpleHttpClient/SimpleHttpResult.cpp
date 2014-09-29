@@ -45,6 +45,7 @@ namespace triagens {
       : _returnMessage(),
         _contentLength(0),
         _returnCode(0),
+        _foundHeader(false),
         _hasContentLength(false),
         _chunked(false),
         _deflated(false),
@@ -129,14 +130,11 @@ namespace triagens {
         --valueLength;
       }
 
-      bool foundHeader = false;
-
       if (keyString[0] == 'h') {
-
-        if (! foundHeader &&
+        if (! _foundHeader &&
             (keyString == "http/1.1" || keyString == "http/1.0")) {
           if (valueLength > 2) {
-            foundHeader = true;
+            _foundHeader = true;
 
             // we assume the status code is 3 chars long
             if ((value[0] >= '0' && value[0] <= '9') &&
