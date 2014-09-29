@@ -751,10 +751,6 @@ public:
         }
 
         ~EnumerateListBlock () {
-          if (_collection != nullptr) {
-            delete _collection;
-            _collection = nullptr;
-          }
         }
 
         int initialize ();
@@ -837,7 +833,8 @@ public:
 
         }
 
-        ~CalculationBlock ();
+        ~CalculationBlock () {
+        };
         
 
         int initialize ();
@@ -910,10 +907,6 @@ public:
         }
 
         ~SubqueryBlock () {
-          if (_subquery!= nullptr) {
-            delete _subquery;
-            _subquery = nullptr;
-          }
         }
 
         int initialize ();
