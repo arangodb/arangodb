@@ -1160,10 +1160,15 @@ class CloneNodeAdder : public WalkerWorker<ExecutionNode> {
     }
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone an existing execution plan
+////////////////////////////////////////////////////////////////////////////////
+
 ExecutionPlan* ExecutionPlan::clone () {
   auto plan = new ExecutionPlan(_ast);
+
   try {
-    plan->_root = _root->clone(plan);
+    plan->_root = _root->clone(plan, true);
     plan->_nextId = _nextId;
     plan->_appliedRules = _appliedRules;
     CloneNodeAdder adder(plan);

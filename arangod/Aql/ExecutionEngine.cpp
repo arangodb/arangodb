@@ -123,8 +123,8 @@ static ExecutionBlock* createBlock (ExecutionEngine* engine,
     case ExecutionNode::REMOTE: {
       return new RemoteBlock(engine,
                              static_cast<RemoteNode const*>(en),
-                             "", // TODO: server
-                             "", // TODO: ownname
+                             "",  // TODO: server
+                             "",  // TODO: ownname
                              ""); // TODO: queryId
     }
     case ExecutionNode::ILLEGAL: {
@@ -340,24 +340,28 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   }
 
 
-  void buildEngineDBServer (EngineInfo& info,
+  void buildEngineDBServer (EngineInfo const& info,
                             QueryId connectedId) {
     Collection* collection = nullptr;
-
+     
     for (auto en = info.nodes.rbegin(); en != info.nodes.rend(); ++en) {
-      if ((*en)->getType() == ExecutionNode::REMOTE) {
-        // remove the node's dependencies so it becomes a terminal node
-        collection = const_cast<Collection*>(static_cast<RemoteNode*>((*en))->collection());
-        (*en)->removeDependencies();
-        // we should only have one remote node
-        break;
+      // find the collection to be used 
+      if ((*en)->getType() == ExecutionNode::ENUMERATE_COLLECTION) {
+        collection = const_cast<Collection*>(static_cast<EnumerateCollectionNode*>((*en))->collection());
+      }
+      else if ((*en)->getType() == ExecutionNode::INDEX_RANGE) {
+        collection = const_cast<Collection*>(static_cast<IndexRangeNode*>((*en))->collection());
+      }
+      else if ((*en)->getType() == ExecutionNode::INSERT ||
+               (*en)->getType() == ExecutionNode::UPDATE ||
+               (*en)->getType() == ExecutionNode::REPLACE ||
+               (*en)->getType() == ExecutionNode::REMOVE) {
+        collection = const_cast<Collection*>(static_cast<ModificationNode*>((*en))->collection());
       }
     }
-      
-    info.nodes.front()->removeParents();
 
     TRI_ASSERT(collection != nullptr);
-    
+
     // now send the plan to the remote servers
     auto cc = triagens::arango::ClusterComm::instance();
     TRI_ASSERT(cc != nullptr);
@@ -368,12 +372,52 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
  
     // iterate over all shards of the collection
     for (auto shardId : shardIds) {
+      // copy the relevant fragment of the plan for each shard
+      ExecutionPlan plan(query->ast());
+
+      ExecutionNode const* current = info.nodes.front();
+      ExecutionNode* previous = nullptr;
+
+      // clone nodes until we reach a remote node
+      while (current != nullptr) {
+        bool stop = false;
+
+        if (current->getType() == ExecutionNode::REMOTE) {
+          // TODO: inject connectedID and coordinator server name into clone of RemoteNode
+          // we'll stop after a remote
+          stop = true;
+        }
+     
+        auto clone = current->clone(&plan, false);
+        plan.registerNode(clone);
+      
+        if (previous == nullptr) {
+          plan.root(clone);
+        }
+
+        if (previous != nullptr) {
+          previous->addDependency(clone);
+        }
+
+        auto const& deps = current->getDependencies();
+        if (deps.size() != 1) {
+          stop = true;
+        }
+
+        if (stop) {
+          break;
+        }
+
+        previous = clone;
+        current = deps[0];
+      }
+
       // inject the current shard id into the collection
       collection->setCurrentShard(shardId);
 
       // create a JSON representation of the plan
       triagens::basics::Json result(triagens::basics::Json::Array);
-      triagens::basics::Json jsonNodesList(info.nodes.front()->toJson(TRI_UNKNOWN_MEM_ZONE, true));
+      triagens::basics::Json jsonNodesList(plan.root()->toJson(TRI_UNKNOWN_MEM_ZONE, true));
     
       // add the collection
       triagens::basics::Json jsonCollectionsList(triagens::basics::Json::List);
@@ -387,7 +431,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
       std::unique_ptr<std::string> body(new std::string(triagens::basics::JsonHelper::toString(result.json())));
     
-      // std::cout << "GENERATED A PLAN FOR THE REMOTE SERVERS: " << *(body.get()) << "\n";
+      std::cout << "GENERATED A PLAN FOR THE REMOTE SERVERS: " << *(body.get()) << "\n";
     
       // TODO: pass connectedId to the shard so it can fetch data using the correct query id
       auto headers = new std::map<std::string, std::string>;
@@ -422,13 +466,13 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           nrok++;
         }
         else {
-          // std::cout << "DB SERVER ANSWERED WITH ERROR: " << res->answer->body() << "\n";
+          std::cout << "DB SERVER ANSWERED WITH ERROR: " << res->answer->body() << "\n";
         }
       }
       delete res;
     }
 
-    // std::cout << "GOT ALL RESPONSES FROM DB SERVERS: " << nrok << "\n";
+    std::cout << "GOT ALL RESPONSES FROM DB SERVERS: " << nrok << "\n";
 
     if (nrok != (int) shardIds.size()) {
       // TODO: provide sensible error message with more details
