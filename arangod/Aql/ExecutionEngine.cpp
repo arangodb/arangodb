@@ -544,7 +544,7 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* registry,
 
     ExecutionBlock* root = nullptr;
 
-    if (true || triagens::arango::ServerState::instance()->isCoordinator()) {
+    if (triagens::arango::ServerState::instance()->isCoordinator()) {
       // instanciate the engine on the coordinator
       // TODO: must pass an instance of query registry to the coordinator instanciator!
       std::unique_ptr<CoordinatorInstanciator> inst(new CoordinatorInstanciator(trx, query, nullptr));

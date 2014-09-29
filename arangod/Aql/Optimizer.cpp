@@ -447,7 +447,7 @@ void Optimizer::setupRules () {
                useIndexForSort_pass6,
                true);
 
-  if (true || triagens::arango::ServerState::instance()->isCoordinator()) {
+  if (triagens::arango::ServerState::instance()->isCoordinator()) {
     // distribute operations in cluster
     registerRule("distribute-in-cluster",
                  distributeInCluster,
