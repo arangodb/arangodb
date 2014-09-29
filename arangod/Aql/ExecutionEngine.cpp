@@ -531,7 +531,8 @@ void ExecutionEngine::addBlock (ExecutionBlock* block) {
 /// @brief create an execution engine from a plan
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionEngine* ExecutionEngine::instanciateFromPlan (AQL_TRANSACTION_V8* trx,
+ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* registry,
+                                                       AQL_TRANSACTION_V8* trx,
                                                        Query* query,
                                                        ExecutionPlan* plan) {
   ExecutionEngine* engine = nullptr;
@@ -543,7 +544,7 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (AQL_TRANSACTION_V8* trx,
 
     ExecutionBlock* root = nullptr;
 
-    if (triagens::arango::ServerState::instance()->isCoordinator()) {
+    if (true || triagens::arango::ServerState::instance()->isCoordinator()) {
       // instanciate the engine on the coordinator
       // TODO: must pass an instance of query registry to the coordinator instanciator!
       std::unique_ptr<CoordinatorInstanciator> inst(new CoordinatorInstanciator(trx, query, nullptr));

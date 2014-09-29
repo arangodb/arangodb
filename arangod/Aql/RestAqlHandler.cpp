@@ -128,7 +128,7 @@ void RestAqlHandler::createQueryFromJson () {
   options = queryJson.get("options").copy();
 
   auto query = new Query(vocbase, plan, options.steal());
-  QueryResult res = query->prepare();
+  QueryResult res = query->prepare(_queryRegistry);
   if (res.code != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN,
       res.details);
@@ -319,7 +319,7 @@ void RestAqlHandler::createQueryFromString () {
 
   auto query = new Query(vocbase, queryString.c_str(), queryString.size(),
                          parameters.steal(), options.steal());
-  QueryResult res = query->prepare();
+  QueryResult res = query->prepare(_queryRegistry);
   if (res.code != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN,
       res.details);
