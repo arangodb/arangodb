@@ -309,17 +309,16 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     for (auto it = engines.rbegin(); it != engines.rend(); ++it) {
       if ((*it).location == COORDINATOR) {
         // create a coordinator-based engine
-        engine = buildEngineCoordinator((*it));
+        engine = buildEngineCoordinator((*it), id);
 
         TRI_ASSERT(engine != nullptr);
 
         if ((*it).id > 0) {
           // we need to instanciate this engine in the registry
 
-          // create some fake remote id for the engine that we can pass to
-          // the plans to be created on the db-servers
+          // create a remote id for the engine that we can pass to
+          // the plans to be created for the DBServers
           id = TRI_NewTickServer();
-          
          
           // TODO: check if we can register the same query object multiple times
           // or if we need to clone it
@@ -329,7 +328,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       else {
         // create an engine on a remote DB server
         // hand in the previous engine's id
-        buildEngineDBServer((*it), id);
+        id = buildEngineDBServer((*it), id);
       }
     }
 
@@ -341,8 +340,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   }
 
 
-  void buildEngineDBServer (EngineInfo const& info,
-                            QueryId connectedId) {
+  QueryId buildEngineDBServer (EngineInfo const& info,
+                               QueryId connectedId) {
     Collection* collection = nullptr;
      
     for (auto en = info.nodes.rbegin(); en != info.nodes.rend(); ++en) {
@@ -362,13 +361,15 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     }
 
     TRI_ASSERT(collection != nullptr);
+    QueryId remoteId = TRI_NewTickServer();
 
     // now send the plan to the remote servers
     auto cc = triagens::arango::ClusterComm::instance();
     TRI_ASSERT(cc != nullptr);
                              
     triagens::arango::CoordTransactionID coordTransactionID = TRI_NewTickServer();
-    std::string const url("/_db/" + triagens::basics::StringUtils::urlEncode(collection->vocbase->_name) + "/_api/aql/instanciate");
+    std::string const url("/_db/" + triagens::basics::StringUtils::urlEncode(collection->vocbase->_name) + 
+                          "/_api/aql/instanciate?queryId=" + triagens::basics::StringUtils::itoa(remoteId));
     auto&& shardIds = collection->shardIds();
  
     // iterate over all shards of the collection
@@ -469,9 +470,11 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
       if (res->status == triagens::arango::CL_COMM_RECEIVED) {
         if (res->answer_code == triagens::rest::HttpResponse::OK ||
-            res->answer_code == triagens::rest::HttpResponse::CREATED) {
+            res->answer_code == triagens::rest::HttpResponse::CREATED ||
+            res->answer_code == triagens::rest::HttpResponse::ACCEPTED) {
           // query instanciated without problems
           nrok++;
+          std::cout << "DB SERVER ANSWERED WITHOUT ERROR: " << res->answer->body() << "\n";
         }
         else {
           std::cout << "DB SERVER ANSWERED WITH ERROR: " << res->answer->body() << "\n";
@@ -486,10 +489,13 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       // TODO: provide sensible error message with more details
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "did not receive response from all shards");
     }
+          
+    return remoteId;
   }
 
 
-  ExecutionEngine* buildEngineCoordinator (EngineInfo& info) {
+  ExecutionEngine* buildEngineCoordinator (EngineInfo& info,
+                                           QueryId connectedId) {
     std::unique_ptr<ExecutionEngine> engine(new ExecutionEngine(trx, query));
 
     std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
@@ -537,7 +543,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         auto&& shardIds = static_cast<GatherNode const*>((*en))->collection()->shardIds();
         for (auto shardId : shardIds) {
           // TODO: pass actual queryId into RemoteBlock
-          ExecutionBlock* r = new RemoteBlock(engine.get(), remoteNode, "shard:" + shardId, "", "" /*TODO*/);
+          ExecutionBlock* r = new RemoteBlock(engine.get(), remoteNode, "shard:" + shardId, "", triagens::basics::StringUtils::itoa(connectedId));
       
           try {
             engine.get()->addBlock(r);

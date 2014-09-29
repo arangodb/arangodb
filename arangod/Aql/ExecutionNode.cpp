@@ -1546,7 +1546,10 @@ RemoteNode::RemoteNode (ExecutionPlan* plan,
                         triagens::basics::Json const& base)
   : ExecutionNode(plan, base),
     _vocbase(plan->getAst()->query()->vocbase()),
-    _collection(plan->getAst()->query()->collections()->get(JsonHelper::checkAndGetStringValue(base.json(), "collection"))) {
+    _collection(plan->getAst()->query()->collections()->get(JsonHelper::checkAndGetStringValue(base.json(), "collection"))),
+    _server(JsonHelper::checkAndGetStringValue(base.json(), "server")), 
+    _ownName(JsonHelper::checkAndGetStringValue(base.json(), "ownName")), 
+    _queryId(JsonHelper::checkAndGetStringValue(base.json(), "queryId")) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -143,7 +143,19 @@ void RestAqlHandler::createQueryFromJson () {
   if (found) {
     ttl = StringUtils::doubleDecimal(ttlstring);
   }
-  QueryId qId = TRI_NewTickServer();
+
+  QueryId qId;
+  // query id set from the outside?
+  char const* queryIdString = _request->value("queryId", found);
+  if (found) {
+    // query id set via URL parameter
+    qId = StringUtils::uint64(queryIdString);
+  }
+  else {
+    // query id not set, now generate a new one
+    qId = TRI_NewTickServer();
+  }
+  
   try {
     _queryRegistry->insert(vocbase, qId, query, ttl);
   }
