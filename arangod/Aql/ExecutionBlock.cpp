@@ -3955,7 +3955,7 @@ int ScatterBlock::getOrSkipSomeForShard (size_t atLeast,
   size_t available = _buffer.at(pos.first)->size() - pos.second;
   // available should be non-zero  
   
-  skipped = std::min(available, atMost); //nr rows in outgoing block
+  skipped = (std::min)(available, atMost); //nr rows in outgoing block
   
   if(!skipping){ 
     result = _buffer.at(pos.first)->slice(pos.second, pos.second + skipped);
@@ -4072,7 +4072,7 @@ static void throwExceptionAfterBadSyncRequest (ClusterCommResult* res) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterCommResult* RemoteBlock::sendRequest (
-          rest::HttpRequest::HttpRequestType type,
+          triagens::rest::HttpRequest::HttpRequestType type,
           std::string urlPart,
           std::string const& body) const {
 

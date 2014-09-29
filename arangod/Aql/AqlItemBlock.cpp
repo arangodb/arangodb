@@ -106,7 +106,7 @@ AqlItemBlock::AqlItemBlock (Json const& json) {
           emptyRun--;
         }
         else {
-          Json dataEntry(data.at(posInData++));
+          Json dataEntry(data.at(static_cast<int>(posInData++)));
           if (! dataEntry.isNumber()) {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
                   "data must contain only numbers");
@@ -117,12 +117,12 @@ AqlItemBlock::AqlItemBlock (Json const& json) {
           }
           else if (n == -1) {
             // empty run:
-            Json runLength(data.at(posInData++));
+            Json runLength(data.at(static_cast<int>(posInData++)));
             emptyRun = JsonHelper::getNumericValue<int64_t>(runLength.json(), 0);
           }
           else if (n == -2) {
-            Json lowBound(data.at(posInData++));
-            Json highBound(data.at(posInData++));
+            Json lowBound(data.at(static_cast<int>(posInData++)));
+            Json highBound(data.at(static_cast<int>(posInData++)));
             int64_t low = JsonHelper::getNumericValue<int64_t>(lowBound.json(), 0);
             int64_t high = JsonHelper::getNumericValue<int64_t>(lowBound.json(), 0);
             AqlValue a(low, high);
@@ -135,7 +135,7 @@ AqlItemBlock::AqlItemBlock (Json const& json) {
             }
           }
           else if (n == 1) {
-            Json x(raw.at(posInRaw++));
+            Json x(raw.at(static_cast<int>(posInRaw++)));
             AqlValue a(new Json(TRI_UNKNOWN_MEM_ZONE, x.copy().steal()));
             try {
               setValue(i, column, a);  // if this throws, a is destroyed again

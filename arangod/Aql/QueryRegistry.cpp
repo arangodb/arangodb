@@ -218,7 +218,7 @@ void QueryRegistry::expireQueries () {
       for (auto& y : x.second) {
         // y.first is a QueryId and
         // y.second is a QueryInfo*
-        QueryInfo*& qi(y.second);
+        QueryInfo*& qi = y.second;
         if (! qi->_isOpen && now > qi->_expires) {
           toDelete.emplace_back(x.first, y.first);
         }
