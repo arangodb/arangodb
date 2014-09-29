@@ -1562,7 +1562,10 @@ void RemoteNode::toJsonHelper (triagens::basics::Json& nodes,
   }
   
   json("database", triagens::basics::Json(_vocbase->_name))
-      ("collection", triagens::basics::Json(_collection->getName()));
+      ("collection", triagens::basics::Json(_collection->getName()))
+      ("server", triagens::basics::Json(_server))
+      ("ownName", triagens::basics::Json(_ownName))
+      ("queryId", triagens::basics::Json(_queryId));
 
   // And add it:
   nodes(json);

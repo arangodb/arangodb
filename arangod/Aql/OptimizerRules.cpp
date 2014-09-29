@@ -1672,7 +1672,7 @@ int triagens::aql::distributeInCluster (Optimizer* opt,
       scatterNode->addDependency(deps[0]);
 
       // insert a remote node
-      ExecutionNode* remoteNode = new RemoteNode(plan, plan->nextId(), vocbase, collection);
+      ExecutionNode* remoteNode = new RemoteNode(plan, plan->nextId(), vocbase, collection, "", "", "");
       plan->registerNode(remoteNode);
       remoteNode->addDependency(scatterNode);
         
@@ -1681,7 +1681,7 @@ int triagens::aql::distributeInCluster (Optimizer* opt,
       
 
       // insert another remote node
-      remoteNode = new RemoteNode(plan, plan->nextId(), vocbase, collection);
+      remoteNode = new RemoteNode(plan, plan->nextId(), vocbase, collection, "", "", "");
       plan->registerNode(remoteNode);
       remoteNode->addDependency(node);
       
