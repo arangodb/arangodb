@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/OptimizerRules.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Indexes.h"
 #include "Aql/Variable.h"
@@ -1615,7 +1616,7 @@ int triagens::aql::distributeInCluster (Optimizer* opt,
                                         Optimizer::Rule const* rule) {
   bool wasModified = false;
 
-  if (triagens::arango::ServerState::instance()->isCoordinator()) {
+  if (ExecutionEngine::isCoordinator()) {
     // we are a coordinator. now look in the plan for nodes of type
     // EnumerateCollectionNode and IndexRangeNode
     std::vector<ExecutionNode::NodeType> const types = { 
