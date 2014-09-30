@@ -264,7 +264,7 @@ AstNode::AstNode (Ast* ast,
     }
   }
 
-  ast->addNode(this);
+  ast->query()->addNode(this);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
