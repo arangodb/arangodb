@@ -228,6 +228,8 @@ Query *Query::clone() {
                               nullptr,
                               _options);
 
+  theClone->_plan = _plan->clone(*theClone);
+
   return theClone;
 
 }

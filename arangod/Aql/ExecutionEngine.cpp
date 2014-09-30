@@ -389,7 +389,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       while (current != nullptr) {
         bool stop = false;
 
-        auto clone = current->clone(&plan, false);
+        auto clone = current->clone(&plan, false, false);
         plan.registerNode(clone);
         
         if (current->getType() == ExecutionNode::REMOTE) {
