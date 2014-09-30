@@ -75,6 +75,8 @@ namespace triagens {
 /// @brief node type
 ////////////////////////////////////////////////////////////////////////////////
 
+        friend class ExecutionBlock;
+
       public:
 
         enum NodeType {
@@ -113,7 +115,8 @@ namespace triagens {
             _estimatedCost(0.0), 
             _estimatedCostSet(false),
             _varUsageValid(false),
-            _plan(plan) {
+            _plan(plan),
+            _depth(0) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -496,6 +499,99 @@ namespace triagens {
           return false;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief static analysis, walker class and information collector
+////////////////////////////////////////////////////////////////////////////////
+
+        struct VarInfo {
+          unsigned int const depth;
+          RegisterId const registerId;
+
+          VarInfo () = delete;
+          VarInfo (int depth, int registerId)
+            : depth(depth), registerId(registerId) {
+          }
+        };
+
+        struct VarOverview : public WalkerWorker<ExecutionNode> {
+          // The following are collected for global usage in the ExecutionBlock,
+          // although they are stored here in the node:
+
+          // map VariableIds to their depth and registerId:
+          std::unordered_map<VariableId, VarInfo> varInfo;
+
+          // number of variables in the frame of the current depth:
+          std::vector<RegisterId>                 nrRegsHere;
+
+          // number of variables in this and all outer frames together,
+          // the entry with index i here is always the sum of all values
+          // in nrRegsHere from index 0 to i (inclusively) and the two
+          // have the same length:
+          std::vector<RegisterId>                 nrRegs;
+
+          // We collect the subquery nodes to deal with them at the end:
+          std::vector<ExecutionNode*>             subQueryNodes;
+
+          // Local for the walk:
+          unsigned int depth;
+          unsigned int totalNrRegs;
+
+          // This is used to tell all nodes and share a pointer to ourselves
+          shared_ptr<VarOverview>* me;
+
+          VarOverview ()
+            : depth(0), totalNrRegs(0), me(nullptr) {
+            nrRegsHere.push_back(0);
+            nrRegs.push_back(0);
+          };
+
+          void setSharedPtr (shared_ptr<VarOverview>* shared) {
+            me = shared;
+          }
+
+          // Copy constructor used for a subquery:
+          VarOverview (VarOverview const& v, unsigned int newdepth);
+          ~VarOverview () {};
+
+          virtual bool enterSubquery (ExecutionNode*,
+                                      ExecutionNode*) {
+            return false;  // do not walk into subquery
+          }
+
+          virtual void after (ExecutionNode *eb);
+
+        };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief static analysis
+////////////////////////////////////////////////////////////////////////////////
+
+        void staticAnalysis (ExecutionNode* super = nullptr);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get varOverview
+////////////////////////////////////////////////////////////////////////////////
+
+        VarOverview const* getVarOverview () const {
+          return _varOverview.get();
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get depth
+////////////////////////////////////////////////////////////////////////////////
+
+        int getDepth () const {
+          return _depth;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get registers to clear
+////////////////////////////////////////////////////////////////////////////////
+
+        std::unordered_set<RegisterId> const& getRegsToClear () const {
+          return _regsToClear;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected functions
 // -----------------------------------------------------------------------------
@@ -527,6 +623,14 @@ namespace triagens {
         triagens::basics::Json toJsonHelperGeneric (triagens::basics::Json&,
                                                     TRI_memory_zone_t*,
                                                     bool) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set regs to be deleted
+////////////////////////////////////////////////////////////////////////////////
+
+        void setRegsToClear (std::unordered_set<RegisterId>& toClear) {
+          _regsToClear = toClear;
+        }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
@@ -588,6 +692,26 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ExecutionPlan* _plan;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief info about variables, filled in by staticAnalysis
+////////////////////////////////////////////////////////////////////////////////
+
+        std::shared_ptr<VarOverview> _varOverview;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief depth of the current frame, will be filled in by staticAnalysis
+////////////////////////////////////////////////////////////////////////////////
+
+        int _depth;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the following contains the registers which should be cleared
+/// just before this node hands on results. This is computed during
+/// the static analysis for each node using the variable usage in the plan.
+////////////////////////////////////////////////////////////////////////////////
+
+        std::unordered_set<RegisterId> _regsToClear;
 
     };
 
@@ -665,7 +789,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     class EnumerateCollectionNode : public ExecutionNode {
-      
+      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class EnumerateCollectionBlock;
       
@@ -819,6 +943,7 @@ namespace triagens {
 
     class EnumerateListNode : public ExecutionNode {
       
+      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class EnumerateListBlock;
       friend class RedundantCalculationsReplacer;
@@ -1178,6 +1303,7 @@ namespace triagens {
 
     class CalculationNode : public ExecutionNode {
       
+      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class CalculationBlock;
       friend class RedundantCalculationsReplacer;
@@ -1323,6 +1449,7 @@ namespace triagens {
 
     class SubqueryNode : public ExecutionNode {
       
+      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class SubqueryBlock;
 
@@ -1733,6 +1860,7 @@ namespace triagens {
 
     class AggregateNode : public ExecutionNode {
       
+      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class AggregateBlock;
       friend class RedundantCalculationsReplacer;
@@ -2041,6 +2169,7 @@ namespace triagens {
 
     class RemoveNode : public ModificationNode {
       
+      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class RemoveBlock;
       
@@ -2153,6 +2282,7 @@ namespace triagens {
 
     class InsertNode : public ModificationNode {
       
+      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class InsertBlock;
       
@@ -2264,6 +2394,7 @@ namespace triagens {
 
     class UpdateNode : public ModificationNode {
       
+      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class UpdateBlock;
       
@@ -2388,6 +2519,7 @@ namespace triagens {
 
     class ReplaceNode : public ModificationNode {
       
+      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class ReplaceBlock;
       

@@ -155,73 +155,9 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief static analysis, walker class and information collector
-////////////////////////////////////////////////////////////////////////////////
-
-        struct VarInfo {
-          unsigned int const depth;
-          RegisterId const registerId;
-
-          VarInfo () = delete;
-          VarInfo (int depth, int registerId)
-            : depth(depth), registerId(registerId) {
-          }
-        };
-
-        struct VarOverview : public WalkerWorker<ExecutionBlock> {
-          // The following are collected for global usage in the ExecutionBlock:
-
-          // map VariableIds to their depth and registerId:
-          std::unordered_map<VariableId, VarInfo> varInfo;
-
-          // number of variables in the frame of the current depth:
-          std::vector<RegisterId>                 nrRegsHere;
-
-          // number of variables in this and all outer frames together,
-          // the entry with index i here is always the sum of all values
-          // in nrRegsHere from index 0 to i (inclusively) and the two
-          // have the same length:
-          std::vector<RegisterId>                 nrRegs;
-
-          // We collect the subquery blocks to deal with them at the end:
-          std::vector<ExecutionBlock*>            subQueryBlocks;
-
-          // Local for the walk:
-          unsigned int depth;
-          unsigned int totalNrRegs;
-
-          // This is used to tell all Blocks and share a pointer to ourselves
-          shared_ptr<VarOverview>* me;
-
-          VarOverview ()
-            : depth(0), totalNrRegs(0), me(nullptr) {
-            nrRegsHere.push_back(0);
-            nrRegs.push_back(0);
-          };
-
-          void setSharedPtr (shared_ptr<VarOverview>* shared) {
-            me = shared;
-          }
-
-          // Copy constructor used for a subquery:
-          VarOverview (VarOverview const& v, unsigned int newdepth);
-          ~VarOverview () {};
-
-          virtual bool enterSubquery (ExecutionBlock*,
-                                      ExecutionBlock*) {
-            return false;  // do not walk into subquery
-          }
-
-          virtual void after (ExecutionBlock *eb);
-
-        };
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Methods for execution
 /// Lifecycle is:
 ///    CONSTRUCTOR
-///    then the ExecutionEngine automatically calls
-///      staticAnalysis() once, including subqueries
 ///    then the ExecutionEngine automatically calls 
 ///      initialize() once, including subqueries
 ///    possibly repeat many times:
@@ -231,12 +167,6 @@ namespace triagens {
 ///      shutdown()
 ///    DESTRUCTOR
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief static analysis
-////////////////////////////////////////////////////////////////////////////////
-
-        void staticAnalysis (ExecutionBlock* super = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize
@@ -351,14 +281,6 @@ namespace triagens {
           return _exeNode;
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set regs to be deleted
-////////////////////////////////////////////////////////////////////////////////
-
-        void setRegsToClear (std::unordered_set<RegisterId>& toClear) {
-          _regsToClear = toClear;
-        }
-
       protected:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -408,39 +330,16 @@ namespace triagens {
         std::deque<AqlItemBlock*> _buffer;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief info about variables, filled in by staticAnalysis
-////////////////////////////////////////////////////////////////////////////////
-
-public:
-        std::shared_ptr<VarOverview> _varOverview;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief current working position in the first entry of _buffer
 ////////////////////////////////////////////////////////////////////////////////
 
         size_t _pos;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief depth of frames (number of FOR statements here or above)
-////////////////////////////////////////////////////////////////////////////////
-
-        int _depth;  // will be filled in by staticAnalysis
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief if this is set, we are done, this is reset to false by execute()
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _done;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the following contains the registers which should be cleared
-/// just before this node hands on results. This is computed during
-/// the static analysis for each node using the variable usage in the plan.
-////////////////////////////////////////////////////////////////////////////////
-
-public:
-
-        std::unordered_set<RegisterId> _regsToClear;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables
