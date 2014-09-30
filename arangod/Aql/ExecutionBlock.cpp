@@ -2431,7 +2431,6 @@ int SortBlock::initialize () {
 }
 
 int SortBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
-
   int res = ExecutionBlock::initializeCursor(items, pos);
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -4049,18 +4048,27 @@ double const RemoteBlock::defaultTimeOut = 3600.0;
 ////////////////////////////////////////////////////////////////////////////////
 
 static void throwExceptionAfterBadSyncRequest (ClusterCommResult* res) {
+  std::cout << "IN THROW EXCEPTION AFTER BAD SYNC REQUEST\n";
+
   if (res->status == CL_COMM_TIMEOUT) {
+    std::cout << "GOT TIMEOUT\n";
     // No reply, we give up:
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_TIMEOUT,
            "timeout in cluster AQL operation");
   }
+
   if (res->status == CL_COMM_ERROR) {
+    std::cout << "GOT ERROR: " << res->result << "\n";
     // This could be a broken connection or an Http error:
     if (res->result == nullptr || ! res->result->isComplete()) {
       // there is no result
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_CONNECTION_LOST,
              "lost connection within cluster");
     }
+
+    StringBuffer const& responseBodyBuf(res->result->getBody());
+    std::cout << "ERROR WAS: " << responseBodyBuf.c_str() << "\n";
+
     // In this case a proper HTTP error was reported by the DBserver,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
   }
@@ -4082,6 +4090,7 @@ ClusterCommResult* RemoteBlock::sendRequest (
   CoordTransactionID const coordTransactionId = 1;
   std::map<std::string, std::string> headers;
 
+std::cout << "SENDING REQUEST TO " << _server << ", URLPART: " << urlPart << ", QUERYID: " << _queryId << "\n";
   return cc->syncRequest(clientTransactionId,
                          coordTransactionId,
                          _server,
@@ -4142,7 +4151,6 @@ int RemoteBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
                                        responseBodyBuf.begin()));
   return JsonHelper::getNumericValue<int>
               (responseBodyJson.json(), "code", TRI_ERROR_INTERNAL);
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////

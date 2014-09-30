@@ -821,7 +821,7 @@ static v8::Handle<v8::Value> JS_ParseAql (v8::Arguments const& argv) {
 
   string const&& queryString = TRI_ObjectToString(argv[0]);
 
-  triagens::aql::Query query(vocbase, queryString.c_str(), queryString.size(), nullptr, nullptr);
+  triagens::aql::Query query(vocbase, queryString.c_str(), queryString.size(), nullptr, nullptr, triagens::aql::PART_MAIN);
 
   auto parseResult = query.parse();
 
@@ -906,7 +906,7 @@ static v8::Handle<v8::Value> JS_ExplainAql (v8::Arguments const& argv) {
   }
 
   // bind parameters will be freed by the query later
-  triagens::aql::Query query(vocbase, queryString.c_str(), queryString.size(), parameters, options);
+  triagens::aql::Query query(vocbase, queryString.c_str(), queryString.size(), parameters, options, triagens::aql::PART_MAIN);
   
   auto queryResult = query.explain();
   
@@ -999,7 +999,7 @@ static v8::Handle<v8::Value> JS_ExecuteAqlJson (v8::Arguments const& argv) {
 
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
 
-  triagens::aql::Query query(vocbase, Json(TRI_UNKNOWN_MEM_ZONE, queryjson), options);
+  triagens::aql::Query query(vocbase, Json(TRI_UNKNOWN_MEM_ZONE, queryjson), options, triagens::aql::PART_MAIN);
   auto queryResult = query.execute(static_cast<triagens::aql::QueryRegistry*>(v8g->_queryRegistry));
   
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
@@ -1136,7 +1136,7 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
 
   // bind parameters will be freed by the query later
-  triagens::aql::Query query(vocbase, queryString.c_str(), queryString.size(), parameters, options);
+  triagens::aql::Query query(vocbase, queryString.c_str(), queryString.size(), parameters, options, triagens::aql::PART_MAIN);
   auto queryResult = query.execute(static_cast<triagens::aql::QueryRegistry*>(v8g->_queryRegistry));
   
   if (queryResult.code != TRI_ERROR_NO_ERROR) {

@@ -119,7 +119,8 @@ Query::Query (TRI_vocbase_t* vocbase,
               char const* queryString,
               size_t queryLength,
               TRI_json_t* bindParameters,
-              TRI_json_t* options)
+              TRI_json_t* options,
+              QueryPart part)
   : _vocbase(vocbase),
     _executor(nullptr),
     _queryString(queryString),
@@ -135,8 +136,10 @@ Query::Query (TRI_vocbase_t* vocbase,
     _plan(nullptr),
     _parser(nullptr),
     _trx(nullptr),
-    _engine(nullptr) {
+    _engine(nullptr),
+    _part(part) {
 
+std::cout << "CREATING QUERY " << this << ", PART: " << (part == PART_MAIN ? "main" : "dependent") << "\n";
   TRI_ASSERT(_vocbase != nullptr);
 
   if (profiling()) {
@@ -147,13 +150,17 @@ Query::Query (TRI_vocbase_t* vocbase,
   _ast = new Ast(this);
 
   _nodes.reserve(32);
-
   _strings.reserve(32);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a query from Json
+////////////////////////////////////////////////////////////////////////////////
+
 Query::Query (TRI_vocbase_t* vocbase,
               triagens::basics::Json queryStruct,
-              TRI_json_t* options)
+              TRI_json_t* options,
+              QueryPart part)
   : _vocbase(vocbase),
     _executor(nullptr),
     _queryString(nullptr),
@@ -169,7 +176,8 @@ Query::Query (TRI_vocbase_t* vocbase,
     _plan(nullptr),
     _parser(nullptr),
     _trx(nullptr),
-    _engine(nullptr) {
+    _engine(nullptr),
+    _part(part) {
 
   TRI_ASSERT(_vocbase != nullptr);
 
@@ -190,6 +198,7 @@ Query::Query (TRI_vocbase_t* vocbase,
 
 Query::~Query () {
   cleanupPlanAndEngine();
+
   if (_profile != nullptr) {
     delete _profile;
     _profile = nullptr;
@@ -220,16 +229,19 @@ Query::~Query () {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone a query
+////////////////////////////////////////////////////////////////////////////////
 
-Query *Query::clone() {
-  Query *theClone = new Query(_vocbase,
+Query* Query::clone (QueryPart part) {
+  Query* theClone = new Query(_vocbase,
                               _queryString,
                               _queryLength,
                               nullptr,
-                              _options);
+                              _options,
+                              part);
 
   return theClone;
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -751,8 +763,7 @@ double Query::getNumericOption (char const* option, double defaultValue) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 QueryResult Query::transactionError (int errorCode, 
-                                     AQL_TRANSACTION_V8 const& trx) const
-{
+                                     AQL_TRANSACTION_V8 const& trx) const {
   std::string err(TRI_errno_string(errorCode));
 
   auto detail = trx.getErrorData();
@@ -829,14 +840,17 @@ std::string Query::getStateString () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Query::cleanupPlanAndEngine () {
+  std::cout << "CLEANUP PLAN AND ENGINE FOR TRX: " << this << ", PART: " << (_part == PART_MAIN ? "main" : "dependent") << "\n";
   if (_engine != nullptr) {
     delete _engine;
     _engine = nullptr;
   }
 
   if (_trx != nullptr) {
-    delete _trx;
-    _trx = nullptr;
+    if (_part == PART_MAIN) {
+      delete _trx;
+      _trx = nullptr;
+    }
   }
 
   if (_parser != nullptr) {

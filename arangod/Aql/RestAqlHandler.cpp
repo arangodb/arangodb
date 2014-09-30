@@ -40,7 +40,7 @@
 #include "GeneralServer/GeneralServer.h"
 
 #include "VocBase/server.h"
-#include "V8Server/v8-vocbaseprivate.h"
+//#include "V8Server/v8-vocbaseprivate.h"
 
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionBlock.h"
@@ -75,6 +75,9 @@ RestAqlHandler::RestAqlHandler (triagens::rest::HttpRequest* request,
     _context(static_cast<VocbaseContext*>(request->getRequestContext())),
     _vocbase(_context->getVocbase()),
     _queryRegistry(pair->second) {
+
+  TRI_ASSERT(_vocbase != nullptr);
+  TRI_ASSERT(_queryRegistry != nullptr);
 }
 
 // -----------------------------------------------------------------------------
@@ -109,13 +112,6 @@ void RestAqlHandler::createQueryFromJson () {
     return;
   }
   
-  TRI_vocbase_t* vocbase = GetContextVocBase();
-  if (vocbase == nullptr) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_INTERNAL, "cannot get vocbase from context");
-    return;
-  }
-
   Json plan;
   Json options;
 
@@ -126,8 +122,10 @@ void RestAqlHandler::createQueryFromJson () {
     return;
   }
   options = queryJson.get("options").copy();
+  
+  std::string const part = JsonHelper::getStringValue(queryJson.json(), "part", "");
 
-  auto query = new Query(vocbase, plan, options.steal());
+  auto query = new Query(_vocbase, plan, options.steal(), (part == "main" ? PART_MAIN : PART_DEPENDENT));
   QueryResult res = query->prepare(_queryRegistry);
   if (res.code != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN,
@@ -157,7 +155,7 @@ void RestAqlHandler::createQueryFromJson () {
   }
   
   try {
-    _queryRegistry->insert(vocbase, qId, query, ttl);
+    _queryRegistry->insert(_vocbase, qId, query, ttl);
   }
   catch (...) {
     generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
@@ -188,24 +186,15 @@ void RestAqlHandler::parseQuery () {
     return;
   }
   
-  TRI_vocbase_t* vocbase = GetContextVocBase();
-  if (vocbase == nullptr) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_INTERNAL, "cannot get vocbase from context");
-    return;
-  }
-
-  std::string queryString;
-
-  queryString = JsonHelper::getStringValue(queryJson.json(), "query", "");
+  std::string const queryString = JsonHelper::getStringValue(queryJson.json(), "query", "");
   if (queryString.empty()) {
     generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
       "body must be an object with attribute \"query\"");
     return;
   }
 
-  auto query = new Query(vocbase, queryString.c_str(), queryString.size(),
-                         nullptr, nullptr);
+  auto query = new Query(_vocbase, queryString.c_str(), queryString.size(),
+                         nullptr, nullptr, PART_MAIN);
   QueryResult res = query->parse();
   if (res.code != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::BAD, res.code, res.details);
@@ -248,28 +237,20 @@ void RestAqlHandler::explainQuery () {
     return;
   }
   
-  TRI_vocbase_t* vocbase = GetContextVocBase();
-  if (vocbase == nullptr) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_INTERNAL, "cannot get vocbase from context");
-    return;
-  }
-
-  std::string queryString;
-  Json parameters;
-  Json options;
-
-  queryString = JsonHelper::getStringValue(queryJson.json(), "query", "");
+  std::string queryString = JsonHelper::getStringValue(queryJson.json(), "query", "");
   if (queryString.empty()) {
     generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
       "body must be an object with attribute \"query\"");
     return;
   }
+  
+  Json parameters;
   parameters = queryJson.get("parameters").copy();  // cannot throw
+  Json options;
   options = queryJson.get("options").copy();        // cannot throw
 
-  auto query = new Query(vocbase, queryString.c_str(), queryString.size(),
-                         parameters.steal(), options.steal());
+  auto query = new Query(_vocbase, queryString.c_str(), queryString.size(),
+                         parameters.steal(), options.steal(), PART_MAIN);
   QueryResult res = query->explain();
   if (res.code != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::BAD, res.code, res.details);
@@ -309,28 +290,27 @@ void RestAqlHandler::createQueryFromString () {
     return;
   }
   
-  TRI_vocbase_t* vocbase = GetContextVocBase();
-  if (vocbase == nullptr) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_INTERNAL, "cannot get vocbase from context");
-    return;
-  }
-
-  std::string queryString;
-  Json parameters;
-  Json options;
-
-  queryString = JsonHelper::getStringValue(queryJson.json(), "query", "");
+  std::string const queryString = JsonHelper::getStringValue(queryJson.json(), "query", "");
   if (queryString.empty()) {
     generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
       "body must be an object with attribute \"query\"");
     return;
   }
+
+  std::string const part = JsonHelper::getStringValue(queryJson.json(), "part", "");
+  if (part.empty()) {
+    generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
+      "body must be an object with attribute \"part\"");
+    return;
+  }
+
+  Json parameters;
   parameters = queryJson.get("parameters").copy();  // cannot throw
+  Json options;
   options = queryJson.get("options").copy();        // cannot throw
 
-  auto query = new Query(vocbase, queryString.c_str(), queryString.size(),
-                         parameters.steal(), options.steal());
+  auto query = new Query(_vocbase, queryString.c_str(), queryString.size(),
+                         parameters.steal(), options.steal(), (part == "main" ? PART_MAIN : PART_DEPENDENT));
   QueryResult res = query->prepare(_queryRegistry);
   if (res.code != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN,
@@ -348,7 +328,7 @@ void RestAqlHandler::createQueryFromString () {
   }
   QueryId qId = TRI_NewTickServer();
   try {
-    _queryRegistry->insert(vocbase, qId, query, ttl);
+    _queryRegistry->insert(_vocbase, qId, query, ttl);
   }
   catch (...) {
     generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
@@ -374,13 +354,12 @@ void RestAqlHandler::deleteQuery (std::string const& idString) {
   // the DELETE verb
 
   QueryId qId;
-  TRI_vocbase_t* vocbase;
   Query* query = nullptr;
-  if (findQuery(idString, qId, vocbase, query)) {
+  if (findQuery(idString, qId, query)) {
     return;
   }
 
-  _queryRegistry->destroy(vocbase, qId);
+  _queryRegistry->destroy(_vocbase, qId);
 
   _response = createResponse(triagens::rest::HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
@@ -442,9 +421,8 @@ void RestAqlHandler::useQuery (std::string const& operation,
   // the PUT verb
 
   QueryId qId;
-  TRI_vocbase_t* vocbase;
   Query* query = nullptr;
-  if (findQuery(idString, qId, vocbase, query)) {
+  if (findQuery(idString, qId, query)) {
     return;
   }
 
@@ -452,7 +430,7 @@ void RestAqlHandler::useQuery (std::string const& operation,
 
   Json queryJson(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
   if (queryJson.isEmpty()) {
-    _queryRegistry->close(vocbase, qId);
+    _queryRegistry->close(_vocbase, qId);
     return;
   }
 
@@ -473,7 +451,7 @@ void RestAqlHandler::useQuery (std::string const& operation,
         answerBody = items->toJson(query->trx());
       }
       catch (...) {
-        _queryRegistry->close(vocbase, qId);
+        _queryRegistry->close(_vocbase, qId);
         generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                       "cannot transform AqlItemBlock to Json");
         return;
@@ -490,7 +468,7 @@ void RestAqlHandler::useQuery (std::string const& operation,
       skipped = query->engine()->skipSome(atLeast, atMost);
     }
     catch (...) {
-      _queryRegistry->close(vocbase, qId);
+      _queryRegistry->close(_vocbase, qId);
       generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                     "skipSome lead to an exception");
       return;
@@ -507,7 +485,7 @@ void RestAqlHandler::useQuery (std::string const& operation,
                 ("error", Json(false));
     }
     catch (...) {
-      _queryRegistry->close(vocbase, qId);
+      _queryRegistry->close(_vocbase, qId);
       generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                     "skip lead to an exception");
       return;
@@ -519,16 +497,23 @@ void RestAqlHandler::useQuery (std::string const& operation,
     std::unique_ptr<AqlItemBlock> items;
     int res;
     try {
-      items.reset(new AqlItemBlock(queryJson.get("items")));
-      res = query->engine()->initializeCursor(items.get(), pos);
+      if (JsonHelper::getBooleanValue(queryJson.json(), "exhausted", true)) {
+std::cout << "GOT EXHAUSTED FLAG\n";        
+        res = query->engine()->initializeCursor(nullptr, 0);
+      }
+      else {
+        items.reset(new AqlItemBlock(queryJson.get("items")));
+        res = query->engine()->initializeCursor(items.get(), pos);
+      }
     }
     catch (...) {
-      _queryRegistry->close(vocbase, qId);
+      _queryRegistry->close(_vocbase, qId);
       generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                     "initializeCursor lead to an exception");
       return;
     }
-    answerBody("error", res == TRI_ERROR_NO_ERROR ? Json(false) : Json(true))
+std::cout << "ABOUT TO ANSWER: " << res << "\n";
+    answerBody("error", Json(res == TRI_ERROR_NO_ERROR))
               ("code", Json(static_cast<double>(res)));
   }
   else if (operation == "shutdown") {
@@ -537,7 +522,7 @@ void RestAqlHandler::useQuery (std::string const& operation,
       res = query->engine()->shutdown();
     }
     catch (...) {
-      _queryRegistry->close(vocbase, qId);
+      _queryRegistry->close(_vocbase, qId);
       generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                     "shutdown lead to an exception");
       return;
@@ -546,12 +531,12 @@ void RestAqlHandler::useQuery (std::string const& operation,
               ("code", Json(static_cast<double>(res)));
   }
   else {
-    _queryRegistry->close(vocbase, qId);
+    _queryRegistry->close(_vocbase, qId);
     generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
     return;
   }
 
-  _queryRegistry->close(vocbase, qId);
+  _queryRegistry->close(_vocbase, qId);
 
   _response = createResponse(triagens::rest::HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
@@ -578,9 +563,8 @@ void RestAqlHandler::getInfoQuery (std::string const& operation,
   // the GET verb
 
   QueryId qId;
-  TRI_vocbase_t* vocbase;
   Query* query = nullptr;
-  if (findQuery(idString, qId, vocbase, query)) {
+  if (findQuery(idString, qId, query)) {
     return;
   }
 
@@ -612,12 +596,12 @@ void RestAqlHandler::getInfoQuery (std::string const& operation,
     answerBody("hasMore", Json(hasMore));
   }
   else {
-    _queryRegistry->close(vocbase, qId);
+    _queryRegistry->close(_vocbase, qId);
     generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
     return;
   }
 
-  _queryRegistry->close(vocbase, qId);
+  _queryRegistry->close(_vocbase, qId);
 
   _response = createResponse(triagens::rest::HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
@@ -711,27 +695,20 @@ triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief dig out vocbase from context and query from ID, handle errors
+/// @brief dig out the query from ID, handle errors
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestAqlHandler::findQuery (std::string const& idString,
                                 QueryId& qId,
-                                TRI_vocbase_t*& vocbase,
                                 Query*& query) {
-  // get the vocbase from the context:
-  vocbase = GetContextVocBase();
-  if (vocbase == nullptr) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_INTERNAL, "cannot get vocbase from context");
-    return true;
-  }
-
   qId = StringUtils::uint64(idString);
+std::cout << "LOOKING FOR QUERY: " << idString << ", VOCBASE: " << _vocbase->_name << "\n";
+std::cout << "IDSTRING: " << idString << ", QID: " << qId << "\n";
 
   query = nullptr;
 
   try {
-    query = _queryRegistry->open(vocbase, qId);
+    query = _queryRegistry->open(_vocbase, qId);
   }
   catch (...) {
     generateError(HttpResponse::FORBIDDEN, TRI_ERROR_QUERY_IN_USE);

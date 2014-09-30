@@ -305,16 +305,19 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   ExecutionEngine* buildEngines () {
     ExecutionEngine* engine = nullptr;
     QueryId id              = 0;
+    std::unordered_map<std::string, std::string> queryIds;
     
     for (auto it = engines.rbegin(); it != engines.rend(); ++it) {
       if ((*it).location == COORDINATOR) {
         // create a coordinator-based engine
-        engine = buildEngineCoordinator((*it), id);
+        engine = buildEngineCoordinator((*it), queryIds);
 
         TRI_ASSERT(engine != nullptr);
 
         if ((*it).id > 0) {
-          Query *otherQuery = query->clone();
+          Query* otherQuery = query->clone(PART_DEPENDENT);
+          otherQuery->trx(trx);
+          otherQuery->engine(engine);
 
           // we need to instanciate this engine in the registry
 
@@ -324,13 +327,15 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
          
           // TODO: check if we can register the same query object multiple times
           // or if we need to clone it
+
+std::cout << "REGISTERING QUERY ON COORDINATOR WITH ID: " << id << "\n";          
           queryRegistry->insert(otherQuery->vocbase(), id, otherQuery, 3600.0);
         }
       }
       else {
         // create an engine on a remote DB server
         // hand in the previous engine's id
-        id = buildEngineDBServer((*it), id);
+        queryIds = buildEngineDBServer((*it), id);
       }
     }
 
@@ -342,8 +347,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   }
 
 
-  QueryId buildEngineDBServer (EngineInfo const& info,
-                               QueryId connectedId) {
+  std::unordered_map<std::string, std::string> buildEngineDBServer (EngineInfo const& info,
+                                                                    QueryId connectedId) {
     Collection* collection = nullptr;
      
     for (auto en = info.nodes.rbegin(); en != info.nodes.rend(); ++en) {
@@ -363,9 +368,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     }
 
     TRI_ASSERT(collection != nullptr);
-    QueryId remoteId = TRI_NewTickServer();
-
-
     
 
     // now send the plan to the remote servers
@@ -374,7 +376,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
                              
     triagens::arango::CoordTransactionID coordTransactionID = TRI_NewTickServer();
     std::string const url("/_db/" + triagens::basics::StringUtils::urlEncode(collection->vocbase->_name) + 
-                          "/_api/aql/instanciate?queryId=" + triagens::basics::StringUtils::itoa(remoteId));
+                          "/_api/aql/instanciate");
+
     auto&& shardIds = collection->shardIds();
  
     // iterate over all shards of the collection
@@ -393,7 +396,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         plan.registerNode(clone);
         
         if (current->getType() == ExecutionNode::REMOTE) {
-          // TODO: inject connectedID and coordinator server name into clone of RemoteNode
           // we'll stop after a remote
           stop = true;
 
@@ -442,6 +444,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       jsonNodesList.set("collections", jsonCollectionsList);
 
       result.set("plan", jsonNodesList);
+      result.set("part", triagens::basics::Json("main")); // TODO: set correct query type
 
       std::unique_ptr<std::string> body(new std::string(triagens::basics::JsonHelper::toString(result.json())));
     
@@ -467,6 +470,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
     // fix collection  
     collection->resetCurrentShard();
+
+    // pick up the remote query ids
+    std::unordered_map<std::string, std::string> queryIds;
   
     int count = 0;
     int nrok = 0;
@@ -479,7 +485,14 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
             res->answer_code == triagens::rest::HttpResponse::ACCEPTED) {
           // query instanciated without problems
           nrok++;
-          std::cout << "DB SERVER ANSWERED WITHOUT ERROR: " << res->answer->body() << "\n";
+
+          // pick up query id from response
+          triagens::basics::Json response(TRI_UNKNOWN_MEM_ZONE, triagens::basics::JsonHelper::fromString(res->answer->body()));
+          std::string queryId = triagens::basics::JsonHelper::getStringValue(response.json(), "queryId", "");
+
+          std::cout << "DB SERVER ANSWERED WITHOUT ERROR: " << res->answer->body() << ", SHARDID:"  << res->shardID << ", QUERYID: " << queryId << "\n";
+          queryIds.emplace(std::make_pair(res->shardID, queryId));
+          
         }
         else {
           std::cout << "DB SERVER ANSWERED WITH ERROR: " << res->answer->body() << "\n";
@@ -495,12 +508,12 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "did not receive response from all shards");
     }
           
-    return remoteId;
+    return queryIds;
   }
 
 
   ExecutionEngine* buildEngineCoordinator (EngineInfo& info,
-                                           QueryId connectedId) {
+                                           std::unordered_map<std::string, std::string> const& queryIds) {
     std::unique_ptr<ExecutionEngine> engine(new ExecutionEngine(trx, query));
 
     std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
@@ -546,9 +559,15 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
         // now we'll create a remote node for each shard and add it to the gather node
         auto&& shardIds = static_cast<GatherNode const*>((*en))->collection()->shardIds();
+
         for (auto shardId : shardIds) {
           // TODO: pass actual queryId into RemoteBlock
-          ExecutionBlock* r = new RemoteBlock(engine.get(), remoteNode, "shard:" + shardId, "", triagens::basics::StringUtils::itoa(connectedId));
+          auto it = queryIds.find(shardId);
+          if (it == queryIds.end()) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not find query id in list");
+          }
+
+          ExecutionBlock* r = new RemoteBlock(engine.get(), remoteNode, "shard:" + shardId, "", (*it).second);
       
           try {
             engine.get()->addBlock(r);
@@ -561,7 +580,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           eb->addDependency(r);
         }
       }
-    
+   /* 
       if (nodeType == ExecutionNode::RETURN ||
           nodeType == ExecutionNode::REMOVE ||
           nodeType == ExecutionNode::INSERT ||
@@ -570,10 +589,15 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         // set the new root node
         engine->root(eb);
       }
+*/
+      // the last block is always the root 
+      engine->root(eb);
       // TODO: handle subqueries
  
       cache.emplace(std::make_pair((*en), eb));
     }
+
+    TRI_ASSERT(engine->root() != nullptr);
 
     return engine.release();
   }
