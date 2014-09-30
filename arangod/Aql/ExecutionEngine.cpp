@@ -315,6 +315,39 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
         if ((*it).id > 0) {
           Query *otherQuery = query->clone();
+          auto *newPlan = new ExecutionPlan(otherQuery->ast());
+          otherQuery->setPlan(newPlan);
+
+          ExecutionNode const* current = (*it).nodes.front();
+          ExecutionNode* previous = nullptr;
+
+          // clone nodes until we reach a remote node
+          while (current != nullptr) {
+            bool stop = false;
+
+            auto clone = current->clone(newPlan, false, true);
+            newPlan->registerNode(clone);
+        
+            if (previous == nullptr) {
+              // set the root node
+              newPlan->root(clone);
+            }
+            else {
+              previous->addDependency(clone);
+            }
+
+            auto const& deps = current->getDependencies();
+            if (deps.size() != 1) {
+              stop = true;
+            }
+
+            if (stop) {
+              break;
+            }
+
+            previous = clone;
+            current = deps[0];
+          }
 
           // we need to instanciate this engine in the registry
 
@@ -408,8 +441,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           // set the root node
           plan.root(clone);
         }
-
-        if (previous != nullptr) {
+        else {
           previous->addDependency(clone);
         }
 
