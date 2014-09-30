@@ -675,7 +675,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
     skiplistOperator = SetupConditionsSkiplist(idx, shaper, values);
   }
 
-  if (skiplistOperator == 0) {
+  if (skiplistOperator == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_BAD_PARAMETER);
   }
 

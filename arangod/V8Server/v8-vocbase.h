@@ -40,6 +40,10 @@ struct TRI_server_s;
 struct TRI_vocbase_s;
 
 namespace triagens {
+  namespace aql {
+    class QueryRegistry;
+  }
+
   namespace arango {
     class CollectionNameResolver;
     class JSLoader;
@@ -92,10 +96,11 @@ void TRI_V8ReloadRouting (v8::Handle<v8::Context>);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitV8VocBridge (v8::Handle<v8::Context>,
+                          triagens::aql::QueryRegistry*,
                           struct TRI_server_s*,
                           struct TRI_vocbase_s*,
                           triagens::arango::JSLoader*,
-                          const size_t);
+                          size_t);
 
 #endif
 

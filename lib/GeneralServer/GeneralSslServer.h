@@ -184,7 +184,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ~GeneralSslServer () {
-          SSL_CTX_free(ctx);
+          // don't free context here but in dtor of ApplicationEndpointServer
+          // SSL_CTX_free(ctx);
         }
 
 // -----------------------------------------------------------------------------

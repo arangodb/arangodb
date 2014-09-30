@@ -82,6 +82,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         inline CollectionNameResolver const* getResolver () const { 
+          TRI_ASSERT(_v8g != nullptr);
           TRI_ASSERT_EXPENSIVE(_v8g->_resolver != nullptr);
           return static_cast<CollectionNameResolver*>(_v8g->_resolver);
         }
@@ -114,6 +115,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         inline TRI_transaction_t* getParentTransaction () const {
+          TRI_ASSERT(_v8g != nullptr);
           if (_v8g->_currentTransaction != nullptr) {
             return static_cast<TRI_transaction_t*>(_v8g->_currentTransaction);
           }
@@ -126,6 +128,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         inline int registerTransaction (TRI_transaction_t* trx) {
+          TRI_ASSERT(_v8g != nullptr);
           TRI_ASSERT_EXPENSIVE(_v8g->_currentTransaction == nullptr);
           _v8g->_currentTransaction = trx;
 
@@ -142,6 +145,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         inline int unregisterTransaction () {
+          TRI_ASSERT(_v8g != nullptr);
           _v8g->_currentTransaction = nullptr;
 
           if (_ownResolver && _v8g->_resolver != nullptr) {

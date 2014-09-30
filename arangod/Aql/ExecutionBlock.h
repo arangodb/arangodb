@@ -1790,6 +1790,7 @@ public:
             _server(server),
             _ownName(ownName),
             _queryId(queryId) {
+
           TRI_ASSERT(! queryId.empty());
         }
 

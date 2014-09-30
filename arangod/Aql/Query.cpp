@@ -300,7 +300,7 @@ void Query::registerError (int code,
 /// QueryRegistry.
 ////////////////////////////////////////////////////////////////////////////////
 
-QueryResult Query::prepare () {
+QueryResult Query::prepare (QueryRegistry* registry) {
   enterState(PARSING);
 
   try {
@@ -383,7 +383,7 @@ QueryResult Query::prepare () {
     TRI_ASSERT(otherJsonString == JsonString); */
 
     enterState(EXECUTION);
-    ExecutionEngine* engine(ExecutionEngine::instanciateFromPlan(trx.get(), this, plan.get()));
+    ExecutionEngine* engine(ExecutionEngine::instanciateFromPlan(registry, trx.get(), this, plan.get()));
 
     // If all went well so far, then we keep _plan, _parser and _trx and
     // return:
@@ -415,8 +415,8 @@ QueryResult Query::prepare () {
 /// @brief execute an AQL query 
 ////////////////////////////////////////////////////////////////////////////////
 
-QueryResult Query::execute () {
-  QueryResult res = prepare();
+QueryResult Query::execute (QueryRegistry* registry) {
+  QueryResult res = prepare(registry);
   if (res.code != TRI_ERROR_NO_ERROR) {
     return res;
   }
@@ -732,7 +732,9 @@ QueryResult Query::transactionError (int errorCode,
     err += std::string(" (") + detail + std::string(")");
   }
 
-  err += std::string("\nwhile executing:\n") + _queryString + std::string("\n");
+  if (_queryString != nullptr) {
+    err += std::string("\nwhile executing:\n") + _queryString + std::string("\n");
+  }
 
   return QueryResult(errorCode, err);
 }

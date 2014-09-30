@@ -47,6 +47,10 @@ struct TRI_server_s;
 struct TRI_vocbase_s;
 
 namespace triagens {
+  namespace aql {
+    class QueryRegistry;
+  }
+
   namespace basics {
     class Thread;
   }
@@ -249,6 +253,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ApplicationV8 (struct TRI_server_s*,
+                       triagens::aql::QueryRegistry*,
                        rest::ApplicationScheduler*,
                        rest::ApplicationDispatcher*);
 
@@ -447,11 +452,19 @@ namespace triagens {
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
+      private:
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief server object
 ////////////////////////////////////////////////////////////////////////////////
 
         struct TRI_server_s* _server;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief query registry object
+////////////////////////////////////////////////////////////////////////////////
+
+        triagens::aql::QueryRegistry* _queryRegistry;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief path to the directory containing the startup scripts

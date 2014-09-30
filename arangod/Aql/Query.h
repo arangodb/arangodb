@@ -44,14 +44,15 @@ struct TRI_vocbase_s;
 namespace triagens {
   namespace aql {
 
-    class Executor;
-    class Expression;
-    struct Variable;
     struct AstNode;
     class Ast;
-    class ExecutionPlan;
-    class Parser;
     class ExecutionEngine;
+    class ExecutionPlan;
+    class Executor;
+    class Expression;
+    class Parser;
+    class QueryRegistry;
+    struct Variable;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -245,13 +246,13 @@ namespace triagens {
 /// QueryRegistry.
 ////////////////////////////////////////////////////////////////////////////////
 
-        QueryResult prepare ();
+        QueryResult prepare (QueryRegistry*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an AQL query 
 ////////////////////////////////////////////////////////////////////////////////
 
-        QueryResult execute ();
+        QueryResult execute (QueryRegistry*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse an AQL query
@@ -302,6 +303,15 @@ namespace triagens {
 
         AQL_TRANSACTION_V8* trx () {
           return _trx;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the transaction for the query
+////////////////////////////////////////////////////////////////////////////////
+
+        void trx (AQL_TRANSACTION_V8* trx) {
+          TRI_ASSERT(_trx == nullptr);
+          _trx = trx;
         }
 
 // -----------------------------------------------------------------------------

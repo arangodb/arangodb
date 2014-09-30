@@ -128,7 +128,7 @@ void RestAqlHandler::createQueryFromJson () {
   options = queryJson.get("options").copy();
 
   auto query = new Query(vocbase, plan, options.steal());
-  QueryResult res = query->prepare();
+  QueryResult res = query->prepare(_queryRegistry);
   if (res.code != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN,
       res.details);
@@ -143,7 +143,19 @@ void RestAqlHandler::createQueryFromJson () {
   if (found) {
     ttl = StringUtils::doubleDecimal(ttlstring);
   }
-  QueryId qId = TRI_NewTickServer();
+
+  QueryId qId;
+  // query id set from the outside?
+  char const* queryIdString = _request->value("queryId", found);
+  if (found) {
+    // query id set via URL parameter
+    qId = StringUtils::uint64(queryIdString);
+  }
+  else {
+    // query id not set, now generate a new one
+    qId = TRI_NewTickServer();
+  }
+  
   try {
     _queryRegistry->insert(vocbase, qId, query, ttl);
   }
@@ -319,7 +331,7 @@ void RestAqlHandler::createQueryFromString () {
 
   auto query = new Query(vocbase, queryString.c_str(), queryString.size(),
                          parameters.steal(), options.steal());
-  QueryResult res = query->prepare();
+  QueryResult res = query->prepare(_queryRegistry);
   if (res.code != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN,
       res.details);

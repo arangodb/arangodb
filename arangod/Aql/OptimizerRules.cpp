@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/OptimizerRules.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Indexes.h"
 #include "Aql/Variable.h"
@@ -1615,7 +1616,7 @@ int triagens::aql::distributeInCluster (Optimizer* opt,
                                         Optimizer::Rule const* rule) {
   bool wasModified = false;
 
-  if (triagens::arango::ServerState::instance()->isCoordinator()) {
+  if (ExecutionEngine::isCoordinator()) {
     // we are a coordinator. now look in the plan for nodes of type
     // EnumerateCollectionNode and IndexRangeNode
     std::vector<ExecutionNode::NodeType> const types = { 
@@ -1671,7 +1672,7 @@ int triagens::aql::distributeInCluster (Optimizer* opt,
       scatterNode->addDependency(deps[0]);
 
       // insert a remote node
-      ExecutionNode* remoteNode = new RemoteNode(plan, plan->nextId(), vocbase, collection);
+      ExecutionNode* remoteNode = new RemoteNode(plan, plan->nextId(), vocbase, collection, "", "", "");
       plan->registerNode(remoteNode);
       remoteNode->addDependency(scatterNode);
         
@@ -1680,7 +1681,7 @@ int triagens::aql::distributeInCluster (Optimizer* opt,
       
 
       // insert another remote node
-      remoteNode = new RemoteNode(plan, plan->nextId(), vocbase, collection);
+      remoteNode = new RemoteNode(plan, plan->nextId(), vocbase, collection, "", "", "");
       plan->registerNode(remoteNode);
       remoteNode->addDependency(node);
       
@@ -1706,7 +1707,6 @@ int triagens::aql::distributeInCluster (Optimizer* opt,
 
   return TRI_ERROR_NO_ERROR;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief move filters up into the cluster distribution part of the plan
@@ -1822,43 +1822,44 @@ int triagens::aql::distributeSortToCluster (Optimizer* opt,
       auto inspectNode = parents[0];
 
       switch (inspectNode->getType()) {
-      case EN::ENUMERATE_LIST:
-      case EN::SINGLETON:
-      case EN::AGGREGATE:
-      case EN::INSERT:
-      case EN::REMOVE:
-      case EN::REPLACE:
-      case EN::UPDATE:
-      case EN::CALCULATION:
-      case EN::FILTER:
-        parents = inspectNode->getParents();
-        continue;
-      case EN::SUBQUERY:
-      case EN::RETURN:
-      case EN::NORESULTS:
-      case EN::SCATTER:
-      case EN::GATHER:
-      case EN::ILLEGAL:
-        //do break
-      case EN::REMOTE:
-      case EN::LIMIT:
-      case EN::INDEX_RANGE:
-      case EN::ENUMERATE_COLLECTION:
-        stopSearching = true;
-        break;
-      case EN::SORT:
-        auto thisSortNode = static_cast<SortNode*>(inspectNode);
-    
-        // remember our cursor...
-        parents = inspectNode->getParents();
-        // then unlink the filter/calculator from the plan
-        plan->unlinkNode(inspectNode);
-        // and re-insert into plan in front of the remoteNode
-        plan->insertDependency(rn, inspectNode);
-        gatherNode->setElements(thisSortNode->getElements());
-        modified = true;
-        //ready to rumble!
-      };
+        case EN::ENUMERATE_LIST:
+        case EN::SINGLETON:
+        case EN::AGGREGATE:
+        case EN::INSERT:
+        case EN::REMOVE:
+        case EN::REPLACE:
+        case EN::UPDATE:
+        case EN::CALCULATION:
+        case EN::FILTER:
+          parents = inspectNode->getParents();
+          continue;
+        case EN::SUBQUERY:
+        case EN::RETURN:
+        case EN::NORESULTS:
+        case EN::SCATTER:
+        case EN::GATHER:
+        case EN::ILLEGAL:
+          //do break
+        case EN::REMOTE:
+        case EN::LIMIT:
+        case EN::INDEX_RANGE:
+        case EN::ENUMERATE_COLLECTION:
+          stopSearching = true;
+          break;
+        case EN::SORT:
+          auto thisSortNode = static_cast<SortNode*>(inspectNode);
+      
+          // remember our cursor...
+          parents = inspectNode->getParents();
+          // then unlink the filter/calculator from the plan
+          plan->unlinkNode(inspectNode);
+          // and re-insert into plan in front of the remoteNode
+          plan->insertDependency(rn, inspectNode);
+          gatherNode->setElements(thisSortNode->getElements());
+          modified = true;
+          //ready to rumble!
+      }
+
       if (stopSearching) {
         break;
       }

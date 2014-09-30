@@ -216,7 +216,7 @@ HttpRequest* HttpHandlerFactory::createRequest (ConnectionInfo const& info,
                                                 size_t length) {
   HttpRequest* request = new HttpRequest(info, ptr, length, _minCompatibility, _allowMethodOverride);
 
-  if (request != 0) {
+  if (request != nullptr) {
     setRequestContext(request);
   }
 
@@ -232,11 +232,10 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
     return new MaintenanceHandler(request);
   }
 
-
   map<string, create_fptr> const& ii = _constructors;
   string path = request->requestPath();
   map<string, create_fptr>::const_iterator i = ii.find(path);
-  void* data = 0;
+  void* data = nullptr;
 
 
   // no direct match, check prefix matches
