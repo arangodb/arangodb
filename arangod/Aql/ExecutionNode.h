@@ -115,7 +115,8 @@ namespace triagens {
             _estimatedCost(0.0), 
             _estimatedCostSet(false),
             _varUsageValid(false),
-            _plan(plan) {
+            _plan(plan),
+            _depth(0) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -567,6 +568,30 @@ namespace triagens {
 
         void staticAnalysis (ExecutionNode* super = nullptr);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get varOverview
+////////////////////////////////////////////////////////////////////////////////
+
+        VarOverview const* getVarOverview () const {
+          return _varOverview.get();
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get depth
+////////////////////////////////////////////////////////////////////////////////
+
+        int getDepth () const {
+          return _depth;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get registers to clear
+////////////////////////////////////////////////////////////////////////////////
+
+        std::unordered_set<RegisterId> const& getRegsToClear () const {
+          return _regsToClear;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected functions
 // -----------------------------------------------------------------------------
@@ -672,11 +697,13 @@ namespace triagens {
 /// @brief info about variables, filled in by staticAnalysis
 ////////////////////////////////////////////////////////////////////////////////
 
-      public:
-
         std::shared_ptr<VarOverview> _varOverview;
 
-        int _depth;  // will be filled in by staticAnalysis
+////////////////////////////////////////////////////////////////////////////////
+/// @brief depth of the current frame, will be filled in by staticAnalysis
+////////////////////////////////////////////////////////////////////////////////
+
+        int _depth;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the following contains the registers which should be cleared

@@ -430,6 +430,48 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief static analysis debugger
+////////////////////////////////////////////////////////////////////////////////
+
+struct StaticAnalysisDebugger : public WalkerWorker<ExecutionNode> {
+  StaticAnalysisDebugger () : indent(0) {};
+  ~StaticAnalysisDebugger () {};
+
+  int indent;
+
+  bool enterSubquery (ExecutionNode*, ExecutionNode*) {
+    indent++;
+    return true;
+  }
+
+  void leaveSubquery (ExecutionNode*, ExecutionNode*) {
+    indent--;
+  }
+
+  void after (ExecutionNode* ep) {
+    for (int i = 0; i < indent; i++) {
+      std::cout << " ";
+    }
+    std::cout << ep->getTypeString() << " ";
+    std::cout << "regsUsedHere: ";
+    for (auto v : ep->getVariablesUsedHere()) {
+      std::cout << ep->getVarOverview()->varInfo.find(v->id)->second.registerId
+                << " ";
+    }
+    std::cout << "regsSetHere: ";
+    for (auto v : ep->getVariablesSetHere()) {
+      std::cout << ep->getVarOverview()->varInfo.find(v->id)->second.registerId
+                << " ";
+    }
+    std::cout << "regsToClear: ";
+    for (auto r : ep->getRegsToClear()) {
+      std::cout << r << " ";
+    }
+    std::cout << std::endl;
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief staticAnalysis
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -480,14 +522,14 @@ ExecutionNode::VarOverview::VarOverview (VarOverview const& v,
   nrRegs.push_back(nrRegs.back());
 }
 
-void ExecutionNode::VarOverview::after (ExecutionNode *eb) {
-  switch (eb->getType()) {
+void ExecutionNode::VarOverview::after (ExecutionNode *en) {
+  switch (en->getType()) {
     case ExecutionNode::ENUMERATE_COLLECTION: 
     case ExecutionNode::INDEX_RANGE: {
       depth++;
       nrRegsHere.push_back(1);
       nrRegs.push_back(1 + nrRegs.back());
-      auto ep = static_cast<EnumerateCollectionNode const*>(eb);
+      auto ep = static_cast<EnumerateCollectionNode const*>(en);
       TRI_ASSERT(ep != nullptr);
       varInfo.insert(make_pair(ep->_outVariable->id,
                                VarInfo(depth, totalNrRegs)));
@@ -498,7 +540,7 @@ void ExecutionNode::VarOverview::after (ExecutionNode *eb) {
       depth++;
       nrRegsHere.push_back(1);
       nrRegs.push_back(1 + nrRegs.back());
-      auto ep = static_cast<EnumerateListNode const*>(eb);
+      auto ep = static_cast<EnumerateListNode const*>(en);
       TRI_ASSERT(ep != nullptr);
       varInfo.insert(make_pair(ep->_outVariable->id,
                                VarInfo(depth, totalNrRegs)));
@@ -508,7 +550,7 @@ void ExecutionNode::VarOverview::after (ExecutionNode *eb) {
     case ExecutionNode::CALCULATION: {
       nrRegsHere[depth]++;
       nrRegs[depth]++;
-      auto ep = static_cast<CalculationNode const*>(eb);
+      auto ep = static_cast<CalculationNode const*>(en);
       TRI_ASSERT(ep != nullptr);
       varInfo.insert(make_pair(ep->_outVariable->id,
                                VarInfo(depth, totalNrRegs)));
@@ -519,12 +561,12 @@ void ExecutionNode::VarOverview::after (ExecutionNode *eb) {
     case ExecutionNode::SUBQUERY: {
       nrRegsHere[depth]++;
       nrRegs[depth]++;
-      auto ep = static_cast<SubqueryNode const*>(eb);
+      auto ep = static_cast<SubqueryNode const*>(en);
       TRI_ASSERT(ep != nullptr);
       varInfo.insert(make_pair(ep->_outVariable->id,
                                VarInfo(depth, totalNrRegs)));
       totalNrRegs++;
-      subQueryNodes.push_back(eb);
+      subQueryNodes.push_back(en);
       break;
     }
 
@@ -533,7 +575,7 @@ void ExecutionNode::VarOverview::after (ExecutionNode *eb) {
       nrRegsHere.push_back(0);
       nrRegs.push_back(nrRegs.back());
 
-      auto ep = static_cast<AggregateNode const*>(eb);
+      auto ep = static_cast<AggregateNode const*>(en);
       for (auto p : ep->_aggregateVariables) {
         // p is std::pair<Variable const*,Variable const*>
         // and the first is the to be assigned output variable
@@ -566,7 +608,7 @@ void ExecutionNode::VarOverview::after (ExecutionNode *eb) {
     }
 
     case ExecutionNode::REMOVE: {
-      auto ep = static_cast<RemoveNode const*>(eb);
+      auto ep = static_cast<RemoveNode const*>(en);
       if (ep->_outVariable != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
@@ -578,7 +620,7 @@ void ExecutionNode::VarOverview::after (ExecutionNode *eb) {
     }
 
     case ExecutionNode::INSERT: {
-      auto ep = static_cast<InsertNode const*>(eb);
+      auto ep = static_cast<InsertNode const*>(en);
       if (ep->_outVariable != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
@@ -590,7 +632,7 @@ void ExecutionNode::VarOverview::after (ExecutionNode *eb) {
     }
 
     case ExecutionNode::UPDATE: {
-      auto ep = static_cast<UpdateNode const*>(eb);
+      auto ep = static_cast<UpdateNode const*>(en);
       if (ep->_outVariable != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
@@ -602,7 +644,7 @@ void ExecutionNode::VarOverview::after (ExecutionNode *eb) {
     }
 
     case ExecutionNode::REPLACE: {
-      auto ep = static_cast<ReplaceNode const*>(eb);
+      auto ep = static_cast<ReplaceNode const*>(en);
       if (ep->_outVariable != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
@@ -629,14 +671,14 @@ void ExecutionNode::VarOverview::after (ExecutionNode *eb) {
     }
   }
 
-  eb->_depth = depth;
-  eb->_varOverview = *me;
+  en->_depth = depth;
+  en->_varOverview = *me;
 
   // Now find out which registers ought to be erased after this node:
-  if (eb->getType() != ExecutionNode::RETURN) {
+  if (en->getType() != ExecutionNode::RETURN) {
     // ReturnNodes are special, since they return a single column anyway
-    std::unordered_set<Variable const*> const& varsUsedLater = eb->getVarsUsedLater();
-    std::vector<Variable const*> const& varsUsedHere = eb->getVariablesUsedHere();
+    std::unordered_set<Variable const*> const& varsUsedLater = en->getVarsUsedLater();
+    std::vector<Variable const*> const& varsUsedHere = en->getVariablesUsedHere();
     
     // We need to delete those variables that have been used here but are not
     // used any more later:
@@ -650,7 +692,7 @@ void ExecutionNode::VarOverview::after (ExecutionNode *eb) {
         regsToClear.insert(r);
       }
     }
-    eb->setRegsToClear(regsToClear);
+    en->setRegsToClear(regsToClear);
   }
 }
 
