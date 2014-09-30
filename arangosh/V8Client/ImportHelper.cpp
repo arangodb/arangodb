@@ -127,7 +127,7 @@ namespace triagens {
       size_t separatorLength;
       char* separator = TRI_UnescapeUtf8StringZ(TRI_UNKNOWN_MEM_ZONE, _separator.c_str(), _separator.size(), &separatorLength);
 
-      if (separator == 0) {
+      if (separator == nullptr) {
         if (fd != STDIN_FILENO) {
           TRI_CLOSE(fd);
         }
@@ -319,7 +319,6 @@ namespace triagens {
       return ! _hasError;
     }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// private functions
 ////////////////////////////////////////////////////////////////////////////////
@@ -405,41 +404,64 @@ namespace triagens {
         _lineBuffer.appendChar(',');
       }
 
-      if (row == 0) {
-        // head line
+      if (row == 0 || escaped) {
+        // head line or escaped value
         _lineBuffer.appendChar('"');
         _lineBuffer.appendText(StringUtils::escapeUnicode(field));
         _lineBuffer.appendChar('"');
       }
       else {
-        if (escaped) {
-          _lineBuffer.appendChar('"');
-          _lineBuffer.appendText(StringUtils::escapeUnicode(field));
-          _lineBuffer.appendChar('"');
+        string s(field);
+        if (s.empty()) {
+          // do nothing
+          _lineBuffer.appendText("null", strlen("null"));
+        }
+        else if ("true" == s || "false" == s || "null" == s) {
+          _lineBuffer.appendText(s);
         }
         else {
-          string s(field);
-          if (s.length() == 0) {
-            // do nothing
-            _lineBuffer.appendText("null");
-          }
-          else if ("true" == s || "false" == s) {
-            _lineBuffer.appendText(field);
-          }
-          else {
-            if (regexec(&_intRegex, s.c_str(), 0, 0, 0) == 0) {
+          if (regexec(&_intRegex, s.c_str(), 0, 0, 0) == 0) {
+            // integer value
+            // conversion might fail with out-of-range error
+            try {
+              std::stoll(s); // this will fail if the number cannot be converted
               int64_t num = StringUtils::int64(s);
               _lineBuffer.appendInteger(num);
             }
-            else if (regexec(&_doubleRegex, s.c_str(), 0, 0, 0) == 0) {
+            catch (...) {
+              // conversion failed
+              _lineBuffer.appendChar('"');
+              _lineBuffer.appendText(StringUtils::escapeUnicode(s));
+              _lineBuffer.appendChar('"');
+            }
+          }
+          else if (regexec(&_doubleRegex, s.c_str(), 0, 0, 0) == 0) {
+            // double value
+            // conversion might fail with out-of-range error
+            try {
               double num = StringUtils::doubleDecimal(s);
-              _lineBuffer.appendDecimal(num);
+              bool failed = (num != num || num == HUGE_VAL || num == -HUGE_VAL); 
+              if (! failed) {
+                _lineBuffer.appendDecimal(num);
+              }
+              else {
+                // NaN, +inf, -inf
+                _lineBuffer.appendChar('"');
+                _lineBuffer.appendText(StringUtils::escapeUnicode(s));
+                _lineBuffer.appendChar('"');
+              }
             }
-            else {
+            catch (...) {
+              // conversion failed
               _lineBuffer.appendChar('"');
-              _lineBuffer.appendText(StringUtils::escapeUnicode(field));
+              _lineBuffer.appendText(StringUtils::escapeUnicode(s));
               _lineBuffer.appendChar('"');
             }
+          }
+          else {
+            _lineBuffer.appendChar('"');
+            _lineBuffer.appendText(StringUtils::escapeUnicode(s));
+            _lineBuffer.appendChar('"');
           }
         }
       }
@@ -473,10 +495,10 @@ namespace triagens {
         // save the first line
         _firstLine = _lineBuffer.c_str();
       }
-      else if (row > 0 && _firstLine == "") {
+      else if (row > 0 && _firstLine.empty()) {
         // error
         ++_numberError;
-        _lineBuffer.clear();
+        _lineBuffer.reset();
         return;
       }
 
@@ -484,7 +506,7 @@ namespace triagens {
 
       if (_lineBuffer.length() > 0) {
         _outputBuffer.appendText(_lineBuffer);
-        _lineBuffer.clear();
+        _lineBuffer.reset();
       }
       else {
         ++_numberError;
@@ -494,7 +516,6 @@ namespace triagens {
         sendCsvBuffer();
         _outputBuffer.appendText(_firstLine);
       }
-
     }
 
 
@@ -509,7 +530,7 @@ namespace triagens {
 
       handleResult(result);
 
-      _outputBuffer.clear();
+      _outputBuffer.reset();
       _rowOffset = _rowsRead;
     }
 
