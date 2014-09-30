@@ -380,41 +380,49 @@ int main (int argc, char* argv[]) {
     ih.setProgress(true);
   }
 
-  // import type
-  bool ok = false;
+  try {
+    bool ok = false;
 
-  if (TypeImport == "csv") {
-    cout << "Starting CSV import..." << endl;
-    ok = ih.importDelimited(CollectionName, FileName, ImportHelper::CSV);
+    // import type
+    if (TypeImport == "csv") {
+      cout << "Starting CSV import..." << endl;
+      ok = ih.importDelimited(CollectionName, FileName, ImportHelper::CSV);
+    }
+
+    else if (TypeImport == "tsv") {
+      cout << "Starting TSV import..." << endl;
+      ih.setQuote("");
+      ih.setSeparator("\\t");
+      ok = ih.importDelimited(CollectionName, FileName, ImportHelper::TSV);
+    }
+
+    else if (TypeImport == "json") {
+      cout << "Starting JSON import..." << endl;
+      ok = ih.importJson(CollectionName, FileName);
+    }
+
+    else {
+      cerr << "Wrong type '" << TypeImport << "'." << endl;
+      TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+    }
+
+    cout << endl;
+
+    // give information about import
+    if (ok) {
+      cout << "created:          " << ih.getImportedLines() << endl;
+      cout << "errors:           " << ih.getErrorLines() << endl;
+      cout << "total:            " << ih.getReadLines() << endl;
+    }
+    else {
+      cerr << "error message:    " << ih.getErrorMessage() << endl;
+    }
   }
-
-  else if (TypeImport == "tsv") {
-    cout << "Starting TSV import..." << endl;
-    ih.setQuote("");
-    ih.setSeparator("\\t");
-    ok = ih.importDelimited(CollectionName, FileName, ImportHelper::TSV);
+  catch (std::exception const& ex) {
+    cerr << "Caught exception " << ex.what() << " during import" << endl;
   }
-
-  else if (TypeImport == "json") {
-    cout << "Starting JSON import..." << endl;
-    ok = ih.importJson(CollectionName, FileName);
-  }
-
-  else {
-    cerr << "Wrong type '" << TypeImport << "'." << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
-  }
-
-  cout << endl;
-
-  // give information about import
-  if (ok) {
-    cout << "created:          " << ih.getImportedLines() << endl;
-    cout << "errors:           " << ih.getErrorLines() << endl;
-    cout << "total:            " << ih.getReadLines() << endl;
-  }
-  else {
-    cerr << "error message:    " << ih.getErrorMessage() << endl;
+  catch (...) {
+    cerr << "Got an unknown exception during import" << endl;
   }
 
   delete ClientConnection;
