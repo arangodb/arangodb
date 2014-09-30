@@ -690,12 +690,12 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
                                                        Query* query,
                                                        ExecutionPlan* plan) {
   ExecutionEngine* engine = nullptr;
-  plan->staticAnalysis();
 
   try {
     if (! plan->varUsageComputed()) {
       plan->findVarUsage();
     }
+    plan->staticAnalysis();
 
     ExecutionBlock* root = nullptr;
 
