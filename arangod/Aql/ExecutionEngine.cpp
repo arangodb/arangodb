@@ -695,6 +695,7 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
     if (! plan->varUsageComputed()) {
       plan->findVarUsage();
     }
+    plan->staticAnalysis();
 
     ExecutionBlock* root = nullptr;
 
@@ -716,7 +717,6 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
     }
 
     TRI_ASSERT(root != nullptr);
-    root->staticAnalysis();
     root->initialize();
     root->initializeCursor(nullptr, 0);
 
