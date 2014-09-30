@@ -1,6 +1,8 @@
 v2.3.0 (XXXX-XX-XX)
 -------------------
 
+* improved performance of CSV import in arangoimp
+
 * fixed issue #1027: Stack traces are off-by-one
 
 * fixed issue #1026: Modules loaded in different files within the same app 
@@ -104,6 +106,10 @@ v2.3.0 (XXXX-XX-XX)
 
 v2.2.4 (2014-XX-XX)
 -------------------
+
+* fixed issue #1030: arangoimp 2.2.3 crashing, not logging on large Windows CSV file 
+
+* fixed issue #1025: Traversal not as expected in undirected graph
 
 * fixed issue #1020
 
