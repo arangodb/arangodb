@@ -537,7 +537,7 @@ TRI_json_t* TRI_Json2String (TRI_memory_zone_t* zone, char const* text, char** e
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* TRI_JsonString (TRI_memory_zone_t* zone, char const* text) {
-  return TRI_Json2String(zone, text, 0);
+  return TRI_Json2String(zone, text, nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
