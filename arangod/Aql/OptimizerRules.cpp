@@ -1911,6 +1911,7 @@ class ScatterToSingletonViaCalcOnlyFinder: public WalkerWorker<ExecutionNode> {
           _scatter = en;
           return false; // continue . . .
         }
+        case EN::REMOTE:
         case EN::CALCULATION: {
           // do nothing, continue . . . 
           return false;
@@ -1939,7 +1940,6 @@ class ScatterToSingletonViaCalcOnlyFinder: public WalkerWorker<ExecutionNode> {
         case EN::FILTER: 
         case EN::AGGREGATE:
         case EN::GATHER:
-        case EN::REMOTE:
         case EN::INSERT:
         case EN::REMOVE:
         case EN::REPLACE:
