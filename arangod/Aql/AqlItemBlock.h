@@ -251,7 +251,7 @@ namespace triagens {
 /// necessary, using the reference count.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void clearRegisters (std::unordered_set<RegisterId>& toClear);
+        void clearRegisters (std::unordered_set<RegisterId> const& toClear);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief slice/clone, this does a deep copy of all entries
