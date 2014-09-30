@@ -1905,6 +1905,7 @@ class ScatterToSingletonViaCalcOnlyFinder: public WalkerWorker<ExecutionNode> {
         case EN::SCATTER:{
           if (_scatter != nullptr) {
             return true; // somehow found 2 scatter nodes . . .
+                         // FIXME is this even possible? 
           }
           _scatter = en;
           return false; // continue . . .
@@ -1915,7 +1916,7 @@ class ScatterToSingletonViaCalcOnlyFinder: public WalkerWorker<ExecutionNode> {
         }
         case EN::SINGLETON: {
           if (_scatter == nullptr) {
-            return true; // found no scatter nodes
+            return true; // found no scatter nodes, abort
           }
           auto newPlan = _plan->clone();
           if (newPlan == nullptr) {
