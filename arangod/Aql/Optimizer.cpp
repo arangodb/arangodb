@@ -464,7 +464,7 @@ void Optimizer::setupRules () {
     registerRule("distribute-sort-to-cluster",
                  distributeSortToCluster,
                  distributeSortToCluster_pass10,
-                 false);*/
+                 false);
     
     registerRule("remove-unnecessary-remote-scatter",
                  removeUnnecessaryRemoteScatter,
