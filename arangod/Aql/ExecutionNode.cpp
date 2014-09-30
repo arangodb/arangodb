@@ -488,6 +488,26 @@ void EnumerateCollectionNode::toJsonHelper (triagens::basics::Json& nodes,
   nodes(json);
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone ExecutionNode recursively
+////////////////////////////////////////////////////////////////////////////////
+
+ExecutionNode* EnumerateCollectionNode::clone (ExecutionPlan* plan,
+                                               bool withDependencies,
+                                               bool withProperties) const {
+  auto outVariable = _outVariable;
+  if (withProperties) {
+    outVariable = plan->getAst()->variables()->createVariable(outVariable);
+  }
+  auto c = new EnumerateCollectionNode(plan, _id, _vocbase, _collection, outVariable);
+  if (withDependencies) {
+    cloneDependencies(plan, c, withProperties);
+  }
+  return static_cast<ExecutionNode*>(c);
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the number of usable fields from the index (according to the
 /// attributes passed)
@@ -636,6 +656,29 @@ void EnumerateListNode::toJsonHelper (triagens::basics::Json& nodes,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief clone ExecutionNode recursively
+////////////////////////////////////////////////////////////////////////////////
+
+ExecutionNode* EnumerateListNode::clone (ExecutionPlan* plan,
+                                         bool withDependencies,
+                                         bool withProperties) const {
+  auto outVariable = _outVariable;
+  auto inVariable = _inVariable;
+
+  if (withProperties) {
+    outVariable = plan->getAst()->variables()->createVariable(outVariable);
+    inVariable = plan->getAst()->variables()->createVariable(inVariable);
+  }
+
+  auto c = new EnumerateListNode(plan, _id, inVariable, outVariable);
+
+  if (withDependencies) {
+    cloneDependencies(plan, c, withProperties);
+  }
+  return static_cast<ExecutionNode*>(c);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson, for IndexRangeNode
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -690,6 +733,32 @@ void IndexRangeNode::toJsonHelper (triagens::basics::Json& nodes,
 
   // And add it:
   nodes(json);
+}
+
+ExecutionNode* IndexRangeNode::clone (ExecutionPlan* plan,
+                                      bool withDependencies,
+                                      bool withProperties) const {
+  std::vector<std::vector<RangeInfo>> ranges;
+  for (size_t i = 0; i < _ranges.size(); i++){
+    ranges.push_back(std::vector<RangeInfo>());
+    
+    for (auto x: _ranges.at(i)){
+      ranges.at(i).push_back(x);
+    }
+  }
+
+  auto outVariable = _outVariable;
+
+  if (withProperties) {
+    outVariable = plan->getAst()->variables()->createVariable(outVariable);
+  }
+
+  auto c = new IndexRangeNode(plan, _id, _vocbase, _collection, 
+                              outVariable, _index, ranges, _reverse);
+  if (withDependencies) {
+    cloneDependencies(plan, c, withProperties);
+  }
+  return static_cast<ExecutionNode*>(c);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -915,6 +984,22 @@ void CalculationNode::toJsonHelper (triagens::basics::Json& nodes,
   nodes(json);
 }
 
+ExecutionNode* CalculationNode::clone (ExecutionPlan* plan,
+                                       bool withDependencies,
+                                       bool withProperties) const {
+  auto outVariable = _outVariable;
+
+  if (withProperties) {
+    outVariable = plan->getAst()->variables()->createVariable(outVariable);
+  }
+  auto c = new CalculationNode(plan, _id, _expression->clone(),
+                               outVariable);
+  if (withDependencies) {
+    cloneDependencies(plan, c, withProperties);
+  }
+  return static_cast<ExecutionNode*>(c);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                           methods of SubqueryNode
 // -----------------------------------------------------------------------------
@@ -942,6 +1027,22 @@ void SubqueryNode::toJsonHelper (triagens::basics::Json& nodes,
 
   // And add it:
   nodes(json);
+}
+
+ExecutionNode* SubqueryNode::clone (ExecutionPlan* plan,
+                                    bool withDependencies,
+                                    bool withProperties) const {
+  auto outVariable = _outVariable;
+
+  if (withProperties) {
+    outVariable = plan->getAst()->variables()->createVariable(outVariable);
+  }
+  auto c = new SubqueryNode(plan, _id, _subquery->clone(plan, true, withProperties),
+                            outVariable);
+  if (withDependencies) {
+    cloneDependencies(plan, c, withProperties);
+  }
+  return static_cast<ExecutionNode*>(c);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1072,6 +1173,21 @@ void FilterNode::toJsonHelper (triagens::basics::Json& nodes,
 
   // And add it:
   nodes(json);
+}
+
+ExecutionNode* FilterNode::clone (ExecutionPlan* plan,
+                                  bool withDependencies,
+                                  bool withProperties) const {
+  auto inVariable = _inVariable;
+
+  if (withProperties) {
+    inVariable = plan->getAst()->variables()->createVariable(inVariable);
+  }
+  auto c = new FilterNode(plan, _id, inVariable);
+  if (withDependencies) {
+    cloneDependencies(plan, c, withProperties);
+  }
+  return static_cast<ExecutionNode*>(c);
 }
 
 // -----------------------------------------------------------------------------
@@ -1247,6 +1363,35 @@ void AggregateNode::toJsonHelper (triagens::basics::Json& nodes,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief clone ExecutionNode recursively
+////////////////////////////////////////////////////////////////////////////////
+
+ExecutionNode* AggregateNode::clone (ExecutionPlan* plan,
+                                     bool withDependencies,
+                                     bool withProperties) const {
+  auto outVariable = _outVariable;
+  auto aggregateVariables = _aggregateVariables;
+
+  if (withProperties) {
+    outVariable = plan->getAst()->variables()->createVariable(outVariable);
+
+    for (auto oneAggregate: _aggregateVariables) {
+      auto in  = plan->getAst()->variables()->createVariable(oneAggregate.first);
+      auto out = plan->getAst()->variables()->createVariable(oneAggregate.second);
+      aggregateVariables.push_back(std::make_pair(in, out));
+    }
+
+  }
+
+  auto c = new AggregateNode(plan, _id, aggregateVariables, outVariable, _variableMap);
+  if (withDependencies) {
+    cloneDependencies(plan, c, withProperties);
+  }
+  return static_cast<ExecutionNode*>(c);
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1320,6 +1465,25 @@ void ReturnNode::toJsonHelper (triagens::basics::Json& nodes,
   nodes(json);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone ExecutionNode recursively
+////////////////////////////////////////////////////////////////////////////////
+ExecutionNode* ReturnNode::clone (ExecutionPlan* plan,
+                                  bool withDependencies,
+                                  bool withProperties) const {
+  auto inVariable = _inVariable;
+
+  if (withProperties) {
+    inVariable = plan->getAst()->variables()->createVariable(inVariable);
+  }
+
+  auto c = new ReturnNode(plan, _id, inVariable);
+  if (withDependencies) {
+    cloneDependencies(plan, c, withProperties);
+  }
+  return static_cast<ExecutionNode*>(c);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  ModificationNode
 // -----------------------------------------------------------------------------
@@ -1388,6 +1552,28 @@ void RemoveNode::toJsonHelper (triagens::basics::Json& nodes,
   nodes(json);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone ExecutionNode recursively
+////////////////////////////////////////////////////////////////////////////////
+
+ExecutionNode* RemoveNode::clone (ExecutionPlan* plan,
+                                  bool withDependencies,
+                                  bool withProperties) const {
+  auto outVariable = _outVariable;
+  auto inVariable = _inVariable;
+
+  if (withProperties) {
+    outVariable = plan->getAst()->variables()->createVariable(outVariable);
+    inVariable = plan->getAst()->variables()->createVariable(inVariable);
+  }
+
+  auto c = new RemoveNode(plan, _id, _vocbase, _collection, _options, inVariable, outVariable);
+  if (withDependencies) {
+    cloneDependencies(plan, c, withProperties);
+  }
+  return static_cast<ExecutionNode*>(c);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                             methods of InsertNode
 // -----------------------------------------------------------------------------
@@ -1425,6 +1611,30 @@ void InsertNode::toJsonHelper (triagens::basics::Json& nodes,
   // And add it:
   nodes(json);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone ExecutionNode recursively
+////////////////////////////////////////////////////////////////////////////////
+
+ExecutionNode* InsertNode::clone (ExecutionPlan* plan,
+                                  bool withDependencies,
+                                  bool withProperties) const {
+  auto outVariable = _outVariable;
+  auto inVariable = _inVariable;
+
+  if (withProperties) {
+    outVariable = plan->getAst()->variables()->createVariable(outVariable);
+    inVariable = plan->getAst()->variables()->createVariable(inVariable);
+  }
+
+  auto c = new InsertNode(plan, _id, _vocbase, _collection,
+                          _options, inVariable, outVariable);
+  if (withDependencies) {
+    cloneDependencies(plan,c, withProperties);
+  }
+  return static_cast<ExecutionNode*>(c);
+}
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             methods of UpdateNode
@@ -1470,6 +1680,31 @@ void UpdateNode::toJsonHelper (triagens::basics::Json& nodes,
   nodes(json);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone ExecutionNode recursively
+////////////////////////////////////////////////////////////////////////////////
+
+ExecutionNode* UpdateNode::clone (ExecutionPlan* plan,
+                                  bool withDependencies,
+                                  bool withProperties) const {
+  auto outVariable = _outVariable;
+  auto inKeyVariable = _inKeyVariable;
+  auto inDocVariable = _inDocVariable;
+
+  if (withProperties) {
+    outVariable = plan->getAst()->variables()->createVariable(outVariable);
+    inKeyVariable = plan->getAst()->variables()->createVariable(inKeyVariable);
+    inDocVariable = plan->getAst()->variables()->createVariable(inDocVariable);
+  }
+
+  auto c = new UpdateNode(plan, _id, _vocbase, _collection, _options, inDocVariable, inKeyVariable, outVariable);
+  if (withDependencies) {
+    cloneDependencies(plan, c, withProperties);
+  }
+  return static_cast<ExecutionNode*>(c);
+}
+
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                            methods of ReplaceNode
 // -----------------------------------------------------------------------------
@@ -1512,6 +1747,32 @@ void ReplaceNode::toJsonHelper (triagens::basics::Json& nodes,
 
   // And add it:
   nodes(json);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone ExecutionNode recursively
+////////////////////////////////////////////////////////////////////////////////
+
+ExecutionNode* ReplaceNode::clone (ExecutionPlan* plan,
+                                   bool withDependencies,
+                                   bool withProperties) const {
+  auto outVariable = _outVariable;
+  auto inKeyVariable = _inKeyVariable;
+  auto inDocVariable = _inDocVariable;
+
+  if (withProperties) {
+    outVariable = plan->getAst()->variables()->createVariable(outVariable);
+    inKeyVariable = plan->getAst()->variables()->createVariable(inKeyVariable);
+    inDocVariable = plan->getAst()->variables()->createVariable(inDocVariable);
+  }
+
+  auto c = new ReplaceNode(plan, _id, _vocbase, _collection, 
+                           _options, inDocVariable, inKeyVariable,
+                           outVariable);
+  if (withDependencies) {
+    cloneDependencies(plan, c, withProperties);
+  }
+  return static_cast<ExecutionNode*>(c);
 }
 
 // -----------------------------------------------------------------------------

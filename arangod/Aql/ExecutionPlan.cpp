@@ -140,6 +140,18 @@ ExecutionPlan* ExecutionPlan::instanciateFromJson (Ast* ast,
   }
 }
 
+ExecutionPlan* ExecutionPlan::clone (Query &onThatQuery) {
+  ExecutionPlan *OtherPlan = new ExecutionPlan(onThatQuery.ast());
+
+  for (auto it: _ids) {
+    OtherPlan->registerNode(it.second->clone(OtherPlan, false, true));
+  }
+
+  return OtherPlan;
+}
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON, returns an AUTOFREE Json object
 ////////////////////////////////////////////////////////////////////////////////
@@ -1168,7 +1180,7 @@ ExecutionPlan* ExecutionPlan::clone () {
   auto plan = new ExecutionPlan(_ast);
 
   try {
-    plan->_root = _root->clone(plan, true);
+    plan->_root = _root->clone(plan, true, false);
     plan->_nextId = _nextId;
     plan->_appliedRules = _appliedRules;
     CloneNodeAdder adder(plan);

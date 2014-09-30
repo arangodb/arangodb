@@ -1875,61 +1875,42 @@ int triagens::aql::distributeSortToCluster (Optimizer* opt,
   return TRI_ERROR_NO_ERROR;
 }
 
-class ScatterToSingletonViaCalcOnlyFinder: public WalkerWorker<ExecutionNode> {
-  Optimizer* _opt;
-  ExecutionPlan* _plan;
-  bool _canThrow; 
-  Optimizer::RuleLevel _level;
-  RemoteNode* _remote;
+class RemoveToSingletonViaCalcOnlyFinder: public WalkerWorker<ExecutionNode> {
   ExecutionNode* _scatter;
+  std::unordered_set<ExecutionNode*>& _toUnlink;
   
   public: 
-    ScatterToSingletonViaCalcOnlyFinder (Optimizer* opt,
-                                         ExecutionPlan* plan,
-                                         Optimizer::RuleLevel level,
-                                         RemoteNode* nn)
-      : _opt(opt),
-        _plan(plan), 
-        _canThrow(false),
-        _level(level),
-        _remote(nn),
-        _scatter(nullptr){
+    RemoveToSingletonViaCalcOnlyFinder (std::unordered_set<ExecutionNode*>& toUnlink)
+      : _scatter(nullptr), 
+        _toUnlink(toUnlink){
     };
 
-    ~ScatterToSingletonViaCalcOnlyFinder () {
+    ~RemoveToSingletonViaCalcOnlyFinder () {
     }
 
     bool before (ExecutionNode* en) {
-      _canThrow = (_canThrow || en->canThrow()); // can any node walked over throw?
-
       switch (en->getType()) {
         case EN::SCATTER:{
           if (_scatter != nullptr) {
+            _toUnlink.clear();
             return true; // somehow found 2 scatter nodes . . .
+                         // FIXME is this even possible? 
           }
           _scatter = en;
+          _toUnlink.insert(en);
           return false; // continue . . .
         }
+        case EN::REMOTE:
+          _toUnlink.insert(en);
+          return false; // continue . . .
         case EN::CALCULATION: {
-          // do nothing, continue . . . 
-          return false;
+          _toUnlink.insert(en);
+          return false; // continue . . .
         }
         case EN::SINGLETON: {
           if (_scatter == nullptr) {
-            return true; // found no scatter nodes
-          }
-          auto newPlan = _plan->clone();
-          if (newPlan == nullptr) {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-          }
-          try {
-            newPlan->unlinkNode(newPlan->getNodeById(_remote->id()));
-            newPlan->unlinkNode(newPlan->getNodeById(_scatter->id()));
-            _opt->addPlan(newPlan, _level, true);
-          }
-          catch (...) {
-            delete newPlan;
-            throw;
+            _toUnlink.clear();
+            return true; // found no scatter nodes, abort
           }
           return false;
         }
@@ -1938,7 +1919,6 @@ class ScatterToSingletonViaCalcOnlyFinder: public WalkerWorker<ExecutionNode> {
         case EN::FILTER: 
         case EN::AGGREGATE:
         case EN::GATHER:
-        case EN::REMOTE:
         case EN::INSERT:
         case EN::REMOVE:
         case EN::REPLACE:
@@ -1950,9 +1930,10 @@ class ScatterToSingletonViaCalcOnlyFinder: public WalkerWorker<ExecutionNode> {
         case EN::SORT:
         case EN::INDEX_RANGE:
         case EN::ENUMERATE_COLLECTION: {
-          // if we meet any of the above, then we abort . . .
+        // if we meet any of the above, then we abort . . .
         }
       }
+      _toUnlink.clear();
       return true;
     }
 };
@@ -1965,16 +1946,23 @@ class ScatterToSingletonViaCalcOnlyFinder: public WalkerWorker<ExecutionNode> {
 int triagens::aql::removeUnnecessaryRemoteScatter (Optimizer* opt, 
                                   ExecutionPlan* plan, 
                                   Optimizer::Rule const* rule) {
-  
   std::vector<ExecutionNode*> nodes
     = plan->findNodesOfType(triagens::aql::ExecutionNode::REMOTE, true);
-  
+  std::unordered_set<ExecutionNode*> toUnlink;
+
   for (auto n : nodes) {
-    auto nn = static_cast<RemoteNode*>(n);
-    ScatterToSingletonViaCalcOnlyFinder finder(opt, plan, rule->level, nn);
-    nn->walk(&finder);
+    RemoveToSingletonViaCalcOnlyFinder finder(toUnlink);
+    n->walk(&finder);
   }
-  opt->addPlan(plan, rule->level, false);
+
+  bool modified = false;
+  if (! toUnlink.empty()) {
+    plan->unlinkNodes(toUnlink);
+    plan->findVarUsage();
+    modified = true;
+  }
+  
+  opt->addPlan(plan, rule->level, modified);
 
   return TRI_ERROR_NO_ERROR;
 }

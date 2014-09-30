@@ -145,7 +145,12 @@ namespace triagens {
 
         // move SortNodes into the distribution.
         // adjust gathernode to also contain the sort criterions.
-        distributeSortToCluster_pass10          = 1020
+        distributeSortToCluster_pass10          = 1020,
+        
+        // try to get rid of a RemoteNode->ScatterNode combination which has
+        // only a SingletonNode and possibly some CalculationNodes as dependencies
+
+        removeUnnecessaryRemoteScatter_pass10   = 1030
       };
     
       public:
