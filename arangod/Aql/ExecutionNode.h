@@ -789,7 +789,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     class EnumerateCollectionNode : public ExecutionNode {
-      
+      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class EnumerateCollectionBlock;
       
@@ -943,6 +943,7 @@ namespace triagens {
 
     class EnumerateListNode : public ExecutionNode {
       
+      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class EnumerateListBlock;
       friend class RedundantCalculationsReplacer;
@@ -1302,6 +1303,7 @@ namespace triagens {
 
     class CalculationNode : public ExecutionNode {
       
+      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class CalculationBlock;
       friend class RedundantCalculationsReplacer;
@@ -1447,6 +1449,7 @@ namespace triagens {
 
     class SubqueryNode : public ExecutionNode {
       
+      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class SubqueryBlock;
 
@@ -1857,6 +1860,7 @@ namespace triagens {
 
     class AggregateNode : public ExecutionNode {
       
+      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class AggregateBlock;
       friend class RedundantCalculationsReplacer;
@@ -2165,6 +2169,7 @@ namespace triagens {
 
     class RemoveNode : public ModificationNode {
       
+      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class RemoveBlock;
       
@@ -2277,6 +2282,7 @@ namespace triagens {
 
     class InsertNode : public ModificationNode {
       
+      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class InsertBlock;
       
@@ -2388,6 +2394,7 @@ namespace triagens {
 
     class UpdateNode : public ModificationNode {
       
+      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class UpdateBlock;
       
@@ -2512,6 +2519,7 @@ namespace triagens {
 
     class ReplaceNode : public ModificationNode {
       
+      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class ReplaceBlock;
       
