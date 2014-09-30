@@ -98,6 +98,8 @@ namespace triagens {
 /// from the same thread that has opened it!
 ////////////////////////////////////////////////////////////////////////////////
 
+        void destroy (std::string const& vocbase, QueryId id);
+        
         void destroy (TRI_vocbase_t* vocbase, QueryId id);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -117,7 +119,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         struct QueryInfo {
-          TRI_vocbase_t* _vocbase;  // name of vocbase
+          TRI_vocbase_t* _vocbase;   // the vocbase
           QueryId _id;               // id of the query
           Query* _query;             // the actual query pointer
           bool _isOpen;              // flag indicating whether or not the query
@@ -127,11 +129,10 @@ namespace triagens {
         };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _queries, the actual map of maps for the registry, the bool
-/// indicates
+/// @brief _queries, the actual map of maps for the registry
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::unordered_map<TRI_vocbase_t*, std::unordered_map<QueryId, QueryInfo*>> _queries;
+        std::unordered_map<std::string, std::unordered_map<QueryId, QueryInfo*>> _queries;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _lock, the read/write lock for access

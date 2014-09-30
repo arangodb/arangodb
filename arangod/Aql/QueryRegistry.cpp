@@ -44,7 +44,7 @@ using namespace triagens::aql;
 ////////////////////////////////////////////////////////////////////////////////
 
 QueryRegistry::~QueryRegistry () {
-  std::vector<std::pair<TRI_vocbase_t*, QueryId>> toDelete;
+  std::vector<std::pair<std::string, QueryId>> toDelete;
   {
     WRITE_LOCKER(_lock);
     for (auto& x : _queries) {
@@ -79,9 +79,11 @@ void QueryRegistry::insert (TRI_vocbase_t* vocbase,
 
   WRITE_LOCKER(_lock);
 
-  auto m = _queries.find(vocbase);
+  auto m = _queries.find(vocbase->_name);
   if (m == _queries.end()) {
-    m = _queries.emplace(vocbase, std::unordered_map<QueryId, QueryInfo*>()).first;
+    m = _queries.emplace(vocbase->_name, std::unordered_map<QueryId, QueryInfo*>()).first;
+
+    TRI_ASSERT_EXPENSIVE(_queries.find(vocbase->_name) != _queries.end());
   }
   auto q = m->second.find(id);
   if (q == m->second.end()) {
@@ -93,11 +95,16 @@ void QueryRegistry::insert (TRI_vocbase_t* vocbase,
     p->_timeToLive = ttl;
     p->_expires = TRI_microtime() + ttl;
     m->second.insert(make_pair(id, p.release()));
-    // A query that is being shelved must unregister its transaction
-    // with the current context:
-    query->trx()->unregisterTransactionWithContext();
-    // Also, we need to count down the debugging counters for transactions:
-    triagens::arango::TransactionBase::increaseNumbers(-1, -1);
+
+    TRI_ASSERT_EXPENSIVE(_queries.find(vocbase->_name)->second.find(id) != _queries.find(vocbase->_name)->second.end());
+  
+    if (query->part() == PART_MAIN) {
+      // A query that is being shelved must unregister its transaction
+      // with the current context:
+      query->trx()->unregisterTransactionWithContext();
+      // Also, we need to count down the debugging counters for transactions:
+      triagens::arango::TransactionBase::increaseNumbers(-1, -1);
+    }
   }
   else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -109,13 +116,14 @@ void QueryRegistry::insert (TRI_vocbase_t* vocbase,
 /// @brief open
 ////////////////////////////////////////////////////////////////////////////////
 
-Query* QueryRegistry::open (TRI_vocbase_t* vocbase, QueryId id) {
+Query* QueryRegistry::open (TRI_vocbase_t* vocbase, 
+                            QueryId id) {
 
   WRITE_LOCKER(_lock);
 
-  auto m = _queries.find(vocbase);
+  auto m = _queries.find(vocbase->_name);
   if (m == _queries.end()) {
-    m = _queries.emplace(vocbase, std::unordered_map<QueryId, QueryInfo*>()).first;
+    m = _queries.emplace(vocbase->_name, std::unordered_map<QueryId, QueryInfo*>()).first;
   }
   auto q = m->second.find(id);
   if (q == m->second.end()) {
@@ -130,9 +138,12 @@ Query* QueryRegistry::open (TRI_vocbase_t* vocbase, QueryId id) {
 
   // A query that is being opened must register its transaction
   // with the current context:
-  qi->_query->trx()->registerTransactionWithContext();
-  // Also, we need to count up the debugging counters for transactions:
-  triagens::arango::TransactionBase::increaseNumbers(1, 1);
+
+  if (qi->_query->part() == PART_MAIN) {
+    qi->_query->trx()->registerTransactionWithContext();
+    // Also, we need to count up the debugging counters for transactions:
+    triagens::arango::TransactionBase::increaseNumbers(1, 1);
+  }
 
   return qi->_query;
 }
@@ -145,9 +156,9 @@ void QueryRegistry::close (TRI_vocbase_t* vocbase, QueryId id, double ttl) {
 
   WRITE_LOCKER(_lock);
 
-  auto m = _queries.find(vocbase);
+  auto m = _queries.find(vocbase->_name);
   if (m == _queries.end()) {
-    m = _queries.emplace(vocbase, std::unordered_map<QueryId, QueryInfo*>()).first;
+    m = _queries.emplace(vocbase->_name, std::unordered_map<QueryId, QueryInfo*>()).first;
   }
   auto q = m->second.find(id);
   if (q == m->second.end()) {
@@ -162,9 +173,11 @@ void QueryRegistry::close (TRI_vocbase_t* vocbase, QueryId id, double ttl) {
 
   // A query that is being closed must unregister its transaction
   // with the current context:
-  qi->_query->trx()->unregisterTransactionWithContext();
-  // Also, we need to count down the debugging counters for transactions:
-  triagens::arango::TransactionBase::increaseNumbers(1, 1);
+  if (qi->_query->part() == PART_MAIN) {
+    qi->_query->trx()->unregisterTransactionWithContext();
+    // Also, we need to count down the debugging counters for transactions:
+    triagens::arango::TransactionBase::increaseNumbers(1, 1);
+  }
 
   qi->_isOpen = false;
   qi->_expires = TRI_microtime() + qi->_timeToLive;
@@ -174,7 +187,7 @@ void QueryRegistry::close (TRI_vocbase_t* vocbase, QueryId id, double ttl) {
 /// @brief destroy
 ////////////////////////////////////////////////////////////////////////////////
 
-void QueryRegistry::destroy (TRI_vocbase_t* vocbase, QueryId id) {
+void QueryRegistry::destroy (std::string const& vocbase, QueryId id) {
   WRITE_LOCKER(_lock);
 
   auto m = _queries.find(vocbase);
@@ -192,9 +205,11 @@ void QueryRegistry::destroy (TRI_vocbase_t* vocbase, QueryId id) {
   // to register the transaction with the current context and adjust
   // the debugging counters for transactions:
   if (! qi->_isOpen) {
-    qi->_query->trx()->registerTransactionWithContext();
-    // Also, we need to count down the debugging counters for transactions:
-    triagens::arango::TransactionBase::increaseNumbers(1, 1);
+    if (qi->_query->part() == PART_MAIN) {
+      qi->_query->trx()->registerTransactionWithContext();
+      // Also, we need to count down the debugging counters for transactions:
+      triagens::arango::TransactionBase::increaseNumbers(1, 1);
+    }
   }
 
   // Now we can delete it:
@@ -206,11 +221,19 @@ void QueryRegistry::destroy (TRI_vocbase_t* vocbase, QueryId id) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy
+////////////////////////////////////////////////////////////////////////////////
+
+void QueryRegistry::destroy (TRI_vocbase_t* vocbase, QueryId id) {
+  destroy(vocbase->_name, id);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief expireQueries
 ////////////////////////////////////////////////////////////////////////////////
 
 void QueryRegistry::expireQueries () {
-  std::vector<std::pair<TRI_vocbase_t*, QueryId>> toDelete;
+  std::vector<std::pair<std::string, QueryId>> toDelete;
   {
     WRITE_LOCKER(_lock);
     double now = TRI_microtime();

@@ -195,7 +195,6 @@ namespace triagens {
 
         bool findQuery (std::string const& idString,
                         QueryId& qId,
-                        TRI_vocbase_t*& vocbase,
                         Query*& query);
 
 ////////////////////////////////////////////////////////////////////////////////
