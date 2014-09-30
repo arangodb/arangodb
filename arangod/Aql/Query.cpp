@@ -146,6 +146,8 @@ Query::Query (TRI_vocbase_t* vocbase,
   
   _ast = new Ast(this);
 
+  _nodes.reserve(32);
+
   _strings.reserve(32);
 }
 
@@ -175,6 +177,8 @@ Query::Query (TRI_vocbase_t* vocbase,
     _profile = new Profile;
   }
   enterState(INITIALIZATION);
+
+  _nodes.reserve(32);
 
   _ast = new Ast(this);
   _strings.reserve(32);
@@ -210,6 +214,30 @@ Query::~Query () {
   for (auto it = _strings.begin(); it != _strings.end(); ++it) {
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, const_cast<char*>(*it));
   }
+  // free nodes
+  for (auto it = _nodes.begin(); it != _nodes.end(); ++it) {
+    delete (*it);
+  }
+}
+
+
+Query *Query::clone() {
+  Query *theClone = new Query(_vocbase,
+                              _queryString,
+                              _queryLength,
+                              nullptr,
+                              _options);
+
+  return theClone;
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a node to the list of nodes
+////////////////////////////////////////////////////////////////////////////////
+
+void Query::addNode (AstNode* node) {
+  _nodes.push_back(node);
 }
 
 // -----------------------------------------------------------------------------

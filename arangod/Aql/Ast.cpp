@@ -71,7 +71,6 @@ std::unordered_map<int, AstNodeType> const Ast::ReverseOperators{
 
 Ast::Ast (Query* query)
   : _query(query),
-    _nodes(),
     _scopes(),
     _variables(),
     _bindParameters(),
@@ -80,8 +79,6 @@ Ast::Ast (Query* query)
     _writeCollection(nullptr) {
 
   TRI_ASSERT(_query != nullptr);
-
-  _nodes.reserve(32);
 
   startSubQuery();
 
@@ -93,10 +90,6 @@ Ast::Ast (Query* query)
 ////////////////////////////////////////////////////////////////////////////////
 
 Ast::~Ast () {
-  // free nodes
-  for (auto it = _nodes.begin(); it != _nodes.end(); ++it) {
-    delete (*it);
-  }
 }
 
 // -----------------------------------------------------------------------------
@@ -985,14 +978,6 @@ std::unordered_set<Variable*> Ast::getReferencedVariables (AstNode const* node) 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add a node to the list of nodes
-////////////////////////////////////////////////////////////////////////////////
-
-void Ast::addNode (AstNode* node) {
-  _nodes.push_back(node);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief recursively clone a node
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1677,7 +1662,7 @@ AstNode* Ast::createNode (AstNodeType type) {
   auto node = new AstNode(type);
 
   try {
-    addNode(node);
+    _query->addNode(node);
   }
   catch (...) {
     delete node;

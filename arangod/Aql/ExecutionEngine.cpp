@@ -314,6 +314,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         TRI_ASSERT(engine != nullptr);
 
         if ((*it).id > 0) {
+          Query *otherQuery = query->clone();
+
           // we need to instanciate this engine in the registry
 
           // create a remote id for the engine that we can pass to
@@ -322,7 +324,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
          
           // TODO: check if we can register the same query object multiple times
           // or if we need to clone it
-          queryRegistry->insert(query->vocbase(), id, query, 3600.0);
+          queryRegistry->insert(otherQuery->vocbase(), id, otherQuery, 3600.0);
         }
       }
       else {
@@ -362,6 +364,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
     TRI_ASSERT(collection != nullptr);
     QueryId remoteId = TRI_NewTickServer();
+
+
+    
 
     // now send the plan to the remote servers
     auto cc = triagens::arango::ClusterComm::instance();
