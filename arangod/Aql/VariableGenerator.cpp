@@ -129,6 +129,21 @@ Variable* VariableGenerator::createVariable (std::string const& name,
   return variable;
 }
 
+Variable* VariableGenerator::createVariable (Variable const* Original) {
+  auto variable = Original->clone();
+  
+  try {
+    _variables.emplace(std::make_pair(variable->id, variable));
+  }
+  catch (...) {
+    // prevent memleak
+    delete variable;
+    throw;
+  }
+
+  return variable;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate a variable from JSON
 ////////////////////////////////////////////////////////////////////////////////
