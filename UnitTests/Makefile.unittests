@@ -632,12 +632,12 @@ unittests-shell-client-readonly:
 	@echo
 
 SHELL_CLIENT_ONLY = \
-               @top_srcdir@/js/client/tests/shell-download.js \
+	       @top_srcdir@/js/client/tests/shell-download.js \
 	       @top_srcdir@/js/client/tests/shell-endpoints.js \
 	       @top_srcdir@/js/client/tests/shell-fm.js \
 	       @top_srcdir@/js/client/tests/shell-client.js
 
-SHELL_CLIENT = $(SHELL_CLIENT_ONLY)
+SHELL_CLIENT = $(SHELL_COMMON)
 
 .PHONY: unittests-shell-client
 UNITTESTS_CLIENT = $(addprefix --javascript.unit-tests ,$(SHELL_CLIENT))
