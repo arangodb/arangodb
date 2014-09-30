@@ -167,7 +167,6 @@ function startInstance (protocol, options, addArgs, testname) {
   var pos;
   var dispatcher;
   if (options.cluster) {
-    // FIXME: valgrind currently ignored!
     dispatcher = {"endpoint":"tcp://localhost:",
                   "arangodExtraArgs":makeTestingArgs(),
                   "username": "root",
@@ -223,7 +222,8 @@ function startInstance (protocol, options, addArgs, testname) {
     if (typeof(options.valgrind) === 'string') {
       var run = fs.join("bin","arangod");
       var valgrindopts = options.valgrindargs.concat(
-        ["--xml-file="+options.valgrindXmlFileBase + '_' + testname + '%p.xml']);
+        ["--xml-file="+options.valgrindXmlFileBase + '_' + testname + '.%p.xml',
+         "--log-file="+options.valgrindXmlFileBase + '_' + testname + '.%p.valgrind.log']);
       var newargs=valgrindopts.concat([run]).concat(args);      
       var cmdline = options.valgrind;
       instanceInfo.pid = executeExternal(cmdline, newargs);
