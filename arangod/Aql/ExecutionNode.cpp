@@ -429,6 +429,231 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
   return json;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief staticAnalysis
+////////////////////////////////////////////////////////////////////////////////
+
+void ExecutionNode::staticAnalysis (ExecutionNode* super) {
+  // The super is only for the case of subqueries.
+  shared_ptr<VarOverview> v;
+  if (super == nullptr) {
+    v.reset(new VarOverview());
+  }
+  else {
+    v.reset(new VarOverview(*(super->_varOverview), super->_depth));
+  }
+  v->setSharedPtr(&v);
+  walk(v.get());
+  // Now handle the subqueries:
+  for (auto s : v->subQueryNodes) {
+    auto sq = static_cast<SubqueryNode*>(s);
+    sq->getSubquery()->staticAnalysis(s);
+  }
+  v->reset();
+
+  // Just for debugging:
+  /*
+  std::cout << std::endl;
+  StaticAnalysisDebugger debugger;
+  walk(&debugger);
+  std::cout << std::endl;
+  */
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                 struct ExecutionNode::VarOverview
+// -----------------------------------------------------------------------------
+
+// Copy constructor used for a subquery:
+ExecutionNode::VarOverview::VarOverview (VarOverview const& v,
+                                         unsigned int newdepth)
+  : varInfo(v.varInfo),
+    nrRegsHere(v.nrRegsHere),
+    nrRegs(v.nrRegs),
+    subQueryNodes(),
+    depth(newdepth+1),
+    totalNrRegs(v.nrRegs[newdepth]),
+    me(nullptr) {
+  nrRegs.resize(depth);
+  nrRegsHere.resize(depth);
+  nrRegsHere.push_back(0);
+  nrRegs.push_back(nrRegs.back());
+}
+
+void ExecutionNode::VarOverview::after (ExecutionNode *eb) {
+  switch (eb->getType()) {
+    case ExecutionNode::ENUMERATE_COLLECTION: 
+    case ExecutionNode::INDEX_RANGE: {
+      depth++;
+      nrRegsHere.push_back(1);
+      nrRegs.push_back(1 + nrRegs.back());
+      auto ep = static_cast<EnumerateCollectionNode const*>(eb);
+      TRI_ASSERT(ep != nullptr);
+      varInfo.insert(make_pair(ep->_outVariable->id,
+                               VarInfo(depth, totalNrRegs)));
+      totalNrRegs++;
+      break;
+    }
+    case ExecutionNode::ENUMERATE_LIST: {
+      depth++;
+      nrRegsHere.push_back(1);
+      nrRegs.push_back(1 + nrRegs.back());
+      auto ep = static_cast<EnumerateListNode const*>(eb);
+      TRI_ASSERT(ep != nullptr);
+      varInfo.insert(make_pair(ep->_outVariable->id,
+                               VarInfo(depth, totalNrRegs)));
+      totalNrRegs++;
+      break;
+    }
+    case ExecutionNode::CALCULATION: {
+      nrRegsHere[depth]++;
+      nrRegs[depth]++;
+      auto ep = static_cast<CalculationNode const*>(eb);
+      TRI_ASSERT(ep != nullptr);
+      varInfo.insert(make_pair(ep->_outVariable->id,
+                               VarInfo(depth, totalNrRegs)));
+      totalNrRegs++;
+      break;
+    }
+
+    case ExecutionNode::SUBQUERY: {
+      nrRegsHere[depth]++;
+      nrRegs[depth]++;
+      auto ep = static_cast<SubqueryNode const*>(eb);
+      TRI_ASSERT(ep != nullptr);
+      varInfo.insert(make_pair(ep->_outVariable->id,
+                               VarInfo(depth, totalNrRegs)));
+      totalNrRegs++;
+      subQueryNodes.push_back(eb);
+      break;
+    }
+
+    case ExecutionNode::AGGREGATE: {
+      depth++;
+      nrRegsHere.push_back(0);
+      nrRegs.push_back(nrRegs.back());
+
+      auto ep = static_cast<AggregateNode const*>(eb);
+      for (auto p : ep->_aggregateVariables) {
+        // p is std::pair<Variable const*,Variable const*>
+        // and the first is the to be assigned output variable
+        // for which we need to create a register in the current
+        // frame:
+        nrRegsHere[depth]++;
+        nrRegs[depth]++;
+        varInfo.insert(make_pair(p.first->id,
+                                 VarInfo(depth, totalNrRegs)));
+        totalNrRegs++;
+      }
+      if (ep->_outVariable != nullptr) {
+        nrRegsHere[depth]++;
+        nrRegs[depth]++;
+        varInfo.insert(make_pair(ep->_outVariable->id,
+                                 VarInfo(depth, totalNrRegs)));
+        totalNrRegs++;
+      }
+      break;
+    }
+
+    case ExecutionNode::SORT: {
+      // sort sorts in place and does not produce new registers
+      break;
+    }
+    
+    case ExecutionNode::RETURN: {
+      // return is special. it produces a result but is the last step in the pipeline
+      break;
+    }
+
+    case ExecutionNode::REMOVE: {
+      auto ep = static_cast<RemoveNode const*>(eb);
+      if (ep->_outVariable != nullptr) {
+        nrRegsHere[depth]++;
+        nrRegs[depth]++;
+        varInfo.insert(make_pair(ep->_outVariable->id,
+                                 VarInfo(depth, totalNrRegs)));
+        totalNrRegs++;
+      }
+      break;
+    }
+
+    case ExecutionNode::INSERT: {
+      auto ep = static_cast<InsertNode const*>(eb);
+      if (ep->_outVariable != nullptr) {
+        nrRegsHere[depth]++;
+        nrRegs[depth]++;
+        varInfo.insert(make_pair(ep->_outVariable->id,
+                                 VarInfo(depth, totalNrRegs)));
+        totalNrRegs++;
+      }
+      break;
+    }
+
+    case ExecutionNode::UPDATE: {
+      auto ep = static_cast<UpdateNode const*>(eb);
+      if (ep->_outVariable != nullptr) {
+        nrRegsHere[depth]++;
+        nrRegs[depth]++;
+        varInfo.insert(make_pair(ep->_outVariable->id,
+                                 VarInfo(depth, totalNrRegs)));
+        totalNrRegs++;
+      }
+      break;
+    }
+
+    case ExecutionNode::REPLACE: {
+      auto ep = static_cast<ReplaceNode const*>(eb);
+      if (ep->_outVariable != nullptr) {
+        nrRegsHere[depth]++;
+        nrRegs[depth]++;
+        varInfo.insert(make_pair(ep->_outVariable->id,
+                                 VarInfo(depth, totalNrRegs)));
+        totalNrRegs++;
+      }
+      break;
+    }
+
+    case ExecutionNode::SINGLETON:
+    case ExecutionNode::FILTER:
+    case ExecutionNode::LIMIT:
+    case ExecutionNode::SCATTER: 
+    case ExecutionNode::GATHER: 
+    case ExecutionNode::REMOTE: 
+    case ExecutionNode::NORESULTS: {
+      // these node types do not produce any new registers
+      break;
+    }
+
+    case ExecutionNode::ILLEGAL: {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "node type not implemented");
+    }
+  }
+
+  eb->_depth = depth;
+  eb->_varOverview = *me;
+
+  // Now find out which registers ought to be erased after this node:
+  if (eb->getType() != ExecutionNode::RETURN) {
+    // ReturnNodes are special, since they return a single column anyway
+    std::unordered_set<Variable const*> const& varsUsedLater = eb->getVarsUsedLater();
+    std::vector<Variable const*> const& varsUsedHere = eb->getVariablesUsedHere();
+    
+    // We need to delete those variables that have been used here but are not
+    // used any more later:
+    std::unordered_set<RegisterId> regsToClear;
+    for (auto v : varsUsedHere) {
+      auto it = varsUsedLater.find(v);
+      if (it == varsUsedLater.end()) {
+        auto it2 = varInfo.find(v->id);
+        TRI_ASSERT(it2 != varInfo.end());
+        RegisterId r = it2->second.registerId;
+        regsToClear.insert(r);
+      }
+    }
+    eb->setRegsToClear(regsToClear);
+  }
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                          methods of SingletonNode
 // -----------------------------------------------------------------------------

@@ -242,7 +242,7 @@ void AqlItemBlock::shrink (size_t nrItems) {
 /// necessary, using the reference count.
 ////////////////////////////////////////////////////////////////////////////////
 
-void AqlItemBlock::clearRegisters (std::unordered_set<RegisterId>& toClear) {
+void AqlItemBlock::clearRegisters (std::unordered_set<RegisterId> const& toClear) {
   for (auto reg : toClear) {
     for (size_t i = 0; i < _nrItems; i++) {
       AqlValue& a(_data[_nrRegs * i + reg]);
