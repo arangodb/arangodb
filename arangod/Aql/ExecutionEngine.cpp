@@ -315,9 +315,43 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         TRI_ASSERT(engine != nullptr);
 
         if ((*it).id > 0) {
-          Query* otherQuery = query->clone(PART_DEPENDENT);
+          Query *otherQuery = query->clone(PART_DEPENDENT);
           otherQuery->trx(trx);
           otherQuery->engine(engine);
+
+          auto *newPlan = new ExecutionPlan(otherQuery->ast());
+          otherQuery->setPlan(newPlan);
+
+          ExecutionNode const* current = (*it).nodes.front();
+          ExecutionNode* previous = nullptr;
+
+          // clone nodes until we reach a remote node
+          while (current != nullptr) {
+            bool stop = false;
+
+            auto clone = current->clone(newPlan, false, true);
+            newPlan->registerNode(clone);
+        
+            if (previous == nullptr) {
+              // set the root node
+              newPlan->root(clone);
+            }
+            else {
+              previous->addDependency(clone);
+            }
+
+            auto const& deps = current->getDependencies();
+            if (deps.size() != 1) {
+              stop = true;
+            }
+
+            if (stop) {
+              break;
+            }
+
+            previous = clone;
+            current = deps[0];
+          }
 
           // we need to instanciate this engine in the registry
 
@@ -392,7 +426,7 @@ std::cout << "REGISTERING QUERY ON COORDINATOR WITH ID: " << id << "\n";
       while (current != nullptr) {
         bool stop = false;
 
-        auto clone = current->clone(&plan, false);
+        auto clone = current->clone(&plan, false, false);
         plan.registerNode(clone);
         
         if (current->getType() == ExecutionNode::REMOTE) {
@@ -410,8 +444,7 @@ std::cout << "REGISTERING QUERY ON COORDINATOR WITH ID: " << id << "\n";
           // set the root node
           plan.root(clone);
         }
-
-        if (previous != nullptr) {
+        else {
           previous->addDependency(clone);
         }
 

@@ -241,6 +241,10 @@ Query* Query::clone (QueryPart part) {
                               _options,
                               part);
 
+  if (_plan != nullptr) {
+    theClone->_plan = _plan->clone(*theClone);
+  }
+
   return theClone;
 }
 
@@ -862,6 +866,17 @@ void Query::cleanupPlanAndEngine () {
     delete _plan;
     _plan = nullptr;
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the plan for the query
+////////////////////////////////////////////////////////////////////////////////
+
+void Query::setPlan (ExecutionPlan *plan) {
+  if (_plan != nullptr) {
+    delete _plan;
+  }
+  _plan = plan;
 }
 
 // -----------------------------------------------------------------------------
