@@ -690,6 +690,7 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
                                                        Query* query,
                                                        ExecutionPlan* plan) {
   ExecutionEngine* engine = nullptr;
+  plan->staticAnalysis();
 
   try {
     if (! plan->varUsageComputed()) {
@@ -716,7 +717,6 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
     }
 
     TRI_ASSERT(root != nullptr);
-    root->staticAnalysis();
     root->initialize();
     root->initializeCursor(nullptr, 0);
 
