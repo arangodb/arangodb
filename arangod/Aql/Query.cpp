@@ -139,7 +139,6 @@ Query::Query (TRI_vocbase_t* vocbase,
     _engine(nullptr),
     _part(part) {
 
-std::cout << "CREATING QUERY " << this << ", PART: " << (part == PART_MAIN ? "main" : "dependent") << "\n";
   TRI_ASSERT(_vocbase != nullptr);
 
   if (profiling()) {
@@ -844,7 +843,6 @@ std::string Query::getStateString () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Query::cleanupPlanAndEngine () {
-  std::cout << "CLEANUP PLAN AND ENGINE FOR TRX: " << this << ", PART: " << (_part == PART_MAIN ? "main" : "dependent") << "\n";
   if (_engine != nullptr) {
     delete _engine;
     _engine = nullptr;
