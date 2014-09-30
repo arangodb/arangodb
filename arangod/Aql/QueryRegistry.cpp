@@ -75,6 +75,8 @@ void QueryRegistry::insert (TRI_vocbase_t* vocbase,
                             Query* query,
                             double ttl) {
 
+  TRI_ASSERT(query->trx() != nullptr);
+
   WRITE_LOCKER(_lock);
 
   auto m = _queries.find(vocbase);

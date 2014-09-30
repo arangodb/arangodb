@@ -308,8 +308,8 @@ BAD_CALL:
 
 int RestReplicationHandler::sortCollections (const void* l,
                                              const void* r) {
-  TRI_json_t const* left  = JsonHelper::getArrayElement((TRI_json_t const*) l, "parameters");
-  TRI_json_t const* right = JsonHelper::getArrayElement((TRI_json_t const*) r, "parameters");
+  TRI_json_t const* left  = JsonHelper::getArrayElement(static_cast<TRI_json_t const*>(l), "parameters");
+  TRI_json_t const* right = JsonHelper::getArrayElement(static_cast<TRI_json_t const*>(r), "parameters");
 
   int leftType  = JsonHelper::getNumericValue<int>(left,  "type", (int) TRI_COL_TYPE_DOCUMENT);
   int rightType = JsonHelper::getNumericValue<int>(right, "type", (int) TRI_COL_TYPE_DOCUMENT);
@@ -2148,8 +2148,8 @@ int RestReplicationHandler::processRestoreIndexesCoordinator (
 
   int res = TRI_ERROR_NO_ERROR;
   for (size_t i = 0; i < n; ++i) {
-    TRI_json_t const* idxDef = (TRI_json_t const*) TRI_AtVector(&indexes->_value._objects, i);
-    TRI_json_t* res_json = 0;
+    TRI_json_t const* idxDef = static_cast<TRI_json_t const*>(TRI_AtVector(&indexes->_value._objects, i));
+    TRI_json_t* res_json = nullptr;
     res = ci->ensureIndexCoordinator(dbName, col->id_as_string(), idxDef,
                      true, IndexComparator, res_json, errorMsg, 3600.0);
     if (res != TRI_ERROR_NO_ERROR) {
@@ -2340,7 +2340,7 @@ int RestReplicationHandler::processRestoreDataBatch (CollectionNameResolver cons
       const size_t n = json->_value._objects._length;
 
       for (size_t i = 0; i < n; i += 2) {
-        TRI_json_t const* element = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i);
+        TRI_json_t const* element = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
 
         if (! JsonHelper::isString(element)) {
           TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
@@ -2350,7 +2350,7 @@ int RestReplicationHandler::processRestoreDataBatch (CollectionNameResolver cons
         }
 
         const char* attributeName = element->_value._string.data;
-        TRI_json_t const* value = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i + 1);
+        TRI_json_t const* value = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i + 1));
 
         if (TRI_EqualString(attributeName, "type")) {
           if (JsonHelper::isNumber(value)) {
@@ -2576,8 +2576,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
       const size_t n = json->_value._objects._length;
 
       for (size_t i = 0; i < n; i += 2) {
-        TRI_json_t const* element
-            = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i);
+        TRI_json_t const* element = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
 
         if (! JsonHelper::isString(element)) {
           TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
@@ -2588,7 +2587,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
         }
 
         const char* attributeName = element->_value._string.data;
-        TRI_json_t const* value = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i + 1);
+        TRI_json_t const* value = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i + 1));
 
         if (TRI_EqualString(attributeName, "type")) {
           if (JsonHelper::isNumber(value)) {
@@ -3148,7 +3147,7 @@ void RestReplicationHandler::handleCommandSync () {
     const size_t n = restriction->_value._objects._length;
 
     for (i = 0; i < n; ++i) {
-      TRI_json_t const* cname = (TRI_json_t const*) TRI_AtVector(&restriction->_value._objects, i);
+      TRI_json_t const* cname = static_cast<TRI_json_t const*>(TRI_AtVector(&restriction->_value._objects, i));
 
       if (JsonHelper::isString(cname)) {
         restrictCollections.insert(pair<string, bool>(string(cname->_value._string.data, cname->_value._string.length - 1), true));

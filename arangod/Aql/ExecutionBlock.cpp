@@ -1543,7 +1543,6 @@ void IndexRangeBlock::readSkiplistIndex (IndexOrCondition const& ranges) {
   }
 }
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                          class EnumerateListBlock
 // -----------------------------------------------------------------------------
@@ -4088,7 +4087,7 @@ ClusterCommResult* RemoteBlock::sendRequest (
                          _server,
                          type,
                          std::string("/_db/") 
-                           + _engine->getTransaction()->vocbase()->_name
+                           + triagens::basics::StringUtils::urlEncode(_engine->getTransaction()->vocbase()->_name)
                            + urlPart + _queryId,
                          body,
                          headers,
@@ -4117,8 +4116,16 @@ int RemoteBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   // For every call we simply forward via HTTP
 
   Json body(Json::Array, 2);
-  body("pos", Json(static_cast<double>(pos)))
-      ("items", items->toJson(_engine->getTransaction()));
+  if (items == nullptr) {
+    // first call, items is still a nullptr
+    body("exhausted", Json(true))
+        ("error", Json(false));
+  }
+  else {
+    body("pos", Json(static_cast<double>(pos)))
+        ("items", items->toJson(_engine->getTransaction()));
+  }
+
   std::string bodyString(body.toString());
 
   std::unique_ptr<ClusterCommResult> res;

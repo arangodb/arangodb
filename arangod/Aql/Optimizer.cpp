@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Optimizer.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/OptimizerRules.h"
 #include "Cluster/ServerState.h"
 
@@ -447,7 +448,7 @@ void Optimizer::setupRules () {
                useIndexForSort_pass6,
                true);
 
-  if (triagens::arango::ServerState::instance()->isCoordinator()) {
+  if (ExecutionEngine::isCoordinator()) {
     // distribute operations in cluster
     registerRule("distribute-in-cluster",
                  distributeInCluster,

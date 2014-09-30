@@ -333,7 +333,8 @@ namespace triagens {
 /// @brief clone execution Node recursively, this makes the class abstract
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan) const = 0;   
+        virtual ExecutionNode* clone (ExecutionPlan* plan,
+                                      bool withDependencies) const = 0;   
           // make class abstract
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -344,7 +345,7 @@ namespace triagens {
                                 ExecutionNode* theClone) const {
           auto it = _dependencies.begin();
           while (it != _dependencies.end()) {
-            auto c = (*it)->clone(plan);
+            auto c = (*it)->clone(plan, true);
             try {
               c->_parents.push_back(theClone);
               theClone->_dependencies.push_back(c);
@@ -633,9 +634,12 @@ namespace triagens {
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan) const {
+        virtual ExecutionNode* clone (ExecutionPlan* plan,
+                                      bool withDependencies) const {
           auto c = new SingletonNode(plan, _id);
-          cloneDependencies(plan, c);
+          if (withDependencies) {
+            cloneDependencies(plan, c);
+          }
           return static_cast<ExecutionNode*>(c);
         }
 
@@ -705,9 +709,12 @@ namespace triagens {
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan) const {
+        virtual ExecutionNode* clone (ExecutionPlan* plan,
+                                      bool withDependencies) const {
           auto c = new EnumerateCollectionNode(plan, _id, _vocbase, _collection, _outVariable);
-          cloneDependencies(plan, c);
+          if (withDependencies) {
+            cloneDependencies(plan, c);
+          }
           return static_cast<ExecutionNode*>(c);
         }
 
@@ -858,9 +865,12 @@ namespace triagens {
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan) const {
+        virtual ExecutionNode* clone (ExecutionPlan* plan,
+                                      bool withDependencies) const {
           auto c = new EnumerateListNode(plan, _id, _inVariable, _outVariable);
-          cloneDependencies(plan, c);
+          if (withDependencies) {
+            cloneDependencies(plan, c);
+          }
           return static_cast<ExecutionNode*>(c);
         }
 
@@ -993,7 +1003,8 @@ namespace triagens {
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan) const {
+        virtual ExecutionNode* clone (ExecutionPlan* plan,
+                                      bool withDependencies) const {
           std::vector<std::vector<RangeInfo>> ranges;
           for (size_t i = 0; i < _ranges.size(); i++){
             ranges.push_back(std::vector<RangeInfo>());
@@ -1004,7 +1015,9 @@ namespace triagens {
           }
           auto c = new IndexRangeNode(plan, _id, _vocbase, _collection, 
                                       _outVariable, _index, ranges, _reverse);
-          cloneDependencies(plan, c);
+          if (withDependencies) {
+            cloneDependencies(plan, c);
+          }
           return static_cast<ExecutionNode*>(c);
         }
 
@@ -1145,9 +1158,12 @@ namespace triagens {
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan) const {
+        virtual ExecutionNode* clone (ExecutionPlan* plan,
+                                      bool withDependencies) const {
           auto c = new LimitNode(plan, _id, _offset, _limit);
-          cloneDependencies(plan, c);
+          if (withDependencies) {
+            cloneDependencies(plan, c);
+          }
           return static_cast<ExecutionNode*>(c);
         }
 
@@ -1236,10 +1252,13 @@ namespace triagens {
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan) const {
+        virtual ExecutionNode* clone (ExecutionPlan* plan,
+                                      bool withDependencies) const {
           auto c = new CalculationNode(plan, _id, _expression->clone(),
                                        _outVariable);
-          cloneDependencies(plan, c);
+          if (withDependencies) {
+            cloneDependencies(plan, c);
+          }
           return static_cast<ExecutionNode*>(c);
         }
 
@@ -1374,10 +1393,13 @@ namespace triagens {
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan) const {
-          auto c = new SubqueryNode(plan, _id, _subquery->clone(plan), 
+        virtual ExecutionNode* clone (ExecutionPlan* plan,
+                                      bool withDependencies) const {
+          auto c = new SubqueryNode(plan, _id, _subquery->clone(plan, true), 
                                     _outVariable);
-          cloneDependencies(plan, c);
+          if (withDependencies) {
+            cloneDependencies(plan, c);
+          }
           return static_cast<ExecutionNode*>(c);
         }
 
@@ -1504,9 +1526,12 @@ namespace triagens {
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan) const {
+        virtual ExecutionNode* clone (ExecutionPlan* plan,
+                                      bool withDependencies) const {
           auto c = new FilterNode(plan, _id, _inVariable);
-          cloneDependencies(plan, c);
+          if (withDependencies) {
+            cloneDependencies(plan, c);
+          }
           return static_cast<ExecutionNode*>(c);
         }
 
@@ -1661,9 +1686,12 @@ namespace triagens {
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan) const {
+        virtual ExecutionNode* clone (ExecutionPlan* plan,
+                                      bool withDependencies) const {
           auto c = new SortNode(plan, _id, _elements, _stable);
-          cloneDependencies(plan, c);
+          if (withDependencies) {
+            cloneDependencies(plan, c);
+          }
           return static_cast<ExecutionNode*>(c);
         }
 
@@ -1789,9 +1817,12 @@ namespace triagens {
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan) const {
+        virtual ExecutionNode* clone (ExecutionPlan* plan,
+                                      bool withDependencies) const {
           auto c = new AggregateNode(plan, _id, _aggregateVariables, _outVariable, _variableMap);
-          cloneDependencies(plan, c);
+          if (withDependencies) {
+            cloneDependencies(plan, c);
+          }
           return static_cast<ExecutionNode*>(c);
         }
 
@@ -1911,9 +1942,12 @@ namespace triagens {
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan) const {
+        virtual ExecutionNode* clone (ExecutionPlan* plan,
+                                      bool withDependencies) const {
           auto c = new ReturnNode(plan, _id, _inVariable);
-          cloneDependencies(plan, c);
+          if (withDependencies) {
+            cloneDependencies(plan, c);
+          }
           return static_cast<ExecutionNode*>(c);
         }
 
@@ -2099,9 +2133,12 @@ namespace triagens {
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan) const {
+        virtual ExecutionNode* clone (ExecutionPlan* plan,
+                                      bool withDependencies) const {
           auto c = new RemoveNode(plan, _id, _vocbase, _collection, _options, _inVariable, _outVariable);
-          cloneDependencies(plan, c);
+          if (withDependencies) {
+            cloneDependencies(plan, c);
+          }
           return static_cast<ExecutionNode*>(c);
         }
 
@@ -2213,10 +2250,13 @@ namespace triagens {
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan) const {
+        virtual ExecutionNode* clone (ExecutionPlan* plan,
+                                      bool withDependencies) const {
           auto c = new InsertNode(plan, _id, _vocbase, _collection,
                                   _options, _inVariable, _outVariable);
-          cloneDependencies(plan,c);
+          if (withDependencies) {
+            cloneDependencies(plan,c);
+          }
           return static_cast<ExecutionNode*>(c);
         }
 
@@ -2330,9 +2370,12 @@ namespace triagens {
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan) const {
+        virtual ExecutionNode* clone (ExecutionPlan* plan,
+                                      bool withDependencies) const {
           auto c = new UpdateNode(plan, _id, _vocbase, _collection, _options, _inDocVariable, _inKeyVariable, _outVariable);
-          cloneDependencies(plan, c);
+          if (withDependencies) {
+            cloneDependencies(plan, c);
+          }
           return static_cast<ExecutionNode*>(c);
         }
 
@@ -2456,11 +2499,14 @@ namespace triagens {
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan) const {
+        virtual ExecutionNode* clone (ExecutionPlan* plan,
+                                      bool withDependencies) const {
           auto c = new ReplaceNode(plan, _id, _vocbase, _collection, 
                                    _options, _inDocVariable, _inKeyVariable,
                                    _outVariable);
-          cloneDependencies(plan, c);
+          if (withDependencies) {
+            cloneDependencies(plan, c);
+          }
           return static_cast<ExecutionNode*>(c);
         }
 
@@ -2572,9 +2618,12 @@ namespace triagens {
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan) const {
+        virtual ExecutionNode* clone (ExecutionPlan* plan,
+                                      bool withDependencies) const {
           auto c = new NoResultsNode(plan, _id);
-          cloneDependencies(plan, c);
+          if (withDependencies) {
+            cloneDependencies(plan, c);
+          }
           return static_cast<ExecutionNode*>(c);
         }
 
@@ -2610,10 +2659,17 @@ namespace triagens {
         RemoteNode (ExecutionPlan* plan, 
                     size_t id,
                     TRI_vocbase_t* vocbase,
-                    Collection const* collection) 
+                    Collection const* collection,
+                    std::string const& server,
+                    std::string const& ownName,
+                    std::string const& queryId) 
           : ExecutionNode(plan, id),
             _vocbase(vocbase),
-            _collection(collection) {
+            _collection(collection),
+            _server(server),
+            _ownName(ownName),
+            _queryId(queryId) {
+          // note: server, ownName and queryId may be empty and filled later
         }
 
         RemoteNode (ExecutionPlan*, triagens::basics::Json const& base);
@@ -2638,9 +2694,12 @@ namespace triagens {
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan) const {
-          auto c = new RemoteNode(plan, _id, _vocbase, _collection);
-          cloneDependencies(plan, c);
+        virtual ExecutionNode* clone (ExecutionPlan* plan,
+                                      bool withDependencies) const {
+          auto c = new RemoteNode(plan, _id, _vocbase, _collection, _server, _ownName, _queryId);
+          if (withDependencies) {
+            cloneDependencies(plan, c);
+          }
           return static_cast<ExecutionNode*>(c);
         }
 
@@ -2673,6 +2732,62 @@ namespace triagens {
           return _collection;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the server name
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string server () const {
+          return _server;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the server name
+////////////////////////////////////////////////////////////////////////////////
+
+        void server (std::string const& server) {
+          _server = server;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return our own name
+////////////////////////////////////////////////////////////////////////////////
+        
+        std::string ownName () const {
+          return _ownName;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set our own name
+////////////////////////////////////////////////////////////////////////////////
+        
+        void ownName (std::string const& ownName) {
+          _ownName = ownName;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the query id
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string queryId () const {
+          return _queryId;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the query id
+////////////////////////////////////////////////////////////////////////////////
+
+        void queryId (std::string const& queryId) {
+          _queryId = queryId;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the query id
+////////////////////////////////////////////////////////////////////////////////
+
+        void queryId (QueryId queryId) {
+          _queryId = triagens::basics::StringUtils::itoa(queryId);
+        }
+
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2686,6 +2801,25 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         Collection const* _collection;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief our server, can be like "shard:S1000" or like "server:Claus"
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _server;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief our own identity, in case of the coordinator this is empty,
+/// in case of the DBservers, this is the shard ID as a string
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _ownName;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the ID of the query on the server as a string
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _queryId;
 
     };
 
@@ -2740,9 +2874,12 @@ namespace triagens {
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan) const {
+        virtual ExecutionNode* clone (ExecutionPlan* plan,
+                                      bool withDependencies) const {
           auto c = new ScatterNode(plan, _id, _vocbase, _collection);
-          cloneDependencies(plan, c);
+          if (withDependencies) {
+            cloneDependencies(plan, c);
+          }
           return static_cast<ExecutionNode*>(c);
         }
 
@@ -2838,9 +2975,12 @@ namespace triagens {
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan) const {
+        virtual ExecutionNode* clone (ExecutionPlan* plan,
+                                      bool withDependencies) const {
           auto c = new GatherNode(plan, _id, _vocbase, _collection);
-          cloneDependencies(plan, c);
+          if (withDependencies) {
+            cloneDependencies(plan, c);
+          }
           return static_cast<ExecutionNode*>(c);
         }
 

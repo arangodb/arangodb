@@ -58,6 +58,7 @@ namespace triagens {
                   struct TRI_vocbase_s* vocbase,
                   TRI_transaction_type_e accessType) 
         : name(name),
+          currentShard(),
           vocbase(vocbase),
           collection(nullptr),
           accessType(accessType) {
@@ -72,6 +73,22 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the current shard 
+////////////////////////////////////////////////////////////////////////////////
+
+      void setCurrentShard (std::string const& shard) {
+        currentShard = shard;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove the current shard
+////////////////////////////////////////////////////////////////////////////////
+      
+      void resetCurrentShard () {
+        currentShard = "";
+      }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the collection id
@@ -158,11 +175,36 @@ namespace triagens {
         return ids;
       }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the name of the collection, translated for the sharding
+/// case
+////////////////////////////////////////////////////////////////////////////////
+
+      std::string getName () const {
+        if (! currentShard.empty()) {
+          // sharding case: return the current shard name instead of the collection name
+          return currentShard;
+        }
+
+        // non-sharding case: simply return the name
+        return name;
+      }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+    
+    private:
+
+      std::string const       name;
+      std::string             currentShard;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables
 // -----------------------------------------------------------------------------
 
-      std::string const       name;
+    public:
+
       TRI_vocbase_t*          vocbase;
       TRI_vocbase_col_t*      collection;
       TRI_transaction_type_e  accessType;

@@ -36,6 +36,7 @@
 #include "arangod/Aql/ExecutionBlock.h"
 #include "arangod/Aql/ExecutionPlan.h"
 #include "arangod/Aql/ExecutionStats.h"
+#include "arangod/Aql/QueryRegistry.h"
 #include "Utils/AqlTransaction.h"
 
 namespace triagens {
@@ -73,10 +74,17 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
+// @brief whether or not we are a coordinator
+////////////////////////////////////////////////////////////////////////////////
+       
+        static bool isCoordinator ();
+
+////////////////////////////////////////////////////////////////////////////////
 // @brief create an execution engine from a plan
 ////////////////////////////////////////////////////////////////////////////////
 
-        static ExecutionEngine* instanciateFromPlan (AQL_TRANSACTION_V8*,
+        static ExecutionEngine* instanciateFromPlan (QueryRegistry*, 
+                                                     AQL_TRANSACTION_V8*,
                                                      Query*,
                                                      ExecutionPlan*);
 

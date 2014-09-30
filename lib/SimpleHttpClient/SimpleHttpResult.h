@@ -240,6 +240,7 @@ namespace triagens {
       std::string  _returnMessage;
       size_t       _contentLength;
       int          _returnCode;
+      bool         _foundHeader;
       bool         _hasContentLength;
       bool         _chunked;
       bool         _deflated;

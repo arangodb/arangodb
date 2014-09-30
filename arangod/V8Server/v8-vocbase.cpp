@@ -39,6 +39,7 @@
 #include "Ahuacatl/ahuacatl-result.h"
 #include "Ahuacatl/ahuacatl-explain.h"
 #include "Aql/Query.h"
+#include "Aql/QueryRegistry.h"
 #include "Basics/Utf8Helper.h"
 
 #include "Basics/conversions.h"
@@ -996,9 +997,10 @@ static v8::Handle<v8::Value> JS_ExecuteAqlJson (v8::Arguments const& argv) {
     options = TRI_ObjectToJson(argv[1]);
   }
 
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+
   triagens::aql::Query query(vocbase, Json(TRI_UNKNOWN_MEM_ZONE, queryjson), options);
-  
-  auto queryResult = query.execute();
+  auto queryResult = query.execute(static_cast<triagens::aql::QueryRegistry*>(v8g->_queryRegistry));
   
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_FULL(scope, queryResult.code, queryResult.details);
@@ -1130,11 +1132,12 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
 
     options = TRI_ObjectToJson(argv[2]);
   }
+      
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
 
   // bind parameters will be freed by the query later
   triagens::aql::Query query(vocbase, queryString.c_str(), queryString.size(), parameters, options);
-  
-  auto queryResult = query.execute();
+  auto queryResult = query.execute(static_cast<triagens::aql::QueryRegistry*>(v8g->_queryRegistry));
   
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_FULL(scope, queryResult.code, queryResult.details);
@@ -2482,15 +2485,19 @@ void TRI_V8ReloadRouting (v8::Handle<v8::Context> context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
+                          triagens::aql::QueryRegistry* queryRegistry,
                           TRI_server_t* server,
                           TRI_vocbase_t* vocbase,
                           JSLoader* loader,
-                          const size_t threadNumber) {
+                          size_t threadNumber) {
   v8::HandleScope scope;
 
   // check the isolate
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   TRI_v8_global_t* v8g = TRI_CreateV8Globals(isolate);
+
+  // register the query registry
+  v8g->_queryRegistry = queryRegistry;
 
   // register the server
   v8g->_server = server;

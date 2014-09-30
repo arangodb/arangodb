@@ -391,12 +391,19 @@ void ArangoServer::buildApplicationServer () {
   _applicationDispatcher->setApplicationScheduler(_applicationScheduler);
 
   _applicationServer->addFeature(_applicationScheduler);
+  
+  // ...........................................................................
+  // create QueryRegistry
+  // ...........................................................................
+
+  _queryRegistry = new aql::QueryRegistry();
 
   // .............................................................................
   // V8 engine
   // .............................................................................
 
   _applicationV8 = new ApplicationV8(_server,
+                                     _queryRegistry,
                                      _applicationScheduler,
                                      _applicationDispatcher);
 
@@ -838,11 +845,7 @@ int ArangoServer::startupServer () {
     _applicationV8->prepareServer();
   }
 
-  // ...........................................................................
-  // create QueryRegistry
-  // ...........................................................................
 
-  _queryRegistry = new aql::QueryRegistry();
   _pairForAql = new std::pair<ApplicationV8*, aql::QueryRegistry*>;
   _pairForAql->first = _applicationV8;
   _pairForAql->second = _queryRegistry;

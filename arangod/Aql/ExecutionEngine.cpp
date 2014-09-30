@@ -121,7 +121,12 @@ static ExecutionBlock* createBlock (ExecutionEngine* engine,
                              static_cast<GatherNode const*>(en));
     }
     case ExecutionNode::REMOTE: {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected node type 'remote'");
+      auto remote = static_cast<RemoteNode const*>(en);
+      return new RemoteBlock(engine,
+                             remote,
+                             remote->server(),
+                             remote->ownName(),
+                             remote->queryId());
     }
     case ExecutionNode::ILLEGAL: {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "illegal node type");
@@ -168,6 +173,14 @@ ExecutionEngine::~ExecutionEngine () {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// @brief whether or not we are a coordinator
+////////////////////////////////////////////////////////////////////////////////
+       
+bool ExecutionEngine::isCoordinator () {
+  return triagens::arango::ServerState::instance()->isCoordinator();
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                     walker class for ExecutionNode to instanciate
 // -----------------------------------------------------------------------------
@@ -202,8 +215,7 @@ struct Instanciator : public WalkerWorker<ExecutionNode> {
         nodeType == ExecutionNode::REPLACE) {
       root = eb;
     }
-    else if (nodeType == ExecutionNode::REMOTE ||
-             nodeType == ExecutionNode::SCATTER ||
+    else if (nodeType == ExecutionNode::SCATTER ||
              nodeType == ExecutionNode::GATHER) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "logic error, got cluster node in local query");
     }
@@ -222,6 +234,12 @@ struct Instanciator : public WalkerWorker<ExecutionNode> {
       auto it2 = cache.find(*it);
       TRI_ASSERT(it2 != cache.end());
       eb->addDependency(it2->second);
+    }
+
+    if (root == nullptr &&
+        en->getParents().empty()) {
+      // adjust the root node if none was set already
+      root = eb;
     }
 
     cache.emplace(std::make_pair(en, eb));
@@ -291,18 +309,17 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     for (auto it = engines.rbegin(); it != engines.rend(); ++it) {
       if ((*it).location == COORDINATOR) {
         // create a coordinator-based engine
-        engine = buildEngineCoordinator((*it));
+        engine = buildEngineCoordinator((*it), id);
 
         TRI_ASSERT(engine != nullptr);
 
         if ((*it).id > 0) {
           // we need to instanciate this engine in the registry
 
-          // create some fake remote id for the engine that we can pass to
-          // the plans to be created on the db-servers
+          // create a remote id for the engine that we can pass to
+          // the plans to be created for the DBServers
           id = TRI_NewTickServer();
-          
-          
+         
           // TODO: check if we can register the same query object multiple times
           // or if we need to clone it
           queryRegistry->insert(query->vocbase(), id, query, 3600.0);
@@ -311,7 +328,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       else {
         // create an engine on a remote DB server
         // hand in the previous engine's id
-        buildEngineDBServer((*it), id);
+        id = buildEngineDBServer((*it), id);
       }
     }
 
@@ -323,46 +340,108 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   }
 
 
-  void buildEngineDBServer (EngineInfo& info,
-                            QueryId connectedId) {
-    Collection const* collection = nullptr;
-
+  QueryId buildEngineDBServer (EngineInfo const& info,
+                               QueryId connectedId) {
+    Collection* collection = nullptr;
+     
     for (auto en = info.nodes.rbegin(); en != info.nodes.rend(); ++en) {
-      if ((*en)->getType() == ExecutionNode::REMOTE) {
-        // remove the node's dependencies so it becomes a terminal node
-        collection = static_cast<RemoteNode*>((*en))->collection();
-        (*en)->removeDependencies();
-        // we should only have one remote node
-        break;
+      // find the collection to be used 
+      if ((*en)->getType() == ExecutionNode::ENUMERATE_COLLECTION) {
+        collection = const_cast<Collection*>(static_cast<EnumerateCollectionNode*>((*en))->collection());
+      }
+      else if ((*en)->getType() == ExecutionNode::INDEX_RANGE) {
+        collection = const_cast<Collection*>(static_cast<IndexRangeNode*>((*en))->collection());
+      }
+      else if ((*en)->getType() == ExecutionNode::INSERT ||
+               (*en)->getType() == ExecutionNode::UPDATE ||
+               (*en)->getType() == ExecutionNode::REPLACE ||
+               (*en)->getType() == ExecutionNode::REMOVE) {
+        collection = const_cast<Collection*>(static_cast<ModificationNode*>((*en))->collection());
       }
     }
 
     TRI_ASSERT(collection != nullptr);
-  
-    // create a JSON representation of the plan
-    triagens::basics::Json result = info.nodes.front()->toJson(TRI_UNKNOWN_MEM_ZONE, true);
-    
-    // add the collection
-    triagens::basics::Json jsonCollectionList(triagens::basics::Json::List);
-    triagens::basics::Json json(triagens::basics::Json::Array);
-    jsonCollectionList(json("name", triagens::basics::Json(collection->name))
-                           ("type", triagens::basics::Json(TRI_TransactionTypeGetStr(collection->accessType))));
+    QueryId remoteId = TRI_NewTickServer();
 
-    result.set("collections", jsonCollectionList);
-
-    std::string const body(triagens::basics::JsonHelper::toString(result.json()));
-    
-    std::cout << "GENERATED A PLAN FOR THE REMOTE SERVERS: " << body << "\n";
-    
     // now send the plan to the remote servers
     auto cc = triagens::arango::ClusterComm::instance();
     TRI_ASSERT(cc != nullptr);
                              
-    std::string const url("/_db/" + triagens::basics::StringUtils::urlEncode(collection->vocbase->_name) + "/_api/aql/instanciate");
     triagens::arango::CoordTransactionID coordTransactionID = TRI_NewTickServer();
-
+    std::string const url("/_db/" + triagens::basics::StringUtils::urlEncode(collection->vocbase->_name) + 
+                          "/_api/aql/instanciate?queryId=" + triagens::basics::StringUtils::itoa(remoteId));
     auto&& shardIds = collection->shardIds();
+ 
+    // iterate over all shards of the collection
     for (auto shardId : shardIds) {
+      // copy the relevant fragment of the plan for each shard
+      ExecutionPlan plan(query->ast());
+
+      ExecutionNode const* current = info.nodes.front();
+      ExecutionNode* previous = nullptr;
+
+      // clone nodes until we reach a remote node
+      while (current != nullptr) {
+        bool stop = false;
+
+        auto clone = current->clone(&plan, false);
+        plan.registerNode(clone);
+        
+        if (current->getType() == ExecutionNode::REMOTE) {
+          // TODO: inject connectedID and coordinator server name into clone of RemoteNode
+          // we'll stop after a remote
+          stop = true;
+
+          // update the remote node with the information about the query
+          static_cast<RemoteNode*>(clone)->server("server:" + triagens::arango::ServerState::instance()->getId());
+          static_cast<RemoteNode*>(clone)->ownName(shardId);
+          static_cast<RemoteNode*>(clone)->queryId(connectedId);
+        }
+     
+      
+        if (previous == nullptr) {
+          // set the root node
+          plan.root(clone);
+        }
+
+        if (previous != nullptr) {
+          previous->addDependency(clone);
+        }
+
+        auto const& deps = current->getDependencies();
+        if (deps.size() != 1) {
+          stop = true;
+        }
+
+        if (stop) {
+          break;
+        }
+
+        previous = clone;
+        current = deps[0];
+      }
+
+      // inject the current shard id into the collection
+      collection->setCurrentShard(shardId);
+
+      // create a JSON representation of the plan
+      triagens::basics::Json result(triagens::basics::Json::Array);
+      triagens::basics::Json jsonNodesList(plan.root()->toJson(TRI_UNKNOWN_MEM_ZONE, true));
+    
+      // add the collection
+      triagens::basics::Json jsonCollectionsList(triagens::basics::Json::List);
+      triagens::basics::Json json(triagens::basics::Json::Array);
+      jsonCollectionsList(json("name", triagens::basics::Json(collection->getName()))
+                              ("type", triagens::basics::Json(TRI_TransactionTypeGetStr(collection->accessType))));
+
+      jsonNodesList.set("collections", jsonCollectionsList);
+
+      result.set("plan", jsonNodesList);
+
+      std::unique_ptr<std::string> body(new std::string(triagens::basics::JsonHelper::toString(result.json())));
+    
+      std::cout << "GENERATED A PLAN FOR THE REMOTE SERVERS: " << *(body.get()) << "\n";
+    
       // TODO: pass connectedId to the shard so it can fetch data using the correct query id
       auto headers = new std::map<std::string, std::string>;
       auto res = cc->asyncRequest("", 
@@ -370,8 +449,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
                                   "shard:" + shardId,  
                                   triagens::rest::HttpRequest::HTTP_REQUEST_POST, 
                                   url,
-                                  &body,
-                                  false,
+                                  body.release(),
+                                  true,
                                   headers,
                                   nullptr,
                                   30.0);
@@ -380,30 +459,43 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         delete res;
       }
     }
+
+    // fix collection  
+    collection->resetCurrentShard();
   
     int count = 0;
     int nrok = 0;
     for (count = (int) shardIds.size(); count > 0; count--) {
-      auto res = cc->wait( "", coordTransactionID, 0, "", 30.0);
+      auto res = cc->wait("", coordTransactionID, 0, "", 30.0);
 
       if (res->status == triagens::arango::CL_COMM_RECEIVED) {
         if (res->answer_code == triagens::rest::HttpResponse::OK ||
-            res->answer_code == triagens::rest::HttpResponse::CREATED) {
+            res->answer_code == triagens::rest::HttpResponse::CREATED ||
+            res->answer_code == triagens::rest::HttpResponse::ACCEPTED) {
           // query instanciated without problems
           nrok++;
+          std::cout << "DB SERVER ANSWERED WITHOUT ERROR: " << res->answer->body() << "\n";
+        }
+        else {
+          std::cout << "DB SERVER ANSWERED WITH ERROR: " << res->answer->body() << "\n";
         }
       }
       delete res;
     }
 
+    std::cout << "GOT ALL RESPONSES FROM DB SERVERS: " << nrok << "\n";
+
     if (nrok != (int) shardIds.size()) {
       // TODO: provide sensible error message with more details
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "did not receive response from all shards");
     }
+          
+    return remoteId;
   }
 
 
-  ExecutionEngine* buildEngineCoordinator (EngineInfo& info) {
+  ExecutionEngine* buildEngineCoordinator (EngineInfo& info,
+                                           QueryId connectedId) {
     std::unique_ptr<ExecutionEngine> engine(new ExecutionEngine(trx, query));
 
     std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
@@ -451,7 +543,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         auto&& shardIds = static_cast<GatherNode const*>((*en))->collection()->shardIds();
         for (auto shardId : shardIds) {
           // TODO: pass actual queryId into RemoteBlock
-          ExecutionBlock* r = new RemoteBlock(engine.get(), remoteNode, "shard:" + shardId, "", "" /*TODO*/);
+          ExecutionBlock* r = new RemoteBlock(engine.get(), remoteNode, "shard:" + shardId, "", triagens::basics::StringUtils::itoa(connectedId));
       
           try {
             engine.get()->addBlock(r);
@@ -531,7 +623,8 @@ void ExecutionEngine::addBlock (ExecutionBlock* block) {
 /// @brief create an execution engine from a plan
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionEngine* ExecutionEngine::instanciateFromPlan (AQL_TRANSACTION_V8* trx,
+ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegistry,
+                                                       AQL_TRANSACTION_V8* trx,
                                                        Query* query,
                                                        ExecutionPlan* plan) {
   ExecutionEngine* engine = nullptr;
@@ -543,10 +636,10 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (AQL_TRANSACTION_V8* trx,
 
     ExecutionBlock* root = nullptr;
 
-    if (triagens::arango::ServerState::instance()->isCoordinator()) {
+    if (isCoordinator()) {
       // instanciate the engine on the coordinator
-      // TODO: must pass an instance of query registry to the coordinator instanciator!
-      std::unique_ptr<CoordinatorInstanciator> inst(new CoordinatorInstanciator(trx, query, nullptr));
+      query->trx(trx);
+      std::unique_ptr<CoordinatorInstanciator> inst(new CoordinatorInstanciator(trx, query, queryRegistry));
       plan->root()->walk(inst.get());
 
       engine = inst.get()->buildEngines(); 
@@ -560,6 +653,7 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (AQL_TRANSACTION_V8* trx,
       root = inst.get()->root;
     }
 
+    TRI_ASSERT(root != nullptr);
     root->staticAnalysis();
     root->initialize();
     root->initializeCursor(nullptr, 0);
