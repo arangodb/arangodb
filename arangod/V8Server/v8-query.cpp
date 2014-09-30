@@ -1201,6 +1201,30 @@ static v8::Handle<v8::Value> JS_Nth2Query (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief @mchacki
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Nth3Query (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // expecting two arguments
+  if (argv.Length() != 2 || ! argv[0]->IsString() || ! argv[1]->IsNumber()) {
+    TRI_V8_EXCEPTION_USAGE(scope, "NTH3(<key>, <numberOfPartitions>)");
+  }
+
+  std::string const key(TRI_ObjectToString(argv[0]));
+  uint64_t const numberOfPartitions = TRI_ObjectToUInt64(argv[1], false);
+
+  if (numberOfPartitions == 0) {
+    TRI_V8_EXCEPTION_PARAMETER(scope, "invalid value for <numberOfPartitions>");
+  }
+  
+  uint64_t hash = TRI_FnvHashPointer(static_cast<void const*>(key.c_str()), key.size());
+
+  return scope.Close(v8::Number::New(static_cast<int>(hash % numberOfPartitions)));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief selects documents from a collection, using an offset into the
 /// primary index. this can be used for incremental access
 ////////////////////////////////////////////////////////////////////////////////
@@ -2476,6 +2500,7 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
   // internal method. not intended to be used by end-users
   TRI_AddMethodVocbase(rt, "NTH", JS_NthQuery, true);
   TRI_AddMethodVocbase(rt, "NTH2", JS_Nth2Query, true);
+  TRI_AddMethodVocbase(rt, "NTH3", JS_Nth3Query, true);
 
   // internal method. not intended to be used by end-users
   TRI_AddMethodVocbase(rt, "OFFSET", JS_OffsetQuery, true);
