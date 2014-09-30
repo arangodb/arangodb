@@ -676,6 +676,8 @@ namespace triagens {
 
         std::shared_ptr<VarOverview> _varOverview;
 
+        int _depth;  // will be filled in by staticAnalysis
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the following contains the registers which should be cleared
 /// just before this node hands on results. This is computed during
