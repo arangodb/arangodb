@@ -725,7 +725,6 @@ namespace triagens {
 
     class SingletonNode : public ExecutionNode {
       
-      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class SingletonBlock;
       
@@ -791,7 +790,6 @@ namespace triagens {
 
     class EnumerateCollectionNode : public ExecutionNode {
       
-      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class EnumerateCollectionBlock;
       
@@ -945,7 +943,6 @@ namespace triagens {
 
     class EnumerateListNode : public ExecutionNode {
       
-      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class EnumerateListBlock;
       friend class RedundantCalculationsReplacer;
@@ -1049,7 +1046,6 @@ namespace triagens {
 
     class IndexRangeNode: public ExecutionNode {
       
-      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class IndexRangeBlock;
 
@@ -1217,7 +1213,6 @@ namespace triagens {
 
     class LimitNode : public ExecutionNode {
       
-      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class LimitBlock;
 
@@ -1307,7 +1302,6 @@ namespace triagens {
 
     class CalculationNode : public ExecutionNode {
       
-      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class CalculationBlock;
       friend class RedundantCalculationsReplacer;
@@ -1453,7 +1447,6 @@ namespace triagens {
 
     class SubqueryNode : public ExecutionNode {
       
-      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class SubqueryBlock;
 
@@ -1584,7 +1577,6 @@ namespace triagens {
 
     class FilterNode : public ExecutionNode {
       
-      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class FilterBlock;
       friend class RedundantCalculationsReplacer;
@@ -1729,7 +1721,6 @@ namespace triagens {
 
     class SortNode : public ExecutionNode {
       
-      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class SortBlock;
       friend class RedundantCalculationsReplacer;
@@ -1866,7 +1857,6 @@ namespace triagens {
 
     class AggregateNode : public ExecutionNode {
       
-      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class AggregateBlock;
       friend class RedundantCalculationsReplacer;
@@ -1994,7 +1984,6 @@ namespace triagens {
 
     class ReturnNode : public ExecutionNode {
       
-      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class ReturnBlock;
       friend class RedundantCalculationsReplacer;
@@ -2082,7 +2071,6 @@ namespace triagens {
 
     class ModificationNode : public ExecutionNode {
       
-      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class ModificationBlock;
       
@@ -2177,7 +2165,6 @@ namespace triagens {
 
     class RemoveNode : public ModificationNode {
       
-      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class RemoveBlock;
       
@@ -2290,7 +2277,6 @@ namespace triagens {
 
     class InsertNode : public ModificationNode {
       
-      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class InsertBlock;
       
@@ -2402,7 +2388,6 @@ namespace triagens {
 
     class UpdateNode : public ModificationNode {
       
-      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class UpdateBlock;
       
@@ -2527,7 +2512,6 @@ namespace triagens {
 
     class ReplaceNode : public ModificationNode {
       
-      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class ReplaceBlock;
       
@@ -2652,7 +2636,6 @@ namespace triagens {
 
     class NoResultsNode : public ExecutionNode {
       
-      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class NoResultsBlock;
       
@@ -2720,7 +2703,6 @@ namespace triagens {
 
     class RemoteNode : public ExecutionNode {
       
-      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class RemoteBlock;
       
@@ -2908,7 +2890,6 @@ namespace triagens {
 
     class ScatterNode : public ExecutionNode {
       
-      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class ScatterBlock;
       
@@ -3010,7 +2991,6 @@ namespace triagens {
 
     class GatherNode : public ExecutionNode {
       
-      friend class ExecutionNode;
       friend class ExecutionBlock;
       friend class GatherBlock;
       
