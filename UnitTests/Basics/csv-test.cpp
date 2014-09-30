@@ -86,7 +86,7 @@ struct CCsvSetup {
     me->column = 0;
   }
   
-  static void ProcessCsvAdd (TRI_csv_parser_t* parser, char const* field, size_t row, size_t column, bool escaped) {
+  static void ProcessCsvAdd (TRI_csv_parser_t* parser, char const* field, size_t, size_t row, size_t column, bool escaped) {
     CCsvSetup* me = reinterpret_cast<CCsvSetup*> (parser->_dataAdd);
 
     if (me->column++ > 0) {
@@ -96,7 +96,7 @@ struct CCsvSetup {
     me->out << (escaped ? "ESC" : "") << field << (escaped ? "ESC" : "");
   }
   
-  static void ProcessCsvEnd (TRI_csv_parser_t* parser, char const* field, size_t row, size_t column, bool escaped) {
+  static void ProcessCsvEnd (TRI_csv_parser_t* parser, char const* field, size_t, size_t row, size_t column, bool escaped) {
     CCsvSetup* me = reinterpret_cast<CCsvSetup*> (parser->_dataAdd);
     
     if (me->column++ > 0) {

@@ -66,7 +66,7 @@ static void ProcessCsvBegin (TRI_csv_parser_t* parser, size_t row) {
 /// @brief adds a new CSV field
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ProcessCsvAdd (TRI_csv_parser_t* parser, const char* field, size_t row, size_t column, bool escaped) {
+static void ProcessCsvAdd (TRI_csv_parser_t* parser, const char* field, size_t, size_t row, size_t column, bool escaped) {
   v8::Handle<v8::Array>* array = reinterpret_cast<v8::Handle<v8::Array>*>(parser->_dataBegin);
 
   (*array)->Set((uint32_t) column, v8::String::New(field));
@@ -76,7 +76,7 @@ static void ProcessCsvAdd (TRI_csv_parser_t* parser, const char* field, size_t r
 /// @brief ends a CSV line
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ProcessCsvEnd (TRI_csv_parser_t* parser, const char* field, size_t row, size_t column, bool escaped) {
+static void ProcessCsvEnd (TRI_csv_parser_t* parser, const char* field, size_t, size_t row, size_t column, bool escaped) {
   v8::Handle<v8::Array>* array = reinterpret_cast<v8::Handle<v8::Array>*>(parser->_dataBegin);
 
   (*array)->Set((uint32_t) column, v8::String::New(field));

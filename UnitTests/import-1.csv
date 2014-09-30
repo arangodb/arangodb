@@ -5,3 +5,5 @@
 3,"this","is"
 4,let's,see,what,happens
 5,9999999999999999999999999999999999,test,-99999999,true,-888.4434
+6,10e4,20.5,-42, null ,false
+7,-1.05e2,1.05e-2,true,false,null
