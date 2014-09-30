@@ -337,10 +337,13 @@ class KeySpace {
                  v8::Handle<v8::Value> const& value,
                  bool replace) {
       auto element = new KeySpaceElement(key.c_str(), key.size(), TRI_ObjectToJson(value));
+      KeySpaceElement* found = nullptr;
 
-      WRITE_LOCKER(_lock);
+      {
+        WRITE_LOCKER(_lock);
  
-      auto found = static_cast<KeySpaceElement*>(TRI_InsertKeyAssociativePointer(&_hash, element->key, element, replace));
+        found = static_cast<KeySpaceElement*>(TRI_InsertKeyAssociativePointer(&_hash, element->key, element, replace));
+      }
    
       if (found == nullptr) {
         return true;
@@ -402,9 +405,13 @@ class KeySpace {
     }
 
     bool keyRemove (std::string const& key) {
-      WRITE_LOCKER(_lock);
+      KeySpaceElement* found = nullptr;
 
-      auto found = static_cast<KeySpaceElement*>(TRI_RemoveKeyAssociativePointer(&_hash, key.c_str()));
+      {
+        WRITE_LOCKER(_lock);
+
+        found = static_cast<KeySpaceElement*>(TRI_RemoveKeyAssociativePointer(&_hash, key.c_str()));
+      }
 
       if (found != nullptr) {
         delete found;
@@ -769,7 +776,7 @@ struct UserStructures {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline TRI_vocbase_t* GetContextVocBase () {
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
 
   TRI_ASSERT_EXPENSIVE(v8g->_vocbase != nullptr);
   return static_cast<TRI_vocbase_t*>(v8g->_vocbase);
