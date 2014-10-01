@@ -316,28 +316,32 @@ function isContained (doc, example) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief query-by scan or hash index
+/// @brief whether or not a unique index can be used
+////////////////////////////////////////////////////////////////////////////////
+
+function isUnique (example) {
+  var k;
+  for (k in example) {
+    if (example.hasOwnProperty(k)) {
+      if (example[k] === null) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds documents by example
 ////////////////////////////////////////////////////////////////////////////////
 
 function byExample (data) {
-  var unique = true;
-  var documentId = null;
   var k;
 
   var collection = data._collection;
   var example    = data._example;
   var skip       = data._skip;
   var limit      = data._limit;
-  var index;
-
-  if (data._index !== undefined && data._index !== null) {
-    if (typeof data._index === 'object' && data._index.hasOwnProperty("id")) {
-      index = data._index.id;
-    }
-    else if (typeof data._index === 'string') {
-      index = data._index;
-    }
-  }
 
   if (typeof example !== "object" || Array.isArray(example)) {
     // invalid datatype for example
@@ -347,121 +351,164 @@ function byExample (data) {
     throw err1;
   }
 
-  for (k in example) {
-    if (example.hasOwnProperty(k)) {
-      if (example[k] === null) {
-        unique = false;
-      }
-      else if (k === '_id' || k === '_key') {
-        // example contains the document id in attribute "_id" or "_key"
-        documentId = example[k];
-        break;
-      }
-    }
+  var postFilter = false;
+  if (example.hasOwnProperty('_rev')) {
+    // the presence of the _rev attribute requires post-filtering
+    postFilter = true;
   }
 
-  if (documentId !== null) {
+  var candidates = { total: 0, count: 0, documents: [ ] };
+  if (example.hasOwnProperty('_id')) {
     // we can use the collection's primary index
-    var doc;
     try {
-      // look up document by id
-      doc = collection.document(documentId);
+      candidates.documents = [ collection.document(example._id) ];
+      postFilter = true;
+    }
+    catch (n1) {
+    }
+  }
+  else if (example.hasOwnProperty('_key')) {
+    // we can use the collection's primary index
+    try {
+      candidates.documents = [ collection.document(example._key) ];
+      postFilter = true;
+    }
+    catch (n2) {
+    }
+  }
+  else if (example.hasOwnProperty('_from')) {
+    // use edge index
+    try {
+      candidates.documents = collection.outEdges(example._from);
+      postFilter = true;
+    }
+    catch (n3) {
+    }
+  }
+  else if (example.hasOwnProperty('_to')) {
+    // use edge index
+    try {
+      candidates.documents = collection.inEdges(example._to);
+      postFilter = true;
+    }
+    catch (n4) {
+    }
+  }
+  else {
+    // check indexes
+    var idx = null;
+    var normalized = normalizeAttributes(example, "");
+    var keys = Object.keys(normalized);
+    var index;
 
-      // we have used the primary index to look up the document
-      // now we need to post-filter because non-indexed values might not have matched
-      if (! isContained(doc, example)) {
-        doc = null;
+    if (data._index !== undefined && data._index !== null) {
+      if (typeof data._index === 'object' && data._index.hasOwnProperty("id")) {
+        index = data._index.id;
+      }
+      else if (typeof data._index === 'string') {
+        index = data._index;
       }
     }
-    catch (e) {
-    }
 
-    return {
-      total: doc ? 1 : 0,
-      count: doc ? 1 : 0,
-      documents: doc ? [ doc ] : [ ]
-    };
-  }
+    if (index !== undefined) {
+      // an index was specified
+      var all = collection.getIndexes();
+      for (k = 0; k < all.length; ++k) {
+        if (all[k].type === data._type &&
+            rewriteIndex(all[k].id) === rewriteIndex(index)) {
 
-  var idx = null;
-  var normalized = normalizeAttributes(example, "");
-  var keys = Object.keys(normalized);
-
-
-  if (index !== undefined) {
-    var all = collection.getIndexes();
-    for (k = 0; k < all.length; ++k) {
-      if (all[k].type === data._type &&
-          rewriteIndex(all[k].id) === rewriteIndex(index)) {
-
-        if (supportsQuery(all[k], keys)) {
-          idx = all[k];
+          if (supportsQuery(all[k], keys)) {
+            idx = all[k];
+          }
+          break;
         }
-        break;
       }
     }
+    else if (keys.length > 0) {
+      // try these index types
+      var checks = [
+        { type: "hash", fields: keys, unique: false },
+        { type: "skiplist", fields: keys, unique: false }
+      ];
 
-    // an index was specified
-    if (idx === null) {
-      // but none was found or the found one had a different type
-      var err2 = new ArangoError();
-      err2.errorNum = internal.errors.ERROR_ARANGO_NO_INDEX.code;
-      err2.errorMessage = internal.errors.ERROR_ARANGO_NO_INDEX.message;
-      throw err2;
+      if (isUnique(example)) {
+        checks.push({ type: "hash", fields: keys, unique: true });
+        checks.push({ type: "skiplist", fields: keys, unique: true });
+      }
+
+      var fields = [ ];
+      for (k in normalized) {
+        if (normalized.hasOwnProperty(k)) {
+          fields.push([ k, [ normalized[k] ] ]);
+        }
+      }
+
+      for (k = 0; k < checks.length; ++k) {
+        if (data._type !== undefined && data._type !== checks[k].type) {
+          continue;
+        }
+
+        idx = collection.lookupIndex(checks[k]);
+        if (idx !== null) {
+          // found an index
+          break;
+        }
+      }
+    }
+  
+    if (idx !== null) {
+      // use an index
+      if (idx.type === 'hash') {
+        candidates = collection.BY_EXAMPLE_HASH(idx.id, normalized, skip, limit);
+      }
+      else if (idx.type === 'skiplist') {
+        candidates = collection.BY_EXAMPLE_SKIPLIST(idx.id, normalized, skip, limit);
+      }
+    }
+    else {
+      if (typeof data._type === "string") {
+        // an index was specified, but none can be used
+        var err2 = new ArangoError();
+        err2.errorNum = internal.errors.ERROR_ARANGO_NO_INDEX.code;
+        err2.errorMessage = internal.errors.ERROR_ARANGO_NO_INDEX.message;
+        throw err2;
+      }
+
+      if (postFilter) {
+        candidates = collection.ALL(skip, limit);
+      }
+      else {
+        candidates = collection.BY_EXAMPLE(example, skip, limit);
+      }
     }
   }
-  else if (keys.length > 0) {
-    // try these index types
-    var checks = [
-      { type: "hash", fields: keys, unique: false },
-      { type: "skiplist", fields: keys, unique: false }
-    ];
+    
+  if (postFilter) {
+    var result = [ ];
 
-    if (unique) {
-      checks.push({ type: "hash", fields: keys, unique: true });
-      checks.push({ type: "skiplist", fields: keys, unique: true });
-    }
-
-    var fields = [ ];
-    for (k in normalized) {
-      if (normalized.hasOwnProperty(k)) {
-        fields.push([ k, [ normalized[k] ] ]);
-      }
-    }
-
-    for (k = 0; k < checks.length; ++k) {
-      if (data._type !== undefined && data._type !== checks[k].type) {
+    for (k = 0; k < candidates.documents.length; ++k) {
+      var doc = candidates.documents[k];
+      if (! isContained(doc, example)) {
         continue;
       }
 
-      idx = collection.lookupIndex(checks[k]);
-      if (idx !== null) {
-        // found an index
+      if (skip > 0) {
+        --skip;
+        continue;
+      }
+
+      result.push(doc);
+      if (limit > 0 && result.length >= limit) {
         break;
       }
     }
+    
+    candidates.total = candidates.documents.length;
+    candidates.count = result.length;
+    candidates.documents = result;
   }
 
-  if (idx !== null) {
-    // use an index
-    switch (idx.type) {
-      case "hash":
-        return collection.BY_EXAMPLE_HASH(idx.id, normalized, skip, limit);
-      case "skiplist":
-        return collection.BY_EXAMPLE_SKIPLIST(idx.id, normalized, skip, limit);
-    }
-  }
-
-  if (typeof data._type === "string") {
-    // an index type is required, but no index will be used
-    var err3 = new ArangoError();
-    err3.errorNum = internal.errors.ERROR_ARANGO_NO_INDEX.code;
-    err3.errorMessage = internal.errors.ERROR_ARANGO_NO_INDEX.message;
-    throw err3;
-  }
-
-  // use full collection scan
-  return collection.BY_EXAMPLE(example, skip, limit);
+  return candidates;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

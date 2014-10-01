@@ -469,7 +469,12 @@ void Optimizer::setupRules () {
     registerRule("remove-unnecessary-remote-scatter",
                  removeUnnecessaryRemoteScatter,
                  removeUnnecessaryRemoteScatter_pass10,
-                 false);
+                 true);
+    
+    registerRule("undistribute-remove-after-enum-coll",
+                 undistributeRemoveAfterEnumColl,
+                 undistributeRemoveAfterEnumColl_pass10,
+                 true);
 
   }
 }
