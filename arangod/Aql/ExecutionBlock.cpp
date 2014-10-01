@@ -1960,8 +1960,9 @@ bool FilterBlock::getBlock (size_t atLeast, size_t atMost) {
     }
 
     // Now decide about these docs:
-    _chosen.clear();
     AqlItemBlock* cur = _buffer.front();
+
+    _chosen.clear();
     _chosen.reserve(cur->size());
     for (size_t i = 0; i < cur->size(); ++i) {
       if (takeItem(cur, i)) {
@@ -2053,11 +2054,12 @@ int FilterBlock::getOrSkipSome (size_t atLeast,
     }
     throw;
   }
+
   if (! skipping) {
     if (collector.size() == 1) {
       result = collector[0];
     }
-    else if (collector.size() > 1 ) {
+    else if (collector.size() > 1) {
       try {
         result = AqlItemBlock::concatenate(collector);
       }
@@ -2092,7 +2094,7 @@ bool FilterBlock::hasMore () {
 
   // Here, _buffer.size() is > 0 and _pos points to a valid place
   // in it.
-
+  
   return true;
 }
 
@@ -3784,14 +3786,12 @@ double const RemoteBlock::defaultTimeOut = 3600.0;
 
 static void throwExceptionAfterBadSyncRequest (ClusterCommResult* res) {
   if (res->status == CL_COMM_TIMEOUT) {
-    std::cout << "GOT TIMEOUT\n";
     // No reply, we give up:
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_TIMEOUT,
            "timeout in cluster AQL operation");
   }
 
   if (res->status == CL_COMM_ERROR) {
-    std::cout << "GOT ERROR: " << res->result << "\n";
     // This could be a broken connection or an Http error:
     if (res->result == nullptr || ! res->result->isComplete()) {
       // there is no result

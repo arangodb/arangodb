@@ -176,9 +176,19 @@ namespace triagens {
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
+      private:
+
 ////////////////////////////////////////////////////////////////////////////////
-/// parseJsonBody, returns a nullptr and produces an error response if parse
-/// was not successful.
+/// @brief handle for useQuery
+////////////////////////////////////////////////////////////////////////////////
+
+        void handleUseQuery (std::string const&,
+                             Query*,
+                             triagens::basics::Json const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parseJsonBody, returns a nullptr and produces an error response if
+/// parse was not successful.
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_json_t* parseJsonBody ();

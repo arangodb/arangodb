@@ -438,112 +438,31 @@ void RestAqlHandler::useQuery (std::string const& operation,
     }
   }
 
-  Json answerBody(Json::Array, 2);
-
-  if (operation == "getSome") {
-    auto atLeast = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
-                                                         "atLeast", 1);
-    auto atMost = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
-                               "atMost", ExecutionBlock::DefaultBatchSize);
-    std::unique_ptr<AqlItemBlock> items(query->engine()->getSome(atLeast, atMost));
-    if (items.get() == nullptr) {
-      answerBody("exhausted", Json(true))
-                ("error", Json(false));
-    }
-    else {
-      try {
-        answerBody = items->toJson(query->trx());
-      }
-      catch (...) {
-        _queryRegistry->close(_vocbase, qId);
-        generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
-                      "cannot transform AqlItemBlock to Json");
-        return;
-      }
-    }
-  }
-  else if (operation == "skipSome") {
-    auto atLeast = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
-                                                         "atLeast", 1);
-    auto atMost = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
-                               "atMost", ExecutionBlock::DefaultBatchSize);
-    size_t skipped;
-    try {
-      skipped = query->engine()->skipSome(atLeast, atMost);
-    }
-    catch (...) {
-      _queryRegistry->close(_vocbase, qId);
-      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
-                    "skipSome lead to an exception");
-      return;
-    }
-    answerBody("skipped", Json(static_cast<double>(skipped)))
-              ("error", Json(false));
-  }
-  else if (operation == "skip") {
-    auto number = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
-                                                        "number", 1);
-    try {
-      bool exhausted = query->engine()->skip(number);
-      answerBody("exhausted", Json(exhausted))
-                ("error", Json(false));
-    }
-    catch (...) {
-      _queryRegistry->close(_vocbase, qId);
-      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
-                    "skip lead to an exception");
-      return;
-    }
-  }
-  else if (operation == "initializeCursor") {
-    auto pos = JsonHelper::getNumericValue<size_t>(queryJson.json(),
-                                                   "pos", 0);
-    std::unique_ptr<AqlItemBlock> items;
-    int res;
-    try {
-      if (JsonHelper::getBooleanValue(queryJson.json(), "exhausted", true)) {
-        res = query->engine()->initializeCursor(nullptr, 0);
-      }
-      else {
-        items.reset(new AqlItemBlock(queryJson.get("items")));
-        res = query->engine()->initializeCursor(items.get(), pos);
-      }
-    }
-    catch (...) {
-      _queryRegistry->close(_vocbase, qId);
-      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
-                    "initializeCursor lead to an exception");
-      return;
-    }
-std::cout << "ABOUT TO ANSWER WITH CODE: " << res << "\n";
-    answerBody("error", Json(res == TRI_ERROR_NO_ERROR))
-              ("code", Json(static_cast<double>(res)));
-  }
-  else if (operation == "shutdown") {
-    int res;
-    try {
-      res = query->engine()->shutdown();
-    }
-    catch (...) {
-      _queryRegistry->close(_vocbase, qId);
-      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
-                    "shutdown lead to an exception");
-      return;
-    }
-    answerBody("error", res == TRI_ERROR_NO_ERROR ? Json(false) : Json(true))
-              ("code", Json(static_cast<double>(res)));
-  }
-  else {
+  try {
+    handleUseQuery(operation, query, queryJson);
     _queryRegistry->close(_vocbase, qId);
-    generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-    return;
   }
-
-  _queryRegistry->close(_vocbase, qId);
-
-  _response = createResponse(triagens::rest::HttpResponse::OK);
-  _response->setContentType("application/json; charset=utf-8");
-  _response->body().appendText(answerBody.toString());
+  catch (triagens::arango::Exception const& ex) {
+    _queryRegistry->close(_vocbase, qId);
+    
+    generateError(HttpResponse::SERVER_ERROR, 
+                  ex.code(),
+                  ex.message());
+  }
+  catch (std::exception const& ex) {
+    _queryRegistry->close(_vocbase, qId);
+    
+    generateError(HttpResponse::SERVER_ERROR, 
+                  TRI_ERROR_HTTP_SERVER_ERROR,
+                  ex.what());
+  }
+  catch (...) {
+    _queryRegistry->close(_vocbase, qId);
+      
+    generateError(HttpResponse::SERVER_ERROR, 
+                  TRI_ERROR_HTTP_SERVER_ERROR,
+                  "an unknown exception occurred");
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -724,8 +643,120 @@ bool RestAqlHandler::findQuery (std::string const& idString,
   return false;
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
-/// parseJsonBody
+/// @brief handle for useQuery
+////////////////////////////////////////////////////////////////////////////////
+
+void RestAqlHandler::handleUseQuery (std::string const& operation,
+                                     Query* query,
+                                     Json const& queryJson) {
+  Json answerBody(Json::Array, 2);
+
+  if (operation == "getSome") {
+    auto atLeast = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
+                                                         "atLeast", 1);
+    auto atMost = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
+                               "atMost", ExecutionBlock::DefaultBatchSize);
+    std::unique_ptr<AqlItemBlock> items(query->engine()->getSome(atLeast, atMost));
+    if (items.get() == nullptr) {
+      answerBody("exhausted", Json(true))
+                ("error", Json(false));
+    }
+    else {
+      try {
+        answerBody = items->toJson(query->trx());
+std::cout << "ANSWERBODY: " << JsonHelper::toString(answerBody.json()) << "\n\n";        
+      }
+      catch (...) {
+        generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                      "cannot transform AqlItemBlock to Json");
+        return;
+      }
+    }
+  }
+  else if (operation == "skipSome") {
+    auto atLeast = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
+                                                         "atLeast", 1);
+    auto atMost = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
+                               "atMost", ExecutionBlock::DefaultBatchSize);
+    size_t skipped;
+    try {
+      skipped = query->engine()->skipSome(atLeast, atMost);
+    }
+    catch (...) {
+      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                    "skipSome lead to an exception");
+      return;
+    }
+    answerBody("skipped", Json(static_cast<double>(skipped)))
+              ("error", Json(false));
+  }
+  else if (operation == "skip") {
+    auto number = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
+                                                        "number", 1);
+    try {
+      bool exhausted = query->engine()->skip(number);
+      answerBody("exhausted", Json(exhausted))
+                ("error", Json(false));
+    }
+    catch (...) {
+      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                    "skip lead to an exception");
+      return;
+    }
+  }
+  else if (operation == "initializeCursor") {
+    auto pos = JsonHelper::getNumericValue<size_t>(queryJson.json(),
+                                                   "pos", 0);
+    std::unique_ptr<AqlItemBlock> items;
+    int res;
+    try {
+      if (JsonHelper::getBooleanValue(queryJson.json(), "exhausted", true)) {
+        res = query->engine()->initializeCursor(nullptr, 0);
+      }
+      else {
+        items.reset(new AqlItemBlock(queryJson.get("items")));
+        res = query->engine()->initializeCursor(items.get(), pos);
+      }
+    }
+    catch (...) {
+      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                    "initializeCursor lead to an exception");
+      return;
+    }
+std::cout << "ABOUT TO ANSWER WITH CODE: " << res << "\n";
+    answerBody("error", Json(res == TRI_ERROR_NO_ERROR))
+              ("code", Json(static_cast<double>(res)));
+  }
+  else if (operation == "shutdown") {
+    int res;
+    try {
+      res = query->engine()->shutdown();
+    }
+    catch (...) {
+      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                    "shutdown lead to an exception");
+      return;
+    }
+    answerBody("error", res == TRI_ERROR_NO_ERROR ? Json(false) : Json(true))
+              ("code", Json(static_cast<double>(res)));
+  }
+  else {
+    generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+    return;
+  }
+
+  _response = createResponse(triagens::rest::HttpResponse::OK);
+  _response->setContentType("application/json; charset=utf-8");
+  _response->body().appendText(answerBody.toString());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the JSON from the request
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* RestAqlHandler::parseJsonBody () {
