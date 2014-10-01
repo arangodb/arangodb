@@ -1875,6 +1875,10 @@ int triagens::aql::distributeSortToCluster (Optimizer* opt,
   return TRI_ERROR_NO_ERROR;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// WalkerWorker for removeUnnecessaryRemoteScatter
+////////////////////////////////////////////////////////////////////////////////
+
 class RemoteToSingletonViaCalcOnlyFinder: public WalkerWorker<ExecutionNode> {
   ExecutionNode* _scatter;
   std::unordered_set<ExecutionNode*>& _toUnlink;
@@ -1966,6 +1970,10 @@ int triagens::aql::removeUnnecessaryRemoteScatter (Optimizer* opt,
 
   return TRI_ERROR_NO_ERROR;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// WalkerWorker for undistributeRemoveAfterEnumColl
+////////////////////////////////////////////////////////////////////////////////
 
 class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
   ExecutionPlan* _plan;
@@ -2079,6 +2087,10 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
     return true;
   }
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief recognises that a RemoveNode can be moved to the shards.
+////////////////////////////////////////////////////////////////////////////////
 
 int triagens::aql::undistributeRemoveAfterEnumColl (Optimizer* opt, 
                                                     ExecutionPlan* plan, 
