@@ -205,7 +205,57 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
 
 ExecutionNode::ExecutionNode (ExecutionPlan* plan,
                               triagens::basics::Json const& json) 
-  : ExecutionNode(plan, JsonHelper::checkAndGetNumericValue<size_t>(json.json(), "id")) {
+  :
+    _id(JsonHelper::checkAndGetNumericValue<size_t>(json.json(), "id")),
+    _estimatedCost(0.0), 
+    _estimatedCostSet(false),
+    _varUsageValid(false),
+    _plan(plan),
+    _depth(JsonHelper::checkAndGetNumericValue<size_t>(json.json(), "depth"))
+{
+  auto jsonVarInfoList = json.get("varInfoList");
+  if (!jsonVarInfoList.isList()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "varInfoList needs to be a json list"); 
+  }
+  
+  size_t len = jsonVarInfoList.size();
+  _varOverview->varInfo.reserve(len);
+  for (size_t i = 0; i < len; i++) {
+    auto jsonVarInfo = jsonVarInfoList.at(i);
+    if (jsonVarInfo.isArray()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "one varInfoList needs to be an object"); 
+    }
+    VariableId variableId = JsonHelper::checkAndGetNumericValue<size_t>      (jsonVarInfo.json(), "VariableId");
+    RegisterId registerId = JsonHelper::checkAndGetNumericValue<size_t>      (jsonVarInfo.json(), "RegisterId");
+    unsigned int    depth = JsonHelper::checkAndGetNumericValue<unsigned int>(jsonVarInfo.json(), "depth");
+    _varOverview->varInfo.insert(make_pair(variableId, VarInfo(depth, registerId)));
+  }
+
+  auto jsonNrRegsList = json.get("nrRegs");
+  if (!jsonNrRegsList.isList()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "nrRegs needs to be a json list"); 
+  }
+
+  _varOverview->nrRegs.reserve(len);
+  len = jsonNrRegsList.size();
+  for (size_t i = 0; i < len; i++) {
+    RegisterId oneReg = JsonHelper::getNumericValue<size_t> (jsonNrRegsList.at(i).json(), 0);
+    _varOverview->nrRegs.push_back(oneReg);
+  }
+
+  auto jsonRegsToClearList = json.get("regsToClear");
+  if (!jsonRegsToClearList.isList()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "regsToClear needs to be a json list"); 
+  }
+
+  len = jsonRegsToClearList.size();
+  _regsToClear.reserve(len);
+  for (size_t i = 0; i < len; i++) {
+    RegisterId oneRegToClear = JsonHelper::getNumericValue<size_t> (jsonRegsToClearList.at(i).json(), 0);
+    _regsToClear.insert(oneRegToClear);
+  }
+
+
   // TODO: decide whether it should be allowed to create an abstract ExecutionNode at all
 }
 
@@ -405,27 +455,70 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
     _dependencies[i]->toJsonHelper(nodes, zone, verbose);
   }
 
-  triagens::basics::Json json;
-  json = triagens::basics::Json(triagens::basics::Json::Array, 2)
-    ("type", triagens::basics::Json(getTypeString()));
+  Json json;
+
+  json = Json(Json::Array, 2)
+    ("type", Json(getTypeString()));
+
   if (verbose) {
-    json("typeID", triagens::basics::Json(static_cast<int>(getType())));
+    json("typeID", Json(static_cast<int>(getType())));
   }
-  triagens::basics::Json deps(triagens::basics::Json::List, n);
+
+  Json deps(Json::List, n);
   for (size_t i = 0; i < n; i++) {
-    deps(triagens::basics::Json(static_cast<double>(_dependencies[i]->id())));
+    deps(Json(static_cast<double>(_dependencies[i]->id())));
   }
   json("dependencies", deps);
-  triagens::basics::Json parents(triagens::basics::Json::List, _parents.size());
-  for (size_t i = 0; i < _parents.size(); i++) {
-    parents(triagens::basics::Json(static_cast<double>(_parents[i]->id())));
-  }
+
   if (verbose) {
+    Json parents(Json::List, _parents.size());
+    for (size_t i = 0; i < _parents.size(); i++) {
+      parents(triagens::basics::Json(static_cast<double>(_parents[i]->id())));
+    }
     json("parents", parents);
   }
-  json("id", triagens::basics::Json(static_cast<double>(id())));
-  json("estimatedCost", triagens::basics::Json(_estimatedCost));
 
+  json("id", Json(static_cast<double>(id())));
+  json("estimatedCost", Json(_estimatedCost));
+
+  json("depth", Json(static_cast<double>(_depth)));
+ 
+  if (_varOverview) {
+    Json jsonVarInfoList(Json::List, _varOverview->varInfo.size());
+    if (n > 0) {
+      for (auto oneVarInfo: _varOverview->varInfo) {
+        Json jsonOneVarInfoArray(Json::Array, 2);
+        jsonOneVarInfoArray(
+                            "VariableId", 
+                            Json(static_cast<double>(oneVarInfo.first)))
+          ("depth", Json(static_cast<double>(oneVarInfo.second.depth)))
+          ("RegisterId", Json(static_cast<double>(oneVarInfo.second.registerId)))
+          ;
+        jsonVarInfoList(jsonOneVarInfoArray);
+      }
+    }
+    json("varInfoList", jsonVarInfoList);
+
+    Json jsonNRRegsList(Json::List, _varOverview->nrRegs.size());
+    for (auto oneRegisterID: _varOverview->nrRegs) {
+      jsonNRRegsList(Json(static_cast<double>(oneRegisterID)));
+    }
+    json("nrRegs", jsonNRRegsList);
+
+    Json jsonRegsToClearList(Json::List, _regsToClear.size());
+    for (auto oneRegisterID: _regsToClear) {
+      jsonRegsToClearList(Json(static_cast<double>(oneRegisterID)));
+    }
+    json("regsToClear", jsonRegsToClearList);
+  }
+  else {
+    Json emptyList(Json::List);
+    json("varInfoList", emptyList);
+
+    json("nrRegs", emptyList);
+
+    json("regsToClear", emptyList);
+  }
   return json;
 }
 
