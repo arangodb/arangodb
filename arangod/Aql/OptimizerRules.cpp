@@ -1875,17 +1875,17 @@ int triagens::aql::distributeSortToCluster (Optimizer* opt,
   return TRI_ERROR_NO_ERROR;
 }
 
-class RemoveToSingletonViaCalcOnlyFinder: public WalkerWorker<ExecutionNode> {
+class RemoteToSingletonViaCalcOnlyFinder: public WalkerWorker<ExecutionNode> {
   ExecutionNode* _scatter;
   std::unordered_set<ExecutionNode*>& _toUnlink;
   
   public: 
-    RemoveToSingletonViaCalcOnlyFinder (std::unordered_set<ExecutionNode*>& toUnlink)
+    RemoteToSingletonViaCalcOnlyFinder (std::unordered_set<ExecutionNode*>& toUnlink)
       : _scatter(nullptr), 
         _toUnlink(toUnlink){
     };
 
-    ~RemoveToSingletonViaCalcOnlyFinder () {
+    ~RemoteToSingletonViaCalcOnlyFinder () {
     }
 
     bool before (ExecutionNode* en) {
@@ -1944,19 +1944,156 @@ class RemoveToSingletonViaCalcOnlyFinder: public WalkerWorker<ExecutionNode> {
 ////////////////////////////////////////////////////////////////////////////////
 
 int triagens::aql::removeUnnecessaryRemoteScatter (Optimizer* opt, 
-                                  ExecutionPlan* plan, 
-                                  Optimizer::Rule const* rule) {
+                                                   ExecutionPlan* plan, 
+                                                   Optimizer::Rule const* rule) {
   std::vector<ExecutionNode*> nodes
     = plan->findNodesOfType(triagens::aql::ExecutionNode::REMOTE, true);
   std::unordered_set<ExecutionNode*> toUnlink;
 
   for (auto n : nodes) {
-    RemoveToSingletonViaCalcOnlyFinder finder(toUnlink);
+    RemoteToSingletonViaCalcOnlyFinder finder(toUnlink);
     n->walk(&finder);
   }
 
   bool modified = false;
-  if (! toUnlink.empty()) {
+  if (!toUnlink.empty()) {
+    plan->unlinkNodes(toUnlink);
+    plan->findVarUsage();
+    modified = true;
+  }
+  
+  opt->addPlan(plan, rule->level, modified);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
+  ExecutionPlan* _plan;
+  std::unordered_set<ExecutionNode*>& _toUnlink;
+  bool _remove;
+  bool _scatter;
+  bool _gather;
+  EnumerateCollectionNode* _enumColl;
+  const Variable* _variable;
+  
+  public: 
+    RemoveToEnumCollFinder (ExecutionPlan* plan,
+                            std::unordered_set<ExecutionNode*>& toUnlink)
+      : _plan(plan),
+        _toUnlink(toUnlink),
+        _remove(false),
+        _scatter(false),
+        _gather(false),
+        _enumColl(nullptr){
+    };
+
+    ~RemoveToEnumCollFinder () {
+    }
+
+    bool before (ExecutionNode* en) {
+      switch (en->getType()) {
+        case EN::REMOVE:{
+          TRI_ASSERT(_remove == false);
+          _remove = en;
+          _toUnlink.insert(en);
+            
+          // find the variable we are removing . . .
+          auto rn = static_cast<RemoveNode*>(en);
+          auto varsToRemove = rn->getVariablesUsedHere();
+
+          // remove nodes always have one input variable
+          TRI_ASSERT(varsToRemove.size() == 1);
+          _variable = varsToRemove[0];    // the variable we'll remove
+          
+          auto _enumColl = static_cast<EnumerateCollectionNode*>(_plan->getVarSetBy(_variable->id));
+
+          if (_enumColl == nullptr 
+              || _enumColl->getType() != triagens::aql::ExecutionNode::ENUMERATE_COLLECTION 
+              || _enumColl->collection()->cid() != rn->collection()->cid() ) {
+            // remove variable was not introduced by an enumerate collection or 
+            // it was but the collections differ
+            break; // abort . . . 
+          }
+          return false; // continue . . .
+        }
+        case EN::REMOTE:{
+          _toUnlink.insert(en);
+          return false; // continue . . .
+        }
+        case EN::SCATTER:{
+          if (_scatter) { // met more than one scatter node
+            break; // abort . . . 
+          }
+          _scatter = en;
+          _toUnlink.insert(en);
+          return false; // continue . . .
+        }
+        case EN::GATHER:{
+          if (_gather) { // met more than one gather node
+            break; // abort . . . 
+          }
+          _gather = en;
+          _toUnlink.insert(en);
+          return false; // continue . . .
+        }
+        case EN::FILTER:{ 
+          // check that we are filtering something with the variable we are to remove
+          auto fn = static_cast<FilterNode*>(en);
+          auto varsUsedHere = fn->getVariablesUsedHere();
+          
+          // filter nodes always have one input variable
+          TRI_ASSERT(varsUsedHere.size() == 1);
+          
+          if (varsUsedHere[0]->id != _variable->id) {
+            break; // abort . . . FIXME is this the desired behaviour??
+          }
+          _toUnlink.insert(en); 
+          return false; // continue . . .
+        }
+        case EN::ENUMERATE_COLLECTION: {
+          // check that we are enumerating the variable we are to remove
+          if (en->id() != _enumColl->id()) {
+            break; // abort . . . FIXME is this the desired behaviour??
+          }
+          _toUnlink.insert(en); 
+          return true; // stop 
+        }
+        
+        case EN::SINGLETON:
+        case EN::CALCULATION: 
+        case EN::ENUMERATE_LIST:
+        case EN::SUBQUERY:        
+        case EN::AGGREGATE:
+        case EN::INSERT:
+        case EN::REPLACE:
+        case EN::UPDATE:
+        case EN::RETURN:
+        case EN::NORESULTS:
+        case EN::ILLEGAL:
+        case EN::LIMIT:           
+        case EN::SORT:
+        case EN::INDEX_RANGE:{}
+          // if we meet any of the above, then we abort . . .
+    }
+    _toUnlink.clear();
+    return true;
+  }
+};
+
+int triagens::aql::undistributeRemoveAfterEnumColl (Optimizer* opt, 
+                                                    ExecutionPlan* plan, 
+                                                    Optimizer::Rule const* rule) {
+  std::vector<ExecutionNode*> nodes
+    = plan->findNodesOfType(triagens::aql::ExecutionNode::REMOVE, true);
+  std::unordered_set<ExecutionNode*> toUnlink;
+
+  for (auto n : nodes) {
+    RemoveToEnumCollFinder finder(plan, toUnlink);
+    n->walk(&finder);
+  }
+
+  bool modified = false;
+  if (!toUnlink.empty()) {
     plan->unlinkNodes(toUnlink);
     plan->findVarUsage();
     modified = true;
