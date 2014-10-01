@@ -316,25 +316,26 @@ void ExecutionNode::appendAsString (std::string& st, int indent) {
 ///      match->index==nullptr means no match at all.
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode::IndexMatch ExecutionNode::CompareIndex (TRI_index_t const* idx,
+ExecutionNode::IndexMatch ExecutionNode::CompareIndex (Index const* idx,
                                                        ExecutionNode::IndexMatchVec const& attrs) {
   IndexMatch match;
 
-  if (idx->_type != TRI_IDX_TYPE_SKIPLIST_INDEX || 
+  if (idx->type != TRI_IDX_TYPE_SKIPLIST_INDEX || 
       attrs.empty()) {
     return match;
   }
 
+  size_t const idxFields = idx->fields.size();
   size_t const n = attrs.size();
-  match.doesMatch = (idx->_fields._length >= n);
+  match.doesMatch = (idxFields >= n);
 
   size_t interestingCount = 0;
   size_t forwardCount = 0;
   size_t backwardCount = 0;
   size_t j = 0;
 
-  for (; (j < idx->_fields._length && j < n); j++) {
-    if (std::string(idx->_fields._buffer[j]) == attrs[j].first) {
+  for (; (j < idxFields && j < n); j++) {
+    if (idx->fields[j] == attrs[j].first) {
       if (attrs[j].second) {
         // ascending
         match.matches.push_back(FORWARD_MATCH);
@@ -363,8 +364,8 @@ ExecutionNode::IndexMatch ExecutionNode::CompareIndex (TRI_index_t const* idx,
   if (interestingCount > 0) {
     match.index = idx;
 
-    if (j < idx->_fields._length) { // more index fields
-      for (; j < idx->_fields._length; j++) {
+    if (j < idxFields) { // more index fields
+      for (; j < idxFields; j++) {
         match.matches.push_back(NOT_COVERED_IDX);
       }
     }
@@ -877,11 +878,11 @@ ExecutionNode* EnumerateCollectionNode::clone (ExecutionPlan* plan,
 /// attributes passed)
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t EnumerateCollectionNode::getUsableFieldsOfIndex (TRI_index_t const* idx,
+size_t EnumerateCollectionNode::getUsableFieldsOfIndex (Index const* idx,
                                                         std::unordered_set<std::string> const& attrs) const {
   size_t count = 0;
-  for (size_t i = 0; i < idx->_fields._length; i++) {
-    if (attrs.find(std::string(idx->_fields._buffer[i])) == attrs.end()) {
+  for (size_t i = 0; i < idx->fields.size(); i++) {
+    if (attrs.find(idx->fields[i]) == attrs.end()) {
       break;
     }
 
@@ -899,18 +900,15 @@ size_t EnumerateCollectionNode::getUsableFieldsOfIndex (TRI_index_t const* idx,
 // of the collection of this node, modifies its arguments <idxs>, and <prefixes>
 // so that . . . 
 
-void EnumerateCollectionNode::getIndexesForIndexRangeNode
-  (std::unordered_set<std::string> const& attrs, std::vector<TRI_index_t*>& idxs, 
-   std::vector<size_t>& prefixes) const {
+void EnumerateCollectionNode::getIndexesForIndexRangeNode (std::unordered_set<std::string> const& attrs, 
+                                                           std::vector<Index*>& idxs, 
+                                                           std::vector<size_t>& prefixes) const {
 
-  TRI_document_collection_t* document = _collection->documentCollection();
-  TRI_ASSERT(document != nullptr);
-
-  for (size_t i = 0; i < document->_allIndexes._length; ++i) {
-    TRI_index_t* idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
+  auto&& indexes = _collection->getIndexes();
+  for (auto idx : indexes) {
     TRI_ASSERT(idx != nullptr);
 
-    auto const idxType = idx->_type;
+    auto const idxType = idx->type;
 
     if (idxType != TRI_IDX_TYPE_PRIMARY_INDEX &&
         idxType != TRI_IDX_TYPE_HASH_INDEX &&
@@ -936,7 +934,7 @@ void EnumerateCollectionNode::getIndexesForIndexRangeNode
     else if (idxType == TRI_IDX_TYPE_HASH_INDEX) {
       prefix = getUsableFieldsOfIndex(idx, attrs);
 
-      if (prefix == idx->_fields._length) {
+      if (prefix == idx->fields.size()) {
         // can use index
         idxs.push_back(idx);
         // <prefixes> not used for this type of index
@@ -944,7 +942,7 @@ void EnumerateCollectionNode::getIndexesForIndexRangeNode
       } 
     }
 
-    else if (idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
+    else if (idxType == TRI_IDX_TYPE_SKIPLIST_INDEX) {
       prefix = getUsableFieldsOfIndex(idx, attrs);
 
       if (prefix > 0) {
@@ -975,20 +973,16 @@ std::vector<EnumerateCollectionNode::IndexMatch>
     EnumerateCollectionNode::getIndicesOrdered (IndexMatchVec const& attrs) const {
 
   std::vector<IndexMatch> out;
-  TRI_document_collection_t* document = _collection->documentCollection();
-  size_t const n = document->_allIndexes._length;
-
-  for (size_t i = 0; i < n; ++i) {
-    TRI_index_t* idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
-
+  auto&& indexes = _collection->getIndexes();
+  for (auto idx : indexes) {
     IndexMatch match = CompareIndex(idx, attrs);
     if (match.index != nullptr) {
       out.push_back(match);
     }
   }
+
   return out;
 }
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      methods of EnumerateListNode
@@ -1073,7 +1067,7 @@ void IndexRangeNode::toJsonHelper (triagens::basics::Json& nodes,
       ("outVariable", _outVariable->toJson())
       ("ranges", ranges);
   
-  TRI_json_t* idxJson = _index->json(_index);
+  TRI_json_t* idxJson = _index->data->json(_index->data);
 
   if (idxJson != nullptr) {
     try {
@@ -1152,9 +1146,9 @@ IndexRangeNode::IndexRangeNode (ExecutionPlan* plan,
   // TODO the following could be a constructor method for
   // an Index object when these are actually used
   auto index = JsonHelper::checkAndGetArrayValue(json.json(), "index");
-  auto iid = JsonHelper::checkAndGetStringValue(index, "id");
+  auto iid   = JsonHelper::checkAndGetStringValue(index, "id");
 
-  _index = TRI_LookupIndex(_collection->documentCollection(), basics::StringUtils::uint64(iid)); 
+  _index = _collection->getIndex(iid);
   _reverse = JsonHelper::checkAndGetBooleanValue(json.json(), "reverse");
 }
 
@@ -1174,22 +1168,22 @@ double IndexRangeNode::estimateCost () {
 
   TRI_ASSERT(! _ranges.empty());
   
-  if (_index->_type == TRI_IDX_TYPE_PRIMARY_INDEX) {
+  if (_index->type == TRI_IDX_TYPE_PRIMARY_INDEX) {
     return dependencyCost;
   }
   
-  if (_index->_type == TRI_IDX_TYPE_EDGE_INDEX) {
+  if (_index->type == TRI_IDX_TYPE_EDGE_INDEX) {
     return oldCost / 1000;
   }
   
-  if (_index->_type == TRI_IDX_TYPE_HASH_INDEX) {
-    if (_index->_unique) {
+  if (_index->type == TRI_IDX_TYPE_HASH_INDEX) {
+    if (_index->unique) {
       return dependencyCost;
     }
     return oldCost / 1000;
   }
 
-  if (_index->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
+  if (_index->type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
     auto const count = _ranges.at(0).size();
     
     if (count == 0) {
@@ -1197,8 +1191,8 @@ double IndexRangeNode::estimateCost () {
       return oldCost;
     }
 
-    if (_index->_unique && 
-        count == _index->_fields._length) {
+    if (_index->unique && 
+        count == _index->fields.size()) {
       if (_ranges.at(0).back().is1ValueRangeInfo()) {
         // unique index, all attributes compared using eq (==) operator
         return dependencyCost;

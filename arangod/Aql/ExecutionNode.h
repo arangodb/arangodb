@@ -218,7 +218,7 @@ namespace triagens {
               reverse(false) {
           }
 
-          TRI_index_t const* index;        // The index concerned; if null, this is a nonmatch.
+          Index const* index;              // The index concerned; if null, this is a nonmatch.
           std::vector<MatchType> matches;  // qualification of the attrs match quality
           bool doesMatch;                  // do all criteria match?
           bool reverse;                    // reverse index scan required
@@ -226,7 +226,7 @@ namespace triagens {
 
         typedef std::vector<std::pair<std::string, bool>> IndexMatchVec;
 
-        static IndexMatch CompareIndex (TRI_index_t const* idx,
+        static IndexMatch CompareIndex (Index const* idx,
                                         IndexMatchVec const& attrs);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -865,7 +865,7 @@ namespace triagens {
 /// attributes passed)
 ////////////////////////////////////////////////////////////////////////////////
 
-        size_t getUsableFieldsOfIndex (TRI_index_t const* idx,
+        size_t getUsableFieldsOfIndex (Index const* idx,
                                        std::unordered_set<std::string> const&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -873,7 +873,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void getIndexesForIndexRangeNode (std::unordered_set<std::string> const& attrs, 
-           std::vector<TRI_index_t*>& idxs, std::vector<size_t>& prefixes) const;
+                                          std::vector<Index*>& idxs, 
+                                          std::vector<size_t>& prefixes) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get vector of skiplist indices which match attrs in sequence.
@@ -1064,7 +1065,7 @@ namespace triagens {
                         TRI_vocbase_t* vocbase, 
                         Collection const* collection,
                         Variable const* outVariable,
-                        TRI_index_t const* index, 
+                        Index const* index, 
                         std::vector<std::vector<RangeInfo>> const& ranges,
                         bool reverse)
           : ExecutionNode(plan, id), 
@@ -1189,7 +1190,7 @@ namespace triagens {
 /// @brief the index
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_index_t const* _index;
+        Index const* _index;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the range info

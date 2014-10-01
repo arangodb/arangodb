@@ -31,7 +31,6 @@
 #include <Basics/Common.h>
 
 #include "Aql/Optimizer.h"
-#include "Aql/Indexes.h"
 
 namespace triagens {
   namespace aql {

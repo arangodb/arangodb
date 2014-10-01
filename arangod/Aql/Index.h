@@ -27,19 +27,17 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_Index_H
-#define ARANGODB_AQL_Index_H 1
+#ifndef ARANGODB_AQL_INDEX_H
+#define ARANGODB_AQL_INDEX_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/document-collection.h"
-#include "VocBase/transaction.h"
-#include "VocBase/vocbase.h"
+#include "VocBase/index.h"
 
 namespace triagens {
   namespace aql {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 struct Index
+// --SECTION--                                                      struct Index
 // -----------------------------------------------------------------------------
 
     struct Index {
@@ -49,42 +47,37 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       Index& operator= (Index const&) = delete;
-      Index (Index const&) = delete;
-      Index () = delete;
       
-      Index (TRI_idx_iid_t id, Collection const* collection) 
-        : _id(id), _collection(collection){
+      Index (TRI_index_t* idx)
+        : id(idx->_iid),
+          type(idx->_type),
+          unique(idx->_unique),
+          fields(),
+          data(idx) {
+
+        size_t const n = idx->_fields._length;
+        fields.reserve(n);
+
+        for (size_t i = 0; i < n; ++i) {
+          char const* field = idx->_fields._buffer[i];
+          fields.push_back(std::string(field));
+        }
+        
+        TRI_ASSERT(data != nullptr);
       }
       
       ~Index() {
       }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a pointer to the underlying TRI_index_s of the Index
-////////////////////////////////////////////////////////////////////////////////
-      
-      inline TRI_index_s* index () const {
-        return TRI_LookupIndex(_collection->documentCollection(), _id);
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the index type
-////////////////////////////////////////////////////////////////////////////////
-      
-      inline TRI_idx_type_e type () const {
-        return this->index()->_type;
-      }
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables
 // -----------------------------------------------------------------------------
 
-      TRI_idx_iid_t         _id;
-      Collection const*     _collection;
+      TRI_idx_iid_t const        id;
+      TRI_idx_type_e const       type;
+      bool const                 unique;
+      std::vector<std::string>   fields;
+      TRI_index_t*               data;
 
     };
 

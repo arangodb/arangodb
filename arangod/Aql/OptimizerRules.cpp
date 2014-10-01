@@ -28,7 +28,6 @@
 #include "Aql/OptimizerRules.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/Indexes.h"
 #include "Aql/Variable.h"
 
 using namespace triagens::aql;
@@ -843,7 +842,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                 }
               }
               else {
-                std::vector<TRI_index_t*> idxs;
+                std::vector<Index*> idxs;
                 std::vector<size_t> prefixes;
                 // {idxs.at(i)->_fields[0]..idxs.at(i)->_fields[prefixes.at(i)]}
                 // is a subset of <attrs>
@@ -866,7 +865,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                   auto idx = idxs.at(i);
                   TRI_ASSERT(idx != nullptr);
                
-                  if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX) {
+                  if (idx->type == TRI_IDX_TYPE_PRIMARY_INDEX) {
                     bool handled = false;
                     auto range = map->find(std::string(TRI_VOC_ATTRIBUTE_ID));
                 
@@ -893,9 +892,9 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                       }
                     }
                   }
-                  else if (idx->_type == TRI_IDX_TYPE_HASH_INDEX) {
-                    for (size_t j = 0; j < idx->_fields._length; j++) {
-                      auto range = map->find(std::string(idx->_fields._buffer[j]));
+                  else if (idx->type == TRI_IDX_TYPE_HASH_INDEX) {
+                    for (size_t j = 0; j < idx->fields.size(); j++) {
+                      auto range = map->find(idx->fields[j]);
                    
                       if (! range->second.is1ValueRangeInfo()) {
                         rangeInfo.at(0).clear();   // not usable
@@ -904,7 +903,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                       rangeInfo.at(0).push_back(range->second);
                     }
                   }
-                  else if (idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
+                  else if (idx->type == TRI_IDX_TYPE_EDGE_INDEX) {
                     bool handled = false;
                     auto range = map->find(std::string(TRI_VOC_ATTRIBUTE_FROM));
                 
@@ -931,14 +930,14 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                       }
                     }
                   }
-                  else if (idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
+                  else if (idx->type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
                     size_t j = 0;
-                    auto range = map->find(std::string(idx->_fields._buffer[0]));
+                    auto range = map->find(idx->fields[0]);
                     TRI_ASSERT(range != map->end());
                     rangeInfo.at(0).push_back(range->second);
                     bool equality = range->second.is1ValueRangeInfo();
                     while (++j < prefixes.at(i) && equality) {
-                      range = map->find(std::string(idx->_fields._buffer[j]));
+                      range = map->find(idx->fields[j]);
                       rangeInfo.at(0).push_back(range->second);
                       equality = equality && range->second.is1ValueRangeInfo();
                     }
