@@ -308,7 +308,7 @@ function SimpleQueryByExampleSuite () {
       assertEqual(d._id, s._id);
       
       s = collection.firstExample({ "d" : false });
-      assertEqual(null, s);
+      assertNull(s);
       
       s = collection.firstExample({ "a.b" : true });
       assertEqual(d._id, s._id);
@@ -336,8 +336,8 @@ function SimpleQueryByExampleSuite () {
       s = collection.firstExample({ "a.b" : "foo" });
       assertEqual(d2._id, s._id);
       s = collection.firstExample({ "a.b" : false });
-      assertEqual(null, s);
-      
+      assertNull(s);
+
       s = collection.firstExample(example1);
       assertEqual(d1._id, s._id);
       s = collection.firstExample(example2);
@@ -353,7 +353,7 @@ function SimpleQueryByExampleSuite () {
       
       d = collection.save({ _key: "meow" });
       s = collection.firstExample({ _key: "foo" });
-      assertEqual(null, s);
+      assertNull(s);
       
       s = collection.firstExample({ _key: "meow" });
       assertEqual(d._id, s._id);
@@ -369,13 +369,85 @@ function SimpleQueryByExampleSuite () {
       
       d = collection.save({ _key: "meow" });
       s = collection.firstExample({ _key: "meow", a: 1 });
-      assertEqual(null, s);
+      assertNull(s);
       
       d = collection.save({ _key: "foo", a: 2 });
       s = collection.firstExample({ _key: "foo", a: 2 });
       assertEqual(d._id, s._id);
       assertEqual(d._key, s._key);
       assertEqual(2, s.a);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: byExample, using _rev
+////////////////////////////////////////////////////////////////////////////////
+
+    testByExampleRev : function () {
+      var d, s;
+
+      d = collection.save({ _key: "meow" });
+      s = collection.firstExample({ _rev: d._rev });
+      assertEqual(d._rev, s._rev);
+
+      s = collection.firstExample({ _rev: "foo" });
+      assertNull(s);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: byExample, using _rev
+////////////////////////////////////////////////////////////////////////////////
+
+    testByExampleRevId : function () {
+      var d, s;
+
+      d = collection.save({ _key: "meow" });
+      s = collection.firstExample({ _rev: d._rev, _id: cn + "/meow" });
+      assertEqual(d._rev, s._rev);
+      
+      s = collection.firstExample({ _rev: d._rev, _id: cn + "/foo" });
+      assertNull(s);
+
+      s = collection.firstExample({ _rev: "foo", _id: cn + "/meow" });
+      assertNull(s);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: byExample, using _rev
+////////////////////////////////////////////////////////////////////////////////
+
+    testByExampleRevMore : function () {
+      var d, s;
+
+      d = collection.save({ _key: "meow", a: 1, b: 2 });
+      s = collection.firstExample({ _rev: d._rev, b: 2, a: 1 });
+      assertEqual(d._rev, s._rev);
+      assertEqual("meow", s._key);
+
+      s = collection.firstExample({ _rev: d._rev, a: 1 });
+      assertEqual(d._rev, s._rev);
+      assertEqual("meow", s._key);
+      
+      s = collection.firstExample({ _rev: d._rev, b: 2 });
+      assertEqual(d._rev, s._rev);
+      assertEqual("meow", s._key);
+
+      s = collection.firstExample({ _rev: d._rev, a: 2 });
+      assertNull(s);
+      
+      s = collection.firstExample({ _rev: d._rev, b: 1 });
+      assertNull(s);
+      
+      s = collection.firstExample({ _rev: d._rev, a: 1, b: 3 });
+      assertNull(s);
+      
+      s = collection.firstExample({ _rev: "foo", a: 1 });
+      assertNull(s);
+      
+      s = collection.firstExample({ _rev: "foo", b: 2 });
+      assertNull(s);
+      
+      s = collection.firstExample({ _rev: "foo", a: 1, b: 2 });
+      assertNull(s);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -387,7 +459,7 @@ function SimpleQueryByExampleSuite () {
       
       d = collection.save({ _key: "meow" });
       s = collection.firstExample({ _id: cn + "/foo" });
-      assertEqual(null, s);
+      assertNull(s);
       
       s = collection.firstExample({ _id: cn + "/meow" });
       assertEqual(d._id, s._id);
@@ -559,6 +631,7 @@ function SimpleQueryByExampleSuite () {
       deleted = collection.removeByExample({ value : 4 });
       assertEqual(0, deleted);
     },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: removeByExample with new signature
 ////////////////////////////////////////////////////////////////////////////////
@@ -706,6 +779,7 @@ function SimpleQueryByExampleSuite () {
       replaced = collection.replaceByExample({ value : 6 }, { });
       assertEqual(0, replaced);
     },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: replaceByExampleWithNewSignature
 ////////////////////////////////////////////////////////////////////////////////
@@ -845,6 +919,7 @@ function SimpleQueryByExampleSuite () {
       updated = collection.updateByExample({ value : 6 }, { });
       assertEqual(0, updated);
     },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: updateByExample with new Signature
 ////////////////////////////////////////////////////////////////////////////////
@@ -911,7 +986,6 @@ function SimpleQueryByExampleSuite () {
       // update and remove old values keep null values
       updated = collection.updateByExample({ limit_test : 1 }, { foo : "bart", bar : "baz", value : null }, {keepNull: true, limit : 30});
       assertEqual(30, updated);
-
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1247,6 +1321,186 @@ function SimpleQueryByExampleSkiplistSuite () {
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                         basic tests for byExample
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite: query-by-example
+////////////////////////////////////////////////////////////////////////////////
+
+function SimpleQueryByExampleEdgeSuite () {
+  var cn = "UnitTestsCollectionByExample";
+  var c1 = "UnitTestsCollectionByExampleEdge";
+  var collection = null;
+  var edge = null;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      db._drop(cn);
+      db._drop(c1);
+      collection = db._create(cn);
+      edge = db._createEdgeCollection(c1);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      collection.drop();
+      edge.drop();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: byExample, using edge index
+////////////////////////////////////////////////////////////////////////////////
+
+    testByExampleEdgeFrom : function () {
+      edge.save(cn + "/foo", cn + "/bar", { _key: "e1", foo: "bar" });
+      edge.save(cn + "/bar", cn + "/foo", { _key: "e2", bar: "foo" });
+
+      var doc;
+      doc = edge.firstExample({ _from: cn + "/foo" });
+      assertEqual(c1 + "/e1", doc._id);
+      assertEqual("e1", doc._key);
+      assertEqual("bar", doc.foo);
+      assertEqual(cn + "/foo", doc._from);
+      assertEqual(cn + "/bar", doc._to);
+      
+      doc = edge.firstExample({ _from: cn + "/barbaz" });
+      assertNull(doc);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: byExample, using edge index
+////////////////////////////////////////////////////////////////////////////////
+
+    testByExampleEdgeFromMore : function () {
+      edge.save(cn + "/foo", cn + "/bar", { _key: "e1", foo: "bar" });
+      edge.save(cn + "/bar", cn + "/foo", { _key: "e2", bar: "foo" });
+
+      var doc;
+      doc = edge.firstExample({ _from: cn + "/foo", foo: "bar" });
+      assertEqual(c1 + "/e1", doc._id);
+      assertEqual("e1", doc._key);
+      assertEqual("bar", doc.foo);
+      assertEqual(cn + "/foo", doc._from);
+      assertEqual(cn + "/bar", doc._to);
+      
+      doc = edge.firstExample({ _from: cn + "/foo", foo: "baz" });
+      assertNull(doc);
+      
+      doc = edge.firstExample({ _from: cn + "/foo", bar: "foo" });
+      assertNull(doc);
+      
+      doc = edge.firstExample({ _from: cn + "/foo", boo: "far" });
+      assertNull(doc);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: byExample, using edge index
+////////////////////////////////////////////////////////////////////////////////
+
+    testByExampleEdgeTo : function () {
+      edge.save(cn + "/foo", cn + "/bar", { _key: "e1", foo: "bar" });
+      edge.save(cn + "/bar", cn + "/foo", { _key: "e2", bar: "foo" });
+
+      var doc;
+      doc = edge.firstExample({ _to: cn + "/foo" });
+      assertEqual(c1 + "/e2", doc._id);
+      assertEqual("e2", doc._key);
+      assertEqual("foo", doc.bar);
+      assertEqual(cn + "/bar", doc._from);
+      assertEqual(cn + "/foo", doc._to);
+      
+      doc = edge.firstExample({ _to: cn + "/bart" });
+      assertNull(doc);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: byExample, using edge index
+////////////////////////////////////////////////////////////////////////////////
+
+    testByExampleEdgeToMore : function () {
+      edge.save(cn + "/foo", cn + "/bar", { _key: "e1", foo: "bar" });
+      edge.save(cn + "/bar", cn + "/foo", { _key: "e2", bar: "foo" });
+
+      var doc;
+      doc = edge.firstExample({ _to: cn + "/foo", bar: "foo" });
+      assertEqual(c1 + "/e2", doc._id);
+      assertEqual("e2", doc._key);
+      assertEqual("foo", doc.bar);
+      assertEqual(cn + "/bar", doc._from);
+      assertEqual(cn + "/foo", doc._to);
+      
+      doc = edge.firstExample({ _to: cn + "/foo", bar: "baz" });
+      assertNull(doc);
+      
+      doc = edge.firstExample({ _to: cn + "/foo", foo: "bar" });
+      assertNull(doc);
+      
+      doc = edge.firstExample({ _to: cn + "/foo", boo: "far" });
+      assertNull(doc);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: byExample, using edge index
+////////////////////////////////////////////////////////////////////////////////
+
+    testByExampleEdgeFromTo : function () {
+      edge.save(cn + "/foo", cn + "/bar", { _key: "e1", foo: "bar" });
+      edge.save(cn + "/bar", cn + "/foo", { _key: "e2", bar: "foo" });
+
+      var doc;
+      doc = edge.firstExample({ _to: cn + "/foo", _from: cn + "/bar" });
+      assertEqual(c1 + "/e2", doc._id);
+      assertEqual("e2", doc._key);
+      assertEqual("foo", doc.bar);
+      assertEqual(cn + "/bar", doc._from);
+      assertEqual(cn + "/foo", doc._to);
+      
+      doc = edge.firstExample({ _to: cn + "/foo", _from: cn + "/baz" });
+      assertNull(doc);
+      
+      doc = edge.firstExample({ _to: cn + "/bar", _from: cn + "/bar" });
+      assertNull(doc);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: byExample, using edge index
+////////////////////////////////////////////////////////////////////////////////
+
+    testByExampleEdgeFromToMore : function () {
+      edge.save(cn + "/foo", cn + "/bar", { _key: "e1", foo: "bar" });
+      edge.save(cn + "/bar", cn + "/foo", { _key: "e2", bar: "foo" });
+
+      var doc;
+      doc = edge.firstExample({ _to: cn + "/foo", _from: cn + "/bar", bar: "foo" });
+      assertEqual(c1 + "/e2", doc._id);
+      assertEqual("e2", doc._key);
+      assertEqual("foo", doc.bar);
+      assertEqual(cn + "/bar", doc._from);
+      assertEqual(cn + "/foo", doc._to);
+      
+      doc = edge.firstExample({ _to: cn + "/foo", _from: cn + "/baz", bar: "baz" });
+      assertNull(doc);
+      
+      doc = edge.firstExample({ _to: cn + "/foo", _from: cn + "/baz", foo: "bar" });
+      assertNull(doc);
+      
+      doc = edge.firstExample({ _to: cn + "/bar", _from: cn + "/bar", boo: "far" });
+      assertNull(doc);
+    }
+
+  };
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                             basic tests for range
 // -----------------------------------------------------------------------------
 
@@ -1419,6 +1673,7 @@ jsunity.run(SimpleQueryAllSkipLimitSuite);
 jsunity.run(SimpleQueryByExampleSuite);
 jsunity.run(SimpleQueryByExampleHashSuite);
 jsunity.run(SimpleQueryByExampleSkiplistSuite);
+jsunity.run(SimpleQueryByExampleEdgeSuite);
 jsunity.run(SimpleQueryRangeSuite);
 jsunity.run(SimpleQueryUniqueRangeSuite);
 jsunity.run(SimpleQueryAnySuite);

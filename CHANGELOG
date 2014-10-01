@@ -1,6 +1,12 @@
 v2.2.4 (2014-XX-XX)
 -------------------
 
+* fixed accessing `_from` and `_to` attributes in `collection.byExample` and 
+  `collection.firstExample`
+
+  These internal attributes were not handled properly in the mentioned functions, so 
+  searching for them did not always produce documents
+
 * fixed issue #1030: arangoimp 2.2.3 crashing, not logging on large Windows CSV file 
 
 * fixed issue #1025: Traversal not as expected in undirected graph
