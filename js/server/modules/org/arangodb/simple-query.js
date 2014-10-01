@@ -436,13 +436,6 @@ function byExample (data) {
         checks.push({ type: "skiplist", fields: keys, unique: true });
       }
 
-      var fields = [ ];
-      for (k in normalized) {
-        if (normalized.hasOwnProperty(k)) {
-          fields.push([ k, [ normalized[k] ] ]);
-        }
-      }
-
       for (k = 0; k < checks.length; ++k) {
         if (data._type !== undefined && data._type !== checks[k].type) {
           continue;
