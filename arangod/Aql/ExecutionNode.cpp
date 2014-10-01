@@ -517,12 +517,14 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
     json("regsToClear", jsonRegsToClearList);
   }
   else {
-    Json emptyList(Json::List);
-    json("varInfoList", emptyList);
+    Json emptyList1(Json::List);
+    json("varInfoList", emptyList1);
 
-    json("nrRegs", emptyList);
+    Json emptyList2(Json::List);
+    json("nrRegs", emptyList2);
 
-    json("regsToClear", emptyList);
+    Json emptyList3(Json::List);
+    json("regsToClear", emptyList3);
   }
   return json;
 }

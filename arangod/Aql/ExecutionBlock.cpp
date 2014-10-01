@@ -118,7 +118,7 @@ size_t const ExecutionBlock::DefaultBatchSize = 1000;
 ExecutionBlock::ExecutionBlock (ExecutionEngine* engine,
                                 ExecutionNode const* ep)
   : _engine(engine),
-    _trx(engine->getTransaction()), 
+    _trx(engine->getQuery()->trx()), 
     _exeNode(ep), 
     _done(false) {
 }
@@ -3829,7 +3829,7 @@ std::cout << "SENDING REQUEST TO " << _server << ", URLPART: " << urlPart << ", 
                          _server,
                          type,
                          std::string("/_db/") 
-                           + triagens::basics::StringUtils::urlEncode(_engine->getTransaction()->vocbase()->_name)
+                         + triagens::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase()->_name)
                            + urlPart + _queryId,
                          body,
                          headers,
@@ -3865,7 +3865,7 @@ int RemoteBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   }
   else {
     body("pos", Json(static_cast<double>(pos)))
-        ("items", items->toJson(_engine->getTransaction()));
+      ("items", items->toJson(_engine->getQuery()->trx()));
   }
 
   std::string bodyString(body.toString());
