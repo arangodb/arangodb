@@ -732,7 +732,6 @@ AqlItemBlock* EnumerateCollectionBlock::getSome (size_t, // atLeast,
 }
 
 size_t EnumerateCollectionBlock::skipSome (size_t atLeast, size_t atMost) {
-
   size_t skipped = 0;
 
   if (_done) {
@@ -1643,7 +1642,6 @@ AqlItemBlock* EnumerateListBlock::getSome (size_t, size_t atMost) {
 
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
-
   return res.release();
 }
 
@@ -1921,8 +1919,6 @@ AqlItemBlock* SubqueryBlock::getSome (size_t atLeast,
   return res.release();
 }
 
-
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class FilterBlock
 // -----------------------------------------------------------------------------
@@ -2004,12 +2000,13 @@ int FilterBlock::getOrSkipSome (size_t atLeast,
         }
         _pos = 0;
       }
+  
       // If we get here, then _buffer.size() > 0 and _pos points to a
       // valid place in it.
       AqlItemBlock* cur = _buffer.front();
       if (_chosen.size() - _pos + skipped > atMost) {
         // The current block of chosen ones is too large for atMost:
-        if(! skipping) {
+        if (! skipping) {
           unique_ptr<AqlItemBlock> more(cur->slice(_chosen,
                                                    _pos, _pos + (atMost - skipped)));
           collector.push_back(more.get());
@@ -2064,12 +2061,12 @@ int FilterBlock::getOrSkipSome (size_t atLeast,
         result = AqlItemBlock::concatenate(collector);
       }
       catch (...){
-        for (auto x : collector){
+        for (auto x : collector) {
           delete x;
         }
         throw;
       }
-      for (auto x : collector){
+      for (auto x : collector) {
         delete x;
       }
     }
@@ -2184,7 +2181,7 @@ int AggregateBlock::getOrSkipSome (size_t atLeast,
   AqlItemBlock* cur = _buffer.front();
   unique_ptr<AqlItemBlock> res;
 
-  if(!skipping){
+  if (! skipping) {
     res.reset(new AqlItemBlock(atMost, getPlanNode()->getVarOverview()->nrRegs[getPlanNode()->getDepth()]));
 
     TRI_ASSERT(cur->getNrRegs() <= res->getNrRegs());
@@ -3464,7 +3461,6 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
-  
   if (_done) {
     return 0;
   }
