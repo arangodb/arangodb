@@ -31,8 +31,7 @@
 #define ARANGODB_AQL_COLLECTION_H 1
 
 #include "Basics/Common.h"
-#include "Cluster/ClusterInfo.h"
-#include "Utils/Exception.h"
+#include "Aql/Index.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
@@ -54,21 +53,11 @@ namespace triagens {
       Collection (Collection const&) = delete;
       Collection () = delete;
       
-      Collection (std::string const& name,
-                  struct TRI_vocbase_s* vocbase,
-                  TRI_transaction_type_e accessType) 
-        : name(name),
-          currentShard(),
-          vocbase(vocbase),
-          collection(nullptr),
-          accessType(accessType) {
-          
-        TRI_ASSERT(! name.empty());
-        TRI_ASSERT(vocbase != nullptr);
-      }
+      Collection (std::string const&,
+                  struct TRI_vocbase_s*,
+                  TRI_transaction_type_e);
       
-      ~Collection () {
-      }
+      ~Collection ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -78,7 +67,7 @@ namespace triagens {
 /// @brief set the current shard 
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setCurrentShard (std::string const& shard) {
+      inline void setCurrentShard (std::string const& shard) {
         currentShard = shard;
       }
 
@@ -86,7 +75,7 @@ namespace triagens {
 /// @brief remove the current shard
 ////////////////////////////////////////////////////////////////////////////////
       
-      void resetCurrentShard () {
+      inline void resetCurrentShard () {
         currentShard = "";
       }
 
@@ -97,6 +86,21 @@ namespace triagens {
       inline TRI_voc_cid_t cid () const {
         TRI_ASSERT(collection != nullptr);
         return collection->_cid;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the name of the collection, translated for the sharding
+/// case. this will return currentShard if it is set, and name otherwise
+////////////////////////////////////////////////////////////////////////////////
+
+      std::string getName () const {
+        if (! currentShard.empty()) {
+          // sharding case: return the current shard name instead of the collection name
+          return currentShard;
+        }
+
+        // non-sharding case: simply return the name
+        return name;
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -133,62 +137,43 @@ namespace triagens {
 /// TODO: must be adjusted for clusters
 ////////////////////////////////////////////////////////////////////////////////
 
-      size_t count () const {
-        if (numDocuments == UNINITIALIZED) {
-          auto document = documentCollection();
-          // cache the result
-          numDocuments = static_cast<int64_t>(document->size(document));
-        }
-
-        return static_cast<size_t>(numDocuments);
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the shard information for a collection
-////////////////////////////////////////////////////////////////////////////////
-
-      std::map<std::string, std::string> shardInfo () const {
-        auto clusterInfo = triagens::arango::ClusterInfo::instance();
-        auto collectionInfo = clusterInfo->getCollection(std::string(vocbase->_name), name);
-        if (collectionInfo.get() == nullptr) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "collection not found");
-        }
-
-        return collectionInfo.get()->shardIds();
-      }
+      size_t count () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the shard ids of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-      std::vector<std::string> shardIds () const {
-        auto clusterInfo = triagens::arango::ClusterInfo::instance();
-        auto collectionInfo = clusterInfo->getCollection(std::string(vocbase->_name), name);
-        if (collectionInfo.get() == nullptr) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "collection not found");
-        }
-
-        std::vector<std::string> ids;
-        for (auto const& it : collectionInfo.get()->shardIds()) {
-          ids.emplace_back(it.first);
-        }
-        return ids;
-      }
+      std::vector<std::string> shardIds () const;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the name of the collection, translated for the sharding
-/// case
+/// @brief returns the indexes of the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-      std::string getName () const {
-        if (! currentShard.empty()) {
-          // sharding case: return the current shard name instead of the collection name
-          return currentShard;
-        }
+      std::vector<Index*> getIndexes (); 
 
-        // non-sharding case: simply return the name
-        return name;
-      }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return an index by its id
+////////////////////////////////////////////////////////////////////////////////
+  
+      Index* getIndex (TRI_idx_iid_t) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return an index by its id
+////////////////////////////////////////////////////////////////////////////////
+  
+      Index* getIndex (std::string const&) const;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fills the index list for the collection
+////////////////////////////////////////////////////////////////////////////////
+
+    private:
+
+      void fillIndexes () const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -205,12 +190,13 @@ namespace triagens {
 
     public:
 
-      TRI_vocbase_t*          vocbase;
-      TRI_vocbase_col_t*      collection;
-      TRI_transaction_type_e  accessType;
-      mutable int64_t         numDocuments = UNINITIALIZED;
+      TRI_vocbase_t*               vocbase;
+      TRI_vocbase_col_t*           collection;
+      TRI_transaction_type_e       accessType;
+      mutable std::vector<Index*>  indexes;
+      mutable int64_t              numDocuments = UNINITIALIZED;
 
-      static int64_t const    UNINITIALIZED = -1;
+      static int64_t const         UNINITIALIZED = -1;
     };
 
   }

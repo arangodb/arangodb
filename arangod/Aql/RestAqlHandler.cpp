@@ -502,7 +502,6 @@ void RestAqlHandler::useQuery (std::string const& operation,
     int res;
     try {
       if (JsonHelper::getBooleanValue(queryJson.json(), "exhausted", true)) {
-std::cout << "GOT EXHAUSTED FLAG\n";        
         res = query->engine()->initializeCursor(nullptr, 0);
       }
       else {
@@ -516,7 +515,7 @@ std::cout << "GOT EXHAUSTED FLAG\n";
                     "initializeCursor lead to an exception");
       return;
     }
-std::cout << "ABOUT TO ANSWER: " << res << "\n";
+std::cout << "ABOUT TO ANSWER WITH CODE: " << res << "\n";
     answerBody("error", Json(res == TRI_ERROR_NO_ERROR))
               ("code", Json(static_cast<double>(res)));
   }

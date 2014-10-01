@@ -961,16 +961,16 @@ bool IndexRangeBlock::readIndex () {
     condition = newCondition.get();
   }
   
-  if (en->_index->_type == TRI_IDX_TYPE_PRIMARY_INDEX) {
+  if (en->_index->type == TRI_IDX_TYPE_PRIMARY_INDEX) {
     readPrimaryIndex(*condition);
   }
-  else if (en->_index->_type == TRI_IDX_TYPE_HASH_INDEX) {
+  else if (en->_index->type == TRI_IDX_TYPE_HASH_INDEX) {
     readHashIndex(*condition);
   }
-  else if (en->_index->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
+  else if (en->_index->type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
     readSkiplistIndex(*condition);
   }
-  else if (en->_index->_type == TRI_IDX_TYPE_EDGE_INDEX) {
+  else if (en->_index->type == TRI_IDX_TYPE_EDGE_INDEX) {
     readEdgeIndex(*condition);
   }
   else {
@@ -1221,7 +1221,7 @@ void IndexRangeBlock::readPrimaryIndex (IndexOrCondition const& ranges) {
 
 void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
-  TRI_index_t* idx = const_cast<TRI_index_t*>(en->_index);
+  TRI_index_t* idx = en->_index->data;
   TRI_ASSERT(idx != nullptr);
   TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
              
@@ -1381,7 +1381,7 @@ void IndexRangeBlock::readEdgeIndex (IndexOrCondition const& ranges) {
 
 void IndexRangeBlock::readSkiplistIndex (IndexOrCondition const& ranges) {
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
-  TRI_index_t* idx = const_cast<TRI_index_t*>(en->_index);
+  TRI_index_t* idx = en->_index->data;
   TRI_ASSERT(idx != nullptr);
   
   TRI_shaper_t* shaper = _collection->documentCollection()->getShaper(); 
@@ -3783,8 +3783,6 @@ double const RemoteBlock::defaultTimeOut = 3600.0;
 ////////////////////////////////////////////////////////////////////////////////
 
 static void throwExceptionAfterBadSyncRequest (ClusterCommResult* res) {
-  std::cout << "IN THROW EXCEPTION AFTER BAD SYNC REQUEST\n";
-
   if (res->status == CL_COMM_TIMEOUT) {
     std::cout << "GOT TIMEOUT\n";
     // No reply, we give up:
