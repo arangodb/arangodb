@@ -532,9 +532,9 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
 /// @brief static analysis debugger
 ////////////////////////////////////////////////////////////////////////////////
 
-struct StaticAnalysisDebugger : public WalkerWorker<ExecutionNode> {
-  StaticAnalysisDebugger () : indent(0) {};
-  ~StaticAnalysisDebugger () {};
+struct RegisterPlanningDebugger : public WalkerWorker<ExecutionNode> {
+  RegisterPlanningDebugger () : indent(0) {};
+  ~RegisterPlanningDebugger () {};
 
   int indent;
 
@@ -595,7 +595,7 @@ void ExecutionNode::planRegisters (ExecutionNode* super) {
   // Just for debugging:
   /*
   std::cout << std::endl;
-  StaticAnalysisDebugger debugger;
+  RegisterPlanningDebugger debugger;
   walk(&debugger);
   std::cout << std::endl;
   */
