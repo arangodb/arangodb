@@ -464,6 +464,9 @@ std::cout << "REGISTERING QUERY ON COORDINATOR WITH ID: " << id << "\n";
       // inject the current shard id into the collection
       collection->setCurrentShard(shardId);
 
+      plan.findVarUsage();
+      plan.staticAnalysis();
+
       // create a JSON representation of the plan
       triagens::basics::Json result(triagens::basics::Json::Array);
       triagens::basics::Json jsonNodesList(plan.root()->toJson(TRI_UNKNOWN_MEM_ZONE, true));
@@ -500,7 +503,7 @@ std::cout << "REGISTERING QUERY ON COORDINATOR WITH ID: " << id << "\n";
         delete res;
       }
     }
-
+      
     // fix collection  
     collection->resetCurrentShard();
 
