@@ -148,12 +148,10 @@ static ExecutionBlock* createBlock (ExecutionEngine* engine,
 /// @brief create the engine
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionEngine::ExecutionEngine (AQL_TRANSACTION_V8* trx, 
-                                  Query* query)
+ExecutionEngine::ExecutionEngine (Query* query)
   : _stats(),
     _blocks(),
     _root(nullptr),
-    _trx(trx),
     _query(query) {
 
   _blocks.reserve(8);
@@ -270,7 +268,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     std::vector<ExecutionNode*>  nodes;
   };
 
-  AQL_TRANSACTION_V8*      trx;
+  std::shared_ptr<AQL_TRANSACTION_V8> trx;
   Query*                   query;
   QueryRegistry*           queryRegistry;
   ExecutionBlock*          root;
@@ -280,10 +278,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   std::vector<size_t>      engineIds; // stack of engine ids, used for subqueries
 
   
-  CoordinatorInstanciator (AQL_TRANSACTION_V8* trx,
-                           Query* query,
+  CoordinatorInstanciator (Query* query,
                            QueryRegistry* queryRegistry)
-    : trx(trx),
+    : trx(query->getTrxPtr()),
       query(query),
       queryRegistry(queryRegistry),
       root(nullptr),
@@ -316,7 +313,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
         if ((*it).id > 0) {
           Query *otherQuery = query->clone(PART_DEPENDENT);
-          otherQuery->trx(trx);
           otherQuery->engine(engine);
 
           auto *newPlan = new ExecutionPlan(otherQuery->ast());
@@ -550,7 +546,7 @@ std::cout << "REGISTERING QUERY ON COORDINATOR WITH ID: " << id << "\n";
 
   ExecutionEngine* buildEngineCoordinator (EngineInfo& info,
                                            std::unordered_map<std::string, std::string> const& queryIds) {
-    std::unique_ptr<ExecutionEngine> engine(new ExecutionEngine(trx, query));
+    std::unique_ptr<ExecutionEngine> engine(new ExecutionEngine(query));
 
     std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
     RemoteNode* remoteNode = nullptr;
@@ -689,7 +685,6 @@ void ExecutionEngine::addBlock (ExecutionBlock* block) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegistry,
-                                                       AQL_TRANSACTION_V8* trx,
                                                        Query* query,
                                                        ExecutionPlan* plan) {
   ExecutionEngine* engine = nullptr;
@@ -704,8 +699,7 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
 
     if (isCoordinator()) {
       // instanciate the engine on the coordinator
-      query->trx(trx);
-      std::unique_ptr<CoordinatorInstanciator> inst(new CoordinatorInstanciator(trx, query, queryRegistry));
+      std::unique_ptr<CoordinatorInstanciator> inst(new CoordinatorInstanciator(query, queryRegistry));
       plan->root()->walk(inst.get());
 
       engine = inst.get()->buildEngines(); 
@@ -713,7 +707,7 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
     }
     else {
       // instanciate the engine on a local server
-      engine = new ExecutionEngine(trx, query);
+      engine = new ExecutionEngine(query);
       std::unique_ptr<Instanciator> inst(new Instanciator(engine));
       plan->root()->walk(inst.get());
       root = inst.get()->root;

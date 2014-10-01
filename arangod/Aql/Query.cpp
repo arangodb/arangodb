@@ -244,6 +244,7 @@ Query* Query::clone (QueryPart part) {
     theClone->_plan = _plan->clone(*theClone);
   }
 
+  theClone->_trx = _trx;
   return theClone;
 }
 
@@ -361,15 +362,18 @@ QueryResult Query::prepare (QueryRegistry* registry) {
       // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser->ast()->toJson(TRI_UNKNOWN_MEM_ZONE, false)) << "\n";
     }
 
+    std::shared_ptr<AQL_TRANSACTION_V8>     trx(new AQL_TRANSACTION_V8(_vocbase, _collections.collections()));
+    _trx = trx;
+
     // create the transaction object, but do not start it yet
-    std::unique_ptr<AQL_TRANSACTION_V8> trx(new AQL_TRANSACTION_V8(_vocbase, _collections.collections()));
+    //    _trx = new std::shared_ptr<AQL_TRANSACTION_V8>(_vocbase, _collections.collections());
 
     if (_queryString != nullptr) {
       // we have an AST
-      int res = trx->begin();
+      int res = _trx->begin();
 
       if (res != TRI_ERROR_NO_ERROR) {
-        return transactionError(res, *trx);
+        return transactionError(res);
       }
 
       enterState(PLAN_INSTANCIATION);
@@ -385,14 +389,14 @@ QueryResult Query::prepare (QueryRegistry* registry) {
 
       // creating the plan may have produced some collections
       // we need to add them to the transaction now (otherwise the query will fail)
-      int res = trx->addCollectionList(_collections.collections());
+      int res = _trx->addCollectionList(_collections.collections());
       
       if (res == TRI_ERROR_NO_ERROR) {
-        res = trx->begin();
+        res = _trx->begin();
       }
 
       if (res != TRI_ERROR_NO_ERROR) {
-        return transactionError(res, *trx);
+        return transactionError(res);
       }
 
       // we have an execution plan in JSON format
@@ -426,13 +430,12 @@ QueryResult Query::prepare (QueryRegistry* registry) {
     TRI_ASSERT(otherJsonString == JsonString); */
 
     enterState(EXECUTION);
-    ExecutionEngine* engine(ExecutionEngine::instanciateFromPlan(registry, trx.get(), this, plan.get()));
+    ExecutionEngine* engine(ExecutionEngine::instanciateFromPlan(registry, this, plan.get()));
 
     // If all went well so far, then we keep _plan, _parser and _trx and
     // return:
     _plan = plan.release();
     _parser = parser.release();
-    _trx = trx.release();
     _engine = engine;
     return QueryResult();
   }
@@ -481,7 +484,7 @@ QueryResult Query::execute (QueryRegistry* registry) {
         AqlValue val = value->getValue(i, 0);
 
         if (! val.isEmpty()) {
-          json.add(val.toJson(_trx, doc)); 
+          json.add(val.toJson(trx(), doc)); 
         }
       }
       delete value;
@@ -590,13 +593,14 @@ QueryResult Query::explain () {
     // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE)) << "\n";
 
     // create the transaction object, but do not start it yet
-    AQL_TRANSACTION_V8 trx(_vocbase, _collections.collections());
+    std::shared_ptr<AQL_TRANSACTION_V8>     trx(new AQL_TRANSACTION_V8(_vocbase, _collections.collections()));
+    _trx = trx;
 
     // we have an AST
-    int res = trx.begin();
+    int res = _trx->begin();
 
     if (res != TRI_ERROR_NO_ERROR) {
-      return transactionError(res, trx);
+      return transactionError(res);
     }
 
     enterState(PLAN_INSTANCIATION);
@@ -612,7 +616,7 @@ QueryResult Query::explain () {
     // get enabled/disabled rules
     opt.createPlans(plan, getRulesFromOptions());
       
-    trx.commit();
+    _trx->commit();
 
     enterState(FINALIZATION);
       
@@ -765,11 +769,10 @@ double Query::getNumericOption (char const* option, double defaultValue) const {
 /// @brief neatly format transaction error to the user.
 ////////////////////////////////////////////////////////////////////////////////
 
-QueryResult Query::transactionError (int errorCode, 
-                                     AQL_TRANSACTION_V8 const& trx) const {
+QueryResult Query::transactionError (int errorCode) const {
   std::string err(TRI_errno_string(errorCode));
 
-  auto detail = trx.getErrorData();
+  auto detail = _trx->getErrorData();
   if (detail.size() > 0) {
     err += std::string(" (") + detail + std::string(")");
   }
@@ -848,12 +851,7 @@ void Query::cleanupPlanAndEngine () {
     _engine = nullptr;
   }
 
-  if (_trx != nullptr) {
-    if (_part == PART_MAIN) {
-      delete _trx;
-      _trx = nullptr;
-    }
-  }
+  _trx.reset();
 
   if (_parser != nullptr) {
     delete _parser;
