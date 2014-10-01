@@ -628,7 +628,7 @@ namespace triagens {
 /// @brief set regs to be deleted
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setRegsToClear (std::unordered_set<RegisterId>& toClear) {
+        void setRegsToClear (std::unordered_set<RegisterId> const& toClear) {
           _regsToClear = toClear;
         }
 

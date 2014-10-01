@@ -243,7 +243,7 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
   _varOverview->nrRegs.reserve(len);
   len = jsonNrRegsList.size();
   for (size_t i = 0; i < len; i++) {
-    RegisterId oneReg = JsonHelper::getNumericValue<size_t> (jsonNrRegsList.at(i).json(), 0);
+    RegisterId oneReg = JsonHelper::getNumericValue<size_t>(jsonNrRegsList.at(i).json(), 0);
     _varOverview->nrRegs.push_back(oneReg);
   }
 
@@ -255,10 +255,9 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
   len = jsonRegsToClearList.size();
   _regsToClear.reserve(len);
   for (size_t i = 0; i < len; i++) {
-    RegisterId oneRegToClear = JsonHelper::getNumericValue<size_t> (jsonRegsToClearList.at(i).json(), 0);
+    RegisterId oneRegToClear = JsonHelper::getNumericValue<size_t>(jsonRegsToClearList.at(i).json(), 0);
     _regsToClear.insert(oneRegToClear);
   }
-
 
   // TODO: decide whether it should be allowed to create an abstract ExecutionNode at all
 }
@@ -511,7 +510,7 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
     json("nrRegs", jsonNRRegsList);
 
     Json jsonRegsToClearList(Json::List, _regsToClear.size());
-    for (auto oneRegisterID: _regsToClear) {
+    for (auto oneRegisterID : _regsToClear) {
       jsonRegsToClearList(Json(static_cast<double>(oneRegisterID)));
     }
     json("regsToClear", jsonRegsToClearList);
