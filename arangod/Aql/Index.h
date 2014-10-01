@@ -31,6 +31,8 @@
 #define ARANGODB_AQL_INDEX_H 1
 
 #include "Basics/Common.h"
+#include "Basics/json.h"
+#include "Basics/JsonHelper.h"
 #include "VocBase/index.h"
 
 namespace triagens {
@@ -66,7 +68,46 @@ namespace triagens {
         TRI_ASSERT(data != nullptr);
       }
       
+      Index (TRI_json_t const* json)
+        : id(triagens::basics::StringUtils::uint64(triagens::basics::JsonHelper::checkAndGetStringValue(json, "id"))),
+          type(TRI_TypeIndex(triagens::basics::JsonHelper::checkAndGetStringValue(json, "type").c_str())),
+          unique(triagens::basics::JsonHelper::checkAndGetBooleanValue(json, "unique")),
+          fields(),
+          data(nullptr) {
+
+        TRI_json_t const* f = TRI_LookupArrayJson(json, "fields");
+
+        if (TRI_IsListJson(f)) {
+          size_t const n = TRI_LengthListJson(f);
+          fields.reserve(n);
+
+          for (size_t i = 0; i < n; ++i) {
+            TRI_json_t const* name = static_cast<TRI_json_t const*>(TRI_AtVector(&f->_value._objects, i));
+            if (TRI_IsStringJson(name)) {
+              fields.push_back(std::string(name->_value._string.data, name->_value._string.length - 1));
+            }
+          }
+        }
+      }
+      
       ~Index() {
+      }
+  
+  
+      triagens::basics::Json toJson () const {
+        triagens::basics::Json json(triagens::basics::Json::Array);
+
+        json("type", triagens::basics::Json(TRI_TypeNameIndex(type)))
+            ("id", triagens::basics::Json(triagens::basics::StringUtils::itoa(id))) 
+            ("unique", triagens::basics::Json(unique));
+
+        triagens::basics::Json f(triagens::basics::Json::List);
+        for (auto& field : fields) {
+          f.add(triagens::basics::Json(field));
+        }
+
+        json("fields", f);
+        return json;
       }
 
 // -----------------------------------------------------------------------------

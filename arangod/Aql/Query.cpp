@@ -362,7 +362,7 @@ QueryResult Query::prepare (QueryRegistry* registry) {
       // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser->ast()->toJson(TRI_UNKNOWN_MEM_ZONE, false)) << "\n";
     }
 
-    std::shared_ptr<AQL_TRANSACTION_V8>     trx(new AQL_TRANSACTION_V8(_vocbase, _collections.collections()));
+    std::shared_ptr<AQL_TRANSACTION_V8> trx(new AQL_TRANSACTION_V8(_vocbase, _collections.collections()));
     _trx = trx;
 
     // create the transaction object, but do not start it yet

@@ -1068,27 +1068,8 @@ void IndexRangeNode::toJsonHelper (triagens::basics::Json& nodes,
       ("collection", triagens::basics::Json(_collection->getName()))
       ("outVariable", _outVariable->toJson())
       ("ranges", ranges);
-  
-  TRI_json_t* idxJson = _index->data->json(_index->data);
-
-  if (idxJson != nullptr) {
-    try {
-      TRI_json_t* copy = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson);
-
-      if (copy == nullptr) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-      }
-
-      json.set("index", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, copy));
-    }
-    catch (...) {
-      TRI_FreeJson(TRI_CORE_MEM_ZONE, idxJson);
-      throw;
-    }
-
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, idxJson);
-  }
-
+ 
+  json("index", _index->toJson()); 
   json("reverse", triagens::basics::Json(_reverse));
 
   // And add it:

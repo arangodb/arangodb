@@ -75,14 +75,19 @@ Collection::~Collection () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief count the LOCAL number of documents in the collection
-/// TODO: must be adjusted for clusters
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t Collection::count () const {
   if (numDocuments == UNINITIALIZED) {
-    auto document = documentCollection();
-    // cache the result
-    numDocuments = static_cast<int64_t>(document->size(document));
+    if (ExecutionEngine::isCoordinator()) {
+      /// TODO: determine the proper number of documents in the coordinator case
+      numDocuments = 1000;
+    }
+    else {
+      auto document = documentCollection();
+      // cache the result
+      numDocuments = static_cast<int64_t>(document->size(document));
+    }
   }
 
   return static_cast<size_t>(numDocuments);
@@ -156,7 +161,7 @@ void Collection::fillIndexes () const {
   if (ExecutionEngine::isCoordinator()) {
     // coordinator case, remote collection
     auto clusterInfo = triagens::arango::ClusterInfo::instance();
-    auto collectionInfo = clusterInfo->getCollection(std::string(vocbase->_name), triagens::basics::StringUtils::itoa(collection->_cid));
+    auto collectionInfo = clusterInfo->getCollection(std::string(vocbase->_name), name);
     if (collectionInfo.get() == nullptr || (*collectionInfo).empty()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "collection not found");
     }
@@ -169,12 +174,15 @@ void Collection::fillIndexes () const {
 
       for (size_t i = 0; i < n; ++i) {
         TRI_json_t const* v = TRI_LookupListJson(json, i);
-        //              indexes.push_back(static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]));
+        if (v != nullptr) {
+          indexes.emplace_back(new Index(v));
+        }
       }
     }
   }
   else {
     // local collection
+    TRI_ASSERT(collection != nullptr);
     auto document = documentCollection();
     size_t const n = document->_allIndexes._length;
     indexes.reserve(n);
