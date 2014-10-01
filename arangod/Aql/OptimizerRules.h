@@ -123,6 +123,12 @@ namespace triagens {
 
     int removeUnnecessaryRemoteScatter (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief recognises that a RemoveNode can be moved to the shards.
+////////////////////////////////////////////////////////////////////////////////
+
+    int undistributeRemoveAfterEnumColl (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+    
   }  // namespace aql
 }  // namespace triagens
 
