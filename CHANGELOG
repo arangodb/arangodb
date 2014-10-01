@@ -1,4 +1,4 @@
-v2.2.4 (2014-XX-XX)
+v2.2.4 (2014-10-01)
 -------------------
 
 * fixed accessing `_from` and `_to` attributes in `collection.byExample` and 

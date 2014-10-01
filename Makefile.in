@@ -1736,6 +1736,7 @@ SERVER_START :=
 SERVER_OPT := \
 	--configuration none \
 	--database.maximal-journal-size 1048576 \
+	--database.force-sync-properties false \
 	--javascript.app-path @top_srcdir@/js/apps \
 	--javascript.startup-directory @top_srcdir@/js \
         --log.file "" \
@@ -1830,6 +1831,7 @@ SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/shell-wal-noncluster.js \
                @top_srcdir@/js/server/tests/shell-sharding-helpers.js \
                @top_srcdir@/js/server/tests/shell-compaction-noncluster.js \
+               @top_srcdir@/js/server/tests/shell-shaped-noncluster.js \
                @top_srcdir@/js/server/tests/shell-tasks.js \
                @top_srcdir@/js/server/tests/shell-transactions-noncluster.js \
                @top_srcdir@/js/server/tests/shell-routing.js \
