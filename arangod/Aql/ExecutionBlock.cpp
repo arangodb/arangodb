@@ -1489,7 +1489,7 @@ int EnumerateListBlock::initialize () {
   auto en = reinterpret_cast<EnumerateListNode const*>(_exeNode);
 
   // get the inVariable register id . . .
-  // staticAnalysis has been run, so getPlanNode()->_varOverview is set up
+  // planRegisters() has been run, so getPlanNode()->_varOverview is set up
   auto it = getPlanNode()->getVarOverview()->varInfo.find(en->_inVariable->id);
 
   if (it == getPlanNode()->getVarOverview()->varInfo.end()){
@@ -1765,7 +1765,8 @@ int CalculationBlock::initialize () {
     return res;
   }
 
-  // We know that staticAnalysis has been run, so getPlanNode()->_varOverview is set up
+  // We know that planRegisters has been run, so
+  // getPlanNode()->_varOverview is set up
   auto en = static_cast<CalculationNode const*>(getPlanNode());
 
   std::unordered_set<Variable*> inVars = _expression->variables();
@@ -1867,7 +1868,8 @@ int SubqueryBlock::initialize () {
     return res;
   }
 
-  // We know that staticAnalysis has been run, so getPlanNode()->_varOverview is set up
+  // We know that planRegisters() has been run, so
+  // getPlanNode()->_varOverview is set up
 
   auto en = static_cast<SubqueryNode const*>(getPlanNode());
 
@@ -1930,7 +1932,8 @@ int FilterBlock::initialize () {
     return res;
   }
 
-  // We know that staticAnalysis has been run, so getPlanNode()->_varOverview is set up
+  // We know that planRegisters() has been run, so
+  // getPlanNode()->_varOverview is set up
 
   auto en = static_cast<FilterNode const*>(getPlanNode());
 
@@ -2117,7 +2120,8 @@ int AggregateBlock::initialize () {
   _variableNames.clear();
 
   for (auto p : en->_aggregateVariables){
-    // We know that staticAnalysis has been run, so getPlanNode()->_varOverview is set up
+    // We know that planRegisters() has been run, so
+    // getPlanNode()->_varOverview is set up
     auto itOut = en->getVarOverview()->varInfo.find(p.first->id);
     TRI_ASSERT(itOut != en->getVarOverview()->varInfo.end());
 
@@ -2349,8 +2353,9 @@ int SortBlock::initialize () {
 
   _sortRegisters.clear();
 
-  for( auto p: en->_elements){
-    // We know that staticAnalysis has been run, so getPlanNode()->_varOverview is set up
+  for (auto p: en->_elements){
+    // We know that planRegisters() has been run, so
+    // getPlanNode()->_varOverview is set up
     auto it = en->getVarOverview()->varInfo.find(p.first->id);
     TRI_ASSERT(it != en->getVarOverview()->varInfo.end());
     _sortRegisters.push_back(make_pair(it->second.registerId, p.second));
@@ -3233,7 +3238,8 @@ int GatherBlock::initialize () {
     _sortRegisters.clear();
 
     for( auto p: en->_elements){
-      // We know that staticAnalysis has been run, so getPlanNode()->_varOverview is set up
+      // We know that planRegisters has been run, so
+      // getPlanNode()->_varOverview is set up
       auto it = en->getVarOverview()->varInfo.find(p.first->id);
       TRI_ASSERT(it != en->getVarOverview()->varInfo.end());
       _sortRegisters.push_back(make_pair(it->second.registerId, p.second));

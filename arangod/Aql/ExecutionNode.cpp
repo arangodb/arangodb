@@ -571,10 +571,10 @@ struct StaticAnalysisDebugger : public WalkerWorker<ExecutionNode> {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief staticAnalysis
+/// @brief planRegisters
 ////////////////////////////////////////////////////////////////////////////////
 
-void ExecutionNode::staticAnalysis (ExecutionNode* super) {
+void ExecutionNode::planRegisters (ExecutionNode* super) {
   // The super is only for the case of subqueries.
   shared_ptr<VarOverview> v;
   if (super == nullptr) {
@@ -588,7 +588,7 @@ void ExecutionNode::staticAnalysis (ExecutionNode* super) {
   // Now handle the subqueries:
   for (auto s : v->subQueryNodes) {
     auto sq = static_cast<SubqueryNode*>(s);
-    sq->getSubquery()->staticAnalysis(s);
+    sq->getSubquery()->planRegisters(s);
   }
   v->reset();
 
