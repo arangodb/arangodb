@@ -149,8 +149,10 @@ namespace triagens {
         
         // try to get rid of a RemoteNode->ScatterNode combination which has
         // only a SingletonNode and possibly some CalculationNodes as dependencies
+        removeUnnecessaryRemoteScatter_pass10  = 1030,
 
-        removeUnnecessaryRemoteScatter_pass10   = 1030
+        //recognise that a RemoveNode can be moved to the shards
+        undistributeRemoveAfterEnumColl_pass10 = 1040
       };
     
       public:
