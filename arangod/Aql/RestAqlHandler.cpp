@@ -428,10 +428,14 @@ void RestAqlHandler::useQuery (std::string const& operation,
 
   TRI_ASSERT(query->engine() != nullptr);
 
-  Json queryJson(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
-  if (queryJson.isEmpty()) {
-    _queryRegistry->close(_vocbase, qId);
-    return;
+  Json queryJson;
+  if (operation != "shutdown") {
+    // /shutdown does not require a body
+    queryJson = Json(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
+    if (queryJson.isEmpty()) {
+      _queryRegistry->close(_vocbase, qId);
+      return;
+    }
   }
 
   Json answerBody(Json::Array, 2);
@@ -702,8 +706,6 @@ bool RestAqlHandler::findQuery (std::string const& idString,
                                 QueryId& qId,
                                 Query*& query) {
   qId = StringUtils::uint64(idString);
-std::cout << "LOOKING FOR QUERY: " << idString << ", VOCBASE: " << _vocbase->_name << "\n";
-std::cout << "IDSTRING: " << idString << ", QID: " << qId << "\n";
 
   query = nullptr;
 

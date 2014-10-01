@@ -211,19 +211,23 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
     _estimatedCostSet(false),
     _varUsageValid(false),
     _plan(plan),
-    _depth(JsonHelper::checkAndGetNumericValue<size_t>(json.json(), "depth"))
-{
+    _depth(JsonHelper::checkAndGetNumericValue<size_t>(json.json(), "depth")) {
+
   auto jsonVarInfoList = json.get("varInfoList");
-  if (!jsonVarInfoList.isList()) {
+  if (! jsonVarInfoList.isList()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "varInfoList needs to be a json list"); 
   }
-  
+ 
+  TRI_ASSERT(_varOverview.get() == nullptr); 
+  _varOverview.reset(new VarOverview());
+
   size_t len = jsonVarInfoList.size();
   _varOverview->varInfo.reserve(len);
+
   for (size_t i = 0; i < len; i++) {
     auto jsonVarInfo = jsonVarInfoList.at(i);
-    if (jsonVarInfo.isArray()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "one varInfoList needs to be an object"); 
+    if (! jsonVarInfo.isArray()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "one varInfoList item needs to be an object"); 
     }
     VariableId variableId = JsonHelper::checkAndGetNumericValue<size_t>      (jsonVarInfo.json(), "VariableId");
     RegisterId registerId = JsonHelper::checkAndGetNumericValue<size_t>      (jsonVarInfo.json(), "RegisterId");
@@ -232,7 +236,7 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
   }
 
   auto jsonNrRegsList = json.get("nrRegs");
-  if (!jsonNrRegsList.isList()) {
+  if (! jsonNrRegsList.isList()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "nrRegs needs to be a json list"); 
   }
 
@@ -244,7 +248,7 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
   }
 
   auto jsonRegsToClearList = json.get("regsToClear");
-  if (!jsonRegsToClearList.isList()) {
+  if (! jsonRegsToClearList.isList()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "regsToClear needs to be a json list"); 
   }
 
