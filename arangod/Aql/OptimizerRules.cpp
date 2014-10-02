@@ -1998,6 +1998,7 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
     }
 
     bool before (ExecutionNode* en) {
+      std::cout << "before!\n";
       switch (en->getType()) {
         case EN::REMOVE:{
           TRI_ASSERT(_remove == false);
@@ -2013,10 +2014,10 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
           _variable = varsToRemove[0];    // the variable we'll remove
           
           auto _enumColl = static_cast<EnumerateCollectionNode*>(_plan->getVarSetBy(_variable->id));
-
+          
           if (_enumColl == nullptr 
-              || _enumColl->getType() != triagens::aql::ExecutionNode::ENUMERATE_COLLECTION 
-              || _enumColl->collection()->cid() != rn->collection()->cid() ) {
+              || _enumColl->getType() != triagens::aql::ExecutionNode::ENUMERATE_COLLECTION ) {
+         //     || _enumColl->collection()->cid() != rn->collection()->cid() ) {
             // remove variable was not introduced by an enumerate collection or 
             // it was but the collections differ
             break; // abort . . . 
@@ -2057,6 +2058,10 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
           _toUnlink.insert(en); 
           return false; // continue . . .
         }
+        
+        case EN::CALCULATION: {//Check this is the calculation node of one of the filter nodes!
+                              
+        }
         case EN::ENUMERATE_COLLECTION: {
           // check that we are enumerating the variable we are to remove
           if (en->id() != _enumColl->id()) {
@@ -2067,7 +2072,6 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
         }
         
         case EN::SINGLETON:
-        case EN::CALCULATION: 
         case EN::ENUMERATE_LIST:
         case EN::SUBQUERY:        
         case EN::AGGREGATE:
