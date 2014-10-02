@@ -69,7 +69,8 @@ const std::string RestAqlHandler::QUEUE_NAME = "STANDARD";
 ////////////////////////////////////////////////////////////////////////////////
 
 RestAqlHandler::RestAqlHandler (triagens::rest::HttpRequest* request,
-                   std::pair<ApplicationV8*, QueryRegistry*>* pair)
+                                std::pair<ApplicationV8*, 
+                                QueryRegistry*>* pair)
   : RestBaseHandler(request),
     _applicationV8(pair->first),
     _context(static_cast<VocbaseContext*>(request->getRequestContext())),
@@ -488,6 +489,13 @@ void RestAqlHandler::getInfoQuery (std::string const& operation,
                                    std::string const& idString) {
   // the GET verb
 
+  bool found;
+  std::string shardId;
+  char const* shardIdCharP = _request->header("shard-id", found);
+  if (found && shardIdCharP != nullptr) {
+    shardId = shardIdCharP;
+  }
+
   QueryId qId;
   Query* query = nullptr;
   if (findQuery(idString, qId, query)) {
@@ -498,33 +506,69 @@ void RestAqlHandler::getInfoQuery (std::string const& operation,
 
   TRI_ASSERT(query->engine() != nullptr);
 
-  int64_t number;
-  if (operation == "count") {
-    number = query->engine()->count();
-    if (number == -1) {
-      answerBody("count", Json("unknown"));
+  try {
+    int64_t number;
+    if (operation == "count") {
+      number = query->engine()->count();
+      if (number == -1) {
+        answerBody("count", Json("unknown"));
+      }
+      else {
+        answerBody("count", Json(static_cast<double>(number)));
+      }
+    }
+    else if (operation == "remaining") {
+      // FIXME:
+      // Do the !shardId.empty() case once the ScatterBlock has remainingForShard
+      number = query->engine()->remaining();
+      if (number == -1) {
+        answerBody("remaining", Json("unknown"));
+      }
+      else {
+        answerBody("remaining", Json(static_cast<double>(number)));
+      }
+    }
+    else if (operation == "hasMore") {
+      bool hasMore;
+      if (shardId.empty()) {
+        hasMore = query->engine()->hasMore();
+      }
+      else {
+        auto scatter = static_cast<ScatterBlock*>(query->engine()->root());
+        if (scatter->getPlanNode()->getType() != ExecutionNode::SCATTER) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+        }
+        hasMore = scatter->hasMoreForShard(shardId);
+      }
+
+      answerBody("hasMore", Json(hasMore));
     }
     else {
-      answerBody("count", Json(static_cast<double>(number)));
+      _queryRegistry->close(_vocbase, qId);
+      generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+      return;
     }
   }
-  else if (operation == "remaining") {
-    number = query->engine()->remaining();
-    if (number == -1) {
-      answerBody("remaining", Json("unknown"));
-    }
-    else {
-      answerBody("remaining", Json(static_cast<double>(number)));
-    }
-  }
-  else if (operation == "hasMore") {
-    bool hasMore = query->engine()->hasMore();
-    answerBody("hasMore", Json(hasMore));
-  }
-  else {
+  catch (triagens::arango::Exception const& ex) {
     _queryRegistry->close(_vocbase, qId);
-    generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-    return;
+    
+    generateError(HttpResponse::SERVER_ERROR, 
+                  ex.code(),
+                  ex.message());
+  }
+  catch (std::exception const& ex) {
+    _queryRegistry->close(_vocbase, qId);
+    
+    generateError(HttpResponse::SERVER_ERROR, 
+                  TRI_ERROR_HTTP_SERVER_ERROR,
+                  ex.what());
+  }
+  catch (...) {
+    _queryRegistry->close(_vocbase, qId);
+      
+    generateError(HttpResponse::SERVER_ERROR, 
+                  TRI_ERROR_HTTP_SERVER_ERROR,
+                  "an unknown exception occurred");
   }
 
   _queryRegistry->close(_vocbase, qId);
@@ -552,6 +596,8 @@ triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
     // extract the sub-request type
     HttpRequest::HttpRequestType type = _request->requestType();
 
+
+std::cout << "GOT INCOMING REQUEST: " << _request->body() << "\n";
     // execute one of the CRUD methods
     switch (type) {
       case HttpRequest::HTTP_REQUEST_POST: {
@@ -616,6 +662,7 @@ triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
   }
 
   _applicationV8->exitContext(context);
+std::cout << "HANDLING DONE\n";
 
   return status_t(HANDLER_DONE);
 }
@@ -661,7 +708,7 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
   bool found;
   std::string shardId;
   char const* shardIdCharP = _request->header("shard-id", found);
-  if (shardIdCharP != nullptr) {
+  if (found && shardIdCharP != nullptr) {
     shardId = shardIdCharP;
   }
 
@@ -706,7 +753,16 @@ std::cout << "ANSWERBODY: " << JsonHelper::toString(answerBody.json()) << "\n\n"
                                "atMost", ExecutionBlock::DefaultBatchSize);
     size_t skipped;
     try {
-      skipped = query->engine()->skipSome(atLeast, atMost);
+      if (shardId.empty()) {
+        skipped = query->engine()->skipSome(atLeast, atMost);
+      }
+      else {
+        auto scatter = static_cast<ScatterBlock*>(query->engine()->root());
+        if (scatter->getPlanNode()->getType() != ExecutionNode::SCATTER) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+        }
+        skipped = scatter->skipSomeForShard(atLeast, atMost, shardId);
+      }
     }
     catch (...) {
       generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
@@ -720,7 +776,18 @@ std::cout << "ANSWERBODY: " << JsonHelper::toString(answerBody.json()) << "\n\n"
     auto number = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
                                                         "number", 1);
     try {
-      bool exhausted = query->engine()->skip(number);
+      bool exhausted;
+      if (shardId.empty()) {
+        exhausted = query->engine()->skip(number);
+      }
+      else {
+        auto scatter = static_cast<ScatterBlock*>(query->engine()->root());
+        if (scatter->getPlanNode()->getType() != ExecutionNode::SCATTER) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+        }
+        exhausted = scatter->skipForShard(number, shardId);
+      }
+
       answerBody("exhausted", Json(exhausted))
                 ("error", Json(false));
     }
