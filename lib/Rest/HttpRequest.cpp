@@ -83,8 +83,8 @@ HttpRequest::HttpRequest (ConnectionInfo const& info,
     _databaseName(),
     _user(),
     _requestContext(nullptr),
-    _isRequestContextOwner(false),
     _defaultApiCompatibility(defaultApiCompatibility),
+    _isRequestContextOwner(false),
     _allowMethodOverride(allowMethodOverride) {
 
   // copy request - we will destroy/rearrange the content to compute the
