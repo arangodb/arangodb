@@ -422,7 +422,7 @@ std::cout << "REGISTERING QUERY ON COORDINATOR WITH ID: " << id << "\n";
       while (current != nullptr) {
         bool stop = false;
 
-        auto clone = current->clone(&plan, false, false);
+        auto clone = current->clone(&plan, false, true);
         plan.registerNode(clone);
         
         if (current->getType() == ExecutionNode::REMOTE) {
@@ -456,12 +456,10 @@ std::cout << "REGISTERING QUERY ON COORDINATOR WITH ID: " << id << "\n";
         previous = clone;
         current = deps[0];
       }
-
+      
       // inject the current shard id into the collection
       collection->setCurrentShard(shardId);
-
-      plan.findVarUsage();
-      plan.planRegisters();
+      plan.setVarUsageComputed();
 
       // create a JSON representation of the plan
       triagens::basics::Json result(triagens::basics::Json::Array);
