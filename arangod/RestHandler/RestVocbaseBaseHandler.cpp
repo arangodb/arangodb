@@ -616,26 +616,32 @@ int RestVocbaseBaseHandler::parseDocumentId (CollectionNameResolver const* resol
                                              string const& handle,
                                              TRI_voc_cid_t& cid,
                                              TRI_voc_key_t& key) {
-  vector<string>&& split(StringUtils::split(handle, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR));
+  char const* ptr = handle.c_str();
 
-  if (split.size() != 2) {
+  if (*ptr == '\0') {
     return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
-  const char first = split[0][0];
+  char const* pos = static_cast<char const*>(memchr(static_cast<void const*>(ptr), TRI_DOCUMENT_HANDLE_SEPARATOR_CHR, handle.size()));
+
+  if (pos == nullptr) {
+    return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+  }
+
+  char const first = *ptr;
 
   if (first >= '0' && first <= '9') {
-    cid = StringUtils::uint64(split[0].c_str(), split[0].size());
+    cid = TRI_UInt64String2(ptr, ptr - pos);
   }
   else {
-    cid = resolver->getCollectionIdCluster(split[0]);
+    cid = resolver->getCollectionIdCluster(std::string(ptr, pos - ptr));
   }
 
   if (cid == 0) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  key = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, split[1].c_str());
+  key = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, pos + 1, handle.size() - (pos - ptr) - 1);
 
   return TRI_ERROR_NO_ERROR;
 }
