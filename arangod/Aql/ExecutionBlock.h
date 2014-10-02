@@ -87,7 +87,8 @@ namespace triagens {
         rowsAreValid = true;
       }
 
-      void addValues (AqlItemBlock const* src, RegisterId groupRegister);
+      void addValues (AqlItemBlock const* src, 
+                      RegisterId groupRegister);
     };
 
 // -----------------------------------------------------------------------------
