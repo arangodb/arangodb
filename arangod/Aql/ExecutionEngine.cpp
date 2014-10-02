@@ -599,7 +599,11 @@ std::cout << "REGISTERING QUERY ON COORDINATOR WITH ID: " << id << "\n";
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not find query id in list");
           }
 
-          ExecutionBlock* r = new RemoteBlock(engine.get(), remoteNode, "shard:" + shardId, "", (*it).second);
+          ExecutionBlock* r = new RemoteBlock(engine.get(), 
+                                              remoteNode, 
+                                              "shard:" + shardId, // server
+                                              "",                 // ownName
+                                              (*it).second);      // queryId
       
           try {
             engine.get()->addBlock(r);
