@@ -48,8 +48,8 @@ struct KeySpaceElement {
   KeySpaceElement () = delete;
   
   KeySpaceElement (char const* k,
-                    size_t length,
-                    TRI_json_t* json) 
+                   size_t length,
+                   TRI_json_t* json) 
     : key(nullptr),
       json(json) {
 
