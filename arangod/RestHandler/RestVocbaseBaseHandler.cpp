@@ -617,14 +617,24 @@ int RestVocbaseBaseHandler::parseDocumentId (CollectionNameResolver const* resol
                                              TRI_voc_cid_t& cid,
                                              TRI_voc_key_t& key) {
   char const* ptr = handle.c_str();
+  char const* end = ptr + handle.size();
 
-  if (*ptr == '\0') {
+  if (end - ptr < 3) {
+    // minimum length of document id is 3:
+    // at least 1 byte for collection name, '/' + at least 1 byte for key
     return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
   char const* pos = static_cast<char const*>(memchr(static_cast<void const*>(ptr), TRI_DOCUMENT_HANDLE_SEPARATOR_CHR, handle.size()));
 
-  if (pos == nullptr) {
+  if (pos == nullptr || pos >= end - 1) {
+    // if no '/' is found, the id is invalid
+    // if '/' is at the very end, the id is invalid too
+    return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+  }
+  
+  // check if the id contains a second '/'
+  if (memchr(static_cast<void const*>(pos + 1), TRI_DOCUMENT_HANDLE_SEPARATOR_CHR, end - pos - 1) != nullptr) {
     return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
@@ -641,7 +651,7 @@ int RestVocbaseBaseHandler::parseDocumentId (CollectionNameResolver const* resol
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  key = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, pos + 1, handle.size() - (pos - ptr) - 1);
+  key = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, pos + 1, end - pos - 1);
 
   return TRI_ERROR_NO_ERROR;
 }
