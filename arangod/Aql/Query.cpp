@@ -382,6 +382,14 @@ QueryResult Query::prepare (QueryRegistry* registry) {
         // oops
         return QueryResult(TRI_ERROR_INTERNAL, "failed to create query execution engine");
       }
+
+      // Run the query optimiser:
+      enterState(PLAN_OPTIMIZATION);
+      triagens::aql::Optimizer opt(maxNumberOfPlans());
+      // getenabled/disabled rules
+      opt.createPlans(plan.release(), getRulesFromOptions());
+      // Now plan and all derived plans belong to the optimizer
+      plan.reset(opt.stealBest()); // Now we own the best one again
     }
     else {
       enterState(PLAN_INSTANCIATION);
@@ -408,14 +416,6 @@ QueryResult Query::prepare (QueryRegistry* registry) {
       }
     }
 
-    // Run the query optimiser:
-    enterState(PLAN_OPTIMIZATION);
-    triagens::aql::Optimizer opt(maxNumberOfPlans());
-    // get enabled/disabled rules
-    opt.createPlans(plan.release(), getRulesFromOptions());
-
-    // Now plan and all derived plans belong to the optimizer
-    plan.reset(opt.stealBest()); // Now we own the best one again
     TRI_ASSERT(plan.get() != nullptr);
     /* // for debugging of serialisation/deserialisation . . . * /
     auto JsonPlan = plan->toJson(parser->ast(),TRI_UNKNOWN_MEM_ZONE, true);

@@ -266,6 +266,31 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
     RegisterId oneRegToClear = JsonHelper::getNumericValue<size_t>(jsonRegsToClearList.at(i).json(), 0);
     _regsToClear.insert(oneRegToClear);
   }
+/*
+  auto jsonvarsUsedLater = json.get("varsUsedLater");
+  if (! jsonvarsUsedLater.isList()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "varsUsedLater needs to be a json list"); 
+  }
+
+  len = jsonvarsUsedLater.size();
+  _varsUsedLater.reserve(len);
+  for (size_t i = 0; i < len; i++) {
+    auto *oneVarUsedLater = new Variable(jsonvarsUsedLater.at(i));
+    _varsUsedLater.insert(oneVarUsedLater);
+  }
+  auto jsonvarsValidList = json.get("varsValid");
+  if (! jsonvarsValidList.isList()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "varsValid needs to be a json list"); 
+  }
+
+  len = jsonvarsValidList.size();
+  _varsValid.reserve(len);
+  for (size_t i = 0; i < len; i++) {
+    auto oneVarValid = new Variable(jsonvarsValidList.at(i));
+    _varsValid.insert(oneVarValid);
+  }
+
+*/
 
   // TODO: decide whether it should be allowed to create an abstract ExecutionNode at all
 }
@@ -302,10 +327,22 @@ void ExecutionNode::CloneHelper (ExecutionNode *other,
     other->_regsToClear = _regsToClear;
     other->_depth = _depth;
     other->_varUsageValid = _varUsageValid;
-    other->_varsUsedLater = _varsUsedLater;
-    other->_varsValid = _varsValid;
 
-    other->_varOverview = _varOverview;
+    auto allVars = plan->getAst()->variables();
+
+    other->_varsUsedLater.reserve(_varsUsedLater.size());
+    for (auto orgVar: _varsUsedLater) {
+      other->_varsUsedLater.insert(allVars->getVariable(orgVar->id));
+    }
+
+    other->_varsValid.reserve(_varsValid.size());
+    for (auto orgVar: _varsValid) {
+      other->_varsValid.insert(allVars->getVariable(orgVar->id));
+    }
+    if (_varOverview.get() != nullptr) {
+      auto othervarOverview = std::shared_ptr<VarOverview>(_varOverview->clone(plan));
+      other->_varOverview = othervarOverview;
+    }
   }
   if (withDependencies) {
     cloneDependencies(plan, other, withProperties);
@@ -566,16 +603,30 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
       jsonRegsToClearList(Json(static_cast<double>(oneRegisterID)));
     }
     json("regsToClear", jsonRegsToClearList);
+/*
+    Json jsonVarsUsedLaterList(Json::List, _varsUsedLater.size());
+    for (auto oneVarUsedLater: _varsUsedLater) {
+      jsonVarsUsedLaterList.add(oneVarUsedLater->toJson());
+    }
+
+    json("varsUsedLater", jsonVarsUsedLaterList);
+
+    Json jsonvarsValidList(Json::List, _varsValid.size());
+    for (auto oneVarUsedLater: _varsValid) {
+      jsonvarsValidList.add(oneVarUsedLater->toJson());
+    }
+
+    json("varsValid", jsonvarsValidList);
+*/
   }
   else {
-    Json emptyList1(Json::List);
-    json("varInfoList", emptyList1);
-
-    Json emptyList2(Json::List);
-    json("nrRegs", emptyList2);
-
-    Json emptyList3(Json::List);
-    json("regsToClear", emptyList3);
+    json("varInfoList", Json(Json::List));
+    json("nrRegs", Json(Json::List));
+    json("regsToClear", Json(Json::List));
+/*
+    json("varsUsedLater", Json(Json::List));
+    json("varsValid", Json(Json::List));
+*/
   }
   return json;
 }
@@ -636,13 +687,15 @@ void ExecutionNode::planRegisters (ExecutionNode* super) {
     v.reset(new VarOverview(*(super->_varOverview), super->_depth));
   }
   v->setSharedPtr(&v);
-  walk(v.get());
+//  if (!_varUsageValid) {
+    walk(v.get());
   // Now handle the subqueries:
-  for (auto s : v->subQueryNodes) {
-    auto sq = static_cast<SubqueryNode*>(s);
-    sq->getSubquery()->planRegisters(s);
-  }
-  v->reset();
+    for (auto s : v->subQueryNodes) {
+      auto sq = static_cast<SubqueryNode*>(s);
+      sq->getSubquery()->planRegisters(s);
+    }
+    v->reset();
+//  }
 
   // Just for debugging:
   /*
@@ -672,6 +725,23 @@ ExecutionNode::VarOverview::VarOverview (VarOverview const& v,
   nrRegsHere.push_back(0);
   nrRegs.push_back(nrRegs.back());
 }
+
+ExecutionNode::VarOverview* ExecutionNode::VarOverview::clone (ExecutionPlan* plan) {
+  VarOverview* other = new VarOverview();
+
+  other->nrRegsHere = nrRegsHere;
+  other->totalNrRegs = totalNrRegs;
+
+  other->varInfo = varInfo;
+
+  for (auto en: subQueryNodes) {
+    auto otherId = en->id();
+    auto otherEN = plan->getNodeById(otherId);
+    other->subQueryNodes.push_back(otherEN);
+  }
+  return other;
+}
+
 
 void ExecutionNode::VarOverview::after (ExecutionNode *en) {
   switch (en->getType()) {
