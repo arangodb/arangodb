@@ -3759,6 +3759,23 @@ size_t ScatterBlock::skipSomeForShard (size_t atLeast, size_t atMost, std::strin
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief skipForShard
+////////////////////////////////////////////////////////////////////////////////
+
+bool ScatterBlock::skipForShard (size_t number, std::string const& shardId) {
+  size_t skipped = skipSomeForShard(number, number, shardId);
+  size_t nr = skipped;
+  while ( nr != 0 && skipped < number ){
+    nr = skipSomeForShard(number - skipped, number - skipped, shardId);
+    skipped += nr;
+  }
+  if (nr == 0) {
+    return true;
+  }
+  return ! hasMoreForShard(shardId);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief getClientId: get the number <clientId> (used internally)
 /// corresponding to <shardId>
 ////////////////////////////////////////////////////////////////////////////////
@@ -3824,6 +3841,9 @@ ClusterCommResult* RemoteBlock::sendRequest (
   ClientTransactionID const clientTransactionId = "AQL";
   CoordTransactionID const coordTransactionId = 1;
   std::map<std::string, std::string> headers;
+  if (! _ownName.empty()) {
+    headers.insert(make_pair("Shard-Id", _ownName));
+  }
 
 std::cout << "SENDING REQUEST TO " << _server << ", URLPART: " << urlPart << ", QUERYID: " << _queryId << "\n";
   return cc->syncRequest(clientTransactionId,
