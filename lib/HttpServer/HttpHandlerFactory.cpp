@@ -178,7 +178,7 @@ pair<size_t, size_t> HttpHandlerFactory::sizeRestrictions () const {
 HttpResponse::HttpResponseCode HttpHandlerFactory::authenticateRequest (HttpRequest* request) {
   RequestContext* rc = request->getRequestContext();
 
-  if (rc == 0) {
+  if (rc == nullptr) {
     if (! setRequestContext(request)) {
       return HttpResponse::NOT_FOUND;
     }
@@ -186,7 +186,7 @@ HttpResponse::HttpResponseCode HttpHandlerFactory::authenticateRequest (HttpRequ
     rc = request->getRequestContext();
   }
 
-  TRI_ASSERT(rc != 0);
+  TRI_ASSERT(rc != nullptr);
 
   return rc->authenticate();
 }

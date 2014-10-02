@@ -47,6 +47,7 @@
 #include "Basics/logging.h"
 #include "Basics/messages.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/HeartbeatThread.h"
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "Dispatcher/Dispatcher.h"
 #include "HttpServer/ApplicationEndpointServer.h"
@@ -206,7 +207,7 @@ static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* re
 
       // requested database not found
       if (! found) {
-        return 0;
+        return nullptr;
       }
     }
   }
@@ -225,7 +226,7 @@ static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* re
 static bool SetRequestContext (triagens::rest::HttpRequest* request,
                                void* data) {
 
-  TRI_server_t* server   = (TRI_server_t*) data;
+  TRI_server_t* server   = static_cast<TRI_server_t*>(data);
   TRI_vocbase_t* vocbase = LookupDatabaseFromRequest(request, server);
 
   // invalid database name specified, database not found etc.
@@ -861,7 +862,6 @@ int ArangoServer::startupServer () {
   httpOptions._queue = "STANDARD";
 
   if (startServer) {
-
     // start with enabled maintenance mode
     HttpHandlerFactory::setMaintenance(true);
 
@@ -940,12 +940,32 @@ int ArangoServer::startupServer () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief wait for the heartbeat thread to run
+/// before the server responds to requests, the heartbeat thread should have
+/// run at least once
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoServer::waitForHeartbeat () {
+  if (! ServerState::instance()->isCoordinator()) {
+    // waiting for the heartbeart thread is necessary on coordinator only
+    return;
+  }
+
+  while (true) {
+    if (HeartbeatThread::hasRunOnce()) {
+      break;
+    }
+    usleep(100 * 1000);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief runs the server
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::runServer (TRI_vocbase_t* vocbase) {
-
   // disabled maintenance mode
+  waitForHeartbeat();
   HttpHandlerFactory::setMaintenance(false);
 
   // just wait until we are signalled
@@ -969,6 +989,7 @@ int ArangoServer::runConsole (TRI_vocbase_t* vocbase) {
 #endif
 
   // disabled maintenance mode
+  waitForHeartbeat();
   HttpHandlerFactory::setMaintenance(false);
 
   // just wait until we are signalled
