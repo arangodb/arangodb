@@ -1486,19 +1486,6 @@ int EnumerateListBlock::initialize () {
     return res;
   }
 
-  auto en = reinterpret_cast<EnumerateListNode const*>(_exeNode);
-
-  // get the inVariable register id . . .
-  // planRegisters() has been run, so getPlanNode()->_varOverview is set up
-  auto it = getPlanNode()->getVarOverview()->varInfo.find(en->_inVariable->id);
-
-  if (it == getPlanNode()->getVarOverview()->varInfo.end()){
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "variable not found");
-  }
-
-  _inVarRegId = (*it).second.registerId;
-  TRI_ASSERT(_inVarRegId < ExecutionNode::MaxRegisterId);
-
   return TRI_ERROR_NO_ERROR;
 }
 
