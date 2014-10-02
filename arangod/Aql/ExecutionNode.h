@@ -558,6 +558,8 @@ namespace triagens {
 
           virtual void after (ExecutionNode *eb);
 
+          VarOverview* clone(ExecutionPlan* plan);
+
         };
 
 ////////////////////////////////////////////////////////////////////////////////
