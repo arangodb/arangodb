@@ -412,7 +412,7 @@ QueryResult Query::prepare (QueryRegistry* registry) {
     enterState(PLAN_OPTIMIZATION);
     triagens::aql::Optimizer opt(maxNumberOfPlans());
     // get enabled/disabled rules
-    opt.createPlans(plan.release(), getRulesFromOptions());  
+    opt.createPlans(plan.release(), getRulesFromOptions());
 
     // Now plan and all derived plans belong to the optimizer
     plan.reset(opt.stealBest()); // Now we own the best one again
@@ -852,6 +852,10 @@ void Query::cleanupPlanAndEngine () {
     _engine = nullptr;
   }
 
+  if (_trx.get() != nullptr) {
+    // TODO: this doesn't unblock the collection on the coordinator. Y?
+    _trx->abort();
+  }
   _trx.reset();
 
   if (_parser != nullptr) {
