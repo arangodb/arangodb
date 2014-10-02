@@ -209,7 +209,7 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
     _id(JsonHelper::checkAndGetNumericValue<size_t>(json.json(), "id")),
     _estimatedCost(0.0), 
     _estimatedCostSet(false),
-    _varUsageValid(false),
+    _varUsageValid(true),
     _plan(plan),
     _depth(JsonHelper::checkAndGetNumericValue<size_t>(json.json(), "depth")) {
 
@@ -1808,6 +1808,7 @@ void ReturnNode::toJsonHelper (triagens::basics::Json& nodes,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
+
 ExecutionNode* ReturnNode::clone (ExecutionPlan* plan,
                                   bool withDependencies,
                                   bool withProperties) const {
