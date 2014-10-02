@@ -475,6 +475,7 @@ std::cout << "REGISTERING QUERY ON COORDINATOR WITH ID: " << id << "\n";
 
       result.set("plan", jsonNodesList);
       result.set("part", triagens::basics::Json("main")); // TODO: set correct query type
+      result.set("variables", query->ast()->variables()->toJson(TRI_UNKNOWN_MEM_ZONE));
 
       std::unique_ptr<std::string> body(new std::string(triagens::basics::JsonHelper::toString(result.json())));
     

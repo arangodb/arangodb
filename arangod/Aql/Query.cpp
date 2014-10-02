@@ -387,6 +387,7 @@ QueryResult Query::prepare (QueryRegistry* registry) {
       enterState(PLAN_INSTANCIATION);
       ExecutionPlan::getCollectionsFromJson(parser->ast(), _queryJson);
 
+      parser->ast()->variables()->fromJson(_queryJson);
       // creating the plan may have produced some collections
       // we need to add them to the transaction now (otherwise the query will fail)
       int res = _trx->addCollectionList(_collections.collections());
