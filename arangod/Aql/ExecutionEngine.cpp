@@ -37,6 +37,7 @@
 #include "Utils/Exception.h"
 
 using namespace triagens::aql;
+using Json = triagens::basics::Json;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to create a block
@@ -422,7 +423,7 @@ std::cout << "REGISTERING QUERY ON COORDINATOR WITH ID: " << id << "\n";
       while (current != nullptr) {
         bool stop = false;
 
-        auto clone = current->clone(&plan, false, false);
+        auto clone = current->clone(&plan, false, true);
         plan.registerNode(clone);
         
         if (current->getType() == ExecutionNode::REMOTE) {
@@ -456,28 +457,35 @@ std::cout << "REGISTERING QUERY ON COORDINATOR WITH ID: " << id << "\n";
         previous = clone;
         current = deps[0];
       }
-
+      
       // inject the current shard id into the collection
       collection->setCurrentShard(shardId);
-
-      plan.findVarUsage();
-      plan.planRegisters();
+      plan.setVarUsageComputed();
 
       // create a JSON representation of the plan
-      triagens::basics::Json result(triagens::basics::Json::Array);
-      triagens::basics::Json jsonNodesList(plan.root()->toJson(TRI_UNKNOWN_MEM_ZONE, true));
+      Json result(Json::Array);
+      Json jsonNodesList(plan.root()->toJson(TRI_UNKNOWN_MEM_ZONE, true));
     
       // add the collection
-      triagens::basics::Json jsonCollectionsList(triagens::basics::Json::List);
-      triagens::basics::Json json(triagens::basics::Json::Array);
-      jsonCollectionsList(json("name", triagens::basics::Json(collection->getName()))
-                              ("type", triagens::basics::Json(TRI_TransactionTypeGetStr(collection->accessType))));
+      Json jsonCollectionsList(Json::List);
+      Json json(Json::Array);
+      jsonCollectionsList(json("name", Json(collection->getName()))
+                              ("type", Json(TRI_TransactionTypeGetStr(collection->accessType))));
 
       jsonNodesList.set("collections", jsonCollectionsList);
+      jsonNodesList.set("variables", query->ast()->variables()->toJson(TRI_UNKNOWN_MEM_ZONE));
 
       result.set("plan", jsonNodesList);
-      result.set("part", triagens::basics::Json("main")); // TODO: set correct query type
+      result.set("part", Json("main")); // TODO: set correct query type
 
+      Json optimizerOptionsRules(Json::List);
+      Json optimizerOptions(Json::Array);
+
+      Json options(Json::Array);
+      optimizerOptionsRules.add(Json("-all"));
+      optimizerOptions.set("rules", optimizerOptionsRules);
+      options.set("optimizer", optimizerOptions);
+      result.set("options", options);
       std::unique_ptr<std::string> body(new std::string(triagens::basics::JsonHelper::toString(result.json())));
     
       std::cout << "GENERATED A PLAN FOR THE REMOTE SERVERS: " << *(body.get()) << "\n";
