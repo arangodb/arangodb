@@ -1635,6 +1635,12 @@ namespace triagens {
         size_t skipSomeForShard (size_t atLeast, size_t atMost, std::string
             const& shardId);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief skipForShard
+////////////////////////////////////////////////////////////////////////////////
+
+        bool skipForShard (size_t number, std::string const& shardId);
+
       private: 
        
 ////////////////////////////////////////////////////////////////////////////////
@@ -1690,17 +1696,9 @@ namespace triagens {
                      RemoteNode const* en,
                      std::string const& server,
                      std::string const& ownName,
-                     std::string const& queryId)
-          : ExecutionBlock(engine, en),
-            _server(server),
-            _ownName(ownName),
-            _queryId(queryId) {
+                     std::string const& queryId);
 
-          TRI_ASSERT(! queryId.empty());
-        }
-
-        ~RemoteBlock () {
-        }
+        ~RemoteBlock ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief timeout

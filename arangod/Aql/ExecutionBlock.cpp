@@ -3789,6 +3789,23 @@ size_t ScatterBlock::skipSomeForShard (size_t atLeast, size_t atMost, std::strin
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief skipForShard
+////////////////////////////////////////////////////////////////////////////////
+
+bool ScatterBlock::skipForShard (size_t number, std::string const& shardId) {
+  size_t skipped = skipSomeForShard(number, number, shardId);
+  size_t nr = skipped;
+  while ( nr != 0 && skipped < number ){
+    nr = skipSomeForShard(number - skipped, number - skipped, shardId);
+    skipped += nr;
+  }
+  if (nr == 0) {
+    return true;
+  }
+  return ! hasMoreForShard(shardId);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief getClientId: get the number <clientId> (used internally)
 /// corresponding to <shardId>
 ////////////////////////////////////////////////////////////////////////////////
@@ -3805,12 +3822,6 @@ size_t ScatterBlock::getClientId (std::string const& shardId) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class RemoteBlock
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief timeout
-////////////////////////////////////////////////////////////////////////////////
-
-double const RemoteBlock::defaultTimeOut = 3600.0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief local helper to throw an exception if a HTTP request went wrong
@@ -3840,6 +3851,34 @@ static void throwExceptionAfterBadSyncRequest (ClusterCommResult* res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief timeout
+////////////////////////////////////////////////////////////////////////////////
+
+double const RemoteBlock::defaultTimeOut = 3600.0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a remote block
+////////////////////////////////////////////////////////////////////////////////
+        
+RemoteBlock::RemoteBlock (ExecutionEngine* engine,
+                          RemoteNode const* en,
+                          std::string const& server,
+                          std::string const& ownName,
+                          std::string const& queryId)
+  : ExecutionBlock(engine, en),
+    _server(server),
+    _ownName(ownName),
+    _queryId(queryId) {
+
+  TRI_ASSERT(! queryId.empty());
+  TRI_ASSERT((ExecutionEngine::isCoordinator() && ownName.empty()) ||
+             (! ExecutionEngine::isCoordinator() && ! ownName.empty()));
+}
+
+RemoteBlock::~RemoteBlock () {
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief local helper to send a request
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3854,6 +3893,9 @@ ClusterCommResult* RemoteBlock::sendRequest (
   ClientTransactionID const clientTransactionId = "AQL";
   CoordTransactionID const coordTransactionId = 1;
   std::map<std::string, std::string> headers;
+  if (! _ownName.empty()) {
+    headers.insert(make_pair("Shard-Id", _ownName));
+  }
 
 std::cout << "SENDING REQUEST TO " << _server << ", URLPART: " << urlPart << ", QUERYID: " << _queryId << "\n";
   return cc->syncRequest(clientTransactionId,

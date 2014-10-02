@@ -338,8 +338,17 @@ namespace triagens {
 
         virtual ExecutionNode* clone (ExecutionPlan* plan,
                                       bool withDependencies,
-                                      bool withProperties) const = 0;   
+                                      bool withProperties) const = 0;
+        
           // make class abstract
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execution Node clone utility to be called by derives
+////////////////////////////////////////////////////////////////////////////////
+        void CloneHelper (ExecutionNode *Other,
+                          ExecutionPlan* plan,
+                          bool withDependencies,
+                          bool withProperties) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper for cloning, use virtual clone methods for dependencies
@@ -347,21 +356,7 @@ namespace triagens {
 
         void cloneDependencies (ExecutionPlan* plan,
                                 ExecutionNode* theClone,
-                                bool withProperties) const {
-          auto it = _dependencies.begin();
-          while (it != _dependencies.end()) {
-            auto c = (*it)->clone(plan, true, withProperties);
-            try {
-              c->_parents.push_back(theClone);
-              theClone->_dependencies.push_back(c);
-            }
-            catch (...) {
-              delete c;
-              throw;
-            }
-            ++it;
-          }
-        }
+                                bool withProperties) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert to a string, basically for debugging purposes
@@ -764,9 +759,9 @@ namespace triagens {
                                       bool withDependencies,
                                       bool withProperties) const {
           auto c = new SingletonNode(plan, _id);
-          if (withDependencies) {
-            cloneDependencies(plan, c, withProperties);
-          }
+
+          CloneHelper (c, plan, withDependencies, withProperties);
+
           return static_cast<ExecutionNode*>(c);
         }
 
@@ -1267,9 +1262,9 @@ namespace triagens {
                                       bool withDependencies,
                                       bool withProperties) const {
           auto c = new LimitNode(plan, _id, _offset, _limit);
-          if (withDependencies) {
-            cloneDependencies(plan, c, withProperties);
-          }
+
+          CloneHelper (c, plan, withDependencies, withProperties);
+
           return static_cast<ExecutionNode*>(c);
         }
 
@@ -1781,9 +1776,9 @@ namespace triagens {
                                       bool withDependencies,
                                       bool withProperties) const {
           auto c = new SortNode(plan, _id, _elements, _stable);
-          if (withDependencies) {
-            cloneDependencies(plan, c, withProperties);
-          }
+
+          CloneHelper (c, plan, withDependencies, withProperties);
+
           return static_cast<ExecutionNode*>(c);
         }
 
@@ -2686,9 +2681,9 @@ namespace triagens {
                                       bool withDependencies,
                                       bool withProperties) const {
           auto c = new NoResultsNode(plan, _id);
-          if (withDependencies) {
-            cloneDependencies(plan, c, withProperties);
-          }
+
+          CloneHelper (c, plan, withDependencies, withProperties);
+
           return static_cast<ExecutionNode*>(c);
         }
 
@@ -2763,9 +2758,9 @@ namespace triagens {
                                       bool withDependencies,
                                       bool withProperties) const {
           auto c = new RemoteNode(plan, _id, _vocbase, _collection, _server, _ownName, _queryId);
-          if (withDependencies) {
-            cloneDependencies(plan, c, withProperties);
-          }
+
+          CloneHelper (c, plan, withDependencies, withProperties);
+
           return static_cast<ExecutionNode*>(c);
         }
 
@@ -2944,9 +2939,9 @@ namespace triagens {
                                       bool withDependencies,
                                       bool withProperties) const {
           auto c = new ScatterNode(plan, _id, _vocbase, _collection);
-          if (withDependencies) {
-            cloneDependencies(plan, c, withProperties);
-          }
+
+          CloneHelper (c, plan, withDependencies, withProperties);
+
           return static_cast<ExecutionNode*>(c);
         }
 
@@ -3046,9 +3041,9 @@ namespace triagens {
                                       bool withDependencies,
                                       bool withProperties) const {
           auto c = new GatherNode(plan, _id, _vocbase, _collection);
-          if (withDependencies) {
-            cloneDependencies(plan, c, withProperties);
-          }
+
+          CloneHelper (c, plan, withDependencies, withProperties);
+
           return static_cast<ExecutionNode*>(c);
         }
 
