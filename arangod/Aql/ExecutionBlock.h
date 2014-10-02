@@ -645,9 +645,16 @@ namespace triagens {
       public:
 
         EnumerateListBlock (ExecutionEngine* engine,
-                            EnumerateListNode const* ep)
-          : ExecutionBlock(engine, ep) {
+                            EnumerateListNode const* en)
+          : ExecutionBlock(engine, en),
+            _inVarRegId(ExecutionNode::MaxRegisterId) {
 
+          auto it = en->getVarOverview()->varInfo.find(en->_inVariable->id);
+          if (it == en->getVarOverview()->varInfo.end()){
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "variable not found");
+          }
+          _inVarRegId = (*it).second.registerId;
+          TRI_ASSERT(_inVarRegId < ExecutionNode::MaxRegisterId);
         }
 
         ~EnumerateListBlock () {
