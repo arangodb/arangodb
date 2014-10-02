@@ -3639,6 +3639,36 @@ bool ScatterBlock::hasMore () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief remainingForShard: remaining for shard, sum of the number of row left
+/// in the buffer and _dependencies[0]->remaining()
+////////////////////////////////////////////////////////////////////////////////
+
+int64_t ScatterBlock::remainingForShard (std::string const& shardId) {
+  
+  size_t clientId = getClientId(shardId);
+
+  if (_doneForClient.at(clientId)) {
+    return 0;
+  }
+  
+  int64_t sum = _dependencies[0]->remaining();
+  if (sum == -1) {
+    return -1;
+  }
+
+  std::pair<size_t,size_t> pos = _posForClient.at(clientId);
+
+  if (pos.first <= _buffer.size()) {
+    sum += _buffer.at(pos.first)->size() - pos.second;
+    for (auto i = pos.first + 1; i < _buffer.size(); i++) {
+      sum += _buffer.at(i)->size();
+    }
+  }
+
+  return sum;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief hasMoreForShard: any more for shard <shardId>?
 ////////////////////////////////////////////////////////////////////////////////
 
