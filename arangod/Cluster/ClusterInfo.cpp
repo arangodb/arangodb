@@ -1847,7 +1847,7 @@ void ClusterInfo::loadServers () {
       if (0 != sub) {
         const std::string server = triagens::basics::JsonHelper::getStringValue(sub, "");
 
-        _servers.insert(std::make_pair((*it).first, server));
+        _servers.emplace(std::make_pair((*it).first, server));
       }
       ++it;
     }
@@ -1922,7 +1922,7 @@ void ClusterInfo::loadCurrentDBServers () {
     std::map<std::string, AgencyCommResultEntry>::const_iterator it = result._values.begin();
 
     for (; it != result._values.end(); ++it) {
-      _DBServers.insert(std::make_pair((*it).first, triagens::basics::JsonHelper::getStringValue((*it).second._json, "")));
+      _DBServers.emplace(std::make_pair((*it).first, triagens::basics::JsonHelper::getStringValue((*it).second._json, "")));
     }
 
     _DBServersValid = true;
@@ -1942,20 +1942,30 @@ void ClusterInfo::loadCurrentDBServers () {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<ServerID> ClusterInfo::getCurrentDBServers () {
-  if (! _DBServersValid) {
+  std::vector<ServerID> result;
+
+  int tries = 0;
+  while (++tries <= 2) {
+    {
+      // return a consistent state of servers
+      READ_LOCKER(_lock);
+
+      if (_DBServersValid) {
+        result.reserve(_DBServers.size());
+
+        for (auto& it : _DBServers) {
+          result.emplace_back(it.first);
+        }
+
+        return result;
+      }
+    }
+
+    // loadCurrentDBServers needs the write lock
     loadCurrentDBServers();
   }
 
-  std::vector<ServerID> result;
-
-  READ_LOCKER(_lock);
-  std::map<ServerID, ServerID>::iterator it = _DBServers.begin();
-
-  while (it != _DBServers.end()) {
-    result.push_back((*it).first);
-    ++it;
-  }
-
+  // note that the result will be empty if we get here
   return result;
 }
 
