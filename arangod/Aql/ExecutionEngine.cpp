@@ -461,7 +461,7 @@ std::cout << "REGISTERING QUERY ON COORDINATOR WITH ID: " << id << "\n";
       collection->setCurrentShard(shardId);
 
       plan.findVarUsage();
-      plan.staticAnalysis();
+      plan.planRegisters();
 
       // create a JSON representation of the plan
       triagens::basics::Json result(triagens::basics::Json::Array);
@@ -693,7 +693,7 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
     if (! plan->varUsageComputed()) {
       plan->findVarUsage();
     }
-    plan->staticAnalysis();
+    plan->planRegisters();
 
     ExecutionBlock* root = nullptr;
 
