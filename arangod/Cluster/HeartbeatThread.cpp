@@ -625,11 +625,14 @@ bool HeartbeatThread::fetchUsers (TRI_vocbase_t* vocbase) {
   }
     
   if (result) {
-    LOG_TRACE("fetching users for database '%s' successful", vocbase->_name);
+    LOG_TRACE("fetching users for database '%s' successful", 
+              vocbase->_name);
     _refetchUsers.erase(vocbase);
   }
   else {
-    LOG_TRACE("fetching users for database '%s' failed with error: %s", TRI_errno_string(res));
+    LOG_TRACE("fetching users for database '%s' failed with error: %s", 
+              vocbase->_name,
+              TRI_errno_string(res));
     _refetchUsers.insert(vocbase);
   }
 
