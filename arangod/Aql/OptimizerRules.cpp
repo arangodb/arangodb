@@ -1991,7 +1991,8 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
         _remove(false),
         _scatter(false),
         _gather(false),
-        _enumColl(nullptr){
+        _enumColl(nullptr),
+        _variable(nullptr) {
     };
 
     ~RemoveToEnumCollFinder () {
@@ -2000,7 +2001,7 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
     bool before (ExecutionNode* en) {
       std::cout << "before!\n";
       switch (en->getType()) {
-        case EN::REMOVE:{
+        case EN::REMOVE: {
           TRI_ASSERT(_remove == false);
           _remove = en;
           _toUnlink.insert(en);
@@ -2051,7 +2052,8 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
           
           // filter nodes always have one input variable
           TRI_ASSERT(varsUsedHere.size() == 1);
-          
+       
+          TRI_ASSERT(_variable != nullptr);   
           if (varsUsedHere[0]->id != _variable->id) {
             break; // abort . . . FIXME is this the desired behaviour??
           }
