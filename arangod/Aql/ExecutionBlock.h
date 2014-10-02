@@ -352,6 +352,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static size_t const DefaultBatchSize;
+
     };
 
 // -----------------------------------------------------------------------------
@@ -860,7 +861,7 @@ namespace triagens {
 
       private:
 
-        bool takeItem (AqlItemBlock* items, size_t index) {
+        bool takeItem (AqlItemBlock* items, size_t index) const {
           AqlValue v = items->getValue(index, _inReg);
           return v.isTrue();
         }

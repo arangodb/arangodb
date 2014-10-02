@@ -313,10 +313,10 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         TRI_ASSERT(engine != nullptr);
 
         if ((*it).id > 0) {
-          Query *otherQuery = query->clone(PART_DEPENDENT);
+          Query* otherQuery = query->clone(PART_DEPENDENT);
           otherQuery->engine(engine);
 
-          auto *newPlan = new ExecutionPlan(otherQuery->ast());
+          auto* newPlan = new ExecutionPlan(otherQuery->ast());
           otherQuery->setPlan(newPlan);
 
           ExecutionNode const* current = (*it).nodes.front();
@@ -349,16 +349,13 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
             previous = clone;
             current = deps[0];
           }
-
+      
           // we need to instanciate this engine in the registry
 
           // create a remote id for the engine that we can pass to
           // the plans to be created for the DBServers
           id = TRI_NewTickServer();
          
-          // TODO: check if we can register the same query object multiple times
-          // or if we need to clone it
-
 std::cout << "REGISTERING QUERY ON COORDINATOR WITH ID: " << id << "\n";          
           queryRegistry->insert(otherQuery->vocbase(), id, otherQuery, 3600.0);
         }
@@ -624,16 +621,7 @@ std::cout << "REGISTERING QUERY ON COORDINATOR WITH ID: " << id << "\n";
           eb->addDependency(r);
         }
       }
-   /* 
-      if (nodeType == ExecutionNode::RETURN ||
-          nodeType == ExecutionNode::REMOVE ||
-          nodeType == ExecutionNode::INSERT ||
-          nodeType == ExecutionNode::UPDATE ||
-          nodeType == ExecutionNode::REPLACE) {
-        // set the new root node
-        engine->root(eb);
-      }
-*/
+      
       // the last block is always the root 
       engine->root(eb);
       // TODO: handle subqueries
