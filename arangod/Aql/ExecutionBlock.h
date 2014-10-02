@@ -829,13 +829,10 @@ namespace triagens {
 
       public:
 
-        FilterBlock (ExecutionEngine* engine,
-                     FilterNode const* ep)
-          : ExecutionBlock(engine, ep) {
-        }
+        FilterBlock (ExecutionEngine*,
+                     FilterNode const*);
 
-        ~FilterBlock () {
-        }
+        ~FilterBlock ();
 
         int initialize ();
 
@@ -897,14 +894,10 @@ namespace triagens {
 
       public:
 
-        AggregateBlock (ExecutionEngine* engine,
-                        ExecutionNode const* ep)
-          : ExecutionBlock(engine, ep),
-            _groupRegister(0),
-            _variableNames() {
-        }
+        AggregateBlock (ExecutionEngine*,
+                        AggregateNode const*);
 
-        virtual ~AggregateBlock () {};
+        ~AggregateBlock ();
 
         int initialize ();
 
@@ -961,13 +954,10 @@ namespace triagens {
 
       public:
 
-        SortBlock (ExecutionEngine* engine,
-                   ExecutionNode const* ep)
-          : ExecutionBlock(engine, ep),
-            _stable(static_cast<SortNode const*>(ep)->_stable) {
-        }
+        SortBlock (ExecutionEngine*,
+                   SortNode const*);
 
-        virtual ~SortBlock () {};
+        ~SortBlock ();
 
         int initialize ();
 
@@ -1379,10 +1369,8 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        GatherBlock (ExecutionEngine* engine,
-                     GatherNode const* ep)
-          : ExecutionBlock(engine, ep) {
-        }
+        GatherBlock (ExecutionEngine*,
+                     GatherNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -1467,15 +1455,6 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief isSimple: the block is simple if we do not do merge sort . . .
-////////////////////////////////////////////////////////////////////////////////
-        
-        bool isSimple () {
-          auto en = static_cast<GatherNode const*>(getPlanNode());
-          return en->getElements().empty();
-        }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief _atDep: currently pulling blocks from _dependencies.at(_atDep),
 /// simple case only
 ////////////////////////////////////////////////////////////////////////////////
@@ -1488,6 +1467,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         std::vector<std::pair<RegisterId, bool>> _sortRegisters;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief isSimple: the block is simple if we do not do merge sort . . .
+////////////////////////////////////////////////////////////////////////////////
+
+        bool const _isSimple;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief OurLessThan: comparison method for elements of _gatherBlockPos

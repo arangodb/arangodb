@@ -1930,25 +1930,23 @@ AqlItemBlock* SubqueryBlock::getSome (size_t atLeast,
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class FilterBlock
 // -----------------------------------------------------------------------------
-
-int FilterBlock::initialize () {
-  int res = ExecutionBlock::initialize();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  // We know that planRegisters() has been run, so
-  // getPlanNode()->_varOverview is set up
-
-  auto en = static_cast<FilterNode const*>(getPlanNode());
-
+        
+FilterBlock::FilterBlock (ExecutionEngine* engine,
+                          FilterNode const* en)
+  : ExecutionBlock(engine, en),
+    _inReg(ExecutionNode::MaxRegisterId) {
+  
   auto it = en->getVarOverview()->varInfo.find(en->_inVariable->id);
   TRI_ASSERT(it != en->getVarOverview()->varInfo.end());
   _inReg = it->second.registerId;
   TRI_ASSERT(_inReg < ExecutionNode::MaxRegisterId);
+}
 
-  return TRI_ERROR_NO_ERROR;
+FilterBlock::~FilterBlock () {
+}
+
+int FilterBlock::initialize () {
+  return ExecutionBlock::initialize();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2108,25 +2106,16 @@ bool FilterBlock::hasMore () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                              class AggregateBlock
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize
-////////////////////////////////////////////////////////////////////////////////
-
-int AggregateBlock::initialize () {
-  int res = ExecutionBlock::initialize();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  auto en = static_cast<AggregateNode const*>(getPlanNode());
-
-  // Reinitialize if we are called a second time:
-  _aggregateRegisters.clear();
-  _variableNames.clear();
-
-  for (auto p : en->_aggregateVariables){
+        
+AggregateBlock::AggregateBlock (ExecutionEngine* engine,
+                                AggregateNode const* en)
+  : ExecutionBlock(engine, en),
+    _aggregateRegisters(),
+    _currentGroup(),
+    _groupRegister(ExecutionNode::MaxRegisterId),
+    _variableNames() {
+  
+  for (auto p : en->_aggregateVariables) {
     // We know that planRegisters() has been run, so
     // getPlanNode()->_varOverview is set up
     auto itOut = en->getVarOverview()->varInfo.find(p.first->id);
@@ -2134,15 +2123,16 @@ int AggregateBlock::initialize () {
 
     auto itIn = en->getVarOverview()->varInfo.find(p.second->id);
     TRI_ASSERT(itIn != en->getVarOverview()->varInfo.end());
-    _aggregateRegisters.push_back(make_pair((*itOut).second.registerId, (*itIn).second.registerId));
+    TRI_ASSERT((*itIn).second.registerId < ExecutionNode::MaxRegisterId);
+    TRI_ASSERT((*itOut).second.registerId < ExecutionNode::MaxRegisterId);
+    _aggregateRegisters.emplace_back(make_pair((*itOut).second.registerId, (*itIn).second.registerId));
   }
 
   if (en->_outVariable != nullptr) {
     auto it = en->getVarOverview()->varInfo.find(en->_outVariable->id);
     TRI_ASSERT(it != en->getVarOverview()->varInfo.end());
     _groupRegister = (*it).second.registerId;
-
-    TRI_ASSERT(_groupRegister > 0);
+    TRI_ASSERT(_groupRegister > 0 && _groupRegister < ExecutionNode::MaxRegisterId);
 
     // construct a mapping of all register ids to variable names
     // we need this mapping to generate the grouped output
@@ -2161,6 +2151,25 @@ int AggregateBlock::initialize () {
         _variableNames[(*it).second.registerId] = (*itVar).second;
       }
     }
+  }
+  else {
+    // set groupRegister to 0 if we don't have an out register
+    _groupRegister = 0;
+  }
+}
+
+AggregateBlock::~AggregateBlock () {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize
+////////////////////////////////////////////////////////////////////////////////
+
+int AggregateBlock::initialize () {
+  int res = ExecutionBlock::initialize();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
   }
 
   // reserve space for the current row
@@ -2348,27 +2357,26 @@ void AggregateBlock::emitGroup (AqlItemBlock const* cur,
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   class SortBlock
 // -----------------------------------------------------------------------------
-
-int SortBlock::initialize () {
-  int res = ExecutionBlock::initialize();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  auto en = static_cast<SortNode const*>(getPlanNode());
-
-  _sortRegisters.clear();
-
-  for (auto p: en->_elements){
-    // We know that planRegisters() has been run, so
-    // getPlanNode()->_varOverview is set up
+        
+SortBlock::SortBlock (ExecutionEngine* engine,
+                      SortNode const* en)
+  : ExecutionBlock(engine, en),
+    _sortRegisters(),
+    _stable(en->_stable) {
+  
+  for (auto p : en->_elements) {
     auto it = en->getVarOverview()->varInfo.find(p.first->id);
     TRI_ASSERT(it != en->getVarOverview()->varInfo.end());
+    TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
     _sortRegisters.push_back(make_pair(it->second.registerId, p.second));
   }
+}
 
-  return TRI_ERROR_NO_ERROR;
+SortBlock::~SortBlock () {
+}
+
+int SortBlock::initialize () {
+  return ExecutionBlock::initialize();
 }
 
 int SortBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
@@ -2394,7 +2402,6 @@ int SortBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 }
 
 void SortBlock::doSorting () {
-
   // coords[i][j] is the <j>th row of the <i>th block
   std::vector<std::pair<size_t, size_t>> coords;
 
@@ -3212,6 +3219,26 @@ int NoResultsBlock::getOrSkipSome (size_t,   // atLeast
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class GatherBlock
 // -----------------------------------------------------------------------------
+        
+GatherBlock::GatherBlock (ExecutionEngine* engine,
+                          GatherNode const* en)
+  : ExecutionBlock(engine, en),
+    _sortRegisters(),
+    _isSimple(en->getElements().empty()) {
+  
+  if (! _isSimple) {
+    _gatherBlockBuffer.reserve(_dependencies.size());
+
+    for (auto p : en->_elements) {
+      // We know that planRegisters has been run, so
+      // getPlanNode()->_varOverview is set up
+      auto it = en->getVarOverview()->varInfo.find(p.first->id);
+      TRI_ASSERT(it != en->getVarOverview()->varInfo.end());
+      TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
+      _sortRegisters.emplace_back(make_pair(it->second.registerId, p.second));
+    }
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -3232,27 +3259,7 @@ GatherBlock::~GatherBlock () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int GatherBlock::initialize () {
-  int res = ExecutionBlock::initialize();
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  if (! isSimple()) {
-    _gatherBlockBuffer.reserve(_dependencies.size());
-
-    auto en = static_cast<GatherNode const*>(getPlanNode());
-
-    _sortRegisters.clear();
-
-    for (auto p: en->_elements) {
-      // We know that planRegisters has been run, so
-      // getPlanNode()->_varOverview is set up
-      auto it = en->getVarOverview()->varInfo.find(p.first->id);
-      TRI_ASSERT(it != en->getVarOverview()->varInfo.end());
-      _sortRegisters.push_back(make_pair(it->second.registerId, p.second));
-    }
-  }
-  return TRI_ERROR_NO_ERROR;
+  return ExecutionBlock::initialize();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3276,7 +3283,9 @@ int GatherBlock::shutdown () {
     }
     x.clear();
   }
+
   _gatherBlockBuffer.clear();
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -3368,7 +3377,7 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
   }
 
   // the simple case . . .  
-  if (isSimple()) {
+  if (_isSimple) {
     auto res = _dependencies.at(_atDep)->getSome(atLeast, atMost);
     while (res == nullptr && _atDep < _dependencies.size() - 1) {
       _atDep++;
@@ -3483,7 +3492,7 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
   }
 
   // the simple case . . .  
-  if (isSimple()) {
+  if (_isSimple) {
     auto skipped = _dependencies.at(_atDep)->skipSome(atLeast, atMost);
     while (skipped == 0 && _atDep < _dependencies.size() - 1) {
       _atDep++;
