@@ -454,6 +454,53 @@ function DocumentShapedJsonSuite () {
         assertTrue(doc.hasOwnProperty("one"));
         assertTrue(doc.one.hasOwnProperty("two"));
       }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check access after deletion of documents
+////////////////////////////////////////////////////////////////////////////////
+
+    testAccessAfterDeletion : function () {
+      var docs = [ ];
+      for (var i = 0; i < 100; ++i) {
+        docs[i] = c.document("test" + i);
+      }
+
+      c.truncate();
+      c.rotate();
+
+      require("internal").wait(5);
+        
+      for (var i = 0; i < 100; ++i) {
+        assertEqual(cn + "/test" + i, docs[i]._id);
+        assertEqual("test" + i, docs[i]._key);
+        assertEqual("Test" + i, docs[i].text);
+        assertEqual([ i ], docs[i].values);
+        assertEqual({ two: { three: [ 1 ] } }, docs[i].one);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check access after dropping collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testAccessAfterDropping : function () {
+      var docs = [ ];
+      for (var i = 0; i < 100; ++i) {
+        docs[i] = c.document("test" + i);
+      }
+
+      c.drop();
+
+      require("internal").wait(5);
+        
+      for (var i = 0; i < 100; ++i) {
+        assertEqual(cn + "/test" + i, docs[i]._id);
+        assertEqual("test" + i, docs[i]._key);
+        assertEqual("Test" + i, docs[i].text);
+        assertEqual([ i ], docs[i].values);
+        assertEqual({ two: { three: [ 1 ] } }, docs[i].one);
+      }
     }
 
   };
