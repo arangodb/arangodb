@@ -798,7 +798,6 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
 }
 
 IndexRangeBlock::~IndexRangeBlock () {
-
   for (auto e : _allVariableBoundExpressions) {
     delete e;
   }
@@ -1474,19 +1473,29 @@ void IndexRangeBlock::readSkiplistIndex (IndexOrCondition const& ranges) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                          class EnumerateListBlock
 // -----------------------------------------------------------------------------
+        
+EnumerateListBlock::EnumerateListBlock (ExecutionEngine* engine,
+                                        EnumerateListNode const* en)
+  : ExecutionBlock(engine, en),
+    _inVarRegId(ExecutionNode::MaxRegisterId) {
+
+  auto it = en->getVarOverview()->varInfo.find(en->_inVariable->id);
+  if (it == en->getVarOverview()->varInfo.end()){
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "variable not found");
+  }
+  _inVarRegId = (*it).second.registerId;
+  TRI_ASSERT(_inVarRegId < ExecutionNode::MaxRegisterId);
+}
+
+EnumerateListBlock::~EnumerateListBlock () {
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize, here we get the inVariable
 ////////////////////////////////////////////////////////////////////////////////
 
 int EnumerateListBlock::initialize () {
-  int res = ExecutionBlock::initialize();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  return TRI_ERROR_NO_ERROR;
+  return ExecutionBlock::initialize();
 }
 
 int EnumerateListBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
@@ -1745,27 +1754,23 @@ AqlValue EnumerateListBlock::getAqlValue (AqlValue inVarReg) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                            class CalculationBlock
 // -----------------------------------------------------------------------------
-
-int CalculationBlock::initialize () {
-  int res = ExecutionBlock::initialize();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  // We know that planRegisters has been run, so
-  // getPlanNode()->_varOverview is set up
-  auto en = static_cast<CalculationNode const*>(getPlanNode());
+        
+CalculationBlock::CalculationBlock (ExecutionEngine* engine,
+                                    CalculationNode const* en)
+  : ExecutionBlock(engine, en),
+    _expression(en->expression()),
+    _inVars(),
+    _inRegs(),
+    _outReg(ExecutionNode::MaxRegisterId) {
 
   std::unordered_set<Variable*> inVars = _expression->variables();
-  _inVars.clear();
-  _inRegs.clear();
 
   for (auto it = inVars.begin(); it != inVars.end(); ++it) {
     _inVars.push_back(*it);
     auto it2 = en->getVarOverview()->varInfo.find((*it)->id);
 
     TRI_ASSERT(it2 != en->getVarOverview()->varInfo.end());
+    TRI_ASSERT(it2->second.registerId < ExecutionNode::MaxRegisterId);
     _inRegs.push_back(it2->second.registerId);
   }
 
@@ -1780,8 +1785,14 @@ int CalculationBlock::initialize () {
   auto it3 = en->getVarOverview()->varInfo.find(en->_outVariable->id);
   TRI_ASSERT(it3 != en->getVarOverview()->varInfo.end());
   _outReg = it3->second.registerId;
+  TRI_ASSERT(_outReg < ExecutionNode::MaxRegisterId);
+}
 
-  return TRI_ERROR_NO_ERROR;
+CalculationBlock::~CalculationBlock () {
+}
+
+int CalculationBlock::initialize () {
+  return ExecutionBlock::initialize();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1849,21 +1860,28 @@ AqlItemBlock* CalculationBlock::getSome (size_t atLeast,
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class SubqueryBlock
 // -----------------------------------------------------------------------------
+        
+SubqueryBlock::SubqueryBlock (ExecutionEngine* engine,
+                              SubqueryNode const* en,
+                              ExecutionBlock* subquery)
+  : ExecutionBlock(engine, en), 
+    _outReg(ExecutionNode::MaxRegisterId),
+    _subquery(subquery) {
+  
+  auto it = en->getVarOverview()->varInfo.find(en->_outVariable->id);
+  TRI_ASSERT(it != en->getVarOverview()->varInfo.end());
+  _outReg = it->second.registerId;
+  TRI_ASSERT(_outReg < ExecutionNode::MaxRegisterId);
+}
+
+SubqueryBlock::~SubqueryBlock () {
+}
 
 int SubqueryBlock::initialize () {
   int res = ExecutionBlock::initialize();
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
-
-  // We know that planRegisters() has been run, so
-  // getPlanNode()->_varOverview is set up
-
-  auto en = static_cast<SubqueryNode const*>(getPlanNode());
-
-  auto it3 = en->getVarOverview()->varInfo.find(en->_outVariable->id);
-  TRI_ASSERT(it3 != en->getVarOverview()->varInfo.end());
-  _outReg = it3->second.registerId;
 
   return getSubquery()->initialize();
 }

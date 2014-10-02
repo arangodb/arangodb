@@ -644,21 +644,10 @@ namespace triagens {
 
       public:
 
-        EnumerateListBlock (ExecutionEngine* engine,
-                            EnumerateListNode const* en)
-          : ExecutionBlock(engine, en),
-            _inVarRegId(ExecutionNode::MaxRegisterId) {
+        EnumerateListBlock (ExecutionEngine*,
+                            EnumerateListNode const*);
 
-          auto it = en->getVarOverview()->varInfo.find(en->_inVariable->id);
-          if (it == en->getVarOverview()->varInfo.end()){
-            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "variable not found");
-          }
-          _inVarRegId = (*it).second.registerId;
-          TRI_ASSERT(_inVarRegId < ExecutionNode::MaxRegisterId);
-        }
-
-        ~EnumerateListBlock () {
-        }
+        ~EnumerateListBlock ();
 
         int initialize ();
 
@@ -732,17 +721,10 @@ namespace triagens {
 
       public:
 
-        CalculationBlock (ExecutionEngine* engine,
-                          CalculationNode const* en)
-          : ExecutionBlock(engine, en),
-            _expression(en->expression()),
-            _outReg(0) {
+        CalculationBlock (ExecutionEngine*,
+                          CalculationNode const*);
 
-        }
-
-        ~CalculationBlock () {
-        };
-        
+        ~CalculationBlock ();
 
         int initialize ();
 
@@ -805,16 +787,11 @@ namespace triagens {
 
       public:
 
-        SubqueryBlock (ExecutionEngine* engine,
-                       SubqueryNode const* en,
-                       ExecutionBlock* subquery)
-          : ExecutionBlock(engine, en), 
-            _outReg(0),
-           _subquery(subquery) {
-        }
+        SubqueryBlock (ExecutionEngine*,
+                       SubqueryNode const*,
+                       ExecutionBlock*);
 
-        ~SubqueryBlock () {
-        }
+        ~SubqueryBlock ();
 
         int initialize ();
 
