@@ -59,6 +59,7 @@ void Version::initialise () {
     return;
   }
 
+  Values["architecture"] = (sizeof(void*) == 4 ? "32" : "64") + std::string("bit");
   Values["server-version"] = getServerVersion();
   Values["icu-version"] = getICUVersion();
   Values["openssl-version"] = getOpenSSLVersion();
@@ -71,6 +72,11 @@ void Version::initialise () {
   Values["repository-version"] = getRepositoryVersion();
   Values["sizeof int"] = triagens::basics::StringUtils::itoa(sizeof(int));
   Values["sizeof void*"] = triagens::basics::StringUtils::itoa(sizeof(void*));
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  Values["maintainer-mode"] = "true";
+#else
+  Values["maintainer-mode"] = "false";
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -216,7 +222,6 @@ std::string Version::getRepositoryVersion () {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string Version::getBuildDate () {
-
   // the OpenSuSE build system does not liked it, if __DATE__ is used
 #ifdef TRI_BUILD_DATE
   return std::string(TRI_BUILD_DATE).append(" ").append(__TIME__);
@@ -234,6 +239,10 @@ std::string Version::getVerboseVersionString () {
 
   version << "ArangoDB "
           << getServerVersion()
+          << " " << (sizeof(void*) == 4 ? "32" : "64") << "bit"
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+          << " maintainer mode"
+#endif
           << " -- "
           << "ICU " << getICUVersion() << ", "
           << "V8 " << getV8Version() << ", "
@@ -248,16 +257,15 @@ std::string Version::getVerboseVersionString () {
 
 std::string Version::getDetailed () {
   std::string result;
-  std::map<std::string, std::string>::const_iterator it;
 
-  for (it = Values.begin(); it != Values.end(); ++it) {
-    std::string value = (*it).second;
+  for (auto& it : Values) {
+    std::string value = it.second;
     triagens::basics::StringUtils::trimInPlace(value);
 
-    if (value.size() > 0) {
-      result.append((*it).first);
+    if (! value.empty()) {
+      result.append(it.first);
       result.append(": ");
-      result.append((*it).second);
+      result.append(it.second);
 #ifdef _WIN32
       result += "\r\n";
 #else
@@ -274,14 +282,12 @@ std::string Version::getDetailed () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Version::getJson (TRI_memory_zone_t* zone, TRI_json_t* dst) {
-  std::map<std::string, std::string>::const_iterator it;
-
-  for (it = Values.begin(); it != Values.end(); ++it) {
-    std::string value = (*it).second;
+  for (auto& it : Values) {
+    std::string value = it.second;
     triagens::basics::StringUtils::trimInPlace(value);
 
-    if (value.size() > 0) {
-      const string& key = (*it).first;
+    if (! value.empty()) {
+      string const& key = it.first;
 
       TRI_Insert3ArrayJson(zone, dst, key.c_str(), TRI_CreateString2CopyJson(zone, value.c_str(), value.size()));
     }
