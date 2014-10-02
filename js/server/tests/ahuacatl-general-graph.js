@@ -548,8 +548,9 @@ function ahuacatlQueryGeneralPathsTestSuite() {
 
       actual = getQueryResults(
           "FOR e IN GRAPH_PATHS('bla3') "
-        + "SORT e.source._key, e.destination._key "
-        + "RETURN {src: e.source._key, dest: e.destination._key, edges: e.edges, length: LENGTH(e.edges)}"
+        + "LET length = LENGTH(e.edges) "
+        + "SORT e.source._key, e.destination._key, length "
+        + "RETURN {src: e.source._key, dest: e.destination._key, edges: e.edges, length: length}"
       );
       assertEqual(actual.length, 12);
       actual.forEach(function (p) {

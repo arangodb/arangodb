@@ -29,9 +29,9 @@
 
 #include "RestVersionHandler.h"
 
-#include "BasicsC/json.h"
-#include "BasicsC/tri-strings.h"
-#include "BasicsC/conversions.h"
+#include "Basics/json.h"
+#include "Basics/tri-strings.h"
+#include "Basics/conversions.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 

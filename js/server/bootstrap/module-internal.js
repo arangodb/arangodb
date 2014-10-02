@@ -1,7 +1,7 @@
 /*jshint -W051: true */
 /*global require, db, ArangoCollection, ArangoDatabase, ArangoCursor, ShapedJson,
   RELOAD_AUTH, SYS_DEFINE_ACTION, SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION,
-  AHUACATL_RUN, AHUACATL_PARSE, AHUACATL_EXPLAIN, WAL_FLUSH, WAL_PROPERTIES,
+  AHUACATL_RUN, WAL_FLUSH, WAL_PROPERTIES,
   REPLICATION_LOGGER_STATE, REPLICATION_LOGGER_CONFIGURE, REPLICATION_SERVER_ID,
   REPLICATION_APPLIER_CONFIGURE, REPLICATION_APPLIER_START, REPLICATION_APPLIER_SHUTDOWN,
   REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_STATE, REPLICATION_SYNCHRONISE,
@@ -107,20 +107,6 @@
 
   internal.AQL_QUERY = AHUACATL_RUN;
   delete AHUACATL_RUN;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parses an AQL query
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.AQL_PARSE = AHUACATL_PARSE;
-  delete AHUACATL_PARSE;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief explains an AQL query
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.AQL_EXPLAIN = AHUACATL_EXPLAIN;
-  delete AHUACATL_EXPLAIN;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resets engine in development mode

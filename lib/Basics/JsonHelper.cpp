@@ -29,8 +29,8 @@
 
 #include "Basics/JsonHelper.h"
 
-#include "BasicsC/conversions.h"
-#include "BasicsC/string-buffer.h"
+#include "Basics/conversions.h"
+#include "Basics/string-buffer.h"
 
 using namespace triagens::basics;
 
@@ -102,8 +102,8 @@ TRI_json_t* JsonHelper::stringObject (TRI_memory_zone_t* zone,
 
   std::map<std::string, std::string>::const_iterator it;
   for (it = values.begin(); it != values.end(); ++it) {
-    const std::string key = (*it).first;
-    const std::string value = (*it).second;
+    std::string const key = (*it).first;
+    std::string const value = (*it).second;
 
     TRI_json_t* v = TRI_CreateString2CopyJson(zone, value.c_str(), value.size());
     if (v != 0) {
@@ -127,8 +127,8 @@ std::map<std::string, std::string> JsonHelper::stringObject (TRI_json_t const* j
       TRI_json_t const* v = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i + 1);
 
       if (isString(k) && isString(v)) {
-        const std::string key = std::string(k->_value._string.data, k->_value._string.length - 1);
-        const std::string value = std::string(v->_value._string.data, v->_value._string.length - 1);
+        std::string const key = std::string(k->_value._string.data, k->_value._string.length - 1);
+        std::string const value = std::string(v->_value._string.data, v->_value._string.length - 1);
         result.insert(std::pair<std::string, std::string>(key, value));
       }
     }
@@ -235,9 +235,9 @@ std::string JsonHelper::toString (TRI_json_t const* json) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* JsonHelper::getArrayElement (TRI_json_t const* json,
-                                         const char* name) {
+                                         char const* name) {
   if (! isArray(json)) {
-    return 0;
+    return nullptr;
   }
 
   return TRI_LookupArrayJson(json, name);
@@ -248,7 +248,7 @@ TRI_json_t* JsonHelper::getArrayElement (TRI_json_t const* json,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string JsonHelper::getStringValue (TRI_json_t const* json,
-                                        const std::string& defaultValue) {
+                                        std::string const& defaultValue) {
   if (isString(json)) {
     return string(json->_value._string.data, json->_value._string.length - 1);
   }
@@ -260,8 +260,8 @@ std::string JsonHelper::getStringValue (TRI_json_t const* json,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string JsonHelper::getStringValue (TRI_json_t const* json,
-                                        const char* name,
-                                        const std::string& defaultValue) {
+                                        char const* name,
+                                        std::string const& defaultValue) {
   TRI_json_t const* sub = getArrayElement(json, name);
 
   if (isString(sub)) {
@@ -275,7 +275,7 @@ std::string JsonHelper::getStringValue (TRI_json_t const* json,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool JsonHelper::getBooleanValue (TRI_json_t const* json,
-                                  const char* name,
+                                  char const* name,
                                   bool defaultValue) {
   TRI_json_t const* sub = getArrayElement(json, name);
 
@@ -284,6 +284,77 @@ bool JsonHelper::getBooleanValue (TRI_json_t const* json,
   }
 
   return defaultValue;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a boolean sub-element, or throws an exception if the
+/// sub-element does not exist or if it is not boolean
+////////////////////////////////////////////////////////////////////////////////
+
+bool JsonHelper::checkAndGetBooleanValue (TRI_json_t const* json,
+                                         char const* name) {
+  TRI_json_t const* sub = getArrayElement(json, name);
+
+  if (! isBoolean(sub)) { 
+    std::string msg = "The attribute '" + std::string(name) 
+      + "' was not found or is not a boolean.";
+    THROW_INTERNAL_ERROR(msg);
+  }
+
+  return sub->_value._boolean;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a string sub-element, or throws if <name> does not exist
+/// or it is not a string 
+////////////////////////////////////////////////////////////////////////////////
+
+std::string JsonHelper::checkAndGetStringValue (TRI_json_t const* json,
+                                                char const* name) {
+  TRI_json_t const* sub = getArrayElement(json, name);
+
+  if (! isString(sub)) {
+    std::string msg = "The attribute '" + std::string(name)  
+      + "' was not found or is not a string.";
+    THROW_INTERNAL_ERROR(msg);
+  }
+  return string(sub->_value._string.data, sub->_value._string.length - 1);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns an array sub-element, or throws an exception if the
+/// sub-element does not exist or if it is not an array
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t const* JsonHelper::checkAndGetArrayValue (TRI_json_t const* json,
+                                                     char const* name) {
+  TRI_json_t const* sub = getArrayElement(json, name);
+
+  if (! isArray(sub)) {
+    std::string msg = "The attribute '" + std::string(name)
+      + "' was not found or is not an array.";
+    THROW_INTERNAL_ERROR(msg);
+  }
+
+  return sub;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a list sub-element, or throws an exception if the
+/// sub-element does not exist or if it is not a lsit
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t const* JsonHelper::checkAndGetListValue (TRI_json_t const* json,
+                                                    char const* name) {
+  TRI_json_t const* sub = getArrayElement(json, name);
+
+  if (! isList(sub)) {
+    std::string msg = "The attribute '" + std::string(name)
+      + "' was not found or is not a list.";
+    THROW_INTERNAL_ERROR(msg);
+  }
+
+  return sub;
 }
 
 // -----------------------------------------------------------------------------

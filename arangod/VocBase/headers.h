@@ -31,7 +31,7 @@
 #define ARANGODB_VOC_BASE_HEADERS_H 1
 
 #include "Basics/Common.h"
-#include "BasicsC/vector.h"
+#include "Basics/vector.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations

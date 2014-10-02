@@ -29,19 +29,17 @@
 
 #include "index.h"
 
-#include "BasicsC/conversions.h"
-#include "BasicsC/files.h"
-#include "BasicsC/json.h"
-#include "BasicsC/json-utilities.h"
-#include "BasicsC/linked-list.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/string-buffer.h"
-#include "BasicsC/tri-strings.h"
-#include "BasicsC/utf8-helper.h"
-#include "BasicsC/fasthash.h"
+#include "Basics/conversions.h"
+#include "Basics/files.h"
+#include "Basics/json.h"
+#include "Basics/logging.h"
+#include "Basics/string-buffer.h"
+#include "Basics/tri-strings.h"
+#include "Basics/utf8-helper.h"
+#include "Basics/fasthash.h"
+#include "Basics/json-utilities.h"
 #include "Basics/JsonHelper.h"
 #include "CapConstraint/cap-constraint.h"
-#include "GeoIndex/geo-index.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "FulltextIndex/fulltext-wordlist.h"
 #include "GeoIndex/geo-index.h"
@@ -72,7 +70,8 @@ void TRI_InitIndex (TRI_index_t* idx,
                     TRI_idx_iid_t iid,
                     TRI_idx_type_e type,
                     TRI_document_collection_t* document,
-                    bool unique) {
+                    bool unique,
+                    bool sparse) {
   TRI_ASSERT(idx != nullptr);
 
   if (iid > 0) {
@@ -90,6 +89,7 @@ void TRI_InitIndex (TRI_index_t* idx,
   idx->_type              = type;
   idx->_collection        = document;
   idx->_unique            = unique;
+  idx->_sparse            = sparse;
 
   // init common functions
   idx->memory            = nullptr;
@@ -120,7 +120,7 @@ bool TRI_NeedsFullCoverageIndex (TRI_idx_type_e type) {
     case TRI_IDX_TYPE_GEO2_INDEX:
     case TRI_IDX_TYPE_CAP_CONSTRAINT:
       return true;
-    case TRI_IDX_TYPE_BITARRAY_INDEX:
+    case TRI_IDX_TYPE_BITARRAY_INDEX:       // removed
     case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX: // removed
     case TRI_IDX_TYPE_UNKNOWN:
       return false;
@@ -150,9 +150,6 @@ TRI_idx_type_e TRI_TypeIndex (char const* type) {
   }
   else if (TRI_EqualString(type, "fulltext")) {
     return TRI_IDX_TYPE_FULLTEXT_INDEX;
-  }
-  else if (TRI_EqualString(type, "bitarray")) {
-    return TRI_IDX_TYPE_BITARRAY_INDEX;
   }
   else if (TRI_EqualString(type, "cap")) {
     return TRI_IDX_TYPE_CAP_CONSTRAINT;
@@ -187,11 +184,10 @@ char const* TRI_TypeNameIndex (TRI_idx_type_e type) {
       return "fulltext";
     case TRI_IDX_TYPE_SKIPLIST_INDEX:
       return "skiplist";
-    case TRI_IDX_TYPE_BITARRAY_INDEX:
-      return "bitarray";
     case TRI_IDX_TYPE_CAP_CONSTRAINT:
       return "cap";
     case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:
+    case TRI_IDX_TYPE_BITARRAY_INDEX:
     case TRI_IDX_TYPE_UNKNOWN:
     default: {
     }
@@ -279,10 +275,6 @@ void TRI_FreeIndex (TRI_index_t* idx) {
     case TRI_IDX_TYPE_GEO1_INDEX:
     case TRI_IDX_TYPE_GEO2_INDEX:
       TRI_FreeGeoIndex(idx);
-      break;
-
-    case TRI_IDX_TYPE_BITARRAY_INDEX:
-      TRI_FreeBitarrayIndex(idx);
       break;
 
     case TRI_IDX_TYPE_HASH_INDEX:
@@ -390,7 +382,7 @@ int TRI_SaveIndex (TRI_document_collection_t* document,
   TRI_vocbase_t* vocbase = document->_vocbase;
 
   // and save
-  bool ok = TRI_SaveJson(filename, json, false);
+  bool ok = TRI_SaveJson(filename, json, document->_vocbase->_settings.forceSyncProperties);
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
@@ -611,7 +603,7 @@ TRI_index_t* TRI_CreatePrimaryIndex (TRI_document_collection_t* document) {
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
   TRI_PushBackVectorString(&idx->_fields, id);
 
-  TRI_InitIndex(idx, 0, TRI_IDX_TYPE_PRIMARY_INDEX, document, true);
+  TRI_InitIndex(idx, 0, TRI_IDX_TYPE_PRIMARY_INDEX, document, true, false);
 
   idx->memory   = MemoryPrimary;
   idx->json     = JsonPrimary;
@@ -1074,7 +1066,7 @@ TRI_index_t* TRI_CreateEdgeIndex (TRI_document_collection_t* document,
   id = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, TRI_VOC_ATTRIBUTE_FROM);
   TRI_PushBackVectorString(&idx->_fields, id);
 
-  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_EDGE_INDEX, document, false);
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_EDGE_INDEX, document, false, false);
 
   idx->memory   = MemoryEdge;
   idx->json     = JsonEdge;
@@ -1158,19 +1150,30 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator,
         for (size_t j = 0; j < relationOperator->_numFields; ++j) {
           TRI_json_t* jsonObject = (TRI_json_t*) TRI_AtVector(&(relationOperator->_parameters->_value._objects), j);
 
+          // find out if the search value is a list or an array
           if ((TRI_IsListJson(jsonObject) || TRI_IsArrayJson(jsonObject)) &&
               slOperator->_type != TRI_EQ_INDEX_OPERATOR) {
-            // non-equality operator used on complex data type, this is disallowed
+            // non-equality operator used on list or array data type, this is disallowed
+            // because we need to shape these objects first. however, at this place (index lookup)
+            // we never want to create new shapes so we will have a problem if we cannot find an
+            // existing shape for the search value. in this case we would need to raise an error
+            // but then the query results would depend on the state of the shaper and if it had
+            // seen previous such objects
+
+            // we still allow looking for list or array values using equality. this is safe.
             return TRI_ERROR_BAD_PARAMETER;
           }
 
-          TRI_shaped_json_t* shapedObject = TRI_ShapedJsonJson(document->getShaper(), jsonObject, false, false);  // ONLY IN INDEX, PROTECTED by RUNTIME
+          // now shape the search object (but never create any new shapes)
+          TRI_shaped_json_t* shapedObject = TRI_ShapedJsonJson(document->getShaper(), jsonObject, false);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
           if (shapedObject != nullptr) {
+            // found existing shape
             relationOperator->_fields[j] = *shapedObject; // shallow copy here is ok
             TRI_Free(TRI_UNKNOWN_MEM_ZONE, shapedObject); // don't require storage anymore
           }
           else {
+            // shape not found
             return TRI_RESULT_ELEMENT_NOT_FOUND;
           }
         }
@@ -1196,7 +1199,8 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator,
 // .............................................................................
 
 TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t* idx,
-                                                  TRI_index_operator_t* slOperator) {
+                                                  TRI_index_operator_t* slOperator,
+                                                  bool reverse) {
   TRI_skiplist_index_t* skiplistIndex = (TRI_skiplist_index_t*) idx;
 
   // .........................................................................
@@ -1216,7 +1220,8 @@ TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t* idx,
   TRI_skiplist_iterator_t* iteratorResult;
   iteratorResult = SkiplistIndex_find(skiplistIndex->_skiplistIndex,
                                       &skiplistIndex->_paths,
-                                      slOperator);
+                                      slOperator, 
+                                      reverse);
 
   // .........................................................................
   // we must deallocate any memory we allocated in FillLookupSLOperator
@@ -1264,6 +1269,15 @@ static int SkiplistIndexHelper (const TRI_skiplist_index_t* skiplistIndex,
     TRI_shape_access_t const* acc = TRI_FindAccessorVocShaper(skiplistIndex->base._collection->getShaper(), shapedJson._sid, shape);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
     if (acc == nullptr || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
+      // OK, the document does not contain the attributed needed by 
+      // the index, are we sparse?
+      if (! skiplistIndex->base._sparse) {
+        // No, so let's fake a JSON null:
+        skiplistElement->_subObjects[j]._sid = TRI_LookupBasicSidShaper(TRI_SHAPE_NULL);
+        skiplistElement->_subObjects[j]._length = 0;
+        skiplistElement->_subObjects[j]._offset = 0;
+        continue;
+      }
       return TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
     }
 
@@ -1283,7 +1297,7 @@ static int SkiplistIndexHelper (const TRI_skiplist_index_t* skiplistIndex,
 
     skiplistElement->_subObjects[j]._sid = shapedObject._sid;
     skiplistElement->_subObjects[j]._length = shapedObject._data.length;
-    skiplistElement->_subObjects[j]._offset = ((char const*) shapedObject._data.data) - ptr;
+    skiplistElement->_subObjects[j]._offset = static_cast<uint32_t>(((char const*) shapedObject._data.data) - ptr);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -1296,7 +1310,6 @@ static int SkiplistIndexHelper (const TRI_skiplist_index_t* skiplistIndex,
 static int InsertSkiplistIndex (TRI_index_t* idx,
                                 TRI_doc_mptr_t const* doc,
                                 bool isRollback) {
-  TRI_skiplist_index_element_t skiplistElement;
   TRI_skiplist_index_t* skiplistIndex;
   int res;
 
@@ -1304,18 +1317,19 @@ static int InsertSkiplistIndex (TRI_index_t* idx,
   // Obtain the skip listindex structure
   // ...........................................................................
 
-  skiplistIndex = (TRI_skiplist_index_t*) idx;
-
   if (idx == nullptr) {
     LOG_WARNING("internal error in InsertSkiplistIndex");
     return TRI_ERROR_INTERNAL;
   }
+  
+  skiplistIndex = (TRI_skiplist_index_t*) idx;
 
   // ...........................................................................
   // Allocate storage to shaped json objects stored as a simple list.
   // These will be used for comparisions
   // ...........................................................................
 
+  TRI_skiplist_index_element_t skiplistElement;
   skiplistElement._subObjects = static_cast<TRI_shaped_sub_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_sub_t) * skiplistIndex->_paths._length, false));
 
   if (skiplistElement._subObjects == nullptr) {
@@ -1325,9 +1339,13 @@ static int InsertSkiplistIndex (TRI_index_t* idx,
 
   res = SkiplistIndexHelper(skiplistIndex, &skiplistElement, doc);
   // ...........................................................................
-  // most likely the cause of this error is that the 'shape' of the document
-  // does not match the 'shape' of the index structure -- so the document
-  // is ignored. So not really an error at all.
+  // most likely the cause of this error is that the index is sparse
+  // and not all attributes the index needs are set -- so the document
+  // is ignored. So not really an error at all. Note that this does
+  // not happen in a non-sparse skiplist index, in which empty
+  // attributes are always treated as if they were bound to null, so
+  // TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING cannot happen at
+  // all.
   // ...........................................................................
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1527,7 +1545,7 @@ TRI_index_t* TRI_CreateSkiplistIndex (TRI_document_collection_t* document,
 
   TRI_index_t* idx = &skiplistIndex->base;
 
-  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_SKIPLIST_INDEX, document, unique);
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_SKIPLIST_INDEX, document, unique, false);
 
   idx->memory   = MemorySkiplistIndex;
   idx->json     = JsonSkiplistIndex;
@@ -1556,10 +1574,7 @@ TRI_index_t* TRI_CreateSkiplistIndex (TRI_document_collection_t* document,
 
   skiplistIndex->_skiplistIndex = SkiplistIndex_new(document,
                                                     paths->_length,
-                                                    unique,
-                                                    false);
-  // Note that the last argument is the "sparse" flag. This will be
-  // implemented soon but has no consequences as of now.
+                                                    unique);
 
   if (skiplistIndex->_skiplistIndex == nullptr) {
     TRI_DestroyVector(&skiplistIndex->_paths);
@@ -1567,23 +1582,6 @@ TRI_index_t* TRI_CreateSkiplistIndex (TRI_document_collection_t* document,
     TRI_Free(TRI_CORE_MEM_ZONE, skiplistIndex);
     LOG_WARNING("skiplist index creation failed -- internal error when "
                 "creating skiplist structure");
-    return nullptr;
-  }
-
-  // ...........................................................................
-  // Assign the function calls used by the query engine
-  // ...........................................................................
-
-  int result = SkiplistIndex_assignMethod(&(idx->indexQuery), TRI_INDEX_METHOD_ASSIGNMENT_QUERY);
-  result = result || SkiplistIndex_assignMethod(&(idx->indexQueryFree), TRI_INDEX_METHOD_ASSIGNMENT_FREE);
-  result = result || SkiplistIndex_assignMethod(&(idx->indexQueryResult), TRI_INDEX_METHOD_ASSIGNMENT_RESULT);
-
-  if (result != TRI_ERROR_NO_ERROR) {
-    TRI_DestroyVector(&skiplistIndex->_paths);
-    TRI_DestroyVectorString(&idx->_fields);
-    SkiplistIndex_free(skiplistIndex->_skiplistIndex);
-    TRI_Free(TRI_CORE_MEM_ZONE, skiplistIndex);
-    LOG_WARNING("skiplist index creation failed -- internal error when assigning function calls");
     return nullptr;
   }
 
@@ -1849,7 +1847,7 @@ TRI_index_t* TRI_CreateFulltextIndex (TRI_document_collection_t* document,
 
   idx = &fulltextIndex->base;
 
-  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_FULLTEXT_INDEX, document, false);
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_FULLTEXT_INDEX, document, false, false);
 
   idx->memory   = MemoryFulltextIndex;
   idx->json     = JsonFulltextIndex;
@@ -1894,800 +1892,6 @@ void TRI_FreeFulltextIndex (TRI_index_t* idx) {
   }
 
   TRI_DestroyFulltextIndex(idx);
-  TRI_Free(TRI_CORE_MEM_ZONE, idx);
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    BITARRAY INDEX
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-// .............................................................................
-// Helper function for TRI_LookupBitarrayIndex
-// .............................................................................
-
-static int FillLookupBitarrayOperator (TRI_index_operator_t* indexOperator, TRI_document_collection_t* collection) {
-  if (indexOperator == nullptr) {
-    return TRI_ERROR_INTERNAL;
-  }
-
-  switch (indexOperator->_type) {
-    case TRI_AND_INDEX_OPERATOR:
-    case TRI_NOT_INDEX_OPERATOR:
-    case TRI_OR_INDEX_OPERATOR: {
-      TRI_logical_index_operator_t* logicalOperator = (TRI_logical_index_operator_t*) indexOperator;
-      FillLookupBitarrayOperator(logicalOperator->_left, collection);
-      FillLookupBitarrayOperator(logicalOperator->_right,collection);
-      break;
-    }
-
-    case TRI_EQ_INDEX_OPERATOR:
-    case TRI_GE_INDEX_OPERATOR:
-    case TRI_GT_INDEX_OPERATOR:
-    case TRI_NE_INDEX_OPERATOR:
-    case TRI_LE_INDEX_OPERATOR:
-    case TRI_LT_INDEX_OPERATOR: {
-      TRI_relation_index_operator_t* relationOperator = (TRI_relation_index_operator_t*) indexOperator;
-      relationOperator->_numFields  = relationOperator->_parameters->_value._objects._length;
-      relationOperator->_fields     = nullptr; // bitarray indexes need only the json representation of values
-
-      // even tough we use the json representation of the values sent by the client
-      // for a bitarray index, we still require the shaped_json values for later
-      // if we intend to force a bitarray index to return a result set irrespective
-      // of whether the index can do this efficiently, then we will require the shaped json
-      // representation of the values to apply any filter condition. Note that
-      // for skiplist indexes, we DO NOT use the json representation, rather the shaped json
-      // representation of the values is used since for skiplists we are ALWAYS required to
-      // go to the document and make comparisons with the document values and the client values
-
-
-      // when you are ready to use the shaped json values -- uncomment the follow
-      /*
-      relationOperator->_fields     = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * relationOperator->_numFields, false);
-      if (relationOperator->_fields != nullptr) {
-        int j;
-        TRI_json_t* jsonObject;
-        TRI_shaped_json_t* shapedObject;
-        for (j = 0; j < relationOperator->_numFields; ++j) {
-          jsonObject   = (TRI_json_t*) (TRI_AtVector(&(relationOperator->_parameters->_value._objects),j));
-          shapedObject = TRI_ShapedJsonJson(collection->_shaper, jsonObject);
-          if (shapedObject) {
-            relationOperator->_fields[j] = *shapedObject; // shallow copy here is ok
-            TRI_Free(TRI_UNKNOWN_MEM_ZONE, shapedObject); // don't require storage anymore
-          }
-        }
-      }
-      else {
-        relationOperator->_numFields = 0; // out of memory?
-      }
-      */
-
-      break;
-
-    }
-
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief attempts to locate an entry in the bitarray index
-////////////////////////////////////////////////////////////////////////////////
-
-// .............................................................................
-// Note: this function will destroy the passed index operator before it returns
-// Warning: who ever calls this function is responsible for destroying
-// TRI_index_iterator_t* results
-// .............................................................................
-
-
-TRI_index_iterator_t* TRI_LookupBitarrayIndex (TRI_index_t* idx,
-                                               TRI_index_operator_t* indexOperator,
-                                               bool (*filter) (TRI_index_iterator_t*)) {
-  TRI_bitarray_index_t* baIndex;
-  TRI_index_iterator_t* iteratorResult;
-  int                   errorResult;
-
-  baIndex = (TRI_bitarray_index_t*)(idx);
-
-  // .........................................................................
-  // fill the relation operators which may be embedded in the indexOperator
-  // with additional information. Recall the indexOperator is what information
-  // was received from a client for querying the bitarray index.
-  // .........................................................................
-
-  errorResult = FillLookupBitarrayOperator(indexOperator, baIndex->base._collection);
-
-  if (errorResult != TRI_ERROR_NO_ERROR) {
-    return nullptr;
-  }
-
-  iteratorResult = BitarrayIndex_find(baIndex->_bitarrayIndex,
-                                      indexOperator,
-                                      &baIndex->_paths,
-                                      baIndex,
-                                      nullptr);
-
-  TRI_FreeIndexOperator(indexOperator);
-
-  return iteratorResult;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief helper for bitarray methods
-////////////////////////////////////////////////////////////////////////////////
-
-static int BitarrayIndexHelper(const TRI_bitarray_index_t* baIndex,
-                               TRI_bitarray_index_key_t* element,
-                               const TRI_doc_mptr_t* document,
-                               const TRI_shaped_json_t* shapedDoc) {
-
-  TRI_shaped_json_t shapedObject;
-  TRI_shape_access_t const* acc;
-  size_t j;
-
-  // ...........................................................................
-  // For the structure element->fields, memory will have been allocated for this
-  // by the calling procedure -- DO NOT deallocate the memory here -- it is the
-  // responsibility of the calling procedure.
-  // ...........................................................................
-
-
-  if (shapedDoc != nullptr) {
-
-    // ..........................................................................
-    // Attempting to locate a entry using TRI_shaped_json_t object. Use this
-    // when we wish to remove a entry and we only have the "keys" rather than
-    // having the document (from which the keys would follow).
-    // ..........................................................................
-
-    element->data = nullptr;
-
-
-    for (j = 0; j < baIndex->_paths._length; ++j) {
-      TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(&baIndex->_paths, j)));
-
-      // ..........................................................................
-      // Determine if document has that particular shape
-      // ..........................................................................
-
-      acc = TRI_FindAccessorVocShaper(baIndex->base._collection->getShaper(), shapedDoc->_sid, shape);  // ONLY IN INDEX, PROTECTED by RUNTIME
-
-      if (acc == nullptr || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
-        return TRI_ERROR_ARANGO_INDEX_BITARRAY_UPDATE_ATTRIBUTE_MISSING;
-      }
-
-
-      // ..........................................................................
-      // Extract the field
-      // ..........................................................................
-
-      if (! TRI_ExecuteShapeAccessor(acc, shapedDoc, &shapedObject)) {
-        return TRI_ERROR_INTERNAL;
-      }
-
-      // ..........................................................................
-      // Store the json shaped Object -- this is what will be used by index to
-      // whatever it requires to be determined.
-      // ..........................................................................
-
-      element->fields[j] = shapedObject;
-    }
-  }
-
-  else if (document != nullptr) {
-
-    // ..........................................................................
-    // Assign the document to the element structure so that it can
-    // be retreived later.
-    // ..........................................................................
-
-    element->data = const_cast<TRI_doc_mptr_t*>(document);
-
-    for (j = 0; j < baIndex->_paths._length; ++j) {
-      TRI_shaped_json_t shapedJson;
-      TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(&baIndex->_paths, j)));
-
-      // ..........................................................................
-      // Determine if document has that particular shape
-      // ..........................................................................
-
-      TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, document->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
-
-      acc = TRI_FindAccessorVocShaper(baIndex->base._collection->getShaper(), shapedJson._sid, shape);  // ONLY IN INDEX, PROTECTED by RUNTIME
-
-      if (acc == nullptr || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
-        return TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
-      }
-
-      // ..........................................................................
-      // Extract the field
-      // ..........................................................................
-
-      if (! TRI_ExecuteShapeAccessor(acc, &shapedJson, &shapedObject)) {
-        return TRI_ERROR_INTERNAL;
-      }
-
-      // ..........................................................................
-      // Store the field
-      // ..........................................................................
-
-      element->fields[j] = shapedObject;
-    }
-  }
-
-  else {
-    return TRI_ERROR_INTERNAL;
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief inserts a document into a bitarray list index
-////////////////////////////////////////////////////////////////////////////////
-
-static int InsertBitarrayIndex (TRI_index_t* idx,
-                                TRI_doc_mptr_t const* doc,
-                                bool isRollback) {
-  TRI_bitarray_index_key_t element;
-  TRI_bitarray_index_t* baIndex;
-  int result;
-
-  // ............................................................................
-  // Obtain the bitarray index structure
-  // ............................................................................
-
-  if (idx == nullptr) {
-    LOG_WARNING("internal error in InsertBitarrayIndex");
-    return TRI_ERROR_INTERNAL;
-  }
-
-  baIndex = (TRI_bitarray_index_t*) idx;
-
-
-  // ............................................................................
-  // Allocate storage to shaped json objects stored as a simple list.
-  // These will be used for comparisions
-  // ............................................................................
-
-  element.numFields   = baIndex->_paths._length;
-  element.fields      = static_cast<TRI_shaped_json_t*>(TRI_Allocate( TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * element.numFields, false));
-  element.collection  = baIndex->base._collection;
-
-  if (element.fields == nullptr) {
-    LOG_WARNING("out-of-memory in InsertBitarrayIndex");
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  // ............................................................................
-  // For each attribute we have defined in the index obtain its corresponding
-  // value.
-  // ............................................................................
-
-  result = BitarrayIndexHelper(baIndex, &element, doc, nullptr);
-
-  // ............................................................................
-  // most likely the cause of this error is that the 'shape' of the document
-  // does not match the 'shape' of the index structure -- so the document
-  // is ignored.
-  // ............................................................................
-
-  if (result != TRI_ERROR_NO_ERROR) {
-
-    // ..........................................................................
-    // Deallocated the memory already allocated to element.fields
-    // ..........................................................................
-
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, element.fields);
-    element.numFields = 0;
-
-
-    // ..........................................................................
-    // It may happen that the document does not have the necessary attributes to
-    // be included within the bitarray index, in this case do not report back an error.
-    // ..........................................................................
-
-    if (result == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING) {
-      if (! baIndex->_supportUndef) {
-        return TRI_ERROR_NO_ERROR;
-      }
-
-
-      // ........................................................................
-      // This insert means that the document does NOT have the index attributes
-      // defined, however, we still insert it into aspecial 'undefined' column
-      // ........................................................................
-
-      result = BitarrayIndex_insert(baIndex->_bitarrayIndex, &element);
-    }
-
-    return result;
-  }
-
-
-  // ............................................................................
-  // This insert means that the document has ALL attributes which have been defined
-  // in the index. However, it may happen that one or more attribute VALUES are
-  // unsupported within the index -- in this case the function below will return
-  // an error and insertion of the document is rolled back.
-  // ............................................................................
-
-  result = BitarrayIndex_insert(baIndex->_bitarrayIndex, &element);
-
-  // ............................................................................
-  // Since we have allocated memory to element.fields above, we have to deallocate
-  // this here.
-  // ............................................................................
-
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, element.fields);
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief describes a bitarray index as a json object
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_json_t* JsonBitarrayIndex (TRI_index_t const* idx) {
-  TRI_json_t* json;      // the json object we return describing the index
-  TRI_json_t* keyValues; // a list of attributes and their associated values
-  size_t j;
-
-  // ..........................................................................
-  // Recast index as bitarray index
-  // ..........................................................................
-
-  TRI_bitarray_index_t const* baIndex = (TRI_bitarray_index_t const*) idx;
-
-  if (baIndex == nullptr) {
-    return nullptr;
-  }
-
-  TRI_document_collection_t* document = idx->_collection;
-
-  // ..........................................................................
-  // Allocate sufficent memory for the field list
-  // ..........................................................................
-
-  char const** fieldList = static_cast<char const**>(TRI_Allocate( TRI_CORE_MEM_ZONE, (sizeof(char*) * baIndex->_paths._length) , false));
-
-  // ..........................................................................
-  // Convert the attributes (field list of the bitarray index) into strings
-  // ..........................................................................
-
-  for (j = 0; j < baIndex->_paths._length; ++j) {
-    TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(&baIndex->_paths,j)));
-    const TRI_shape_path_t* path = document->getShaper()->lookupAttributePathByPid(document->getShaper(), shape);  // ONLY IN INDEX, PROTECTED by RUNTIME
-
-    if (path == nullptr) {
-      TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);
-      return nullptr;
-    }
-
-    fieldList[j] = ((const char*) path) + sizeof(TRI_shape_path_t) + path->_aidLength * sizeof(TRI_shape_aid_t);
-  }
-
-
-  // ..........................................................................
-  // create the json object representing the index and proceed to fill it
-  // ..........................................................................
-
-  json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
-
-  // ..........................................................................
-  // Create json list which will hold the key value pairs. Assuming that the
-  // index is constructed with 3 fields "a","b" % "c", these pairs are stored as follows:
-  // [ ["a", [value-a1,...,value-aN]], ["b", [value-b1,...,value-bN]], ["c", [value-c1,...,value-cN]] ]
-  // ..........................................................................
-
-
-  // ..........................................................................
-  // Create the key value list
-  // ..........................................................................
-
-  keyValues = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
-
-  for (j = 0; j < baIndex->_paths._length; ++j) {
-    TRI_json_t* keyValue;
-    TRI_json_t* key;
-    TRI_json_t* value;
-
-    // ........................................................................
-    // Create the list to store the pairs
-    // ........................................................................
-
-    keyValue = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
-
-    if (keyValue == nullptr) {
-      TRI_FreeJson(TRI_CORE_MEM_ZONE, keyValues);
-      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-      TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);
-      return nullptr;
-    }
-
-    // ........................................................................
-    // Create the key json object (copy the string)
-    // ........................................................................
-
-    key = TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, fieldList[j]);
-
-    if (key == nullptr) {
-      TRI_FreeJson(TRI_CORE_MEM_ZONE, keyValues);
-      TRI_FreeJson(TRI_CORE_MEM_ZONE, keyValue);
-      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-      TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);
-      return nullptr;
-    }
-
-    // ........................................................................
-    // Create the list of values and fill it from the values stored in the
-    // bit array index structure
-    // ........................................................................
-
-    value = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
-
-    if (value == nullptr) {
-      TRI_FreeJson(TRI_CORE_MEM_ZONE, keyValues);
-      TRI_FreeJson(TRI_CORE_MEM_ZONE, key);
-      TRI_FreeJson(TRI_CORE_MEM_ZONE, keyValue);
-      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-      TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);
-      return nullptr;
-    }
-
-    TRI_CopyToJson(TRI_CORE_MEM_ZONE, value, (TRI_json_t*)(TRI_AtVector(&baIndex->_values,j)));
-
-
-    // ........................................................................
-    // insert the key first followed by the list of values
-    // ........................................................................
-
-    TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, keyValue, key);
-    TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, keyValue, value);
-
-
-    // ........................................................................
-    // insert the key value pair into the list of such pairs
-    // ........................................................................
-
-    TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, keyValues, keyValue);
-  }
-
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "fields", keyValues);
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "undefined", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, baIndex->_supportUndef));
-
-  TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);
-
-  return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes a document from a bitarray index
-////////////////////////////////////////////////////////////////////////////////
-
-static int RemoveBitarrayIndex (TRI_index_t* idx,
-                                TRI_doc_mptr_t const* doc,
-                                bool isRollback) {
-  TRI_bitarray_index_key_t element;
-  TRI_bitarray_index_t* baIndex;
-  int result;
-
-  // ............................................................................
-  // Obtain the bitarray index structure
-  // ............................................................................
-
-  baIndex = (TRI_bitarray_index_t*) idx;
-
-  // ............................................................................
-  // Allocate some memory for the element structure
-  // ............................................................................
-
-  element.numFields  = baIndex->_paths._length;
-  element.fields     = static_cast<TRI_shaped_json_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_shaped_json_t) * element.numFields, false));
-  element.collection = baIndex->base._collection;
-
-  // ..........................................................................
-  // Fill the json field list with values from the document
-  // ..........................................................................
-
-  result = BitarrayIndexHelper(baIndex, &element, doc, nullptr);
-
-  // ..........................................................................
-  // Error returned generally implies that the document never was part of the
-  // index -- however for a bitarray index we support docs which do not have
-  // such an index key(s).
-  // ..........................................................................
-
-  if (result != TRI_ERROR_NO_ERROR) {
-
-    // ........................................................................
-    // Check what type of error we received. If 'bad' error, then return
-    // ........................................................................
-
-    if (result != TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING) {
-
-      // ......................................................................
-      // Deallocate memory allocated to element.fields above
-      // ......................................................................
-
-      TRI_Free(TRI_CORE_MEM_ZONE, element.fields);
-      return result;
-    }
-
-    // ........................................................................
-    // If we support undefined documents in the index, then pass this on,
-    // otherwise return an error. Note that, eventually it may be slightly
-    // more efficient to simply pass these undefined documents straight to
-    // the index without using the BitarrayIndexHelper function above.
-    // ........................................................................
-
-    if (! baIndex->_supportUndef) {
-
-      // ......................................................................
-      // Deallocate memory allocated to element.fields above
-      // ......................................................................
-
-      TRI_Free(TRI_CORE_MEM_ZONE, element.fields);
-
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
-
-  // ............................................................................
-  // Attempt to remove document from index
-  // ............................................................................
-
-  result = BitarrayIndex_remove(baIndex->_bitarrayIndex, &element);
-
-  // ............................................................................
-  // Deallocate memory allocated to element.fields above
-  // ............................................................................
-
-  TRI_Free(TRI_CORE_MEM_ZONE, element.fields);
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a bitarray index
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_index_t* TRI_CreateBitarrayIndex (TRI_document_collection_t* document,
-                                      TRI_idx_iid_t iid,
-                                      TRI_vector_pointer_t* fields,
-                                      TRI_vector_t* paths,
-                                      TRI_vector_pointer_t* values,
-                                      bool supportUndef,
-                                      int* errorNum,
-                                      char** errorStr) {
-  TRI_index_t* idx;
-  size_t i,j,k;
-  int result;
-  void* createContext;
-  int cardinality;
-
-
-  // ...........................................................................
-  // Before we start moving things about, ensure that the attributes have
-  // not been repeated
-  // ...........................................................................
-
-  for (j = 0;  j < paths->_length;  ++j) {
-    TRI_shape_pid_t* leftShape = (TRI_shape_pid_t*)(TRI_AtVector(paths,j));
-    for (i = j + 1; i < paths->_length;  ++i) {
-      TRI_shape_pid_t* rightShape = (TRI_shape_pid_t*)(TRI_AtVector(paths,i));
-      if (*leftShape == *rightShape) {
-        *errorNum = TRI_ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_ATTRIBUTES;
-        *errorStr = TRI_DuplicateString("bitarray index creation failed - duplicate keys in index");
-        return nullptr;
-      }
-    }
-  }
-
-  // ...........................................................................
-  // For each key (attribute) ensure that the list of supported values are
-  // unique
-  // ...........................................................................
-
-  for (k = 0;  k < paths->_length;  ++k) {
-    TRI_json_t* valueList = static_cast<TRI_json_t*>(TRI_AtVectorPointer(values,k));
-
-    if (! TRI_IsListJson(valueList)) {
-      *errorNum = TRI_ERROR_BAD_PARAMETER;
-      *errorStr = TRI_DuplicateString("bitarray index creation failed - list of values for index undefined");
-      return nullptr;
-    }
-
-    for (j = 0; j < valueList->_value._objects._length; ++j) {
-      TRI_json_t* leftValue = static_cast<TRI_json_t*>(TRI_AtVector(&(valueList->_value._objects), j));
-
-      for (i = j + 1; i < valueList->_value._objects._length; ++i) {
-        TRI_json_t* rightValue = static_cast<TRI_json_t*>(TRI_AtVector(&(valueList->_value._objects), i));
-
-        if (TRI_EqualJsonJson(leftValue, rightValue)) {
-          *errorNum = TRI_ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_VALUES;
-          *errorStr = TRI_DuplicateString("bitarray index creation failed - duplicate values in value list for an attribute");
-          return nullptr;
-        }
-      }
-    }
-  }
-
-  // ...........................................................................
-  // attempt to allocate memory for the bit array index structure
-  // ...........................................................................
-
-  TRI_bitarray_index_t* baIndex = static_cast<TRI_bitarray_index_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_bitarray_index_t), false));
-  idx = &baIndex->base;
-
-  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_BITARRAY_INDEX, document, false);
-
-  idx->json     = JsonBitarrayIndex;
-  idx->insert   = InsertBitarrayIndex;
-  idx->remove   = RemoveBitarrayIndex;
-
-  baIndex->_supportUndef  = supportUndef;
-  baIndex->_bitarrayIndex = nullptr;
-
-  // ...........................................................................
-  // Copy the contents of the shape list vector into a new vector and store this
-  // Do the same for the values associated with the attributes
-  // ...........................................................................
-
-  TRI_InitVector(&baIndex->_paths, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shape_pid_t));
-  TRI_InitVector(&baIndex->_values, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_json_t));
-
-  for (j = 0;  j < paths->_length;  ++j) {
-    TRI_json_t value;
-    TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(paths,j)));
-    TRI_PushBackVector(&baIndex->_paths, &shape);
-    TRI_CopyToJson(TRI_UNKNOWN_MEM_ZONE, &value, (TRI_json_t*)(TRI_AtVectorPointer(values,j)));
-    TRI_PushBackVector(&baIndex->_values, &value);
-  }
-
-  // ...........................................................................
-  // Store the list of fields (attributes based on the paths above) as simple
-  // c strings - saves us looking these up at a latter stage
-  // ...........................................................................
-
-  TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
-
-  for (j = 0;  j < fields->_length;  ++j) {
-    char const* name = static_cast<char const*>(fields->_buffer[j]);
-    char* copy = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, name);
-
-    TRI_PushBackVectorString(&idx->_fields, copy);
-  }
-
-  // ...........................................................................
-  // Currently there is no creation context -- todo later
-  // ...........................................................................
-
-  createContext = nullptr;
-
-  // ...........................................................................
-  // Check that the attributes have not been repeated
-  // ...........................................................................
-
-  // ...........................................................................
-  // Determine the cardinality of the Bitarray index (that is, the number of
-  // columns which constitute the index)
-  // ...........................................................................
-
-  cardinality = 0;
-
-  for (j = 0;  j < paths->_length;  ++j) {
-    TRI_json_t* value = static_cast<TRI_json_t*>(TRI_AtVector(&baIndex->_values, j));
-    size_t numValues;
-
-    if (value == nullptr) {
-      TRI_DestroyVector(&baIndex->_paths);
-      TRI_DestroyVector(&baIndex->_values);
-      TRI_Free(TRI_CORE_MEM_ZONE, baIndex);
-      LOG_WARNING("bitarray index creation failed -- list of values for index undefined");
-      return nullptr;
-    }
-
-    numValues = value->_value._objects._length;
-
-
-    // .........................................................................
-    // value is a list json type -- the number of entries informs us how many
-    // different possible values there are
-    // .........................................................................
-
-    cardinality += (int) numValues;
-  }
-
-  // ...........................................................................
-  // for the moment we restrict the cardinality to 64
-  // ...........................................................................
-
-  if (cardinality > 64) {
-    TRI_DestroyVector(&baIndex->_paths);
-    TRI_DestroyVector(&baIndex->_values);
-    TRI_Free(TRI_CORE_MEM_ZONE, baIndex);
-    LOG_WARNING("bitarray index creation failed -- more than 64 possible values");
-    return nullptr;
-  }
-
-
-  if (cardinality < 1 ) {
-    TRI_DestroyVector(&baIndex->_paths);
-    TRI_DestroyVector(&baIndex->_values);
-    TRI_Free(TRI_CORE_MEM_ZONE, baIndex);
-    LOG_WARNING("bitarray index creation failed -- no index values defined");
-    return nullptr;
-  }
-
-  // ...........................................................................
-  // Assign the function calls used by the query engine
-  // ...........................................................................
-
-  result = BittarrayIndex_assignMethod(&(idx->indexQuery), TRI_INDEX_METHOD_ASSIGNMENT_QUERY);
-  result = result || BittarrayIndex_assignMethod(&(idx->indexQueryFree), TRI_INDEX_METHOD_ASSIGNMENT_FREE);
-  result = result || BittarrayIndex_assignMethod(&(idx->indexQueryResult), TRI_INDEX_METHOD_ASSIGNMENT_RESULT);
-
-  if (result != TRI_ERROR_NO_ERROR) {
-    TRI_DestroyVector(&baIndex->_paths);
-    TRI_DestroyVector(&baIndex->_values);
-    TRI_Free(TRI_CORE_MEM_ZONE, baIndex);
-    LOG_WARNING("bitarray index creation failed -- internal error when assigning function calls");
-    return nullptr;
-  }
-
-  // ...........................................................................
-  // attempt to create a new bitarray index
-  // ...........................................................................
-
-  result = BitarrayIndex_new(&(baIndex->_bitarrayIndex), TRI_UNKNOWN_MEM_ZONE, (size_t) cardinality,
-                             &baIndex->_values, supportUndef, createContext);
-  if (result != TRI_ERROR_NO_ERROR) {
-    TRI_FreeBitarrayIndex(idx);
-    LOG_WARNING("bitarray index creation failed -- your guess as good as mine");
-    return nullptr;
-  }
-
-  return idx;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees the memory allocated, but does not free the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyBitarrayIndex (TRI_index_t* idx) {
-  if (idx == nullptr) {
-    return;
-  }
-
-  LOG_TRACE("destroying bitarray index");
-  TRI_DestroyVectorString(&idx->_fields);
-
-  TRI_bitarray_index_t* baIndex = (TRI_bitarray_index_t*) idx;
-
-  for (size_t j = 0;  j < baIndex->_values._length;  ++j) {
-    TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, (TRI_json_t*)(TRI_AtVector(&(baIndex->_values),j)));
-  }
-
-  TRI_DestroyVector(&baIndex->_paths);
-  TRI_DestroyVector(&baIndex->_values);
-  BitarrayIndex_free(baIndex->_bitarrayIndex);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees the memory allocated and frees the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeBitarrayIndex (TRI_index_t* idx) {
-  if (idx == nullptr) {
-    return;
-  }
-
-  TRI_DestroyBitarrayIndex(idx);
   TRI_Free(TRI_CORE_MEM_ZONE, idx);
 }
 
@@ -2765,37 +1969,6 @@ bool IndexComparator (TRI_json_t const* lhs,
         return false;
       }
     }
-  }
-
-  if (type == TRI_IDX_TYPE_BITARRAY_INDEX) {
-    // bitarray indexes are considered identical if they are based on the same attributes
-    TRI_json_t const* r = TRI_LookupArrayJson(rhs, "fields");
-    value = TRI_LookupArrayJson(lhs, "fields");
-
-    if (TRI_IsListJson(value) &&
-        TRI_IsListJson(r) &&
-        value->_value._objects._length == r->_value._objects._length) {
-
-      for (size_t i = 0; i < value->_value._objects._length; ++i) {
-        TRI_json_t const* l1 = TRI_LookupListJson(value, i);
-        TRI_json_t const* r1 = TRI_LookupListJson(r, i);
-
-        if (TRI_IsListJson(l1) &&
-            TRI_IsListJson(r1) &&
-            l1->_value._objects._length == 2 &&
-            r1->_value._objects._length == 2) {
-
-          // element at position 0 is the attribute name
-          if (! TRI_CheckSameValueJson(TRI_LookupListJson(l1, 0), TRI_LookupListJson(r1, 0))) {
-            return false;
-          }
-        }
-
-      }
-    }
-
-    // we must always exit here to avoid the "regular" fields comparison
-    return true;
   }
 
   // other index types: fields must be identical if present

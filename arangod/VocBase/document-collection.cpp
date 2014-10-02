@@ -29,10 +29,10 @@
 
 #include "document-collection.h"
 
-#include "BasicsC/conversions.h"
-#include "BasicsC/files.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/conversions.h"
+#include "Basics/files.h"
+#include "Basics/logging.h"
+#include "Basics/tri-strings.h"
 #include "CapConstraint/cap-constraint.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "GeoIndex/geo-index.h"
@@ -108,7 +108,8 @@ void TRI_doc_mptr_copy_t::setDataPtr (void const* d) {
 
 TRI_document_collection_t::TRI_document_collection_t () 
   : _useSecondaryIndexes(true),
-    _keyGenerator(nullptr) {
+    _keyGenerator(nullptr),
+    _uncollectedLogfileEntries(0) {
 
   _tickMax = 0;
 }
@@ -150,11 +151,6 @@ static int FillIndex (TRI_document_collection_t*,
                       TRI_index_t*);
 
 static int CapConstraintFromJson (TRI_document_collection_t*,
-                                  TRI_json_t const*,
-                                  TRI_idx_iid_t,
-                                  TRI_index_t**);
-
-static int BitarrayIndexFromJson (TRI_document_collection_t*,
                                   TRI_json_t const*,
                                   TRI_idx_iid_t,
                                   TRI_index_t**);
@@ -2192,7 +2188,8 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   document->_keyGenerator = keyGenerator;
 
   // save the parameter block (within create, no need to lock)
-  int res = TRI_SaveCollectionInfo(collection->_directory, parameters, false);
+  bool doSync = vocbase->_settings.forceSyncProperties;
+  int res = TRI_SaveCollectionInfo(collection->_directory, parameters, doSync);
 
   if (res != TRI_ERROR_NO_ERROR) {
     // TODO: shouldn't we destroy &document->_allIndexes, free document->_headersPtr etc.?
@@ -2543,14 +2540,6 @@ int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t* document,
   }
 
   // ...........................................................................
-  // BITARRAY INDEX
-  // ...........................................................................
-
-  else if (TRI_EqualString(typeStr, "bitarray")) {
-    return BitarrayIndexFromJson(document, json, iid, idx);
-  }
-
-  // ...........................................................................
   // GEO INDEX (list or attribute)
   // ...........................................................................
 
@@ -2589,6 +2578,12 @@ int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t* document,
   else if (TRI_EqualString(typeStr, "edge")) {
     // we should never get here, as users cannot create their own edge indexes
     LOG_ERROR("logic error. there should never be a JSON file describing an edges index");
+  }
+
+  else if (TRI_EqualString(typeStr, "priorityqueue") ||
+           TRI_EqualString(typeStr, "bitarray")) {
+    LOG_WARNING("index type '%s' is not supported in this version of ArangoDB and is ignored", typeStr);
+    return TRI_ERROR_NO_ERROR;
   }
 
   // .........................................................................
@@ -2908,84 +2903,6 @@ static TRI_json_t* ExtractFields (TRI_json_t const* json,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the list of attribute/value pairs
-///
-/// Attribute/value pairs are used in the construction of static bitarray
-/// indexes. These pairs are stored in a json object from which they can be
-/// later extracted. Here is the extraction function given the index definition
-/// as a json object
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_json_t* ExtractFieldValues (TRI_json_t const* jsonIndex,
-                                       size_t* fieldCount,
-                                       TRI_idx_iid_t iid) {
-  TRI_json_t* keyValues = TRI_LookupArrayJson(jsonIndex, "fields");
-
-  if (! TRI_IsListJson(keyValues)) {
-    LOG_ERROR("ignoring index %llu, 'fields' must be a list", (unsigned long long) iid);
-
-    TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
-    return nullptr;
-  }
-
-
-  *fieldCount = keyValues->_value._objects._length;
-
-
-  // ...........................................................................
-  // Some simple checks
-  // ...........................................................................
-
-  for (size_t j = 0;  j < *fieldCount;  ++j) {
-
-    // .........................................................................
-    // Extract the jth key value pair
-    // .........................................................................
-
-    TRI_json_t* keyValue = static_cast<TRI_json_t*>(TRI_AtVector(&keyValues->_value._objects, j));
-
-    // .........................................................................
-    // The length of this key value pair must be two
-    // .........................................................................
-
-    if (keyValue == nullptr  || keyValue->_value._objects._length != 2) {
-      LOG_ERROR("ignoring index %llu, 'fields' must be a list of key value pairs", (unsigned long long) iid);
-      TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
-      return nullptr;
-    }
-
-
-    // .........................................................................
-    // Extract the key
-    // .........................................................................
-
-    TRI_json_t* key = static_cast<TRI_json_t*>(TRI_AtVector(&keyValue->_value._objects, 0));
-
-    if (! TRI_IsStringJson(key)) {
-      LOG_ERROR("ignoring index %llu, key in 'fields' pair must be an attribute (string)", (unsigned long long) iid);
-      TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
-      return nullptr;
-    }
-
-
-    // .........................................................................
-    // Extract the value
-    // .........................................................................
-
-    TRI_json_t* value = static_cast<TRI_json_t*>(TRI_AtVector(&keyValue->_value._objects, 1));
-
-    if (! TRI_IsListJson(value)) {
-      LOG_ERROR("ignoring index %llu, value in 'fields' pair must be a list ([...])", (unsigned long long) iid);
-      TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
-      return nullptr;
-    }
-
-  }
-
-  return keyValues;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises an index with all existing documents
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3066,12 +2983,6 @@ static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t
     // .........................................................................
 
     switch (type) {
-      case TRI_IDX_TYPE_BITARRAY_INDEX: {
-        TRI_bitarray_index_t* baIndex = (TRI_bitarray_index_t*) idx;
-        indexPaths = &(baIndex->_paths);
-        break;
-      }
-
       case TRI_IDX_TYPE_HASH_INDEX: {
         TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
         indexPaths = &(hashIndex->_paths);
@@ -3153,148 +3064,6 @@ static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t
 
   return nullptr;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief restores a bitarray based index (template)
-////////////////////////////////////////////////////////////////////////////////
-
-static int BitarrayBasedIndexFromJson (TRI_document_collection_t* document,
-                                       TRI_json_t const* definition,
-                                       TRI_idx_iid_t iid,
-                                       TRI_index_t* (*creator)(TRI_document_collection_t*,
-                                                               const TRI_vector_pointer_t*,
-                                                               const TRI_vector_pointer_t*,
-                                                               TRI_idx_iid_t,
-                                                               bool,
-                                                               bool*, int*, char**),
-                                       TRI_index_t** dst) {
-  TRI_index_t* idx;
-  TRI_json_t* uniqueIndex;
-  TRI_json_t* supportUndefIndex;
-  TRI_json_t* keyValues;
-  TRI_vector_pointer_t attributes;
-  TRI_vector_pointer_t values;
-  // bool unique;
-  bool supportUndef;
-  bool created;
-  size_t fieldCount;
-  size_t j;
-  int errorNum;
-  char* errorStr;
-
-  if (dst != nullptr) {
-    *dst = nullptr;
-  }
-
-  // ...........................................................................
-  // extract fields list (which is a list of key/value pairs for a bitarray index
-  // ...........................................................................
-
-  keyValues = ExtractFieldValues(definition, &fieldCount, iid);
-
-  if (keyValues == nullptr) {
-    return TRI_errno();
-  }
-
-
-  // ...........................................................................
-  // For a bitarray index we require at least one attribute path and one set of
-  // possible values for that attribute (that is, we require at least one pair)
-  // ...........................................................................
-
-  if (fieldCount < 1) {
-    LOG_ERROR("ignoring index %llu, need at least one attribute path and one list of values",(unsigned long long) iid);
-    return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
-  }
-
-
-  // ...........................................................................
-  // A bitarray index is always (for now) non-unique. Irrespective of this fact
-  // attempt to extract the 'uniqueness value' from the json object representing
-  // the bitarray index.
-  // ...........................................................................
-
-  // unique = false;
-  uniqueIndex = TRI_LookupArrayJson(definition, "unique");
-  if (uniqueIndex == nullptr || uniqueIndex->_type != TRI_JSON_BOOLEAN) {
-    LOG_ERROR("ignoring index %llu, could not determine if unique or non-unique", (unsigned long long) iid);
-    return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
-  }
-  // unique = uniqueIndex->_value._boolean;
-
-
-  // ...........................................................................
-  // A bitarray index can support documents where one or more attributes are
-  // undefined. Determine if this is the case.
-  // ...........................................................................
-
-  supportUndefIndex = TRI_LookupArrayJson(definition, "undefined");
-
-  if (supportUndefIndex == nullptr || supportUndefIndex->_type != TRI_JSON_BOOLEAN) {
-    LOG_ERROR("ignoring index %llu, could not determine if index supports undefined values", (unsigned long long) iid);
-    return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
-  }
-
-  supportUndef = supportUndefIndex->_value._boolean;
-
-  // ...........................................................................
-  // Initialise the vectors in which we store the fields and their corresponding
-  // values
-  // ...........................................................................
-
-  TRI_InitVectorPointer(&attributes, TRI_CORE_MEM_ZONE);
-  TRI_InitVectorPointer(&values, TRI_CORE_MEM_ZONE);
-
-
-  // ...........................................................................
-  // find fields and values and store them in the vector pointers
-  // ...........................................................................
-
-  for (j = 0;  j < fieldCount;  ++j) {
-    TRI_json_t* keyValue = static_cast<TRI_json_t*>(TRI_AtVector(&keyValues->_value._objects, j));
-    TRI_json_t* key      = static_cast<TRI_json_t*>(TRI_AtVector(&keyValue->_value._objects, 0));
-    TRI_json_t* value    = static_cast<TRI_json_t*>(TRI_AtVector(&keyValue->_value._objects, 1));
-
-    TRI_PushBackVectorPointer(&attributes, key->_value._string.data);
-    TRI_PushBackVectorPointer(&values, value);
-  }
-
-
-  // ...........................................................................
-  // attempt to create the index or retrieve an existing one
-  // ...........................................................................
-  errorStr = nullptr;
-  idx = creator(document, &attributes, &values, iid, supportUndef, &created, &errorNum, &errorStr);
-
-
-  // ...........................................................................
-  // cleanup
-  // ...........................................................................
-
-  TRI_DestroyVectorPointer(&attributes);
-  TRI_DestroyVectorPointer(&values);
-
-
-  // ...........................................................................
-  // Check if the creation or lookup succeeded
-  // ...........................................................................
-
-  if (idx == nullptr) {
-    LOG_ERROR("cannot create bitarray index %llu", (unsigned long long) iid);
-    if (errorStr != nullptr) {
-      LOG_TRACE("%s", errorStr);
-      TRI_Free(TRI_CORE_MEM_ZONE, errorStr);
-    }
-    return errorNum;
-  }
-
-  if (dst != nullptr) {
-    *dst = idx;
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief restores a path based index (template)
@@ -4887,247 +4656,6 @@ TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_
   // .............................................................................
 
   TRI_ReadUnlockReadWriteLock(&document->_vocbase->_inventoryLock);
-
-  return idx;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    BITARRAY INDEX
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a bitarray index to the collection
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_index_t* CreateBitarrayIndexDocumentCollection (TRI_document_collection_t* document,
-                                                           const TRI_vector_pointer_t* attributes,
-                                                           const TRI_vector_pointer_t* values,
-                                                           TRI_idx_iid_t iid,
-                                                           bool supportUndef,
-                                                           bool* created,
-                                                           int* errorNum,
-                                                           char** errorStr) {
-  TRI_index_t* idx;
-  TRI_vector_pointer_t fields;
-  TRI_vector_t paths;
-  int res;
-
-  res = PidNamesByAttributeNames(attributes,
-                                 document->getShaper(),  // ONLY IN INDEX, PROTECTED by RUNTIME
-                                 &paths,
-                                 &fields,
-                                 false,
-                                 true);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    if (created != nullptr) {
-      *created = false;
-    }
-    *errorNum = res;
-    *errorStr  = TRI_DuplicateString("Bitarray index attributes could not be accessed.");
-    return nullptr;
-  }
-
-  // ...........................................................................
-  // Attempt to find an existing index which matches the attributes above.
-  // If a suitable index is found, return that one otherwise we need to create
-  // a new one.
-  // ...........................................................................
-
-  idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_BITARRAY_INDEX, false, false);
-
-  if (idx != nullptr) {
-
-    // .........................................................................
-    // existing index has been located which matches the list of attributes
-    // return this one
-    // .........................................................................
-
-    TRI_DestroyVector(&paths);
-    TRI_DestroyVectorPointer(&fields);
-    LOG_TRACE("bitarray-index previously created");
-
-    if (created != nullptr) {
-      *created = false;
-    }
-
-    return idx;
-  }
-
-
-  // ...........................................................................
-  // Create the bitarray index
-  // ...........................................................................
-
-  idx = TRI_CreateBitarrayIndex(document, iid, &fields, &paths, (TRI_vector_pointer_t*)(values), supportUndef, errorNum, errorStr);
-
-  if (idx == nullptr) {
-    TRI_DestroyVector(&paths);
-    TRI_DestroyVectorPointer(&fields);
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    return nullptr;
-  }
-
-  // ...........................................................................
-  // release memory allocated to fields & paths vectors
-  // ...........................................................................
-
-  TRI_DestroyVector(&paths);
-  TRI_DestroyVectorPointer(&fields);
-
-  // ...........................................................................
-  // initialises the index with all existing documents
-  // ...........................................................................
-
-  res = FillIndex(document, idx);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-
-    // .........................................................................
-    // for some reason one or more of the existing documents has caused the
-    // index to fail. Remove the index from the collection and return null.
-    // .........................................................................
-
-    *errorNum = res;
-    *errorStr = TRI_DuplicateString("Bitarray index creation aborted due to documents within collection.");
-    TRI_FreeBitarrayIndex(idx);
-
-    return nullptr;
-  }
-
-  // ...........................................................................
-  // store index within the collection and return
-  // ...........................................................................
-
-  res = AddIndex(document, idx);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    *errorNum = res;
-    *errorStr = TRI_DuplicateString(TRI_errno_string(res));
-    TRI_FreeBitarrayIndex(idx);
-
-    return nullptr;
-  }
-
-  if (created != nullptr) {
-    *created = true;
-  }
-
-  return idx;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief restores an index
-////////////////////////////////////////////////////////////////////////////////
-
-static int BitarrayIndexFromJson (TRI_document_collection_t* document,
-                                  TRI_json_t const* definition,
-                                  TRI_idx_iid_t iid,
-                                  TRI_index_t** dst) {
-  return BitarrayBasedIndexFromJson(document, definition, iid, CreateBitarrayIndexDocumentCollection, dst);
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds a bitarray index
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_index_t* TRI_LookupBitarrayIndexDocumentCollection (TRI_document_collection_t* document,
-                                                        const TRI_vector_pointer_t* attributes) {
-  TRI_index_t* idx;
-  TRI_vector_pointer_t fields;
-  TRI_vector_t paths;
-  int result;
-
-  // ...........................................................................
-  // determine the unsorted shape ids for the attributes
-  // ...........................................................................
-
-  result = PidNamesByAttributeNames(attributes,
-                                    document->getShaper(),  // ONLY IN INDEX, PROTECTED by RUNTIME
-                                    &paths,
-                                    &fields,
-                                    false,
-                                    false);
-
-  if (result != TRI_ERROR_NO_ERROR) {
-    return nullptr;
-  }
-
-  idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_BITARRAY_INDEX, false, true);
-
-  // .............................................................................
-  // release memory allocated to vector
-  // .............................................................................
-
-  TRI_DestroyVector(&paths);
-  TRI_DestroyVectorPointer(&fields);
-
-  return idx;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures that a bitarray index exists
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_index_t* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_t* document,
-                                                        TRI_idx_iid_t iid,
-                                                        const TRI_vector_pointer_t* attributes,
-                                                        const TRI_vector_pointer_t* values,
-                                                        bool supportUndef,
-                                                        bool* created,
-                                                        int* errorCode,
-                                                        char** errorStr) {
-  TRI_index_t* idx;
-
-  *errorCode = TRI_ERROR_NO_ERROR;
-  *errorStr  = nullptr;
-
-  TRI_ReadLockReadWriteLock(&document->_vocbase->_inventoryLock);
-
-  // .............................................................................
-  // inside write-lock the collection
-  // .............................................................................
-
-  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
-
-  idx = CreateBitarrayIndexDocumentCollection(document, attributes, values, iid, supportUndef, created, errorCode, errorStr);
-
-  if (idx != nullptr) {
-    if (created) {
-      int res = TRI_SaveIndex(document, idx, true);
-
-      // ...........................................................................
-      // If index could not be saved, report the error and return NULL
-      // TODO: get TRI_SaveIndex to report the error
-      // ...........................................................................
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        idx = nullptr;
-        *errorCode = res;
-        *errorStr  = TRI_DuplicateString("Bitarray index could not be saved.");
-      }
-    }
-  }
-
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
-
-  // .............................................................................
-  // outside write-lock
-  // .............................................................................
-
-  TRI_ReadUnlockReadWriteLock(&document->_vocbase->_inventoryLock);
-
-  // .............................................................................
-  // Index already exists so simply return it
-  // .............................................................................
 
   return idx;
 }

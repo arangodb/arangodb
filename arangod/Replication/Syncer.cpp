@@ -29,9 +29,9 @@
 
 #include "Syncer.h"
 
-#include "BasicsC/files.h"
-#include "BasicsC/json.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/files.h"
+#include "Basics/json.h"
+#include "Basics/tri-strings.h"
 #include "Basics/JsonHelper.h"
 #include "Rest/HttpRequest.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
@@ -226,7 +226,7 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
 
     TRI_document_collection_t* document = trxCollection->_collection->_collection;
     TRI_memory_zone_t* zone = document->getShaper()->_memoryZone;  // PROTECTED by trx in trxCollection
-    TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(document->getShaper(), json, true, true);  // PROTECTED by trx in trxCollection
+    TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(document->getShaper(), json, true);  // PROTECTED by trx in trxCollection
     
     if (shaped == nullptr) {
       errorMsg = TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
@@ -237,7 +237,8 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
     try {
       TRI_doc_mptr_copy_t mptr;
 
-      int res = TRI_ReadShapedJsonDocumentCollection(trxCollection, key, &mptr, ! trxCollection->_locked);
+      bool const isLocked = TRI_IsLockedCollectionTransaction(trxCollection);
+      int res = TRI_ReadShapedJsonDocumentCollection(trxCollection, key, &mptr, ! isLocked);
 
       if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         // insert
@@ -268,7 +269,7 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
           }
 
           if (res == TRI_ERROR_NO_ERROR) {
-            res = TRI_InsertShapedJsonDocumentCollection(trxCollection, key, rid, nullptr, &mptr, shaped, &edge, ! trxCollection->_locked, false, true);
+            res = TRI_InsertShapedJsonDocumentCollection(trxCollection, key, rid, nullptr, &mptr, shaped, &edge, ! isLocked, false, true);
           }
         }
         else {
@@ -277,13 +278,13 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
           }
           else {
-            res = TRI_InsertShapedJsonDocumentCollection(trxCollection, key, rid, nullptr, &mptr, shaped, nullptr, ! trxCollection->_locked, false, true);
+            res = TRI_InsertShapedJsonDocumentCollection(trxCollection, key, rid, nullptr, &mptr, shaped, nullptr, ! isLocked, false, true);
           }
         }
       }
       else {
         // update
-        res = TRI_UpdateShapedJsonDocumentCollection(trxCollection, key, rid, nullptr, &mptr, shaped, &_policy, ! trxCollection->_locked, false);
+        res = TRI_UpdateShapedJsonDocumentCollection(trxCollection, key, rid, nullptr, &mptr, shaped, &_policy, ! isLocked, false);
       }
 
       TRI_FreeShapedJson(zone, shaped);
@@ -302,9 +303,10 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
     // {"type":2402,"key":"592063"}
 
     int res = TRI_ERROR_INTERNAL;
+    bool const isLocked = TRI_IsLockedCollectionTransaction(trxCollection);
 
     try {
-      res = TRI_RemoveShapedJsonDocumentCollection(trxCollection, key, rid, nullptr, &_policy, ! trxCollection->_locked, false);
+      res = TRI_RemoveShapedJsonDocumentCollection(trxCollection, key, rid, nullptr, &_policy, ! isLocked, false);
 
       if (res != TRI_ERROR_NO_ERROR && res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         // ignore this error

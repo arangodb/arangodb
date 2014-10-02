@@ -12,8 +12,8 @@
 #include <stdlib.h>
 
 #include <Basics/Common.h>
-#include <BasicsC/conversions.h>
-#include <BasicsC/tri-strings.h>
+#include <Basics/conversions.h>
+#include <Basics/tri-strings.h>
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-context.h"

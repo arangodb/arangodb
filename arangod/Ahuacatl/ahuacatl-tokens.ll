@@ -15,7 +15,7 @@
 %{
 #include "Basics/Common.h"
 
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-context.h"

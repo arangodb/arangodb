@@ -1,0 +1,25 @@
+first: >
+  a
+  b
+    c
+    d
+  e
+  f
+
+second: >
+  a
+  b
+    c
+
+    d
+  e
+  f
+
+third: >
+  a
+  b
+
+    c
+    d
+  e
+  f

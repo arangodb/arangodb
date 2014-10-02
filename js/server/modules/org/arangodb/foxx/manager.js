@@ -192,13 +192,14 @@ function extendContext (context, app, root) {
   "use strict";
 
   var cp = context.collectionPrefix;
+  var cname = "";
 
-  if (cp !== "" && cp !== "_") {
-    cp += "_";
+  if (cp !== "") {
+    cname = cp + "_";
   }
 
   context.collectionName = function (name) {
-    var replaced = ((cp + name).replace(/[^a-zA-Z0-9]/g, '_').replace(/(^_+|_+$)/g, '')).substr(0, 64);
+    var replaced = (cname + name).replace(/[^a-zA-Z0-9]/g, '_').replace(/(^_+|_+$)/g, '').substr(0, 64);
 
     if (replaced.length === 0) {
       throw new Error("Cannot derive collection name from '" + name + "'");

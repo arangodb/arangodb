@@ -83,7 +83,7 @@ JAVASCRIPT_JSLINT = \
 ### @brief executes jslint
 ################################################################################
 
-.PHONY: jslint
+.PHONY: jslint jshint
 
 jslint:
 	@RESULT=0; \
@@ -97,6 +97,8 @@ jslint:
                 if [ "$$?x" != "0x" ]; then RESULT=1; fi; \
 	done; \
 	exit $$RESULT
+
+jshint: jslint
 
 ################################################################################
 ### @brief sets up the directories

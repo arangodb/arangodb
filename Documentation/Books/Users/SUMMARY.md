@@ -220,7 +220,6 @@
   * [Fulltext Indexes](IndexHandling/Fulltext.md)
   * [Hash Indexes](IndexHandling/Hash.md)
   * [Skip-Lists](IndexHandling/Skiplist.md)
-  * [BitArray Indexes](IndexHandling/BitArray.md)
 <!-- 28 -->
 * [Datafile Debugger](DatafileDebugger/README.md)
 <!-- 29 -->

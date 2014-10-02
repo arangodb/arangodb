@@ -57,8 +57,36 @@ add_executable(
     Ahuacatl/ahuacatl-statementlist.cpp
     Ahuacatl/ahuacatl-tokens.cpp
     Ahuacatl/ahuacatl-variable.cpp
-    BitIndexes/bitarray.cpp
-    BitIndexes/bitarrayIndex.cpp
+    Aql/AqlItemBlock.cpp
+    Aql/AqlValue.cpp
+    Aql/Ast.cpp
+    Aql/AstNode.cpp
+    Aql/BindParameters.cpp
+    Aql/ExecutionBlock.cpp
+    Aql/ExecutionEngine.cpp
+    Aql/ExecutionNode.cpp
+    Aql/ExecutionPlan.cpp
+    Aql/ExecutionStats.cpp
+    Aql/Executor.cpp
+    Aql/Expression.cpp
+    Aql/Function.cpp
+    Aql/Functions.cpp
+    Aql/grammar.cpp
+    Aql/NodeFinder.cpp
+    Aql/Optimizer.cpp
+    Aql/OptimizerRules.cpp
+    Aql/Parser.cpp
+    Aql/Query.cpp
+    Aql/QueryRegistry.cpp
+    Aql/RangeInfo.cpp
+    Aql/RestAqlHandler.cpp
+    Aql/Scopes.cpp
+    Aql/Types.cpp
+    Aql/tokens.cpp
+    Aql/V8Expression.cpp
+    Aql/Variable.cpp
+    Aql/VariableGenerator.cpp
+    Aql/ModificationOptions.cpp
     CapConstraint/cap-constraint.cpp
     Cluster/AgencyComm.cpp
     Cluster/ApplicationCluster.cpp
@@ -80,7 +108,6 @@ add_executable(
     GeoIndex/geo-index.cpp
     HashIndex/hash-array.cpp
     HashIndex/hash-index.cpp
-    IndexIterators/index-iterator.cpp
     IndexOperators/index-operator.cpp
     Replication/ContinuousSyncer.cpp
     Replication/InitialSyncer.cpp
@@ -111,6 +138,13 @@ add_executable(
     V8Server/v8-dispatcher.cpp
     V8Server/v8-query.cpp
     V8Server/v8-vocbase.cpp
+    V8Server/v8-wrapshapedjson.cpp
+    V8Server/v8-vocindex.cpp
+    V8Server/v8-voccursor.cpp
+    V8Server/v8-replication.cpp
+    V8Server/v8-collection.cpp
+    V8Server/v8-collection-util.cpp
+    V8Server/v8-util.cpp
     VocBase/auth.cpp
     VocBase/barrier.cpp
     VocBase/cleanup.cpp

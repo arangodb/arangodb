@@ -31,8 +31,8 @@
 #define ARANGODB_VOC_BASE_REPLICATION__APPLIER_H 1
 
 #include "Basics/Common.h"
-#include "BasicsC/locks.h"
-#include "BasicsC/threads.h"
+#include "Basics/locks.h"
+#include "Basics/threads.h"
 #include "Utils/ReplicationTransaction.h"
 #include "VocBase/replication-common.h"
 #include "VocBase/voc-types.h"
@@ -41,7 +41,7 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_json_s;
+struct TRI_json_t;
 struct TRI_server_s;
 struct TRI_vocbase_s;
 
@@ -205,7 +205,7 @@ bool TRI_WaitReplicationApplier (TRI_replication_applier_t*,
 /// @brief get a JSON representation of the replication apply configuration
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_json_s* TRI_JsonConfigurationReplicationApplier (TRI_replication_applier_configuration_t const*);
+struct TRI_json_t* TRI_JsonConfigurationReplicationApplier (TRI_replication_applier_configuration_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief start the replication applier
@@ -246,7 +246,7 @@ int TRI_StateReplicationApplier (TRI_replication_applier_t*,
 /// @brief get a JSON representation of an applier
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_json_s* TRI_JsonReplicationApplier (TRI_replication_applier_t*);
+struct TRI_json_t* TRI_JsonReplicationApplier (TRI_replication_applier_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register an applier error

@@ -35,7 +35,7 @@
 
 #include "VocBase/vocbase.h"
 
-struct TRI_json_s;
+struct TRI_json_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class V8TimerTask
@@ -70,7 +70,7 @@ namespace triagens {
                      rest::Dispatcher*,
                      double,
                      std::string const&,
-                     struct TRI_json_s*);
+                     struct TRI_json_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -88,7 +88,7 @@ namespace triagens {
 /// @brief get a task specific description in JSON format
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void getDescription (struct TRI_json_s*);
+        virtual void getDescription (struct TRI_json_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the task is user-defined
@@ -144,7 +144,7 @@ namespace triagens {
 /// @brief paramaters
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_json_s* _parameters;
+        struct TRI_json_t* _parameters;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creation timestamp

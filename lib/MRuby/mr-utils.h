@@ -30,13 +30,9 @@
 #ifndef ARANGODB_MRUBY_MR__UTILS_H
 #define ARANGODB_MRUBY_MR__UTILS_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
-#include "BasicsC/json.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "Basics/json.h"
 
 #include "mruby.h"
 
@@ -129,10 +125,6 @@ bool TRI_ExecuteRubyString (mrb_state*,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitMRUtils (mrb_state* mrb);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

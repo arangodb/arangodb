@@ -32,11 +32,11 @@
 
 #include "Basics/Common.h"
 
-#include "BasicsC/associative.h"
-#include "BasicsC/locks.h"
-#include "BasicsC/threads.h"
-#include "BasicsC/vector.h"
-#include "BasicsC/voc-errors.h"
+#include "Basics/associative.h"
+#include "Basics/locks.h"
+#include "Basics/threads.h"
+#include "Basics/vector.h"
+#include "Basics/voc-errors.h"
 #include "VocBase/vocbase-defaults.h"
 
 // -----------------------------------------------------------------------------
@@ -46,7 +46,7 @@
 struct TRI_document_collection_t;
 struct TRI_col_info_s;
 struct TRI_general_cursor_store_s;
-struct TRI_json_s;
+struct TRI_json_t;
 struct TRI_server_s;
 struct TRI_vector_pointer_s;
 struct TRI_vector_string_s;
@@ -163,6 +163,12 @@ struct TRI_replication_applier_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_VOC_ATTRIBUTE_REV   "_rev"
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief name of the _id attribute
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_VOC_ATTRIBUTE_ID    "_id"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief name of the system database
@@ -466,7 +472,7 @@ TRI_vector_string_t TRI_CollectionNamesVocBase (TRI_vocbase_t*);
 /// and optionally indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_json_s* TRI_InventoryCollectionsVocBase (TRI_vocbase_t*,
+struct TRI_json_t* TRI_InventoryCollectionsVocBase (TRI_vocbase_t*,
                                                     TRI_voc_tick_t,
                                                     bool (*)(TRI_vocbase_col_t*, void*),
                                                     void*);

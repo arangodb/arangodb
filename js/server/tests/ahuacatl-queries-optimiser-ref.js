@@ -29,7 +29,6 @@ var jsunity = require("jsunity");
 var internal = require("internal");
 var helper = require("org/arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
-var getQueryExplanation = helper.getQueryExplanation;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -176,10 +175,6 @@ function ahuacatlQueryOptimiserRefTestSuite () {
       var actual = getQueryResults(query, { "att" : "name", "what" : "age" });
 
       assertEqual(expected, actual);
-
-      var explain = getQueryExplanation(query, { "att": "name", "what": "age" });
-      assertEqual("for", explain[0].type);
-      assertEqual("index", explain[0].expression.extra.accessType);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -192,10 +187,6 @@ function ahuacatlQueryOptimiserRefTestSuite () {
       var actual = getQueryResults(query, { "att" : "age", "what" : "name" });
 
       assertEqual(expected, actual);
-
-      var explain = getQueryExplanation(query, { "att": "age", "what": "name" });
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
     }
 
   };

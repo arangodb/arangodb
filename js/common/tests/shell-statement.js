@@ -156,7 +156,7 @@ function StatementSuite () {
       var st = new ArangoStatement(db, { query : "for u in users for f in friends return u" });
       var result = st.parse();
 
-      assertEqual([ "users", "friends" ], result.collections);
+      assertEqual([ "friends", "users" ], result.collections.sort());
       assertEqual([ ], result.bindVars);
     },
 
@@ -169,7 +169,7 @@ function StatementSuite () {
       var result = st.parse();
 
       assertEqual([ ], result.collections);
-      assertEqual([ "name", "@users" ], result.bindVars);
+      assertEqual([ "@users", "name" ], result.bindVars.sort());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -181,7 +181,7 @@ function StatementSuite () {
       var result = st.parse();
 
       assertEqual([ "friends" ], result.collections);
-      assertEqual([ "name", "@users" ], result.bindVars);
+      assertEqual([ "@users", "name" ], result.bindVars.sort());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -550,18 +550,23 @@ function ExplainSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExplainWithBind : function () {
-      var st = new ArangoStatement(db, { query : "for i in [ 1 ] return @f", bindVars: { f : 1 } });
-      var result = st.explain();
+      var st = new ArangoStatement(db, { query : "for i in [ 1 ] return @f", bindVars: { f : 99 } });
+      var nodes = st.explain().plan.nodes, node;
 
-      assertEqual(2, result.length);
+      node = nodes[0];
+      assertEqual("SingletonNode", node.type);
 
-      assertEqual(1, result[0]["id"]);
-      assertEqual(1, result[0]["loopLevel"]);
-      assertEqual("for", result[0]["type"]);
+      node = nodes[1];
+      assertEqual("CalculationNode", node.type);
 
-      assertEqual(2, result[1]["id"]);
-      assertEqual(1, result[1]["loopLevel"]);
-      assertEqual("return", result[1]["type"]);
+      node = nodes[2];
+      assertEqual("CalculationNode", node.type);
+
+      node = nodes[3];
+      assertEqual("EnumerateListNode", node.type);
+
+      node = nodes[4];
+      assertEqual("ReturnNode", node.type);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -570,17 +575,18 @@ function ExplainSuite () {
 
     testExplainWithBindCollection : function () {
       var st = new ArangoStatement(db, { query : "for i in @@cn return i", bindVars: { "@cn": cn } });
-      var result = st.explain();
+      var nodes = st.explain().plan.nodes, node;
 
-      assertEqual(2, result.length);
+      node = nodes[0];
+      assertEqual("SingletonNode", node.type);
 
-      assertEqual(1, result[0]["id"]);
-      assertEqual(1, result[0]["loopLevel"]);
-      assertEqual("for", result[0]["type"]);
+      node = nodes[1];
+      assertEqual("EnumerateCollectionNode", node.type);
+      assertEqual("i", node.outVariable.name);
+      assertEqual(cn, node.collection);
 
-      assertEqual(2, result[1]["id"]);
-      assertEqual(1, result[1]["loopLevel"]);
-      assertEqual("return", result[1]["type"]);
+      node = nodes[2];
+      assertEqual("ReturnNode", node.type);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -588,18 +594,21 @@ function ExplainSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExplainOk1 : function () {
-      var st = new ArangoStatement(db, { query : "for u in [ 1, 2, 3 ] return 1" });
-      var result = st.explain();
+      var st = new ArangoStatement(db, { query : "for u in [ 1, 2, 3 ] return u" });
+      var nodes = st.explain().plan.nodes, node;
 
-      assertEqual(2, result.length);
+      node = nodes[0];
+      assertEqual("SingletonNode", node.type);
 
-      assertEqual(1, result[0]["id"]);
-      assertEqual(1, result[0]["loopLevel"]);
-      assertEqual("for", result[0]["type"]);
+      node = nodes[1];
+      assertEqual("CalculationNode", node.type);
+      
+      node = nodes[2];
+      assertEqual("EnumerateListNode", node.type);
+      assertEqual("u", node.outVariable.name);
 
-      assertEqual(2, result[1]["id"]);
-      assertEqual(1, result[1]["loopLevel"]);
-      assertEqual("return", result[1]["type"]);
+      node = nodes[3];
+      assertEqual("ReturnNode", node.type);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -607,26 +616,29 @@ function ExplainSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExplainOk2 : function () {
-      var st = new ArangoStatement(db, { query : "for u in [ 1, 2, 3 ] filter u != 1 for f in u return 1" });
-      var result = st.explain();
+      var st = new ArangoStatement(db, { query : "for u in [ 1, 2, 3 ] filter u != 1 for f in u return f" });
+      var nodes = st.explain().plan.nodes, node;
 
-      assertEqual(4, result.length);
+      node = nodes[0];
+      assertEqual("SingletonNode", node.type);
 
-      assertEqual(1, result[0]["id"]);
-      assertEqual(1, result[0]["loopLevel"]);
-      assertEqual("for", result[0]["type"]);
+      node = nodes[1];
+      assertEqual("CalculationNode", node.type);
+      
+      node = nodes[2];
+      assertEqual("EnumerateListNode", node.type);
 
-      assertEqual(2, result[1]["id"]);
-      assertEqual(1, result[1]["loopLevel"]);
-      assertEqual("filter", result[1]["type"]);
+      node = nodes[3];
+      assertEqual("CalculationNode", node.type);
 
-      assertEqual(3, result[2]["id"]);
-      assertEqual(2, result[2]["loopLevel"]);
-      assertEqual("for", result[2]["type"]);
+      node = nodes[4];
+      assertEqual("FilterNode", node.type);
 
-      assertEqual(4, result[3]["id"]);
-      assertEqual(2, result[3]["loopLevel"]);
-      assertEqual("return", result[3]["type"]);
+      node = nodes[5];
+      assertEqual("EnumerateListNode", node.type);
+
+      node = nodes[6];
+      assertEqual("ReturnNode", node.type);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -635,20 +647,19 @@ function ExplainSuite () {
 
     testExplainRemove1 : function () {
       var st = new ArangoStatement(db, { query : "for u in " + cn + " remove u in " + cn });
-      var result = st.explain();
+      var nodes = st.explain().plan.nodes, node;
 
-      assertEqual(2, result.length);
+      node = nodes[0];
+      assertEqual("SingletonNode", node.type);
+      
+      node = nodes[1];
+      assertEqual("EnumerateCollectionNode", node.type);
+      assertEqual("u", node.outVariable.name);
+      assertEqual(cn, node.collection);
 
-      assertEqual(1, result[0]["id"]);
-      assertEqual(1, result[0]["loopLevel"]);
-      assertEqual("for", result[0]["type"]);
-      assertEqual("collection", result[0]["expression"]["type"]);
-      assertEqual(cn, result[0]["expression"]["value"]);
-
-      assertEqual(2, result[1]["id"]);
-      assertEqual("remove", result[1]["type"]);
-      assertEqual("reference", result[1]["expression"]["type"]);
-      assertEqual("u", result[1]["expression"]["value"]);
+      node = nodes[2];
+      assertEqual("RemoveNode", node.type);
+      assertEqual(cn, node.collection);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -657,20 +668,19 @@ function ExplainSuite () {
 
     testExplainRemove2 : function () {
       var st = new ArangoStatement(db, { query : "for u in @@cn remove u in @@cn", bindVars: { "@cn" : cn } });
-      var result = st.explain();
+      var nodes = st.explain().plan.nodes, node;
 
-      assertEqual(2, result.length);
+      node = nodes[0];
+      assertEqual("SingletonNode", node.type);
+      
+      node = nodes[1];
+      assertEqual("EnumerateCollectionNode", node.type);
+      assertEqual("u", node.outVariable.name);
+      assertEqual(cn, node.collection);
 
-      assertEqual(1, result[0]["id"]);
-      assertEqual(1, result[0]["loopLevel"]);
-      assertEqual("for", result[0]["type"]);
-      assertEqual("collection", result[0]["expression"]["type"]);
-      assertEqual(cn, result[0]["expression"]["value"]);
-
-      assertEqual(2, result[1]["id"]);
-      assertEqual("remove", result[1]["type"]);
-      assertEqual("reference", result[1]["expression"]["type"]);
-      assertEqual("u", result[1]["expression"]["value"]);
+      node = nodes[2];
+      assertEqual("RemoveNode", node.type);
+      assertEqual(cn, node.collection);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -679,20 +689,19 @@ function ExplainSuite () {
 
     testExplainInsert1 : function () {
       var st = new ArangoStatement(db, { query : "for u in @@cn insert u in @@cn", bindVars: { "@cn": cn } });
-      var result = st.explain();
+      var nodes = st.explain().plan.nodes, node;
 
-      assertEqual(2, result.length);
+      node = nodes[0];
+      assertEqual("SingletonNode", node.type);
+      
+      node = nodes[1];
+      assertEqual("EnumerateCollectionNode", node.type);
+      assertEqual("u", node.outVariable.name);
+      assertEqual(cn, node.collection);
 
-      assertEqual(1, result[0]["id"]);
-      assertEqual(1, result[0]["loopLevel"]);
-      assertEqual("for", result[0]["type"]);
-      assertEqual("collection", result[0]["expression"]["type"]);
-      assertEqual(cn, result[0]["expression"]["value"]);
-
-      assertEqual(2, result[1]["id"]);
-      assertEqual("insert", result[1]["type"]);
-      assertEqual("reference", result[1]["expression"]["type"]);
-      assertEqual("u", result[1]["expression"]["value"]);
+      node = nodes[2];
+      assertEqual("InsertNode", node.type);
+      assertEqual(cn, node.collection);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -701,20 +710,19 @@ function ExplainSuite () {
 
     testExplainInsert2 : function () {
       var st = new ArangoStatement(db, { query : "for u in " + cn + " insert u in " + cn });
-      var result = st.explain();
+      var nodes = st.explain().plan.nodes, node;
 
-      assertEqual(2, result.length);
+      node = nodes[0];
+      assertEqual("SingletonNode", node.type);
+      
+      node = nodes[1];
+      assertEqual("EnumerateCollectionNode", node.type);
+      assertEqual("u", node.outVariable.name);
+      assertEqual(cn, node.collection);
 
-      assertEqual(1, result[0]["id"]);
-      assertEqual(1, result[0]["loopLevel"]);
-      assertEqual("for", result[0]["type"]);
-      assertEqual("collection", result[0]["expression"]["type"]);
-      assertEqual(cn, result[0]["expression"]["value"]);
-
-      assertEqual(2, result[1]["id"]);
-      assertEqual("insert", result[1]["type"]);
-      assertEqual("reference", result[1]["expression"]["type"]);
-      assertEqual("u", result[1]["expression"]["value"]);
+      node = nodes[2];
+      assertEqual("InsertNode", node.type);
+      assertEqual(cn, node.collection);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -723,20 +731,22 @@ function ExplainSuite () {
 
     testExplainUpdate1 : function () {
       var st = new ArangoStatement(db, { query : "for u in @@cn update u._key with u in @@cn", bindVars: { "@cn": cn } });
-      var result = st.explain();
+      var nodes = st.explain().plan.nodes, node;
 
-      assertEqual(2, result.length);
+      node = nodes[0];
+      assertEqual("SingletonNode", node.type);
+      
+      node = nodes[1];
+      assertEqual("EnumerateCollectionNode", node.type);
+      assertEqual("u", node.outVariable.name);
+      assertEqual(cn, node.collection);
 
-      assertEqual(1, result[0]["id"]);
-      assertEqual(1, result[0]["loopLevel"]);
-      assertEqual("for", result[0]["type"]);
-      assertEqual("collection", result[0]["expression"]["type"]);
-      assertEqual(cn, result[0]["expression"]["value"]);
+      node = nodes[2];
+      assertEqual("CalculationNode", node.type);
 
-      assertEqual(2, result[1]["id"]);
-      assertEqual("update", result[1]["type"]);
-      assertEqual("reference", result[1]["expression"]["type"]);
-      assertEqual("u", result[1]["expression"]["value"]);
+      node = nodes[3];
+      assertEqual("UpdateNode", node.type);
+      assertEqual(cn, node.collection);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -745,20 +755,22 @@ function ExplainSuite () {
 
     testExplainUpdate2 : function () {
       var st = new ArangoStatement(db, { query : "for u in " + cn + " update u._key with u in " + cn });
-      var result = st.explain();
+      var nodes = st.explain().plan.nodes, node;
 
-      assertEqual(2, result.length);
+      node = nodes[0];
+      assertEqual("SingletonNode", node.type);
+      
+      node = nodes[1];
+      assertEqual("EnumerateCollectionNode", node.type);
+      assertEqual("u", node.outVariable.name);
+      assertEqual(cn, node.collection);
 
-      assertEqual(1, result[0]["id"]);
-      assertEqual(1, result[0]["loopLevel"]);
-      assertEqual("for", result[0]["type"]);
-      assertEqual("collection", result[0]["expression"]["type"]);
-      assertEqual(cn, result[0]["expression"]["value"]);
+      node = nodes[2];
+      assertEqual("CalculationNode", node.type);
 
-      assertEqual(2, result[1]["id"]);
-      assertEqual("update", result[1]["type"]);
-      assertEqual("reference", result[1]["expression"]["type"]);
-      assertEqual("u", result[1]["expression"]["value"]);
+      node = nodes[3];
+      assertEqual("UpdateNode", node.type);
+      assertEqual(cn, node.collection);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -767,20 +779,19 @@ function ExplainSuite () {
 
     testExplainUpdate3 : function () {
       var st = new ArangoStatement(db, { query : "for u in @@cn update u in @@cn", bindVars: { "@cn": cn } });
-      var result = st.explain();
+      var nodes = st.explain().plan.nodes, node;
 
-      assertEqual(2, result.length);
+      node = nodes[0];
+      assertEqual("SingletonNode", node.type);
+      
+      node = nodes[1];
+      assertEqual("EnumerateCollectionNode", node.type);
+      assertEqual("u", node.outVariable.name);
+      assertEqual(cn, node.collection);
 
-      assertEqual(1, result[0]["id"]);
-      assertEqual(1, result[0]["loopLevel"]);
-      assertEqual("for", result[0]["type"]);
-      assertEqual("collection", result[0]["expression"]["type"]);
-      assertEqual(cn, result[0]["expression"]["value"]);
-
-      assertEqual(2, result[1]["id"]);
-      assertEqual("update", result[1]["type"]);
-      assertEqual("reference", result[1]["expression"]["type"]);
-      assertEqual("u", result[1]["expression"]["value"]);
+      node = nodes[2];
+      assertEqual("UpdateNode", node.type);
+      assertEqual(cn, node.collection);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -789,19 +800,19 @@ function ExplainSuite () {
 
     testExplainUpdate4 : function () {
       var st = new ArangoStatement(db, { query : "for u in " + cn + " update u in " + cn });
-      var result = st.explain();
+      var nodes = st.explain().plan.nodes, node;
 
-      assertEqual(2, result.length);
+      node = nodes[0];
+      assertEqual("SingletonNode", node.type);
+      
+      node = nodes[1];
+      assertEqual("EnumerateCollectionNode", node.type);
+      assertEqual("u", node.outVariable.name);
+      assertEqual(cn, node.collection);
 
-      assertEqual(1, result[0]["id"]);
-      assertEqual("for", result[0]["type"]);
-      assertEqual("collection", result[0]["expression"]["type"]);
-      assertEqual(cn, result[0]["expression"]["value"]);
-
-      assertEqual(2, result[1]["id"]);
-      assertEqual("update", result[1]["type"]);
-      assertEqual("reference", result[1]["expression"]["type"]);
-      assertEqual("u", result[1]["expression"]["value"]);
+      node = nodes[2];
+      assertEqual("UpdateNode", node.type);
+      assertEqual(cn, node.collection);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -810,20 +821,22 @@ function ExplainSuite () {
 
     testExplainReplace1 : function () {
       var st = new ArangoStatement(db, { query : "for u in @@cn replace u._key with u in @@cn", bindVars: { "@cn": cn } });
-      var result = st.explain();
+      var nodes = st.explain().plan.nodes, node;
 
-      assertEqual(2, result.length);
+      node = nodes[0];
+      assertEqual("SingletonNode", node.type);
+      
+      node = nodes[1];
+      assertEqual("EnumerateCollectionNode", node.type);
+      assertEqual("u", node.outVariable.name);
+      assertEqual(cn, node.collection);
 
-      assertEqual(1, result[0]["id"]);
-      assertEqual(1, result[0]["loopLevel"]);
-      assertEqual("for", result[0]["type"]);
-      assertEqual("collection", result[0]["expression"]["type"]);
-      assertEqual(cn, result[0]["expression"]["value"]);
+      node = nodes[2];
+      assertEqual("CalculationNode", node.type);
 
-      assertEqual(2, result[1]["id"]);
-      assertEqual("replace", result[1]["type"]);
-      assertEqual("reference", result[1]["expression"]["type"]);
-      assertEqual("u", result[1]["expression"]["value"]);
+      node = nodes[3];
+      assertEqual("ReplaceNode", node.type);
+      assertEqual(cn, node.collection);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -832,20 +845,22 @@ function ExplainSuite () {
 
     testExplainReplace2 : function () {
       var st = new ArangoStatement(db, { query : "for u in " + cn + " replace u._key with u in " + cn });
-      var result = st.explain();
+      var nodes = st.explain().plan.nodes, node;
 
-      assertEqual(2, result.length);
+      node = nodes[0];
+      assertEqual("SingletonNode", node.type);
+      
+      node = nodes[1];
+      assertEqual("EnumerateCollectionNode", node.type);
+      assertEqual("u", node.outVariable.name);
+      assertEqual(cn, node.collection);
 
-      assertEqual(1, result[0]["id"]);
-      assertEqual(1, result[0]["loopLevel"]);
-      assertEqual("for", result[0]["type"]);
-      assertEqual("collection", result[0]["expression"]["type"]);
-      assertEqual(cn, result[0]["expression"]["value"]);
+      node = nodes[2];
+      assertEqual("CalculationNode", node.type);
 
-      assertEqual(2, result[1]["id"]);
-      assertEqual("replace", result[1]["type"]);
-      assertEqual("reference", result[1]["expression"]["type"]);
-      assertEqual("u", result[1]["expression"]["value"]);
+      node = nodes[3];
+      assertEqual("ReplaceNode", node.type);
+      assertEqual(cn, node.collection);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -854,18 +869,19 @@ function ExplainSuite () {
 
     testExplainReplace3 : function () {
       var st = new ArangoStatement(db, { query : "for u in @@cn replace u in @@cn", bindVars: { "@cn": cn } });
-      var result = st.explain();
+      var nodes = st.explain().plan.nodes, node;
 
-      assertEqual(2, result.length);
+      node = nodes[0];
+      assertEqual("SingletonNode", node.type);
+      
+      node = nodes[1];
+      assertEqual("EnumerateCollectionNode", node.type);
+      assertEqual("u", node.outVariable.name);
+      assertEqual(cn, node.collection);
 
-      assertEqual(1, result[0]["id"]);
-      assertEqual(1, result[0]["loopLevel"]);
-      assertEqual("for", result[0]["type"]);
-
-      assertEqual(2, result[1]["id"]);
-      assertEqual("replace", result[1]["type"]);
-      assertEqual("reference", result[1]["expression"]["type"]);
-      assertEqual("u", result[1]["expression"]["value"]);
+      node = nodes[2];
+      assertEqual("ReplaceNode", node.type);
+      assertEqual(cn, node.collection);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -874,18 +890,19 @@ function ExplainSuite () {
 
     testExplainReplace4 : function () {
       var st = new ArangoStatement(db, { query : "for u in " + cn + " replace u in " + cn });
-      var result = st.explain();
+      var nodes = st.explain().plan.nodes, node;
 
-      assertEqual(2, result.length);
+      node = nodes[0];
+      assertEqual("SingletonNode", node.type);
+      
+      node = nodes[1];
+      assertEqual("EnumerateCollectionNode", node.type);
+      assertEqual("u", node.outVariable.name);
+      assertEqual(cn, node.collection);
 
-      assertEqual(1, result[0]["id"]);
-      assertEqual(1, result[0]["loopLevel"]);
-      assertEqual("for", result[0]["type"]);
-
-      assertEqual(2, result[1]["id"]);
-      assertEqual("replace", result[1]["type"]);
-      assertEqual("reference", result[1]["expression"]["type"]);
-      assertEqual("u", result[1]["expression"]["value"]);
+      node = nodes[2];
+      assertEqual("ReplaceNode", node.type);
+      assertEqual(cn, node.collection);
     }
 
   };

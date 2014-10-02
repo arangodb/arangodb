@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global require */
+/*global require, AQL_PARSE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief query actions
@@ -31,9 +31,7 @@
 
 var arangodb = require("org/arangodb");
 var actions = require("org/arangodb/actions");
-
 var ArangoError = arangodb.ArangoError;
-var PARSE = require("internal").AQL_PARSE;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  global variables
@@ -109,7 +107,7 @@ function post_api_query (req, res) {
     return;
   }
 
-  var result = PARSE(json.query);
+  var result = AQL_PARSE(json.query);
 
   if (result instanceof ArangoError) {
     actions.resultBad(req, res, result.errorNum, result.errorMessage);

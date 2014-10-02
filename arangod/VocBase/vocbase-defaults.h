@@ -33,7 +33,7 @@
 #include "Basics/Common.h"
 #include "VocBase/voc-types.h"
 
-struct TRI_json_s;
+struct TRI_json_t;
 struct TRI_vocbase_s;
 
 // -----------------------------------------------------------------------------
@@ -50,6 +50,7 @@ typedef struct TRI_vocbase_defaults_s {
   bool              requireAuthentication;
   bool              requireAuthenticationUnixSockets;
   bool              authenticateSystemOnly;
+  bool              forceSyncProperties;
 }
 TRI_vocbase_defaults_t;
 
@@ -68,7 +69,7 @@ void TRI_ApplyVocBaseDefaults (struct TRI_vocbase_s*,
 /// @brief convert defaults into a JSON array
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_json_s* TRI_JsonVocBaseDefaults (TRI_memory_zone_t*,
+struct TRI_json_t* TRI_JsonVocBaseDefaults (TRI_memory_zone_t*,
                                             TRI_vocbase_defaults_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -76,7 +77,7 @@ struct TRI_json_s* TRI_JsonVocBaseDefaults (TRI_memory_zone_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FromJsonVocBaseDefaults (TRI_vocbase_defaults_t*,
-                                  struct TRI_json_s const*);
+                                  struct TRI_json_t const*);
 
 #endif
 

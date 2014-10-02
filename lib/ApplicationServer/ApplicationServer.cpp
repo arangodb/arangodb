@@ -28,7 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
-#include "BasicsC/win-utils.h"
+#include "Basics/win-utils.h"
 #endif
 
 #include "ApplicationServer.h"
@@ -44,10 +44,10 @@
 #include "Basics/RandomGenerator.h"
 #include "Basics/StringUtils.h"
 #include "Basics/delete_object.h"
-#include "BasicsC/conversions.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/files.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/conversions.h"
+#include "Basics/logging.h"
+#include "Basics/files.h"
+#include "Basics/tri-strings.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -251,11 +251,11 @@ void ApplicationServer::setupLogging (bool threaded, bool daemon) {
   TRI_SetPrefixLogging(_logPrefix.c_str());
   TRI_SetThreadIdentifierLogging(_logThreadId);
 
-  for (vector<string>::iterator i = _logSourceFilter.begin();  i != _logSourceFilter.end();  ++i) {
-    TRI_SetFileToLog(i->c_str());
+  for (auto it = _logSourceFilter.begin();  it != _logSourceFilter.end();  ++it) {
+    TRI_SetFileToLog(it->c_str());
   }
 
-  char const* contentFilter = 0;
+  char const* contentFilter = nullptr;
 
   if (_options.has("log.content-filter")) {
     contentFilter = _logContentFilter.c_str();
@@ -276,7 +276,7 @@ void ApplicationServer::setupLogging (bool threaded, bool daemon) {
                                                                     true);
 
     // the user specified a requests log file to use but it could not be created. bail out
-    if (appender == 0) {
+    if (appender == nullptr) {
       LOG_FATAL_AND_EXIT("failed to create requests logfile '%s'. Please check the path and permissions.", filename.c_str());
     }
   }
@@ -295,7 +295,7 @@ void ApplicationServer::setupLogging (bool threaded, bool daemon) {
                                                                     false);
 
     // the user specified a log file to use but it could not be created. bail out
-    if (appender == 0) {
+    if (appender == nullptr) {
       LOG_FATAL_AND_EXIT("failed to create logfile '%s'. Please check the path and permissions.", filename.c_str());
     }
   }

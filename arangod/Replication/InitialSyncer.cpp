@@ -29,9 +29,9 @@
 
 #include "InitialSyncer.h"
 
-#include "BasicsC/json.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/json.h"
+#include "Basics/logging.h"
+#include "Basics/tri-strings.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/StringUtils.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
@@ -149,7 +149,7 @@ int InitialSyncer::run (string& errorMsg) {
 
   // send request
   string const progress = "fetching master inventory from " + url;
-  setProgress(progress.c_str());
+  setProgress(progress);
 
   SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_GET,
                                                 url,
@@ -219,7 +219,7 @@ int InitialSyncer::sendStartBatch (string& errorMsg) {
 
   // send request
   string const progress = "send batch start command to url " + url;
-  setProgress(progress.c_str());
+  setProgress(progress);
 
   SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_POST,
                                                 url,
@@ -298,7 +298,7 @@ int InitialSyncer::sendExtendBatch () {
 
   // send request
   string const progress = "send batch start command to url " + url;
-  setProgress(progress.c_str());
+  setProgress(progress);
 
   SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_PUT,
                                                 url,
@@ -342,7 +342,7 @@ int InitialSyncer::sendFinishBatch () {
 
   // send request
   string const progress = "send batch finish command to url " + url;
-  setProgress(progress.c_str());
+  setProgress(progress);
 
   SimpleHttpResult* response = _client->request(HttpRequest::HTTP_REQUEST_DELETE,
                                                 url,

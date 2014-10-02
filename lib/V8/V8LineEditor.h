@@ -58,9 +58,12 @@ class V8Completer : public Completer {
   }
   state;
 
-  virtual bool isComplete(std::string const&, size_t lineno, size_t column);
+  virtual bool isComplete (std::string const&, 
+                           size_t lineno, 
+                           size_t column);
 
-  virtual void getAlternatives(char const *, vector<string> &);
+  virtual void getAlternatives (char const*, 
+                                std::vector<string>&);
 };
 
 // -----------------------------------------------------------------------------
@@ -71,10 +74,10 @@ class V8Completer : public Completer {
 /// @brief line editor
 ////////////////////////////////////////////////////////////////////////////////
 
-
 class V8LineEditor : public LineEditor {
-  V8LineEditor (LineEditor const&);
-  V8LineEditor& operator= (LineEditor const&);
+
+  V8LineEditor (LineEditor const&) = delete;
+  V8LineEditor& operator= (LineEditor const&) = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -95,19 +98,15 @@ class V8LineEditor : public LineEditor {
     ~V8LineEditor ();
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief      creates a concrete Shell with the correct parameter (Completer!!)
+/// @brief     creates a concrete Shell with the correct parameter (Completer!!)
 ////////////////////////////////////////////////////////////////////////////////
 
-protected:
+  protected:
+
     virtual void initializeShell();
 
 // -----------------------------------------------------------------------------

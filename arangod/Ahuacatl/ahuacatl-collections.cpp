@@ -29,9 +29,9 @@
 
 #include "Ahuacatl/ahuacatl-collections.h"
 
-#include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
-#include "BasicsC/vector.h"
+#include "Basics/logging.h"
+#include "Basics/tri-strings.h"
+#include "Basics/vector.h"
 #include "VocBase/index.h"
 #include "VocBase/document-collection.h"
 

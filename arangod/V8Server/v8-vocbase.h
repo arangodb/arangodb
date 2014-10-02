@@ -53,30 +53,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse vertex handle from a v8 value (string | object)
 ////////////////////////////////////////////////////////////////////////////////
-
 int TRI_ParseVertex (triagens::arango::CollectionNameResolver const*,
                      TRI_voc_cid_t&,
                      TRI_voc_key_t&,
                      v8::Handle<v8::Value> const);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a index identifier
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_index_t* TRI_LookupIndexByHandle (triagens::arango::CollectionNameResolver const*,
-                                      TRI_vocbase_col_t const*,
-                                      v8::Handle<v8::Value>,
-                                      bool,
-                                      v8::Handle<v8::Object>*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wraps a TRI_shaped_json_t
-////////////////////////////////////////////////////////////////////////////////
-
-template<class T>
-v8::Handle<v8::Value> TRI_WrapShapedJson (T&,
-                                          TRI_voc_cid_t,
-                                          TRI_doc_mptr_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the private WRP_VOCBASE_COL_TYPE value

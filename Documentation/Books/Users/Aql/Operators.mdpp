@@ -17,9 +17,10 @@ The following comparison operators are supported:
 - *>*  greater than
 - *>=* greater or equal
 - *IN* test if a value is contained in a list
+- *NOT IN* test if a value is not contained in a list
 
-The *IN* operator expects the second operand to be of type list. All other
-operators accept any data types for the first and second operands.
+The *IN* and *NOT IN* operators expect the second operand to be of type list. 
+All other operators accept any data types for the first and second operands.
 
 Each of the comparison operators returns a boolean value if the comparison can
 be evaluated and returns *true* if the comparison evaluates to true, and *false*
@@ -35,6 +36,7 @@ true != null
 65 == 65
 1.23 < 1.32
 1.5 IN [ 2, 3, 1.5 ]
+42 NOT IN [ 17, 40, 50 ]
 ```
 
 !SUBSUBSECTION Logical operators
@@ -62,6 +64,14 @@ boolean value.
 Both the *&&* and *||* operators use short-circuit evaluation and only evaluate
 the second operand if the result of the operation cannot be determined by
 checking the first operand alone.
+
+ArangoDB also supports the following alternative forms for the logical operators:
+
+- *AND* logical and operator
+- *OR* logical or operator
+- *NOT* logical not/negation operator
+
+The alternative forms are functionally equivalent to the regular operators.
 
 !SUBSUBSECTION Arithmetic operators
 

@@ -46,156 +46,176 @@ var jsUnity = exports.jsUnity = (function () {
         assertException: function (fn, message) {
             counter++;
             try {
-                fn instanceof Function && fn();
+              fn instanceof Function && fn();
             } catch (e) {
-                return;
+              return;
             }
+            var err = new Error();
 
-            throw fmt("?: (?) does not raise an exception or not a function",
-                message || "assertException", fn);
+            throw fmt("?: (?) does not raise an exception or not a function\n(?)",
+                      message || "assertException", fn, err.stack);
         },
 
         assertTrue: function (actual, message) {
             counter++;
-            if (!actual) {
-                throw fmt("?: (?) does not evaluate to true",
-                    message || "assertTrue", actual);
+            if (! actual) {
+                var err = new Error();
+                throw fmt("?: (?) does not evaluate to true\n(?)",
+                    message || "assertTrue", actual, err.stack);
             }
         },
         
         assertFalse: function (actual, message) {
             counter++;
             if (actual) {
-                throw fmt("?: (?) does not evaluate to false",
-                    message || "assertFalse", actual);
+                var err = new Error();
+                throw fmt("?: (?) does not evaluate to false\n(?)",
+                    message || "assertFalse", actual, err.stack);
             }
         },
         
         assertIdentical: function (expected, actual, message) {
             counter++;
             if (expected !== actual) {
-                throw fmt("?: (?) is not identical to (?)",
-                    message || "assertIdentical", actual, expected);
+                var err = new Error();
+                throw fmt("?: (?) is not identical to (?)\n(?)",
+                          message || "assertIdentical", actual,
+                          expected, err.stack);
             }
         },
 
         assertNotIdentical: function (expected, actual, message) {
             counter++;
             if (expected === actual) {
-                throw fmt("?: (?) is identical to (?)",
-                    message || "assertNotIdentical", actual, expected);
+                var err = new Error();
+                throw fmt("?: (?) is identical to (?)\n(?)",
+                    message || "assertNotIdentical", actual, expected, err.stack);
             }
         },
 
         assertEqual: function (expected, actual, message) {
             counter++;
             if (hash(expected) != hash(actual)) {
-                throw fmt("?: (?) is not equal to (?)",
-                    message || "assertEqual", actual, expected);
+                var err = new Error();
+                throw fmt("?: (?) is not equal to (?)\n(?)",
+                    message || "assertEqual", actual, expected, err.stack);
             }
         },
         
         assertNotEqual: function (expected, actual, message) {
             counter++;
             if (hash(expected) == hash(actual)) {
-                throw fmt("?: (?) is equal to (?)",
-                    message || "assertNotEqual", actual, expected);
+                var err = new Error();
+                throw fmt("?: (?) is equal to (?)\n(?)",
+                    message || "assertNotEqual", actual, expected, err.stack);
             }
         },
         
         assertMatch: function (re, actual, message) {
             counter++;
-            if (!re.test(actual)) {
-                throw fmt("?: (?) does not match (?)",
-                    message || "assertMatch", actual, re);
+            if (! re.test(actual)) {
+                var err = new Error();
+                throw fmt("?: (?) does not match (?)\n(?)",
+                    message || "assertMatch", actual, re, err.stack);
             }
         },
         
         assertNotMatch: function (re, actual, message) {
             counter++;
             if (re.test(actual)) {
-                throw fmt("?: (?) matches (?)",
-                    message || "assertNotMatch", actual, re);
+                var err = new Error();
+                throw fmt("?: (?) matches (?)\n(?)",
+                    message || "assertNotMatch", actual, re, err.stack);
             }
         },
         
         assertTypeOf: function (typ, actual, message) {
             counter++;
             if (typeof actual !== typ) {
-                throw fmt("?: (?) is not of type (?)",
-                    message || "assertTypeOf", actual, typ);
+                var err = new Error();
+                throw fmt("?: (?) is not of type (?)\n(?)",
+                    message || "assertTypeOf", actual, typ, err.stack);
             }
         },
 
         assertNotTypeOf: function (typ, actual, message) {
             counter++;
             if (typeof actual === typ) {
-                throw fmt("?: (?) is of type (?)",
-                    message || "assertNotTypeOf", actual, typ);
+                var err = new Error();
+                throw fmt("?: (?) is of type (?)\n(?)",
+                    message || "assertNotTypeOf", actual, typ, err.stack);
             }
         },
         
         assertInstanceOf: function (cls, actual, message) {
             counter++;
             if (!(actual instanceof cls)) {
-                throw fmt("?: (?) is not an instance of (?)",
-                    message || "assertInstanceOf", actual, cls);
+                var err = new Error();
+                throw fmt("?: (?) is not an instance of (?)\n(?)",
+                    message || "assertInstanceOf", actual, cls, err.stack);
             }
         },
 
         assertNotInstanceOf: function (cls, actual, message) {
             counter++;
             if (actual instanceof cls) {
-                throw fmt("?: (?) is an instance of (?)",
-                    message || "assertNotInstanceOf", actual, cls);
+                var err = new Error();
+                throw fmt("?: (?) is an instance of (?)\n(?)",
+                    message || "assertNotInstanceOf", actual, cls, err.stack);
             }
         },
 
         assertNull: function (actual, message) {
             counter++;
             if (actual !== null) {
-                throw fmt("?: (?) is not null",
-                    message || "assertNull", actual);
+                var err = new Error();
+                throw fmt("?: (?) is not null\n(?)",
+                    message || "assertNull", actual, err.stack);
             }
         },
         
         assertNotNull: function (actual, message) {
             counter++;
             if (actual === null) {
-                throw fmt("?: (?) is null",
-                    message || "assertNotNull", actual);
+                var err = new Error();
+                throw fmt("?: (?) is null\n(?)",
+                    message || "assertNotNull", actual, err.stack);
             }
         },
         
         assertUndefined: function (actual, message) {
             counter++;
             if (actual !== undefined) {
-                throw fmt("?: (?) is not undefined",
-                    message || "assertUndefined", actual);
+                var err = new Error();
+                throw fmt("?: (?) is not undefined\n(?)",
+                    message || "assertUndefined", actual, err.stack);
             }
         },
         
         assertNotUndefined: function (actual, message) {
             counter++;
             if (actual === undefined) {
-                throw fmt("?: (?) is undefined",
-                    message || "assertNotUndefined", actual);
+                var err = new Error();
+                throw fmt("?: (?) is undefined\n(?)",
+                    message || "assertNotUndefined", actual, err.stack);
             }
         },
         
         assertNaN: function (actual, message) {
             counter++;
             if (!isNaN(actual)) {
-                throw fmt("?: (?) is not NaN",
-                    message || "assertNaN", actual);
+                var err = new Error();
+                throw fmt("?: (?) is not NaN\n(?)",
+                    message || "assertNaN", actual, err.stack);
             }
         },
         
         assertNotNaN: function (actual, message) {
             counter++;
             if (isNaN(actual)) {
-                throw fmt("?: (?) is NaN",
-                    message || "assertNotNaN", actual);
+                var err = new Error();
+                throw fmt("?: (?) is NaN\n(?)",
+                    message || "assertNotNaN", actual, err.stack);
             }
         },
         

@@ -78,21 +78,11 @@ def genCHeaderFile(types):
            + "#ifndef TRIAGENS_BASICS_C_VOC_MIMETYPES_H\n"\
            + "#define TRIAGENS_BASICS_C_VOC_MIMETYPES_H 1\n"\
            + "\n"\
-           + "#ifdef __cplusplus\n"\
-           + "extern \"C\" {\n"\
-           + "#endif\n"\
-           + "\n"\
-           + docstart\
            + "////////////////////////////////////////////////////////////////////////////////\n"\
            + "/// @brief initialise mimetypes\n"\
            + "////////////////////////////////////////////////////////////////////////////////\n"\
            + "\n"\
            + "void TRI_InitialiseEntriesMimetypes (void);\n"\
-           + docend\
-           + "#ifdef __cplusplus\n"\
-           + "}\n"\
-           + "#endif\n"\
-           + "\n"\
            + "#endif\n"\
            + "\n"
 
@@ -105,10 +95,9 @@ def genCFile(types, filename):
   headerfile = os.path.splitext(filename)[0] + ".h"
 
   impl = prologue\
-         + "#include <BasicsC/common.h>\n"\
+         + "#include <Basics/Common.h>\n"\
          + "#include \"" + headerfile + "\"\n"\
          + "\n"\
-         + docstart\
          + "////////////////////////////////////////////////////////////////////////////////\n"\
          + "/// @brief initialise mimetypes\n"\
          + "////////////////////////////////////////////////////////////////////////////////\n"\
@@ -120,8 +109,7 @@ def genCFile(types, filename):
     impl = impl + "  TRI_RegisterMimetype(\"" + t[0] + "\", \"" + t[1] + "\", " + t[2] + ");\n"
 
   impl = impl\
-       + "}\n"\
-       + docend
+       + "}\n"
 
   return impl
 
@@ -131,21 +119,7 @@ prologue = "////////////////////////////////////////////////////////////////////
          + "/// @brief auto-generated file generated from mimetypes.dat\n"\
          + "////////////////////////////////////////////////////////////////////////////////\n"\
          + "\n"
-  
-docstart = "////////////////////////////////////////////////////////////////////////////////\n"\
-         + "/// @addtogroup Mimetypes\n"\
-         + "/// @{\n"\
-         + "////////////////////////////////////////////////////////////////////////////////\n"\
-         + "\n"
-  
-docend   = "\n"\
-         + "////////////////////////////////////////////////////////////////////////////////\n"\
-         + "/// @}\n"\
-         + "////////////////////////////////////////////////////////////////////////////////\n"\
-         + "\n"
-
-
-
+ 
 if len(sys.argv) < 3:
   print >> sys.stderr, "usage: %s <sourcefile> <outfile>" % sys.argv[0]
   sys.exit()
@@ -183,7 +157,7 @@ if extension == ".js":
   out = genJsFile(types)
 elif extension == ".h":
   out = genCHeaderFile(types)
-elif extension == ".c":
+elif extension == ".cpp":
   out = genCFile(types, filename)
 else:
   print >> sys.stderr, "usage: %s <sourcefile> <outfile>" % sys.argv[0]

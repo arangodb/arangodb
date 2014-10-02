@@ -34,8 +34,8 @@
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/socket-utils.h"
+#include "Basics/logging.h"
+#include "Basics/socket-utils.h"
 #include "Scheduler/Scheduler.h"
 
 using namespace triagens::basics;

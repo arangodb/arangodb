@@ -35,7 +35,7 @@
 
 #include "Scheduler/Scheduler.h"
 
-#include "BasicsC/locks.h"
+#include "Basics/locks.h"
 
 // #define TRI_USE_SPIN_LOCK_SCHEDULER_LIBEV 1
 

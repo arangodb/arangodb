@@ -32,7 +32,7 @@
 
 #include "Basics/Common.h"
 
-#include "BasicsC/vector.h"
+#include "Basics/vector.h"
 
 #include "VocBase/datafile.h"
 #include "VocBase/vocbase.h"
@@ -63,7 +63,7 @@
 // --SECTION--                                                          forwards
 // -----------------------------------------------------------------------------
 
-struct TRI_json_s;
+struct TRI_json_t;
 struct TRI_vocbase_col_s;
 
 // -----------------------------------------------------------------------------
@@ -178,7 +178,7 @@ typedef struct TRI_col_info_s {
   TRI_voc_size_t     _maximalSize;     // maximal size of memory mapped file
 
   char               _name[TRI_COL_PATH_LENGTH];  // name of the collection
-  struct TRI_json_s* _keyOptions;      // options for key creation
+  struct TRI_json_t* _keyOptions;      // options for key creation
 
   // flags
   bool               _deleted;         // if true, collection has been deleted
@@ -229,14 +229,14 @@ void TRI_InitCollectionInfo (TRI_vocbase_t*,
                              char const*,
                              TRI_col_type_e,
                              TRI_voc_size_t,
-                             struct TRI_json_s*);
+                             struct TRI_json_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fill a collection info struct from the JSON passed
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FromJsonCollectionInfo (TRI_col_info_t*,
-                                 struct TRI_json_s const*);
+                                 struct TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copy a collection info block
@@ -298,7 +298,7 @@ void TRI_FreeCollection (TRI_collection_t*);
 /// function is called.
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_json_s* TRI_ReadJsonCollectionInfo (struct TRI_vocbase_col_s*);
+struct TRI_json_t* TRI_ReadJsonCollectionInfo (struct TRI_vocbase_col_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterate over the index (JSON) files of a collection, using a callback
@@ -316,7 +316,7 @@ int TRI_IterateJsonIndexesCollectionInfo (struct TRI_vocbase_col_s*,
 /// @brief jsonify a parameter info block
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_json_s* TRI_CreateJsonCollectionInfo (TRI_col_info_t const*);
+struct TRI_json_t* TRI_CreateJsonCollectionInfo (TRI_col_info_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a parameter info block from file
@@ -331,8 +331,8 @@ int TRI_LoadCollectionInfo (char const*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_SaveCollectionInfo (char const*,
-                            const TRI_col_info_t* const,
-                            const bool);
+                            TRI_col_info_t const* const,
+                            bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates the parameter info block
@@ -340,7 +340,8 @@ int TRI_SaveCollectionInfo (char const*,
 
 int TRI_UpdateCollectionInfo (TRI_vocbase_t*,
                               TRI_collection_t*,
-                              TRI_col_info_t const*);
+                              TRI_col_info_t const*,
+                              bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a collection

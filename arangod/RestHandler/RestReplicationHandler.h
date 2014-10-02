@@ -38,7 +38,7 @@
 #include "VocBase/edge-collection.h"
 #include "VocBase/replication-common.h"
 
-struct TRI_json_s;
+struct TRI_json_t;
 struct TRI_replication_log_state_s;
 struct TRI_transaction_collection_s;
 struct TRI_vocbase_col_s;
@@ -195,13 +195,13 @@ namespace triagens {
 /// @brief extract the collection id from JSON TODO: move
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_voc_cid_t getCid (struct TRI_json_s const*) const;
+        TRI_voc_cid_t getCid (struct TRI_json_t const*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a collection, based on the JSON provided TODO: move
 ////////////////////////////////////////////////////////////////////////////////
 
-        int createCollection (struct TRI_json_s const*,
+        int createCollection (struct TRI_json_t const*,
                               struct TRI_vocbase_col_s**,
                               bool);
 
@@ -221,7 +221,7 @@ namespace triagens {
 /// @brief restores the structure of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-        int processRestoreCollection (struct TRI_json_s const*,
+        int processRestoreCollection (struct TRI_json_t const*,
                                       bool,
                                       bool,
                                       bool,
@@ -231,7 +231,7 @@ namespace triagens {
 /// @brief restores the structure of a collection, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-        int processRestoreCollectionCoordinator (struct TRI_json_s const*,
+        int processRestoreCollectionCoordinator (struct TRI_json_t const*,
                                                  bool,
                                                  bool,
                                                  bool,
@@ -241,7 +241,7 @@ namespace triagens {
 /// @brief restores the indexes of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-        int processRestoreIndexes (struct TRI_json_s const*,
+        int processRestoreIndexes (struct TRI_json_t const*,
                                    bool,
                                    std::string&);
 
@@ -249,7 +249,7 @@ namespace triagens {
 /// @brief restores the indexes of a collection, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-        int processRestoreIndexesCoordinator (struct TRI_json_s const*,
+        int processRestoreIndexesCoordinator (struct TRI_json_t const*,
                                               bool,
                                               std::string&);
 
@@ -262,7 +262,7 @@ namespace triagens {
                                        TRI_replication_operation_e,
                                        const TRI_voc_key_t,
                                        const TRI_voc_rid_t,
-                                       struct TRI_json_s const*,
+                                       struct TRI_json_t const*,
                                        std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////

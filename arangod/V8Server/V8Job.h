@@ -32,7 +32,7 @@
 #include "Basics/Common.h"
 
 #include "Dispatcher/Job.h"
-#include "BasicsC/json.h"
+#include "Basics/json.h"
 
 struct TRI_vocbase_s;
 

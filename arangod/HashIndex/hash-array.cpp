@@ -31,7 +31,7 @@
 
 #include "hash-array.h"
 
-#include "BasicsC/fasthash.h"
+#include "Basics/fasthash.h"
 #include "HashIndex/hash-index.h"
 #include "VocBase/document-collection.h"
 
@@ -526,15 +526,25 @@ TRI_vector_pointer_t TRI_LookupByKeyHashArrayMulti (TRI_hash_array_t* array,
   TRI_InitVectorPointer(&result, TRI_UNKNOWN_MEM_ZONE);
 
   uint64_t const n = array->_nrAlloc;
-  uint64_t i = HashKey(array, key) % n;
+  uint64_t i, k;
 
-  while (array->_table[i]._document != nullptr) {
+  i = k = HashKey(array, key) % n;
+
+  for (; i < n && array->_table[i]._document != nullptr; ++i) {
     if (IsEqualKeyElement(array, key, &array->_table[i])) {
       TRI_PushBackVectorPointer(&result, &array->_table[i]);
     }
-
-    i = TRI_IncModU64(i, n);
   }
+
+  if (i == n) {
+    for (i = 0; i < k && array->_table[i]._document != nullptr; ++i) {
+      if (IsEqualKeyElement(array, key, &array->_table[i])) {
+        TRI_PushBackVectorPointer(&result, &array->_table[i]);
+      }
+    }
+  }
+
+  TRI_ASSERT_EXPENSIVE(i < n);
 
   // ...........................................................................
   // return whatever we found -- which could be an empty vector list if nothing

@@ -35,7 +35,7 @@
 #include "Completer.h"
 #include "ShellImplementation.h"
 
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 #include "V8/v8-utils.h"
 
 namespace triagens {

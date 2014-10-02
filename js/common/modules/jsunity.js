@@ -33,21 +33,40 @@ var TOTAL = 0;
 var PASSED = 0;
 var FAILED = 0;
 var DURATION = 0;
+var RESULTS = {};
 
 var jsUnity = require("./jsunity/jsunity").jsUnity;
+var STARTTEST = 0.0;
 
 jsUnity.results.begin = function (total, suiteName) {
   print("Running " + (suiteName || "unnamed test suite"));
   print(" " + total + " test(s) found");
   print();
+  RESULTS = {};
+  STARTTEST = jsUnity.env.getDate();
 };
 
 jsUnity.results.pass = function (index, testName) {
   print(internal.COLORS.COLOR_GREEN + " [PASSED] " + testName + internal.COLORS.COLOR_RESET);
+  RESULTS[testName] = {};
+  RESULTS[testName].status = true;
+
+  var newtime =  jsUnity.env.getDate();
+  RESULTS[testName].duration = newtime - STARTTEST;
+  STARTTEST = newtime;
+
 };
 
 jsUnity.results.fail = function (index, testName, message) {
   print(internal.COLORS.COLOR_RED + " [FAILED] " + testName + ": " + message + internal.COLORS.COLOR_RESET);
+  RESULTS[testName] = {};
+  RESULTS[testName].status = false;
+  RESULTS[testName].message = message;
+
+  var newtime =  jsUnity.env.getDate();
+  RESULTS[testName].duration = newtime - STARTTEST;
+  STARTTEST = newtime;
+
 };
 
 jsUnity.results.end = function (passed, failed, duration) {
@@ -108,30 +127,36 @@ function Run (tests) {
   suite.tearDown = tearDown;
   
   var result = jsUnity.run(suite);
-
   TOTAL += result.total;
   PASSED += result.passed;
   FAILED += result.failed;
   DURATION += result.duration;
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief done with all tests
 ////////////////////////////////////////////////////////////////////////////////
 
-function Done () {
+function Done (suiteName) {
 //  console.log("%d total, %d passed, %d failed, %d ms", TOTAL, PASSED, FAILED, DURATION);
   internal.printf("%d total, %d passed, %d failed, %d ms", TOTAL, PASSED, FAILED, DURATION);
   print();
 
   var ok = FAILED == 0;
 
+  RESULTS.duration = DURATION;
+  RESULTS.status = ok;
+  RESULTS.failed = FAILED;
+  RESULTS.total = TOTAL;
+  RESULTS.suiteName = suiteName;
+
   TOTAL = 0;
   PASSED = 0;
   FAILED = 0;
   DURATION = 0;
 
-  return ok;
+  return RESULTS;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -151,7 +176,7 @@ function RunTest (path) {
     throw "cannot create context function";
   }
 
-  return f();
+  return f(path);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

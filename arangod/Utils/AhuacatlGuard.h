@@ -33,8 +33,8 @@
 #include "Basics/Common.h"
 
 #include "Ahuacatl/ahuacatl-context.h"
-#include "BasicsC/json.h"
-#include "BasicsC/logging.h"
+#include "Basics/json.h"
+#include "Basics/logging.h"
 #include "VocBase/vocbase.h"
 #include "Cluster/ServerState.h"
 

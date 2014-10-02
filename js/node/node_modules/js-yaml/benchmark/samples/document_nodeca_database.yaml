@@ -1,0 +1,20 @@
+#
+# Database
+#
+
+# we wil have redis and mongo connections, but the keys will be different.
+# right now it's just a stub, key names would be someting like
+# "documents_backend" (by the nature of DB usage)
+
+database:
+  redis:
+    host: localhost
+    port: 6379
+    #index: 1
+
+  mongo:
+    host: localhost
+    port: 27017
+    database: nodeca-dev
+    #user: mongouser
+    #password: m0NGoP4$$WORd

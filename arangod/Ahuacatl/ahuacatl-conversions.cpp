@@ -29,11 +29,11 @@
 
 #include "Ahuacatl/ahuacatl-conversions.h"
 
-#include "BasicsC/conversions.h"
-#include "BasicsC/json.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/string-buffer.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/conversions.h"
+#include "Basics/json.h"
+#include "Basics/logging.h"
+#include "Basics/string-buffer.h"
+#include "Basics/tri-strings.h"
 
 #include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-functions.h"

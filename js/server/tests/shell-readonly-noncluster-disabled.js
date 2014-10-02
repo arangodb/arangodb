@@ -218,20 +218,6 @@ function operationsTestSuite () {
 /// @brief test: create index
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreateBitArrayIndex: function () {
-      try {
-        collection.ensureBitarray("a", [1,2,3,4]);
-        fail();
-      } 
-      catch (e) {
-        assertEqual(arangodb.ERROR_ARANGO_READ_ONLY, e.errorNum);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: create index
-////////////////////////////////////////////////////////////////////////////////
-
     testCreateHashIndex: function () {
       try {
         collection.ensureIndex({ type: "hash", fields: [ "name" ], unique: true });

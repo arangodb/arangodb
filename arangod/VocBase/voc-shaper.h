@@ -125,13 +125,14 @@ bool TRI_ExtractShapedJsonVocShaper (TRI_shaper_t* s,
 /// You must either supply (rightDocument, rightObject) or rightShaped.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
+int TRI_CompareShapeTypes (char const* leftDocument,
                            TRI_shaped_sub_t* leftObject,
                            TRI_shaped_json_t const* leftShaped,
-                           TRI_doc_mptr_t* rightDocument,
+                           TRI_shaper_t* leftShaper,
+                           char const* rightDocument,
                            TRI_shaped_sub_t* rightObject,
                            TRI_shaped_json_t const* rightShaped,
-                           TRI_shaper_t* shaper);
+                           TRI_shaper_t* rightShaper);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the shape identifier pointer from a marker

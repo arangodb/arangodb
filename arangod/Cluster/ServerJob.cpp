@@ -29,7 +29,7 @@
 
 #include "ServerJob.h"
 #include "Basics/MutexLocker.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Cluster/HeartbeatThread.h"
 #include "V8Server/ApplicationV8.h"
 #include "V8/v8-utils.h"
@@ -121,16 +121,16 @@ bool ServerJob::execute () {
   // default to system database
   TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
 
-  if (vocbase == 0) {
+  if (vocbase == nullptr) {
     // database is gone
     return false;
   }
 
   MUTEX_LOCKER(ExecutorLock);
 
-  ApplicationV8::V8Context* context = _applicationV8->enterContext("STANDARD", vocbase, 0, false, true);
+  ApplicationV8::V8Context* context = _applicationV8->enterContext("STANDARD", vocbase, false, true);
 
-  if (context == 0) {
+  if (context == nullptr) {
     TRI_ReleaseDatabaseServer(_server, vocbase);
     return false;
   }
@@ -145,11 +145,11 @@ bool ServerJob::execute () {
   }
 
   // get the pointer to the last used vocbase
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) context->_isolate->GetData();
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(context->_isolate->GetData());
   void* orig = v8g->_vocbase;
 
   _applicationV8->exitContext(context);
-  TRI_ReleaseDatabaseServer(_server, (TRI_vocbase_t*) orig);
+  TRI_ReleaseDatabaseServer(_server, static_cast<TRI_vocbase_t*>(orig));
 
   return true;
 }

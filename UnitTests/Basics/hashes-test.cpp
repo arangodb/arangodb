@@ -27,7 +27,7 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "BasicsC/hashes.h"
+#include "Basics/hashes.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    private macros

@@ -33,7 +33,7 @@
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Cluster/AgencyComm.h"
 
 struct TRI_server_s;

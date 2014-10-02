@@ -32,7 +32,7 @@
 
 #include "Basics/Common.h"
 
-#include "BasicsC/associative.h"
+#include "Basics/associative.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
@@ -40,7 +40,7 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_json_s;
+struct TRI_json_t;
 struct TRI_shadow_store_s;
 struct TRI_vocbase_s;
 
@@ -148,7 +148,7 @@ typedef struct TRI_general_cursor_s {
   double                       _ttl;
   double                       _expires;
 
-  struct TRI_json_s*           _extra;
+  struct TRI_json_t*           _extra;
   bool                         _hasCount;
 
   void (*free)(struct TRI_general_cursor_s*);
@@ -156,7 +156,7 @@ typedef struct TRI_general_cursor_s {
   bool (*hasNext)(const struct TRI_general_cursor_s* const);
   bool (*hasCount)(const struct TRI_general_cursor_s* const);
   TRI_general_cursor_length_t (*getBatchSize)(const struct TRI_general_cursor_s* const);
-  struct TRI_json_s* (*getExtra)(const struct TRI_general_cursor_s* const);
+  struct TRI_json_t* (*getExtra)(const struct TRI_general_cursor_s* const);
 }
 TRI_general_cursor_t;
 
@@ -179,7 +179,7 @@ TRI_general_cursor_t* TRI_CreateGeneralCursor (struct TRI_vocbase_s*,
                                                const bool,
                                                const TRI_general_cursor_length_t,
                                                double,
-                                               struct TRI_json_s*);
+                                               struct TRI_json_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief exclusively lock a cursor

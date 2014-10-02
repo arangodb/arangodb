@@ -35,9 +35,9 @@
 #include "unicode/brkiter.h"
 #include "unicode/ustdio.h"
 
-#include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
-#include "BasicsC/utf8-helper.h"
+#include "Basics/logging.h"
+#include "Basics/tri-strings.h"
+#include "Basics/utf8-helper.h"
 
 using namespace triagens::basics;
 using namespace std;
@@ -489,10 +489,6 @@ TRI_vector_string_t* Utf8Helper::getWords (const char* const text,
   return words;
 }
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two utf16 strings
 ////////////////////////////////////////////////////////////////////////////////
@@ -536,10 +532,6 @@ TRI_vector_string_t* TRI_get_words (const char* const text,
                                     bool lowerCase) {
   return Utf8Helper::DefaultUtf8Helper.getWords(text, textLength, minimalWordLength, maximalWordLength, lowerCase);
 }
-
-#ifdef __cplusplus
-}
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

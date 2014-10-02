@@ -31,7 +31,7 @@
 #define ARANGODB_REPLICATION_SYNCER_H 1
 
 #include "Basics/Common.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/replication-master.h"
 #include "VocBase/server.h"
@@ -42,7 +42,7 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_json_s;
+struct TRI_json_t;
 struct TRI_replication_applier_configuration_s;
 struct TRI_transaction_collection_s;
 struct TRI_vocbase_s;
@@ -107,7 +107,7 @@ namespace triagens {
 /// @brief extract the collection id from JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_voc_cid_t getCid (struct TRI_json_s const*) const;
+        TRI_voc_cid_t getCid (struct TRI_json_t const*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief apply a single marker from the collection dump
@@ -117,34 +117,34 @@ namespace triagens {
                                        TRI_replication_operation_e,
                                        const TRI_voc_key_t,
                                        const TRI_voc_rid_t,
-                                       struct TRI_json_s const*,
+                                       struct TRI_json_t const*,
                                        std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a collection, based on the JSON provided
 ////////////////////////////////////////////////////////////////////////////////
 
-        int createCollection (struct TRI_json_s const*,
+        int createCollection (struct TRI_json_t const*,
                               struct TRI_vocbase_col_s**);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops a collection, based on the JSON provided
 ////////////////////////////////////////////////////////////////////////////////
 
-        int dropCollection (struct TRI_json_s const*,
+        int dropCollection (struct TRI_json_t const*,
                             bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an index, based on the JSON provided
 ////////////////////////////////////////////////////////////////////////////////
 
-        int createIndex (struct TRI_json_s const*);
+        int createIndex (struct TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an index, based on the JSON provided
 ////////////////////////////////////////////////////////////////////////////////
 
-        int dropIndex (struct TRI_json_s const*);
+        int dropIndex (struct TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get master state
@@ -156,7 +156,7 @@ namespace triagens {
 /// @brief handle the state response of the master
 ////////////////////////////////////////////////////////////////////////////////
 
-        int handleStateResponse (struct TRI_json_s const*,
+        int handleStateResponse (struct TRI_json_t const*,
                                  std::string&);
 
 // -----------------------------------------------------------------------------

@@ -36,7 +36,7 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 
 #include <vector>
 
@@ -186,6 +186,14 @@ bool ReadlineShell::close() {
 
   bool res = writeHistory();
 
+  clear_history();
+#ifndef __APPLE__
+  HIST_ENTRY** hist = history_list();
+  if (hist != nullptr) {
+    TRI_SystemFree(hist);
+  }
+#endif
+
 #ifndef __APPLE__
   // reset state of the terminal to what it was before readline()
   rl_cleanup_after_signal();
@@ -225,7 +233,14 @@ void ReadlineShell::addHistory(char const* str) {
   if (current_history()) {
     do {
       if (strcmp(current_history()->line, str) == 0) {
+#ifndef __APPLE__
+        HIST_ENTRY* e = remove_history(where_history());
+        if (e != nullptr) {
+          free_history_entry(e);
+        }
+#else
         remove_history(where_history());
+#endif
         break;
       }
     }

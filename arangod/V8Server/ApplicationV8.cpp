@@ -39,8 +39,8 @@
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/WriteLocker.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/logging.h"
+#include "Basics/tri-strings.h"
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "Rest/HttpRequest.h"
 #include "Scheduler/ApplicationScheduler.h"
@@ -219,14 +219,22 @@ void ApplicationV8::V8Context::handleGlobalContextMethods () {
 
     LOG_DEBUG("executing global context methods '%s' for context %d", func.c_str(), (int) _id);
 
-    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+    TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
     bool allowUseDatabase = v8g->_allowUseDatabase;
     v8g->_allowUseDatabase = true;
+
+    v8::TryCatch tryCatch;
 
     TRI_ExecuteJavaScriptString(_context,
                                 v8::String::New(func.c_str(), (int) func.size()),
                                 v8::String::New("global context method"),
                                 false);
+
+    if (tryCatch.HasCaught()) {
+      if (tryCatch.CanContinue()) {
+        TRI_LogV8Exception(&tryCatch);
+      }
+    }
 
     v8g->_allowUseDatabase = allowUseDatabase;
   }
@@ -326,9 +334,8 @@ void ApplicationV8::setVocbase (TRI_vocbase_t* vocbase) {
 /// @brief enters a context
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationV8::V8Context* ApplicationV8::enterContext (const string& name,
+ApplicationV8::V8Context* ApplicationV8::enterContext (std::string const& name,
                                                        TRI_vocbase_s* vocbase,
-                                                       triagens::rest::HttpRequest* request,
                                                        bool initialise,
                                                        bool allowUseDatabase) {
   CONDITION_LOCKER(guard, _contextCondition);
@@ -1009,6 +1016,7 @@ bool ApplicationV8::prepare2 () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationV8::start () {
+  TRI_ASSERT(_gcThread == nullptr);
   _gcThread = new V8GcThread(this);
   _gcThread->start();
 

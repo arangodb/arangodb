@@ -29,7 +29,7 @@
 
 #include "DocumentHelper.h"
 
-#include "BasicsC/json.h"
+#include "Basics/json.h"
 #include "Basics/StringUtils.h"
 #include "VocBase/vocbase.h"
 

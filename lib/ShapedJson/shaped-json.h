@@ -28,12 +28,12 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SHAPED_JSON_SHAPED__JSON_H
-#define ARANGODB_SHAPED_JSON_SHAPED__JSON_H 1
+#ifndef ARANGODB_SHAPED_JSON_SHAPED_JSON_H
+#define ARANGODB_SHAPED_JSON_SHAPED_JSON_H 1
 
 #include "Basics/Common.h"
 
-#include "BasicsC/json.h"
+#include "Basics/json.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page ShapedJson JSON Shapes
@@ -869,8 +869,8 @@ TRI_shaped_json_t;
 
 typedef struct TRI_shaped_sub_s {
   TRI_shape_sid_t _sid;
-  size_t _offset;
-  size_t _length;
+  uint32_t _offset;
+  uint32_t _length;
 }
 TRI_shaped_sub_t;
 
@@ -911,7 +911,6 @@ TRI_shape_path_t;
 
 TRI_shaped_json_t* TRI_CopyShapedJson (struct TRI_shaper_s*, TRI_shaped_json_t*);
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a json object, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
@@ -942,7 +941,6 @@ void TRI_SortShapeValues (TRI_shape_value_t* values,
 
 TRI_shaped_json_t* TRI_ShapedJsonJson (struct TRI_shaper_s*,
                                        TRI_json_t const*,
-                                       bool,
                                        bool);
 
 ////////////////////////////////////////////////////////////////////////////////

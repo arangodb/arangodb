@@ -75,7 +75,7 @@ function THROW (error, data) {
   var err = new ArangoError();
 
   err.errorNum = error.code;
-  if (data) {
+  if (typeof data === "string") {
     err.errorMessage = error.message.replace(/%s/, data);
   }
   else {
@@ -191,7 +191,6 @@ function FILTER (list, examples) {
 
   for (i = 0; i < list.length; ++i) {
     var element = list[i];
-
     if (MATCHES(element, examples, false)) {
       result.push(element);
     }
@@ -774,6 +773,9 @@ function EXTRACT_KEYS (args, startArgument, functionName) {
     if (typeof key === 'string') {
       keys[key] = true;
     }
+    else if (typeof key === 'number') {
+      keys[String(key)] = true;
+    }
     else if (Array.isArray(key)) {
       for (j = 0; j < key.length; ++j) {
         key2 = key[j];
@@ -1243,52 +1245,6 @@ function GET_DOCUMENTS_EDGE_LIST (collection, att, values) {
 
   Object.keys(docs).forEach(function(k) {
     result.push(docs[k]);
-  });
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get documents from the specified collection using a bitarray
-////////////////////////////////////////////////////////////////////////////////
-
-function GET_DOCUMENTS_BITARRAY (collection, idx, example) {
-  "use strict";
-
-  if (isCoordinator) {
-    return COLLECTION(collection).byConditionBitarray(idx, example).toArray();
-  }
-
-  return COLLECTION(collection).BY_CONDITION_BITARRAY(idx, example).documents;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get documents from the specified collection using a bitarray
-/// (multiple index values) TODO: replace by 'IN index operator'
-////////////////////////////////////////////////////////////////////////////////
-
-function GET_DOCUMENTS_BITARRAY_LIST (collection, idx, attribute, values) {
-  "use strict";
-
-  var result = [ ], c;
-
-  c = COLLECTION(collection);
-
-  values.forEach(function (value) {
-    var example = { }, documents;
-
-    example[attribute] = value;
-
-    if (isCoordinator) {
-      documents = c.byExampleBitarray(idx, example).toArray();
-    }
-    else {
-      documents = c.BY_EXAMPLE_BITARRAY(idx, example).documents;
-    }
-
-    documents.forEach(function (doc) {
-      result.push(doc);
-    });
   });
 
   return result;
@@ -1946,6 +1902,18 @@ function RELATIONAL_IN (lhs, rhs) {
   }
 
   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform not-in list check
+///
+/// returns true if the left operand is not contained in the right operand
+////////////////////////////////////////////////////////////////////////////////
+
+function RELATIONAL_NOT_IN (lhs, rhs) {
+  "use strict";
+
+  return ! RELATIONAL_IN(lhs, rhs);
 }
 
 // -----------------------------------------------------------------------------
@@ -2824,6 +2792,11 @@ function NTH (value, position) {
   "use strict";
 
   LIST(value);
+  var weight = TYPEWEIGHT(position);
+  if (weight !== TYPEWEIGHT_NUMBER) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NTH");
+  }
+  
   if (position < 0 || position >= value.length) {
     return null;
   }
@@ -3125,6 +3098,10 @@ function FLATTEN (values, maxDepth, depth) {
   if (TYPEWEIGHT(maxDepth) === TYPEWEIGHT_NULL) {
     maxDepth = 1;
   }
+  else if (TYPEWEIGHT(maxDepth) !== TYPEWEIGHT_NUMBER) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FLATTEN");
+  }
+
   if (TYPEWEIGHT(depth) === TYPEWEIGHT_NULL) {
     depth = 0;
   }
@@ -3408,6 +3385,14 @@ function GEO_NEAR (collection, latitude, longitude, limit, distanceAttribute) {
     // use default value
     limit = 100;
   }
+  else if (TYPEWEIGHT(limit) !== TYPEWEIGHT_NUMBER) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
+  }
+
+  var weight = TYPEWEIGHT(distanceAttribute);
+  if (weight !== TYPEWEIGHT_NULL && weight !== TYPEWEIGHT_STRING) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
+  }
 
   if (isCoordinator) {
     var query = COLLECTION(collection).near(latitude, longitude);
@@ -3450,7 +3435,12 @@ function GEO_WITHIN (collection, latitude, longitude, radius, distanceAttribute)
     query._distance = distanceAttribute;
     return query.toArray();
   }
-
+  
+  var weight = TYPEWEIGHT(distanceAttribute);
+  if (weight !== TYPEWEIGHT_NULL && weight !== TYPEWEIGHT_STRING) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "WITHIN");
+  }
+    
   var idx = INDEX(COLLECTION(collection), [ "geo1", "geo2" ]);
 
   if (idx === null) {
@@ -3663,6 +3653,10 @@ function SKIPLIST_QUERY (collection, condition, skip, limit) {
 
 function HAS (element, name) {
   "use strict";
+  
+  if (TYPEWEIGHT(name) !== TYPEWEIGHT_STRING) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "HAS");
+  }
 
   if (TYPEWEIGHT(element) === TYPEWEIGHT_NULL) {
     return false;
@@ -3860,7 +3854,6 @@ function MATCHES (element, examples, returnIndex) {
   if (! Array.isArray(examples)) {
     examples = [ examples ];
   }
-
   if (examples.length === 0) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "MATCHES");
   }
@@ -3870,7 +3863,6 @@ function MATCHES (element, examples, returnIndex) {
   for (i = 0; i < examples.length; ++i) {
     var example = examples[i];
     var result = true;
-
     if (TYPEWEIGHT(example) !== TYPEWEIGHT_DOCUMENT) {
       THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "MATCHES");
     }
@@ -5997,6 +5989,11 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
       options.startVertexCollectionRestriction = options.vertexCollectionRestriction;
     }
   }
+  if (options.neighborExamples) {
+    if (typeof options.neighborExamples === "string") {
+      options.neighborExamples = {_id : options.neighborExamples};
+    }
+  }
   var neighbors = [],
     params = TRAVERSAL_PARAMS(),
     factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
@@ -6005,14 +6002,12 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
   params.paths = true;
   params.visitor = TRAVERSAL_NEIGHBOR_VISITOR;
   var fromVertices = RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options);
-
   if (options.edgeExamples) {
     params.followEdges = options.edgeExamples;
   }
   if (options.edgeCollectionRestriction) {
     params.edgeCollectionRestriction = options.edgeCollectionRestriction;
   }
-
   fromVertices.forEach(function (v) {
     var e = TRAVERSAL_FUNC("GRAPH_NEIGHBORS",
       factory,
@@ -7237,8 +7232,6 @@ exports.GET_DOCUMENTS_HASH = GET_DOCUMENTS_HASH;
 exports.GET_DOCUMENTS_HASH_LIST = GET_DOCUMENTS_HASH_LIST;
 exports.GET_DOCUMENTS_EDGE = GET_DOCUMENTS_EDGE;
 exports.GET_DOCUMENTS_EDGE_LIST = GET_DOCUMENTS_EDGE_LIST;
-exports.GET_DOCUMENTS_BITARRAY = GET_DOCUMENTS_BITARRAY;
-exports.GET_DOCUMENTS_BITARRAY_LIST = GET_DOCUMENTS_BITARRAY_LIST;
 exports.GET_DOCUMENTS_SKIPLIST = GET_DOCUMENTS_SKIPLIST;
 exports.GET_DOCUMENTS_SKIPLIST_LIST = GET_DOCUMENTS_SKIPLIST_LIST;
 exports.COLLECTIONS = COLLECTIONS;
@@ -7257,6 +7250,7 @@ exports.RELATIONAL_LESS = RELATIONAL_LESS;
 exports.RELATIONAL_LESSEQUAL = RELATIONAL_LESSEQUAL;
 exports.RELATIONAL_CMP = RELATIONAL_CMP;
 exports.RELATIONAL_IN = RELATIONAL_IN;
+exports.RELATIONAL_NOT_IN = RELATIONAL_NOT_IN;
 exports.UNARY_PLUS = UNARY_PLUS;
 exports.UNARY_MINUS = UNARY_MINUS;
 exports.ARITHMETIC_PLUS = ARITHMETIC_PLUS;

@@ -35,7 +35,7 @@
 #include "V8/v8-globals.h"
 
 #include "V8/JSLoader.h"
-#include "BasicsC/json.h"
+#include "Basics/json.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           GENERAL
@@ -50,7 +50,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 class TRI_Utf8ValueNFC {
+
   public:
+
     TRI_Utf8ValueNFC (TRI_memory_zone_t*,
                       v8::Handle<v8::Value> const);
 
@@ -114,11 +116,11 @@ static int const SLOT_CLASS = 1;
 template<class T>
 static T* TRI_UnwrapClass (v8::Handle<v8::Object> obj, int32_t type) {
   if (obj->InternalFieldCount() <= SLOT_CLASS) {
-    return 0;
+    return nullptr;
   }
 
   if (obj->GetInternalField(SLOT_CLASS_TYPE)->Int32Value() != type) {
-    return 0;
+    return nullptr;
   }
 
   return static_cast<T*>(v8::Handle<v8::External>::Cast(obj->GetInternalField(SLOT_CLASS))->Value());

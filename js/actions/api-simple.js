@@ -134,53 +134,6 @@ var API = "_api/simple/";
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSA_put_api_simple_by_example_bitarray
-/// @brief returns all documents of a collection matching a given example,
-/// using a specific bitarray index
-///
-/// @RESTHEADER{PUT /_api/simple/by-example-bitarray, Bitarray index}
-///
-/// @RESTBODYPARAM{query,string,required}
-/// Contains the query specification.
-///
-/// @RESTDESCRIPTION
-///
-/// This will find all documents matching a given example, using the specified
-/// skiplist index.
-///
-/// The call expects a JSON object as body with the following attributes:
-///
-/// - *collection*: The name of the collection to query.
-///
-/// - *index*: The id of the index to be used for the query. The index must
-///   exist and must be of type *bitarray*.
-///
-/// - *example*: an example document. The example must contain a value for each
-///   attribute in the index.
-///
-/// - *skip*: The number of documents to skip in the query. (optional)
-///
-/// - *limit*: The maximal number of documents to return. (optional)
-///
-/// Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
-///
-/// @RESTRETURNCODES
-///
-/// @RESTRETURNCODE{201}
-/// is returned if the query was executed successfully.
-///
-/// @RESTRETURNCODE{400}
-/// is returned if the body does not contain a valid JSON representation of a
-/// query. The response body contains an error document in this case.
-///
-/// @RESTRETURNCODE{404}
-/// is returned if the collection specified by *collection* is unknown.  The
-/// response body contains an error document in this case.
-/// The same error code is also returned if an invalid index id or type is used.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSA_put_api_simple_by_condition_skiplist
 /// @brief returns all documents of a collection matching a given condition,
 /// using a specific skiplist index
@@ -224,54 +177,6 @@ var API = "_api/simple/";
 /// is returned if the collection specified by *collection* is unknown.  The
 /// response body contains an error document in this case.
 /// The same error code is also returned if an invalid index id or type is used.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSA_put_api_simple_by_condition_bitarray
-/// @brief returns all documents of a collection matching a given condition,
-/// using a specific bitarray index
-///
-/// @RESTHEADER{PUT /_api/simple/by-condition-bitarray, Query by-condition using bitarray index}
-///
-/// @RESTBODYPARAM{query,string,required}
-/// Contains the query specification.
-///
-/// @RESTDESCRIPTION
-///
-/// This will find all documents matching a given condition, using the specified
-/// skiplist index.
-///
-/// The call expects a JSON object as body with the following attributes:
-///
-/// - *collection*: The name of the collection to query.
-///
-/// - *index*: The id of the index to be used for the query. The index must
-///   exist and must be of type *bitarray*.
-///
-/// - *condition*: the condition which all returned documents shall satisfy.
-///   Conditions must be specified for all indexed attributes.
-///
-/// - *skip*: The number of documents to skip in the query. (optional)
-///
-/// - *limit*: The maximal number of documents to return. (optional)
-///
-/// Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
-///
-/// @RESTRETURNCODES
-///
-/// @RESTRETURNCODE{201}
-/// is returned if the query was executed successfully.
-///
-/// @RESTRETURNCODE{400}
-/// is returned if the body does not contain a valid JSON representation of a
-/// query. The response body contains an error document in this case.
-///
-/// @RESTRETURNCODE{404}
-/// is returned if the collection specified by *collection* is unknown.  The
-/// response body contains an error document in this case.
-/// The same error code is also returned if an invalid index id or type is used.
-///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -358,9 +263,7 @@ function setupIndexQueries () {
   var map = {
     "by-example-hash"       : [ "byExampleHash", true ],
     "by-example-skiplist"   : [ "byExampleSkiplist", true ],
-    "by-example-bitarray"   : [ "byExampleBitarray", true ],
-    "by-condition-skiplist" : [ "byConditionSkiplist", false ],
-    "by-condition-bitarray" : [ "byConditionBitarray", false ]
+    "by-condition-skiplist" : [ "byConditionSkiplist", false ]
   };
 
   var m;

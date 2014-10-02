@@ -43,7 +43,7 @@
 
 
 #ifdef TRI_HAVE_WINSOCK2_H
-#include "BasicsC/win-utils.h"
+#include "Basics/win-utils.h"
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #endif
@@ -52,8 +52,8 @@
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/socket-utils.h"
+#include "Basics/logging.h"
+#include "Basics/socket-utils.h"
 #include "Scheduler/Scheduler.h"
 
 using namespace triagens::basics;

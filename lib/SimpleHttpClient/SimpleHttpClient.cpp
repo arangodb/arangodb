@@ -31,7 +31,7 @@
 #include "SimpleHttpClient.h"
 
 #include "Basics/StringUtils.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 
 #include "GeneralClientConnection.h"
 #include "SimpleHttpResult.h"

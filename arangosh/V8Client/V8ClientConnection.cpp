@@ -34,8 +34,8 @@
 
 #include "Basics/JsonHelper.h"
 #include "Basics/StringUtils.h"
-#include "BasicsC/json.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/json.h"
+#include "Basics/tri-strings.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"

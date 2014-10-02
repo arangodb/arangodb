@@ -31,7 +31,7 @@
 
 #include "Basics/JsonHelper.h"
 #include "Basics/StringUtils.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 #include "Rest/HttpRequest.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"

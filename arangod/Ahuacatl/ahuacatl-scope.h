@@ -32,8 +32,8 @@
 
 #include "Basics/Common.h"
 
-#include "BasicsC/associative.h"
-#include "BasicsC/vector.h"
+#include "Basics/associative.h"
+#include "Basics/vector.h"
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-context.h"

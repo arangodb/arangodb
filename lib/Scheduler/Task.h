@@ -37,7 +37,7 @@
 
 #include "Scheduler/events.h"
 
-struct TRI_json_s;
+struct TRI_json_t;
 
 namespace triagens {
   namespace rest {
@@ -102,7 +102,7 @@ namespace triagens {
 /// @brief get a JSON representation of the task
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_json_s* toJson ();
+        struct TRI_json_t* toJson ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the task is a user task
@@ -142,7 +142,7 @@ namespace triagens {
 /// @brief get a task specific description in JSON format
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void getDescription (struct TRI_json_s*);
+        virtual void getDescription (struct TRI_json_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief called to set up the callback information

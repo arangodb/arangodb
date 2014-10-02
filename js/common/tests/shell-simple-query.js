@@ -412,6 +412,26 @@ function SimpleQueryByExampleSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test: byExample, using _id & sub-attributes
+////////////////////////////////////////////////////////////////////////////////
+
+    testByExampleIdSubAttributes : function () {
+      var d, s;
+
+      d = collection.save({ _key: "meow", foo: { bar: "baz" } });
+      s = collection.firstExample({ _id: cn + "/meow", foo: { bar: "baz" } });
+      assertEqual(d._id, s._id);
+      assertEqual(d._key, s._key);
+      assertEqual({ bar: "baz" }, s.foo);
+
+      d = collection.save({ _key: "foo", values: [ { foo: "bar", baz: "bam" } ] });
+      s = collection.firstExample({ _id: cn + "/foo", values: [ { foo: "bar", baz: "bam" } ] });
+      assertEqual(d._id, s._id);
+      assertEqual(d._key, s._key);
+      assertEqual([ { foo: "bar", baz: "bam" } ], s.values);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test: byExample, using non existing system attribute
 ////////////////////////////////////////////////////////////////////////////////
 

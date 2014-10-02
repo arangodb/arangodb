@@ -29,7 +29,6 @@ var jsunity = require("jsunity");
 var internal = require("internal");
 var helper = require("org/arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
-var getQueryExplanation = helper.getQueryExplanation;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -96,10 +95,6 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
 
         var actual = getQueryResults(query);
         assertEqual(test.expectedLength, actual.length);
-
-        var explain = getQueryExplanation(query);
-        assertEqual("for", explain[0].type);
-        assertEqual(true, explain[0].limit);
       }
     },
 
@@ -132,10 +127,6 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
 
         var actual = getQueryResults(query);
         assertEqual(test.expectedLength, actual.length);
-
-        var explain = getQueryExplanation(query);
-        assertEqual("for", explain[0].type);
-        assertEqual(test.offset + test.limit, explain[0]["expression"]["extra"]["limit"]);
       }
     },
 
@@ -166,10 +157,6 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
 
         var actual = getQueryResults(query);
         assertEqual(0, actual.length);
-
-        var explain = getQueryExplanation(query);
-        assertEqual("return (empty)", explain[0].type);
-        assertEqual("const list", explain[0].expression.type);
       }
     },
 
@@ -195,10 +182,6 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
 
         var actual = getQueryResults(query);
         assertEqual(0, actual.length);
-
-        var explain = getQueryExplanation(query);
-        assertEqual("return (empty)", explain[0].type);
-        assertEqual("const list", explain[0].expression.type);
       }
     },
       
@@ -216,10 +199,6 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
 
       var actual = getQueryResults(query);
       assertEqual(0, actual.length);
-
-      var explain = getQueryExplanation(query);
-      assertEqual("return (empty)", explain[0].type);
-      assertEqual("const list", explain[0].expression.type);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -231,10 +210,6 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
 
       var actual = getQueryResults(query);
       assertEqual(0, actual.length);
-
-      var explain = getQueryExplanation(query);
-      assertEqual("return (empty)", explain[0].type);
-      assertEqual("const list", explain[0].expression.type);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -266,10 +241,6 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
 
         var actual = getQueryResults(query);
         assertEqual(test.expectedLength, actual.length);
-
-        var explain = getQueryExplanation(query);
-        assertEqual("for", explain[0].type);
-        assertEqual(true, explain[0].limit);
       }
     },
 
@@ -297,10 +268,6 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
 
         var actual = getQueryResults(query);
         assertEqual(test.expectedLength, actual.length);
-
-        var explain = getQueryExplanation(query);
-        assertEqual("for", explain[0].type);
-        assertEqual(test.offset + test.limit, explain[0]["expression"]["extra"]["limit"]);
       }
     },
 
@@ -350,10 +317,6 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
 
         var actual = getQueryResults(query);
         assertEqual(test.expectedLength, actual.length);
-      
-        var explain = getQueryExplanation(query);
-        assertEqual("for", explain[0].type);
-        assertEqual(true, explain[0].limit);
       }
     },
     
@@ -398,10 +361,6 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
 
         var actual = getQueryResults(query);
         assertEqual(test.expectedLength, actual.length);
-      
-        var explain = getQueryExplanation(query);
-        assertEqual("for", explain[0].type);
-        assertEqual(true, explain[0].limit);
       }
     },
 
@@ -446,10 +405,6 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
 
         var actual = getQueryResults(query);
         assertEqual(test.expectedLength, actual.length);
-      
-        var explain = getQueryExplanation(query);
-        assertEqual("for", explain[0].type);
-        assertEqual(undefined, explain[0].limit);
       }
     },
 
@@ -466,10 +421,6 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
       assertEqual(2, actual.length);
       assertEqual(23, actual[0].value);
       assertEqual(24, actual[1].value);
-
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual(true, explain[0].limit);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -486,10 +437,6 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
       assertEqual(20, actual[0].value);
       assertEqual(21, actual[1].value);
       assertEqual(29, actual[9].value);
-
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual(true, explain[0].limit);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -506,10 +453,6 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
       assertEqual(20, actual[0].value);
       assertEqual(21, actual[1].value);
       assertEqual(29, actual[9].value);
-
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual(undefined, explain[0].limit);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -525,10 +468,6 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
       assertEqual(2, actual.length);
       assertEqual(23, actual[0].value);
       assertEqual(24, actual[1].value);
-
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual(true, explain[0].limit);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -545,10 +484,6 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
       assertEqual(20, actual[0].value);
       assertEqual(21, actual[1].value);
       assertEqual(29, actual[9].value);
-
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual(true, explain[0].limit);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -565,10 +500,6 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
       assertEqual(20, actual[0].value);
       assertEqual(21, actual[1].value);
       assertEqual(29, actual[9].value);
-
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual(undefined, explain[0].limit);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -583,10 +514,6 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
       assertEqual(20, actual[0].value);
       assertEqual(21, actual[1].value);
       assertEqual(29, actual[9].value);
-
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual(true, explain[0].limit);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -603,10 +530,6 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
       assertEqual(21, actual[1].value);
       assertEqual(22, actual[2].value);
       assertEqual(29, actual[9].value);
-
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual(true, explain[0].limit);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -618,10 +541,6 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
 
       var actual = getQueryResults(query);
       assertEqual(0, actual.length);
-      
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual(undefined, explain[0].limit);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -638,10 +557,6 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
       assertEqual(21, actual[1].value);
       assertEqual(22, actual[2].value);
       assertEqual(29, actual[9].value);
-        
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual(undefined, explain[0].limit);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

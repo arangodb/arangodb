@@ -28,9 +28,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LogfileManager.h"
-#include "BasicsC/hashes.h"
-#include "BasicsC/json.h"
-#include "BasicsC/logging.h"
+#include "Basics/hashes.h"
+#include "Basics/json.h"
+#include "Basics/logging.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/JsonHelper.h"
@@ -644,9 +644,9 @@ std::unordered_set<TRI_voc_tick_t> LogfileManager::getDroppedDatabases () {
 void LogfileManager::unregisterFailedTransactions (std::unordered_set<TRI_voc_tid_t> const& failedTransactions) {
   WRITE_LOCKER(_logfilesLock);
 
-  std::for_each(failedTransactions.begin(), failedTransactions.end(), [&] (TRI_voc_tid_t id) {
-    _failedTransactions.erase(id);
-  });
+  std::for_each(failedTransactions.begin(), failedTransactions.end(), 
+                [&] (TRI_voc_tid_t id) { _failedTransactions.erase(id);
+                });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1598,7 +1598,7 @@ int LogfileManager::writeShutdownInfo (bool writeShutdownTime) {
     TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "shutdownTime", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, t.c_str(), t.size()));
   }
 
-  if (! TRI_SaveJson(filename.c_str(), json, false)) {
+  if (! TRI_SaveJson(filename.c_str(), json, true)) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     LOG_ERROR("unable to write WAL state file '%s'", filename.c_str());
 

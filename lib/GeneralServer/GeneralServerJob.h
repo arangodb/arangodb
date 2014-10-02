@@ -39,7 +39,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Rest/Handler.h"
 #include "Scheduler/AsyncTask.h"
 

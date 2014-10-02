@@ -108,6 +108,7 @@ SERVER_START :=
 SERVER_OPT := \
 	--configuration none \
 	--database.maximal-journal-size 1048576 \
+	--database.force-sync-properties false \
 	--javascript.app-path @top_srcdir@/js/apps \
 	--javascript.startup-directory @top_srcdir@/js \
         --log.file "" \
@@ -207,6 +208,8 @@ unittests-recovery:
 	@echo "================================================================================"
 	@echo
 
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="leftover-database-directory"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="leftover-collection-directory"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="collection-unload"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="resume-recovery-multi-flush"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="resume-recovery-simple"
@@ -231,7 +234,6 @@ unittests-recovery:
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="indexes-hash"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="indexes-skiplist"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="indexes-geo"
-	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="indexes-bitarray"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="edges"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="cap-constraint"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="indexes"
@@ -331,6 +333,7 @@ UnitTests_basics_suite_SOURCES = \
 	UnitTests/Basics/associative-pointer-test.cpp \
 	UnitTests/Basics/associative-multi-pointer-test.cpp \
 	UnitTests/Basics/associative-synced-test.cpp \
+	UnitTests/Basics/skiplist-test.cpp \
 	UnitTests/Basics/string-buffer-test.cpp \
 	UnitTests/Basics/string-utf8-normalize-test.cpp \
 	UnitTests/Basics/string-utf8-test.cpp \
@@ -420,7 +423,6 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-collection-noncluster.js \
                @top_srcdir@/js/common/tests/shell-database.js \
                @top_srcdir@/js/common/tests/shell-document.js \
-               @top_srcdir@/js/common/tests/shell-download.js \
                @top_srcdir@/js/common/tests/shell-edge.js \
                @top_srcdir@/js/common/tests/shell-errors.js \
                @top_srcdir@/js/common/tests/shell-fs.js \
@@ -458,7 +460,6 @@ SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/shell-transactions-noncluster.js \
                @top_srcdir@/js/server/tests/shell-routing.js \
                @top_srcdir@/js/server/tests/shell-any-noncluster.js \
-               @top_srcdir@/js/server/tests/shell-bitarray-index.js \
                @top_srcdir@/js/server/tests/shell-database-noncluster.js \
                @top_srcdir@/js/server/tests/shell-foxx.js \
                @top_srcdir@/js/server/tests/shell-foxx-repository-spec.js \
@@ -631,17 +632,18 @@ unittests-shell-client-readonly:
 	@echo
 
 SHELL_CLIENT_ONLY = \
+               @top_srcdir@/js/client/tests/shell-download.js \
 	       @top_srcdir@/js/client/tests/shell-endpoints.js \
 	       @top_srcdir@/js/client/tests/shell-fm.js \
 	       @top_srcdir@/js/client/tests/shell-client.js
 
-SHELL_CLIENT = $(SHELL_COMMON) $(SHELL_CLIENT_ONLY)
+SHELL_CLIENT = $(SHELL_CLIENT_ONLY)
 
 .PHONY: unittests-shell-client
 UNITTESTS_CLIENT = $(addprefix --javascript.unit-tests ,$(SHELL_CLIENT))
 
 unittests-shell-client:
-	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint unix://$(VOCDIR)/arango.sock --server.disable-authentication true" PROTO=unix
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=unix
 
 	@echo
 	@echo "================================================================================"
@@ -649,7 +651,7 @@ unittests-shell-client:
 	@echo "================================================================================"
 	@echo
 
-	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock $(UNITTESTS_CLIENT) || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) $(UNITTESTS_CLIENT) || test "x$(FORCE)" == "x1"
 	sleep 2
 	kill `cat $(PIDFILE)`
 
@@ -1049,7 +1051,7 @@ unittests-authentication-parameters:
 
 cppcheck:
 	@rm -f cppcheck.log cppcheck.log && echo -n "" > cppcheck.tmp
-	for platform in unix32 unix64; do cppcheck --enable=style --force --platform=$$platform --suppress="*:arangod/Ahuacatl/ahuacatl-tokens.c" --suppress="*:lib/JsonParser/json-parser.c" --suppress="*:lib/V8/v8-json.cpp" arangod/ lib/ 1> /dev/null 2>> cppcheck.tmp; done
+	for platform in unix32 unix64; do cppcheck -j4 --std=c++11 --enable=style --force --platform=$$platform --suppress="*:arangod/Ahuacatl/ahuacatl-tokens.c" --suppress="*:lib/JsonParser/json-parser.c" --suppress="*:lib/V8/v8-json.cpp" arangod/ lib/ 1> /dev/null 2>> cppcheck.tmp; done
 	@sort cppcheck.tmp | uniq > cppcheck.log
 	@rm cppcheck.tmp
 	@cat cppcheck.log
