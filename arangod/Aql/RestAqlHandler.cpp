@@ -706,7 +706,16 @@ std::cout << "ANSWERBODY: " << JsonHelper::toString(answerBody.json()) << "\n\n"
                                "atMost", ExecutionBlock::DefaultBatchSize);
     size_t skipped;
     try {
-      skipped = query->engine()->skipSome(atLeast, atMost);
+      if (shardId.empty()) {
+        skipped = query->engine()->skipSome(atLeast, atMost);
+      }
+      else {
+        auto scatter = static_cast<ScatterBlock*>(query->engine()->root());
+        if (scatter->getPlanNode()->getType() != ExecutionNode::SCATTER) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+        }
+        skipped = scatter->skipSomeForShard(atLeast, atMost, shardId);
+      }
     }
     catch (...) {
       generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
@@ -720,7 +729,18 @@ std::cout << "ANSWERBODY: " << JsonHelper::toString(answerBody.json()) << "\n\n"
     auto number = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
                                                         "number", 1);
     try {
-      bool exhausted = query->engine()->skip(number);
+      bool exhausted;
+      if (shardId.empty()) {
+        exhausted = query->engine()->skip(number);
+      }
+      else {
+        auto scatter = static_cast<ScatterBlock*>(query->engine()->root());
+        if (scatter->getPlanNode()->getType() != ExecutionNode::SCATTER) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+        }
+        exhausted = scatter->skipForShard(number, shardId);
+      }
+
       answerBody("exhausted", Json(exhausted))
                 ("error", Json(false));
     }
