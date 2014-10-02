@@ -3777,12 +3777,6 @@ size_t ScatterBlock::getClientId (std::string const& shardId) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief timeout
-////////////////////////////////////////////////////////////////////////////////
-
-double const RemoteBlock::defaultTimeOut = 3600.0;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief local helper to throw an exception if a HTTP request went wrong
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3807,6 +3801,34 @@ static void throwExceptionAfterBadSyncRequest (ClusterCommResult* res) {
     // In this case a proper HTTP error was reported by the DBserver,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief timeout
+////////////////////////////////////////////////////////////////////////////////
+
+double const RemoteBlock::defaultTimeOut = 3600.0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a remote block
+////////////////////////////////////////////////////////////////////////////////
+        
+RemoteBlock::RemoteBlock (ExecutionEngine* engine,
+                          RemoteNode const* en,
+                          std::string const& server,
+                          std::string const& ownName,
+                          std::string const& queryId)
+  : ExecutionBlock(engine, en),
+    _server(server),
+    _ownName(ownName),
+    _queryId(queryId) {
+
+  TRI_ASSERT(! queryId.empty());
+  TRI_ASSERT((ExecutionEngine::isCoordinator() && ownName.empty()) ||
+             (! ExecutionEngine::isCoordinator() && ! ownName.empty()));
+}
+
+RemoteBlock::~RemoteBlock () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////

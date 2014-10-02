@@ -1684,17 +1684,9 @@ namespace triagens {
                      RemoteNode const* en,
                      std::string const& server,
                      std::string const& ownName,
-                     std::string const& queryId)
-          : ExecutionBlock(engine, en),
-            _server(server),
-            _ownName(ownName),
-            _queryId(queryId) {
+                     std::string const& queryId);
 
-          TRI_ASSERT(! queryId.empty());
-        }
-
-        ~RemoteBlock () {
-        }
+        ~RemoteBlock ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief timeout

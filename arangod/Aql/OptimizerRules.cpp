@@ -1959,7 +1959,7 @@ int triagens::aql::removeUnnecessaryRemoteScatter (Optimizer* opt,
   }
 
   bool modified = false;
-  if (!toUnlink.empty()) {
+  if (! toUnlink.empty()) {
     plan->unlinkNodes(toUnlink);
     plan->findVarUsage();
     modified = true;
@@ -2023,11 +2023,11 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
           }
           return false; // continue . . .
         }
-        case EN::REMOTE:{
+        case EN::REMOTE: {
           _toUnlink.insert(en);
           return false; // continue . . .
         }
-        case EN::SCATTER:{
+        case EN::SCATTER: {
           if (_scatter) { // met more than one scatter node
             break; // abort . . . 
           }
@@ -2035,7 +2035,7 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
           _toUnlink.insert(en);
           return false; // continue . . .
         }
-        case EN::GATHER:{
+        case EN::GATHER: {
           if (_gather) { // met more than one gather node
             break; // abort . . . 
           }
@@ -2043,7 +2043,7 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
           _toUnlink.insert(en);
           return false; // continue . . .
         }
-        case EN::FILTER:{ 
+        case EN::FILTER: { 
           // check that we are filtering something with the variable we are to remove
           auto fn = static_cast<FilterNode*>(en);
           auto varsUsedHere = fn->getVariablesUsedHere();
@@ -2079,8 +2079,9 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
         case EN::ILLEGAL:
         case EN::LIMIT:           
         case EN::SORT:
-        case EN::INDEX_RANGE:{}
+        case EN::INDEX_RANGE: {
           // if we meet any of the above, then we abort . . .
+        }
     }
     _toUnlink.clear();
     return true;
