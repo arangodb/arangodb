@@ -193,7 +193,9 @@ a numeric timestamp to a string representation and vice versa.
 
 There are two date functions in AQL to create dates for further use:
 
-- *DATE_TIMESTAMP(date)*: Creates a UTC timestamp value from *date*. 
+- *DATE_TIMESTAMP(date)*: Creates a UTC timestamp value from *date*. The return
+  value has millisecond precision. To convert the return value to seconds, divide
+  it by 1000.
 
 - *DATE_TIMESTAMP(year, month, day, hour, minute, second, millisecond)*: 
   Same as before, but allows specifying the individual date components separately.
@@ -294,6 +296,8 @@ The following date functions can be used with dates created by *DATE_TIMESTAMP* 
 The following other date functions are also available:
 
 - *DATE_NOW()*: Returns the current time as a timestamp.
+  The return value has millisecond precision. To convert the return value to seconds, 
+  divide it by 1000.
   
   Note that this function is evaluated on every invocation and may return different 
   values when invoked multiple times in the same query.
