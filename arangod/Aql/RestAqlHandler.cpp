@@ -414,6 +414,10 @@ void RestAqlHandler::deleteQuery (std::string const& idString) {
 ///   "pos":   The number of the row in "items" to take, usually 0.
 /// For the "shutdown" operation no additional arguments are required and
 /// an empty JSON object in the body is OK.
+/// All operations allow to set the HTTP header "Shard-ID:". If this is
+/// set, then the root block of the stored query must be a ScatterBlock
+/// and the shard ID is given as an additional argument to the ScatterBlock's
+/// special API.
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestAqlHandler::useQuery (std::string const& operation,
@@ -654,6 +658,13 @@ bool RestAqlHandler::findQuery (std::string const& idString,
 void RestAqlHandler::handleUseQuery (std::string const& operation,
                                      Query* query,
                                      Json const& queryJson) {
+  bool found;
+  std::string shardId;
+  char const* shardIdCharP = _request->header("shard-id", found);
+  if (shardIdCharP != nullptr) {
+    shardId = shardIdCharP;
+  }
+
   Json answerBody(Json::Array, 2);
 
   if (operation == "getSome") {
@@ -661,7 +672,17 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
                                                          "atLeast", 1);
     auto atMost = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
                                "atMost", ExecutionBlock::DefaultBatchSize);
-    std::unique_ptr<AqlItemBlock> items(query->engine()->getSome(atLeast, atMost));
+    std::unique_ptr<AqlItemBlock> items;
+    if (shardId.empty()) {
+      items.reset(query->engine()->getSome(atLeast, atMost));
+    }
+    else {
+      auto scatter = static_cast<ScatterBlock*>(query->engine()->root());
+      if (scatter->getPlanNode()->getType() != ExecutionNode::SCATTER) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
+      items.reset(scatter->getSomeForShard(atLeast, atMost, shardId));
+    }
     if (items.get() == nullptr) {
       answerBody("exhausted", Json(true))
                 ("error", Json(false));

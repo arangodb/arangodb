@@ -209,7 +209,7 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
     _id(JsonHelper::checkAndGetNumericValue<size_t>(json.json(), "id")),
     _estimatedCost(0.0), 
     _estimatedCostSet(false),
-    _varUsageValid(false),
+    _varUsageValid(true),
     _plan(plan),
     _depth(JsonHelper::checkAndGetNumericValue<size_t>(json.json(), "depth")) {
 
@@ -532,9 +532,9 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
 /// @brief static analysis debugger
 ////////////////////////////////////////////////////////////////////////////////
 
-struct StaticAnalysisDebugger : public WalkerWorker<ExecutionNode> {
-  StaticAnalysisDebugger () : indent(0) {};
-  ~StaticAnalysisDebugger () {};
+struct RegisterPlanningDebugger : public WalkerWorker<ExecutionNode> {
+  RegisterPlanningDebugger () : indent(0) {};
+  ~RegisterPlanningDebugger () {};
 
   int indent;
 
@@ -571,10 +571,10 @@ struct StaticAnalysisDebugger : public WalkerWorker<ExecutionNode> {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief staticAnalysis
+/// @brief planRegisters
 ////////////////////////////////////////////////////////////////////////////////
 
-void ExecutionNode::staticAnalysis (ExecutionNode* super) {
+void ExecutionNode::planRegisters (ExecutionNode* super) {
   // The super is only for the case of subqueries.
   shared_ptr<VarOverview> v;
   if (super == nullptr) {
@@ -588,14 +588,14 @@ void ExecutionNode::staticAnalysis (ExecutionNode* super) {
   // Now handle the subqueries:
   for (auto s : v->subQueryNodes) {
     auto sq = static_cast<SubqueryNode*>(s);
-    sq->getSubquery()->staticAnalysis(s);
+    sq->getSubquery()->planRegisters(s);
   }
   v->reset();
 
   // Just for debugging:
   /*
   std::cout << std::endl;
-  StaticAnalysisDebugger debugger;
+  RegisterPlanningDebugger debugger;
   walk(&debugger);
   std::cout << std::endl;
   */
@@ -1808,6 +1808,7 @@ void ReturnNode::toJsonHelper (triagens::basics::Json& nodes,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
+
 ExecutionNode* ReturnNode::clone (ExecutionPlan* plan,
                                   bool withDependencies,
                                   bool withProperties) const {
