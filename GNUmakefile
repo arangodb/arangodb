@@ -41,8 +41,8 @@ MAINTAINER = \
 	lib/JsonParser/json-parser.cpp \
 	lib/V8/v8-json.cpp \
 	lib/V8/v8-json.h \
-	lib/BasicsC/voc-errors.h \
-	lib/BasicsC/voc-errors.c \
+	lib/Basics/voc-errors.h \
+	lib/Basics/voc-errors.cpp \
 	js/common/bootstrap/errors.js \
 	mr/common/bootstrap/mr-error.h
 
