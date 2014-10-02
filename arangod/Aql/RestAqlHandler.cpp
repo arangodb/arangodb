@@ -69,7 +69,8 @@ const std::string RestAqlHandler::QUEUE_NAME = "STANDARD";
 ////////////////////////////////////////////////////////////////////////////////
 
 RestAqlHandler::RestAqlHandler (triagens::rest::HttpRequest* request,
-                   std::pair<ApplicationV8*, QueryRegistry*>* pair)
+                                std::pair<ApplicationV8*, 
+                                QueryRegistry*>* pair)
   : RestBaseHandler(request),
     _applicationV8(pair->first),
     _context(static_cast<VocbaseContext*>(request->getRequestContext())),
@@ -552,6 +553,8 @@ triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
     // extract the sub-request type
     HttpRequest::HttpRequestType type = _request->requestType();
 
+
+std::cout << "GOT INCOMING REQUEST: " << _request->body() << "\n";
     // execute one of the CRUD methods
     switch (type) {
       case HttpRequest::HTTP_REQUEST_POST: {
@@ -616,6 +619,7 @@ triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
   }
 
   _applicationV8->exitContext(context);
+std::cout << "HANDLING DONE\n";
 
   return status_t(HANDLER_DONE);
 }
