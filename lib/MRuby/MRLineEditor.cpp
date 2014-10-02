@@ -30,7 +30,7 @@
 #include "MRLineEditor.h"
 
 
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 #include "Utilities/ShellImplFactory.h"
 
 

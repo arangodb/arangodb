@@ -30,7 +30,7 @@
 
 #include "primary-index.h"
 
-#include "BasicsC/hashes.h"
+#include "Basics/hashes.h"
 #include "VocBase/document-collection.h"
 
 // -----------------------------------------------------------------------------

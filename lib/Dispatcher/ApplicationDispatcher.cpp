@@ -28,12 +28,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
-#include "BasicsC/win-utils.h"
+#include "Basics/win-utils.h"
 #endif
 
 #include "ApplicationDispatcher.h"
 
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Dispatcher/Dispatcher.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/PeriodicTask.h"
@@ -85,9 +85,9 @@ namespace {
 
 ApplicationDispatcher::ApplicationDispatcher ()
   : ApplicationFeature("dispatcher"),
-    _applicationScheduler(0),
-    _dispatcher(0),
-    _dispatcherReporterTask(0),
+    _applicationScheduler(nullptr),
+    _dispatcher(nullptr),
+    _dispatcherReporterTask(nullptr),
     _reportInterval(0.0) {
 }
 
@@ -96,7 +96,7 @@ ApplicationDispatcher::ApplicationDispatcher ()
 ////////////////////////////////////////////////////////////////////////////////
 
 ApplicationDispatcher::~ApplicationDispatcher () {
-  if (_dispatcher != 0) {
+  if (_dispatcher != nullptr) {
     delete _dispatcher;
   }
 }
@@ -127,13 +127,13 @@ Dispatcher* ApplicationDispatcher::dispatcher () const {
 
 void ApplicationDispatcher::buildStandardQueue (size_t nrThreads,
                                                 size_t maxSize) {
-  if (_dispatcher == 0) {
+  if (_dispatcher == nullptr) {
     LOG_FATAL_AND_EXIT("no dispatcher is known, cannot create dispatcher queue");
   }
 
   LOG_TRACE("setting up a standard queue with %d threads", (int) nrThreads);
 
-  TRI_ASSERT(_dispatcher != 0);
+  TRI_ASSERT(_dispatcher != nullptr);
   _dispatcher->addStandardQueue(nrThreads, maxSize);
 }
 
@@ -200,7 +200,7 @@ bool ApplicationDispatcher::open () {
     return true;
   }
 
-  if (_dispatcher != 0) {
+  if (_dispatcher != nullptr) {
     return _dispatcher->open();
   }
 
@@ -216,7 +216,7 @@ void ApplicationDispatcher::close () {
     return;
   }
 
-  if (_dispatcher != 0) {
+  if (_dispatcher != nullptr) {
     _dispatcher->beginShutdown();
   }
 }
@@ -230,11 +230,11 @@ void ApplicationDispatcher::stop () {
     return;
   }
 
-  if (_dispatcherReporterTask != 0) {
-    _dispatcherReporterTask = 0;
+  if (_dispatcherReporterTask != nullptr) {
+    _dispatcherReporterTask = nullptr;
   }
 
-  if (_dispatcher != 0) {
+  if (_dispatcher != nullptr) {
     static size_t const MAX_TRIES = 50; // 10 seconds (50 * 200 ms)
 
     for (size_t count = 0;  count < MAX_TRIES && _dispatcher->isRunning();  ++count) {
@@ -245,7 +245,7 @@ void ApplicationDispatcher::stop () {
     _dispatcher->shutdown();
 
     delete _dispatcher;
-    _dispatcher = 0;
+    _dispatcher = nullptr;
   }
 }
 
@@ -258,7 +258,7 @@ void ApplicationDispatcher::stop () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationDispatcher::buildDispatcher (Scheduler* scheduler) {
-  if (_dispatcher != 0) {
+  if (_dispatcher != nullptr) {
     LOG_FATAL_AND_EXIT("a dispatcher has already been created");
   }
 
@@ -270,7 +270,7 @@ void ApplicationDispatcher::buildDispatcher (Scheduler* scheduler) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationDispatcher::buildDispatcherReporter () {
-  if (_dispatcher == 0) {
+  if (_dispatcher == nullptr) {
     LOG_FATAL_AND_EXIT("no dispatcher is known, cannot create dispatcher reporter");
   }
 

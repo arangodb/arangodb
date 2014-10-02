@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var Repository,
+  Model = require("org/arangodb/foxx/model").Model,
   _ = require("underscore"),
   extend = require('org/arangodb/extend').extend;
 
@@ -82,7 +83,7 @@ Repository = function (collection, opts) {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  this.modelPrototype = this.options.model || require("org/arangodb/foxx/model").Model;
+  this.modelPrototype = this.options.model || Model;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_prefix
@@ -262,7 +263,7 @@ _.extend(Repository.prototype, {
   remove: function (model) {
     'use strict';
     var id = model.get('_id');
-    this.collection.remove(id);
+    return this.collection.remove(id);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -281,7 +282,7 @@ _.extend(Repository.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   removeById: function (id) {
     'use strict';
-    this.collection.remove(id);
+    return this.collection.remove(id);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -299,7 +300,7 @@ _.extend(Repository.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   removeByExample: function (example) {
     'use strict';
-    this.collection.removeByExample(example);
+    return this.collection.removeByExample(example);
   },
 
 // -----------------------------------------------------------------------------
@@ -311,7 +312,7 @@ _.extend(Repository.prototype, {
 /// `FoxxRepository#replace(model)`
 ///
 /// Find the model in the database by its *_id* and replace it with this version.
-/// Expects a model. Sets the Revision of the model.
+/// Expects a model. Sets the revision of the model.
 /// Returns the model.
 ///
 /// @EXAMPLES
@@ -324,7 +325,7 @@ _.extend(Repository.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   replace: function (model) {
     'use strict';
-    var id = model.get("_id"),
+    var id = model.get("_id") || model.get("_key"),
       data = model.forDB(),
       id_and_rev = this.collection.replace(id, data);
     model.set(id_and_rev);
@@ -333,11 +334,12 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_replaceById
-/// `FoxxRepository#replaceById(id, model)`
+/// `FoxxRepository#replaceById(id, object)`
 ///
-/// Find the model in the database by the given ID and replace it with the given.
-/// model.
-/// Sets the ID and Revision of the model and also returns it.
+/// Find the item in the database by the given ID and replace it with the
+/// given object's attributes.
+///
+/// If the object is a model, updates the model's revision and returns the model.
 ///
 /// @EXAMPLES
 ///
@@ -346,21 +348,22 @@ _.extend(Repository.prototype, {
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-  replaceById: function (id, model) {
+  replaceById: function (id, data) {
     'use strict';
-    var data = model.forDB(),
-      id_and_rev = this.collection.replace(id, data);
-    model.set(id_and_rev);
-    return model;
+    if (data instanceof Model) {
+      var id_and_rev = this.collection.replace(id, data.forDB());
+      data.set(id_and_rev);
+      return data;
+    }
+    return this.collection.replace(id, data);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_replaceByExample
-/// `FoxxRepository#replaceByExample(example, model)`
+/// `FoxxRepository#replaceByExample(example, object)`
 ///
-/// Find the model in the database by the given example and replace it with the given.
-/// model.
-/// Sets the ID and Revision of the model and also returns it.
+/// Find every matching item by example and replace it with the attributes in
+/// the provided object.
 ///
 /// @EXAMPLES
 ///
@@ -369,12 +372,9 @@ _.extend(Repository.prototype, {
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-  replaceByExample: function (example, model) {
+  replaceByExample: function (example, data) {
     'use strict';
-    var data = model.forDB(),
-      idAndRev = this.collection.replaceByExample(example, data);
-    model.set(idAndRev);
-    return model;
+    return this.collection.replaceByExample(example, data);
   },
 
 // -----------------------------------------------------------------------------
@@ -382,11 +382,36 @@ _.extend(Repository.prototype, {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_repository_update
+/// `FoxxRepository#update(model, object)`
+///
+/// Find the model in the database by its *_id* and update it with the given object.
+/// Expects a model. Sets the revision of the model and updates its properties.
+/// Returns the model.
+///
+/// @EXAMPLES
+///
+/// ```javascript
+/// repository.update(myModel, {name: 'Jan Steeman'});
+/// ```
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+  update: function (model, data) {
+    'use strict';
+    var id = model.get("_id") || model.get("_key"),
+      id_and_rev = this.collection.update(id, data);
+    model.set(data);
+    model.set(id_and_rev);
+    return model;
+  },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_updateById
 /// `FoxxRepository#updateById(id, object)`
 ///
 /// Find an item by ID and update it with the attributes in the provided object.
-/// Returns the updated model.
+///
+/// If the object is a model, updates the model's revision and returns the model.
 ///
 /// @EXAMPLES
 ///
@@ -395,17 +420,22 @@ _.extend(Repository.prototype, {
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-  updateById: function (id, updates) {
+  updateById: function (id, data) {
     'use strict';
-    this.collection.update(id, updates);
+    if (data instanceof Model) {
+      var id_and_rev = this.collection.update(id, data.forDB());
+      data.set(id_and_rev);
+      return data;
+    }
+    return this.collection.update(id, data);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_updateByExample
 /// `FoxxRepository#updateByExample(example, object)`
 ///
-/// Find an item by example and update it with the attributes in the provided object.
-/// Returns the updated model.
+/// Find every matching item by example and update it with the attributes in
+/// the provided object.
 ///
 /// @EXAMPLES
 ///
@@ -414,9 +444,9 @@ _.extend(Repository.prototype, {
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-  updateByExample: function (example, updates) {
+  updateByExample: function (example, data) {
     'use strict';
-    this.collection.updateByExample(example, updates);
+    return this.collection.updateByExample(example, data);
   },
 
 // -----------------------------------------------------------------------------

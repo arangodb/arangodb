@@ -29,10 +29,10 @@
 
 #include "Ahuacatl/ahuacatl-functions.h"
 
-#include "BasicsC/associative.h"
-#include "BasicsC/hashes.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/associative.h"
+#include "Basics/hashes.h"
+#include "Basics/logging.h"
+#include "Basics/tri-strings.h"
 
 #include "Ahuacatl/ahuacatl-access-optimiser.h"
 #include "Ahuacatl/ahuacatl-collections.h"

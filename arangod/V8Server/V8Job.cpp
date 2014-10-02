@@ -28,8 +28,8 @@
 
 #include "V8Job.h"
 
-#include "BasicsC/json.h"
-#include "BasicsC/logging.h"
+#include "Basics/json.h"
+#include "Basics/logging.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8Server/ApplicationV8.h"
@@ -106,7 +106,7 @@ Job::status_t V8Job::work () {
     return status_t(JOB_DONE);
   }
 
-  ApplicationV8::V8Context* context = _v8Dealer->enterContext("STANDARD", _vocbase, nullptr, true, false);
+  ApplicationV8::V8Context* context = _v8Dealer->enterContext("STANDARD", _vocbase, true, false);
 
   // note: the context might be 0 in case of shut-down
   if (context == nullptr) {

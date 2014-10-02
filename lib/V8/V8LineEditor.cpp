@@ -30,9 +30,8 @@
 #include "V8LineEditor.h"
 #include "Utilities/ShellImplFactory.h"
 
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 #include "V8/v8-utils.h"
-
 
 #include "Basics/StringUtils.h"
 

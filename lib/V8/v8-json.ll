@@ -30,8 +30,8 @@
 
 #include "V8/v8-globals.h"
 
-#include "BasicsC/tri-strings.h"
-#include "BasicsC/logging.h"
+#include "Basics/tri-strings.h"
+#include "Basics/logging.h"
 
 #define YY_NO_INPUT
 }
@@ -410,11 +410,6 @@ static v8::Handle<v8::Value> ParseObject (yyscan_t scanner, int c) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Json
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a json string

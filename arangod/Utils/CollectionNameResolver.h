@@ -98,11 +98,9 @@ namespace triagens {
 /// @brief look up a collection struct for a collection name
 ////////////////////////////////////////////////////////////////////////////////
 
-        const TRI_vocbase_col_t* getCollectionStruct (std::string const& name) const {
-          std::unordered_map<std::string, TRI_vocbase_col_t const*>::iterator it;
-
+        TRI_vocbase_col_t const* getCollectionStruct (std::string const& name) const {
           if (! _resolvedNames.empty()) {
-            it = _resolvedNames.find(name);
+            auto it = _resolvedNames.find(name);
 
             if (it != _resolvedNames.end()) {
               return (*it).second;
@@ -112,7 +110,7 @@ namespace triagens {
           TRI_vocbase_col_t const* collection = TRI_LookupCollectionByNameVocBase(_vocbase, name.c_str());
 
           if (collection != nullptr) {
-            _resolvedNames.insert(it, std::make_pair(name, collection));
+            _resolvedNames.emplace(std::make_pair(name, collection));
           }
 
           return collection;
@@ -149,10 +147,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::string getCollectionName (TRI_voc_cid_t cid) const {
-          std::unordered_map<TRI_voc_cid_t, std::string>::iterator it;
-
           if (! _resolvedIds.empty()) {
-            it = _resolvedIds.find(cid);
+            auto it = _resolvedIds.find(cid);
 
             if (it != _resolvedIds.end()) {
               return (*it).second;
@@ -191,7 +187,7 @@ namespace triagens {
           else {
             // exactly as in the non-cluster case
             char* n = TRI_GetCollectionNameByIdVocBase(_vocbase, cid);
-            if (0 != n) {
+            if (nullptr != n) {
               name = n;
               TRI_Free(TRI_UNKNOWN_MEM_ZONE, n);
             }
@@ -200,7 +196,7 @@ namespace triagens {
             name = "_unknown";
           }
 
-          _resolvedIds.insert(it, std::make_pair(cid, name));
+          _resolvedIds.emplace(std::make_pair(cid, name));
 
           return name;
         }

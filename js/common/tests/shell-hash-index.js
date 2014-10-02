@@ -131,7 +131,6 @@ function HashIndexSuite() {
       assertEqual(false, idx.unique);
       assertEqual(["a","b"].sort(), idx.fields.sort());
       assertEqual(false, idx.isNewlyCreated);
-
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -263,6 +262,39 @@ function HashIndexSuite() {
       }
       catch (err) {
         assertEqual(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: documents
+////////////////////////////////////////////////////////////////////////////////
+
+    testReadWriteMultipleDocuments : function () {
+      var idx = collection.ensureHashIndex("a");
+
+      for (i = 0; i < 2000; ++i) {
+        collection.save({ _key: "test" + i, a : i % 10 });
+      }
+
+      assertEqual(2000, collection.count());
+      for (i = 0; i < 10; ++i) {
+        var s = collection.byExampleHash(idx.id, { a: i });
+        assertEqual(200, s.count());
+      }
+
+      for (i = 0; i < 10; ++i) {
+        var s = collection.byExampleHash(idx.id, { a: i });
+        assertEqual(200, s.count());
+        s.toArray().forEach(function(doc) {
+          collection.remove(doc);
+        });
+      }
+
+      assertEqual(0, collection.count());
+
+      for (i = 0; i < 10; ++i) {
+        var s = collection.byExampleHash(idx.id, { a: i });
+        assertEqual(0, s.count());
       }
     },
 

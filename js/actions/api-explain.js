@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global require */
+/*global require, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief query explain actions
@@ -32,7 +32,6 @@
 var actions = require("org/arangodb/actions");
 
 var ERRORS = require("internal").errors;
-var EXPLAIN = require("internal").AQL_EXPLAIN;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  global variables
@@ -185,7 +184,7 @@ function post_api_explain (req, res) {
     return;
   }
 
-  var result = EXPLAIN(json.query, json.bindVars);
+  var result = AQL_EXPLAIN(json.query, json.bindVars);
 
   if (result instanceof Error) {
     actions.resultException(req, res, result, undefined, false);

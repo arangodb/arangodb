@@ -31,11 +31,11 @@
 #define ARANGODB_AHUACATL_AHUACATL__CODEGEN_H 1
 
 #include "Basics/Common.h"
-#include "BasicsC/associative.h"
-#include "BasicsC/conversions.h"
-#include "BasicsC/tri-strings.h"
-#include "BasicsC/string-buffer.h"
-#include "BasicsC/vector.h"
+#include "Basics/associative.h"
+#include "Basics/conversions.h"
+#include "Basics/tri-strings.h"
+#include "Basics/string-buffer.h"
+#include "Basics/vector.h"
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
 #include "Ahuacatl/ahuacatl-conversions.h"

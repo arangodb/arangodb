@@ -31,11 +31,11 @@
 
 #include <regex.h>
 
-#include "BasicsC/conversions.h"
-#include "BasicsC/files.h"
-#include "BasicsC/json.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/conversions.h"
+#include "Basics/files.h"
+#include "Basics/json.h"
+#include "Basics/logging.h"
+#include "Basics/tri-strings.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
@@ -1338,7 +1338,7 @@ int TRI_LoadCollectionInfo (char const* path,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_SaveCollectionInfo (char const* path,
-                            const TRI_col_info_t* const info,
+                            TRI_col_info_t const* info,
                             bool forceSync) {
   TRI_json_t* json;
   char* filename;
@@ -1351,15 +1351,17 @@ int TRI_SaveCollectionInfo (char const* path,
   ok = TRI_SaveJson(filename, json, forceSync);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
+  int res;
   if (! ok) {
+    res = TRI_errno();
     LOG_ERROR("cannot save collection properties file '%s': %s", filename, TRI_last_error());
-
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-    return TRI_errno();
+  }
+  else {
+    res = TRI_ERROR_NO_ERROR;
   }
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-  return TRI_ERROR_NO_ERROR;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1372,7 +1374,8 @@ int TRI_SaveCollectionInfo (char const* path,
 
 int TRI_UpdateCollectionInfo (TRI_vocbase_t* vocbase,
                               TRI_collection_t* collection,
-                              TRI_col_info_t const* parameter) {
+                              TRI_col_info_t const* parameter,
+                              bool doSync) {
 
   TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION((TRI_document_collection_t*) collection);
 
@@ -1393,7 +1396,7 @@ int TRI_UpdateCollectionInfo (TRI_vocbase_t* vocbase,
 
   TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION((TRI_document_collection_t*) collection);
 
-  return TRI_SaveCollectionInfo(collection->_directory, &collection->_info, false);
+  return TRI_SaveCollectionInfo(collection->_directory, &collection->_info, doSync);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1411,7 +1414,7 @@ int TRI_RenameCollection (TRI_collection_t* collection,
   TRI_CopyCollectionInfo(&newInfo, &collection->_info);
   TRI_CopyString(newInfo._name, name, sizeof(newInfo._name) - 1);
 
-  res = TRI_SaveCollectionInfo(collection->_directory, &newInfo, false);
+  res = TRI_SaveCollectionInfo(collection->_directory, &newInfo, true);
 
   TRI_FreeCollectionInfoOptions(&newInfo);
 

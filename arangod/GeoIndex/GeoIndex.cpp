@@ -272,7 +272,6 @@ GeoPath;
 // .............................................................................
 
 static int                   GeoIndex_queryMethodCall  (void*, TRI_index_operator_t*, TRI_index_challenge_t*, void*);
-static TRI_index_iterator_t* GeoIndex_resultMethodCall (void*, TRI_index_operator_t*, void*, bool (*filter) (TRI_index_iterator_t*));
 static int                   GeoIndex_freeMethodCall   (void*, void*);
 
 
@@ -2321,12 +2320,6 @@ void GeoIndex_assignMethod(void* methodHandle, TRI_index_method_assignment_type_
       break;
     }
 
-    case TRI_INDEX_METHOD_ASSIGNMENT_RESULT : {
-      TRI_index_query_result_method_call_t* call = (TRI_index_query_result_method_call_t*)(methodHandle);
-      *call = GeoIndex_resultMethodCall;
-      break;
-    }
-
     default : {
       TRI_ASSERT(false);
     }
@@ -2346,16 +2339,6 @@ static int GeoIndex_queryMethodCall(void* theIndex, TRI_index_operator_t* indexO
   }
   TRI_ASSERT(false);
   return TRI_ERROR_NO_ERROR;
-}
-
-static TRI_index_iterator_t* GeoIndex_resultMethodCall(void* theIndex, TRI_index_operator_t* indexOperator,
-                                                       void* data, bool (*filter) (TRI_index_iterator_t*)) {
-  GeoIx* geoIndex = (GeoIx*)(theIndex);
-  if (geoIndex == NULL || indexOperator == NULL) {
-    return NULL;
-  }
-  TRI_ASSERT(false);
-  return NULL;
 }
 
 static int GeoIndex_freeMethodCall (void* theIndex, void* data) {

@@ -152,7 +152,7 @@ namespace triagens {
           _response(0),
           _stamp(0.0),
           _status(JOB_UNDEFINED),
-          _ctx(0) {
+          _ctx(nullptr) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -270,6 +270,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ~AsyncJobManager () {
+          // remove all results that haven't been fetched
+          deleteJobResults();
         }
 
 // -----------------------------------------------------------------------------
@@ -392,18 +394,18 @@ namespace triagens {
 
           if (it == _jobs.end()) {
             status = AsyncJobResult::JOB_UNDEFINED;
-            return 0;
+            return nullptr;
           }
 
           HttpResponse* response = (*it).second._response;
           status = (*it).second._status;
 
           if (status == AsyncJobResult::JOB_PENDING) {
-            return 0;
+            return nullptr;
           }
 
           if (! removeFromList) {
-            return 0;
+            return nullptr;
           }
 
           // remove the job from the list
@@ -608,7 +610,7 @@ namespace triagens {
 
           HttpResponse* response = (*it).second._response;
 
-          if (response != 0) {
+          if (response != nullptr) {
             delete response;
           }
 
@@ -629,7 +631,7 @@ namespace triagens {
           while (it != _jobs.end()) {
             HttpResponse* response = (*it).second._response;
 
-            if (response != 0) {
+            if (response != nullptr) {
               delete response;
             }
 
@@ -654,7 +656,7 @@ namespace triagens {
             if (ajr._stamp < stamp) {
               HttpResponse* response = ajr._response;
 
-              if (response != 0) {
+              if (response != nullptr) {
                 delete response;
               }
 
@@ -861,12 +863,12 @@ namespace triagens {
             return;
           }
 
-          TRI_ASSERT(job != 0);
+          TRI_ASSERT(job != nullptr);
 
           *jobId = (AsyncJobResult::IdType) generate();
           job->assignId((uint64_t) *jobId);
 
-          AsyncCallbackContext* ctx = 0;
+          AsyncCallbackContext* ctx = nullptr;
 
           bool found;
           char const* hdr = job->getHandler()->getRequest()->header("x-arango-coordinator", found);
@@ -893,10 +895,10 @@ namespace triagens {
 
         template<typename S, typename HF>
         void finishAsyncJob (GeneralServerJob<S, typename HF::GeneralHandler>* job) {
-          TRI_ASSERT(job != 0);
+          TRI_ASSERT(job != nullptr);
 
           typename HF::GeneralHandler* handler = job->getHandler();
-          TRI_ASSERT(handler != 0);
+          TRI_ASSERT(handler != nullptr);
 
           AsyncJobResult::IdType jobId = job->id();
 
@@ -905,8 +907,8 @@ namespace triagens {
           }
 
           const double now = TRI_microtime();
-          AsyncCallbackContext* ctx = 0;
-          HttpResponse* response    = 0;
+          AsyncCallbackContext* ctx = nullptr;
+          HttpResponse* response    = nullptr;
 
           {
             WRITE_LOCKER(_lock);
@@ -927,7 +929,7 @@ namespace triagens {
 
               ctx = (*it).second._ctx;
 
-              if (ctx != 0) {
+              if (ctx != nullptr) {
                 // we have found a context object, so we can immediately remove the job
                 // from the list of "done" jobs
                 _jobs.erase(it);
@@ -941,10 +943,10 @@ namespace triagens {
           // list of "done" jobs, so we have to free the response and the
           // callback context:
 
-          if (0 != ctx && 0 != callback) {
+          if (nullptr != ctx && nullptr != callback) {
             callback(ctx->getCoordinatorHeader(), response);
             delete ctx;
-            if (response != 0) {
+            if (response != nullptr) {
               delete response;
             }
           }

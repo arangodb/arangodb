@@ -31,10 +31,10 @@
 #define ARANGODB_VOC_BASE_SERVER_H 1
 
 #include "Basics/Common.h"
-#include "BasicsC/associative.h"
-#include "BasicsC/locks.h"
-#include "BasicsC/threads.h"
-#include "BasicsC/vector.h"
+#include "Basics/associative.h"
+#include "Basics/locks.h"
+#include "Basics/threads.h"
+#include "Basics/vector.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase-defaults.h"
 

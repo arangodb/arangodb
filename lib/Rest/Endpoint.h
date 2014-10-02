@@ -30,12 +30,10 @@
 #ifndef ARANGODB_REST_ENDPOINT_H
 #define ARANGODB_REST_ENDPOINT_H 1
 
-#include "BasicsC/socket-utils.h"
+#include "Basics/socket-utils.h"
 
 #include "Basics/Common.h"
 #include "Basics/StringUtils.h"
-
-
 
 #ifdef TRI_HAVE_LINUX_SOCKETS
 #include <arpa/inet.h>

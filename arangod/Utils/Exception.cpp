@@ -34,17 +34,45 @@ using namespace std;
 using namespace triagens::arango;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
+/// @brief constructor, without format string
 ////////////////////////////////////////////////////////////////////////////////
 
 Exception::Exception (int code,
-                      string const& details,
                       char const* file,
                       int line)
-  : _details(details),
+  : _errorMessage(TRI_errno_string(code)),
     _file(file),
     _line(line),
     _code(code) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+#if HAVE_BACKTRACE
+  _errorMessage += std::string("\n\n");
+  _getBacktrace(_errorMessage);
+  _errorMessage += std::string("\n\n");
+#endif
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor, for creating an exception with an already created
+/// error message (normally based on error templates containing %s, %d etc.)
+////////////////////////////////////////////////////////////////////////////////
+
+Exception::Exception (int code,
+                      string const& errorMessage,
+                      char const* file,
+                      int line)
+  : _errorMessage(errorMessage),
+    _file(file),
+    _line(line),
+    _code(code) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+#if HAVE_BACKTRACE
+  _errorMessage += std::string("\n\n");
+  _getBacktrace(_errorMessage);
+  _errorMessage += std::string("\n\n");
+#endif
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -59,7 +87,13 @@ Exception::~Exception () throw () {
 ////////////////////////////////////////////////////////////////////////////////
 
 char const* Exception::what () const throw () {
-  string message("exception in '");
+  // we have to use an instance member here because we should not return a 
+  // pointer (c_str()) to the internals of a stack object (stack object will
+  // be destroyed when function is left...)
+  // additionally, we should not create new string values here as this might
+  // throw exceptions - but this function is marked to throw no exceptions!
+  /*
+  std::string message = "exception in '";
   message.append(_file);
   message.append("' at line ");
   message.append(basics::StringUtils::itoa(_line));
@@ -67,29 +101,28 @@ char const* Exception::what () const throw () {
   message += this->message();
 
   return message.c_str();
+  */
+
+  return _errorMessage.c_str();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return exception message
+/// @brief construct an error message from a template string
 ////////////////////////////////////////////////////////////////////////////////
+        
+std::string Exception::FillExceptionString (int code, 
+                                            ...) {
+  char const* format = TRI_errno_string(code);
+  TRI_ASSERT(format != nullptr);
 
-string Exception::message () const throw () {
-  string message(TRI_errno_string(_code));
+  char buffer[1024];
+  va_list ap;
+  va_start(ap, code);
+  vsnprintf(buffer, sizeof(buffer) - 1, format, ap);
+  va_end(ap);
+  buffer[sizeof(buffer) - 1] = '\0'; // Windows
 
-  if (! _details.empty()) {
-    message.append(": ");
-    message.append(_details);
-  }
-
-  return message;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return exception code
-////////////////////////////////////////////////////////////////////////////////
-
-int Exception::code () const throw () {
-  return _code;
+  return std::string(buffer);
 }
 
 // -----------------------------------------------------------------------------

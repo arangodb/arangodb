@@ -30,7 +30,7 @@
 #include "EndpointList.h"
 
 #include "Basics/StringUtils.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;

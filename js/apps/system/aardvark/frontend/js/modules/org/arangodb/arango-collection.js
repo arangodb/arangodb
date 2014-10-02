@@ -588,41 +588,6 @@ ArangoCollection.prototype.dropIndex = function (id) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures a bitarray index
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.ensureBitarray = function () {
-  var body = {
-    type : "bitarray",
-    fields : Array.prototype.slice.call(arguments)
-  };
-
-  var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
-
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures a bitarray index
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.ensureUndefBitarray = function () {
-  var body = {
-    type : "bitarray",
-    fields : Array.prototype.slice.call(arguments),
-    "undefined" : true
-  };
-
-  var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
-
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult;
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures a cap constraint
 ////////////////////////////////////////////////////////////////////////////////
 

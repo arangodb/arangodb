@@ -30,8 +30,8 @@
 
 #include "V8/v8-globals.h"
 
-#include "BasicsC/tri-strings.h"
-#include "BasicsC/logging.h"
+#include "Basics/tri-strings.h"
+#include "Basics/logging.h"
 
 #define YY_NO_INPUT
 
@@ -1680,7 +1680,7 @@ YY_BUFFER_STATE tri_v8__scan_bytes  (yyconst char * yybytes, yy_size_t  _yybytes
 	if ( ! buf )
 		YY_FATAL_ERROR( "out of dynamic memory in tri_v8__scan_bytes()" );
 
-	for ( i = 0; i < _yybytes_len; ++i )
+	for ( i = 0; i < (int) _yybytes_len; ++i )
 		buf[i] = yybytes[i];
 
 	buf[_yybytes_len] = buf[_yybytes_len+1] = YY_END_OF_BUFFER_CHAR;
@@ -2301,11 +2301,6 @@ static v8::Handle<v8::Value> ParseObject (yyscan_t scanner, int c) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Json
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a json string

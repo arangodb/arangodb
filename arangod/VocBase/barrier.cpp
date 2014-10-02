@@ -29,7 +29,7 @@
 
 #include "barrier.h"
 
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "VocBase/document-collection.h"
 
 // -----------------------------------------------------------------------------

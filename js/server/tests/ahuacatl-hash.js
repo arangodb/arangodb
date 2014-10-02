@@ -29,7 +29,6 @@ var internal = require("internal");
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
-var getQueryExplanation = helper.getQueryExplanation;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -78,10 +77,6 @@ function ahuacatlHashTestSuite () {
       var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
-      
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("index", explain[0].expression.extra.accessType);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -94,10 +89,6 @@ function ahuacatlHashTestSuite () {
       var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
-      
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("index", explain[0].expression.extra.accessType);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -134,10 +125,6 @@ function ahuacatlHashTestSuite () {
           var actual = getQueryResults(query, { "a": i, "b": j });
 
           assertEqual(expected, actual);
-      
-          var explain = getQueryExplanation(query, { "a": i, "b": j });
-          assertEqual("for", explain[0].type);
-          assertEqual("index", explain[0].expression.extra.accessType);
         }
       }
     },
@@ -154,10 +141,6 @@ function ahuacatlHashTestSuite () {
           var actual = getQueryResults(query, { "a": i, "b": j });
 
           assertEqual(expected, actual);
-          
-          var explain = getQueryExplanation(query, { "a": i, "b": j });
-          assertEqual("for", explain[0].type);
-          assertEqual("index", explain[0].expression.extra.accessType);
         }
       }
     },
@@ -172,11 +155,6 @@ function ahuacatlHashTestSuite () {
       var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
-          
-      var explain = getQueryExplanation(query);
-      assertEqual("let", explain[0].type);
-      assertEqual("for", explain[1].type);
-      assertEqual("index", explain[1].expression.extra.accessType);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -265,10 +243,6 @@ function ahuacatlHashTestSuite () {
       var actual = getQueryResults(query, { "a": 2, "b": 3 });
 
       assertEqual(expected, actual);
-
-      var explain = getQueryExplanation(query, { "a": 2, "b": 3 });
-      assertEqual("for", explain[0].type);
-      assertEqual("index", explain[0].expression.extra.accessType);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -281,10 +255,6 @@ function ahuacatlHashTestSuite () {
       var actual = getQueryResults(query);
       
       assertEqual(expected, actual);
-
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -297,10 +267,6 @@ function ahuacatlHashTestSuite () {
       var actual = getQueryResults(query);
       
       assertEqual(expected, actual);
-
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -313,10 +279,6 @@ function ahuacatlHashTestSuite () {
       var actual = getQueryResults(query);
       
       assertEqual(expected, actual);
-
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -329,10 +291,6 @@ function ahuacatlHashTestSuite () {
       var actual = getQueryResults(query);
       
       assertEqual(expected, actual);
-
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -345,11 +303,7 @@ function ahuacatlHashTestSuite () {
       var actual = getQueryResults(query);
       
       assertEqual(expected, actual);
-
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
-    },
+    }
 
   };
 }

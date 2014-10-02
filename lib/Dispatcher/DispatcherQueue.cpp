@@ -29,13 +29,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
-#include "BasicsC/win-utils.h"
+#include "Basics/win-utils.h"
 #endif
 
 #include "DispatcherQueue.h"
 
 #include "Basics/ConditionLocker.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Dispatcher/DispatcherThread.h"
 
 using namespace triagens::rest;
@@ -224,6 +224,27 @@ void DispatcherQueue::beginShutdown () {
   size_t const MAX_TRIES = 10;
 
   _stopping = 1;
+  
+  // kill all jobs in the queue that were not yet executed
+  {
+    CONDITION_LOCKER(guard, _accessQueue);
+    for (auto it = _readyJobs.begin();  it != _readyJobs.end();  ++it) {
+      Job* job = *it;
+
+      bool canceled = job->cancel(false);
+
+      if (canceled) {
+        try {
+          job->setDispatcherThread(0);
+          job->cleanup();
+        }
+        catch (...) {
+        }
+      }
+    }
+    _readyJobs.clear();
+  }
+
 
   for (size_t count = 0;  count < MAX_TRIES;  ++count) {
     {

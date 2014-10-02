@@ -31,15 +31,15 @@
 #define ARANGODB_AHUACATL_AHUACATL__CONTEXT_H 1
 
 #include "Basics/Common.h"
-#include "BasicsC/associative.h"
-#include "BasicsC/vector.h"
+#include "Basics/associative.h"
+#include "Basics/vector.h"
 
 #include "Ahuacatl/ahuacatl-error.h"
 #include "Ahuacatl/ahuacatl-statementlist.h"
 
 struct TRI_aql_node_t;
 struct TRI_aql_parser_s;
-struct TRI_json_s;
+struct TRI_json_t;
 struct TRI_vocbase_s;
 
 // -----------------------------------------------------------------------------
@@ -96,7 +96,7 @@ typedef struct TRI_aql_context_s {
   char*                       _writeCollection;
   struct TRI_aql_node_t*      _writeOptions;
 
-  struct TRI_json_s*          _userOptions;
+  struct TRI_json_t*          _userOptions;
   bool                        _fullCount;
   bool                        _isCoordinator;
 }
@@ -114,7 +114,7 @@ TRI_aql_context_t* TRI_CreateContextAql (struct TRI_vocbase_s*,
                                          const char* const,
                                          const size_t,
                                          bool,
-                                         struct TRI_json_s*);
+                                         struct TRI_json_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a context
@@ -133,7 +133,7 @@ bool TRI_ValidateQueryContextAql (TRI_aql_context_t* const);
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_BindQueryContextAql (TRI_aql_context_t* const,
-                              const struct TRI_json_s* const);
+                              const struct TRI_json_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform some AST optimisations
@@ -155,14 +155,6 @@ char* TRI_RegisterStringAql (TRI_aql_context_t* const,
                              const char* const,
                              const size_t,
                              const bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief register a combined string
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_RegisterString2Aql (TRI_aql_context_t* const,
-                              const char* const,
-                              const char* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register a combined string
@@ -194,7 +186,7 @@ void TRI_SetErrorContextAql (const char* file,
 /// @brief get the value of an option variable
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_json_s* TRI_GetOptionContextAql (TRI_aql_context_t* const,
+struct TRI_json_t* TRI_GetOptionContextAql (TRI_aql_context_t* const,
                                             const char*);
 
 #endif

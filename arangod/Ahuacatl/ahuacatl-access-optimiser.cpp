@@ -29,11 +29,11 @@
 
 #include "ahuacatl-access-optimiser.h"
 
-#include "BasicsC/json.h"
-#include "BasicsC/json-utilities.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/string-buffer.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/json.h"
+#include "Basics/logging.h"
+#include "Basics/string-buffer.h"
+#include "Basics/tri-strings.h"
+#include "Basics/json-utilities.h"
 
 #include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-conversions.h"
@@ -532,7 +532,7 @@ static TRI_aql_field_access_t* MergeAndExact (TRI_aql_context_t* const context,
 
   if (rhs->_type == TRI_AQL_ACCESS_RANGE_SINGLE) {
     // check if value is in range
-    int result = TRI_CompareValuesJson(lhs->_value._value, rhs->_value._singleRange._value);
+    int result = TRI_CompareValuesJson(lhs->_value._value, rhs->_value._singleRange._value, true);
 
     bool contained = ((rhs->_value._singleRange._type == TRI_AQL_RANGE_LOWER_EXCLUDED && result > 0) ||
         (rhs->_value._singleRange._type == TRI_AQL_RANGE_LOWER_INCLUDED && result >= 0) ||
@@ -560,7 +560,7 @@ static TRI_aql_field_access_t* MergeAndExact (TRI_aql_context_t* const context,
     bool contained;
 
     // compare lower end
-    result = TRI_CompareValuesJson(lhs->_value._value, rhs->_value._between._lower._value);
+    result = TRI_CompareValuesJson(lhs->_value._value, rhs->_value._between._lower._value, true);
 
     contained = ((rhs->_value._between._lower._type == TRI_AQL_RANGE_LOWER_EXCLUDED && result > 0) ||
         (rhs->_value._between._lower._type == TRI_AQL_RANGE_LOWER_INCLUDED && result >= 0));
@@ -575,7 +575,7 @@ static TRI_aql_field_access_t* MergeAndExact (TRI_aql_context_t* const context,
     }
 
     // compare upper end
-    result = TRI_CompareValuesJson(lhs->_value._value, rhs->_value._between._upper._value);
+    result = TRI_CompareValuesJson(lhs->_value._value, rhs->_value._between._upper._value, true);
 
     contained = ((rhs->_value._between._upper._type == TRI_AQL_RANGE_UPPER_EXCLUDED && result < 0) ||
         (rhs->_value._between._upper._type == TRI_AQL_RANGE_UPPER_INCLUDED && result <= 0));
@@ -763,7 +763,7 @@ static TRI_aql_field_access_t* MergeAndRangeSingle (TRI_aql_context_t* const con
       rhs = tmp;
     }
 
-    compareResult = TRI_CompareValuesJson(lhs->_value._singleRange._value, rhs->_value._singleRange._value);
+    compareResult = TRI_CompareValuesJson(lhs->_value._singleRange._value, rhs->_value._singleRange._value, true);
     lhsType = lhs->_value._singleRange._type;
     rhsType = rhs->_value._singleRange._type;
     lhsValue = lhs->_value._singleRange._value;
@@ -921,7 +921,7 @@ static TRI_aql_field_access_t* MergeAndRangeSingle (TRI_aql_context_t* const con
     int compareResult;
 
     if (lhs->_value._singleRange._type == TRI_AQL_RANGE_LOWER_EXCLUDED) {
-      compareResult = TRI_CompareValuesJson(lhs->_value._singleRange._value, rhs->_value._between._upper._value);
+      compareResult = TRI_CompareValuesJson(lhs->_value._singleRange._value, rhs->_value._between._upper._value, true);
       if (compareResult >= 0) {
         // lhs value is bigger than rhs upper bound
         TRI_FreeAccessAql(rhs);
@@ -931,7 +931,7 @@ static TRI_aql_field_access_t* MergeAndRangeSingle (TRI_aql_context_t* const con
         return lhs;
       }
 
-      compareResult = TRI_CompareValuesJson(lhs->_value._singleRange._value, rhs->_value._between._lower._value);
+      compareResult = TRI_CompareValuesJson(lhs->_value._singleRange._value, rhs->_value._between._lower._value, true);
       if (compareResult > 0) {
         // lhs value is bigger than rhs lower bound
         rhs->_value._between._lower._type = lhs->_value._singleRange._type;
@@ -953,7 +953,7 @@ static TRI_aql_field_access_t* MergeAndRangeSingle (TRI_aql_context_t* const con
     }
 
     if (lhs->_value._singleRange._type == TRI_AQL_RANGE_LOWER_INCLUDED) {
-      compareResult = TRI_CompareValuesJson(lhs->_value._singleRange._value, rhs->_value._between._upper._value);
+      compareResult = TRI_CompareValuesJson(lhs->_value._singleRange._value, rhs->_value._between._upper._value, true);
       if (compareResult > 0 || (compareResult == 0 && rhs->_value._between._upper._type == TRI_AQL_RANGE_UPPER_EXCLUDED)) {
         // lhs value is bigger than rhs upper bound
         TRI_FreeAccessAql(rhs);
@@ -977,7 +977,7 @@ static TRI_aql_field_access_t* MergeAndRangeSingle (TRI_aql_context_t* const con
         return lhs;
       }
 
-      compareResult = TRI_CompareValuesJson(lhs->_value._singleRange._value, rhs->_value._between._lower._value);
+      compareResult = TRI_CompareValuesJson(lhs->_value._singleRange._value, rhs->_value._between._lower._value, true);
       if (compareResult > 0) {
         // lhs value is bigger than rhs lower bound
         rhs->_value._between._lower._type = lhs->_value._singleRange._type;
@@ -993,7 +993,7 @@ static TRI_aql_field_access_t* MergeAndRangeSingle (TRI_aql_context_t* const con
     }
 
     if (lhs->_value._singleRange._type == TRI_AQL_RANGE_UPPER_EXCLUDED) {
-      compareResult = TRI_CompareValuesJson(lhs->_value._singleRange._value, rhs->_value._between._lower._value);
+      compareResult = TRI_CompareValuesJson(lhs->_value._singleRange._value, rhs->_value._between._lower._value, true);
       if (compareResult <= 0) {
         // lhs value is smaller than rhs lower bound
         TRI_FreeAccessAql(rhs);
@@ -1003,7 +1003,7 @@ static TRI_aql_field_access_t* MergeAndRangeSingle (TRI_aql_context_t* const con
         return lhs;
       }
 
-      compareResult = TRI_CompareValuesJson(lhs->_value._singleRange._value, rhs->_value._between._upper._value);
+      compareResult = TRI_CompareValuesJson(lhs->_value._singleRange._value, rhs->_value._between._upper._value, true);
       if (compareResult < 0) {
         // lhs value is smaller than rhs upper bound
         rhs->_value._between._upper._type = lhs->_value._singleRange._type;
@@ -1025,7 +1025,7 @@ static TRI_aql_field_access_t* MergeAndRangeSingle (TRI_aql_context_t* const con
     }
 
     if (lhs->_value._singleRange._type == TRI_AQL_RANGE_UPPER_INCLUDED) {
-      compareResult = TRI_CompareValuesJson(lhs->_value._singleRange._value, rhs->_value._between._lower._value);
+      compareResult = TRI_CompareValuesJson(lhs->_value._singleRange._value, rhs->_value._between._lower._value, true);
       if (compareResult < 0 || (compareResult == 0 && rhs->_value._between._lower._type == TRI_AQL_RANGE_LOWER_EXCLUDED)) {
         // lhs value is smaller than rhs lower bound
         TRI_FreeAccessAql(rhs);
@@ -1048,7 +1048,7 @@ static TRI_aql_field_access_t* MergeAndRangeSingle (TRI_aql_context_t* const con
         return lhs;
       }
 
-      compareResult = TRI_CompareValuesJson(lhs->_value._singleRange._value, rhs->_value._between._upper._value);
+      compareResult = TRI_CompareValuesJson(lhs->_value._singleRange._value, rhs->_value._between._upper._value, true);
       if (compareResult < 0) {
         // lhs value is smaller than rhs upper bound
         rhs->_value._between._upper._type = lhs->_value._singleRange._type;
@@ -1098,7 +1098,7 @@ static TRI_aql_field_access_t* MergeAndRangeDouble (TRI_aql_context_t* const con
     int compareResult;
 
     // check lower bound
-    compareResult = TRI_CompareValuesJson(lhs->_value._between._lower._value, rhs->_value._between._lower._value);
+    compareResult = TRI_CompareValuesJson(lhs->_value._between._lower._value, rhs->_value._between._lower._value, true);
     if (compareResult > 0) {
       // we'll patch lhs with the value of rhs
       lhs->_value._between._lower._type = rhs->_value._between._lower._type;
@@ -1114,7 +1114,7 @@ static TRI_aql_field_access_t* MergeAndRangeDouble (TRI_aql_context_t* const con
     }
 
     // check upper bound
-    compareResult = TRI_CompareValuesJson(lhs->_value._between._upper._value, rhs->_value._between._upper._value);
+    compareResult = TRI_CompareValuesJson(lhs->_value._between._upper._value, rhs->_value._between._upper._value, true);
     if (compareResult < 0) {
       // we'll patch lhs with the value of rhs
       lhs->_value._between._upper._type = rhs->_value._between._upper._type;
@@ -1361,7 +1361,7 @@ static TRI_aql_field_access_t* MergeOrExact (TRI_aql_context_t* const context,
 
   if (rhs->_type == TRI_AQL_ACCESS_RANGE_SINGLE) {
     // check if value is in range
-    int result = TRI_CompareValuesJson(lhs->_value._value, rhs->_value._singleRange._value);
+    int result = TRI_CompareValuesJson(lhs->_value._value, rhs->_value._singleRange._value, true);
 
     bool contained = ((rhs->_value._singleRange._type == TRI_AQL_RANGE_LOWER_EXCLUDED && result > 0) ||
         (rhs->_value._singleRange._type == TRI_AQL_RANGE_LOWER_INCLUDED && result >= 0) ||
@@ -1389,7 +1389,7 @@ static TRI_aql_field_access_t* MergeOrExact (TRI_aql_context_t* const context,
     bool contained;
 
     // compare lower end
-    result = TRI_CompareValuesJson(lhs->_value._value, rhs->_value._between._lower._value);
+    result = TRI_CompareValuesJson(lhs->_value._value, rhs->_value._between._lower._value, true);
 
     contained = ((rhs->_value._between._lower._type == TRI_AQL_RANGE_LOWER_EXCLUDED && result > 0) ||
         (rhs->_value._between._lower._type == TRI_AQL_RANGE_LOWER_INCLUDED && result >= 0));
@@ -1404,7 +1404,7 @@ static TRI_aql_field_access_t* MergeOrExact (TRI_aql_context_t* const context,
     }
 
     // compare upper end
-    result = TRI_CompareValuesJson(lhs->_value._value, rhs->_value._between._upper._value);
+    result = TRI_CompareValuesJson(lhs->_value._value, rhs->_value._between._upper._value, true);
 
     contained = ((rhs->_value._between._upper._type == TRI_AQL_RANGE_UPPER_EXCLUDED && result < 0) ||
         (rhs->_value._between._upper._type == TRI_AQL_RANGE_UPPER_INCLUDED && result <= 0));
@@ -1512,7 +1512,7 @@ static TRI_aql_field_access_t* MergeOrRangeSingle (TRI_aql_context_t* const cont
       rhs = tmp;
     }
 
-    compareResult = TRI_CompareValuesJson(lhs->_value._singleRange._value, rhs->_value._singleRange._value);
+    compareResult = TRI_CompareValuesJson(lhs->_value._singleRange._value, rhs->_value._singleRange._value, true);
     lhsType = lhs->_value._singleRange._type;
     rhsType = rhs->_value._singleRange._type;
 
@@ -1604,7 +1604,7 @@ static TRI_aql_field_access_t* MergeOrRangeDouble (TRI_aql_context_t* const cont
     int compareResult;
 
     // check lower bound
-    compareResult = TRI_CompareValuesJson(lhs->_value._between._lower._value, rhs->_value._between._lower._value);
+    compareResult = TRI_CompareValuesJson(lhs->_value._between._lower._value, rhs->_value._between._lower._value, true);
     if (compareResult < 0) {
       // we'll patch lhs with the value of rhs
       lhs->_value._between._lower._type = rhs->_value._between._lower._type;
@@ -1620,7 +1620,7 @@ static TRI_aql_field_access_t* MergeOrRangeDouble (TRI_aql_context_t* const cont
     }
 
     // check upper bound
-    compareResult = TRI_CompareValuesJson(lhs->_value._between._upper._value, rhs->_value._between._upper._value);
+    compareResult = TRI_CompareValuesJson(lhs->_value._between._upper._value, rhs->_value._between._upper._value, true);
     if (compareResult > 0) {
       // we'll patch lhs with the value of rhs
       lhs->_value._between._upper._type = rhs->_value._between._upper._type;

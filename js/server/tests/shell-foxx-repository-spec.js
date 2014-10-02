@@ -288,25 +288,39 @@ describe('Repository Methods', function () {
     });
 
     it('should replace by example', function () {
-      var model = new Model({}),
-        idAndRev = createSpy('idAndRev'),
-        example = createSpy('example'),
-        data = createSpy('data'),
-        result;
+      var example = createSpy('example'),
+        data = createSpy('data');
 
-      spyOn(model, 'forDB').and.returnValue(data);
-      spyOn(model, 'set');
-      collection.replaceByExample.and.returnValue(idAndRev);
+      instance.replaceByExample(example, data);
 
-      result = instance.replaceByExample(example, model);
-
-      expect(result).toBe(model);
-      expect(model.set.calls.argsFor(0)).toEqual([idAndRev]);
       expect(collection.replaceByExample.calls.argsFor(0)).toEqual([example, data]);
     });
   });
 
   describe('for updating entries', function () {
+    it('should allow to update by model', function () {
+      var model = new Model({}),
+        idAndRev = createSpy('idAndRev'),
+        id = createSpy('id'),
+        data = createSpy('data'),
+        updates = createSpy('updates'),
+        result;
+
+      spyOn(model, 'get').and.returnValue(id);
+      spyOn(model, 'forDB').and.returnValue(data);
+      spyOn(model, 'set');
+      collection.update.and.returnValue(idAndRev);
+
+      result = instance.update(model, updates);
+
+      expect(result).toBe(model);
+      expect(model.set.calls.allArgs().length).toEqual(2);
+      expect(model.set.calls.allArgs()).toContain([idAndRev]);
+      expect(model.set.calls.allArgs()).toContain([updates]);
+      expect(collection.update.calls.argsFor(0)).toEqual([id, updates]);
+      expect(model.get.calls.argsFor(0)).toEqual(['_id']);
+    });
+
     it('should update by id', function () {
       var id = createSpy('id'),
         updates = createSpy('updates'),
@@ -320,13 +334,11 @@ describe('Repository Methods', function () {
 
     it('should update by example', function () {
       var example = createSpy('example'),
-        updates = createSpy('updates'),
-        idAndRev = createSpy('idAndRev');
+        data = createSpy('data');
 
-      collection.updateByExample.and.returnValue(idAndRev);
-      instance.updateByExample(example, updates);
+      instance.updateByExample(example, data);
 
-      expect(collection.updateByExample.calls.argsFor(0)).toEqual([example, updates]);
+      expect(collection.updateByExample.calls.argsFor(0)).toEqual([example, data]);
     });
   });
 

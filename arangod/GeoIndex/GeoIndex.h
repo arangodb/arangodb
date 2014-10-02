@@ -34,7 +34,6 @@
 #define ARANGODB_GEO_INDEX_GEO_INDEX_H 1
 
 #include "Basics/Common.h"
-#include "IndexIterators/index-iterator.h"
 #include "IndexOperators/index-operator.h"
 
 /* first the things that a user might want to change */

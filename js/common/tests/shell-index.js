@@ -398,23 +398,6 @@ function getIndexesSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: get bitarray index
-////////////////////////////////////////////////////////////////////////////////
-
-    testGetBitarray: function () {
-      collection.ensureBitarray("value", [ "one", "two", "three" ]);
-      var res = collection.getIndexes();
-
-      assertEqual(2, res.length);
-      var idx = res[1];
-
-      assertEqual("bitarray", idx.type);
-      assertFalse(idx.unique);
-      assertFalse(idx["undefined"]);
-      assertEqual([ [ "value", [ "one", "two", "three" ] ] ], idx.fields);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test: get fulltext index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -674,45 +657,6 @@ function getIndexesEdgesSuite() {
       assertEqual("skiplist", idx.type);
       assertFalse(idx.unique);
       assertEqual([ "value" ], idx.fields);
-      assertTrue(idx.hasOwnProperty("id"));
-      assertEqual(collection.name(), idx.id.substr(0, collection.name().length));
-      assertNotEqual(collection.name() + "/0", idx.id);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: get bitarray index
-////////////////////////////////////////////////////////////////////////////////
-
-    testGetBitarray: function () {
-      collection.ensureBitarray("value", [ "one", "two", "three" ]);
-      var res = collection.getIndexes();
-
-      assertEqual(3, res.length);
-      var idx = res[2];
-
-      assertEqual("bitarray", idx.type);
-      assertFalse(idx.unique);
-      assertFalse(idx["undefined"]);
-      assertEqual([ [ "value", [ "one", "two", "three" ] ] ], idx.fields);
-      assertEqual(collection.name(), idx.id.substr(0, collection.name().length));
-      assertNotEqual(collection.name() + "/0", idx.id);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: get bitarray index
-////////////////////////////////////////////////////////////////////////////////
-
-    testGetUndefBitarray: function () {
-      collection.ensureUndefBitarray("value", [ "one", "two", "three" ]);
-      var res = collection.getIndexes();
-
-      assertEqual(3, res.length);
-      var idx = res[2];
-
-      assertEqual("bitarray", idx.type);
-      assertFalse(idx.unique);
-      assertTrue(idx["undefined"]);
-      assertEqual([ [ "value", [ "one", "two", "three" ] ] ], idx.fields);
       assertTrue(idx.hasOwnProperty("id"));
       assertEqual(collection.name(), idx.id.substr(0, collection.name().length));
       assertNotEqual(collection.name() + "/0", idx.id);

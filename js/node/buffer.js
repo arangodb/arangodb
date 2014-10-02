@@ -151,8 +151,6 @@ SlowBuffer.prototype.slice = function(start, end) {
 };
 
 
-var zeroBuffer = new SlowBuffer(0);
-
 // Buffer
 function Buffer(subject, encoding, offset) {
   if (!(this instanceof Buffer)) {
@@ -205,7 +203,7 @@ function Buffer(subject, encoding, offset) {
 
     } else {
       // Zero-length buffer
-      this.parent = zeroBuffer;
+      this.parent = new SlowBuffer(0);
       this.offset = 0;
     }
 

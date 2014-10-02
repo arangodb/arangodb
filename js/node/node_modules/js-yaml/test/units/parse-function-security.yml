@@ -1,0 +1,3 @@
+tests:
+  - !!js/function 'makeBadThing("BAD THING 1")'
+  - !!js/function 'function () { makeBadThing("BAD THING 2") }.call(this)'

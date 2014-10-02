@@ -34,7 +34,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/voc-types.h"
 
-struct TRI_json_s;
+struct TRI_json_t;
 
 namespace triagens {
   namespace arango {
@@ -88,7 +88,7 @@ namespace triagens {
 /// @brief extract the "_key" attribute from a JSON object
 ////////////////////////////////////////////////////////////////////////////////
 
-        static int getKey (struct TRI_json_s const*,
+        static int getKey (struct TRI_json_t const*,
                            TRI_voc_key_t*);
 
     };

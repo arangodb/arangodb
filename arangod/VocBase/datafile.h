@@ -31,7 +31,7 @@
 #define ARANGODB_VOC_BASE_DATAFILE_H 1
 
 #include "Basics/Common.h"
-#include "BasicsC/locks.h"
+#include "Basics/locks.h"
 #include "ShapedJson/shaped-json.h"
 
 #include "VocBase/vocbase.h"

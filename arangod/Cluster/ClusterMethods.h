@@ -44,7 +44,7 @@
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterComm.h"
 
-struct TRI_json_s;
+struct TRI_json_t;
 struct TRI_vector_pointer_s;
 
 namespace triagens {
@@ -70,8 +70,8 @@ namespace triagens {
 
     bool shardKeysChanged (std::string const& dbname,
                            std::string const& collname,
-                           struct TRI_json_s const* oldJson,
-                           struct TRI_json_s const* newJson,
+                           struct TRI_json_t const* oldJson,
+                           struct TRI_json_t const* newJson,
                            bool isPatch);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -79,7 +79,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     int usersOnCoordinator (std::string const& dbname,
-                            struct TRI_json_s*& result);
+                            struct TRI_json_t*& result);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns revision for a sharded collection

@@ -41,7 +41,7 @@ using namespace triagens::basics;
 ////////////////////////////////////////////////////////////////////////////////
 
 TriagensError::TriagensError (string const& type, string const& details, char const* file, int line)
-  : _type("unknown"),
+  : _type(type),
     _details(details),
     _file(file),
     _line(line) {
@@ -51,6 +51,13 @@ TriagensError::TriagensError (string const& type, string const& details, char co
   if (! details.empty()) {
     _message += " details = '" + _details + "'";
   }
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+#if HAVE_BACKTRACE
+  _getBacktrace(_message);
+#endif
+#endif
+
 }
 
 

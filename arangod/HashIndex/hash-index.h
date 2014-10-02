@@ -72,8 +72,6 @@ typedef struct TRI_hash_index_s {
 
   TRI_hash_array_t _hashArray;   // the hash array itself
   TRI_vector_t     _paths;       // a list of shape pid which identifies the fields of the index
-
-  size_t           _memoryUsed;  // memory used by keys & values
 }
 TRI_hash_index_t;
 

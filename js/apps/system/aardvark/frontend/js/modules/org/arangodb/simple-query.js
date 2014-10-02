@@ -153,9 +153,6 @@ SimpleQueryByExample.prototype.execute = function (batchSize) {
         case "skiplist":
           method = "by-example-skiplist";
           break;
-        case "bitarray":
-          method = "by-example-bitarray";
-          break;
       }
     }
 
@@ -224,9 +221,6 @@ SimpleQueryByCondition.prototype.execute = function (batchSize) {
       switch (this._type) {
         case "skiplist":
           method = "by-condition-skiplist";
-          break;
-        case "bitarray":
-          method = "by-condition-bitarray";
           break;
       }
     }

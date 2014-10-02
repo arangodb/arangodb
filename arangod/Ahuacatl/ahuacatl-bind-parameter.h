@@ -31,15 +31,15 @@
 #define ARANGODB_AHUACATL_AHUACATL__BIND__PARAMETER_H 1
 
 #include "Basics/Common.h"
-#include "BasicsC/tri-strings.h"
-#include "BasicsC/hashes.h"
-#include "BasicsC/vector.h"
-#include "BasicsC/associative.h"
+#include "Basics/tri-strings.h"
+#include "Basics/hashes.h"
+#include "Basics/vector.h"
+#include "Basics/associative.h"
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
 
 struct TRI_aql_context_s;
-struct TRI_json_s;
+struct TRI_json_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -51,7 +51,7 @@ struct TRI_json_s;
 
 typedef struct TRI_aql_bind_parameter_s {
   char* _name;
-  struct TRI_json_s* _value;
+  struct TRI_json_t* _value;
 }
 TRI_aql_bind_parameter_t;
 
@@ -84,7 +84,7 @@ void TRI_FreeBindParametersAql (struct TRI_aql_context_s* const);
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_AddParameterValuesAql (struct TRI_aql_context_s* const,
-                                const struct TRI_json_s* const);
+                                const struct TRI_json_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief validate bind parameters passed

@@ -29,7 +29,6 @@ var internal = require("internal");
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
-var getQueryExplanation = helper.getQueryExplanation;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -76,10 +75,6 @@ function ahuacatlSkiplistTestSuite () {
       var actual = getQueryResults(query); 
 
       assertEqual(expected, actual);
-      
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -92,10 +87,6 @@ function ahuacatlSkiplistTestSuite () {
       var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
-      
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -108,10 +99,6 @@ function ahuacatlSkiplistTestSuite () {
       var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
-      
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -124,10 +111,6 @@ function ahuacatlSkiplistTestSuite () {
       var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
-      
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -184,10 +167,6 @@ function ahuacatlSkiplistTestSuite () {
       var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
-      
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("index", explain[0].expression.extra.accessType);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -343,10 +322,6 @@ function ahuacatlSkiplistTestSuite () {
       var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
-      
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("index", explain[0].expression.extra.accessType);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -359,10 +334,6 @@ function ahuacatlSkiplistTestSuite () {
       var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
-      
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("index", explain[0].expression.extra.accessType);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -399,10 +370,6 @@ function ahuacatlSkiplistTestSuite () {
           var actual = getQueryResults(query, { "a": i, "b": j });
 
           assertEqual(expected, actual);
-      
-          var explain = getQueryExplanation(query, { "a": i, "b": j });
-          assertEqual("for", explain[0].type);
-          assertEqual("index", explain[0].expression.extra.accessType);
         }
       }
     },
@@ -1047,10 +1014,6 @@ function ahuacatlSkiplistTestSuite () {
       var actual = getQueryResults(query);
       
       assertEqual(expected, actual);
-
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1063,10 +1026,6 @@ function ahuacatlSkiplistTestSuite () {
       var actual = getQueryResults(query);
       
       assertEqual(expected, actual);
-        
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1085,30 +1044,18 @@ function ahuacatlSkiplistTestSuite () {
       var expected = [ [ 20, 1 ] ];
       
       assertEqual(expected, actual);
-        
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
       
       query = "FOR a IN " + skiplist.name() + " FILTER a.a == 20 SORT a.a, a.c RETURN [ a.a, a.c ]";
       actual = getQueryResults(query);
       expected = [ [ 20, 1 ], [ 20, 2 ] ];
       
       assertEqual(expected, actual);
-        
-      explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
       
       query = "FOR a IN " + skiplist.name() + " FILTER a.a >= 20 SORT a.a, a.c RETURN [ a.a, a.c ]";
       actual = getQueryResults(query);
       expected = [ [ 20, 1 ], [ 20, 2 ], [ 21, 1 ], [ 21, 2 ] ];
       
       assertEqual(expected, actual);
-        
-      explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
       
       query = "FOR a IN " + skiplist.name() + " FILTER a.a >= 21 && a.a <= 21 SORT a.a, a.c RETURN [ a.a, a.c ]";
       actual = getQueryResults(query);
@@ -1116,29 +1063,17 @@ function ahuacatlSkiplistTestSuite () {
       
       assertEqual(expected, actual);
       
-      explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
-      
       query = "FOR a IN " + skiplist.name() + " FILTER a.a >= 20 && a.a <= 21 && a.c <= 2 SORT a.a, a.c RETURN [ a.a, a.c ]";
       actual = getQueryResults(query);
       expected = [ [ 20, 1 ], [ 20, 2 ], [ 21, 1 ], [ 21, 2 ] ];
       
       assertEqual(expected, actual);
-        
-      explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
       
       query = "FOR a IN " + skiplist.name() + " FILTER a.a == 20 && a.c >= 1 SORT a.a, a.c RETURN [ a.a, a.c ]";
       actual = getQueryResults(query);
       expected = [ [ 20, 1 ], [ 20, 2 ] ];
       
       assertEqual(expected, actual);
-        
-      explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
     }
 
   };

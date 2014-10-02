@@ -32,11 +32,10 @@
 
 #include "Basics/Common.h"
 
-#include "BasicsC/structures.h"
+#include "Basics/structures.h"
 #include "Basics/StringBuffer.h"
 #include "ShapedJson/shaped-json.h"
 #include "ShapedJson/json-shaper.h"
-
 
 namespace triagens {
   namespace basics {

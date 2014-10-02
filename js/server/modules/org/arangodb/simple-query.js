@@ -230,15 +230,7 @@ function supportsQuery (idx, attributes) {
   var i, n;
   var fields;
 
-  if (idx.type === "bitarray") {
-    fields = [ ];
-    for (i = 0; i < idx.fields.length; ++i) {
-      fields.push(idx.fields[i][0]);
-    }
-  }
-  else {
-    fields = idx.fields;
-  }
+  fields = idx.fields;
 
   n = fields.length;
   for (i = 0; i < n; ++i) {
@@ -246,6 +238,78 @@ function supportsQuery (idx, attributes) {
     if (attributes.indexOf(field) === -1) {
       return false;
     }
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the type of a document attribute
+////////////////////////////////////////////////////////////////////////////////
+
+function docType (value) {
+  "use strict";
+
+  if (value !== undefined && value !== null) {
+    if (Array.isArray(value)) {
+      return 'array';
+    }
+
+    switch (typeof(value)) {
+      case 'boolean':
+        return 'boolean';
+      case 'number':
+        if (isNaN(value) || ! isFinite(value)) {
+          // not a number => undefined
+          return 'null';
+        }
+        return 'number';
+      case 'string':
+        return 'string';
+      case 'object':
+        return 'object';
+    }
+  }
+
+  return 'null';
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether or not the example is contained in the document
+////////////////////////////////////////////////////////////////////////////////
+
+function isContained (doc, example) {
+  "use strict";
+
+  var eType = docType(example);
+  var dType = docType(doc);
+  if (eType !== dType) {
+    return false;
+  }
+     
+  var i; 
+  if (eType === 'object') {
+    for (i in example) {
+      if (example.hasOwnProperty(i)) {
+        if (! doc.hasOwnProperty(i) ||
+            ! isContained(doc[i], example[i])) {
+          return false;
+        }
+      }
+    }
+  }
+  else if (eType === 'array') {
+    if (doc.length !== example.length) {
+      return false;
+    }
+    for (i = 0; i < doc.length; ++i) {
+      if (! isContained(doc[i], example[i])) {
+        return false;
+      }
+    }
+  }
+  else if (doc !== example) {
+    return false;
   }
 
   return true;
@@ -305,13 +369,8 @@ function byExample (data) {
 
       // we have used the primary index to look up the document
       // now we need to post-filter because non-indexed values might not have matched
-      for (k in example) {
-        if (example.hasOwnProperty(k)) {
-          if (doc[k] !== example[k]) {
-            doc = null;
-            break;
-          }
-        }
+      if (! isContained(doc, example)) {
+        doc = null;
       }
     }
     catch (e) {
@@ -369,7 +428,6 @@ function byExample (data) {
         fields.push([ k, [ normalized[k] ] ]);
       }
     }
-    checks.push({ type: "bitarray", fields: fields });
 
     for (k = 0; k < checks.length; ++k) {
       if (data._type !== undefined && data._type !== checks[k].type) {
@@ -391,8 +449,6 @@ function byExample (data) {
         return collection.BY_EXAMPLE_HASH(idx.id, normalized, skip, limit);
       case "skiplist":
         return collection.BY_EXAMPLE_SKIPLIST(idx.id, normalized, skip, limit);
-      case "bitarray":
-        return collection.BY_EXAMPLE_BITARRAY(idx.id, normalized, skip, limit);
     }
   }
 
@@ -442,9 +498,6 @@ SimpleQueryByExample.prototype.execute = function () {
             break;
           case "skiplist":
             method = "by-example-skiplist";
-            break;
-          case "bitarray":
-            method = "by-example-bitarray";
             break;
         }
       }
@@ -563,8 +616,6 @@ function byCondition (data) {
   switch (data._type) {
     case "skiplist":
       return collection.BY_CONDITION_SKIPLIST(index, condition, skip, limit);
-    case "bitarray":
-      return collection.BY_CONDITION_BITARRAY(index, condition, skip, limit);
   }
 
   // an index type is required, but no index will be used
@@ -605,9 +656,6 @@ SimpleQueryByCondition.prototype.execute = function () {
         switch (this._type) {
           case "skiplist":
             method = "by-condition-skiplist";
-            break;
-          case "bitarray":
-            method = "by-condition-bitarray";
             break;
         }
       }

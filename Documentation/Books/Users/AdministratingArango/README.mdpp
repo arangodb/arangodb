@@ -30,11 +30,12 @@ penalty as each data modification will trigger a sync I/O operation.
 There are global configuration values for durability, which can be adjusted by
 specifying the following configuration options:
 
-<!-- arangod/RestServer/ArangoServer.h -->
 @startDocuBlock databaseWaitForSync
 
 
-<!-- arangod/Wal/LogfileManager.h -->
+@startDocuBlock databaseForceSyncProperties
+
+
 @startDocuBlock WalLogfileSyncInterval
 
 
@@ -43,7 +44,7 @@ specifying the following configuration options:
 You can also configure the durability behavior on a per-collection basis.
 Use the ArangoDB shell to change these properties.
 
-<!-- arangod/V8Server/v8-vocbase.cpp -->
+
 @startDocuBlock collectionProperties
 
 

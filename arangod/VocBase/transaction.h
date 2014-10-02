@@ -32,10 +32,10 @@
 
 #include "Basics/Common.h"
 
-#include "BasicsC/associative.h"
-#include "BasicsC/hashes.h"
-#include "BasicsC/locks.h"
-#include "BasicsC/vector.h"
+#include "Basics/associative.h"
+#include "Basics/hashes.h"
+#include "Basics/locks.h"
+#include "Basics/vector.h"
 
 #include "VocBase/datafile.h"
 #include "VocBase/voc-types.h"
@@ -89,6 +89,7 @@ struct TRI_vocbase_col_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
+  TRI_TRANSACTION_NONE  = 0,
   TRI_TRANSACTION_READ  = 1,
   TRI_TRANSACTION_WRITE = 2
 }
@@ -168,7 +169,7 @@ typedef struct TRI_transaction_collection_s {
   struct TRI_barrier_s*                _barrier;
   std::vector<triagens::wal::DocumentOperation*>* _operations;
   TRI_voc_rid_t                        _originalRevision;  // collection revision at trx start
-  bool                                 _locked;            // collection lock flag
+  TRI_transaction_type_e               _lockType;          // collection lock type
   bool                                 _compactionLocked;  // was the compaction lock grabbed for the collection?
   bool                                 _waitForSync;       // whether or not the collection has waitForSync
 }
@@ -198,6 +199,28 @@ void TRI_FreeTransaction (TRI_transaction_t*);
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type of the transaction as a string
+////////////////////////////////////////////////////////////////////////////////
+
+inline char const* TRI_TransactionTypeGetStr (TRI_transaction_type_e t) {
+  switch (t) {
+    case TRI_TRANSACTION_READ:
+      return "read";
+    case TRI_TRANSACTION_WRITE:
+      return "write";
+    case TRI_TRANSACTION_NONE: {
+    }
+  }
+  return "";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the transaction type from a string
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_transaction_type_e TRI_GetTransactionTypeFromStr (char const*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the transaction id for usage in a marker
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -208,13 +231,6 @@ static inline TRI_voc_tid_t TRI_MarkerIdTransaction (TRI_transaction_t const* tr
 
   return trx->_id;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief increase the number of writes done for a collection
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_IncreaseWritesCollectionTransaction (TRI_transaction_collection_t*,
-                                              bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the collection from a transaction
@@ -267,9 +283,15 @@ int TRI_UnlockCollectionTransaction (TRI_transaction_collection_t*,
 /// @brief check whether a collection is locked in a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IsLockedCollectionTransaction (TRI_transaction_collection_t*,
+bool TRI_IsLockedCollectionTransaction (TRI_transaction_collection_t const*,
                                         TRI_transaction_type_e,
                                         int);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether a collection is locked in a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsLockedCollectionTransaction (TRI_transaction_collection_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief begin a transaction

@@ -36,7 +36,7 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_json_s;
+struct TRI_json_t;
 struct TRI_memory_zone_s;
 
 
@@ -157,7 +157,7 @@ namespace triagens {
 /// @brief JSONise all data
 ////////////////////////////////////////////////////////////////////////////////
 
-        static void getJson (struct TRI_memory_zone_s*, struct TRI_json_s*);
+        static void getJson (struct TRI_memory_zone_s*, struct TRI_json_t*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           public static variables

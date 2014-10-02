@@ -30,11 +30,11 @@
 #include "Rest/Version.h"
 
 #ifdef _WIN32
-#include "BasicsC/win-utils.h"
+#include "Basics/win-utils.h"
 #endif
 
-#include "BasicsC/conversions.h"
-#include "BasicsC/json.h"
+#include "Basics/conversions.h"
+#include "Basics/json.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 

@@ -60,7 +60,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "GeneralServer/EndpointServer.h"
 #include "GeneralServer/GeneralListenTask.h"
 #include "GeneralServer/GeneralServerJob.h"

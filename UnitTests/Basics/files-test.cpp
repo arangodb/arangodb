@@ -28,12 +28,11 @@
 #include <boost/test/unit_test.hpp>
 
 #include "Basics/StringBuffer.h"
-#include "BasicsC/files.h"
-#include "BasicsC/json.h"
-#include "BasicsC/random.h"
+#include "Basics/files.h"
+#include "Basics/json.h"
+#include "Basics/random.h"
 
 using namespace triagens::basics;
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down

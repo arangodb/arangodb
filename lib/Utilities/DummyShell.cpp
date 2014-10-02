@@ -29,8 +29,8 @@
 
 #include "DummyShell.h"
 
-#include "BasicsC/tri-strings.h"
-#include "BasicsC/files.h"
+#include "Basics/tri-strings.h"
+#include "Basics/files.h"
 
 using namespace std;
 using namespace triagens;

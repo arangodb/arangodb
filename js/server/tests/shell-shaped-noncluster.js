@@ -69,6 +69,44 @@ function DocumentShapedJsonSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check getting keys
+////////////////////////////////////////////////////////////////////////////////
+
+    testGet : function () {
+      for (var i = 0; i < 100; ++i) {
+        var doc = c.document("test" + i);
+
+        assertTrue(doc.hasOwnProperty("_id"));
+        assertTrue(doc.hasOwnProperty("_key"));
+        assertTrue(doc.hasOwnProperty("_rev"));
+        assertTrue(doc.hasOwnProperty("value"));
+        assertTrue(doc.hasOwnProperty("text"));
+        assertTrue(doc.hasOwnProperty("values"));
+        assertTrue(doc.hasOwnProperty("one"));
+
+        assertEqual(cn + "/test" + i, doc._id);
+        assertEqual("test" + i, doc._key);
+        assertEqual(i, doc.value);
+        assertEqual("Test" + i, doc.text);
+        assertEqual([ i ], doc.values);
+        assertEqual({ two: { three: [ 1 ] } }, doc.one);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check getting keys
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetKeys : function () {
+      for (var i = 0; i < 100; ++i) {
+        var doc = c.document("test" + i);
+
+        var keys = Object.keys(doc).sort();
+        assertEqual([ "_id", "_key", "_rev", "one", "text", "value", "values" ], keys);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief check updating of keys in shaped json
 ////////////////////////////////////////////////////////////////////////////////
 

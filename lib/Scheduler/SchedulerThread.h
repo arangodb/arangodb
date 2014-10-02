@@ -35,7 +35,7 @@
 
 #include "Basics/Thread.h"
 
-#include "BasicsC/locks.h"
+#include "Basics/locks.h"
 #include "Scheduler/Task.h"
 #include "Scheduler/TaskManager.h"
 

@@ -30,7 +30,7 @@
 
 #include "AsyncTask.h"
 
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Scheduler/Scheduler.h"
 
 using namespace triagens::rest;

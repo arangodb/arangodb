@@ -1,0 +1,59 @@
+#!/usr/bin/python
+
+import json
+import sys
+import yaml
+
+fn=''
+if len(sys.argv) > 1:
+    fn = sys.argv[1]
+if len(fn) > 0:
+    infile = open(fn, 'r')
+else:
+    infile = sys.stdin
+
+raw=infile.read()
+
+#print raw
+instruct = json.loads(raw)
+
+blacklist = ['typeID', 'vTypeID', 'varsUsedLater', 'varsValid']
+
+def Filter(instruct, layer):
+    
+    if type(instruct) == dict:
+        out = {}
+        #print "<- %s %d\n" % (instruct, layer)
+        for oneKey in sorted(instruct): #.keys(): 
+            if not oneKey in blacklist:
+                if type(instruct[oneKey]) == dict:
+                    out[oneKey] = Filter(instruct[oneKey], layer + 1)
+                elif type(instruct[oneKey]) == list:
+                    out[oneKey] = Filter(instruct[oneKey], layer + 1)
+                else:
+                    out[oneKey] = instruct[oneKey]
+            #else:
+                #print "BLACKLIST %d\n" % (layer)
+        #print "-> %s %d\n" % (out, layer)
+        return out
+    elif type(instruct) == list:
+        out = []
+        for item in instruct:
+            if type(item) == dict:
+                out.append(Filter(item, layer + 1))
+            elif type(item) == list:
+                out.append(Filter(item, layer + 1))
+            else:
+                out.append(item)
+        return out
+    else:
+        return instruct
+
+
+        
+
+filtered = Filter(instruct, 0)
+#print "---------"
+#print filtered
+# print json.dumps(instruct, indent=4, sort_keys=True)
+print yaml.safe_dump(filtered, default_flow_style=False)
