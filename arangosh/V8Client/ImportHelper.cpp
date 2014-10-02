@@ -379,7 +379,7 @@ namespace triagens {
           char const* first = _outputBuffer.c_str();
           char* pos = (char*) memrchr(first, '\n', _outputBuffer.length());
 
-          if (pos != 0) {
+          if (pos != nullptr) {
             size_t len = pos - first + 1;
             sendJsonBuffer(first, len, isArray);
             _outputBuffer.erase_front(len);
@@ -644,6 +644,7 @@ namespace triagens {
 
       map<string, string> headerFields;
       SimpleHttpResult* result;
+
       if (isArray) {
         result = _client->request(HttpRequest::HTTP_REQUEST_POST, "/_api/import?type=array&" + getCollectionUrlPart() + "&details=true", str, len, headerFields);
       }
