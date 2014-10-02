@@ -2040,6 +2040,7 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
   if (vocbase->_replicationApplier == nullptr) {
     TRI_DestroyInitialVocBase(vocbase);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
+    TRI_UnlockMutex(&server->_createLock);
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -2050,6 +2051,7 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
 
   // increase reference counter
   TRI_UseVocBase(vocbase);
+  vocbase->_state = (sig_atomic_t) TRI_VOCBASE_STATE_NORMAL;
 
   {
     DatabaseWriteLocker locker(&server->_databasesLock);
@@ -2057,8 +2059,6 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
   }
 
   TRI_UnlockMutex(&server->_createLock);
-
-  vocbase->_state = (sig_atomic_t) TRI_VOCBASE_STATE_NORMAL;
 
   *database = vocbase;
 

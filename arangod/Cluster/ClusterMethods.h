@@ -79,7 +79,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     int usersOnCoordinator (std::string const& dbname,
-                            struct TRI_json_t*& result);
+                            struct TRI_json_t*& result,
+                            double timeout);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns revision for a sharded collection

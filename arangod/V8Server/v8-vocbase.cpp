@@ -742,14 +742,14 @@ static v8::Handle<v8::Value> JS_parseDatetime (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool ReloadAuthCoordinator (TRI_vocbase_t* vocbase) {
-  TRI_json_t* json = 0;
+  TRI_json_t* json = nullptr;
   bool result;
 
   int res = usersOnCoordinator(string(vocbase->_name),
-                               json);
+                               json, 60.0);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    TRI_ASSERT(json != 0);
+    TRI_ASSERT(json != nullptr);
 
     result = TRI_PopulateAuthInfo(vocbase, json);
   }
@@ -757,7 +757,7 @@ static bool ReloadAuthCoordinator (TRI_vocbase_t* vocbase) {
     result = false;
   }
 
-  if (json != 0) {
+  if (json != nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   }
 

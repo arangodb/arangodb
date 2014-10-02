@@ -50,6 +50,8 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   HeartbeatThread
 // -----------------------------------------------------------------------------
+        
+volatile sig_atomic_t HeartbeatThread::HasRunOnce = 0;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -70,6 +72,7 @@ HeartbeatThread::HeartbeatThread (TRI_server_t* server,
     _applicationV8(applicationV8),
     _agency(),
     _condition(),
+    _refetchUsers(),
     _myId(ServerState::instance()->getId()),
     _interval(interval),
     _maxFailsBeforeWarning(maxFailsBeforeWarning),
@@ -77,7 +80,7 @@ HeartbeatThread::HeartbeatThread (TRI_server_t* server,
     _stop(0),
     _ready(0) {
 
-  TRI_ASSERT(_dispatcher != 0);
+  TRI_ASSERT(_dispatcher != nullptr);
   allowAsynchronousCancelation();
 }
 
@@ -194,42 +197,16 @@ void HeartbeatThread::run () {
               TRI_vocbase_t* vocbase = TRI_UseCoordinatorDatabaseServer(_server,
                                                     i->c_str());
 
-              if (vocbase != NULL) {
+              if (vocbase != nullptr) {
                 LOG_INFO("Reloading users for database %s.",vocbase->_name);
-                TRI_json_t* json = 0;
 
-                int res = usersOnCoordinator(string(vocbase->_name),
-                                             json);
-
-                if (res == TRI_ERROR_NO_ERROR) {
-                  // we were able to read from the _users collection
-                  TRI_ASSERT(TRI_IsListJson(json));
-
-                  if (json->_value._objects._length == 0) {
-                    // no users found, now insert initial default user
-                    TRI_InsertInitialAuthInfo(vocbase);
-                  }
-                  else {
-                    // users found in collection, insert them into cache
-                    TRI_PopulateAuthInfo(vocbase, json);
-                  }
-                }
-                else if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-                  // could not access _users collection, probably the cluster
-                  // was just created... insert initial default user
-                  TRI_InsertInitialAuthInfo(vocbase);
-                }
-                else if (res == TRI_ERROR_INTERNAL) {
+                if (! fetchUsers(vocbase)) {
                   // something is wrong... probably the database server
                   // with the _users collection is not yet available
                   TRI_InsertInitialAuthInfo(vocbase);
                   allOK = false;
                   // we will not set oldUserVersion such that we will try this
                   // very same exercise again in the next heartbeat
-                }
-
-                if (json != 0) {
-                  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
                 }
                 TRI_ReleaseVocBase(vocbase);
               }
@@ -370,7 +347,7 @@ uint64_t HeartbeatThread::getLastCommandIndex () {
 }
 
 // We need to sort the _system database to the beginning:
-static bool myDBnamesComparer(std::string const& a, std::string const& b) {
+static bool myDBnamesComparer (std::string const& a, std::string const& b) {
   if (a == "_system") {
     return true;
   }
@@ -389,6 +366,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
                                                    uint64_t& remotePlanVersion) {
   static const string prefix = "Plan/Databases";
 
+  bool fetchingUsersFailed = false;
   LOG_TRACE("found a plan update");
 
   // invalidate our local cache
@@ -439,7 +417,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
 
       TRI_vocbase_t* vocbase = TRI_UseCoordinatorDatabaseServer(_server, name.c_str());
 
-      if (vocbase == 0) {
+      if (vocbase == nullptr) {
         // database does not yet exist, create it now
 
         if (id == 0) {
@@ -453,50 +431,26 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
         // create a local database object...
         TRI_CreateCoordinatorDatabaseServer(_server, id, name.c_str(), &defaults, &vocbase);
 
-        if (vocbase != 0) {
-          // insert initial user(s) for system database
+        if (vocbase != nullptr) {
+          HasRunOnce = 1;
 
-          TRI_json_t* json = 0;
-          int res = usersOnCoordinator(string(vocbase->_name), json);
-
-          if (res == TRI_ERROR_NO_ERROR) {
-            // we were able to read from the _users collection
-            TRI_ASSERT(TRI_IsListJson(json));
-
-            if (json->_value._objects._length == 0) {
-              // no users found, now insert initial default user
-              TRI_InsertInitialAuthInfo(vocbase);
-            }
-            else {
-              // users found in collection, insert them into cache
-              TRI_PopulateAuthInfo(vocbase, json);
-            }
-          }
-          else if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-            // could not access _users collection, probably the cluster
-            // was just created... insert initial default user
-            TRI_InsertInitialAuthInfo(vocbase);
-          }
-          else if (res == TRI_ERROR_INTERNAL) {
-            // something is wrong... probably the database server with the
-            // _users collection is not yet available
-            // delete the database again (and try again next time)
+          // insert initial user(s) for database
+          if (! fetchUsers(vocbase)) {
             TRI_ReleaseVocBase(vocbase);
-            TRI_DropByIdCoordinatorDatabaseServer(_server, vocbase->_id, true);
-            if (json != 0) {
-              TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-            }
             return false;  // We give up, we will try again in the
                            // next heartbeat, because we did not
                            // touch remotePlanVersion
           }
-
-          if (json != 0) {
-            TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-          }
         }
       }
       else {
+        if (_refetchUsers.find(vocbase) != _refetchUsers.end()) {
+          // must re-fetch users for an existing database
+          if (! fetchUsers(vocbase)) {
+            fetchingUsersFailed = true;
+          }
+        }
+
         TRI_ReleaseVocBase(vocbase);
       }
 
@@ -505,7 +459,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
 
     TRI_voc_tick_t* localIds = TRI_GetIdsCoordinatorDatabaseServer(_server);
 
-    if (localIds != 0) {
+    if (localIds != nullptr) {
       TRI_voc_tick_t* p = localIds;
 
       while (*p != 0) {
@@ -524,6 +478,11 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
   else {
     return false;
   }
+
+  if (fetchingUsersFailed) {
+    return false;
+  }
+
 
   remotePlanVersion = currentPlanVersion;
 
@@ -550,7 +509,7 @@ bool HeartbeatThread::handlePlanChangeDBServer (uint64_t currentPlanVersion,
   // schedule a job for the change
   triagens::rest::Job* job = new ServerJob(this, _server, _applicationV8);
 
-  TRI_ASSERT(job != 0);
+  TRI_ASSERT(job != nullptr);
 
   if (_dispatcher->dispatcher()->addJob(job) == TRI_ERROR_NO_ERROR) {
     remotePlanVersion = currentPlanVersion;
@@ -619,6 +578,62 @@ bool HeartbeatThread::sendState () {
   }
 
   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fetch users for a database (run on coordinator only)
+////////////////////////////////////////////////////////////////////////////////
+
+bool HeartbeatThread::fetchUsers (TRI_vocbase_t* vocbase) {
+  bool result = false;
+  TRI_json_t* json = nullptr;
+  
+  LOG_TRACE("fetching users for database '%s'", vocbase->_name);  
+
+  int res = usersOnCoordinator(string(vocbase->_name), json, 10.0);
+  
+  if (res == TRI_ERROR_NO_ERROR) {
+    // we were able to read from the _users collection
+    TRI_ASSERT(TRI_IsListJson(json));
+
+    if (json->_value._objects._length == 0) {
+      // no users found, now insert initial default user
+      TRI_InsertInitialAuthInfo(vocbase);
+    }
+    else {
+      // users found in collection, insert them into cache
+      TRI_PopulateAuthInfo(vocbase, json);
+    }
+    
+    result = true;
+  }
+  else if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+    // could not access _users collection, probably the cluster
+    // was just created... insert initial default user
+    TRI_InsertInitialAuthInfo(vocbase);
+    result = true;
+  }
+  else if (res == TRI_ERROR_INTERNAL) {
+    // something is wrong... probably the database server with the
+    // _users collection is not yet available
+    // try again next time
+    result = false;
+  }
+
+  if (json != nullptr) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  }
+    
+  if (result) {
+    LOG_TRACE("fetching users for database '%s' successful", vocbase->_name);
+    _refetchUsers.erase(vocbase);
+  }
+  else {
+    LOG_TRACE("fetching users for database '%s' failed with error: %s", TRI_errno_string(res));
+    _refetchUsers.insert(vocbase);
+  }
+
+  return result;
 }
 
 // -----------------------------------------------------------------------------

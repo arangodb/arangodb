@@ -37,6 +37,7 @@
 #include "Cluster/AgencyComm.h"
 
 struct TRI_server_s;
+struct TRI_vocbase_s;
 
 namespace triagens {
   namespace rest {
@@ -130,6 +131,15 @@ namespace triagens {
           return _ready > 0;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the thread has run at least once.
+/// this is used on the coordinator only
+////////////////////////////////////////////////////////////////////////////////
+
+        static bool hasRunOnce () {
+          return (HasRunOnce == 1); 
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    Thread methods
 // -----------------------------------------------------------------------------
@@ -181,6 +191,12 @@ namespace triagens {
 
         bool sendState ();
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fetch users for a database (run on coordinator only)
+////////////////////////////////////////////////////////////////////////////////
+
+        bool fetchUsers (struct TRI_vocbase_s*);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -218,10 +234,17 @@ namespace triagens {
         triagens::basics::ConditionVariable _condition;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief users for these databases will be re-fetched the next time the
+/// heartbeat thread runs
+////////////////////////////////////////////////////////////////////////////////
+
+        std::unordered_set<struct TRI_vocbase_s*> _refetchUsers;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief this server's id
 ////////////////////////////////////////////////////////////////////////////////
 
-        const std::string _myId;
+        std::string const _myId;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief heartbeat interval
@@ -252,6 +275,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         volatile sig_atomic_t _ready;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the heartbeat thread has run at least once
+/// this is used on the coordinator only
+////////////////////////////////////////////////////////////////////////////////
+
+        static volatile sig_atomic_t HasRunOnce;
 
     };
 

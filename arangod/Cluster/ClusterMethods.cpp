@@ -188,7 +188,8 @@ bool shardKeysChanged (std::string const& dbname,
 ////////////////////////////////////////////////////////////////////////////////
 
 int usersOnCoordinator (std::string const& dbname,
-                        TRI_json_t*& result) {
+                        TRI_json_t*& result,
+                        double timeout) {
 
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
@@ -203,7 +204,7 @@ int usersOnCoordinator (std::string const& dbname,
 
   result = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
 
-  if (result == 0) {
+  if (result == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -236,7 +237,7 @@ int usersOnCoordinator (std::string const& dbname,
   int count;
   int nrok = 0;
   for (count = (int) shards.size(); count > 0; count--) {
-    res = cc->wait( "", coordTransactionID, 0, "", 0.0);
+    res = cc->wait("", coordTransactionID, 0, "", timeout);
     if (res->status == CL_COMM_RECEIVED) {
       if (res->answer_code == triagens::rest::HttpResponse::OK ||
           res->answer_code == triagens::rest::HttpResponse::CREATED) {
@@ -746,7 +747,7 @@ int deleteDocumentOnCoordinator (
   int count;
   int nrok = 0;
   for (count = (int) shards.size(); count > 0; count--) {
-    res = cc->wait( "", coordTransactionID, 0, "", 0.0);
+    res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res->status == CL_COMM_RECEIVED) {
       if (res->answer_code != triagens::rest::HttpResponse::NOT_FOUND ||
           (nrok == 0 && count == 1)) {

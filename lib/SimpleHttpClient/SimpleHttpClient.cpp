@@ -331,7 +331,6 @@ namespace triagens {
         _writeBuffer.appendText(ConnectionCloseHeader, strlen(ConnectionCloseHeader));
       }
       _writeBuffer.appendText("User-Agent: ArangoDB\r\n");
-      _writeBuffer.appendText("X-Arango-Version: 2.0\r\n");
       _writeBuffer.appendText("Accept-Encoding: deflate\r\n");
 
       // do basic authorization
