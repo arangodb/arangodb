@@ -150,8 +150,6 @@ ExecutionPlan* ExecutionPlan::clone (Query &onThatQuery) {
   return OtherPlan;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON, returns an AUTOFREE Json object
 ////////////////////////////////////////////////////////////////////////////////
@@ -177,9 +175,10 @@ triagens::basics::Json ExecutionPlan::toJson (Ast* ast,
 
     jsonCollectionList(json("name", Json(c.first))
                            ("type", Json(TRI_TransactionTypeGetStr(c.second->accessType))));
-
   }
+
   result.set("collections", jsonCollectionList);
+  result.set("variables", ast->variables()->toJson(TRI_UNKNOWN_MEM_ZONE));
   result.set("estimatedCost", triagens::basics::Json(_root->getCost()));
 
   return result;
