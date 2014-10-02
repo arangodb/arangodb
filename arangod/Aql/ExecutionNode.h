@@ -63,6 +63,7 @@ namespace triagens {
 /// @brief pairs, consisting of variable and sort direction
 /// (true = ascending | false = descending)
 ////////////////////////////////////////////////////////////////////////////////
+
     typedef std::vector<std::pair<Variable const*, bool>> SortElementVector;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -503,8 +504,10 @@ namespace triagens {
           RegisterId const registerId;
 
           VarInfo () = delete;
-          VarInfo (int depth, int registerId)
+          VarInfo (int depth, RegisterId registerId)
             : depth(depth), registerId(registerId) {
+    
+            TRI_ASSERT(registerId < MaxRegisterId);
           }
         };
 
@@ -707,7 +710,15 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::unordered_set<RegisterId> _regsToClear;
-
+   
+      public:
+       
+////////////////////////////////////////////////////////////////////////////////
+/// @brief maximum register id that can be assigned.
+/// this is used for assertions
+////////////////////////////////////////////////////////////////////////////////
+    
+        static RegisterId const MaxRegisterId;
     };
 
 // -----------------------------------------------------------------------------

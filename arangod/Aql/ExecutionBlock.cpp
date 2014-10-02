@@ -1497,6 +1497,7 @@ int EnumerateListBlock::initialize () {
   }
 
   _inVarRegId = (*it).second.registerId;
+  TRI_ASSERT(_inVarRegId < ExecutionNode::MaxRegisterId);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1940,6 +1941,7 @@ int FilterBlock::initialize () {
   auto it = en->getVarOverview()->varInfo.find(en->_inVariable->id);
   TRI_ASSERT(it != en->getVarOverview()->varInfo.end());
   _inReg = it->second.registerId;
+  TRI_ASSERT(_inReg < ExecutionNode::MaxRegisterId);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -3211,7 +3213,7 @@ int NoResultsBlock::getOrSkipSome (size_t,   // atLeast
 ////////////////////////////////////////////////////////////////////////////////
 
 GatherBlock::~GatherBlock () {
-  for (std::deque<AqlItemBlock*>& x: _gatherBlockBuffer) {
+  for (std::deque<AqlItemBlock*>& x : _gatherBlockBuffer) {
     for (AqlItemBlock* y: x) {
       delete y;
     }
@@ -3230,14 +3232,14 @@ int GatherBlock::initialize () {
     return res;
   }
 
-  if(!isSimple()){
+  if (! isSimple()) {
     _gatherBlockBuffer.reserve(_dependencies.size());
 
     auto en = static_cast<GatherNode const*>(getPlanNode());
 
     _sortRegisters.clear();
 
-    for( auto p: en->_elements){
+    for (auto p: en->_elements) {
       // We know that planRegisters has been run, so
       // getPlanNode()->_varOverview is set up
       auto it = en->getVarOverview()->varInfo.find(p.first->id);
@@ -3263,7 +3265,7 @@ int GatherBlock::shutdown () {
     }
   }
 
-  for (std::deque<AqlItemBlock*>& x: _gatherBlockBuffer) {
+  for (std::deque<AqlItemBlock*>& x : _gatherBlockBuffer) {
     for (AqlItemBlock* y: x) {
       delete y;
     }
@@ -3284,7 +3286,7 @@ int GatherBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
     return res;
   }
 
-  for (std::deque<AqlItemBlock*>& x: _gatherBlockBuffer) {
+  for (std::deque<AqlItemBlock*>& x : _gatherBlockBuffer) {
     for (AqlItemBlock* y: x) {
       delete y;
     }
@@ -3336,14 +3338,17 @@ bool GatherBlock::hasMore () {
   if (_done) {
     return false;
   }
+
   for (size_t i = 0; i < _gatherBlockBuffer.size(); i++){
     if (!_gatherBlockBuffer.at(i).empty()) {
       return true;
-    } else if (getBlock(i, DefaultBatchSize, DefaultBatchSize)) {
+    } 
+    else if (getBlock(i, DefaultBatchSize, DefaultBatchSize)) {
       _gatherBlockPos.at(i) = make_pair(i, 0);
       return true;
     }
   }
+
   _done = true;
   return false;
 }
@@ -3353,7 +3358,6 @@ bool GatherBlock::hasMore () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
-  
   if (_done) {
     return nullptr;
   }
@@ -3369,6 +3373,7 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
       _done = true;
       return nullptr;
     }
+
     return res;
   }
  
@@ -3382,7 +3387,8 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
       if (getBlock(i, atLeast, atMost)) {
         _gatherBlockPos.at(i) = make_pair(i, 0);           
       }
-    } else {
+    } 
+    else {
       index = i;
     }
     available += _gatherBlockBuffer.at(i).size() - _gatherBlockPos.at(i).second;
@@ -3455,7 +3461,7 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
       if (_gatherBlockBuffer.at(val.first).empty()) {
         getBlock(val.first, DefaultBatchSize, DefaultBatchSize);
       }
-      _gatherBlockPos.at(val.first) = make_pair(val.first,0);
+      _gatherBlockPos.at(val.first) = make_pair(val.first, 0);
     }
   }
 
@@ -3470,6 +3476,7 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
   if (_done) {
     return 0;
   }
+
   // the simple case . . .  
   if (isSimple()) {
     auto skipped = _dependencies.at(_atDep)->skipSome(atLeast, atMost);
@@ -3491,9 +3498,10 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
   for (size_t i = 0; i < _dependencies.size(); i++) {
     if (_gatherBlockBuffer.at(i).empty()) {
       if (getBlock(i, atLeast, atMost)) {
-        _gatherBlockPos.at(i) = make_pair(i,0);           
+        _gatherBlockPos.at(i) = make_pair(i, 0);           
       }
-    } else {
+    } 
+    else {
       index = i;
     }
     available += _gatherBlockBuffer.at(i).size() - _gatherBlockPos.at(i).second;
@@ -3551,6 +3559,7 @@ bool GatherBlock::getBlock (size_t i, size_t atLeast, size_t atMost) {
     }
     return true;
   }
+
   return false;
 }
 
@@ -3611,6 +3620,8 @@ int ScatterBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
     return res;
   }
 
+  _doneForClient.reserve(_nrClients);
+
   for (size_t i = 0; i < _nrClients; i++) {
     _posForClient.push_back(std::make_pair(0, 0));
     _doneForClient.push_back(false);
@@ -3624,7 +3635,6 @@ int ScatterBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ScatterBlock::hasMore () {
-  
   if (_done) {
     return false;
   }
@@ -3644,9 +3654,7 @@ bool ScatterBlock::hasMore () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int64_t ScatterBlock::remainingForShard (std::string const& shardId) {
-  
   size_t clientId = getClientId(shardId);
-
   if (_doneForClient.at(clientId)) {
     return 0;
   }
@@ -3674,7 +3682,7 @@ int64_t ScatterBlock::remainingForShard (std::string const& shardId) {
 
 bool ScatterBlock::hasMoreForShard (std::string const& shardId){
   size_t clientId = getClientId(shardId);
-  
+
   if (_doneForClient.at(clientId)) {
     return false;
   }
@@ -3684,7 +3692,7 @@ bool ScatterBlock::hasMoreForShard (std::string const& shardId){
   // _buffer.at(i) we are sending to <clientId>
 
   if (pos.first > _buffer.size()) {
-    if (!getBlock(DefaultBatchSize, DefaultBatchSize)) {
+    if (! getBlock(DefaultBatchSize, DefaultBatchSize)) {
       _doneForClient.at(clientId) = true;
       return false;
     }
@@ -3703,17 +3711,18 @@ int ScatterBlock::getOrSkipSomeForShard (size_t atLeast,
   TRI_ASSERT(0 < atLeast && atLeast <= atMost);
   TRI_ASSERT(result == nullptr && skipped == 0);
   
+
   size_t clientId = getClientId(shardId);
   
   if (_doneForClient.at(clientId)) {
     return TRI_ERROR_NO_ERROR;
   }
-  
+
   std::pair<size_t, size_t> pos = _posForClient.at(clientId); 
 
   // pull more blocks from dependency if necessary . . . 
-  if (pos.first > _buffer.size()) {
-    if (!getBlock(atLeast, atMost)) {
+  if (pos.first >= _buffer.size()) {
+    if (! getBlock(atLeast, atMost)) {
       _doneForClient.at(clientId) = true;
       return TRI_ERROR_NO_ERROR;
     }
@@ -3724,7 +3733,7 @@ int ScatterBlock::getOrSkipSomeForShard (size_t atLeast,
   
   skipped = (std::min)(available, atMost); //nr rows in outgoing block
   
-  if(!skipping){ 
+  if (! skipping){ 
     result = _buffer.at(pos.first)->slice(pos.second, pos.second + skipped);
   }
 
@@ -3754,6 +3763,7 @@ int ScatterBlock::getOrSkipSomeForShard (size_t atLeast,
 
     }
   }
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -3795,7 +3805,7 @@ size_t ScatterBlock::skipSomeForShard (size_t atLeast, size_t atMost, std::strin
 bool ScatterBlock::skipForShard (size_t number, std::string const& shardId) {
   size_t skipped = skipSomeForShard(number, number, shardId);
   size_t nr = skipped;
-  while ( nr != 0 && skipped < number ){
+  while (nr != 0 && skipped < number) {
     nr = skipSomeForShard(number - skipped, number - skipped, shardId);
     skipped += nr;
   }
@@ -3813,8 +3823,7 @@ bool ScatterBlock::skipForShard (size_t number, std::string const& shardId) {
 size_t ScatterBlock::getClientId (std::string const& shardId) {
   auto it = _shardIdMap.find(shardId);
   if (it == _shardIdMap.end()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
-        "AQL: unknown shard id");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "AQL: unknown shard id");
   }
   return ((*it).second);
 }

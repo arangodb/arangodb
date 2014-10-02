@@ -43,6 +43,13 @@ const static bool Optional = true;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief maximum register id that can be assigned.
+/// this is used for assertions
+////////////////////////////////////////////////////////////////////////////////
+    
+RegisterId const ExecutionNode::MaxRegisterId = 1000;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief type names
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -230,8 +237,9 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "one varInfoList item needs to be an object"); 
     }
     VariableId variableId = JsonHelper::checkAndGetNumericValue<size_t>      (jsonVarInfo.json(), "VariableId");
-    RegisterId registerId = JsonHelper::checkAndGetNumericValue<size_t>      (jsonVarInfo.json(), "RegisterId");
+    RegisterId registerId = JsonHelper::checkAndGetNumericValue<RegisterId>      (jsonVarInfo.json(), "RegisterId");
     unsigned int    depth = JsonHelper::checkAndGetNumericValue<unsigned int>(jsonVarInfo.json(), "depth");
+  
     _varOverview->varInfo.insert(make_pair(variableId, VarInfo(depth, registerId)));
   }
 
@@ -816,9 +824,6 @@ void ExecutionNode::VarOverview::after (ExecutionNode *en) {
 
   en->_depth = depth;
   en->_varOverview = *me;
-  std::cout << en->toJson(TRI_UNKNOWN_MEM_ZONE, false).toString() << "\n";////xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
-  std::cout <<   en->getTypeString() << "\n";
 
   // Now find out which registers ought to be erased after this node:
   if (en->getType() != ExecutionNode::RETURN) {
