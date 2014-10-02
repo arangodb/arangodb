@@ -841,6 +841,7 @@ int IndexRangeBlock::initialize () {
       inVarsCur.push_back(v);
       auto it = getPlanNode()->getVarOverview()->varInfo.find(v->id);
       TRI_ASSERT(it != getPlanNode()->getVarOverview()->varInfo.end());
+      TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
       inRegsCur.push_back(it->second.registerId);
     }
 
