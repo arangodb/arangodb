@@ -349,6 +349,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
             previous = clone;
             current = deps[0];
           }
+
+          // TODO: test if this is necessary or does harm
+          // newPlan->setVarUsageComputed();
       
           // we need to instanciate this engine in the registry
 
