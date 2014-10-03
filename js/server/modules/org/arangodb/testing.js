@@ -975,7 +975,7 @@ testFuncs.authentication_parameters = function (options) {
   var i;
   var expectAuthFullRC = [401, 401, 401, 401, 401, 401, 401];
   var all_ok = true;
-  results["auth_full"] = {};
+  results.auth_full = {};
   for (i = 0; i < urlsTodo.length; i++) {
     r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false,returnBodyOnError:true});
     if (r.code === expectAuthFullRC[i]) {
@@ -1001,7 +1001,7 @@ testFuncs.authentication_parameters = function (options) {
                    "authparams2");
   var expectAuthSystemRC = [401, 401, 401, 401, 401, 404, 404];
   all_ok = true;
-  results["auth_system"] = {};
+  results.auth_system = {};
   for (i = 0;i < urlsTodo.length;i++) {
     r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false,returnBodyOnError:true});
     if (r.code === expectAuthSystemRC[i]) {
@@ -1026,7 +1026,7 @@ testFuncs.authentication_parameters = function (options) {
                     "--server.authenticate-system-only", "true"],
                    "authparams3");
   var expectAuthNoneRC = [404, 404, 200, 301, 301, 404, 404];
-  results["auth_none"] = {};
+  results.auth_none = {};
   all_ok = true;
   for (i = 0;i < urlsTodo.length;i++) {
     r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false,returnBodyOnError:true});
@@ -1143,7 +1143,7 @@ function UnitTest (which, options) {
     printUsage();
     return;
   }
-  var jsonReply = options.jsonReply
+  var jsonReply = options.jsonReply;
   delete(options.jsonReply);
   var i;
   var ok;
