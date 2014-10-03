@@ -1982,6 +1982,7 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
   bool _gather;
   EnumerateCollectionNode* _enumColl;
   const Variable* _variable;
+  ExecutionNode* _lastNode;
   
   public: 
     RemoveToEnumCollFinder (ExecutionPlan* plan,
@@ -1992,7 +1993,8 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
         _scatter(false),
         _gather(false),
         _enumColl(nullptr),
-        _variable(nullptr) {
+        _variable(nullptr), 
+        _lastNode(nullptr){
     };
 
     ~RemoveToEnumCollFinder () {
@@ -2003,8 +2005,6 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
       switch (en->getType()) {
         case EN::REMOVE: {
           TRI_ASSERT(_remove == false);
-          _remove = en;
-          _toUnlink.insert(en);
             
           // find the variable we are removing . . .
           auto rn = static_cast<RemoveNode*>(en);
@@ -2014,62 +2014,97 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
           TRI_ASSERT(varsToRemove.size() == 1);
           _variable = varsToRemove[0];    // the variable we'll remove
           
-          auto _enumColl = static_cast<EnumerateCollectionNode*>(_plan->getVarSetBy(_variable->id));
+          //FIXME the following doesn
+          _enumColl =
+            static_cast<EnumerateCollectionNode*>(_plan->getVarSetBy(_variable->id));
           
           if (_enumColl == nullptr 
-              || _enumColl->getType() != triagens::aql::ExecutionNode::ENUMERATE_COLLECTION ) {
-         //     || _enumColl->collection()->cid() != rn->collection()->cid() ) {
+              || _enumColl->getType() !=
+              triagens::aql::ExecutionNode::ENUMERATE_COLLECTION ) {
+              //|| _enumColl->collection()->cid() != rn->collection()->cid() ) {
             // remove variable was not introduced by an enumerate collection or 
             // it was but the collections differ
+            std::cout << "ABORTED - REMOVE!\n";
             break; // abort . . . 
           }
+          _remove = true;
+          _lastNode = en;
           return false; // continue . . .
         }
         case EN::REMOTE: {
           _toUnlink.insert(en);
+          _lastNode = en;
           return false; // continue . . .
         }
         case EN::SCATTER: {
           if (_scatter) { // met more than one scatter node
-            break; // abort . . . 
+            std::cout << "ABORTED - SCATTER!\n";
+            break;        // abort . . . 
           }
-          _scatter = en;
+          _scatter = true;
           _toUnlink.insert(en);
+          _lastNode = en;
           return false; // continue . . .
         }
         case EN::GATHER: {
           if (_gather) { // met more than one gather node
-            break; // abort . . . 
+            std::cout << "ABORTED - GATHER!\n";
+            break;       // abort . . . 
           }
-          _gather = en;
+          _gather = true;
           _toUnlink.insert(en);
+          _lastNode = en;
           return false; // continue . . .
         }
         case EN::FILTER: { 
-          // check that we are filtering something with the variable we are to remove
-          auto fn = static_cast<FilterNode*>(en);
-          auto varsUsedHere = fn->getVariablesUsedHere();
-          
-          // filter nodes always have one input variable
-          TRI_ASSERT(varsUsedHere.size() == 1);
-       
-          TRI_ASSERT(_variable != nullptr);   
-          if (varsUsedHere[0]->id != _variable->id) {
-            break; // abort . . . FIXME is this the desired behaviour??
-          }
-          _toUnlink.insert(en); 
+          _lastNode = en;
           return false; // continue . . .
         }
-        
-        case EN::CALCULATION: {//Check this is the calculation node of one of the filter nodes!
-                              
+        case EN::CALCULATION: {
+          if (_lastNode == nullptr || _lastNode->getType() != EN::FILTER) { 
+                   // doesn't match the last filter node
+            std::cout << "ABORTED - CALC - 1A!\n";
+            std::cout << _lastNode->toJson(TRI_UNKNOWN_MEM_ZONE, false).toString();
+            break; // abort . . .
+          }
+          if (_variable == nullptr) { 
+            std::cout << "ABORTED - CALC - 1B!\n";
+            break;
+          }
+          auto cn = static_cast<CalculationNode*>(en);
+          auto fn = static_cast<FilterNode*>(_lastNode);
+          // FIXME should the following be an assertion? I.e. can it
+          // ever happen?
+          
+          // check these as a Calc-Filter pair
+          if (cn->getVariablesSetHere()[0]->id
+              != fn->getVariablesUsedHere()[0]->id) {
+            std::cout << "ABORTED - CALC - 2!\n";
+            break; // abort . . .
+          }
+
+          // check that we are filtering/calculating something with the variable
+          // we are to remove
+          auto varsUsedHere = cn->getVariablesUsedHere();
+         
+          if (varsUsedHere.size() != 1) {
+            break; //abort . . .
+          }
+          if (varsUsedHere[0]->id != _variable->id) {
+            std::cout << "ABORTED - CALC - 3!\n";
+            break; // abort . . . FIXME is this the desired behaviour??
+          }
+          _lastNode = en;
+          return false; // continue . . .
         }
         case EN::ENUMERATE_COLLECTION: {
           // check that we are enumerating the variable we are to remove
+          // and that we have already seen a remove node
+          TRI_ASSERT(_enumColl != nullptr);
           if (en->id() != _enumColl->id()) {
+            std::cout << "ABORTED - EnumColl!\n";
             break; // abort . . . FIXME is this the desired behaviour??
           }
-          _toUnlink.insert(en); 
           return true; // stop 
         }
         
@@ -2089,6 +2124,7 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
           // if we meet any of the above, then we abort . . .
         }
     }
+    std::cout << "ABORTED!\n";
     _toUnlink.clear();
     return true;
   }
