@@ -500,8 +500,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         struct VarInfo {
-          unsigned int const depth;
-          RegisterId const registerId;
+          unsigned int depth;
+          RegisterId registerId;
 
           VarInfo () = delete;
           VarInfo (int depth, RegisterId registerId)
