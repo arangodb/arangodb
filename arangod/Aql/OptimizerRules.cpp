@@ -1981,6 +1981,7 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
   bool _scatter;
   bool _gather;
   EnumerateCollectionNode* _enumColl;
+  ExecutionNode* _setter;
   const Variable* _variable;
   ExecutionNode* _lastNode;
   
@@ -1993,6 +1994,7 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
         _scatter(false),
         _gather(false),
         _enumColl(nullptr),
+        _setter(nullptr),
         _variable(nullptr), 
         _lastNode(nullptr){
     };
@@ -2012,21 +2014,48 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
 
           // remove nodes always have one input variable
           TRI_ASSERT(varsToRemove.size() == 1);
-          _variable = varsToRemove[0];    // the variable we'll remove
+          _setter = _plan->getVarSetBy(varsToRemove[0]->id);
+          TRI_ASSERT(_setter != nullptr);
+          auto enumColl = _setter;
+
+          if (_setter->getType() == EN::CALCULATION) {
+              std::cout << "SET BY CALCULATION NODE\n";
+              // this should be an attribute access for _key
+              auto cn = static_cast<CalculationNode*>(_setter);
+              if (!(cn->expression()->isAttributeAccess())) {
+                break; // abort . . .
+              }
+              // check the variable is the same as the remove variable
+              auto vars = cn->getVariablesSetHere();
+              if (vars.size() != 1 || vars[0]->id != varsToRemove[0]->id) {
+                break; // abort . . . 
+              }
+              // TODO check if we are accessing the _key attribute 
+              
+              // set the _variable to the variable in the expression of this
+              // node and also define _enumColl
+              varsToRemove = cn->getVariablesUsedHere();
+              TRI_ASSERT(varsToRemove.size() == 1);
+              enumColl = _plan->getVarSetBy(varsToRemove[0]->id);
+              TRI_ASSERT(_setter != nullptr);
+          } 
           
-          //FIXME the following doesn
-          _enumColl =
-            static_cast<EnumerateCollectionNode*>(_plan->getVarSetBy(_variable->id));
-          
-          if (_enumColl == nullptr 
-              || _enumColl->getType() !=
-              triagens::aql::ExecutionNode::ENUMERATE_COLLECTION ) {
-              //|| _enumColl->collection()->cid() != rn->collection()->cid() ) {
-            // remove variable was not introduced by an enumerate collection or 
-            // it was but the collections differ
-            std::cout << "ABORTED - REMOVE!\n";
-            break; // abort . . . 
+          if (enumColl->getType() != EN::ENUMERATE_COLLECTION) {
+            break; // abort . . .
           }
+
+          // FIXME the below if-statement currently causes an assertion
+          // failure check if remove variable was introduced by an enum coll
+          // over a different collection
+        
+          /* ec = static_cast<EnumerateCollectionNode*>(_setter);
+           * if (ec->collection()->cid() != rn->collection()->cid()) {
+           *   std::cout << "ABORTED - REMOVE!\n";
+           *   break; // abort . . . 
+           *   }
+           */
+          _variable = varsToRemove[0];    // the variable we'll remove
+          _enumColl = static_cast<EnumerateCollectionNode*>(enumColl);
           _remove = true;
           _lastNode = en;
           return false; // continue . . .
@@ -2061,15 +2090,16 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
           return false; // continue . . .
         }
         case EN::CALCULATION: {
-          if (_lastNode == nullptr || _lastNode->getType() != EN::FILTER) { 
-                   // doesn't match the last filter node
-            std::cout << "ABORTED - CALC - 1A!\n";
-            std::cout << _lastNode->toJson(TRI_UNKNOWN_MEM_ZONE, false).toString();
-            break; // abort . . .
+          TRI_ASSERT(_setter != nullptr);
+          if (_setter->getType() == EN::CALCULATION && _setter->id() == en->id()) {
+            _lastNode = en;
+            return false; // continue . . .
           }
-          if (_variable == nullptr) { 
-            std::cout << "ABORTED - CALC - 1B!\n";
-            break;
+          if (_lastNode == nullptr || _lastNode->getType() != EN::FILTER) { 
+            // doesn't match the last filter node
+            std::cout << "ABORTED - CALC - 1A!\n";
+            //std::cout << _lastNode->toJson(TRI_UNKNOWN_MEM_ZONE, false).toString();
+            break; // abort . . .
           }
           auto cn = static_cast<CalculationNode*>(en);
           auto fn = static_cast<FilterNode*>(_lastNode);
@@ -2105,9 +2135,8 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
             std::cout << "ABORTED - EnumColl!\n";
             break; // abort . . . FIXME is this the desired behaviour??
           }
-          return true; // stop 
+          return true; // reached the end!
         }
-        
         case EN::SINGLETON:
         case EN::ENUMERATE_LIST:
         case EN::SUBQUERY:        
