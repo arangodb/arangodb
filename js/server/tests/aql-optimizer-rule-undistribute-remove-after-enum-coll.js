@@ -85,8 +85,8 @@ function optimizerRuleTestSuite () {
 
     testThisRuleEnabled : function () {
       var queries = [ 
-        [ "FOR d IN " + cn1 + " FILTER d.Hallo < 5 REMOVE d " + cn1, 0],
-        [ "FOR d IN " + cn1 + " FILTER d.Hallo < 5 REMOVE d._key " + cn1, 1]
+        [ "FOR d IN " + cn1 + " FILTER d.Hallo < 5 REMOVE d in " + cn1, 0],
+        [ "FOR d IN " + cn1 + " FILTER d.Hallo < 5 REMOVE d._key in " + cn1, 1]
       ];
 
       var expectedRules = [ "distribute-in-cluster", 
@@ -147,19 +147,19 @@ function optimizerRuleTestSuite () {
                              "RemoteNode", 
                              "GatherNode"],
                             [ "SingletonNode", 
-                             "ScatterNode", 
-                             "RemoteNode", 
-                             "EnumerateCollectionNode", 
-                             "CalculationNode", 
-                             "FilterNode",
-                             "RemoteNode", 
-                             "GatherNode",
-                             "ScatterNode", 
-                             "RemoteNode", 
-                             "CalculationNode", 
-                             "RemoveNode", 
-                             "RemoteNode", 
-                             "GatherNode"]];
+                              "ScatterNode", 
+                              "RemoteNode", 
+                              "EnumerateCollectionNode", 
+                              "CalculationNode", 
+                              "FilterNode", 
+                              "CalculationNode", 
+                              "RemoteNode", 
+                              "GatherNode", 
+                              "ScatterNode", 
+                              "RemoteNode", 
+                              "RemoveNode", 
+                              "RemoteNode", 
+                              "GatherNode"] ];
 
       queries.forEach(function(query) {
         var result = AQL_EXPLAIN(query[0], { }, rulesNone);
