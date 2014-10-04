@@ -2003,7 +2003,6 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
     }
 
     bool before (ExecutionNode* en) {
-      std::cout << "before!\n";
       switch (en->getType()) {
         case EN::REMOVE: {
           TRI_ASSERT(_remove == false);
@@ -2019,25 +2018,29 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
           auto enumColl = _setter;
 
           if (_setter->getType() == EN::CALCULATION) {
-              std::cout << "SET BY CALCULATION NODE\n";
-              // this should be an attribute access for _key
-              auto cn = static_cast<CalculationNode*>(_setter);
-              if (!(cn->expression()->isAttributeAccess())) {
-                break; // abort . . .
-              }
-              // check the variable is the same as the remove variable
-              auto vars = cn->getVariablesSetHere();
-              if (vars.size() != 1 || vars[0]->id != varsToRemove[0]->id) {
-                break; // abort . . . 
-              }
-              // TODO check if we are accessing the _key attribute 
-              
-              // set the _variable to the variable in the expression of this
-              // node and also define _enumColl
-              varsToRemove = cn->getVariablesUsedHere();
-              TRI_ASSERT(varsToRemove.size() == 1);
-              enumColl = _plan->getVarSetBy(varsToRemove[0]->id);
-              TRI_ASSERT(_setter != nullptr);
+            // this should be an attribute access for _key
+            auto cn = static_cast<CalculationNode*>(_setter);
+            if (!(cn->expression()->isAttributeAccess())) {
+              break; // abort . . .
+            }
+            // check the variable is the same as the remove variable
+            auto vars = cn->getVariablesSetHere();
+            if (vars.size() != 1 || vars[0]->id != varsToRemove[0]->id) {
+              break; // abort . . . 
+            }
+            // TODO check if we are accessing the _key attribute, maybe this is
+            // not required:
+            // AQL_EXPLAIN("FOR d IN docs FILTER d.Hallo < 5 REMOVE d.blah in docs")
+            // returns a plan but:
+            // AQL_EXECUTE("FOR d IN docs FILTER d.Hallo < 5 REMOVE d.blah in docs")
+            // doesn't work (in the non-cluster, neither work in the cluster)
+            
+            // set the _variable to the variable in the expression of this
+            // node and also define _enumColl
+            varsToRemove = cn->getVariablesUsedHere();
+            TRI_ASSERT(varsToRemove.size() == 1);
+            enumColl = _plan->getVarSetBy(varsToRemove[0]->id);
+            TRI_ASSERT(_setter != nullptr);
           } 
           
           if (enumColl->getType() != EN::ENUMERATE_COLLECTION) {
@@ -2048,14 +2051,12 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
           // failure check if remove variable was introduced by an enum coll
           // over a different collection
         
-          /* ec = static_cast<EnumerateCollectionNode*>(_setter);
-           * if (ec->collection()->cid() != rn->collection()->cid()) {
-           *   std::cout << "ABORTED - REMOVE!\n";
-           *   break; // abort . . . 
-           *   }
-           */
-          _variable = varsToRemove[0];    // the variable we'll remove
           _enumColl = static_cast<EnumerateCollectionNode*>(enumColl);
+          /*if (_enumColl->collection()->cid() != rn->collection()->cid()) {
+            break; // abort . . . 
+          }*/
+           
+          _variable = varsToRemove[0];    // the variable we'll remove
           _remove = true;
           _lastNode = en;
           return false; // continue . . .
@@ -2067,7 +2068,6 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
         }
         case EN::SCATTER: {
           if (_scatter) { // met more than one scatter node
-            std::cout << "ABORTED - SCATTER!\n";
             break;        // abort . . . 
           }
           _scatter = true;
@@ -2077,7 +2077,6 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
         }
         case EN::GATHER: {
           if (_gather) { // met more than one gather node
-            std::cout << "ABORTED - GATHER!\n";
             break;       // abort . . . 
           }
           _gather = true;
@@ -2097,8 +2096,6 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
           }
           if (_lastNode == nullptr || _lastNode->getType() != EN::FILTER) { 
             // doesn't match the last filter node
-            std::cout << "ABORTED - CALC - 1A!\n";
-            //std::cout << _lastNode->toJson(TRI_UNKNOWN_MEM_ZONE, false).toString();
             break; // abort . . .
           }
           auto cn = static_cast<CalculationNode*>(en);
@@ -2109,7 +2106,6 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
           // check these as a Calc-Filter pair
           if (cn->getVariablesSetHere()[0]->id
               != fn->getVariablesUsedHere()[0]->id) {
-            std::cout << "ABORTED - CALC - 2!\n";
             break; // abort . . .
           }
 
@@ -2121,7 +2117,6 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
             break; //abort . . .
           }
           if (varsUsedHere[0]->id != _variable->id) {
-            std::cout << "ABORTED - CALC - 3!\n";
             break; // abort . . . FIXME is this the desired behaviour??
           }
           _lastNode = en;
@@ -2132,7 +2127,6 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
           // and that we have already seen a remove node
           TRI_ASSERT(_enumColl != nullptr);
           if (en->id() != _enumColl->id()) {
-            std::cout << "ABORTED - EnumColl!\n";
             break; // abort . . . FIXME is this the desired behaviour??
           }
           return true; // reached the end!
@@ -2153,7 +2147,6 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
           // if we meet any of the above, then we abort . . .
         }
     }
-    std::cout << "ABORTED!\n";
     _toUnlink.clear();
     return true;
   }
