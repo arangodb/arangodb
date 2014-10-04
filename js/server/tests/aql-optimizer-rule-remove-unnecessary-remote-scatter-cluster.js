@@ -29,7 +29,8 @@
 //var internal = require("internal");
 var db = require("org/arangodb").db;
 var jsunity = require("jsunity");
-//var helper = require("org/arangodb/aql-helper");
+var helper = require("org/arangodb/aql-helper");
+var getQueryResults = helper.getQueryResults2;
 //var cluster = require("org/arangodb/cluster");
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -39,13 +40,19 @@ var jsunity = require("jsunity");
 function optimizerRuleTestSuite () {
   var ruleName = "remove-unnecessary-remote-scatter";
   // various choices to control the optimizer: 
-  var paramNone     = { optimizer: { rules: [ "-all" ] } };
-  var paramEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
-  var paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
+  var rulesNone        = { optimizer: { rules: [ "-all" ] } };
+  var rulesAll         = { optimizer: { rules: [ "+all" ] } };
+  var thisRuleEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
+  var thisRuleDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
 
   var cn1 = "UnitTestsAqlOptimizerRuleRemoveUnnecessaryRemoteScatter1";
   var cn2 = "UnitTestsAqlOptimizerRuleRemoveUnnecessaryRemoteScatter2";
   var c1, c2;
+  
+  var explain = function (result) {
+    return helper.getCompactPlan(result).map(function(node) 
+        { return node.type; });
+  };
 
   return {
 
@@ -70,13 +77,15 @@ function optimizerRuleTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
+      db._drop(cn1);
+      db._drop(cn2);
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test that rule has no effect when explicitly disabled
+    /// @brief test that rule does not fire when all rules are disabled 
     ////////////////////////////////////////////////////////////////////////////////
 
-    testRuleDisabled : function () {
+    testRulesNone : function () {
       var queries = [ 
         "FOR d IN " + cn1 + " RETURN d",
         "LET A=1 LET B=2 FOR d IN " + cn1 + " RETURN d",
@@ -85,8 +94,53 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { }, paramNone);
-        assertEqual([ ], result.plan.rules, query);
+        var result = AQL_EXPLAIN(query, { }, rulesNone);
+        assertEqual([ "distribute-in-cluster" ], result.plan.rules, query);
+      });
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test that rule does not fire when it is disabled but no other rule is
+    ////////////////////////////////////////////////////////////////////////////////
+    
+    testThisRuleDisabled : function () {
+      var queries = [ 
+        "FOR d IN " + cn1 + " RETURN d",
+        "LET A=1 LET B=2 FOR d IN " + cn1 + " RETURN d",
+        "LET A=1 LET B=2 FOR d IN " + cn1 + " LIMIT 10 RETURN d",
+        "FOR e in " + cn1 + " FOR d IN " + cn1 + " LIMIT 10 RETURN d"
+      ];
+
+      queries.forEach(function(query) {
+        var result = AQL_EXPLAIN(query, { }, thisRuleDisabled);
+        assertTrue(result.plan.rules.indexOf(ruleName) === -1, query);
+      });
+    },
+
+    testThisRuleEnabled : function () {
+      var queries = [ 
+        [ "FOR d IN " + cn1 + " RETURN d", 0],
+        [ "LET A=1 LET B=2 FOR d IN " + cn1 + " RETURN d" , 1],
+        [ "LET A=1 LET B=2 FOR d IN " + cn1 + " LIMIT 10 RETURN d", 2],
+        [ "FOR e in " + cn1 + " FOR d IN " + cn1 + " LIMIT 10 RETURN d", 3]
+      ];
+
+      var expectedRules = [ "distribute-in-cluster", "remove-unnecessary-remote-scatter"];
+      var expectedNodes = [ 
+          ["SingletonNode", "EnumerateCollectionNode",
+           "RemoteNode", "GatherNode", "ReturnNode"],
+          ["SingletonNode", "EnumerateCollectionNode",
+           "RemoteNode", "GatherNode", "ReturnNode"],
+          ["SingletonNode", "EnumerateCollectionNode", "RemoteNode",
+           "GatherNode", "LimitNode", "ReturnNode" ],
+          ["SingletonNode", "EnumerateCollectionNode", "RemoteNode",
+           "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode",
+           "RemoteNode", "GatherNode", "LimitNode", "ReturnNode"] ];
+
+      queries.forEach(function(query) {
+        var result = AQL_EXPLAIN(query[0], { }, thisRuleEnabled);
+        assertEqual(expectedRules, result.plan.rules, query);
+        assertEqual(expectedNodes[query[1]], explain(result), query);
       });
     },
 
@@ -95,12 +149,15 @@ function optimizerRuleTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
 
     testRuleNoEffect : function () {
-      var queries = [ ]; // couldn't find any so far
+      var queries = [  "LIMIT 1 FOR d IN " + cn1 + " RETURN d",
+                       "LIMIT 1 FOR d IN " + cn2 + " RETURN d" ];
 
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { }, paramEnabled);
-        assertEqual([ ], result.plan.rules, query);
-        //result = AQL_EXPLAIN(query, { }, paramNone);
+        var result1 = AQL_EXPLAIN(query, { }, thisRuleEnabled);
+        var result2 = AQL_EXPLAIN(query, { }, rulesAll);
+
+        assertTrue(result1.plan.rules.indexOf(ruleName) === -1, query);
+        assertTrue(result2.plan.rules.indexOf(ruleName) === -1, query);
       });
     },
 
@@ -111,18 +168,18 @@ function optimizerRuleTestSuite () {
     testRuleHasEffect : function () {
       var queries = [ 
         "FOR d IN " + cn1 + " RETURN d",
-        "LET A=1 LET B=2 FOR d IN " + cn1 + " RETURN d",
-        "LET A=1 LET B=2 FOR d IN " + cn1 + " LIMIT 10 RETURN d",
-        "FOR e in " + cn1 + " FOR d IN " + cn1 + " LIMIT 10 RETURN d"
       ];
 
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { }, paramEnabled);
-        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
-        /*result = AQL_EXPLAIN(query, { }, paramNone);
-        var resultDisabled = AQL_EXECUTE(query, { }, paramDisabled).json;
-        var resultEnabled  = AQL_EXECUTE(query, { }, paramEnabled).json;
-        assertTrue(isEqual(resultDisabled, resultEnabled), query[0]);*/
+        var resultEnabled  = AQL_EXPLAIN(query, { }, thisRuleEnabled);
+        var resultDisabled = AQL_EXPLAIN(query, { }, thisRuleDisabled);
+        assertTrue(resultEnabled.plan.rules.indexOf(ruleName)  !== -1, query);
+        assertTrue(resultDisabled.plan.rules.indexOf(ruleName) === -1, query);
+        
+        // the test doesn't run with the below . . .
+        //resultDisabled = AQL_EXECUTE(query, { }, thisRuleDisabled).json;
+        //resultEnabled  = AQL_EXECUTE(query, { }, thisRuleEnabled).json;
+        //assertEqual(resultDisabled, resultEnabled, query);
       });
     },
   };
