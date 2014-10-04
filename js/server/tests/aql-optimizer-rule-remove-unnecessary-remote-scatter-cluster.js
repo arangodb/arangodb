@@ -168,6 +168,7 @@ function optimizerRuleTestSuite () {
     testRuleHasEffect : function () {
       var queries = [ 
         "FOR d IN " + cn1 + " RETURN d",
+        "FOR d IN " + cn2 + " RETURN d"
       ];
 
       queries.forEach(function(query) {
