@@ -26,12 +26,9 @@
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-//var internal = require("internal");
 var db = require("org/arangodb").db;
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
-var getQueryResults = helper.getQueryResults2;
-//var cluster = require("org/arangodb/cluster");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
