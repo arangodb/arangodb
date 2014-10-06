@@ -347,7 +347,7 @@ void ExecutionNode::CloneHelper (ExecutionNode *other,
     other->_varUsageValid = _varUsageValid;
 
     auto allVars = plan->getAst()->variables();
-
+    // Create new structures on the new AST...
     other->_varsUsedLater.reserve(_varsUsedLater.size());
     for (auto orgVar: _varsUsedLater) {
       other->_varsUsedLater.insert(allVars->getVariable(orgVar->id));
@@ -361,6 +361,12 @@ void ExecutionNode::CloneHelper (ExecutionNode *other,
       auto othervarOverview = std::shared_ptr<VarOverview>(_varOverview->clone(plan));
       other->_varOverview = othervarOverview;
     }
+  }
+  else {
+    // point to current AST -> don't do deep copies.
+    other->_varsUsedLater = _varsUsedLater;
+    other->_varsValid = _varsValid;
+    other->_varOverview = _varOverview;
   }
   if (withDependencies) {
     cloneDependencies(plan, other, withProperties);
@@ -700,15 +706,14 @@ void ExecutionNode::planRegisters (ExecutionNode* super) {
     v.reset(new VarOverview(*(super->_varOverview), super->_depth));
   }
   v->setSharedPtr(&v);
-//  if (!_varUsageValid) {
-    walk(v.get());
+
+  walk(v.get());
   // Now handle the subqueries:
-    for (auto s : v->subQueryNodes) {
-      auto sq = static_cast<SubqueryNode*>(s);
-      sq->getSubquery()->planRegisters(s);
-    }
-    v->reset();
-//  }
+  for (auto s : v->subQueryNodes) {
+    auto sq = static_cast<SubqueryNode*>(s);
+    sq->getSubquery()->planRegisters(s);
+  }
+  v->reset();
 
   // Just for debugging:
   /*
