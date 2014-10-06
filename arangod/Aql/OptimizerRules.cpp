@@ -2047,14 +2047,11 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
             break; // abort . . .
           }
 
-          // FIXME the below if-statement currently causes an assertion
-          // failure check if remove variable was introduced by an enum coll
-          // over a different collection
-        
           _enumColl = static_cast<EnumerateCollectionNode*>(enumColl);
-          /*if (_enumColl->collection()->cid() != rn->collection()->cid()) {
+
+          if (_enumColl->collection() != rn->collection()) {
             break; // abort . . . 
-          }*/
+          }
            
           _variable = varsToRemove[0];    // the variable we'll remove
           _remove = true;
