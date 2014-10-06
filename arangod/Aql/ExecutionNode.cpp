@@ -266,7 +266,10 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
     RegisterId oneRegToClear = JsonHelper::getNumericValue<size_t>(jsonRegsToClearList.at(i).json(), 0);
     _regsToClear.insert(oneRegToClear);
   }
-/*
+
+  auto allVars = plan->getAst()->variables();
+  Variable *oneVariable;
+
   auto jsonvarsUsedLater = json.get("varsUsedLater");
   if (! jsonvarsUsedLater.isList()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "varsUsedLater needs to be a json list"); 
@@ -276,8 +279,16 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
   _varsUsedLater.reserve(len);
   for (size_t i = 0; i < len; i++) {
     auto *oneVarUsedLater = new Variable(jsonvarsUsedLater.at(i));
-    _varsUsedLater.insert(oneVarUsedLater);
+    
+    oneVariable = allVars->getVariable(oneVarUsedLater->id);
+    if (oneVariable == nullptr) {
+      std::string errmsg = "varsUsedLater: ID not found in all-list: " + StringUtils::itoa(oneVarUsedLater->id);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg); 
+    }
+    _varsUsedLater.insert(oneVariable);
+    delete oneVarUsedLater;
   }
+
   auto jsonvarsValidList = json.get("varsValid");
   if (! jsonvarsValidList.isList()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "varsValid needs to be a json list"); 
@@ -287,10 +298,16 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
   _varsValid.reserve(len);
   for (size_t i = 0; i < len; i++) {
     auto oneVarValid = new Variable(jsonvarsValidList.at(i));
-    _varsValid.insert(oneVarValid);
+    oneVariable = allVars->getVariable(oneVarValid->id);
+    if (oneVariable == nullptr) {
+      std::string errmsg = "varsValid: ID not found in all-list: " + StringUtils::itoa(oneVarValid->id);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg); 
+    }
+    _varsValid.insert(oneVariable);
+    delete oneVarValid;
   }
 
-*/
+
 
   // TODO: decide whether it should be allowed to create an abstract ExecutionNode at all
 }
@@ -597,37 +614,32 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
       jsonNRRegsList(Json(static_cast<double>(oneRegisterID)));
     }
     json("nrRegs", jsonNRRegsList);
-
-    Json jsonRegsToClearList(Json::List, _regsToClear.size());
-    for (auto oneRegisterID : _regsToClear) {
-      jsonRegsToClearList(Json(static_cast<double>(oneRegisterID)));
-    }
-    json("regsToClear", jsonRegsToClearList);
-/*
-    Json jsonVarsUsedLaterList(Json::List, _varsUsedLater.size());
-    for (auto oneVarUsedLater: _varsUsedLater) {
-      jsonVarsUsedLaterList.add(oneVarUsedLater->toJson());
-    }
-
-    json("varsUsedLater", jsonVarsUsedLaterList);
-
-    Json jsonvarsValidList(Json::List, _varsValid.size());
-    for (auto oneVarUsedLater: _varsValid) {
-      jsonvarsValidList.add(oneVarUsedLater->toJson());
-    }
-
-    json("varsValid", jsonvarsValidList);
-*/
   }
   else {
     json("varInfoList", Json(Json::List));
     json("nrRegs", Json(Json::List));
-    json("regsToClear", Json(Json::List));
-/*
-    json("varsUsedLater", Json(Json::List));
-    json("varsValid", Json(Json::List));
-*/
   }
+
+  Json jsonRegsToClearList(Json::List, _regsToClear.size());
+  for (auto oneRegisterID : _regsToClear) {
+    jsonRegsToClearList(Json(static_cast<double>(oneRegisterID)));
+  }
+  json("regsToClear", jsonRegsToClearList);
+
+  Json jsonVarsUsedLaterList(Json::List, _varsUsedLater.size());
+  for (auto oneVarUsedLater: _varsUsedLater) {
+    jsonVarsUsedLaterList.add(oneVarUsedLater->toJson());
+  }
+
+  json("varsUsedLater", jsonVarsUsedLaterList);
+
+  Json jsonvarsValidList(Json::List, _varsValid.size());
+  for (auto oneVarUsedLater: _varsValid) {
+    jsonvarsValidList.add(oneVarUsedLater->toJson());
+  }
+
+  json("varsValid", jsonvarsValidList);
+
   return json;
 }
 
