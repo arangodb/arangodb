@@ -199,6 +199,8 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
     }
     case SCATTER: 
       return new ScatterNode(plan, oneNode);
+    case DISTRIBUTE: 
+      return new DistributeNode(plan, oneNode);
     case ILLEGAL: {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid node type");
     }
@@ -893,6 +895,7 @@ void ExecutionNode::VarOverview::after (ExecutionNode *en) {
     case ExecutionNode::FILTER:
     case ExecutionNode::LIMIT:
     case ExecutionNode::SCATTER: 
+    case ExecutionNode::DISTRIBUTE: 
     case ExecutionNode::GATHER: 
     case ExecutionNode::REMOTE: 
     case ExecutionNode::NORESULTS: {
@@ -2349,6 +2352,26 @@ void ScatterNode::toJsonHelper (triagens::basics::Json& nodes,
 
   // And add it:
   nodes(json);
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                         methods of DistributeNode
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief construct a distribute node from JSON
+////////////////////////////////////////////////////////////////////////////////
+
+DistributeNode::DistributeNode (ExecutionPlan* plan, 
+                                triagens::basics::Json const& base)
+  : ExecutionNode(plan, base),
+    _vocbase(plan->getAst()->query()->vocbase()),
+    _collection(plan->getAst()->query()->collections()->get(JsonHelper::checkAndGetStringValue(base.json(), "collection"))) {
+}
+
+void DistributeNode::toJsonHelper (triagens::basics::Json& nodes,
+                                TRI_memory_zone_t* zone,
+                                bool verbose) const {
 }
 
 // -----------------------------------------------------------------------------
