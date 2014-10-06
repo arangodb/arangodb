@@ -319,6 +319,7 @@ triagens::basics::Json ExecutionNode::toJson (TRI_memory_zone_t* zone,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execution Node clone utility to be called by derives
 ////////////////////////////////////////////////////////////////////////////////
+
 void ExecutionNode::CloneHelper (ExecutionNode *other,
                                  ExecutionPlan* plan,
                                  bool withDependencies,
@@ -990,11 +991,10 @@ ExecutionNode* EnumerateCollectionNode::clone (ExecutionPlan* plan,
   }
   auto c = new EnumerateCollectionNode(plan, _id, _vocbase, _collection, outVariable);
 
-  CloneHelper (c, plan, withDependencies, withProperties);
+  CloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the number of usable fields from the index (according to the
@@ -1153,7 +1153,7 @@ ExecutionNode* EnumerateListNode::clone (ExecutionPlan* plan,
 
   auto c = new EnumerateListNode(plan, _id, inVariable, outVariable);
 
-  CloneHelper (c, plan, withDependencies, withProperties);
+  CloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -1217,7 +1217,7 @@ ExecutionNode* IndexRangeNode::clone (ExecutionPlan* plan,
   auto c = new IndexRangeNode(plan, _id, _vocbase, _collection, 
                               outVariable, _index, ranges, _reverse);
 
-  CloneHelper (c, plan, withDependencies, withProperties);
+  CloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -1456,7 +1456,7 @@ ExecutionNode* CalculationNode::clone (ExecutionPlan* plan,
   auto c = new CalculationNode(plan, _id, _expression->clone(),
                                outVariable);
 
-  CloneHelper (c, plan, withDependencies, withProperties);
+  CloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -1501,7 +1501,7 @@ ExecutionNode* SubqueryNode::clone (ExecutionPlan* plan,
   auto c = new SubqueryNode(plan, _id, _subquery->clone(plan, true, withProperties),
                             outVariable);
 
-  CloneHelper (c, plan, withDependencies, withProperties);
+  CloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -1646,7 +1646,7 @@ ExecutionNode* FilterNode::clone (ExecutionPlan* plan,
   }
   auto c = new FilterNode(plan, _id, inVariable);
 
-  CloneHelper (c, plan, withDependencies, withProperties);
+  CloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -1846,7 +1846,7 @@ ExecutionNode* AggregateNode::clone (ExecutionPlan* plan,
 
   auto c = new AggregateNode(plan, _id, aggregateVariables, outVariable, _variableMap);
 
-  CloneHelper (c, plan, withDependencies, withProperties);
+  CloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -1941,7 +1941,7 @@ ExecutionNode* ReturnNode::clone (ExecutionPlan* plan,
 
   auto c = new ReturnNode(plan, _id, inVariable);
 
-  CloneHelper (c, plan, withDependencies, withProperties);
+  CloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -2025,13 +2025,15 @@ ExecutionNode* RemoveNode::clone (ExecutionPlan* plan,
   auto inVariable = _inVariable;
 
   if (withProperties) {
-    outVariable = plan->getAst()->variables()->createVariable(outVariable);
+    if (_outVariable != nullptr) {
+      outVariable = plan->getAst()->variables()->createVariable(outVariable);
+    }
     inVariable = plan->getAst()->variables()->createVariable(inVariable);
   }
 
   auto c = new RemoveNode(plan, _id, _vocbase, _collection, _options, inVariable, outVariable);
 
-  CloneHelper (c, plan, withDependencies, withProperties);
+  CloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -2085,14 +2087,16 @@ ExecutionNode* InsertNode::clone (ExecutionPlan* plan,
   auto inVariable = _inVariable;
 
   if (withProperties) {
-    outVariable = plan->getAst()->variables()->createVariable(outVariable);
+    if (_outVariable != nullptr) {
+      outVariable = plan->getAst()->variables()->createVariable(outVariable);
+    }
     inVariable = plan->getAst()->variables()->createVariable(inVariable);
   }
 
   auto c = new InsertNode(plan, _id, _vocbase, _collection,
                           _options, inVariable, outVariable);
 
-  CloneHelper (c, plan, withDependencies, withProperties);
+  CloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -2154,14 +2158,16 @@ ExecutionNode* UpdateNode::clone (ExecutionPlan* plan,
   auto inDocVariable = _inDocVariable;
 
   if (withProperties) {
-    outVariable = plan->getAst()->variables()->createVariable(outVariable);
+    if (_outVariable != nullptr) {
+      outVariable = plan->getAst()->variables()->createVariable(outVariable);
+    }
     inKeyVariable = plan->getAst()->variables()->createVariable(inKeyVariable);
     inDocVariable = plan->getAst()->variables()->createVariable(inDocVariable);
   }
 
   auto c = new UpdateNode(plan, _id, _vocbase, _collection, _options, inDocVariable, inKeyVariable, outVariable);
 
-  CloneHelper (c, plan, withDependencies, withProperties);
+  CloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
@@ -2223,7 +2229,9 @@ ExecutionNode* ReplaceNode::clone (ExecutionPlan* plan,
   auto inDocVariable = _inDocVariable;
 
   if (withProperties) {
-    outVariable = plan->getAst()->variables()->createVariable(outVariable);
+    if (_outVariable != nullptr) {
+      outVariable = plan->getAst()->variables()->createVariable(outVariable);
+    }
     inKeyVariable = plan->getAst()->variables()->createVariable(inKeyVariable);
     inDocVariable = plan->getAst()->variables()->createVariable(inDocVariable);
   }
@@ -2232,7 +2240,7 @@ ExecutionNode* ReplaceNode::clone (ExecutionPlan* plan,
                            _options, inDocVariable, inKeyVariable,
                            outVariable);
 
-  CloneHelper (c, plan, withDependencies, withProperties);
+  CloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
