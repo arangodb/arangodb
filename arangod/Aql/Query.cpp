@@ -630,6 +630,7 @@ QueryResult Query::explain () {
       for (auto it : plans) {
         TRI_ASSERT(it != nullptr);
 
+        it->findVarUsage();
         out.add(it->toJson(parser.ast(), TRI_UNKNOWN_MEM_ZONE, verbosePlans()));
       }
       
@@ -639,7 +640,7 @@ QueryResult Query::explain () {
       // Now plan and all derived plans belong to the optimizer
       plan = opt.stealBest(); // Now we own the best one again
       TRI_ASSERT(plan != nullptr);
-
+      plan->findVarUsage();
       result.json = plan->toJson(parser.ast(), TRI_UNKNOWN_MEM_ZONE, verbosePlans()).steal(); 
 
       delete plan;
