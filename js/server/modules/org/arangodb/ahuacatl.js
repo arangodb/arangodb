@@ -5556,8 +5556,6 @@ function GRAPH_TRAVERSAL (vertexCollection,
 /// `GRAPH_TRAVERSAL (graphName, startVertexExample, direction, options)`
 ///
 /// This function performs traversals on the given graph.
-/// For a more detailed documentation on the optional parameters see
-/// [Traversals](../Traversals/README.md).
 ///
 /// The complexity of this function strongly depends on the usage.
 ///
@@ -5567,8 +5565,31 @@ function GRAPH_TRAVERSAL (vertexCollection,
 /// vertices (see [example](#short_explanation_of_the_example_parameter)).
 /// * *direction*          : The direction of the edges as a string. Possible values
 /// are *outbound*, *inbound* and *any* (default).
-/// * *options* (optional) : Object containing optional options, see
-///   [Traversals](../Traversals/README.md):
+/// * *options*: Object containing optional options.
+///
+/// *Options*:
+///  
+/// * *strategy*: determines the visitation strategy. Possible values are 
+/// *depthfirst* and *breadthfirst*. Default is *breadthfirst*.
+/// * *order*: determines the visitation order. Possible values are 
+/// *preorder* and *postorder*.
+/// * *itemOrder*: determines the order in which connections returned by the 
+/// expander will be processed. Possible values are *forward* and *backward*.
+/// * *maxDepth*: if set to a value greater than *0*, this will limit the 
+/// traversal to this maximum depth. 
+/// * *minDepth*: if set to a value greater than *0*, all vertices found on 
+/// a level below the *minDepth* level will not be included in the result.
+/// * *maxIterations*: the maximum number of iterations that the traversal is 
+/// allowed to perform. It is sensible to set this number so unbounded traversals 
+/// will terminate at some point.
+/// * *uniqueness*: an object that defines how repeated visitations of vertices should 
+/// be handled. The *uniqueness* object can have a sub-attribute *vertices*, and a
+/// sub-attribute *edges*. Each sub-attribute can have one of the following values:
+///   * *"none"*: no uniqueness constraints
+///   * *"path"*: element is excluded if it is already contained in the current path.
+///    This setting may be sensible for graphs that contain cycles (e.g. A -> B -> C -> A).
+///   * *"global"*: element is excluded if it was already found/visited at any 
+///   point during the traversal.
 ///
 /// @EXAMPLES
 ///
@@ -5746,8 +5767,6 @@ function GENERAL_GRAPH_DISTANCE_TO (graphName,
 /// This function creates a tree format from the result for a better visualization of
 /// the path.
 /// This function performs traversals on the given graph.
-/// For a more detailed documentation on the optional parameters see
-/// [Traversals](../Traversals/README.md).
 ///
 /// The complexity of this function strongly depends on the usage.
 ///
@@ -5761,7 +5780,7 @@ function GENERAL_GRAPH_DISTANCE_TO (graphName,
 /// * *connectName*        : The result attribute which
 ///  contains the connection.
 /// * *options* (optional) : An object containing options, see
-///  [Traversals](../Traversals/README.md):
+///  [Graph Traversals](../AQL/GraphOperations.html#graph_traversal):
 ///
 /// @EXAMPLES
 ///
