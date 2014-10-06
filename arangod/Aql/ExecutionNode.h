@@ -573,6 +573,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         VarOverview const* getVarOverview () const {
+          TRI_ASSERT(_varOverview != nullptr);
           return _varOverview.get();
         }
 
