@@ -131,8 +131,7 @@ ExecutionPlan* ExecutionPlan::instanciateFromJson (Ast* ast,
 
   try {
     plan->_root = plan->fromJson(json);
-//    plan->_varUsageComputed = true;
-    plan->findVarUsage(); /// TODO
+    plan->_varUsageComputed = true;
     return plan;
   }
   catch (...) {
