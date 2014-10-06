@@ -100,7 +100,8 @@ namespace triagens {
           REPLACE                 = 16,
           UPDATE                  = 17,
           RETURN                  = 18,
-          NORESULTS               = 19
+          NORESULTS               = 19,
+          DISTRIBUTE              = 20
         };
 
 // -----------------------------------------------------------------------------
@@ -2966,6 +2967,107 @@ namespace triagens {
           return 1;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the database
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_vocbase_t* vocbase () const {
+          return _vocbase;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the collection
+////////////////////////////////////////////////////////////////////////////////
+
+        Collection const* collection () const {
+          return _collection;
+        }
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the underlying database
+////////////////////////////////////////////////////////////////////////////////
+                                 
+        TRI_vocbase_t* _vocbase;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the underlying collection
+////////////////////////////////////////////////////////////////////////////////
+
+        Collection const* _collection;
+
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              class DistributeNode
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class DistributeNode
+////////////////////////////////////////////////////////////////////////////////
+
+    class DistributeNode : public ExecutionNode {
+      
+      friend class ExecutionBlock;
+      friend class DistributeBlock;
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor with an id
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+ 
+        DistributeNode (ExecutionPlan* plan, 
+                        size_t id,
+                        TRI_vocbase_t* vocbase,
+                        Collection const* collection)
+          : ExecutionNode(plan, id),
+            _vocbase(vocbase),
+            _collection(collection) {
+        }
+
+        DistributeNode (ExecutionPlan*, 
+                        triagens::basics::Json const& base);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type of the node
+////////////////////////////////////////////////////////////////////////////////
+
+        NodeType getType () const override {
+          return DISTRIBUTE;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief export to JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void toJsonHelper (triagens::basics::Json&,
+                                   TRI_memory_zone_t*,
+                                   bool) const override;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone ExecutionNode recursively
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual ExecutionNode* clone (ExecutionPlan* plan,
+                                      bool withDependencies,
+                                      bool withProperties) const {
+          auto c = new DistributeNode(plan, _id, _vocbase, _collection);
+
+          CloneHelper (c, plan, withDependencies, withProperties);
+
+          return static_cast<ExecutionNode*>(c);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the cost of a Distribute node is 1
+////////////////////////////////////////////////////////////////////////////////
+        
+        double estimateCost () {
+          return 1;
+        }
+      
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the database
 ////////////////////////////////////////////////////////////////////////////////
