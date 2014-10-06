@@ -463,13 +463,13 @@ QueryResult Query::prepare (QueryRegistry* registry) {
 ////////////////////////////////////////////////////////////////////////////////
 
 QueryResult Query::execute (QueryRegistry* registry) {
-  QueryResult res = prepare(registry);
-  if (res.code != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
   // Now start the execution:
   try {
+    QueryResult res = prepare(registry);
+    if (res.code != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+
     triagens::basics::Json json(triagens::basics::Json::List, 16);
     triagens::basics::Json stats;
 
