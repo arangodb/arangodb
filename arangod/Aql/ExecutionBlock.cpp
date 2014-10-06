@@ -3655,10 +3655,10 @@ int ScatterBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 }
 
 int ScatterBlock::shutdown () {
-  
   if (!_initOrShutdown) {
     return TRI_ERROR_NO_ERROR;
   }
+  _initOrShutdown = false;
   return ExecutionBlock::shutdown();
 }
 
