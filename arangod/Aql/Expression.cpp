@@ -129,6 +129,7 @@ AqlValue Expression::execute (AQL_TRANSACTION_V8* trx,
     case V8: {
       TRI_ASSERT(_func != nullptr);
       try {
+        // Dump the expression in question  std::cout << triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, _node->toJson(TRI_UNKNOWN_MEM_ZONE, true)).toString()<< "\n";
         return _func->execute(trx, docColls, argv, startPos, vars, regs);
       }
       catch (triagens::arango::Exception& ex) {
