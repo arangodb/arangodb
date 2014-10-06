@@ -166,6 +166,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int registerTransactionWithContext () {
+          // modify the v8g globals to match the globals of the current isolate / thread
+          this->setV8Globals(static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData()));
           // This calls the method in the V8TransactionContext
           return this->registerTransaction(this->_trx);
         }

@@ -324,6 +324,13 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
           auto* newPlan = new ExecutionPlan(otherQuery->ast());
           otherQuery->setPlan(newPlan);
+    
+          // clone all variables 
+          for (auto it2 : query->ast()->variables()->variables(true)) {
+            auto var = query->ast()->variables()->getVariable(it2.first);
+            TRI_ASSERT(var != nullptr);
+            otherQuery->ast()->variables()->createVariable(var);
+          }
 
           ExecutionNode const* current = (*it).nodes.front();
           ExecutionNode* previous = nullptr;
@@ -364,8 +371,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           // create a remote id for the engine that we can pass to
           // the plans to be created for the DBServers
           id = TRI_NewTickServer();
-         
-std::cout << "REGISTERING QUERY ON COORDINATOR WITH ID: " << id << "\n";          
+
           queryRegistry->insert(otherQuery->vocbase(), id, otherQuery, 3600.0);
         }
       }
@@ -494,7 +500,7 @@ std::cout << "REGISTERING QUERY ON COORDINATOR WITH ID: " << id << "\n";
       result.set("options", options);
       std::unique_ptr<std::string> body(new std::string(triagens::basics::JsonHelper::toString(result.json())));
     
-      std::cout << "GENERATED A PLAN FOR THE REMOTE SERVERS: " << *(body.get()) << "\n";
+      // std::cout << "GENERATED A PLAN FOR THE REMOTE SERVERS: " << *(body.get()) << "\n";
     
       // TODO: pass connectedId to the shard so it can fetch data using the correct query id
       auto headers = new std::map<std::string, std::string>;
@@ -536,18 +542,18 @@ std::cout << "REGISTERING QUERY ON COORDINATOR WITH ID: " << id << "\n";
           triagens::basics::Json response(TRI_UNKNOWN_MEM_ZONE, triagens::basics::JsonHelper::fromString(res->answer->body()));
           std::string queryId = triagens::basics::JsonHelper::getStringValue(response.json(), "queryId", "");
 
-          std::cout << "DB SERVER ANSWERED WITHOUT ERROR: " << res->answer->body() << ", SHARDID:"  << res->shardID << ", QUERYID: " << queryId << "\n";
+          // std::cout << "DB SERVER ANSWERED WITHOUT ERROR: " << res->answer->body() << ", SHARDID:"  << res->shardID << ", QUERYID: " << queryId << "\n";
           queryIds.emplace(std::make_pair(res->shardID, queryId));
           
         }
         else {
-          std::cout << "DB SERVER ANSWERED WITH ERROR: " << res->answer->body() << "\n";
+          // std::cout << "DB SERVER ANSWERED WITH ERROR: " << res->answer->body() << "\n";
         }
       }
       delete res;
     }
 
-    std::cout << "GOT ALL RESPONSES FROM DB SERVERS: " << nrok << "\n";
+    // std::cout << "GOT ALL RESPONSES FROM DB SERVERS: " << nrok << "\n";
 
     if (nrok != (int) shardIds.size()) {
       // TODO: provide sensible error message with more details
@@ -701,8 +707,8 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
   try {
     if (! plan->varUsageComputed()) {
       plan->findVarUsage();
+      plan->planRegisters();
     }
-    plan->planRegisters();
 
     ExecutionBlock* root = nullptr;
 

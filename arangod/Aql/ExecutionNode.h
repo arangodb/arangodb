@@ -2955,7 +2955,7 @@ namespace triagens {
                                       bool withProperties) const {
           auto c = new ScatterNode(plan, _id, _vocbase, _collection);
 
-          CloneHelper (c, plan, withDependencies, withProperties);
+          CloneHelper(c, plan, withDependencies, withProperties);
 
           return static_cast<ExecutionNode*>(c);
         }
