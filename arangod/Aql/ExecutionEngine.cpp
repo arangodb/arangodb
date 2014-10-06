@@ -707,8 +707,8 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
   try {
     if (! plan->varUsageComputed()) {
       plan->findVarUsage();
-      plan->planRegisters();
     }
+    plan->planRegisters();
 
     ExecutionBlock* root = nullptr;
 
