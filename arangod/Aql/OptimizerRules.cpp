@@ -731,6 +731,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         }
         case EN::AGGREGATE:
         case EN::SCATTER:
+        case EN::DISTRIBUTE:
         case EN::GATHER:
         case EN::REMOTE:
           // in these cases we simply ignore the intermediate nodes, note
@@ -1408,6 +1409,7 @@ class SortToIndexNode : public WalkerWorker<ExecutionNode> {
     case EN::RETURN:
     case EN::NORESULTS:
     case EN::SCATTER:
+    case EN::DISTRIBUTE:
     case EN::GATHER:
     case EN::REMOTE:
     case EN::ILLEGAL:
@@ -1750,6 +1752,7 @@ int triagens::aql::distributeFilternCalcToCluster (Optimizer* opt,
         case EN::RETURN:
         case EN::NORESULTS:
         case EN::SCATTER:
+        case EN::DISTRIBUTE:
         case EN::GATHER:
         case EN::ILLEGAL:
           //do break
@@ -1836,6 +1839,7 @@ int triagens::aql::distributeSortToCluster (Optimizer* opt,
         case EN::RETURN:
         case EN::NORESULTS:
         case EN::SCATTER:
+        case EN::DISTRIBUTE:
         case EN::GATHER:
         case EN::ILLEGAL:
           //do break
@@ -1921,6 +1925,7 @@ class RemoteToSingletonViaCalcOnlyFinder: public WalkerWorker<ExecutionNode> {
         case EN::SUBQUERY:        
         case EN::FILTER: 
         case EN::AGGREGATE:
+        case EN::DISTRIBUTE:
         case EN::GATHER:
         case EN::INSERT:
         case EN::REMOVE:
@@ -2131,6 +2136,7 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
         case EN::SINGLETON:
         case EN::ENUMERATE_LIST:
         case EN::SUBQUERY:        
+        case EN::DISTRIBUTE:
         case EN::AGGREGATE:
         case EN::INSERT:
         case EN::REPLACE:

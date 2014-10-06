@@ -3863,6 +3863,25 @@ size_t ScatterBlock::getClientId (std::string const& shardId) {
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                             class DistributeBlock
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+DistributeBlock::DistributeBlock (ExecutionEngine* engine,
+                                  DistributeNode const* ep, 
+                                  std::vector<std::string> const& shardIds)
+  : ExecutionBlock(engine, ep), 
+    _nrClients(shardIds.size()){
+      _shardIdMap.reserve(_nrClients);
+      for (size_t i = 0; i < _nrClients; i++) {
+        _shardIdMap.emplace(std::make_pair(shardIds[i], i));
+      }
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 class RemoteBlock
 // -----------------------------------------------------------------------------
 
