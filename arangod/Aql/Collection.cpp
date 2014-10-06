@@ -49,8 +49,8 @@ using namespace triagens::aql;
 Collection::Collection (std::string const& name,
                         struct TRI_vocbase_s* vocbase,
                         TRI_transaction_type_e accessType) 
-  : name(name),
-    currentShard(),
+  : currentShard(),
+    name(name),
     vocbase(vocbase),
     collection(nullptr),
     accessType(accessType) {

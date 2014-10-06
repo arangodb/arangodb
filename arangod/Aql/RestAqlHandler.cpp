@@ -75,7 +75,8 @@ RestAqlHandler::RestAqlHandler (triagens::rest::HttpRequest* request,
     _applicationV8(pair->first),
     _context(static_cast<VocbaseContext*>(request->getRequestContext())),
     _vocbase(_context->getVocbase()),
-    _queryRegistry(pair->second) {
+    _queryRegistry(pair->second),
+    _qId(0) {
 
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_queryRegistry != nullptr);
@@ -143,20 +144,11 @@ void RestAqlHandler::createQueryFromJson () {
     ttl = StringUtils::doubleDecimal(ttlstring);
   }
 
-  QueryId qId;
-  // query id set from the outside?
-  char const* queryIdString = _request->value("queryId", found);
-  if (found) {
-    // query id set via URL parameter
-    qId = StringUtils::uint64(queryIdString);
-  }
-  else {
-    // query id not set, now generate a new one
-    qId = TRI_NewTickServer();
-  }
+  // query id not set, now generate a new one
+  _qId = TRI_NewTickServer();
   
   try {
-    _queryRegistry->insert(_vocbase, qId, query, ttl);
+    _queryRegistry->insert(_vocbase, _qId, query, ttl);
   }
   catch (...) {
     generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
@@ -168,8 +160,10 @@ void RestAqlHandler::createQueryFromJson () {
   _response = createResponse(triagens::rest::HttpResponse::ACCEPTED);
   _response->setContentType("application/json; charset=utf-8");
   Json answerBody(Json::Array, 2);
-  answerBody("queryId", Json(StringUtils::itoa(qId)))
+  answerBody("queryId", Json(StringUtils::itoa(_qId)))
             ("ttl",     Json(ttl));
+
+// std::cout << "RESPONSE BODY IS: " << answerBody.toString() << "\n";            
   _response->body().appendText(answerBody.toString());
 }
 
@@ -327,9 +321,10 @@ void RestAqlHandler::createQueryFromString () {
   if (found) {
     ttl = StringUtils::doubleDecimal(ttlstring);
   }
-  QueryId qId = TRI_NewTickServer();
+
+  _qId = TRI_NewTickServer();
   try {
-    _queryRegistry->insert(_vocbase, qId, query, ttl);
+    _queryRegistry->insert(_vocbase, _qId, query, ttl);
   }
   catch (...) {
     generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
@@ -341,7 +336,7 @@ void RestAqlHandler::createQueryFromString () {
   _response = createResponse(triagens::rest::HttpResponse::ACCEPTED);
   _response->setContentType("application/json; charset=utf-8");
   Json answerBody(Json::Array, 2);
-  answerBody("queryId", Json(StringUtils::itoa(qId)))
+  answerBody("queryId", Json(StringUtils::itoa(_qId)))
             ("ttl",     Json(ttl));
   _response->body().appendText(answerBody.toString());
 }
@@ -353,14 +348,13 @@ void RestAqlHandler::createQueryFromString () {
 
 void RestAqlHandler::deleteQuery (std::string const& idString) {
   // the DELETE verb
-
-  QueryId qId;
   Query* query = nullptr;
-  if (findQuery(idString, qId, query)) {
+  if (findQuery(idString, query)) {
     return;
   }
 
-  _queryRegistry->destroy(_vocbase, qId);
+  TRI_ASSERT(_qId > 0);
+  _queryRegistry->destroy(_vocbase, _qId);
 
   _response = createResponse(triagens::rest::HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
@@ -424,13 +418,12 @@ void RestAqlHandler::deleteQuery (std::string const& idString) {
 void RestAqlHandler::useQuery (std::string const& operation,
                                std::string const& idString) {
   // the PUT verb
-
-  QueryId qId;
   Query* query = nullptr;
-  if (findQuery(idString, qId, query)) {
+  if (findQuery(idString, query)) {
     return;
   }
 
+  TRI_ASSERT(_qId > 0);
   TRI_ASSERT(query->engine() != nullptr);
 
   Json queryJson;
@@ -438,31 +431,37 @@ void RestAqlHandler::useQuery (std::string const& operation,
     // /shutdown does not require a body
     queryJson = Json(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
     if (queryJson.isEmpty()) {
-      _queryRegistry->close(_vocbase, qId);
+      _queryRegistry->close(_vocbase, _qId);
       return;
     }
   }
 
   try {
     handleUseQuery(operation, query, queryJson);
-    _queryRegistry->close(_vocbase, qId);
+    try {
+      _queryRegistry->close(_vocbase, _qId);
+    }
+    catch (...) {
+      // ignore errors on unregistering
+      // an error might occur if "shutdown" is called
+    }
   }
   catch (triagens::arango::Exception const& ex) {
-    _queryRegistry->close(_vocbase, qId);
+    _queryRegistry->close(_vocbase, _qId);
     
     generateError(HttpResponse::SERVER_ERROR, 
                   ex.code(),
                   ex.message());
   }
   catch (std::exception const& ex) {
-    _queryRegistry->close(_vocbase, qId);
+    _queryRegistry->close(_vocbase, _qId);
     
     generateError(HttpResponse::SERVER_ERROR, 
                   TRI_ERROR_HTTP_SERVER_ERROR,
                   ex.what());
   }
   catch (...) {
-    _queryRegistry->close(_vocbase, qId);
+    _queryRegistry->close(_vocbase, _qId);
       
     generateError(HttpResponse::SERVER_ERROR, 
                   TRI_ERROR_HTTP_SERVER_ERROR,
@@ -496,11 +495,12 @@ void RestAqlHandler::getInfoQuery (std::string const& operation,
     shardId = shardIdCharP;
   }
 
-  QueryId qId;
   Query* query = nullptr;
-  if (findQuery(idString, qId, query)) {
+  if (findQuery(idString, query)) {
     return;
   }
+
+  TRI_ASSERT(_qId > 0);
 
   Json answerBody(Json::Array, 2);
 
@@ -544,34 +544,34 @@ void RestAqlHandler::getInfoQuery (std::string const& operation,
       answerBody("hasMore", Json(hasMore));
     }
     else {
-      _queryRegistry->close(_vocbase, qId);
+      _queryRegistry->close(_vocbase, _qId);
       generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       return;
     }
   }
   catch (triagens::arango::Exception const& ex) {
-    _queryRegistry->close(_vocbase, qId);
+    _queryRegistry->close(_vocbase, _qId);
     
     generateError(HttpResponse::SERVER_ERROR, 
                   ex.code(),
                   ex.message());
   }
   catch (std::exception const& ex) {
-    _queryRegistry->close(_vocbase, qId);
+    _queryRegistry->close(_vocbase, _qId);
     
     generateError(HttpResponse::SERVER_ERROR, 
                   TRI_ERROR_HTTP_SERVER_ERROR,
                   ex.what());
   }
   catch (...) {
-    _queryRegistry->close(_vocbase, qId);
+    _queryRegistry->close(_vocbase, _qId);
       
     generateError(HttpResponse::SERVER_ERROR, 
                   TRI_ERROR_HTTP_SERVER_ERROR,
                   "an unknown exception occurred");
   }
 
-  _queryRegistry->close(_vocbase, qId);
+  _queryRegistry->close(_vocbase, _qId);
 
   _response = createResponse(triagens::rest::HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
@@ -584,6 +584,8 @@ void RestAqlHandler::getInfoQuery (std::string const& operation,
 ////////////////////////////////////////////////////////////////////////////////
 
 triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
+//std::cout << "GOT INCOMING REQUEST: " << triagens::rest::HttpRequest::translateMethod(_request->requestType()) << ", " << triagens::arango::ServerState::instance()->getId() << ": " << _request->fullUrl() << ": " << _request->body() << "\n";
+
   auto context = _applicationV8->enterContext("STANDARD", _vocbase,
                                               false, false);
   if (nullptr == context) {
@@ -597,7 +599,6 @@ triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
     HttpRequest::HttpRequestType type = _request->requestType();
 
 
-std::cout << "GOT INCOMING REQUEST: " << _request->body() << "\n";
     // execute one of the CRUD methods
     switch (type) {
       case HttpRequest::HTTP_REQUEST_POST: {
@@ -662,7 +663,7 @@ std::cout << "GOT INCOMING REQUEST: " << _request->body() << "\n";
   }
 
   _applicationV8->exitContext(context);
-std::cout << "HANDLING DONE\n";
+// std::cout << "REQUEST HANDLING DONE: " << triagens::arango::ServerState::instance()->getId() << ": " << _request->fullUrl() << ": " << _response->responseCode() << ", CONTENT-LENGTH: " << _response->contentLength() << "\n";
 
   return status_t(HANDLER_DONE);
 }
@@ -672,24 +673,27 @@ std::cout << "HANDLING DONE\n";
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestAqlHandler::findQuery (std::string const& idString,
-                                QueryId& qId,
                                 Query*& query) {
-  qId = StringUtils::uint64(idString);
+  _qId = StringUtils::uint64(idString);
 
   query = nullptr;
 
   try {
-    query = _queryRegistry->open(_vocbase, qId);
+    query = _queryRegistry->open(_vocbase, _qId);
   }
   catch (...) {
+    _qId = 0;
     generateError(HttpResponse::FORBIDDEN, TRI_ERROR_QUERY_IN_USE);
     return true;
   }
 
   if (query == nullptr) {
+    _qId = 0;
     generateError(HttpResponse::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND);
     return true;
   }
+
+  TRI_ASSERT(_qId > 0);
 
   return false;
 }
@@ -737,7 +741,7 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
     else {
       try {
         answerBody = items->toJson(query->trx());
-std::cout << "ANSWERBODY: " << JsonHelper::toString(answerBody.json()) << "\n\n";        
+// std::cout << "ANSWERBODY: " << JsonHelper::toString(answerBody.json()) << "\n\n";        
       }
       catch (...) {
         generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
@@ -816,14 +820,14 @@ std::cout << "ANSWERBODY: " << JsonHelper::toString(answerBody.json()) << "\n\n"
                     "initializeCursor lead to an exception");
       return;
     }
-std::cout << "ABOUT TO ANSWER WITH CODE: " << res << "\n";
     answerBody("error", Json(res == TRI_ERROR_NO_ERROR))
               ("code", Json(static_cast<double>(res)));
   }
   else if (operation == "shutdown") {
-    int res;
+    int res = TRI_ERROR_INTERNAL;
     try {
       res = query->engine()->shutdown();
+      _queryRegistry->destroy(_vocbase, _qId);
     }
     catch (...) {
       generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,

@@ -131,8 +131,9 @@ Variable* VariableGenerator::createVariable (std::string const& name,
   return variable;
 }
 
-Variable* VariableGenerator::createVariable (Variable const* Original) {
-  auto variable = Original->clone();
+Variable* VariableGenerator::createVariable (Variable const* original) {
+  TRI_ASSERT(original != nullptr);
+  auto variable = original->clone();
   
   try {
     _variables.emplace(std::make_pair(variable->id, variable));

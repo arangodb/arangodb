@@ -181,8 +181,7 @@ namespace triagens {
     
     private:
 
-      std::string const       name;
-      std::string             currentShard;
+      std::string                  currentShard;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables
@@ -190,6 +189,7 @@ namespace triagens {
 
     public:
 
+      std::string const            name;
       TRI_vocbase_t*               vocbase;
       TRI_vocbase_col_t*           collection;
       TRI_transaction_type_e       accessType;
