@@ -224,8 +224,8 @@ TRI_v8_global_s::~TRI_v8_global_s () {
 /// @brief creates a global context
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_v8_global_t* TRI_CreateV8Globals(v8::Isolate* isolate) {
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
+TRI_v8_global_t* TRI_CreateV8Globals (v8::Isolate* isolate) {
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData());
 
   if (v8g == nullptr) {
     v8g = new TRI_v8_global_t(isolate);
