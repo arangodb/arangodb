@@ -84,7 +84,8 @@ namespace triagens {
 
         static ExecutionEngine* instanciateFromPlan (QueryRegistry*, 
                                                      Query*,
-                                                     ExecutionPlan*);
+                                                     ExecutionPlan*,
+                                                     bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the root block 
