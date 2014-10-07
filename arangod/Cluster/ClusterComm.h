@@ -112,7 +112,7 @@ namespace triagens {
       // Note that if status is CL_COMM_TIMEOUT, then the result
       // field is a response object that only says "timeout"
       httpclient::SimpleHttpResult* result;
-      // the field answer is != 0 iff status is == CL_COMM_RECEIVED
+      // the field answer is != 0 if status is == CL_COMM_RECEIVED
       // answer_code is valid iff answer is != 0
       rest::HttpRequest* answer;
       rest::HttpResponse::HttpResponseCode answer_code;
@@ -120,9 +120,11 @@ namespace triagens {
       ClusterCommResult ()
         : _deleteOnDestruction(true), dropped(false), result(0), answer(0),
           answer_code( rest::HttpResponse::OK ) {}
+
       void doNotDeleteOnDestruction () {
         _deleteOnDestruction = false;
       }
+
       virtual ~ClusterCommResult () {
         if (_deleteOnDestruction && 0 != result) {
           delete result;
