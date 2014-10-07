@@ -688,37 +688,9 @@ function rubyTests (options, ssl) {
         args = ["--color", "-I", fs.join("UnitTests","HttpInterface"),
                 "--format", "d", "--require", tmpname,
                 fs.join("UnitTests","HttpInterface",n)];
-        var pid = executeExternal("rspec", args);
-        var startTime = time();
-        var r = statusExternal(pid, true);
-        var deltaTime = time() - startTime;
-        if (r.status === "TERMINATED") {
-          print("Finished: " + r.status + " Signal: " + r.exit + " Time Elapsed: " + deltaTime);
-          if (r.exit === 0) {
-            result[n] =  { status: true, message: "", duration: deltaTime };
-          }
-          else {
-            result[n] = { status: false, message: " exit code was " + r.exit, duration: deltaTime};
-          }
-        }
-        else if (r.status === "ABORTED") {
-          print("Finished: " + r.status + " Signal: " + r.exit + " Time Elapsed: " + deltaTime);
-          result[n] = {
-            status: false,
-            message: "irregular termination: " + r.status + " Exit-Signal: " + r.signal,
-            duration: deltaTime
-          };
-        }
-        else {
-          print("Finished: " + r.status + " Exit Status: " + r.exit + " Time Elapsed: " + deltaTime);
-          result[n] = {
-            status: false,
-            message: "irregular termination: " + r.status + " Exit-code: " + r.exit,
-            duration: deltaTime
-          };
-        }
 
-        if (r.status === false && !options.force) {
+        result[n] = executeAndWait("rspec", args);
+        if (result[n].status === false && !options.force) {
           break;
         }
       }
