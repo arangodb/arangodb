@@ -339,7 +339,7 @@ triagens::basics::Json ExecutionNode::toJson (TRI_memory_zone_t* zone,
 /// @brief execution Node clone utility to be called by derives
 ////////////////////////////////////////////////////////////////////////////////
 
-void ExecutionNode::CloneHelper (ExecutionNode *other,
+void ExecutionNode::CloneHelper (ExecutionNode* other,
                                  ExecutionPlan* plan,
                                  bool withDependencies,
                                  bool withProperties) const {
@@ -349,20 +349,30 @@ void ExecutionNode::CloneHelper (ExecutionNode *other,
     other->_varUsageValid = _varUsageValid;
 
     auto allVars = plan->getAst()->variables();
-
+    // Create new structures on the new AST...
     other->_varsUsedLater.reserve(_varsUsedLater.size());
     for (auto orgVar: _varsUsedLater) {
-      other->_varsUsedLater.insert(allVars->getVariable(orgVar->id));
+      auto var = allVars->getVariable(orgVar->id);
+      TRI_ASSERT(var != nullptr);
+      other->_varsUsedLater.insert(var);
     }
 
     other->_varsValid.reserve(_varsValid.size());
     for (auto orgVar: _varsValid) {
-      other->_varsValid.insert(allVars->getVariable(orgVar->id));
+      auto var = allVars->getVariable(orgVar->id);
+      TRI_ASSERT(var != nullptr);
+      other->_varsValid.insert(var);
     }
     if (_varOverview.get() != nullptr) {
       auto othervarOverview = std::shared_ptr<VarOverview>(_varOverview->clone(plan));
       other->_varOverview = othervarOverview;
     }
+  }
+  else {
+    // point to current AST -> don't do deep copies.
+    other->_varsUsedLater = _varsUsedLater;
+    other->_varsValid = _varsValid;
+    other->_varOverview = _varOverview;
   }
   if (withDependencies) {
     cloneDependencies(plan, other, withProperties);
@@ -702,15 +712,14 @@ void ExecutionNode::planRegisters (ExecutionNode* super) {
     v.reset(new VarOverview(*(super->_varOverview), super->_depth));
   }
   v->setSharedPtr(&v);
-//  if (!_varUsageValid) {
-    walk(v.get());
+
+  walk(v.get());
   // Now handle the subqueries:
-    for (auto s : v->subQueryNodes) {
-      auto sq = static_cast<SubqueryNode*>(s);
-      sq->getSubquery()->planRegisters(s);
-    }
-    v->reset();
-//  }
+  for (auto s : v->subQueryNodes) {
+    auto sq = static_cast<SubqueryNode*>(s);
+    sq->getSubquery()->planRegisters(s);
+  }
+  v->reset();
 
   // Just for debugging:
   /*
@@ -1003,6 +1012,7 @@ ExecutionNode* EnumerateCollectionNode::clone (ExecutionPlan* plan,
   auto outVariable = _outVariable;
   if (withProperties) {
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
+    TRI_ASSERT(outVariable != nullptr);
   }
   auto c = new EnumerateCollectionNode(plan, _id, _vocbase, _collection, outVariable);
 

@@ -140,8 +140,8 @@ ExecutionPlan* ExecutionPlan::instanciateFromJson (Ast* ast,
   }
 }
 
-ExecutionPlan* ExecutionPlan::clone (Query &onThatQuery) {
-  ExecutionPlan *OtherPlan = new ExecutionPlan(onThatQuery.ast());
+ExecutionPlan* ExecutionPlan::clone (Query& onThatQuery) {
+  ExecutionPlan* OtherPlan = new ExecutionPlan(onThatQuery.ast());
 
   for (auto it: _ids) {
     OtherPlan->registerNode(it.second->clone(OtherPlan, false, true));
@@ -985,7 +985,6 @@ void ExecutionPlan::checkLinkage () {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
-
     std::unordered_set<Variable const*> _usedLater;
     std::unordered_set<Variable const*> _valid;
     std::unordered_map<VariableId, ExecutionNode*> _varSetBy;
