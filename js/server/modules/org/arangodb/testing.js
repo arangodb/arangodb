@@ -414,11 +414,21 @@ function executeAndWait (cmd, args) {
   }
   else if (res.status === "ABORTED") {
     print("Finished: " + res.status + " Signal: " + res.signal + " Time Elapsed: " + deltaTime);
-    return {
-      status: false,
-      message: "irregular termination: " + res.status + " Exit-Signal: " + res.signal,
-      duration: deltaTime
-    };
+    if (res.signal === 10) {
+      return {
+        status: true,
+        message: "irregular termination: " + res.status + " Exit-Signal: " + res.signal +
+          " Handling Signal 10 as non-error.",
+        duration: deltaTime
+      };
+    }
+    else {
+      return {
+        status: false,
+        message: "irregular termination: " + res.status + " Exit-Signal: " + res.signal,
+        duration: deltaTime
+      };
+    }
   }
   else {
     print("Finished: " + res.status + " Exitcode: " + res.exit + " Time Elapsed: " + deltaTime);
