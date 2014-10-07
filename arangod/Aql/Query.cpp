@@ -242,6 +242,13 @@ Query* Query::clone (QueryPart part) {
 
   if (_plan != nullptr) {
     theClone->_plan = _plan->clone(*theClone);
+   
+    // clone all variables 
+    for (auto it : _ast->variables()->variables(true)) {
+      auto var = _ast->variables()->getVariable(it.first);
+      TRI_ASSERT(var != nullptr);
+      theClone->ast()->variables()->createVariable(var);
+    }
   }
 
   theClone->_trx = _trx;
@@ -364,9 +371,6 @@ QueryResult Query::prepare (QueryRegistry* registry) {
 
     std::shared_ptr<AQL_TRANSACTION_V8> trx(new AQL_TRANSACTION_V8(_vocbase, _collections.collections()));
     _trx = trx;
-
-    // create the transaction object, but do not start it yet
-    //    _trx = new std::shared_ptr<AQL_TRANSACTION_V8>(_vocbase, _collections.collections());
 
     if (_queryString != nullptr) {
       // we have an AST
@@ -528,35 +532,6 @@ QueryResult Query::execute (QueryRegistry* registry) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief close transaction to suspend query
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-int Query::closeTransaction () {
-  TRI_ASSERT(_trx != nullptr);
-  _trx->commit();
-  delete _trx;
-  _trx = nullptr;
-  return TRI_ERROR_NO_ERROR;
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reopen transaction after suspend of query
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-int Query::reOpenTransaction () {
-  TRI_ASSERT(_trx == nullptr);
-  _trx = new AQL_TRANSACTION_V8(_vocbase, _collections.collections());
-  if (_trx == nullptr) {
-    return TRI_ERROR_INTERNAL;
-  }
-  return _trx->begin();
-}
-#endif 
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief parse an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -594,7 +569,7 @@ QueryResult Query::explain () {
     // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE)) << "\n";
 
     // create the transaction object, but do not start it yet
-    std::shared_ptr<AQL_TRANSACTION_V8>     trx(new AQL_TRANSACTION_V8(_vocbase, _collections.collections()));
+    std::shared_ptr<AQL_TRANSACTION_V8> trx(new AQL_TRANSACTION_V8(_vocbase, _collections.collections()));
     _trx = trx;
 
     // we have an AST
@@ -631,6 +606,7 @@ QueryResult Query::explain () {
         TRI_ASSERT(it != nullptr);
 
         it->findVarUsage();
+        it->planRegisters();
         out.add(it->toJson(parser.ast(), TRI_UNKNOWN_MEM_ZONE, verbosePlans()));
       }
       
@@ -641,6 +617,7 @@ QueryResult Query::explain () {
       plan = opt.stealBest(); // Now we own the best one again
       TRI_ASSERT(plan != nullptr);
       plan->findVarUsage();
+      plan->planRegisters();
       result.json = plan->toJson(parser.ast(), TRI_UNKNOWN_MEM_ZONE, verbosePlans()).steal(); 
 
       delete plan;

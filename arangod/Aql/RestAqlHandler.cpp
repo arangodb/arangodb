@@ -163,7 +163,7 @@ void RestAqlHandler::createQueryFromJson () {
   answerBody("queryId", Json(StringUtils::itoa(_qId)))
             ("ttl",     Json(ttl));
 
-// std::cout << "RESPONSE BODY IS: " << answerBody.toString() << "\n";            
+ //std::cout << "RESPONSE BODY IS: " << answerBody.toString() << "\n";            
   _response->body().appendText(answerBody.toString());
 }
 
@@ -588,6 +588,12 @@ triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
 
   auto context = _applicationV8->enterContext("STANDARD", _vocbase,
                                               false, false);
+  
+  // assert that everything is cleaned up when we enter the context
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(context->_isolate->GetData());
+  TRI_ASSERT(v8g->_currentTransaction == nullptr);
+  TRI_ASSERT(v8g->_resolver == nullptr);
+
   if (nullptr == context) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL,
                   "cannot enter V8 context");
@@ -661,9 +667,13 @@ triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
     }
 
   }
+  
+  // must have cleaned everything up
+  TRI_ASSERT(v8g->_currentTransaction == nullptr);
+  TRI_ASSERT(v8g->_resolver == nullptr);
 
   _applicationV8->exitContext(context);
-// std::cout << "REQUEST HANDLING DONE: " << triagens::arango::ServerState::instance()->getId() << ": " << _request->fullUrl() << ": " << _response->responseCode() << ", CONTENT-LENGTH: " << _response->contentLength() << "\n";
+//std::cout << "REQUEST HANDLING DONE: " << triagens::arango::ServerState::instance()->getId() << ": " << _request->fullUrl() << ": " << _response->responseCode() << ", CONTENT-LENGTH: " << _response->contentLength() << "\n";
 
   return status_t(HANDLER_DONE);
 }
@@ -741,7 +751,7 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
     else {
       try {
         answerBody = items->toJson(query->trx());
-// std::cout << "ANSWERBODY: " << JsonHelper::toString(answerBody.json()) << "\n\n";        
+//std::cout << "ANSWERBODY: " << JsonHelper::toString(answerBody.json()) << "\n\n";        
       }
       catch (...) {
         generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,

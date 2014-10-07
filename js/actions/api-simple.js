@@ -46,6 +46,8 @@ var API = "_api/simple/";
 ///
 /// @RESTHEADER{PUT /_api/simple/by-example-hash, Hash index}
 ///
+/// **Note**: This is only used internally and should not be accesible by the user.
+///
 /// @RESTBODYPARAM{query,string,required}
 /// Contains the query specification.
 ///
@@ -92,6 +94,8 @@ var API = "_api/simple/";
 /// using a specific skiplist index
 ///
 /// @RESTHEADER{PUT /_api/simple/by-example-skiplist, Skiplist index}
+///
+/// **Note**: This is only used internally and should not be accesible by the user.
 ///
 /// @RESTBODYPARAM{query,string,required}
 /// Contains the query specification.
