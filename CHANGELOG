@@ -1,3 +1,8 @@
+v2.2.x (????-??-??)
+-------------------
+
+* fixed issue #961: allow non-JSON values in undocument request bodies
+
 v2.2.4 (2014-10-01)
 -------------------
 
