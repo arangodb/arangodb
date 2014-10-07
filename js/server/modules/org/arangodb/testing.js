@@ -1127,7 +1127,7 @@ function unitTestPrettyPrintResults(r) {
               print("     " + test + ": Success");
             }
             else {
-              testSuiteFail += 1;
+              testSuiteFail++;
               if (r[testrun][test].hasOwnProperty('message')) {
                 print("     " + test + ": Fail - Whole testsuite failed!");
                 if (typeof r[testrun][test].message === "object" &&
@@ -1144,7 +1144,7 @@ function unitTestPrettyPrintResults(r) {
                   if ((r[testrun][test].hasOwnProperty(oneTest)) && 
                       (internalMembers.indexOf(oneTest) === -1) &&
                       (!r[testrun][test][oneTest].status)) {
-                    testFail =+ 1;
+                    testFail++;
                     print("          -> " + oneTest + " Failed; Verbose message:");
                     print(r[testrun][test][oneTest].message);
                   }
@@ -1156,7 +1156,7 @@ function unitTestPrettyPrintResults(r) {
       }
     }
     print("Overall state: " + ((r.all_ok === true) ? "Success" : "Fail"));
-    if ((r.all_ok !== true) {
+    if (r.all_ok !== true) {
       print("   Suites failed: " + testSuiteFail + " Tests Failed: " + testFail);
     }
   }
