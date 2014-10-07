@@ -1668,12 +1668,14 @@ int triagens::aql::distributeInCluster (Optimizer* opt,
       }
 
       // insert a scatter node
-      ExecutionNode* scatterNode = new ScatterNode(plan, plan->nextId(), vocbase, collection);
+      ExecutionNode* scatterNode = new ScatterNode(plan, plan->nextId(),
+          vocbase, collection);
       plan->registerNode(scatterNode);
       scatterNode->addDependency(deps[0]);
 
       // insert a remote node
-      ExecutionNode* remoteNode = new RemoteNode(plan, plan->nextId(), vocbase, collection, "", "", "");
+      ExecutionNode* remoteNode = new RemoteNode(plan, plan->nextId(), vocbase,
+          collection, "", "", "");
       plan->registerNode(remoteNode);
       remoteNode->addDependency(scatterNode);
         
@@ -1687,7 +1689,8 @@ int triagens::aql::distributeInCluster (Optimizer* opt,
       remoteNode->addDependency(node);
       
       // insert a gather node 
-      ExecutionNode* gatherNode = new GatherNode(plan, plan->nextId(), vocbase, collection);
+      ExecutionNode* gatherNode = new GatherNode(plan, plan->nextId(), vocbase,
+          collection);
       plan->registerNode(gatherNode);
       gatherNode->addDependency(remoteNode);
 

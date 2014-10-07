@@ -3743,7 +3743,6 @@ int ScatterBlock::getOrSkipSomeForShard (size_t atLeast,
 
   TRI_ASSERT(0 < atLeast && atLeast <= atMost);
   TRI_ASSERT(result == nullptr && skipped == 0);
-  
 
   size_t clientId = getClientId(shardId);
   
@@ -3872,13 +3871,153 @@ size_t ScatterBlock::getClientId (std::string const& shardId) {
 
 DistributeBlock::DistributeBlock (ExecutionEngine* engine,
                                   DistributeNode const* ep, 
-                                  std::vector<std::string> const& shardIds)
+                                  std::vector<std::string> const& shardIds, 
+                                  std::string const& collectionName)
   : ExecutionBlock(engine, ep), 
-    _nrClients(shardIds.size()){
+    _nrClients(shardIds.size()),
+    _collectionName(collectionName){
       _shardIdMap.reserve(_nrClients);
       for (size_t i = 0; i < _nrClients; i++) {
         _shardIdMap.emplace(std::make_pair(shardIds[i], i));
       }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getClientId: get the number <clientId> (used internally)
+/// corresponding to <shardId>
+////////////////////////////////////////////////////////////////////////////////
+
+size_t DistributeBlock::getClientId (std::string const& shardId) {
+  auto it = _shardIdMap.find(shardId);
+  if (it == _shardIdMap.end()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "AQL: unknown shard id");
+  }
+  return ((*it).second);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getBlockForShard: try to get atLeast pairs into
+/// _distBuffer.at(clientId);
+////////////////////////////////////////////////////////////////////////////////
+
+bool DistributeBlock::getBlockForShard(size_t atLeast, 
+                                       size_t atMost,
+                                       size_t clientId) {
+  return false;
+};
+
+/*  // from pos on check if we should send a block to the client
+  bool usesDefaultShardingAttributes = false; //FIXME is this right?  
+  ClusterInfo::getResponsibleShard (_cid,
+                                    TRI_json_t const* json,
+                                    true,
+                                    shardId,
+                                    usesDefaultShardingAttributes);
+
+
+      if (_buffer.empty()) {
+        if (skipping) {
+          _dependencies[0]->skip(atLeast - skipped);
+          skipped = atLeast;
+          freeCollector();
+          return TRI_ERROR_NO_ERROR;
+        }
+        else {
+          if (! getBlock(atLeast - skipped,
+                         (std::max)(atMost - skipped, DefaultBatchSize))) {
+            _done = true;
+            break; // must still put things in the result from the collector . . .
+          }
+          _pos = 0;
+        }
+      }
+  
+}*/
+
+int DistributeBlock::getOrSkipSomeForShard (size_t atLeast,
+                                            size_t atMost,
+                                            bool skipping,
+                                            AqlItemBlock*& result,
+                                            size_t& skipped,
+                                            std::string const& shardId) {
+  
+  TRI_ASSERT(0 < atLeast && atLeast <= atMost);
+  TRI_ASSERT(result == nullptr && skipped == 0);
+  
+  size_t clientId = getClientId(shardId);
+
+  if (_doneForClient.at(clientId)) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  std::deque<pair<size_t, size_t>>& buf = _distBuffer.at(clientId);
+
+  vector<AqlItemBlock*> collector;
+
+  auto freeCollector = [&collector]() {
+    for (auto x : collector) {
+      delete x;
+    }
+    collector.clear();
+  };
+
+  try {
+    if (buf.empty()) {
+      if (! getBlockForShard(atLeast, atMost, clientId)) {
+        _doneForClient.at(clientId) = true;
+        return TRI_ERROR_NO_ERROR;
+      }
+    }
+
+    skipped = std::min(buf.size(), atMost);
+
+    if (skipping) {
+      for (size_t i = 0; i < skipped; i++){
+        buf.pop_front();
+      }
+      freeCollector();
+      return TRI_ERROR_NO_ERROR; 
+    } 
+   
+    size_t i = 0;
+    while (i < skipped) {
+      std::vector<size_t> chosen;
+      size_t n = buf.front().first;
+      while (buf.front().first == n && i < skipped) { 
+        chosen.push_back(buf.front().second);
+        buf.pop_front();
+        i++;
+      }
+      unique_ptr<AqlItemBlock> more(_buffer.at(n)->slice(chosen, 0, chosen.size()));
+      collector.push_back(more.get());
+      more.release(); // do not delete it!
+    }
+  }
+  catch (...) {
+    freeCollector();
+    throw;
+  }
+
+  if (! skipping) {
+    if (collector.size() == 1) {
+      result = collector[0];
+      collector.clear();
+    }
+    else if (! collector.empty()) {
+      try {
+        result = AqlItemBlock::concatenate(collector);
+      }
+      catch (...) {
+        freeCollector();
+        throw;
+      }
+    }
+  }
+
+  freeCollector();
+
+  //TODO clean up the _buffer and _distBuffer
+  return TRI_ERROR_NO_ERROR;
 }
 
 // -----------------------------------------------------------------------------
