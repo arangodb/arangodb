@@ -372,6 +372,8 @@ QueryResult Query::prepare (QueryRegistry* registry) {
     std::shared_ptr<AQL_TRANSACTION_V8> trx(new AQL_TRANSACTION_V8(_vocbase, _collections.collections()));
     _trx = trx;
 
+    bool planRegisters;
+
     if (_queryString != nullptr) {
       // we have an AST
       int res = _trx->begin();
@@ -394,6 +396,7 @@ QueryResult Query::prepare (QueryRegistry* registry) {
       opt.createPlans(plan.release(), getRulesFromOptions());
       // Now plan and all derived plans belong to the optimizer
       plan.reset(opt.stealBest()); // Now we own the best one again
+      planRegisters = true;
     }
     else {
       enterState(PLAN_INSTANCIATION);
@@ -418,6 +421,9 @@ QueryResult Query::prepare (QueryRegistry* registry) {
         // oops
         return QueryResult(TRI_ERROR_INTERNAL);
       }
+
+      // std::cout << "GOT PLAN:\n" << plan.get()->toJson(parser->ast(), TRI_UNKNOWN_MEM_ZONE, true).toString() << "\n\n";
+      planRegisters = false;
     }
 
     TRI_ASSERT(plan.get() != nullptr);
@@ -435,7 +441,7 @@ QueryResult Query::prepare (QueryRegistry* registry) {
     TRI_ASSERT(otherJsonString == JsonString); */
 
     enterState(EXECUTION);
-    ExecutionEngine* engine(ExecutionEngine::instanciateFromPlan(registry, this, plan.get()));
+    ExecutionEngine* engine(ExecutionEngine::instanciateFromPlan(registry, this, plan.get(), planRegisters));
 
     // If all went well so far, then we keep _plan, _parser and _trx and
     // return:

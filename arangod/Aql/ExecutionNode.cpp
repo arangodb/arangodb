@@ -214,22 +214,24 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
 
 ExecutionNode::ExecutionNode (ExecutionPlan* plan,
                               triagens::basics::Json const& json) 
-  :
-    _id(JsonHelper::checkAndGetNumericValue<size_t>(json.json(), "id")),
+  : _id(JsonHelper::checkAndGetNumericValue<size_t>(json.json(), "id")),
     _estimatedCost(0.0), 
     _estimatedCostSet(false),
     _varUsageValid(true),
     _plan(plan),
     _depth(JsonHelper::checkAndGetNumericValue<size_t>(json.json(), "depth")) {
 
+  TRI_ASSERT(_varOverview.get() == nullptr); 
+  _varOverview.reset(new VarOverview());
+  _varOverview->clear();
+  _varOverview->depth = _depth;
+  _varOverview->totalNrRegs = JsonHelper::checkAndGetNumericValue<size_t>(json.json(), "totalNrRegs"); 
+
   auto jsonVarInfoList = json.get("varInfoList");
   if (! jsonVarInfoList.isList()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "varInfoList needs to be a json list"); 
   }
  
-  TRI_ASSERT(_varOverview.get() == nullptr); 
-  _varOverview.reset(new VarOverview());
-
   size_t len = jsonVarInfoList.size();
   _varOverview->varInfo.reserve(len);
 
@@ -242,7 +244,7 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
     RegisterId registerId = JsonHelper::checkAndGetNumericValue<RegisterId>      (jsonVarInfo.json(), "RegisterId");
     unsigned int    depth = JsonHelper::checkAndGetNumericValue<unsigned int>(jsonVarInfo.json(), "depth");
   
-    _varOverview->varInfo.insert(make_pair(variableId, VarInfo(depth, registerId)));
+    _varOverview->varInfo.emplace(make_pair(variableId, VarInfo(depth, registerId)));
   }
 
   auto jsonNrRegsList = json.get("nrRegs");
@@ -250,11 +252,23 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "nrRegs needs to be a json list"); 
   }
 
-  _varOverview->nrRegs.reserve(len);
   len = jsonNrRegsList.size();
+  _varOverview->nrRegs.reserve(len);
   for (size_t i = 0; i < len; i++) {
-    RegisterId oneReg = JsonHelper::getNumericValue<size_t>(jsonNrRegsList.at(i).json(), 0);
+    RegisterId oneReg = JsonHelper::getNumericValue<RegisterId>(jsonNrRegsList.at(i).json(), 0);
     _varOverview->nrRegs.push_back(oneReg);
+  }
+  
+  auto jsonNrRegsHereList = json.get("nrRegsHere");
+  if (! jsonNrRegsHereList.isList()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "nrRegsHere needs to be a json list"); 
+  }
+
+  len = jsonNrRegsHereList.size();
+  _varOverview->nrRegsHere.reserve(len);
+  for (size_t i = 0; i < len; i++) {
+    RegisterId oneReg = JsonHelper::getNumericValue<RegisterId>(jsonNrRegsHereList.at(i).json(), 0);
+    _varOverview->nrRegsHere.push_back(oneReg);
   }
 
   auto jsonRegsToClearList = json.get("regsToClear");
@@ -265,12 +279,11 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
   len = jsonRegsToClearList.size();
   _regsToClear.reserve(len);
   for (size_t i = 0; i < len; i++) {
-    RegisterId oneRegToClear = JsonHelper::getNumericValue<size_t>(jsonRegsToClearList.at(i).json(), 0);
+    RegisterId oneRegToClear = JsonHelper::getNumericValue<RegisterId>(jsonRegsToClearList.at(i).json(), 0);
     _regsToClear.insert(oneRegToClear);
   }
 
   auto allVars = plan->getAst()->variables();
-  Variable *oneVariable;
 
   auto jsonvarsUsedLater = json.get("varsUsedLater");
   if (! jsonvarsUsedLater.isList()) {
@@ -280,10 +293,11 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
   len = jsonvarsUsedLater.size();
   _varsUsedLater.reserve(len);
   for (size_t i = 0; i < len; i++) {
-    auto *oneVarUsedLater = new Variable(jsonvarsUsedLater.at(i));
-    
-    oneVariable = allVars->getVariable(oneVarUsedLater->id);
+    auto oneVarUsedLater = new Variable(jsonvarsUsedLater.at(i));
+    Variable* oneVariable = allVars->getVariable(oneVarUsedLater->id);
+
     if (oneVariable == nullptr) {
+      delete oneVarUsedLater;
       std::string errmsg = "varsUsedLater: ID not found in all-list: " + StringUtils::itoa(oneVarUsedLater->id);
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg); 
     }
@@ -300,18 +314,15 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
   _varsValid.reserve(len);
   for (size_t i = 0; i < len; i++) {
     auto oneVarValid = new Variable(jsonvarsValidList.at(i));
-    oneVariable = allVars->getVariable(oneVarValid->id);
+    Variable* oneVariable = allVars->getVariable(oneVarValid->id);
     if (oneVariable == nullptr) {
+      delete oneVarValid;
       std::string errmsg = "varsValid: ID not found in all-list: " + StringUtils::itoa(oneVarValid->id);
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg); 
     }
     _varsValid.insert(oneVariable);
     delete oneVarValid;
   }
-
-
-
-  // TODO: decide whether it should be allowed to create an abstract ExecutionNode at all
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -370,10 +381,14 @@ void ExecutionNode::CloneHelper (ExecutionNode* other,
   }
   else {
     // point to current AST -> don't do deep copies.
+    other->_depth = _depth;
+    other->_regsToClear = _regsToClear;
+    other->_varUsageValid = _varUsageValid;
     other->_varsUsedLater = _varsUsedLater;
     other->_varsValid = _varsValid;
     other->_varOverview = _varOverview;
   }
+
   if (withDependencies) {
     cloneDependencies(plan, other, withProperties);
   }
@@ -608,17 +623,15 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
  
   if (_varOverview) {
     Json jsonVarInfoList(Json::List, _varOverview->varInfo.size());
-    if (n > 0) {
-      for (auto oneVarInfo: _varOverview->varInfo) {
-        Json jsonOneVarInfoArray(Json::Array, 2);
-        jsonOneVarInfoArray(
-                            "VariableId", 
-                            Json(static_cast<double>(oneVarInfo.first)))
-          ("depth", Json(static_cast<double>(oneVarInfo.second.depth)))
-          ("RegisterId", Json(static_cast<double>(oneVarInfo.second.registerId)))
-          ;
-        jsonVarInfoList(jsonOneVarInfoArray);
-      }
+    for (auto oneVarInfo: _varOverview->varInfo) {
+      Json jsonOneVarInfoArray(Json::Array, 2);
+      jsonOneVarInfoArray(
+                          "VariableId", 
+                          Json(static_cast<double>(oneVarInfo.first)))
+        ("depth", Json(static_cast<double>(oneVarInfo.second.depth)))
+        ("RegisterId", Json(static_cast<double>(oneVarInfo.second.registerId)))
+      ;
+      jsonVarInfoList(jsonOneVarInfoArray);
     }
     json("varInfoList", jsonVarInfoList);
 
@@ -627,10 +640,19 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
       jsonNRRegsList(Json(static_cast<double>(oneRegisterID)));
     }
     json("nrRegs", jsonNRRegsList);
+    
+    Json jsonNRRegsHereList(Json::List, _varOverview->nrRegsHere.size());
+    for (auto oneRegisterID: _varOverview->nrRegsHere) {
+      jsonNRRegsHereList(Json(static_cast<double>(oneRegisterID)));
+    }
+    json("nrRegsHere", jsonNRRegsHereList);
+    json("totalNrRegs", Json(static_cast<double>(_varOverview->totalNrRegs)));
   }
   else {
     json("varInfoList", Json(Json::List));
     json("nrRegs", Json(Json::List));
+    json("nrRegsHere", Json(Json::List));
+    json("totalNrRegs", Json(0.0));
   }
 
   Json jsonRegsToClearList(Json::List, _regsToClear.size());
@@ -703,6 +725,7 @@ struct RegisterPlanningDebugger : public WalkerWorker<ExecutionNode> {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ExecutionNode::planRegisters (ExecutionNode* super) {
+  // std::cout << triagens::arango::ServerState::instance()->getId() << ": PLAN REGISTERS\n";
   // The super is only for the case of subqueries.
   shared_ptr<VarOverview> v;
   if (super == nullptr) {
@@ -741,7 +764,7 @@ ExecutionNode::VarOverview::VarOverview (VarOverview const& v,
     nrRegsHere(v.nrRegsHere),
     nrRegs(v.nrRegs),
     subQueryNodes(),
-    depth(newdepth+1),
+    depth(newdepth + 1),
     totalNrRegs(v.nrRegs[newdepth]),
     me(nullptr) {
   nrRegs.resize(depth);
@@ -750,10 +773,21 @@ ExecutionNode::VarOverview::VarOverview (VarOverview const& v,
   nrRegs.push_back(nrRegs.back());
 }
 
+void ExecutionNode::VarOverview::clear () {
+  varInfo.clear();
+  nrRegsHere.clear();
+  nrRegs.clear();
+  subQueryNodes.clear();
+  depth = 0;
+  totalNrRegs = 0;
+}
+
 ExecutionNode::VarOverview* ExecutionNode::VarOverview::clone (ExecutionPlan* plan) {
   VarOverview* other = new VarOverview();
 
-  other->nrRegsHere = nrRegsHere;
+  other->nrRegsHere  = nrRegsHere;
+  other->nrRegs      = nrRegs;
+  other->depth       = depth;
   other->totalNrRegs = totalNrRegs;
 
   other->varInfo = varInfo;
@@ -765,7 +799,6 @@ ExecutionNode::VarOverview* ExecutionNode::VarOverview::clone (ExecutionPlan* pl
   }
   return other;
 }
-
 
 void ExecutionNode::VarOverview::after (ExecutionNode *en) {
   switch (en->getType()) {
