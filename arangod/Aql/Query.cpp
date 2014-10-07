@@ -233,26 +233,42 @@ Query::~Query () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Query* Query::clone (QueryPart part) {
-  Query* theClone = new Query(_vocbase,
-                              _queryString,
-                              _queryLength,
-                              nullptr,
-                              _options,
-                              part);
+  TRI_json_t* options = nullptr;
+
+  if (_options != nullptr) {
+    options = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, _options);
+  }
+
+  std::unique_ptr<Query> clone;
+
+  try {
+    clone.reset(new Query(_vocbase,
+                          _queryString,
+                          _queryLength,
+                          nullptr,
+                          options,
+                          part));
+  }
+  catch (...) {
+    if (options != nullptr) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, options);
+    }
+    throw;
+  }
 
   if (_plan != nullptr) {
-    theClone->_plan = _plan->clone(*theClone);
+    clone->_plan = _plan->clone(*clone);
    
     // clone all variables 
     for (auto it : _ast->variables()->variables(true)) {
       auto var = _ast->variables()->getVariable(it.first);
       TRI_ASSERT(var != nullptr);
-      theClone->ast()->variables()->createVariable(var);
+      clone->ast()->variables()->createVariable(var);
     }
   }
 
-  theClone->_trx = _trx;
-  return theClone;
+  clone->_trx = _trx;
+  return clone.release();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
