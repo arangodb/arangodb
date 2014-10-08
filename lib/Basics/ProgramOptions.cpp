@@ -316,7 +316,7 @@ bool ProgramOptions::parse (ProgramOptionsDescription const& description, int ar
   // parse the options
   TRI_program_options_t* options = TRI_CreateProgramOptions(desc);
 
-  bool ok = TRI_ParseArgumentsProgramOptions(options, argc, argv);
+  bool ok = TRI_ParseArgumentsProgramOptions(options, _programName.c_str(), argc, argv);
 
   if (ok) {
     ok = extractValues(description, options, _seen);

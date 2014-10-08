@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+
 /// @brief program options
 ///
 /// @file
@@ -34,6 +34,7 @@
 
 #include "Basics/conversions.h"
 #include "Basics/files.h"
+#include "Basics/levenshtein.h"
 #include "Basics/logging.h"
 #include "Basics/string-buffer.h"
 #include "Basics/tri-strings.h"
@@ -50,7 +51,8 @@ typedef struct po_double_s {
   TRI_PO_desc_t base;
 
   double * _value;
-} po_double_t;
+} 
+po_double_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief description of an attribute (a flag) without arguments
@@ -60,7 +62,8 @@ typedef struct po_flag_s {
   TRI_PO_desc_t base;
 
   bool *_value;
-} po_flag_t;
+} 
+po_flag_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief description of a signed 16-bit integer
@@ -70,7 +73,8 @@ typedef struct po_int16_s {
   TRI_PO_desc_t base;
 
   int16_t * _value;
-} po_int16_t;
+} 
+po_int16_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief description of a signed 32-bit integer
@@ -80,7 +84,8 @@ typedef struct po_int32_s {
   TRI_PO_desc_t base;
 
   int32_t * _value;
-} po_int32_t;
+} 
+po_int32_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief description of a signed 64-bit integer
@@ -90,7 +95,8 @@ typedef struct po_int64_s {
   TRI_PO_desc_t base;
 
   int64_t * _value;
-} po_int64_t;
+} 
+po_int64_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief description of an unsigned 16-bit integer
@@ -100,7 +106,8 @@ typedef struct po_uint16_s {
   TRI_PO_desc_t base;
 
   uint16_t * _value;
-} po_uint16_t;
+} 
+po_uint16_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief description of an unsigned 32-bit integer
@@ -110,7 +117,8 @@ typedef struct po_uint32_s {
   TRI_PO_desc_t base;
 
   uint32_t * _value;
-} po_uint32_t;
+} 
+po_uint32_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief description of an unsigned 64-bit integer
@@ -120,7 +128,8 @@ typedef struct po_uint64_s {
   TRI_PO_desc_t base;
 
   uint64_t * _value;
-} po_uint64_t;
+} 
+po_uint64_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set of evaluation functions
@@ -139,17 +148,65 @@ typedef struct po_visit_functions_s {
   void (*visitUInt32Node) (po_uint32_t *, const void * input, void * output);
   void (*visitUInt64Node) (po_uint64_t *, const void * input, void * output);
   void (*visitVectorStringNode) (TRI_PO_vector_string_t *, const void * input, void * output);
-} po_visit_functions_t;
+} 
+po_visit_functions_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief prints out an error message about an unrecognized option
+////////////////////////////////////////////////////////////////////////////////
+
+static void printUnrecognizedOption (TRI_program_options_t const* options,
+                                     char const* programName,
+                                     char const* option) {
+  fprintf(stderr, "%s: unrecognized option '%s'\n", programName, option);
+ 
+  std::multimap<int, std::string> distances;
+
+  for (size_t i = 0;  i < options->_items._length;  ++i) {
+    TRI_PO_item_t const* item = static_cast<TRI_PO_item_t const*>(TRI_AtVector(&options->_items, i));
+
+    distances.emplace(TRI_Levenshtein(option, item->_desc->_name), item->_desc->_name);
+  }
+
+  if (! distances.empty()) {
+    auto const value = distances.begin()->first;
+    std::string suggestions;
+    int i = 0;
+    for (auto& item : distances) {
+      if (item.first != value && i > 1) {
+        break;
+      }
+      if (i > 0) {
+        suggestions.append("  ");
+      }
+      suggestions.append("--");
+      suggestions.append(item.second);
+      ++i;
+    }
+    fprintf(stderr, "Did you mean one of these? %s\n", suggestions.c_str());
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints out an error message about an unrecognized option
+////////////////////////////////////////////////////////////////////////////////
+ 
+static void printUnrecognizedOption (TRI_program_options_t const* options,
+                                     char const* programName,
+                                     char const* section,   
+                                     char const* option) {
+  printUnrecognizedOption(options, programName, (std::string(section) + "." + std::string(option)).c_str());
+} 
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief finds and replaces variables
 ////////////////////////////////////////////////////////////////////////////////
 
-static char * FillVariables (const char* value) {
+static char* FillVariables (const char* value) {
   TRI_string_buffer_t buffer;
 
   const char* p;
@@ -1405,11 +1462,13 @@ char * TRI_UsagePODescription (TRI_PO_section_t * desc) {
 /// @brief parses a command line of arguments
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
+bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t* options,
+                                       char const* programName,
                                        int argc,
-                                       char ** argv) {
-  extern char *optarg;
+                                       char** argv) {
+  extern char* optarg;
   extern int optind;
+  extern int opterr;
 
   TRI_string_buffer_t buffer;
   TRI_PO_item_t* item = nullptr;
@@ -1417,6 +1476,9 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
   size_t i;
   int idx;
   int maxIdx;
+  
+  // turn off error messages by getopt_long()
+  opterr = 0;
 
   TRI_set_errno(TRI_ERROR_NO_ERROR);
 
@@ -1475,6 +1537,9 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
       }
 
       if (i == options->_items._length) {
+        if (optind - 1 > 0 && optind - 1 < argc) {
+          printUnrecognizedOption(options, programName, argv[optind - 1]);
+        }
         TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
         TRI_DestroyStringBuffer(&buffer);
         return false;
@@ -1484,6 +1549,9 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
       c -= 256;
 
       if (c >= maxIdx) {
+        if (optind - 1 > 0 && optind - 1 < argc) {
+          printUnrecognizedOption(options, programName, argv[optind - 1]);
+        }
         TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
         TRI_DestroyStringBuffer(&buffer);
         return false;
@@ -1512,9 +1580,9 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
 /// @brief parses a text file containing the configuration variables
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
-                                  const char * programName,
-                                  const char * filename) {
+bool TRI_ParseFileProgramOptions (TRI_program_options_t* options,
+                                  const char* programName,
+                                  const char* filename) {
   FILE* f;
   bool ok;
   char* buffer;
@@ -1616,14 +1684,13 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
       TRI_FreeString(TRI_CORE_MEM_ZONE, value);
 
       if (! ok) {
-        TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
-
         if (*section != '\0') {
-          fprintf(stderr, "%s: unrecognized option '%s.%s'\n", programName, section, option);
+          printUnrecognizedOption(options, programName, section, option);
         }
         else {
-          fprintf(stderr, "%s: unrecognized option '%s'\n", programName, option);
+          printUnrecognizedOption(options, programName, option);
         }
+        TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
 
         TRI_FreeString(TRI_CORE_MEM_ZONE, option);
         break;
@@ -1645,14 +1712,13 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
       ok = HandleOption(options, section, option, "");
 
       if (! ok) {
-        TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
-
         if (*section != '\0') {
-          fprintf(stderr, "%s: unrecognized option '%s.%s'\n", programName, section, option);
+          printUnrecognizedOption(options, programName, section, option);
         }
         else {
-          fprintf(stderr, "%s: unrecognized option '%s'\n", programName, option);
+          printUnrecognizedOption(options, programName, option);
         }
+        TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
 
         TRI_FreeString(TRI_CORE_MEM_ZONE, option);
         break;
@@ -1680,8 +1746,8 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
       TRI_FreeString(TRI_CORE_MEM_ZONE, value);
 
       if (! ok) {
+        printUnrecognizedOption(options, programName, tmpSection, option);
         TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
-        fprintf(stderr, "%s: unrecognized option '%s.%s'\n", programName, tmpSection, option);
 
         TRI_FreeString(TRI_CORE_MEM_ZONE, tmpSection);
         TRI_FreeString(TRI_CORE_MEM_ZONE, option);
@@ -1706,8 +1772,8 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
       ok = HandleOption(options, tmpSection, option, "");
 
       if (! ok) {
+        printUnrecognizedOption(options, programName, tmpSection, option);
         TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
-        fprintf(stderr, "%s: unrecognized option '%s.%s'\n", programName, tmpSection, option);
 
         TRI_FreeString(TRI_CORE_MEM_ZONE, tmpSection);
         TRI_FreeString(TRI_CORE_MEM_ZONE, option);
@@ -1719,8 +1785,8 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
       continue;
     }
 
+    printUnrecognizedOption(options, programName, buffer);
     TRI_set_errno(TRI_ERROR_ILLEGAL_OPTION);
-    fprintf(stderr, "%s: unrecognized entry '%s'\n", programName, buffer);
     ok = false;
 
     TRI_SystemFree(buffer);
@@ -1752,9 +1818,7 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
 
 bool TRI_HasOptionProgramOptions (TRI_program_options_t const* options, const char* name) {
   for (size_t i = 0;  i < options->_items._length;  ++i) {
-    TRI_PO_item_t * item;
-
-    item = static_cast<TRI_PO_item_t*>(TRI_AtVector(&options->_items, i));
+    TRI_PO_item_t * item = static_cast<TRI_PO_item_t*>(TRI_AtVector(&options->_items, i));
 
     if (item->_used && TRI_EqualString(name, item->_desc->_name)) {
       return true;
