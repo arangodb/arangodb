@@ -349,6 +349,7 @@ char * TRI_UsagePODescription (TRI_PO_section_t * desc);
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
+                                       char const*,
                                        int argc,
                                        char ** argv);
 

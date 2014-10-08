@@ -31,6 +31,7 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/json.cpp \
 	lib/Basics/json-utilities.cpp \
 	lib/Basics/JsonHelper.cpp \
+	lib/Basics/levenshtein.cpp \
 	lib/Basics/linked-list.cpp \
 	lib/Basics/locks-macos.cpp \
 	lib/Basics/locks-posix.cpp \
