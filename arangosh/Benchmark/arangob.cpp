@@ -190,7 +190,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("batch-size", &BatchSize, "number of operations in one batch (0 disables batching)")
     ("keep-alive", &KeepAlive, "use HTTP keep-alive")
     ("collection", &Collection, "collection name to use in tests")
-    ("test-case", &TestCase, "test case to use (possible values: version, document, collection, import-document, hash, skiplist, edge, shapes, shapes-append, random-shapes, crud, crud-append, aqltrx, counttrx, multitrx, multi-collection)")
+    ("test-case", &TestCase, "test case to use (possible values: version, document, collection, import-document, hash, skiplist, edge, shapes, shapes-append, random-shapes, crud, crud-append, aqltrx, counttrx, multitrx, multi-collection, aqlinsert)")
     ("complexity", &Complexity, "complexity parameter for the test")
     ("delay", &Delay, "use a startup delay (necessary only when run in series)")
     ("progress", &Progress, "show progress")
