@@ -155,7 +155,7 @@ bool ExtractDocumentHandle (v8::Handle<v8::Value> const val,
                             std::unique_ptr<char[]>& key,
                             TRI_voc_rid_t& rid) {
   // reset the collection identifier and the revision
-  collectionName = "";
+  TRI_ASSERT(collectionName.empty());
   rid = 0;
 
   // extract the document identifier and revision from a string
