@@ -1678,7 +1678,7 @@ namespace triagens {
         DistributeBlock (ExecutionEngine* engine,
                          DistributeNode const* ep, 
                          std::vector<std::string> const& shardIds, 
-                         arango::CollectionID const& cid);
+                         Collection const* collection);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -1761,13 +1761,22 @@ namespace triagens {
         size_t getClientId (std::string const& shardId);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getBlockForShard: try to get at atLeast/aMost pairs into
+/// @brief getBlockForClient: try to get at atLeast/atMost pairs into
 /// _distBuffer.at(clientId).
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool getBlockForShard (size_t atLeast, 
-                               size_t atMost,
-                               size_t clientId);
+        bool getBlockForClient (size_t atLeast, 
+                                size_t atMost,
+                                size_t clientId);
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sendToClient: for each row of the incoming AqlItemBlock use the 
+/// attributes <shardKeys> of the register <id> to determine to which shard the
+/// row should be sent. 
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t sendToClient (AqlValue val);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _shardIdMap: map from shardIds to clientNrs
@@ -1796,10 +1805,25 @@ namespace triagens {
         std::vector<bool> _doneForClient;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _cid: the id of the sharded collection 
+/// @brief _colectionName: the name of the sharded collection 
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string const& _collectionName;
+        Collection const* _collection;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief : the keys used by the <sendToClient> to determine to which
+/// shard a row is sent
+////////////////////////////////////////////////////////////////////////////////
+
+        //std::vector<std::string> _shardKeys;
+        const char * _shardKeys;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief : the keys used by the <sendToClient> to determine to which
+/// shard a row is sent
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t _index;
 
     };
 // -----------------------------------------------------------------------------

@@ -121,9 +121,9 @@ static ExecutionBlock* createBlock (ExecutionEngine* engine,
       auto&& shardIds = static_cast<DistributeNode const*>(en)->collection()->shardIds();
       return new DistributeBlock(engine,
                                  static_cast<DistributeNode const*>(en),
-                                 shardIds, 
+                                 shardIds,
                                  static_cast<DistributeNode const*>
-                                 (en)->collection()->getName());
+                                 (en)->collection());
     }
     case ExecutionNode::GATHER: {
       return new GatherBlock(engine,
