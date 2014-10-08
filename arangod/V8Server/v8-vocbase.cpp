@@ -1414,7 +1414,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> const name,
 
   if (*key == '_') {
     // special treatment for all properties starting with _
-    v8::Local<v8::String> const l = v8::String::New(key);
+    v8::Local<v8::String> const l = v8::String::New(key, keyLength);
 
     if (holder->HasRealNamedProperty(l)) {
       // some internal function inside db
@@ -1442,6 +1442,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> const name,
       TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
       TRI_vocbase_col_status_e status = collection->_status;
       TRI_voc_cid_t cid = collection->_cid;
+      uint32_t internalVersion = collection->_internalVersion;
       TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
       // check if the collection is still alive
@@ -1450,13 +1451,17 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> const name,
 
         if (value->Has(v8g->_IdKey)) {
           TRI_voc_cid_t cachedCid = static_cast<TRI_voc_cid_t>(TRI_ObjectToUInt64(value->Get(v8g->_IdKey), true));
+          uint32_t cachedVersion = (uint32_t) TRI_ObjectToInt64(value->Get(v8g->VersionKey));
 
-          if (cachedCid == cid) {
+          if (cachedCid == cid && cachedVersion == internalVersion) {
             // cache hit
             return scope.Close(value);
           }
 
-          // cid has changed (i.e. collection has been dropped and re-created)
+          // store the updated version number in the object for future comparisons
+          value->Set(v8g->VersionKey, v8::Number::New((double) internalVersion), v8::DontEnum);
+
+          // cid has changed (i.e. collection has been dropped and re-created) or version has changed
         }
       }
     }
