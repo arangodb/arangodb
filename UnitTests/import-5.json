@@ -1,0 +1,5 @@
+	{ "id":	 0, "value": "something", "active": true }    	
+
+{ "id": 1, "value": "foobar" }	
+ 
+  	{ "id" : 2, "data": 99.5, "true": "a\t\r\nb  c " }
