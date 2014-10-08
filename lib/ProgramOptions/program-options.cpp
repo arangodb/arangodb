@@ -334,6 +334,9 @@ static void ParseFlagArg (const char * userarg, void * value) {
     else if (TRI_CaseEqualString(userarg, "0")) {
       *flag->_value = false;
     }
+    else {
+      TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+    }
   }
 }
 
@@ -793,7 +796,6 @@ static bool HandleOption (TRI_program_options_t * options,
                           const char* section,
                           const char* option,
                           const char* value) {
-  size_t i;
   char* full;
 
   if (*section == '\0') {
@@ -804,7 +806,7 @@ static bool HandleOption (TRI_program_options_t * options,
   }
 
 
-  for (i = 0;  i < options->_items._length;  ++i) {
+  for (size_t i = 0;  i < options->_items._length;  ++i) {
     TRI_PO_item_t * item;
 
     item = static_cast<TRI_PO_item_t*>(TRI_AtVector(&options->_items, i));
@@ -1748,10 +1750,8 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
 /// @brief returns true if the option was given
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_HasOptionProgramOptions (TRI_program_options_t const * options, const char * name) {
-  size_t i;
-
-  for (i = 0;  i < options->_items._length;  ++i) {
+bool TRI_HasOptionProgramOptions (TRI_program_options_t const* options, const char* name) {
+  for (size_t i = 0;  i < options->_items._length;  ++i) {
     TRI_PO_item_t * item;
 
     item = static_cast<TRI_PO_item_t*>(TRI_AtVector(&options->_items, i));
