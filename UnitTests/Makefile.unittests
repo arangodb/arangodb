@@ -208,6 +208,8 @@ unittests-recovery:
 	@echo "================================================================================"
 	@echo
 
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="collection-rename-recreate"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="collection-rename-recreate-flush"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="leftover-database-directory"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="leftover-collection-directory"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="collection-unload"
