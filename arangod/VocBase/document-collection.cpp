@@ -4970,7 +4970,7 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
 
   if (key == nullptr) {
     // no key specified, now generate a new one
-    keyString = document->_keyGenerator->generate(tick);
+    keyString.assign(document->_keyGenerator->generate(tick));
 
     if (keyString.empty()) {
       return TRI_ERROR_ARANGO_OUT_OF_KEYS;
@@ -4987,7 +4987,7 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
     keyString = key;
   }
 
-  uint64_t const hash = TRI_HashKeyPrimaryIndex(keyString.c_str());
+  uint64_t const hash = TRI_HashKeyPrimaryIndex(keyString.c_str(), keyString.size());
 
 
   int res = TRI_ERROR_NO_ERROR;
