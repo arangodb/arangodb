@@ -413,6 +413,8 @@ function executeAndWait (cmd, args) {
     }
   }
   else if (res.status === "ABORTED") {
+    var toppid = executeExternal("/usr/bin/top", ["-b", "-n1"]);
+    statusExternal(toppid, true);
     print("Finished: " + res.status + " Signal: " + res.signal + " Time Elapsed: " + deltaTime);
     if (res.signal === 10) {
       return {
@@ -614,6 +616,23 @@ testFuncs.boost = function (options) {
   return results;
 };
 
+
+function single_usage(testsuite) {
+  print("single_" + testsuite + ": No test specified!\n Available tests:");
+  var filelist = "";
+  var list = fs.list(makePath("js/server/tests"));
+  for (var fileNo in list) {
+    if (/\.js$/.test(list[fileNo])) {
+      filelist += " js/server/tests/"+list[fileNo];
+    }
+  }
+  print(filelist);
+  print("usage: single_" + testsuite + " '{\"test\":\"<testfilename>\"}'");
+  print(" where <testfilename> is one from the list above.");
+  return { status: false, message: "No test specified!"};
+}
+
+
 testFuncs.single_server = function (options) {
   var instanceInfo = startInstance("tcp", options, [], "single");
   var result = { };
@@ -628,7 +647,7 @@ testFuncs.single_server = function (options) {
     return result;
   }
   else {
-    return { status: false, message: "No test specified!"};
+    return single_usage("server");
   }
 };
 
@@ -653,7 +672,7 @@ testFuncs.single_client = function (options) {
     return result;
   }
   else {
-    return { status: false, message: "No test specified!"};
+    return single_usage("client");
   }
 };
 
