@@ -17,8 +17,9 @@
   COLOR_BOLD_MAGENTA, PRETTY_PRINT, VALGRIND, VERSION,
   BYTES_SENT_DISTRIBUTION, BYTES_RECEIVED_DISTRIBUTION, CONNECTION_TIME_DISTRIBUTION,
   REQUEST_TIME_DISTRIBUTION, DEVELOPMENT_MODE, FE_DEVELOPMENT_MODE, THREAD_NUMBER, LOGFILE_PATH,
-  SYS_PLATFORM, SYS_EXECUTE_EXTERNAL, SYS_STATUS_EXTERNAL, SYS_KILL_EXTERNAL,
-  SYS_REGISTER_TASK, SYS_UNREGISTER_TASK, SYS_GET_TASK, SYS_TEST_PORT, SYS_IS_IP */
+  SYS_PLATFORM, SYS_EXECUTE_EXTERNAL, SYS_STATUS_EXTERNAL, SYS_EXECUTE_EXTERNAL_AND_WAIT, 
+  SYS_KILL_EXTERNAL, SYS_REGISTER_TASK, SYS_UNREGISTER_TASK, SYS_GET_TASK, SYS_TEST_PORT,
+  SYS_IS_IP */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -687,6 +688,20 @@
   if (typeof SYS_EXECUTE_EXTERNAL !== "undefined") {
     exports.executeExternal = SYS_EXECUTE_EXTERNAL;
     delete SYS_EXECUTE_EXTERNAL;
+  }
+
+  if (typeof SYS_EXECUTE_EXTERNAL_AND_WAIT !== "undefined") {
+    exports.executeExternalAndWait = SYS_EXECUTE_EXTERNAL_AND_WAIT;
+    delete SYS_EXECUTE_EXTERNAL_AND_WAIT;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executeExternalAndWait - instantly waits for the exit, returns 
+///   joint result.
+////////////////////////////////////////////////////////////////////////////////
+  if (typeof SYS_EXECUTE_EXTERNAL_AND_WAIT !== "undefined") {
+    exports.executeExternalAndWait = SYS_EXECUTE_EXTERNAL_AND_WAIT;
+    delete SYS_EXECUTE_EXTERNAL_AND_WAIT;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
