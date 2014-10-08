@@ -3872,10 +3872,10 @@ size_t ScatterBlock::getClientId (std::string const& shardId) {
 DistributeBlock::DistributeBlock (ExecutionEngine* engine,
                                   DistributeNode const* ep, 
                                   std::vector<std::string> const& shardIds, 
-                                  std::string const& collectionName)
+                                  Collection const* collection)
   : ExecutionBlock(engine, ep), 
     _nrClients(shardIds.size()),
-    _collectionName(collectionName){
+    _collection(collection){
       _shardIdMap.reserve(_nrClients);
       for (size_t i = 0; i < _nrClients; i++) {
         _shardIdMap.emplace(std::make_pair(shardIds[i], i));
@@ -3896,43 +3896,86 @@ size_t DistributeBlock::getClientId (std::string const& shardId) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getBlockForShard: try to get atLeast pairs into
-/// _distBuffer.at(clientId);
+/// @brief distributeFunction: for each row of the incoming AqlItemBlock use the
+/// attributes <shardKeys> of the Aql value <val> to determine to which shard
+/// the row should be sent and return its clientId
 ////////////////////////////////////////////////////////////////////////////////
 
-bool DistributeBlock::getBlockForShard(size_t atLeast, 
-                                       size_t atMost,
-                                       size_t clientId) {
-  return false;
-};
-
-/*  // from pos on check if we should send a block to the client
-  bool usesDefaultShardingAttributes = false; //FIXME is this right?  
-  ClusterInfo::getResponsibleShard (_cid,
-                                    TRI_json_t const* json,
+size_t DistributeBlock::sendToClient (AqlValue val) {
+  
+  // _shardKeys to get the <json> for getResponsibleShard
+  
+  TRI_ASSERT(val._type == AqlValue::JSON);
+  TRI_json_t const* json;
+  if (val.isArray()) {
+    // loop over _shardKeys and make a Json array containing those things
+    json = val.extractArrayMember(_trx, 
+        _collection->documentCollection(), _shardKeys).json();
+  }
+  else {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+  
+  std::string shardId;
+  bool usesDefaultShardingAttributes = false;  
+  
+  auto clusterInfo = triagens::arango::ClusterInfo::instance();
+  clusterInfo->getResponsibleShard( _collection->getName(),
+                                    json,
                                     true,
                                     shardId,
                                     usesDefaultShardingAttributes);
+  return getClientId(shardId); 
+}
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getBlockForShard: try to get atLeast pairs into
+/// _distBuffer.at(clientId), this means we have to look at every row in the
+/// incoming blocks until they run out or we find enough rows for clientId. We 
+/// also keep track of blocks which should be sent to other clients than the
+/// current one. 
+////////////////////////////////////////////////////////////////////////////////
 
-      if (_buffer.empty()) {
-        if (skipping) {
-          _dependencies[0]->skip(atLeast - skipped);
-          skipped = atLeast;
-          freeCollector();
-          return TRI_ERROR_NO_ERROR;
-        }
-        else {
-          if (! getBlock(atLeast - skipped,
-                         (std::max)(atMost - skipped, DefaultBatchSize))) {
-            _done = true;
-            break; // must still put things in the result from the collector . . .
-          }
-          _pos = 0;
-        }
-      }
+bool DistributeBlock::getBlockForClient (size_t atLeast, 
+                                         size_t atMost,
+                                         size_t clientId) {
+ 
+  if (_buffer.empty()) {
+    _index = 0;         // position in _buffer
+    _pos = 0;           // position in _buffer.at(_index)
+  }
+
+  std::vector<std::deque<pair<size_t, size_t>>>& buf = _distBuffer;
+  // it should be the case that buf.at(clientId) is empty 
   
-}*/
+  while (buf.at(clientId).size() < atLeast) {
+    if (_index == _buffer.size()) {
+      if (! ExecutionBlock::getBlock(atLeast, atMost)) {
+        if (buf.at(clientId).size() == 0) {
+          _doneForClient.at(clientId) = true;
+          return false;
+        }
+        break; 
+      }
+    }
+    AqlItemBlock* cur = _buffer.at(_index);
+    size_t reg = cur->getNrRegs() - 1; // FIXME this is a totally arbitrary choice
+    while (_pos < cur->size() && buf.at(clientId).size() < atLeast) {
+      // inspect cur in row _pos and check to which shard it should be sent . .
+      size_t id = sendToClient(cur->getValue(_pos, reg));
+      buf.at(id).push_back(make_pair(_index, _pos++));
+    }
+    if (_pos == cur->size()) {
+      _pos = 0;
+      _index++;
+    } 
+    else {
+      break;
+    }
+  }
+  
+  return true;
+}
 
 int DistributeBlock::getOrSkipSomeForShard (size_t atLeast,
                                             size_t atMost,
@@ -3963,7 +4006,7 @@ int DistributeBlock::getOrSkipSomeForShard (size_t atLeast,
 
   try {
     if (buf.empty()) {
-      if (! getBlockForShard(atLeast, atMost, clientId)) {
+      if (! getBlockForClient(atLeast, atMost, clientId)) {
         _doneForClient.at(clientId) = true;
         return TRI_ERROR_NO_ERROR;
       }
@@ -4015,8 +4058,33 @@ int DistributeBlock::getOrSkipSomeForShard (size_t atLeast,
   }
 
   freeCollector();
+  
+  //check if we can pop from the front of _buffer
+  size_t smallestIndex = 0;
+  for (size_t i = 0; i < _nrClients; i++) {
+    size_t index = _distBuffer.at(i).at(0).first;
+    if (index == 0) {
+      return TRI_ERROR_NO_ERROR; // don't have to do any clean-up
+    }
+    else {
+      smallestIndex = std::min(index, smallestIndex);
+    }
+  }
 
-  //TODO clean up the _buffer and _distBuffer
+  // pop from _buffer
+  for (size_t i = 0; i < smallestIndex; i++) {
+    AqlItemBlock* cur = _buffer.front();
+    delete cur;
+    _buffer.pop_front();
+  }
+  
+  // reset first coord of pairs in _distBuffer
+  for (size_t i = 0; i < _nrClients; i++) {
+    for (size_t j = 0; j < _distBuffer.at(i).size(); j++) {
+      _distBuffer.at(i).at(j).first -= smallestIndex;
+    }
+  }
+
   return TRI_ERROR_NO_ERROR;
 }
 
