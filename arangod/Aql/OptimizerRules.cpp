@@ -1895,7 +1895,7 @@ int triagens::aql::removeUnnecessaryRemoteScatter (Optimizer* opt,
 
   for (auto n : nodes) {
     // check if the remote node is preceeded by a scatter node and any number of
-    // calculation and singleton nodes. if yes, remote remote and scatter
+    // calculation and singleton nodes. if yes, remove remote and scatter
 
     auto const& deps = n->getDependencies();
     if (deps.size() != 1) {
