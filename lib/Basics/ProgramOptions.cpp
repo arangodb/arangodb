@@ -477,7 +477,7 @@ void ProgramOptions::setupSubDescription (ProgramOptionsDescription const& descr
         case ProgramOptionsDescription::OPTION_TYPE_BOOL:
           btr = _valuesBool[option];
 
-          if (btr == 0) {
+          if (btr == nullptr) {
             btr = _valuesBool[option] = (bool*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(bool), true);
           }
 
@@ -566,14 +566,14 @@ bool ProgramOptions::extractValues (ProgramOptionsDescription const& description
       if (item->_desc->_type == TRI_PO_FLAG) {
         btr = _valuesBool[name];
 
-        if (btr != 0) {
+        if (btr != nullptr) {
           ProgramOptionsDescription::option_type_e type = lookup(description._optionTypes, name);
 
           switch (type) {
             case ProgramOptionsDescription::OPTION_TYPE_BOOL:
               b = lookup(description._boolOptions, name);
 
-              if (b != 0) {
+              if (b != nullptr) {
                 *b = *btr;
               }
 
@@ -587,7 +587,7 @@ bool ProgramOptions::extractValues (ProgramOptionsDescription const& description
       else if (item->_desc->_type == TRI_PO_STRING) {
         ptr = _valuesString[name];
 
-        if (ptr != 0) {
+        if (ptr != nullptr) {
           ProgramOptionsDescription::option_type_e type = lookup(description._optionTypes, name);
 
           switch (type) {
