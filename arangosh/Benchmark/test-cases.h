@@ -1359,6 +1359,62 @@ struct TransactionMultiCollectionTest : public BenchmarkOperation {
 };
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                   AQL insert test
+// -----------------------------------------------------------------------------
+
+struct AqlInsertTest : public BenchmarkOperation {
+  AqlInsertTest ()
+    : BenchmarkOperation () {
+  }
+
+  ~AqlInsertTest () {
+  }
+
+  bool setUp (SimpleHttpClient* client) {
+    return DeleteCollection(client, Collection) &&
+           CreateCollection(client, Collection, 2);
+  }
+
+  void tearDown () {
+  }
+
+  std::string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+    return std::string("/_api/cursor");
+  }
+
+  HttpRequest::HttpRequestType type (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+    return HttpRequest::HTTP_REQUEST_POST;
+  }
+
+  const char* payload (size_t* length, const int threadNumber, const size_t threadCounter, const size_t globalCounter, bool* mustFree) {
+    TRI_string_buffer_t* buffer;
+    buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
+
+    TRI_AppendStringStringBuffer(buffer, "{\"query\":\"INSERT { _key: \\\"test");
+    TRI_AppendInt64StringBuffer(buffer, (int64_t) globalCounter);
+    TRI_AppendStringStringBuffer(buffer, "\\\"");
+    
+    uint64_t const n = Complexity;
+    for (uint64_t i = 1; i <= n; ++i) {
+      TRI_AppendStringStringBuffer(buffer, ",\\\"value");
+      TRI_AppendUInt64StringBuffer(buffer, i);
+      TRI_AppendStringStringBuffer(buffer, "\\\":true");
+    }
+
+    TRI_AppendStringStringBuffer(buffer, " } INTO ");
+    TRI_AppendStringStringBuffer(buffer, Collection.c_str());
+    TRI_AppendStringStringBuffer(buffer, "\"}");
+
+    *length = TRI_LengthStringBuffer(buffer);
+    *mustFree = true;
+    char* ptr = TRI_StealStringBuffer(buffer);
+    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+
+    return (const char*) ptr;
+  }
+};
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
@@ -1368,7 +1424,7 @@ struct TransactionMultiCollectionTest : public BenchmarkOperation {
 
 static bool DeleteCollection (SimpleHttpClient* client, const std::string& name) {
   std::map<std::string, std::string> headerFields;
-  SimpleHttpResult* result = 0;
+  SimpleHttpResult* result = nullptr;
 
   result = client->request(HttpRequest::HTTP_REQUEST_DELETE,
                            "/_api/collection/" + name,
@@ -1377,7 +1433,7 @@ static bool DeleteCollection (SimpleHttpClient* client, const std::string& name)
                            headerFields);
 
   bool failed = true;
-  if (result != 0) {
+  if (result != nullptr) {
     int statusCode = result->getHttpReturnCode();
     if (statusCode == 200 || statusCode == 201 || statusCode == 202 || statusCode == 404) {
       failed = false;
@@ -1397,7 +1453,7 @@ static bool CreateCollection (SimpleHttpClient* client,
                               const std::string& name,
                               const int type) {
   std::map<std::string, std::string> headerFields;
-  SimpleHttpResult* result = 0;
+  SimpleHttpResult* result = nullptr;
 
   std::string payload = "{\"name\":\"" + name + "\",\"type\":" + StringUtils::itoa(type) + "}";
   result = client->request(HttpRequest::HTTP_REQUEST_POST,
@@ -1408,7 +1464,7 @@ static bool CreateCollection (SimpleHttpClient* client,
 
   bool failed = true;
 
-  if (result != 0) {
+  if (result != nullptr) {
     int statusCode = result->getHttpReturnCode();
     if (statusCode == 200 || statusCode == 201 || statusCode == 202) {
       failed = false;
@@ -1429,7 +1485,7 @@ static bool CreateIndex (SimpleHttpClient* client,
                          const std::string& type,
                          const std::string& fields) {
   std::map<std::string, std::string> headerFields;
-  SimpleHttpResult* result = 0;
+  SimpleHttpResult* result = nullptr;
 
   std::string payload = "{\"type\":\"" + type + "\",\"fields\":" + fields + ",\"unique\":false}";
   result = client->request(HttpRequest::HTTP_REQUEST_POST,
@@ -1440,7 +1496,7 @@ static bool CreateIndex (SimpleHttpClient* client,
 
   bool failed = true;
 
-  if (result != 0) {
+  if (result != nullptr) {
     if (result->getHttpReturnCode() == 200 || result->getHttpReturnCode() == 201) {
       failed = false;
     }
@@ -1459,7 +1515,7 @@ static bool CreateDocument (SimpleHttpClient* client,
                             const std::string& collection,
                             const std::string& payload) {
   std::map<std::string, std::string> headerFields;
-  SimpleHttpResult* result = 0;
+  SimpleHttpResult* result = nullptr;
 
   result = client->request(HttpRequest::HTTP_REQUEST_POST,
                            "/_api/document?collection=" + collection,
@@ -1469,7 +1525,7 @@ static bool CreateDocument (SimpleHttpClient* client,
 
   bool failed = true;
 
-  if (result != 0) {
+  if (result != nullptr) {
     if (result->getHttpReturnCode() == 200 ||
         result->getHttpReturnCode() == 201 ||
         result->getHttpReturnCode() == 202) {
@@ -1535,8 +1591,11 @@ static BenchmarkOperation* GetTestCase (const std::string& name) {
   if (name == "multi-collection") {
     return new TransactionMultiCollectionTest();
   }
+  if (name == "aqlinsert") {
+    return new AqlInsertTest();
+  }
 
-  return 0;
+  return nullptr;
 }
 
 // -----------------------------------------------------------------------------
