@@ -1882,74 +1882,6 @@ int triagens::aql::distributeSortToCluster (Optimizer* opt,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// WalkerWorker for removeUnnecessaryRemoteScatter
-////////////////////////////////////////////////////////////////////////////////
-
-class RemoteToSingletonViaCalcOnlyFinder: public WalkerWorker<ExecutionNode> {
-  ExecutionNode* _scatter;
-  std::unordered_set<ExecutionNode*>& _toUnlink;
-  
-  public: 
-    RemoteToSingletonViaCalcOnlyFinder (std::unordered_set<ExecutionNode*>& toUnlink)
-      : _scatter(nullptr), 
-        _toUnlink(toUnlink){
-    };
-
-    ~RemoteToSingletonViaCalcOnlyFinder () {
-    }
-
-    bool before (ExecutionNode* en) {
-      switch (en->getType()) {
-        case EN::SCATTER:{
-          if (_scatter != nullptr) {
-            _toUnlink.clear();
-            return true; // somehow found 2 scatter nodes . . .
-                         // FIXME is this even possible? 
-          }
-          _scatter = en;
-          _toUnlink.insert(en);
-          return false; // continue . . .
-        }
-        case EN::REMOTE:
-          _toUnlink.insert(en);
-          return false; // continue . . .
-        case EN::CALCULATION: {
-          _toUnlink.insert(en);
-          return false; // continue . . .
-        }
-        case EN::SINGLETON: {
-          if (_scatter == nullptr) {
-            _toUnlink.clear();
-            return true; // found no scatter nodes, abort
-          }
-          return false;
-        }
-        case EN::ENUMERATE_LIST:
-        case EN::SUBQUERY:        
-        case EN::FILTER: 
-        case EN::AGGREGATE:
-        case EN::DISTRIBUTE:
-        case EN::GATHER:
-        case EN::INSERT:
-        case EN::REMOVE:
-        case EN::REPLACE:
-        case EN::UPDATE:
-        case EN::RETURN:
-        case EN::NORESULTS:
-        case EN::ILLEGAL:
-        case EN::LIMIT:           
-        case EN::SORT:
-        case EN::INDEX_RANGE:
-        case EN::ENUMERATE_COLLECTION: {
-        // if we meet any of the above, then we abort . . .
-        }
-      }
-      _toUnlink.clear();
-      return true;
-    }
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief try to get rid of a RemoteNode->ScatterNode combination which has
 /// only a SingletonNode and possibly some CalculationNodes as dependencies
 ////////////////////////////////////////////////////////////////////////////////
@@ -1962,18 +1894,49 @@ int triagens::aql::removeUnnecessaryRemoteScatter (Optimizer* opt,
   std::unordered_set<ExecutionNode*> toUnlink;
 
   for (auto n : nodes) {
-    RemoteToSingletonViaCalcOnlyFinder finder(toUnlink);
-    n->walk(&finder);
+    // check if the remote node is preceeded by a scatter node and any number of
+    // calculation and singleton nodes. if yes, remote remote and scatter
+
+    auto const& deps = n->getDependencies();
+    if (deps.size() != 1) {
+      continue;
+    }
+
+    if (deps[0]->getType() != EN::SCATTER) {
+      continue;
+    }
+
+    bool canOptimize = true;
+    auto node = deps[0];
+    while (node != nullptr) {
+      auto const& d = node->getDependencies();
+
+      if (d.size() != 1) {
+        break;
+      }
+
+      node = d[0];
+      if (node->getType() != EN::SINGLETON && 
+          node->getType() != EN::CALCULATION) {
+        // found some other node type...
+        // this disqualifies the optimization
+        canOptimize = false;
+        break;
+      }
+    }
+
+    if (canOptimize) {
+      toUnlink.insert(n);
+      toUnlink.insert(deps[0]);
+    }
   }
 
-  bool modified = false;
   if (! toUnlink.empty()) {
     plan->unlinkNodes(toUnlink);
     plan->findVarUsage();
-    modified = true;
   }
   
-  opt->addPlan(plan, rule->level, modified);
+  opt->addPlan(plan, rule->level, ! toUnlink.empty());
 
   return TRI_ERROR_NO_ERROR;
 }

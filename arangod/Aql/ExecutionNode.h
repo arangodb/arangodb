@@ -543,6 +543,8 @@ namespace triagens {
             nrRegsHere.push_back(0);
             nrRegs.push_back(0);
           };
+          
+          void clear ();
 
           void setSharedPtr (shared_ptr<VarOverview>* shared) {
             me = shared;

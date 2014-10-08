@@ -119,6 +119,8 @@ AqlItemBlock::AqlItemBlock (Json const& json) {
             // empty run:
             Json runLength(data.at(static_cast<int>(posInData++)));
             emptyRun = JsonHelper::getNumericValue<int64_t>(runLength.json(), 0);
+            TRI_ASSERT(emptyRun > 0);
+            emptyRun--;
           }
           else if (n == -2) {
             Json lowBound(data.at(static_cast<int>(posInData++)));

@@ -414,11 +414,21 @@ function executeAndWait (cmd, args) {
   }
   else if (res.status === "ABORTED") {
     print("Finished: " + res.status + " Signal: " + res.signal + " Time Elapsed: " + deltaTime);
-    return {
-      status: false,
-      message: "irregular termination: " + res.status + " Exit-Signal: " + res.signal,
-      duration: deltaTime
-    };
+    if (res.signal === 10) {
+      return {
+        status: true,
+        message: "irregular termination: " + res.status + " Exit-Signal: " + res.signal +
+          " Handling Signal 10 as non-error.",
+        duration: deltaTime
+      };
+    }
+    else {
+      return {
+        status: false,
+        message: "irregular termination: " + res.status + " Exit-Signal: " + res.signal,
+        duration: deltaTime
+      };
+    }
   }
   else {
     print("Finished: " + res.status + " Exitcode: " + res.exit + " Time Elapsed: " + deltaTime);
@@ -688,37 +698,9 @@ function rubyTests (options, ssl) {
         args = ["--color", "-I", fs.join("UnitTests","HttpInterface"),
                 "--format", "d", "--require", tmpname,
                 fs.join("UnitTests","HttpInterface",n)];
-        var pid = executeExternal("rspec", args);
-        var startTime = time();
-        var r = statusExternal(pid, true);
-        var deltaTime = time() - startTime;
-        if (r.status === "TERMINATED") {
-          print("Finished: " + r.status + " Signal: " + r.exit + " Time Elapsed: " + deltaTime);
-          if (r.exit === 0) {
-            result[n] =  { status: true, message: "", duration: deltaTime };
-          }
-          else {
-            result[n] = { status: false, message: " exit code was " + r.exit, duration: deltaTime};
-          }
-        }
-        else if (r.status === "ABORTED") {
-          print("Finished: " + r.status + " Signal: " + r.exit + " Time Elapsed: " + deltaTime);
-          result[n] = {
-            status: false,
-            message: "irregular termination: " + r.status + " Exit-Signal: " + r.signal,
-            duration: deltaTime
-          };
-        }
-        else {
-          print("Finished: " + r.status + " Exit Status: " + r.exit + " Time Elapsed: " + deltaTime);
-          result[n] = {
-            status: false,
-            message: "irregular termination: " + r.status + " Exit-code: " + r.exit,
-            duration: deltaTime
-          };
-        }
 
-        if (r.status === false && !options.force) {
+        result[n] = executeAndWait("rspec", args);
+        if (result[n].status === false && !options.force) {
           break;
         }
       }
@@ -1127,7 +1109,7 @@ function unitTestPrettyPrintResults(r) {
               print("     " + test + ": Success");
             }
             else {
-              testSuiteFail += 1;
+              testSuiteFail++;
               if (r[testrun][test].hasOwnProperty('message')) {
                 print("     " + test + ": Fail - Whole testsuite failed!");
                 if (typeof r[testrun][test].message === "object" &&
@@ -1144,7 +1126,7 @@ function unitTestPrettyPrintResults(r) {
                   if ((r[testrun][test].hasOwnProperty(oneTest)) && 
                       (internalMembers.indexOf(oneTest) === -1) &&
                       (!r[testrun][test][oneTest].status)) {
-                    testFail =+ 1;
+                    testFail++;
                     print("          -> " + oneTest + " Failed; Verbose message:");
                     print(r[testrun][test][oneTest].message);
                   }
@@ -1156,7 +1138,7 @@ function unitTestPrettyPrintResults(r) {
       }
     }
     print("Overall state: " + ((r.all_ok === true) ? "Success" : "Fail"));
-    if ((r.all_ok !== true) {
+    if (r.all_ok !== true) {
       print("   Suites failed: " + testSuiteFail + " Tests Failed: " + testFail);
     }
   }
