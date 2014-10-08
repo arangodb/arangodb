@@ -432,6 +432,7 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-keygen.js \
                @top_srcdir@/js/common/tests/shell-keygen-noncluster.js \
                @top_srcdir@/js/common/tests/shell-index-ensure.js \
+               @top_srcdir@/js/common/tests/shell-rename-noncluster.js \
                @top_srcdir@/js/common/tests/shell-simple-query.js \
                @top_srcdir@/js/common/tests/shell-statement.js \
                @top_srcdir@/js/common/tests/shell-transactions.js \

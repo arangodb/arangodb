@@ -473,18 +473,19 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
   // create the init object
   TRI_vocbase_col_t init;
 
-  init._vocbase     = vocbase;
-  init._cid         = cid;
-  init._planId      = 0;
-  init._type        = static_cast<TRI_col_type_t>(type);
+  init._vocbase         = vocbase;
+  init._cid             = cid;
+  init._planId          = 0;
+  init._type            = static_cast<TRI_col_type_t>(type);
+  init._internalVersion = 0;
 
-  init._status      = TRI_VOC_COL_STATUS_CORRUPTED;
-  init._collection  = nullptr;
+  init._status          = TRI_VOC_COL_STATUS_CORRUPTED;
+  init._collection      = nullptr;
 
   // default flags: everything is allowed
-  init._canDrop     = true;
-  init._canRename   = true;
-  init._canUnload   = true;
+  init._canDrop         = true;
+  init._canRename       = true;
+  init._canUnload       = true;
 
   // check for special system collection names
   if (TRI_IsSystemNameCollection(name)) {
@@ -805,6 +806,9 @@ static int RenameCollection (TRI_vocbase_t* vocbase,
   TRI_ASSERT_EXPENSIVE(vocbase->_collectionsByName._nrUsed == vocbase->_collectionsById._nrUsed);
 
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
+
+  // to prevent caching
+  collection->_internalVersion++;
 
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
@@ -1156,6 +1160,7 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
       return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
     }
 
+    collection->_internalVersion = 0;
     collection->_collection = document;
     collection->_status = TRI_VOC_COL_STATUS_LOADED;
     TRI_CopyString(collection->_path, document->_directory, sizeof(collection->_path) - 1);

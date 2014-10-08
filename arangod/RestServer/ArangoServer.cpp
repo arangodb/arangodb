@@ -810,7 +810,7 @@ int ArangoServer::startupServer () {
     _applicationDispatcher->disable();
     _applicationEndpointServer->disable();
     _applicationV8->disableActions();
-    _applicationV8->setStartupFile("");
+    _applicationV8->setStartupFile("server/no-server.js");
   }
 
   // prepare scheduler and dispatcher

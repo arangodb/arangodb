@@ -372,6 +372,9 @@ typedef struct TRI_vocbase_col_s {
 
   TRI_read_write_lock_t             _lock;       // lock protecting the status and name
 
+  uint32_t                          _internalVersion; // is incremented when a collection is renamed
+                                                 // this is used to prevent caching of collection objects
+                                                 // with "wrong" names in the "db" object
   TRI_vocbase_col_status_e          _status;     // status of the collection
   struct TRI_document_collection_t*  _collection; // NULL or pointer to loaded collection
   char _name[TRI_COL_NAME_LENGTH + 1];           // name of the collection

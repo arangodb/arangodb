@@ -112,6 +112,7 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     UrlKey(),
     UserKey(),
     ValueKey(),
+    VersionKey(),
     WaitForSyncKey(),
 
     _FromKey(),
@@ -190,6 +191,7 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
   UrlKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("url"));
   UserKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("user"));
   ValueKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("value"));
+  VersionKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("version"));
   WaitForSyncKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("waitForSync"));
 
   _FromKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("_from"));

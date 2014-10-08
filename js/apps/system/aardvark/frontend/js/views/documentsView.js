@@ -19,18 +19,18 @@
     },
 
     initialize : function () {
-        this.documentStore = this.options.documentStore;
-        this.collectionsStore = this.options.collectionsStore;
+      this.documentStore = this.options.documentStore;
+      this.collectionsStore = this.options.collectionsStore;
     },
 
 
     setCollectionId : function (colid, pageid) {
-        this.collection.setCollection(colid);
-        var type = arangoHelper.collectionApiType(colid);
-        this.pageid = pageid;
-        this.type = type;
-        this.collection.getDocuments(colid, pageid);
-        this.collectionModel = this.collectionsStore.get(colid);
+      this.collection.setCollection(colid);
+      var type = arangoHelper.collectionApiType(colid);
+      this.pageid = pageid;
+      this.type = type;
+      this.collection.getDocuments(colid, pageid);
+      this.collectionModel = this.collectionsStore.get(colid);
     },
 
     alreadyClicked: false,
@@ -411,7 +411,7 @@
       var result;
       if (this.type === 'document') {
         result = this.documentStore.deleteDocument(
-            this.collection.collectionID, this.docid
+          this.collection.collectionID, this.docid
         );
         if (result) {
           //on success
@@ -439,6 +439,7 @@
         $('#documentsTableID').dataTable().fnClearTable();
           this.collection.getDocuments(this.collection.collectionID, page);
         $('#docDeleteModal').modal('hide');
+        this.collection.loadTotal();
         this.drawTable();
         this.renderPaginationElements();
       }
@@ -571,12 +572,13 @@
     },
 
     rerender : function () {
-        this.clearTable();
-        this.collection.getDocuments();
-        this.drawTable();
-        $('#documents_last').css("visibility", "hidden");
-        $('#documents_first').css("visibility", "hidden");
-        this.renderPaginationElements();
+     // this.collection.loadTotal();
+      this.clearTable();
+      this.collection.getDocuments();
+      this.drawTable();
+      $('#documents_last').css("visibility", "hidden");
+      $('#documents_first').css("visibility", "hidden");
+      this.renderPaginationElements();
     },
 
     renderPaginationElements: function () {
