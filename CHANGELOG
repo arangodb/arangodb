@@ -25,7 +25,6 @@ v2.3.0 (XXXX-XX-XX)
 
       arangod --server.disable-authentication true --server.endpoint tcp://127.0.0.1:8529 data
 
-
 * improved performance of CSV import in arangoimp
 
 * fixed issue #1027: Stack traces are off-by-one
