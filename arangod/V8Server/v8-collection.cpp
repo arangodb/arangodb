@@ -670,7 +670,6 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (bool useCollection,
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
-  v8::Handle<v8::Value> result;
   TRI_doc_mptr_copy_t document;
   res = trx.read(&document, key.get());
   res = trx.finish(res);
