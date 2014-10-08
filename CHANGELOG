@@ -104,6 +104,17 @@ v2.3.0 (XXXX-XX-XX)
   storing JavaScript date objects in the database in a sensible manner.
 
 
+v2.2.x (????-??-??)
+-------------------
+
+* fixed issue #961: allow non-JSON values in undocument request bodies
+
+* fixed issue 1028: libicu is now statically linked
+
+* fixed cached lookups of collections on the server, which may have caused spurious
+  problems after collection rename operations
+
+
 v2.2.4 (2014-XX-XX)
 -------------------
 
