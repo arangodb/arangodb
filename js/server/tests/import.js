@@ -135,7 +135,13 @@ function importTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testJsonImport3 : function () {
-      var expected = [ { "id": 1, "one": 1, "three": 3, "two": 2 }, { "a": 1234, "b": "the quick fox", "id": 2, "jumped": "over the fox", "null": null }, { "id": 3, "not": "important", "spacing": "is" }, { "  c  ": "h\"'ihi", "a": true, "b": false, "d": "", "id": 4 }, { "id": 5 } ];
+      var expected = [ 
+        { "id": 1, "one": 1, "three": 3, "two": 2 }, 
+        { "a": 1234, "b": "the quick fox", "id": 2, "jumped": "over the fox", "null": null }, 
+        { "id": 3, "not": "important", "spacing": "is" }, 
+        { "  c  ": "h\"'ihi", "a": true, "b": false, "d": "", "id": 4 }, 
+        { "id": 5 } 
+      ];
       var actual = getQueryResults("FOR i IN UnitTestsImportJson3 SORT i.id RETURN i");
       assertEqual(expected, actual);
     },
@@ -150,6 +156,21 @@ function importTestSuite () {
         expected.push({ "active": true, "id": i, "value": "somerandomstuff" + i });
       }
       var actual = getQueryResults("FOR i IN UnitTestsImportJson4 SORT i.id RETURN i");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test json import
+////////////////////////////////////////////////////////////////////////////////
+    
+    testJsonImport5 : function () {
+      var expected = [ 
+        { "active": true, "id": 0, "value": "something" },
+        { "id": 1, "value": "foobar" },
+        { "id": 2, "data": 99.5, "true": "a\t\r\nb  c " }
+      ];
+
+      var actual = getQueryResults("FOR i IN UnitTestsImportJson5 SORT i.id RETURN i");
       assertEqual(expected, actual);
     },
 
@@ -205,6 +226,20 @@ function importTestSuite () {
       ];
       
       var actual = getQueryResults("FOR i IN UnitTestsImportCsv4 SORT i.name RETURN i");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test csv import
+////////////////////////////////////////////////////////////////////////////////
+    
+    testCsvImport5 : function () {
+      var expected = [ 
+        { name: "bar", password: "foo" },
+        { name: "foo\t", password: "wow \t   \r\nthis is \t\ra multiline password!" }
+      ];
+
+      var actual = getQueryResults("FOR i IN UnitTestsImportCsv5 SORT i.name RETURN i");
       assertEqual(expected, actual);
     },
 

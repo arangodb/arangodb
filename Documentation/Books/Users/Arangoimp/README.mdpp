@@ -210,6 +210,10 @@ multine password!"
 "Bartholomew ""Bart"" Simpson","Milhouse"
 ```
 
+Extra whitespace at the end of each line will be ignored. Whitespace at the 
+start of lines or between field values will not be ignored, so please make sure 
+that there is no extra whitespace in front of values or between them.
+
 
 !SUBSECTION Importing TSV Data
 

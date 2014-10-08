@@ -170,20 +170,26 @@ namespace triagens {
       TRI_json_t* parseJsonLine (std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief parses a string
+////////////////////////////////////////////////////////////////////////////////
+
+      TRI_json_t* parseJsonLine (char const*,
+                                 char const*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief builds a TRI_json_t object from a key and value list
 ////////////////////////////////////////////////////////////////////////////////
 
       TRI_json_t* createJsonObject (TRI_json_t const*,
                                     TRI_json_t const*,
                                     std::string&,
-                                    std::string const&,
                                     size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks the keys, returns true if all values in the list are strings.
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool checkKeys (TRI_json_t const*);
+      bool checkKeys (TRI_json_t const*) const;
 
     };
   }
