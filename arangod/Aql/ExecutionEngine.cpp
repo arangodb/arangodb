@@ -703,14 +703,17 @@ void ExecutionEngine::addBlock (ExecutionBlock* block) {
 
 ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegistry,
                                                        Query* query,
-                                                       ExecutionPlan* plan) {
+                                                       ExecutionPlan* plan,
+                                                       bool planRegisters) {
   ExecutionEngine* engine = nullptr;
 
   try {
     if (! plan->varUsageComputed()) {
       plan->findVarUsage();
     }
-    plan->planRegisters();
+    if (planRegisters) {
+      plan->planRegisters();
+    }
 
     ExecutionBlock* root = nullptr;
 
@@ -719,6 +722,7 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
       std::unique_ptr<CoordinatorInstanciator> inst(new CoordinatorInstanciator(query, queryRegistry));
       plan->root()->walk(inst.get());
 
+      // std::cout << "ORIGINAL PLAN:\n" << plan->toJson(query->ast(), TRI_UNKNOWN_MEM_ZONE, true).toString() << "\n\n";
       engine = inst.get()->buildEngines(); 
       root = engine->root();
     }

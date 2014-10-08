@@ -4096,7 +4096,8 @@ int DistributeBlock::getOrSkipSomeForShard (size_t atLeast,
 /// @brief local helper to throw an exception if a HTTP request went wrong
 ////////////////////////////////////////////////////////////////////////////////
 
-static void throwExceptionAfterBadSyncRequest (ClusterCommResult* res) {
+static void throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
+                                               bool isShutdown) {
   if (res->status == CL_COMM_TIMEOUT) {
     // No reply, we give up:
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_TIMEOUT,
@@ -4110,11 +4111,45 @@ static void throwExceptionAfterBadSyncRequest (ClusterCommResult* res) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_CONNECTION_LOST,
              "lost connection within cluster");
     }
-
+      
     StringBuffer const& responseBodyBuf(res->result->getBody());
     std::cout << "ERROR WAS: " << responseBodyBuf.c_str() << "\n";
+ 
+    // extract error number and message from response
+    int errorNum = TRI_ERROR_NO_ERROR;
+    std::string errorMessage;
+    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, responseBodyBuf.c_str());
+
+    if (TRI_IsArrayJson(json)) {
+      TRI_json_t const* v;
+      
+      v = TRI_LookupArrayJson(json, "errorNum");
+      if (TRI_IsNumberJson(v)) {
+        errorNum = static_cast<int>(v->_value._number);
+      }
+      v = TRI_LookupArrayJson(json, "errorMessage");
+      if (TRI_IsStringJson(v)) {
+        errorMessage = std::string(v->_value._string.data, v->_value._string.length - 1);
+      }
+    }
+
+    if (json != nullptr) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    }
+
+    if (isShutdown && 
+        errorNum == TRI_ERROR_QUERY_NOT_FOUND) {
+      // this error may happen on shutdown and is thus tolerated
+      return;
+    }
+
 
     // In this case a proper HTTP error was reported by the DBserver,
+    if (errorNum > 0 && ! errorMessage.empty()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(errorNum, errorMessage);
+    }
+
+    // default error
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
   }
 }
@@ -4217,7 +4252,7 @@ int RemoteBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   res.reset(sendRequest(rest::HttpRequest::HTTP_REQUEST_PUT,
                         "/_api/aql/initializeCursor/",
                         bodyString));
-  throwExceptionAfterBadSyncRequest(res.get());
+  throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be
   // a serialized AqlItemBlock:
@@ -4240,7 +4275,7 @@ int RemoteBlock::shutdown () {
   res.reset(sendRequest(rest::HttpRequest::HTTP_REQUEST_PUT,
                         "/_api/aql/shutdown/",
                         string()));
-  throwExceptionAfterBadSyncRequest(res.get());
+  throwExceptionAfterBadSyncRequest(res.get(), true);
 
   // If we get here, then res->result is the response which will be
   // a serialized AqlItemBlock:
@@ -4269,7 +4304,7 @@ AqlItemBlock* RemoteBlock::getSome (size_t atLeast,
   res.reset(sendRequest(rest::HttpRequest::HTTP_REQUEST_PUT,
                         "/_api/aql/getSome/",
                         bodyString));
-  throwExceptionAfterBadSyncRequest(res.get());
+  throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be
   // a serialized AqlItemBlock:
@@ -4302,7 +4337,7 @@ size_t RemoteBlock::skipSome (size_t atLeast, size_t atMost) {
   res.reset(sendRequest(rest::HttpRequest::HTTP_REQUEST_PUT,
                         "/_api/aql/skipSome/",
                         bodyString));
-  throwExceptionAfterBadSyncRequest(res.get());
+  throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be
   // a serialized AqlItemBlock:
@@ -4328,7 +4363,7 @@ bool RemoteBlock::hasMore () {
   res.reset(sendRequest(rest::HttpRequest::HTTP_REQUEST_GET,
                         "/_api/aql/hasMore/",
                         string()));
-  throwExceptionAfterBadSyncRequest(res.get());
+  throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be
   // a serialized AqlItemBlock:
@@ -4352,7 +4387,7 @@ int64_t RemoteBlock::count () const {
   res.reset(sendRequest(rest::HttpRequest::HTTP_REQUEST_GET,
                         "/_api/aql/count/",
                         string()));
-  throwExceptionAfterBadSyncRequest(res.get());
+  throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be
   // a serialized AqlItemBlock:
@@ -4377,7 +4412,7 @@ int64_t RemoteBlock::remaining () {
   res.reset(sendRequest(rest::HttpRequest::HTTP_REQUEST_GET,
                         "/_api/aql/remaining/",
                         string()));
-  throwExceptionAfterBadSyncRequest(res.get());
+  throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be
   // a serialized AqlItemBlock:
