@@ -1,4 +1,4 @@
-v2.2.x (????-??-??)
+v2.2.5-alpha1 (????-??-??)
 -------------------
 
 * fixed issue #961: allow non-JSON values in undocument request bodies
