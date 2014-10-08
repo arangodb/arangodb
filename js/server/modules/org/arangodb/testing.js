@@ -93,6 +93,7 @@ var wait = require("internal").wait;
 var executeExternal = require("internal").executeExternal;
 var killExternal = require("internal").killExternal;
 var statusExternal = require("internal").statusExternal;
+var executeExternalAndWait = require("internal").executeExternalAndWait;
 var base64Encode = require("internal").base64Encode;
 
 var PortFinder = require("org/arangodb/cluster").PortFinder;
@@ -398,9 +399,8 @@ function runThere (options, instanceInfo, file) {
 }
 
 function executeAndWait (cmd, args) {
-  var pid = executeExternal(cmd, args);
   var startTime = time();
-  var res = statusExternal(pid, true);
+  var res = executeExternalAndWait(cmd, args);
   var deltaTime = time() - startTime;
 
   if (res.status === "TERMINATED") {
