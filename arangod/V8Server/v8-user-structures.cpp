@@ -637,8 +637,8 @@ class KeySpace {
       return scope.Close(result); 
     }
 
-    v8::Handle<v8::Value> keyAt (std::string const& key,
-                                 int64_t index) {
+    v8::Handle<v8::Value> keyGetAt (std::string const& key,
+                                    int64_t index) {
       v8::HandleScope scope;
 
       v8::Handle<v8::Value> result;
@@ -672,6 +672,55 @@ class KeySpace {
       }
 
       return scope.Close(result); 
+    }
+    
+    bool keySetAt (std::string const& key,
+                   int64_t index,
+                   v8::Handle<v8::Value> const& value) {
+      WRITE_LOCKER(_lock);
+
+      auto found = static_cast<KeySpaceElement*>(TRI_LookupByKeyAssociativePointer(&_hash, key.c_str()));
+
+      if (found == nullptr) {
+        // TODO: change error code
+        return TRI_ERROR_INTERNAL;
+      }
+      else {
+        if (! TRI_IsListJson(found->json)) {
+          // TODO: change error code
+          return TRI_ERROR_INTERNAL;
+        }
+
+        size_t const n = found->json->_value._objects._length;
+        if (index < 0) {
+          // TODO: change error code
+          return TRI_ERROR_INTERNAL;
+        }
+
+        auto json = TRI_ObjectToJson(value);
+        if (json == nullptr) {
+          return TRI_ERROR_OUT_OF_MEMORY;
+        }
+
+        if (index >= static_cast<int64_t>(n)) {
+          // insert new element
+          TRI_InsertVector(&found->json->_value._objects, json, static_cast<size_t>(index)); 
+        }
+        else {
+          // overwrite existing element
+          auto item = static_cast<TRI_json_t*>(TRI_AtVector(&found->json->_value._objects, static_cast<size_t>(index)));
+          if (item != nullptr) {
+            TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, item);
+          }
+
+          TRI_SetVector(&found->json->_value._objects, static_cast<size_t>(index), json); 
+        }
+
+        // only free pointer to json, but not its internal structures
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, json);
+      }
+
+      return TRI_ERROR_NO_ERROR; 
     }
 
     char const* keyType (std::string const& key) {
@@ -886,8 +935,8 @@ static v8::Handle<v8::Value> JS_KeyspaceDrop (v8::Arguments const& argv) {
       TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
     }
 
-    h->data.erase(it);
     delete (*it).second;
+    h->data.erase(it);
   }
 
   return scope.Close(v8::True());
@@ -1547,11 +1596,11 @@ static v8::Handle<v8::Value> JS_KeyTransfer (v8::Arguments const& argv) {
 /// @brief get an element at a specific list position
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_KeyAt (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_KeyGetAt (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() < 3 || ! argv[0]->IsString() || ! argv[1]->IsString()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "KEY_AT(<name>, <key>, <index>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "KEY_GET_AT(<name>, <key>, <index>)");
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
@@ -1574,7 +1623,46 @@ static v8::Handle<v8::Value> JS_KeyAt (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
   }
 
-  return scope.Close(hash->keyAt(key, offset));
+  return scope.Close(hash->keyGetAt(key, offset));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set an element at a specific list position
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_KeySetAt (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() < 4 || ! argv[0]->IsString() || ! argv[1]->IsString()) {
+    TRI_V8_EXCEPTION_USAGE(scope, "KEY_SET_AT(<name>, <key>, <index>, <value>)");
+  }
+
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+
+  if (vocbase == nullptr) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+  }
+
+  std::string const&& name = TRI_ObjectToString(argv[0]);
+  std::string const&& key  = TRI_ObjectToString(argv[1]);
+  int64_t offset = TRI_ObjectToInt64(argv[2]);
+
+  auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
+  READ_LOCKER(h->lock);
+
+  auto hash = GetKeySpace(vocbase, name);
+
+  if (hash == nullptr) {
+    // TODO: change error code
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+  }
+
+  int res = hash->keySetAt(key, offset, argv[3]);
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, res);
+  }
+
+  return scope.Close(v8::True());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1679,7 +1767,13 @@ void TRI_CreateUserStructuresVocBase (TRI_vocbase_t* vocbase) {
 
 void TRI_FreeUserStructuresVocBase (TRI_vocbase_t* vocbase) {
   if (vocbase->_userStructures != nullptr) {
-    delete static_cast<UserStructures*>(vocbase->_userStructures);
+    auto us = static_cast<UserStructures*>(vocbase->_userStructures);
+    for (auto& hash : us->hashes.data) {
+      if (hash.second != nullptr) {
+        delete hash.second;
+      }
+    }    
+    delete us;
   }
 }
 
@@ -1716,7 +1810,8 @@ void TRI_InitV8UserStructures (v8::Handle<v8::Context> context) {
   TRI_AddGlobalFunctionVocbase(context, "KEY_PUSH", JS_KeyPush);
   TRI_AddGlobalFunctionVocbase(context, "KEY_POP", JS_KeyPop);
   TRI_AddGlobalFunctionVocbase(context, "KEY_TRANSFER", JS_KeyTransfer);
-  TRI_AddGlobalFunctionVocbase(context, "KEY_AT", JS_KeyAt);
+  TRI_AddGlobalFunctionVocbase(context, "KEY_GET_AT", JS_KeyGetAt);
+  TRI_AddGlobalFunctionVocbase(context, "KEY_SET_AT", JS_KeySetAt);
 }
 
 // -----------------------------------------------------------------------------
