@@ -1,6 +1,23 @@
 v2.3.0 (XXXX-XX-XX)
 -------------------
 
+* command-line options that require a boolean value now validate the
+  value given on the command-line
+
+  This prevents issues if no value is specified for an option that 
+  requires a boolean value. For example, the following command-line would 
+  have caused trouble in 2.2, because `--server.endpoint` would have been 
+  used as the value for the `--server.disable-authentication` options
+  (which requires a boolean value):
+  
+      arangod --server.disable-authentication --server.endpoint tcp://127.0.0.1:8529 data
+
+  In 2.3, running this command will fail with an error and requires to
+  be modified to:
+
+      arangod --server.disable-authentication true --server.endpoint tcp://127.0.0.1:8529 data
+
+
 * improved performance of CSV import in arangoimp
 
 * fixed issue #1027: Stack traces are off-by-one
