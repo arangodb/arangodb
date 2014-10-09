@@ -590,9 +590,11 @@ triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
                                               false, false);
   
   // assert that everything is cleaned up when we enter the context
+#ifdef TRI_ENABLE_MAINTAINER_MODE  
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(context->_isolate->GetData());
   TRI_ASSERT(v8g->_currentTransaction == nullptr);
   TRI_ASSERT(v8g->_resolver == nullptr);
+#endif
 
   if (nullptr == context) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL,
@@ -669,8 +671,10 @@ triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
   }
   
   // must have cleaned everything up
+#ifdef TRI_ENABLE_MAINTAINER_MODE  
   TRI_ASSERT(v8g->_currentTransaction == nullptr);
   TRI_ASSERT(v8g->_resolver == nullptr);
+#endif
 
   _applicationV8->exitContext(context);
 //std::cout << "REQUEST HANDLING DONE: " << triagens::arango::ServerState::instance()->getId() << ": " << _request->fullUrl() << ": " << _response->responseCode() << ", CONTENT-LENGTH: " << _response->contentLength() << "\n";
