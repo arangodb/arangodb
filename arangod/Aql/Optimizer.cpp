@@ -450,9 +450,9 @@ void Optimizer::setupRules () {
 
   if (ExecutionEngine::isCoordinator()) {
     // distribute operations in cluster
-    registerRule("distribute-in-cluster",
-                 distributeInCluster,
-                 distributeInCluster_pass10,
+    registerRule("scatter-in-cluster",
+                 scatterInCluster,
+                 scatterInCluster_pass10,
                  false);
 
     // distribute operations in cluster

@@ -89,7 +89,7 @@ function optimizerRuleTestSuite () {
         [ "FOR d IN " + cn1 + " FILTER d.Hallo < 5 REMOVE d._key in " + cn1, 1]
       ];
 
-      var expectedRules = [ "distribute-in-cluster", 
+      var expectedRules = [ "scatter-in-cluster", 
                             "distribute-filtercalc-to-cluster", 
                             "undistribute-remove-after-enum-coll"];
 
@@ -130,7 +130,7 @@ function optimizerRuleTestSuite () {
          ["FOR d IN " + cn1 + " FILTER d.Hallo < 5 REMOVE d._key in " + cn1, 1]
       ];
 
-      var expectedRules = [ "distribute-in-cluster", 
+      var expectedRules = [ "scatter-in-cluster", 
                             "distribute-filtercalc-to-cluster" ];
 
       var expectedNodes = [ ["SingletonNode", 
