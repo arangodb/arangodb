@@ -3962,7 +3962,7 @@ bool DistributeBlock::getBlockForClient (size_t atLeast,
     size_t reg = cur->getNrRegs() - 1; // FIXME this is a totally arbitrary choice
     while (_pos < cur->size() && buf.at(clientId).size() < atLeast) {
       // inspect cur in row _pos and check to which shard it should be sent . .
-      size_t id = sendToClient(cur->getValue(_pos, reg));
+      size_t id = sendToClient(cur->getValue(_pos, static_cast<triagens::aql::RegisterId>(reg)));
       buf.at(id).push_back(make_pair(_index, _pos++));
     }
     if (_pos == cur->size()) {
@@ -4012,7 +4012,7 @@ int DistributeBlock::getOrSkipSomeForShard (size_t atLeast,
       }
     }
 
-    skipped = std::min(buf.size(), atMost);
+    skipped = (std::min)(buf.size(), atMost);
 
     if (skipping) {
       for (size_t i = 0; i < skipped; i++){
@@ -4067,7 +4067,7 @@ int DistributeBlock::getOrSkipSomeForShard (size_t atLeast,
       return TRI_ERROR_NO_ERROR; // don't have to do any clean-up
     }
     else {
-      smallestIndex = std::min(index, smallestIndex);
+      smallestIndex = (std::min)(index, smallestIndex);
     }
   }
 
