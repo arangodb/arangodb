@@ -1552,6 +1552,7 @@ namespace triagens {
 
         int64_t remaining () {
           TRI_ASSERT(false);
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1565,7 +1566,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual AqlItemBlock* getSome (size_t atLeast, size_t atMost) {
-          // TODO: implement this method
+          TRI_ASSERT(false);
           THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
         }
 
@@ -1574,7 +1575,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual size_t skipSome (size_t atLeast, size_t atMost) {
-          // TODO: implement this method
+          TRI_ASSERT(false);
           THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
         }
        
@@ -1701,6 +1702,7 @@ namespace triagens {
 
         virtual AqlItemBlock* getSome (size_t atLeast, size_t atMost) {
           TRI_ASSERT(false);
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1709,6 +1711,7 @@ namespace triagens {
 
         virtual size_t skipSome (size_t atLeast, size_t atMost) {
           TRI_ASSERT(false);
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
         }
        
 ////////////////////////////////////////////////////////////////////////////////
