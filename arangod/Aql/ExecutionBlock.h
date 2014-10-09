@@ -1772,7 +1772,6 @@ namespace triagens {
                                 size_t atMost,
                                 size_t clientId);
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sendToClient: for each row of the incoming AqlItemBlock use the 
 /// attributes <shardKeys> of the register <id> to determine to which shard the

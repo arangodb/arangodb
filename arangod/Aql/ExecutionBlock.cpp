@@ -3903,12 +3903,10 @@ size_t DistributeBlock::getClientId (std::string const& shardId) {
 
 size_t DistributeBlock::sendToClient (AqlValue val) {
   
-  // _shardKeys to get the <json> for getResponsibleShard
-  
   TRI_ASSERT(val._type == AqlValue::JSON);
   TRI_json_t const* json;
   if (val.isArray()) {
-    // loop over _shardKeys and make a Json array containing those things
+    // TODO loop over _shardKeys and make a Json array containing those things?
     json = val.extractArrayMember(_trx, 
         _collection->documentCollection(), _shardKeys).json();
   }

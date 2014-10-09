@@ -109,7 +109,7 @@ namespace triagens {
 /// @brief distribute operations in cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-    int distributeInCluster (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+    int scatterInCluster (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
     int distributeFilternCalcToCluster (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 

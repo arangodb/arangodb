@@ -92,7 +92,7 @@ function optimizerRuleTestSuite () {
 
       queries.forEach(function(query) {
         var result = AQL_EXPLAIN(query, { }, rulesNone);
-        assertEqual([ "distribute-in-cluster" ], result.plan.rules, query);
+        assertEqual([ "scatter-in-cluster" ], result.plan.rules, query);
       });
     },
 
@@ -122,13 +122,14 @@ function optimizerRuleTestSuite () {
         [ "FOR e in " + cn1 + " FOR d IN " + cn1 + " LIMIT 10 RETURN d", 3]
       ];
 
-      var expectedRules = [ "distribute-in-cluster", "remove-unnecessary-remote-scatter"];
+      var expectedRules = [ "scatter-in-cluster", "remove-unnecessary-remote-scatter"];
       var expectedNodes = [ 
           ["SingletonNode", "EnumerateCollectionNode",
            "RemoteNode", "GatherNode", "ReturnNode"],
-          ["SingletonNode", "EnumerateCollectionNode",
-           "RemoteNode", "GatherNode", "ReturnNode"],
-          ["SingletonNode", "EnumerateCollectionNode", "RemoteNode",
+          ["SingletonNode", "CalculationNode", "CalculationNode",
+           "EnumerateCollectionNode", "RemoteNode", "GatherNode", "ReturnNode"],
+          ["SingletonNode", "CalculationNode", "CalculationNode",
+           "EnumerateCollectionNode", "RemoteNode",
            "GatherNode", "LimitNode", "ReturnNode" ],
           ["SingletonNode", "EnumerateCollectionNode", "RemoteNode",
            "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode",
