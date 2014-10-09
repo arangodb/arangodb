@@ -3606,24 +3606,93 @@ bool GatherBlock::OurLessThan::operator() (std::pair<size_t, size_t> const& a,
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                class ScatterBlock
+// --SECTION--                                            class BlockWithClients
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ScatterBlock::ScatterBlock (ExecutionEngine* engine,
-                            ScatterNode const* ep, 
-                            std::vector<std::string> const& shardIds)
-  : ExecutionBlock(engine, ep), 
-    _nrClients(shardIds.size()),
-    _initOrShutdown(true){
+BlockWithClients::BlockWithClients (ExecutionEngine* engine,
+                                    ExecutionNode const* ep, 
+                                    std::vector<std::string> const& shardIds) :
+                                    ExecutionBlock(engine, ep), 
+                                    _nrClients(shardIds.size()),
+                                    _initOrShutdown(true) {
   _shardIdMap.reserve(_nrClients);
   for (size_t i = 0; i < _nrClients; i++) {
     _shardIdMap.emplace(std::make_pair(shardIds[i], i));
   }
+}                                  
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getSomeForShard
+////////////////////////////////////////////////////////////////////////////////
+
+AqlItemBlock* BlockWithClients::getSomeForShard (size_t atLeast, 
+                                                 size_t atMost, 
+                                                 std::string const& shardId) {
+  size_t skipped = 0;
+  AqlItemBlock* result = nullptr;
+  int out = getOrSkipSomeForShard(atLeast, atMost, false, result, skipped, shardId);
+  if (out != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(out);
+  }
+  return result;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief skipSomeForShard
+////////////////////////////////////////////////////////////////////////////////
+
+size_t BlockWithClients::skipSomeForShard (size_t atLeast, 
+                                           size_t atMost, 
+                                           std::string const& shardId) {
+  size_t skipped = 0;
+  AqlItemBlock* result = nullptr;
+  int out = getOrSkipSomeForShard(atLeast, atMost, true, result, skipped, shardId);
+  TRI_ASSERT(result == nullptr);
+  if (out != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(out);
+  }
+  return skipped;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief skipForShard
+////////////////////////////////////////////////////////////////////////////////
+
+bool BlockWithClients::skipForShard (size_t number, 
+                                     std::string const& shardId) {
+
+  size_t skipped = skipSomeForShard(number, number, shardId);
+  size_t nr = skipped;
+  while (nr != 0 && skipped < number) {
+    nr = skipSomeForShard(number - skipped, number - skipped, shardId);
+    skipped += nr;
+  }
+  if (nr == 0) {
+    return true;
+  }
+  return ! hasMoreForShard(shardId);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getClientId: get the number <clientId> (used internally)
+/// corresponding to <shardId>
+////////////////////////////////////////////////////////////////////////////////
+
+size_t BlockWithClients::getClientId (std::string const& shardId) {
+  auto it = _shardIdMap.find(shardId);
+  if (it == _shardIdMap.end()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "AQL: unknown shard id");
+  }
+  return ((*it).second);
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                class ScatterBlock
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializeCursor
@@ -3651,8 +3720,11 @@ int ScatterBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   }
   _initOrShutdown = false;
   return TRI_ERROR_NO_ERROR;
-
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shutdown
+////////////////////////////////////////////////////////////////////////////////
 
 int ScatterBlock::shutdown () {
   if (!_initOrShutdown) {
@@ -3663,21 +3735,28 @@ int ScatterBlock::shutdown () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hasMore: any more for any shard?
+/// @brief hasMoreForShard: any more for shard <shardId>?
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ScatterBlock::hasMore () {
-  if (_done) {
+bool ScatterBlock::hasMoreForShard (std::string const& shardId){
+  size_t clientId = getClientId(shardId);
+
+  if (_doneForClient.at(clientId)) {
     return false;
   }
 
-  for (auto const& x: _shardIdMap) {
-    if (hasMoreForShard(x.first)){
-      return true;
+  std::pair<size_t,size_t> pos = _posForClient.at(clientId); 
+  // (i, j) where i is the position in _buffer, and j is the position in
+  // _buffer.at(i) we are sending to <clientId>
+
+  if (pos.first > _buffer.size()) {
+    _initOrShutdown = true;
+    if (! getBlock(DefaultBatchSize, DefaultBatchSize)) {
+      _doneForClient.at(clientId) = true;
+      return false;
     }
   }
-  _done = true;
-  return false;
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3706,31 +3785,6 @@ int64_t ScatterBlock::remainingForShard (std::string const& shardId) {
   }
 
   return sum;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hasMoreForShard: any more for shard <shardId>?
-////////////////////////////////////////////////////////////////////////////////
-
-bool ScatterBlock::hasMoreForShard (std::string const& shardId){
-  size_t clientId = getClientId(shardId);
-
-  if (_doneForClient.at(clientId)) {
-    return false;
-  }
-
-  std::pair<size_t,size_t> pos = _posForClient.at(clientId); 
-  // (i, j) where i is the position in _buffer, and j is the position in
-  // _buffer.at(i) we are sending to <clientId>
-
-  if (pos.first > _buffer.size()) {
-    _initOrShutdown = true;
-    if (! getBlock(DefaultBatchSize, DefaultBatchSize)) {
-      _doneForClient.at(clientId) = true;
-      return false;
-    }
-  }
-  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3774,7 +3828,8 @@ int ScatterBlock::getOrSkipSomeForShard (size_t atLeast,
   _posForClient.at(clientId).second += skipped;
 
   // check if we're done at current block in buffer . . .  
-  if (_posForClient.at(clientId).second == _buffer.at(_posForClient.at(clientId).first)->size()) {
+  if (_posForClient.at(clientId).second 
+      == _buffer.at(_posForClient.at(clientId).first)->size()) {
     _posForClient.at(clientId).first++;
     _posForClient.at(clientId).second = 0;
 
@@ -3800,180 +3855,35 @@ int ScatterBlock::getOrSkipSomeForShard (size_t atLeast,
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getSomeForShard
-////////////////////////////////////////////////////////////////////////////////
-
-AqlItemBlock* ScatterBlock::getSomeForShard (
-                                 size_t atLeast, size_t atMost, std::string
-                                 const& shardId) {
-  size_t skipped = 0;
-  AqlItemBlock* result = nullptr;
-  int out = getOrSkipSomeForShard(atLeast, atMost, false, result, skipped, shardId);
-  if (out != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(out);
-  }
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief skipSomeForShard
-////////////////////////////////////////////////////////////////////////////////
-
-size_t ScatterBlock::skipSomeForShard (size_t atLeast, size_t atMost, std::string const& shardId) {
-  size_t skipped = 0;
-  AqlItemBlock* result = nullptr;
-  int out = getOrSkipSomeForShard(atLeast, atMost, true, result, skipped, shardId);
-  TRI_ASSERT(result == nullptr);
-  if (out != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(out);
-  }
-  return skipped;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief skipForShard
-////////////////////////////////////////////////////////////////////////////////
-
-bool ScatterBlock::skipForShard (size_t number, std::string const& shardId) {
-  size_t skipped = skipSomeForShard(number, number, shardId);
-  size_t nr = skipped;
-  while (nr != 0 && skipped < number) {
-    nr = skipSomeForShard(number - skipped, number - skipped, shardId);
-    skipped += nr;
-  }
-  if (nr == 0) {
-    return true;
-  }
-  return ! hasMoreForShard(shardId);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getClientId: get the number <clientId> (used internally)
-/// corresponding to <shardId>
-////////////////////////////////////////////////////////////////////////////////
-
-size_t ScatterBlock::getClientId (std::string const& shardId) {
-  auto it = _shardIdMap.find(shardId);
-  if (it == _shardIdMap.end()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "AQL: unknown shard id");
-  }
-  return ((*it).second);
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                             class DistributeBlock
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
+/// @brief hasMore: any more for any shard?
 ////////////////////////////////////////////////////////////////////////////////
 
-DistributeBlock::DistributeBlock (ExecutionEngine* engine,
-                                  DistributeNode const* ep, 
-                                  std::vector<std::string> const& shardIds, 
-                                  Collection const* collection)
-  : ExecutionBlock(engine, ep), 
-    _nrClients(shardIds.size()),
-    _collection(collection){
-      _shardIdMap.reserve(_nrClients);
-      for (size_t i = 0; i < _nrClients; i++) {
-        _shardIdMap.emplace(std::make_pair(shardIds[i], i));
-      }
-}
+bool DistributeBlock::hasMoreForShard (std::string const& shardId) {
+  size_t clientId = getClientId(shardId);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getClientId: get the number <clientId> (used internally)
-/// corresponding to <shardId>
-////////////////////////////////////////////////////////////////////////////////
-
-size_t DistributeBlock::getClientId (std::string const& shardId) {
-  auto it = _shardIdMap.find(shardId);
-  if (it == _shardIdMap.end()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "AQL: unknown shard id");
+  if (_doneForClient.at(clientId)) {
+    return false;
   }
-  return ((*it).second);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief distributeFunction: for each row of the incoming AqlItemBlock use the
-/// attributes <shardKeys> of the Aql value <val> to determine to which shard
-/// the row should be sent and return its clientId
-////////////////////////////////////////////////////////////////////////////////
-
-size_t DistributeBlock::sendToClient (AqlValue val) {
-  
-  TRI_ASSERT(val._type == AqlValue::JSON);
-  TRI_json_t const* json;
-  if (val.isArray()) {
-    // TODO loop over _shardKeys and make a Json array containing those things?
-    json = val.extractArrayMember(_trx, 
-        _collection->documentCollection(), _shardKeys).json();
-  }
-  else {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-  
-  std::string shardId;
-  bool usesDefaultShardingAttributes = false;  
-  
-  auto clusterInfo = triagens::arango::ClusterInfo::instance();
-  clusterInfo->getResponsibleShard( _collection->getName(),
-                                    json,
-                                    true,
-                                    shardId,
-                                    usesDefaultShardingAttributes);
-  return getClientId(shardId); 
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getBlockForShard: try to get atLeast pairs into
-/// _distBuffer.at(clientId), this means we have to look at every row in the
-/// incoming blocks until they run out or we find enough rows for clientId. We 
-/// also keep track of blocks which should be sent to other clients than the
-/// current one. 
-////////////////////////////////////////////////////////////////////////////////
-
-bool DistributeBlock::getBlockForClient (size_t atLeast, 
-                                         size_t atMost,
-                                         size_t clientId) {
- 
-  if (_buffer.empty()) {
-    _index = 0;         // position in _buffer
-    _pos = 0;           // position in _buffer.at(_index)
+        
+  if (! _distBuffer.at(clientId).empty()) {
+    return true;
   }
 
-  std::vector<std::deque<pair<size_t, size_t>>>& buf = _distBuffer;
-  // it should be the case that buf.at(clientId) is empty 
-  
-  while (buf.at(clientId).size() < atLeast) {
-    if (_index == _buffer.size()) {
-      if (! ExecutionBlock::getBlock(atLeast, atMost)) {
-        if (buf.at(clientId).size() == 0) {
-          _doneForClient.at(clientId) = true;
-          return false;
-        }
-        break; 
-      }
-    }
-    AqlItemBlock* cur = _buffer.at(_index);
-    size_t reg = cur->getNrRegs() - 1; // FIXME this is a totally arbitrary choice
-    while (_pos < cur->size() && buf.at(clientId).size() < atLeast) {
-      // inspect cur in row _pos and check to which shard it should be sent . .
-      size_t id = sendToClient(cur->getValue(_pos, reg));
-      buf.at(id).push_back(make_pair(_index, _pos++));
-    }
-    if (_pos == cur->size()) {
-      _pos = 0;
-      _index++;
-    } 
-    else {
-      break;
-    }
+  if (! getBlockForClient(DefaultBatchSize, DefaultBatchSize, clientId)) {
+    _doneForClient.at(clientId) = true;
+    return false;
   }
-  
   return true;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getOrSkipSomeForShard
+////////////////////////////////////////////////////////////////////////////////
 
 int DistributeBlock::getOrSkipSomeForShard (size_t atLeast,
                                             size_t atMost,
@@ -4084,6 +3994,86 @@ int DistributeBlock::getOrSkipSomeForShard (size_t atLeast,
   }
 
   return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getBlockForClient: try to get atLeast pairs into
+/// _distBuffer.at(clientId), this means we have to look at every row in the
+/// incoming blocks until they run out or we find enough rows for clientId. We 
+/// also keep track of blocks which should be sent to other clients than the
+/// current one. 
+////////////////////////////////////////////////////////////////////////////////
+
+bool DistributeBlock::getBlockForClient (size_t atLeast, 
+                                         size_t atMost,
+                                         size_t clientId) {
+ 
+  if (_buffer.empty()) {
+    _index = 0;         // position in _buffer
+    _pos = 0;           // position in _buffer.at(_index)
+  }
+
+  std::vector<std::deque<pair<size_t, size_t>>>& buf = _distBuffer;
+  // it should be the case that buf.at(clientId) is empty 
+  
+  while (buf.at(clientId).size() < atLeast) {
+    if (_index == _buffer.size()) {
+      if (! ExecutionBlock::getBlock(atLeast, atMost)) {
+        if (buf.at(clientId).size() == 0) {
+          _doneForClient.at(clientId) = true;
+          return false;
+        }
+        break; 
+      }
+    }
+    AqlItemBlock* cur = _buffer.at(_index);
+    size_t reg = cur->getNrRegs() - 1; // FIXME this is a totally arbitrary choice
+    while (_pos < cur->size() && buf.at(clientId).size() < atLeast) {
+      // inspect cur in row _pos and check to which shard it should be sent . .
+      size_t id = sendToClient(cur->getValue(_pos, reg));
+      buf.at(id).push_back(make_pair(_index, _pos++));
+    }
+    if (_pos == cur->size()) {
+      _pos = 0;
+      _index++;
+    } 
+    else {
+      break;
+    }
+  }
+  
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sendToClient: for each row of the incoming AqlItemBlock use the
+/// attributes <shardKeys> of the Aql value <val> to determine to which shard
+/// the row should be sent and return its clientId
+////////////////////////////////////////////////////////////////////////////////
+
+size_t DistributeBlock::sendToClient (AqlValue val) {
+  
+  TRI_ASSERT(val._type == AqlValue::JSON);
+  TRI_json_t const* json;
+  if (val.isArray()) {
+    // TODO loop over _shardKeys and make a Json array containing those things?
+    json = val.extractArrayMember(_trx, 
+        _collection->documentCollection(), _shardKeys).json();
+  }
+  else {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+  
+  std::string shardId;
+  bool usesDefaultShardingAttributes = false;  
+  
+  auto clusterInfo = triagens::arango::ClusterInfo::instance();
+  clusterInfo->getResponsibleShard( _collection->getName(),
+                                    json,
+                                    true,
+                                    shardId,
+                                    usesDefaultShardingAttributes);
+  return getClientId(shardId); 
 }
 
 // -----------------------------------------------------------------------------

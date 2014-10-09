@@ -1504,48 +1504,42 @@ namespace triagens {
     };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                      ScatterBlock
+// --SECTION--                                                  BlockWithClients
 // -----------------------------------------------------------------------------
 
-    class ScatterBlock : public ExecutionBlock {
+    class BlockWithClients : public ExecutionBlock {
+
+      public:
+      
+      BlockWithClients (ExecutionEngine* engine,
+                        ExecutionNode const* ep, 
+                        std::vector<std::string> const& shardIds); 
+
+      virtual ~BlockWithClients () {}
+      
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                   BlockWithClients public methods
+// -----------------------------------------------------------------------------
 
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
+/// @brief getSome: shouldn't be used, use skipSomeForShard
 ////////////////////////////////////////////////////////////////////////////////
 
-        ScatterBlock (ExecutionEngine* engine,
-                      ScatterNode const* ep, 
-                      std::vector<std::string> const& shardIds);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
-
-        ~ScatterBlock () {
+        AqlItemBlock* getSome (size_t atLeast, size_t atMost) {
+          TRI_ASSERT(false);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize
+/// @brief skipSome: shouldn't be used, use skipSomeForShard
 ////////////////////////////////////////////////////////////////////////////////
 
-        int initialize () {
-          return ExecutionBlock::initialize();
+        size_t skipSome (size_t atLeast, size_t atMost) {
+          TRI_ASSERT(false);
         }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initializeCursor
-////////////////////////////////////////////////////////////////////////////////
-
-        int initializeCursor (AqlItemBlock* items, size_t pos);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initializeCursor
-////////////////////////////////////////////////////////////////////////////////
-
-        int shutdown ();
-
+      
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remaining
 ////////////////////////////////////////////////////////////////////////////////
@@ -1555,48 +1549,20 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hasMore: any more for any shard?
+/// @brief hasMore 
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual bool hasMore ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getSome: shouldn't be used!!!
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual AqlItemBlock* getSome (size_t atLeast, size_t atMost) {
-          // TODO: implement this method
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+        bool hasMore () {
+          TRI_ASSERT(false);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief skipSome: shouldn't be used!!!
+/// @brief skip
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual size_t skipSome (size_t atLeast, size_t atMost) {
-          // TODO: implement this method
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+        int64_t skip () {
+          TRI_ASSERT(false);
         }
-       
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hasMoreForShard: any more for shard <shardId>?
-////////////////////////////////////////////////////////////////////////////////
-        
-        bool hasMoreForShard (std::string const& shardId);
-       
-////////////////////////////////////////////////////////////////////////////////
-/// @brief remainingForShard: remaining for shard <shardId>?
-////////////////////////////////////////////////////////////////////////////////
-        
-        int64_t remainingForShard (std::string const& shardId);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getOrSkipSomeForShard
-////////////////////////////////////////////////////////////////////////////////
-        
-        int getOrSkipSomeForShard (size_t atLeast, size_t atMost, 
-            bool skipping, AqlItemBlock*& result, size_t& skipped, 
-            std::string const& shardId);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getSomeForShard
@@ -1618,8 +1584,35 @@ namespace triagens {
 
         bool skipForShard (size_t number, std::string const& shardId);
 
-      private: 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hasMoreForShard: any more for shard <shardId>?
+////////////////////////////////////////////////////////////////////////////////
+        
+        virtual bool hasMoreForShard (std::string const& shardId) = 0;
        
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remainingForShard: remaining for shard <shardId>?
+////////////////////////////////////////////////////////////////////////////////
+        
+        virtual int64_t remainingForShard (std::string const& shardId) = 0;
+
+      protected:
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                BlockWithClients protected methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getOrSkipSomeForShard
+////////////////////////////////////////////////////////////////////////////////
+        
+        virtual int getOrSkipSomeForShard (size_t atLeast, 
+                                           size_t atMost, 
+                                           bool skipping, 
+                                           AqlItemBlock*& result, 
+                                           size_t& skipped, 
+                                           std::string const& shardId) = 0;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getClientId: get the number <clientId> (used internally)
 /// corresponding to <shardId>
@@ -1627,21 +1620,9 @@ namespace triagens {
 
         size_t getClientId (std::string const& shardId);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _posForClient: _posForClient.at(i).second is the nr of rows of
-/// _gatherBlockBuffer.at(_posForClient.at(i).first) sent to the client 
-/// with id <i>, i.e. it is the position we should read from in
-/// _gatherBlockBuffer.at(_posForClient.at(i).first)
-////////////////////////////////////////////////////////////////////////////////
-
-        std::vector<std::pair<size_t, size_t>> _posForClient; 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _doneForClient: the analogue of _done: _doneForClient.at(i) = true
-/// if we are done for the shard with clientId = i
-////////////////////////////////////////////////////////////////////////////////
-
-        std::vector<bool> _doneForClient;
+// -----------------------------------------------------------------------------
+// --SECTION--                                   BlockWithClients protected data
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _shardIdMap: map from shardIds to clientNrs
@@ -1656,7 +1637,14 @@ namespace triagens {
         size_t _nrClients;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _reinit: should we really initialiseCursor or shutdown? 
+/// @brief _doneForClient: the analogue of _done: _doneForClient.at(i) = true
+/// if we are done for the shard with clientId = i
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<bool> _doneForClient;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _initOrShutdown: should we really initialiseCursor or shutdown? 
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _initOrShutdown;
@@ -1664,10 +1652,10 @@ namespace triagens {
     };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   DistributeBlock
+// --SECTION--                                                      ScatterBlock
 // -----------------------------------------------------------------------------
 
-    class DistributeBlock : public ExecutionBlock {
+    class ScatterBlock : public BlockWithClients {
 
       public:
 
@@ -1675,42 +1663,29 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        DistributeBlock (ExecutionEngine* engine,
-                         DistributeNode const* ep, 
-                         std::vector<std::string> const& shardIds, 
-                         Collection const* collection);
+        ScatterBlock (ExecutionEngine* engine,
+                      ScatterNode const* ep, 
+                      std::vector<std::string> const& shardIds) 
+                      : BlockWithClients(engine, ep, shardIds) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~DistributeBlock () {
-        }
+        ~ScatterBlock () {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize
+/// @brief initializeCursor
 ////////////////////////////////////////////////////////////////////////////////
 
-        int initialize () {
-          return ExecutionBlock::initialize();
-        }
+        int initializeCursor (AqlItemBlock* items, size_t pos);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getSome: shouldn't be used!!!
+/// @brief initializeCursor
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual AqlItemBlock* getSome (size_t atLeast, size_t atMost) {
-          TRI_ASSERT(false);
-        }
+        int shutdown ();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief skipSome: shouldn't be used!!!
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual size_t skipSome (size_t atLeast, size_t atMost) {
-          TRI_ASSERT(false);
-        }
-       
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hasMoreForShard: any more for shard <shardId>?
 ////////////////////////////////////////////////////////////////////////////////
@@ -1727,39 +1702,78 @@ namespace triagens {
 /// @brief getOrSkipSomeForShard
 ////////////////////////////////////////////////////////////////////////////////
         
-        int getOrSkipSomeForShard (size_t atLeast, size_t atMost, 
-            bool skipping, AqlItemBlock*& result, size_t& skipped, 
-            std::string const& shardId);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getSomeForShard
-////////////////////////////////////////////////////////////////////////////////
-        
-        AqlItemBlock* getSomeForShard (size_t atLeast, size_t atMost,
-            std::string const& shardId);
-        
-////////////////////////////////////////////////////////////////////////////////
-/// @brief skipSomeForShard
-////////////////////////////////////////////////////////////////////////////////
-
-        size_t skipSomeForShard (size_t atLeast, size_t atMost, std::string
-            const& shardId);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief skipForShard
-////////////////////////////////////////////////////////////////////////////////
-
-        bool skipForShard (size_t number, std::string const& shardId);
+        int getOrSkipSomeForShard (size_t atLeast, 
+                                   size_t atMost, 
+                                   bool skipping, 
+                                   AqlItemBlock*& result, 
+                                   size_t& skipped, 
+                                   std::string const& shardId);
 
       private: 
        
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getClientId: get the number <clientId> (used internally)
-/// corresponding to <shardId>
+/// @brief _posForClient: _posForClient.at(i).second is the nr of rows of
+/// _gatherBlockBuffer.at(_posForClient.at(i).first) sent to the client 
+/// with id <i>, i.e. it is the position we should read from in
+/// _gatherBlockBuffer.at(_posForClient.at(i).first)
 ////////////////////////////////////////////////////////////////////////////////
 
-        size_t getClientId (std::string const& shardId);
+        std::vector<std::pair<size_t, size_t>> _posForClient; 
 
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   DistributeBlock
+// -----------------------------------------------------------------------------
+
+    class DistributeBlock : public BlockWithClients {
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+        DistributeBlock (ExecutionEngine* engine,
+                         DistributeNode const* ep, 
+                         std::vector<std::string> const& shardIds, 
+                         Collection const* collection)
+                         : BlockWithClients(engine, ep, shardIds), 
+                           _collection(collection) {}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+        ~DistributeBlock () {}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remainingForShard: remaining for shard <shardId>?
+////////////////////////////////////////////////////////////////////////////////
+        
+        int64_t remainingForShard (std::string const& shardId){
+          return -1;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hasMoreForShard: any more for shard <shardId>?
+////////////////////////////////////////////////////////////////////////////////
+
+        bool hasMoreForShard (std::string const& shardId);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getOrSkipSomeForShard
+////////////////////////////////////////////////////////////////////////////////
+        
+        int getOrSkipSomeForShard (size_t atLeast, 
+                                   size_t atMost, 
+                                   bool skipping, 
+                                   AqlItemBlock*& result, 
+                                   size_t& skipped, 
+                                   std::string const& shardId);
+
+      private: 
+       
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getBlockForClient: try to get at atLeast/atMost pairs into
 /// _distBuffer.at(clientId).
@@ -1778,30 +1792,11 @@ namespace triagens {
         size_t sendToClient (AqlValue val);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _shardIdMap: map from shardIds to clientNrs
-////////////////////////////////////////////////////////////////////////////////
-
-        std::unordered_map<std::string, size_t> _shardIdMap;
-        
-////////////////////////////////////////////////////////////////////////////////
 /// @brief _distBuffer.at(i) is a deque containing pairs (j,k) such that
 //  _buffer.at(j) row k should be sent to the client with id = i.
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<std::deque<std::pair<size_t, size_t>>> _distBuffer;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _nrClients: total number of clients
-////////////////////////////////////////////////////////////////////////////////
-
-        size_t _nrClients;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _doneForClient: the analogue of _done: _doneForClient.at(i) = true
-/// if we are done for the shard with clientId = i
-////////////////////////////////////////////////////////////////////////////////
-
-        std::vector<bool> _doneForClient;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _colectionName: the name of the sharded collection 
@@ -1810,7 +1805,7 @@ namespace triagens {
         Collection const* _collection;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief : the keys used by the <sendToClient> to determine to which
+/// @brief _shardKeys: the keys used by the <sendToClient> to determine to which
 /// shard a row is sent
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1818,13 +1813,13 @@ namespace triagens {
         const char * _shardKeys;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief : the keys used by the <sendToClient> to determine to which
-/// shard a row is sent
+/// @brief _index: the block in _buffer we are currently considering
 ////////////////////////////////////////////////////////////////////////////////
 
         size_t _index;
 
     };
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       RemoteBlock
 // -----------------------------------------------------------------------------
