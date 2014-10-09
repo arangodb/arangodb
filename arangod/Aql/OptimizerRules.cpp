@@ -1612,7 +1612,7 @@ int triagens::aql::interchangeAdjacentEnumerations (Optimizer* opt,
 /// it will change plans in place
 ////////////////////////////////////////////////////////////////////////////////
 
-int triagens::aql::distributeInCluster (Optimizer* opt,
+int triagens::aql::scatterInCluster (Optimizer* opt,
                                         ExecutionPlan* plan,
                                         Optimizer::Rule const* rule) {
   bool wasModified = false;
