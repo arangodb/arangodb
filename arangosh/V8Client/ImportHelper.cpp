@@ -415,8 +415,8 @@ namespace triagens {
       double pct = 100.0 * ((double) totalRead / (double) totalLength);
 
       if (pct >= nextProgress && totalLength >= 1024) {
-        LOG_INFO("processed %lld bytes (%0.2f%%) of input file", (long long) totalRead, pct);
-        nextProgress = pct + ProgressStep;
+        LOG_INFO("processed %lld bytes (%0.1f%%) of input file", (long long) totalRead, nextProgress);
+        nextProgress = (double) ((int) (pct + ProgressStep));
       }
     }
 
