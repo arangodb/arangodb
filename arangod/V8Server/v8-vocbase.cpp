@@ -1414,7 +1414,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> const name,
 
   if (*key == '_') {
     // special treatment for all properties starting with _
-    v8::Local<v8::String> const l = v8::String::New(key, keyLength);
+    v8::Local<v8::String> const l = v8::String::New(key, (int) keyLength);
 
     if (holder->HasRealNamedProperty(l)) {
       // some internal function inside db

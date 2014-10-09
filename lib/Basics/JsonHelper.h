@@ -821,6 +821,10 @@ namespace triagens {
 /// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
+        Json at (size_t pos) const {
+          return at(static_cast<int>(pos));
+        }
+
         Json at (int pos) const {
           if (! TRI_IsListJson(_json)) {
             throw JsonException("Json is no list");
