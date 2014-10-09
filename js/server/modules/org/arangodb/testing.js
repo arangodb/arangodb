@@ -250,18 +250,40 @@ function startInstance (protocol, options, addArgs, testname) {
   return instanceInfo;
 }
 
+function checkInstanceAlive(instanceInfo) {  
+  var res = statusExternal(instanceInfo.pid, false);
+  var ret = res.status === "RUNNING";
+  if (!ret) {
+    instanceInfo.exitStatus = res;
+  }
+  return ret;
+}
+
 function shutdownInstance (instanceInfo, options) {
+  var res;
   if (options.cluster) {
     instanceInfo.kickstarter.shutdown();
     if (options.cleanup) {
       instanceInfo.kickstarter.cleanup();
     }
+/* TODO: how does this behave in the cluster case?
+    res = statusExternal(instanceInfo.pid, true);
+    print(res);
+*/
   }
   else {
-    download(instanceInfo.url+"/_admin/shutdown","",
-             makeAuthorisationHeaders(options));
-    wait(10);
-    killExternal(instanceInfo.pid);
+    if (typeof(instanceInfo.exitStatus) === 'undefined') {
+      download(instanceInfo.url+"/_admin/shutdown","",
+               makeAuthorisationHeaders(options));
+      wait(10);
+      killExternal(instanceInfo.pid);
+      res = statusExternal(instanceInfo.pid, true);
+      print(res);
+    }
+    else {
+      print("Server already dead, doing nothing.");
+    }
+    
   }
   if (options.cleanup) {
     fs.removeDirectoryRecursive(instanceInfo.tmpDataDir);
@@ -470,12 +492,21 @@ function performTests(options, testList, testname) {
   var results = {};
   var i;
   var te;
+  var continueTesting = true;
+
   for (i = 0; i < testList.length; i++) {
     te = testList[i];
     print("\nTrying",te,"...");
     if ((te.indexOf("-cluster") === -1 || options.cluster) &&
         (te.indexOf("-noncluster") === -1 || options.cluster === false) &&
         (te.indexOf("-disabled") === -1)) {
+
+      if (!continueTesting) {
+        print("Skipping, server is gone.");
+        results[te] = {status: false, message: instanceInfo.exitStatus};
+        continue;
+      }
+
       var r = runThere(options, instanceInfo, te);
       if (r.hasOwnProperty('status')) {
         results[te] = r;
@@ -486,6 +517,7 @@ function performTests(options, testList, testname) {
       if (r !== true && !options.force) {
         break;
       }
+      continueTesting = checkInstanceAlive(instanceInfo);
     }
     else {
       print("Skipped because of cluster/non-cluster or disabled.");
@@ -554,17 +586,28 @@ testFuncs.shell_client = function(options) {
   var results = {};
   var i;
   var te;
+  var continueTesting = true;
+
   for (i = 0; i < tests_shell_client.length; i++) {
     te = tests_shell_client[i];
     print("\nTrying",te,"...");
     if ((te.indexOf("-cluster") === -1 || options.cluster) &&
         (te.indexOf("-noncluster") === -1 || options.cluster === false) &&
         (te.indexOf("-disabled") === -1)) {
+
+      if (!continueTesting) {
+        print("Skipping, server is gone.");
+        results[te] = {status: false, message: instanceInfo.exitStatus};
+        continue;
+      }
+
       var r = runInArangosh(options, instanceInfo, te);
       results[te] = r;
       if (r !== 0 && !options.force) {
         break;
       }
+
+      continueTesting = checkInstanceAlive(instanceInfo);
     }
     else {
       print("Skipped because of cluster/non-cluster.");
@@ -707,6 +750,8 @@ function rubyTests (options, ssl) {
   var result = {};
   var args;
   var i;
+  var continueTesting = true;
+
   for (i = 0; i < files.length; i++) {
     var n = files[i];
     if (n.substr(0,4) === "api-" && n.substr(-3) === ".rb") {
@@ -718,10 +763,19 @@ function rubyTests (options, ssl) {
                 "--format", "d", "--require", tmpname,
                 fs.join("UnitTests","HttpInterface",n)];
 
+        if (!continueTesting) {
+          print("Skipping, server is gone.");
+          result[n] = {status: false, message: instanceInfo.exitStatus};
+          continue;
+        }
+
         result[n] = executeAndWait("rspec", args);
         if (result[n].status === false && !options.force) {
           break;
         }
+
+        continueTesting = checkInstanceAlive(instanceInfo);
+
       }
       else {
         print("Skipped because of cluster/non-cluster or replication.");
@@ -978,13 +1032,25 @@ testFuncs.arangob = function (options) {
   var instanceInfo = startInstance("tcp",options, [], "arangobench");
   var results = {};
   var i,r;
+  var continueTesting = true;
+
   for (i = 0; i < benchTodo.length; i++) {
     // On the cluster we do not yet have working transaction functionality:
     if (!options.cluster ||
         (benchTodo[i].indexOf("counttrx") === -1 &&
          benchTodo[i].indexOf("multitrx") === -1)) {
+
+      if (!continueTesting) {
+        print("Skipping, server is gone.");
+        results[i] = {status: false, message: instanceInfo.exitStatus};
+        continue;
+      }
+
       r = runArangoBenchmark(options, instanceInfo, benchTodo[i]);
       results[i] = r;
+
+      continueTesting = checkInstanceAlive(instanceInfo);
+
       if (r !== 0 && !options.force) {
         break;
       }
@@ -1032,9 +1098,19 @@ testFuncs.authentication_parameters = function (options) {
   var i;
   var expectAuthFullRC = [401, 401, 401, 401, 401, 401, 401];
   var all_ok = true;
+  var continueTesting = true;
+
   print("Starting Full test");
   results.auth_full = {};
   for (i = 0; i < urlsTodo.length; i++) {
+
+    if (!continueTesting) {
+      print("Skipping, server is gone.");
+      results.auth_full[urlsTodo[i]] = {status: false, message: instanceInfo.exitStatus};
+      all_ok = false;
+      continue;
+    }
+
     r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false,returnBodyOnError:true});
     if (r.code === expectAuthFullRC[i]) {
       results.auth_full[urlsTodo[i]] = { status: true, message: ""};
@@ -1046,6 +1122,7 @@ testFuncs.authentication_parameters = function (options) {
       };
       all_ok = false;
     }
+    continueTesting = checkInstanceAlive(instanceInfo);
   }
   results.auth_full.status = all_ok;
 
@@ -1053,6 +1130,7 @@ testFuncs.authentication_parameters = function (options) {
   shutdownInstance(instanceInfo,options);
   print("done with Full test.");
   // Only system authentication:
+  continueTesting = true;
   instanceInfo = startInstance("tcp", options,
                    ["--server.disable-authentication", "false",
                     "--server.authenticate-system-only", "true"],
@@ -1062,6 +1140,12 @@ testFuncs.authentication_parameters = function (options) {
   print("Starting System test");
   results.auth_system = {};
   for (i = 0;i < urlsTodo.length;i++) {
+    if (!continueTesting) {
+      print("Skipping, server is gone.");
+      results.auth_full[urlsTodo[i]] = {status: false, message: instanceInfo.exitStatus};
+      all_ok = false;
+      continue;
+    }
     r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false,returnBodyOnError:true});
     if (r.code === expectAuthSystemRC[i]) {
       results.auth_system[urlsTodo[i]] = { status: true, message: ""};
@@ -1073,6 +1157,7 @@ testFuncs.authentication_parameters = function (options) {
       };
       all_ok = false;
     }
+    continueTesting = checkInstanceAlive(instanceInfo);
   }
   results.auth_system.status = all_ok;
 
@@ -1087,8 +1172,16 @@ testFuncs.authentication_parameters = function (options) {
   var expectAuthNoneRC = [404, 404, 200, 301, 301, 404, 404];
   results.auth_none = {};
   all_ok = true;
+  continueTesting = true;
   print("Starting None test");
   for (i = 0;i < urlsTodo.length;i++) {
+    if (!continueTesting) {
+      print("Skipping, server is gone.");
+      results.auth_full[urlsTodo[i]] = {status: false, message: instanceInfo.exitStatus};
+      all_ok = false;
+      continue;
+    }
+
     r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false,returnBodyOnError:true});
     if (r.code === expectAuthNoneRC[i]) {
       results.auth_none[urlsTodo[i]] = { status: true, message: ""};
@@ -1100,6 +1193,7 @@ testFuncs.authentication_parameters = function (options) {
       };
       all_ok = false;
     }
+    continueTesting = checkInstanceAlive(instanceInfo);
   }
   results.auth_none.status = all_ok;
 
