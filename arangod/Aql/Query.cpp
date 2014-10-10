@@ -454,7 +454,10 @@ QueryResult Query::prepare (QueryRegistry* registry) {
     auto otherJsonString =
       otherPlan->toJson(parser->ast(), TRI_UNKNOWN_MEM_ZONE, true).toString(); 
     std::cout << "deserialised plan: \n" << otherJsonString << "\n";
-    TRI_ASSERT(otherJsonString == JsonString); */
+    //TRI_ASSERT(otherJsonString == JsonString); */
+    
+    // varsUsedLater and varsValid are unordered_sets and so their orders
+    // are not the same in the serialised and deserialised plans 
 
     enterState(EXECUTION);
     ExecutionEngine* engine(ExecutionEngine::instanciateFromPlan(registry, this, plan.get(), planRegisters));
