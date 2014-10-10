@@ -690,11 +690,6 @@
     delete SYS_EXECUTE_EXTERNAL;
   }
 
-  if (typeof SYS_EXECUTE_EXTERNAL_AND_WAIT !== "undefined") {
-    exports.executeExternalAndWait = SYS_EXECUTE_EXTERNAL_AND_WAIT;
-    delete SYS_EXECUTE_EXTERNAL_AND_WAIT;
-  }
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executeExternalAndWait - instantly waits for the exit, returns 
 ///   joint result.
