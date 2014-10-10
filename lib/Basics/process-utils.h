@@ -134,6 +134,7 @@ TRI_external_t;
 typedef struct TRI_external_status_s {
   TRI_external_status_e _status;
   int _exitStatus;
+  std::string _errorMessage;
 }
 TRI_external_status_t;
 
