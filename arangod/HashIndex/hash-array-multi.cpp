@@ -41,20 +41,6 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an element, removing any allocated memory
-////////////////////////////////////////////////////////////////////////////////
-
-static void DestroyElement (TRI_hash_array_multi_t* array,
-                            TRI_hash_index_element_multi_t* element) {
-  TRI_ASSERT_EXPENSIVE(element != nullptr);
-  TRI_ASSERT_EXPENSIVE(element->_document != nullptr);
-
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, element->_subObjects);
-  element->_document = nullptr;
-  element->_next = nullptr;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief determines if a key corresponds to an element
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -124,12 +110,84 @@ static uint64_t HashElement (TRI_hash_array_multi_t const* array,
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                        HASH ARRAY
+// --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private defines
-// -----------------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a block size for hash elements batch allocation
+////////////////////////////////////////////////////////////////////////////////
+
+static inline size_t GetBlockSize (size_t blockNumber) {
+  static size_t const BLOCK_SIZE_UNIT = 128;
+
+  if (blockNumber >= 7) {
+    blockNumber = 7;
+  }
+  return (size_t) (BLOCK_SIZE_UNIT << blockNumber);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a storage location from the freelist
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_hash_index_element_multi_t* GetFromFreelist (TRI_hash_array_multi_t* array) {
+  if (array->_freelist == nullptr) {
+    size_t blockSize = GetBlockSize(array->_blocks._length);
+    TRI_ASSERT(blockSize > 0);
+
+    auto begin = static_cast<TRI_hash_index_element_multi_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, blockSize * sizeof(TRI_hash_index_element_multi_t), true));
+
+    if (begin == nullptr) {
+      return nullptr;
+    }
+
+    auto ptr = begin;
+    auto end = begin + (blockSize - 1);
+
+    while (ptr < end) {
+      ptr->_next = (ptr + 1);
+      ++ptr;
+    }
+
+    array->_freelist = begin;
+    TRI_PushBackVectorPointer(&array->_blocks, begin);
+
+    array->_nrOverflowAlloc += blockSize;
+  }
+
+  auto next = array->_freelist;
+  TRI_ASSERT(next != nullptr);
+  array->_freelist = next->_next;
+  array->_nrOverflowUsed++;
+   
+  return next;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return an element to the freelist
+////////////////////////////////////////////////////////////////////////////////
+
+static void ReturnToFreelist (TRI_hash_array_multi_t* array,
+                              TRI_hash_index_element_multi_t* element) {
+  element->_document = nullptr;
+  element->_next     = array->_freelist;
+  array->_freelist   = element;
+  array->_nrOverflowUsed--;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys an element, removing any allocated memory
+////////////////////////////////////////////////////////////////////////////////
+
+static void DestroyElement (TRI_hash_array_multi_t* array,
+                            TRI_hash_index_element_multi_t* element) {
+  TRI_ASSERT_EXPENSIVE(element != nullptr);
+  TRI_ASSERT_EXPENSIVE(element->_document != nullptr);
+
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, element->_subObjects);
+  element->_document = nullptr;
+  element->_next = nullptr;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initial preallocation size of the hash table when the table is
@@ -261,12 +319,16 @@ int TRI_InitHashArrayMulti (TRI_hash_array_multi_t* array,
 
   TRI_ASSERT(numFields > 0);
 
-  array->_numFields  = numFields;
-  array->_tablePtr   = nullptr;
-  array->_table      = nullptr;
-  array->_nrUsed     = 0;
-  array->_nrAlloc    = 0;
-  array->_nrOverflow = 0;
+  array->_numFields       = numFields;
+  array->_tablePtr        = nullptr;
+  array->_table           = nullptr;
+  array->_nrUsed          = 0;
+  array->_nrAlloc         = 0;
+  array->_nrOverflowUsed  = 0;
+  array->_nrOverflowAlloc = 0;
+  array->_freelist        = nullptr;
+
+  TRI_InitVectorPointer2(&array->_blocks, TRI_UNKNOWN_MEM_ZONE, 16);
 
   return AllocateTable(array, InitialSize());
 }
@@ -276,10 +338,6 @@ int TRI_InitHashArrayMulti (TRI_hash_array_multi_t* array,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyHashArrayMulti (TRI_hash_array_multi_t* array) {
-  if (array == nullptr) {
-    return;
-  }
-
   // ...........................................................................
   // Go through each item in the array and remove any internal allocated memory
   // ...........................................................................
@@ -298,15 +356,19 @@ void TRI_DestroyHashArrayMulti (TRI_hash_array_multi_t* array) {
       while (current != nullptr && current->_document != nullptr) {
         auto ptr = current->_next;
         DestroyElement(array, current);
-        if (current != p) {
-          TRI_Free(TRI_UNKNOWN_MEM_ZONE, current);
-        }
         current = ptr;
       }
     }
 
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, array->_tablePtr);
   }
+
+  // free overflow elements
+  for (size_t i = 0;  i < array->_blocks._length;  ++i) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, array->_blocks._buffer[i]);
+  }
+
+  TRI_DestroyVectorPointer(&array->_blocks);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -333,11 +395,12 @@ size_t TRI_MemoryUsageHashArrayMulti (TRI_hash_array_multi_t const* array) {
     return 0;
   }
 
-  size_t tableSize    = (size_t) (array->_nrAlloc * TableEntrySize() + 64);
-  size_t memberSize   = (size_t) (array->_nrUsed * array->_numFields * sizeof(TRI_shaped_sub_t));
-  size_t overflowSize = (size_t) (array->_nrOverflow * array->_numFields * sizeof(TRI_shaped_sub_t));
+  size_t tableSize     = (size_t) (array->_nrAlloc * TableEntrySize() + 64);
+  size_t memberSize    = (size_t) (array->_nrUsed * array->_numFields * sizeof(TRI_shaped_sub_t));
+  size_t overflowUsed  = (size_t) (array->_nrOverflowUsed * array->_numFields * sizeof(TRI_shaped_sub_t));
+  size_t overflowAlloc = (size_t) (array->_nrOverflowAlloc * TableEntrySize());
 
-  return (size_t) (tableSize + memberSize + overflowSize);
+  return (size_t) (tableSize + memberSize + overflowUsed + overflowAlloc);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -452,7 +515,8 @@ int TRI_InsertElementHashArrayMulti (TRI_hash_array_multi_t* array,
       }
     }
 
-    auto ptr = static_cast<TRI_hash_index_element_multi_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_hash_index_element_multi_t), true));
+    auto ptr = GetFromFreelist(array);
+
     if (ptr == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
@@ -460,14 +524,9 @@ int TRI_InsertElementHashArrayMulti (TRI_hash_array_multi_t* array,
     element->_next = arrayElement->_next;
     *ptr = *element;
     arrayElement->_next = ptr;
-    array->_nrOverflow++;
 
     return TRI_ERROR_NO_ERROR;
   }
-
-  // ...........................................................................
-  // add a new element to the associative array
-  // ...........................................................................
 
   *arrayElement = *element;
   array->_nrUsed++;
@@ -512,10 +571,9 @@ int TRI_RemoveElementHashArrayMulti (TRI_hash_array_multi_t* array,
       if (current->_next->_document == element->_document) {
         auto ptr = current->_next->_next;
         DestroyElement(array, current->_next);
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, current->_next);
+        ReturnToFreelist(array, current->_next);
 
         current->_next = ptr;
-        array->_nrOverflow--;
       
         return TRI_ERROR_NO_ERROR;
       }
@@ -528,9 +586,7 @@ int TRI_RemoveElementHashArrayMulti (TRI_hash_array_multi_t* array,
     DestroyElement(array, arrayElement);
 
     *arrayElement = *ptr;
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, ptr);
-
-    array->_nrOverflow--;
+    ReturnToFreelist(array, ptr);
 
     return TRI_ERROR_NO_ERROR;
   }
