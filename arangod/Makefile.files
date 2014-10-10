@@ -89,6 +89,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/GeoIndex/GeoIndex.cpp \
 	arangod/GeoIndex/geo-index.cpp \
 	arangod/HashIndex/hash-array.cpp \
+	arangod/HashIndex/hash-array-multi.cpp \
 	arangod/HashIndex/hash-index.cpp \
 	arangod/IndexOperators/index-operator.cpp \
 	arangod/Replication/ContinuousSyncer.cpp \

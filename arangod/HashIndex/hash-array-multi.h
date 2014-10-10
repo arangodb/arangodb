@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief associative array implementation
+/// @brief multi-hash array implementation, using a linked-list for collisions
 ///
 /// @file
 ///
@@ -23,13 +23,15 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Dr. Oreste Costa-Panaia
 /// @author Martin Schoenert
+/// @author Jan Steemann
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_HASH_INDEX_HASH__ARRAY_H
-#define ARANGODB_HASH_INDEX_HASH__ARRAY_H 1
+#ifndef ARANGODB_HASH_INDEX_HASH__ARRAY_MULTI_H
+#define ARANGODB_HASH_INDEX_HASH__ARRAY_MULTI_H 1
 
 #include "Basics/Common.h"
 #include "Basics/vector.h"
@@ -38,7 +40,7 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_hash_index_element_s;
+struct TRI_hash_index_element_multi_s;
 struct TRI_index_search_value_s;
 
 // -----------------------------------------------------------------------------
@@ -49,16 +51,17 @@ struct TRI_index_search_value_s;
 /// @brief associative array
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_hash_array_s {
+typedef struct TRI_hash_array_multi_s {
   size_t _numFields; // the number of fields indexes
 
   uint64_t _nrAlloc; // the size of the table
   uint64_t _nrUsed;  // the number of used entries
+  uint64_t _nrOverflow;  // the number of overflow entries
 
-  struct TRI_hash_index_element_s* _table; // the table itself, aligned to a cache line boundary
-  struct TRI_hash_index_element_s* _tablePtr; // the table itself
+  struct TRI_hash_index_element_multi_s* _table; // the table itself, aligned to a cache line boundary
+  struct TRI_hash_index_element_multi_s* _tablePtr; // the table itself
 }
-TRI_hash_array_t;
+TRI_hash_array_multi_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        HASH ARRAY
@@ -72,20 +75,20 @@ TRI_hash_array_t;
 /// @brief initialises an array
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InitHashArray (TRI_hash_array_t*,
-                       size_t);
+int TRI_InitHashArrayMulti (TRI_hash_array_multi_t*,
+                            size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an array, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyHashArray (TRI_hash_array_t*);
+void TRI_DestroyHashArrayMulti (TRI_hash_array_multi_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an array and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeHashArray (TRI_hash_array_t*);
+void TRI_FreeHashArrayMulti (TRI_hash_array_multi_t*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -95,45 +98,38 @@ void TRI_FreeHashArray (TRI_hash_array_t*);
 /// @brief get the hash array's memory usage
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t TRI_MemoryUsageHashArray (TRI_hash_array_t const*);
+size_t TRI_MemoryUsageHashArrayMulti (TRI_hash_array_multi_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resizes the hash table
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ResizeHashArray (TRI_hash_array_t*,
-                         size_t);
+int TRI_ResizeHashArrayMulti (TRI_hash_array_multi_t*,
+                              size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookups an element given a key
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_hash_index_element_s* TRI_LookupByKeyHashArray (TRI_hash_array_t*,
-                                                           struct TRI_index_search_value_s* key);
+TRI_vector_pointer_t TRI_LookupByKeyHashArrayMulti (TRI_hash_array_multi_t const*,
+                                                    struct TRI_index_search_value_s const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief finds an element given a key, returns NULL if not found
+/// @brief adds an element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_hash_index_element_s* TRI_FindByKeyHashArray (TRI_hash_array_t*,
-                                                         struct TRI_index_search_value_s* key);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an key/element to the array
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_InsertKeyHashArray (TRI_hash_array_t*,
-                            struct TRI_index_search_value_s* key,
-                            struct TRI_hash_index_element_s* element,
-                            bool overwrite,
-                            bool isRollback);
+int TRI_InsertElementHashArrayMulti (TRI_hash_array_multi_t*,
+                                     struct TRI_index_search_value_s const*,
+                                     struct TRI_hash_index_element_multi_s*,
+                                     bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an element from the array
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RemoveElementHashArray (TRI_hash_array_t*,
-                                struct TRI_hash_index_element_s* element);
+int TRI_RemoveElementHashArrayMulti (TRI_hash_array_multi_t*,
+                                     struct TRI_index_search_value_s const*,
+                                     struct TRI_hash_index_element_multi_s*);
 
 #endif
 
