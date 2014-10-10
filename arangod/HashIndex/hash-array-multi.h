@@ -56,10 +56,15 @@ typedef struct TRI_hash_array_multi_s {
 
   uint64_t _nrAlloc; // the size of the table
   uint64_t _nrUsed;  // the number of used entries
-  uint64_t _nrOverflow;  // the number of overflow entries
+  uint64_t _nrOverflowUsed;  // the number of overflow entries used
+  uint64_t _nrOverflowAlloc;  // the number of overflow entries allocated
 
   struct TRI_hash_index_element_multi_s* _table; // the table itself, aligned to a cache line boundary
   struct TRI_hash_index_element_multi_s* _tablePtr; // the table itself
+
+  struct TRI_hash_index_element_multi_s* _freelist;
+
+  TRI_vector_pointer_t   _blocks;
 }
 TRI_hash_array_multi_t;
 
