@@ -424,6 +424,7 @@ function executeAndWait (cmd, args) {
   var startTime = time();
   var res = executeExternalAndWait(cmd, args);
   var deltaTime = time() - startTime;
+  var errorMessage = ' - ';
 
   if (res.status === "TERMINATED") {
     print("Finished: " + res.status + " Exitcode: " + res.exit + " Time Elapsed: " + deltaTime);
@@ -435,8 +436,7 @@ function executeAndWait (cmd, args) {
     }
   }
   else if (res.status === "ABORTED") {
-    var toppid = executeExternal("/usr/bin/top", ["-b", "-n1"]);
-    var errorMessage = ' - ';
+//    var toppid = executeExternal("/usr/bin/top", ["-b", "-n1"]);
     if (typeof(res.errorMessage) !== 'undefined') {
       errorMessage += res.errorMessage;
     }
@@ -449,6 +449,9 @@ function executeAndWait (cmd, args) {
     };
   }
   else {
+    if (typeof(res.errorMessage) !== 'undefined') {
+      errorMessage += res.errorMessage;
+    }
     print("Finished: " + res.status + " Exitcode: " + res.exit + " Time Elapsed: " + deltaTime + errorMessage);
     return {
       status: false,
