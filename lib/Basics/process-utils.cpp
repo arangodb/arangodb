@@ -1003,6 +1003,7 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
         status._errorMessage =
           std::string("waitpid returned 0 for pid while it shouldn't ") + 
           triagens::basics::StringUtils::itoa(external->_pid);
+
         if (WIFEXITED(loc)) {
           external->_status = TRI_EXT_TERMINATED;
           external->_exitStatus = WEXITSTATUS(loc);
@@ -1025,17 +1026,15 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
       }
     }
     else if (res == -1) {
-      int err = errno;
+      TRI_set_errno(TRI_ERROR_SYS_ERROR);
       LOG_WARNING("waitpid returned error for pid %d: %s", 
                   (int) external->_pid,  
-                  TRI_errno_string(err));
+                  TRI_last_error());
       status._errorMessage =
         std::string("waitpid returned error for pid ") + 
         triagens::basics::StringUtils::itoa(external->_pid) + 
-        std::string(": (") +
-        triagens::basics::StringUtils::itoa(err) + 
-        std::string(") ") +        
-        std::string(TRI_errno_string(err));
+        std::string(": ") +        
+        std::string(TRI_last_error());
     }
     else if (static_cast<TRI_pid_t>(external->_pid) == static_cast<TRI_pid_t>(res)) {
       if (WIFEXITED(loc)) {
@@ -1059,9 +1058,6 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
       LOG_WARNING("unexpected waitpid result for pid %d: %d", 
                   (int) external->_pid, 
                   (int) res);
-      fprintf(stderr, "unexpected waitpid result for pid %d: %d", 
-              (int) external->_pid, 
-              (int) res);
       status._errorMessage =
         std::string("unexpected waitpid result for pid ") + 
         triagens::basics::StringUtils::itoa(external->_pid) + 
