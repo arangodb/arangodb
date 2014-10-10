@@ -151,7 +151,6 @@ function EdgeShaper(parent, config, idfunc) {
     
     bindEvent = function (type, func) {
       if (type === "update") {
-        console.log("Overwriting");
         addUpdate = func;
       } else if (events[type] === undefined) {
         throw "Sorry Unknown Event " + type + " cannot be bound.";
