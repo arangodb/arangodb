@@ -101,6 +101,7 @@
 #define TRI_HAVE_GETRUSAGE                  1
 #define TRI_HAVE_GETTIMEOFDAY               1
 #define TRI_HAVE_GMTIME_R                   1
+#define TRI_HAVE_LOCALTIME_R                1
 #define TRI_HAVE_INITGROUPS                 1
 #define TRI_HAVE_SETGID                     1
 #define TRI_HAVE_SETUID                     1
@@ -271,6 +272,7 @@
 #define TRI_GETRUSAGE_MAXRSS_UNIT           1024
 #define TRI_HAVE_GETTIMEOFDAY               1
 #define TRI_HAVE_GMTIME_R                   1
+#define TRI_HAVE_LOCALTIME_R                1
 #define TRI_HAVE_SETGID                     1
 #define TRI_HAVE_SETUID                     1
 #define TRI_HAVE_STRTOLL                    1
@@ -429,6 +431,7 @@
 #define TRI_HAVE_GETRUSAGE                  1
 #define TRI_HAVE_GETTIMEOFDAY               1
 #define TRI_HAVE_GMTIME_R                   1
+#define TRI_HAVE_LOCALTIME_R                1
 #define TRI_HAVE_INITGROUPS                 1
 #define TRI_HAVE_PRCTL                      1
 #define TRI_HAVE_SETGID                     1
@@ -580,6 +583,7 @@
 
 #define TRI_HAVE_GETTID                     1
 #define TRI_HAVE_GMTIME_S                   1
+#define TRI_HAVE_LOCALTIME_S                1
 #define TRI_HAVE_STRTOI64                   1
 #define TRI_HAVE_STRTOUI64                  1
 

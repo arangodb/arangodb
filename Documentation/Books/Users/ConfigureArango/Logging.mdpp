@@ -29,6 +29,10 @@ statistics about executed requests and timings about computation steps.
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 @startDocuBlock logLevel
 
+!SUBSECTION Local Time
+<!-- lib/ApplicationServer/ApplicationServer.h -->
+@startDocuBlock logLocalTime
+
 !SUBSECTION Line number
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 @startDocuBlock logLineNumber
