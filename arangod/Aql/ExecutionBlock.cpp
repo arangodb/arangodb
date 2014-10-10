@@ -3626,6 +3626,18 @@ BlockWithClients::BlockWithClients (ExecutionEngine* engine,
 }                                  
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief shutdown
+////////////////////////////////////////////////////////////////////////////////
+
+int BlockWithClients::shutdown () {
+  if (!_initOrShutdown) {
+    return TRI_ERROR_NO_ERROR;
+  }
+  _initOrShutdown = false;
+  return ExecutionBlock::shutdown();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief getSomeForShard
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3720,18 +3732,6 @@ int ScatterBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   }
   _initOrShutdown = false;
   return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shutdown
-////////////////////////////////////////////////////////////////////////////////
-
-int ScatterBlock::shutdown () {
-  if (!_initOrShutdown) {
-    return TRI_ERROR_NO_ERROR;
-  }
-  _initOrShutdown = false;
-  return ExecutionBlock::shutdown();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3860,6 +3860,36 @@ int ScatterBlock::getOrSkipSomeForShard (size_t atLeast,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief initializeCursor
+////////////////////////////////////////////////////////////////////////////////
+
+int DistributeBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
+
+  if (!_initOrShutdown) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  int res = ExecutionBlock::initializeCursor(items, pos);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  for (auto x:  _distBuffer) {
+    x.clear();
+  }
+  _distBuffer.clear();
+  _distBuffer.reserve(_nrClients);
+
+  for (auto x: _doneForClient) {
+    x = false;
+  }
+
+  _initOrShutdown = false;
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief hasMore: any more for any shard?
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3920,7 +3950,7 @@ int DistributeBlock::getOrSkipSomeForShard (size_t atLeast,
       }
     }
 
-    skipped = std::min(buf.size(), atMost);
+    skipped = (std::min)(buf.size(), atMost);
 
     if (skipping) {
       for (size_t i = 0; i < skipped; i++){
@@ -3975,7 +4005,7 @@ int DistributeBlock::getOrSkipSomeForShard (size_t atLeast,
       return TRI_ERROR_NO_ERROR; // don't have to do any clean-up
     }
     else {
-      smallestIndex = std::min(index, smallestIndex);
+      smallestIndex = (std::min)(index, smallestIndex);
     }
   }
 
@@ -4030,7 +4060,8 @@ bool DistributeBlock::getBlockForClient (size_t atLeast,
     size_t reg = cur->getNrRegs() - 1; // FIXME this is a totally arbitrary choice
     while (_pos < cur->size() && buf.at(clientId).size() < atLeast) {
       // inspect cur in row _pos and check to which shard it should be sent . .
-      size_t id = sendToClient(cur->getValue(_pos, reg));
+      size_t id = sendToClient(cur->getValue(_pos, 
+            static_cast<triagens::aql::RegisterId>(reg)));
       buf.at(id).push_back(make_pair(_index, _pos++));
     }
     if (_pos == cur->size()) {
