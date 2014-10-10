@@ -34,10 +34,18 @@
   button {
     @extend %pull-right;
     margin-right: 5px;
+    margin-top: 5px;
   }
 
   .notificationItem {
     color: $c-black;
+
+    .notificationItemTitle {
+      max-width: 165px;
+      overflow-wrap: break-word;
+      white-space: normal;
+      word-wrap: break-word;
+    }
 
     .notificationItemTitle:hover {
       color: #000;

@@ -79,11 +79,13 @@
         {
           error: function() {
             arangoHelper.arangoError('Could not delete collection.');
+          },
+          success: function() {
+            window.modalView.hide();
           }
         }
       );
       this.collectionsView.render();
-      window.modalView.hide();
     },
 
     saveModifiedCollection: function() {
