@@ -983,7 +983,7 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
 #ifndef _WIN32
     TRI_pid_t res;
     int opts;
-    int loc;
+    int loc = 0;
 
     if (wait) {
       opts = WUNTRACED;
@@ -995,21 +995,33 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
     if (res == 0) {
       external->_exitStatus = 0;
     }
-    else if (WIFEXITED(loc)) {
-      external->_status = TRI_EXT_TERMINATED;
-      external->_exitStatus = WEXITSTATUS(loc);
+    else if (res == -1) {
+      LOG_WARNING("waitpid returned error for pid %d: %s", 
+                  (int) external->_pid, 
+                  TRI_errno_string(errno));
     }
-    else if (WIFSIGNALED(loc)) {
-      external->_status = TRI_EXT_ABORTED;
-      external->_exitStatus = WTERMSIG(loc);
-    }
-    else if (WIFSTOPPED(loc)) {
-      external->_status = TRI_EXT_STOPPED;
-      external->_exitStatus = 0;
+    else if (static_cast<TRI_pid_t>(external->_pid) == static_cast<TRI_pid_t>(res)) {
+      if (WIFEXITED(loc)) {
+        external->_status = TRI_EXT_TERMINATED;
+        external->_exitStatus = WEXITSTATUS(loc);
+      }
+      else if (WIFSIGNALED(loc)) {
+        external->_status = TRI_EXT_ABORTED;
+        external->_exitStatus = WTERMSIG(loc);
+      }
+      else if (WIFSTOPPED(loc)) {
+        external->_status = TRI_EXT_STOPPED;
+        external->_exitStatus = 0;
+      }
+      else {
+        external->_status = TRI_EXT_ABORTED;
+        external->_exitStatus = 0;
+      }
     }
     else {
-      external->_status = TRI_EXT_ABORTED;
-      external->_exitStatus = 0;
+      LOG_WARNING("unexpected waitpid result for pid %d: %d", 
+                  (int) external->_pid, 
+                  (int) res);
     }
 #else
     if (wait) {
@@ -1021,7 +1033,7 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
       }
     }
     DWORD exitCode = STILL_ACTIVE;
-    if (!GetExitCodeProcess(external->_process , &exitCode)) {
+    if (! GetExitCodeProcess(external->_process , &exitCode)) {
       LOG_WARNING("exit status could not be determined for PID '%ud'",
                   external->_pid);
     }
@@ -1035,6 +1047,11 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
       }
     }
 #endif
+  }
+  else {
+    LOG_WARNING("unexpected process status %d: %d", 
+                (int) external->_status, 
+                (int) external->_exitStatus);
   }
 
   status._status = external->_status;

@@ -87,15 +87,15 @@ JAVASCRIPT_JSLINT = \
 
 jslint:
 	@RESULT=0; \
-	for file in $(JAVASCRIPT_JSLINT); do \
-		@builddir@/bin/arangosh \
-			-c none \
-			--log.level error \
-			--server.password "" \
-			--javascript.startup-directory @srcdir@/js \
-			--jslint $$file; \
-                if [ "$$?x" != "0x" ]; then RESULT=1; fi; \
-	done; \
+	FILELIST=""; \
+	for file in $(JAVASCRIPT_JSLINT); do FILELIST="$$FILELIST --jslint $$file"; done; \
+	@builddir@/bin/arangosh \
+		-c none \
+		--log.level error \
+		--server.password "" \
+		--javascript.startup-directory @srcdir@/js \
+		$$FILELIST; \
+	if [ "$$?x" != "0x" ]; then RESULT=1; fi; \
 	exit $$RESULT
 
 jshint: jslint
