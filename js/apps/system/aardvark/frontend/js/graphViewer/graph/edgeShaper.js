@@ -100,7 +100,7 @@ function EdgeShaper(parent, config, idfunc) {
       colourMapper.reset();
     },
     events,
-    addUpdate,
+    addUpdate = noop,
     addShape = noop,
     addLabel = noop,
     addColor = noop,
@@ -115,7 +115,6 @@ function EdgeShaper(parent, config, idfunc) {
        mouseout: noop,
        mouseover: noop
      };
-     addUpdate = noop;
     },
     
     
@@ -152,6 +151,7 @@ function EdgeShaper(parent, config, idfunc) {
     
     bindEvent = function (type, func) {
       if (type === "update") {
+        console.log("Overwriting");
         addUpdate = func;
       } else if (events[type] === undefined) {
         throw "Sorry Unknown Event " + type + " cannot be bound.";
