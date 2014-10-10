@@ -115,6 +115,8 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "LEFT",                        Function("LEFT",                        "STRING_LEFT", "s,n", true, true) },
   { "RIGHT",                       Function("RIGHT",                       "STRING_RIGHT", "s,n", true, true) },
   { "TRIM",                        Function("TRIM",                        "STRING_TRIM", "s|n", true, true) },
+  { "FIND_FIRST",                  Function("FIND_FIRST",                  "STRING_FIND_FIRST", "s,s|zn,zn", true, true) },
+  { "FIND_LAST",                   Function("FIND_LAST",                   "STRING_FIND_LAST", "s,s|zn,zn", true, true) },
 
   // numeric functions
   { "FLOOR",                       Function("FLOOR",                       "NUMBER_FLOOR", "n", true, true) },

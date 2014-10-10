@@ -776,6 +776,106 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test find_first function
+////////////////////////////////////////////////////////////////////////////////
+
+    testFindFirstEmpty1 : function () {
+      [ 'foo', 'bar', 'baz', 'FOO', 'BAR', 'true', ' ' ].forEach(function(v) {
+        var actual = getQueryResults("RETURN FIND_FIRST('', " + JSON.stringify(v) + ")");
+        assertEqual([ -1 ], actual);
+      });
+
+      var actual = getQueryResults("RETURN FIND_FIRST('', '')");
+      assertEqual([ 0 ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test find_first function
+////////////////////////////////////////////////////////////////////////////////
+
+    testFindFirstEmpty2 : function () {
+      [ 'foo', 'bar', 'baz', 'FOO', 'BAR', 'true', ' ', '' ].forEach(function(v) {
+        var actual = getQueryResults("RETURN FIND_FIRST(" + JSON.stringify(v) + ", '')");
+        assertEqual([ 0 ], actual);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test find_first function
+////////////////////////////////////////////////////////////////////////////////
+
+    testFindFirst : function () {
+      [ 
+        [ -1, 'foo', 'bar' ],
+        [ 3, 'foobar', 'bar' ],
+        [ 3, 'Foobar', 'bar' ],
+        [ -1, 'foobar', 'Bar' ],
+        [ 16, 'the quick brown bar jumped over the lazy dog', 'bar' ],
+        [ 3, 'FOOBAR', 'BAR' ],
+        [ -1, 'FOOBAR', 'bar' ],
+        [ -1, 'the quick brown foxx', 'the foxx' ],
+        [ 0, 'the quick brown foxx', 'the quick' ],
+        [ -1, 'the quick brown foxx', 'the quick brown foxx j' ],
+        [ 4, 'the quick brown foxx', 'quick brown' ],
+        [ 35, 'the quick brown foxx jumped over a\nnewline', 'newline' ],
+        [ 14, 'some linebreak\r\ngoes here', '\r\n' ]
+      ].forEach(function(v) {
+        var actual = getQueryResults("RETURN FIND_FIRST(" + JSON.stringify(v[1]) + ", " + JSON.stringify(v[2]) + ")");
+        assertEqual([ v[0] ], actual);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test find_first function
+////////////////////////////////////////////////////////////////////////////////
+
+    testFindFirstStartEnd : function () {
+      [ 
+        [ 3, 'foobar', 'bar', 2 ],
+        [ 3, 'foobar', 'bar', 3 ],
+        [ -1, 'foobar', 'bar', 4 ],
+        [ 3, 'foobar', 'bar', 1, 5 ],
+        [ -1, 'foobar', 'bar', 4, 5 ],
+        [ -1, 'foobar', 'bar', 1, 4 ],
+        [ -1, 'foobar', 'bar', 0, 4 ],
+        [ 3, 'foobar', 'bar', 0, 5 ],
+        [ 3, 'foobar', 'bar', 0, 999 ],
+        [ 0, 'the quick brown bar jumped over the lazy dog', 'the', 0 ],
+        [ 32, 'the quick brown bar jumped over the lazy dog', 'the', 1 ]
+      ].forEach(function(v) {
+        var actual = getQueryResults("RETURN FIND_FIRST(" + JSON.stringify(v[1]) + ", " + JSON.stringify(v[2]) + ", " + v[3] + ", " + (v[4] === undefined ? null : v[4]) + ")");
+        assertEqual([ v[0] ], actual);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test find first function
+////////////////////////////////////////////////////////////////////////////////
+
+    testFindFirstInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN FIND_FIRST()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN FIND_FIRST('foo')"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN FIND_FIRST('foo', 'bar', 2, 2, 2)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FIND_FIRST(null, 'foo')"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FIND_FIRST(true, 'foo')"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FIND_FIRST(4, 'foo')"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FIND_FIRST([ ], 'foo')"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FIND_FIRST({ }, 'foo')"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FIND_FIRST('foo', null)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FIND_FIRST('foo', true)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FIND_FIRST('foo', [ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FIND_FIRST('foo', { })"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FIND_FIRST('foo', -1)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FIND_FIRST('foo', -1.5)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FIND_FIRST('foo', 3)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FIND_FIRST('foo', 'bar', 'baz')"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FIND_FIRST('foo', 'bar', 1, 'bar')"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FIND_FIRST('foo', 'bar', -1)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FIND_FIRST('foo', 'bar', 1, -1)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FIND_FIRST('foo', 'bar', 1, 0)"); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test length function
 ////////////////////////////////////////////////////////////////////////////////
 
