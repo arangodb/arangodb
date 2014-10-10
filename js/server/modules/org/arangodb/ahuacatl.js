@@ -2352,6 +2352,73 @@ function STRING_TRIM (value, type) {
   return result;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds search in value
+////////////////////////////////////////////////////////////////////////////////
+
+function STRING_FIND_FIRST (value, search, start, end) {
+  "use strict";
+
+  ARG_CHECK(value, TYPEWEIGHT_STRING, "FIND_FIRST");
+  ARG_CHECK(search, TYPEWEIGHT_STRING, "FIND_FIRST");
+
+  if (start !== undefined && start !== null) {
+    ARG_CHECK(start, TYPEWEIGHT_NUMBER, "FIND_FIRST");
+    if (start < 0) {
+      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FIND_FIRST");
+    }
+  }
+  else {
+    start = 0;
+  }
+  if (end !== undefined && end !== null) {
+    ARG_CHECK(end, TYPEWEIGHT_NUMBER, "FIND_FIRST");
+    if (end < start || end < 0) {
+      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FIND_FIRST");
+    }
+  }
+  else {
+    end = undefined;
+  }
+
+  if (end !== undefined) {
+    return value.substr(0, end + 1).indexOf(search, start);
+  }
+  return value.indexOf(search, start);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds search in value
+////////////////////////////////////////////////////////////////////////////////
+
+function STRING_FIND_LAST (value, search, start, end) {
+  "use strict";
+
+  ARG_CHECK(value, TYPEWEIGHT_STRING, "FIND_LAST");
+  ARG_CHECK(search, TYPEWEIGHT_STRING, "FIND_LAST");
+
+  if (start !== undefined) {
+    ARG_CHECK(start, TYPEWEIGHT_NUMBER, "FIND_LAST");
+  }
+  else {
+    start = 0;
+  }
+  if (end !== undefined) {
+    ARG_CHECK(end, TYPEWEIGHT_NUMBER, "FIND_LAST");
+    if (end < start || end < 0) {
+      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FIND_LAST");
+    }
+  }
+  else {
+    end = undefined;
+  }
+
+  if (end !== undefined && end < search.length) {
+    return value.lastIndexOf(search.substr(0, end + 1), start);
+  }
+  return value.lastIndexOf(search, start);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                typecast functions
 // -----------------------------------------------------------------------------
@@ -7288,6 +7355,8 @@ exports.STRING_LIKE = STRING_LIKE;
 exports.STRING_LEFT = STRING_LEFT;
 exports.STRING_RIGHT = STRING_RIGHT;
 exports.STRING_TRIM = STRING_TRIM;
+exports.STRING_FIND_FIRST = STRING_FIND_FIRST;
+exports.STRING_FIND_LAST = STRING_FIND_LAST;
 exports.CAST_BOOL = CAST_BOOL;
 exports.CAST_NUMBER = CAST_NUMBER;
 exports.CAST_STRING = CAST_STRING;
