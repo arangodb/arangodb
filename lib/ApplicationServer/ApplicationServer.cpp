@@ -129,6 +129,7 @@ ApplicationServer::ApplicationServer (std::string const& name, std::string const
     _logSyslog(),
     _logThreadId(false),
     _logLineNumber(false),
+    _logLocalTime(false),
     _logSourceFilter(),
     _logContentFilter(),
     _randomGenerator(5),
@@ -169,6 +170,7 @@ ApplicationServer::ApplicationServer (std::string const& name, std::string const
     _logSyslog(),
     _logThreadId(false),
     _logLineNumber(false),
+    _logLocalTime(false),
     _logSourceFilter(),
     _logContentFilter(),
     _randomGenerator(3),
@@ -238,12 +240,17 @@ void ApplicationServer::setupLogging (bool threaded, bool daemon) {
   if (_options.has("log.line-number")) {
     _logLineNumber = true;
   }
+  
+  if (_options.has("log.use-local-time")) {
+    _logLocalTime = true;
+  }
 
   if (! _logRequestsFile.empty()) {
     // add this so the user does not need to think about it
     _logSeverity += ",usage";
   }
 
+  TRI_SetUseLocalTimeLogging(_logLocalTime);
   TRI_SetLineNumberLogging(_logLineNumber);
 
   TRI_SetLogLevelLogging(_logLevel.c_str());
@@ -820,6 +827,7 @@ void ApplicationServer::setupOptions (map<string, ProgramOptionsDescription>& op
     ("log.severity", &_logSeverity, "log severities")
     ("log.syslog", &_logSyslog, "use syslog facility")
     ("log.thread", "log the thread identifier for severity 'human'")
+    ("log.use-local-time", "use local dates and times in log messages")
   ;
 
   options[OPTIONS_HIDDEN]
