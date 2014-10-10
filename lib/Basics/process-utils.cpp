@@ -1022,6 +1022,9 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
       LOG_WARNING("unexpected waitpid result for pid %d: %d", 
                   (int) external->_pid, 
                   (int) res);
+      fprintf(stderr, "unexpected waitpid result for pid %d: %d", 
+              (int) external->_pid, 
+              (int) res);
     }
 #else
     if (wait) {
@@ -1050,6 +1053,9 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
   }
   else {
     LOG_WARNING("unexpected process status %d: %d", 
+                (int) external->_status, 
+                (int) external->_exitStatus);
+      fprintf(stderr, "unexpected process status %d: %d", 
                 (int) external->_status, 
                 (int) external->_exitStatus);
   }
