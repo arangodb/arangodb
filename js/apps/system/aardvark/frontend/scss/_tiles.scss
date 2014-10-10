@@ -167,6 +167,10 @@ $iconsize: 50px;
         height: 0;
         padding-left: 4px;
         padding-right: 9px;
+        
+        &.loading {
+          border-bottom-color: $c-unloaded;
+        }
 
         &.loaded {
           border-bottom-color: $c-positive;

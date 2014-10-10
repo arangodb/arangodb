@@ -83,8 +83,8 @@ function RunCommandLineTests (options) {
       var testResult = RunTest(file, options);
       result = result && testResult && testResult.passed;
       if (testResult && (! testResult.passed && testResult.errors)) {
-        for (var i = 0; i < testResult.errors.length; ++i) {
-          var err = testResult.errors[i];
+        for (var j = 0; j < testResult.errors.length; ++j) {
+          var err = testResult.errors[j];
           if (! err) {
             continue;
           }
@@ -104,7 +104,6 @@ function RunCommandLineTests (options) {
       result = false;
     }
   }
-
 
   internal.setUnitTestsResult(result);
 }
