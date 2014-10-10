@@ -57,6 +57,8 @@
 #include "Basics/string-buffer.h"
 #include "Basics/locks.h"
 #include "Basics/logging.h"
+#include "Basics/StringUtils.h"
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
@@ -975,6 +977,10 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
 
   if (i == ExternalProcesses._length) {
     TRI_UnlockMutex(&ExternalProcessesLock);
+    status._errorMessage =
+      std::string("the pid you're looking for is not in our list: ") + 
+      triagens::basics::StringUtils::itoa(external->_pid);
+    status._status = TRI_EXT_NOT_FOUND;
     return status;
   }
 
@@ -993,12 +999,41 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
     }
     res = waitpid(external->_pid, &loc, opts);
     if (res == 0) {
-      external->_exitStatus = 0;
+      if (wait) {
+        status._errorMessage =
+          std::string("waitpid returned 0 for pid while it shouldn't ") + 
+          triagens::basics::StringUtils::itoa(external->_pid);
+        if (WIFEXITED(loc)) {
+          external->_status = TRI_EXT_TERMINATED;
+          external->_exitStatus = WEXITSTATUS(loc);
+        }
+        else if (WIFSIGNALED(loc)) {
+          external->_status = TRI_EXT_ABORTED;
+          external->_exitStatus = WTERMSIG(loc);
+        }
+        else if (WIFSTOPPED(loc)) {
+          external->_status = TRI_EXT_STOPPED;
+          external->_exitStatus = 0;
+        }
+        else {
+          external->_status = TRI_EXT_ABORTED;
+          external->_exitStatus = 0;
+        }
+      }
+      else {
+        external->_exitStatus = 0;
+      }
     }
     else if (res == -1) {
+      int err = errno;
       LOG_WARNING("waitpid returned error for pid %d: %s", 
                   (int) external->_pid, 
-                  TRI_errno_string(errno));
+                  TRI_errno_string(err));
+      status._errorMessage =
+        std::string("waitpid returned error for pid ") + 
+        triagens::basics::StringUtils::itoa(external->_pid) + 
+        std::string(": ") +
+        std::string(TRI_errno_string(err));
     }
     else if (static_cast<TRI_pid_t>(external->_pid) == static_cast<TRI_pid_t>(res)) {
       if (WIFEXITED(loc)) {
@@ -1025,6 +1060,11 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
       fprintf(stderr, "unexpected waitpid result for pid %d: %d", 
               (int) external->_pid, 
               (int) res);
+      status._errorMessage =
+        std::string("unexpected waitpid result for pid ") + 
+        triagens::basics::StringUtils::itoa(external->_pid) + 
+        std::string(": ") +
+        triagens::basics::StringUtils::itoa(res);
     }
 #else
     if (wait) {
@@ -1033,12 +1073,20 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
       if (result == WAIT_FAILED) {
         LOG_WARNING("could not wait for subprocess with PID '%ud'",
                     external->_pid);
+      external->_errorMessage =
+        std::string("could not wait for subprocess with PID '",) + 
+        triagens::basics::StringUtils::itoa(external->_pid) + 
+        std::string("'");
       }
     }
     DWORD exitCode = STILL_ACTIVE;
     if (! GetExitCodeProcess(external->_process , &exitCode)) {
       LOG_WARNING("exit status could not be determined for PID '%ud'",
                   external->_pid);
+      status._errorMessage =
+        std::string("exit status could not be determined for PID '") + 
+        triagens::basics::StringUtils::itoa(external->_pid) + 
+        std::string("'");
     }
     else {
       if (exitCode == STILL_ACTIVE) {
@@ -1058,6 +1106,11 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
       fprintf(stderr, "unexpected process status %d: %d", 
                 (int) external->_status, 
                 (int) external->_exitStatus);
+      status._errorMessage =
+        std::string("unexpected process status ") + 
+        triagens::basics::StringUtils::itoa(external->_status) + 
+        std::string(": ") +
+        triagens::basics::StringUtils::itoa(external->_exitStatus);
   }
 
   status._status = external->_status;

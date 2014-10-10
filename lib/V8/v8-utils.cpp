@@ -3011,7 +3011,10 @@ static v8::Handle<v8::Value> JS_StatusExternal (v8::Arguments const& argv) {
   else if (external._status == TRI_EXT_ABORTED) {
     result->Set(v8::String::New("signal"), v8::Number::New(external._exitStatus));
   }
-
+  if (external._errorMessage.length() > 0) {
+    result->Set(v8::String::New("errorMessage"), v8::String::New(external._errorMessage.c_str(),
+                                                                 external._errorMessage.size()));
+  }
   // return the result
   return scope.Close(result);
 }
@@ -3154,7 +3157,11 @@ static v8::Handle<v8::Value> JS_ExecuteAndWaitExternal (v8::Arguments const& arg
   else if (external_status._status == TRI_EXT_ABORTED) {
     result->Set(v8::String::New("signal"), v8::Number::New(external_status._exitStatus));
   }
-
+  if (external_status._errorMessage.length() > 0) {
+    result->Set(v8::String::New("errorMessage"),
+                v8::String::New(external_status._errorMessage.c_str(),
+                                external_status._errorMessage.size()));
+  }
   // return the result
   return scope.Close(result);
 }
