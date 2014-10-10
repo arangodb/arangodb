@@ -50,8 +50,6 @@ using namespace triagens::rest;
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wrapped class for general cursors
 ///
@@ -62,11 +60,10 @@ using namespace triagens::rest;
 
 static int32_t const WRP_GENERAL_CURSOR_TYPE = 3;
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief function that encapsulates execution of an AQL query
 ////////////////////////////////////////////////////////////////////////////////
+
 v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* context,
                                                   TRI_json_t const* parameters) {
   v8::HandleScope scope;
