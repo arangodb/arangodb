@@ -979,7 +979,7 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
     TRI_UnlockMutex(&ExternalProcessesLock);
     status._errorMessage =
       std::string("the pid you're looking for is not in our list: ") + 
-      triagens::basics::StringUtils::itoa(external->_pid);
+      triagens::basics::StringUtils::itoa(static_cast<int64_t>(external->_pid));
     status._status = TRI_EXT_NOT_FOUND;
     return status;
   }
@@ -987,6 +987,8 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
   if (external->_status == TRI_EXT_RUNNING ||
       external->_status == TRI_EXT_STOPPED) {
 #ifndef _WIN32
+    int retryCount = 0;
+  retry_waitpid:
     TRI_pid_t res;
     int opts;
     int loc = 0;
@@ -1026,7 +1028,13 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
       }
     }
     else if (res == -1) {
+      int err = errno;
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
+      retryCount ++;
+      if ((err == ECHILD) && (retryCount < 10)) {
+        usleep(50);
+        goto retry_waitpid;
+      }
       LOG_WARNING("waitpid returned error for pid %d: %s", 
                   (int) external->_pid,  
                   TRI_last_error());
@@ -1070,20 +1078,20 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
       result = WaitForSingleObject(external->_process, INFINITE);
       if (result == WAIT_FAILED) {
         LOG_WARNING("could not wait for subprocess with PID '%ud'",
-                    external->_pid);
-      external->_errorMessage =
-        std::string("could not wait for subprocess with PID '",) + 
-        triagens::basics::StringUtils::itoa(external->_pid) + 
+                    (unsigned int) external->_pid);
+      status._errorMessage =
+        std::string("could not wait for subprocess with PID '") + 
+        triagens::basics::StringUtils::itoa(static_cast<int64_t>(external->_pid)) + 
         std::string("'");
       }
     }
     DWORD exitCode = STILL_ACTIVE;
     if (! GetExitCodeProcess(external->_process , &exitCode)) {
       LOG_WARNING("exit status could not be determined for PID '%ud'",
-                  external->_pid);
+                  (unsigned int) external->_pid);
       status._errorMessage =
         std::string("exit status could not be determined for PID '") + 
-        triagens::basics::StringUtils::itoa(external->_pid) + 
+        triagens::basics::StringUtils::itoa(static_cast<int64_t>(external->_pid)) + 
         std::string("'");
     }
     else {
@@ -1163,10 +1171,10 @@ static bool ourKillProcess (TRI_external_t* pid) {
     BOOL ok = GetExitCodeProcess(pid->_process, &exitCode);
 
     if (ok) {
-      LOG_DEBUG("worker process already dead: %d", exitCode);
+      LOG_DEBUG("worker process already dead: %d", (int) exitCode);
     }
     else {
-      LOG_WARNING("kill of worker process failed: %d", exitCode);
+      LOG_WARNING("kill of worker process failed: %d", (int) exitCode);
       ok = false;
     }
   }

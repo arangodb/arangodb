@@ -759,7 +759,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log line number
 /// @startDocuBlock logLineNumber
-/// `--log.line-number}`
+/// `--log.line-number`
 ///
 /// Normally, if an human readable fatal, error, warning or info message is
 /// logged, no information about the file and line number is provided. The file
@@ -769,6 +769,19 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _logLineNumber;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief log dates and times in local time zone
+/// @startDocuBlock logLocalTime
+/// `--log.use-local-time`
+///
+/// If specified, all dates and times in log messages will use the server's
+/// local time-zone. If not specified, all dates and times in log messages
+/// will be printed in UTC / Zulu time.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+        
+        bool _logLocalTime;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log source filter

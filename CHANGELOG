@@ -1,6 +1,11 @@
 v2.3.0 (XXXX-XX-XX)
 -------------------
 
+* issue #1042: set time zone in log output
+
+  the command-line option `--log.use-local-time` was added to print dates and times in
+  the server-local timezone instead of UTC
+
 * command-line options that require a boolean value now validate the
   value given on the command-line
 

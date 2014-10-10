@@ -262,6 +262,12 @@ static sig_atomic_t IsDebug = 0;
 static sig_atomic_t IsTrace = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief use local time for dates & times in log output
+////////////////////////////////////////////////////////////////////////////////
+
+static sig_atomic_t UseLocalTime = 0;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief show line numbers, debug and trace always show the line numbers
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -832,9 +838,17 @@ static void LogThread (char const* func,
   // .............................................................................
 
   tt = time(0);
-  TRI_gmtime(tt, &tb);
-  // write time in buffer
-  len = strftime(buffer, 32, "%Y-%m-%dT%H:%M:%SZ ", &tb);
+  if (UseLocalTime == 0) {
+    // use GMtime
+    TRI_gmtime(tt, &tb);
+    // write time in buffer
+    len = strftime(buffer, 32, "%Y-%m-%dT%H:%M:%SZ ", &tb);
+  }
+  else {
+    // use localtime
+    TRI_localtime(tt, &tb);
+    len = strftime(buffer, 32, "%Y-%m-%dT%H:%M:%S ", &tb);
+  }
 
 
   va_copy(ap2, ap);
@@ -1083,6 +1097,14 @@ void TRI_SetPrefixLogging (char const* prefix) {
 
 void TRI_SetThreadIdentifierLogging (bool show) {
   ShowThreadIdentifier = show ? 1 : 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief use local time?
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetUseLocalTimeLogging (bool value) {
+  UseLocalTime = value ? 1 : 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
