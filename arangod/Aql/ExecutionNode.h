@@ -561,7 +561,7 @@ namespace triagens {
 
           virtual void after (ExecutionNode *eb);
 
-          VarOverview* clone(ExecutionPlan* plan);
+          VarOverview* clone(ExecutionPlan* otherPlan, ExecutionPlan* plan);
 
         };
 
@@ -1554,6 +1554,11 @@ namespace triagens {
           v.push_back(_outVariable);
           return v;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replace the out variable, so we can adjust the name.
+////////////////////////////////////////////////////////////////////////////////
+        void replaceOutVariable(Variable const* var);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief can the node throw? Note that this means that an exception can
