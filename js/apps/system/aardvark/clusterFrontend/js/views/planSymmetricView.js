@@ -16,10 +16,10 @@
       "click .delete"               : "removeEntry",
       "click #cancel"               : "cancel",
       "click #test-all-connections" : "checkAllConnections",
-      "focusout .host"              : "autoCheckConnections",
-      "focusout .port"              : "autoCheckConnections",
-      "focusout .user"              : "autoCheckConnections",
-      "focusout .passwd"            : "autoCheckConnections"
+      "focusout .host"              : "checkAllConnections",
+      "focusout .port"              : "checkAllConnections",
+      "focusout .user"              : "checkAllConnections",
+      "focusout .passwd"            : "checkAllConnections"
     },
 
     cancel: function() {
@@ -84,7 +84,7 @@
       $('.modal-backdrop.fade.in').addClass('waitModalBackdrop');
       $('#waitModalMessage').html('Please be patient while your cluster is being launched');
       delete window.App.clusterPlan._coord;
-            window.App.clusterPlan.save(
+      window.App.clusterPlan.save(
         data,
         {
           success : function() {
@@ -191,69 +191,64 @@
 
     },
 
-    autoCheckConnections: function (e) {
-      var host,
-        port,
-        user,
-        passwd,
-        parentElement = $(e.currentTarget).parent();
-      host = $(parentElement).children('.host').val();
-      port = $(parentElement).children('.port').val();
-      user = $(parentElement).children('.user').val();
-      passwd = $(parentElement).children('.passwd').val();
-
-      if (host !== '' && port !== '') {
-        this.checkAllConnections();
-      }
+    readAllConnections: function() {
+      var res = [];
+      $(".dispatcher").each(function(key, row) {
+        var obj = {
+          host: $('.host', row).val(),
+          port: $('.port', row).val(),
+          user: $('.user', row).val(),
+          passwd: $('.passwd', row).val()
+        };
+        if (obj.host && obj.port) {
+          res.push(obj);
+        }
+      });
+      return res;
     },
 
-    checkConnection: function(
-      host,
-      port,
-      user,
-      passwd,
-      target,
-      i,
-      dispatcherArray,
-      connectionValidationKey
-    ) {
+    checkAllConnections: function() {
       var self = this;
-      $(target).find('.cluster-connection-check-success').remove();
-      $(target).find('.cluster-connection-check-fail').remove();
-      try {
-        $.ajax({
-          async: true,
-          cache: false,
-          type: "GET",
-          xhrFields: {
-            withCredentials: true
-          },
-          url: "http://" + host + ":" + port + "/_api/version",
-          success: function() {
-            if (connectionValidationKey === self.connectionValidationKey) {
-              $(target).append(
-                '<span class="cluster-connection-check-success">Connection: ok</span>'
-              );
-              dispatcherArray[i] = true;
-              self.checkDispatcherArray(dispatcherArray, connectionValidationKey);
+      var connectionValidationKey = Math.random();
+      this.connectionValidationKey = connectionValidationKey;
+      $('.cluster-connection-check-success').remove();
+      $('.cluster-connection-check-fail').remove();
+      var list = this.readAllConnections();
+      if (list.length) {
+        try {
+          $.ajax({
+            async: true,
+            cache: false,
+            type: "POST",
+            url: "/_admin/aardvark/cluster/communicationCheck",
+            data: JSON.stringify(list),
+            success: function(checkList) {
+              if (connectionValidationKey === self.connectionValidationKey) {
+                var dispatcher = $(".dispatcher");
+                var i = 0;
+                dispatcher.each(function(key, row) {
+                  var host = $(".host", row).val();
+                  var port = $(".port", row).val();
+                  if (host && port) {
+                    if (checkList[i]) {
+                      $(".controls:first", row).append(
+                        '<span class="cluster-connection-check-success">Connection: ok</span>'
+                      );
+                    } else {
+                      $(".controls:first", row).append(
+                        '<span class="cluster-connection-check-fail">Connection: fail</span>'
+                      );
+                    }
+                    i++;
+                  }
+                });
+                self.checkDispatcherArray(checkList, connectionValidationKey);
+              }
             }
-          },
-          error: function(p) {
-            if (connectionValidationKey === self.connectionValidationKey) {
-              $(target).append(
-                '<span class="cluster-connection-check-fail">Connection: fail</span>'
-              );
-              dispatcherArray[i] = false;
-            }
-          },
-          beforeSend: function(xhr) {
-            xhr.setRequestHeader("Authorization", "Basic " + btoa(user + ":" + passwd));
-            //send this header to prevent the login box
-            xhr.setRequestHeader("X-Omit-Www-Authenticate", "content");
-          }
-        });
-      } catch (e) {
-        this.disableLaunchButton();
+          });
+        } catch (e) {
+          this.disableLaunchButton();
+        }
       }
     },
 
@@ -264,39 +259,6 @@
         ) {
         this.enableLaunchButton();
       }
-    },
-
-    checkAllConnections: function() {
-      this.connectionValidationKey = Math.random();
-      this.disableLaunchButton();
-      var numOfDispatcher = $('.dispatcher').length,
-        dispatcherArray = [],
-        idx;
-      for (idx = 0; idx < numOfDispatcher; idx++) {
-        dispatcherArray.push(false);
-      }
-
-      //Object mit #dispatcher + random key
-      var self = this;
-      $('.dispatcher').each(
-        function(i, dispatcher) {
-          var target = $('.controls', dispatcher)[0];
-          var host = $('.host', dispatcher).val();
-          var port = $('.port', dispatcher).val();
-          var user = $('.user', dispatcher).val();
-          var passwd = $('.passwd', dispatcher).val();
-          self.checkConnection(
-            host,
-            port,
-            user,
-            passwd,
-            target,
-            i,
-            dispatcherArray,
-            self.connectionValidationKey
-          );
-        }
-      );
     },
 
     disableLaunchButton: function() {
