@@ -3013,7 +3013,7 @@ static v8::Handle<v8::Value> JS_StatusExternal (v8::Arguments const& argv) {
   }
   if (external._errorMessage.length() > 0) {
     result->Set(v8::String::New("errorMessage"), v8::String::New(external._errorMessage.c_str(),
-                                                                 external._errorMessage.size()));
+                                                                 (int) external._errorMessage.size()));
   }
   // return the result
   return scope.Close(result);
@@ -3160,7 +3160,7 @@ static v8::Handle<v8::Value> JS_ExecuteAndWaitExternal (v8::Arguments const& arg
   if (external_status._errorMessage.length() > 0) {
     result->Set(v8::String::New("errorMessage"),
                 v8::String::New(external_status._errorMessage.c_str(),
-                                external_status._errorMessage.size()));
+                                (int) external_status._errorMessage.size()));
   }
   // return the result
   return scope.Close(result);
