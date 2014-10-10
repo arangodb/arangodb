@@ -1027,12 +1027,14 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
     else if (res == -1) {
       int err = errno;
       LOG_WARNING("waitpid returned error for pid %d: %s", 
-                  (int) external->_pid, 
+                  (int) external->_pid,  
                   TRI_errno_string(err));
       status._errorMessage =
         std::string("waitpid returned error for pid ") + 
         triagens::basics::StringUtils::itoa(external->_pid) + 
-        std::string(": ") +
+        std::string(": (") +
+        triagens::basics::StringUtils::itoa(err) + 
+        std::string(") ") +        
         std::string(TRI_errno_string(err));
     }
     else if (static_cast<TRI_pid_t>(external->_pid) == static_cast<TRI_pid_t>(res)) {
