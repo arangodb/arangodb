@@ -58,6 +58,7 @@ ExecutionPlan::ExecutionPlan (Ast* ast)
     _varUsageComputed(false),
     _nextId(0),
     _ast(ast) {
+  _lastSubqueryNodeId = (size_t)-1;
 
 }
 
@@ -426,8 +427,15 @@ ExecutionNode* ExecutionPlan::fromNodeLet (ExecutionNode* previous,
     }
 
     en = registerNode(new SubqueryNode(this, nextId(), subquery, v));
+    _lastSubqueryNodeId = en->id();
   }
   else {
+    if ((expression->type == NODE_TYPE_REFERENCE) &&
+        (_lastSubqueryNodeId == _nextId)) {
+      auto sn = static_cast<SubqueryNode*>(getNodeById(_lastSubqueryNodeId));
+      sn->replaceOutVariable(v);
+      return sn;
+    }
     // operand is some misc expression, including references to other variables
     auto expr = new Expression(_ast, const_cast<AstNode*>(expression));
 
