@@ -987,6 +987,8 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
   if (external->_status == TRI_EXT_RUNNING ||
       external->_status == TRI_EXT_STOPPED) {
 #ifndef _WIN32
+    int retryCount = 0;
+  retry_waitpid:
     TRI_pid_t res;
     int opts;
     int loc = 0;
@@ -1026,7 +1028,13 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
       }
     }
     else if (res == -1) {
+      int err = errno;
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
+      retryCount ++;
+      if ((err == ECHILD) && (retryCount < 10)) {
+        usleep(50);
+        goto retry_waitpid;
+      }
       LOG_WARNING("waitpid returned error for pid %d: %s", 
                   (int) external->_pid,  
                   TRI_last_error());
