@@ -4596,9 +4596,15 @@ pre.gv-object-view {
     width: 155px;
     word-wrap: break-word; }
   .fixedDropdown button {
-    margin-right: 5px; }
+    margin-right: 5px;
+    margin-top: 5px; }
   .fixedDropdown .notificationItem {
     color: #000; }
+    .fixedDropdown .notificationItem .notificationItemTitle {
+      max-width: 165px;
+      overflow-wrap: break-word;
+      white-space: normal;
+      word-wrap: break-word; }
     .fixedDropdown .notificationItem .notificationItemTitle:hover {
       color: #000;
       cursor: default; }
