@@ -375,7 +375,7 @@ void ExecutionNode::CloneHelper (ExecutionNode* other,
       other->_varsValid.insert(var);
     }
     if (_varOverview.get() != nullptr) {
-      auto othervarOverview = std::shared_ptr<VarOverview>(_varOverview->clone(plan));
+      auto othervarOverview = std::shared_ptr<VarOverview>(_varOverview->clone(plan, _plan));
       other->_varOverview = othervarOverview;
     }
   }
@@ -388,6 +388,7 @@ void ExecutionNode::CloneHelper (ExecutionNode* other,
     other->_varsValid = _varsValid;
     other->_varOverview = _varOverview;
   }
+  plan->registerNode(other);
 
   if (withDependencies) {
     cloneDependencies(plan, other, withProperties);
@@ -619,62 +620,63 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
   json("id", triagens::basics::Json(static_cast<double>(id())));
   json("estimatedCost", triagens::basics::Json(_estimatedCost));
 
-  json("depth", triagens::basics::Json(static_cast<double>(_depth)));
+  if (verbose) {
+    json("depth", triagens::basics::Json(static_cast<double>(_depth)));
  
-  if (_varOverview) {
-    triagens::basics::Json jsonVarInfoList(triagens::basics::Json::List, _varOverview->varInfo.size());
-    for (auto oneVarInfo: _varOverview->varInfo) {
-      triagens::basics::Json jsonOneVarInfoArray(triagens::basics::Json::Array, 2);
-      jsonOneVarInfoArray(
-                          "VariableId", 
-                          triagens::basics::Json(static_cast<double>(oneVarInfo.first)))
-                          ("depth", triagens::basics::Json(static_cast<double>(oneVarInfo.second.depth)))
-                          ("RegisterId", triagens::basics::Json(static_cast<double>(oneVarInfo.second.registerId)))
-      ;
-      jsonVarInfoList(jsonOneVarInfoArray);
-    }
-    json("varInfoList", jsonVarInfoList);
+    if (_varOverview) {
+      triagens::basics::Json jsonVarInfoList(triagens::basics::Json::List, _varOverview->varInfo.size());
+      for (auto oneVarInfo: _varOverview->varInfo) {
+        triagens::basics::Json jsonOneVarInfoArray(triagens::basics::Json::Array, 2);
+        jsonOneVarInfoArray(
+                            "VariableId", 
+                            triagens::basics::Json(static_cast<double>(oneVarInfo.first)))
+          ("depth", triagens::basics::Json(static_cast<double>(oneVarInfo.second.depth)))
+          ("RegisterId", triagens::basics::Json(static_cast<double>(oneVarInfo.second.registerId)))
+          ;
+        jsonVarInfoList(jsonOneVarInfoArray);
+      }
+      json("varInfoList", jsonVarInfoList);
 
-    triagens::basics::Json jsonNRRegsList(triagens::basics::Json::List, _varOverview->nrRegs.size());
-    for (auto oneRegisterID: _varOverview->nrRegs) {
-      jsonNRRegsList(triagens::basics::Json(static_cast<double>(oneRegisterID)));
-    }
-    json("nrRegs", jsonNRRegsList);
+      triagens::basics::Json jsonNRRegsList(triagens::basics::Json::List, _varOverview->nrRegs.size());
+      for (auto oneRegisterID: _varOverview->nrRegs) {
+        jsonNRRegsList(triagens::basics::Json(static_cast<double>(oneRegisterID)));
+      }
+      json("nrRegs", jsonNRRegsList);
     
-    triagens::basics::Json jsonNRRegsHereList(triagens::basics::Json::List, _varOverview->nrRegsHere.size());
-    for (auto oneRegisterID: _varOverview->nrRegsHere) {
-      jsonNRRegsHereList(triagens::basics::Json(static_cast<double>(oneRegisterID)));
+      triagens::basics::Json jsonNRRegsHereList(triagens::basics::Json::List, _varOverview->nrRegsHere.size());
+      for (auto oneRegisterID: _varOverview->nrRegsHere) {
+        jsonNRRegsHereList(triagens::basics::Json(static_cast<double>(oneRegisterID)));
+      }
+      json("nrRegsHere", jsonNRRegsHereList);
+      json("totalNrRegs", triagens::basics::Json(static_cast<double>(_varOverview->totalNrRegs)));
     }
-    json("nrRegsHere", jsonNRRegsHereList);
-    json("totalNrRegs", triagens::basics::Json(static_cast<double>(_varOverview->totalNrRegs)));
+    else {
+      json("varInfoList", triagens::basics::Json(triagens::basics::Json::List));
+      json("nrRegs", triagens::basics::Json(triagens::basics::Json::List));
+      json("nrRegsHere", triagens::basics::Json(triagens::basics::Json::List));
+      json("totalNrRegs", triagens::basics::Json(0.0));
+    }
+
+    triagens::basics::Json jsonRegsToClearList(triagens::basics::Json::List, _regsToClear.size());
+    for (auto oneRegisterID : _regsToClear) {
+      jsonRegsToClearList(triagens::basics::Json(static_cast<double>(oneRegisterID)));
+    }
+    json("regsToClear", jsonRegsToClearList);
+
+    triagens::basics::Json jsonVarsUsedLaterList(triagens::basics::Json::List, _varsUsedLater.size());
+    for (auto oneVarUsedLater: _varsUsedLater) {
+      jsonVarsUsedLaterList.add(oneVarUsedLater->toJson());
+    }
+
+    json("varsUsedLater", jsonVarsUsedLaterList);
+
+    triagens::basics::Json jsonvarsValidList(triagens::basics::Json::List, _varsValid.size());
+    for (auto oneVarUsedLater: _varsValid) {
+      jsonvarsValidList.add(oneVarUsedLater->toJson());
+    }
+
+    json("varsValid", jsonvarsValidList);
   }
-  else {
-    json("varInfoList", triagens::basics::Json(triagens::basics::Json::List));
-    json("nrRegs", triagens::basics::Json(triagens::basics::Json::List));
-    json("nrRegsHere", triagens::basics::Json(triagens::basics::Json::List));
-    json("totalNrRegs", triagens::basics::Json(0.0));
-  }
-
-  triagens::basics::Json jsonRegsToClearList(triagens::basics::Json::List, _regsToClear.size());
-  for (auto oneRegisterID : _regsToClear) {
-    jsonRegsToClearList(triagens::basics::Json(static_cast<double>(oneRegisterID)));
-  }
-  json("regsToClear", jsonRegsToClearList);
-
-  triagens::basics::Json jsonVarsUsedLaterList(triagens::basics::Json::List, _varsUsedLater.size());
-  for (auto oneVarUsedLater: _varsUsedLater) {
-    jsonVarsUsedLaterList.add(oneVarUsedLater->toJson());
-  }
-
-  json("varsUsedLater", jsonVarsUsedLaterList);
-
-  triagens::basics::Json jsonvarsValidList(triagens::basics::Json::List, _varsValid.size());
-  for (auto oneVarUsedLater: _varsValid) {
-    jsonvarsValidList.add(oneVarUsedLater->toJson());
-  }
-
-  json("varsValid", jsonvarsValidList);
-
   return json;
 }
 
@@ -782,7 +784,7 @@ void ExecutionNode::VarOverview::clear () {
   totalNrRegs = 0;
 }
 
-ExecutionNode::VarOverview* ExecutionNode::VarOverview::clone (ExecutionPlan* plan) {
+ExecutionNode::VarOverview* ExecutionNode::VarOverview::clone (ExecutionPlan* otherPlan, ExecutionPlan* plan) {
   VarOverview* other = new VarOverview();
 
   other->nrRegsHere  = nrRegsHere;
@@ -794,7 +796,7 @@ ExecutionNode::VarOverview* ExecutionNode::VarOverview::clone (ExecutionPlan* pl
 
   for (auto en: subQueryNodes) {
     auto otherId = en->id();
-    auto otherEN = plan->getNodeById(otherId);
+    auto otherEN = otherPlan->getNodeById(otherId);
     other->subQueryNodes.push_back(otherEN);
   }
   return other;
@@ -1562,6 +1564,11 @@ ExecutionNode* SubqueryNode::clone (ExecutionPlan* plan,
   CloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
+}
+
+
+void SubqueryNode::replaceOutVariable(Variable const* var) {
+  _outVariable = var;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

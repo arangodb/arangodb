@@ -108,6 +108,7 @@ add_executable(
     GeoIndex/GeoIndex.cpp
     GeoIndex/geo-index.cpp
     HashIndex/hash-array.cpp
+    HashIndex/hash-array-multi.cpp
     HashIndex/hash-index.cpp
     IndexOperators/index-operator.cpp
     Replication/ContinuousSyncer.cpp

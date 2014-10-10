@@ -34,6 +34,7 @@
 #include "Basics/Common.h"
 
 #include "HashIndex/hash-array.h"
+#include "HashIndex/hash-array-multi.h"
 #include "VocBase/index.h"
 
 // -----------------------------------------------------------------------------
@@ -63,6 +64,13 @@ typedef struct TRI_hash_index_element_s {
 }
 TRI_hash_index_element_t;
 
+typedef struct TRI_hash_index_element_multi_s {
+  struct TRI_doc_mptr_t*   _document;
+  struct TRI_shaped_sub_s* _subObjects;
+  struct TRI_hash_index_element_multi_s* _next;
+}
+TRI_hash_index_element_multi_t;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hash index
 ////////////////////////////////////////////////////////////////////////////////
@@ -70,7 +78,10 @@ TRI_hash_index_element_t;
 typedef struct TRI_hash_index_s {
   TRI_index_t base;
 
-  TRI_hash_array_t _hashArray;   // the hash array itself
+  union {
+    TRI_hash_array_t _hashArray;   // the hash array itself, unique values
+    TRI_hash_array_multi_t _hashArrayMulti;   // the hash array itself, non-unique values
+  };
   TRI_vector_t     _paths;       // a list of shape pid which identifies the fields of the index
 }
 TRI_hash_index_t;
