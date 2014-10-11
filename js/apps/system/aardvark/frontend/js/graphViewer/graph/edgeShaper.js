@@ -100,7 +100,7 @@ function EdgeShaper(parent, config, idfunc) {
       colourMapper.reset();
     },
     events,
-    addUpdate,
+    addUpdate = noop,
     addShape = noop,
     addLabel = noop,
     addColor = noop,
@@ -115,7 +115,6 @@ function EdgeShaper(parent, config, idfunc) {
        mouseout: noop,
        mouseover: noop
      };
-     addUpdate = noop;
     },
     
     
