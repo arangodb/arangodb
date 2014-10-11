@@ -441,9 +441,10 @@ extend(RequestContext.prototype, {
 /// @EXAMPLES
 ///
 /// ```js
-/// app.post("/foxx", function {
-///   // Do something
-/// }).bodyParam("body", {
+/// app.post("/foxx", function (req, res) {
+///   var foxxBody = req.parameters.foxxBody;
+///   // Do something with foxxBody
+/// }).bodyParam("foxxBody", {
 ///   description: "Body of the Foxx",
 ///   type: FoxxBodyModel
 /// });
