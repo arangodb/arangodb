@@ -377,8 +377,13 @@ size_t TRI_CountGeneralCursor (TRI_general_cursor_t* cursor) {
 /// @brief persist the cursor by setting a timeout
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_PersistGeneralCursor (TRI_general_cursor_t* cursor) {
+void TRI_PersistGeneralCursor (TRI_vocbase_t* vocbase,
+                               TRI_general_cursor_t* cursor) {
+  TRI_general_cursor_store_t* store = vocbase->_cursors;
+
+  TRI_LockSpin(&store->_lock);
   cursor->_expires = TRI_microtime() + cursor->_ttl;
+  TRI_UnlockSpin(&store->_lock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -500,8 +505,6 @@ void TRI_CleanupGeneralCursor (TRI_general_cursor_store_t* store,
         continue;
       }
 
-      TRI_LockSpin(&cursor->_lock);
-
       if (force ||
           (cursor->_usage._refCount == 0 &&
            (cursor->_usage._isDeleted || cursor->_expires < compareStamp))) {
@@ -514,7 +517,6 @@ void TRI_CleanupGeneralCursor (TRI_general_cursor_store_t* store,
                   (int) cursor->_usage._isDeleted);
 
         TRI_RemoveKeyAssociativePointer(&store->_ids, &cursor->_id);
-        TRI_UnlockSpin(&cursor->_lock);
         TRI_FreeGeneralCursor(cursor);
         deleted = true;
 
@@ -522,8 +524,6 @@ void TRI_CleanupGeneralCursor (TRI_general_cursor_store_t* store,
         // therefore break here and start iteration anew
         break;
       }
-
-      TRI_UnlockSpin(&cursor->_lock);
     }
 
     if (! deleted) {
