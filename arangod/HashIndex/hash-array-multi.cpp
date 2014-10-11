@@ -127,15 +127,31 @@ static inline size_t GetBlockSize (size_t blockNumber) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the size of a single entry
+////////////////////////////////////////////////////////////////////////////////
+
+static inline size_t TableEntrySize () {
+  return sizeof(TRI_hash_index_element_multi_t);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the size of a single overflow entry
+////////////////////////////////////////////////////////////////////////////////
+
+static inline size_t OverflowEntrySize () {
+  return sizeof(TRI_hash_index_element_overflow_t);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get a storage location from the freelist
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_hash_index_element_multi_t* GetFromFreelist (TRI_hash_array_multi_t* array) {
+static TRI_hash_index_element_overflow_t* GetFromFreelist (TRI_hash_array_multi_t* array) {
   if (array->_freelist == nullptr) {
     size_t blockSize = GetBlockSize(array->_blocks._length);
     TRI_ASSERT(blockSize > 0);
 
-    auto begin = static_cast<TRI_hash_index_element_multi_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, blockSize * sizeof(TRI_hash_index_element_multi_t), true));
+    auto begin = static_cast<TRI_hash_index_element_overflow_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, blockSize * OverflowEntrySize(), true));
 
     if (begin == nullptr) {
       return nullptr;
@@ -168,7 +184,7 @@ static TRI_hash_index_element_multi_t* GetFromFreelist (TRI_hash_array_multi_t* 
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ReturnToFreelist (TRI_hash_array_multi_t* array,
-                              TRI_hash_index_element_multi_t* element) {
+                              TRI_hash_index_element_overflow_t* element) {
   element->_document = nullptr;
   element->_next     = array->_freelist;
   array->_freelist   = element;
@@ -190,6 +206,19 @@ static void DestroyElement (TRI_hash_array_multi_t* array,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys an element, removing any allocated memory
+////////////////////////////////////////////////////////////////////////////////
+
+static void DestroyElement (TRI_hash_array_multi_t* array,
+                            TRI_hash_index_element_overflow_t* element) {
+  TRI_ASSERT_EXPENSIVE(element != nullptr);
+  TRI_ASSERT_EXPENSIVE(element->_document != nullptr);
+
+  element->_document = nullptr;
+  element->_next = nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief initial preallocation size of the hash table when the table is
 /// first created
 /// setting this to a high value will waste memory but reduce the number of
@@ -198,18 +227,6 @@ static void DestroyElement (TRI_hash_array_multi_t* array,
 
 static inline uint64_t InitialSize () {
   return 251;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the size of a single entry
-////////////////////////////////////////////////////////////////////////////////
-
-static inline size_t TableEntrySize () {
-  return sizeof(TRI_hash_index_element_multi_t);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -351,12 +368,17 @@ void TRI_DestroyHashArrayMulti (TRI_hash_array_multi_t* array) {
     e = p + array->_nrAlloc;
 
     for (;  p < e;  ++p) {
-      auto current = p;
+      if (p->_document != nullptr) {
+        // destroy overflow elements
+        auto current = p->_next;
+        while (current != nullptr) {
+          auto ptr = current->_next;
+          DestroyElement(array, current);
+          current = ptr;
+        }
 
-      while (current != nullptr && current->_document != nullptr) {
-        auto ptr = current->_next;
-        DestroyElement(array, current);
-        current = ptr;
+        // destroy the element itself
+        DestroyElement(array, p);
       }
     }
 
@@ -397,10 +419,9 @@ size_t TRI_MemoryUsageHashArrayMulti (TRI_hash_array_multi_t const* array) {
 
   size_t tableSize     = (size_t) (array->_nrAlloc * TableEntrySize() + 64);
   size_t memberSize    = (size_t) (array->_nrUsed * array->_numFields * sizeof(TRI_shaped_sub_t));
-  size_t overflowUsed  = (size_t) (array->_nrOverflowUsed * array->_numFields * sizeof(TRI_shaped_sub_t));
-  size_t overflowAlloc = (size_t) (array->_nrOverflowAlloc * TableEntrySize());
+  size_t overflowAlloc = (size_t) (array->_nrOverflowAlloc * OverflowEntrySize());
 
-  return (size_t) (tableSize + memberSize + overflowUsed + overflowAlloc);
+  return (size_t) (tableSize + memberSize + overflowAlloc);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -409,7 +430,15 @@ size_t TRI_MemoryUsageHashArrayMulti (TRI_hash_array_multi_t const* array) {
 
 int TRI_ResizeHashArrayMulti (TRI_hash_array_multi_t* array,
                               size_t size) {
-  return ResizeHashArray(array, (uint64_t) (2 * size + 1), false);
+  // use less than 1 element per number of documents
+  // we does this because expect duplicate values, which are stored in the overflow
+  // items (which are allocated separately)
+  size_t targetSize = 0.75 * size;
+  if ((targetSize & 1) == 0) {
+    // make odd
+    targetSize++;
+  }
+  return ResizeHashArray(array, (uint64_t) targetSize, false);
 }
 
 // -----------------------------------------------------------------------------
@@ -444,19 +473,16 @@ TRI_vector_pointer_t TRI_LookupByKeyHashArrayMulti (TRI_hash_array_multi_t const
   TRI_ASSERT_EXPENSIVE(i < n);
 
   if (array->_table[i]._document != nullptr) {
-    auto current = &array->_table[i];
+    // add the element itself
+    TRI_PushBackVectorPointer(&result, array->_table[i]._document);
+
+    // add the overflow elements
+    auto current = array->_table[i]._next;
     while (current != nullptr) {
-      if (IsEqualKeyElement(array, key, current)) {
-        TRI_PushBackVectorPointer(&result, current);
-      }
+      TRI_PushBackVectorPointer(&result, current->_document);
       current = current->_next;
     }
   }
-
-  // ...........................................................................
-  // return whatever we found -- which could be an empty vector list if nothing
-  // matches.
-  // ...........................................................................
 
   return result;
 }
@@ -475,8 +501,6 @@ int TRI_InsertElementHashArrayMulti (TRI_hash_array_multi_t* array,
   if (! CheckResize(array)) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-
-  element->_next = nullptr;
 
   uint64_t const n = array->_nrAlloc;
   uint64_t i, k;
@@ -504,7 +528,13 @@ int TRI_InsertElementHashArrayMulti (TRI_hash_array_multi_t* array,
 
   if (found) {
     if (isRollback) {
-      auto current = arrayElement;
+      if (arrayElement->_document == element->_document) {
+        DestroyElement(array, element);
+
+        return TRI_RESULT_ELEMENT_EXISTS;
+      }
+
+      auto current = arrayElement->_next;
       while (current != nullptr) {
         if (current->_document == element->_document) {
           DestroyElement(array, element);
@@ -521,14 +551,22 @@ int TRI_InsertElementHashArrayMulti (TRI_hash_array_multi_t* array,
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
-    element->_next = arrayElement->_next;
-    *ptr = *element;
+    // link our element at the list head
+    ptr->_document = element->_document;
+    ptr->_next     = arrayElement->_next;
     arrayElement->_next = ptr;
+          
+    // it is ok to destroy the element here, because we have copied its internal before!
+    DestroyElement(array, element);
 
     return TRI_ERROR_NO_ERROR;
   }
+  
+  TRI_ASSERT(arrayElement->_next == nullptr);
 
-  *arrayElement = *element;
+  // not found in list, now insert insert
+  element->_next = nullptr;
+  *arrayElement  = *element;
   array->_nrUsed++;
 
   return TRI_ERROR_NO_ERROR;
@@ -555,10 +593,6 @@ int TRI_RemoveElementHashArrayMulti (TRI_hash_array_multi_t* array,
 
   TRI_hash_index_element_multi_t* arrayElement = &array->_table[i];
 
-  // ...........................................................................
-  // if we did not find such an item return false
-  // ...........................................................................
-
   bool found = (arrayElement->_document != nullptr);
 
   if (! found) {
@@ -566,34 +600,39 @@ int TRI_RemoveElementHashArrayMulti (TRI_hash_array_multi_t* array,
   }
 
   if (arrayElement->_document != element->_document) {
-    auto current = arrayElement;
-    while (current->_next != nullptr) {
-      if (current->_next->_document == element->_document) {
-        auto ptr = current->_next->_next;
-        DestroyElement(array, current->_next);
-        ReturnToFreelist(array, current->_next);
+    // look in the overflow list for the sought document
+    auto next = &(arrayElement->_next);
+    while (*next != nullptr) {
+      if ((*next)->_document == element->_document) {
+        auto ptr = (*next)->_next;
+        DestroyElement(array, *next);
+        ReturnToFreelist(array, *next);
+        *next = ptr;
 
-        current->_next = ptr;
-      
         return TRI_ERROR_NO_ERROR;
       }
-      current = current->_next;
+      next = &((*next)->_next);
     }
+
+    return TRI_RESULT_ELEMENT_NOT_FOUND;
   }
 
+  // the element itself is the document to remove
   if (arrayElement->_next != nullptr) {
-    auto ptr = arrayElement->_next;
-    DestroyElement(array, arrayElement);
+    auto next = arrayElement->_next;
 
-    *arrayElement = *ptr;
-    ReturnToFreelist(array, ptr);
-
+    // copy data from first overflow element into ourselves
+    arrayElement->_document = next->_document;
+    arrayElement->_next     = next->_next;
+ 
+    // and remove the first overflow element
+    DestroyElement(array, next);
+    ReturnToFreelist(array, next);
+        
     return TRI_ERROR_NO_ERROR;
   }
-  
-  // ...........................................................................
-  // remove item
-  // ...........................................................................
+
+  TRI_ASSERT(arrayElement->_next == nullptr);
 
   DestroyElement(array, arrayElement);
   array->_nrUsed--;
@@ -617,6 +656,7 @@ int TRI_RemoveElementHashArrayMulti (TRI_hash_array_multi_t* array,
   }
 
   if (array->_nrUsed == 0) {
+    TRI_ASSERT(array->_nrOverflowUsed == 0);
     ResizeHashArray(array, InitialSize(), true);
   }
 
