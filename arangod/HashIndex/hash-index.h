@@ -64,10 +64,16 @@ typedef struct TRI_hash_index_element_s {
 }
 TRI_hash_index_element_t;
 
+typedef struct TRI_hash_index_element_overflow_s {
+  struct TRI_doc_mptr_t*   _document;
+  struct TRI_hash_index_element_overflow_s* _next;
+}
+TRI_hash_index_element_overflow_t;
+
 typedef struct TRI_hash_index_element_multi_s {
   struct TRI_doc_mptr_t*   _document;
   struct TRI_shaped_sub_s* _subObjects;
-  struct TRI_hash_index_element_multi_s* _next;
+  struct TRI_hash_index_element_overflow_s* _next;
 }
 TRI_hash_index_element_multi_t;
 

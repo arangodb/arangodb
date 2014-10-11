@@ -411,7 +411,7 @@ static TRI_index_result_t MultiHashIndex_find (TRI_hash_index_t* hashIndex,
     }
 
     for (size_t j = 0;  j < result._length;  ++j) {
-      results._documents[j] = ((TRI_hash_index_element_multi_t*)(result._buffer[j]))->_document;
+      results._documents[j] = ((TRI_doc_mptr_t*) result._buffer[j]);
     }
   }
 
