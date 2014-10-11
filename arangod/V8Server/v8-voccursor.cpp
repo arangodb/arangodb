@@ -530,7 +530,9 @@ static v8::Handle<v8::Value> JS_PersistGeneralCursor (v8::Arguments const& argv)
     TRI_V8_EXCEPTION_USAGE(scope, "persist()");
   }
 
-  TRI_PersistGeneralCursor(UnwrapGeneralCursor(argv.Holder()));
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+
+  TRI_PersistGeneralCursor(vocbase, UnwrapGeneralCursor(argv.Holder()));
   return scope.Close(v8::True());
 }
 
