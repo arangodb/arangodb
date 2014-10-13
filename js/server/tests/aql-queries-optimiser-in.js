@@ -127,7 +127,7 @@ function ahuacatlQueryOptimiserInTestSuite () {
       var actual = getQueryResults(query);
       assertEqual(expected, actual);
 
-      assertEqual([ "SingletonNode", "SubqueryNode", "CalculationNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "SubqueryNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -195,7 +195,7 @@ function ahuacatlQueryOptimiserInTestSuite () {
       var actual = getQueryResults(query);
       assertEqual(expected, actual);
       
-      assertEqual([ "SingletonNode", "SubqueryNode", "CalculationNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "SubqueryNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
