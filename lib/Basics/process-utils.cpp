@@ -982,7 +982,7 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
     TRI_UnlockMutex(&ExternalProcessesLock);
     status._errorMessage =
       std::string("the pid you're looking for is not in our list: ") + 
-      triagens::basics::StringUtils::itoa(static_cast<int64_t>(external->_pid));
+      triagens::basics::StringUtils::itoa(static_cast<int64_t>(pid._pid));
     status._status = TRI_EXT_NOT_FOUND;
     LOG_WARNING("checkExternal: pid not found: %d", (int) pid._pid);
 
