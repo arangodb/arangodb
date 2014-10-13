@@ -227,7 +227,8 @@ size_t TRI_CountGeneralCursor (TRI_general_cursor_t*);
 /// @brief persist the cursor by setting a timeout
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_PersistGeneralCursor (TRI_general_cursor_t*);
+void TRI_PersistGeneralCursor (struct TRI_vocbase_s*,
+                               TRI_general_cursor_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookup a cursor by its id

@@ -131,6 +131,7 @@
         $('#s2id_toCollections'+id).select2("val", null);
         $('#toCollections'+id).attr('disabled', false);
       }
+      /* following not needed? => destroys webif modal
       tmp = $('input[id*="newEdgeDefinitions"]');
       for (i = 0; i < tmp.length ; i++) {
         id = tmp[i].id;
@@ -141,8 +142,7 @@
           width: "336px",
           maximumSelectionSize: 1
         });
-      }
-
+      }*/
     },
 
     editGraph : function(e) {
