@@ -260,16 +260,11 @@ function checkInstanceAlive(instanceInfo) {
 }
 
 function shutdownInstance (instanceInfo, options) {
-  var res;
   if (options.cluster) {
     instanceInfo.kickstarter.shutdown();
     if (options.cleanup) {
       instanceInfo.kickstarter.cleanup();
     }
-/* TODO: how does this behave in the cluster case?
-    res = statusExternal(instanceInfo.pid, true);
-    print(res);
-*/
   }
   else {
     if (typeof(instanceInfo.exitStatus) === 'undefined') {
@@ -277,8 +272,6 @@ function shutdownInstance (instanceInfo, options) {
                makeAuthorisationHeaders(options));
       wait(10);
       killExternal(instanceInfo.pid);
-      res = statusExternal(instanceInfo.pid, true);
-      print(res);
     }
     else {
       print("Server already dead, doing nothing.");
