@@ -489,7 +489,8 @@ int TRI_RemoveElementHashArray (TRI_hash_array_t* array,
 
     if ((i < k && ! (i < j && j <= k)) || (k < i && ! (i < j || j <= k))) {
       array->_table[i] = array->_table[k];
-      array->_table[k]._document = nullptr;
+      array->_table[k]._document   = nullptr;
+      array->_table[k]._subObjects = nullptr;
       i = k;
     }
 
