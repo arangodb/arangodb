@@ -2978,7 +2978,7 @@ static v8::Handle<v8::Value> JS_StatusExternal (v8::Arguments const& argv) {
   memset(&pid, 0, sizeof(TRI_external_id_t));
 
 #ifndef _WIN32
-  pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(obj->Get(pidname),true));
+  pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(obj->Get(pidname), true));
 #else
   pid._pid = static_cast<DWORD>(TRI_ObjectToUInt64(obj->Get(pidname), true));
 #endif
@@ -3066,14 +3066,14 @@ static v8::Handle<v8::Value> JS_ExecuteAndWaitExternal (v8::Arguments const& arg
       n = 1;
       arguments = (char**) TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false);
 
-        TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, a);
+      TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, a);
 
-        if (*arg == 0) {
-          arguments[0] = TRI_DuplicateString("");
-        }
-        else {
-          arguments[0] = TRI_DuplicateString(*arg);
-        }
+      if (*arg == 0) {
+        arguments[0] = TRI_DuplicateString("");
+      }
+      else {
+        arguments[0] = TRI_DuplicateString(*arg);
+      }
     }
   }
   bool usePipes = false;
@@ -3127,12 +3127,7 @@ static v8::Handle<v8::Value> JS_ExecuteAndWaitExternal (v8::Arguments const& arg
   TRI_external_id_t pid;
   memset(&pid, 0, sizeof(TRI_external_id_t));
 
-
-#ifndef _WIN32
-  pid._pid = static_cast<TRI_pid_t>(external._pid);
-#else
-  pid._pid = static_cast<DWORD>(external._pid);
-#endif
+  pid._pid = external._pid;
 
   TRI_external_status_t external_status = TRI_CheckExternalProcess(pid, true);
 
@@ -3173,7 +3168,7 @@ static v8::Handle<v8::Value> JS_ExecuteAndWaitExternal (v8::Arguments const& arg
 static v8::Handle<v8::Value> JS_KillExternal (v8::Arguments const& argv) {
   v8::HandleScope scope;
   v8::Handle<v8::String> pidname = v8::String::New("pid");
-
+  
   // extract the arguments
   if (argv.Length() != 1) {
     TRI_V8_EXCEPTION_USAGE(scope, "killExternal(<external-identifier>)");
