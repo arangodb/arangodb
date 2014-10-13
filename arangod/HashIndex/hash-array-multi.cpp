@@ -564,10 +564,12 @@ int TRI_InsertElementHashArrayMulti (TRI_hash_array_multi_t* array,
   
   TRI_ASSERT(arrayElement->_next == nullptr);
 
-  // not found in list, now insert insert
+  // not found in list, now insert
   element->_next = nullptr;
   *arrayElement  = *element;
   array->_nrUsed++;
+  
+  TRI_ASSERT(arrayElement->_next == nullptr);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -618,6 +620,7 @@ int TRI_RemoveElementHashArrayMulti (TRI_hash_array_multi_t* array,
   }
 
   // the element itself is the document to remove
+
   if (arrayElement->_next != nullptr) {
     auto next = arrayElement->_next;
 
@@ -648,7 +651,9 @@ int TRI_RemoveElementHashArrayMulti (TRI_hash_array_multi_t* array,
 
     if ((i < k && ! (i < j && j <= k)) || (k < i && ! (i < j || j <= k))) {
       array->_table[i] = array->_table[k];
-      array->_table[k]._document = nullptr;
+      array->_table[k]._document   = nullptr;
+      array->_table[k]._next       = nullptr;
+      array->_table[k]._subObjects = nullptr;
       i = k;
     }
 
