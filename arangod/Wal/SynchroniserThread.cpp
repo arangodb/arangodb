@@ -191,7 +191,7 @@ int SynchroniserThread::doSync (bool& checkMore) {
   }
 
   // now perform the actual syncing
-  Logfile::StatusType status = _logfileManager->getLogfileStatus(id);
+  auto status = region.logfileStatus;
   TRI_ASSERT(status == Logfile::StatusType::OPEN || status == Logfile::StatusType::SEAL_REQUESTED);
 
   // get the logfile's file descriptor

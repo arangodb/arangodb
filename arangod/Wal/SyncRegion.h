@@ -43,6 +43,7 @@ namespace triagens {
           logfile(nullptr),
           mem(nullptr),
           size(0),
+          logfileStatus(Logfile::StatusType::UNKNOWN),
           firstSlotIndex(0),
           lastSlotIndex(0),
           waitForSync(false),
@@ -52,14 +53,15 @@ namespace triagens {
       ~SyncRegion () {
       }
 
-      Logfile::IdType logfileId;
-      Logfile*        logfile;
-      char*           mem;
-      uint32_t        size;
-      size_t          firstSlotIndex;
-      size_t          lastSlotIndex;
-      bool            waitForSync;
-      bool            checkMore;
+      Logfile::IdType      logfileId;
+      Logfile*             logfile;
+      char*                mem;
+      uint32_t             size;
+      Logfile::StatusType  logfileStatus;
+      size_t               firstSlotIndex;
+      size_t               lastSlotIndex;
+      bool                 waitForSync;
+      bool                 checkMore;
     };
 
   }

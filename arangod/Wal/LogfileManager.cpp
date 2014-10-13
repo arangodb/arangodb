@@ -1187,6 +1187,25 @@ Logfile* LogfileManager::getLogfile (Logfile::IdType id) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get a logfile and its status by id
+////////////////////////////////////////////////////////////////////////////////
+
+Logfile* LogfileManager::getLogfile (Logfile::IdType id,
+                                     Logfile::StatusType& status) {
+  READ_LOCKER(_logfilesLock);
+
+  auto it = _logfiles.find(id);
+  if (it != _logfiles.end()) {
+    status = (*it).second->status();
+    return (*it).second;
+  }
+
+  status = Logfile::StatusType::UNKNOWN;
+
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get a logfile for writing. this may return nullptr
 ////////////////////////////////////////////////////////////////////////////////
 
