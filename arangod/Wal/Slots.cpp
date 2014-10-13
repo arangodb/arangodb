@@ -421,10 +421,14 @@ SyncRegion Slots::getSyncRegion () {
 
     if (region.logfileId == 0) {
       // first member
+      Logfile::StatusType status;
+
       region.logfileId      = slot->logfileId();
-      region.logfile        = _logfileManager->getLogfile(slot->logfileId());
+      // the following call also updates status
+      region.logfile        = _logfileManager->getLogfile(slot->logfileId(), status);
       region.mem            = static_cast<char*>(slot->mem());
       region.size           = slot->size();
+      region.logfileStatus  = status;
       region.firstSlotIndex = slotIndex;
       region.lastSlotIndex  = slotIndex;
       region.waitForSync    = slot->waitForSync();
