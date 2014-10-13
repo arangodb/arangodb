@@ -125,7 +125,7 @@ function optimizerRuleTestSuite () {
     testPlans : function () {
       var plans = [ 
         [ "FOR i IN 1..10 FOR j IN 1..10 FILTER i > 1 RETURN i", [ "SingletonNode", "CalculationNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "EnumerateListNode", "ReturnNode" ] ],
-        [ "FOR i IN 1..10 LET x = (FOR j IN [i] RETURN j) FILTER i > 1 RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "SubqueryNode", "CalculationNode", "ReturnNode" ] ],
+        [ "FOR i IN 1..10 LET x = (FOR j IN [i] RETURN j) FILTER i > 1 RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "SubqueryNode", "ReturnNode" ] ],
         [ "FOR i IN 1..10 LET a = 2 * i FILTER i == 1 RETURN a", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ] ],
         [ "FOR i IN 1..10 FOR j IN 1..10 FILTER i == 1 FILTER j == 2 RETURN i", [ "SingletonNode", "CalculationNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "EnumerateListNode", "CalculationNode", "FilterNode", "ReturnNode" ] ]
       ];
