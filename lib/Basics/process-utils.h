@@ -93,13 +93,15 @@ typedef struct TRI_external_id_s {
   TRI_pid_t _pid;
   int _readPipe;
   int _writePipe;
-} TRI_external_id_t;
+} 
+TRI_external_id_t;
 #else
 typedef struct TRI_external_id_s {
  DWORD _pid;
  HANDLE _readPipe;
  HANDLE _writePipe;
-} TRI_external_id_t;
+} 
+TRI_external_id_t;
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
