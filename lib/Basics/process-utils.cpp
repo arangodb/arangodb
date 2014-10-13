@@ -221,6 +221,15 @@ static bool CreatePipes (int* pipe_server_to_child,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief handler for SIGCHLD 
+////////////////////////////////////////////////////////////////////////////////
+
+static void handleSigchld (int sig) {
+  // intentionally do nothing here
+  // we'll use waitpid() for reaping children later
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief starts external process
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1265,7 +1274,7 @@ bool TRI_KillExternalProcess (TRI_external_id_t pid) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitialiseProcess (int argc, char* argv[]) {
-  if (ProcessName != 0) {
+  if (ProcessName != nullptr) {
     return;
   }
 
@@ -1275,6 +1284,17 @@ void TRI_InitialiseProcess (int argc, char* argv[]) {
 
   TRI_InitVectorPointer(&ExternalProcesses, TRI_CORE_MEM_ZONE);
   TRI_InitMutex(&ExternalProcessesLock);
+
+#ifndef WIN32
+  // initialise a signal handler for SIGCHLD  
+  struct sigaction sa;
+  sa.sa_handler = &handleSigchld;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_flags = SA_RESTART | SA_NOCLDSTOP;
+  if (sigaction(SIGCHLD, &sa, 0) == -1) {
+    // installation of signal handler failed
+  }
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
