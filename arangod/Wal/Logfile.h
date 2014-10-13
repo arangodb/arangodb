@@ -66,13 +66,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         enum class StatusType : uint32_t {
-          UNKNOWN,
-          EMPTY,
-          OPEN,
-          SEAL_REQUESTED,
-          SEALED,
-          COLLECTION_REQUESTED,
-          COLLECTED
+          UNKNOWN                = 0,
+          EMPTY                  = 1,
+          OPEN                   = 2,
+          SEAL_REQUESTED         = 3,
+          SEALED                 = 4,
+          COLLECTION_REQUESTED   = 5,
+          COLLECTED              = 6
         };
 
 // -----------------------------------------------------------------------------
