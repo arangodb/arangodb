@@ -302,8 +302,7 @@ static void StartExternalProcess (TRI_external_t* external, bool usePipes) {
     return;
   }
 
-  LOG_INFO("forked child has pid %d", (int) processPid);
-  LOG_DEBUG("fork succeeded %d", (int) processPid);
+  LOG_DEBUG("fork succeeded, child pid: %d", (int) processPid);
 
   if (usePipes) {
     close(pipe_server_to_child[0]);
@@ -950,7 +949,7 @@ void TRI_CreateExternalProcess (const char* executable,
     return;
   }
 
-  LOG_INFO("adding process %d to list", (int) external->_pid);
+  LOG_DEBUG("adding process %d to list", (int) external->_pid);
   TRI_LockMutex(&ExternalProcessesLock);
   TRI_PushBackVectorPointer(&ExternalProcesses, external);
   // Note that the following deals with different types under windows,
@@ -972,8 +971,6 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
   TRI_external_t* external;
   size_t i;
   
-  LOG_INFO("checking process: %d", (int) pid._pid);
-
   TRI_LockMutex(&ExternalProcessesLock);
 
   status._status = TRI_EXT_NOT_FOUND;
@@ -1128,7 +1125,6 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
   // Do we have to free our data?
   if (external->_status != TRI_EXT_RUNNING &&
       external->_status != TRI_EXT_STOPPED) {
-    LOG_INFO("removing pid: %d", (int) external->_pid);
     TRI_RemoveVectorPointer(&ExternalProcesses, i);
     FreeExternal(external);
   }
@@ -1208,7 +1204,7 @@ bool TRI_KillExternalProcess (TRI_external_id_t pid) {
   size_t i;
   bool ok = true;
 
-  LOG_INFO("killing process: %d", (int) pid._pid);
+  LOG_DEBUG("killing process: %d", (int) pid._pid);
 
   TRI_LockMutex(&ExternalProcessesLock);
 
@@ -1222,7 +1218,7 @@ bool TRI_KillExternalProcess (TRI_external_id_t pid) {
 
   if (i == ExternalProcesses._length) {
     TRI_UnlockMutex(&ExternalProcessesLock);
-    LOG_WARNING("killing process not found: %d", (int) pid._pid);
+    LOG_DEBUG("kill: process not found: %d", (int) pid._pid);
 #ifndef _WIN32
     // Kill just in case:
     if (0 == kill(pid._pid, SIGTERM)) {
