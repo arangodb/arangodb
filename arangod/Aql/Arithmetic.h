@@ -35,37 +35,37 @@ namespace triagens {
 
     template<typename T>
     bool IsUnsafeAddition (T l, T r) {
-      return ((r > 0 && l > std::numeric_limits<T>::max() - r) ||
-              (r < 0 && l < std::numeric_limits<T>::min() - r));
+      return ((r > 0 && l > (std::numeric_limits<T>::max)() - r) ||
+              (r < 0 && l < (std::numeric_limits<T>::min)() - r));
     }
 
     template<typename T>
     bool IsUnsafeSubtraction (T l, T r) {
-      return ((r > 0 && l < std::numeric_limits<T>::min() + r) || (r < 0 && l > std::numeric_limits<T>::max() + r));
+      return ((r > 0 && l < (std::numeric_limits<T>::min)() + r) || (r < 0 && l > (std::numeric_limits<T>::max)() + r));
     }
 
     template<typename T>
     bool IsUnsafeMultiplication (T l, T r) {
       if (l > 0) {  
         if (r > 0) { 
-          if (l > (std::numeric_limits<T>::max() / r)) {
+          if (l > ((std::numeric_limits<T>::max)() / r)) {
             return true;
           }
         } 
         else { 
-          if (r < (std::numeric_limits<T>::min() / l)) {
+          if (r < ((std::numeric_limits<T>::min)() / l)) {
             return true;
           }
         } 
       } 
       else { 
         if (r > 0) { 
-          if (l < (std::numeric_limits<T>::min() / r)) {
+          if (l < ((std::numeric_limits<T>::min)() / r)) {
             return true;
           }
         } 
         else { 
-          if ( (l != 0) && (r < (std::numeric_limits<T>::max() / l))) {
+          if ( (l != 0) && (r < ((std::numeric_limits<T>::max)() / l))) {
             return true;
           }
         } 
@@ -76,7 +76,7 @@ namespace triagens {
 
     template<typename T>
     bool IsUnsafeDivision (T l, T r) {
-      return (l == std::numeric_limits<T>::min() && r == -1);
+      return (l == (std::numeric_limits<T>::min)() && r == -1);
     } 
 
   }
