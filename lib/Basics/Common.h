@@ -230,11 +230,11 @@ static inline void _backtrace (void) {
   size = backtrace(stack_frames, sizeof(stack_frames) / sizeof(void*));
   strings = backtrace_symbols(stack_frames, size);
   for (i = 0; i < size; i++) {
-    if (strings != NULL) {
+    if (strings != nullptr) {
 #ifdef TRI_USE_DEMANGLING
       char *mangled_name = nullptr, *offset_begin = nullptr, *offset_end = nullptr;
 
-      // find parantheses and +address offset surrounding mangled name
+      // find parentheses and +address offset surrounding mangled name
       for (char *p = strings[i]; *p; ++p) {
         if (*p == '(') {
           mangled_name = p; 
@@ -276,7 +276,7 @@ static inline void _backtrace (void) {
       fprintf(stderr, "[%p]\n", stack_frames[i]);
     }
   }
-  if (strings != NULL) {
+  if (strings != nullptr) {
     TRI_SystemFree(strings);  
   }
 #endif
@@ -292,7 +292,7 @@ static inline void _getBacktrace (std::string& btstr) {
   strings = backtrace_symbols(stack_frames, size);
   for (i = 0; i < size; i++) {
     std::stringstream ss;
-    if (strings != NULL) {
+    if (strings != nullptr) {
 
       char *mangled_name = nullptr, *offset_begin = nullptr, *offset_end = nullptr;
 
@@ -347,15 +347,15 @@ static inline void _getBacktrace (std::string& btstr) {
         std::string("\n");
     }
   }
-  if (strings != NULL) {
+  if (strings != nullptr) {
     TRI_SystemFree(strings);  
   }
 #endif
 }
 
 #ifndef TRI_ASSERT
-#define TRI_ASSERT(expr) { if (!(expr)) _backtrace(); assert(expr);}
-#define TRI_ASSERT_EXPENSIVE(expr) {if (!(expr)) _backtrace(); assert(expr);}
+#define TRI_ASSERT(expr) { if (! (expr)) _backtrace(); assert(expr); }
+#define TRI_ASSERT_EXPENSIVE(expr) { if (! (expr)) _backtrace(); assert(expr); }
 #endif
 
 #else

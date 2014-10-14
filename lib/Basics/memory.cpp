@@ -196,7 +196,7 @@ static char* FailMalloc (TRI_memory_zone_t* zone,
   if (zone->_failable && ShouldFail(n)) { 
     // intentionally return NULL
     errno = ENOMEM;
-    return NULL;
+    return nullptr;
   }
 
   return static_cast<char*>(BuiltInMalloc(n));
@@ -215,7 +215,7 @@ static char* FailRealloc (TRI_memory_zone_t* zone,
   if (zone->_failable && ShouldFail(n)) { 
     // intentionally return NULL
     errno = ENOMEM;
-    return NULL;
+    return nullptr;
   }
 
   return static_cast<char*>(BuiltInRealloc(old, n));
@@ -233,8 +233,8 @@ static void InitFailMalloc (void) {
   // get failure probability 
   value = getenv("ARANGO_FAILMALLOC_PROBABILITY");
 
-  if (value != NULL) {
-    double v = strtod(value, NULL);
+  if (value != nullptr) {
+    double v = strtod(value, nullptr);
     if (v >= 0.0 && v <= 1.0) {
       FailProbability = v;
     }
@@ -243,8 +243,8 @@ static void InitFailMalloc (void) {
   // get startup delay
   value = getenv("ARANGO_FAILMALLOC_DELAY");
 
-  if (value != NULL) {
-    double v = strtod(value, NULL);
+  if (value != nullptr) {
+    double v = strtod(value, nullptr);
     if (v > 0.0) {
       FailStartStamp = CurrentTimeStamp() + v;
     }
@@ -253,8 +253,8 @@ static void InitFailMalloc (void) {
   // get minimum size for failures 
   value = getenv("ARANGO_FAILMALLOC_MINSIZE");
 
-  if (value != NULL) {
-    unsigned long long v = strtoull(value, NULL, 10);
+  if (value != nullptr) {
+    unsigned long long v = strtoull(value, nullptr, 10);
     if (v > 0) {
       FailMinSize = (size_t) v;
     }
@@ -312,7 +312,7 @@ void* TRI_SystemAllocate (uint64_t n, bool set) {
 
   m = static_cast<char*>(BuiltInMalloc((size_t) n));
 
-  if (m != NULL) {
+  if (m != nullptr) {
     if (set) {
       memset(m, 0, (size_t) n);
     }
@@ -340,23 +340,23 @@ void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
   m = static_cast<char*>(MALLOC_WRAPPER(zone, (size_t) n));
 #endif
 
-  if (m == NULL) {
+  if (m == nullptr) {
     if (zone->_failable) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-      return NULL;
+      return nullptr;
     }
 
-    if (CoreReserve == NULL) {
+    if (CoreReserve == nullptr) {
       fprintf(stderr,
               "FATAL: failed to allocate %llu bytes for memory zone %d" ZONE_DEBUG_LOCATION ", giving up!\n",
               (unsigned long long) n,
               (int) zone->_zid
               ZONE_DEBUG_PARAMS);
-      TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
     }
 
     free(CoreReserve);
-    CoreReserve = NULL;
+    CoreReserve = nullptr;
 
     fprintf(stderr,
             "failed to allocate %llu bytes for memory zone %d" ZONE_DEBUG_LOCATION ", retrying!\n",
@@ -405,7 +405,7 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
 #endif
   char* p;
 
-  if (m == NULL) {
+  if (m == nullptr) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
     return TRI_AllocateZ(zone, n, false, file, line);
 #else
@@ -434,23 +434,23 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
   p = static_cast<char*>(REALLOC_WRAPPER(zone, p, (size_t) n));
 #endif
 
-  if (p == NULL) {
+  if (p == nullptr) {
     if (zone->_failable) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-      return NULL;
+      return nullptr;
     }
 
-    if (CoreReserve == NULL) {
+    if (CoreReserve == nullptr) {
       fprintf(stderr,
               "FATAL: failed to re-allocate %llu bytes for memory zone %d" ZONE_DEBUG_LOCATION ", giving up!\n",
               (unsigned long long) n,
               zone->_zid
               ZONE_DEBUG_PARAMS);
-      TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
     }
 
     free(CoreReserve);
-    CoreReserve = NULL;
+    CoreReserve = nullptr;
 
     fprintf(stderr,
             "failed to re-allocate %llu bytes for memory zone %d" ZONE_DEBUG_LOCATION ", retrying!\n",
@@ -488,7 +488,7 @@ void TRI_Free (TRI_memory_zone_t* zone, void* m) {
 
   p = (char*) m;
 
-  if (p == NULL) {
+  if (p == nullptr) {
     fprintf(stderr,
             "freeing nil ptr " ZONE_DEBUG_LOCATION
             ZONE_DEBUG_PARAMS);
@@ -528,7 +528,7 @@ void TRI_SystemFree (void* p) {
 #endif
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-  if (p == NULL) {
+  if (p == nullptr) {
     fprintf(stderr,
             "freeing nil ptr in %s:%d\n",
             file,
@@ -548,8 +548,8 @@ void TRI_SystemFree (void* p) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_WrappedReallocate (void* ptr, long size) {
-  if (ptr == NULL && size == 0) {
-    return NULL;
+  if (ptr == nullptr && size == 0) {
+    return nullptr;
   }
 
   return BuiltInRealloc(ptr, (size_t) size);
@@ -561,7 +561,7 @@ void* TRI_WrappedReallocate (void* ptr, long size) {
 
 void TRI_InitialiseMemory () {
   if (CoreInitialised == 0) {
-    static size_t const reserveSize = 1024 * 1024 * 10;
+    static size_t const ReserveSize = 1024 * 1024 * 10;
 
     TriCoreMemZone._zid      = 0;
     TriCoreMemZone._failed   = false;
@@ -575,12 +575,12 @@ void TRI_InitialiseMemory () {
     InitFailMalloc(); 
 #endif
 
-    CoreReserve = BuiltInMalloc(reserveSize);
+    CoreReserve = BuiltInMalloc(ReserveSize);
 
-    if (CoreReserve == NULL) {
+    if (CoreReserve == nullptr) {
       fprintf(stderr,
               "FATAL: cannot allocate initial core reserve of size %llu, giving up!\n",
-              (unsigned long long) reserveSize);
+              (unsigned long long) ReserveSize);
     }
     else {
       CoreInitialised = 1;
