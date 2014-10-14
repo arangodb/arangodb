@@ -1,0 +1,187 @@
+ArangoDB Unittesting Framework
+------------------------------
+------------------------------
+------------------------------
+
+
+
+Filename conventions
+====================
+Special patterns in filenames are used to select tests to be executed or skipped depending no parameters:
+
+-cluster
+--------
+These tests will only run if clustering is tested. (option 'cluster' needs to be true).
+
+-noncluster
+-----------
+These tests will only run if no cluster is used. (option 'cluster' needs to be false)
+
+-timecritical
+-------------
+These tests are critical to execution time - and thus may fail if arangod is to slow. This may happen i.e. if you run the tests in valgrind, so you want to avoid them. To skip them, set the option 'skipTimeCritical' to true.
+
+-disabled
+---------
+These tests are disabled. You may however want to run them by hand.
+
+replication
+-----------
+(only applies to ruby tests)
+These tests aren't run automaticaly since they require a manual set up environment.
+
+-spec
+-----
+These tests are ran using the jasmine framework instead of jsunity.
+
+Test frameworks used
+====================
+There are several major places where unittests live: 
+ - UnitTests/HttpInterface
+ - UnitTests/Basics
+ - UnitTests/Geo
+ - js/server/tests
+ - js/common/tests
+ - js/common/test-data
+ - /js/apps/system/aardvark/test
+
+
+HttpInterface - RSpec Client Tests
+---------------------------------
+TODO: which tests are these?
+
+
+jsUnity on arangod
+------------------
+
+jsUnity via arangosh
+--------------------
+
+
+
+
+jasmine tests
+-------------
+
+Jasmine tests cover two important usecase:
+  - testing the UI components of aardvark
+-spec
+
+aardvark
+
+
+
+
+
+UnitTests/Makefile.unittests
+
+
+Invocation methods
+==================
+
+
+
+Make-targets
+------------
+(used in travis CI integration)
+Most of the tests can be invoked via the main Makefile:
+ - unittests
+  - unittests-brief
+  - unittests-verbose
+ - unittests-recovery
+ - unittests-config
+ - unittests-boost
+ - unittests-single
+ - unittests-shell-server
+ - unittests-shell-server-only
+ - unittests-shell-server-ahuacatl
+ - unittests-shell-client-readonly
+ - unittests-shell-client
+ - unittests-http-server
+ - unittests-ssl-server
+ - unittests-import
+ - unittests-replication
+  - unittests-replication-server
+  - unittests-replication-http
+  - unittests-replication-data
+ - unittests-upgrade
+ - unittests-dfdb
+ - unittests-foxx-manager
+ - unittests-dump
+ - unittests-arangob
+ - unittests-authentication
+ - unittests-authentication-parameters
+
+
+Javascript framework
+--------------------
+(used in Jenkins integration)
+Invoked like that:
+scripts/run scripts/unittest.js all
+
+Choosing facility
+_________________
+
+The first parameter chooses the facility to execute.
+Available choices include:
+ - all: (calls multiple) This target is utilized by most of the jenkins builds invoking unit tests.
+ - single_client: (see Running a single unittestsuite)
+ 
+ - single_server: (see Running a single unittestsuite)
+ - many more - call without arguments for more details.
+     
+
+Passing Options
+_______________
+
+Options are passed in as one json; Please note that formating blanks may cause problems.
+
+so a commandline for running a single test using valgrind could look like this: 
+
+ scripts/run scripts/unittest.js single_server \
+    '{"test":"js/server/tests/aql-escaping.js",'\
+    '"extraargs":["--server.threads=1",'\
+        '"--scheduler.threads=1",'\
+        '"--javascript.gc-frequency","1000000",'\
+        '"--javascript.gc-interval","65536"],'\
+    '"valgrind":"/usr/bin/valgrind",'\
+    '"valgrindargs":["--log-file=/tmp/valgrindlog.%p"]}'
+
+ - we specify the test to execute
+ - we specify some arangod arguments which increase the server performance
+ - we specify to run using valgrind
+ - we specify some valgrind commandline arguments
+
+Running a single unittestsuite
+------------------------------
+Testing a single test with the frame work directly on a server:
+scripts/run scripts/unittest.js single_server '{"test":"js/server/tests/aql-escaping.js"}'
+
+Testing a single test with the frame work via arangosh:
+scripts/run scripts/unittest.js single_client '{"test":"js/server/tests/aql-escaping.js"}'
+
+unittest.js is mostly only a wrapper; The backend functionality lives in:
+js/server/modules/org/arangodb/testing.js
+
+
+
+arangod Emergency console
+-------------------------
+
+require("jsunity").runTest("js/server/tests/aql-escaping.js");
+
+arangosh client
+---------------
+
+require("jsunity").runTest("js/server/tests/aql-escaping.js");
+
+
+arangod commandline arguments
+-----------------------------
+
+bin/arangod /tmp/dataUT --javascript.unit-tests="js/server/tests/aql-escaping.js" --no-server
+
+
+make unittest
+
+js/common/modules/loadtestrunner.js

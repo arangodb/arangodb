@@ -2917,3 +2917,28 @@ background-color: rgba(240,240,0,0.4);
 .book .book-body .page-wrapper .page-inner section.normal .deprecated pre{
 background-color: rgba(240,240,0,0.4);
 }
+
+#clear-search {
+    display: inline;
+    position: absolute;
+    top: 12px;
+    right: 9px;
+    font-size: 18pt;
+    line-height: 18pt;
+    color: #364149; // needs to be updated on theme change
+}
+
+#clear-search:hover {
+    color: #008cff; // needs to be updated on theme change
+    text-decoration: none;
+}
+
+.book .book-summary .book-search input{
+  padding-right: 20px !important;
+}
+
+.book .book-header {
+  background-color: #FFFFFF !important;
+  width: 84%;
+  position:fixed !important;
+}
