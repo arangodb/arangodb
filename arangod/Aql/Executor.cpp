@@ -401,7 +401,7 @@ void Executor::generateCodeExpression (AstNode const* node) {
   TRI_ASSERT(_buffer != nullptr);
 
   // write prologue
-  _buffer->appendText("(function (vars) { var aql = require(\"org/arangodb/ahuacatl\"); return ");
+  _buffer->appendText("(function (vars) { var aql = require(\"org/arangodb/aql\"); return ");
 
   generateCodeNode(node);
 
