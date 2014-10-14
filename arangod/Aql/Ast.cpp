@@ -948,11 +948,6 @@ void Ast::optimize () {
       return optimizeReference(node);
     }
     
-    // range
-    if (node->type == NODE_TYPE_RANGE) {
-      return optimizeRange(node);
-    }
-    
     // LET
     if (node->type == NODE_TYPE_LET) {
       return optimizeLet(node);
@@ -1569,33 +1564,6 @@ AstNode* Ast::optimizeReference (AstNode* node) {
   }
 
   return static_cast<AstNode*>(variable->constValue());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief optimizes the range operator
-////////////////////////////////////////////////////////////////////////////////
-
-AstNode* Ast::optimizeRange (AstNode* node) {
-  TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->type == NODE_TYPE_RANGE);
-  TRI_ASSERT(node->numMembers() == 2);
-
-  AstNode* lhs = node->getMember(0);
-  AstNode* rhs = node->getMember(1);
-
-  if (lhs == nullptr || rhs == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  if (! lhs->isConstant() || ! rhs->isConstant()) {
-    return node;
-  }
-
-  if (! lhs->isNumericValue() || ! rhs->isNumericValue()) {
-    _query->registerError(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
-  }
-
-  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
