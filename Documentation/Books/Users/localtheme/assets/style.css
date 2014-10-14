@@ -2936,3 +2936,9 @@ background-color: rgba(240,240,0,0.4);
 .book .book-summary .book-search input{
   padding-right: 20px !important;
 }
+
+.book .book-header {
+  background-color: #FFFFFF !important;
+  width: 84%;
+  position:fixed !important;
+}
