@@ -454,6 +454,11 @@ void Optimizer::setupRules () {
                  scatterInCluster,
                  scatterInCluster_pass10,
                  false);
+    
+    registerRule("distribute-in-cluster",
+                 distributeInCluster,
+                 distributeInCluster_pass10,
+                 false);
 
     // distribute operations in cluster
     registerRule("distribute-filtercalc-to-cluster",
