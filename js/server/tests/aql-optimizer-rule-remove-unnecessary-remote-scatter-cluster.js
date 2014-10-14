@@ -29,6 +29,7 @@
 var db = require("org/arangodb").db;
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
+var _ = require("underscore");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -89,12 +90,34 @@ function optimizerRuleTestSuite () {
         "LET A=1 LET B=2 FOR d IN " + cn1 + " LIMIT 10 RETURN d",
         "FOR e in " + cn1 + " FOR d IN " + cn1 + " LIMIT 10 RETURN d"
       ];
-
       queries.forEach(function(query) {
         var result = AQL_EXPLAIN(query, { }, rulesNone);
         assertEqual([ "scatter-in-cluster" ], result.plan.rules, query);
+
       });
     },
+
+    /* // this currently crashes the cluster...
+     * testRulesNoneSerial : function () {
+      var queries = [ 
+        "FOR d IN " + cn1 + " RETURN d",
+        "LET A=1 LET B=2 FOR d IN " + cn1 + " RETURN d",
+        "LET A=1 LET B=2 FOR d IN " + cn1 + " LIMIT 10 RETURN d",
+        "FOR e in " + cn1 + " FOR d IN " + cn1 + " LIMIT 10 RETURN d"
+      ];
+
+      var opts = _.clone(rulesNone);
+      opts.allPlans = true;
+      opts.verbosePlans = true;
+
+      queries.forEach(function(query) {
+        var plans = AQL_EXPLAIN(query, { }, opts).plans;
+        plans.forEach(function(plan) {
+          var result = AQL_EXECUTEJSON(plan, rulesNone).json;
+          assertEqual(query[1], result, query[0]);
+        });
+      });
+    },*/
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test that rule does not fire when it is disabled but no other rule is

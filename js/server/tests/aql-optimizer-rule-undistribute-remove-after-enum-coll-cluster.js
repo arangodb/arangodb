@@ -89,7 +89,8 @@ function optimizerRuleTestSuite () {
         [ "FOR d IN " + cn1 + " FILTER d.Hallo < 5 REMOVE d._key in " + cn1, 1]
       ];
 
-      var expectedRules = [ "scatter-in-cluster", 
+      var expectedRules = [ "distribute-in-cluster",
+                            "scatter-in-cluster", 
                             "distribute-filtercalc-to-cluster", 
                             "undistribute-remove-after-enum-coll"];
 
@@ -130,7 +131,8 @@ function optimizerRuleTestSuite () {
          ["FOR d IN " + cn1 + " FILTER d.Hallo < 5 REMOVE d._key in " + cn1, 1]
       ];
 
-      var expectedRules = [ "scatter-in-cluster", 
+      var expectedRules = [ "distribute-in-cluster",
+                            "scatter-in-cluster", 
                             "distribute-filtercalc-to-cluster" ];
 
       var expectedNodes = [ ["SingletonNode", 
@@ -141,11 +143,10 @@ function optimizerRuleTestSuite () {
                              "FilterNode",
                              "RemoteNode", 
                              "GatherNode",
-                             "ScatterNode", 
+                             "DistributeNode", 
                              "RemoteNode", 
-                             "RemoveNode", 
-                             "RemoteNode", 
-                             "GatherNode"],
+                             "RemoveNode"
+                            ],
                             [ "SingletonNode", 
                               "ScatterNode", 
                               "RemoteNode", 
@@ -155,11 +156,10 @@ function optimizerRuleTestSuite () {
                               "CalculationNode", 
                               "RemoteNode", 
                               "GatherNode", 
-                              "ScatterNode", 
+                              "DistributeNode", 
                               "RemoteNode", 
-                              "RemoveNode", 
-                              "RemoteNode", 
-                              "GatherNode"] ];
+                              "RemoveNode" 
+                            ] ];
 
       queries.forEach(function(query) {
         var result = AQL_EXPLAIN(query[0], { }, rulesNone);
@@ -192,11 +192,15 @@ function optimizerRuleTestSuite () {
     testRuleHasEffect : function () {
       var queries = [ 
         "FOR d IN " + cn1 + " FILTER d.Hallo < 5 FILTER d.Hallo > 1 REMOVE d in " + cn1,
-        "FOR d IN " + cn1 + " FILTER d.Hallo < 5 FILTER d.Hallo > 1 REMOVE d._key in " + cn1,
-        "FOR d IN " + cn1 + " FILTER d.Hallo < 5 FILTER d.Hallo > 1 REMOVE d.blah in " + cn1,
+        "FOR d IN " + cn1 + " FILTER d.Hallo < 5 FILTER d.Hallo > 1 REMOVE d._key in " 
+          + cn1,
+        "FOR d IN " + cn1 + " FILTER d.Hallo < 5 FILTER d.Hallo > 1 REMOVE d.blah in " 
+          + cn1,
         "FOR d IN " + cn2 + " FILTER d.Hallo < 5 FILTER d.Hallo > 1 REMOVE d in " + cn2,
-        "FOR d IN " + cn2 + " FILTER d.Hallo < 5 FILTER d.Hallo > 1 REMOVE d._key in " + cn2,
-        "FOR d IN " + cn2 + " FILTER d.Hallo < 5 FILTER d.Hallo > 1 REMOVE d.blah in " + cn2];
+        "FOR d IN " + cn2 + " FILTER d.Hallo < 5 FILTER d.Hallo > 1 REMOVE d._key in " 
+          + cn2,
+        "FOR d IN " + cn2 + " FILTER d.Hallo < 5 FILTER d.Hallo > 1 REMOVE d.blah in " 
+          + cn2];
 
       queries.forEach(function(query) {
         var result1 = AQL_EXPLAIN(query, { }, thisRuleEnabled);
