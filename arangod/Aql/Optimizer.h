@@ -135,24 +135,27 @@ namespace triagens {
 /// "Pass 10": final transformations for the cluster
 //////////////////////////////////////////////////////////////////////////////
 
+        // make operations on sharded collections use distribute 
+        distributeInCluster_pass10              = 1000,
+        
         // make operations on sharded collections use scatter / gather / remote
-        scatterInCluster_pass10                 = 1000,
+        scatterInCluster_pass10                 = 1010,
           
         // move FilterNodes & Calculation nodes inbetween
         // scatter(remote) <-> gather(remote) so they're
         // distributed to the cluster nodes.
-        distributeFilternCalcToCluster_pass10   = 1010,
+        distributeFilternCalcToCluster_pass10   = 1020,
 
         // move SortNodes into the distribution.
         // adjust gathernode to also contain the sort criterions.
-        distributeSortToCluster_pass10          = 1020,
+        distributeSortToCluster_pass10          = 1030,
         
         // try to get rid of a RemoteNode->ScatterNode combination which has
         // only a SingletonNode and possibly some CalculationNodes as dependencies
-        removeUnnecessaryRemoteScatter_pass10  = 1030,
+        removeUnnecessaryRemoteScatter_pass10  = 1040,
 
         //recognise that a RemoveNode can be moved to the shards
-        undistributeRemoveAfterEnumColl_pass10 = 1040
+        undistributeRemoveAfterEnumColl_pass10 = 1050
       };
     
       public:
