@@ -445,9 +445,9 @@ function executeAndWait (cmd, args) {
     if (typeof(res.errorMessage) !== 'undefined') {
       errorMessage += res.errorMessage;
     }
-    print("Finished: " + res.status + " Exitcode: " + res.exit + " Time Elapsed: " + deltaTime + errorMessage);
+    print("Finished: " + res.status + " Exitcode: " + res.signal + " Time Elapsed: " + deltaTime + errorMessage);
     return {
-      status: false,
+      status: res.status === 'RUNNING',
       message: "irregular termination: " + res.status + " Exit-Code: " + res.exit + errorMessage,
       duration: deltaTime
     };

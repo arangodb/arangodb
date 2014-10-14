@@ -1,6 +1,9 @@
 v2.3.0 (XXXX-XX-XX)
 -------------------
 
+* improved insert performance of non-unique hash index inserts significantly in case
+  many duplicate keys are used in the index
+
 * issue #1042: set time zone in log output
 
   the command-line option `--log.use-local-time` was added to print dates and times in
