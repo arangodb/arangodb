@@ -1747,7 +1747,6 @@ int triagens::aql::distributeInCluster (Optimizer* opt,
       opt->addPlan(plan, rule->level, wasModified);
       return TRI_ERROR_NO_ERROR;
     }
-    std::cout << "HERE!\n";
     auto deps = node->getDependencies();
     TRI_ASSERT(deps.size() == 1);
 
