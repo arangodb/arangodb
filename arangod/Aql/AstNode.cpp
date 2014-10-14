@@ -141,6 +141,30 @@ AstNode::AstNode (AstNodeType type)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a node, with defining a value type
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode::AstNode (AstNodeType type,
+                  AstNodeValueType valueType)
+  : AstNode(type) {
+
+  value.type = valueType;
+  TRI_InitVectorPointer(&members, TRI_UNKNOWN_MEM_ZONE);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a boolean node, with defining a value
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode::AstNode (bool v)
+  : AstNode(NODE_TYPE_VALUE) {
+
+  value.type = VALUE_TYPE_BOOL;
+  value.value._bool = v;
+  TRI_InitVectorPointer(&members, TRI_UNKNOWN_MEM_ZONE);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create the node from JSON
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -405,6 +429,67 @@ TRI_json_t* AstNode::toJsonValue (TRI_memory_zone_t* zone) const {
   return nullptr;
 }
 
+std::string AstNode::toInfoString (TRI_memory_zone_t* zone) const {
+  std::string ret;
+
+  ret += std::string(" of Type '");
+  ret += getTypeString();
+  ret += std::string("' ");
+
+  if (type == NODE_TYPE_COLLECTION ||
+      type == NODE_TYPE_PARAMETER ||
+      type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+      type == NODE_TYPE_ARRAY_ELEMENT ||
+      type == NODE_TYPE_FCALL_USER) {
+    // dump "name" of node
+    ret += std::string(" by Name ");
+    ret += getStringValue();
+  }
+
+  if (type == NODE_TYPE_FCALL) {
+    auto func = static_cast<Function*>(getData());
+    ret += std::string(" by Name '");
+    ret += func->externalName;
+    ret += std::string("' with Parameters");
+  }
+
+  if (type == NODE_TYPE_VALUE) {
+    // dump value of "value" node
+    ret += std::string(" with Value(s) ");
+    /// TODO: auto v = toJsonValue(zone);
+  }
+
+  if (type == NODE_TYPE_VARIABLE ||
+      type == NODE_TYPE_REFERENCE) {
+    auto variable = static_cast<Variable*>(getData());
+    ret += std::string(" by Name(");
+    ret += variable->name;
+    ret += std::string(") ");
+  }
+  
+  // dump sub-nodes 
+  size_t const n = members._length;
+
+  if (n > 0) {
+    ret += std::string("(");
+    try {
+      for (size_t i = 0; i < n; ++i) {
+        auto member = getMember(i);
+        if (member != nullptr && member->type != NODE_TYPE_NOP) {
+          ret += member->toInfoString(zone);
+        }
+      }
+    }
+    catch (...) {
+      ret += std::string("Invalid Subnode!");
+    }
+    
+    ret += std::string(")");
+  }
+
+  return ret;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a JSON representation of the node
 /// the caller is responsible for freeing the JSON later
@@ -497,67 +582,103 @@ TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone,
   return node;
 }
 
-std::string AstNode::toInfoString (TRI_memory_zone_t* zone) const {
-  std::string ret;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert the node's value to a boolean value
+/// this may create a new node or return the node itself if it is already a
+/// boolean value node
+////////////////////////////////////////////////////////////////////////////////
 
-  ret += std::string(" of Type '");
-  ret += getTypeString();
-  ret += std::string("' ");
-
-  if (type == NODE_TYPE_COLLECTION ||
-      type == NODE_TYPE_PARAMETER ||
-      type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-      type == NODE_TYPE_ARRAY_ELEMENT ||
-      type == NODE_TYPE_FCALL_USER) {
-    // dump "name" of node
-    ret += std::string(" by Name ");
-    ret += getStringValue();
-  }
-
-  if (type == NODE_TYPE_FCALL) {
-    auto func = static_cast<Function*>(getData());
-    ret += std::string(" by Name '");
-    ret += func->externalName;
-    ret += std::string("' with Parameters");
-  }
+AstNode* AstNode::castToBool (Ast* ast) {
+  TRI_ASSERT(type == NODE_TYPE_VALUE || 
+             type == NODE_TYPE_LIST || 
+             type == NODE_TYPE_ARRAY);
 
   if (type == NODE_TYPE_VALUE) {
-    // dump value of "value" node
-    ret += std::string(" with Value(s) ");
-    /// TODO: auto v = toJsonValue(zone);
-  }
-
-  if (type == NODE_TYPE_VARIABLE ||
-      type == NODE_TYPE_REFERENCE) {
-    auto variable = static_cast<Variable*>(getData());
-    ret += std::string(" by Name(");
-    ret += variable->name;
-    ret += std::string(") ");
-  }
-  
-  // dump sub-nodes 
-  size_t const n = members._length;
-
-  if (n > 0) {
-    ret += std::string("(");
-    try {
-      for (size_t i = 0; i < n; ++i) {
-        auto member = getMember(i);
-        if (member != nullptr && member->type != NODE_TYPE_NOP) {
-          ret += member->toInfoString(zone);
-        }
+    switch (value.type) {
+      case VALUE_TYPE_NULL:
+        // null => false
+        return ast->createNodeValueBool(false);
+      case VALUE_TYPE_BOOL:
+        // already a boolean
+        return this;
+      case VALUE_TYPE_INT:
+        return ast->createNodeValueBool(value.value._int != 0);
+      case VALUE_TYPE_DOUBLE:
+        return ast->createNodeValueBool(value.value._double != 0.0);
+      case VALUE_TYPE_STRING:
+        return ast->createNodeValueBool(*(value.value._string) != '\0');
+      default: {
       }
     }
-    catch (...) {
-      ret += std::string("Invalid Subnode!");
-    }
-    
-    ret += std::string(")");
+    // fall-through intentional
+  }
+  else if (type == NODE_TYPE_LIST) {
+    // fall-through intentional
+  }
+  else if (type == NODE_TYPE_ARRAY) {
+    // fall-through intentional
   }
 
-  return ret;
+  return ast->createNodeValueBool(false);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert the node's value to a number value
+/// this may create a new node or return the node itself if it is already a
+/// numeric value node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* AstNode::castToNumber (Ast* ast) {
+  TRI_ASSERT(type == NODE_TYPE_VALUE || 
+             type == NODE_TYPE_LIST || 
+             type == NODE_TYPE_ARRAY);
+
+  if (type == NODE_TYPE_VALUE) {
+    switch (value.type) {
+      case VALUE_TYPE_NULL:
+        // null => 0
+        return ast->createNodeValueInt(0);
+      case VALUE_TYPE_BOOL:
+        // false => 0, true => 1
+        return ast->createNodeValueInt(value.value._bool ? 1 : 0);
+      case VALUE_TYPE_INT:
+      case VALUE_TYPE_DOUBLE:
+        // already numeric!
+        return this;
+      case VALUE_TYPE_STRING:
+        try {
+          // try converting string to number
+          double v = std::stod(value.value._string);
+          return ast->createNodeValueDouble(v);
+        }
+        catch (...) {
+          // conversion failed
+        }
+        // fall-through intentional
+      default: {
+      }
+    }
+    // fall-through intentional
+  }
+  else if (type == NODE_TYPE_LIST) {
+    size_t const n = numMembers();
+    if (n == 0) {
+      // [ ] => 0
+      return ast->createNodeValueInt(0);
+    }
+    else if (n == 1) {
+      auto member = getMember(0);
+      // convert only member to number
+      return member->castToNumber(ast);
+    }
+    // fall-through intentional
+  }
+  else if (type == NODE_TYPE_ARRAY) {
+    // fall-through intentional
+  }
+
+  return ast->createNodeValueNull();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a JSON representation of the node to the JSON list specified
@@ -579,32 +700,82 @@ void AstNode::toJson (TRI_json_t* json,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert the node's value to a boolean value
+/// @brief get the integer value of a node, provided the node is a value node
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AstNode::toBoolean () const {
+int64_t AstNode::getIntValue () const {
   if (type == NODE_TYPE_VALUE) {
     switch (value.type) {
-      case VALUE_TYPE_BOOL: {
-        return value.value._bool;
-      }
-      case VALUE_TYPE_INT: {
-        return (value.value._int != 0);
-      }
-      case VALUE_TYPE_DOUBLE: {
-        return value.value._double != 0.0;
-      }
-      case VALUE_TYPE_STRING: {
-        return (*value.value._string != '\0');
-      }
-      case VALUE_TYPE_NULL: 
-      case VALUE_TYPE_FAIL: {
-        return false;
-      }
+      case VALUE_TYPE_NULL:
+        return 0;
+      case VALUE_TYPE_BOOL:
+        return (value.value._bool ? 1 : 0);
+      case VALUE_TYPE_INT:
+        return value.value._int;
+      case VALUE_TYPE_DOUBLE:
+        return static_cast<int64_t>(value.value._double);
+      case VALUE_TYPE_STRING:
+        return 0;
     }
+  }
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the double value of a node, provided the node is a value node
+////////////////////////////////////////////////////////////////////////////////
+
+double AstNode::getDoubleValue () const {
+  if (type == NODE_TYPE_VALUE) {
+    switch (value.type) {
+      case VALUE_TYPE_NULL:
+        return 0.0;
+      case VALUE_TYPE_BOOL:
+        return (value.value._bool ? 1.0 : 0.0);
+      case VALUE_TYPE_INT:
+        return static_cast<double>(value.value._int);
+      case VALUE_TYPE_DOUBLE:
+        return value.value._double;
+      case VALUE_TYPE_STRING:
+        return 0.0;
+    }
+  }
+  return 0.0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the node value is trueish
+////////////////////////////////////////////////////////////////////////////////
+
+bool AstNode::isTrue () const {
+  if (type == NODE_TYPE_VALUE) {
+    switch (value.type) {
+      case VALUE_TYPE_NULL: 
+        return false;
+      case VALUE_TYPE_BOOL: 
+        return value.value._bool;
+      case VALUE_TYPE_INT: 
+        return (value.value._int != 0);
+      case VALUE_TYPE_DOUBLE: 
+        return value.value._double != 0.0;
+      case VALUE_TYPE_STRING: 
+        return (*value.value._string != '\0');
+    }
+  }
+  else if (type == NODE_TYPE_LIST ||
+           type == NODE_TYPE_ARRAY) {
+    return true;
   }
 
   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the node value is falsey
+////////////////////////////////////////////////////////////////////////////////
+
+bool AstNode::isFalse () const {
+  return ! isTrue();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
