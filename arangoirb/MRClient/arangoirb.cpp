@@ -376,10 +376,10 @@ int main (int argc, char* argv[]) {
     printf("%s \\__,_|_|  \\__,_|_| |_|\\__, |\\___/%s|_|_|  |_.__/ %s\n", g, r, z);
     printf("%s                       |___/      %s              %s\n", g, r, z);
 
-    cout << endl << "Welcome to arangosh " << TRI_VERSION_FULL << ". Copyright (c) 2012 triAGENS GmbH" << endl;
+    cout << endl << "Welcome to arangosh " << TRI_VERSION_FULL << ". Copyright (c) ArangoDB GmbH" << endl;
 
 #ifdef TRI_MRUBY_VERSION
-    cout << "Using MRUBY " << TRI_MRUBY_VERSION << " engine. Copyright (c) 2012 mruby developers." << endl;
+    cout << "Using MRUBY " << TRI_MRUBY_VERSION << " engine. Copyright (c) mruby developers." << endl;
 #endif
 
 #ifdef TRI_READLINE_VERSION

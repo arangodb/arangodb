@@ -2062,7 +2062,7 @@ int main (int argc, char* argv[]) {
     BaseClient.printLine("");
 
     ostringstream s;
-    s << "Welcome to arangosh " << TRI_VERSION_FULL << ". Copyright (c) triAGENS GmbH";
+    s << "Welcome to arangosh " << TRI_VERSION_FULL << ". Copyright (c) ArangoDB GmbH";
 
     BaseClient.printLine(s.str(), true);
 
