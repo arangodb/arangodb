@@ -292,7 +292,7 @@ static void StartExternalProcess (TRI_external_t* external, bool usePipes) {
     return;
   }
 
-  LOG_INFO("fork succeeded, child pid: %d", (int) processPid);
+  LOG_DEBUG("fork succeeded, child pid: %d", (int) processPid);
 
   if (usePipes) {
     close(pipe_server_to_child[0]);

@@ -253,7 +253,7 @@ function startInstance (protocol, options, addArgs, testname) {
 function checkInstanceAlive(instanceInfo) {  
   var res = statusExternal(instanceInfo.pid, false);
   var ret = res.status === "RUNNING";
-  if (!ret) {
+  if (! ret) {
     instanceInfo.exitStatus = res;
   }
   return ret;
@@ -420,7 +420,7 @@ function executeAndWait (cmd, args) {
   var errorMessage = ' - ';
 
   if (res.status === "TERMINATED") {
-    print("Finished: " + res.status + " Exitcode: " + res.exit + " Time Elapsed: " + deltaTime);
+    print("Finished: " + res.status + " exit code: " + res.exit + " Time elapsed: " + deltaTime);
     if (res.exit === 0) {
       return { status: true, message: "", duration: deltaTime};
     }
@@ -429,15 +429,13 @@ function executeAndWait (cmd, args) {
     }
   }
   else if (res.status === "ABORTED") {
-//    var toppid = executeExternal("/usr/bin/top", ["-b", "-n1"]);
     if (typeof(res.errorMessage) !== 'undefined') {
       errorMessage += res.errorMessage;
     }
-//    statusExternal(toppid, true);
-    print("Finished: " + res.status + " Signal: " + res.signal + " Time Elapsed: " + deltaTime + errorMessage);
+    print("Finished: " + res.status + " Signal: " + res.signal + " Time elapsed: " + deltaTime + errorMessage);
     return {
       status: false,
-      message: "irregular termination: " + res.status + " Exit-Signal: " + res.signal + errorMessage,
+      message: "irregular termination: " + res.status + " exit signal: " + res.signal + errorMessage,
       duration: deltaTime
     };
   }
@@ -445,10 +443,10 @@ function executeAndWait (cmd, args) {
     if (typeof(res.errorMessage) !== 'undefined') {
       errorMessage += res.errorMessage;
     }
-    print("Finished: " + res.status + " Exitcode: " + res.signal + " Time Elapsed: " + deltaTime + errorMessage);
+    print("Finished: " + res.status + " exit code: " + res.signal + " Time elapsed: " + deltaTime + errorMessage);
     return {
-      status: res.status === 'RUNNING',
-      message: "irregular termination: " + res.status + " Exit-Code: " + res.exit + errorMessage,
+      status: false,
+      message: "irregular termination: " + res.status + " exit code: " + res.exit + errorMessage,
       duration: deltaTime
     };
   }
