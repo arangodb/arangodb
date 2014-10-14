@@ -92,7 +92,7 @@ std::string const GlobalContextMethods::CodeFlushModuleCache
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string const GlobalContextMethods::CodeReloadAql
-  = "try { require(\"org/arangodb/ahuacatl\").reload(); } catch (err) { }";
+  = "try { require(\"org/arangodb/ahuacatl\").reload(); require(\"org/arangodb/aql\").reload(); } catch (err) { }";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief bootstrap coordinator

@@ -217,12 +217,14 @@
   if (typeof SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION === "undefined") {
     internal.reloadAqlFunctions = function () {
       require("org/arangodb/ahuacatl").reload();
+      require("org/arangodb/aql").reload();
     };
   }
   else {
     internal.reloadAqlFunctions = function () {
       internal.executeGlobalContextFunction("reloadAql");
       require("org/arangodb/ahuacatl").reload();
+      require("org/arangodb/aql").reload();
     };
   }
 
