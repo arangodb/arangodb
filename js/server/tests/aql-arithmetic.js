@@ -268,25 +268,25 @@ function ahuacatlArithmeticTestSuite () {
       assertEqual([ 1 ], getQueryResults("RETURN 1 + null"));
       assertEqual([ 1 ], getQueryResults("RETURN 1 + false"));
       assertEqual([ 2 ], getQueryResults("RETURN 1 + true"));
-      assertEqual([ 1 ], getQueryResults("RETURN 1 + \"0\""));
-      assertEqual([ 43 ], getQueryResults("RETURN 1 + \"42\""));
-      assertEqual([ -16 ], getQueryResults("RETURN 1 + \"-17\""));
+      assertEqual([ "10" ], getQueryResults("RETURN 1 + \"0\""));
+      assertEqual([ "142" ], getQueryResults("RETURN 1 + \"42\""));
+      assertEqual([ "1-17" ], getQueryResults("RETURN 1 + \"-17\""));
       assertEqual([ 1 ], getQueryResults("RETURN 1 + [ ]"));
-      assertEqual([ 1 ], getQueryResults("RETURN 1 + [ 0 ]"));
-      assertEqual([ 5 ], getQueryResults("RETURN 1 + [ 4 ]"));
-      assertEqual([ -3 ], getQueryResults("RETURN 1 + [ -4 ]"));
-      assertEqual([ 1 ], getQueryResults("RETURN 1 + { }"));
+      assertEqual([ "10" ], getQueryResults("RETURN 1 + [ 0 ]"));
+      assertEqual([ "14" ], getQueryResults("RETURN 1 + [ 4 ]"));
+      assertEqual([ "1-4" ], getQueryResults("RETURN 1 + [ -4 ]"));
+      assertEqual([ "1[object Object]" ], getQueryResults("RETURN 1 + { }"));
       assertEqual([ 1 ], getQueryResults("RETURN null + 1"));
       assertEqual([ 1 ], getQueryResults("RETURN false + 1"));
       assertEqual([ 2 ], getQueryResults("RETURN true + 1"));
-      assertEqual([ 1 ], getQueryResults("RETURN \"0\" + 1"));
-      assertEqual([ 24 ], getQueryResults("RETURN \"23\" + 1"));
-      assertEqual([ -8 ], getQueryResults("RETURN \"-9\" + 1"));
-      assertEqual([ 1 ], getQueryResults("RETURN [ ] + 1"));
-      assertEqual([ 1 ], getQueryResults("RETURN [ 0 ] + 1"));
-      assertEqual([ 5 ], getQueryResults("RETURN [ 4 ] + 1"));
-      assertEqual([ -3 ], getQueryResults("RETURN [ -4 ] + 1"));
-      assertEqual([ 1 ], getQueryResults("RETURN { } + 1"));
+      assertEqual([ "01" ], getQueryResults("RETURN \"0\" + 1"));
+      assertEqual([ "231" ], getQueryResults("RETURN \"23\" + 1"));
+      assertEqual([ "-91" ], getQueryResults("RETURN \"-9\" + 1"));
+      assertEqual([ "1" ], getQueryResults("RETURN [ ] + 1"));
+      assertEqual([ "01" ], getQueryResults("RETURN [ 0 ] + 1"));
+      assertEqual([ "41" ], getQueryResults("RETURN [ 4 ] + 1"));
+      assertEqual([ "-41" ], getQueryResults("RETURN [ -4 ] + 1"));
+      assertEqual([ "[object Object]1" ], getQueryResults("RETURN { } + 1"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
