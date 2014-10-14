@@ -72,6 +72,7 @@ std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{
   { static_cast<int>(REPLACE),                      "ReplaceNode" },
   { static_cast<int>(REMOTE),                       "RemoteNode" },
   { static_cast<int>(SCATTER),                      "ScatterNode" },
+  { static_cast<int>(DISTRIBUTE),                   "DistributeNode" },
   { static_cast<int>(GATHER),                       "GatherNode" },
   { static_cast<int>(NORESULTS),                    "NoResultsNode" }
 };
@@ -2422,6 +2423,17 @@ DistributeNode::DistributeNode (ExecutionPlan* plan,
 void DistributeNode::toJsonHelper (triagens::basics::Json& nodes,
                                 TRI_memory_zone_t* zone,
                                 bool verbose) const {
+  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone,
+        verbose));  // call base class method
+  if (json.isEmpty()) {
+    return;
+  }
+  
+  json("database", triagens::basics::Json(_vocbase->_name))
+      ("collection", triagens::basics::Json(_collection->getName()));
+
+  // And add it:
+  nodes(json);
 }
 
 // -----------------------------------------------------------------------------
