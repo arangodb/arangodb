@@ -93,7 +93,14 @@ function main (argv) {
   var options = {};
   var r;
   if (argv.length >= 3) {
-    options = JSON.parse(argv[2]);
+    try {
+      options = JSON.parse(argv[2]);
+    }
+    catch (x) {
+      print("failed to parse the json options");
+      print(x);
+      return -1;
+    }
   }
   options.jsonReply = true;
   var UnitTest = require("org/arangodb/testing");
