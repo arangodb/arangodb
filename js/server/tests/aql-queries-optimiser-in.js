@@ -411,16 +411,16 @@ function ahuacatlQueryOptimiserInTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInvalidIn : function () {
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN [ 1, 2, 3 ] FILTER 1 IN null RETURN i");
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN [ 1, 2, 3 ] FILTER 1 IN false RETURN i");
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN [ 1, 2, 3 ] FILTER 1 IN 1.2 RETURN i");
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN [ 1, 2, 3 ] FILTER 1 IN '' RETURN i");
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN [ 1, 2, 3 ] FILTER 1 IN {} RETURN i");
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN [ 1, 2, 3 ] FILTER 1 IN @values RETURN i", { values: null });
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN [ 1, 2, 3 ] FILTER 1 IN @values RETURN i", { values: false });
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN [ 1, 2, 3 ] FILTER 1 IN @values RETURN i", { values: 1.2 });
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN [ 1, 2, 3 ] FILTER 1 IN @values RETURN i", { values: "" });
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN [ 1, 2, 3 ] FILTER 1 IN @values RETURN i", { values: { } });
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN [ 1, 2, 3 ] FILTER 1 IN null RETURN i"));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN [ 1, 2, 3 ] FILTER 1 IN false RETURN i"));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN [ 1, 2, 3 ] FILTER 1 IN 1.2 RETURN i"));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN [ 1, 2, 3 ] FILTER 1 IN '' RETURN i"));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN [ 1, 2, 3 ] FILTER 1 IN {} RETURN i"));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN [ 1, 2, 3 ] FILTER 1 IN @values RETURN i", { values: null }));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN [ 1, 2, 3 ] FILTER 1 IN @values RETURN i", { values: false }));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN [ 1, 2, 3 ] FILTER 1 IN @values RETURN i", { values: 1.2 }));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN [ 1, 2, 3 ] FILTER 1 IN @values RETURN i", { values: "" }));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN [ 1, 2, 3 ] FILTER 1 IN @values RETURN i", { values: { } }));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -428,16 +428,16 @@ function ahuacatlQueryOptimiserInTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInvalidNotIn : function () {
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN [ 1, 2, 3 ] FILTER 1 NOT IN null RETURN i");
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN [ 1, 2, 3 ] FILTER 1 NOT IN false RETURN i");
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN [ 1, 2, 3 ] FILTER 1 NOT IN 1.2 RETURN i");
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN [ 1, 2, 3 ] FILTER 1 NOT IN '' RETURN i");
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN [ 1, 2, 3 ] FILTER 1 NOT IN {} RETURN i");
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN [ 1, 2, 3 ] FILTER 1 NOT IN @values RETURN i", { values: null });
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN [ 1, 2, 3 ] FILTER 1 NOT IN @values RETURN i", { values: false });
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN [ 1, 2, 3 ] FILTER 1 NOT IN @values RETURN i", { values: 1.2 });
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN [ 1, 2, 3 ] FILTER 1 NOT IN @values RETURN i", { values: "" });
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN [ 1, 2, 3 ] FILTER 1 NOT IN @values RETURN i", { values: { } });
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN [ 1, 2, 3 ] FILTER 1 NOT IN null RETURN i"));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN [ 1, 2, 3 ] FILTER 1 NOT IN false RETURN i"));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN [ 1, 2, 3 ] FILTER 1 NOT IN 1.2 RETURN i"));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN [ 1, 2, 3 ] FILTER 1 NOT IN '' RETURN i"));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN [ 1, 2, 3 ] FILTER 1 NOT IN {} RETURN i"));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN [ 1, 2, 3 ] FILTER 1 NOT IN @values RETURN i", { values: null }));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN [ 1, 2, 3 ] FILTER 1 NOT IN @values RETURN i", { values: false }));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN [ 1, 2, 3 ] FILTER 1 NOT IN @values RETURN i", { values: 1.2 }));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN [ 1, 2, 3 ] FILTER 1 NOT IN @values RETURN i", { values: "" }));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN [ 1, 2, 3 ] FILTER 1 NOT IN @values RETURN i", { values: { } }));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -445,16 +445,16 @@ function ahuacatlQueryOptimiserInTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInvalidInCollection : function () {
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER 1 IN null RETURN i");
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER 1 IN false RETURN i");
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER 1 IN 1.2 RETURN i");
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER 1 IN '' RETURN i");
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER 1 IN {} RETURN i");
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER 1 IN @values RETURN i", { values: null });
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER 1 IN @values RETURN i", { values: false });
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER 1 IN @values RETURN i", { values: 1.2 });
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER 1 IN @values RETURN i", { values: "" });
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER 1 IN @values RETURN i", { values: { } });
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN " + cn + " FILTER 1 IN null RETURN i"));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN " + cn + " FILTER 1 IN false RETURN i"));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN " + cn + " FILTER 1 IN 1.2 RETURN i"));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN " + cn + " FILTER 1 IN '' RETURN i"));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN " + cn + " FILTER 1 IN {} RETURN i"));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN " + cn + " FILTER 1 IN @values RETURN i", { values: null }));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN " + cn + " FILTER 1 IN @values RETURN i", { values: false }));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN " + cn + " FILTER 1 IN @values RETURN i", { values: 1.2 }));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN " + cn + " FILTER 1 IN @values RETURN i", { values: "" }));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN " + cn + " FILTER 1 IN @values RETURN i", { values: { } }));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -462,16 +462,16 @@ function ahuacatlQueryOptimiserInTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInvalidNotInCollection : function () {
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER 1 NOT IN null RETURN i");
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER 1 NOT IN false RETURN i");
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER 1 NOT IN 1.2 RETURN i");
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER 1 NOT IN '' RETURN i");
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER 1 NOT IN {} RETURN i");
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER 1 NOT IN @values RETURN i", { values: null });
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER 1 NOT IN @values RETURN i", { values: false });
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER 1 NOT IN @values RETURN i", { values: 1.2 });
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER 1 NOT IN @values RETURN i", { values: "" });
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER 1 NOT IN @values RETURN i", { values: { } });
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN " + cn + " FILTER 1 NOT IN null RETURN i"));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN " + cn + " FILTER 1 NOT IN false RETURN i"));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN " + cn + " FILTER 1 NOT IN 1.2 RETURN i"));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN " + cn + " FILTER 1 NOT IN '' RETURN i"));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN " + cn + " FILTER 1 NOT IN {} RETURN i"));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN " + cn + " FILTER 1 NOT IN @values RETURN i", { values: null }));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN " + cn + " FILTER 1 NOT IN @values RETURN i", { values: false }));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN " + cn + " FILTER 1 NOT IN @values RETURN i", { values: 1.2 }));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN " + cn + " FILTER 1 NOT IN @values RETURN i", { values: "" }));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN " + cn + " FILTER 1 NOT IN @values RETURN i", { values: { } }));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -479,16 +479,16 @@ function ahuacatlQueryOptimiserInTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInvalidInCollectionIndex : function () {
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER i._id IN null RETURN i");
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER i._id IN false RETURN i");
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER i._id IN 1.2 RETURN i");
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER i._id IN '' RETURN i");
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER i._id IN {} RETURN i");
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER i._id IN @values RETURN i", { values: null });
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER i._id IN @values RETURN i", { values: false });
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER i._id IN @values RETURN i", { values: 1.2 });
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER i._id IN @values RETURN i", { values: "" });
-      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "FOR i IN " + cn + " FILTER i._id IN @values RETURN i", { values: { } });
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN " + cn + " FILTER i._id IN null RETURN i"));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN " + cn + " FILTER i._id IN false RETURN i"));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN " + cn + " FILTER i._id IN 1.2 RETURN i"));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN " + cn + " FILTER i._id IN '' RETURN i"));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN " + cn + " FILTER i._id IN {} RETURN i"));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN " + cn + " FILTER i._id IN @values RETURN i", { values: null }));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN " + cn + " FILTER i._id IN @values RETURN i", { values: false }));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN " + cn + " FILTER i._id IN @values RETURN i", { values: 1.2 }));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN " + cn + " FILTER i._id IN @values RETURN i", { values: "" }));
+      assertEqual([ ], getQueryResultsAQL2("FOR i IN " + cn + " FILTER i._id IN @values RETURN i", { values: { } }));
     },
 
 ////////////////////////////////////////////////////////////////////////////////

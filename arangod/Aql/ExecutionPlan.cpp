@@ -237,14 +237,14 @@ ModificationOptions ExecutionPlan::createOptions (AstNode const* node) {
         TRI_ASSERT(value->isConstant());
 
         if (strcmp(name, "waitForSync") == 0) {
-          options.waitForSync = value->toBoolean();
+          options.waitForSync = value->isTrue();
         }
         else if (strcmp(name, "ignoreErrors") == 0) {
-          options.ignoreErrors = value->toBoolean();
+          options.ignoreErrors = value->isTrue();
         }
         else if (strcmp(name, "keepNull") == 0) {
           // nullMeansRemove is the opposite of keepNull
-          options.nullMeansRemove = (! value->toBoolean());
+          options.nullMeansRemove = value->isFalse();
         }
       }
     }
