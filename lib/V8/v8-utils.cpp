@@ -32,6 +32,7 @@
 #endif
 
 #include "v8-utils.h"
+#include "v8-buffer.h"
 
 #include <regex.h>
 
@@ -1918,6 +1919,42 @@ static v8::Handle<v8::Value> JS_Read (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief reads in a file
+/// @startDocuBlock JS_ReadFile
+/// `fs.readFile(filename)`
+///
+/// Reads in a file and returns the content in a Buffer object.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ReadFile (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "readFile(<filename>)");
+  }
+
+  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
+
+  if (*name == 0) {
+    TRI_V8_TYPE_ERROR(scope, "<filename> must be a UTF-8 string");
+  }
+
+  size_t length;
+  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *name, &length);
+
+  if (content == nullptr) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), TRI_last_error());
+  }
+
+  V8Buffer* buffer = V8Buffer::New(content, length); 
+  
+  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
+
+  return scope.Close(buffer->_handle);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief reads in a file as base64
 /// @startDocuBlock JS_Read64
 /// `fs.read64(filename)`
@@ -1956,16 +1993,18 @@ static v8::Handle<v8::Value> JS_Read64 (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief writes to a file
 ///
-/// @FUN{internal.save(*filename*)}
+/// @startDocuBlock JS_Save
+/// `fs.write(filename, content)`
 ///
-/// Writes the content into a file.
+/// Writes the content into a file. Content can be a string or a Buffer object.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_Save (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 2) {
-    TRI_V8_EXCEPTION_USAGE(scope, "save(<filename>, <content>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "write(<filename>, <content>)");
   }
 
   TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
@@ -1974,20 +2013,37 @@ static v8::Handle<v8::Value> JS_Save (v8::Arguments const& argv) {
     TRI_V8_TYPE_ERROR(scope, "<filename> must be a string");
   }
 
-  TRI_Utf8ValueNFC content(TRI_UNKNOWN_MEM_ZONE, argv[1]);
+  if (argv[1]->IsObject() && V8Buffer::hasInstance(argv[1])) {
+    // content is a buffer
+    const char* data = V8Buffer::data(argv[1].As<v8::Object>());
+    size_t size = V8Buffer::length(argv[1].As<v8::Object>());
+    
+    ofstream file;
 
-  if (*content == 0) {
-    TRI_V8_TYPE_ERROR(scope, "<content> must be a string");
+    file.open(*name, ios::out | ios::binary);
+  
+    if (file.is_open()) {
+      file.write(data, size);
+      file.close();
+      return scope.Close(v8::True());
+    }
   }
+  else {
+    TRI_Utf8ValueNFC content(TRI_UNKNOWN_MEM_ZONE, argv[1]);
 
-  ofstream file;
+    if (*content == 0) {
+      TRI_V8_TYPE_ERROR(scope, "<content> must be a string");
+    }
 
-  file.open(*name, ios::out | ios::binary);
+    ofstream file;
 
-  if (file.is_open()) {
-    file << *content;
-    file.close();
-    return scope.Close(v8::True());
+    file.open(*name, ios::out | ios::binary);
+  
+    if (file.is_open()) {
+      file << *content;
+      file.close();
+      return scope.Close(v8::True());
+    }
   }
 
   TRI_V8_EXCEPTION_SYS(scope, "cannot write file");
@@ -3797,6 +3853,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SYS_PROCESS_STATISTICS", JS_ProcessStatistics);
   TRI_AddGlobalFunctionVocbase(context, "SYS_RAND", JS_Rand);
   TRI_AddGlobalFunctionVocbase(context, "SYS_READ", JS_Read);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_READ_FILE", JS_ReadFile);
   TRI_AddGlobalFunctionVocbase(context, "SYS_READ64", JS_Read64);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SAVE", JS_Save);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SERVER_STATISTICS", JS_ServerStatistics);

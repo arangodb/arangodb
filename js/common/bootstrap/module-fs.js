@@ -2,7 +2,7 @@
 /*global require, FS_MAKE_DIRECTORY, FS_MOVE, FS_REMOVE, FS_REMOVE_DIRECTORY, FS_LIST,
   FS_REMOVE_RECURSIVE_DIRECTORY, FS_EXISTS, FS_IS_DIRECTORY, FS_IS_FILE, FS_MAKE_ABSOLUTE, FS_FILESIZE,
   FS_GET_TEMP_FILE, FS_GET_TEMP_PATH, FS_LIST_TREE, FS_UNZIP_FILE, FS_ZIP_FILE,
-  SYS_READ, SYS_READ64, SYS_SAVE, PATH_SEPARATOR, HOME */
+  SYS_READ, SYS_READ_FILE, SYS_READ64, SYS_SAVE, PATH_SEPARATOR, HOME */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "js"
@@ -435,12 +435,20 @@
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief readFileSync (node compatibility)
+/// @brief readFile and readFileSync
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.readFileSync = function (filename) {
-    return exports.read(filename);
-  };
+  if (typeof SYS_READ_FILE !== "undefined") {
+    exports.readFile = SYS_READ_FILE;
+    delete SYS_READ_FILE;
+  
+    exports.readFileSync = function (filename, encoding) {
+      if (encoding !== undefined && encoding !== null) {
+        return exports.readFile(filename).toString(encoding);
+      }
+      return exports.readFile(filename);
+    };
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read64
@@ -504,6 +512,14 @@
     exports.write = SYS_SAVE;
     delete SYS_SAVE;
   }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief writeFileSync (node compatibility)
+////////////////////////////////////////////////////////////////////////////////
+
+  exports.writeFileSync = function (filename, content) {
+    return exports.write(filename, content);
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief zipFile

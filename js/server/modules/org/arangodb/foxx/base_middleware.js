@@ -46,7 +46,8 @@ BaseMiddleware = function () {
       _ = require("underscore"),
       console = require("console"),
       crypto = require("org/arangodb/crypto"),
-      actions = require("org/arangodb/actions");
+      actions = require("org/arangodb/actions"),
+      internal = require("internal");
 
     requestFunctions = {
 
@@ -120,12 +121,25 @@ BaseMiddleware = function () {
 ///
 /// `request.rawBody()`
 ///
-/// The raw request body, not parsed. Just a String.
+/// The raw request body, not parsed. Returned as a UTF-8 string.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
       rawBody: function () {
         return this.requestBody;
+      },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_BaseMiddleware_request_rawBodyBuffer
+///
+/// `request.rawBodyBuffer()`
+///
+/// The raw request body, returned as a Buffer object.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+      rawBodyBuffer: function () {
+        return internal.rawRequestBody(this);
       },
 
 ////////////////////////////////////////////////////////////////////////////////

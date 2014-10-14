@@ -23,6 +23,8 @@
 var SlowBuffer = require("internal").SlowBuffer;
 var assert = require('assert');
 
+require("internal").setFastBufferConstructor(Buffer);
+
 exports.INSPECT_MAX_BYTES = 50;
 
 // Make SlowBuffer inherit from Buffer.

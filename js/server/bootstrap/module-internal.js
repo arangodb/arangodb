@@ -5,7 +5,8 @@
   REPLICATION_LOGGER_STATE, REPLICATION_LOGGER_CONFIGURE, REPLICATION_SERVER_ID,
   REPLICATION_APPLIER_CONFIGURE, REPLICATION_APPLIER_START, REPLICATION_APPLIER_SHUTDOWN,
   REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_STATE, REPLICATION_SYNCHRONISE,
-  ENABLE_STATISTICS, DISPATCHER_THREADS, SYS_CREATE_NAMED_QUEUE, SYS_ADD_JOB */
+  ENABLE_STATISTICS, DISPATCHER_THREADS, SYS_CREATE_NAMED_QUEUE, SYS_ADD_JOB,
+  SYS_RAW_REQUEST_BODY */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -333,6 +334,15 @@
   if (typeof SYS_ADD_JOB !== "undefined") {
     internal.addJob = SYS_ADD_JOB;
     delete SYS_ADD_JOB;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief raw request body
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_RAW_REQUEST_BODY !== "undefined") {
+    internal.rawRequestBody = SYS_RAW_REQUEST_BODY;
+    delete SYS_RAW_REQUEST_BODY;
   }
 
 }());
