@@ -679,6 +679,29 @@ Executor* Query::executor () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief register the concatenation of two strings
+/// the string is freed when the query is destroyed
+////////////////////////////////////////////////////////////////////////////////
+
+char* Query::registerStringConcat (char const* a,
+                                   char const* b) {
+  char* concatenated = TRI_Concatenate2StringZ(TRI_UNKNOWN_MEM_ZONE, a, b);
+
+  if (concatenated == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  try {
+    _strings.push_back(concatenated);
+  }
+  catch (...) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  return concatenated;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief register a string
 /// the string is freed when the query is destroyed
 ////////////////////////////////////////////////////////////////////////////////

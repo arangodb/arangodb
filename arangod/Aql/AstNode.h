@@ -260,6 +260,14 @@ namespace triagens {
         AstNode* castToNumber (Ast*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief convert the node's value to a string value
+/// this may create a new node or return the node itself if it is already a
+/// string value node
+////////////////////////////////////////////////////////////////////////////////
+
+        AstNode* castToString (Ast*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the node value is trueish
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -318,6 +326,22 @@ namespace triagens {
 
         inline bool isStringValue () const {
           return (type == NODE_TYPE_VALUE && value.type == VALUE_TYPE_STRING);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a value node is of list type
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool isList () const {
+          return (type == NODE_TYPE_LIST);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a value node is of array type
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool isArray () const {
+          return (type == NODE_TYPE_ARRAY);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -535,7 +559,8 @@ namespace triagens {
 /// @brief append a JavaScript representation of the node into a string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-        void append (triagens::basics::StringBuffer*) const;
+        void append (triagens::basics::StringBuffer*,
+                     bool) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods

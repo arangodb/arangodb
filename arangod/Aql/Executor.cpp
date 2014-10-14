@@ -784,7 +784,7 @@ void Executor::generateCodeNode (AstNode const* node) {
 
   switch (node->type) {
     case NODE_TYPE_VALUE:
-      node->append(_buffer);
+      node->append(_buffer, true);
       break;
 
     case NODE_TYPE_LIST:

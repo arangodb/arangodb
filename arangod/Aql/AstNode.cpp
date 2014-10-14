@@ -655,8 +655,6 @@ AstNode* AstNode::castToNumber (Ast* ast) {
           // conversion failed
         }
         // fall-through intentional
-      default: {
-      }
     }
     // fall-through intentional
   }
@@ -678,6 +676,31 @@ AstNode* AstNode::castToNumber (Ast* ast) {
   }
 
   return ast->createNodeValueNull();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert the node's value to a string value
+/// this may create a new node or return the node itself if it is already a
+/// string value node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* AstNode::castToString (Ast* ast) {
+  TRI_ASSERT(type == NODE_TYPE_VALUE || 
+             type == NODE_TYPE_LIST || 
+             type == NODE_TYPE_ARRAY);
+
+  if (type == NODE_TYPE_VALUE && value.type == VALUE_TYPE_STRING) {
+    // already a string
+    return this;
+  }
+
+  // stringify node
+  triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
+  append(&buffer, false);
+
+  char const* value = ast->query()->registerString(buffer.c_str(), buffer.length(), false);
+  TRI_ASSERT(value != nullptr);
+  return ast->createNodeValueString(value);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1067,53 +1090,65 @@ AstNode* AstNode::clone (Ast* ast) const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief append a string representation of the node into a string buffer
+/// @brief append a string representation of the node to a string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-void AstNode::append (triagens::basics::StringBuffer* buffer) const {
+void AstNode::append (triagens::basics::StringBuffer* buffer,
+                      bool verbose) const {
   if (type == NODE_TYPE_VALUE) {
     appendValue(buffer);
     return;
   }
 
   if (type == NODE_TYPE_LIST) {
-    buffer->appendText("[ ");
     size_t const n = numMembers();
-    for (size_t i = 0; i < n; ++i) {
-      if (i > 0) {
-        buffer->appendText(", ");
+    if (verbose || n > 0) {
+      if (verbose || n > 1) {
+        buffer->appendChar('[');
       }
+      for (size_t i = 0; i < n; ++i) {
+        if (i > 0) {
+          buffer->appendChar(',');
+        }
 
-      AstNode* member = getMember(i);
-      if (member != nullptr) {
-        member->append(buffer);
+        AstNode* member = getMember(i);
+        if (member != nullptr) {
+          member->append(buffer, verbose);
+        }
+      }
+      if (verbose || n > 1) {
+        buffer->appendChar(']');
       }
     }
-    buffer->appendText(" ]");
     return;
   }
 
   if (type == NODE_TYPE_ARRAY) {
-    buffer->appendText("{ ");
-    size_t const n = numMembers();
-    for (size_t i = 0; i < n; ++i) {
-      if (i > 0) {
-        buffer->appendText(", ");
+    if (verbose) {
+      buffer->appendChar('{');
+      size_t const n = numMembers();
+      for (size_t i = 0; i < n; ++i) {
+        if (i > 0) {
+          buffer->appendChar(',');
+        }
+
+        AstNode* member = getMember(i);
+        if (member != nullptr) {
+          TRI_ASSERT(member->type == NODE_TYPE_ARRAY_ELEMENT);
+          TRI_ASSERT(member->numMembers() == 1);
+
+          buffer->appendChar('"');
+          buffer->appendJsonEncoded(member->getStringValue());
+          buffer->appendText("\":", 2);
+
+          member->getMember(0)->append(buffer, verbose);
+        }
       }
-
-      AstNode* member = getMember(i);
-      if (member != nullptr) {
-        TRI_ASSERT(member->type == NODE_TYPE_ARRAY_ELEMENT);
-        TRI_ASSERT(member->numMembers() == 1);
-
-        buffer->appendChar('"');
-        buffer->appendJsonEncoded(member->getStringValue());
-        buffer->appendText("\" : ");
-
-        member->getMember(0)->append(buffer);
-      }
+      buffer->appendChar('}');
     }
-    buffer->appendText(" }");
+    else {
+      buffer->appendText("[object Object]");
+    }
     return;
   }
     
@@ -1132,9 +1167,9 @@ void AstNode::append (triagens::basics::StringBuffer* buffer) const {
     // not used by V8
     auto member = getMember(0);
     auto index = getMember(1);
-    member->append(buffer);
+    member->append(buffer, verbose);
     buffer->appendChar('[');
-    index->append(buffer);
+    index->append(buffer, verbose);
     buffer->appendChar(']');
     return;
   }
@@ -1142,7 +1177,7 @@ void AstNode::append (triagens::basics::StringBuffer* buffer) const {
   if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     // not used by V8
     auto member = getMember(0);
-    member->append(buffer);
+    member->append(buffer, verbose);
     buffer->appendChar('.');
     buffer->appendText(getStringValue());
     return;
@@ -1152,7 +1187,7 @@ void AstNode::append (triagens::basics::StringBuffer* buffer) const {
     auto func = static_cast<Function*>(getData());
     buffer->appendText(func->externalName);
     buffer->appendChar('(');
-    getMember(0)->append(buffer);
+    getMember(0)->append(buffer, verbose);
     buffer->appendChar(')');
     return;
   } 
@@ -1166,7 +1201,7 @@ void AstNode::append (triagens::basics::StringBuffer* buffer) const {
     buffer->appendChar(' ');
     buffer->appendText((*it).second);
 
-    getMember(0)->append(buffer);
+    getMember(0)->append(buffer, verbose);
     return;
   }
 
@@ -1189,11 +1224,11 @@ void AstNode::append (triagens::basics::StringBuffer* buffer) const {
     auto it = Operators.find(type);
     TRI_ASSERT(it != Operators.end());
 
-    getMember(0)->append(buffer);
+    getMember(0)->append(buffer, verbose);
     buffer->appendChar(' ');
     buffer->appendText((*it).second);
     buffer->appendChar(' ');
-    getMember(1)->append(buffer);
+    getMember(1)->append(buffer, verbose);
     return;
   }
   
