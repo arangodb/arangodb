@@ -48,7 +48,7 @@
 #include <sys/wait.h>
 #endif
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <Psapi.h>
 #include <TlHelp32.h>
 #endif
@@ -218,15 +218,6 @@ static bool CreatePipes (int* pipe_server_to_child,
   }
 
   return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief handler for SIGCHLD 
-////////////////////////////////////////////////////////////////////////////////
-
-static void handleSigchld (int sig) {
-  // intentionally do nothing here
-  // we'll use waitpid() for reaping children later
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1280,17 +1271,6 @@ void TRI_InitialiseProcess (int argc, char* argv[]) {
 
   TRI_InitVectorPointer(&ExternalProcesses, TRI_CORE_MEM_ZONE);
   TRI_InitMutex(&ExternalProcessesLock);
-
-#ifndef WIN32
-  // initialise a signal handler for SIGCHLD  
-  struct sigaction sa;
-  sa.sa_handler = &handleSigchld;
-  sigemptyset(&sa.sa_mask);
-  sa.sa_flags = SA_RESTART | SA_NOCLDSTOP;
-  if (sigaction(SIGCHLD, &sa, 0) == -1) {
-    // installation of signal handler failed
-  }
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
