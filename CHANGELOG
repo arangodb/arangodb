@@ -129,7 +129,13 @@ v2.3.0 (XXXX-XX-XX)
   storing JavaScript date objects in the database in a sensible manner.
 
 
-v2.2.x (????-??-??)
+v2.2.6 (XXXX-XX-XX)
+-------------------
+
+* fixed issue #972: Compilation Issue
+
+
+v2.2.5 (2014-10-09)
 -------------------
 
 * fixed issue #961: allow non-JSON values in undocument request bodies
@@ -140,7 +146,7 @@ v2.2.x (????-??-??)
   problems after collection rename operations
 
 
-v2.2.4 (2014-XX-XX)
+v2.2.4 (2014-10-01)
 -------------------
 
 * fixed accessing `_from` and `_to` attributes in `collection.byExample` and 
