@@ -1606,15 +1606,15 @@ int triagens::aql::interchangeAdjacentEnumerations (Optimizer* opt,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief distribute operations in cluster
+/// @brief scatter operations in cluster
 /// this rule inserts scatter, gather and remote nodes so operations on sharded
 /// collections actually work
 /// it will change plans in place
 ////////////////////////////////////////////////////////////////////////////////
 
 int triagens::aql::scatterInCluster (Optimizer* opt,
-                                        ExecutionPlan* plan,
-                                        Optimizer::Rule const* rule) {
+                                     ExecutionPlan* plan,
+                                     Optimizer::Rule const* rule) {
   bool wasModified = false;
 
   if (ExecutionEngine::isCoordinator()) {
@@ -1640,6 +1640,12 @@ int triagens::aql::scatterInCluster (Optimizer* opt,
 
       // unlink the node
       bool const isRootNode = plan->isRoot(node);
+      if (isRootNode) {
+        if (deps[0]->getType() == ExecutionNode::REMOTE &&
+            deps[0]->getDependencies()[0]->getType() == ExecutionNode::DISTRIBUTE){
+          continue;
+        }
+      }
       plan->unlinkNode(node, isRootNode);
 
       auto const nodeType = node->getType();
@@ -1712,6 +1718,70 @@ int triagens::aql::scatterInCluster (Optimizer* opt,
   return TRI_ERROR_NO_ERROR;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief distribute operations in cluster
+///
+/// this rule inserts distribute, remote nodes so operations on sharded
+/// collections actually work, this differs from scatterInCluster in that every
+/// incoming row is only set to one shard and not all as in scatterInCluster
+///
+/// it will change plans in place
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::distributeInCluster (Optimizer* opt,
+                                        ExecutionPlan* plan,
+                                        Optimizer::Rule const* rule) {
+  bool wasModified = false;
+
+  if (ExecutionEngine::isCoordinator()) {
+    // we are a coordinator, we replace the root if it is a modification node
+    
+    // only replace if it is the last node in the plan
+    auto const& node = plan->root();
+    auto const nodeType = node->getType();
+    
+    if (nodeType != ExecutionNode::INSERT  &&
+        nodeType != ExecutionNode::UPDATE  &&
+        nodeType != ExecutionNode::REPLACE &&
+        nodeType != ExecutionNode::REMOVE) {
+      opt->addPlan(plan, rule->level, wasModified);
+      return TRI_ERROR_NO_ERROR;
+    }
+    std::cout << "HERE!\n";
+    auto deps = node->getDependencies();
+    TRI_ASSERT(deps.size() == 1);
+
+    // unlink the node
+    plan->unlinkNode(node, true);
+
+    // extract database and collection from plan node
+    TRI_vocbase_t* vocbase = static_cast<ModificationNode*>(node)->vocbase();
+    Collection const* collection = static_cast<ModificationNode*>(node)->collection();
+
+    // insert a distribute node
+    ExecutionNode* distNode = new DistributeNode(plan, plan->nextId(),
+        vocbase, collection);
+    // TODO make sure the DistributeNode has all the info it requires . . .
+    plan->registerNode(distNode);
+    distNode->addDependency(deps[0]);
+
+    // insert a remote node
+    ExecutionNode* remoteNode = new RemoteNode(plan, plan->nextId(), vocbase,
+        collection, "", "", "");
+    plan->registerNode(remoteNode);
+    remoteNode->addDependency(distNode);
+      
+    // re-link with the remote node
+    node->addDependency(remoteNode);
+
+    // make node the root again
+    plan->root(node);
+    wasModified = true;
+  }
+   
+  opt->addPlan(plan, rule->level, wasModified);
+  return TRI_ERROR_NO_ERROR;
+}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief move filters up into the cluster distribution part of the plan
 /// this rule modifies the plan in place
@@ -2102,11 +2172,11 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
         case EN::SINGLETON:
         case EN::ENUMERATE_LIST:
         case EN::SUBQUERY:        
-        case EN::DISTRIBUTE:
         case EN::AGGREGATE:
         case EN::INSERT:
         case EN::REPLACE:
         case EN::UPDATE:
+        case EN::DISTRIBUTE:
         case EN::RETURN:
         case EN::NORESULTS:
         case EN::ILLEGAL:
