@@ -217,7 +217,7 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
     // we can now evaluate it safely
     TRI_ASSERT(! s->expression()->canThrow());
 
-    if (root->toBoolean()) {
+    if (root->isTrue()) {
       // filter is always true
       // remove filter node and merge with following node
       toUnlink.insert(n);
