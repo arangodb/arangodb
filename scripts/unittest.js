@@ -89,15 +89,18 @@ function resultsToXml(results, baseName) {
 
 
 function main (argv) {
-  if (argv.length < 2) {
-    print("Usage: unittest TESTNAME [OPTIONS]");
-    return;
-  }
   var test = argv[1];
   var options = {};
   var r;
   if (argv.length >= 3) {
-    options = JSON.parse(argv[2]);
+    try {
+      options = JSON.parse(argv[2]);
+    }
+    catch (x) {
+      print("failed to parse the json options");
+      print(x);
+      return -1;
+    }
   }
   options.jsonReply = true;
   var UnitTest = require("org/arangodb/testing");

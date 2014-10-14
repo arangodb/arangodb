@@ -35,57 +35,51 @@
 /// This function gets one or two arguments, the first describes which tests
 /// to perform and the second is an options object. For `which` the following
 /// values are allowed:
-///
-///   - "all": do all tests
-///   - "config"
-///   - "boost"
-///   - "shell_server"
-///   - "shell_server_ahuacatl"
-///   - "shell_server_aql"
-///   - "shell_server_perf": bulk tests intended to get an overview of executiontime needed.
-///   - "http_server"
-///   - "ssl_server"
-///   - "shell_client"
-///   - "single_client" : run one test suite isolated via the arangosh
-///   - "single_server" : run one test suite on the server
-///   - "dump"
-///   - "arangob"
-///   - "import"
-///   - "upgrade"
-///   - "dfdb"
-///   - "foxx-manager"
-///   - "authentication"
-///   - "authentication-parameters
-///   - "single": convenience to execute a single test file
-///
-/// The following properties of `options` are defined:
-///
-///   - `jsonReply`: if set a json is returned which the caller has to 
-///        present the user
-///   - `force`: if set to true the tests are continued even if one fails
-///   - `skipBoost`: if set to true the boost unittests are skipped
-///   - `skipGeo`: if set to true the geo index tests are skipped
-///   - `skipAhuacatl`: if set to true the ahuacatl tests are skipped
-///   - `skipAql`: if set to true the AQL tests are skipped
-///   - `skipRanges`: if set to true the ranges tests are skipped
-///   - `skipTimeCritical`: if set to true, time critical tests will be skipped.
-///   - `valgrind`: if set to true the arangods are run with the valgrind
-///     memory checker
-///   - `valgrindXmlFileBase`: string to prepend to the xml report name
-///   - `valgrindargs`: commandline parameters to add to valgrind
-///   - `extraargs`: extra commandline arguments to add to arangod
-///   - `cluster`: if set to true the tests are run with the coordinator
-///     of a small local cluster
-///   - `test`: path to single test to execute for "single" test target
-///   - `cleanup`: if set to true (the default), the cluster data files
-///     and logs are removed after termination of the test.
-///   - `jasmineReportFormat`: this option is passed on to the `format`
-///     option of the Jasmin options object, only for Jasmin tests.
+///  Empty will give you a complete list.
+var functionDoku = {
+  'all'               : " do all tests (marked with [x])",
+  "shell_server_perf" : "bulk tests intended to get an overview of executiontime needed.",
+  "single_client"     : "run one test suite isolated via the arangosh; options required\n" +
+    "            Run without to get more detail",
+  "single_server"     : "run one test suite on the server; options required\n" + 
+    "            Run without to get more detail"
+};
+
+var optiondoku = [
+  '',
+  ' The following properties of `options` are defined:',
+  '',
+  '   - `jsonReply`: if set a json is returned which the caller has to ',
+  '        present the user',
+  '   - `force`: if set to true the tests are continued even if one fails',
+  '   - `skipBoost`: if set to true the boost unittests are skipped',
+  '   - `skipGeo`: if set to true the geo index tests are skipped',
+  '   - `skipAhuacatl`: if set to true the ahuacatl tests are skipped',
+  '   - `skipAql`: if set to true the AQL tests are skipped',
+  '   - `skipRanges`: if set to true the ranges tests are skipped',
+  '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
+  '',
+  '   - `cluster`: if set to true the tests are run with the coordinator',
+  '     of a small local cluster',
+  '   - `test`: path to single test to execute for "single" test target',
+  '   - `cleanup`: if set to true (the default), the cluster data files',
+  '     and logs are removed after termination of the test.',
+  '   - `jasmineReportFormat`: this option is passed on to the `format`',
+  '     option of the Jasmin options object, only for Jasmin tests.',
+  '',
+  '   - `valgrind`: if set to true the arangods are run with the valgrind',
+  '     memory checker',
+  '   - `valgrindXmlFileBase`: string to prepend to the xml report name',
+  '   - `valgrindargs`: list of commandline parameters to add to valgrind',
+  '',
+  '   - `extraargs`: list of extra commandline arguments to add to arangod',
+  ''
+];
 ////////////////////////////////////////////////////////////////////////////////
 
 var _ = require("underscore");
 
-var testFuncs = {};
+var testFuncs = {'all': function(){}};
 var print = require("internal").print;
 var time = require("internal").time;
 var fs = require("fs");
@@ -117,6 +111,57 @@ var optionsDefaults = { "cluster": false,
                         "test": undefined,
                         "cleanup": true,
                         "jsonReply": false};
+var allTests =
+  [
+    "config",
+    "boost",
+    "shell_server",
+    "shell_server_ahuacatl",
+    "shell_server_aql",
+    "http_server",
+    "ssl_server",
+    "shell_client",
+    "dump",
+    "arangob",
+    "importing",
+    "upgrade",
+    "foxx_manager",
+    "authentication",
+    "authentication_parameters"
+  ];
+
+
+function printUsage () {
+  print();
+  print("Usage: UnitTest( which, options )");
+  print();
+  print('       where "which" is one of:\n');
+  var i;
+  var checkAll;
+  var oneFunctionDoku;
+  for (i in testFuncs) {
+    if (testFuncs.hasOwnProperty(i)) {
+      if (functionDoku.hasOwnProperty(i)) {
+        oneFunctionDoku = ' - ' + functionDoku[i];
+      }
+      else {
+        oneFunctionDoku = '';
+      }
+      if (allTests.indexOf(i) !== -1) {
+        checkAll = '[x]';
+      }
+      else {
+        checkAll = '   ';
+      }
+      print('    ' + checkAll + ' '+i+' ' + oneFunctionDoku);
+    }
+  }
+  for (i in optiondoku) {
+    if (optiondoku.hasOwnProperty(i)) {
+      print(optiondoku[i]);
+    }
+  }
+}
 
 function findTopDir () {
   var topDir = fs.normalize(fs.makeAbsolute("."));
@@ -520,6 +565,72 @@ function performTests(options, testList, testname) {
   return results;
 }
 
+function single_usage(testsuite) {
+  print("single_" + testsuite + ": No test specified!\n Available tests:");
+  var filelist = "";
+  var list = fs.list(makePath("js/server/tests"));
+  for (var fileNo in list) {
+    if (/\.js$/.test(list[fileNo])) {
+      filelist += " js/server/tests/"+list[fileNo];
+    }
+  }
+  print(filelist);
+  print("usage: single_" + testsuite + " '{\"test\":\"<testfilename>\"}'");
+  print(" where <testfilename> is one from the list above.");
+  return { status: false, message: "No test specified!"};
+}
+
+
+testFuncs.single_server = function (options) {
+  var instanceInfo = startInstance("tcp", options, [], "single");
+  var result = { };
+  if (options.test !== undefined) {
+    var te = options.test;
+    print("\nTrying",te,"on server...");
+    result = {};
+    result[te] = runThere(options, instanceInfo, makePath(te));
+    print("Shutting down...");
+    shutdownInstance(instanceInfo,options);
+    print("done.");
+    return result;
+  }
+  else {
+    return single_usage("server");
+  }
+};
+
+testFuncs.single_client = function (options) {
+  var instanceInfo = startInstance("tcp", options, [], "single");
+  var result = { };
+  if (options.test !== undefined) {
+    var te = options.test;
+    var topDir = findTopDir();
+    var args = makeTestingArgsClient(options);
+    args.push("--server.endpoint");
+    args.push(instanceInfo.endpoint);
+    args.push("--javascript.unit-tests");
+    args.push(fs.join(topDir,te));
+    print("\nTrying",te,"on client...");
+    var arangosh = fs.join("bin","arangosh");
+    result = {};
+    result[te] = executeAndWait(arangosh, args);
+    print("Shutting down...");
+    shutdownInstance(instanceInfo,options);
+    print("done.");
+    return result;
+  }
+  else {
+    return single_usage("client");
+  }
+};
+
+testFuncs.shell_server_perf = function(options) {
+  findTests();
+  return performTests(options,
+                      tests_shell_server_aql_performance,
+                      'tests_shell_server_aql_performance');
+};
+
 testFuncs.shell_server = function (options) {
   findTests();
   return performTests(options, tests_shell_server, 'tests_shell_server');
@@ -562,13 +673,6 @@ testFuncs.shell_server_aql = function(options) {
                         'tests_shell_server_aql_extended');
   }
   return "skipped";
-};
-
-testFuncs.shell_server_perf = function(options) {
-  findTests();
-  return performTests(options,
-                      tests_shell_server_aql_performance,
-                      'tests_shell_server_aql_performance');
 };
 
 testFuncs.shell_client = function(options) {
@@ -651,66 +755,6 @@ testFuncs.boost = function (options) {
   return results;
 };
 
-
-function single_usage(testsuite) {
-  print("single_" + testsuite + ": No test specified!\n Available tests:");
-  var filelist = "";
-  var list = fs.list(makePath("js/server/tests"));
-  for (var fileNo in list) {
-    if (/\.js$/.test(list[fileNo])) {
-      filelist += " js/server/tests/"+list[fileNo];
-    }
-  }
-  print(filelist);
-  print("usage: single_" + testsuite + " '{\"test\":\"<testfilename>\"}'");
-  print(" where <testfilename> is one from the list above.");
-  return { status: false, message: "No test specified!"};
-}
-
-
-testFuncs.single_server = function (options) {
-  var instanceInfo = startInstance("tcp", options, [], "single");
-  var result = { };
-  if (options.test !== undefined) {
-    var te = options.test;
-    print("\nTrying",te,"on server...");
-    result = {};
-    result[te] = runThere(options, instanceInfo, makePath(te));
-    print("Shutting down...");
-    shutdownInstance(instanceInfo,options);
-    print("done.");
-    return result;
-  }
-  else {
-    return single_usage("server");
-  }
-};
-
-testFuncs.single_client = function (options) {
-  var instanceInfo = startInstance("tcp", options, [], "single");
-  var result = { };
-  if (options.test !== undefined) {
-    var te = options.test;
-    var topDir = findTopDir();
-    var args = makeTestingArgsClient(options);
-    args.push("--server.endpoint");
-    args.push(instanceInfo.endpoint);
-    args.push("--javascript.unit-tests");
-    args.push(fs.join(topDir,te));
-    print("\nTrying",te,"on client...");
-    var arangosh = fs.join("bin","arangosh");
-    result = {};
-    result[te] = executeAndWait(arangosh, args);
-    print("Shutting down...");
-    shutdownInstance(instanceInfo,options);
-    print("done.");
-    return result;
-  }
-  else {
-    return single_usage("client");
-  }
-};
-
 function rubyTests (options, ssl) {
   var instanceInfo;
   if (ssl) {
@@ -751,6 +795,7 @@ function rubyTests (options, ssl) {
       if ((n.indexOf("-cluster") === -1 || options.cluster) &&
           (n.indexOf("-noncluster") === -1 || options.cluster === false) &&
           (n.indexOf("-timecritical") === -1 || options.skipTimeCritical === false) &&
+          (n.indexOf("-disabled") === -1) && 
           n.indexOf("replication") === -1) {
         args = ["--color", "-I", fs.join("UnitTests","HttpInterface"),
                 "--format", "d", "--require", tmpname,
@@ -1253,50 +1298,6 @@ function unitTestPrettyPrintResults(r) {
     print(x.message);
     print(JSON.stringify(r));
   }
-}
-
-
-var allTests =
-  [
-    "config",
-    "boost",
-    "shell_server",
-    "shell_server_ahuacatl",
-    "shell_server_aql",
-    "http_server",
-    "ssl_server",
-    "shell_client",
-    "dump",
-    "arangob",
-    "importing",
-    "upgrade",
-    "foxx_manager",
-    "authentication",
-    "authentication_parameters"
-  ];
-
-function printUsage () {
-  print("Usage: UnitTest( which, options )");
-  print('       where "which" is one of:');
-  print('         "all": do all tests');
-  var i;
-  for (i in testFuncs) {
-    if (testFuncs.hasOwnProperty(i)) {
-      print('         "'+i+'"');
-    }
-  }
-  print('       and options can contain the following boolean properties:');
-  print('         "force": continue despite a failed test');
-  print('         "skipBoost": skip the boost unittests');
-  print('         "skipGeo": skip the geo index tests');
-  print('         "skipAhuacatl": skip the ahuacatl tests');
-  print('         "skipAql": skip the AQL tests');
-  print('         "skipRanges": skip the ranges tests');
-  print('         "valgrind": arangods are run with valgrind');
-  print('         "cluster": tests are run on a small local cluster');
-  print('         "test": name of test to run for "single" test');
-  print('         "skipClient": for "single" test');
-  print('         "skipServer": for "single" test');
 }
 
 function UnitTest (which, options) {
