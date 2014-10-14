@@ -68,6 +68,7 @@
 ///   - `skipAhuacatl`: if set to true the ahuacatl tests are skipped
 ///   - `skipAql`: if set to true the AQL tests are skipped
 ///   - `skipRanges`: if set to true the ranges tests are skipped
+///   - `skipTimeCritical`: if set to true, time critical tests will be skipped.
 ///   - `valgrind`: if set to true the arangods are run with the valgrind
 ///     memory checker
 ///   - `valgrindXmlFileBase`: string to prepend to the xml report name
@@ -108,6 +109,7 @@ var optionsDefaults = { "cluster": false,
                         "skipBoost": false,
                         "skipGeo": false,
                         "skipAhuacatl": false,
+                        "skipTimeCritical": false,
                         "skipAql": false,
                         "skipRanges": false,
                         "username": "root",
@@ -489,6 +491,7 @@ function performTests(options, testList, testname) {
     print("\nTrying",te,"...");
     if ((te.indexOf("-cluster") === -1 || options.cluster) &&
         (te.indexOf("-noncluster") === -1 || options.cluster === false) &&
+        (te.indexOf("-timecritical") === -1 || options.skipTimeCritical === false) &&
         (te.indexOf("-disabled") === -1)) {
 
       if (!continueTesting) {
@@ -510,7 +513,7 @@ function performTests(options, testList, testname) {
       continueTesting = checkInstanceAlive(instanceInfo);
     }
     else {
-      print("Skipped because of cluster/non-cluster or disabled.");
+      print("Skipped because of cluster/non-cluster/timecritical or disabled.");
     }
   }
   print("Shutting down...");
@@ -583,6 +586,7 @@ testFuncs.shell_client = function(options) {
     print("\nTrying",te,"...");
     if ((te.indexOf("-cluster") === -1 || options.cluster) &&
         (te.indexOf("-noncluster") === -1 || options.cluster === false) &&
+        (te.indexOf("-timecritical") === -1 || options.skipTimeCritical === false) &&
         (te.indexOf("-disabled") === -1)) {
 
       if (!continueTesting) {
@@ -600,7 +604,7 @@ testFuncs.shell_client = function(options) {
       continueTesting = checkInstanceAlive(instanceInfo);
     }
     else {
-      print("Skipped because of cluster/non-cluster.");
+      print("Skipped because of cluster/non-cluster/timecritical.");
     }
   }
   print("Shutting down...");
@@ -748,6 +752,7 @@ function rubyTests (options, ssl) {
       print("Considering",n,"...");
       if ((n.indexOf("-cluster") === -1 || options.cluster) &&
           (n.indexOf("-noncluster") === -1 || options.cluster === false) &&
+          (n.indexOf("-timecritical") === -1 || options.skipTimeCritical === false) &&
           n.indexOf("replication") === -1) {
         args = ["--color", "-I", fs.join("UnitTests","HttpInterface"),
                 "--format", "d", "--require", tmpname,
@@ -768,7 +773,7 @@ function rubyTests (options, ssl) {
 
       }
       else {
-        print("Skipped because of cluster/non-cluster or replication.");
+        print("Skipped because of cluster/non-cluster/timecritical or replication.");
       }
     }
   }
