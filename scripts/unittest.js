@@ -89,10 +89,6 @@ function resultsToXml(results, baseName) {
 
 
 function main (argv) {
-  if (argv.length < 2) {
-    print("Usage: unittest TESTNAME [OPTIONS]");
-    return;
-  }
   var test = argv[1];
   var options = {};
   var r;
