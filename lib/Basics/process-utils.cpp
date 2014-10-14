@@ -244,7 +244,6 @@ static void StartExternalProcess (TRI_external_t* external, bool usePipes) {
 
   // child process
   if (processPid == 0) {
-
     // set stdin and stdout of child process
     if (usePipes) {
       dup2(pipe_server_to_child[0], 0);
@@ -999,7 +998,9 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
     else {
       opts = WNOHANG | WUNTRACED;
     }
+
     res = waitpid(external->_pid, &loc, opts);
+
     if (res == 0) {
       if (wait) {
         status._errorMessage =
@@ -1029,8 +1030,9 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
     }
     else if (res == -1) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      LOG_WARNING("waitpid returned error for pid %d: %s", 
+      LOG_WARNING("waitpid returned error for pid %d (%d): %s", 
                   (int) external->_pid,  
+                  (int) wait,
                   TRI_last_error());
       status._errorMessage =
         std::string("waitpid returned error for pid ") + 

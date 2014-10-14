@@ -68,6 +68,7 @@
 ///   - `skipAhuacatl`: if set to true the ahuacatl tests are skipped
 ///   - `skipAql`: if set to true the AQL tests are skipped
 ///   - `skipRanges`: if set to true the ranges tests are skipped
+///   - `skipTimeCritical`: if set to true, time critical tests will be skipped.
 ///   - `valgrind`: if set to true the arangods are run with the valgrind
 ///     memory checker
 ///   - `valgrindXmlFileBase`: string to prepend to the xml report name
@@ -108,6 +109,7 @@ var optionsDefaults = { "cluster": false,
                         "skipBoost": false,
                         "skipGeo": false,
                         "skipAhuacatl": false,
+                        "skipTimeCritical": false,
                         "skipAql": false,
                         "skipRanges": false,
                         "username": "root",
@@ -253,7 +255,7 @@ function startInstance (protocol, options, addArgs, testname) {
 function checkInstanceAlive(instanceInfo) {  
   var res = statusExternal(instanceInfo.pid, false);
   var ret = res.status === "RUNNING";
-  if (!ret) {
+  if (! ret) {
     instanceInfo.exitStatus = res;
   }
   return ret;
@@ -420,7 +422,7 @@ function executeAndWait (cmd, args) {
   var errorMessage = ' - ';
 
   if (res.status === "TERMINATED") {
-    print("Finished: " + res.status + " Exitcode: " + res.exit + " Time Elapsed: " + deltaTime);
+    print("Finished: " + res.status + " exit code: " + res.exit + " Time elapsed: " + deltaTime);
     if (res.exit === 0) {
       return { status: true, message: "", duration: deltaTime};
     }
@@ -429,15 +431,13 @@ function executeAndWait (cmd, args) {
     }
   }
   else if (res.status === "ABORTED") {
-//    var toppid = executeExternal("/usr/bin/top", ["-b", "-n1"]);
     if (typeof(res.errorMessage) !== 'undefined') {
       errorMessage += res.errorMessage;
     }
-//    statusExternal(toppid, true);
-    print("Finished: " + res.status + " Signal: " + res.signal + " Time Elapsed: " + deltaTime + errorMessage);
+    print("Finished: " + res.status + " Signal: " + res.signal + " Time elapsed: " + deltaTime + errorMessage);
     return {
       status: false,
-      message: "irregular termination: " + res.status + " Exit-Signal: " + res.signal + errorMessage,
+      message: "irregular termination: " + res.status + " exit signal: " + res.signal + errorMessage,
       duration: deltaTime
     };
   }
@@ -445,10 +445,10 @@ function executeAndWait (cmd, args) {
     if (typeof(res.errorMessage) !== 'undefined') {
       errorMessage += res.errorMessage;
     }
-    print("Finished: " + res.status + " Exitcode: " + res.signal + " Time Elapsed: " + deltaTime + errorMessage);
+    print("Finished: " + res.status + " exit code: " + res.signal + " Time elapsed: " + deltaTime + errorMessage);
     return {
-      status: res.status === 'RUNNING',
-      message: "irregular termination: " + res.status + " Exit-Code: " + res.exit + errorMessage,
+      status: false,
+      message: "irregular termination: " + res.status + " exit code: " + res.exit + errorMessage,
       duration: deltaTime
     };
   }
@@ -489,6 +489,7 @@ function performTests(options, testList, testname) {
     print("\nTrying",te,"...");
     if ((te.indexOf("-cluster") === -1 || options.cluster) &&
         (te.indexOf("-noncluster") === -1 || options.cluster === false) &&
+        (te.indexOf("-timecritical") === -1 || options.skipTimeCritical === false) &&
         (te.indexOf("-disabled") === -1)) {
 
       if (!continueTesting) {
@@ -510,7 +511,7 @@ function performTests(options, testList, testname) {
       continueTesting = checkInstanceAlive(instanceInfo);
     }
     else {
-      print("Skipped because of cluster/non-cluster or disabled.");
+      print("Skipped because of cluster/non-cluster/timecritical or disabled.");
     }
   }
   print("Shutting down...");
@@ -583,6 +584,7 @@ testFuncs.shell_client = function(options) {
     print("\nTrying",te,"...");
     if ((te.indexOf("-cluster") === -1 || options.cluster) &&
         (te.indexOf("-noncluster") === -1 || options.cluster === false) &&
+        (te.indexOf("-timecritical") === -1 || options.skipTimeCritical === false) &&
         (te.indexOf("-disabled") === -1)) {
 
       if (!continueTesting) {
@@ -600,7 +602,7 @@ testFuncs.shell_client = function(options) {
       continueTesting = checkInstanceAlive(instanceInfo);
     }
     else {
-      print("Skipped because of cluster/non-cluster.");
+      print("Skipped because of cluster/non-cluster/timecritical.");
     }
   }
   print("Shutting down...");
@@ -748,6 +750,7 @@ function rubyTests (options, ssl) {
       print("Considering",n,"...");
       if ((n.indexOf("-cluster") === -1 || options.cluster) &&
           (n.indexOf("-noncluster") === -1 || options.cluster === false) &&
+          (n.indexOf("-timecritical") === -1 || options.skipTimeCritical === false) &&
           n.indexOf("replication") === -1) {
         args = ["--color", "-I", fs.join("UnitTests","HttpInterface"),
                 "--format", "d", "--require", tmpname,
@@ -768,7 +771,7 @@ function rubyTests (options, ssl) {
 
       }
       else {
-        print("Skipped because of cluster/non-cluster or replication.");
+        print("Skipped because of cluster/non-cluster/timecritical or replication.");
       }
     }
   }
