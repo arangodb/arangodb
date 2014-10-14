@@ -433,7 +433,7 @@ int TRI_ResizeHashArrayMulti (TRI_hash_array_multi_t* array,
   // use less than 1 element per number of documents
   // we does this because expect duplicate values, which are stored in the overflow
   // items (which are allocated separately)
-  size_t targetSize = 0.75 * size;
+  size_t targetSize = static_cast<size_t>(0.75 * size);
   if ((targetSize & 1) == 0) {
     // make odd
     targetSize++;

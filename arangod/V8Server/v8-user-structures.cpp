@@ -683,23 +683,24 @@ class KeySpace {
 
       if (found == nullptr) {
         // TODO: change error code
-        return TRI_ERROR_INTERNAL;
+        return false;
       }
       else {
         if (! TRI_IsListJson(found->json)) {
           // TODO: change error code
-          return TRI_ERROR_INTERNAL;
+          return false;
         }
 
         size_t const n = found->json->_value._objects._length;
         if (index < 0) {
           // TODO: change error code
-          return TRI_ERROR_INTERNAL;
+          return false;
         }
 
         auto json = TRI_ObjectToJson(value);
         if (json == nullptr) {
-          return TRI_ERROR_OUT_OF_MEMORY;
+          // TODO: change error code
+          return false;
         }
 
         if (index >= static_cast<int64_t>(n)) {
@@ -720,7 +721,7 @@ class KeySpace {
         TRI_Free(TRI_UNKNOWN_MEM_ZONE, json);
       }
 
-      return TRI_ERROR_NO_ERROR; 
+      return true; 
     }
 
     char const* keyType (std::string const& key) {
