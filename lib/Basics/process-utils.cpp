@@ -244,7 +244,7 @@ static void StartExternalProcess (TRI_external_t* external, bool usePipes) {
 
   // child process
   if (processPid == 0) {
-
+    usleep(1000 * 1000); // TODO: just for testing, remove me
     // set stdin and stdout of child process
     if (usePipes) {
       dup2(pipe_server_to_child[0], 0);
