@@ -1,3 +1,6 @@
+/*jshint strict: false */
+/*global require, assertTrue, assertEqual, assertMatch, fail */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the task manager
 ///
@@ -421,7 +424,7 @@ function TaskSuite () {
       assertEqual(10, task.offset);
       assertEqual("_system", task.database);
       
-      t = getTasks();
+      var t = getTasks();
       assertEqual(1, t.length);
 
       internal.wait(2);
@@ -456,7 +459,7 @@ function TaskSuite () {
       assertEqual(2, task.offset);
       assertEqual("_system", task.database);
       
-      t = getTasks();
+      var t = getTasks();
       assertEqual(1, t.length);
 
       internal.wait(5);
@@ -492,7 +495,7 @@ function TaskSuite () {
       
       internal.wait(1);
 
-      t = getTasks();
+      var t = getTasks();
       assertEqual(0, t.length);
 
       internal.wait(5);
@@ -526,7 +529,7 @@ function TaskSuite () {
       assertEqual(5, task.offset);
       assertEqual("_system", task.database);
       
-      t = getTasks();
+      var t = getTasks();
       assertEqual(1, t.length);
 
       internal.wait(15);
@@ -572,7 +575,7 @@ function TaskSuite () {
       assertEqual(0, db[cn].count());
       assertEqual(0, db[cn].byExample({ value: 23 }).toArray().length);
 
-      t = getTasks();
+      var t = getTasks();
       assertEqual(0, t.length);
     },
 
