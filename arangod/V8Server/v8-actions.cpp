@@ -28,7 +28,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-actions.h"
-
 #include "Actions/actions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
@@ -41,6 +40,7 @@
 #include "Basics/tri-strings.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
+#include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8Server/ApplicationV8.h"
@@ -402,6 +402,8 @@ static v8::Handle<v8::Object> RequestCppToV8 ( TRI_v8_global_t const* v8g,
   clientArray->Set(v8g->AddressKey, v8::String::New(info.clientAddress.c_str(), (int) info.clientAddress.size()));
   clientArray->Set(v8g->PortKey, v8::Number::New(info.clientPort));
   req->Set(v8g->ClientKey, clientArray);
+
+  req->Set(v8::String::New("internals"), v8::External::New(request));
 
   // copy prefix
   string path = request->prefix();
@@ -861,6 +863,38 @@ static v8::Handle<v8::Value> JS_GetCurrentRequest (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the raw body of the current request
+///
+/// @FUN{internal.rawRequestBody()}
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_RawRequestBody (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "rawRequestBody(req)");
+  }
+
+  v8::Handle<v8::Value> current = argv[0];
+  if (current->IsObject()) {
+    v8::Handle<v8::Object> obj = v8::Handle<v8::Object>::Cast(current);
+    v8::Handle<v8::Value> property = obj->Get(v8::String::New("internals"));
+    if (property->IsExternal()) {
+      v8::Handle<v8::External> e = v8::Handle<v8::External>::Cast(property);
+      auto request = static_cast<triagens::rest::HttpRequest*>(e->Value());
+
+      if (request != nullptr) {
+        V8Buffer* buffer = V8Buffer::New(request->body(), request->bodySize());
+
+        return scope.Close(buffer->_handle);
+      }
+    }
+  }
+
+  return scope.Close(v8::Undefined());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the current response
 ///
 /// @FUN{internal.getCurrentRequest()}
@@ -1149,6 +1183,7 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SYS_GET_CURRENT_REQUEST", JS_GetCurrentRequest);
   TRI_AddGlobalFunctionVocbase(context, "SYS_GET_CURRENT_RESPONSE", JS_GetCurrentResponse);
   TRI_AddGlobalFunctionVocbase(context, "SYS_CLUSTER_TEST", JS_ClusterTest, true);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_RAW_REQUEST_BODY", JS_RawRequestBody, true);
 }
 
 // -----------------------------------------------------------------------------

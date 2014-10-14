@@ -1627,10 +1627,6 @@ void TRI_InitV8Buffer (v8::Handle<v8::Context> context) {
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   TRI_v8_global_t* v8g = TRI_CreateV8Globals(isolate);
 
-  // create the exports
-  v8::Handle<v8::Object> exports = v8::Object::New();
-  TRI_AddGlobalVariableVocbase(context, "EXPORTS_SLOW_BUFFER", exports);
-
   // .............................................................................
   // generate the general SlowBuffer template
   // .............................................................................
@@ -1668,8 +1664,12 @@ void TRI_InitV8Buffer (v8::Handle<v8::Context> context) {
   TRI_V8_AddMethod(v8g->BufferTempl, "byteLength", JS_ByteLength);
   TRI_V8_AddMethod(v8g->BufferTempl, "makeFastBuffer", JS_MakeFastBuffer);
 
+  // create the exports
+  v8::Handle<v8::Object> exports = v8::Object::New();
+
   TRI_V8_AddMethod(exports, "SlowBuffer", v8g->BufferTempl);
   TRI_V8_AddMethod(exports, "setFastBufferConstructor", JS_SetFastBufferConstructor);
+  TRI_AddGlobalVariableVocbase(context, "EXPORTS_SLOW_BUFFER", exports);
 
   v8::HeapProfiler::DefineWrapperClass(TRI_V8_BUFFER_CID, WrapperInfo);
 }

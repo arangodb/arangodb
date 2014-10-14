@@ -179,7 +179,7 @@ actions.defineHttp({
       return;
     }
 
-        internal.wal.flush(req.parameters.waitForSync === "true",
+    internal.wal.flush(req.parameters.waitForSync === "true",
                        req.parameters.waitForCollector === "true");
     actions.resultOk(req, res, actions.HTTP_OK);
   }

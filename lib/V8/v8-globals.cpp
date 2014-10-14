@@ -126,8 +126,8 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     _RevKey(),
     _ToKey(),
 
-    _currentRequest(0),
-    _currentResponse(0),
+    _currentRequest(nullptr),
+    _currentResponse(nullptr),
     _currentTransaction(nullptr),
     _queryRegistry(nullptr),
     _resolver(nullptr),
