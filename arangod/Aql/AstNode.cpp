@@ -613,10 +613,10 @@ AstNode* AstNode::castToBool (Ast* ast) {
     // fall-through intentional
   }
   else if (type == NODE_TYPE_LIST) {
-    // fall-through intentional
+    return ast->createNodeValueBool(true);
   }
   else if (type == NODE_TYPE_ARRAY) {
-    // fall-through intentional
+    return ast->createNodeValueBool(true);
   }
 
   return ast->createNodeValueBool(false);
