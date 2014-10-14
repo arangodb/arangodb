@@ -32,3 +32,6 @@ branches:
     - 2.0
     - 2.1
     - devel
+
+notifications:
+  irc: "chat.freenode.net#arangodb"
