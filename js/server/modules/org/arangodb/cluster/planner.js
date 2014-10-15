@@ -140,10 +140,10 @@ PortFinder.prototype.next = function () {
       }
     }
     // Check that port is available:
-    if (!this.dispatcher.avoidPorts.hasOwnProperty(this.port)) {
+    if (! this.dispatcher.avoidPorts.hasOwnProperty(this.port)) {
       var available = true;
       if (this.dispatcher.endpoint === "tcp://localhost:") {
-        available = testPort("tcp://0.0.0.0:"+this.port);
+        available = testPort("tcp://0.0.0.0:" + this.port);
       }
       else {
         var url = endpointToURL(this.dispatcher.endpoint) +

@@ -567,7 +567,7 @@ actions.defineHttp({
       return;
     }
     try {
-      var r = internal.testPort("tcp://0.0.0.0:"+port);
+      var r = internal.testPort("tcp://0.0.0.0:" + port);
       res.responseCode = actions.HTTP_OK;
       res.contentType = "application/json; charset=utf-8";
       res.body = JSON.stringify(r);
