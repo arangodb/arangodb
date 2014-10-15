@@ -131,22 +131,39 @@ function EndpointsSuite () {
 
       var i;
       var base = 30000 + parseInt(Math.random() * 10000, 10);
+      var ports = [ ];
+      var iterations = 0;
 
       // open a few endpoints
       var dbNames = [ ];
+
       for (i = 0; i < 3; ++i) {
-        db._configureEndpoint("tcp://127.0.0.1:" + (base + i), dbNames);
+        // determine which port we can use
+        while (! require("internal").testPort("tcp://127.0.0.1:" + base)) {
+          ++base;
+          if (base > 65535) {
+            base = 2048;
+          }
+
+          if (++iterations > 100) {
+            // prevent endless looping
+            fail();
+          }
+        }
+        ports[i] = base;
+
+        db._configureEndpoint("tcp://127.0.0.1:" + ports[i], dbNames);
         dbNames.push("db" + i);
       }
 
-      db._configureEndpoint("tcp://127.0.0.1:" + (base + 2), [ ]);
-      db._configureEndpoint("tcp://127.0.0.1:" + (base + 1), [ "abc", "def" ]);
-      db._configureEndpoint("tcp://127.0.0.1:" + (base ), [ "_system" ]);
+      db._configureEndpoint("tcp://127.0.0.1:" + ports[2], [ ]);
+      db._configureEndpoint("tcp://127.0.0.1:" + ports[1], [ "abc", "def" ]);
+      db._configureEndpoint("tcp://127.0.0.1:" + ports[0], [ "_system" ]);
 
       var expected = [
-        { endpoint: "tcp://127.0.0.1:" + base, databases: [ "_system" ] },
-        { endpoint: "tcp://127.0.0.1:" + (base + 1), databases: [ "abc", "def" ] },
-        { endpoint: "tcp://127.0.0.1:" + (base + 2), databases: [ ] }
+        { endpoint: "tcp://127.0.0.1:" + ports[0], databases: [ "_system" ] },
+        { endpoint: "tcp://127.0.0.1:" + ports[1], databases: [ "abc", "def" ] },
+        { endpoint: "tcp://127.0.0.1:" + ports[2], databases: [ ] }
       ];
 
       var actual = filterDefault(db._listEndpoints());
