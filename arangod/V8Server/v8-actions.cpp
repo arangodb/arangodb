@@ -577,7 +577,16 @@ static HttpResponse* ResponseV8ToCpp (TRI_v8_global_t const* v8g,
       response->body().appendText(out);
     }
     else {
-      response->body().appendText(TRI_ObjectToString(res->Get(v8g->BodyKey)));
+      v8::Handle<v8::Value> b = res->Get(v8g->BodyKey);
+      if (V8Buffer::hasInstance(b)) {
+        // body is a Buffer
+        auto obj = b.As<v8::Object>();
+        response->body().appendText(V8Buffer::data(obj), V8Buffer::length(obj));
+      }
+      else {
+        // treat body as a string
+        response->body().appendText(TRI_ObjectToString(res->Get(v8g->BodyKey)));
+      }
     }
   }
 
