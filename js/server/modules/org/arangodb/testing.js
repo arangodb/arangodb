@@ -78,7 +78,7 @@ var optiondoku = [
 ////////////////////////////////////////////////////////////////////////////////
 
 var _ = require("underscore");
-
+var cleanupDirectories = [];
 var testFuncs = {'all': function(){}};
 var print = require("internal").print;
 var time = require("internal").time;
@@ -242,7 +242,9 @@ function startInstance (protocol, options, addArgs, testname) {
   var topDir = findTopDir();
   var instanceInfo = {};
   instanceInfo.topDir = topDir;
-  var tmpDataDir = fs.getTempFile();
+  var tmpDataDir = '/var/' + fs.getTempFile();
+
+  instanceInfo.flatTmpDataDir = tmpDataDir;
 
   tmpDataDir += '/' + testname + '/';
   print(tmpDataDir);
@@ -328,7 +330,6 @@ function startInstance (protocol, options, addArgs, testname) {
       break;
     }
   }
-
   instanceInfo.endpoint = endpoint;
   instanceInfo.url = url;
 
@@ -355,16 +356,34 @@ function shutdownInstance (instanceInfo, options) {
     if (typeof(instanceInfo.exitStatus) === 'undefined') {
       download(instanceInfo.url+"/_admin/shutdown","",
                makeAuthorisationHeaders(options));
-      wait(10);
-      killExternal(instanceInfo.pid);
+
+      if (typeof(options.valgrind) === 'string') {
+        print("Waiting for server shut down");
+        var res = statusExternal(instanceInfo.pid, true);
+        print("Server gone: ");
+        print(res);
+      }
+      else {
+        wait(10);
+        killExternal(instanceInfo.pid);
+      }
     }
     else {
       print("Server already dead, doing nothing.");
     }
     
   }
+  cleanupDirectories = cleanupDirectories.concat([instanceInfo.tmpDataDir, instanceInfo.flatTmpDataDir]);
+}
+
+function cleanupDBDirectories(options) {
   if (options.cleanup) {
-    fs.removeDirectoryRecursive(instanceInfo.tmpDataDir);
+    for (var i in cleanupDirectories) {
+      if (cleanupDirectories.hasOwnProperty(i)) {
+        fs.removeDirectoryRecursive(cleanupDirectories[i], true);
+        // print("deleted " + cleanupDirectories[i]);
+      }
+    }
   }
 }
 
@@ -1367,6 +1386,7 @@ function UnitTest (which, options) {
       results.all_ok = allok;
     }
     results.all_ok = allok;
+    cleanupDBDirectories(options);
     if (jsonReply === true ) {
       return results;
     }
@@ -1394,6 +1414,7 @@ function UnitTest (which, options) {
     }
     r.ok = ok;
     results.all_ok = ok;
+    cleanupDBDirectories(options);
     if (jsonReply === true ) {
       return results;
     }
