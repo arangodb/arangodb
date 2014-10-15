@@ -1705,6 +1705,37 @@ static v8::Handle<v8::Value> JS_MarkNonce (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the last modification time of a file
+/// @startDocuBlock JS_MTime
+/// `fs.mtime(filename)`
+///
+/// Returns the last modification date of the specified file. The date is
+/// returned as a Unix timestamp (number of seconds elapsed since January 1 1970).
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_MTime (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract two arguments
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "mtime(<filename>)");
+  }
+
+  string filename = TRI_ObjectToString(argv[0]);
+
+  int64_t mtime;
+  int res = TRI_MTimeFile(filename.c_str(), &mtime);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, res);
+  }
+
+  return scope.Close(v8::Number::New(static_cast<double>(mtime)));
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a file
 /// @startDocuBlock JS_Move
 /// `fs.move(source, destination)`
@@ -3819,6 +3850,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "FS_LIST_TREE", JS_ListTree);
   TRI_AddGlobalFunctionVocbase(context, "FS_MAKE_DIRECTORY", JS_MakeDirectory);
   TRI_AddGlobalFunctionVocbase(context, "FS_MOVE", JS_Move);
+  TRI_AddGlobalFunctionVocbase(context, "FS_MTIME", JS_MTime);
   TRI_AddGlobalFunctionVocbase(context, "FS_REMOVE", JS_Remove);
   TRI_AddGlobalFunctionVocbase(context, "FS_REMOVE_DIRECTORY", JS_RemoveDirectory);
   TRI_AddGlobalFunctionVocbase(context, "FS_REMOVE_RECURSIVE_DIRECTORY", JS_RemoveRecursiveDirectory);
