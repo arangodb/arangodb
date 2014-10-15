@@ -41,6 +41,8 @@ function FileSystemSuite () {
   var ERRORS = require("internal").errors;
   var tempDir;
 
+  var binary = "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";
+
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -383,24 +385,176 @@ function FileSystemSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief move() - TODO
+/// @brief move() 
 ////////////////////////////////////////////////////////////////////////////////
 
     testMove : function () {
+      var tempName, tempName2;
+      
+      // create a new file with a specific content
+      tempName = fs.join(tempDir, 'foo');
+      tempName2 = fs.join(tempDir, 'bar');
+      fs.write(tempName, "this is a test file");
+
+      fs.move(tempName, tempName2);
+      assertFalse(fs.isFile(tempName));
+      assertTrue(fs.isFile(tempName2));
+      assertEqual("this is a test file", fs.read(tempName2));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read() - TODO
+/// @brief move() 
+////////////////////////////////////////////////////////////////////////////////
+
+    testMoveDirectory : function () {
+      var tempName, tempName2;
+      
+      // create a new file with a specific content
+      tempName = fs.join(tempDir, 'foo');
+      tempName2 = fs.join(tempDir, 'bar');
+
+      fs.makeDirectory(tempName);
+      fs.makeDirectory(tempName2);
+
+      fs.write(fs.join(tempName, "test"), "this is a test file");
+
+      fs.move(tempName, tempName2);
+      assertFalse(fs.isDirectory(tempName));
+      assertTrue(fs.isDirectory(tempName2));
+      assertTrue(fs.isFile(fs.join(tempName2, "test")));
+      assertEqual("this is a test file", fs.read(fs.join(tempName2, "test")));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read() 
 ////////////////////////////////////////////////////////////////////////////////
 
     testRead : function () {
+      var tempName = fs.join(tempDir, 'test');
+      fs.write(tempName, "this is a test file");
+
+      assertEqual("this is a test file", fs.read(tempName));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remove() - TODO
+/// @brief read() 
+////////////////////////////////////////////////////////////////////////////////
+
+    testReadMultiline : function () {
+      var text = "this is a test file\r\nit contains multiple lines\r\nand\ttabs.";
+      var tempName = fs.join(tempDir, 'test');
+      fs.write(tempName, text);
+
+      assertEqual(text, fs.read(tempName));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read() 
+////////////////////////////////////////////////////////////////////////////////
+
+    testReadUnicode : function () {
+      var text = "der Möter ging mit viel Geklöter hündert Meter wäiter" +
+                 "코리아닷컴 메일알리미 서비스 중단안내 [안내] 개인정보취급방침 변경 안내 회사소개 | 광고안내 | 제휴안내 | 개인정보취급방침 | 청소년보호정책 | 스팸방지정책 | 사이버고객센터 | 약관안내 | 이메일 무단수집거부 | 서비스 전체보기" +
+                 "中华网以中国的市场为核心，致力为当地用户提供流动增值服务、网上娱乐及互联网服务。本公司亦推出网上游戏，及透过其门户网站提供包罗万有的网上产品及服务。" +
+                 "Голкипер мадридского «Реала» Икер Касильяс призвал своих партнеров сосредоточить все мысли на предстоящем дерби с «Атлетико»";
+
+      var tempName = fs.join(tempDir, 'test');
+      fs.write(tempName, text);
+
+      assertEqual(text, fs.read(tempName));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read() 
+////////////////////////////////////////////////////////////////////////////////
+
+    testReadEmpty : function () {
+      var tempName = fs.join(tempDir, 'test');
+      fs.write(tempName, "");
+
+      assertEqual("", fs.read(tempName));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read64() 
+////////////////////////////////////////////////////////////////////////////////
+
+    testRead64 : function () {
+      var tempName = fs.join(tempDir, 'test');
+      var data = new Buffer(binary, 'base64');
+
+      // write binary data
+      fs.write(tempName, data);
+
+      // read back as base64-encoded
+      assertEqual(binary, fs.read64(tempName));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read64() 
+////////////////////////////////////////////////////////////////////////////////
+
+    testRead64Empty : function () {
+      var tempName = fs.join(tempDir, 'test');
+
+      fs.write(tempName, "");
+
+      // read back as base64-encoded
+      assertEqual("", fs.read64(tempName));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read64() 
+////////////////////////////////////////////////////////////////////////////////
+
+    testRead64Short : function () {
+      var tempName = fs.join(tempDir, 'test');
+
+      fs.write(tempName, "XXX");
+
+      // read back as base64-encoded
+      assertEqual("WFhY", fs.read64(tempName));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove() 
 ////////////////////////////////////////////////////////////////////////////////
 
     testRemove : function () {
+      var tempName = fs.join(tempDir, 'test');
+
+      fs.write(tempName, "abc");
+
+      assertTrue(fs.isFile(tempName));
+      fs.remove(tempName);
+      assertFalse(fs.isFile(tempName));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove() 
+////////////////////////////////////////////////////////////////////////////////
+
+    testRemoveNonExisting : function () {
+      var tempName = fs.join(tempDir, 'test');
+
+      try {
+        fs.remove(tempName);
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_FILE_NOT_FOUND.code, err.errorNum);
+      }
+      
+      // directory
+      fs.makeDirectory(tempName);
+      
+      try {
+        fs.remove(tempName);
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_FILE_NOT_FOUND.code, err.errorNum);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -408,18 +562,21 @@ function FileSystemSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSize : function () {
-      var tempName;
-      
       // create a new file with a specific content
-      tempName = fs.join(tempDir, 'foo');
+      var tempName = fs.join(tempDir, 'foo');
       fs.write(tempName, "this is a test file");
 
       // test the size of the new file
       assertEqual(19, fs.size(tempName));
+    },
 
-      // remove the new file
-      fs.remove(tempName);
-    
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test size() - the filesize of a file
+////////////////////////////////////////////////////////////////////////////////
+
+    testSizeNonExisting : function () {
+      var tempName = fs.join(tempDir, 'foo');
+
       // now the file does not exist
       try { 
         // try to read filesize. this should fail
@@ -443,7 +600,93 @@ function FileSystemSuite () {
 
       // remove the directory
       fs.removeDirectory(tempName);
-    }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test write()
+////////////////////////////////////////////////////////////////////////////////
+
+    testWrite : function () {
+      var text = "this is a test";
+      var filename = fs.join(tempDir, "test");
+      assertEqual(true, fs.write(filename, text));
+      assertEqual(text.length, fs.size(filename));
+
+      var content = fs.read(filename);
+      assertEqual(text, content);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test write()
+////////////////////////////////////////////////////////////////////////////////
+
+    testWriteEmpty : function () {
+      var filename = fs.join(tempDir, "test");
+      assertEqual(true, fs.write(filename, ""));
+      assertTrue(fs.isFile(filename));
+
+      var content = fs.read(filename);
+      assertEqual(0, fs.size(filename));
+      assertEqual("", content);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test write()
+////////////////////////////////////////////////////////////////////////////////
+
+    testWriteJson : function () {
+      var filename = fs.join(tempDir, "test");
+      assertEqual(true, fs.write(filename, JSON.stringify({
+        values: [ 1, 2, 3 ],
+        foo: "bar",
+        test: true
+      })));
+
+      var content = fs.read(filename);
+      assertEqual("{\"values\":[1,2,3],\"foo\":\"bar\",\"test\":true}", content);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test write()
+////////////////////////////////////////////////////////////////////////////////
+
+    testWriteMultiline : function () {
+      var text = "the\nquick\r\nbrown\nfoxx\tjumped over\r\n\r\nthe lazy dog.";
+      var filename = fs.join(tempDir, "test");
+      assertEqual(true, fs.write(filename, text));
+      assertEqual(text.length, fs.size(filename));
+
+      var content = fs.read(filename);
+      assertEqual(text, content);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test write()
+////////////////////////////////////////////////////////////////////////////////
+
+    testWriteOverwrite : function () {
+      var filename = fs.join(tempDir, "test");
+      assertEqual(true, fs.write(filename, "this is a test"));
+      
+      assertEqual(true, fs.write(filename, "this is another test"));
+
+      var content = fs.read(filename);
+      assertEqual("this is another test", content);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test write()
+////////////////////////////////////////////////////////////////////////////////
+
+    testWriteBuffer : function () {
+      var filename = fs.join(tempDir, "test");
+      var data = new Buffer(binary, "base64");
+
+      assertEqual(true, fs.write(filename, data));
+      assertEqual(binary, fs.read64(filename));
+      assertEqual(binary, fs.readFileSync(filename, 'base64'));
+      assertEqual(binary, fs.readFile(filename).toString('base64'));
+    },
 
   };
 }
