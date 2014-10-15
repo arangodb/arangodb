@@ -2417,7 +2417,8 @@ DistributeNode::DistributeNode (ExecutionPlan* plan,
                                 triagens::basics::Json const& base)
   : ExecutionNode(plan, base),
     _vocbase(plan->getAst()->query()->vocbase()),
-    _collection(plan->getAst()->query()->collections()->get(JsonHelper::checkAndGetStringValue(base.json(), "collection"))) {
+    _collection(plan->getAst()->query()->collections()->get(JsonHelper::checkAndGetStringValue(base.json(), "collection"))),
+    _varId(JsonHelper::checkAndGetNumericValue<VariableId>(base.json(), "varId")){
 }
 
 void DistributeNode::toJsonHelper (triagens::basics::Json& nodes,
@@ -2430,7 +2431,9 @@ void DistributeNode::toJsonHelper (triagens::basics::Json& nodes,
   }
   
   json("database", triagens::basics::Json(_vocbase->_name))
-      ("collection", triagens::basics::Json(_collection->getName()));
+      ("collection", triagens::basics::Json(_collection->getName()))
+      ("varId", triagens::basics::Json(static_cast<int>(_varId)));
+
 
   // And add it:
   nodes(json);

@@ -3860,6 +3860,22 @@ int ScatterBlock::getOrSkipSomeForShard (size_t atLeast,
 // --SECTION--                                             class DistributeBlock
 // -----------------------------------------------------------------------------
 
+DistributeBlock::DistributeBlock (ExecutionEngine* engine,
+                                  DistributeNode const* ep, 
+                                  std::vector<std::string> const& shardIds, 
+                                  Collection const* collection)
+                                  : BlockWithClients(engine, ep, shardIds), 
+                                    _collection(collection) {
+    
+  // get the variable to inspect . . .
+  VariableId varId = ep->_varId;
+  
+  // get the register id of the variable to inspect . . .
+  auto it = ep->getVarOverview()->varInfo.find(varId);
+  TRI_ASSERT(it != ep->getVarOverview()->varInfo.end());
+  _regId = (*it).second.registerId;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializeCursor
 ////////////////////////////////////////////////////////////////////////////////
@@ -4057,12 +4073,12 @@ bool DistributeBlock::getBlockForClient (size_t atLeast,
         break; 
       }
     }
+
     AqlItemBlock* cur = _buffer.at(_index);
-    size_t reg = cur->getNrRegs() - 1; // FIXME this is a totally arbitrary choice
+      
     while (_pos < cur->size() && buf.at(clientId).size() < atLeast) {
       // inspect cur in row _pos and check to which shard it should be sent . .
-      size_t id = sendToClient(cur->getValue(_pos, 
-            static_cast<triagens::aql::RegisterId>(reg)));
+      size_t id = sendToClient(cur->getValue(_pos, _regId));
       buf.at(id).push_back(make_pair(_index, _pos++));
     }
     if (_pos == cur->size()) {
@@ -4086,18 +4102,12 @@ bool DistributeBlock::getBlockForClient (size_t atLeast,
 size_t DistributeBlock::sendToClient (AqlValue val) {
   
   TRI_ASSERT(val._type == AqlValue::JSON);
-  TRI_json_t const* json;
-  if (val.isArray()) {
-    // TODO loop over _shardKeys and make a Json array containing those things?
-    json = val.extractArrayMember(_trx, 
-        _collection->documentCollection(), _shardKeys).json();
-  }
-  else {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
+  //TODO should work for SHAPED too (maybe this requires converting it to TRI_json_t)
+ 
+  TRI_json_t const* json = val._json->json();
   
   std::string shardId;
-  bool usesDefaultShardingAttributes = false;  
+  bool usesDefaultShardingAttributes;  
   
   auto clusterInfo = triagens::arango::ClusterInfo::instance();
   clusterInfo->getResponsibleShard( _collection->getName(),
