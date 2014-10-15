@@ -367,8 +367,8 @@ BaseMiddleware = function () {
 /// @EXAMPLES
 ///
 /// ```js
-/// response.sendFile('results.json');
-/// response.sendFile('image.png', { lastModified: true });
+/// response.sendFile('/tmp/results.json');
+/// response.sendFile(applicationContext.foxxFilename('image.png'), { lastModified: true });
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
