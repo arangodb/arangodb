@@ -277,7 +277,7 @@ int main (int argc, char* argv[]) {
 
   BaseClient.createEndpoint();
 
-  if (BaseClient.endpointServer() == 0) {
+  if (BaseClient.endpointServer() == nullptr) {
     cerr << "invalid value for --server.endpoint ('" << BaseClient.endpointString() << "')" << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
   }
@@ -372,7 +372,7 @@ int main (int argc, char* argv[]) {
       cerr << "Cannot open '" << FileName << "'. Invalid file type." << endl;
     }
 
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   // progress
@@ -403,7 +403,7 @@ int main (int argc, char* argv[]) {
 
     else {
       cerr << "Wrong type '" << TypeImport << "'." << endl;
-      TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
     }
 
     cout << endl;
@@ -429,7 +429,7 @@ int main (int argc, char* argv[]) {
 
   TRIAGENS_REST_SHUTDOWN;
 
-  arangoimpExitFunction(ret, NULL);
+  arangoimpExitFunction(ret, nullptr);
 
   return ret;
 }

@@ -50,7 +50,7 @@ using namespace std;
 /// @brief name of the queue
 ////////////////////////////////////////////////////////////////////////////////
 
-const string RestJobHandler::QUEUE_NAME = "STANDARD";
+const std::string RestJobHandler::QUEUE_NAME = "STANDARD";
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -83,7 +83,7 @@ bool RestJobHandler::isDirect () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& RestJobHandler::queue () const {
+std::string const& RestJobHandler::queue () const {
   return QUEUE_NAME;
 }
 
@@ -131,8 +131,8 @@ HttpHandler::status_t RestJobHandler::execute () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestJobHandler::putJob () {
-  const vector<string>& suffix = _request->suffix();
-  const string& value = suffix[0];
+  std::vector<string> const& suffix = _request->suffix();
+  std::string const& value = suffix[0];
   uint64_t jobId = StringUtils::uint64(value);
 
   AsyncJobResult::Status status;
@@ -151,10 +151,10 @@ void RestJobHandler::putJob () {
   }
 
   TRI_ASSERT(status == AsyncJobResult::JOB_DONE);
-  TRI_ASSERT(response != 0);
+  TRI_ASSERT(response != nullptr);
 
   // delete our own response
-  if (_response != 0) {
+  if (_response != nullptr) {
     delete _response;
   }
 
@@ -170,9 +170,9 @@ void RestJobHandler::putJob () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestJobHandler::putJobMethod () {
-  const vector<string>& suffix = _request->suffix();
-  const string& value = suffix[0];
-  const string& method = suffix[1];
+  std::vector<std::string> const& suffix = _request->suffix();
+  std::string const& value = suffix[0];
+  std::string const& method = suffix[1];
   uint64_t jobId = StringUtils::uint64(value);
 
   if (method == "cancel") {
@@ -201,14 +201,14 @@ void RestJobHandler::putJobMethod () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestJobHandler::getJob () {
-  const vector<string> suffix = _request->suffix();
+  std::vector<std::string> const suffix = _request->suffix();
 
   if (suffix.size() != 1) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     return;
   }
 
-  const string type = suffix[0];
+  std::string const type = suffix[0];
 
   if (! type.empty() && type[0] >= '1' && type[0] <= '9') {
     getJobId(type);
@@ -259,25 +259,34 @@ void RestJobHandler::getJobType (std::string const& type) {
     count = (size_t) StringUtils::uint64(value);
   }
 
-  vector<AsyncJobResult::IdType> ids;
-  if (type == "done") {
-    ids = _jobManager->done(count);
+  std::vector<AsyncJobResult::IdType> ids;
+  try {
+    if (type == "done") {
+      ids = _jobManager->done(count);
+    }
+    else if (type == "pending") {
+      ids = _jobManager->pending(count);
+    }
+    else {
+      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
+      return;
+    }
   }
-  else if (type == "pending") {
-    ids = _jobManager->pending(count);
-  }
-  else {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
+  catch (...) {
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR);
     return;
   }
 
   TRI_json_t* json = TRI_CreateList2Json(TRI_CORE_MEM_ZONE, ids.size());
 
-  if (json != 0) {
-    for (size_t i = 0, n = ids.size(); i < n; ++i) {
+  if (json != nullptr) {
+    size_t const n = ids.size();
+    for (size_t i = 0; i < n; ++i) {
       char* idString = TRI_StringUInt64(ids[i]);
 
-      TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, json, TRI_CreateStringJson(TRI_CORE_MEM_ZONE, idString));
+      if (idString != nullptr) {
+        TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, json, TRI_CreateStringJson(TRI_CORE_MEM_ZONE, idString));
+      }
     }
 
     generateResult(json);
@@ -293,7 +302,7 @@ void RestJobHandler::getJobType (std::string const& type) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestJobHandler::deleteJob () {
-  const vector<string> suffix = _request->suffix();
+  std::vector<std::string> const suffix = _request->suffix();
 
   if (suffix.size() != 1) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
@@ -330,7 +339,7 @@ void RestJobHandler::deleteJob () {
 
   TRI_json_t* json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
-  if (json != 0) {
+  if (json != nullptr) {
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "result", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
 
     generateResult(json);
