@@ -398,6 +398,7 @@ void ArangoServer::buildApplicationServer () {
   // ...........................................................................
 
   _queryRegistry = new aql::QueryRegistry();
+  _server->_queryRegistry = static_cast<void*>(_queryRegistry);
 
   // .............................................................................
   // V8 engine
@@ -850,7 +851,6 @@ int ArangoServer::startupServer () {
   _pairForAql = new std::pair<ApplicationV8*, aql::QueryRegistry*>;
   _pairForAql->first = _applicationV8;
   _pairForAql->second = _queryRegistry;
-  _server->_queryRegistry = static_cast<void*>(_queryRegistry);
 
   // ...........................................................................
   // create endpoints and handlers
