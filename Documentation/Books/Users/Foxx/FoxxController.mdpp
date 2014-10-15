@@ -6,27 +6,27 @@
 
 !SECTION HTTP Methods
 
-!SUBSECTION Get
+!SUBSECTION get
 <!-- js/server/modules/org/arangodb/foxx/controller.js -->
 @startDocuBlock JSF_foxx_controller_get
 
-!SUBSECTION Head
+!SUBSECTION head
 <!-- js/server/modules/org/arangodb/foxx/controller.js -->
 @startDocuBlock JSF_foxx_controller_head
 
-!SUBSECTION Post
+!SUBSECTION post
 <!-- js/server/modules/org/arangodb/foxx/controller.js -->
 @startDocuBlock JSF_foxx_controller_post
 
-!SUBSECTION Put
+!SUBSECTION put
 <!-- js/server/modules/org/arangodb/foxx/controller.js -->
 @startDocuBlock JSF_foxx_controller_put
 
-!SUBSECTION Patch
+!SUBSECTION patch
 <!-- js/server/modules/org/arangodb/foxx/controller.js -->
 @startDocuBlock JSF_foxx_controller_patch
 
-!SUBSECTION Delete
+!SUBSECTION delete
 <!-- js/server/modules/org/arangodb/foxx/controller.js -->
 @startDocuBlock JSF_foxx_controller_delete
 
@@ -54,19 +54,19 @@ view of the route documentation. With the provided information, Foxx will
 generate a nice documentation for you. Furthermore you can describe your
 API by chaining the following methods onto your path definition:
 
-!SUBSECTION Path Param
+!SUBSECTION pathParam
 <!-- js/server/modules/org/arangodb/foxx/request_context.js -->
 @startDocuBlock JSF_foxx_RequestContext_pathParam
 
-!SUBSECTION Query Param
+!SUBSECTION queryParam
 <!-- js/server/modules/org/arangodb/foxx/request_context.js -->
 @startDocuBlock JSF_foxx_RequestContext_queryParam
 
-!SUBSECTION Body Param
+!SUBSECTION bodyParam
 <!-- js/server/modules/org/arangodb/foxx/request_context.js -->
 @startDocuBlock JSF_foxx_RequestContext_bodyParam
 
-!SUBSECTION Error Response
+!SUBSECTION errorResponse
 <!-- js/server/modules/org/arangodb/foxx/request_context.js -->
 @startDocuBlock JSF_foxx_RequestContext_errorResponse
 
@@ -108,7 +108,7 @@ ctrl.get('/another/route', function (req, res) {
 }); // no errorResponse needed here either
 ```
 
-!SUBSECTION Buffer Error Response
+!SUBSECTION Buffer errorResponse
 <!-- js/server/modules/org/arangodb/foxx/request_context.js -->
 @startDocuBlock JSF_foxx_RequestContextBuffer_errorResponse
 
@@ -128,15 +128,15 @@ after the normal routing process is happening. You could use that for logging
 or to manipulate the request or response (translate it to a certain format for
 example).
 
-!SUBSECTION Before
+!SUBSECTION before
 <!-- js/server/modules/org/arangodb/foxx/controller.js -->
 @startDocuBlock JSF_foxx_controller_before
 
-!SUBSECTION After
+!SUBSECTION after
 <!-- js/server/modules/org/arangodb/foxx/controller.js -->
 @startDocuBlock JSF_foxx_controller_after
 
-!SUBSECTION Around
+!SUBSECTION around
 <!-- js/server/modules/org/arangodb/foxx/controller.js -->
 @startDocuBlock JSF_foxx_controller_around
 
@@ -194,7 +194,7 @@ The *request* object inherits several attributes from the underlying Actions:
 In addition to these attributes, a Foxx request objects provides the following
 convenience methods:
 
-!SUBSECTION Body
+!SUBSECTION body
 <!-- js/server/modules/org/arangodb/foxx/base_middleware.js -->
 @startDocuBlock JSF_foxx_BaseMiddleware_request_body
 
@@ -202,11 +202,15 @@ convenience methods:
 <!-- js/server/modules/org/arangodb/foxx/base_middleware.js -->
 @startDocuBlock JSF_foxx_BaseMiddleware_request_rawBody
 
-!SUBSECTION Params
+!SUBSECTION rawBodyBuffer
+<!-- js/server/modules/org/arangodb/foxx/base_middleware.js -->
+@startDocuBlock JSF_foxx_BaseMiddleware_request_rawBodyBuffer
+
+!SUBSECTION params
 <!-- js/server/modules/org/arangodb/foxx/base_middleware.js -->
 @startDocuBlock JSF_foxx_BaseMiddleware_request_params
 
-!SUBSECTION Cookie
+!SUBSECTION cookie
 <!-- js/server/modules/org/arangodb/foxx/base_middleware.js -->
 @startDocuBlock JSF_foxx_BaseMiddleware_request_cookie
 
@@ -218,21 +222,29 @@ to set the raw body by hand.
 
 You provide your response body as a string here.
 
-!SUBSECTION Response Status
+!SUBSECTION Response status
 <!-- js/server/modules/org/arangodb/foxx/base_middleware.js -->
 @startDocuBlock JSF_foxx_BaseMiddleware_response_status
 
-!SUBSECTION Response Set
+!SUBSECTION Response set
 <!-- js/server/modules/org/arangodb/foxx/base_middleware.js -->
 @startDocuBlock JSF_foxx_BaseMiddleware_response_set
 
-!SUBSECTION Response Json
+!SUBSECTION Response json
 <!-- js/server/modules/org/arangodb/foxx/base_middleware.js -->
 @startDocuBlock JSF_foxx_BaseMiddleware_response_json
 
-!SUBSECTION Response Cookie
+!SUBSECTION Response cookie
 <!-- js/server/modules/org/arangodb/foxx/base_middleware.js -->
 @startDocuBlock JSF_foxx_BaseMiddleware_response_cookie
+
+!SUBSECTION Response send
+<!-- js/server/modules/org/arangodb/foxx/base_middleware.js -->
+@startDocuBlock JSF_foxx_BaseMiddleware_response_send
+
+!SUBSECTION Response sendFile
+<!-- js/server/modules/org/arangodb/foxx/base_middleware.js -->
+@startDocuBlock JSF_foxx_BaseMiddleware_response_sendFile
 
 !SECTION Controlling Access to Foxx Applications
 

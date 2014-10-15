@@ -54,9 +54,9 @@ var Controller,
 /// @EXAMPLES
 ///
 /// ```js
-///   app = new Controller(applicationContext, {
-///     urlPrefix: "/meadow"
-///   });
+/// app = new Controller(applicationContext, {
+///   urlPrefix: "/meadow"
+/// });
 /// ```
 ///
 /// @endDocuBlock
@@ -503,12 +503,12 @@ extend(Controller.prototype, {
 /// @EXAMPLES
 ///
 /// ```js
-///     app.activateAuthentication({
-///       type: "cookie",
-///       cookieLifetime: 360000,
-///       cookieName: "my_cookie",
-///       sessionLifetime: 400,
-///     });
+/// app.activateAuthentication({
+///   type: "cookie",
+///   cookieLifetime: 360000,
+///   cookieName: "my_cookie",
+///   sessionLifetime: 400,
+/// });
 /// ```
 ///
 /// @endDocuBlock

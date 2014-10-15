@@ -28,6 +28,7 @@
 var jsunity = require("jsunity");
 
 var fs = require("fs");
+var internal = require("internal");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        filesystem
@@ -425,6 +426,54 @@ function FileSystemSuite () {
       assertTrue(fs.isDirectory(tempName2));
       assertTrue(fs.isFile(fs.join(tempName2, "test")));
       assertEqual("this is a test file", fs.read(fs.join(tempName2, "test")));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief mtime() 
+////////////////////////////////////////////////////////////////////////////////
+
+    testMTime : function () {
+      var tempName = fs.join(tempDir, 'test');
+      fs.write(tempName, "this is a test file");
+
+      var now = Date.now() / 1000;
+      var mtime = fs.mtime(tempName);
+
+      // tolerate a max deviation of 60 seconds
+      // (deviation needs to be > 1 to make the tests succeed even on busy
+      // test servers)
+      assertTrue(Math.abs(mtime - now) <= 60);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief mtime() 
+////////////////////////////////////////////////////////////////////////////////
+
+    testMTimeUpdate : function () {
+      var tempName = fs.join(tempDir, 'test');
+      fs.write(tempName, "this is a test file");
+
+      var mtime = fs.mtime(tempName);
+      internal.wait(2, false);
+      fs.write(tempName, "this is an updated test file");
+
+      assertNotEqual(fs.mtime(tempName), mtime);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief mtime() 
+////////////////////////////////////////////////////////////////////////////////
+
+    testMTimeNonExisting : function () {
+      var tempName = fs.join(tempDir, 'test');
+
+      try {
+        fs.mtime(tempName);
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_FILE_NOT_FOUND.code, err.errorNum);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
