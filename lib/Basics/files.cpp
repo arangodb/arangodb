@@ -461,20 +461,39 @@ bool TRI_ExistsFile (char const* path) {
 #else
 
 bool TRI_ExistsFile (char const* path) {
-  if (path == NULL) {
+  if (path == nullptr) {
     return false;
   }
-  else {
-    struct stat stbuf;
-    int res;
+    
+  struct stat stbuf;
+  int res = TRI_STAT(path, &stbuf);
 
-    res = TRI_STAT(path, &stbuf);
-
-    return res == 0;
-  }
+  return res == 0;
 }
 
 #endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the last modification date of a file
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_MTimeFile (char const* path, int64_t* mtime) {
+  TRI_stat_t stbuf;
+  int res = TRI_STAT(path, &stbuf);
+
+  if (res == 0) {
+    *mtime = static_cast<int64_t>(stbuf.st_mtime);
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  res = errno;
+  if (res == ENOENT) {
+    return TRI_ERROR_FILE_NOT_FOUND;
+  }
+
+  TRI_set_errno(TRI_ERROR_SYS_ERROR);
+  return TRI_errno();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a directory, recursively
@@ -894,13 +913,16 @@ int TRI_RenameFile (char const* old, char const* filename) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_UnlinkFile (char const* filename) {
-  int res;
-
-  res = TRI_UNLINK(filename);
+  int res = TRI_UNLINK(filename);
 
   if (res != 0) {
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
     LOG_TRACE("cannot unlink file '%s': %s", filename, TRI_LAST_ERROR_STR);
-    return TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    int e = TRI_errno();
+    if (e == ENOENT) {
+      return TRI_ERROR_FILE_NOT_FOUND;
+    }
+    return e;
   }
 
   return TRI_ERROR_NO_ERROR;

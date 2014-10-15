@@ -108,7 +108,7 @@ exports.defineModule = function (path, file) {
 /// @brief guessContentType
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.guessContentType = function (filename) {
+exports.guessContentType = function (filename, defaultValue) {
   'use strict';
 
   var re = /\.([a-zA-Z0-9]+)$/;
@@ -131,6 +131,9 @@ exports.guessContentType = function (filename) {
   }
 
   // default mimetype
+  if (defaultValue) {
+    return defaultValue;
+  }
   return "text/plain; charset=utf-8";
 };
 
