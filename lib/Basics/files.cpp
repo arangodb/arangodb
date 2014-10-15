@@ -486,6 +486,11 @@ int TRI_MTimeFile (char const* path, int64_t* mtime) {
     return TRI_ERROR_NO_ERROR;
   }
 
+  res = errno;
+  if (res == ENOENT) {
+    return TRI_ERROR_FILE_NOT_FOUND;
+  }
+
   TRI_set_errno(TRI_ERROR_SYS_ERROR);
   return TRI_errno();
 }
