@@ -163,6 +163,41 @@ function printUsage () {
   }
 }
 
+function filterTestcaseByOptions (testname, options, whichFilter)
+{
+  if ((testname.indexOf("-cluster") !== -1) && (options.cluster === false)) {
+    whichFilter.filter = 'cluster';
+    return false;
+  }
+
+  if (testname.indexOf("-noncluster") !== -1 && (options.cluster === true)) {
+    whichFilter.filter = 'noncluster';
+    return false;
+  }
+
+  if (testname.indexOf("-timecritical") !== -1 && (options.skipTimeCritical === true)) {
+    whichFilter.filter = 'timecritical';
+    return false;
+  }
+
+  if (testname.indexOf("-geo") !== -1 && options.skipGeo) {
+    whichFilter.filter = 'geo';
+    return false;
+  }
+
+  if (testname.indexOf("-disabled") !== -1) {
+    whichFilter.filter = 'disabled';
+    return false;
+  }
+
+  if (testname.indexOf("replication") !== -1) {
+    whichFilter.filter = 'replication';
+    return false;
+  }
+
+  return true;
+}
+
 function findTopDir () {
   var topDir = fs.normalize(fs.makeAbsolute("."));
   if (! fs.exists("3rdParty") && ! fs.exists("arangod") &&
@@ -293,7 +328,6 @@ function startInstance (protocol, options, addArgs, testname) {
       break;
     }
   }
-
   instanceInfo.endpoint = endpoint;
   instanceInfo.url = url;
 
@@ -320,8 +354,17 @@ function shutdownInstance (instanceInfo, options) {
     if (typeof(instanceInfo.exitStatus) === 'undefined') {
       download(instanceInfo.url+"/_admin/shutdown","",
                makeAuthorisationHeaders(options));
-      wait(10);
-      killExternal(instanceInfo.pid);
+
+      if (typeof(options.valgrind) === 'string') {
+        print("Waiting for server shut down");
+        var res = statusExternal(instanceInfo.pid, true);
+        print("Server gone: ");
+        print(res);
+      }
+      else {
+        wait(10);
+        killExternal(instanceInfo.pid);
+      }
     }
     else {
       print("Server already dead, doing nothing.");
@@ -531,21 +574,18 @@ function performTests(options, testList, testname) {
   var i;
   var te;
   var continueTesting = true;
+  var filtered = {};
 
   for (i = 0; i < testList.length; i++) {
     te = testList[i];
-    print("\nTrying",te,"...");
-    if ((te.indexOf("-cluster") === -1 || options.cluster) &&
-        (te.indexOf("-noncluster") === -1 || options.cluster === false) &&
-        (te.indexOf("-timecritical") === -1 || options.skipTimeCritical === false) &&
-        (te.indexOf("-disabled") === -1)) {
-
+    if (filterTestcaseByOptions(te, options, filtered)) {
       if (!continueTesting) {
-        print("Skipping, server is gone.");
+        print("Skipping, " + te + "server is gone.");
         results[te] = {status: false, message: instanceInfo.exitStatus};
         continue;
       }
 
+      print("\nTrying",te,"...");
       var r = runThere(options, instanceInfo, te);
       if (r.hasOwnProperty('status')) {
         results[te] = r;
@@ -559,7 +599,7 @@ function performTests(options, testList, testname) {
       continueTesting = checkInstanceAlive(instanceInfo);
     }
     else {
-      print("Skipped because of cluster/non-cluster/timecritical or disabled.");
+      print("Skipped " + te + " because of " + filtered.filter);
     }
   }
   print("Shutting down...");
@@ -685,20 +725,19 @@ testFuncs.shell_client = function(options) {
   var i;
   var te;
   var continueTesting = true;
+  var filtered = {};
 
   for (i = 0; i < tests_shell_client.length; i++) {
     te = tests_shell_client[i];
-    print("\nTrying",te,"...");
-    if ((te.indexOf("-cluster") === -1 || options.cluster) &&
-        (te.indexOf("-noncluster") === -1 || options.cluster === false) &&
-        (te.indexOf("-timecritical") === -1 || options.skipTimeCritical === false) &&
-        (te.indexOf("-disabled") === -1)) {
+    if (filterTestcaseByOptions(te, options, filtered)) {
 
       if (!continueTesting) {
-        print("Skipping, server is gone.");
+        print("Skipping, " + te + "server is gone.");
         results[te] = {status: false, message: instanceInfo.exitStatus};
         continue;
       }
+
+      print("\nTrying",te,"...");
 
       var r = runInArangosh(options, instanceInfo, te);
       results[te] = r;
@@ -709,7 +748,7 @@ testFuncs.shell_client = function(options) {
       continueTesting = checkInstanceAlive(instanceInfo);
     }
     else {
-      print("Skipped because of cluster/non-cluster/timecritical.");
+      print("Skipped " + te + " because of " + filtered.filter);
     }
   }
   print("Shutting down...");
@@ -786,32 +825,30 @@ function rubyTests (options, ssl) {
   catch (err) {
   }
   var files = fs.list(fs.join("UnitTests","HttpInterface"));
+  var filtered = {};
   var result = {};
   var args;
   var i;
   var continueTesting = true;
 
   for (i = 0; i < files.length; i++) {
-    var n = files[i];
-    if (n.substr(0,4) === "api-" && n.substr(-3) === ".rb") {
-      print("Considering",n,"...");
-      if ((n.indexOf("-cluster") === -1 || options.cluster) &&
-          (n.indexOf("-noncluster") === -1 || options.cluster === false) &&
-          (n.indexOf("-timecritical") === -1 || options.skipTimeCritical === false) &&
-          (n.indexOf("-disabled") === -1) && 
-          n.indexOf("replication") === -1) {
+    var te = files[i];
+    if (te.substr(0,4) === "api-" && te.substr(-3) === ".rb") {
+      if (filterTestcaseByOptions(te, options, filtered)) {
+        
         args = ["--color", "-I", fs.join("UnitTests","HttpInterface"),
                 "--format", "d", "--require", tmpname,
-                fs.join("UnitTests","HttpInterface",n)];
+                fs.join("UnitTests","HttpInterface", te)];
 
         if (!continueTesting) {
           print("Skipping, server is gone.");
-          result[n] = {status: false, message: instanceInfo.exitStatus};
+          result[te] = {status: false, message: instanceInfo.exitStatus};
           continue;
         }
+        print("\nTrying",te,"...");
 
-        result[n] = executeAndWait("rspec", args);
-        if (result[n].status === false && !options.force) {
+        result[te] = executeAndWait("rspec", args);
+        if (result[te].status === false && !options.force) {
           break;
         }
 
@@ -819,7 +856,7 @@ function rubyTests (options, ssl) {
 
       }
       else {
-        print("Skipped because of cluster/non-cluster/timecritical or replication.");
+        print("Skipped " + te + " because of " + filtered.filter);
       }
     }
   }

@@ -528,6 +528,18 @@ bool ExecutionNode::walk (WalkerWorker<ExecutionNode>* worker) {
     return true;
   }
   
+  // Now handle a subquery:
+  if ((getType() == SUBQUERY) && worker->EnterSubQueryFirst()){
+    auto p = static_cast<SubqueryNode*>(this);
+    if (worker->enterSubquery(this, p->getSubquery())) {
+      bool abort = p->getSubquery()->walk(worker);
+      worker->leaveSubquery(this, p->getSubquery());
+      if (abort) {
+        return true;
+      }
+    }
+  }
+
   // Now the children in their natural order:
   for (auto it = _dependencies.begin();
             it != _dependencies.end(); 
@@ -538,7 +550,7 @@ bool ExecutionNode::walk (WalkerWorker<ExecutionNode>* worker) {
   }
   
   // Now handle a subquery:
-  if (getType() == SUBQUERY) {
+  if ((getType() == SUBQUERY) && ! worker->EnterSubQueryFirst()){
     auto p = static_cast<SubqueryNode*>(this);
     if (worker->enterSubquery(this, p->getSubquery())) {
       bool abort = p->getSubquery()->walk(worker);
@@ -795,11 +807,13 @@ ExecutionNode::VarOverview* ExecutionNode::VarOverview::clone (ExecutionPlan* ot
 
   other->varInfo = varInfo;
 
+  /* we don't need these.
   for (auto en: subQueryNodes) {
     auto otherId = en->id();
     auto otherEN = otherPlan->getNodeById(otherId);
     other->subQueryNodes.push_back(otherEN);
   }
+  */
   return other;
 }
 

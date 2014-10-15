@@ -35,3 +35,6 @@ branches:
 
 notifications:
   irc: "chat.freenode.net#arangodb"
+    template:
+      - %{build_number} (%{branch} - %{commit} : %{author}): %{message}"
+#    commit_message: commit message of build
