@@ -1920,18 +1920,18 @@ static v8::Handle<v8::Value> JS_Read (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads in a file
-/// @startDocuBlock JS_ReadFile
-/// `fs.readFile(filename)`
+/// @startDocuBlock JS_ReadBuffer
+/// `fs.readBuffer(filename)`
 ///
-/// Reads in a file and returns the content in a Buffer object.
+/// Reads in a file and returns its content in a Buffer object.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_ReadFile (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_ReadBuffer (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "readFile(<filename>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "readBuffer(<filename>)");
   }
 
   TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
@@ -3853,7 +3853,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SYS_PROCESS_STATISTICS", JS_ProcessStatistics);
   TRI_AddGlobalFunctionVocbase(context, "SYS_RAND", JS_Rand);
   TRI_AddGlobalFunctionVocbase(context, "SYS_READ", JS_Read);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_READ_FILE", JS_ReadFile);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_READ_BUFFER", JS_ReadBuffer);
   TRI_AddGlobalFunctionVocbase(context, "SYS_READ64", JS_Read64);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SAVE", JS_Save);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SERVER_STATISTICS", JS_ServerStatistics);
