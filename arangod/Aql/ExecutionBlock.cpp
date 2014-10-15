@@ -605,6 +605,7 @@ EnumerateCollectionBlock::EnumerateCollectionBlock (ExecutionEngine* engine,
                                                     EnumerateCollectionNode const* ep)
   : ExecutionBlock(engine, ep),
     _collection(ep->_collection),
+    _totalCount(0),
     _posInAllDocs(0) {
 }
 
