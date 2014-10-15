@@ -724,8 +724,7 @@ void LogfileManager::signalSync () {
 /// @brief allocate space in a logfile for later writing
 ////////////////////////////////////////////////////////////////////////////////
 
-SlotInfo LogfileManager::allocate (void const* src,
-                                   uint32_t size) {
+SlotInfo LogfileManager::allocate (uint32_t size) {
   if (! _allowWrites) {
     // no writes allowed
     return SlotInfo(TRI_ERROR_ARANGO_READ_ONLY);
@@ -751,8 +750,7 @@ SlotInfo LogfileManager::allocate (void const* src,
 /// convenience function.
 ////////////////////////////////////////////////////////////////////////////////
 
-SlotInfo LogfileManager::allocate (void const* src,
-                                   uint32_t size,
+SlotInfo LogfileManager::allocate (uint32_t size,
                                    TRI_voc_cid_t cid,
                                    TRI_shape_sid_t sid,
                                    uint32_t legendOffset,
@@ -809,7 +807,7 @@ SlotInfoCopy LogfileManager::allocateAndWrite (void* src,
                                                uint32_t legendOffset,
                                                void*& oldLegend) {
 
-  SlotInfo slotInfo = allocate(src, size, cid, sid, legendOffset, oldLegend);
+  SlotInfo slotInfo = allocate(size, cid, sid, legendOffset, oldLegend);
 
   if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
     return SlotInfoCopy(slotInfo.errorCode);
@@ -834,11 +832,16 @@ SlotInfoCopy LogfileManager::allocateAndWrite (void* src,
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write data into the logfile
+/// this is a convenience function that combines allocate, memcpy and finalise
+////////////////////////////////////////////////////////////////////////////////
+
 SlotInfoCopy LogfileManager::allocateAndWrite (void* src,
                                                uint32_t size,
                                                bool waitForSync) {
 
-  SlotInfo slotInfo = allocate(src, size);
+  SlotInfo slotInfo = allocate(size);
 
   if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
     return SlotInfoCopy(slotInfo.errorCode);
