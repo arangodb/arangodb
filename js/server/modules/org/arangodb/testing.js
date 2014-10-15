@@ -208,6 +208,9 @@ function startInstance (protocol, options, addArgs, testname) {
   var instanceInfo = {};
   instanceInfo.topDir = topDir;
   var tmpDataDir = fs.getTempFile();
+
+  tmpDataDir += '/' + testname + '/';
+  print(tmpDataDir);
   fs.makeDirectoryRecursive(tmpDataDir);
   instanceInfo.tmpDataDir = tmpDataDir;
 
