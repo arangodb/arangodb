@@ -894,13 +894,16 @@ int TRI_RenameFile (char const* old, char const* filename) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_UnlinkFile (char const* filename) {
-  int res;
-
-  res = TRI_UNLINK(filename);
+  int res = TRI_UNLINK(filename);
 
   if (res != 0) {
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
     LOG_TRACE("cannot unlink file '%s': %s", filename, TRI_LAST_ERROR_STR);
-    return TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    int e = TRI_errno();
+    if (e == ENOENT) {
+      return TRI_ERROR_FILE_NOT_FOUND;
+    }
+    return e;
   }
 
   return TRI_ERROR_NO_ERROR;
