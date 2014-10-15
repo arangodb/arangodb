@@ -34,6 +34,10 @@
 #include "Basics/Common.h"
 
 namespace triagens {
+
+  class ShellImplementation;
+  class Completer;
+
   class ShellImplFactory {
 
      public:
