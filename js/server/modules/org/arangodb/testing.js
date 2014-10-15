@@ -379,8 +379,10 @@ function shutdownInstance (instanceInfo, options) {
 function cleanupDBDirectories(options) {
   if (options.cleanup) {
     for (var i in cleanupDirectories) {
-      fs.removeDirectoryRecursive(cleanupDirectories[i], true);
-      // print("deleted " + cleanupDirectories[i]);
+      if (cleanupDirectories.hasOwnProperty(i)) {
+        fs.removeDirectoryRecursive(cleanupDirectories[i], true);
+        // print("deleted " + cleanupDirectories[i]);
+      }
     }
   }
 }
