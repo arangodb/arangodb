@@ -127,7 +127,7 @@ static void FreeAuthCacheInfo (TRI_vocbase_auth_cache_t* cached) {
     TRI_Free(TRI_CORE_MEM_ZONE, cached->_hash);
   }
 
-  if (cached->_username == nullptr) {
+  if (cached->_username != nullptr) {
     TRI_Free(TRI_CORE_MEM_ZONE, cached->_username);
   }
 
