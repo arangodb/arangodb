@@ -3029,10 +3029,12 @@ namespace triagens {
         DistributeNode (ExecutionPlan* plan, 
                         size_t id,
                         TRI_vocbase_t* vocbase,
-                        Collection const* collection)
+                        Collection const* collection, 
+                        VariableId const varId)
           : ExecutionNode(plan, id),
             _vocbase(vocbase),
-            _collection(collection) {
+            _collection(collection),
+            _varId(varId){
         }
 
         DistributeNode (ExecutionPlan*, 
@@ -3061,8 +3063,8 @@ namespace triagens {
         virtual ExecutionNode* clone (ExecutionPlan* plan,
                                       bool withDependencies,
                                       bool withProperties) const {
-          auto c = new DistributeNode(plan, _id, _vocbase, _collection);
-
+          auto c = new DistributeNode(plan, _id, _vocbase, _collection, _varId);
+          
           CloneHelper (c, plan, withDependencies, withProperties);
 
           return static_cast<ExecutionNode*>(c);
@@ -3105,6 +3107,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         Collection const* _collection;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the variable we must inspect to know where to distribute
+////////////////////////////////////////////////////////////////////////////////
+
+        VariableId const _varId;
 
     };
 

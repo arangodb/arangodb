@@ -1742,9 +1742,7 @@ namespace triagens {
         DistributeBlock (ExecutionEngine* engine,
                          DistributeNode const* ep, 
                          std::vector<std::string> const& shardIds, 
-                         Collection const* collection)
-                         : BlockWithClients(engine, ep, shardIds), 
-                           _collection(collection) {}
+                         Collection const* collection);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -1816,18 +1814,16 @@ namespace triagens {
         Collection const* _collection;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _shardKeys: the keys used by the <sendToClient> to determine to which
-/// shard a row is sent
-////////////////////////////////////////////////////////////////////////////////
-
-        //std::vector<std::string> _shardKeys;
-        const char * _shardKeys;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief _index: the block in _buffer we are currently considering
 ////////////////////////////////////////////////////////////////////////////////
 
         size_t _index;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _regId: the register to inspect
+////////////////////////////////////////////////////////////////////////////////
+
+        RegisterId _regId;
 
     };
 

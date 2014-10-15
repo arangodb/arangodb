@@ -1758,9 +1758,9 @@ int triagens::aql::distributeInCluster (Optimizer* opt,
     Collection const* collection = static_cast<ModificationNode*>(node)->collection();
 
     // insert a distribute node
-    ExecutionNode* distNode = new DistributeNode(plan, plan->nextId(),
-        vocbase, collection);
-    // TODO make sure the DistributeNode has all the info it requires . . .
+    TRI_ASSERT(node->getVariablesUsedHere().size() == 1);
+    ExecutionNode* distNode = new DistributeNode(plan, plan->nextId(), 
+        vocbase, collection, node->getVariablesUsedHere()[0]->id);
     plan->registerNode(distNode);
     distNode->addDependency(deps[0]);
 
