@@ -286,6 +286,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   std::vector<EngineInfo>  engines;
   std::vector<size_t>      engineIds; // stack of engine ids, used for subqueries
 
+  virtual bool EnterSubQueryFirst () {
+    return true;
+  }
   
   CoordinatorInstanciator (Query* query,
                            QueryRegistry* queryRegistry)
