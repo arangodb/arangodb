@@ -36,6 +36,7 @@
 #include "V8Server/ApplicationV8.h"
 #include "RestServer/VocbaseContext.h"
 #include "Aql/QueryRegistry.h"
+#include "Aql/types.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations

@@ -31,7 +31,8 @@
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
 #include "Aql/AqlValue.h"
-#include "Aql/Types.h"
+#include "Aql/Range.h"
+#include "Aql/types.h"
 #include "VocBase/document-collection.h"
 
 namespace triagens {

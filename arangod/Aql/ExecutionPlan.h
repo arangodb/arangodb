@@ -34,6 +34,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/ModificationOptions.h"
 #include "Aql/Query.h"
+#include "Aql/types.h"
 #include "Basics/json.h"
 
 namespace triagens {

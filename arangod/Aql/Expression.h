@@ -31,8 +31,9 @@
 #include "Basics/Common.h"
 #include "Aql/AstNode.h"
 #include "Aql/Query.h"
-#include "Aql/Types.h"
+#include "Aql/Range.h"
 #include "Aql/Variable.h"
+#include "Aql/types.h"
 #include "Basics/JsonHelper.h"
 #include "Utils/AqlTransaction.h"
 

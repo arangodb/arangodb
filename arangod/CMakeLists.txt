@@ -80,9 +80,9 @@ add_executable(
     Aql/Query.cpp
     Aql/QueryRegistry.cpp
     Aql/RangeInfo.cpp
+    Aql/Range.cpp
     Aql/RestAqlHandler.cpp
     Aql/Scopes.cpp
-    Aql/Types.cpp
     Aql/tokens.cpp
     Aql/V8Expression.cpp
     Aql/Variable.cpp

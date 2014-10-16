@@ -32,7 +32,7 @@
 
 #include "Basics/Common.h"
 #include "Aql/AqlValue.h"
-#include "Aql/Types.h"
+#include "Aql/types.h"
 #include <v8.h>
 
 namespace triagens {

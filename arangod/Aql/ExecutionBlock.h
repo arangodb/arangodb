@@ -31,10 +31,10 @@
 #include <Basics/JsonHelper.h>
 #include <ShapedJson/shaped-json.h>
 
-#include "Aql/Types.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/Range.h"
 #include "Aql/WalkerWorker.h"
 #include "Utils/AqlTransaction.h"
 #include "Utils/transactions.h"

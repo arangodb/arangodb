@@ -33,6 +33,7 @@
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
 #include "Aql/Variable.h"
+#include "Aql/types.h"
 
 namespace triagens {
   namespace aql {

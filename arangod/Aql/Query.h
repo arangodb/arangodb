@@ -35,6 +35,7 @@
 #include "Aql/BindParameters.h"
 #include "Aql/Collections.h"
 #include "Aql/QueryResult.h"
+#include "Aql/types.h"
 #include "Utils/AqlTransaction.h"
 #include "Utils/V8TransactionContext.h"
 
@@ -109,12 +110,6 @@ namespace triagens {
       std::vector<std::pair<ExecutionState, double>> results;
       double                                         stamp;
     };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief type of a query id
-////////////////////////////////////////////////////////////////////////////////
-
-    typedef uint64_t QueryId;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       class Query
