@@ -291,6 +291,8 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _queryRegistry(nullptr),
     _pairForAql(nullptr) {
 
+  TRI_SetApplicationName("arangod");
+
   char* p = TRI_GetTempPath();
   // copy the string
   _tempPath = string(p);
