@@ -340,6 +340,8 @@ function checkInstanceAlive(instanceInfo) {
   var res = statusExternal(instanceInfo.pid, false);
   var ret = res.status === "RUNNING";
   if (! ret) {
+    print("ArangoD " + instanceInfo.pid + " gone:");
+    print(res);
     instanceInfo.exitStatus = res;
   }
   return ret;
@@ -593,6 +595,7 @@ function performTests(options, testList, testname) {
       if (!continueTesting) {
         print("Skipping, " + te + "server is gone.");
         results[te] = {status: false, message: instanceInfo.exitStatus};
+        instanceInfo.exitStatus = "server is gone.";
         continue;
       }
 
@@ -636,7 +639,7 @@ function single_usage(testsuite) {
 
 
 testFuncs.single_server = function (options) {
-  var instanceInfo = startInstance("tcp", options, [], "single");
+  var instanceInfo = startInstance("tcp", options, [], "single_server");
   var result = { };
   if (options.test !== undefined) {
     var te = options.test;
@@ -654,7 +657,7 @@ testFuncs.single_server = function (options) {
 };
 
 testFuncs.single_client = function (options) {
-  var instanceInfo = startInstance("tcp", options, [], "single");
+  var instanceInfo = startInstance("tcp", options, [], "single_client");
   var result = { };
   if (options.test !== undefined) {
     var te = options.test;
@@ -682,19 +685,19 @@ testFuncs.shell_server_perf = function(options) {
   findTests();
   return performTests(options,
                       tests_shell_server_aql_performance,
-                      'tests_shell_server_aql_performance');
+                      'shell_server_perf');
 };
 
 testFuncs.shell_server = function (options) {
   findTests();
-  return performTests(options, tests_shell_server, 'tests_shell_server');
+  return performTests(options, tests_shell_server, 'shell_server');
 };
 
 testFuncs.shell_server_only = function (options) {
   findTests();
   return performTests(options,
                       tests_shell_server_only,
-                      'tests_shell_server_only');
+                      'shell_server_only');
 };
 
 testFuncs.shell_server_ahuacatl = function(options) {
@@ -703,12 +706,14 @@ testFuncs.shell_server_ahuacatl = function(options) {
     if (options.skipRanges) {
       return performTests(options,
                           tests_shell_server_ahuacatl,
-                          'tests_shell_server_ahuacatl');
+                          'shell_server_ahuacatl_skipranges');
     }
-    return performTests(options,
-                        tests_shell_server_ahuacatl.concat(
-                          tests_shell_server_ahuacatl_extended),
-                        'tests_shell_server_ahuacatl_extended');
+    else {
+      return performTests(options,
+                          tests_shell_server_ahuacatl.concat(
+                            tests_shell_server_ahuacatl_extended),
+                          'shell_server_ahuacatl');
+    }
   }
   return "skipped";
 };
@@ -719,12 +724,14 @@ testFuncs.shell_server_aql = function(options) {
     if (options.skipRanges) {
       return performTests(options,
                           tests_shell_server_aql,
-                          'tests_shell_server_aql');
+                          'shell_server_aql_skipranges');
     }
-    return performTests(options,
-                        tests_shell_server_aql.concat(
-                          tests_shell_server_aql_extended),
-                        'tests_shell_server_aql_extended');
+    else {
+      return performTests(options,
+                          tests_shell_server_aql.concat(
+                            tests_shell_server_aql_extended),
+                          'shell_server_aql');
+    }
   }
   return "skipped";
 };
@@ -745,6 +752,7 @@ testFuncs.shell_client = function(options) {
       if (!continueTesting) {
         print("Skipping, " + te + "server is gone.");
         results[te] = {status: false, message: instanceInfo.exitStatus};
+        instanceInfo.exitStatus = "server is gone.";
         continue;
       }
 
@@ -811,10 +819,10 @@ testFuncs.boost = function (options) {
 function rubyTests (options, ssl) {
   var instanceInfo;
   if (ssl) {
-    instanceInfo = startInstance("ssl", options, [], "rubyTestsSsl");
+    instanceInfo = startInstance("ssl", options, [], "ssl_server");
   }
   else {
-    instanceInfo = startInstance("tcp", options, [], "rubyTestsTcp");
+    instanceInfo = startInstance("tcp", options, [], "http_server");
   }
 
   var tmpname = fs.getTempFile()+".rb";
@@ -854,6 +862,7 @@ function rubyTests (options, ssl) {
         if (!continueTesting) {
           print("Skipping, server is gone.");
           result[te] = {status: false, message: instanceInfo.exitStatus};
+          instanceInfo.exitStatus = "server is gone.";
           continue;
         }
         print("\nTrying",te,"...");
@@ -1074,7 +1083,7 @@ testFuncs.dump = function (options) {
     cluster = "";
   }
   print("dump tests...");
-  var instanceInfo = startInstance("tcp",options, [], "dump_test");
+  var instanceInfo = startInstance("tcp",options, [], "dump");
   var results = {};
   results.setup = runInArangosh(options, instanceInfo,
        makePath("js/server/tests/dump-setup"+cluster+".js"));
@@ -1118,7 +1127,7 @@ var benchTodo = [
 
 testFuncs.arangob = function (options) {
   print("arangob tests...");
-  var instanceInfo = startInstance("tcp",options, [], "arangobench");
+  var instanceInfo = startInstance("tcp",options, [], "arangob");
   var results = {};
   var i,r;
   var continueTesting = true;
@@ -1132,6 +1141,7 @@ testFuncs.arangob = function (options) {
       if (!continueTesting) {
         print("Skipping, server is gone.");
         results[i] = {status: false, message: instanceInfo.exitStatus};
+        instanceInfo.exitStatus = "server is gone.";
         continue;
       }
 
@@ -1155,7 +1165,7 @@ testFuncs.authentication = function (options) {
   print("Authentication tests...");
   var instanceInfo = startInstance("tcp", options,
                                    ["--server.disable-authentication", "false"],
-                                   "authtest");
+                                   "authentication");
   var results = {};
   results.auth = runInArangosh(options, instanceInfo,
                                fs.join("js","client","tests","auth.js"));
@@ -1182,7 +1192,7 @@ testFuncs.authentication_parameters = function (options) {
   var instanceInfo = startInstance("tcp", options,
                        ["--server.disable-authentication", "false",
                         "--server.authenticate-system-only", "false"],
-                       "authparams");
+                       "authentication_parameters_1");
   var r;
   var i;
   var expectAuthFullRC = [401, 401, 401, 401, 401, 401, 401];
@@ -1196,6 +1206,7 @@ testFuncs.authentication_parameters = function (options) {
     if (!continueTesting) {
       print("Skipping, server is gone.");
       results.auth_full[urlsTodo[i]] = {status: false, message: instanceInfo.exitStatus};
+      instanceInfo.exitStatus = "server is gone.";
       all_ok = false;
       continue;
     }
@@ -1223,7 +1234,7 @@ testFuncs.authentication_parameters = function (options) {
   instanceInfo = startInstance("tcp", options,
                    ["--server.disable-authentication", "false",
                     "--server.authenticate-system-only", "true"],
-                   "authparams2");
+                   "authentication_parameters_2");
   var expectAuthSystemRC = [401, 401, 401, 401, 401, 404, 404];
   all_ok = true;
   print("Starting System test");
@@ -1232,6 +1243,7 @@ testFuncs.authentication_parameters = function (options) {
     if (!continueTesting) {
       print("Skipping, server is gone.");
       results.auth_full[urlsTodo[i]] = {status: false, message: instanceInfo.exitStatus};
+      instanceInfo.exitStatus = "server is gone.";
       all_ok = false;
       continue;
     }
@@ -1257,7 +1269,7 @@ testFuncs.authentication_parameters = function (options) {
   instanceInfo = startInstance("tcp", options,
                    ["--server.disable-authentication", "true",
                     "--server.authenticate-system-only", "true"],
-                   "authparams3");
+                   "authentication_parameters_3");
   var expectAuthNoneRC = [404, 404, 200, 301, 301, 404, 404];
   results.auth_none = {};
   all_ok = true;
@@ -1267,6 +1279,7 @@ testFuncs.authentication_parameters = function (options) {
     if (!continueTesting) {
       print("Skipping, server is gone.");
       results.auth_full[urlsTodo[i]] = {status: false, message: instanceInfo.exitStatus};
+      instanceInfo.exitStatus = "server is gone.";
       all_ok = false;
       continue;
     }
