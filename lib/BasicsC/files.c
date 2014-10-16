@@ -1746,6 +1746,32 @@ int TRI_Crc32File (char const* path, uint32_t* crc) {
 /// @brief get the system's temporary path
 ////////////////////////////////////////////////////////////////////////////////
 
+static char const* TRI_ApplicationName = NULL;
+
+#ifndef _WIN32
+// This must be exactly 14 Ys and 6 Xs because it will be overwritten
+// and these are the maximum lengths!
+static char TRI_TempPath[] = "/tmp/YYYYYYYYYYYYYYXXXXXX";
+static bool TRI_TempPathIsSet = false;
+
+static void TRI_TempPathCleaner (void) {
+  if (TRI_TempPathIsSet) {
+    rmdir(TRI_TempPath);
+    TRI_TempPathIsSet = false;
+  }
+}
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the application's name, should be called before the first
+/// call to TRI_GetTempPath
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SetApplicationName (char const* name) {
+  TRI_ASSERT(strlen(name) <= 13);
+  TRI_ApplicationName = name;
+}
+
 char* TRI_GetTempPath () {
 
 #ifdef _WIN32
@@ -1853,7 +1879,26 @@ char* TRI_GetTempPath () {
 
   return result;
 #else
-  return TRI_DuplicateString("/tmp/arangodb");
+  char* res;
+  if (! TRI_TempPathIsSet) {
+    // Note that TRI_TempPath has space for /tmp/YYYYYYYYYYXXXXXX
+    if (TRI_ApplicationName != NULL) {
+      strcpy(TRI_TempPath, "/tmp/");
+      strncat(TRI_TempPath, TRI_ApplicationName, 13);
+      strcat(TRI_TempPath, "_XXXXXX");
+    }
+    else {
+      strcpy(TRI_TempPath, "/tmp/arangodb_XXXXXX");
+    }
+    res = mkdtemp(TRI_TempPath);
+    if (res == NULL) {
+      strcpy(TRI_TempPath, "/tmp/arangodb");
+      return TRI_DuplicateString(TRI_TempPath);
+    }
+    atexit(TRI_TempPathCleaner);
+    TRI_TempPathIsSet = true;
+  }
+  return TRI_DuplicateString(TRI_TempPath);
 #endif
 }
 
