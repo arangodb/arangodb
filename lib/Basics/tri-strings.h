@@ -111,6 +111,15 @@ bool TRI_IsPrefixString (char const* full, char const* prefix);
 bool TRI_IsContainedString (char const* full, char const* part);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief tests if second string is contained in the first, byte-safe
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_IsContainedMemory (char const* full, 
+                             size_t fullLength, 
+                             char const* part,
+                             size_t partLength);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief duplicates a string, without using a memory zone
 ///
 /// This function can be used when strings need to be returned to other system
