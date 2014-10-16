@@ -503,7 +503,7 @@ AqlItemBlock* AqlItemBlock::concatenate (std::vector<AqlItemBlock*> const& block
 ///                      such that actual indices start at 2
 ////////////////////////////////////////////////////////////////////////////////
 
-Json AqlItemBlock::toJson (AQL_TRANSACTION_V8* trx) const {
+Json AqlItemBlock::toJson (triagens::arango::AqlTransaction* trx) const {
   Json json(Json::Array, 6);
   json("nrItems", Json(static_cast<double>(_nrItems)))
       ("nrRegs", Json(static_cast<double>(_nrRegs)));

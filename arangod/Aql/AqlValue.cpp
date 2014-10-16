@@ -399,7 +399,7 @@ char const* AqlValue::toChar () const {
 /// @brief construct a V8 value as input for the expression execution in V8
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> AqlValue::toV8 (AQL_TRANSACTION_V8* trx, 
+v8::Handle<v8::Value> AqlValue::toV8 (triagens::arango::AqlTransaction* trx, 
                                       TRI_document_collection_t const* document) const {
   switch (_type) {
     case JSON: {
@@ -410,7 +410,7 @@ v8::Handle<v8::Value> AqlValue::toV8 (AQL_TRANSACTION_V8* trx,
     case SHAPED: {
       TRI_ASSERT(document != nullptr);
       TRI_ASSERT(_marker != nullptr);
-      return TRI_WrapShapedJson<AQL_TRANSACTION_V8>(*trx, document->_info._cid, _marker);
+      return TRI_WrapShapedJson<triagens::arango::AqlTransaction>(*trx, document->_info._cid, _marker);
     }
 
     case DOCVEC: {
@@ -465,7 +465,7 @@ v8::Handle<v8::Value> AqlValue::toV8 (AQL_TRANSACTION_V8* trx,
 /// @brief toJson method
 ////////////////////////////////////////////////////////////////////////////////
       
-Json AqlValue::toJson (AQL_TRANSACTION_V8* trx,
+Json AqlValue::toJson (triagens::arango::AqlTransaction* trx,
                        TRI_document_collection_t const* document) const {
   switch (_type) {
     case JSON: {
@@ -562,7 +562,7 @@ Json AqlValue::toJson (AQL_TRANSACTION_V8* trx,
 /// this will return an empty Json if the value is not an array
 ////////////////////////////////////////////////////////////////////////////////
 
-Json AqlValue::extractArrayMember (AQL_TRANSACTION_V8* trx,
+Json AqlValue::extractArrayMember (triagens::arango::AqlTransaction* trx,
                                    TRI_document_collection_t const* document,
                                    char const* name) const {
   switch (_type) {
@@ -652,7 +652,7 @@ Json AqlValue::extractArrayMember (AQL_TRANSACTION_V8* trx,
 /// this will return null if the value is not a list
 ////////////////////////////////////////////////////////////////////////////////
 
-Json AqlValue::extractListMember (AQL_TRANSACTION_V8* trx,
+Json AqlValue::extractListMember (triagens::arango::AqlTransaction* trx,
                                   TRI_document_collection_t const* document,
                                   int64_t position) const {
   switch (_type) {
@@ -726,7 +726,7 @@ Json AqlValue::extractListMember (AQL_TRANSACTION_V8* trx,
 /// @brief create an AqlValue from a vector of AqlItemBlock*s
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue AqlValue::CreateFromBlocks (AQL_TRANSACTION_V8* trx,
+AqlValue AqlValue::CreateFromBlocks (triagens::arango::AqlTransaction* trx,
                                      std::vector<AqlItemBlock*> const& src,
                                      std::vector<std::string> const& variableNames) {
   size_t totalSize = 0;
@@ -762,7 +762,7 @@ AqlValue AqlValue::CreateFromBlocks (AQL_TRANSACTION_V8* trx,
 /// @brief 3-way comparison for AqlValue objects
 ////////////////////////////////////////////////////////////////////////////////
 
-int AqlValue::Compare (AQL_TRANSACTION_V8* trx,
+int AqlValue::Compare (triagens::arango::AqlTransaction* trx,
                        AqlValue const& left,  
                        TRI_document_collection_t const* leftcoll,
                        AqlValue const& right, 

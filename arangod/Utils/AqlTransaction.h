@@ -41,8 +41,6 @@
 #include "VocBase/vocbase.h"
 #include <v8.h>
 
-#define AQL_TRANSACTION_V8 triagens::arango::AqlTransaction
-
 namespace triagens {
   namespace arango {
 

@@ -67,7 +67,7 @@ V8Expression::~V8Expression () {
 /// @brief execute the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue V8Expression::execute (AQL_TRANSACTION_V8* trx,
+AqlValue V8Expression::execute (triagens::arango::AqlTransaction* trx,
                                 std::vector<TRI_document_collection_t const*>& docColls,
                                 std::vector<AqlValue>& argv,
                                 size_t startPos,

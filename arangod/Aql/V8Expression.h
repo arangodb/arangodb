@@ -71,7 +71,7 @@ namespace triagens {
 /// @brief execute the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-      AqlValue execute (AQL_TRANSACTION_V8*,
+      AqlValue execute (triagens::arango::AqlTransaction*,
                         std::vector<TRI_document_collection_t const*>&,
                         std::vector<AqlValue>&,
                         size_t,
