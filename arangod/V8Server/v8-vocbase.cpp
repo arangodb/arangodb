@@ -314,11 +314,11 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
 
 
   // start actual transaction
-  ExplicitTransaction<V8TransactionContext<false>> trx(vocbase,
-                                                       readCollections,
-                                                       writeCollections,
-                                                       lockTimeout,
-                                                       waitForSync);
+  ExplicitTransaction trx(vocbase,
+                          readCollections,
+                          writeCollections,
+                          lockTimeout,
+                          waitForSync);
 
   int res = trx.begin();
 
@@ -2500,6 +2500,11 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   // check the isolate
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   TRI_v8_global_t* v8g = TRI_CreateV8Globals(isolate);
+
+  TRI_ASSERT(v8g->_transactionContext == nullptr);
+
+  v8g->_transactionContext = new V8TransactionContext(true);
+  static_cast<V8TransactionContext*>(v8g->_transactionContext)->makeGlobal();
 
   // register the query registry
   v8g->_queryRegistry = queryRegistry;

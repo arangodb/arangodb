@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief V8 collection name resolver guard
+/// @brief Transaction context
 ///
 /// @file
 ///
@@ -27,24 +27,22 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILS_V8RESOLVER_GUARD_H
-#define ARANGODB_UTILS_V8RESOLVER_GUARD_H 1
+#ifndef ARANGODB_UTILS_TRANSACTION_CONTEXT_H
+#define ARANGODB_UTILS_TRANSACTION_CONTEXT_H 1
 
 #include "Basics/Common.h"
 
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/V8TransactionContext.h"
-#include "VocBase/vocbase.h"
-#include "V8/v8-globals.h"
-#include <v8.h>
+
+struct TRI_transaction_s;
 
 namespace triagens {
   namespace arango {
 
-    class V8ResolverGuard {
+    class TransactionContext {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             class V8ResolverGuard
+// --SECTION--                                          class TransactionContext
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -53,29 +51,24 @@ namespace triagens {
 
       public:
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the guard
-////////////////////////////////////////////////////////////////////////////////
+        TransactionContext (TransactionContext const&) = delete;
+        TransactionContext& operator= (TransactionContext const&) = delete;
 
-        V8ResolverGuard (TRI_vocbase_t* vocbase)
-          : _v8g(static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData())),
-            _ownResolver(false) {
-
-          if (! static_cast<V8TransactionContext*>(_v8g->_transactionContext)->hasResolver()) {
-            static_cast<V8TransactionContext*>(_v8g->_transactionContext)->setResolver(new CollectionNameResolver(vocbase));
-            _ownResolver = true;
-          }
-        }
+      protected:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the guard
+/// @brief create the context
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~V8ResolverGuard () {
-          if (_ownResolver && static_cast<V8TransactionContext*>(_v8g->_transactionContext)->hasResolver()) {
-            static_cast<V8TransactionContext*>(_v8g->_transactionContext)->deleteResolver();
-          }
-        }
+        TransactionContext ();
+      
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy the context
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual ~TransactionContext ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -87,28 +80,31 @@ namespace triagens {
 /// @brief return the resolver
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline CollectionNameResolver const* getResolver () const { 
-          TRI_ASSERT_EXPENSIVE(static_cast<V8TransactionContext*>(_v8g->_transactionContext)->hasResolver());
-          return static_cast<V8TransactionContext*>(_v8g->_transactionContext)->getResolver();
-        }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
+        virtual CollectionNameResolver const* getResolver () const = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief v8 global context
+/// @brief get parent transaction (if any)
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_v8_global_t* _v8g;
+        virtual struct TRI_transaction_s* getParentTransaction () const = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not we are responsible for the resolver
+/// @brief whether or not the transaction is embeddable
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool _ownResolver;
+        virtual bool isEmbeddable () const = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register the transaction in the context
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual int registerTransaction (struct TRI_transaction_s*) = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unregister the transaction from the context
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual int unregisterTransaction () = 0;
 
     };
 

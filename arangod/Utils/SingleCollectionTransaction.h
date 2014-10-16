@@ -36,6 +36,7 @@
 #include "Basics/voc-errors.h"
 #include "Basics/StringUtils.h"
 #include "Utils/Transaction.h"
+#include "Utils/TransactionContext.h"
 
 #include "VocBase/barrier.h"
 #include "VocBase/document-collection.h"
@@ -47,8 +48,7 @@
 namespace triagens {
   namespace arango {
 
-    template<typename T>
-    class SingleCollectionTransaction : public Transaction<T> {
+    class SingleCollectionTransaction : public Transaction {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                 class SingleCollectionTransaction
@@ -64,10 +64,11 @@ namespace triagens {
 /// @brief create the transaction, using a collection id
 ////////////////////////////////////////////////////////////////////////////////
 
-        SingleCollectionTransaction (TRI_vocbase_t* vocbase,
+        SingleCollectionTransaction (TransactionContext* transactionContext,
+                                     TRI_vocbase_t* vocbase,
                                      TRI_voc_cid_t cid,
                                      TRI_transaction_type_e accessType) 
-          : Transaction<T>(vocbase, 0),
+          : Transaction(transactionContext, vocbase, 0),
             _cid(cid),
             _trxCollection(nullptr),
             _documentCollection(nullptr),
@@ -81,10 +82,11 @@ namespace triagens {
 /// @brief create the transaction, using a collection name
 ////////////////////////////////////////////////////////////////////////////////
 
-        SingleCollectionTransaction (TRI_vocbase_t* vocbase,
+        SingleCollectionTransaction (TransactionContext* transactionContext,
+                                     TRI_vocbase_t* vocbase,
                                      std::string const& name,
                                      TRI_transaction_type_e accessType) 
-          : Transaction<T>(vocbase, 0),
+          : Transaction(transactionContext, vocbase, 0),
             _cid(this->resolver()->getCollectionId(name)),
             _trxCollection(nullptr),
             _documentCollection(nullptr),

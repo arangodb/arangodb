@@ -1340,7 +1340,10 @@ void ApplicationV8::shutdownV8Instance (const string& name, size_t i) {
 
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(context->_isolate->GetData());
 
-  if (v8g) {
+  if (v8g != nullptr) {
+    if (v8g->_transactionContext != nullptr) {
+      delete static_cast<V8TransactionContext*>(v8g->_transactionContext);
+    }
     delete v8g;
   }
 

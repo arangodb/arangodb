@@ -110,7 +110,10 @@ arangod_libarangod_a_SOURCES = \
 	arangod/SkipLists/skiplistIndex.cpp \
 	arangod/Utils/DocumentHelper.cpp \
 	arangod/Utils/Exception.cpp \
+	arangod/Utils/StandaloneTransactionContext.cpp \
 	arangod/Utils/Transaction.cpp \
+	arangod/Utils/TransactionContext.cpp \
+	arangod/Utils/V8TransactionContext.cpp \
 	arangod/V8Server/ApplicationV8.cpp \
 	arangod/V8Server/V8DispatcherThread.cpp \
 	arangod/V8Server/V8Job.cpp \

@@ -42,8 +42,7 @@ struct TRI_vocbase_s;
 namespace triagens {
   namespace arango {
 
-    template<typename T>
-    class SingleCollectionReadOnlyTransaction : public SingleCollectionTransaction<T> {
+    class SingleCollectionReadOnlyTransaction : public SingleCollectionTransaction {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                         class SingleCollectionReadOnlyTransaction
@@ -62,18 +61,20 @@ namespace triagens {
 /// that only allows read operations. Write operations are not supported.
 ////////////////////////////////////////////////////////////////////////////////
 
-        SingleCollectionReadOnlyTransaction (struct TRI_vocbase_s* vocbase,
+        SingleCollectionReadOnlyTransaction (TransactionContext* transactionContext,
+                                             struct TRI_vocbase_s* vocbase,
                                              TRI_voc_cid_t cid) 
-          : SingleCollectionTransaction<T>(vocbase, cid, TRI_TRANSACTION_READ) {
+          : SingleCollectionTransaction(transactionContext, vocbase, cid, TRI_TRANSACTION_READ) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief same as above, but create using collection name
 ////////////////////////////////////////////////////////////////////////////////
 
-        SingleCollectionReadOnlyTransaction (struct TRI_vocbase_s* vocbase,
+        SingleCollectionReadOnlyTransaction (TransactionContext* transactionContext,
+                                             struct TRI_vocbase_s* vocbase,
                                              std::string const& name) 
-          : SingleCollectionTransaction<T>(vocbase, name, TRI_TRANSACTION_READ) {
+          : SingleCollectionTransaction(transactionContext, vocbase, name, TRI_TRANSACTION_READ) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -43,8 +43,8 @@
 namespace triagens {
   namespace arango {
 
-    template<typename T, uint64_t N>
-    class SingleCollectionWriteTransaction : public SingleCollectionTransaction<T> {
+    template<uint64_t N>
+    class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                            class SingleCollectionWriteTransaction
@@ -68,9 +68,10 @@ namespace triagens {
 /// allow avoiding a lot of the general transaction overhead.
 ////////////////////////////////////////////////////////////////////////////////
 
-        SingleCollectionWriteTransaction (TRI_vocbase_t* vocbase,
+        SingleCollectionWriteTransaction (TransactionContext* transactionContext,
+                                          TRI_vocbase_t* vocbase,
                                           TRI_voc_cid_t cid) 
-          : SingleCollectionTransaction<T>(vocbase, cid, TRI_TRANSACTION_WRITE),
+          : SingleCollectionTransaction(transactionContext, vocbase, cid, TRI_TRANSACTION_WRITE),
             _numWrites(0) {
 
           if (N == 1) {
@@ -82,9 +83,10 @@ namespace triagens {
 /// @brief same as above, but create using collection name
 ////////////////////////////////////////////////////////////////////////////////
 
-        SingleCollectionWriteTransaction (TRI_vocbase_t* vocbase,
+        SingleCollectionWriteTransaction (TransactionContext* transactionContext, 
+                                          TRI_vocbase_t* vocbase,
                                           std::string const& name) 
-          : SingleCollectionTransaction<T>(vocbase, name, TRI_TRANSACTION_WRITE),
+          : SingleCollectionTransaction(transactionContext, vocbase, name, TRI_TRANSACTION_WRITE),
             _numWrites(0) {
 
           if (N == 1) {

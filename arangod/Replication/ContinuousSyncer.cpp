@@ -371,7 +371,7 @@ int ContinuousSyncer::processDocument (TRI_replication_operation_e type,
   else {
     // standalone operation
     // update the apply tick for all standalone operations
-    SingleCollectionWriteTransaction<RestTransactionContext, 1> trx(_vocbase, cid);
+    SingleCollectionWriteTransaction<1> trx(new StandaloneTransactionContext(), _vocbase, cid);
 
     int res = trx.begin();
 

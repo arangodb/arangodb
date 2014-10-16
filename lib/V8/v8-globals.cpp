@@ -128,9 +128,8 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
 
     _currentRequest(nullptr),
     _currentResponse(nullptr),
-    _currentTransaction(nullptr),
+    _transactionContext(nullptr),
     _queryRegistry(nullptr),
-    _resolver(nullptr),
     _server(nullptr),
     _vocbase(nullptr),
     _allowUseDatabase(true),
@@ -242,9 +241,9 @@ TRI_v8_global_t* TRI_CreateV8Globals (v8::Isolate* isolate) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AddMethodVocbase (v8::Handle<v8::ObjectTemplate> tpl,
-                           const char* const name,
+                           char const* name,
                            v8::Handle<v8::Value>(*func)(v8::Arguments const&),
-                           const bool isHidden) {
+                           bool isHidden) {
   if (isHidden) {
     // hidden method
     tpl->Set(TRI_V8_SYMBOL(name), v8::FunctionTemplate::New(func), v8::DontEnum);
@@ -260,9 +259,9 @@ void TRI_AddMethodVocbase (v8::Handle<v8::ObjectTemplate> tpl,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
-                                   const char* const name,
+                                   char const* name,
                                    v8::Handle<v8::Value>(*func)(v8::Arguments const&),
-                                   const bool isHidden) {
+                                   bool isHidden) {
   // all global functions are read-only
   if (isHidden) {
     context->Global()->Set(TRI_V8_SYMBOL(name),
@@ -281,9 +280,9 @@ void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
-                                   const char* const name,
+                                   char const* name,
                                    v8::Handle<v8::Function> func,
-                                   const bool isHidden) {
+                                   bool isHidden) {
   // all global functions are read-only
   if (isHidden) {
     context->Global()->Set(TRI_V8_SYMBOL(name),
@@ -302,7 +301,7 @@ void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AddGlobalVariableVocbase (v8::Handle<v8::Context> context,
-                                   const char* const name,
+                                   char const* name,
                                    v8::Handle<v8::Value> value) {
   // all global variables are read-only
   context->Global()->Set(TRI_V8_SYMBOL(name), value, v8::ReadOnly);
