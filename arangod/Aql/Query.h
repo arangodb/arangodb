@@ -352,14 +352,15 @@ namespace triagens {
 /// @brief set the transaction for the query
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setTrxPtr (std::shared_ptr<triagens::arango::AqlTransaction>& trx) {
+        void setTrx (triagens::arango::AqlTransaction* trx) {
           TRI_ASSERT(_trx == nullptr);
           _trx = trx;
         }
 
-        std::shared_ptr<triagens::arango::AqlTransaction>& getTrxPtr () {
+        triagens::arango::AqlTranscation* getTrx () {
           return _trx;
         }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the plan for the query
 ////////////////////////////////////////////////////////////////////////////////
@@ -512,12 +513,12 @@ namespace triagens {
         Parser*                    _parser;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the transaction object, if the query is prepared and is currently
-/// being used. Note that we destroy the transaction object between calls
-/// to the HTTP API for queries.
+/// @brief the transaction object, in a distributed query every part of
+/// the query has its own transaction object. The transaction object is
+/// created in the prepare method.
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::shared_ptr<triagens::arango::AqlTransaction>     _trx;
+        triagens::arango::AqlTransaction* _trx;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the ExecutionEngine object, if the query is prepared

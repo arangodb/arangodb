@@ -178,6 +178,24 @@ namespace triagens {
           return this->_transactionContext->unregisterTransaction();
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone, used to make daughter transactions for parts of a distributed
+/// AQL query running on the coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+        AQL_TRANSACTION_V8* clone () const {
+          auto colls = new std::map<std::string, triagens::aql::Collection*>();
+          try {
+            AQL_TRANSACTION_V8* res = new AQL_TRANSACTION_V8(this->_vocbase, 
+                                                             colls, false);
+            return res;
+          }
+          catch (...) {
+            delete colls;
+            throw;
+          }
+        }
+
     };
 
   }

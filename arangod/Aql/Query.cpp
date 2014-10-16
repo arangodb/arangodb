@@ -267,7 +267,8 @@ Query* Query::clone (QueryPart part) {
     }
   }
 
-  clone->_trx = _trx;
+  clone->_trx = _trx->clone();  // A daughter transaction which does not
+                                // actually lock the collections
   return clone.release();
 }
 
@@ -385,8 +386,11 @@ QueryResult Query::prepare (QueryRegistry* registry) {
       // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser->ast()->toJson(TRI_UNKNOWN_MEM_ZONE, false)) << "\n";
     }
 
-    std::shared_ptr<triagens::arango::AqlTransaction> trx(new triagens::arango::AqlTransaction(new triagens::arango::V8TransactionContext(true), _vocbase, _collections.collections()));
-    _trx = trx;
+    auto trx = new triagens::arango::AqlTransaction(new triagens::arango::V8TransactionContext(true), _vocbase, _collections.collections());
+    // FIXME: add boolean argument
+    //    _part == PART_MAIN
+    // here as additional argument
+    _trx = trx;   // Save the transaction in our object
 
     bool planRegisters;
 
@@ -414,7 +418,7 @@ QueryResult Query::prepare (QueryRegistry* registry) {
       plan.reset(opt.stealBest()); // Now we own the best one again
       planRegisters = true;
     }
-    else {
+    else {   // no queryString, we are instanciating from _queryJson
       enterState(PLAN_INSTANCIATION);
       ExecutionPlan::getCollectionsFromJson(parser->ast(), _queryJson);
 
@@ -594,8 +598,10 @@ QueryResult Query::explain () {
     // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE)) << "\n";
 
     // create the transaction object, but do not start it yet
-    std::shared_ptr<triagens::arango::AqlTransaction> trx(new triagens::arango::AqlTransaction(new triagens::arango::V8TransactionContext(true), _vocbase, _collections.collections()));
-    _trx = trx;
+    auto trx = new triagens::arango::AqlTransaction(new triagens::arango::V8TransactionContext(true), _vocbase, _collections.collections());
+    // FIXME: add an additional boolean argument here:
+    //   true
+    _trx = trx;  // save the pointer in this
 
     // we have an AST
     int res = _trx->begin();
@@ -878,11 +884,12 @@ void Query::cleanupPlanAndEngine () {
     _engine = nullptr;
   }
 
-  if (_trx.get() != nullptr) {
+  if (_trx != nullptr) {
     // TODO: this doesn't unblock the collection on the coordinator. Y?
     _trx->abort();
   }
-  _trx.reset();
+  delete _trx;
+  _trx = nullptr;
 
   if (_parser != nullptr) {
     delete _parser;
