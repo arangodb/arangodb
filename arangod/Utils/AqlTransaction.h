@@ -39,14 +39,14 @@
 #include "Utils/V8TransactionContext.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
+#include <v8.h>
 
-#define AQL_TRANSACTION_V8 triagens::arango::AqlTransaction<triagens::arango::V8TransactionContext<true>>
+#define AQL_TRANSACTION_V8 triagens::arango::AqlTransaction
 
 namespace triagens {
   namespace arango {
 
-    template<typename T>
-    class AqlTransaction : public Transaction<T> {
+    class AqlTransaction : public Transaction {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              class AqlTransaction
@@ -63,9 +63,10 @@ namespace triagens {
 /// context
 ////////////////////////////////////////////////////////////////////////////////
 
-        AqlTransaction (TRI_vocbase_t* vocbase,
+        AqlTransaction (TransactionContext* transactionContext,
+                        TRI_vocbase_t* vocbase,
                         std::map<std::string, triagens::aql::Collection*>* collections)
-          : Transaction<T>(vocbase, 0) {
+          : Transaction(transactionContext, vocbase, 0) {
 
           this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
 
@@ -166,10 +167,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int registerTransactionWithContext () {
-          // modify the v8g globals to match the globals of the current isolate / thread
-          this->setV8Globals(static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData()));
           // This calls the method in the V8TransactionContext
-          return this->registerTransaction(this->_trx);
+          return this->_transactionContext->registerTransaction(this->_trx);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -178,7 +177,7 @@ namespace triagens {
 
         int unregisterTransactionWithContext () {
           // This calls the method in the V8TransactionContext
-          return this->unregisterTransaction();
+          return this->_transactionContext->unregisterTransaction();
         }
 
     };

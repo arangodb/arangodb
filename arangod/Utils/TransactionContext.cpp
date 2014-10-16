@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief wrapper for explicit transactions
+/// @brief transaction context base class
 ///
-/// @file
+/// @file 
 ///
 /// DISCLAIMER
 ///
@@ -23,80 +23,30 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILS_EXPLICIT_TRANSACTION_H
-#define ARANGODB_UTILS_EXPLICIT_TRANSACTION_H 1
+#include "Utils/TransactionContext.h"
 
-#include "Basics/Common.h"
-
-#include "Utils/Transaction.h"
-#include "Utils/V8TransactionContext.h"
-#include "VocBase/server.h"
-#include "VocBase/transaction.h"
-
-struct TRI_vocbase_s;
-
-namespace triagens {
-  namespace arango {
-
-    class ExplicitTransaction : public Transaction {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                         class ExplicitTransaction
-// -----------------------------------------------------------------------------
+using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-      public:
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the transaction
+/// @brief create the context
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExplicitTransaction (struct TRI_vocbase_s* vocbase,
-                             std::vector<std::string> const& readCollections,
-                             std::vector<std::string> const& writeCollections,
-                             double lockTimeout,
-                             bool waitForSync)
-          : Transaction(new V8TransactionContext(false), vocbase, 0) {
-
-          this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
-
-          if (lockTimeout >= 0.0) {
-            this->setTimeout(lockTimeout);
-          }
-
-          if (waitForSync) {
-            this->setWaitForSync();
-          }
-
-          for (auto it = readCollections.begin(); it != readCollections.end(); ++it) {
-            this->addCollection((*it), TRI_TRANSACTION_READ);
-          }
-
-          for (auto it = writeCollections.begin(); it != writeCollections.end(); ++it) {
-            this->addCollection((*it), TRI_TRANSACTION_WRITE);
-          }
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief end the transaction
-////////////////////////////////////////////////////////////////////////////////
-
-        ~ExplicitTransaction () {
-        }
-
-    };
-
-  }
+TransactionContext::TransactionContext () { 
 }
 
-#endif
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy the context
+////////////////////////////////////////////////////////////////////////////////
+        
+TransactionContext::~TransactionContext () {
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

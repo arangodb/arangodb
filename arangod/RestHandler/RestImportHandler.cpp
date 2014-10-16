@@ -618,7 +618,7 @@ bool RestImportHandler::createFromJson (string const& type) {
   }
 
   // find and load collection given by name or identifier
-  RestImportTransaction trx(_vocbase, collection);
+  RestImportTransaction trx(new StandaloneTransactionContext(), _vocbase, collection);
 
   // .............................................................................
   // inside write transaction
@@ -1098,7 +1098,7 @@ bool RestImportHandler::createFromKeyValueList () {
 
 
   // find and load collection given by name or identifier
-  RestImportTransaction trx(_vocbase, collection);
+  RestImportTransaction trx(new StandaloneTransactionContext(), _vocbase, collection);
 
   // .............................................................................
   // inside write transaction

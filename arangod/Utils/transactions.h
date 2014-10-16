@@ -34,22 +34,22 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExplicitTransaction.h"
 #include "Utils/ReplicationTransaction.h"
-#include "Utils/RestTransactionContext.h"
 #include "Utils/SingleCollectionReadOnlyTransaction.h"
 #include "Utils/SingleCollectionWriteTransaction.h"
+#include "Utils/StandaloneTransactionContext.h"
 #include "Utils/V8TransactionContext.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for read-only transaction class type
 ////////////////////////////////////////////////////////////////////////////////
 
-#define V8ReadTransaction triagens::arango::SingleCollectionReadOnlyTransaction<triagens::arango::V8TransactionContext<true>>
+#define V8ReadTransaction triagens::arango::SingleCollectionReadOnlyTransaction
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief import transaction shortcut
 ////////////////////////////////////////////////////////////////////////////////
 
-#define RestImportTransaction triagens::arango::SingleCollectionWriteTransaction<triagens::arango::RestTransactionContext, UINT64_MAX>
+#define RestImportTransaction triagens::arango::SingleCollectionWriteTransaction<UINT64_MAX>
 
 #endif
 

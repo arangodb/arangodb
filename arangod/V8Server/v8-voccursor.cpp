@@ -80,7 +80,7 @@ v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* context,
 
   // note: a query is not necessarily collection-based.
   // this means that the _collections array might contain 0 collections!
-  AhuacatlTransaction<V8TransactionContext<true>> trx(context->_vocbase, context);
+  AhuacatlTransaction trx(context->_vocbase, context);
 
   int res = trx.begin();
 

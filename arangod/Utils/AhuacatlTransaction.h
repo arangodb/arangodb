@@ -36,6 +36,7 @@
 
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
+#include "Utils/V8TransactionContext.h"
 #include "VocBase/server.h"
 #include "VocBase/transaction.h"
 
@@ -44,8 +45,7 @@ struct TRI_vocbase_s;
 namespace triagens {
   namespace arango {
 
-    template<typename T>
-    class AhuacatlTransaction : public Transaction<T> {
+    class AhuacatlTransaction : public Transaction {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         class AhuacatlTransaction
@@ -64,7 +64,7 @@ namespace triagens {
 
         AhuacatlTransaction (struct TRI_vocbase_s* vocbase,
                              TRI_aql_context_t* context)
-          : Transaction<T>(vocbase, 0),
+          : Transaction(new V8TransactionContext(true), vocbase, 0),
             _context(context) {
 
           this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);

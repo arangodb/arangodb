@@ -1268,7 +1268,7 @@ static int ScanTrxCollection (TRI_vocbase_t* vocbase) {
   int res = TRI_ERROR_INTERNAL;
 
   {
-    triagens::arango::SingleCollectionReadOnlyTransaction<triagens::arango::RestTransactionContext> trx(vocbase, collection->_cid);
+    triagens::arango::SingleCollectionReadOnlyTransaction trx(new triagens::arango::StandaloneTransactionContext(), vocbase, collection->_cid);
 
     res = trx.begin();
 

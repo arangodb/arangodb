@@ -479,7 +479,7 @@ int RecoverState::executeSingleOperation (TRI_voc_tick_t databaseId,
   int res = TRI_ERROR_INTERNAL;
 
   try {
-    trx = new SingleWriteTransactionType(vocbase, collectionId);
+    trx = new SingleWriteTransactionType(new triagens::arango::StandaloneTransactionContext(), vocbase, collectionId);
 
     if (trx == nullptr) {
       THROW_ARANGO_EXCEPTION(res);

@@ -539,7 +539,7 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
     }
   }
 
-  V8ReadTransaction trx(collection->_vocbase, collection->_cid);
+  V8ReadTransaction trx(new V8TransactionContext(true), collection->_vocbase, collection->_cid);
 
   int res = trx.begin();
 
@@ -1247,7 +1247,7 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
     return scope.Close(DropIndexCoordinator(collection, argv[0]));
   }
 
-  V8ReadTransaction trx(collection->_vocbase, collection->_cid);
+  V8ReadTransaction trx(new V8TransactionContext(true), collection->_vocbase, collection->_cid);
 
   int res = trx.begin();
 
@@ -1379,7 +1379,7 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
     return scope.Close(GetIndexesCoordinator(collection));
   }
 
-  V8ReadTransaction trx(collection->_vocbase, collection->_cid);
+  V8ReadTransaction trx(new V8TransactionContext(true), collection->_vocbase, collection->_cid);
 
   int res = trx.begin();
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief rest transaction context
+/// @brief standalone transaction context
 ///
-/// @file
+/// @file 
 ///
 /// DISCLAIMER
 ///
@@ -23,126 +23,82 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILS_REST_TRANSACTION_CONTEXT_H
-#define ARANGODB_UTILS_REST_TRANSACTION_CONTEXT_H 1
-
-#include "Basics/Common.h"
-
-#include "VocBase/transaction.h"
+#include "Utils/StandaloneTransactionContext.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/Transaction.h"
 
-namespace triagens {
-  namespace arango {
-
-    class RestTransactionContext {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      class RestTransactionContext
-// -----------------------------------------------------------------------------
+using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-      public:
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the context
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestTransactionContext () {
-        }
+StandaloneTransactionContext::StandaloneTransactionContext () 
+  : TransactionContext(),
+    _resolver(nullptr) {
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the context
 ////////////////////////////////////////////////////////////////////////////////
-
-        virtual ~RestTransactionContext () {
-//          unregisterTransaction();
-        }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-      public:
+        
+StandaloneTransactionContext::~StandaloneTransactionContext () {
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the resolver
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline CollectionNameResolver const* getResolver () const {
-          return _resolver;
-        }
+CollectionNameResolver const* StandaloneTransactionContext::getResolver () const { 
+  TRI_ASSERT(_resolver != nullptr);
+  return _resolver;
+}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               protected functions
-// -----------------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get parent transaction (if any)
+////////////////////////////////////////////////////////////////////////////////
 
-      protected:
+TRI_transaction_t* StandaloneTransactionContext::getParentTransaction () const {
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register the transaction in the context
+////////////////////////////////////////////////////////////////////////////////
+
+int StandaloneTransactionContext::registerTransaction (TRI_transaction_t* trx) {
+  TRI_ASSERT(_resolver == nullptr);
+  _resolver = new CollectionNameResolver(trx->_vocbase);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unregister the transaction from the context
+////////////////////////////////////////////////////////////////////////////////
+
+int StandaloneTransactionContext::unregisterTransaction () {
+  if (_resolver != nullptr) {
+    delete _resolver;
+    _resolver = nullptr;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the transaction is embeddable
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline bool isEmbeddable () {
-          return false;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the parent transaction (none in our case)
-////////////////////////////////////////////////////////////////////////////////
-
-        inline TRI_transaction_t* getParentTransaction () const {
-          return nullptr;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief register the transaction, does nothing
-////////////////////////////////////////////////////////////////////////////////
-
-        inline int registerTransaction (TRI_transaction_t* trx) {
-          _resolver = new CollectionNameResolver(trx->_vocbase);
-
-          return TRI_ERROR_NO_ERROR;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unregister the transaction, does nothing
-////////////////////////////////////////////////////////////////////////////////
-
-        inline int unregisterTransaction () {
-          if (_resolver != nullptr) {
-            delete _resolver;
-            _resolver = nullptr;
-          }
-
-          return TRI_ERROR_NO_ERROR;
-        }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collection name resolver
-////////////////////////////////////////////////////////////////////////////////
-
-        CollectionNameResolver* _resolver;
-
-    };
-
-  }
+bool StandaloneTransactionContext::isEmbeddable () const {
+  return false;
 }
-
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
