@@ -60,7 +60,7 @@ using namespace triagens::arango;
 /// @brief shortcut to wrap a shaped-json object in a read-only transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-#define WRAP_SHAPED_JSON(...) TRI_WrapShapedJson<V8ReadTransaction>(__VA_ARGS__)
+#define WRAP_SHAPED_JSON(...) TRI_WrapShapedJson<SingleCollectionReadOnlyTransaction>(__VA_ARGS__)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  HELPER FUNCTIONS
@@ -623,7 +623,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
 
   TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
-  V8ReadTransaction trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
+  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -752,7 +752,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
 /// @brief creates a geo result
 ////////////////////////////////////////////////////////////////////////////////
 
-static int StoreGeoResult (V8ReadTransaction& trx,
+static int StoreGeoResult (SingleCollectionReadOnlyTransaction& trx,
                            TRI_vocbase_col_t const* collection,
                            GeoCoordinates* cors,
                            v8::Handle<v8::Array>& documents,
@@ -857,7 +857,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
   }
 
-  V8ReadTransaction trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
+  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -1014,7 +1014,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   uint32_t total = 0;
   vector<TRI_doc_mptr_copy_t> docs;
 
-  V8ReadTransaction trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
+  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -1089,7 +1089,7 @@ static v8::Handle<v8::Value> JS_NthQuery (v8::Arguments const& argv) {
   uint32_t total = 0;
   vector<TRI_doc_mptr_copy_t> docs;
 
-  V8ReadTransaction trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
+  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -1164,7 +1164,7 @@ static v8::Handle<v8::Value> JS_Nth2Query (v8::Arguments const& argv) {
   uint32_t total = 0;
   vector<TRI_doc_mptr_copy_t> docs;
 
-  V8ReadTransaction trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
+  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -1258,7 +1258,7 @@ static v8::Handle<v8::Value> JS_OffsetQuery (v8::Arguments const& argv) {
   uint32_t total = 0;
   vector<TRI_doc_mptr_copy_t> docs;
 
-  V8ReadTransaction trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
+  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -1330,7 +1330,7 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
 
   TRI_doc_mptr_copy_t document;
 
-  V8ReadTransaction trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
+  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -1387,7 +1387,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
 
   TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
-  V8ReadTransaction trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
+  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -1498,7 +1498,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
 /// It is the callers responsibility to acquire and free the required locks
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ByExampleHashIndexQuery (V8ReadTransaction& trx,
+static v8::Handle<v8::Value> ByExampleHashIndexQuery (SingleCollectionReadOnlyTransaction& trx,
                                                       TRI_vocbase_col_t const* collection,
                                                       v8::Handle<v8::Object>* err,
                                                       v8::Arguments const& argv) {
@@ -1619,7 +1619,7 @@ static v8::Handle<v8::Value> JS_ByExampleHashIndex (v8::Arguments const& argv) {
 
   TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
-  V8ReadTransaction trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
+  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -1793,7 +1793,7 @@ static v8::Handle<v8::Value> JS_ChecksumCollection (v8::Arguments const& argv) {
     withData = TRI_ObjectToBoolean(argv[1]);
   }
 
-  V8ReadTransaction trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
+  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -1937,7 +1937,7 @@ static v8::Handle<v8::Value> JS_FirstQuery (v8::Arguments const& argv) {
   TRI_vocbase_col_t const* col;
   col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
 
-  if (col == 0) {
+  if (col == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
@@ -1994,7 +1994,7 @@ static v8::Handle<v8::Value> JS_FirstQuery (v8::Arguments const& argv) {
 /// the caller must ensure all relevant locks are acquired and freed
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> FulltextQuery (V8ReadTransaction& trx,
+static v8::Handle<v8::Value> FulltextQuery (SingleCollectionReadOnlyTransaction& trx,
                                             TRI_vocbase_col_t const* collection,
                                             v8::Handle<v8::Object>* err,
                                             v8::Arguments const& argv) {
@@ -2116,7 +2116,7 @@ static v8::Handle<v8::Value> JS_FulltextQuery (v8::Arguments const& argv) {
 
   TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
-  V8ReadTransaction trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
+  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -2172,7 +2172,7 @@ static v8::Handle<v8::Value> JS_LastQuery (v8::Arguments const& argv) {
   TRI_vocbase_col_t const* col;
   col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
 
-  if (col == 0) {
+  if (col == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
@@ -2231,7 +2231,7 @@ static v8::Handle<v8::Value> JS_LastQuery (v8::Arguments const& argv) {
 /// the caller must ensure all relevant locks are acquired and freed
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> NearQuery (V8ReadTransaction& trx,
+static v8::Handle<v8::Value> NearQuery (SingleCollectionReadOnlyTransaction& trx,
                                         TRI_vocbase_col_t const* collection,
                                         v8::Handle<v8::Object>* err,
                                         v8::Arguments const& argv) {
@@ -2299,7 +2299,7 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
 
   TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
-  V8ReadTransaction trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
+  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -2361,7 +2361,7 @@ static v8::Handle<v8::Value> JS_OutEdgesQuery (v8::Arguments const& argv) {
 /// the caller must ensure all relevant locks are acquired and freed
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> WithinQuery (V8ReadTransaction& trx,
+static v8::Handle<v8::Value> WithinQuery (SingleCollectionReadOnlyTransaction& trx,
                                           TRI_vocbase_col_t const* collection,
                                           v8::Handle<v8::Object>* err,
                                           v8::Arguments const& argv) {
@@ -2429,7 +2429,7 @@ static v8::Handle<v8::Value> JS_WithinQuery (v8::Arguments const& argv) {
 
   TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, col);
 
-  V8ReadTransaction trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
+  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
 
   int res = trx.begin();
 
