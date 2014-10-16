@@ -1743,10 +1743,20 @@ int TRI_Crc32File (char const* path, uint32_t* crc) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the system's temporary path
+/// @brief set the application's name, should be called before the first
+/// call to TRI_GetTempPath
 ////////////////////////////////////////////////////////////////////////////////
 
 static char const* TRI_ApplicationName = NULL;
+
+void TRI_SetApplicationName (char const* name) {
+  TRI_ASSERT(strlen(name) <= 13);
+  TRI_ApplicationName = name;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the system's temporary path
+////////////////////////////////////////////////////////////////////////////////
 
 #ifndef _WIN32
 // This must be exactly 14 Ys and 6 Xs because it will be overwritten
@@ -1761,16 +1771,6 @@ static void TRI_TempPathCleaner (void) {
   }
 }
 #endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set the application's name, should be called before the first
-/// call to TRI_GetTempPath
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_SetApplicationName (char const* name) {
-  TRI_ASSERT(strlen(name) <= 13);
-  TRI_ApplicationName = name;
-}
 
 char* TRI_GetTempPath () {
 
