@@ -336,13 +336,32 @@ function startInstance (protocol, options, addArgs, testname) {
   return instanceInfo;
 }
 
+
+function copy (src, dst) {
+  var fs = require("fs");
+  var buffer = fs.readBuffer(src);
+
+  fs.write(dst, buffer);
+}
+
 function checkInstanceAlive(instanceInfo) {  
   var res = statusExternal(instanceInfo.pid, false);
   var ret = res.status === "RUNNING";
   if (! ret) {
-    print("ArangoD " + instanceInfo.pid + " gone:");
-    print(res);
+    print("ArangoD with PID " + instanceInfo.pid.pid + " gone:");
     instanceInfo.exitStatus = res;
+    print(instanceInfo);
+    if (res.hasOwnProperty('signal') && 
+        (res.signal === 11))
+    {
+      var storeArangodPath = "/var/tmp/arangod_" + instanceInfo.pid.pid;
+      print("Core dump written; copying arangod to " + 
+            storeArangodPath + " for later analysis.");
+      res.gdbHint = "Run debugger with 'gdb " + 
+        storeArangodPath + 
+        " /var/tmp/core*" + instanceInfo.pid.pid + "*'";
+      copy("bin/arangod", storeArangodPath);
+    }
   }
   return ret;
 }
@@ -593,7 +612,7 @@ function performTests(options, testList, testname) {
     te = testList[i];
     if (filterTestcaseByOptions(te, options, filtered)) {
       if (!continueTesting) {
-        print("Skipping, " + te + "server is gone.");
+        print("Skipping, " + te + " server is gone.");
         results[te] = {status: false, message: instanceInfo.exitStatus};
         instanceInfo.exitStatus = "server is gone.";
         continue;
@@ -622,13 +641,13 @@ function performTests(options, testList, testname) {
   return results;
 }
 
-function single_usage(testsuite) {
+function single_usage (testsuite, list) {
   print("single_" + testsuite + ": No test specified!\n Available tests:");
   var filelist = "";
-  var list = fs.list(makePath("js/server/tests"));
+
   for (var fileNo in list) {
     if (/\.js$/.test(list[fileNo])) {
-      filelist += " js/server/tests/"+list[fileNo];
+      filelist += " " + list[fileNo];
     }
   }
   print(filelist);
@@ -639,9 +658,9 @@ function single_usage(testsuite) {
 
 
 testFuncs.single_server = function (options) {
-  var instanceInfo = startInstance("tcp", options, [], "single_server");
   var result = { };
   if (options.test !== undefined) {
+    var instanceInfo = startInstance("tcp", options, [], "single_server");
     var te = options.test;
     print("\nTrying",te,"on server...");
     result = {};
@@ -652,32 +671,26 @@ testFuncs.single_server = function (options) {
     return result;
   }
   else {
-    return single_usage("server");
+    findTests();
+    return single_usage("server", tests_shell_server);
   }
 };
 
 testFuncs.single_client = function (options) {
-  var instanceInfo = startInstance("tcp", options, [], "single_client");
   var result = { };
   if (options.test !== undefined) {
+    var instanceInfo = startInstance("tcp", options, [], "single_client");
     var te = options.test;
-    var topDir = findTopDir();
-    var args = makeTestingArgsClient(options);
-    args.push("--server.endpoint");
-    args.push(instanceInfo.endpoint);
-    args.push("--javascript.unit-tests");
-    args.push(fs.join(topDir,te));
-    print("\nTrying",te,"on client...");
-    var arangosh = fs.join("bin","arangosh");
-    result = {};
-    result[te] = executeAndWait(arangosh, args);
+    print("\nTrying ",te," on client...");
+    result[te] = runInArangosh(options, instanceInfo, te);
     print("Shutting down...");
     shutdownInstance(instanceInfo,options);
     print("done.");
     return result;
   }
   else {
-    return single_usage("client");
+    findTests();
+    return single_usage("client", tests_shell_client);
   }
 };
 
@@ -750,7 +763,7 @@ testFuncs.shell_client = function(options) {
     if (filterTestcaseByOptions(te, options, filtered)) {
 
       if (!continueTesting) {
-        print("Skipping, " + te + "server is gone.");
+        print("Skipping, " + te + " server is gone.");
         results[te] = {status: false, message: instanceInfo.exitStatus};
         instanceInfo.exitStatus = "server is gone.";
         continue;
@@ -860,12 +873,12 @@ function rubyTests (options, ssl) {
                 fs.join("UnitTests","HttpInterface", te)];
 
         if (!continueTesting) {
-          print("Skipping, server is gone.");
+          print("Skipping " + te + " server is gone.");
           result[te] = {status: false, message: instanceInfo.exitStatus};
           instanceInfo.exitStatus = "server is gone.";
           continue;
         }
-        print("\nTrying",te,"...");
+        print("\nTrying ",te,"...");
 
         result[te] = executeAndWait("rspec", args);
         if (result[te].status === false && !options.force) {
@@ -1139,7 +1152,7 @@ testFuncs.arangob = function (options) {
          benchTodo[i].indexOf("multitrx") === -1)) {
 
       if (!continueTesting) {
-        print("Skipping, server is gone.");
+        print("Skipping " + benchTodo[i] + ", server is gone.");
         results[i] = {status: false, message: instanceInfo.exitStatus};
         instanceInfo.exitStatus = "server is gone.";
         continue;
@@ -1204,7 +1217,7 @@ testFuncs.authentication_parameters = function (options) {
   for (i = 0; i < urlsTodo.length; i++) {
 
     if (!continueTesting) {
-      print("Skipping, server is gone.");
+      print("Skipping " + urlsTodo[i] + ", server is gone.");
       results.auth_full[urlsTodo[i]] = {status: false, message: instanceInfo.exitStatus};
       instanceInfo.exitStatus = "server is gone.";
       all_ok = false;
@@ -1241,7 +1254,7 @@ testFuncs.authentication_parameters = function (options) {
   results.auth_system = {};
   for (i = 0;i < urlsTodo.length;i++) {
     if (!continueTesting) {
-      print("Skipping, server is gone.");
+      print("Skipping " + urlsTodo[i] + " server is gone.");
       results.auth_full[urlsTodo[i]] = {status: false, message: instanceInfo.exitStatus};
       instanceInfo.exitStatus = "server is gone.";
       all_ok = false;
@@ -1277,7 +1290,7 @@ testFuncs.authentication_parameters = function (options) {
   print("Starting None test");
   for (i = 0;i < urlsTodo.length;i++) {
     if (!continueTesting) {
-      print("Skipping, server is gone.");
+      print("Skipping " + urlsTodo[i] + " server is gone.");
       results.auth_full[urlsTodo[i]] = {status: false, message: instanceInfo.exitStatus};
       instanceInfo.exitStatus = "server is gone.";
       all_ok = false;
