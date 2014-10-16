@@ -41,23 +41,30 @@ using JsonHelper = triagens::basics::JsonHelper;
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AqlValue::isTrue () const {
-  if (_type != JSON) {
+  if (_type == JSON) {
+    TRI_json_t* json = _json->json();
+    if (TRI_IsBooleanJson(json) && json->_value._boolean) {
+      return true;
+    }
+    else if (TRI_IsNumberJson(json) && json->_value._number != 0.0) {
+      return true;
+    }
+    else if (TRI_IsStringJson(json) && json->_value._string.length != 0) {
+      return true;
+    }
+    else if (TRI_IsListJson(json) || TRI_IsArrayJson(json)) {
+      return true;
+    }
+  }
+  else if (_type == RANGE || _type == DOCVEC) {
+    // a range or a docvec is equivalent to a list
+    return true;
+  }
+  else if (_type == EMPTY) {
     return false;
   }
-  
-  TRI_json_t* json = _json->json();
-  if (TRI_IsBooleanJson(json) && json->_value._boolean) {
-    return true;
-  }
-  else if (TRI_IsNumberJson(json) && json->_value._number != 0.0) {
-    return true;
-  }
-  else if (TRI_IsStringJson(json) && json->_value._string.length != 0) {
-    return true;
-  }
-  else {
-    return false;
-  }
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -320,6 +327,26 @@ size_t AqlValue::listSize () const {
   }
 
   return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the numeric value of an AqlValue
+////////////////////////////////////////////////////////////////////////////////
+
+int64_t AqlValue::toInt64 () const {
+  switch (_type) {
+    case JSON: 
+      return TRI_ToInt64Json(_json->json());
+    case RANGE: 
+      return _range->at(0);
+    case DOCVEC: 
+    case SHAPED: 
+    case EMPTY: 
+      // cannot convert these types
+      return 0;
+  }
+
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

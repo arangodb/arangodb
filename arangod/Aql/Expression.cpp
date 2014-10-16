@@ -388,17 +388,9 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
 
     auto low = node->getMember(0);
     auto high = node->getMember(1);
-    AqlValue resultLow = executeSimpleExpression(low, &leftCollection, trx, docColls, argv, startPos, vars, regs);
+    AqlValue resultLow  = executeSimpleExpression(low, &leftCollection, trx, docColls, argv, startPos, vars, regs);
     AqlValue resultHigh = executeSimpleExpression(high, &rightCollection, trx, docColls, argv, startPos, vars, regs);
-
-    if (! resultLow.isNumber() || ! resultHigh.isNumber()) {
-      resultLow.destroy();
-      resultHigh.destroy();
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid data type for range");
-    }
-    
-    AqlValue res = AqlValue(resultLow.toNumber<int64_t>(), resultHigh.toNumber<int64_t>());
-
+    AqlValue res = AqlValue(resultLow.toInt64(), resultHigh.toInt64());
     resultLow.destroy();
     resultHigh.destroy();
 
@@ -409,15 +401,8 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     TRI_document_collection_t const* myCollection = nullptr;
     AqlValue operand = executeSimpleExpression(node->getMember(0), &myCollection, trx, docColls, argv, startPos, vars, regs);
     
-    bool operandIsBoolean = operand.isBoolean();
-    bool operandIsTrue    = operand.isTrue();
-      
+    bool const operandIsTrue = operand.isTrue();
     operand.destroy();
-
-    if (! operandIsBoolean) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE);
-    }
-
     return AqlValue(new triagens::basics::Json(! operandIsTrue));
   }
   
@@ -428,43 +413,29 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     TRI_document_collection_t const* rightCollection = nullptr;
     AqlValue right = executeSimpleExpression(node->getMember(1), &rightCollection, trx, docColls, argv, startPos, vars, regs);
     
-    bool leftIsBoolean  = left.isBoolean();
-    bool rightIsBoolean = right.isBoolean();
-    bool leftIsTrue     = left.isTrue();
-    bool rightIsTrue    = right.isTrue();
-    left.destroy();
-    right.destroy();
-
-    if (! leftIsBoolean) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE);
-    }
-
-    // left is a boolean
-
     if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
       // AND
-      if (leftIsTrue) {
-        if (! rightIsBoolean) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE);
-        }
-          
-        return AqlValue(new triagens::basics::Json(rightIsTrue));
+      if (left.isTrue()) {
+        // left is true => return right
+        left.destroy();
+        return right;
       }
-      
-      return AqlValue(new triagens::basics::Json(false));
+
+      // left is false, return left
+      right.destroy();
+      return left;
     }
     else {
       // OR
-      if (! leftIsTrue) {
-        if (! rightIsBoolean) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE);
-        }
-        
-        return AqlValue(new triagens::basics::Json(rightIsTrue));
+      if (left.isTrue()) {
+        // left is true => return left
+        right.destroy();
+        return left;
       }
-      // fall-through intentional
-    
-      return AqlValue(new triagens::basics::Json(true));
+
+      // left is false => return right
+      left.destroy();
+      return right;
     }
   }
   
@@ -485,10 +456,10 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
         node->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
       // IN and NOT IN
       if (! right.isList()) {
-        // right operand must be a list
+        // right operand must be a list, other we return false
         left.destroy();
         right.destroy();
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_LIST_EXPECTED);
+        return AqlValue(new triagens::basics::Json(false));
       }
     
       size_t const n = right.listSize();
@@ -540,6 +511,21 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
       return AqlValue(new triagens::basics::Json(compareResult >= 0));
     }
     // fall-through intentional
+  }
+  
+  else if (node->type == NODE_TYPE_OPERATOR_TERNARY) {
+    TRI_document_collection_t const* myCollection = nullptr;
+    AqlValue condition  = executeSimpleExpression(node->getMember(0), &myCollection, trx, docColls, argv, startPos, vars, regs);
+
+    bool const isTrue = condition.isTrue();
+    condition.destroy();
+    if (isTrue) {
+      // return true part
+      return executeSimpleExpression(node->getMember(1), &myCollection, trx, docColls, argv, startPos, vars, regs);
+    }
+    
+    // return false part  
+    return executeSimpleExpression(node->getMember(2), &myCollection, trx, docColls, argv, startPos, vars, regs);
   }
   
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unhandled type in simple expression");
