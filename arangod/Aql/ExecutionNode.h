@@ -34,16 +34,17 @@
 #include <VocBase/voc-types.h>
 #include <VocBase/vocbase.h>
 
+#include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Expression.h"
 #include "Aql/Index.h"
 #include "Aql/ModificationOptions.h"
 #include "Aql/Query.h"
 #include "Aql/RangeInfo.h"
-#include "Aql/Types.h"
+#include "Aql/Range.h"
+#include "Aql/types.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
-#include "Aql/Ast.h"
 
 #include "lib/Basics/json-utilities.h"
 

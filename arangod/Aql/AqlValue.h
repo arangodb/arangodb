@@ -29,7 +29,7 @@
 #define ARANGODB_AQL_AQL_VALUE_H 1
 
 #include "Basics/Common.h"
-#include "Aql/Types.h"
+#include "Aql/Range.h"
 #include "Basics/JsonHelper.h"
 #include "Utils/V8TransactionContext.h"
 #include "Utils/AqlTransaction.h"

@@ -31,7 +31,6 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
 #include "Aql/Executor.h"
-#include "Aql/Types.h"
 #include "Aql/V8Expression.h"
 #include "Aql/Variable.h"
 #include "Basics/JsonHelper.h"

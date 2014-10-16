@@ -31,6 +31,7 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Aql/Query.h"
+#include "Aql/types.h"
 
 namespace triagens {
   namespace aql {

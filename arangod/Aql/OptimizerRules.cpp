@@ -29,6 +29,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Variable.h"
+#include "Aql/types.h"
 
 using namespace triagens::aql;
 using Json = triagens::basics::Json;

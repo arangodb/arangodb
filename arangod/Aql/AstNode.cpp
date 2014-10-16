@@ -32,6 +32,7 @@
 #include "Aql/Executor.h"
 #include "Aql/Function.h"
 #include "Aql/Scopes.h"
+#include "Aql/types.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/JsonHelper.h"
 
@@ -957,18 +958,6 @@ bool AstNode::isComparisonOperator () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not a node always produces a boolean value
-////////////////////////////////////////////////////////////////////////////////
-
-bool AstNode::alwaysProducesBoolValue () const {
-  return (isBoolValue() || 
-          isComparisonOperator() ||
-          type == NODE_TYPE_OPERATOR_BINARY_AND ||
-          type == NODE_TYPE_OPERATOR_BINARY_OR ||
-          type == NODE_TYPE_OPERATOR_UNARY_NOT);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a node (and its subnodes) can throw a runtime
 /// exception
 ////////////////////////////////////////////////////////////////////////////////
@@ -985,47 +974,6 @@ bool AstNode::canThrow () const {
   }
 
   // no sub-node throws, now check ourselves
-
-  if (type == NODE_TYPE_OPERATOR_UNARY_PLUS ||
-      type == NODE_TYPE_OPERATOR_UNARY_MINUS) {
-    // all unary operators may throw
-    return true;
-  }
-      
-  if (type == NODE_TYPE_OPERATOR_UNARY_NOT) {
-    // we can throw if the sole operand is not a boolean
-    return (! getMember(0)->alwaysProducesBoolValue());
-  }
-
-  if (type == NODE_TYPE_OPERATOR_BINARY_AND ||
-      type == NODE_TYPE_OPERATOR_BINARY_OR) {
-    // the logical operators can throw if the operands are not booleans
-    if (getMember(0)->alwaysProducesBoolValue() &&
-        getMember(1)->alwaysProducesBoolValue()) {
-      return false;
-    }
-
-    return true;
-  }
-
-  if (type == NODE_TYPE_OPERATOR_BINARY_PLUS ||
-      type == NODE_TYPE_OPERATOR_BINARY_MINUS ||
-      type == NODE_TYPE_OPERATOR_BINARY_TIMES ||
-      type == NODE_TYPE_OPERATOR_BINARY_DIV ||
-      type == NODE_TYPE_OPERATOR_BINARY_MOD) {
-    // the arithmetic operators can throw
-    return true;
-  }
-
-  if (type == NODE_TYPE_OPERATOR_BINARY_IN ||
-      type == NODE_TYPE_OPERATOR_BINARY_NIN) {
-    // the IN and NOT IN operators can throw (if rhs is not a list)
-    return true;
-  }
-  
-  if (type == NODE_TYPE_OPERATOR_TERNARY) {
-    return true;
-  }
 
   if (type == NODE_TYPE_INDEXED_ACCESS) {
     // TODO: validate whether this can actually throw
