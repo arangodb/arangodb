@@ -4708,7 +4708,6 @@ function RESOLVE_GRAPH_TO_COLLECTIONS(graph, options) {
   return collections;
 }
 
-
 function RESOLVE_GRAPH_TO_FROM_VERTICES (graphname, options) {
   var graph = DOCUMENT_HANDLE("_graphs/" + graphname), collections ;
   if (! graph) {
@@ -4813,7 +4812,6 @@ function RESOLVE_GRAPH_TO_DOCUMENTS (graphname, options) {
 
   //ResolvedGraphCache[graphname + JSON.stringify(options)] = result;
   return result;
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4833,7 +4831,6 @@ function DETERMINE_WEIGHT (edge, weight, defaultWeight) {
   }
   return Infinity;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief visitor callback function for traversal
@@ -4860,7 +4857,6 @@ function TRAVERSAL_DISTANCE_VISITOR (config, result, vertex, path) {
     );
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief visitor callback function for traversal
@@ -4916,8 +4912,6 @@ function TRAVERSAL_DIJSKTRA_VISITOR (config, result, vertex, path) {
     });
   }
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to determine parameters for SHORTEST_PATH and
@@ -4979,8 +4973,6 @@ function CALCULATE_SHORTEST_PATHES_WITH_FLOYD_WARSHALL (graphData, options) {
   "use strict";
 
   var graph = graphData, result = [];
-
-
 
   graph.fromVerticesIDs = {};
   graph.fromVertices.forEach(function (a) {
@@ -5050,7 +5042,6 @@ function CALCULATE_SHORTEST_PATHES_WITH_FLOYD_WARSHALL (graphData, options) {
   Object.keys(graph.fromVerticesIDs).forEach(function (v) {
     vertices[v] = 1;
   });
-
 
   var allVertices = Object.keys(vertices);
   allVertices.forEach(function (k) {
@@ -5141,7 +5132,6 @@ function CALCULATE_SHORTEST_PATHES_WITH_FLOYD_WARSHALL (graphData, options) {
     });
   });
   return result;
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5196,13 +5186,11 @@ function MERGE_EXAMPLES_WITH_EDGES (examples, edges) {
   return result;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief calculate shortest paths by dijkstra
 ////////////////////////////////////////////////////////////////////////////////
-function CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA (graphName, options) {
 
+function CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA (graphName, options) {
   var params = TRAVERSAL_PARAMS(), factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
   params.paths = true;
   if (options.edgeExamples) {
@@ -5244,13 +5232,12 @@ function CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA (graphName, options) {
     r.paths = [r.path];
   });
   return result;
-
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if an example is set
 ////////////////////////////////////////////////////////////////////////////////
+
 function IS_EXAMPLE_SET (example) {
   return (
       example && (
@@ -5259,9 +5246,7 @@ function IS_EXAMPLE_SET (example) {
          typeof example === "string"
         )
     );
-
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_ahuacatl_general_graph_shortest_paths
@@ -5348,6 +5333,7 @@ function IS_EXAMPLE_SET (example) {
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
+
 function GENERAL_GRAPH_SHORTEST_PATH (graphName,
                                       startVertexExample,
                                       endVertexExample,
@@ -5375,9 +5361,7 @@ function GENERAL_GRAPH_SHORTEST_PATH (graphName,
   return CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA(
     graphName, options
   );
-
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief traverse a graph
@@ -5469,6 +5453,7 @@ function GRAPH_TRAVERSAL (vertexCollection,
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
+
 function GENERAL_GRAPH_TRAVERSAL (graphName,
                                   startVertexExample,
                                   direction,
@@ -5545,7 +5530,6 @@ function GRAPH_TRAVERSAL_TREE (vertexCollection,
   return [ result[0][params.connect] ];
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_ahuacatl_general_graph_distance
 /// The GRAPH\_DISTANCE\_TO function returns all paths and there distance within a graph.
@@ -5586,10 +5570,11 @@ function GRAPH_TRAVERSAL_TREE (vertexCollection,
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
+
 function GENERAL_GRAPH_DISTANCE_TO (graphName,
-                                      startVertexExample,
-                                      endVertexExample,
-                                      options) {
+                                    startVertexExample,
+                                    endVertexExample,
+                                    options) {
   "use strict";
 
   if (! options) {
@@ -5607,7 +5592,6 @@ function GENERAL_GRAPH_DISTANCE_TO (graphName,
     });
   });
   return result;
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5774,8 +5758,6 @@ function GRAPH_NEIGHBORS (vertexCollection,
   var edges = GRAPH_EDGES(edgeCollection, vertex, direction);
   return FILTERED_EDGES(edges, vertex, direction, examples);
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_ahuacatl_general_graph_neighbors
@@ -6033,6 +6015,7 @@ function GENERAL_GRAPH_EDGES (
 /// @endDocuBlock
 //
 ////////////////////////////////////////////////////////////////////////////////
+
 function GENERAL_GRAPH_VERTICES (
   graphName,
   vertexExamples,
@@ -6128,6 +6111,7 @@ function TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT (result)  {
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
+
 function GENERAL_GRAPH_COMMON_NEIGHBORS (
   graphName,
   vertex1Examples,
@@ -6237,6 +6221,7 @@ function GENERAL_GRAPH_COMMON_NEIGHBORS (
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
+
 function GENERAL_GRAPH_COMMON_PROPERTIES (
   graphName,
   vertex1Examples,
@@ -6315,7 +6300,6 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
     res.push(a);
 
   });
-
 
   return res;
 }
@@ -6399,8 +6383,8 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-function GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options) {
 
+function GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options) {
   "use strict";
   if (! options) {
     options = {  };
@@ -6419,10 +6403,7 @@ function GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options)
     }
   });
   return result;
-
-
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_ahuacatl_general_graph_eccentricity
@@ -6476,8 +6457,8 @@ function GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options)
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-function GENERAL_GRAPH_ECCENTRICITY (graphName, options) {
 
+function GENERAL_GRAPH_ECCENTRICITY (graphName, options) {
   "use strict";
 
   if (! options) {
@@ -6499,8 +6480,6 @@ function GENERAL_GRAPH_ECCENTRICITY (graphName, options) {
   });
   return result;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_ahuacatl_general_graph_absolute_closeness
@@ -6581,8 +6560,8 @@ function GENERAL_GRAPH_ECCENTRICITY (graphName, options) {
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-function GENERAL_GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options) {
 
+function GENERAL_GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options) {
   "use strict";
 
   if (! options) {
@@ -6672,8 +6651,8 @@ function GENERAL_GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options) {
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-function GENERAL_GRAPH_CLOSENESS (graphName, options) {
 
+function GENERAL_GRAPH_CLOSENESS (graphName, options) {
   "use strict";
 
   if (! options) {
@@ -6697,11 +6676,9 @@ function GENERAL_GRAPH_CLOSENESS (graphName, options) {
   Object.keys(result).forEach(function (r) {
     result[r] = result[r] / max;
   });
+
   return result;
-
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_ahuacatl_general_graph_absolute_betweenness
@@ -6764,8 +6741,8 @@ function GENERAL_GRAPH_CLOSENESS (graphName, options) {
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-function GENERAL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 
+function GENERAL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
   "use strict";
 
   if (! options) {
@@ -6808,7 +6785,6 @@ function GENERAL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 
   return result;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_ahuacatl_general_graph_betweenness
@@ -6870,8 +6846,8 @@ function GENERAL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-function GENERAL_GRAPH_BETWEENNESS (graphName, options) {
 
+function GENERAL_GRAPH_BETWEENNESS (graphName, options) {
   "use strict";
 
   if (! options) {
@@ -6888,10 +6864,7 @@ function GENERAL_GRAPH_BETWEENNESS (graphName, options) {
     result[r] = result[r] / max;
   });
   return result;
-
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_ahuacatl_general_graph_radius
@@ -6955,8 +6928,8 @@ function GENERAL_GRAPH_BETWEENNESS (graphName, options) {
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-function GENERAL_GRAPH_RADIUS (graphName, options) {
 
+function GENERAL_GRAPH_RADIUS (graphName, options) {
   "use strict";
 
   if (! options) {
@@ -6981,7 +6954,6 @@ function GENERAL_GRAPH_RADIUS (graphName, options) {
 
   return min;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_ahuacatl_general_graph_diameter
@@ -7047,10 +7019,9 @@ function GENERAL_GRAPH_RADIUS (graphName, options) {
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
+
 function GENERAL_GRAPH_DIAMETER (graphName, options) {
-
   "use strict";
-
 
   if (! options) {
     options = {  };
@@ -7071,8 +7042,6 @@ function GENERAL_GRAPH_DIAMETER (graphName, options) {
 
   return max;
 }
-
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    MODULE EXPORTS
