@@ -183,11 +183,15 @@ namespace triagens {
 /// AQL query running on the coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-        AQL_TRANSACTION_V8* clone () const {
+        triagens::arango::AqlTransaction* clone () const {
           auto colls = new std::map<std::string, triagens::aql::Collection*>();
           try {
-            AQL_TRANSACTION_V8* res = new AQL_TRANSACTION_V8(this->_vocbase, 
-                                                             colls, false);
+            auto res = new triagens::arango::AqlTransaction(
+                             new triagens::arango::V8TransactionContext(true),
+                             this->_vocbase, 
+                             colls);
+            // FIXME: add another boolean argument here
+            //   false
             return res;
           }
           catch (...) {
