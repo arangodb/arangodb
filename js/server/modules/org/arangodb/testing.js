@@ -336,13 +336,32 @@ function startInstance (protocol, options, addArgs, testname) {
   return instanceInfo;
 }
 
+
+function copy (src, dst) {
+  var fs = require("fs");
+  var buffer = fs.readBuffer(src);
+
+  fs.write(dst, buffer);
+}
+
 function checkInstanceAlive(instanceInfo) {  
   var res = statusExternal(instanceInfo.pid, false);
   var ret = res.status === "RUNNING";
   if (! ret) {
-    print("ArangoD " + instanceInfo.pid + " gone:");
-    print(res);
+    print("ArangoD with PID " + instanceInfo.pid.pid + " gone:");
     instanceInfo.exitStatus = res;
+    print(instanceInfo);
+    if (res.hasOwnProperty('signal') && 
+        (res.signal === 11))
+    {
+      var storeArangodPath = "/var/tmp/arangod_" + instanceInfo.pid.pid;
+      print("Core dump written; copying arangod to " + 
+            storeArangodPath + " for later analysis.");
+      res.gdbHint = "Run debugger with 'gdb " + 
+        storeArangodPath + 
+        " /var/tmp/core*" + instanceInfo.pid.pid + "*'";
+      copy("bin/arangod", storeArangodPath);
+    }
   }
   return ret;
 }
@@ -593,7 +612,7 @@ function performTests(options, testList, testname) {
     te = testList[i];
     if (filterTestcaseByOptions(te, options, filtered)) {
       if (!continueTesting) {
-        print("Skipping, " + te + "server is gone.");
+        print("Skipping, " + te + " server is gone.");
         results[te] = {status: false, message: instanceInfo.exitStatus};
         instanceInfo.exitStatus = "server is gone.";
         continue;
@@ -750,7 +769,7 @@ testFuncs.shell_client = function(options) {
     if (filterTestcaseByOptions(te, options, filtered)) {
 
       if (!continueTesting) {
-        print("Skipping, " + te + "server is gone.");
+        print("Skipping, " + te + " server is gone.");
         results[te] = {status: false, message: instanceInfo.exitStatus};
         instanceInfo.exitStatus = "server is gone.";
         continue;
@@ -860,12 +879,12 @@ function rubyTests (options, ssl) {
                 fs.join("UnitTests","HttpInterface", te)];
 
         if (!continueTesting) {
-          print("Skipping, server is gone.");
+          print("Skipping " + te + " server is gone.");
           result[te] = {status: false, message: instanceInfo.exitStatus};
           instanceInfo.exitStatus = "server is gone.";
           continue;
         }
-        print("\nTrying",te,"...");
+        print("\nTrying ",te,"...");
 
         result[te] = executeAndWait("rspec", args);
         if (result[te].status === false && !options.force) {
@@ -1139,7 +1158,7 @@ testFuncs.arangob = function (options) {
          benchTodo[i].indexOf("multitrx") === -1)) {
 
       if (!continueTesting) {
-        print("Skipping, server is gone.");
+        print("Skipping " + benchTodo[i] + ", server is gone.");
         results[i] = {status: false, message: instanceInfo.exitStatus};
         instanceInfo.exitStatus = "server is gone.";
         continue;
@@ -1204,7 +1223,7 @@ testFuncs.authentication_parameters = function (options) {
   for (i = 0; i < urlsTodo.length; i++) {
 
     if (!continueTesting) {
-      print("Skipping, server is gone.");
+      print("Skipping " + urlsTodo[i] + ", server is gone.");
       results.auth_full[urlsTodo[i]] = {status: false, message: instanceInfo.exitStatus};
       instanceInfo.exitStatus = "server is gone.";
       all_ok = false;
@@ -1241,7 +1260,7 @@ testFuncs.authentication_parameters = function (options) {
   results.auth_system = {};
   for (i = 0;i < urlsTodo.length;i++) {
     if (!continueTesting) {
-      print("Skipping, server is gone.");
+      print("Skipping " + urlsTodo[i] + " server is gone.");
       results.auth_full[urlsTodo[i]] = {status: false, message: instanceInfo.exitStatus};
       instanceInfo.exitStatus = "server is gone.";
       all_ok = false;
@@ -1277,7 +1296,7 @@ testFuncs.authentication_parameters = function (options) {
   print("Starting None test");
   for (i = 0;i < urlsTodo.length;i++) {
     if (!continueTesting) {
-      print("Skipping, server is gone.");
+      print("Skipping " + urlsTodo[i] + " server is gone.");
       results.auth_full[urlsTodo[i]] = {status: false, message: instanceInfo.exitStatus};
       instanceInfo.exitStatus = "server is gone.";
       all_ok = false;
