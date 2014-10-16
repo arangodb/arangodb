@@ -357,7 +357,7 @@ namespace triagens {
           _trx = trx;
         }
 
-        triagens::arango::AqlTranscation* getTrx () {
+        triagens::arango::AqlTransaction* getTrx () {
           return _trx;
         }
 
