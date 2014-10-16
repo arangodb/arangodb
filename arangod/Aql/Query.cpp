@@ -385,7 +385,7 @@ QueryResult Query::prepare (QueryRegistry* registry) {
       // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser->ast()->toJson(TRI_UNKNOWN_MEM_ZONE, false)) << "\n";
     }
 
-    std::shared_ptr<AQL_TRANSACTION_V8> trx(new AQL_TRANSACTION_V8(new triagens::arango::V8TransactionContext(true), _vocbase, _collections.collections()));
+    std::shared_ptr<triagens::arango::AqlTransaction> trx(new triagens::arango::AqlTransaction(new triagens::arango::V8TransactionContext(true), _vocbase, _collections.collections()));
     _trx = trx;
 
     bool planRegisters;
@@ -594,7 +594,7 @@ QueryResult Query::explain () {
     // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE)) << "\n";
 
     // create the transaction object, but do not start it yet
-    std::shared_ptr<AQL_TRANSACTION_V8> trx(new AQL_TRANSACTION_V8(new triagens::arango::V8TransactionContext(true), _vocbase, _collections.collections()));
+    std::shared_ptr<triagens::arango::AqlTransaction> trx(new triagens::arango::AqlTransaction(new triagens::arango::V8TransactionContext(true), _vocbase, _collections.collections()));
     _trx = trx;
 
     // we have an AST

@@ -344,7 +344,7 @@ namespace triagens {
 /// @brief return the transaction, if prepared
 ////////////////////////////////////////////////////////////////////////////////
 
-        AQL_TRANSACTION_V8* trx () {
+        triagens::arango::AqlTransaction* trx () {
           return &*_trx;
         }
 
@@ -352,12 +352,12 @@ namespace triagens {
 /// @brief set the transaction for the query
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setTrxPtr (std::shared_ptr<AQL_TRANSACTION_V8>& trx) {
+        void setTrxPtr (std::shared_ptr<triagens::arango::AqlTransaction>& trx) {
           TRI_ASSERT(_trx == nullptr);
           _trx = trx;
         }
 
-        std::shared_ptr<AQL_TRANSACTION_V8>& getTrxPtr () {
+        std::shared_ptr<triagens::arango::AqlTransaction>& getTrxPtr () {
           return _trx;
         }
 ////////////////////////////////////////////////////////////////////////////////
@@ -517,7 +517,7 @@ namespace triagens {
 /// to the HTTP API for queries.
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::shared_ptr<AQL_TRANSACTION_V8>     _trx;
+        std::shared_ptr<triagens::arango::AqlTransaction>     _trx;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the ExecutionEngine object, if the query is prepared

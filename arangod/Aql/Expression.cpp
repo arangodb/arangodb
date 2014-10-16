@@ -107,7 +107,7 @@ std::unordered_set<Variable*> Expression::variables () const {
 /// @brief execute the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Expression::execute (AQL_TRANSACTION_V8* trx,
+AqlValue Expression::execute (triagens::arango::AqlTransaction* trx,
                               std::vector<TRI_document_collection_t const*>& docColls,
                               std::vector<AqlValue>& argv,
                               size_t startPos,
@@ -213,7 +213,7 @@ void Expression::analyzeExpression () {
 
 AqlValue Expression::executeSimpleExpression (AstNode const* node,
                                               TRI_document_collection_t const** collection, 
-                                              AQL_TRANSACTION_V8* trx,
+                                              triagens::arango::AqlTransaction* trx,
                                               std::vector<TRI_document_collection_t const*>& docColls,
                                               std::vector<AqlValue>& argv,
                                               size_t startPos,

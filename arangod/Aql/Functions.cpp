@@ -38,7 +38,7 @@ using Json = triagens::basics::Json;
 /// @brief function IS_NULL
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::IsNull (AQL_TRANSACTION_V8* trx,
+AqlValue Functions::IsNull (triagens::arango::AqlTransaction* trx,
                             TRI_document_collection_t const* collection,
                             AqlValue const parameters) {
   Json j(parameters.extractListMember(trx, collection, 0));
@@ -49,7 +49,7 @@ AqlValue Functions::IsNull (AQL_TRANSACTION_V8* trx,
 /// @brief function IS_BOOL
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::IsBool (AQL_TRANSACTION_V8* trx,
+AqlValue Functions::IsBool (triagens::arango::AqlTransaction* trx,
                             TRI_document_collection_t const* collection,
                             AqlValue const parameters) {
   Json j(parameters.extractListMember(trx, collection, 0));
@@ -60,7 +60,7 @@ AqlValue Functions::IsBool (AQL_TRANSACTION_V8* trx,
 /// @brief function IS_NUMBER
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::IsNumber (AQL_TRANSACTION_V8* trx,
+AqlValue Functions::IsNumber (triagens::arango::AqlTransaction* trx,
                               TRI_document_collection_t const* collection,
                               AqlValue const parameters) {
   Json j(parameters.extractListMember(trx, collection, 0));
@@ -71,7 +71,7 @@ AqlValue Functions::IsNumber (AQL_TRANSACTION_V8* trx,
 /// @brief function IS_STRING
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::IsString (AQL_TRANSACTION_V8* trx,
+AqlValue Functions::IsString (triagens::arango::AqlTransaction* trx,
                               TRI_document_collection_t const* collection,
                               AqlValue const parameters) {
   Json j(parameters.extractListMember(trx, collection, 0));
@@ -82,7 +82,7 @@ AqlValue Functions::IsString (AQL_TRANSACTION_V8* trx,
 /// @brief function IS_LIST
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::IsList (AQL_TRANSACTION_V8* trx,
+AqlValue Functions::IsList (triagens::arango::AqlTransaction* trx,
                             TRI_document_collection_t const* collection,
                             AqlValue const parameters) {
   Json j(parameters.extractListMember(trx, collection, 0));
@@ -93,7 +93,7 @@ AqlValue Functions::IsList (AQL_TRANSACTION_V8* trx,
 /// @brief function IS_DOCUMENT
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::IsDocument (AQL_TRANSACTION_V8* trx,
+AqlValue Functions::IsDocument (triagens::arango::AqlTransaction* trx,
                                 TRI_document_collection_t const* collection,
                                 AqlValue const parameters) {
   Json j(parameters.extractListMember(trx, collection, 0));

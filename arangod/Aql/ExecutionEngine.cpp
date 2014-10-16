@@ -277,7 +277,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     std::vector<ExecutionNode*>  nodes;
   };
 
-  std::shared_ptr<AQL_TRANSACTION_V8> trx;
+  std::shared_ptr<triagens::arango::AqlTransaction> trx;
   Query*                   query;
   QueryRegistry*           queryRegistry;
   ExecutionBlock*          root;

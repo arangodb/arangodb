@@ -32,13 +32,14 @@
 
 #include "Basics/Common.h"
 #include "Aql/AqlValue.h"
+#include "Utils/AqlTransaction.h"
 
 #include <functional>
 
 namespace triagens {
   namespace aql {
 
-    typedef std::function<AqlValue(AQL_TRANSACTION_V8*,
+    typedef std::function<AqlValue(triagens::arango::AqlTransaction*,
                                    TRI_document_collection_t const*,
                                    AqlValue const)> FunctionImplementation;
 
@@ -48,12 +49,12 @@ namespace triagens {
 /// @brief function IS_NULL
 ////////////////////////////////////////////////////////////////////////////////
 
-      static AqlValue IsNull (AQL_TRANSACTION_V8*, TRI_document_collection_t const*, AqlValue const);
-      static AqlValue IsBool (AQL_TRANSACTION_V8*, TRI_document_collection_t const*, AqlValue const);
-      static AqlValue IsNumber (AQL_TRANSACTION_V8*, TRI_document_collection_t const*, AqlValue const);
-      static AqlValue IsString (AQL_TRANSACTION_V8*, TRI_document_collection_t const*, AqlValue const);
-      static AqlValue IsList (AQL_TRANSACTION_V8*, TRI_document_collection_t const*, AqlValue const);
-      static AqlValue IsDocument (AQL_TRANSACTION_V8*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue IsNull (triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue IsBool (triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue IsNumber (triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue IsString (triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue IsList (triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue IsDocument (triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
     };
 
   }
