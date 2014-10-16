@@ -63,10 +63,15 @@ namespace triagens {
 
         AqlTransaction (TransactionContext* transactionContext,
                         TRI_vocbase_t* vocbase,
-                        std::map<std::string, triagens::aql::Collection*>* collections)
-          : Transaction(transactionContext, vocbase, 0) {
+                        std::map<std::string, triagens::aql::Collection*>* collections,
+                        bool isMainTransaction)
+          : Transaction(transactionContext, vocbase, 0),
+            _isMainTransaction(isMainTransaction) {
 
           this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
+          if (! isMainTransaction) {
+            this->addHint(TRI_TRANSACTION_HINT_LOCK_NEVER, true);
+          }
 
           for (auto it = collections->begin(); it != collections->end(); ++it) {
             if (processCollection((*it).second) != TRI_ERROR_NO_ERROR) {
@@ -189,9 +194,7 @@ namespace triagens {
             auto res = new triagens::arango::AqlTransaction(
                              new triagens::arango::V8TransactionContext(true),
                              this->_vocbase, 
-                             colls);
-            // FIXME: add another boolean argument here
-            //   false
+                             colls, false);
             return res;
           }
           catch (...) {
@@ -199,6 +202,15 @@ namespace triagens {
             throw;
           }
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _isMainTransaction, in cluster operation, an AqlTransaction
+/// only locks its collections, if it is the main one.
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+        bool _isMainTransaction;
 
     };
 
