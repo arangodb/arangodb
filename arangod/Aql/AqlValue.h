@@ -193,37 +193,18 @@ namespace triagens {
       size_t listSize () const;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the numeric value of an AqlValue
+////////////////////////////////////////////////////////////////////////////////
+
+      int64_t toInt64 () const;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get a string representation of the AqlValue
 /// this will fail if the value is not a string
 ////////////////////////////////////////////////////////////////////////////////
 
       std::string toString () const;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the numeric value of an AqlValue
-/// this will fail if the value is not a number
-////////////////////////////////////////////////////////////////////////////////
-
-      template<typename T>
-      T toNumber () const {
-        switch (_type) {
-          case JSON: {
-            TRI_json_t const* json = _json->json();
-            TRI_ASSERT(TRI_IsNumberJson(json));
-            return static_cast<T>(json->_value._number);
-          }
-
-          case SHAPED: 
-          case DOCVEC: 
-          case RANGE: 
-          case EMPTY: {
-            // cannot convert these types
-            return 0;
-          }
-        }   
-
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-      }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a string representation of the AqlValue
