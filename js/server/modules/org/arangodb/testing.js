@@ -641,13 +641,13 @@ function performTests(options, testList, testname) {
   return results;
 }
 
-function single_usage(testsuite) {
+function single_usage (testsuite, list) {
   print("single_" + testsuite + ": No test specified!\n Available tests:");
   var filelist = "";
-  var list = fs.list(makePath("js/server/tests"));
+
   for (var fileNo in list) {
     if (/\.js$/.test(list[fileNo])) {
-      filelist += " js/server/tests/"+list[fileNo];
+      filelist += " " + list[fileNo];
     }
   }
   print(filelist);
@@ -658,9 +658,9 @@ function single_usage(testsuite) {
 
 
 testFuncs.single_server = function (options) {
-  var instanceInfo = startInstance("tcp", options, [], "single_server");
   var result = { };
   if (options.test !== undefined) {
+    var instanceInfo = startInstance("tcp", options, [], "single_server");
     var te = options.test;
     print("\nTrying",te,"on server...");
     result = {};
@@ -671,32 +671,26 @@ testFuncs.single_server = function (options) {
     return result;
   }
   else {
-    return single_usage("server");
+    findTests();
+    return single_usage("server", tests_shell_server);
   }
 };
 
 testFuncs.single_client = function (options) {
-  var instanceInfo = startInstance("tcp", options, [], "single_client");
   var result = { };
   if (options.test !== undefined) {
+    var instanceInfo = startInstance("tcp", options, [], "single_client");
     var te = options.test;
-    var topDir = findTopDir();
-    var args = makeTestingArgsClient(options);
-    args.push("--server.endpoint");
-    args.push(instanceInfo.endpoint);
-    args.push("--javascript.unit-tests");
-    args.push(fs.join(topDir,te));
-    print("\nTrying",te,"on client...");
-    var arangosh = fs.join("bin","arangosh");
-    result = {};
-    result[te] = executeAndWait(arangosh, args);
+    print("\nTrying ",te," on client...");
+    result[te] = runInArangosh(options, instanceInfo, te);
     print("Shutting down...");
     shutdownInstance(instanceInfo,options);
     print("done.");
     return result;
   }
   else {
-    return single_usage("client");
+    findTests();
+    return single_usage("client", tests_shell_client);
   }
 };
 
