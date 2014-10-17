@@ -2001,6 +2001,7 @@ div .tile, div .bigtile {
     height: 50px;
     width: 50px; }
   div .tile svg.tile-icon-svg, div .bigtile svg.tile-icon-svg {
+    cursor: pointer;
     fill: #686766;
     height: 50px;
     margin-left: 90px;
