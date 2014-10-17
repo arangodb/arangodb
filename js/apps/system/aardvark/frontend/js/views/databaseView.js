@@ -26,7 +26,8 @@
       "click #databaseSearchSubmit" : "search",
       "click #databaseToggle"       : "toggleSettingsDropdown",
       "click .css-label"            : "checkBoxes",
-      "change #dbSortDesc"          : "sorting"
+      "change #dbSortDesc"          : "sorting",
+      "click svg"                   : "switchDatabase"
     },
 
     sorting: function() {
@@ -128,6 +129,12 @@
     createDatabase: function(e) {
       e.preventDefault();
       this.createAddDatabaseModal();
+    },
+
+    switchDatabase: function(e) {
+      var changeTo = $(e.currentTarget).parent().find("h5").text();
+      var url = this.collection.createDatabaseURL(changeTo);
+      window.location.replace(url);
     },
 
     submitCreateDatabase: function() {

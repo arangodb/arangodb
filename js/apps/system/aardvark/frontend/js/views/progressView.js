@@ -14,19 +14,34 @@
 
     el2: "#progressPlaceholderIcon",
 
+    action: function(){},
+
+    events: {
+      "click .progress-action button": "performAction"
+    },
+
+    performAction: function() {
+      this.action();
+    },
+
     initialize: function() {
     },
 
-    show: function(msg) {
+    show: function(msg, action, button) {
       $(this.el).html(this.template.render({}));
-      $(".progress-message").text(msg);
+      $(".progress-text").text(msg);
+      $(".progress-action").html(button);
+
+      this.action = action;
+
       $(this.el).show();
-      $(this.el2).html('<i class="fa fa-spinner fa-spin"></i>');
+      //$(this.el2).html('<i class="fa fa-spinner fa-spin"></i>');
     },
 
     hide: function() {
       $(this.el).hide();
-      $(this.el2).html('');
+      this.action = function(){};
+      //$(this.el2).html('');
     }
 
   });
