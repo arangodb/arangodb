@@ -86,6 +86,7 @@ Expression::~Expression () {
   else if (_type == JSON) {
     TRI_ASSERT(_data != nullptr);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _data);
+    _data = nullptr;
     // _json is freed automatically by AqlItemBlock
   }
 }
@@ -160,7 +161,18 @@ void Expression::replaceVariables (std::unordered_map<VariableId, Variable const
   TRI_ASSERT(_node != nullptr);
 
   _ast->replaceVariables(const_cast<AstNode*>(_node), replacements);
-    
+ 
+  invalidateExpression(); 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalidates an expression
+/// this only has an effect for V8-based functions, which need to be created,
+/// used and destroyed in the same context. when a V8 function is used across
+/// multiple V8 contexts, it must be invalidated in between
+////////////////////////////////////////////////////////////////////////////////
+
+void Expression::invalidateExpression () {
   if (_type == V8) {
     delete _func;
     _type = UNPROCESSED;

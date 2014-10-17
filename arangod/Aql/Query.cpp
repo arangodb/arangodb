@@ -229,7 +229,11 @@ Query::~Query () {
 
   if (_context != nullptr) {
     TRI_ASSERT(! _contextOwnedByExterior);
+        
+    _trx->unregisterInContext();
+
     _applicationV8->exitContext(_context);
+      // TODO: unregister transaction and resolver in context
     _context = nullptr;
   }
 
@@ -481,6 +485,9 @@ QueryResult Query::prepare (QueryRegistry* registry) {
     
     // varsUsedLater and varsValid are unordered_sets and so their orders
     // are not the same in the serialised and deserialised plans 
+
+    // return the V8 context
+    exitContext();
 
     enterState(EXECUTION);
     ExecutionEngine* engine(ExecutionEngine::instanciateFromPlan(registry, this, plan.get(), planRegisters));
@@ -805,9 +812,13 @@ void Query::enterContext () {
   if (! _contextOwnedByExterior) {
     if (_context == nullptr) {
       _context = _applicationV8->enterContext("STANDARD", _vocbase, false, false);
+
       if (_context == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot enter V8 context");
       }
+
+      // register transaction in v8 context
+      _trx->registerInContext();
     }
 
     TRI_ASSERT(_context != nullptr);
@@ -822,6 +833,9 @@ void Query::exitContext () {
   if (! _contextOwnedByExterior) {
     if (_context != nullptr) {
       if (isRunningInCluster()) {
+        // unregister transaction in v8 context
+        _trx->unregisterInContext();
+
         _applicationV8->exitContext(_context);
         _context = nullptr;
       }

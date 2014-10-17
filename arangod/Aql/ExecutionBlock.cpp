@@ -27,6 +27,7 @@
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/json-utilities.h"
@@ -906,6 +907,14 @@ bool IndexRangeBlock::readIndex () {
 
     newCondition = std::unique_ptr<IndexOrCondition>(new IndexOrCondition());
     newCondition.get()->push_back(std::vector<RangeInfo>());
+
+    // must have a V8 context here to protect Expression::execute()
+    auto engine = _engine;
+    triagens::basics::ScopeGuard guard{
+      [&engine]() -> void { engine->getQuery()->enterContext(); },
+      [&engine]() -> void { engine->getQuery()->exitContext(); }
+    };
+
     size_t posInExpressions = 0;
     for (auto r : en->_ranges.at(0)) {
       // First create a new RangeInfo containing only the constant 
@@ -1829,6 +1838,14 @@ void CalculationBlock::doEvaluation (AqlItemBlock* result) {
 
     RegisterId nrRegs = result->getNrRegs();
     result->setDocumentCollection(_outReg, nullptr);
+
+    // must have a V8 context here to protect Expression::execute()
+    auto engine = _engine;
+    triagens::basics::ScopeGuard guard{
+      [&engine]() -> void { engine->getQuery()->enterContext(); },
+      [&engine]() -> void { engine->getQuery()->exitContext(); }
+    };
+
     for (size_t i = 0; i < n; i++) {
       // need to execute the expression
       AqlValue a = _expression->execute(_trx, docColls, data, nrRegs * i, _inVars, _inRegs);
