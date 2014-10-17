@@ -27,6 +27,7 @@
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/json-utilities.h"
@@ -179,6 +180,19 @@ bool ExecutionBlock::walk (WalkerWorker<ExecutionBlock>* worker) {
     return true;
   }
 
+  // Now handle a subquery:
+  if ((_exeNode->getType() == ExecutionNode::SUBQUERY) &&
+      worker->EnterSubQueryFirst()) {
+    auto p = static_cast<SubqueryBlock*>(this);
+    if (worker->enterSubquery(this, p->getSubquery())) {
+      bool abort = p->getSubquery()->walk(worker);
+      worker->leaveSubquery(this, p->getSubquery());
+      if (abort) {
+        return true;
+      }
+    }
+  }
+
   // Now the children in their natural order:
   for (auto c : _dependencies) {
     if (c->walk(worker)) {
@@ -186,7 +200,8 @@ bool ExecutionBlock::walk (WalkerWorker<ExecutionBlock>* worker) {
     }
   }
   // Now handle a subquery:
-  if (_exeNode->getType() == ExecutionNode::SUBQUERY) {
+  if ((_exeNode->getType() == ExecutionNode::SUBQUERY) &&
+      ! worker->EnterSubQueryFirst()) {
     auto p = static_cast<SubqueryBlock*>(this);
     if (worker->enterSubquery(this, p->getSubquery())) {
       bool abort = p->getSubquery()->walk(worker);
@@ -906,6 +921,14 @@ bool IndexRangeBlock::readIndex () {
 
     newCondition = std::unique_ptr<IndexOrCondition>(new IndexOrCondition());
     newCondition.get()->push_back(std::vector<RangeInfo>());
+
+    // must have a V8 context here to protect Expression::execute()
+    auto engine = _engine;
+    triagens::basics::ScopeGuard guard{
+      [&engine]() -> void { engine->getQuery()->enterContext(); },
+      [&engine]() -> void { engine->getQuery()->exitContext(); }
+    };
+
     size_t posInExpressions = 0;
     for (auto r : en->_ranges.at(0)) {
       // First create a new RangeInfo containing only the constant 
@@ -1829,6 +1852,14 @@ void CalculationBlock::doEvaluation (AqlItemBlock* result) {
 
     RegisterId nrRegs = result->getNrRegs();
     result->setDocumentCollection(_outReg, nullptr);
+
+    // must have a V8 context here to protect Expression::execute()
+    auto engine = _engine;
+    triagens::basics::ScopeGuard guard{
+      [&engine]() -> void { engine->getQuery()->enterContext(); },
+      [&engine]() -> void { engine->getQuery()->exitContext(); }
+    };
+
     for (size_t i = 0; i < n; i++) {
       // need to execute the expression
       AqlValue a = _expression->execute(_trx, docColls, data, nrRegs * i, _inVars, _inRegs);
@@ -3703,6 +3734,28 @@ size_t BlockWithClients::getClientId (std::string const& shardId) {
   return ((*it).second);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief preInitCursor: check if we should really init the cursor, and reset
+/// _doneForClient
+////////////////////////////////////////////////////////////////////////////////
+
+bool BlockWithClients::preInitCursor () {
+  
+  if (!_initOrShutdown) {
+    return false;
+  }
+
+  _doneForClient.clear();
+  _doneForClient.reserve(_nrClients);
+
+  for (size_t i = 0; i < _nrClients; i++) {
+    _doneForClient.push_back(false);
+  }
+
+  _initOrShutdown = false;
+  return true;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                class ScatterBlock
 // -----------------------------------------------------------------------------
@@ -3713,25 +3766,20 @@ size_t BlockWithClients::getClientId (std::string const& shardId) {
 
 int ScatterBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 
-  if (!_initOrShutdown) {
+  if (!preInitCursor()) {
     return TRI_ERROR_NO_ERROR;
   }
-
-  int res = ExecutionBlock::initializeCursor(items, pos);
   
+  int res = ExecutionBlock::initializeCursor(items, pos);
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
   _posForClient.clear();
-  _doneForClient.clear();
-  _doneForClient.reserve(_nrClients);
-
+  
   for (size_t i = 0; i < _nrClients; i++) {
     _posForClient.push_back(std::make_pair(0, 0));
-    _doneForClient.push_back(false);
   }
-  _initOrShutdown = false;
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -3882,27 +3930,18 @@ DistributeBlock::DistributeBlock (ExecutionEngine* engine,
 
 int DistributeBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 
-  if (!_initOrShutdown) {
+  if (!preInitCursor()) {
     return TRI_ERROR_NO_ERROR;
   }
-
-  int res = ExecutionBlock::initializeCursor(items, pos);
   
+  int res = ExecutionBlock::initializeCursor(items, pos);
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
-  for (auto x:  _distBuffer) {
-    x.clear();
-  }
   _distBuffer.clear();
   _distBuffer.reserve(_nrClients);
 
-  for (auto x: _doneForClient) {
-    x = false;
-  }
-
-  _initOrShutdown = false;
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -4100,11 +4139,18 @@ bool DistributeBlock::getBlockForClient (size_t atLeast,
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t DistributeBlock::sendToClient (AqlValue val) {
-  
-  TRI_ASSERT(val._type == AqlValue::JSON);
-  //TODO should work for SHAPED too (maybe this requires converting it to TRI_json_t)
  
-  TRI_json_t const* json = val._json->json();
+  TRI_json_t const* json;
+  if (val._type == AqlValue::JSON) {
+    json = val._json->json();
+  } 
+  else if (val._type == AqlValue::SHAPED) {
+    json = val.toJson(_trx, _collection->documentCollection()).json();
+  } 
+  else {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, 
+        "DistributeBlock: can only send JSON or SHAPED");
+  }
   
   std::string shardId;
   bool usesDefaultShardingAttributes;  

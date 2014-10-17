@@ -1079,6 +1079,8 @@ AstNode* Ast::createArithmeticResultNode (double value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::executeConstExpression (AstNode const* node) {
+  // must enter v8 before we can execute any expression
+  _query->enterContext();
   TRI_json_t* result = _query->executor()->executeExpression(node); 
 
   if (result == nullptr) {
