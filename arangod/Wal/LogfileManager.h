@@ -645,7 +645,8 @@ namespace triagens {
 /// @brief wait for the collector thread to collect a specific logfile
 ////////////////////////////////////////////////////////////////////////////////
 
-        void waitForCollector (Logfile::IdType);
+        void waitForCollector (Logfile::IdType,
+                               double);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run the recovery procedure

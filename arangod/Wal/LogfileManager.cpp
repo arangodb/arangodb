@@ -523,8 +523,8 @@ void LogfileManager::stop () {
   // set WAL to read-only mode
   allowWrites(false);
 
-  // TODO: decide whether we want to flush at shutdown
-  // this->flush(true, true, false);
+  // do a final flush at shutdown
+  this->flush(true, true, false);
 
   // stop threads
   LOG_TRACE("stopping remover thread");
@@ -914,16 +914,21 @@ int LogfileManager::flush (bool waitForSync,
   }
 
   if (waitForCollector) {
+    double maxWaitTime = 0.0; // this means wait forever
+    if (_shutdown == 1) {
+      maxWaitTime = 120.0;
+    }
+
     if (res == TRI_ERROR_NO_ERROR) {
       // we need to wait for the collector...
-      this->waitForCollector(lastOpenLogfileId);
+      this->waitForCollector(lastOpenLogfileId, maxWaitTime);
     }
     else if (res == TRI_ERROR_ARANGO_DATAFILE_EMPTY) {
       // current logfile is empty and cannot be collected
       // we need to wait for the collector to collect the previously sealed datafile
 
       if (lastSealedLogfileId > 0) {
-        this->waitForCollector(lastSealedLogfileId);
+        this->waitForCollector(lastSealedLogfileId, maxWaitTime);
       }
     }
   }
@@ -1456,11 +1461,22 @@ void LogfileManager::removeLogfile (Logfile* logfile,
 /// @brief wait until a specific logfile has been collected
 ////////////////////////////////////////////////////////////////////////////////
 
-void LogfileManager::waitForCollector (Logfile::IdType logfileId) {
+void LogfileManager::waitForCollector (Logfile::IdType logfileId,
+                                       double maxWaitTime) {
+  static const int64_t SingleWaitPeriod = 50 * 1000;
+ 
+  int64_t maxIterations = INT64_MAX; // wait forever
+  if (maxWaitTime > 0.0) {
+    // if specified, wait for a shorter period of time
+    maxIterations = static_cast<int64_t>(maxWaitTime * 1000000.0 / (double) SingleWaitPeriod); 
+    LOG_TRACE("will wait for max. %f seconds for collector to finish", maxWaitTime);
+  }
+
   LOG_TRACE("waiting for collector thread to collect logfile %llu", (unsigned long long) logfileId);
 
   // wait for the collector thread to finish the collection
-  while (true) {
+  int64_t iterations = 0;
+  while (++iterations < maxIterations) {
     {
       READ_LOCKER(_logfilesLock);
 
@@ -1470,7 +1486,7 @@ void LogfileManager::waitForCollector (Logfile::IdType logfileId) {
     }
 
     LOG_TRACE("waiting for collector");
-    usleep(50 * 1000);
+    usleep(SingleWaitPeriod);
   }
 }
 
