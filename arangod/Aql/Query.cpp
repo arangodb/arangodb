@@ -37,9 +37,11 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/json.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ServerState.h"
 #include "Utils/AqlTransaction.h"
 #include "Utils/Exception.h"
 #include "Utils/V8TransactionContext.h"
+#include "V8Server/ApplicationV8.h"
 #include "VocBase/vocbase.h"
 
 using namespace triagens::aql;
@@ -115,14 +117,18 @@ TRI_json_t* Profile::toJson (TRI_memory_zone_t*) {
 /// @brief creates a query
 ////////////////////////////////////////////////////////////////////////////////
 
-Query::Query (TRI_vocbase_t* vocbase,
+Query::Query (triagens::arango::ApplicationV8* applicationV8,
+              bool contextOwnedByExterior,
+              TRI_vocbase_t* vocbase,
               char const* queryString,
               size_t queryLength,
               TRI_json_t* bindParameters,
               TRI_json_t* options,
               QueryPart part)
-  : _vocbase(vocbase),
+  : _applicationV8(applicationV8),
+    _vocbase(vocbase),
     _executor(nullptr),
+    _context(nullptr),
     _queryString(queryString),
     _queryLength(queryLength),
     _queryJson(),
@@ -137,7 +143,9 @@ Query::Query (TRI_vocbase_t* vocbase,
     _parser(nullptr),
     _trx(nullptr),
     _engine(nullptr),
-    _part(part) {
+    _part(part),
+    _clusterStatus(-1),
+    _contextOwnedByExterior(contextOwnedByExterior) {
 
   TRI_ASSERT(_vocbase != nullptr);
 
@@ -156,12 +164,16 @@ Query::Query (TRI_vocbase_t* vocbase,
 /// @brief creates a query from Json
 ////////////////////////////////////////////////////////////////////////////////
 
-Query::Query (TRI_vocbase_t* vocbase,
+Query::Query (triagens::arango::ApplicationV8* applicationV8,
+              bool contextOwnedByExterior,
+              TRI_vocbase_t* vocbase,
               triagens::basics::Json queryStruct,
               TRI_json_t* options,
               QueryPart part)
-  : _vocbase(vocbase),
+  : _applicationV8(applicationV8),
+    _vocbase(vocbase),
     _executor(nullptr),
+    _context(nullptr),
     _queryString(nullptr),
     _queryLength(0),
     _queryJson(queryStruct),
@@ -176,7 +188,9 @@ Query::Query (TRI_vocbase_t* vocbase,
     _parser(nullptr),
     _trx(nullptr),
     _engine(nullptr),
-    _part(part) {
+    _part(part),
+    _clusterStatus(-1),
+    _contextOwnedByExterior(contextOwnedByExterior) {
 
   TRI_ASSERT(_vocbase != nullptr);
 
@@ -213,6 +227,12 @@ Query::~Query () {
     _executor = nullptr;
   }
 
+  if (_context != nullptr) {
+    TRI_ASSERT(! _contextOwnedByExterior);
+    _applicationV8->exitContext(_context);
+    _context = nullptr;
+  }
+
   if (_ast != nullptr) {
     delete _ast;
     _ast = nullptr;
@@ -242,7 +262,9 @@ Query* Query::clone (QueryPart part) {
   std::unique_ptr<Query> clone;
 
   try {
-    clone.reset(new Query(_vocbase,
+    clone.reset(new Query(_applicationV8, 
+                          false,
+                          _vocbase,
                           _queryString,
                           _queryLength,
                           nullptr,
@@ -758,6 +780,55 @@ char* Query::registerString (std::string const& p,
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not we are running in a cluster
+////////////////////////////////////////////////////////////////////////////////
+
+bool Query::isRunningInCluster () {
+  if (_clusterStatus == -1) {
+    // not yet determined
+    _clusterStatus = 0;
+    if (triagens::arango::ServerState::instance()->isRunningInCluster()) {
+      _clusterStatus = 1;
+    }
+  }
+  TRI_ASSERT(_clusterStatus == 0 || _clusterStatus == 1);
+  return (_clusterStatus == 1);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enter a V8 context
+////////////////////////////////////////////////////////////////////////////////
+
+void Query::enterContext () {
+  if (! _contextOwnedByExterior) {
+    if (_context == nullptr) {
+      _context = _applicationV8->enterContext("STANDARD", _vocbase, false, false);
+      if (_context == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot enter V8 context");
+      }
+    }
+
+    TRI_ASSERT(_context != nullptr);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a V8 context
+////////////////////////////////////////////////////////////////////////////////
+
+void Query::exitContext () {
+  if (! _contextOwnedByExterior) {
+    if (_context != nullptr) {
+      if (isRunningInCluster()) {
+        _applicationV8->exitContext(_context);
+        _context = nullptr;
+      }
+    }
+    TRI_ASSERT(_context == nullptr);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fetch a boolean value from the options

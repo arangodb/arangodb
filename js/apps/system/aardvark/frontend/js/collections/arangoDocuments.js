@@ -159,7 +159,7 @@
         "count": this.getPageSize()
       };
 
-      query = "FOR x in @@collection";
+      query = "FOR x in @@collection let att = slice(ATTRIBUTES(x), 0, 10)";
       query += this.setFiltersForQuery(bindVars);
       // Sort result, only useful for a small number of docs
       if (this.getTotal() < this.MAX_SORT) {
@@ -173,14 +173,14 @@
       }
 
       if (bindVars.count !== 'all') {
-        query += " LIMIT @offset, @count RETURN x";
+        query += " LIMIT @offset, @count RETURN keep(x, att)";
       }
       else {
         tmp = {
           "@collection": this.collectionID
         };
         bindVars = tmp;
-        query += " RETURN x";
+        query += " RETURN keep(x, att)";
       }
 
       queryObj = {

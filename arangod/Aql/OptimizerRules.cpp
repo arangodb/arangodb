@@ -1688,7 +1688,6 @@ int triagens::aql::scatterInCluster (Optimizer* opt,
         
       // re-link with the remote node
       node->addDependency(remoteNode);
-      
 
       // insert another remote node
       remoteNode = new RemoteNode(plan, plan->nextId(), vocbase, collection, "", "", "");
@@ -1742,21 +1741,30 @@ int triagens::aql::distributeInCluster (Optimizer* opt,
     auto const nodeType = node->getType();
     
     if (nodeType != ExecutionNode::INSERT  &&
-        nodeType != ExecutionNode::UPDATE  &&
-        nodeType != ExecutionNode::REPLACE &&
         nodeType != ExecutionNode::REMOVE) {
       opt->addPlan(plan, rule->level, wasModified);
       return TRI_ERROR_NO_ERROR;
     }
+    
+    Collection const* collection = static_cast<ModificationNode*>(node)->collection();
+    
+    if (nodeType == ExecutionNode::REMOVE) {
+      // check if collection shard keys are only _key
+      std::vector<std::string> shardKeys = collection->shardKeys();
+      if (shardKeys.size() != 1 || shardKeys[0] != "_key") {
+        opt->addPlan(plan, rule->level, wasModified);
+        return TRI_ERROR_NO_ERROR;
+      }
+    }
+
     auto deps = node->getDependencies();
     TRI_ASSERT(deps.size() == 1);
 
     // unlink the node
     plan->unlinkNode(node, true);
 
-    // extract database and collection from plan node
+    // extract database from plan node
     TRI_vocbase_t* vocbase = static_cast<ModificationNode*>(node)->vocbase();
-    Collection const* collection = static_cast<ModificationNode*>(node)->collection();
 
     // insert a distribute node
     TRI_ASSERT(node->getVariablesUsedHere().size() == 1);
@@ -1782,6 +1790,7 @@ int triagens::aql::distributeInCluster (Optimizer* opt,
   opt->addPlan(plan, rule->level, wasModified);
   return TRI_ERROR_NO_ERROR;
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief move filters up into the cluster distribution part of the plan
 /// this rule modifies the plan in place

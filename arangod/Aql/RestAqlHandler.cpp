@@ -127,7 +127,7 @@ void RestAqlHandler::createQueryFromJson () {
   
   std::string const part = JsonHelper::getStringValue(queryJson.json(), "part", "");
 
-  auto query = new Query(_vocbase, plan, options.steal(), (part == "main" ? PART_MAIN : PART_DEPENDENT));
+  auto query = new Query(_applicationV8, false, _vocbase, plan, options.steal(), (part == "main" ? PART_MAIN : PART_DEPENDENT));
   QueryResult res = query->prepare(_queryRegistry);
   if (res.code != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN,
@@ -188,7 +188,7 @@ void RestAqlHandler::parseQuery () {
     return;
   }
 
-  auto query = new Query(_vocbase, queryString.c_str(), queryString.size(),
+  auto query = new Query(_applicationV8, false, _vocbase, queryString.c_str(), queryString.size(),
                          nullptr, nullptr, PART_MAIN);
   QueryResult res = query->parse();
   if (res.code != TRI_ERROR_NO_ERROR) {
@@ -244,7 +244,7 @@ void RestAqlHandler::explainQuery () {
   Json options;
   options = queryJson.get("options").copy();        // cannot throw
 
-  auto query = new Query(_vocbase, queryString.c_str(), queryString.size(),
+  auto query = new Query(_applicationV8, false, _vocbase, queryString.c_str(), queryString.size(),
                          parameters.steal(), options.steal(), PART_MAIN);
   QueryResult res = query->explain();
   if (res.code != TRI_ERROR_NO_ERROR) {
@@ -304,7 +304,7 @@ void RestAqlHandler::createQueryFromString () {
   Json options;
   options = queryJson.get("options").copy();        // cannot throw
 
-  auto query = new Query(_vocbase, queryString.c_str(), queryString.size(),
+  auto query = new Query(_applicationV8, false, _vocbase, queryString.c_str(), queryString.size(),
                          parameters.steal(), options.steal(), (part == "main" ? PART_MAIN : PART_DEPENDENT));
   QueryResult res = query->prepare(_queryRegistry);
   if (res.code != TRI_ERROR_NO_ERROR) {
@@ -586,84 +586,73 @@ void RestAqlHandler::getInfoQuery (std::string const& operation,
 triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
 //std::cout << "GOT INCOMING REQUEST: " << triagens::rest::HttpRequest::translateMethod(_request->requestType()) << ", " << triagens::arango::ServerState::instance()->getId() << ": " << _request->fullUrl() << ": " << _request->body() << "\n";
 
-  auto context = _applicationV8->enterContext("STANDARD", _vocbase,
-                                              false, false);
-  
-  if (nullptr == context) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                  "cannot enter V8 context");
-  }
-  else {
-    std::vector<std::string> const& suffix = _request->suffix();
+  std::vector<std::string> const& suffix = _request->suffix();
 
-    // extract the sub-request type
-    HttpRequest::HttpRequestType type = _request->requestType();
+  // extract the sub-request type
+  HttpRequest::HttpRequestType type = _request->requestType();
 
 
-    // execute one of the CRUD methods
-    switch (type) {
-      case HttpRequest::HTTP_REQUEST_POST: {
-        if (suffix.size() != 1) {
-          generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-        }
-        else if (suffix[0] == "instanciate") {
-          createQueryFromJson(); 
-        }
-        else if (suffix[0] == "parse") {
-          parseQuery();
-        }
-        else if (suffix[0] == "explain") {
-          explainQuery();
-        }
-        else if (suffix[0] == "query") {
-          createQueryFromString();
-        }
-        else {
-          generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-        }
-        break;
+  // execute one of the CRUD methods
+  switch (type) {
+    case HttpRequest::HTTP_REQUEST_POST: {
+      if (suffix.size() != 1) {
+        generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       }
-      case HttpRequest::HTTP_REQUEST_DELETE: {
-        if (suffix.size() != 1) {
-          generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-        }
-        else {
-          deleteQuery(suffix[0]);
-        }
-        break;
+      else if (suffix[0] == "instanciate") {
+        createQueryFromJson(); 
       }
-      case HttpRequest::HTTP_REQUEST_PUT: {
-        if (suffix.size() != 2) {
-          generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-        }
-        else {
-          useQuery(suffix[0], suffix[1]);
-        }
-        break;
+      else if (suffix[0] == "parse") {
+        parseQuery();
       }
-      case HttpRequest::HTTP_REQUEST_GET: {
-        if (suffix.size() != 2) {
-          generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-        }
-        else {
-          getInfoQuery(suffix[0], suffix[1]);
-        }
-        break;
+      else if (suffix[0] == "explain") {
+        explainQuery();
       }
-      case HttpRequest::HTTP_REQUEST_HEAD:
-      case HttpRequest::HTTP_REQUEST_PATCH:
-      case HttpRequest::HTTP_REQUEST_OPTIONS:
-      case HttpRequest::HTTP_REQUEST_ILLEGAL: {
-        generateError(HttpResponse::METHOD_NOT_ALLOWED, 
-                      TRI_ERROR_NOT_IMPLEMENTED,
-                      "illegal method for /_api/aql");
-        break;
+      else if (suffix[0] == "query") {
+        createQueryFromString();
       }
+      else {
+        generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+      }
+      break;
     }
-
+    case HttpRequest::HTTP_REQUEST_DELETE: {
+      if (suffix.size() != 1) {
+        generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+      }
+      else {
+        deleteQuery(suffix[0]);
+      }
+      break;
+    }
+    case HttpRequest::HTTP_REQUEST_PUT: {
+      if (suffix.size() != 2) {
+        generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+      }
+      else {
+        useQuery(suffix[0], suffix[1]);
+      }
+      break;
+    }
+    case HttpRequest::HTTP_REQUEST_GET: {
+      if (suffix.size() != 2) {
+        generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+      }
+      else {
+        getInfoQuery(suffix[0], suffix[1]);
+      }
+      break;
+    }
+    case HttpRequest::HTTP_REQUEST_HEAD:
+    case HttpRequest::HTTP_REQUEST_PATCH:
+    case HttpRequest::HTTP_REQUEST_OPTIONS:
+    case HttpRequest::HTTP_REQUEST_ILLEGAL: {
+      generateError(HttpResponse::METHOD_NOT_ALLOWED, 
+                    TRI_ERROR_NOT_IMPLEMENTED,
+                    "illegal method for /_api/aql");
+      break;
+    }
   }
-  
-  _applicationV8->exitContext(context);
+
 //std::cout << "REQUEST HANDLING DONE: " << triagens::arango::ServerState::instance()->getId() << ": " << _request->fullUrl() << ": " << _response->responseCode() << ", CONTENT-LENGTH: " << _response->contentLength() << "\n";
 
   return status_t(HANDLER_DONE);
