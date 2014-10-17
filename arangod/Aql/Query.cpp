@@ -39,7 +39,9 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Utils/AqlTransaction.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/Exception.h"
+#include "Utils/StandaloneTransactionContext.h"
 #include "Utils/V8TransactionContext.h"
 #include "V8Server/ApplicationV8.h"
 #include "VocBase/vocbase.h"
@@ -229,6 +231,14 @@ Query::~Query () {
 
   if (_context != nullptr) {
     TRI_ASSERT(! _contextOwnedByExterior);
+        
+    // unregister transaction and resolver in context
+    TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+    auto ctx = static_cast<triagens::arango::V8TransactionContext*>(v8g->_transactionContext);
+    if (ctx != nullptr) {
+      ctx->unregisterTransaction();
+    }
+
     _applicationV8->exitContext(_context);
     _context = nullptr;
   }
@@ -408,7 +418,7 @@ QueryResult Query::prepare (QueryRegistry* registry) {
       // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser->ast()->toJson(TRI_UNKNOWN_MEM_ZONE, false)) << "\n";
     }
 
-    auto trx = new triagens::arango::AqlTransaction(new triagens::arango::V8TransactionContext(true), _vocbase, _collections.collections(), _part == PART_MAIN);
+    auto trx = new triagens::arango::AqlTransaction(new triagens::arango::StandaloneTransactionContext(), _vocbase, _collections.collections(), _part == PART_MAIN);
     _trx = trx;   // Save the transaction in our object
 
     bool planRegisters;
@@ -481,6 +491,9 @@ QueryResult Query::prepare (QueryRegistry* registry) {
     
     // varsUsedLater and varsValid are unordered_sets and so their orders
     // are not the same in the serialised and deserialised plans 
+
+    // return the V8 context
+    exitContext();
 
     enterState(EXECUTION);
     ExecutionEngine* engine(ExecutionEngine::instanciateFromPlan(registry, this, plan.get(), planRegisters));
@@ -617,7 +630,7 @@ QueryResult Query::explain () {
     // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE)) << "\n";
 
     // create the transaction object, but do not start it yet
-    auto trx = new triagens::arango::AqlTransaction(new triagens::arango::V8TransactionContext(true), _vocbase, _collections.collections(), true);
+    auto trx = new triagens::arango::AqlTransaction(new triagens::arango::StandaloneTransactionContext(), _vocbase, _collections.collections(), true);
     _trx = trx;  // save the pointer in this
 
     // we have an AST
@@ -805,8 +818,16 @@ void Query::enterContext () {
   if (! _contextOwnedByExterior) {
     if (_context == nullptr) {
       _context = _applicationV8->enterContext("STANDARD", _vocbase, false, false);
+
       if (_context == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot enter V8 context");
+      }
+    
+      // register transaction and resolver in context
+      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+      auto ctx = static_cast<triagens::arango::V8TransactionContext*>(v8g->_transactionContext);
+      if (ctx != nullptr) {
+        ctx->registerTransaction(_trx->getInternals());
       }
     }
 
@@ -822,6 +843,13 @@ void Query::exitContext () {
   if (! _contextOwnedByExterior) {
     if (_context != nullptr) {
       if (isRunningInCluster()) {
+        // unregister transaction and resolver in context
+        TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+        auto ctx = static_cast<triagens::arango::V8TransactionContext*>(v8g->_transactionContext);
+        if (ctx != nullptr) {
+          ctx->unregisterTransaction();
+        }
+
         _applicationV8->exitContext(_context);
         _context = nullptr;
       }

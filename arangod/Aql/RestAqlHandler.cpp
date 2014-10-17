@@ -113,6 +113,8 @@ void RestAqlHandler::createQueryFromJson () {
   if (queryJson.isEmpty()) {
     return;
   }
+
+  std::cout << "createQueryFromJson" << queryJson.toString() << std::endl;
   
   Json plan;
   Json options;
@@ -163,7 +165,7 @@ void RestAqlHandler::createQueryFromJson () {
   answerBody("queryId", Json(StringUtils::itoa(_qId)))
             ("ttl",     Json(ttl));
 
- //std::cout << "RESPONSE BODY IS: " << answerBody.toString() << "\n";            
+ std::cout << "RESPONSE BODY IS: " << answerBody.toString() << "\n";            
   _response->body().appendText(answerBody.toString());
 }
 
@@ -434,6 +436,11 @@ void RestAqlHandler::useQuery (std::string const& operation,
       _queryRegistry->close(_vocbase, _qId);
       return;
     }
+    std::cout << "useQuery op:" << operation << "," << idString << std::endl
+              << queryJson.toString() << std::endl;
+  }
+  else {
+    std::cout << "useQuery shutdown" << std::endl;
   }
 
   try {
@@ -467,6 +474,8 @@ void RestAqlHandler::useQuery (std::string const& operation,
                   TRI_ERROR_HTTP_SERVER_ERROR,
                   "an unknown exception occurred");
   }
+  std::cout << "Response of useQuery:" << _response->body().c_str() << 
+          std::endl;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -810,7 +819,7 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
                     "initializeCursor lead to an exception");
       return;
     }
-    answerBody("error", Json(res == TRI_ERROR_NO_ERROR))
+    answerBody("error", Json(res != TRI_ERROR_NO_ERROR))
               ("code", Json(static_cast<double>(res)));
   }
   else if (operation == "shutdown") {

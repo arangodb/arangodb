@@ -36,7 +36,7 @@
 #include "Cluster/ServerState.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
-#include "Utils/V8TransactionContext.h"
+#include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 #include <v8.h>
@@ -63,9 +63,10 @@ namespace triagens {
 
         AqlTransaction (TransactionContext* transactionContext,
                         TRI_vocbase_t* vocbase,
-                        std::map<std::string, triagens::aql::Collection*>* collections,
+                        std::map<std::string, triagens::aql::Collection*> const* collections,
                         bool isMainTransaction)
-          : Transaction(transactionContext, vocbase, 0) {
+          : Transaction(transactionContext, vocbase, 0),
+            _collections(*collections) {
 
           this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
           if (! isMainTransaction) {
@@ -165,43 +166,25 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief registerTransaction
-////////////////////////////////////////////////////////////////////////////////
-
-        int registerTransactionWithContext () {
-          // This calls the method in the V8TransactionContext
-          return this->_transactionContext->registerTransaction(this->_trx);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unregisterTransaction
-////////////////////////////////////////////////////////////////////////////////
-
-        int unregisterTransactionWithContext () {
-          // This calls the method in the V8TransactionContext
-          return this->_transactionContext->unregisterTransaction();
-        }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief clone, used to make daughter transactions for parts of a distributed
 /// AQL query running on the coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
         triagens::arango::AqlTransaction* clone () const {
-          auto colls = new std::map<std::string, triagens::aql::Collection*>();
-          try {
-            auto res = new triagens::arango::AqlTransaction(
-                             new triagens::arango::V8TransactionContext(true),
-                             this->_vocbase, 
-                             colls, false);
-            return res;
-          }
-          catch (...) {
-            delete colls;
-            throw;
-          }
+          return new triagens::arango::AqlTransaction(
+                           new triagens::arango::StandaloneTransactionContext(),
+                           this->_vocbase, 
+                           &_collections, false);
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief keep a copy of the collections, this is needed for the clone 
+/// operation
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+        std::map<std::string, triagens::aql::Collection*> _collections;
     };
 
   }
