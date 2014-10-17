@@ -381,6 +381,7 @@ void Executor::HandleV8Error (v8::TryCatch& tryCatch,
 v8::Handle<v8::Value> Executor::compileExpression () {
   TRI_ASSERT(_buffer != nullptr);
 
+  // std::cout << "EXPR: " << std::string(_buffer->c_str(), _buffer->length()) << "\n";
   v8::Handle<v8::Script> compiled = v8::Script::Compile(v8::String::New(_buffer->c_str(), (int) _buffer->length()),
                                                         v8::String::New("--script--"));
   
@@ -527,7 +528,7 @@ void Executor::generateCodeBinaryOperator (AstNode const* node) {
     generateCodeNode(node->getMember(0));
     _buffer->appendText("}, function () { return ");
     generateCodeNode(node->getMember(1));
-   _buffer->appendChar(')');
+   _buffer->appendChar('}');
   }
   else {
     generateCodeNode(node->getMember(0));
