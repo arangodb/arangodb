@@ -1186,6 +1186,9 @@ void ArangoServer::closeDatabases () {
   TRI_ASSERT(_server != nullptr);
 
   TRI_CleanupActions();
+  
+  // stop the replication appliers so all replication transactions can end
+  TRI_StopReplicationAppliersServer(_server);
 
   // enfore logfile manager shutdown so we are sure no one else will
   // write to the logs

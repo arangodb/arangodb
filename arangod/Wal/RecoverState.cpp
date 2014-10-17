@@ -1316,6 +1316,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
 
       }
       else {
+        // collection will be kept
         collection = TRI_CreateCollectionVocBase(vocbase, &info, collectionId, false);
       }
 
@@ -1523,9 +1524,9 @@ int RecoverState::replayLogfiles () {
   droppedCollections.clear();
   droppedDatabases.clear();
 
-  for (auto it = logfilesToProcess.begin(); it != logfilesToProcess.end(); ++it) {
-    TRI_ASSERT((*it) != nullptr);
-    int res = replayLogfile((*it));
+  for (auto& it : logfilesToProcess) {
+    TRI_ASSERT(it != nullptr);
+    int res = replayLogfile(it);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
