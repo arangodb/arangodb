@@ -39,7 +39,7 @@
 #include "Basics/tri-strings.h"
 #include "Utils/AqlTransaction.h"
 #include "Utils/Exception.h"
-#include "Utils/V8TransactionContext.h"
+#include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/vocbase.h"
 
 using namespace triagens::aql;
@@ -386,7 +386,7 @@ QueryResult Query::prepare (QueryRegistry* registry) {
       // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser->ast()->toJson(TRI_UNKNOWN_MEM_ZONE, false)) << "\n";
     }
 
-    auto trx = new triagens::arango::AqlTransaction(new triagens::arango::V8TransactionContext(true), _vocbase, _collections.collections(), _part == PART_MAIN);
+    auto trx = new triagens::arango::AqlTransaction(new triagens::arango::StandaloneTransactionContext(), _vocbase, _collections.collections(), _part == PART_MAIN);
     _trx = trx;   // Save the transaction in our object
 
     bool planRegisters;
@@ -595,7 +595,7 @@ QueryResult Query::explain () {
     // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE)) << "\n";
 
     // create the transaction object, but do not start it yet
-    auto trx = new triagens::arango::AqlTransaction(new triagens::arango::V8TransactionContext(true), _vocbase, _collections.collections(), true);
+    auto trx = new triagens::arango::AqlTransaction(new triagens::arango::StandaloneTransactionContext(), _vocbase, _collections.collections(), true);
     _trx = trx;  // save the pointer in this
 
     // we have an AST

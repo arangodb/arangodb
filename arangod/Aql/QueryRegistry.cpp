@@ -98,13 +98,8 @@ void QueryRegistry::insert (TRI_vocbase_t* vocbase,
 
     TRI_ASSERT_EXPENSIVE(_queries.find(vocbase->_name)->second.find(id) != _queries.find(vocbase->_name)->second.end());
   
-    if (query->part() == PART_MAIN) {
-      // A query that is being shelved must unregister its transaction
-      // with the current context:
-      query->trx()->unregisterTransactionWithContext();
-      // Also, we need to count down the debugging counters for transactions:
-      triagens::arango::TransactionBase::increaseNumbers(-1, -1);
-    }
+    // Also, we need to count down the debugging counters for transactions:
+    triagens::arango::TransactionBase::increaseNumbers(-1, -1);
   }
   else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -136,14 +131,8 @@ Query* QueryRegistry::open (TRI_vocbase_t* vocbase,
   }
   qi->_isOpen = true;
 
-  // A query that is being opened must register its transaction
-  // with the current context:
-
-  if (qi->_query->part() == PART_MAIN) {
-    qi->_query->trx()->registerTransactionWithContext();
-    // Also, we need to count up the debugging counters for transactions:
-    triagens::arango::TransactionBase::increaseNumbers(1, 1);
-  }
+  // We need to count up the debugging counters for transactions:
+  triagens::arango::TransactionBase::increaseNumbers(1, 1);
 
   return qi->_query;
 }
@@ -171,13 +160,8 @@ void QueryRegistry::close (TRI_vocbase_t* vocbase, QueryId id, double ttl) {
                 "query with given vocbase and id is not open");
   }
 
-  // A query that is being closed must unregister its transaction
-  // with the current context:
-  if (qi->_query->part() == PART_MAIN) {
-    qi->_query->trx()->unregisterTransactionWithContext();
-    // Also, we need to count down the debugging counters for transactions:
-    triagens::arango::TransactionBase::increaseNumbers(1, 1);
-  }
+  // We need to count down the debugging counters for transactions:
+  triagens::arango::TransactionBase::increaseNumbers(-1, -1);
 
   qi->_isOpen = false;
   qi->_expires = TRI_microtime() + qi->_timeToLive;
@@ -205,11 +189,8 @@ void QueryRegistry::destroy (std::string const& vocbase, QueryId id) {
   // to register the transaction with the current context and adjust
   // the debugging counters for transactions:
   if (! qi->_isOpen) {
-    if (qi->_query->part() == PART_MAIN) {
-      qi->_query->trx()->registerTransactionWithContext();
-      // Also, we need to count down the debugging counters for transactions:
-      triagens::arango::TransactionBase::increaseNumbers(1, 1);
-    }
+    // We need to count up the debugging counters for transactions:
+    triagens::arango::TransactionBase::increaseNumbers(1, 1);
   }
 
   // Now we can delete it:
