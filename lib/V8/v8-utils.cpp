@@ -3792,7 +3792,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
 
   // check the isolate
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
-  TRI_v8_global_t* v8g = TRI_CreateV8Globals(isolate);
+  TRI_v8_global_t* v8g = TRI_GetV8Globals(isolate);
 
   v8::Handle<v8::FunctionTemplate> ft;
   v8::Handle<v8::ObjectTemplate> rt;

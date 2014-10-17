@@ -40,6 +40,7 @@
 #include "Utils/AqlTransaction.h"
 #include "Utils/Exception.h"
 #include "Utils/V8TransactionContext.h"
+#include "V8Server/ApplicationV8.h"
 #include "VocBase/vocbase.h"
 
 using namespace triagens::aql;
@@ -115,13 +116,15 @@ TRI_json_t* Profile::toJson (TRI_memory_zone_t*) {
 /// @brief creates a query
 ////////////////////////////////////////////////////////////////////////////////
 
-Query::Query (TRI_vocbase_t* vocbase,
+Query::Query (triagens::arango::ApplicationV8* applicationV8,
+              TRI_vocbase_t* vocbase,
               char const* queryString,
               size_t queryLength,
               TRI_json_t* bindParameters,
               TRI_json_t* options,
               QueryPart part)
-  : _vocbase(vocbase),
+  : _applicationV8(applicationV8),
+    _vocbase(vocbase),
     _executor(nullptr),
     _queryString(queryString),
     _queryLength(queryLength),
@@ -156,11 +159,13 @@ Query::Query (TRI_vocbase_t* vocbase,
 /// @brief creates a query from Json
 ////////////////////////////////////////////////////////////////////////////////
 
-Query::Query (TRI_vocbase_t* vocbase,
+Query::Query (triagens::arango::ApplicationV8* applicationV8,
+              TRI_vocbase_t* vocbase,
               triagens::basics::Json queryStruct,
               TRI_json_t* options,
               QueryPart part)
-  : _vocbase(vocbase),
+  : _applicationV8(applicationV8),
+    _vocbase(vocbase),
     _executor(nullptr),
     _queryString(nullptr),
     _queryLength(0),
@@ -242,7 +247,8 @@ Query* Query::clone (QueryPart part) {
   std::unique_ptr<Query> clone;
 
   try {
-    clone.reset(new Query(_vocbase,
+    clone.reset(new Query(_applicationV8,
+                          _vocbase,
                           _queryString,
                           _queryLength,
                           nullptr,
@@ -386,10 +392,7 @@ QueryResult Query::prepare (QueryRegistry* registry) {
       // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser->ast()->toJson(TRI_UNKNOWN_MEM_ZONE, false)) << "\n";
     }
 
-    auto trx = new triagens::arango::AqlTransaction(new triagens::arango::V8TransactionContext(true), _vocbase, _collections.collections());
-    // FIXME: add boolean argument
-    //    _part == PART_MAIN
-    // here as additional argument
+    auto trx = new triagens::arango::AqlTransaction(new triagens::arango::V8TransactionContext(true), _vocbase, _collections.collections(), _part == PART_MAIN);
     _trx = trx;   // Save the transaction in our object
 
     bool planRegisters;
@@ -598,9 +601,7 @@ QueryResult Query::explain () {
     // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE)) << "\n";
 
     // create the transaction object, but do not start it yet
-    auto trx = new triagens::arango::AqlTransaction(new triagens::arango::V8TransactionContext(true), _vocbase, _collections.collections());
-    // FIXME: add an additional boolean argument here:
-    //   true
+    auto trx = new triagens::arango::AqlTransaction(new triagens::arango::V8TransactionContext(true), _vocbase, _collections.collections(), true);
     _trx = trx;  // save the pointer in this
 
     // we have an AST

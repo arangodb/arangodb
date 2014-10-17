@@ -57,6 +57,7 @@ AllocatorThread::AllocatorThread (LogfileManager* logfileManager)
   : Thread("WalAllocator"),
     _logfileManager(logfileManager),
     _condition(),
+    _recoveryLock(),
     _requestedSize(0),
     _stop(0),
     _inRecovery(true) {
@@ -138,7 +139,7 @@ void AllocatorThread::run () {
 
     try {
       if (requestedSize == 0 &&
-          ! _inRecovery &&
+          ! inRecovery() &&
           ! _logfileManager->hasReserveLogfiles()) {
         // only create reserve files if we are not in the recovery mode
         if (createReserveLogfile(0)) {
