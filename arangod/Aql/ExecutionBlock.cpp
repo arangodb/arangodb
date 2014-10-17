@@ -179,6 +179,19 @@ bool ExecutionBlock::walk (WalkerWorker<ExecutionBlock>* worker) {
     return true;
   }
 
+  // Now handle a subquery:
+  if ((_exeNode->getType() == ExecutionNode::SUBQUERY) &&
+      worker->EnterSubQueryFirst()) {
+    auto p = static_cast<SubqueryBlock*>(this);
+    if (worker->enterSubquery(this, p->getSubquery())) {
+      bool abort = p->getSubquery()->walk(worker);
+      worker->leaveSubquery(this, p->getSubquery());
+      if (abort) {
+        return true;
+      }
+    }
+  }
+
   // Now the children in their natural order:
   for (auto c : _dependencies) {
     if (c->walk(worker)) {
@@ -186,7 +199,8 @@ bool ExecutionBlock::walk (WalkerWorker<ExecutionBlock>* worker) {
     }
   }
   // Now handle a subquery:
-  if (_exeNode->getType() == ExecutionNode::SUBQUERY) {
+  if ((_exeNode->getType() == ExecutionNode::SUBQUERY) &&
+      ! worker->EnterSubQueryFirst()) {
     auto p = static_cast<SubqueryBlock*>(this);
     if (worker->enterSubquery(this, p->getSubquery())) {
       bool abort = p->getSubquery()->walk(worker);

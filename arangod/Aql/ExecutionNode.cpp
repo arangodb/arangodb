@@ -529,7 +529,7 @@ bool ExecutionNode::walk (WalkerWorker<ExecutionNode>* worker) {
   }
   
   // Now handle a subquery:
-  if ((getType() == SUBQUERY) && worker->EnterSubQueryFirst()){
+  if ((getType() == SUBQUERY) && worker->EnterSubQueryFirst()) {
     auto p = static_cast<SubqueryNode*>(this);
     if (worker->enterSubquery(this, p->getSubquery())) {
       bool abort = p->getSubquery()->walk(worker);
@@ -550,7 +550,7 @@ bool ExecutionNode::walk (WalkerWorker<ExecutionNode>* worker) {
   }
   
   // Now handle a subquery:
-  if ((getType() == SUBQUERY) && ! worker->EnterSubQueryFirst()){
+  if ((getType() == SUBQUERY) && ! worker->EnterSubQueryFirst()) {
     auto p = static_cast<SubqueryNode*>(this);
     if (worker->enterSubquery(this, p->getSubquery())) {
       bool abort = p->getSubquery()->walk(worker);
