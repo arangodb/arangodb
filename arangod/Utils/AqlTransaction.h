@@ -36,7 +36,7 @@
 #include "Cluster/ServerState.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
-#include "Utils/V8TransactionContext.h"
+#include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 #include <v8.h>
@@ -166,31 +166,13 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief registerTransaction
-////////////////////////////////////////////////////////////////////////////////
-
-        int registerTransactionWithContext () {
-          // This calls the method in the V8TransactionContext
-          return this->_transactionContext->registerTransaction(this->_trx);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unregisterTransaction
-////////////////////////////////////////////////////////////////////////////////
-
-        int unregisterTransactionWithContext () {
-          // This calls the method in the V8TransactionContext
-          return this->_transactionContext->unregisterTransaction();
-        }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief clone, used to make daughter transactions for parts of a distributed
 /// AQL query running on the coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
         triagens::arango::AqlTransaction* clone () const {
           return new triagens::arango::AqlTransaction(
-                           new triagens::arango::V8TransactionContext(true),
+                           new triagens::arango::StandaloneTransactionContext(),
                            this->_vocbase, 
                            &_collections, false);
         }
