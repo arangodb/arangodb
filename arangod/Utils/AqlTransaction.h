@@ -65,8 +65,7 @@ namespace triagens {
                         TRI_vocbase_t* vocbase,
                         std::map<std::string, triagens::aql::Collection*>* collections,
                         bool isMainTransaction)
-          : Transaction(transactionContext, vocbase, 0),
-            _isMainTransaction(isMainTransaction) {
+          : Transaction(transactionContext, vocbase, 0) {
 
           this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
           if (! isMainTransaction) {
@@ -202,15 +201,6 @@ namespace triagens {
             throw;
           }
         }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _isMainTransaction, in cluster operation, an AqlTransaction
-/// only locks its collections, if it is the main one.
-////////////////////////////////////////////////////////////////////////////////
-
-      private:
-
-        bool _isMainTransaction;
 
     };
 
