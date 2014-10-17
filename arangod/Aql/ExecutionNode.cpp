@@ -2448,7 +2448,6 @@ void DistributeNode::toJsonHelper (triagens::basics::Json& nodes,
       ("collection", triagens::basics::Json(_collection->getName()))
       ("varId", triagens::basics::Json(static_cast<int>(_varId)));
 
-
   // And add it:
   nodes(json);
 }
