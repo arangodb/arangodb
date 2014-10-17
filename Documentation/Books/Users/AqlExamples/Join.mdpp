@@ -64,7 +64,7 @@ FOR u IN users
 !SUBSECTION Horizontal lists
 
 
-Note that in the above result, an user might be returned multiple times. This is the
+Note that in the above result, a user might be returned multiple times. This is the
 SQL way of returning data. If this is not desired, the friends' ids of each user
 can be returned in a horizontal list. This will return each user at most once.
 
