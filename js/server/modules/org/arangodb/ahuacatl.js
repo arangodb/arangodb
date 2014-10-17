@@ -4593,9 +4593,22 @@ function TRAVERSAL_EDGE_EXAMPLE_FILTER (config, vertex, edge, path) {
 
 function TRAVERSAL_VERTEX_FILTER (config, vertex, path) {
   "use strict";
-  
-  if (! MATCHES(vertex, config.filterVertexExamples)) {
+  if (config.filterVertexExamples && !MATCHES(vertex, config.filterVertexExamples)) {
+    if (config.filterVertexCollections
+      && config.vertexFilterMethod.indexOf("exclude") === -1
+      && config.filterVertexCollections.indexOf(vertex._id.split("/")[0]) === -1
+    ) {
+      if (config.vertexFilterMethod.indexOf("prune") === -1) {
+        return ["exclude"];
+      }
+      return ["prune", "exclude"];
+    }
     return config.vertexFilterMethod;
+  }
+  if (config.filterVertexCollections
+    && config.filterVertexCollections.indexOf(vertex._id.split("/")[0]) === -1
+  ){
+    return ["exclude"];
   }
 }
 
@@ -4728,6 +4741,11 @@ function TRAVERSAL_FUNC (func,
       config.filterVertexExamples = params.filterVertices;
       config.vertexFilterMethod = params.vertexFilterMethod || ["prune", "exclude"];
     }
+  }
+  if (params.filterVertexCollections) {
+    config.filter = config.filter || TRAVERSAL_VERTEX_FILTER;
+    config.vertexFilterMethod = config.vertexFilterMethod || ["prune", "exclude"];
+    config.filterVertexCollections = params.filterVertexCollections;
   }
 
   if (params._sort) {
@@ -5949,11 +5967,9 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
     options.direction =  'any';
   }
 
-  if (options.vertexCollectionRestriction) {
-    if (options.direction === "inbound") {
-      options.endVertexCollectionRestriction = options.vertexCollectionRestriction;
-    } else {
-      options.startVertexCollectionRestriction = options.vertexCollectionRestriction;
+  if (options.neighborExamples) {
+    if (typeof options.neighborExamples === "string") {
+      options.neighborExamples = {_id : options.neighborExamples};
     }
   }
   var neighbors = [],
@@ -5971,7 +5987,9 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
   if (options.edgeCollectionRestriction) {
     params.edgeCollectionRestriction = options.edgeCollectionRestriction
   }
-
+  if (options.vertexCollectionRestriction) {
+    params.filterVertexCollections = options.vertexCollectionRestriction;
+  }
   fromVertices.forEach(function (v) {
     var e = TRAVERSAL_FUNC("GRAPH_NEIGHBORS",
       factory,
