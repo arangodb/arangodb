@@ -136,6 +136,7 @@ void V8TransactionContext::deleteResolver () {
   TRI_ASSERT(hasResolver());
   delete _resolver;
   _resolver = nullptr;
+  _ownResolver = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

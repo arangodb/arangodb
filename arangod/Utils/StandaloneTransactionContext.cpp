@@ -73,8 +73,9 @@ TRI_transaction_t* StandaloneTransactionContext::getParentTransaction () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 int StandaloneTransactionContext::registerTransaction (TRI_transaction_t* trx) {
-  TRI_ASSERT(_resolver == nullptr);
-  _resolver = new CollectionNameResolver(trx->_vocbase);
+  if (_resolver == nullptr) {
+    _resolver = new CollectionNameResolver(trx->_vocbase);
+  }
 
   return TRI_ERROR_NO_ERROR;
 }

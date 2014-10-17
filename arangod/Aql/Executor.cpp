@@ -406,7 +406,7 @@ void Executor::generateCodeExpression (AstNode const* node) {
   generateCodeNode(node);
 
   // write epilogue
-  _buffer->appendText("; })");
+  _buffer->appendText(";})", 3);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -440,15 +440,15 @@ void Executor::generateCodeList (AstNode const* node) {
 
   size_t const n = node->numMembers();
 
-  _buffer->appendText("[ ");
+  _buffer->appendChar('[');
   for (size_t i = 0; i < n; ++i) {
     if (i > 0) {
-      _buffer->appendText(", ");
+      _buffer->appendChar(',');
     }
 
     generateCodeNode(node->getMember(i));
   }
-  _buffer->appendText(" ]");
+  _buffer->appendChar(']');
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -460,21 +460,21 @@ void Executor::generateCodeArray (AstNode const* node) {
 
   size_t const n = node->numMembers();
 
-  _buffer->appendText("{ ");
+  _buffer->appendChar('{');
   for (size_t i = 0; i < n; ++i) {
     if (i > 0) {
-      _buffer->appendText(", ");
+      _buffer->appendChar(',');
     }
     
     auto member = node->getMember(i);
 
     if (member != nullptr) {
       generateCodeString(member->getStringValue());
-      _buffer->appendText(" : ");
+      _buffer->appendChar(':');
       generateCodeNode(member->getMember(0));
     }
   }
-  _buffer->appendText(" }");
+  _buffer->appendChar('}');
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -492,12 +492,12 @@ void Executor::generateCodeUnaryOperator (AstNode const* node) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "function not found");
   }
 
-  _buffer->appendText("aql.");
+  _buffer->appendText("aql.", 4);
   _buffer->appendText((*it).second);
-  _buffer->appendText("(");
+  _buffer->appendChar('(');
 
   generateCodeNode(node->getMember(0));
-  _buffer->appendText(")");
+  _buffer->appendChar(')');
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -518,24 +518,24 @@ void Executor::generateCodeBinaryOperator (AstNode const* node) {
   bool wrap = (node->type == NODE_TYPE_OPERATOR_BINARY_AND ||
                node->type == NODE_TYPE_OPERATOR_BINARY_OR);
 
-  _buffer->appendText("aql.");
+  _buffer->appendText("aql.", 4);
   _buffer->appendText((*it).second);
-  _buffer->appendText("(");
+  _buffer->appendChar('(');
 
   if (wrap) {
     _buffer->appendText("function () { return ");
     generateCodeNode(node->getMember(0));
     _buffer->appendText("}, function () { return ");
     generateCodeNode(node->getMember(1));
-   _buffer->appendText("}");
+   _buffer->appendChar(')');
   }
   else {
     generateCodeNode(node->getMember(0));
-    _buffer->appendText(", ");
+    _buffer->appendChar(',');
     generateCodeNode(node->getMember(1));
   }
 
-  _buffer->appendText(")");
+  _buffer->appendChar(')');
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -553,9 +553,9 @@ void Executor::generateCodeTernaryOperator (AstNode const* node) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "function not found");
   }
 
-  _buffer->appendText("aql.");
+  _buffer->appendText("aql.", 4);
   _buffer->appendText((*it).second);
-  _buffer->appendText("(");
+  _buffer->appendChar('(');
 
   generateCodeNode(node->getMember(0));
   _buffer->appendText(", function () { return ");
@@ -575,9 +575,9 @@ void Executor::generateCodeReference (AstNode const* node) {
  
   auto variable = static_cast<Variable*>(node->getData());
 
-  _buffer->appendText("vars[");
+  _buffer->appendText("vars[", 5);
   generateCodeString(variable->name.c_str());
-  _buffer->appendText("]");
+  _buffer->appendChar(']');
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -590,9 +590,9 @@ void Executor::generateCodeVariable (AstNode const* node) {
   
   auto variable = static_cast<Variable*>(node->getData());
   
-  _buffer->appendText("vars[");
+  _buffer->appendText("vars[", 5);
   generateCodeString(variable->name.c_str());
-  _buffer->appendText("]");
+  _buffer->appendChar(']');
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -607,7 +607,7 @@ void Executor::generateCodeCollection (AstNode const* node) {
 
   _buffer->appendText("aql.GET_DOCUMENTS(");
   generateCodeString(name);
-  _buffer->appendText(")");
+  _buffer->appendChar(')');
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -624,14 +624,14 @@ void Executor::generateCodeFunctionCall (AstNode const* node) {
   TRI_ASSERT(args != nullptr);
   TRI_ASSERT(args->type == NODE_TYPE_LIST);
 
-  _buffer->appendText("aql.");
+  _buffer->appendText("aql.", 4);
   _buffer->appendText(func->internalName);
-  _buffer->appendText("(");
+  _buffer->appendChar('(');
 
   size_t const n = args->numMembers();
   for (size_t i = 0; i < n; ++i) {
     if (i > 0) {
-      _buffer->appendText(", ");
+      _buffer->appendChar(',');
     }
 
     auto member = args->getMember(i);
@@ -658,7 +658,7 @@ void Executor::generateCodeFunctionCall (AstNode const* node) {
     }
   }
 
-  _buffer->appendText(")");
+  _buffer->appendChar(')');
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -678,17 +678,17 @@ void Executor::generateCodeUserFunctionCall (AstNode const* node) {
 
   _buffer->appendText("aql.FCALL_USER(");
   generateCodeString(name);
-  _buffer->appendText(", [");
+  _buffer->appendText(",[", 2);
 
   size_t const n = args->numMembers();
   for (size_t i = 0; i < n; ++i) {
     if (i > 0) {
-      _buffer->appendText(", ");
+      _buffer->appendChar(',');
     }
 
     generateCodeNode(args->getMember(i));
   }
-  _buffer->appendText("])");
+  _buffer->appendText("])", 2);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -735,9 +735,9 @@ void Executor::generateCodeRange (AstNode const* node) {
   
   _buffer->appendText("aql.RANGE(");
   generateCodeNode(node->getMember(0));
-  _buffer->appendText(", ");
+  _buffer->appendChar(',');
   generateCodeNode(node->getMember(1));
-  _buffer->appendText(")");
+  _buffer->appendChar(')');
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -750,9 +750,9 @@ void Executor::generateCodeNamedAccess (AstNode const* node) {
 
   _buffer->appendText("aql.DOCUMENT_MEMBER(");
   generateCodeNode(node->getMember(0));
-  _buffer->appendText(", ");
+  _buffer->appendChar(',');
   generateCodeString(node->getStringValue());
-  _buffer->appendText(")");
+  _buffer->appendChar(')');
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -765,9 +765,9 @@ void Executor::generateCodeBoundAccess (AstNode const* node) {
 
   _buffer->appendText("aql.DOCUMENT_MEMBER(");
   generateCodeNode(node->getMember(0));
-  _buffer->appendText(", ");
+  _buffer->appendChar(',');
   generateCodeNode(node->getMember(1));
-  _buffer->appendText(")");
+  _buffer->appendChar(')');
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -780,9 +780,9 @@ void Executor::generateCodeIndexedAccess (AstNode const* node) {
 
   _buffer->appendText("aql.GET_INDEX(");
   generateCodeNode(node->getMember(0));
-  _buffer->appendText(", ");
+  _buffer->appendChar(',');
   generateCodeNode(node->getMember(1));
-  _buffer->appendText(")");
+  _buffer->appendChar(')');
 }
 
 ////////////////////////////////////////////////////////////////////////////////
