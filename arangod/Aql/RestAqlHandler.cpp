@@ -819,7 +819,7 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
                     "initializeCursor lead to an exception");
       return;
     }
-    answerBody("error", Json(res == TRI_ERROR_NO_ERROR))
+    answerBody("error", Json(res != TRI_ERROR_NO_ERROR))
               ("code", Json(static_cast<double>(res)));
   }
   else if (operation == "shutdown") {
