@@ -344,26 +344,31 @@ function copy (src, dst) {
   fs.write(dst, buffer);
 }
 
-function checkInstanceAlive(instanceInfo) {  
-  var res = statusExternal(instanceInfo.pid, false);
-  var ret = res.status === "RUNNING";
-  if (! ret) {
-    print("ArangoD with PID " + instanceInfo.pid.pid + " gone:");
-    instanceInfo.exitStatus = res;
-    print(instanceInfo);
-    if (res.hasOwnProperty('signal') && 
-        (res.signal === 11))
-    {
-      var storeArangodPath = "/var/tmp/arangod_" + instanceInfo.pid.pid;
-      print("Core dump written; copying arangod to " + 
-            storeArangodPath + " for later analysis.");
-      res.gdbHint = "Run debugger with 'gdb " + 
-        storeArangodPath + 
-        " /var/tmp/core*" + instanceInfo.pid.pid + "*'";
-      copy("bin/arangod", storeArangodPath);
+function checkInstanceAlive(instanceInfo, options) {  
+  if (options.cluster === false) {
+    var res = statusExternal(instanceInfo.pid, false);
+    var ret = res.status === "RUNNING";
+    if (! ret) {
+      print("ArangoD with PID " + instanceInfo.pid.pid + " gone:");
+      instanceInfo.exitStatus = res;
+      print(instanceInfo);
+      if (res.hasOwnProperty('signal') && 
+          (res.signal === 11))
+      {
+        var storeArangodPath = "/var/tmp/arangod_" + instanceInfo.pid.pid;
+        print("Core dump written; copying arangod to " + 
+              storeArangodPath + " for later analysis.");
+        res.gdbHint = "Run debugger with 'gdb " + 
+          storeArangodPath + 
+          " /var/tmp/core*" + instanceInfo.pid.pid + "*'";
+        copy("bin/arangod", storeArangodPath);
+      }
     }
+    return ret;
   }
-  return ret;
+  else {
+    return instanceInfo.kickstarter.isHealthy();
+  }
 }
 
 function shutdownInstance (instanceInfo, options) {
@@ -629,7 +634,7 @@ function performTests(options, testList, testname) {
       if (r !== true && !options.force) {
         break;
       }
-      continueTesting = checkInstanceAlive(instanceInfo);
+      continueTesting = checkInstanceAlive(instanceInfo, options);
     }
     else {
       print("Skipped " + te + " because of " + filtered.filter);
@@ -777,7 +782,7 @@ testFuncs.shell_client = function(options) {
         break;
       }
 
-      continueTesting = checkInstanceAlive(instanceInfo);
+      continueTesting = checkInstanceAlive(instanceInfo, options);
     }
     else {
       print("Skipped " + te + " because of " + filtered.filter);
@@ -885,7 +890,7 @@ function rubyTests (options, ssl) {
           break;
         }
 
-        continueTesting = checkInstanceAlive(instanceInfo);
+        continueTesting = checkInstanceAlive(instanceInfo, options);
 
       }
       else {
@@ -1161,7 +1166,7 @@ testFuncs.arangob = function (options) {
       r = runArangoBenchmark(options, instanceInfo, benchTodo[i]);
       results[i] = r;
 
-      continueTesting = checkInstanceAlive(instanceInfo);
+      continueTesting = checkInstanceAlive(instanceInfo, options);
 
       if (r !== 0 && !options.force) {
         break;
@@ -1235,7 +1240,7 @@ testFuncs.authentication_parameters = function (options) {
       };
       all_ok = false;
     }
-    continueTesting = checkInstanceAlive(instanceInfo);
+    continueTesting = checkInstanceAlive(instanceInfo, options);
   }
   results.auth_full.status = all_ok;
 
@@ -1271,7 +1276,7 @@ testFuncs.authentication_parameters = function (options) {
       };
       all_ok = false;
     }
-    continueTesting = checkInstanceAlive(instanceInfo);
+    continueTesting = checkInstanceAlive(instanceInfo, options);
   }
   results.auth_system.status = all_ok;
 
@@ -1308,7 +1313,7 @@ testFuncs.authentication_parameters = function (options) {
       };
       all_ok = false;
     }
-    continueTesting = checkInstanceAlive(instanceInfo);
+    continueTesting = checkInstanceAlive(instanceInfo, options);
   }
   results.auth_none.status = all_ok;
 
