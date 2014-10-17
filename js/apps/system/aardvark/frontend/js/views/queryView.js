@@ -554,6 +554,22 @@
       this.queries = _.sortBy(this.queries, 'name');
       this.customQueries = _.sortBy(this.customQueries, 'name');
     },
+
+    abortQuery: function () {
+    /*
+      $.ajax({
+        type: "DELETE",
+        url: "/_api/cursor/currentFrontendQuery",
+        contentType: "application/json",
+        processData: false,
+        success: function (data) {
+        },
+        error: function (data) {
+        }
+        });
+    */
+    },
+
     submitQuery: function () {
       var self = this;
       var inputEditor = ace.edit("aqlEditor");
@@ -562,14 +578,20 @@
       var sizeBox = $('#querySize');
       var data = {
         query: selectedText || inputEditor.getValue(),
-        batchSize: parseInt(sizeBox.val(), 10)
+        batchSize: parseInt(sizeBox.val(), 10),
+        id: "currentFrontendQuery"
       };
       var outputEditor = ace.edit("queryOutput");
 
       // clear result
       outputEditor.setValue('');
 
-      window.progressView.show("Query is operating...");
+      window.progressView.show(
+        "Query is operating...",
+        self.abortQuery("id"),
+        '<button class="button-danger">Abort Query</button>'
+      );
+
       $.ajax({
         type: "POST",
         url: "/_api/cursor",

@@ -64,6 +64,7 @@ $iconsize: 50px;
   }
 
   svg.tile-icon-svg {
+    cursor: pointer;
     fill: $c-icon-grey;
     height: $iconsize;
     margin-left: 90px;
