@@ -127,7 +127,7 @@ void RestAqlHandler::createQueryFromJson () {
   
   std::string const part = JsonHelper::getStringValue(queryJson.json(), "part", "");
 
-  auto query = new Query(_applicationV8, _vocbase, plan, options.steal(), (part == "main" ? PART_MAIN : PART_DEPENDENT));
+  auto query = new Query(_applicationV8, false, _vocbase, plan, options.steal(), (part == "main" ? PART_MAIN : PART_DEPENDENT));
   QueryResult res = query->prepare(_queryRegistry);
   if (res.code != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN,
@@ -188,7 +188,7 @@ void RestAqlHandler::parseQuery () {
     return;
   }
 
-  auto query = new Query(_applicationV8, _vocbase, queryString.c_str(), queryString.size(),
+  auto query = new Query(_applicationV8, false, _vocbase, queryString.c_str(), queryString.size(),
                          nullptr, nullptr, PART_MAIN);
   QueryResult res = query->parse();
   if (res.code != TRI_ERROR_NO_ERROR) {
@@ -244,7 +244,7 @@ void RestAqlHandler::explainQuery () {
   Json options;
   options = queryJson.get("options").copy();        // cannot throw
 
-  auto query = new Query(_applicationV8, _vocbase, queryString.c_str(), queryString.size(),
+  auto query = new Query(_applicationV8, false, _vocbase, queryString.c_str(), queryString.size(),
                          parameters.steal(), options.steal(), PART_MAIN);
   QueryResult res = query->explain();
   if (res.code != TRI_ERROR_NO_ERROR) {
@@ -304,7 +304,7 @@ void RestAqlHandler::createQueryFromString () {
   Json options;
   options = queryJson.get("options").copy();        // cannot throw
 
-  auto query = new Query(_applicationV8, _vocbase, queryString.c_str(), queryString.size(),
+  auto query = new Query(_applicationV8, false, _vocbase, queryString.c_str(), queryString.size(),
                          parameters.steal(), options.steal(), (part == "main" ? PART_MAIN : PART_DEPENDENT));
   QueryResult res = query->prepare(_queryRegistry);
   if (res.code != TRI_ERROR_NO_ERROR) {
