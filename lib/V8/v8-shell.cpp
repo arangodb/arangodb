@@ -329,6 +329,8 @@ void TRI_InitV8Shell (v8::Handle<v8::Context> context) {
   TRI_AddGlobalFunctionVocbase(context, "SYS_PROCESS_CSV_FILE", JS_ProcessCsvFile);
   TRI_AddGlobalFunctionVocbase(context, "SYS_PROCESS_JSON_FILE", JS_ProcessJsonFile);
 
+  bool isTty = isatty(STDOUT_FILENO);
+
   // .............................................................................
   // create the global variables
   // .............................................................................
@@ -336,79 +338,79 @@ void TRI_InitV8Shell (v8::Handle<v8::Context> context) {
   v8::Handle<v8::Object> colors = v8::Object::New();
 
   colors->Set(TRI_V8_STRING("COLOR_RED"),
-              TRI_V8_STRING(TRI_SHELL_COLOR_RED),
+              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_RED) : v8::String::Empty(),
               v8::ReadOnly);
 
   colors->Set(TRI_V8_STRING("COLOR_BOLD_RED"),
-              TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_RED),
+              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_RED) : v8::String::Empty(),
               v8::ReadOnly);
 
   colors->Set(TRI_V8_STRING("COLOR_GREEN"),
-              TRI_V8_STRING(TRI_SHELL_COLOR_GREEN),
+              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_GREEN) : v8::String::Empty(),
               v8::ReadOnly);
 
   colors->Set(TRI_V8_STRING("COLOR_BOLD_GREEN"),
-              TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_GREEN),
+              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_GREEN) : v8::String::Empty(),
               v8::ReadOnly);
 
   colors->Set(TRI_V8_STRING("COLOR_BLUE"),
-              TRI_V8_STRING(TRI_SHELL_COLOR_BLUE),
+              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_BLUE) : v8::String::Empty(),
               v8::ReadOnly);
 
   colors->Set(TRI_V8_STRING("COLOR_BOLD_BLUE"),
-              TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_BLUE),
+              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_BLUE) : v8::String::Empty(),
               v8::ReadOnly);
 
   colors->Set(TRI_V8_STRING("COLOR_YELLOW"),
-              TRI_V8_STRING(TRI_SHELL_COLOR_YELLOW),
+              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_YELLOW) : v8::String::Empty(),
               v8::ReadOnly);
 
   colors->Set(TRI_V8_STRING("COLOR_BOLD_YELLOW"),
-              TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_YELLOW),
+              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_YELLOW) : v8::String::Empty(),
               v8::ReadOnly);
 
   colors->Set(TRI_V8_STRING("COLOR_WHITE"),
-              TRI_V8_STRING(TRI_SHELL_COLOR_WHITE),
+              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_WHITE) : v8::String::Empty(),
               v8::ReadOnly);
 
   colors->Set(TRI_V8_STRING("COLOR_BOLD_WHITE"),
-              TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_WHITE),
+              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_WHITE) : v8::String::Empty(),
               v8::ReadOnly);
 
   colors->Set(TRI_V8_STRING("COLOR_CYAN"),
-              TRI_V8_STRING(TRI_SHELL_COLOR_CYAN),
+              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_CYAN) : v8::String::Empty(),
               v8::ReadOnly);
 
   colors->Set(TRI_V8_STRING("COLOR_BOLD_CYAN"),
-              TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_CYAN),
+              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_CYAN) : v8::String::Empty(),
               v8::ReadOnly);
 
   colors->Set(TRI_V8_STRING("COLOR_MAGENTA"),
-              TRI_V8_STRING(TRI_SHELL_COLOR_MAGENTA),
+              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_MAGENTA) : v8::String::Empty(),
               v8::ReadOnly);
 
   colors->Set(TRI_V8_STRING("COLOR_BOLD_MAGENTA"),
-              TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_MAGENTA),
+              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_MAGENTA) : v8::String::Empty(),
               v8::ReadOnly);
 
   colors->Set(TRI_V8_STRING("COLOR_BLACK"),
-              TRI_V8_STRING(TRI_SHELL_COLOR_BLACK),
+              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_BLACK) : v8::String::Empty(),
               v8::ReadOnly);
 
   colors->Set(TRI_V8_STRING("COLOR_BOLD_BLACK"),
-              TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_BLACK),
+              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_BLACK) : v8::String::Empty(),
               v8::ReadOnly);
 
   colors->Set(TRI_V8_STRING("COLOR_BLINK"),
-              TRI_V8_STRING(TRI_SHELL_COLOR_BLINK),
+              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_BLINK) : v8::String::Empty(),
               v8::ReadOnly);
 
   colors->Set(TRI_V8_STRING("COLOR_BRIGHT"),
-              TRI_V8_STRING(TRI_SHELL_COLOR_BRIGHT),
+              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_BRIGHT) : v8::String::Empty(),
               v8::ReadOnly);
 
   colors->Set(TRI_V8_STRING("COLOR_RESET"),
-              TRI_V8_STRING(TRI_SHELL_COLOR_RESET),
+              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_RESET) : v8::String::Empty(),
               v8::ReadOnly);
 
   TRI_AddGlobalVariableVocbase(context, "COLORS", colors);
