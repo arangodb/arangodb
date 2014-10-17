@@ -822,7 +822,7 @@ void Query::enterContext () {
       if (_context == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot enter V8 context");
       }
-
+    
       // register transaction and resolver in context
       TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
       auto ctx = static_cast<triagens::arango::V8TransactionContext*>(v8g->_transactionContext);
