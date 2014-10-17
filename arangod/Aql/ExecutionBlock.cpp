@@ -929,6 +929,8 @@ bool IndexRangeBlock::readIndex () {
       [&engine]() -> void { engine->getQuery()->exitContext(); }
     };
 
+    v8::HandleScope scope; // do not delete this!
+
     size_t posInExpressions = 0;
     for (auto r : en->_ranges.at(0)) {
       // First create a new RangeInfo containing only the constant 
@@ -1859,6 +1861,8 @@ void CalculationBlock::doEvaluation (AqlItemBlock* result) {
       [&engine]() -> void { engine->getQuery()->enterContext(); },
       [&engine]() -> void { engine->getQuery()->exitContext(); }
     };
+    
+    v8::HandleScope scope; // do not delete this!
 
     for (size_t i = 0; i < n; i++) {
       // need to execute the expression
