@@ -63,9 +63,10 @@ namespace triagens {
 
         AqlTransaction (TransactionContext* transactionContext,
                         TRI_vocbase_t* vocbase,
-                        std::map<std::string, triagens::aql::Collection*>* collections,
+                        std::map<std::string, triagens::aql::Collection*> const* collections,
                         bool isMainTransaction)
-          : Transaction(transactionContext, vocbase, 0) {
+          : Transaction(transactionContext, vocbase, 0),
+            _collections(*collections) {
 
           this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
           if (! isMainTransaction) {
@@ -188,20 +189,20 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         triagens::arango::AqlTransaction* clone () const {
-          auto colls = new std::map<std::string, triagens::aql::Collection*>();
-          try {
-            auto res = new triagens::arango::AqlTransaction(
-                             new triagens::arango::V8TransactionContext(true),
-                             this->_vocbase, 
-                             colls, false);
-            return res;
-          }
-          catch (...) {
-            delete colls;
-            throw;
-          }
+          return new triagens::arango::AqlTransaction(
+                           new triagens::arango::V8TransactionContext(true),
+                           this->_vocbase, 
+                           &_collections, false);
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief keep a copy of the collections, this is needed for the clone 
+/// operation
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+        std::map<std::string, triagens::aql::Collection*> _collections;
     };
 
   }
