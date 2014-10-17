@@ -241,7 +241,7 @@ function explainSuite () {
       assertEqual(5, node.id);
       assertTrue(node.hasOwnProperty("expression"));
       assertEqual("a", node.outVariable.name);
-      assertTrue(node.canThrow);
+      assertFalse(node.canThrow);
       
       node = nodes[5];
       assertEqual("SortNode", node.type);

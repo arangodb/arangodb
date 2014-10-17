@@ -32,7 +32,10 @@
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/ReadWriteLock.h"
 #include "Basics/Thread.h"
+#include "Basics/WriteLocker.h"
 
 namespace triagens {
   namespace wal {
@@ -99,8 +102,18 @@ namespace triagens {
 /// @brief tell the thread that the recovery phase is over
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline void recoveryDone () {
+        void recoveryDone () {
+          WRITE_LOCKER(_recoveryLock);
           _inRecovery = false;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not we are in recovery
+////////////////////////////////////////////////////////////////////////////////
+
+        bool inRecovery () {
+          READ_LOCKER(_recoveryLock);
+          return _inRecovery;
         }
 
 // -----------------------------------------------------------------------------
@@ -138,6 +151,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         basics::ConditionVariable _condition;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lock for _inRecovery
+////////////////////////////////////////////////////////////////////////////////
+
+        basics::ReadWriteLock _recoveryLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief requested logfile size
