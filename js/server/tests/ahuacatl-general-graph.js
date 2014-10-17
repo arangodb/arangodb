@@ -52,6 +52,10 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
 
   var AQL_VERTICES = "FOR e IN GRAPH_VERTICES(@name, @example, @options) SORT e._id RETURN e";
   var AQL_EDGES = "FOR e IN GRAPH_EDGES(@name, @example, @options) SORT e.what RETURN e.what";
+  var AQL_NEIGHBORS = "FOR e IN GRAPH_NEIGHBORS(@name, @example, @options) SORT e.vertex._id, e.path.edges[0].what RETURN e";
+
+  var startExample = [{hugo : true}, {heinz : 1}];
+  var vertexExample = {_key: "v1"};
 
   return {
 
@@ -154,22 +158,22 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
         }
       };
       var actual = getRawQueryResults(AQL_VERTICES, bindVars);
-      assertEqual(actual[0]._id, 'UnitTestsAhuacatlOrphan/orphan');
       assertEqual(actual.length, 1);
+      assertEqual(actual[0]._id, 'UnitTestsAhuacatlOrphan/orphan');
     },
 
     testVerticesExample: function () {
       var bindVars = {
         name: gN,
-        example: [{hugo : true}, {heinz : 1}],
+        example: startExample,
         options: {direction : 'any'}
       };
       var actual = getRawQueryResults(AQL_VERTICES, bindVars);
+      assertEqual(actual.length, 4);
       assertEqual(actual[0]._id, 'UnitTestsAhuacatlVertex1/v1');
       assertEqual(actual[1]._id, 'UnitTestsAhuacatlVertex1/v2');
       assertEqual(actual[2]._id, 'UnitTestsAhuacatlVertex2/v3');
       assertEqual(actual[3]._id, 'UnitTestsAhuacatlVertex4/v8');
-      assertEqual(actual.length, 4);
     },
 
     testVerticesWithInboundEdges: function () {
@@ -179,8 +183,8 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
         options: {direction : 'inbound'}
       };
       var actual = getRawQueryResults(AQL_VERTICES, bindVars);
-      assertEqual(actual[0]._id, 'UnitTestsAhuacatlVertex3/v5');
       assertEqual(actual.length, 1);
+      assertEqual(actual[0]._id, 'UnitTestsAhuacatlVertex3/v5');
     },
 
     testVerticesWithInboundEdgesHasNoInboundEdges: function () {
@@ -196,14 +200,14 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
     testVerticesWithInboundEdgesAndExample: function () {
       var bindVars = {
         name: gN,
-        example: [{hugo : true}, {heinz : 1}],
+        example: startExample,
         options: {direction : 'inbound'}
       };
       var actual = getRawQueryResults(AQL_VERTICES, bindVars);
+      assertEqual(actual.length, 3);
       assertEqual(actual[0]._id, 'UnitTestsAhuacatlVertex1/v1');
       assertEqual(actual[1]._id, 'UnitTestsAhuacatlVertex1/v2');
       assertEqual(actual[2]._id, 'UnitTestsAhuacatlVertex4/v8');
-      assertEqual(actual.length, 3);
     },
 
     testVerticesWithInboundEdgesRestrictedHasNoInbound: function() {
@@ -229,9 +233,9 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
         }
       };
       var actual = getRawQueryResults(AQL_VERTICES, bindVars);
+      assertEqual(actual.length, 2);
       assertEqual(actual[0]._id, v3 + '/v5');
       assertEqual(actual[1]._id, v3 + '/v6');
-      assertEqual(actual.length, 2);
     },
 
     testVerticesWithOutboundEdgesRestrictedHasOutbound: function() {
@@ -244,9 +248,9 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
         }
       };
       var actual = getRawQueryResults(AQL_VERTICES, bindVars);
+      assertEqual(actual.length, 2);
       assertEqual(actual[0]._id, v2 + '/v3');
       assertEqual(actual[1]._id, v2 + '/v4');
-      assertEqual(actual.length, 2);
     },
 
     testVerticesWithOutboundEdgesRestrictedHasNoOutbound: function() {
@@ -271,83 +275,661 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
     
     testEdgesAny: function () {
-      var actual;
-      actual = getQueryResults("FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex1/v1', {direction : 'any'}) SORT e.what RETURN e.what");
+      var bindVars = {
+        name: gN,
+        example: v1 + "/v1",
+        options: {direction : 'any'}
+      };
+      var actual = getRawQueryResults(AQL_EDGES, bindVars);
       assertEqual(actual, [ "v1->v2", "v1->v5", "v2->v1" ]);
     },
 
     testEdgesAnyRestricted: function () {
-      var actual;
-      actual = getQueryResults("FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex1/v1', {direction : 'any' , edgeCollectionRestriction: ['UnitTestsAhuacatlEdge1']}) " +
-        "SORT e.what RETURN e.what");
+      var bindVars = {
+        name: gN,
+        example: v1 + "/v1",
+        options: {
+          direction : 'any',
+          edgeCollectionRestriction: [e1]
+        }
+      };
+      var actual = getRawQueryResults(AQL_EDGES, bindVars);
       assertEqual(actual, [ "v1->v2", "v2->v1" ]);
     },
 
     testEdgesAnyStartExample: function () {
-      var actual;
-      actual = getQueryResults("FOR e IN GRAPH_EDGES('bla3', [{hugo : true}, {heinz : 1}], {direction : 'any'}) " +
-        "SORT e.what RETURN e.what");
-      assertEqual(actual, [ "v1->v2",
+      var bindVars = {
+        name: gN,
+        example: startExample,
+        options: {direction : 'any'}
+      };
+      var actual = getRawQueryResults(AQL_EDGES, bindVars);
+      assertEqual(actual, [
+        "v1->v2",
         "v1->v5",
         "v2->v1",
         "v2->v5",
         "v3->v5",
         "v3->v6",
-        "v3->v8" ]);
+        "v3->v8"
+      ]);
     },
 
     testEdgesAnyStartExampleEdgeExample: function () {
-      var actual;
-      actual = getQueryResults("FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex1/v1', {direction : 'any' , edgeExamples : [{'what' : 'v2->v1'}]}) SORT e.what RETURN e.what");
-      assertEqual(actual, [ "v2->v1" ]);
+      var bindVars = {
+        name: gN,
+        example: v1 + "/v1",
+        options: {
+          direction : 'any',
+          edgeExamples: [{what: 'v2->v1'}]
+        }
+      };
+      var actual = getRawQueryResults(AQL_EDGES, bindVars);
+      assertEqual(actual.length, 1);
+      assertEqual(actual[0], "v2->v1");
     },
 
+    testEdgesInbound: function() {
+      var bindVars = {
+        name: gN,
+        example: v1 + "/v1",
+        options: {direction : 'inbound'}
+      };
+      var actual = getRawQueryResults(AQL_EDGES, bindVars);
+      assertEqual(actual, [ "v2->v1"]);
+    },
+
+    testEdgesInboundStartExample: function() {
+      var bindVars = {
+        name: gN,
+        example: startExample,
+        options: {direction : 'inbound'}
+      };
+      var actual = getRawQueryResults(AQL_EDGES, bindVars);
+      assertEqual(actual.length, 3);
+      assertEqual(actual[0], "v1->v2");
+      assertEqual(actual[1], "v2->v1");
+      assertEqual(actual[2], "v3->v8");
+    },
+
+    testEdgesInboundStartExampleRestricted: function() {
+      var bindVars = {
+        name: gN,
+        example: startExample,
+        options: {
+          direction : 'inbound',
+          edgeCollectionRestriction: [e2]
+        }
+      };
+      var actual = getRawQueryResults(AQL_EDGES, bindVars);
+      assertEqual(actual.length, 1);
+      assertEqual(actual[0], "v3->v8");
+    },
+
+    testEdgesInboundStartExampleEdgeExample: function() {
+      var bindVars = {
+        name: gN,
+        example: startExample,
+        options: {
+          direction : 'inbound',
+          edgeExamples: [{'what' : 'v3->v8'}]
+        }
+      };
+      var actual = getRawQueryResults(AQL_EDGES, bindVars);
+      assertEqual(actual.length, 1);
+      assertEqual(actual[0], "v3->v8");
+    },
+
+    testEdgesOutbound: function() {
+      var bindVars = {
+        name: gN,
+        example: v1 + "/v1",
+        options: {direction : 'outbound'}
+      };
+      var actual = getRawQueryResults(AQL_EDGES, bindVars);
+      assertEqual(actual[0], "v1->v2");
+      assertEqual(actual[1], "v1->v5");
+    },
+
+    testEdgesOutboundStartExample: function() {
+      var bindVars = {
+        name: gN,
+        example: startExample,
+        options: {direction : 'outbound'}
+      };
+      var actual = getRawQueryResults(AQL_EDGES, bindVars);
+      assertEqual(actual.length, 7);
+      assertEqual(actual[0], "v1->v2");
+      assertEqual(actual[1], "v1->v5");
+      assertEqual(actual[2], "v2->v1");
+      assertEqual(actual[3], "v2->v5");
+      assertEqual(actual[4], "v3->v5");
+      assertEqual(actual[5], "v3->v6");
+      assertEqual(actual[6], "v3->v8");
+    },
+
+    testEdgesOutboundStartExampleRestricted: function() {
+      var bindVars = {
+        name: gN,
+        example: startExample,
+        options: {
+          direction : 'outbound',
+          edgeCollectionRestriction: [e2]
+        }
+      };
+      var actual = getRawQueryResults(AQL_EDGES, bindVars);
+      assertEqual(actual.length, 5);
+      assertEqual(actual[0], "v1->v5");
+      assertEqual(actual[1], "v2->v5");
+      assertEqual(actual[2], "v3->v5");
+      assertEqual(actual[3], "v3->v6");
+      assertEqual(actual[4], "v3->v8");
+    },
+    
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief checks GRAPH_NEIGHBORS()
+    /// Test Neighbors
     ////////////////////////////////////////////////////////////////////////////////
-    testNeighborsAnyStartExampleEdgeExample: function () {
-      var actual;
-      actual = getQueryResults("FOR e IN GRAPH_NEIGHBORS('bla3', 'UnitTestsAhuacatlVertex1/v1', {direction : 'any' , edgeExamples : [{'what' : 'v2->v1'}]}) SORT e.what RETURN e");
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// Any direction
+    ////////////////////////////////////////////////////////////////////////////////
+    
+    testNeighborsAny: function () {
+      var bindVars = {
+        name: gN,
+        example: v1 + "/v1",
+        options: {
+          direction : 'any'
+        }
+      };
+      var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
+      assertEqual(actual.length, 3);
+      assertEqual(actual[0].path.edges[0].what, "v1->v2");
+      assertEqual(actual[0].path.edges.length, 1);
+      assertEqual(actual[0].vertex._key, "v2");
+      assertEqual(actual[1].path.edges[0].what, "v2->v1");
+      assertEqual(actual[1].path.edges.length, 1);
+      assertEqual(actual[1].vertex._key, "v2");
+      assertEqual(actual[2].path.edges[0].what, "v1->v5");
+      assertEqual(actual[2].path.edges.length, 1);
+      assertEqual(actual[2].vertex._key, "v5");
+    },
+
+    testNeighborsAnyEdgeExample: function () {
+      var bindVars = {
+        name: gN,
+        example: v1 + "/v1",
+        options: {
+          direction : 'any',
+          edgeExamples : [{'what' : 'v2->v1'}]
+        }
+      };
+      var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
+      assertEqual(actual.length, 1);
       assertEqual(actual[0].path.edges[0].what, "v2->v1");
+      assertEqual(actual[0].path.edges.length, 1);
       assertEqual(actual[0].vertex._key, "v2");
     },
 
+    testNeighborsAnyStartExample: function () {
+      var bindVars = {
+        name: gN,
+        example: startExample,
+        options: {
+          direction : 'any'
+        }
+      };
+      var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
+      assertEqual(actual.length, 10);
+      assertEqual(actual[0].path.edges[0].what, "v1->v2");
+      assertEqual(actual[0].path.edges.length, 1);
+      assertEqual(actual[0].vertex._key, "v1");
+      assertEqual(actual[1].path.edges[0].what, "v2->v1");
+      assertEqual(actual[1].path.edges.length, 1);
+      assertEqual(actual[1].vertex._key, "v1");
+      assertEqual(actual[2].path.edges[0].what, "v1->v2");
+      assertEqual(actual[2].path.edges.length, 1);
+      assertEqual(actual[2].vertex._key, "v2");
+      assertEqual(actual[3].path.edges[0].what, "v2->v1");
+      assertEqual(actual[3].path.edges.length, 1);
+      assertEqual(actual[3].vertex._key, "v2");
+      assertEqual(actual[4].path.edges[0].what, "v3->v8");
+      assertEqual(actual[4].path.edges.length, 1);
+      assertEqual(actual[4].vertex._key, "v3");
+      assertEqual(actual[5].path.edges[0].what, "v1->v5");
+      assertEqual(actual[5].path.edges.length, 1);
+      assertEqual(actual[5].vertex._key, "v5");
+      assertEqual(actual[6].path.edges[0].what, "v2->v5");
+      assertEqual(actual[6].path.edges.length, 1);
+      assertEqual(actual[6].vertex._key, "v5");
+      assertEqual(actual[7].path.edges[0].what, "v3->v5");
+      assertEqual(actual[7].path.edges.length, 1);
+      assertEqual(actual[7].vertex._key, "v5");
+      assertEqual(actual[8].path.edges[0].what, "v3->v6");
+      assertEqual(actual[8].path.edges.length, 1);
+      assertEqual(actual[8].vertex._key, "v6");
+      assertEqual(actual[9].path.edges[0].what, "v3->v8");
+      assertEqual(actual[9].path.edges.length, 1);
+      assertEqual(actual[9].vertex._key, "v8");
+    },
+
+    testNeighborsAnyVertexExample: function () {
+      var bindVars = {
+        name: gN,
+        example: {},
+        options: {
+          direction : 'any',
+          neighborExamples: vertexExample
+        }
+      };
+      var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
+      assertEqual(actual.length, 3);
+      assertEqual(actual[0].path.edges[0].what, "v1->v2");
+      assertEqual(actual[0].path.edges.length, 1);
+      assertEqual(actual[0].vertex._key, "v1");
+      assertEqual(actual[1].path.edges[0].what, "v1->v5");
+      assertEqual(actual[1].path.edges.length, 1);
+      assertEqual(actual[1].vertex._key, "v1");
+      assertEqual(actual[2].path.edges[0].what, "v2->v1");
+      assertEqual(actual[2].path.edges.length, 1);
+      assertEqual(actual[2].vertex._key, "v1");
+    },
+    testNeighborsAnyStartExampleRestrictEdges: function () {
+      var bindVars = {
+        name: gN,
+        example: startExample,
+        options: {
+          direction : 'any',
+          edgeCollectionRestriction: e2
+        }
+      };
+      var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
+      assertEqual(actual.length, 6);
+      assertEqual(actual[0].path.edges[0].what, "v3->v8");
+      assertEqual(actual[0].path.edges.length, 1);
+      assertEqual(actual[0].vertex._key, "v3");
+      assertEqual(actual[1].path.edges[0].what, "v1->v5");
+      assertEqual(actual[1].path.edges.length, 1);
+      assertEqual(actual[1].vertex._key, "v5");
+      assertEqual(actual[2].path.edges[0].what, "v2->v5");
+      assertEqual(actual[2].path.edges.length, 1);
+      assertEqual(actual[2].vertex._key, "v5");
+      assertEqual(actual[3].path.edges[0].what, "v3->v5");
+      assertEqual(actual[3].path.edges.length, 1);
+      assertEqual(actual[3].vertex._key, "v5");
+      assertEqual(actual[4].path.edges[0].what, "v3->v6");
+      assertEqual(actual[4].path.edges.length, 1);
+      assertEqual(actual[4].vertex._key, "v6");
+      assertEqual(actual[5].path.edges[0].what, "v3->v8");
+      assertEqual(actual[5].path.edges.length, 1);
+      assertEqual(actual[5].vertex._key, "v8");
+    },
+
+    testNeighborsAnyStartExampleRestrictVertices: function () {
+      var bindVars = {
+        name: gN,
+        example: startExample,
+        options: {
+          direction : 'any',
+          vertexCollectionRestriction: [v1, v3]
+        }
+      };
+      var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
+      assertEqual(actual.length, 8);
+      assertEqual(actual[0].path.edges[0].what, "v1->v2");
+      assertEqual(actual[0].path.edges.length, 1);
+      assertEqual(actual[0].vertex._key, "v1");
+      assertEqual(actual[1].path.edges[0].what, "v2->v1");
+      assertEqual(actual[1].path.edges.length, 1);
+      assertEqual(actual[1].vertex._key, "v1");
+      assertEqual(actual[2].path.edges[0].what, "v1->v2");
+      assertEqual(actual[2].path.edges.length, 1);
+      assertEqual(actual[2].vertex._key, "v2");
+      assertEqual(actual[3].path.edges[0].what, "v2->v1");
+      assertEqual(actual[3].path.edges.length, 1);
+      assertEqual(actual[3].vertex._key, "v2");
+      assertEqual(actual[4].path.edges[0].what, "v1->v5");
+      assertEqual(actual[4].path.edges.length, 1);
+      assertEqual(actual[4].vertex._key, "v5");
+      assertEqual(actual[5].path.edges[0].what, "v2->v5");
+      assertEqual(actual[5].path.edges.length, 1);
+      assertEqual(actual[5].vertex._key, "v5");
+      assertEqual(actual[6].path.edges[0].what, "v3->v5");
+      assertEqual(actual[6].path.edges.length, 1);
+      assertEqual(actual[6].vertex._key, "v5");
+      assertEqual(actual[7].path.edges[0].what, "v3->v6");
+      assertEqual(actual[7].path.edges.length, 1);
+      assertEqual(actual[7].vertex._key, "v6");
+    },
+
+    testNeighborsAnyStartExampleRestrictEdgesAndVertices: function () {
+      var bindVars = {
+        name: gN,
+        example: startExample,
+        options: {
+          direction : 'any',
+          vertexCollectionRestriction: [v1, v3],
+          edgeCollectionRestriction: e2
+        }
+      };
+      var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
+      assertEqual(actual.length, 4);
+      assertEqual(actual[0].path.edges[0].what, "v1->v5");
+      assertEqual(actual[0].path.edges.length, 1);
+      assertEqual(actual[0].vertex._key, "v5");
+      assertEqual(actual[1].path.edges[0].what, "v2->v5");
+      assertEqual(actual[1].path.edges.length, 1);
+      assertEqual(actual[1].vertex._key, "v5");
+      assertEqual(actual[2].path.edges[0].what, "v3->v5");
+      assertEqual(actual[2].path.edges.length, 1);
+      assertEqual(actual[2].vertex._key, "v5");
+      assertEqual(actual[3].path.edges[0].what, "v3->v6");
+      assertEqual(actual[3].path.edges.length, 1);
+      assertEqual(actual[3].vertex._key, "v6");
+    },
+
+ 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief checks EDGES()
+    /// direction outbound
     ////////////////////////////////////////////////////////////////////////////////
+    
+    testNeighborsOutbound: function () {
+      var bindVars = {
+        name: gN,
+        example: v1 + "/v1",
+        options: {
+          direction : 'outbound'
+        }
+      };
+      var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
+      assertEqual(actual.length, 2);
+      assertEqual(actual[0].path.edges[0].what, "v1->v2");
+      assertEqual(actual[0].path.edges.length, 1);
+      assertEqual(actual[0].vertex._key, "v2");
+      assertEqual(actual[1].path.edges[0].what, "v1->v5");
+      assertEqual(actual[1].path.edges.length, 1);
+      assertEqual(actual[1].vertex._key, "v5");
+    },
 
-    testEdgesIn: function () {
-      var actual;
-
-      actual = getQueryResults("FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex3/v5', {direction : 'inbound'}) SORT e.what RETURN e.what");
-      assertEqual(actual, [ "v1->v5", "v2->v5", "v3->v5"]);
-
-      actual = getQueryResults("FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex3/v5', {direction : 'inbound' ,edgeCollectionRestriction: ['UnitTestsAhuacatlEdge2']}) SORT e.what RETURN e.what");
-      assertEqual(actual, [ "v1->v5", "v2->v5", "v3->v5"]);
-
-      actual = getQueryResults("FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex3/v5', {direction : 'inbound' , edgeExamples : [{'what' : 'v2->v5'}]}) SORT e.what RETURN e.what");
-      assertEqual(actual, [ "v2->v5" ]);
-
-      actual = getQueryResults("FOR e IN GRAPH_NEIGHBORS('bla3', 'UnitTestsAhuacatlVertex3/v5', {direction : 'inbound' , edgeExamples : [{'what' : 'v2->v5'}]}) SORT e.what RETURN e");
-      assertEqual(actual[0].path.edges[0].what, "v2->v5");
+    testNeighborsOutboundEdgeExample: function () {
+      var bindVars = {
+        name: gN,
+        example: v1 + "/v1",
+        options: {
+          direction : 'outbound',
+          edgeExamples : [{'what' : 'v1->v2'}, {'what' : 'v2->v1'}]
+        }
+      };
+      var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
+      assertEqual(actual.length, 1);
+      assertEqual(actual[0].path.edges[0].what, "v1->v2");
+      assertEqual(actual[0].path.edges.length, 1);
       assertEqual(actual[0].vertex._key, "v2");
     },
 
+    testNeighborsOutboundStartExample: function () {
+      var bindVars = {
+        name: gN,
+        example: startExample,
+        options: {
+          direction : 'outbound'
+        }
+      };
+      var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
+      assertEqual(actual.length, 7);
+      assertEqual(actual[0].path.edges[0].what, "v2->v1");
+      assertEqual(actual[0].path.edges.length, 1);
+      assertEqual(actual[0].vertex._key, "v1");
+      assertEqual(actual[1].path.edges[0].what, "v1->v2");
+      assertEqual(actual[1].path.edges.length, 1);
+      assertEqual(actual[1].vertex._key, "v2");
+      assertEqual(actual[2].path.edges[0].what, "v1->v5");
+      assertEqual(actual[2].path.edges.length, 1);
+      assertEqual(actual[2].vertex._key, "v5");
+      assertEqual(actual[3].path.edges[0].what, "v2->v5");
+      assertEqual(actual[3].path.edges.length, 1);
+      assertEqual(actual[3].vertex._key, "v5");
+      assertEqual(actual[4].path.edges[0].what, "v3->v5");
+      assertEqual(actual[4].path.edges.length, 1);
+      assertEqual(actual[4].vertex._key, "v5");
+      assertEqual(actual[5].path.edges[0].what, "v3->v6");
+      assertEqual(actual[5].path.edges.length, 1);
+      assertEqual(actual[5].vertex._key, "v6");
+      assertEqual(actual[6].path.edges[0].what, "v3->v8");
+      assertEqual(actual[6].path.edges.length, 1);
+      assertEqual(actual[6].vertex._key, "v8");
+    },
+
+    testNeighborsOutboundVertexExample: function () {
+      var bindVars = {
+        name: gN,
+        example: {},
+        options: {
+          direction : 'outbound',
+          neighborExamples: vertexExample
+        }
+      };
+      var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
+      assertEqual(actual.length, 1);
+      assertEqual(actual[0].path.edges[0].what, "v2->v1");
+      assertEqual(actual[0].path.edges.length, 1);
+      assertEqual(actual[0].vertex._key, "v1");
+    },
+    testNeighborsOutboundStartExampleRestrictEdges: function () {
+      var bindVars = {
+        name: gN,
+        example: startExample,
+        options: {
+          direction : 'outbound',
+          edgeCollectionRestriction: e2
+        }
+      };
+      var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
+      assertEqual(actual.length, 5);
+      assertEqual(actual[0].path.edges[0].what, "v1->v5");
+      assertEqual(actual[0].path.edges.length, 1);
+      assertEqual(actual[0].vertex._key, "v5");
+      assertEqual(actual[1].path.edges[0].what, "v2->v5");
+      assertEqual(actual[1].path.edges.length, 1);
+      assertEqual(actual[1].vertex._key, "v5");
+      assertEqual(actual[2].path.edges[0].what, "v3->v5");
+      assertEqual(actual[2].path.edges.length, 1);
+      assertEqual(actual[2].vertex._key, "v5");
+      assertEqual(actual[3].path.edges[0].what, "v3->v6");
+      assertEqual(actual[3].path.edges.length, 1);
+      assertEqual(actual[3].vertex._key, "v6");
+      assertEqual(actual[4].path.edges[0].what, "v3->v8");
+      assertEqual(actual[4].path.edges.length, 1);
+      assertEqual(actual[4].vertex._key, "v8");
+    },
+
+    testNeighborsOutboundStartExampleRestrictVertices: function () {
+      var bindVars = {
+        name: gN,
+        example: startExample,
+        options: {
+          direction : 'outbound',
+          vertexCollectionRestriction: [v1, v3]
+        }
+      };
+      var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
+      assertEqual(actual.length, 6);
+      assertEqual(actual[0].path.edges[0].what, "v2->v1");
+      assertEqual(actual[0].path.edges.length, 1);
+      assertEqual(actual[0].vertex._key, "v1");
+      assertEqual(actual[1].path.edges[0].what, "v1->v2");
+      assertEqual(actual[1].path.edges.length, 1);
+      assertEqual(actual[1].vertex._key, "v2");
+      assertEqual(actual[2].path.edges[0].what, "v1->v5");
+      assertEqual(actual[2].path.edges.length, 1);
+      assertEqual(actual[2].vertex._key, "v5");
+      assertEqual(actual[3].path.edges[0].what, "v2->v5");
+      assertEqual(actual[3].path.edges.length, 1);
+      assertEqual(actual[3].vertex._key, "v5");
+      assertEqual(actual[4].path.edges[0].what, "v3->v5");
+      assertEqual(actual[4].path.edges.length, 1);
+      assertEqual(actual[4].vertex._key, "v5");
+      assertEqual(actual[5].path.edges[0].what, "v3->v6");
+      assertEqual(actual[5].path.edges.length, 1);
+      assertEqual(actual[5].vertex._key, "v6");
+    },
+
+    testNeighborsOutboundStartExampleRestrictEdgesAndVertices: function () {
+      var bindVars = {
+        name: gN,
+        example: startExample,
+        options: {
+          direction : 'outbound',
+          vertexCollectionRestriction: [v1, v3],
+          edgeCollectionRestriction: e2
+        }
+      };
+      var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
+      assertEqual(actual.length, 4);
+      assertEqual(actual[0].path.edges[0].what, "v1->v5");
+      assertEqual(actual[0].path.edges.length, 1);
+      assertEqual(actual[0].vertex._key, "v5");
+      assertEqual(actual[1].path.edges[0].what, "v2->v5");
+      assertEqual(actual[1].path.edges.length, 1);
+      assertEqual(actual[1].vertex._key, "v5");
+      assertEqual(actual[2].path.edges[0].what, "v3->v5");
+      assertEqual(actual[2].path.edges.length, 1);
+      assertEqual(actual[2].vertex._key, "v5");
+      assertEqual(actual[3].path.edges[0].what, "v3->v6");
+      assertEqual(actual[3].path.edges.length, 1);
+      assertEqual(actual[3].vertex._key, "v6");
+    },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief checks EDGES()
+    /// inbound direction
+    ////////////////////////////////////////////////////////////////////////////////
+    
+    testNeighborsInbound: function () {
+      var bindVars = {
+        name: gN,
+        example: v1 + "/v1",
+        options: {
+          direction : 'inbound'
+        }
+      };
+      var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
+      assertEqual(actual.length, 1);
+      assertEqual(actual[0].path.edges[0].what, "v2->v1");
+      assertEqual(actual[0].path.edges.length, 1);
+      assertEqual(actual[0].vertex._key, "v2");
+    },
+
+    testNeighborsInboundEdgeExample: function () {
+      var bindVars = {
+        name: gN,
+        example: v1 + "/v1",
+        options: {
+          direction : 'inbound',
+          edgeExamples : [{'what' : 'v2->v1'}]
+        }
+      };
+      var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
+      assertEqual(actual.length, 1);
+      assertEqual(actual[0].path.edges[0].what, "v2->v1");
+      assertEqual(actual[0].path.edges.length, 1);
+      assertEqual(actual[0].vertex._key, "v2");
+    },
+
+    testNeighborsInboundStartExample: function () {
+      var bindVars = {
+        name: gN,
+        example: startExample,
+        options: {
+          direction : 'inbound'
+        }
+      };
+      var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
+      assertEqual(actual.length, 3);
+      assertEqual(actual[0].path.edges[0].what, "v1->v2");
+      assertEqual(actual[0].path.edges.length, 1);
+      assertEqual(actual[0].vertex._key, "v1");
+      assertEqual(actual[1].path.edges[0].what, "v2->v1");
+      assertEqual(actual[1].path.edges.length, 1);
+      assertEqual(actual[1].vertex._key, "v2");
+      assertEqual(actual[2].path.edges[0].what, "v3->v8");
+      assertEqual(actual[2].path.edges.length, 1);
+      assertEqual(actual[2].vertex._key, "v3");
+    },
+
+    testNeighborsInboundNeighborExample: function () {
+      var bindVars = {
+        name: gN,
+        example: {},
+        options: {
+          direction : 'inbound',
+          neighborExamples: vertexExample
+        }
+      };
+      var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
+      assertEqual(actual.length, 2);
+      assertEqual(actual[0].path.edges[0].what, "v1->v2");
+      assertEqual(actual[0].path.edges.length, 1);
+      assertEqual(actual[0].vertex._key, "v1");
+      assertEqual(actual[1].path.edges[0].what, "v1->v5");
+      assertEqual(actual[1].path.edges.length, 1);
+      assertEqual(actual[1].vertex._key, "v1");
+    },
+
+    testNeighborsInboundStartExampleRestrictEdges: function () {
+      var bindVars = {
+        name: gN,
+        example: startExample,
+        options: {
+          direction : 'inbound',
+          edgeCollectionRestriction: e2
+        }
+      };
+      var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
+      assertEqual(actual.length, 1);
+      assertEqual(actual[0].path.edges[0].what, "v3->v8");
+      assertEqual(actual[0].path.edges.length, 1);
+      assertEqual(actual[0].vertex._key, "v3");
+    },
+
+    testNeighborsInboundStartExampleRestrictVertices: function () {
+      var bindVars = {
+        name: gN,
+        example: startExample,
+        options: {
+          direction : 'inbound',
+          vertexCollectionRestriction: [v1, v3]
+        }
+      };
+      var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
+      assertEqual(actual.length, 2);
+      assertEqual(actual[0].path.edges[0].what, "v1->v2");
+      assertEqual(actual[0].path.edges.length, 1);
+      assertEqual(actual[0].vertex._key, "v1");
+      assertEqual(actual[1].path.edges[0].what, "v2->v1");
+      assertEqual(actual[1].path.edges.length, 1);
+      assertEqual(actual[1].vertex._key, "v2");
+    },
+
+    testNeighborsInboundStartExampleRestrictEdgesAndVertices: function () {
+      var bindVars = {
+        name: gN,
+        example: startExample,
+        options: {
+          direction : 'inbound',
+          vertexCollectionRestriction: [v1, v3],
+          edgeCollectionRestriction: e2
+        }
+      };
+      var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
+      assertEqual(actual.length, 0);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief checks EDGES() OLD
     ////////////////////////////////////////////////////////////////////////////////
 
     testEdgesOut: function () {
       var actual;
-
-      actual = getQueryResults("FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex1/v1', {direction : 'outbound'}) SORT e.what RETURN e.what");
-      assertEqual(actual, [ "v1->v2", "v1->v5"]);
-
-      actual = getQueryResults("FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex1/v1', {direction : 'outbound' ,edgeCollectionRestriction: 'UnitTestsAhuacatlEdge2'}) SORT e.what RETURN e.what");
-      assertEqual(actual, [ "v1->v5"]);
-      actual = getQueryResults("FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex1/v1', {direction : 'outbound' ,edgeExamples :  [{'what' : 'v2->v5'}]}) SORT e.what RETURN e.what");
-      assertEqual(actual, []);
 
       actual = getQueryResults("FOR e IN GRAPH_NEIGHBORS('bla3', 'UnitTestsAhuacatlVertex1/v1', {direction : 'outbound' ,minDepth : 1, maxDepth : 3}) SORT e.vertex._key RETURN e");
       assertEqual(actual[0].vertex._key, "v1");
@@ -358,13 +940,6 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       actual = getQueryResults("FOR e IN GRAPH_NEIGHBORS('bla3', 'UnitTestsAhuacatlVertex1/v1', {neighborExamples : {hugo : true} , direction : 'outbound' ,minDepth : 1, maxDepth : 3}) SORT e.vertex._key RETURN e");
       assertEqual(actual[0].vertex._key, "v1");
       assertEqual(actual[1].vertex._key, "v2");
-
-      actual = getRawQueryResults("FOR e IN GRAPH_VERTICES('bla3', [{hugo : true}, {heinz : 1}], {direction : 'outbound'}) SORT e._id RETURN e");
-      assertEqual(actual[0]._id, 'UnitTestsAhuacatlVertex1/v1');
-      assertEqual(actual[1]._id, 'UnitTestsAhuacatlVertex1/v2');
-      assertEqual(actual[2]._id, 'UnitTestsAhuacatlVertex2/v3');
-      assertTrue(actual.length === 3);
-
 
       actual = getQueryResults("FOR e IN GRAPH_NEIGHBORS('bla3', 'UnitTestsAhuacatlVertex1/v1', {direction : 'outbound'}) SORT e.what RETURN e");
       assertEqual(actual[0].path.edges[0].what, "v1->v2");
@@ -527,23 +1102,27 @@ function ahuacatlQueryGeneralCommonTestSuite() {
     /// @brief checks GRAPH_COMMON_NEIGHBORS()
     ////////////////////////////////////////////////////////////////////////////////
 
-    testCommonNeighborsMixedOptions: function () {
+    testCommonNeighborsMixedOptionsDistinctFilters: function () {
       var actual = getQueryResults("FOR e IN GRAPH_COMMON_NEIGHBORS('bla3', {} , {},  " +
         "{direction : 'outbound', vertexCollectionRestriction : 'UnitTestsAhuacatlVertex1'}, " +
         "{direction : 'inbound', minDepth : 1, maxDepth : 2, vertexCollectionRestriction : 'UnitTestsAhuacatlVertex2'}) SORT TO_STRING(e) RETURN e");
-      assertEqual(Object.keys(actual[0])[0], "UnitTestsAhuacatlVertex1/v2");
-      assertEqual(Object.keys(actual[0][Object.keys(actual[0])[0]]).sort(), ["UnitTestsAhuacatlVertex2/v5", "UnitTestsAhuacatlVertex2/v7", "UnitTestsAhuacatlVertex2/v8"]);
+      assertEqual(actual.length, 0);
+    },
 
-      assertEqual(actual[0][Object.keys(actual[0])[0]]["UnitTestsAhuacatlVertex2/v5"].length, 1);
-      assertEqual(actual[0][Object.keys(actual[0])[0]]["UnitTestsAhuacatlVertex2/v8"].length, 1);
-      assertEqual(actual[0][Object.keys(actual[0])[0]]["UnitTestsAhuacatlVertex2/v7"].length, 2);
+    testCommonNeighborsMixedOptionsFilterBasedOnOneCollectionOnly: function () {
+      var actual = getQueryResults("FOR e IN GRAPH_COMMON_NEIGHBORS('bla3', {} , {},  " +
+        "{direction : 'outbound', vertexCollectionRestriction : 'UnitTestsAhuacatlVertex2'}, " +
+        "{direction : 'inbound', minDepth : 1, maxDepth : 2, vertexCollectionRestriction : 'UnitTestsAhuacatlVertex2'}) SORT TO_STRING(e) RETURN e");
 
-      assertEqual(Object.keys(actual[1])[0], "UnitTestsAhuacatlVertex1/v1");
-      assertEqual(Object.keys(actual[1][Object.keys(actual[1])[0]]).sort(), ["UnitTestsAhuacatlVertex2/v5", "UnitTestsAhuacatlVertex2/v6", "UnitTestsAhuacatlVertex2/v7", "UnitTestsAhuacatlVertex2/v8"]);
+      assertEqual(Object.keys(actual[0])[0], "UnitTestsAhuacatlVertex1/v3");
+      assertEqual(Object.keys(actual[0][Object.keys(actual[0])[0]]).sort(), ["UnitTestsAhuacatlVertex1/v1", "UnitTestsAhuacatlVertex1/v2"]);
 
-      assertEqual(actual[1][Object.keys(actual[1])[0]]["UnitTestsAhuacatlVertex2/v6"].length, 1);
-      assertEqual(actual[1][Object.keys(actual[1])[0]]["UnitTestsAhuacatlVertex2/v5"].length, 1);
-      assertEqual(actual[1][Object.keys(actual[1])[0]]["UnitTestsAhuacatlVertex2/v8"].length, 1);
+      assertEqual(actual[0][Object.keys(actual[0])[0]]["UnitTestsAhuacatlVertex1/v1"].length, 1);
+      assertEqual(actual[0][Object.keys(actual[0])[0]]["UnitTestsAhuacatlVertex1/v2"].length, 1);
+
+      assertEqual(Object.keys(actual[1])[0], "UnitTestsAhuacatlVertex1/v2");
+      assertEqual(Object.keys(actual[1][Object.keys(actual[1])[0]]).sort(), ["UnitTestsAhuacatlVertex2/v7"]);
+
       assertEqual(actual[1][Object.keys(actual[1])[0]]["UnitTestsAhuacatlVertex2/v7"].length, 1);
 
     },
