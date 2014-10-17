@@ -1192,7 +1192,7 @@ void IndexRangeBlock::readPrimaryIndex (IndexOrCondition const& ranges) {
   TRI_primary_index_t* primaryIndex = &(_collection->documentCollection()->_primaryIndex);
      
   std::string key;
-  for (auto x: ranges.at(0)) {
+  for (auto x : ranges.at(0)) {
     if (x._attr == std::string(TRI_VOC_ATTRIBUTE_ID)) {
       // lookup by _id
 
@@ -1283,7 +1283,7 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
    
       char const* name = TRI_AttributeNameShapePid(shaper, pid);
 
-      for (auto x: ranges.at(0)) {
+      for (auto x : ranges.at(0)) {
         if (x._attr == std::string(name)) {    //found attribute
           auto shaped = TRI_ShapedJsonJson(shaper, x._lowConst.bound().json(), false); 
           // here x->_low->_bound = x->_high->_bound 
@@ -1325,7 +1325,7 @@ void IndexRangeBlock::readEdgeIndex (IndexOrCondition const& ranges) {
   std::string key;
   TRI_edge_direction_e direction = TRI_EDGE_IN; // must set a default to satisfy compiler
    
-  for (auto x: ranges.at(0)) {
+  for (auto x : ranges.at(0)) {
     if (x._attr == std::string(TRI_VOC_ATTRIBUTE_FROM)) {
       // we can use lower bound because only equality is supported
       TRI_ASSERT(x.is1ValueRangeInfo());
@@ -3371,7 +3371,7 @@ int64_t GatherBlock::count () const {
 
 int64_t GatherBlock::remaining () {
   int64_t sum = 0;
-  for (auto x: _dependencies) {
+  for (auto x : _dependencies) {
     if (x->remaining() == -1) {
       return -1;
     }
@@ -3391,7 +3391,7 @@ bool GatherBlock::hasMore () {
   }
 
   for (size_t i = 0; i < _gatherBlockBuffer.size(); i++){
-    if (!_gatherBlockBuffer.at(i).empty()) {
+    if (! _gatherBlockBuffer.at(i).empty()) {
       return true;
     } 
     else if (getBlock(i, DefaultBatchSize, DefaultBatchSize)) {
