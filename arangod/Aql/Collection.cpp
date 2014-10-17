@@ -112,6 +112,23 @@ std::vector<std::string> Collection::shardIds () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the shard keys of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+std::vector<std::string> Collection::shardKeys () const {
+  auto clusterInfo = triagens::arango::ClusterInfo::instance();
+  auto collectionInfo = clusterInfo->getCollection(std::string(vocbase->_name), name);
+  if (collectionInfo.get() == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "collection not found");
+  }
+
+  std::vector<std::string> keys;
+  for (auto const& x : collectionInfo.get()->shardKeys()) {
+    keys.emplace_back(x);
+  }
+  return keys;
+}
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the indexes of the collection
 ////////////////////////////////////////////////////////////////////////////////
 
