@@ -462,8 +462,7 @@ void TRI_InitV8Dispatcher (v8::Handle<v8::Context> context,
   GlobalV8Dealer = applicationV8;
 
   // check the isolate
-  v8::Isolate* isolate = v8::Isolate::GetCurrent();
-  /* TRI_v8_global_t* v8g = */ TRI_CreateV8Globals(isolate);
+  v8::Isolate::GetCurrent();
 
   // .............................................................................
   // create the global functions
