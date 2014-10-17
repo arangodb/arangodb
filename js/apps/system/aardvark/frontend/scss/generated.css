@@ -2001,6 +2001,7 @@ div .tile, div .bigtile {
     height: 50px;
     width: 50px; }
   div .tile svg.tile-icon-svg, div .bigtile svg.tile-icon-svg {
+    cursor: pointer;
     fill: #686766;
     height: 50px;
     margin-left: 90px;
@@ -5848,6 +5849,7 @@ input.gv-radio-button {
   visibility: hidden; }
 
 #progressPlaceholder {
+  background-color: rgba(0, 0, 0, 0.4);
   bottom: 0;
   left: 0;
   position: fixed;
@@ -5856,34 +5858,37 @@ input.gv-radio-button {
   z-index: 9999; }
 
 .progress-view {
-  opacity: 0;
-  background-color: transparent;
-  border-radius: 5px;
+  background-color: #fff;
+  border: 1px solid #333232;
+  border-radius: 2px;
   color: #333232;
-  height: 180px;
+  height: 188px;
   left: 50%;
   margin: -100px 0 0 -150px;
   position: absolute;
   top: 50%;
-  opacity: 0;
   width: 300px; }
   .progress-view .progress-content {
     margin-left: 90px;
-    margin-top: 10px;
-    opacity: 0; }
+    margin-top: 10px; }
     .progress-view .progress-content .fa-spinner {
-      opacity: 0;
       font-size: 100pt; }
   .progress-view .progress-message {
     background-color: #333232;
-    border-radius: 0 0 5px 5px;
+    border-radius: 0 0 2px 2px;
     border-top: 1px solid #fff;
     color: #fff;
     font-weight: 200;
-    height: 25px;
+    height: 33px;
     padding-top: 3px;
-    text-align: center;
-    opacity: 0; }
+    text-align: center; }
+  .progress-view .progress-text {
+    float: left;
+    margin-left: 5px;
+    margin-top: 4px; }
+  .progress-view .progress-action {
+    float: right;
+    margin-right: 2px; }
 
 #progressPlaceholderIcon {
   color: #8aa051;
