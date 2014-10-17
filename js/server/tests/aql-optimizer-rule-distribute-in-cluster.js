@@ -80,7 +80,7 @@ function optimizerRuleTestSuite () {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test that rule does not fire when it is not enabled 
+    /// @brief test that the rule fires when it is enabled
     ////////////////////////////////////////////////////////////////////////////////
 
     testThisRuleEnabled : function () {
@@ -89,10 +89,71 @@ function optimizerRuleTestSuite () {
         [ "FOR d IN " + cn1 + " REMOVE d._key in " + cn1, 1],
         [ "FOR d IN " + cn1 + " INSERT d in " + cn2, 2],
         [ "FOR d IN " + cn1 + " INSERT d._key in " + cn2, 3],
-        [ "FOR d IN " + cn1 + " REPLACE d in " + cn1, 4],
-        [ "FOR d IN " + cn1 + " REPLACE d._key in " + cn1, 5],
-        [ "FOR d IN " + cn1 + " UPDATE d in " + cn1 , 6],
-        [ "FOR d IN " + cn1 + " UPDATE d._key in " + cn1 , 7]
+      ];
+
+      var expectedRules = [
+                            [ 
+                              "distribute-in-cluster", 
+                              "scatter-in-cluster", 
+                            ], 
+                            [ 
+                              "distribute-in-cluster", 
+                              "scatter-in-cluster", 
+                              "distribute-filtercalc-to-cluster"
+                            ]
+                          ];
+
+      var expectedNodes = [ 
+                            [
+                              "SingletonNode",
+                              "ScatterNode", 
+                              "RemoteNode", 
+                              "EnumerateCollectionNode", 
+                              "RemoteNode", 
+                              "GatherNode",
+                              "DistributeNode",
+                              "RemoteNode"
+                            ],
+                            [
+                              "SingletonNode",
+                              "ScatterNode", 
+                              "RemoteNode", 
+                              "EnumerateCollectionNode", 
+                              "CalculationNode", 
+                              "RemoteNode", 
+                              "GatherNode",
+                              "DistributeNode",
+                              "RemoteNode"
+                            ]
+                          ];
+
+      var finalNodes = [ 
+                        "RemoveNode", "RemoveNode", 
+                        "InsertNode", "InsertNode"
+                       ];
+
+      queries.forEach(function(query) {
+        // can't turn this rule off so should always get the same answer
+        var i = query[1] % 2;
+        var result = AQL_EXPLAIN(query[0], { }, thisRuleEnabled);
+        assertEqual(expectedRules[i], result.plan.rules, query);
+        expectedNodes[i].push(finalNodes[query[1]]);
+        assertEqual(expectedNodes[i], explain(result), query);
+        expectedNodes[i].pop();
+        
+      });
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test that rule fires when it is disabled (i.e. it can't be disabled)
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testThisRuleDisabled : function () {
+      var queries = [ 
+        [ "FOR d IN " + cn1 + " REMOVE d in " + cn1, 0],
+        [ "FOR d IN " + cn1 + " REMOVE d._key in " + cn1, 1],
+        [ "FOR d IN " + cn1 + " INSERT d in " + cn2, 2],
+        [ "FOR d IN " + cn1 + " INSERT d._key in " + cn2, 3],
       ];
 
       var expectedRules = [
@@ -131,12 +192,74 @@ function optimizerRuleTestSuite () {
 
       var finalNodes = [ 
                         "RemoveNode", "RemoveNode", 
-                        "InsertNode", "InsertNode",
-                        "ReplaceNode", "ReplaceNode", 
-                        "UpdateNode", "UpdateNode"
+                        "InsertNode", "InsertNode"
                        ];
 
       queries.forEach(function(query) {
+        // can't turn this rule off so should always get the same answer
+        var i = query[1] % 2;
+        var result = AQL_EXPLAIN(query[0], { }, rulesAll);
+        assertEqual(expectedRules[i], result.plan.rules, query);
+        expectedNodes[i].push(finalNodes[query[1]]);
+        result = AQL_EXPLAIN(query[0], { }, thisRuleDisabled);
+        assertEqual(expectedNodes[i], explain(result), query);
+        expectedNodes[i].pop();
+      });
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test that rule does not fire when it is not enabled 
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testRulesAll : function () {
+      var queries = [ 
+        [ "FOR d IN " + cn1 + " REMOVE d in " + cn1, 0],
+        [ "FOR d IN " + cn1 + " REMOVE d._key in " + cn1, 1],
+        [ "FOR d IN " + cn1 + " INSERT d in " + cn2, 2],
+        [ "FOR d IN " + cn1 + " INSERT d._key in " + cn2, 3],
+      ];
+
+      var expectedRules = [
+                            [ 
+                              "distribute-in-cluster", 
+                              "scatter-in-cluster", 
+                              "remove-unnecessary-remote-scatter" 
+                            ], 
+                            [ 
+                              "distribute-in-cluster", 
+                              "scatter-in-cluster", 
+                              "distribute-filtercalc-to-cluster", 
+                              "remove-unnecessary-remote-scatter" 
+                            ]
+                          ];
+
+      var expectedNodes = [ 
+                            [
+                              "SingletonNode", 
+                              "EnumerateCollectionNode", 
+                              "RemoteNode", 
+                              "GatherNode",
+                              "DistributeNode",
+                              "RemoteNode"
+                            ],
+                            [
+                              "SingletonNode",
+                              "EnumerateCollectionNode", 
+                              "CalculationNode", 
+                              "RemoteNode", 
+                              "GatherNode",
+                              "DistributeNode",
+                              "RemoteNode"
+                            ]
+                          ];
+
+      var finalNodes = [ 
+                        "RemoveNode", "RemoveNode", 
+                        "InsertNode", "InsertNode"
+                       ];
+
+      queries.forEach(function(query) {
+        // can't turn this rule off so should always get the same answer
         var i = query[1] % 2;
         var result = AQL_EXPLAIN(query[0], { }, rulesAll);
         assertEqual(expectedRules[i], result.plan.rules, query);
@@ -147,12 +270,81 @@ function optimizerRuleTestSuite () {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test that rule does not fire when it is not enabled 
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testRulesNone : function () {
+      var queries = [ 
+        [ "FOR d IN " + cn1 + " REMOVE d in " + cn1, 0],
+        [ "FOR d IN " + cn1 + " REMOVE d._key in " + cn1, 1],
+        [ "FOR d IN " + cn1 + " INSERT d in " + cn2, 2],
+        [ "FOR d IN " + cn1 + " INSERT d._key in " + cn2, 3],
+      ];
+
+      var expectedRules = [
+                            [ 
+                              "distribute-in-cluster", 
+                              "scatter-in-cluster", 
+                            ], 
+                            [ 
+                              "distribute-in-cluster", 
+                              "scatter-in-cluster", 
+                              "distribute-filtercalc-to-cluster", 
+                            ]
+                          ];
+
+      var expectedNodes = [ 
+                            [
+                              "SingletonNode",
+                              "ScatterNode", 
+                              "RemoteNode", 
+                              "EnumerateCollectionNode", 
+                              "RemoteNode", 
+                              "GatherNode",
+                              "DistributeNode",
+                              "RemoteNode"
+                            ],
+                            [
+                              "SingletonNode",
+                              "ScatterNode", 
+                              "RemoteNode", 
+                              "EnumerateCollectionNode", 
+                              "CalculationNode", 
+                              "RemoteNode", 
+                              "GatherNode",
+                              "DistributeNode",
+                              "RemoteNode"
+                            ]
+                          ];
+
+      var finalNodes = [ 
+                        "RemoveNode", "RemoveNode", 
+                        "InsertNode", "InsertNode"
+                       ];
+
+      queries.forEach(function(query) {
+        // can't turn this rule off so should always get the same answer
+        var i = query[1] % 2;
+        var result = AQL_EXPLAIN(query[0], { }, rulesNone);
+        assertEqual(expectedRules[i], result.plan.rules, query);
+        expectedNodes[i].push(finalNodes[query[1]]);
+        assertEqual(expectedNodes[i], explain(result), query);
+        expectedNodes[i].pop();
+        
+      });
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
     /// @brief test that rule has no effect
     ////////////////////////////////////////////////////////////////////////////////
 
     testRuleNoEffect : function () {
        var queries = [ 
          "FOR d IN " + cn1 +  " RETURN d",
+         "FOR d IN " + cn1 + " REPLACE d in " + cn1, 
+         "FOR d IN " + cn1 + " REPLACE d._key in " + cn1,
+         "FOR d IN " + cn1 + " UPDATE d in " + cn1,
+         "FOR d IN " + cn1 + " UPDATE d._key in " + cn1 ,
          "FOR i IN 1..10 RETURN i" ];
 
       queries.forEach(function(query) {
