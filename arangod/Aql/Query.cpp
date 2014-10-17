@@ -39,8 +39,10 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Utils/AqlTransaction.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/Exception.h"
 #include "Utils/StandaloneTransactionContext.h"
+#include "Utils/V8TransactionContext.h"
 #include "V8Server/ApplicationV8.h"
 #include "VocBase/vocbase.h"
 
@@ -230,10 +232,14 @@ Query::~Query () {
   if (_context != nullptr) {
     TRI_ASSERT(! _contextOwnedByExterior);
         
-    _trx->unregisterInContext();
+    // unregister transaction and resolver in context
+    TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+    auto ctx = static_cast<triagens::arango::V8TransactionContext*>(v8g->_transactionContext);
+    if (ctx != nullptr) {
+      ctx->unregisterTransaction();
+    }
 
     _applicationV8->exitContext(_context);
-      // TODO: unregister transaction and resolver in context
     _context = nullptr;
   }
 
@@ -817,8 +823,12 @@ void Query::enterContext () {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot enter V8 context");
       }
 
-      // register transaction in v8 context
-      _trx->registerInContext();
+      // register transaction and resolver in context
+      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+      auto ctx = static_cast<triagens::arango::V8TransactionContext*>(v8g->_transactionContext);
+      if (ctx != nullptr) {
+        ctx->registerTransaction(_trx->getInternals());
+      }
     }
 
     TRI_ASSERT(_context != nullptr);
@@ -833,8 +843,12 @@ void Query::exitContext () {
   if (! _contextOwnedByExterior) {
     if (_context != nullptr) {
       if (isRunningInCluster()) {
-        // unregister transaction in v8 context
-        _trx->unregisterInContext();
+        // unregister transaction and resolver in context
+        TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+        auto ctx = static_cast<triagens::arango::V8TransactionContext*>(v8g->_transactionContext);
+        if (ctx != nullptr) {
+          ctx->unregisterTransaction();
+        }
 
         _applicationV8->exitContext(_context);
         _context = nullptr;
