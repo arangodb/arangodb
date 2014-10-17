@@ -1224,7 +1224,7 @@ bool ApplicationV8::prepareV8Instance (const string& name, size_t i, bool useAct
 
   context->_context->Enter();
 
-  TRI_InitV8VocBridge(context->_context, _queryRegistry, _server, _vocbase, &_startupLoader, i);
+  TRI_InitV8VocBridge(this, context->_context, _queryRegistry, _server, _vocbase, &_startupLoader, i);
   TRI_InitV8Queries(context->_context);
   TRI_InitV8UserStructures(context->_context);
 

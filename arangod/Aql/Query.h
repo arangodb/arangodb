@@ -43,6 +43,10 @@ struct TRI_json_t;
 struct TRI_vocbase_s;
 
 namespace triagens {
+  namespace arango {
+    class ApplicationV8;
+  }
+
   namespace aql {
 
     struct AstNode;
@@ -127,14 +131,16 @@ namespace triagens {
 
       public:
 
-        Query (struct TRI_vocbase_s*,
+        Query (triagens::arango::ApplicationV8*,
+               struct TRI_vocbase_s*,
                char const*,
                size_t,
                struct TRI_json_t*,
                struct TRI_json_t*,
                QueryPart);
 
-        Query (struct TRI_vocbase_s*,
+        Query (triagens::arango::ApplicationV8*,
+               struct TRI_vocbase_s*,
                triagens::basics::Json queryStruct,
                struct TRI_json_t*,
                QueryPart);
@@ -415,6 +421,12 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief application v8 used in the query, we need this for V8 context access
+////////////////////////////////////////////////////////////////////////////////
+
+        triagens::arango::ApplicationV8* _applicationV8;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief all nodes created in the AST - will be used for freeing them later
