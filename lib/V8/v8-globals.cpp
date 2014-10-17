@@ -134,6 +134,7 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     _vocbase(nullptr),
     _allowUseDatabase(true),
     _hasDeadObjects(false),
+    _applicationV8(nullptr),
     _loader(nullptr),
     _canceled(false) {
   v8::HandleScope scope;
@@ -228,11 +229,21 @@ TRI_v8_global_s::~TRI_v8_global_s () {
 TRI_v8_global_t* TRI_CreateV8Globals (v8::Isolate* isolate) {
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData());
 
-  if (v8g == nullptr) {
-    v8g = new TRI_v8_global_t(isolate);
-    isolate->SetData(v8g);
-  }
+  TRI_ASSERT(v8g == nullptr);
+  v8g = new TRI_v8_global_t(isolate);
+  isolate->SetData(v8g);
 
+  return v8g;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a global context
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_v8_global_t* TRI_GetV8Globals (v8::Isolate* isolate) {
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData());
+
+  TRI_ASSERT(v8g != nullptr);
   return v8g;
 }
 

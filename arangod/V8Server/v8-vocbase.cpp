@@ -819,9 +819,10 @@ static v8::Handle<v8::Value> JS_ParseAql (v8::Arguments const& argv) {
     TRI_V8_TYPE_ERROR(scope, "expecting string for <querystring>");
   }
 
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
   string const&& queryString = TRI_ObjectToString(argv[0]);
 
-  triagens::aql::Query query(vocbase, queryString.c_str(), queryString.size(), nullptr, nullptr, triagens::aql::PART_MAIN);
+  triagens::aql::Query query(v8g->_applicationV8, vocbase, queryString.c_str(), queryString.size(), nullptr, nullptr, triagens::aql::PART_MAIN);
 
   auto parseResult = query.parse();
 
@@ -906,7 +907,8 @@ static v8::Handle<v8::Value> JS_ExplainAql (v8::Arguments const& argv) {
   }
 
   // bind parameters will be freed by the query later
-  triagens::aql::Query query(vocbase, queryString.c_str(), queryString.size(), parameters, options, triagens::aql::PART_MAIN);
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+  triagens::aql::Query query(v8g->_applicationV8, vocbase, queryString.c_str(), queryString.size(), parameters, options, triagens::aql::PART_MAIN);
   
   auto queryResult = query.explain();
   
@@ -999,7 +1001,7 @@ static v8::Handle<v8::Value> JS_ExecuteAqlJson (v8::Arguments const& argv) {
 
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
 
-  triagens::aql::Query query(vocbase, Json(TRI_UNKNOWN_MEM_ZONE, queryjson), options, triagens::aql::PART_MAIN);
+  triagens::aql::Query query(v8g->_applicationV8, vocbase, Json(TRI_UNKNOWN_MEM_ZONE, queryjson), options, triagens::aql::PART_MAIN);
   auto queryResult = query.execute(static_cast<triagens::aql::QueryRegistry*>(v8g->_queryRegistry));
   
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
@@ -1136,7 +1138,7 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
 
   // bind parameters will be freed by the query later
-  triagens::aql::Query query(vocbase, queryString.c_str(), queryString.size(), parameters, options, triagens::aql::PART_MAIN);
+  triagens::aql::Query query(v8g->_applicationV8, vocbase, queryString.c_str(), queryString.size(), parameters, options, triagens::aql::PART_MAIN);
   auto queryResult = query.execute(static_cast<triagens::aql::QueryRegistry*>(v8g->_queryRegistry));
   
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
@@ -2489,7 +2491,8 @@ void TRI_V8ReloadRouting (v8::Handle<v8::Context> context) {
 /// @brief creates a TRI_vocbase_t global context
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
+void TRI_InitV8VocBridge (triagens::arango::ApplicationV8* applicationV8,
+                          v8::Handle<v8::Context> context,
                           triagens::aql::QueryRegistry* queryRegistry,
                           TRI_server_t* server,
                           TRI_vocbase_t* vocbase,
@@ -2502,7 +2505,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_v8_global_t* v8g = TRI_CreateV8Globals(isolate);
 
   TRI_ASSERT(v8g->_transactionContext == nullptr);
-
   v8g->_transactionContext = new V8TransactionContext(true);
   static_cast<V8TransactionContext*>(v8g->_transactionContext)->makeGlobal();
 
@@ -2517,6 +2519,9 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
 
   // register the startup loader
   v8g->_loader = loader;
+  
+  // register the context dealer
+  v8g->_applicationV8 = applicationV8;
 
   v8::Handle<v8::ObjectTemplate> ArangoNS;
   v8::Handle<v8::ObjectTemplate> rt;
