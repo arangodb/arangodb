@@ -137,6 +137,22 @@ namespace triagens {
         public:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief register ourselves in the context
+////////////////////////////////////////////////////////////////////////////////
+
+        int registerInContext () {
+          return this->_transactionContext->registerTransaction(_trx);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register ourselves in the context
+////////////////////////////////////////////////////////////////////////////////
+
+        int unregisterInContext () {
+          return this->_transactionContext->unregisterTransaction();
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return database of transaction
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1318,7 +1334,7 @@ namespace triagens {
           }
 
           // register the transaction in the context
-          return this->_transactionContext->registerTransaction(_trx);
+          return this->registerInContext();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1329,7 +1345,7 @@ namespace triagens {
           TRI_ASSERT(! isEmbeddedTransaction());
 
           if (_trx != nullptr) {
-            this->_transactionContext->unregisterTransaction();
+            this->unregisterInContext();
 
             TRI_FreeTransaction(_trx);
             _trx = nullptr;

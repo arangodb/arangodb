@@ -201,6 +201,15 @@ namespace triagens {
 
         void replaceVariables (std::unordered_map<VariableId, Variable const*> const&);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalidates an expression
+/// this only has an effect for V8-based functions, which need to be created,
+/// used and destroyed in the same context. when a V8 function is used across
+/// multiple V8 contexts, it must be invalidated in between
+////////////////////////////////////////////////////////////////////////////////
+
+        void invalidateExpression ();
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
