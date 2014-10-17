@@ -1745,16 +1745,13 @@ int triagens::aql::distributeInCluster (Optimizer* opt,
       opt->addPlan(plan, rule->level, wasModified);
       return TRI_ERROR_NO_ERROR;
     }
-
-    // TODO check if the collection of the node is sharded or not
     
     Collection const* collection = static_cast<ModificationNode*>(node)->collection();
     
     if (nodeType == ExecutionNode::REMOVE) {
       // check if collection shard keys are only _key
-      std::vector<std::string> shardIds = collection->shardIds();
-      std::cout << "here!\n" 
-      if (shardIds.size() != 1 || shardIds[0] != "_key") {
+      std::vector<std::string> shardKeys = collection->shardKeys();
+      if (shardKeys.size() != 1 || shardKeys[0] != "_key") {
         opt->addPlan(plan, rule->level, wasModified);
         return TRI_ERROR_NO_ERROR;
       }
