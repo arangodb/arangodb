@@ -3441,9 +3441,7 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
     }
     if (res == nullptr) {
       _done = true;
-      return nullptr;
     }
-
     return res;
   }
  
@@ -3531,14 +3529,13 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
       }
     }
 
-    // renew the buffer and comparison function if necessary . . . 
+    // renew the _gatherBlockPos and clean up the buffer if necessary
     _gatherBlockPos.at(val.first).second++;
     if (_gatherBlockPos.at(val.first).second ==
         _gatherBlockBuffer.at(val.first).front()->size()) {
+      AqlItemBlock* cur = _gatherBlockBuffer.at(val.first).front();
+      delete cur;
       _gatherBlockBuffer.at(val.first).pop_front();
-      if (_gatherBlockBuffer.at(val.first).empty()) {
-        getBlock(val.first, DefaultBatchSize, DefaultBatchSize);
-      }
       _gatherBlockPos.at(val.first) = make_pair(val.first, 0);
     }
   }
@@ -3574,18 +3571,22 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
   
   // pull more blocks from dependencies . . .
   for (size_t i = 0; i < _dependencies.size(); i++) {
-    auto cur = _gatherBlockBuffer.at(i);
-    if (cur.empty()) {
+    if (_gatherBlockBuffer.at(i).empty()) {
       if (getBlock(i, atLeast, atMost)) {
+        index = i;
         _gatherBlockPos.at(i) = make_pair(i, 0);           
       }
     } 
     else {
       index = i;
     }
-    available += cur.at(0)->size() - _gatherBlockPos.at(i).second;
-    for (size_t j = 1; j < cur.size(); j++) {
-      available += cur[j]->size();
+
+    auto cur = _gatherBlockBuffer.at(i);
+    if (! cur.empty()) {
+      available += cur.at(0)->size() - _gatherBlockPos.at(i).second;
+      for (size_t j = 1; j < cur.size(); j++) {
+        available += cur.at(j)->size();
+      }
     }
   }
   
@@ -3599,7 +3600,8 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
   // get collections for ourLessThan . . .
   std::vector<TRI_document_collection_t const*> colls;
   for (RegisterId i = 0; i < _sortRegisters.size(); i++) {
-    colls.push_back(_gatherBlockBuffer.at(index).front()->getDocumentCollection(_sortRegisters[i].first));
+    colls.push_back(_gatherBlockBuffer.at(index).front()->
+        getDocumentCollection(_sortRegisters[i].first));
   }
   
   // comparison function 
@@ -3609,13 +3611,14 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
     // get the next smallest row from the buffer . . .
     std::pair<size_t, size_t> val = *(std::min_element(_gatherBlockPos.begin(),
           _gatherBlockPos.end(), ourLessThan));
-    // renew the buffer and comparison function if necessary . . . 
+    
+    // renew the _gatherBlockPos and clean up the buffer if necessary
     _gatherBlockPos.at(val.first).second++;
-    if (_gatherBlockPos.at(val.first).second == _gatherBlockBuffer.at(val.first).front()->size()) {
+    if (_gatherBlockPos.at(val.first).second ==
+        _gatherBlockBuffer.at(val.first).front()->size()) {
+      AqlItemBlock* cur = _gatherBlockBuffer.at(val.first).front();
+      delete cur;
       _gatherBlockBuffer.at(val.first).pop_front();
-      if (_gatherBlockBuffer.at(val.first).empty()) {
-        getBlock(val.first, DefaultBatchSize, DefaultBatchSize);
-      }
       _gatherBlockPos.at(val.first) = make_pair(val.first, 0);
     }
   }
