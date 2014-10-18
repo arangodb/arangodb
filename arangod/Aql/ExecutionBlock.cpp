@@ -3262,11 +3262,8 @@ GatherBlock::GatherBlock (ExecutionEngine* engine,
   : ExecutionBlock(engine, en),
     _sortRegisters(),
     _isSimple(en->getElements().empty()) {
-  
   if (! _isSimple) {
-    _gatherBlockBuffer.reserve(_dependencies.size());
-
-    for (auto p : en->_elements) {
+    for (auto p : en->getElements()) {
       // We know that planRegisters has been run, so
       // getPlanNode()->_varOverview is set up
       auto it = en->getVarOverview()->varInfo.find(p.first->id);
@@ -3296,7 +3293,19 @@ GatherBlock::~GatherBlock () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int GatherBlock::initialize () {
-  return ExecutionBlock::initialize();
+  auto res = ExecutionBlock::initialize();
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  /*if (! _isSimple) {
+    _gatherBlockBuffer.reserve(_dependencies.size());
+    for(size_t i = 0; i < _dependencies.size(); i++) {
+      _gatherBlockBuffer.emplace_back(); 
+    }
+  }*/
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3320,9 +3329,8 @@ int GatherBlock::shutdown () {
     }
     x.clear();
   }
-
   _gatherBlockBuffer.clear();
-
+  
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -3336,14 +3344,25 @@ int GatherBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
-
-  for (std::deque<AqlItemBlock*>& x : _gatherBlockBuffer) {
-    for (AqlItemBlock* y: x) {
-      delete y;
+ 
+  if (!_isSimple) {
+    for (std::deque<AqlItemBlock*>& x : _gatherBlockBuffer) {
+      for (AqlItemBlock* y: x) {
+        delete y;
+      }
+      x.clear();
     }
-    x.clear();
+    _gatherBlockBuffer.clear();
+    _gatherBlockPos.clear();
+    
+    _gatherBlockBuffer.reserve(_dependencies.size());
+    _gatherBlockPos.reserve(_dependencies.size());
+    for(size_t i = 0; i < _dependencies.size(); i++) {
+      _gatherBlockBuffer.emplace_back(); 
+      _gatherBlockPos.emplace_back(make_pair(i, 0)); 
+    }
   }
-  _gatherBlockBuffer.clear();
+
   _done = false;
   return TRI_ERROR_NO_ERROR;
 }
@@ -3434,15 +3453,24 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
   
   // pull more blocks from dependencies . . .
   for (size_t i = 0; i < _dependencies.size(); i++) {
+    
     if (_gatherBlockBuffer.at(i).empty()) {
       if (getBlock(i, atLeast, atMost)) {
+        index = i;
         _gatherBlockPos.at(i) = make_pair(i, 0);           
       }
     } 
     else {
       index = i;
     }
-    available += _gatherBlockBuffer.at(i).size() - _gatherBlockPos.at(i).second;
+    
+    auto cur = _gatherBlockBuffer.at(i);
+    if (! cur.empty()) {
+      available += cur.at(0)->size() - _gatherBlockPos.at(i).second;
+      for (size_t j = 1; j < cur.size(); j++) {
+        available += cur.at(j)->size();
+      }
+    }
   }
   
   if (available == 0) {
@@ -3547,7 +3575,8 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
   
   // pull more blocks from dependencies . . .
   for (size_t i = 0; i < _dependencies.size(); i++) {
-    if (_gatherBlockBuffer.at(i).empty()) {
+    auto cur = _gatherBlockBuffer.at(i);
+    if (cur.empty()) {
       if (getBlock(i, atLeast, atMost)) {
         _gatherBlockPos.at(i) = make_pair(i, 0);           
       }
@@ -3555,7 +3584,10 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
     else {
       index = i;
     }
-    available += _gatherBlockBuffer.at(i).size() - _gatherBlockPos.at(i).second;
+    available += cur.at(0)->size() - _gatherBlockPos.at(i).second;
+    for (size_t j = 1; j < cur.size(); j++) {
+      available += cur[j]->size();
+    }
   }
   
   if (available == 0) {
@@ -3598,7 +3630,7 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool GatherBlock::getBlock (size_t i, size_t atLeast, size_t atMost) {
-  TRI_ASSERT(0 < i && i < _dependencies.size());
+  TRI_ASSERT(0 <= i && i < _dependencies.size());
   AqlItemBlock* docs = _dependencies.at(i)->getSome(atLeast, atMost);
   if (docs != nullptr) {
     try {
