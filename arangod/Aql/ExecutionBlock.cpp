@@ -3489,7 +3489,6 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
   
   // the following is similar to AqlItemBlock's slice method . . .
   std::unordered_map<AqlValue, AqlValue> cache;
-  // TODO: should we pre-reserve space for cache to avoid later re-allocations?
   
   // comparison function 
   OurLessThan ourLessThan(_trx, _gatherBlockBuffer, _sortRegisters, colls);
@@ -3652,8 +3651,17 @@ bool GatherBlock::getBlock (size_t i, size_t atLeast, size_t atMost) {
 
 bool GatherBlock::OurLessThan::operator() (std::pair<size_t, size_t> const& a,
                                            std::pair<size_t, size_t> const& b) {
+  // nothing in the buffer is maximum!
+  if (_gatherBlockBuffer.at(a.first).empty()) {
+    return false;
+  }
+  if (_gatherBlockBuffer.at(b.first).empty()) {
+    return true;
+  }
+
   size_t i = 0;
   for (auto reg : _sortRegisters) {
+
     int cmp = AqlValue::Compare(
         _trx,
         _gatherBlockBuffer.at(a.first).front()->getValue(a.second, reg.first),
