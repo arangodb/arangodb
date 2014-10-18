@@ -3409,16 +3409,24 @@ bool GatherBlock::hasMore () {
     return false;
   }
 
-  for (size_t i = 0; i < _gatherBlockBuffer.size(); i++){
-    if (! _gatherBlockBuffer.at(i).empty()) {
-      return true;
-    } 
-    else if (getBlock(i, DefaultBatchSize, DefaultBatchSize)) {
-      _gatherBlockPos.at(i) = make_pair(i, 0);
-      return true;
+  if (_isSimple) {
+    for (size_t i = 0; i < _dependencies.size(); i++) {
+      if(_dependencies.at(i)->hasMore()) {
+        return true;
+      }
     }
   }
-
+  else {
+    for (size_t i = 0; i < _gatherBlockBuffer.size(); i++){
+      if (! _gatherBlockBuffer.at(i).empty()) {
+        return true;
+      } 
+      else if (getBlock(i, DefaultBatchSize, DefaultBatchSize)) {
+        _gatherBlockPos.at(i) = make_pair(i, 0);
+        return true;
+      }
+    }
+  }
   _done = true;
   return false;
 }
