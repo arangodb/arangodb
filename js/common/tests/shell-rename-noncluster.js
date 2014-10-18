@@ -68,7 +68,7 @@ function RenameSuite () {
 
     testAqlAfterRename : function () {
       var c = db._create(cn1);
-      for (var i = 0; i < 100000; ++i) {
+      for (var i = 0; i < 10000; ++i) {
         db.UnitTestsRename1.save({ value: i }); 
       }
       c.rename(cn2);
