@@ -63,7 +63,7 @@ function optimizerRuleTestSuite () {
       db._drop(cn1);
       db._drop(cn2);
       c1 = db._create(cn1, {numberOfShards:9});
-      c2 = db._create(cn2);
+      c2 = db._create(cn2, {numberOfShards:9, shardKeys:["a","b"]});
       for (i = 0; i < 10; i++){ 
           c1.insert({Hallo1:i});
           c2.insert({Hallo2:i});
@@ -88,7 +88,7 @@ function optimizerRuleTestSuite () {
         [ "FOR d IN " + cn1 + " REMOVE d in " + cn1, 0],
         [ "FOR d IN " + cn1 + " REMOVE d._key in " + cn1, 1],
         [ "FOR d IN " + cn1 + " INSERT d in " + cn2, 2],
-        [ "FOR d IN " + cn1 + " INSERT d._key in " + cn2, 3],
+        [ "FOR d IN " + cn1 + " INSERT d._key in " + cn2, 3]
       ];
 
       var expectedRules = [
@@ -100,6 +100,10 @@ function optimizerRuleTestSuite () {
                               "distribute-in-cluster", 
                               "scatter-in-cluster", 
                               "distribute-filtercalc-to-cluster"
+                            ],
+                            [
+                              "distribute-in-cluster", 
+                              "scatter-in-cluster" 
                             ]
                           ];
 
@@ -127,13 +131,12 @@ function optimizerRuleTestSuite () {
                             ]
                           ];
 
-      var finalNodes = [ 
+      var finalNodes = [
                         "RemoveNode", "RemoveNode", 
                         "InsertNode", "InsertNode"
                        ];
 
       queries.forEach(function(query) {
-        // can't turn this rule off so should always get the same answer
         var i = query[1] % 2;
         var result = AQL_EXPLAIN(query[0], { }, thisRuleEnabled);
         assertEqual(expectedRules[i], result.plan.rules, query);
@@ -345,7 +348,9 @@ function optimizerRuleTestSuite () {
          "FOR d IN " + cn1 + " REPLACE d._key in " + cn1,
          "FOR d IN " + cn1 + " UPDATE d in " + cn1,
          "FOR d IN " + cn1 + " UPDATE d._key in " + cn1 ,
-         "FOR i IN 1..10 RETURN i" ];
+         "FOR d IN " + cn2 + " REMOVE d in " + cn2,
+         "FOR i IN 1..10 RETURN i" 
+       ];
 
       queries.forEach(function(query) {
         var result1 = AQL_EXPLAIN(query, { }, thisRuleEnabled);
