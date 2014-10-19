@@ -123,7 +123,7 @@ char const * ArangoClient::PROMPT_IGNORE_END = "\002";
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoClient::ArangoClient ()
+ArangoClient::ArangoClient (char const* appName)
   : _configFile(),
     _tempPath(),
     _logLevel("info"),
@@ -159,6 +159,7 @@ ArangoClient::ArangoClient ()
     _requestTimeout(DEFAULT_REQUEST_TIMEOUT),
     _sslProtocol(4) {
 
+  TRI_SetApplicationName(appName);
   char* p = TRI_GetTempPath();
 
   if (p != nullptr) {

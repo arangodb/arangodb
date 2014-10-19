@@ -287,6 +287,8 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _disableReplicationApplier(false),
     _server(nullptr) {
 
+  TRI_SetApplicationName("arangod");
+
   char* p = TRI_GetTempPath();
   // copy the string
   _tempPath = string(p);
