@@ -4589,7 +4589,6 @@ function TRAVERSAL_VISITOR (config, result, vertex, path) {
 
 function TRAVERSAL_NEIGHBOR_VISITOR (config, result, vertex, path) {
   "use strict";
-
   result.push(CLONE({ vertex: vertex, path: path, startVertex : config.startVertex }));
 }
 
@@ -6038,8 +6037,8 @@ function GRAPH_NEIGHBORS (vertexCollection,
 ///   * *edgeCollectionRestriction*        : One or multiple edge
 ///   collection names. Only edges from these collections will be considered for the path.
 ///   * *vertexCollectionRestriction* : One or multiple vertex
-///   collection names. Only vertices from these collections will be considered as
-///   neighbor.
+///   collection names. Only vertices from these collections will be contained in the
+///   result. This does not effect vertices on the path.
 ///   * *minDepth*                         : Defines the minimal
 ///      depth a path to a neighbor must have to be returned (default is 1).
 ///   * *maxDepth*                         : Defines the maximal
@@ -6082,14 +6081,12 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
   }
 
   options.fromVertexExample = vertexExample;
-  if (! options.direction) {
+  if (! options.hasOwnProperty("direction")) {
     options.direction =  'any';
   }
 
-  if (options.neighborExamples) {
-    if (typeof options.neighborExamples === "string") {
-      options.neighborExamples = {_id : options.neighborExamples};
-    }
+  if (options.hasOwnProperty("neighborExamples") && typeof options.neighborExamples === "string") {
+    options.neighborExamples = {_id : options.neighborExamples};
   }
   var neighbors = [],
     params = TRAVERSAL_PARAMS(),
