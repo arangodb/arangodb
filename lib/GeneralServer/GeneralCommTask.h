@@ -230,6 +230,11 @@ namespace triagens {
               res = processRead();
             }
           }
+          else if (! closed) {
+            if (this->_readPosition == 0 && this->_readBuffer->c_str() != this->_readBuffer->end()) {
+              res = processRead();
+            }
+          }
 
           if (closed) {
             res = false;
@@ -237,6 +242,22 @@ namespace triagens {
           }
           else if (! res) {
             _server->handleCommunicationFailure(this);
+          }
+
+          return res;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+        bool handleWrite (bool& closed) {
+          bool res = SocketTask::handleWrite(closed);
+
+          if (! closed) {
+            if (this->_readPosition == 0 && this->_readBuffer->c_str() != this->_readBuffer->end()) {
+              res = processRead();
+            }
           }
 
           return res;
