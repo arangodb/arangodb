@@ -2881,6 +2881,112 @@ testGRAPH_DIAMETER_AND_RADIUS: function () {
 };
 }
 
+function ahuacatlQueryMultiCollectionMadnessTestSuite() {
+  var gN = "UnitTestsAhuacatlGraph";
+  var v1 = "UnitTestsAhuacatlVertex1";
+  var v2 = "UnitTestsAhuacatlVertex2";
+  var v3 = "UnitTestsAhuacatlVertex3";
+  var e1 = "UnitTestsAhuacatlEdge1";
+  var e2 = "UnitTestsAhuacatlEdge2";
+
+  var s1;
+  var c1;
+  var t1;
+  var s2;
+  var c2;
+  var t2;
+ 
+  var AQL_NEIGHBORS = "FOR e IN GRAPH_NEIGHBORS(@name, @example, @options) SORT e.vertex._id, e.path.edges[0].what RETURN e";
+
+  return {
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief set up
+    ////////////////////////////////////////////////////////////////////////////////
+
+    setUp: function () {
+      db._drop(v1);
+      db._drop(v2);
+      db._drop(v3);
+      db._drop(e1);
+      db._drop(e2);
+
+      var vertex1 = db._create(v1);
+      var vertex2 = db._create(v2);
+      var vertex3 = db._create(v3);
+
+      var edge1 = db._createEdgeCollection(e1);
+      var edge2 = db._createEdgeCollection(e2);
+
+      s1 = vertex1.save({ _key: "start"})._id;
+      c1 = vertex2.save({ _key: "center"})._id;
+      t1 = vertex3.save({ _key: "target"})._id;
+      s2 = vertex1.save({ _key: "start2"})._id;
+      c2 = vertex2.save({ _key: "center2"})._id;
+      t2 = vertex3.save({ _key: "target2"})._id;
+
+      function makeEdge(from, to, collection) {
+        collection.save(from, to, {});
+      }
+
+      makeEdge(s1, c1, edge1);
+      makeEdge(t1, c1, edge2);
+      makeEdge(s2, c2, edge1);
+      makeEdge(t2, c2, edge2);
+      makeEdge(t1, c2, edge2);
+      try {
+        graph._drop(gN);
+      } catch (ignore) {
+      }
+      graph._create(
+        gN,
+        graph._edgeDefinitions(
+          graph._relation(e1, v1, v2),
+          graph._relation(e2, v3, v2)
+        )
+      );
+    },
+
+    tearDown: function () {
+      graph._drop(gN, true);
+    },
+
+    testRestrictedPathHops1: function() {
+      var bindVars = {
+        name: gN,
+        example: s1,
+        options: {
+          direction : 'any',
+          minDepth: 2,
+          maxDepth: 2,
+          vertexCollectionRestriction: v3,
+          edgeCollectionRestriction: [e1, e2]
+        }
+      };
+      var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
+      assertEqual(actual.length, 1);
+      assertEqual(actual[0].vertex._id, t1);
+    },
+
+    testRestrictedPathHops2: function() {
+      var bindVars = {
+        name: gN,
+        example: s2,
+        options: {
+          direction : 'any',
+          minDepth: 2,
+          maxDepth: 2,
+          vertexCollectionRestriction: v3,
+          edgeCollectionRestriction: [e1, e2]
+        }
+      };
+      var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
+      assertEqual(actual.length, 2);
+      assertEqual(actual[0].vertex._id, t1);
+      assertEqual(actual[1].vertex._id, t2);
+    }
+  };
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2891,6 +2997,7 @@ jsunity.run(ahuacatlQueryGeneralCyclesSuite);
 jsunity.run(ahuacatlQueryGeneralTraversalTestSuite);
 jsunity.run(ahuacatlQueryGeneralPathsTestSuite);
 jsunity.run(ahuacatlQueryGeneralEdgesTestSuite);
+jsunity.run(ahuacatlQueryMultiCollectionMadnessTestSuite);
 
 
 return jsunity.done();
