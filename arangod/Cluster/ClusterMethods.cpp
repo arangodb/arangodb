@@ -610,12 +610,8 @@ int createDocumentOnCoordinator (
   }
   if (res->status == CL_COMM_ERROR) {
     // This could be a broken connection or an Http error:
-    if (res->result == 0) {
+    if (res->result == nullptr || ! res->result->isComplete()) {
       // there is not result
-      delete res;
-      return TRI_ERROR_CLUSTER_CONNECTION_LOST;
-    }
-    if (!res->result->isComplete()) {
       delete res;
       return TRI_ERROR_CLUSTER_CONNECTION_LOST;
     }
@@ -710,7 +706,7 @@ int deleteDocumentOnCoordinator (
     }
     if (res->status == CL_COMM_ERROR) {
       // This could be a broken connection or an Http error:
-      if (!res->result->isComplete()) {
+      if (res->result == nullptr || ! res->result->isComplete()) {
         delete res;
         return TRI_ERROR_CLUSTER_CONNECTION_LOST;
       }
@@ -901,7 +897,7 @@ int getDocumentOnCoordinator (
     }
     if (res->status == CL_COMM_ERROR) {
       // This could be a broken connection or an Http error:
-      if (!res->result || !res->result->isComplete()) {
+      if (! res->result || ! res->result->isComplete()) {
         delete res;
         return TRI_ERROR_CLUSTER_CONNECTION_LOST;
       }
@@ -1150,7 +1146,7 @@ int modifyDocumentOnCoordinator (
     }
     if (res->status == CL_COMM_ERROR) {
       // This could be a broken connection or an Http error:
-      if (!res->result->isComplete()) {
+      if (res->result == nullptr || ! res->result->isComplete()) {
         delete res;
         return TRI_ERROR_CLUSTER_CONNECTION_LOST;
       }
@@ -1297,7 +1293,8 @@ int createEdgeOnCoordinator (
   }
   if (res->status == CL_COMM_ERROR) {
     // This could be a broken connection or an Http error:
-    if (!res->result->isComplete()) {
+    if (res->result == nullptr || ! res->result->isComplete()) {
+      // there is not result
       delete res;
       return TRI_ERROR_CLUSTER_CONNECTION_LOST;
     }
@@ -1323,13 +1320,13 @@ TRI_vector_pointer_t* getIndexesCoordinator (string const& databaseName,
   shared_ptr<CollectionInfo> c = ClusterInfo::instance()->getCollection(databaseName, collectionName);
 
   if ((*c).empty()) {
-    return 0;
+    return nullptr;
   }
 
   TRI_vector_pointer_t* result = (TRI_vector_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t), false);
 
-  if (result == 0) {
-    return 0;
+  if (result == nullptr) {
+    return nullptr;
   }
 
   TRI_InitVectorPointer(result, TRI_UNKNOWN_MEM_ZONE);
