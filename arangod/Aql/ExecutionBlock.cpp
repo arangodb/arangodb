@@ -4238,7 +4238,7 @@ size_t DistributeBlock::sendToClient (AqlValue val) {
 /// @brief local helper to throw an exception if a HTTP request went wrong
 ////////////////////////////////////////////////////////////////////////////////
 
-static void throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
+static bool throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
                                                bool isShutdown) {
   if (res->status == CL_COMM_TIMEOUT) {
     std::string errorMessage;
@@ -4285,9 +4285,8 @@ static void throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
     }
 
     if (TRI_IsArrayJson(json)) {
-      TRI_json_t const* v;
-      
-      v = TRI_LookupArrayJson(json, "errorNum");
+      TRI_json_t const* v = TRI_LookupArrayJson(json, "errorNum");
+
       if (TRI_IsNumberJson(v)) {
         if (static_cast<int>(v->_value._number) != TRI_ERROR_NO_ERROR) {
           /* if we've got an error num, error has to be true. */
@@ -4315,9 +4314,9 @@ static void throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
     if (isShutdown && 
         errorNum == TRI_ERROR_QUERY_NOT_FOUND) {
       // this error may happen on shutdown and is thus tolerated
-      return;
+      // pass the info to the caller who can opt to ignore this error
+      return true;
     }
-
 
     // In this case a proper HTTP error was reported by the DBserver,
     if (errorNum > 0 && ! errorMessage.empty()) {
@@ -4327,6 +4326,8 @@ static void throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
     // default error
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
   }
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4450,7 +4451,10 @@ int RemoteBlock::shutdown () {
   res.reset(sendRequest(rest::HttpRequest::HTTP_REQUEST_PUT,
                         "/_api/aql/shutdown/",
                         string()));
-  throwExceptionAfterBadSyncRequest(res.get(), true);
+  if (throwExceptionAfterBadSyncRequest(res.get(), true)) {
+    // artificially ignore error in case query was not found during shutdown
+    return TRI_ERROR_NO_ERROR;
+  }
 
   // If we get here, then res->result is the response which will be
   // a serialized AqlItemBlock:
@@ -4458,6 +4462,7 @@ int RemoteBlock::shutdown () {
   Json responseBodyJson(TRI_UNKNOWN_MEM_ZONE,
                         TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
                                        responseBodyBuf.begin()));
+
   return JsonHelper::getNumericValue<int>
               (responseBodyJson.json(), "code", TRI_ERROR_INTERNAL);
 }
