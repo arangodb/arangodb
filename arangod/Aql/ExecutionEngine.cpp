@@ -266,15 +266,18 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
   struct EngineInfo {
     EngineInfo (EngineLocation location,
-                size_t id)
+                size_t id,
+                triagens::aql::QueryPart p)
       : location(location),
         id(id),
-        nodes() {
+        nodes(),
+        part(p) {
     }
 
     EngineLocation const         location;
     size_t const                 id;
     std::vector<ExecutionNode*>  nodes;
+    triagens::aql::QueryPart     part;   // only relevant for DBserver parts
   };
 
   Query*                   query;
@@ -284,6 +287,10 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   size_t                   currentEngineId;
   std::vector<EngineInfo>  engines;
   std::vector<size_t>      engineIds; // stack of engine ids, used for subqueries
+  std::unordered_set<std::string> collNamesSeenOnDBServer;  
+     // names of sharded collections that we have already seen on a DBserver
+     // this is relevant to decide whether or not the engine there is a main
+     // query or a dependent one.
 
   virtual bool EnterSubQueryFirst () {
     return true;
@@ -301,7 +308,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     TRI_ASSERT(query != nullptr);
     TRI_ASSERT(queryRegistry != nullptr);
 
-    engines.emplace_back(EngineInfo(COORDINATOR, 0));
+    engines.emplace_back(EngineInfo(COORDINATOR, 0, PART_MAIN));
   }
   
   ~CoordinatorInstanciator () {
@@ -473,7 +480,12 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       jsonNodesList.set("variables", query->ast()->variables()->toJson(TRI_UNKNOWN_MEM_ZONE));
 
       result.set("plan", jsonNodesList);
-      result.set("part", Json("dependent")); // TODO: set correct query type
+      if (info.part == triagens::aql::PART_MAIN) {
+        result.set("part", Json("main"));
+      }
+      else {
+        result.set("part", Json("dependent"));
+      }
 
       Json optimizerOptionsRules(Json::List);
       Json optimizerOptions(Json::Array);
@@ -658,7 +670,18 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       // flip current location
       currentLocation = (currentLocation == COORDINATOR ? DBSERVER : COORDINATOR);
       currentEngineId = engines.size();
-      engines.emplace_back(EngineInfo(currentLocation, currentEngineId));
+      QueryPart part = PART_DEPENDENT;
+      if (currentLocation == DBSERVER) {
+        auto rn = static_cast<RemoteNode*>(en);
+        Collection const* coll = rn->collection();
+        if (collNamesSeenOnDBServer.find(coll->name) == 
+            collNamesSeenOnDBServer.end()) {
+          part = PART_MAIN;
+          collNamesSeenOnDBServer.insert(coll->name);
+        }
+      }
+      // For the coordinator we do not care about main or part:
+      engines.emplace_back(EngineInfo(currentLocation, currentEngineId, part));
     }
 
     return false;
