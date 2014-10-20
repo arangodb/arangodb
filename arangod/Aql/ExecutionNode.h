@@ -536,8 +536,12 @@ namespace triagens {
           unsigned int depth;
           unsigned int totalNrRegs;
 
+        private:
+
           // This is used to tell all nodes and share a pointer to ourselves
           shared_ptr<VarOverview>* me;
+
+        public:
 
           VarOverview ()
             : depth(0), totalNrRegs(0), me(nullptr) {
