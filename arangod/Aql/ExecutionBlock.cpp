@@ -288,7 +288,7 @@ int ExecutionBlock::resolve (char const* handle,
     std::string const name(handle, p - handle);
     cid = _trx->resolver()->getCollectionIdCluster(name);
   }
-  
+                              
   if (cid == 0) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
@@ -803,6 +803,7 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
     _allBoundsConstant(true) {
    
   std::vector<std::vector<RangeInfo>> const& orRanges = en->_ranges;
+  TRI_ASSERT(en->_index != nullptr);
 
   TRI_ASSERT(orRanges.size() == 1);  // OR expressions not yet implemented
 
@@ -888,7 +889,6 @@ int IndexRangeBlock::initialize () {
 }
 
 bool IndexRangeBlock::readIndex () {
-
   // This is either called from initialize if all bounds are constant,
   // in this case it is never called again. If there is at least one
   // variable bound, then readIndex is called once for every item coming
@@ -907,6 +907,8 @@ bool IndexRangeBlock::readIndex () {
 
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
   IndexOrCondition const* condition = &en->_ranges;
+  
+  TRI_ASSERT(en->_index != nullptr);
    
   std::unique_ptr<IndexOrCondition> newCondition;
 

@@ -188,6 +188,14 @@ bool ExecutionEngine::isCoordinator () {
   return triagens::arango::ServerState::instance()->isCoordinator();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// @brief whether or not we are a db server
+////////////////////////////////////////////////////////////////////////////////
+       
+bool ExecutionEngine::isDBServer () {
+  return triagens::arango::ServerState::instance()->isDBserver();
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                     walker class for ExecutionNode to instanciate
 // -----------------------------------------------------------------------------
