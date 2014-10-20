@@ -216,8 +216,32 @@ int SynchroniserThread::doSync (bool& checkMore) {
   // all ok
 
   if (status == Logfile::StatusType::SEAL_REQUESTED) {
-    // additionally seal the logfile
-    _logfileManager->setLogfileSealed(id);
+    // we might not yet be able to seal the logfile yet, for example in
+    // the following situation when multi-threading:
+    //
+    //   // borrow 3 slots from the logfile manager
+    //   auto slot1 = logfileManager->allocate(1);
+    //   auto slot2 = logfileManager->allocate(1);
+    //   auto slot3 = logfileManager->allocate(1);
+    //
+    //   // return slot 3
+    //   logfileManager->finalise(slot3, false);
+    //   // return slot 1
+    //   logfileManager->finalise(slot1, false);
+    //
+    //   // some thread now requests flushing logs. this will produce a
+    //   // sync region from slot 1..slot 1.
+    //   logfileManager->flush(false, false, false);
+    // 
+    //   // if we now return slot2, it would produce a sync region from
+    //   // slot2..slot3. this is fine but won't work if the logfile is
+    //   // already sealed.
+    //   logfileManager->finalise(slot2, false);
+
+    if (region.canSeal) {
+      // only seal the logfile if it is safe to do so
+      _logfileManager->setLogfileSealed(id);
+    }
   }
   
   checkMore = region.checkMore;

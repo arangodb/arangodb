@@ -1,6 +1,28 @@
 v2.3.0 (XXXX-XX-XX)
 -------------------
 
+* added basic support for handling binary data in Foxx
+
+  Buffer objects can now be used when setting the response body of any Foxx action.
+  Additionally, `res.send()` has been added as a convenience method for returning 
+  strings, JSON objects or buffers from a Foxx action:
+
+      res.send("<p>some HTML</p>");
+      res.send({ success: true });
+      res.send(new Buffer("some binary data"));
+
+  The convenience method `res.sendFile()` can now be used to easily return the
+  contents of a file from a Foxx action:
+
+      res.sendFile(applicationContext.foxxFilename("image.png"));
+
+  `fs.write` now accepts not only strings but also Buffer objects as second parameter:
+
+      fs.write(filename, "some data");
+      fs.write(filename, new Buffer("some binary data"));
+
+  `fs.readBuffer` can be used to return the contents of a file in a Buffer object.
+
 * improved insert performance of non-unique hash index inserts significantly in case
   many duplicate keys are used in the index
 
@@ -24,7 +46,6 @@ v2.3.0 (XXXX-XX-XX)
   be modified to:
 
       arangod --server.disable-authentication true --server.endpoint tcp://127.0.0.1:8529 data
-
 
 * improved performance of CSV import in arangoimp
 
@@ -133,6 +154,10 @@ v2.2.6 (XXXX-XX-XX)
 -------------------
 
 * fixed issue #972: Compilation Issue
+
+* fixed issue #743: temporary directories are now unique and one can read
+  off the tool that created them, if empty, they are removed atexit
+
 
 
 v2.2.5 (2014-10-09)

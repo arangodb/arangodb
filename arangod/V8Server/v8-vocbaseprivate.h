@@ -65,7 +65,7 @@ extern int32_t const WRP_VOCBASE_COL_TYPE;
 ////////////////////////////////////////////////////////////////////////////////
 
 #define PREVENT_EMBEDDED_TRANSACTION(scope)                               \
-  if (V8TransactionContext<true>::IsEmbedded()) {                         \
+  if (triagens::arango::V8TransactionContext::IsEmbedded()) {             \
     TRI_V8_EXCEPTION(scope, TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);  \
   }
 

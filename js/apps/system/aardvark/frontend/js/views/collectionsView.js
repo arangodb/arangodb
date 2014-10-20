@@ -46,9 +46,15 @@
         $('#collectionsToggle').addClass('activated');
       }
 
-      var length = searchOptions.searchPhrase.length;
+      var length;
+
+      try {
+        length = searchOptions.searchPhrase.length;
+      }
+      catch (ignore) {
+      }
       $('#searchInput').val(searchOptions.searchPhrase);
-      $('#searchInput').focus();  
+      $('#searchInput').focus();
       $('#searchInput')[0].setSelectionRange(length, length);
 
       arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "left");

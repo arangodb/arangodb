@@ -1792,7 +1792,7 @@ int RestReplicationHandler::processRestoreCollection (TRI_json_t const* collecti
         // some collections must not be dropped
 
         // instead, truncate them
-        SingleCollectionWriteTransaction<RestTransactionContext, UINT64_MAX> trx(_vocbase, col->_cid);
+        SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, col->_cid);
 
         res = trx.begin();
         if (res != TRI_ERROR_NO_ERROR) {
@@ -2041,7 +2041,7 @@ int RestReplicationHandler::processRestoreIndexes (TRI_json_t const* collection,
 
     TRI_document_collection_t* document = guard.collection()->_collection;
 
-    SingleCollectionWriteTransaction<RestTransactionContext, UINT64_MAX> trx(_vocbase, document->_info._cid); 
+    SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, document->_info._cid); 
 
     int res = trx.begin();
 
@@ -2411,7 +2411,7 @@ int RestReplicationHandler::processRestoreData (CollectionNameResolver const& re
                                                 bool force,
                                                 string& errorMsg) {
 
-  SingleCollectionWriteTransaction<RestTransactionContext, UINT64_MAX> trx(_vocbase, cid);
+  SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, cid);
 
   int res = trx.begin();
 

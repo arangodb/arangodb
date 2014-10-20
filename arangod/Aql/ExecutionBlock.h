@@ -31,10 +31,10 @@
 #include <Basics/JsonHelper.h>
 #include <ShapedJson/shaped-json.h>
 
-#include "Aql/Types.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/Range.h"
 #include "Aql/WalkerWorker.h"
 #include "Utils/AqlTransaction.h"
 #include "Utils/transactions.h"
@@ -304,7 +304,7 @@ namespace triagens {
 /// @brief the transaction for this query
 ////////////////////////////////////////////////////////////////////////////////
 
-        AQL_TRANSACTION_V8* _trx;
+        triagens::arango::AqlTransaction* _trx;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief our corresponding ExecutionNode node
@@ -978,7 +978,7 @@ namespace triagens {
 
         class OurLessThan {
           public:
-            OurLessThan (AQL_TRANSACTION_V8* trx,
+            OurLessThan (triagens::arango::AqlTransaction* trx,
                          std::deque<AqlItemBlock*>& buffer,
                          std::vector<std::pair<RegisterId, bool>>& sortRegisters,
                          std::vector<TRI_document_collection_t const*>& colls)
@@ -992,7 +992,7 @@ namespace triagens {
                              std::pair<size_t, size_t> const& b);
 
           private:
-            AQL_TRANSACTION_V8* _trx;
+            triagens::arango::AqlTransaction* _trx;
             std::deque<AqlItemBlock*>& _buffer;
             std::vector<std::pair<RegisterId, bool>>& _sortRegisters;
             std::vector<TRI_document_collection_t const*>& _colls;
@@ -1482,7 +1482,7 @@ namespace triagens {
         class OurLessThan {
 
           public:
-            OurLessThan (AQL_TRANSACTION_V8* trx,
+            OurLessThan (triagens::arango::AqlTransaction* trx,
                          std::vector<std::deque<AqlItemBlock*>>& gatherBlockBuffer,
                          std::vector<std::pair<RegisterId, bool>>& sortRegisters,
                          std::vector<TRI_document_collection_t const*>& colls)
@@ -1496,7 +1496,7 @@ namespace triagens {
                              std::pair<size_t, size_t> const& b);
 
           private:
-            AQL_TRANSACTION_V8* _trx;
+            triagens::arango::AqlTransaction* _trx;
             std::vector<std::deque<AqlItemBlock*>>& _gatherBlockBuffer;
             std::vector<std::pair<RegisterId, bool>>& _sortRegisters;
             std::vector<TRI_document_collection_t const*>& _colls;
@@ -1613,6 +1613,13 @@ namespace triagens {
 // --SECTION--                                BlockWithClients protected methods
 // -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief preInitCursor: check if we should really init the cursor, and reset
+/// _doneForClient
+////////////////////////////////////////////////////////////////////////////////
+
+        bool preInitCursor ();
+  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getOrSkipSomeForShard
 ////////////////////////////////////////////////////////////////////////////////

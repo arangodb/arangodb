@@ -1,4 +1,5 @@
 #progressPlaceholder {
+  background-color: rgba(0, 0, 0, .4);
   bottom: 0;
   left: 0;
   position: fixed;
@@ -8,25 +9,22 @@
 }
 
 .progress-view {
-  opacity: 0;
-  background-color: rgba(0, 0, 0, .0);
-  border-radius: 5px;
+  background-color: #fff;
+  border: 1px solid $c-nav-bg;
+  border-radius: 2px;
   color: $c-nav-bg;
-  height: 180px;
+  height: 188px;
   left: 50%;
   margin: -100px 0 0 -150px;
   position: absolute;
   top: 50%;
-  opacity: 0;
   width: 300px;
 
   .progress-content {
     margin-left: 90px;
     margin-top: 10px;
-    opacity: 0;
 
     .fa-spinner {
-      opacity: 0;
       font-size: 100pt;
     }
 
@@ -34,15 +32,26 @@
 
   .progress-message {
     background-color: $c-nav-bg;
-    border-radius: 0 0 5px 5px;
+    border-radius: 0 0 2px 2px;
     border-top: 1px solid #fff;
     color: #fff;
     font-weight: 200;
-    height: 25px;
+    height: 33px;
     padding-top: 3px;
     text-align: center;
-    opacity: 0;
   }
+
+  .progress-text {
+    float: left;
+    margin-left: 5px;
+    margin-top: 4px;
+  }
+
+  .progress-action {
+    float: right;
+    margin-right: 2px;
+  }
+
 }
 
 #progressPlaceholderIcon {

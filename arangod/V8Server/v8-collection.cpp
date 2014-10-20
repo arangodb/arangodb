@@ -468,7 +468,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (bool useCollection,
     return scope.Close(DocumentVocbaseColCoordinator(col, argv, true));
   }
 
-  V8ReadTransaction trx(vocbase, col->_cid);
+  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -488,7 +488,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (bool useCollection,
   TRI_ASSERT(trx.hasBarrier());
 
   if (res == TRI_ERROR_NO_ERROR) {
-    result = TRI_WrapShapedJson<V8ReadTransaction>(trx, col->_cid, document.getDataPtr());
+    result = TRI_WrapShapedJson<SingleCollectionReadOnlyTransaction>(trx, col->_cid, document.getDataPtr());
   }
 
   if (res != TRI_ERROR_NO_ERROR || document.getDataPtr() == nullptr) {  // PROTECTED by trx here
@@ -658,7 +658,7 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (bool useCollection,
     return scope.Close(DocumentVocbaseColCoordinator(col, argv, false));
   }
 
-  V8ReadTransaction trx(vocbase, col->_cid);
+  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -882,7 +882,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
                                                    argv));
   }
 
-  SingleCollectionWriteTransaction<V8TransactionContext<true>, 1> trx(vocbase, col->_cid);
+  SingleCollectionWriteTransaction<1> trx(new V8TransactionContext(true), vocbase, col->_cid);
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1017,7 +1017,7 @@ static v8::Handle<v8::Value> InsertVocbaseCol (TRI_vocbase_col_t* col,
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-  SingleCollectionWriteTransaction<V8TransactionContext<true>, 1> trx(col->_vocbase, col->_cid);
+  SingleCollectionWriteTransaction<1> trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
 
   res = trx.begin();
 
@@ -1179,7 +1179,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
   }
 
 
-  SingleCollectionWriteTransaction<V8TransactionContext<true>, 1> trx(vocbase, col->_cid);
+  SingleCollectionWriteTransaction<1> trx(new V8TransactionContext(true), vocbase, col->_cid);
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1423,7 +1423,7 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (bool useCollection,
     return scope.Close(RemoveVocbaseColCoordinator(col, policy, options.waitForSync, argv));
   }
 
-  SingleCollectionWriteTransaction<V8TransactionContext<true>, 1> trx(vocbase, col->_cid);
+  SingleCollectionWriteTransaction<1> trx(new V8TransactionContext(true), vocbase, col->_cid);
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1642,7 +1642,7 @@ static TRI_doc_collection_info_t* GetFiguresCoordinator (TRI_vocbase_col_t* coll
 static TRI_doc_collection_info_t* GetFigures (TRI_vocbase_col_t* collection) {
   TRI_ASSERT(collection != nullptr);
 
-  V8ReadTransaction trx(collection->_vocbase, collection->_cid);
+  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), collection->_vocbase, collection->_cid);
 
   int res = trx.begin();
 
@@ -2472,9 +2472,9 @@ static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
 
 static int GetRevision (TRI_vocbase_col_t* collection,
                         TRI_voc_rid_t& rid) {
-  TRI_ASSERT(collection != 0);
+  TRI_ASSERT(collection != nullptr);
 
-  V8ReadTransaction trx(collection->_vocbase, collection->_cid);
+  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), collection->_vocbase, collection->_cid);
 
   int res = trx.begin();
 
@@ -2907,7 +2907,7 @@ static v8::Handle<v8::Value> InsertEdgeCol (TRI_vocbase_col_t* col,
   edge._fromKey = nullptr;
   edge._toKey   = nullptr;
 
-  SingleCollectionWriteTransaction<V8TransactionContext<true>, 1> trx(col->_vocbase, col->_cid);
+  SingleCollectionWriteTransaction<1> trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
 
   // extract from
   res = TRI_ParseVertex(trx.resolver(), edge._fromCid, fromKey, argv[0]);
@@ -3184,7 +3184,7 @@ static v8::Handle<v8::Value> JS_TruncateVocbaseCol (v8::Arguments const& argv) {
 
   TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
 
-  SingleCollectionWriteTransaction<V8TransactionContext<true>, UINT64_MAX> trx(collection->_vocbase, collection->_cid);
+  SingleCollectionWriteTransaction<UINT64_MAX> trx(new V8TransactionContext(true), collection->_vocbase, collection->_cid);
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -3385,7 +3385,7 @@ static v8::Handle<v8::Value> JS_CheckPointersVocbaseCol (v8::Arguments const& ar
 
   TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
 
-  V8ReadTransaction trx(collection->_vocbase, collection->_cid);
+  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), collection->_vocbase, collection->_cid);
 
   int res = trx.begin();
 
@@ -4049,7 +4049,7 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(v8::Number::New((double) count));
   }
 
-  V8ReadTransaction trx(collection->_vocbase, collection->_cid);
+  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), collection->_vocbase, collection->_cid);
 
   int res = trx.begin();
 

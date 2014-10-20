@@ -31,7 +31,8 @@
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
 #include "Aql/AqlValue.h"
-#include "Aql/Types.h"
+#include "Aql/Range.h"
+#include "Aql/types.h"
 #include "VocBase/document-collection.h"
 
 namespace triagens {
@@ -292,7 +293,7 @@ namespace triagens {
 /// be used to recreate the AqlItemBlock via the Json constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        triagens::basics::Json toJson (AQL_TRANSACTION_V8* trx) const;
+        triagens::basics::Json toJson (triagens::arango::AqlTransaction* trx) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

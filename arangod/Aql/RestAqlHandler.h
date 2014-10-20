@@ -36,6 +36,7 @@
 #include "V8Server/ApplicationV8.h"
 #include "RestServer/VocbaseContext.h"
 #include "Aql/QueryRegistry.h"
+#include "Aql/types.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -131,13 +132,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void createQueryFromString ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief DELETE method for /_api/aql/<queryId>
-/// The query specified by <queryId> is deleted.
-////////////////////////////////////////////////////////////////////////////////
-
-        void deleteQuery (std::string const& idString);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief PUT method for /_api/aql/<operation>/<queryId>, this is using 

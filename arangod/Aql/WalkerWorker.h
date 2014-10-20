@@ -54,6 +54,9 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
+        virtual bool EnterSubQueryFirst () {
+          return false;
+        }
 
         virtual bool before (T*) {
           return false; // true to abort the whole walking process

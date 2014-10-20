@@ -406,7 +406,7 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
   }
 
 
-  SingleCollectionReadOnlyTransaction<RestTransactionContext> trx(vocbase, collection->_cid);
+  SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(), vocbase, collection->_cid);
 
   int res = trx.begin();
 

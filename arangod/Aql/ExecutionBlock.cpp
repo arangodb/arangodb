@@ -27,6 +27,7 @@
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/json-utilities.h"
@@ -179,6 +180,19 @@ bool ExecutionBlock::walk (WalkerWorker<ExecutionBlock>* worker) {
     return true;
   }
 
+  // Now handle a subquery:
+  if ((_exeNode->getType() == ExecutionNode::SUBQUERY) &&
+      worker->EnterSubQueryFirst()) {
+    auto p = static_cast<SubqueryBlock*>(this);
+    if (worker->enterSubquery(this, p->getSubquery())) {
+      bool abort = p->getSubquery()->walk(worker);
+      worker->leaveSubquery(this, p->getSubquery());
+      if (abort) {
+        return true;
+      }
+    }
+  }
+
   // Now the children in their natural order:
   for (auto c : _dependencies) {
     if (c->walk(worker)) {
@@ -186,7 +200,8 @@ bool ExecutionBlock::walk (WalkerWorker<ExecutionBlock>* worker) {
     }
   }
   // Now handle a subquery:
-  if (_exeNode->getType() == ExecutionNode::SUBQUERY) {
+  if ((_exeNode->getType() == ExecutionNode::SUBQUERY) &&
+      ! worker->EnterSubQueryFirst()) {
     auto p = static_cast<SubqueryBlock*>(this);
     if (worker->enterSubquery(this, p->getSubquery())) {
       bool abort = p->getSubquery()->walk(worker);
@@ -556,7 +571,7 @@ int SingletonBlock::getOrSkipSome (size_t,   // atLeast,
   }
 
   if(! skipping){
-    result = new AqlItemBlock(1, getPlanNode()->getVarOverview()->nrRegs[getPlanNode()->getDepth()]);
+    result = new AqlItemBlock(1, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]);
     try {
       if (_inputRegisterValues != nullptr) {
         skipped++;
@@ -682,7 +697,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome (size_t, // atLeast,
   size_t available = _documents.size() - _posInAllDocs;
   size_t toSend = (std::min)(atMost, available);
 
-  unique_ptr<AqlItemBlock> res(new AqlItemBlock(toSend, getPlanNode()->getVarOverview()->nrRegs[getPlanNode()->getDepth()]));
+  unique_ptr<AqlItemBlock> res(new AqlItemBlock(toSend, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
   // automatically freed if we throw
   TRI_ASSERT(curRegs <= res->getNrRegs());
 
@@ -703,7 +718,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome (size_t, // atLeast,
     }
 
     // The result is in the first variable of this depth,
-    // we do not need to do a lookup in getPlanNode()->_varOverview->varInfo,
+    // we do not need to do a lookup in getPlanNode()->_registerPlan->varInfo,
     // but can just take cur->getNrRegs() as registerId:
     res->setValue(j, static_cast<triagens::aql::RegisterId>(curRegs),
                   AqlValue(reinterpret_cast<TRI_df_marker_t
@@ -840,8 +855,8 @@ int IndexRangeBlock::initialize () {
     std::unordered_set<Variable*> inVars = e->variables();
     for (auto v : inVars) {
       inVarsCur.push_back(v);
-      auto it = getPlanNode()->getVarOverview()->varInfo.find(v->id);
-      TRI_ASSERT(it != getPlanNode()->getVarOverview()->varInfo.end());
+      auto it = getPlanNode()->getRegisterPlan()->varInfo.find(v->id);
+      TRI_ASSERT(it != getPlanNode()->getRegisterPlan()->varInfo.end());
       TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
       inRegsCur.push_back(it->second.registerId);
     }
@@ -906,6 +921,16 @@ bool IndexRangeBlock::readIndex () {
 
     newCondition = std::unique_ptr<IndexOrCondition>(new IndexOrCondition());
     newCondition.get()->push_back(std::vector<RangeInfo>());
+
+    // must have a V8 context here to protect Expression::execute()
+    auto engine = _engine;
+    triagens::basics::ScopeGuard guard{
+      [&engine]() -> void { engine->getQuery()->enterContext(); },
+      [&engine]() -> void { engine->getQuery()->exitContext(); }
+    };
+
+    v8::HandleScope scope; // do not delete this!
+
     size_t posInExpressions = 0;
     for (auto r : en->_ranges.at(0)) {
       // First create a new RangeInfo containing only the constant 
@@ -1037,7 +1062,7 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t, // atLeast
 
     if (toSend > 0) {
 
-      res.reset(new AqlItemBlock(toSend, getPlanNode()->getVarOverview()->nrRegs[getPlanNode()->getDepth()]));
+      res.reset(new AqlItemBlock(toSend, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
       // automatically freed should we throw
       TRI_ASSERT(curRegs <= res->getNrRegs());
@@ -1059,7 +1084,7 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t, // atLeast
         }
 
         // The result is in the first variable of this depth,
-        // we do not need to do a lookup in getPlanNode()->_varOverview->varInfo,
+        // we do not need to do a lookup in getPlanNode()->_registerPlan->varInfo,
         // but can just take cur->getNrRegs() as registerId:
         res->setValue(j, static_cast<triagens::aql::RegisterId>(curRegs),
                       AqlValue(reinterpret_cast<TRI_df_marker_t
@@ -1167,7 +1192,7 @@ void IndexRangeBlock::readPrimaryIndex (IndexOrCondition const& ranges) {
   TRI_primary_index_t* primaryIndex = &(_collection->documentCollection()->_primaryIndex);
      
   std::string key;
-  for (auto x: ranges.at(0)) {
+  for (auto x : ranges.at(0)) {
     if (x._attr == std::string(TRI_VOC_ATTRIBUTE_ID)) {
       // lookup by _id
 
@@ -1258,7 +1283,7 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
    
       char const* name = TRI_AttributeNameShapePid(shaper, pid);
 
-      for (auto x: ranges.at(0)) {
+      for (auto x : ranges.at(0)) {
         if (x._attr == std::string(name)) {    //found attribute
           auto shaped = TRI_ShapedJsonJson(shaper, x._lowConst.bound().json(), false); 
           // here x->_low->_bound = x->_high->_bound 
@@ -1300,7 +1325,7 @@ void IndexRangeBlock::readEdgeIndex (IndexOrCondition const& ranges) {
   std::string key;
   TRI_edge_direction_e direction = TRI_EDGE_IN; // must set a default to satisfy compiler
    
-  for (auto x: ranges.at(0)) {
+  for (auto x : ranges.at(0)) {
     if (x._attr == std::string(TRI_VOC_ATTRIBUTE_FROM)) {
       // we can use lower bound because only equality is supported
       TRI_ASSERT(x.is1ValueRangeInfo());
@@ -1481,8 +1506,8 @@ EnumerateListBlock::EnumerateListBlock (ExecutionEngine* engine,
   : ExecutionBlock(engine, en),
     _inVarRegId(ExecutionNode::MaxRegisterId) {
 
-  auto it = en->getVarOverview()->varInfo.find(en->_inVariable->id);
-  if (it == en->getVarOverview()->varInfo.end()){
+  auto it = en->getRegisterPlan()->varInfo.find(en->_inVariable->id);
+  if (it == en->getRegisterPlan()->varInfo.end()){
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "variable not found");
   }
   _inVarRegId = (*it).second.registerId;
@@ -1595,7 +1620,7 @@ AqlItemBlock* EnumerateListBlock::getSome (size_t, size_t atMost) {
       size_t toSend = (std::min)(atMost, sizeInVar - _index);
 
       // create the result
-      res.reset(new AqlItemBlock(toSend, getPlanNode()->getVarOverview()->nrRegs[getPlanNode()->getDepth()]));
+      res.reset(new AqlItemBlock(toSend, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
       inheritRegisters(cur, res.get(), _pos);
 
@@ -1769,9 +1794,9 @@ CalculationBlock::CalculationBlock (ExecutionEngine* engine,
 
   for (auto it = inVars.begin(); it != inVars.end(); ++it) {
     _inVars.push_back(*it);
-    auto it2 = en->getVarOverview()->varInfo.find((*it)->id);
+    auto it2 = en->getRegisterPlan()->varInfo.find((*it)->id);
 
-    TRI_ASSERT(it2 != en->getVarOverview()->varInfo.end());
+    TRI_ASSERT(it2 != en->getRegisterPlan()->varInfo.end());
     TRI_ASSERT(it2->second.registerId < ExecutionNode::MaxRegisterId);
     _inRegs.push_back(it2->second.registerId);
   }
@@ -1784,8 +1809,8 @@ CalculationBlock::CalculationBlock (ExecutionEngine* engine,
     TRI_ASSERT(_inRegs.size() == 1);
   }
 
-  auto it3 = en->getVarOverview()->varInfo.find(en->_outVariable->id);
-  TRI_ASSERT(it3 != en->getVarOverview()->varInfo.end());
+  auto it3 = en->getRegisterPlan()->varInfo.find(en->_outVariable->id);
+  TRI_ASSERT(it3 != en->getRegisterPlan()->varInfo.end());
   _outReg = it3->second.registerId;
   TRI_ASSERT(_outReg < ExecutionNode::MaxRegisterId);
 }
@@ -1829,6 +1854,16 @@ void CalculationBlock::doEvaluation (AqlItemBlock* result) {
 
     RegisterId nrRegs = result->getNrRegs();
     result->setDocumentCollection(_outReg, nullptr);
+
+    // must have a V8 context here to protect Expression::execute()
+    auto engine = _engine;
+    triagens::basics::ScopeGuard guard{
+      [&engine]() -> void { engine->getQuery()->enterContext(); },
+      [&engine]() -> void { engine->getQuery()->exitContext(); }
+    };
+    
+    v8::HandleScope scope; // do not delete this!
+
     for (size_t i = 0; i < n; i++) {
       // need to execute the expression
       AqlValue a = _expression->execute(_trx, docColls, data, nrRegs * i, _inVars, _inRegs);
@@ -1870,8 +1905,8 @@ SubqueryBlock::SubqueryBlock (ExecutionEngine* engine,
     _outReg(ExecutionNode::MaxRegisterId),
     _subquery(subquery) {
   
-  auto it = en->getVarOverview()->varInfo.find(en->_outVariable->id);
-  TRI_ASSERT(it != en->getVarOverview()->varInfo.end());
+  auto it = en->getRegisterPlan()->varInfo.find(en->_outVariable->id);
+  TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
   _outReg = it->second.registerId;
   TRI_ASSERT(_outReg < ExecutionNode::MaxRegisterId);
 }
@@ -1938,8 +1973,8 @@ FilterBlock::FilterBlock (ExecutionEngine* engine,
   : ExecutionBlock(engine, en),
     _inReg(ExecutionNode::MaxRegisterId) {
   
-  auto it = en->getVarOverview()->varInfo.find(en->_inVariable->id);
-  TRI_ASSERT(it != en->getVarOverview()->varInfo.end());
+  auto it = en->getRegisterPlan()->varInfo.find(en->_inVariable->id);
+  TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
   _inReg = it->second.registerId;
   TRI_ASSERT(_inReg < ExecutionNode::MaxRegisterId);
 }
@@ -2119,33 +2154,33 @@ AggregateBlock::AggregateBlock (ExecutionEngine* engine,
   
   for (auto p : en->_aggregateVariables) {
     // We know that planRegisters() has been run, so
-    // getPlanNode()->_varOverview is set up
-    auto itOut = en->getVarOverview()->varInfo.find(p.first->id);
-    TRI_ASSERT(itOut != en->getVarOverview()->varInfo.end());
+    // getPlanNode()->_registerPlan is set up
+    auto itOut = en->getRegisterPlan()->varInfo.find(p.first->id);
+    TRI_ASSERT(itOut != en->getRegisterPlan()->varInfo.end());
 
-    auto itIn = en->getVarOverview()->varInfo.find(p.second->id);
-    TRI_ASSERT(itIn != en->getVarOverview()->varInfo.end());
+    auto itIn = en->getRegisterPlan()->varInfo.find(p.second->id);
+    TRI_ASSERT(itIn != en->getRegisterPlan()->varInfo.end());
     TRI_ASSERT((*itIn).second.registerId < ExecutionNode::MaxRegisterId);
     TRI_ASSERT((*itOut).second.registerId < ExecutionNode::MaxRegisterId);
     _aggregateRegisters.emplace_back(make_pair((*itOut).second.registerId, (*itIn).second.registerId));
   }
 
   if (en->_outVariable != nullptr) {
-    auto it = en->getVarOverview()->varInfo.find(en->_outVariable->id);
-    TRI_ASSERT(it != en->getVarOverview()->varInfo.end());
+    auto it = en->getRegisterPlan()->varInfo.find(en->_outVariable->id);
+    TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
     _groupRegister = (*it).second.registerId;
     TRI_ASSERT(_groupRegister > 0 && _groupRegister < ExecutionNode::MaxRegisterId);
 
     // construct a mapping of all register ids to variable names
     // we need this mapping to generate the grouped output
 
-    for (size_t i = 0; i < en->getVarOverview()->varInfo.size(); ++i) {
+    for (size_t i = 0; i < en->getRegisterPlan()->varInfo.size(); ++i) {
       _variableNames.push_back(""); // initialize with some default value
     }
 
     // iterate over all our variables
-    for (auto it = en->getVarOverview()->varInfo.begin(); 
-         it != en->getVarOverview()->varInfo.end(); ++it) {
+    for (auto it = en->getRegisterPlan()->varInfo.begin(); 
+         it != en->getRegisterPlan()->varInfo.end(); ++it) {
       // find variable in the global variable map
       auto itVar = en->_variableMap.find((*it).first);
 
@@ -2204,7 +2239,7 @@ int AggregateBlock::getOrSkipSome (size_t atLeast,
   unique_ptr<AqlItemBlock> res;
 
   if (! skipping) {
-    res.reset(new AqlItemBlock(atMost, getPlanNode()->getVarOverview()->nrRegs[getPlanNode()->getDepth()]));
+    res.reset(new AqlItemBlock(atMost, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
     TRI_ASSERT(cur->getNrRegs() <= res->getNrRegs());
     inheritRegisters(cur, res.get(), _pos);
@@ -2367,8 +2402,8 @@ SortBlock::SortBlock (ExecutionEngine* engine,
     _stable(en->_stable) {
   
   for (auto p : en->_elements) {
-    auto it = en->getVarOverview()->varInfo.find(p.first->id);
-    TRI_ASSERT(it != en->getVarOverview()->varInfo.end());
+    auto it = en->getRegisterPlan()->varInfo.find(p.first->id);
+    TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
     TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
     _sortRegisters.push_back(make_pair(it->second.registerId, p.second));
   }
@@ -2663,8 +2698,8 @@ AqlItemBlock* ReturnBlock::getSome (size_t atLeast,
 
   // Let's steal the actual result and throw away the vars:
   auto ep = static_cast<ReturnNode const*>(getPlanNode());
-  auto it = ep->getVarOverview()->varInfo.find(ep->_inVariable->id);
-  TRI_ASSERT(it != ep->getVarOverview()->varInfo.end());
+  auto it = ep->getRegisterPlan()->varInfo.find(ep->_inVariable->id);
+  TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
   RegisterId const registerId = it->second.registerId;
   AqlItemBlock* stripped = new AqlItemBlock(n, 1);
 
@@ -2817,8 +2852,8 @@ RemoveBlock::~RemoveBlock () {
 
 void RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
   auto ep = static_cast<RemoveNode const*>(getPlanNode());
-  auto it = ep->getVarOverview()->varInfo.find(ep->_inVariable->id);
-  TRI_ASSERT(it != ep->getVarOverview()->varInfo.end());
+  auto it = ep->getRegisterPlan()->varInfo.find(ep->_inVariable->id);
+  TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
   RegisterId const registerId = it->second.registerId;
 
   auto trxCollection = _trx->trxCollection(_collection->cid());
@@ -2894,8 +2929,8 @@ InsertBlock::~InsertBlock () {
 
 void InsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
   auto ep = static_cast<InsertNode const*>(getPlanNode());
-  auto it = ep->getVarOverview()->varInfo.find(ep->_inVariable->id);
-  TRI_ASSERT(it != ep->getVarOverview()->varInfo.end());
+  auto it = ep->getRegisterPlan()->varInfo.find(ep->_inVariable->id);
+  TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
   RegisterId const registerId = it->second.registerId;
 
   auto trxCollection = _trx->trxCollection(_collection->cid());
@@ -3006,16 +3041,16 @@ UpdateBlock::~UpdateBlock () {
 
 void UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
   auto ep = static_cast<UpdateNode const*>(getPlanNode());
-  auto it = ep->getVarOverview()->varInfo.find(ep->_inDocVariable->id);
-  TRI_ASSERT(it != ep->getVarOverview()->varInfo.end());
+  auto it = ep->getRegisterPlan()->varInfo.find(ep->_inDocVariable->id);
+  TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
   RegisterId const docRegisterId = it->second.registerId;
   RegisterId keyRegisterId = 0; // default initialization
 
   bool const hasKeyVariable = (ep->_inKeyVariable != nullptr);
   
   if (hasKeyVariable) {
-    it = ep->getVarOverview()->varInfo.find(ep->_inKeyVariable->id);
-    TRI_ASSERT(it != ep->getVarOverview()->varInfo.end());
+    it = ep->getRegisterPlan()->varInfo.find(ep->_inKeyVariable->id);
+    TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
     keyRegisterId = it->second.registerId;
   }
   
@@ -3124,16 +3159,16 @@ ReplaceBlock::~ReplaceBlock () {
 
 void ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
   auto ep = static_cast<ReplaceNode const*>(getPlanNode());
-  auto it = ep->getVarOverview()->varInfo.find(ep->_inDocVariable->id);
-  TRI_ASSERT(it != ep->getVarOverview()->varInfo.end());
+  auto it = ep->getRegisterPlan()->varInfo.find(ep->_inDocVariable->id);
+  TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
   RegisterId const registerId = it->second.registerId;
   RegisterId keyRegisterId = 0; // default initialization
 
   bool const hasKeyVariable = (ep->_inKeyVariable != nullptr);
   
   if (hasKeyVariable) {
-    it = ep->getVarOverview()->varInfo.find(ep->_inKeyVariable->id);
-    TRI_ASSERT(it != ep->getVarOverview()->varInfo.end());
+    it = ep->getRegisterPlan()->varInfo.find(ep->_inKeyVariable->id);
+    TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
     keyRegisterId = it->second.registerId;
   }
 
@@ -3227,15 +3262,12 @@ GatherBlock::GatherBlock (ExecutionEngine* engine,
   : ExecutionBlock(engine, en),
     _sortRegisters(),
     _isSimple(en->getElements().empty()) {
-  
   if (! _isSimple) {
-    _gatherBlockBuffer.reserve(_dependencies.size());
-
-    for (auto p : en->_elements) {
+    for (auto p : en->getElements()) {
       // We know that planRegisters has been run, so
-      // getPlanNode()->_varOverview is set up
-      auto it = en->getVarOverview()->varInfo.find(p.first->id);
-      TRI_ASSERT(it != en->getVarOverview()->varInfo.end());
+      // getPlanNode()->_registerPlan is set up
+      auto it = en->getRegisterPlan()->varInfo.find(p.first->id);
+      TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
       TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
       _sortRegisters.emplace_back(make_pair(it->second.registerId, p.second));
     }
@@ -3261,7 +3293,19 @@ GatherBlock::~GatherBlock () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int GatherBlock::initialize () {
-  return ExecutionBlock::initialize();
+  auto res = ExecutionBlock::initialize();
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  /*if (! _isSimple) {
+    _gatherBlockBuffer.reserve(_dependencies.size());
+    for(size_t i = 0; i < _dependencies.size(); i++) {
+      _gatherBlockBuffer.emplace_back(); 
+    }
+  }*/
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3285,9 +3329,8 @@ int GatherBlock::shutdown () {
     }
     x.clear();
   }
-
   _gatherBlockBuffer.clear();
-
+  
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -3301,14 +3344,25 @@ int GatherBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
-
-  for (std::deque<AqlItemBlock*>& x : _gatherBlockBuffer) {
-    for (AqlItemBlock* y: x) {
-      delete y;
+ 
+  if (!_isSimple) {
+    for (std::deque<AqlItemBlock*>& x : _gatherBlockBuffer) {
+      for (AqlItemBlock* y: x) {
+        delete y;
+      }
+      x.clear();
     }
-    x.clear();
+    _gatherBlockBuffer.clear();
+    _gatherBlockPos.clear();
+    
+    _gatherBlockBuffer.reserve(_dependencies.size());
+    _gatherBlockPos.reserve(_dependencies.size());
+    for(size_t i = 0; i < _dependencies.size(); i++) {
+      _gatherBlockBuffer.emplace_back(); 
+      _gatherBlockPos.emplace_back(make_pair(i, 0)); 
+    }
   }
-  _gatherBlockBuffer.clear();
+
   _done = false;
   return TRI_ERROR_NO_ERROR;
 }
@@ -3336,7 +3390,7 @@ int64_t GatherBlock::count () const {
 
 int64_t GatherBlock::remaining () {
   int64_t sum = 0;
-  for (auto x: _dependencies) {
+  for (auto x : _dependencies) {
     if (x->remaining() == -1) {
       return -1;
     }
@@ -3355,16 +3409,24 @@ bool GatherBlock::hasMore () {
     return false;
   }
 
-  for (size_t i = 0; i < _gatherBlockBuffer.size(); i++){
-    if (!_gatherBlockBuffer.at(i).empty()) {
-      return true;
-    } 
-    else if (getBlock(i, DefaultBatchSize, DefaultBatchSize)) {
-      _gatherBlockPos.at(i) = make_pair(i, 0);
-      return true;
+  if (_isSimple) {
+    for (size_t i = 0; i < _dependencies.size(); i++) {
+      if(_dependencies.at(i)->hasMore()) {
+        return true;
+      }
     }
   }
-
+  else {
+    for (size_t i = 0; i < _gatherBlockBuffer.size(); i++){
+      if (! _gatherBlockBuffer.at(i).empty()) {
+        return true;
+      } 
+      else if (getBlock(i, DefaultBatchSize, DefaultBatchSize)) {
+        _gatherBlockPos.at(i) = make_pair(i, 0);
+        return true;
+      }
+    }
+  }
   _done = true;
   return false;
 }
@@ -3387,9 +3449,7 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
     }
     if (res == nullptr) {
       _done = true;
-      return nullptr;
     }
-
     return res;
   }
  
@@ -3399,15 +3459,24 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
   
   // pull more blocks from dependencies . . .
   for (size_t i = 0; i < _dependencies.size(); i++) {
+    
     if (_gatherBlockBuffer.at(i).empty()) {
       if (getBlock(i, atLeast, atMost)) {
+        index = i;
         _gatherBlockPos.at(i) = make_pair(i, 0);           
       }
     } 
     else {
       index = i;
     }
-    available += _gatherBlockBuffer.at(i).size() - _gatherBlockPos.at(i).second;
+    
+    auto cur = _gatherBlockBuffer.at(i);
+    if (! cur.empty()) {
+      available += cur.at(0)->size() - _gatherBlockPos.at(i).second;
+      for (size_t j = 1; j < cur.size(); j++) {
+        available += cur.at(j)->size();
+      }
+    }
   }
   
   if (available == 0) {
@@ -3426,7 +3495,6 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
   
   // the following is similar to AqlItemBlock's slice method . . .
   std::unordered_map<AqlValue, AqlValue> cache;
-  // TODO: should we pre-reserve space for cache to avoid later re-allocations?
   
   // comparison function 
   OurLessThan ourLessThan(_trx, _gatherBlockBuffer, _sortRegisters, colls);
@@ -3469,14 +3537,13 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
       }
     }
 
-    // renew the buffer and comparison function if necessary . . . 
+    // renew the _gatherBlockPos and clean up the buffer if necessary
     _gatherBlockPos.at(val.first).second++;
     if (_gatherBlockPos.at(val.first).second ==
         _gatherBlockBuffer.at(val.first).front()->size()) {
+      AqlItemBlock* cur = _gatherBlockBuffer.at(val.first).front();
+      delete cur;
       _gatherBlockBuffer.at(val.first).pop_front();
-      if (_gatherBlockBuffer.at(val.first).empty()) {
-        getBlock(val.first, DefaultBatchSize, DefaultBatchSize);
-      }
       _gatherBlockPos.at(val.first) = make_pair(val.first, 0);
     }
   }
@@ -3514,13 +3581,21 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
   for (size_t i = 0; i < _dependencies.size(); i++) {
     if (_gatherBlockBuffer.at(i).empty()) {
       if (getBlock(i, atLeast, atMost)) {
+        index = i;
         _gatherBlockPos.at(i) = make_pair(i, 0);           
       }
     } 
     else {
       index = i;
     }
-    available += _gatherBlockBuffer.at(i).size() - _gatherBlockPos.at(i).second;
+
+    auto cur = _gatherBlockBuffer.at(i);
+    if (! cur.empty()) {
+      available += cur.at(0)->size() - _gatherBlockPos.at(i).second;
+      for (size_t j = 1; j < cur.size(); j++) {
+        available += cur.at(j)->size();
+      }
+    }
   }
   
   if (available == 0) {
@@ -3533,7 +3608,8 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
   // get collections for ourLessThan . . .
   std::vector<TRI_document_collection_t const*> colls;
   for (RegisterId i = 0; i < _sortRegisters.size(); i++) {
-    colls.push_back(_gatherBlockBuffer.at(index).front()->getDocumentCollection(_sortRegisters[i].first));
+    colls.push_back(_gatherBlockBuffer.at(index).front()->
+        getDocumentCollection(_sortRegisters[i].first));
   }
   
   // comparison function 
@@ -3543,13 +3619,14 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
     // get the next smallest row from the buffer . . .
     std::pair<size_t, size_t> val = *(std::min_element(_gatherBlockPos.begin(),
           _gatherBlockPos.end(), ourLessThan));
-    // renew the buffer and comparison function if necessary . . . 
+    
+    // renew the _gatherBlockPos and clean up the buffer if necessary
     _gatherBlockPos.at(val.first).second++;
-    if (_gatherBlockPos.at(val.first).second == _gatherBlockBuffer.at(val.first).front()->size()) {
+    if (_gatherBlockPos.at(val.first).second ==
+        _gatherBlockBuffer.at(val.first).front()->size()) {
+      AqlItemBlock* cur = _gatherBlockBuffer.at(val.first).front();
+      delete cur;
       _gatherBlockBuffer.at(val.first).pop_front();
-      if (_gatherBlockBuffer.at(val.first).empty()) {
-        getBlock(val.first, DefaultBatchSize, DefaultBatchSize);
-      }
       _gatherBlockPos.at(val.first) = make_pair(val.first, 0);
     }
   }
@@ -3563,7 +3640,7 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool GatherBlock::getBlock (size_t i, size_t atLeast, size_t atMost) {
-  TRI_ASSERT(0 < i && i < _dependencies.size());
+  TRI_ASSERT(0 <= i && i < _dependencies.size());
   AqlItemBlock* docs = _dependencies.at(i)->getSome(atLeast, atMost);
   if (docs != nullptr) {
     try {
@@ -3585,8 +3662,17 @@ bool GatherBlock::getBlock (size_t i, size_t atLeast, size_t atMost) {
 
 bool GatherBlock::OurLessThan::operator() (std::pair<size_t, size_t> const& a,
                                            std::pair<size_t, size_t> const& b) {
+  // nothing in the buffer is maximum!
+  if (_gatherBlockBuffer.at(a.first).empty()) {
+    return false;
+  }
+  if (_gatherBlockBuffer.at(b.first).empty()) {
+    return true;
+  }
+
   size_t i = 0;
   for (auto reg : _sortRegisters) {
+
     int cmp = AqlValue::Compare(
         _trx,
         _gatherBlockBuffer.at(a.first).front()->getValue(a.second, reg.first),
@@ -3703,6 +3789,28 @@ size_t BlockWithClients::getClientId (std::string const& shardId) {
   return ((*it).second);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief preInitCursor: check if we should really init the cursor, and reset
+/// _doneForClient
+////////////////////////////////////////////////////////////////////////////////
+
+bool BlockWithClients::preInitCursor () {
+  
+  if (!_initOrShutdown) {
+    return false;
+  }
+
+  _doneForClient.clear();
+  _doneForClient.reserve(_nrClients);
+
+  for (size_t i = 0; i < _nrClients; i++) {
+    _doneForClient.push_back(false);
+  }
+
+  _initOrShutdown = false;
+  return true;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                class ScatterBlock
 // -----------------------------------------------------------------------------
@@ -3713,25 +3821,20 @@ size_t BlockWithClients::getClientId (std::string const& shardId) {
 
 int ScatterBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 
-  if (!_initOrShutdown) {
+  if (!preInitCursor()) {
     return TRI_ERROR_NO_ERROR;
   }
-
-  int res = ExecutionBlock::initializeCursor(items, pos);
   
+  int res = ExecutionBlock::initializeCursor(items, pos);
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
   _posForClient.clear();
-  _doneForClient.clear();
-  _doneForClient.reserve(_nrClients);
-
+  
   for (size_t i = 0; i < _nrClients; i++) {
     _posForClient.push_back(std::make_pair(0, 0));
-    _doneForClient.push_back(false);
   }
-  _initOrShutdown = false;
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -3871,8 +3974,8 @@ DistributeBlock::DistributeBlock (ExecutionEngine* engine,
   VariableId varId = ep->_varId;
   
   // get the register id of the variable to inspect . . .
-  auto it = ep->getVarOverview()->varInfo.find(varId);
-  TRI_ASSERT(it != ep->getVarOverview()->varInfo.end());
+  auto it = ep->getRegisterPlan()->varInfo.find(varId);
+  TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
   _regId = (*it).second.registerId;
 }
 
@@ -3882,27 +3985,18 @@ DistributeBlock::DistributeBlock (ExecutionEngine* engine,
 
 int DistributeBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 
-  if (!_initOrShutdown) {
+  if (!preInitCursor()) {
     return TRI_ERROR_NO_ERROR;
   }
-
-  int res = ExecutionBlock::initializeCursor(items, pos);
   
+  int res = ExecutionBlock::initializeCursor(items, pos);
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
-  for (auto x:  _distBuffer) {
-    x.clear();
-  }
   _distBuffer.clear();
   _distBuffer.reserve(_nrClients);
 
-  for (auto x: _doneForClient) {
-    x = false;
-  }
-
-  _initOrShutdown = false;
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -4100,11 +4194,18 @@ bool DistributeBlock::getBlockForClient (size_t atLeast,
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t DistributeBlock::sendToClient (AqlValue val) {
-  
-  TRI_ASSERT(val._type == AqlValue::JSON);
-  //TODO should work for SHAPED too (maybe this requires converting it to TRI_json_t)
  
-  TRI_json_t const* json = val._json->json();
+  TRI_json_t const* json;
+  if (val._type == AqlValue::JSON) {
+    json = val._json->json();
+  } 
+  else if (val._type == AqlValue::SHAPED) {
+    json = val.toJson(_trx, _collection->documentCollection()).json();
+  } 
+  else {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, 
+        "DistributeBlock: can only send JSON or SHAPED");
+  }
   
   std::string shardId;
   bool usesDefaultShardingAttributes;  

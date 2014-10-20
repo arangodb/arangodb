@@ -13,12 +13,27 @@ The implementation follows the CommonJS specification
 
 <!-- lib/V8/v8-utils.cpp  -->
 
+@startDocuBlock JS_GetTempFile
+
+
+<!-- lib/V8/v8-utils.cpp  -->
+
+@startDocuBlock JS_GetTempPath
+
+
+<!-- lib/V8/v8-utils.cpp  -->
+
 @startDocuBlock JS_IsDirectory
 
 
 <!-- lib/V8/v8-utils.cpp  -->
 
 @startDocuBlock JS_IsFile
+
+
+`fs.join(path, filename)`
+
+The function returns the combination of the path and filename, e.g. fs.join(Hello/World, foo.bar) would return Hello/World/foo.bar.
 
 
 <!-- lib/V8/v8-utils.cpp  -->
@@ -33,50 +48,72 @@ The implementation follows the CommonJS specification
 
 <!-- lib/V8/v8-utils.cpp  -->
 
+@startDocuBlock JS_MakeDirectory
+
+
+<!-- lib/V8/v8-utils.cpp  -->
+
 @startDocuBlock JS_Move
+
+
+`fs.pathSeparator`
+
+If you want to combine two paths you can use fs.pathSeparator instead of */* or *\\*.
 
 
 <!-- lib/V8/v8-utils.cpp  -->
 
 @startDocuBlock JS_Read
 
+
 <!-- lib/V8/v8-utils.cpp  -->
 
 @startDocuBlock JS_Read64
+
+
+<!-- lib/V8/v8-utils.cpp  -->
+
+@startDocuBlock JS_ReadBuffer
+
+
+`fs.readFileSync(filename, encoding)`
+
+Reads the contents of the file specified in `filename`. If `encoding` is specified,
+the file contents will be returned as a string. Supported encodings are:
+- `utf8` or `utf-8`
+- `ascii`
+- `base64`
+- `ucs2` or `ucs-2`
+- `utf16le` or `utf16be`
+- `hex`
+
+If no `encoding` is specified, the file contents will be returned in a Buffer
+object.
+
 
 <!-- lib/V8/v8-utils.cpp  -->
 
 @startDocuBlock JS_Remove
 
-<!-- lib/V8/v8-utils.cpp  -->
-
-@startDocuBlock JS_MakeDirectory
-
-<!-- lib/V8/v8-utils.cpp  -->
-
-@startDocuBlock JS_GetTempFile
-
-<!-- lib/V8/v8-utils.cpp  -->
-
-@startDocuBlock JS_GetTempPath
-
-`fs.join(path, filename)`
-
-The function returns the combination of the path and filename, e.g. fs.join(Hello/World, foo.bar) would return Hello/World/foo.bar.
-
-`fs.pathSeparator`
-
-If you want to combine two paths you can use fs.pathSeparator instead of */* or *\\*.
-
-<!-- lib/V8/v8-utils.cpp  -->
-
-@startDocuBlock JS_Size
 
 <!-- lib/V8/v8-utils.cpp  -->
 
 @startDocuBlock JS_RemoveDirectory
 
 
-`fs.write(filename, content)`
+<!-- lib/V8/v8-utils.cpp  -->
 
-Writes the content in a file. 
+@startDocuBlock JS_Size
+
+
+<!-- lib/V8/v8-utils.cpp  -->
+
+@startDocuBlock JS_Save
+
+
+<!-- lib/V8-v8-utils.cpp  -->
+
+`fs.writeFileSync(filename, content)`
+
+This is an alias for `fs.write(filename, content)`.
+

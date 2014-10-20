@@ -35,6 +35,8 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "Utils/transactions.h"
 
+#define RestImportTransaction triagens::arango::SingleCollectionWriteTransaction<UINT64_MAX>
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 RestImportHandler
 // -----------------------------------------------------------------------------

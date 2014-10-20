@@ -66,7 +66,7 @@
   internal.loadStartup("server/bootstrap/routing.js").startup();
 
   // start the queue manager once
-  if (internal.enableStatistics && internal.threadNumber === 0) {
+  if (internal.threadNumber === 0) {
     require('org/arangodb/foxx/queues/manager').run();
   }
 

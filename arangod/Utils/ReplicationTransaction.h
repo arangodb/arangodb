@@ -32,7 +32,7 @@
 
 #include "Basics/Common.h"
 
-#include "Utils/RestTransactionContext.h"
+#include "Utils/StandaloneTransactionContext.h"
 #include "Utils/Transaction.h"
 #include "VocBase/server.h"
 #include "VocBase/transaction.h"
@@ -42,7 +42,7 @@ struct TRI_vocbase_s;
 namespace triagens {
   namespace arango {
 
-    class ReplicationTransaction : public Transaction<RestTransactionContext> {
+    class ReplicationTransaction : public Transaction {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      class ReplicationTransaction
@@ -61,7 +61,7 @@ namespace triagens {
         ReplicationTransaction (TRI_server_t* server,
                                 struct TRI_vocbase_s* vocbase,
                                 TRI_voc_tid_t externalId)
-          : Transaction<RestTransactionContext>(vocbase, externalId),
+          : Transaction(new StandaloneTransactionContext(), vocbase, externalId),
             _server(server),
             _externalId(externalId) {
 
