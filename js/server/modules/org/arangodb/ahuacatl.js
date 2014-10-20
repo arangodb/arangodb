@@ -4816,6 +4816,14 @@ function DOCUMENTS_BY_EXAMPLE (collectionList, example) {
   if (!Array.isArray(example)) {
     example = [example];
   }
+  var tmp = [];
+  example.forEach(function (e) {
+    if (typeof e === "string") {
+      tmp.push({_id : e});
+    } else {
+      tmp.push(e);
+    }
+  });
   collectionList.forEach(function (c) {
     example.forEach(function (e) {
       res = res.concat(COLLECTION(c).byExample(e).toArray());
@@ -4867,6 +4875,9 @@ function RESOLVE_GRAPH_TO_COLLECTIONS(graph, options) {
       THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "GRAPH_EDGES");
     }
   });
+  collections.orphanCollections = FILTER_RESTRICTION(
+    graph.orphanCollections, options.orphanCollectionRestriction
+  );
 
   return collections;
 }
@@ -4882,6 +4893,9 @@ function RESOLVE_GRAPH_TO_FROM_VERTICES (graphname, options) {
   var removeDuplicates = function(elem, pos, self) {
     return self.indexOf(elem) === pos;
   };
+  if (options.includeOrphans) {
+    collections.fromCollections = collections.fromCollections.concat(collections.orphanCollections);
+  }
 
   return DOCUMENTS_BY_EXAMPLE(
       collections.fromCollections.filter(removeDuplicates), options.fromVertexExample
@@ -5343,7 +5357,7 @@ function CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA (graphName, options) {
     params.followEdges = options.edgeExamples;
   }
   if (options.edgeCollectionRestriction) {
-    params.edgeCollectionRestriction = options.edgeCollectionRestriction
+    params.edgeCollectionRestriction = options.edgeCollectionRestriction;
   }
   params.weight = options.weight;
   params.defaultWeight = options.defaultWeight;
@@ -5982,7 +5996,7 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
     params.followEdges = options.edgeExamples;
   }
   if (options.edgeCollectionRestriction) {
-    params.edgeCollectionRestriction = options.edgeCollectionRestriction
+    params.edgeCollectionRestriction = options.edgeCollectionRestriction;
   }
   if (options.vertexCollectionRestriction) {
     params.filterVertexCollections = options.vertexCollectionRestriction;
@@ -6154,12 +6168,16 @@ function GENERAL_GRAPH_VERTICES (
   if (! options.direction) {
     options.direction =  'any';
   }
-
   if (options.vertexCollectionRestriction) {
     if (options.direction === "inbound") {
       options.endVertexCollectionRestriction = options.vertexCollectionRestriction;
-    } else {
+    } else if (options.direction === "outbound")  {
       options.startVertexCollectionRestriction = options.vertexCollectionRestriction;
+    } else {
+      options.includeOrphans = true;
+      options.endVertexCollectionRestriction = options.vertexCollectionRestriction;
+      options.startVertexCollectionRestriction = options.vertexCollectionRestriction;
+      options.orphanCollectionRestriction = options.vertexCollectionRestriction;
     }
   }
 
