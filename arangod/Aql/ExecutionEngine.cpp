@@ -430,10 +430,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       // copy the relevant fragment of the plan for each shard
       ExecutionPlan plan(query->ast());
 
-      ExecutionNode const* current = info.nodes.front();
       ExecutionNode* previous = nullptr;
-
-      while (current != nullptr) {
+      for (ExecutionNode const* current : info.nodes) {
         auto clone = current->clone(&plan, false, true);
         plan.registerNode(clone);
         
@@ -443,7 +441,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           static_cast<RemoteNode*>(clone)->ownName(shardId);
           static_cast<RemoteNode*>(clone)->queryId(connectedId);
         }
-     
       
         if (previous == nullptr) {
           // set the root node
@@ -453,14 +450,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           previous->addDependency(clone);
         }
 
-        auto const& deps = current->getDependencies();
-        if (deps.size() != 1) {
-          break;
-        }
-
         previous = clone;
-        current = deps[0];
       }
+      std::cout << "Hallo " << shardId << std::endl;
       
       // inject the current shard id into the collection
       collection->setCurrentShard(shardId);
@@ -728,7 +720,15 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
       std::unique_ptr<CoordinatorInstanciator> inst(new CoordinatorInstanciator(query, queryRegistry));
       plan->root()->walk(inst.get());
 
-      // std::cout << "ORIGINAL PLAN:\n" << plan->toJson(query->ast(), TRI_UNKNOWN_MEM_ZONE, true).toString() << "\n\n";
+      std::cout << "ORIGINAL PLAN:\n" << plan->toJson(query->ast(), TRI_UNKNOWN_MEM_ZONE, true).toString() << "\n\n";
+
+      for (auto& ei : inst->engines) {
+        std::cout << "EngineInfo: id=" << ei.id 
+                  << " Location=" << ei.location << std::endl;
+        for (auto& n : ei.nodes) {
+          std::cout << "Node: type=" << n->getTypeString() << std::endl;
+        }
+      }
       engine = inst.get()->buildEngines(); 
       root = engine->root();
     }
