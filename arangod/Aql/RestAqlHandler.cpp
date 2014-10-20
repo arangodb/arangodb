@@ -40,7 +40,6 @@
 #include "GeneralServer/GeneralServer.h"
 
 #include "VocBase/server.h"
-//#include "V8Server/v8-vocbaseprivate.h"
 
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionBlock.h"
@@ -111,16 +110,18 @@ std::string const& RestAqlHandler::queue () const {
 void RestAqlHandler::createQueryFromJson () {
   Json queryJson(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
   if (queryJson.isEmpty()) {
+    LOG_ERROR("Invalid JSON Plan in Query");
     return;
   }
 
-  std::cout << "createQueryFromJson" << queryJson.toString() << std::endl;
+  std::cout << "createQueryFromJson: " << queryJson.toString() << std::endl;
   
   Json plan;
   Json options;
 
   plan = queryJson.get("plan").copy();   // cannot throw
   if (plan.isEmpty()) {
+    LOG_ERROR("Invalid JSON: \"plan\"-Attribute missing.");
     generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
       "body must be an object with attribute \"plan\"");
     return;
@@ -132,6 +133,8 @@ void RestAqlHandler::createQueryFromJson () {
   auto query = new Query(_applicationV8, false, _vocbase, plan, options.steal(), (part == "main" ? PART_MAIN : PART_DEPENDENT));
   QueryResult res = query->prepare(_queryRegistry);
   if (res.code != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("Failed to instanciate the Query: %s", res.details.c_str());
+
     generateError(HttpResponse::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN,
       res.details);
     delete query;
@@ -153,6 +156,8 @@ void RestAqlHandler::createQueryFromJson () {
     _queryRegistry->insert(_vocbase, _qId, query, ttl);
   }
   catch (...) {
+    LOG_ERROR("could not keep query in registry");
+
     generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
         "could not keep query in registry");
     delete query;
@@ -180,11 +185,13 @@ void RestAqlHandler::createQueryFromJson () {
 void RestAqlHandler::parseQuery () {
   Json queryJson(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
   if (queryJson.isEmpty()) {
+    LOG_ERROR("Invalid JSON Plan in Query");
     return;
   }
   
   std::string const queryString = JsonHelper::getStringValue(queryJson.json(), "query", "");
   if (queryString.empty()) {
+    LOG_ERROR("body must be an object with attribute \"query\"");
     generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
       "body must be an object with attribute \"query\"");
     return;
@@ -194,6 +201,7 @@ void RestAqlHandler::parseQuery () {
                          nullptr, nullptr, PART_MAIN);
   QueryResult res = query->parse();
   if (res.code != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("Failed to instanciate the Query: %s", res.details.c_str());
     generateError(HttpResponse::BAD, res.code, res.details);
     delete query;
     return;
@@ -236,6 +244,7 @@ void RestAqlHandler::explainQuery () {
   
   std::string queryString = JsonHelper::getStringValue(queryJson.json(), "query", "");
   if (queryString.empty()) {
+    LOG_ERROR("body must be an object with attribute \"query\"");
     generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
       "body must be an object with attribute \"query\"");
     return;
@@ -250,6 +259,7 @@ void RestAqlHandler::explainQuery () {
                          parameters.steal(), options.steal(), PART_MAIN);
   QueryResult res = query->explain();
   if (res.code != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("Failed to instanciate the Query: %s", res.details.c_str());
     generateError(HttpResponse::BAD, res.code, res.details);
     delete query;
     return;
@@ -289,6 +299,7 @@ void RestAqlHandler::createQueryFromString () {
   
   std::string const queryString = JsonHelper::getStringValue(queryJson.json(), "query", "");
   if (queryString.empty()) {
+    LOG_ERROR("body must be an object with attribute \"query\"");
     generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
       "body must be an object with attribute \"query\"");
     return;
@@ -296,6 +307,7 @@ void RestAqlHandler::createQueryFromString () {
 
   std::string const part = JsonHelper::getStringValue(queryJson.json(), "part", "");
   if (part.empty()) {
+    LOG_ERROR("body must be an object with attribute \"part\"");
     generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
       "body must be an object with attribute \"part\"");
     return;
@@ -310,6 +322,7 @@ void RestAqlHandler::createQueryFromString () {
                          parameters.steal(), options.steal(), (part == "main" ? PART_MAIN : PART_DEPENDENT));
   QueryResult res = query->prepare(_queryRegistry);
   if (res.code != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("Failed to instanciate the Query: %s", res.details.c_str());
     generateError(HttpResponse::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN,
       res.details);
     delete query;
@@ -329,6 +342,7 @@ void RestAqlHandler::createQueryFromString () {
     _queryRegistry->insert(_vocbase, _qId, query, ttl);
   }
   catch (...) {
+    LOG_ERROR("could not keep query in registry");
     generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
         "could not keep query in registry");
     delete query;
@@ -432,7 +446,7 @@ void RestAqlHandler::useQuery (std::string const& operation,
   }
   catch (triagens::arango::Exception const& ex) {
     _queryRegistry->close(_vocbase, _qId);
-    
+    LOG_ERROR("Failed during use of Query: %s", ex.message().c_str());
     generateError(HttpResponse::SERVER_ERROR, 
                   ex.code(),
                   ex.message());
@@ -440,13 +454,16 @@ void RestAqlHandler::useQuery (std::string const& operation,
   catch (std::exception const& ex) {
     _queryRegistry->close(_vocbase, _qId);
     
+    LOG_ERROR("Failed during use of Query: %s", ex.what());
+
     generateError(HttpResponse::SERVER_ERROR, 
                   TRI_ERROR_HTTP_SERVER_ERROR,
                   ex.what());
   }
   catch (...) {
     _queryRegistry->close(_vocbase, _qId);
-      
+    LOG_ERROR("Failed during use of Query: Unknown exeption occured");
+
     generateError(HttpResponse::SERVER_ERROR, 
                   TRI_ERROR_HTTP_SERVER_ERROR,
                   "an unknown exception occurred");
@@ -531,13 +548,14 @@ void RestAqlHandler::getInfoQuery (std::string const& operation,
     }
     else {
       _queryRegistry->close(_vocbase, _qId);
+      LOG_ERROR("Referenced qery not found");
       generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       return;
     }
   }
   catch (triagens::arango::Exception const& ex) {
     _queryRegistry->close(_vocbase, _qId);
-    
+    LOG_ERROR("Failed during use of Query: %s", ex.message().c_str());    
     generateError(HttpResponse::SERVER_ERROR, 
                   ex.code(),
                   ex.message());
@@ -545,6 +563,8 @@ void RestAqlHandler::getInfoQuery (std::string const& operation,
   catch (std::exception const& ex) {
     _queryRegistry->close(_vocbase, _qId);
     
+    LOG_ERROR("Failed during use of Query: %s", ex.what());
+
     generateError(HttpResponse::SERVER_ERROR, 
                   TRI_ERROR_HTTP_SERVER_ERROR,
                   ex.what());
@@ -552,6 +572,8 @@ void RestAqlHandler::getInfoQuery (std::string const& operation,
   catch (...) {
     _queryRegistry->close(_vocbase, _qId);
       
+    LOG_ERROR("Failed during use of Query: Unknown exeption occured");
+
     generateError(HttpResponse::SERVER_ERROR, 
                   TRI_ERROR_HTTP_SERVER_ERROR,
                   "an unknown exception occurred");
@@ -582,6 +604,7 @@ triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
   switch (type) {
     case HttpRequest::HTTP_REQUEST_POST: {
       if (suffix.size() != 1) {
+        LOG_ERROR("Empty POST!");
         generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       }
       else if (suffix[0] == "instanciate") {
@@ -597,12 +620,14 @@ triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
         createQueryFromString();
       }
       else {
+        LOG_ERROR("Unknown API");
         generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       }
       break;
     }
     case HttpRequest::HTTP_REQUEST_PUT: {
       if (suffix.size() != 2) {
+        LOG_ERROR("unknown PUT API");
         generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       }
       else {
@@ -612,6 +637,7 @@ triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
     }
     case HttpRequest::HTTP_REQUEST_GET: {
       if (suffix.size() != 2) {
+        LOG_ERROR("Unknown GET API");
         generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       }
       else {
@@ -624,6 +650,7 @@ triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
     case HttpRequest::HTTP_REQUEST_PATCH:
     case HttpRequest::HTTP_REQUEST_OPTIONS:
     case HttpRequest::HTTP_REQUEST_ILLEGAL: {
+      LOG_ERROR("Unknown HTTP-method for /_api/aql");
       generateError(HttpResponse::METHOD_NOT_ALLOWED, 
                     TRI_ERROR_NOT_IMPLEMENTED,
                     "illegal method for /_api/aql");
@@ -651,12 +678,14 @@ bool RestAqlHandler::findQuery (std::string const& idString,
   }
   catch (...) {
     _qId = 0;
+    LOG_ERROR("Query not found.");
     generateError(HttpResponse::FORBIDDEN, TRI_ERROR_QUERY_IN_USE);
     return true;
   }
 
   if (query == nullptr) {
     _qId = 0;
+    LOG_ERROR("Query not found.");
     generateError(HttpResponse::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND);
     return true;
   }
@@ -712,6 +741,7 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
 //std::cout << "ANSWERBODY: " << JsonHelper::toString(answerBody.json()) << "\n\n";        
       }
       catch (...) {
+        LOG_ERROR("cannot transform AqlItemBlock to Json");
         generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                       "cannot transform AqlItemBlock to Json");
         return;
@@ -737,6 +767,7 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
       }
     }
     catch (...) {
+      LOG_ERROR("skipSome lead to an exception");
       generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                     "skipSome lead to an exception");
       return;
@@ -764,6 +795,7 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
                 ("error", Json(false));
     }
     catch (...) {
+      LOG_ERROR("skip lead to an exception");
       generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                     "skip lead to an exception");
       return;
@@ -784,6 +816,7 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
       }
     }
     catch (...) {
+      LOG_ERROR("initializeCursor lead to an exception");
       generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                     "initializeCursor lead to an exception");
       return;
@@ -798,6 +831,7 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
       _queryRegistry->destroy(_vocbase, _qId);
     }
     catch (...) {
+      LOG_ERROR("shutdown lead to an exception");
       generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                     "shutdown lead to an exception");
       return;
@@ -806,6 +840,7 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
               ("code", Json(static_cast<double>(res)));
   }
   else {
+    LOG_ERROR("Unknown operation!");
     generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
     return;
   }
@@ -825,11 +860,13 @@ TRI_json_t* RestAqlHandler::parseJsonBody () {
 
   if (json == nullptr) {
     if (errmsg == nullptr) {
+      LOG_ERROR("cannot parse json object");
       generateError(HttpResponse::BAD,
                     TRI_ERROR_HTTP_CORRUPTED_JSON,
                     "cannot parse json object");
     }
     else {
+      LOG_ERROR("cannot parse json object: %s", errmsg);
       generateError(HttpResponse::BAD,
                     TRI_ERROR_HTTP_CORRUPTED_JSON,
                     errmsg);
@@ -844,6 +881,7 @@ TRI_json_t* RestAqlHandler::parseJsonBody () {
 
   if (! TRI_IsArrayJson(json)) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    LOG_ERROR("body of request must be a JSON array");
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "body of request must be a JSON array");
     return nullptr;

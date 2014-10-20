@@ -31,6 +31,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterMethods.h"
 #include "Utils/Exception.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
@@ -80,8 +81,12 @@ Collection::~Collection () {
 size_t Collection::count () const {
   if (numDocuments == UNINITIALIZED) {
     if (ExecutionEngine::isCoordinator()) {
-      /// TODO: determine the proper number of documents in the coordinator case
-      numDocuments = 1000;
+      uint64_t result;
+      int res = triagens::arango::countOnCoordinator(vocbase->_name, name, result); 
+      if (res != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(res, "could not determine number of documents in collection");
+      }
+      numDocuments = static_cast<int64_t>(result);
     }
     else {
       auto document = documentCollection();
@@ -194,6 +199,29 @@ void Collection::fillIndexes () const {
         if (v != nullptr) {
           indexes.emplace_back(new Index(v));
         }
+      }
+    }
+  }
+  else if (ExecutionEngine::isDBServer()) {
+    TRI_ASSERT(collection != nullptr);
+    auto document = documentCollection();
+  
+    // lookup collection in agency by plan id  
+    auto clusterInfo = triagens::arango::ClusterInfo::instance();
+    auto collectionInfo = clusterInfo->getCollection(std::string(vocbase->_name), triagens::basics::StringUtils::itoa(document->_info._planId));
+    if (collectionInfo.get() == nullptr || (*collectionInfo).empty()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "collection not found");
+    }
+
+    TRI_json_t const* json = (*collectionInfo).getIndexes();
+    size_t const n = document->_allIndexes._length;
+    indexes.reserve(n);
+      
+    // register indexes
+    for (size_t i = 0; i < n; ++i) {
+      TRI_json_t const* v = TRI_LookupListJson(json, i);
+      if (v != nullptr) {
+        indexes.emplace_back(new Index(v));
       }
     }
   }
