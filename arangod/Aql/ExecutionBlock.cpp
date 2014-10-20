@@ -235,19 +235,28 @@ int ExecutionBlock::initialize () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ExecutionBlock::shutdown () {
-  for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
-    int res = (*it)->shutdown();
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-  }
+  int ret = TRI_ERROR_NO_ERROR;
+  int res;
 
   for (auto it = _buffer.begin(); it != _buffer.end(); ++it) {
     delete *it;
   }
   _buffer.clear();
-  return TRI_ERROR_NO_ERROR;
+
+  for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
+    try {
+      res = (*it)->shutdown();
+    }
+    catch (...) {
+      ret = TRI_ERROR_INTERNAL;
+    }
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      ret = res;
+    }
+  }
+
+  return ret;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4230,17 +4239,30 @@ size_t DistributeBlock::sendToClient (AqlValue val) {
 static void throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
                                                bool isShutdown) {
   if (res->status == CL_COMM_TIMEOUT) {
+    std::string errorMessage;
+    errorMessage += std::string("Timeout in communication with shard '") + 
+      std::string(res->shardID) + 
+      std::string("' on cluster node '") +
+      std::string(res->serverID) +
+      std::string("' failed.");
+    
     // No reply, we give up:
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_TIMEOUT,
-           "timeout in cluster AQL operation");
+                                   errorMessage);
   }
 
   if (res->status == CL_COMM_ERROR) {
+    std::string errorMessage;
     // This could be a broken connection or an Http error:
     if (res->result == nullptr || ! res->result->isComplete()) {
       // there is no result
+      errorMessage += std::string("Empty result in communication with shard '") + 
+        std::string(res->shardID) + 
+        std::string("' on cluster node '") +
+        std::string(res->serverID) +
+        std::string("' failed.");
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_CONNECTION_LOST,
-             "lost connection within cluster");
+                                     errorMessage);
     }
       
     StringBuffer const& responseBodyBuf(res->result->getBody());
@@ -4248,20 +4270,39 @@ static void throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
  
     // extract error number and message from response
     int errorNum = TRI_ERROR_NO_ERROR;
-    std::string errorMessage;
     TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, responseBodyBuf.c_str());
+
+    if (JsonHelper::getBooleanValue(json, "error", true)) {
+
+      errorNum = TRI_ERROR_INTERNAL;
+
+      errorMessage += std::string("Error message received from shard '") + 
+        std::string(res->shardID) + 
+        std::string("' on cluster node '") +
+        std::string(res->serverID) +
+        std::string("': ");
+    }
 
     if (TRI_IsArrayJson(json)) {
       TRI_json_t const* v;
       
       v = TRI_LookupArrayJson(json, "errorNum");
       if (TRI_IsNumberJson(v)) {
+        /* if we've got an error num, error has to be true. */
+        TRI_ASSERT(errorNum != TRI_ERROR_INTERNAL);
         errorNum = static_cast<int>(v->_value._number);
       }
+
       v = TRI_LookupArrayJson(json, "errorMessage");
       if (TRI_IsStringJson(v)) {
-        errorMessage = std::string(v->_value._string.data, v->_value._string.length - 1);
+        errorMessage += std::string(v->_value._string.data, v->_value._string.length - 1);
       }
+      else {
+        errorMessage += std::string("(No valid error in response)");
+      }
+    }
+    else {
+      errorMessage += std::string("(No valid response)");
     }
 
     if (json != nullptr) {
