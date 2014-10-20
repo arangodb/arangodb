@@ -798,7 +798,7 @@ void ExecutionNode::VarOverview::clear () {
 }
 
 ExecutionNode::VarOverview* ExecutionNode::VarOverview::clone (ExecutionPlan* otherPlan, ExecutionPlan* plan) {
-  VarOverview* other = new VarOverview();
+  std::unique_ptr<VarOverview> other(new VarOverview());
 
   other->nrRegsHere  = nrRegsHere;
   other->nrRegs      = nrRegs;
@@ -807,14 +807,10 @@ ExecutionNode::VarOverview* ExecutionNode::VarOverview::clone (ExecutionPlan* ot
 
   other->varInfo = varInfo;
 
-  /* we don't need these.
-  for (auto en: subQueryNodes) {
-    auto otherId = en->id();
-    auto otherEN = otherPlan->getNodeById(otherId);
-    other->subQueryNodes.push_back(otherEN);
-  }
-  */
-  return other;
+  // No need to clone subQueryNodes because this was only used during
+  // the buildup.
+
+  return other.release();
 }
 
 void ExecutionNode::VarOverview::after (ExecutionNode *en) {
