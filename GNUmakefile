@@ -192,6 +192,8 @@ pack-arm:
 		--with-v8=./3rdParty-ARM \
 		--disable-mruby
 
+	touch .libev-build-32
+	touch .zlib-build-32
 	touch .icu-build-32
 	touch .v8-build-32
 

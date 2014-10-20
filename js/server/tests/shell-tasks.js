@@ -490,9 +490,6 @@ function TaskSuite () {
       assertEqual(0, Math.round(task.offset, 3));
       assertEqual("_system", task.database);
       
-      t = getTasks();
-      assertEqual(1, t.length);
-
       internal.wait(5);
 
       assertEqual(1, db[cn].count());
@@ -524,9 +521,6 @@ function TaskSuite () {
       assertEqual(5, task.offset);
       assertEqual("_system", task.database);
       
-      t = getTasks();
-      assertEqual(1, t.length);
-
       internal.wait(15);
 
       assertEqual(1, db[cn].count());
