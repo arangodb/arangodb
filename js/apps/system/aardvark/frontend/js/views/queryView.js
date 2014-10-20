@@ -411,8 +411,8 @@
 
       this.collection.each(function(model) {
         self.customQueries.push({
-          name: model.attributes.name,
-          value: model.attributes.value
+          name: model.get("name"),
+          value: model.get("value")
         });
       });
     },
