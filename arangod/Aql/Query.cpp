@@ -976,6 +976,7 @@ std::string Query::getStateString () const {
 
 void Query::cleanupPlanAndEngine () {
   if (_engine != nullptr) {
+    _engine->shutdown();
     delete _engine;
     _engine = nullptr;
   }
