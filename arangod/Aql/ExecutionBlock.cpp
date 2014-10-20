@@ -571,7 +571,7 @@ int SingletonBlock::getOrSkipSome (size_t,   // atLeast,
   }
 
   if(! skipping){
-    result = new AqlItemBlock(1, getPlanNode()->getVarOverview()->nrRegs[getPlanNode()->getDepth()]);
+    result = new AqlItemBlock(1, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]);
     try {
       if (_inputRegisterValues != nullptr) {
         skipped++;
@@ -697,7 +697,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome (size_t, // atLeast,
   size_t available = _documents.size() - _posInAllDocs;
   size_t toSend = (std::min)(atMost, available);
 
-  unique_ptr<AqlItemBlock> res(new AqlItemBlock(toSend, getPlanNode()->getVarOverview()->nrRegs[getPlanNode()->getDepth()]));
+  unique_ptr<AqlItemBlock> res(new AqlItemBlock(toSend, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
   // automatically freed if we throw
   TRI_ASSERT(curRegs <= res->getNrRegs());
 
@@ -718,7 +718,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome (size_t, // atLeast,
     }
 
     // The result is in the first variable of this depth,
-    // we do not need to do a lookup in getPlanNode()->_varOverview->varInfo,
+    // we do not need to do a lookup in getPlanNode()->_registerPlan->varInfo,
     // but can just take cur->getNrRegs() as registerId:
     res->setValue(j, static_cast<triagens::aql::RegisterId>(curRegs),
                   AqlValue(reinterpret_cast<TRI_df_marker_t
@@ -855,8 +855,8 @@ int IndexRangeBlock::initialize () {
     std::unordered_set<Variable*> inVars = e->variables();
     for (auto v : inVars) {
       inVarsCur.push_back(v);
-      auto it = getPlanNode()->getVarOverview()->varInfo.find(v->id);
-      TRI_ASSERT(it != getPlanNode()->getVarOverview()->varInfo.end());
+      auto it = getPlanNode()->getRegisterPlan()->varInfo.find(v->id);
+      TRI_ASSERT(it != getPlanNode()->getRegisterPlan()->varInfo.end());
       TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
       inRegsCur.push_back(it->second.registerId);
     }
@@ -1062,7 +1062,7 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t, // atLeast
 
     if (toSend > 0) {
 
-      res.reset(new AqlItemBlock(toSend, getPlanNode()->getVarOverview()->nrRegs[getPlanNode()->getDepth()]));
+      res.reset(new AqlItemBlock(toSend, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
       // automatically freed should we throw
       TRI_ASSERT(curRegs <= res->getNrRegs());
@@ -1084,7 +1084,7 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t, // atLeast
         }
 
         // The result is in the first variable of this depth,
-        // we do not need to do a lookup in getPlanNode()->_varOverview->varInfo,
+        // we do not need to do a lookup in getPlanNode()->_registerPlan->varInfo,
         // but can just take cur->getNrRegs() as registerId:
         res->setValue(j, static_cast<triagens::aql::RegisterId>(curRegs),
                       AqlValue(reinterpret_cast<TRI_df_marker_t
@@ -1506,8 +1506,8 @@ EnumerateListBlock::EnumerateListBlock (ExecutionEngine* engine,
   : ExecutionBlock(engine, en),
     _inVarRegId(ExecutionNode::MaxRegisterId) {
 
-  auto it = en->getVarOverview()->varInfo.find(en->_inVariable->id);
-  if (it == en->getVarOverview()->varInfo.end()){
+  auto it = en->getRegisterPlan()->varInfo.find(en->_inVariable->id);
+  if (it == en->getRegisterPlan()->varInfo.end()){
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "variable not found");
   }
   _inVarRegId = (*it).second.registerId;
@@ -1620,7 +1620,7 @@ AqlItemBlock* EnumerateListBlock::getSome (size_t, size_t atMost) {
       size_t toSend = (std::min)(atMost, sizeInVar - _index);
 
       // create the result
-      res.reset(new AqlItemBlock(toSend, getPlanNode()->getVarOverview()->nrRegs[getPlanNode()->getDepth()]));
+      res.reset(new AqlItemBlock(toSend, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
       inheritRegisters(cur, res.get(), _pos);
 
@@ -1794,9 +1794,9 @@ CalculationBlock::CalculationBlock (ExecutionEngine* engine,
 
   for (auto it = inVars.begin(); it != inVars.end(); ++it) {
     _inVars.push_back(*it);
-    auto it2 = en->getVarOverview()->varInfo.find((*it)->id);
+    auto it2 = en->getRegisterPlan()->varInfo.find((*it)->id);
 
-    TRI_ASSERT(it2 != en->getVarOverview()->varInfo.end());
+    TRI_ASSERT(it2 != en->getRegisterPlan()->varInfo.end());
     TRI_ASSERT(it2->second.registerId < ExecutionNode::MaxRegisterId);
     _inRegs.push_back(it2->second.registerId);
   }
@@ -1809,8 +1809,8 @@ CalculationBlock::CalculationBlock (ExecutionEngine* engine,
     TRI_ASSERT(_inRegs.size() == 1);
   }
 
-  auto it3 = en->getVarOverview()->varInfo.find(en->_outVariable->id);
-  TRI_ASSERT(it3 != en->getVarOverview()->varInfo.end());
+  auto it3 = en->getRegisterPlan()->varInfo.find(en->_outVariable->id);
+  TRI_ASSERT(it3 != en->getRegisterPlan()->varInfo.end());
   _outReg = it3->second.registerId;
   TRI_ASSERT(_outReg < ExecutionNode::MaxRegisterId);
 }
@@ -1905,8 +1905,8 @@ SubqueryBlock::SubqueryBlock (ExecutionEngine* engine,
     _outReg(ExecutionNode::MaxRegisterId),
     _subquery(subquery) {
   
-  auto it = en->getVarOverview()->varInfo.find(en->_outVariable->id);
-  TRI_ASSERT(it != en->getVarOverview()->varInfo.end());
+  auto it = en->getRegisterPlan()->varInfo.find(en->_outVariable->id);
+  TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
   _outReg = it->second.registerId;
   TRI_ASSERT(_outReg < ExecutionNode::MaxRegisterId);
 }
@@ -1973,8 +1973,8 @@ FilterBlock::FilterBlock (ExecutionEngine* engine,
   : ExecutionBlock(engine, en),
     _inReg(ExecutionNode::MaxRegisterId) {
   
-  auto it = en->getVarOverview()->varInfo.find(en->_inVariable->id);
-  TRI_ASSERT(it != en->getVarOverview()->varInfo.end());
+  auto it = en->getRegisterPlan()->varInfo.find(en->_inVariable->id);
+  TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
   _inReg = it->second.registerId;
   TRI_ASSERT(_inReg < ExecutionNode::MaxRegisterId);
 }
@@ -2154,33 +2154,33 @@ AggregateBlock::AggregateBlock (ExecutionEngine* engine,
   
   for (auto p : en->_aggregateVariables) {
     // We know that planRegisters() has been run, so
-    // getPlanNode()->_varOverview is set up
-    auto itOut = en->getVarOverview()->varInfo.find(p.first->id);
-    TRI_ASSERT(itOut != en->getVarOverview()->varInfo.end());
+    // getPlanNode()->_registerPlan is set up
+    auto itOut = en->getRegisterPlan()->varInfo.find(p.first->id);
+    TRI_ASSERT(itOut != en->getRegisterPlan()->varInfo.end());
 
-    auto itIn = en->getVarOverview()->varInfo.find(p.second->id);
-    TRI_ASSERT(itIn != en->getVarOverview()->varInfo.end());
+    auto itIn = en->getRegisterPlan()->varInfo.find(p.second->id);
+    TRI_ASSERT(itIn != en->getRegisterPlan()->varInfo.end());
     TRI_ASSERT((*itIn).second.registerId < ExecutionNode::MaxRegisterId);
     TRI_ASSERT((*itOut).second.registerId < ExecutionNode::MaxRegisterId);
     _aggregateRegisters.emplace_back(make_pair((*itOut).second.registerId, (*itIn).second.registerId));
   }
 
   if (en->_outVariable != nullptr) {
-    auto it = en->getVarOverview()->varInfo.find(en->_outVariable->id);
-    TRI_ASSERT(it != en->getVarOverview()->varInfo.end());
+    auto it = en->getRegisterPlan()->varInfo.find(en->_outVariable->id);
+    TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
     _groupRegister = (*it).second.registerId;
     TRI_ASSERT(_groupRegister > 0 && _groupRegister < ExecutionNode::MaxRegisterId);
 
     // construct a mapping of all register ids to variable names
     // we need this mapping to generate the grouped output
 
-    for (size_t i = 0; i < en->getVarOverview()->varInfo.size(); ++i) {
+    for (size_t i = 0; i < en->getRegisterPlan()->varInfo.size(); ++i) {
       _variableNames.push_back(""); // initialize with some default value
     }
 
     // iterate over all our variables
-    for (auto it = en->getVarOverview()->varInfo.begin(); 
-         it != en->getVarOverview()->varInfo.end(); ++it) {
+    for (auto it = en->getRegisterPlan()->varInfo.begin(); 
+         it != en->getRegisterPlan()->varInfo.end(); ++it) {
       // find variable in the global variable map
       auto itVar = en->_variableMap.find((*it).first);
 
@@ -2239,7 +2239,7 @@ int AggregateBlock::getOrSkipSome (size_t atLeast,
   unique_ptr<AqlItemBlock> res;
 
   if (! skipping) {
-    res.reset(new AqlItemBlock(atMost, getPlanNode()->getVarOverview()->nrRegs[getPlanNode()->getDepth()]));
+    res.reset(new AqlItemBlock(atMost, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
     TRI_ASSERT(cur->getNrRegs() <= res->getNrRegs());
     inheritRegisters(cur, res.get(), _pos);
@@ -2402,8 +2402,8 @@ SortBlock::SortBlock (ExecutionEngine* engine,
     _stable(en->_stable) {
   
   for (auto p : en->_elements) {
-    auto it = en->getVarOverview()->varInfo.find(p.first->id);
-    TRI_ASSERT(it != en->getVarOverview()->varInfo.end());
+    auto it = en->getRegisterPlan()->varInfo.find(p.first->id);
+    TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
     TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
     _sortRegisters.push_back(make_pair(it->second.registerId, p.second));
   }
@@ -2698,8 +2698,8 @@ AqlItemBlock* ReturnBlock::getSome (size_t atLeast,
 
   // Let's steal the actual result and throw away the vars:
   auto ep = static_cast<ReturnNode const*>(getPlanNode());
-  auto it = ep->getVarOverview()->varInfo.find(ep->_inVariable->id);
-  TRI_ASSERT(it != ep->getVarOverview()->varInfo.end());
+  auto it = ep->getRegisterPlan()->varInfo.find(ep->_inVariable->id);
+  TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
   RegisterId const registerId = it->second.registerId;
   AqlItemBlock* stripped = new AqlItemBlock(n, 1);
 
@@ -2852,8 +2852,8 @@ RemoveBlock::~RemoveBlock () {
 
 void RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
   auto ep = static_cast<RemoveNode const*>(getPlanNode());
-  auto it = ep->getVarOverview()->varInfo.find(ep->_inVariable->id);
-  TRI_ASSERT(it != ep->getVarOverview()->varInfo.end());
+  auto it = ep->getRegisterPlan()->varInfo.find(ep->_inVariable->id);
+  TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
   RegisterId const registerId = it->second.registerId;
 
   auto trxCollection = _trx->trxCollection(_collection->cid());
@@ -2929,8 +2929,8 @@ InsertBlock::~InsertBlock () {
 
 void InsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
   auto ep = static_cast<InsertNode const*>(getPlanNode());
-  auto it = ep->getVarOverview()->varInfo.find(ep->_inVariable->id);
-  TRI_ASSERT(it != ep->getVarOverview()->varInfo.end());
+  auto it = ep->getRegisterPlan()->varInfo.find(ep->_inVariable->id);
+  TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
   RegisterId const registerId = it->second.registerId;
 
   auto trxCollection = _trx->trxCollection(_collection->cid());
@@ -3041,16 +3041,16 @@ UpdateBlock::~UpdateBlock () {
 
 void UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
   auto ep = static_cast<UpdateNode const*>(getPlanNode());
-  auto it = ep->getVarOverview()->varInfo.find(ep->_inDocVariable->id);
-  TRI_ASSERT(it != ep->getVarOverview()->varInfo.end());
+  auto it = ep->getRegisterPlan()->varInfo.find(ep->_inDocVariable->id);
+  TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
   RegisterId const docRegisterId = it->second.registerId;
   RegisterId keyRegisterId = 0; // default initialization
 
   bool const hasKeyVariable = (ep->_inKeyVariable != nullptr);
   
   if (hasKeyVariable) {
-    it = ep->getVarOverview()->varInfo.find(ep->_inKeyVariable->id);
-    TRI_ASSERT(it != ep->getVarOverview()->varInfo.end());
+    it = ep->getRegisterPlan()->varInfo.find(ep->_inKeyVariable->id);
+    TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
     keyRegisterId = it->second.registerId;
   }
   
@@ -3159,16 +3159,16 @@ ReplaceBlock::~ReplaceBlock () {
 
 void ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
   auto ep = static_cast<ReplaceNode const*>(getPlanNode());
-  auto it = ep->getVarOverview()->varInfo.find(ep->_inDocVariable->id);
-  TRI_ASSERT(it != ep->getVarOverview()->varInfo.end());
+  auto it = ep->getRegisterPlan()->varInfo.find(ep->_inDocVariable->id);
+  TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
   RegisterId const registerId = it->second.registerId;
   RegisterId keyRegisterId = 0; // default initialization
 
   bool const hasKeyVariable = (ep->_inKeyVariable != nullptr);
   
   if (hasKeyVariable) {
-    it = ep->getVarOverview()->varInfo.find(ep->_inKeyVariable->id);
-    TRI_ASSERT(it != ep->getVarOverview()->varInfo.end());
+    it = ep->getRegisterPlan()->varInfo.find(ep->_inKeyVariable->id);
+    TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
     keyRegisterId = it->second.registerId;
   }
 
@@ -3265,9 +3265,9 @@ GatherBlock::GatherBlock (ExecutionEngine* engine,
   if (! _isSimple) {
     for (auto p : en->getElements()) {
       // We know that planRegisters has been run, so
-      // getPlanNode()->_varOverview is set up
-      auto it = en->getVarOverview()->varInfo.find(p.first->id);
-      TRI_ASSERT(it != en->getVarOverview()->varInfo.end());
+      // getPlanNode()->_registerPlan is set up
+      auto it = en->getRegisterPlan()->varInfo.find(p.first->id);
+      TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
       TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
       _sortRegisters.emplace_back(make_pair(it->second.registerId, p.second));
     }
@@ -3821,7 +3821,7 @@ bool BlockWithClients::preInitCursor () {
 
 int ScatterBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 
-  if (!preInitCursor()) {
+  if (! preInitCursor()) {
     return TRI_ERROR_NO_ERROR;
   }
   
@@ -3842,7 +3842,7 @@ int ScatterBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 /// @brief hasMoreForShard: any more for shard <shardId>?
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ScatterBlock::hasMoreForShard (std::string const& shardId){
+bool ScatterBlock::hasMoreForShard (std::string const& shardId) {
   size_t clientId = getClientId(shardId);
 
   if (_doneForClient.at(clientId)) {
@@ -3897,7 +3897,7 @@ int64_t ScatterBlock::remainingForShard (std::string const& shardId) {
 
 int ScatterBlock::getOrSkipSomeForShard (size_t atLeast, 
     size_t atMost, bool skipping, AqlItemBlock*& result, 
-    size_t& skipped, std::string const& shardId){
+    size_t& skipped, std::string const& shardId) {
 
   TRI_ASSERT(0 < atLeast && atLeast <= atMost);
   TRI_ASSERT(result == nullptr && skipped == 0);
@@ -3967,15 +3967,15 @@ DistributeBlock::DistributeBlock (ExecutionEngine* engine,
                                   DistributeNode const* ep, 
                                   std::vector<std::string> const& shardIds, 
                                   Collection const* collection)
-                                  : BlockWithClients(engine, ep, shardIds), 
-                                    _collection(collection) {
+  : BlockWithClients(engine, ep, shardIds), 
+    _collection(collection) {
     
   // get the variable to inspect . . .
   VariableId varId = ep->_varId;
   
   // get the register id of the variable to inspect . . .
-  auto it = ep->getVarOverview()->varInfo.find(varId);
-  TRI_ASSERT(it != ep->getVarOverview()->varInfo.end());
+  auto it = ep->getRegisterPlan()->varInfo.find(varId);
+  TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
   _regId = (*it).second.registerId;
 }
 
