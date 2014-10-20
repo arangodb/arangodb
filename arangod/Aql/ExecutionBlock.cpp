@@ -3821,7 +3821,7 @@ bool BlockWithClients::preInitCursor () {
 
 int ScatterBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 
-  if (!preInitCursor()) {
+  if (! preInitCursor()) {
     return TRI_ERROR_NO_ERROR;
   }
   
@@ -3842,7 +3842,7 @@ int ScatterBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 /// @brief hasMoreForShard: any more for shard <shardId>?
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ScatterBlock::hasMoreForShard (std::string const& shardId){
+bool ScatterBlock::hasMoreForShard (std::string const& shardId) {
   size_t clientId = getClientId(shardId);
 
   if (_doneForClient.at(clientId)) {
@@ -3897,7 +3897,7 @@ int64_t ScatterBlock::remainingForShard (std::string const& shardId) {
 
 int ScatterBlock::getOrSkipSomeForShard (size_t atLeast, 
     size_t atMost, bool skipping, AqlItemBlock*& result, 
-    size_t& skipped, std::string const& shardId){
+    size_t& skipped, std::string const& shardId) {
 
   TRI_ASSERT(0 < atLeast && atLeast <= atMost);
   TRI_ASSERT(result == nullptr && skipped == 0);
@@ -3967,8 +3967,8 @@ DistributeBlock::DistributeBlock (ExecutionEngine* engine,
                                   DistributeNode const* ep, 
                                   std::vector<std::string> const& shardIds, 
                                   Collection const* collection)
-                                  : BlockWithClients(engine, ep, shardIds), 
-                                    _collection(collection) {
+  : BlockWithClients(engine, ep, shardIds), 
+    _collection(collection) {
     
   // get the variable to inspect . . .
   VariableId varId = ep->_varId;
