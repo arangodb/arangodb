@@ -31,6 +31,7 @@
 #define ARANGODB_VOC_BASE_VOC__TYPES_H 1
 
 #include "Basics/Common.h"
+#include "Cluster/ServerState.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public defines
@@ -225,6 +226,8 @@ namespace triagens {
 
         static void increaseNumbers (int numberInScope, int numberActive) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
+          TRI_ASSERT(_numberTrxInScope + numberInScope >= 0);
+          TRI_ASSERT(_numberTrxActive + numberActive >= 0);
           _numberTrxInScope += numberInScope;
           _numberTrxActive += numberActive;
 #endif

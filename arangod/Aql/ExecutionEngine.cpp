@@ -338,6 +338,11 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         if ((*it).id > 0) {
           Query* otherQuery = query->clone(PART_DEPENDENT);
           otherQuery->engine(engine);
+          
+          int res = otherQuery->trx()->begin();
+          if (res != TRI_ERROR_NO_ERROR) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(res, "could not begin transaction");
+          }
 
           auto* newPlan = new ExecutionPlan(otherQuery->ast());
           otherQuery->setPlan(newPlan);

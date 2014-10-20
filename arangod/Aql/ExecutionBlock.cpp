@@ -4275,7 +4275,6 @@ static void throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
     TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, responseBodyBuf.c_str());
 
     if (JsonHelper::getBooleanValue(json, "error", true)) {
-
       errorNum = TRI_ERROR_INTERNAL;
 
       errorMessage += std::string("Error message received from shard '") + 
