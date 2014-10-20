@@ -1,5 +1,5 @@
 /*jshint strict: false, unused: false */
-/*global require, exports, COMPARE_STRING, MATCHES */
+/*global require, exports, COMPARE_STRING */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Ahuacatl, internal query functions
@@ -192,7 +192,7 @@ function FILTER (list, examples) {
 
   for (i = 0; i < list.length; ++i) {
     var element = list[i];
-    if (MATCHES(element, examples, false)) {
+    if (AQL_MATCHES(element, examples, false)) {
       result.push(element);
     }
   }
@@ -225,7 +225,7 @@ function INDEX_FULLTEXT (collection, attribute) {
 
 function TO_LIST (param, isStringHash) {
 
-  if (!param) {
+  if (! param) {
     param = isStringHash ? [] : [{}];
   }
   if (typeof param === "string") {
@@ -236,7 +236,6 @@ function TO_LIST (param, isStringHash) {
   }
   return param;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find an index of a certain type for a collection
@@ -763,7 +762,7 @@ function DOCUMENT_HANDLE (id) {
 /// @brief get a document by its unique id or their unique ids
 ////////////////////////////////////////////////////////////////////////////////
 
-function DOCUMENT (collection, id) {
+function AQL_DOCUMENT (collection, id) {
   "use strict";
 
   // we're polymorphic
@@ -820,265 +819,10 @@ function GET_DOCUMENTS (collection, offset, limit) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get all documents from the specified collection, incrementally
-/// this is the init function for incremental access
-////////////////////////////////////////////////////////////////////////////////
-
-function GET_DOCUMENTS_INCREMENTAL_INIT (collection, offset, limit) {
-  "use strict";
-
-  if (offset === undefined) {
-    offset = 0;
-  }
-  if (limit === undefined) {
-    limit = null;
-  }
-
-  var batchSize = 2000; // default value
-
-  var c = COLLECTION(collection);
-  var state = c.OFFSET(0, batchSize, offset, limit);
-  state.collection = c;
-  state.batchSize  = batchSize;
-  state.offset     = 0;
-  state.limit      = limit;
-  state.length     = state.total - offset;
-
-  if (state.limit !== null && state.limit < state.length) {
-    state.length = state.limit;
-  }
-
-  state.remain = state.length - state.documents.length;
-  if (state.remain < 0) {
-    state.remain = 0;
-  }
-
-  return state;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get all documents from the specified collection, incrementally
-/// this is the continuation function for incremental access
-////////////////////////////////////////////////////////////////////////////////
-
-function GET_DOCUMENTS_INCREMENTAL_CONT (oldState) {
-  "use strict";
-
-  var state = oldState.collection.OFFSET(oldState.skip, oldState.batchSize, 0, null);
-  state.collection = oldState.collection;
-  state.batchSize = oldState.batchSize;
-  state.offset = oldState.offset + oldState.batchSize;
-  state.limit = oldState.limit;
-  state.length = oldState.length;
-  state.remain = oldState.remain;
-
-  if (state.documents.length > state.remain) {
-    state.documents = state.documents.slice(0, state.remain);
-  }
-
-  state.remain -= state.documents.length;
-  return state;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get documents from the specified collection using the primary index
-/// (single index value)
-////////////////////////////////////////////////////////////////////////////////
-
-function GET_DOCUMENTS_PRIMARY (collection, idx, id) {
-  "use strict";
-
-  try {
-    return [ COLLECTION(collection).document(id) ];
-  }
-  catch (e) {
-    return [ ];
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get documents from the specified collection using the primary index
-/// (multiple index values)
-////////////////////////////////////////////////////////////////////////////////
-
-function GET_DOCUMENTS_PRIMARY_LIST (collection, idx, values) {
-  "use strict";
-
-  var result = [ ], c;
-
-  c = COLLECTION(collection);
-
-  values.forEach (function (id) {
-    try {
-      result.push(c.document(id));
-    }
-    catch (e) {
-    }
-  });
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get documents from the specified collection using a hash index
-/// (single index value)
-////////////////////////////////////////////////////////////////////////////////
-
-function GET_DOCUMENTS_HASH (collection, idx, example) {
-  "use strict";
-
-  if (isCoordinator) {
-    return COLLECTION(collection).byExampleHash(idx, example).toArray();
-  }
-
-  return COLLECTION(collection).BY_EXAMPLE_HASH(idx, example).documents;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get documents from the specified collection using a hash index
-/// (multiple index values)
-////////////////////////////////////////////////////////////////////////////////
-
-function GET_DOCUMENTS_HASH_LIST (collection, idx, attribute, values) {
-  "use strict";
-
-  var result = [ ], c;
-
-  c = COLLECTION(collection);
-
-  values.forEach(function (value) {
-    var example = { };
-
-    example[attribute] = value;
-
-    var list;
-    if (isCoordinator) {
-      list = c.byExampleHash(idx, example).toArray();
-    }
-    else {
-      list = c.BY_EXAMPLE_HASH(idx, example).documents;
-    }
-
-    list.forEach(function (doc) {
-      result.push(doc);
-    });
-
-  });
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get documents from the specified collection using the edge index
-/// (single index value)
-////////////////////////////////////////////////////////////////////////////////
-
-function GET_DOCUMENTS_EDGE (collection, att, id) {
-  "use strict";
-
-  var result;
-
-  try {
-    if (att === '_from') {
-      result = COLLECTION(collection).outEdges(id);
-    }
-    else {
-      result = COLLECTION(collection).inEdges(id);
-    }
-  }
-  catch (e) {
-    result = [ ];
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get documents from the specified collection using the edge index
-/// (multiple index values)
-////////////////////////////////////////////////////////////////////////////////
-
-function GET_DOCUMENTS_EDGE_LIST (collection, att, values) {
-  "use strict";
-
-  var docs = { }, result = [ ], c;
-
-  c = COLLECTION(collection);
-
-  values.forEach(function (value) {
-    try {
-      var parts;
-      if (att === '_from') {
-        parts = c.outEdges(value);
-      }
-      else {
-        parts = c.inEdges(value);
-      }
-
-      parts.forEach(function (e) {
-        docs[e._id] = e;
-      });
-    }
-    catch (e) {
-    }
-  });
-
-  Object.keys(docs).forEach(function(k) {
-    result.push(docs[k]);
-  });
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get documents from the specified collection using a skiplist
-////////////////////////////////////////////////////////////////////////////////
-
-function GET_DOCUMENTS_SKIPLIST (collection, idx, example) {
-  "use strict";
-
-  if (isCoordinator) {
-    return COLLECTION(collection).byConditionSkiplist(idx, example).toArray();
-  }
-
-  return COLLECTION(collection).BY_CONDITION_SKIPLIST(idx, example).documents;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get documents from the specified collection using a skiplist
-/// (multiple index values)
-////////////////////////////////////////////////////////////////////////////////
-
-function GET_DOCUMENTS_SKIPLIST_LIST (collection, idx, attribute, values) {
-  "use strict";
-
-  var result = [ ], c = COLLECTION(collection);
-
-  values.forEach(function (value) {
-    var example = { }, documents;
-
-    example[attribute] = value;
-
-    if (isCoordinator) {
-      documents = c.byExampleSkiplist(idx, example).toArray();
-    }
-    else {
-      documents = c.BY_EXAMPLE_SKIPLIST(idx, example).documents;
-    }
-
-    documents.forEach(function (doc) {
-      result.push(doc);
-    });
-  });
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get names of all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-function COLLECTIONS () {
+function AQL_COLLECTIONS () {
   "use strict";
 
   var result = [ ];
@@ -1870,7 +1614,7 @@ function ARITHMETIC_MODULUS (lhs, rhs) {
 /// all operands must be strings or this function will fail
 ////////////////////////////////////////////////////////////////////////////////
 
-function STRING_CONCAT () {
+function AQL_CONCAT () {
   "use strict";
 
   var result = '', i;
@@ -1895,7 +1639,7 @@ function STRING_CONCAT () {
 /// all operands must be strings or this function will fail
 ////////////////////////////////////////////////////////////////////////////////
 
-function STRING_CONCAT_SEPARATOR () {
+function AQL_CONCAT_SEPARATOR () {
   "use strict";
 
   var separator, found = false, result = '', i;
@@ -1932,7 +1676,7 @@ function STRING_CONCAT_SEPARATOR () {
 /// the input operand must be a string or this function will fail
 ////////////////////////////////////////////////////////////////////////////////
 
-function CHAR_LENGTH (value) {
+function AQL_CHAR_LENGTH (value) {
   "use strict";
 
   ARG_CHECK(value, TYPEWEIGHT_STRING, "CHAR_LENGTH");
@@ -1946,7 +1690,7 @@ function CHAR_LENGTH (value) {
 /// the input operand must be a string or this function will fail
 ////////////////////////////////////////////////////////////////////////////////
 
-function STRING_LOWER (value) {
+function AQL_LOWER (value) {
   "use strict";
 
   ARG_CHECK(value, TYPEWEIGHT_STRING, "LOWER");
@@ -1960,7 +1704,7 @@ function STRING_LOWER (value) {
 /// the input operand must be a string or this function will fail
 ////////////////////////////////////////////////////////////////////////////////
 
-function STRING_UPPER (value) {
+function AQL_UPPER (value) {
   "use strict";
 
   ARG_CHECK(value, TYPEWEIGHT_STRING, "UPPER");
@@ -1974,7 +1718,7 @@ function STRING_UPPER (value) {
 /// the input operand must be a string or this function will fail
 ////////////////////////////////////////////////////////////////////////////////
 
-function STRING_SUBSTRING (value, offset, count) {
+function AQL_SUBSTRING (value, offset, count) {
   "use strict";
 
   ARG_CHECK(value, TYPEWEIGHT_STRING, "SUBSTRING");
@@ -1993,7 +1737,7 @@ function STRING_SUBSTRING (value, offset, count) {
 /// the two input operands must be strings or this function will fail
 ////////////////////////////////////////////////////////////////////////////////
 
-function STRING_CONTAINS (value, search, returnIndex) {
+function AQL_CONTAINS (value, search, returnIndex) {
   "use strict";
 
   ARG_CHECK(value, TYPEWEIGHT_STRING, "CONTAINS");
@@ -2025,7 +1769,7 @@ function STRING_CONTAINS (value, search, returnIndex) {
 /// the two input operands must be strings or this function will fail
 ////////////////////////////////////////////////////////////////////////////////
 
-function STRING_LIKE (value, regex, caseInsensitive) {
+function AQL_LIKE (value, regex, caseInsensitive) {
   "use strict";
 
   ARG_CHECK(value, TYPEWEIGHT_STRING, "LIKE");
@@ -2051,7 +1795,7 @@ function STRING_LIKE (value, regex, caseInsensitive) {
 /// @brief returns the leftmost parts of a string
 ////////////////////////////////////////////////////////////////////////////////
 
-function STRING_LEFT (value, length) {
+function AQL_LEFT (value, length) {
   "use strict";
 
   ARG_CHECK(value, TYPEWEIGHT_STRING, "LEFT");
@@ -2073,7 +1817,7 @@ function STRING_LEFT (value, length) {
 /// @brief returns the rightmost parts of a string
 ////////////////////////////////////////////////////////////////////////////////
 
-function STRING_RIGHT (value, length) {
+function AQL_RIGHT (value, length) {
   "use strict";
 
   ARG_CHECK(value, TYPEWEIGHT_STRING, "RIGHT");
@@ -2099,7 +1843,7 @@ function STRING_RIGHT (value, length) {
 /// @brief returns the rightmost parts of a string
 ////////////////////////////////////////////////////////////////////////////////
 
-function STRING_TRIM (value, type) {
+function AQL_TRIM (value, type) {
   "use strict";
 
   ARG_CHECK(value, TYPEWEIGHT_STRING, "TRIM");
@@ -2136,7 +1880,7 @@ function STRING_TRIM (value, type) {
 /// @brief finds search in value
 ////////////////////////////////////////////////////////////////////////////////
 
-function STRING_FIND_FIRST (value, search, start, end) {
+function AQL_FIND_FIRST (value, search, start, end) {
   "use strict";
 
   ARG_CHECK(value, TYPEWEIGHT_STRING, "FIND_FIRST");
@@ -2171,7 +1915,7 @@ function STRING_FIND_FIRST (value, search, start, end) {
 /// @brief finds search in value
 ////////////////////////////////////////////////////////////////////////////////
 
-function STRING_FIND_LAST (value, search, start, end) {
+function AQL_FIND_LAST (value, search, start, end) {
   "use strict";
 
   ARG_CHECK(value, TYPEWEIGHT_STRING, "FIND_LAST");
@@ -2209,7 +1953,7 @@ function STRING_FIND_LAST (value, search, start, end) {
 /// the operand can have any type, always returns a bool
 ////////////////////////////////////////////////////////////////////////////////
 
-function CAST_BOOL (value) {
+function AQL_TO_BOOL (value) {
   "use strict";
 
   switch (TYPEWEIGHT(value)) {
@@ -2234,7 +1978,7 @@ function CAST_BOOL (value) {
 /// the operand can have any type, always returns a number
 ////////////////////////////////////////////////////////////////////////////////
 
-function CAST_NUMBER (value) {
+function AQL_TO_NUMBER (value) {
   "use strict";
 
   switch (TYPEWEIGHT(value)) {
@@ -2258,7 +2002,7 @@ function CAST_NUMBER (value) {
 /// the operand can have any type, always returns a string
 ////////////////////////////////////////////////////////////////////////////////
 
-function CAST_STRING (value) {
+function AQL_TO_STRING (value) {
   "use strict";
 
   switch (TYPEWEIGHT(value)) {
@@ -2281,7 +2025,7 @@ function CAST_STRING (value) {
 /// the operand can have any type, always returns a list
 ////////////////////////////////////////////////////////////////////////////////
 
-function CAST_LIST (value) {
+function AQL_TO_LIST (value) {
   "use strict";
 
   switch (TYPEWEIGHT(value)) {
@@ -2308,7 +2052,7 @@ function CAST_LIST (value) {
 /// returns a bool
 ////////////////////////////////////////////////////////////////////////////////
 
-function IS_NULL (value) {
+function AQL_IS_NULL (value) {
   "use strict";
 
   return (TYPEWEIGHT(value) === TYPEWEIGHT_NULL);
@@ -2320,7 +2064,7 @@ function IS_NULL (value) {
 /// returns a bool
 ////////////////////////////////////////////////////////////////////////////////
 
-function IS_BOOL (value) {
+function AQL_IS_BOOL (value) {
   "use strict";
 
   return (TYPEWEIGHT(value) === TYPEWEIGHT_BOOL);
@@ -2332,7 +2076,7 @@ function IS_BOOL (value) {
 /// returns a bool
 ////////////////////////////////////////////////////////////////////////////////
 
-function IS_NUMBER (value) {
+function AQL_IS_NUMBER (value) {
   "use strict";
 
   return (TYPEWEIGHT(value) === TYPEWEIGHT_NUMBER);
@@ -2344,7 +2088,7 @@ function IS_NUMBER (value) {
 /// returns a bool
 ////////////////////////////////////////////////////////////////////////////////
 
-function IS_STRING (value) {
+function AQL_IS_STRING (value) {
   "use strict";
 
   return (TYPEWEIGHT(value) === TYPEWEIGHT_STRING);
@@ -2356,7 +2100,7 @@ function IS_STRING (value) {
 /// returns a bool
 ////////////////////////////////////////////////////////////////////////////////
 
-function IS_LIST (value) {
+function AQL_IS_LIST (value) {
   "use strict";
 
   return (TYPEWEIGHT(value) === TYPEWEIGHT_LIST);
@@ -2368,7 +2112,7 @@ function IS_LIST (value) {
 /// returns a bool
 ////////////////////////////////////////////////////////////////////////////////
 
-function IS_DOCUMENT (value) {
+function AQL_IS_DOCUMENT (value) {
   "use strict";
 
   return (TYPEWEIGHT(value) === TYPEWEIGHT_DOCUMENT);
@@ -2382,10 +2126,10 @@ function IS_DOCUMENT (value) {
 /// @brief integer closest to value, not greater than value
 ////////////////////////////////////////////////////////////////////////////////
 
-function NUMBER_FLOOR (value) {
+function AQL_FLOOR (value) {
   "use strict";
 
-  if (! IS_NUMBER(value)) {
+  if (! AQL_IS_NUMBER(value)) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FLOOR");
   }
 
@@ -2396,10 +2140,10 @@ function NUMBER_FLOOR (value) {
 /// @brief integer closest to value and not less than value
 ////////////////////////////////////////////////////////////////////////////////
 
-function NUMBER_CEIL (value) {
+function AQL_CEIL (value) {
   "use strict";
 
-  if (! IS_NUMBER(value)) {
+  if (! AQL_IS_NUMBER(value)) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "CEIL");
   }
 
@@ -2410,10 +2154,10 @@ function NUMBER_CEIL (value) {
 /// @brief integer closest to value
 ////////////////////////////////////////////////////////////////////////////////
 
-function NUMBER_ROUND (value) {
+function AQL_ROUND (value) {
   "use strict";
 
-  if (! IS_NUMBER(value)) {
+  if (! AQL_IS_NUMBER(value)) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "ROUND");
   }
 
@@ -2424,10 +2168,10 @@ function NUMBER_ROUND (value) {
 /// @brief absolute value
 ////////////////////////////////////////////////////////////////////////////////
 
-function NUMBER_ABS (value) {
+function AQL_ABS (value) {
   "use strict";
 
-  if (! IS_NUMBER(value)) {
+  if (! AQL_IS_NUMBER(value)) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "ABS");
   }
 
@@ -2438,7 +2182,7 @@ function NUMBER_ABS (value) {
 /// @brief a random value between 0 and 1
 ////////////////////////////////////////////////////////////////////////////////
 
-function NUMBER_RAND () {
+function AQL_RAND () {
   "use strict";
 
   return Math.random();
@@ -2448,106 +2192,14 @@ function NUMBER_RAND () {
 /// @brief square root
 ////////////////////////////////////////////////////////////////////////////////
 
-function NUMBER_SQRT (value) {
+function AQL_SQRT (value) {
   "use strict";
 
-  if (! IS_NUMBER(value)) {
+  if (! AQL_IS_NUMBER(value)) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "SQRT");
   }
 
   return NUMERIC_VALUE(Math.sqrt(value));
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                        high level query functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sort the results
-////////////////////////////////////////////////////////////////////////////////
-
-function SORT (value, sortFunction) {
-  "use strict";
-
-  LIST(value);
-
-  if (value.length > 0) {
-    value.sort(sortFunction);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief group the results
-////////////////////////////////////////////////////////////////////////////////
-
-function GROUP (value, sortFunction, groupFunction, into) {
-  "use strict";
-
-  LIST(value);
-
-  var n = value.length;
-  if (n === 0) {
-    return [ ];
-  }
-
-  var augmented = [ ], i;
-  for (i = 0; i < n; ++i) {
-    augmented.push([ i, value[i] ]);
-  }
-
-  SORT(augmented, sortFunction);
-
-  var result = [ ], currentGroup, oldGroup;
-
-  for (i = 0; i < n; ++i) {
-    var row = augmented[i][1];
-    var groupValue = groupFunction(row);
-
-    if (RELATIONAL_UNEQUAL(oldGroup, groupValue)) {
-      oldGroup = CLONE(groupValue);
-
-      if (currentGroup) {
-        result.push(CLONE(currentGroup));
-      }
-
-      currentGroup = groupValue;
-      if (into) {
-        currentGroup[into] = [ ];
-      }
-    }
-
-    if (into) {
-      currentGroup[into].push(CLONE(row));
-    }
-  }
-
-  if (currentGroup) {
-    result.push(CLONE(currentGroup));
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief limit the number of results
-////////////////////////////////////////////////////////////////////////////////
-
-function LIMIT (value, offset, count) {
-  "use strict";
-
-  LIST(value);
-
-  // check value type for offset and count parameters
-  if (TYPEWEIGHT(offset) !== TYPEWEIGHT_NUMBER ||
-      TYPEWEIGHT(count) !== TYPEWEIGHT_NUMBER) {
-    THROW(INTERNAL.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
-  }
-
-  if (count < 0) {
-    THROW(INTERNAL.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
-  }
-
-  return value.slice(offset, offset + count);
 }
 
 // -----------------------------------------------------------------------------
@@ -2558,7 +2210,7 @@ function LIMIT (value, offset, count) {
 /// @brief get the length of a list, document or string
 ////////////////////////////////////////////////////////////////////////////////
 
-function LENGTH (value) {
+function AQL_LENGTH (value) {
   "use strict";
 
   var result, typeWeight = TYPEWEIGHT(value);
@@ -2580,7 +2232,7 @@ function LENGTH (value) {
 /// @brief get the first element of a list
 ////////////////////////////////////////////////////////////////////////////////
 
-function FIRST (value) {
+function AQL_FIRST (value) {
   "use strict";
 
   LIST(value);
@@ -2596,7 +2248,7 @@ function FIRST (value) {
 /// @brief get the last element of a list
 ////////////////////////////////////////////////////////////////////////////////
 
-function LAST (value) {
+function AQL_LAST (value) {
   "use strict";
 
   LIST(value);
@@ -2612,7 +2264,7 @@ function LAST (value) {
 /// @brief get the position of an element in a list
 ////////////////////////////////////////////////////////////////////////////////
 
-function POSITION (value, search, returnIndex) {
+function AQL_POSITION (value, search, returnIndex) {
   "use strict";
 
   LIST(value);
@@ -2635,7 +2287,7 @@ function POSITION (value, search, returnIndex) {
 /// @brief get the nth element in a list, or null if the item does not exist
 ////////////////////////////////////////////////////////////////////////////////
 
-function NTH (value, position) {
+function AQL_NTH (value, position) {
   "use strict";
 
   LIST(value);
@@ -2655,7 +2307,7 @@ function NTH (value, position) {
 /// @brief reverse the elements in a list or in a string
 ////////////////////////////////////////////////////////////////////////////////
 
-function REVERSE (value) {
+function AQL_REVERSE (value) {
   "use strict";
 
   if (TYPEWEIGHT(value) === TYPEWEIGHT_STRING) {
@@ -2671,7 +2323,7 @@ function REVERSE (value) {
 /// @brief return a range of values
 ////////////////////////////////////////////////////////////////////////////////
 
-function RANGE (from, to, step) {
+function AQL_RANGE (from, to, step) {
   "use strict";
 
   if (step === undefined) {
@@ -2718,7 +2370,7 @@ function RANGE (from, to, step) {
 /// @brief return a list of unique elements from the list
 ////////////////////////////////////////////////////////////////////////////////
 
-function UNIQUE (values) {
+function AQL_UNIQUE (values) {
   "use strict";
 
   LIST(values);
@@ -2745,7 +2397,7 @@ function UNIQUE (values) {
 /// @brief create the union (all) of all arguments
 ////////////////////////////////////////////////////////////////////////////////
 
-function UNION () {
+function AQL_UNION () {
   "use strict";
 
   var result = [ ], i;
@@ -2773,7 +2425,7 @@ function UNION () {
 /// @brief create the union (distinct) of all arguments
 ////////////////////////////////////////////////////////////////////////////////
 
-function UNION_DISTINCT () {
+function AQL_UNION_DISTINCT () {
   "use strict";
 
   var keys = { }, i;
@@ -2811,7 +2463,7 @@ function UNION_DISTINCT () {
 /// @brief extract a slice from a list
 ////////////////////////////////////////////////////////////////////////////////
 
-function SLICE (value, from, to) {
+function AQL_SLICE (value, from, to) {
   "use strict";
 
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_LIST) {
@@ -2841,7 +2493,7 @@ function SLICE (value, from, to) {
 /// @brief subtract lists from other lists
 ////////////////////////////////////////////////////////////////////////////////
 
-function MINUS () {
+function AQL_MINUS () {
   "use strict";
 
   var keys = { }, i, first = true;
@@ -2887,7 +2539,7 @@ function MINUS () {
 /// @brief create the intersection of all arguments
 ////////////////////////////////////////////////////////////////////////////////
 
-function INTERSECTION () {
+function AQL_INTERSECTION () {
   "use strict";
 
   var result = [ ], i, first = true, keys = { };
@@ -2937,7 +2589,7 @@ function INTERSECTION () {
 /// @brief flatten a list of lists
 ////////////////////////////////////////////////////////////////////////////////
 
-function FLATTEN (values, maxDepth, depth) {
+function AQL_FLATTEN (values, maxDepth, depth) {
   "use strict";
 
   LIST(values);
@@ -2962,7 +2614,7 @@ function FLATTEN (values, maxDepth, depth) {
   for (i = 0, n = values.length; i < n; ++i) {
     value = values[i];
     if (depth < maxDepth && TYPEWEIGHT(value) === TYPEWEIGHT_LIST) {
-      FLATTEN(value, maxDepth, depth + 1).forEach(p);
+      AQL_FLATTEN(value, maxDepth, depth + 1).forEach(p);
     }
     else {
       result.push(value);
@@ -2976,7 +2628,7 @@ function FLATTEN (values, maxDepth, depth) {
 /// @brief maximum of all values
 ////////////////////////////////////////////////////////////////////////////////
 
-function MAX (values) {
+function AQL_MAX (values) {
   "use strict";
 
   LIST(values);
@@ -3000,7 +2652,7 @@ function MAX (values) {
 /// @brief minimum of all values
 ////////////////////////////////////////////////////////////////////////////////
 
-function MIN (values) {
+function AQL_MIN (values) {
   "use strict";
 
   LIST(values);
@@ -3024,7 +2676,7 @@ function MIN (values) {
 /// @brief sum of all values
 ////////////////////////////////////////////////////////////////////////////////
 
-function SUM (values) {
+function AQL_SUM (values) {
   "use strict";
 
   LIST(values);
@@ -3052,7 +2704,7 @@ function SUM (values) {
 /// @brief average of all values
 ////////////////////////////////////////////////////////////////////////////////
 
-function AVERAGE (values) {
+function AQL_AVERAGE (values) {
   "use strict";
 
   LIST(values);
@@ -3085,7 +2737,7 @@ function AVERAGE (values) {
 /// @brief median of all values
 ////////////////////////////////////////////////////////////////////////////////
 
-function MEDIAN (values) {
+function AQL_MEDIAN (values) {
   "use strict";
 
   LIST(values);
@@ -3157,7 +2809,7 @@ function VARIANCE (values) {
 /// @brief sample variance of all values
 ////////////////////////////////////////////////////////////////////////////////
 
-function VARIANCE_SAMPLE (values) {
+function AQL_VARIANCE_SAMPLE (values) {
   "use strict";
 
   var result = VARIANCE(values);
@@ -3173,7 +2825,7 @@ function VARIANCE_SAMPLE (values) {
 /// @brief population variance of all values
 ////////////////////////////////////////////////////////////////////////////////
 
-function VARIANCE_POPULATION (values) {
+function AQL_VARIANCE_POPULATION (values) {
   "use strict";
 
   var result = VARIANCE(values);
@@ -3189,7 +2841,7 @@ function VARIANCE_POPULATION (values) {
 /// @brief standard deviation of all values
 ////////////////////////////////////////////////////////////////////////////////
 
-function STDDEV_SAMPLE (values) {
+function AQL_STDDEV_SAMPLE (values) {
   "use strict";
 
   var result = VARIANCE(values);
@@ -3205,7 +2857,7 @@ function STDDEV_SAMPLE (values) {
 /// @brief standard deviation of all values
 ////////////////////////////////////////////////////////////////////////////////
 
-function STDDEV_POPULATION (values) {
+function AQL_STDDEV_POPULATION (values) {
   "use strict";
 
   var result = VARIANCE(values);
@@ -3225,7 +2877,7 @@ function STDDEV_POPULATION (values) {
 /// @brief return at most <limit> documents near a certain point
 ////////////////////////////////////////////////////////////////////////////////
 
-function GEO_NEAR (collection, latitude, longitude, limit, distanceAttribute) {
+function AQL_NEAR (collection, latitude, longitude, limit, distanceAttribute) {
   "use strict";
 
   if (limit === null || limit === undefined) {
@@ -3274,7 +2926,7 @@ function GEO_NEAR (collection, latitude, longitude, limit, distanceAttribute) {
 /// @brief return documents within <radius> around a certain point
 ////////////////////////////////////////////////////////////////////////////////
 
-function GEO_WITHIN (collection, latitude, longitude, radius, distanceAttribute) {
+function AQL_WITHIN (collection, latitude, longitude, radius, distanceAttribute) {
   "use strict";
 
   if (isCoordinator) {
@@ -3319,7 +2971,7 @@ function GEO_WITHIN (collection, latitude, longitude, radius, distanceAttribute)
 /// @brief return documents that match a fulltext query
 ////////////////////////////////////////////////////////////////////////////////
 
-function FULLTEXT (collection, attribute, query) {
+function AQL_FULLTEXT (collection, attribute, query) {
   "use strict";
 
   var idx = INDEX_FULLTEXT(COLLECTION(collection), attribute);
@@ -3347,7 +2999,7 @@ function FULLTEXT (collection, attribute, query) {
 /// the operands can have any type
 ////////////////////////////////////////////////////////////////////////////////
 
-function NOT_NULL () {
+function AQL_NOT_NULL () {
   "use strict";
 
   var i;
@@ -3372,7 +3024,7 @@ function NOT_NULL () {
 /// the operands can have any type
 ////////////////////////////////////////////////////////////////////////////////
 
-function FIRST_LIST () {
+function AQL_FIRST_LIST () {
   "use strict";
 
   var i;
@@ -3397,7 +3049,7 @@ function FIRST_LIST () {
 /// the operands can have any type
 ////////////////////////////////////////////////////////////////////////////////
 
-function FIRST_DOCUMENT () {
+function AQL_FIRST_DOCUMENT () {
   "use strict";
 
   var i;
@@ -3421,7 +3073,7 @@ function FIRST_DOCUMENT () {
 /// the individual parts cannot be determined.
 ////////////////////////////////////////////////////////////////////////////////
 
-function PARSE_IDENTIFIER (value) {
+function AQL_PARSE_IDENTIFIER (value) {
   "use strict";
 
   if (TYPEWEIGHT(value) === TYPEWEIGHT_STRING) {
@@ -3436,7 +3088,7 @@ function PARSE_IDENTIFIER (value) {
   }
   else if (TYPEWEIGHT(value) === TYPEWEIGHT_DOCUMENT) {
     if (value.hasOwnProperty('_id')) {
-      return PARSE_IDENTIFIER(value._id);
+      return AQL_PARSE_IDENTIFIER(value._id);
     }
     // fall through intentional
   }
@@ -3451,7 +3103,7 @@ function PARSE_IDENTIFIER (value) {
 /// documents that match the specified condition will be returned.
 ////////////////////////////////////////////////////////////////////////////////
 
-function SKIPLIST_QUERY (collection, condition, skip, limit) {
+function AQL_SKIPLIST (collection, condition, skip, limit) {
   "use strict";
 
   var keys = [ ], key, idx;
@@ -3498,7 +3150,7 @@ function SKIPLIST_QUERY (collection, condition, skip, limit) {
 /// @brief check whether a document has a specific attribute
 ////////////////////////////////////////////////////////////////////////////////
 
-function HAS (element, name) {
+function AQL_HAS (element, name) {
   "use strict";
   
   if (TYPEWEIGHT(name) !== TYPEWEIGHT_STRING) {
@@ -3520,7 +3172,7 @@ function HAS (element, name) {
 /// @brief return the attribute names of a document as a list
 ////////////////////////////////////////////////////////////////////////////////
 
-function ATTRIBUTES (element, removeInternal, sort) {
+function AQL_ATTRIBUTES (element, removeInternal, sort) {
   "use strict";
 
   if (TYPEWEIGHT(element) !== TYPEWEIGHT_DOCUMENT) {
@@ -3550,7 +3202,7 @@ function ATTRIBUTES (element, removeInternal, sort) {
 /// @brief unset specific attributes from a document
 ////////////////////////////////////////////////////////////////////////////////
 
-function UNSET (value) {
+function AQL_UNSET (value) {
   "use strict";
 
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_DOCUMENT) {
@@ -3573,7 +3225,7 @@ function UNSET (value) {
 /// @brief keep specific attributes from a document
 ////////////////////////////////////////////////////////////////////////////////
 
-function KEEP (value) {
+function AQL_KEEP (value) {
   "use strict";
 
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_DOCUMENT) {
@@ -3596,7 +3248,7 @@ function KEEP (value) {
 /// @brief merge all arguments
 ////////////////////////////////////////////////////////////////////////////////
 
-function MERGE () {
+function AQL_MERGE () {
   "use strict";
 
   var result = { }, i;
@@ -3627,7 +3279,7 @@ function MERGE () {
 /// @brief merge all arguments recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-function MERGE_RECURSIVE () {
+function AQL_MERGE_RECURSIVE () {
   "use strict";
 
   var result = { }, i, recurse;
@@ -3666,7 +3318,7 @@ function MERGE_RECURSIVE () {
 /// @brief translate a value, using a lookup document
 ////////////////////////////////////////////////////////////////////////////////
 
-function TRANSLATE (value, lookup, defaultValue) {
+function AQL_TRANSLATE (value, lookup, defaultValue) {
   "use strict";
 
   if (defaultValue === undefined) {
@@ -3691,7 +3343,7 @@ function TRANSLATE (value, lookup, defaultValue) {
 /// depending on the value of the control flag (3rd) parameter
 ////////////////////////////////////////////////////////////////////////////////
 
-function MATCHES (element, examples, returnIndex) {
+function AQL_MATCHES (element, examples, returnIndex) {
   "use strict";
 
   if (TYPEWEIGHT(element) !== TYPEWEIGHT_DOCUMENT) {
@@ -3740,7 +3392,7 @@ function MATCHES (element, examples, returnIndex) {
 /// query optimisation. this function can be used for testing
 ////////////////////////////////////////////////////////////////////////////////
 
-function PASSTHRU (value) {
+function AQL_PASSTHRU (value) {
   "use strict";
 
   return value;
@@ -3752,7 +3404,7 @@ function PASSTHRU (value) {
 /// sleep for the specified duration
 ////////////////////////////////////////////////////////////////////////////////
 
-function SLEEP (duration) {
+function AQL_SLEEP (duration) {
   "use strict";
 
   if (TYPEWEIGHT(duration) !== TYPEWEIGHT_NUMBER) {
@@ -3768,7 +3420,7 @@ function SLEEP (duration) {
 /// has a user
 ////////////////////////////////////////////////////////////////////////////////
 
-function CURRENT_USER () {
+function AQL_CURRENT_USER () {
   "use strict";
 
   var req = INTERNAL.getCurrentRequest();
@@ -3785,7 +3437,7 @@ function CURRENT_USER () {
 /// has a user
 ////////////////////////////////////////////////////////////////////////////////
 
-function CURRENT_DATABASE () {
+function AQL_CURRENT_DATABASE () {
   "use strict";
 
   return INTERNAL.db._name();
@@ -3798,7 +3450,7 @@ function CURRENT_DATABASE () {
 /// optimisation time. this function can be used for testing
 ////////////////////////////////////////////////////////////////////////////////
 
-function FAIL (message) {
+function AQL_FAIL (message) {
   "use strict";
 
   if (TYPEWEIGHT(message) === TYPEWEIGHT_STRING) {
@@ -3884,7 +3536,7 @@ function MAKE_DATE (args, func) {
 /// this function is evaluated on every call
 ////////////////////////////////////////////////////////////////////////////////
 
-function DATE_NOW () {
+function AQL_DATE_NOW () {
   "use strict";
 
   return Date.now();
@@ -3894,7 +3546,7 @@ function DATE_NOW () {
 /// @brief return the timestamp of the date passed (in milliseconds)
 ////////////////////////////////////////////////////////////////////////////////
 
-function DATE_TIMESTAMP () {
+function AQL_DATE_TIMESTAMP () {
   "use strict";
 
   try {
@@ -3909,7 +3561,7 @@ function DATE_TIMESTAMP () {
 /// @brief return the ISO string representation of the date passed
 ////////////////////////////////////////////////////////////////////////////////
 
-function DATE_ISO8601 () {
+function AQL_DATE_ISO8601 () {
   "use strict";
 
   try {
@@ -3924,7 +3576,7 @@ function DATE_ISO8601 () {
 /// @brief return the weekday of the date passed (0 = Sunday, 1 = Monday etc.)
 ////////////////////////////////////////////////////////////////////////////////
 
-function DATE_DAYOFWEEK (value) {
+function AQL_DATE_DAYOFWEEK (value) {
   "use strict";
 
   try {
@@ -3939,7 +3591,7 @@ function DATE_DAYOFWEEK (value) {
 /// @brief return the year of the date passed
 ////////////////////////////////////////////////////////////////////////////////
 
-function DATE_YEAR (value) {
+function AQL_DATE_YEAR (value) {
   "use strict";
 
   try {
@@ -3954,7 +3606,7 @@ function DATE_YEAR (value) {
 /// @brief return the month of the date passed
 ////////////////////////////////////////////////////////////////////////////////
 
-function DATE_MONTH (value) {
+function AQL_DATE_MONTH (value) {
   "use strict";
 
   try {
@@ -3969,7 +3621,7 @@ function DATE_MONTH (value) {
 /// @brief return the day of the date passed
 ////////////////////////////////////////////////////////////////////////////////
 
-function DATE_DAY (value) {
+function AQL_DATE_DAY (value) {
   "use strict";
 
   try {
@@ -3984,7 +3636,7 @@ function DATE_DAY (value) {
 /// @brief return the hours of the date passed
 ////////////////////////////////////////////////////////////////////////////////
 
-function DATE_HOUR (value) {
+function AQL_DATE_HOUR (value) {
   "use strict";
 
   try {
@@ -3999,7 +3651,7 @@ function DATE_HOUR (value) {
 /// @brief return the minutes of the date passed
 ////////////////////////////////////////////////////////////////////////////////
 
-function DATE_MINUTE (value) {
+function AQL_DATE_MINUTE (value) {
   "use strict";
 
   try {
@@ -4014,7 +3666,7 @@ function DATE_MINUTE (value) {
 /// @brief return the seconds of the date passed
 ////////////////////////////////////////////////////////////////////////////////
 
-function DATE_SECOND (value) {
+function AQL_DATE_SECOND (value) {
   "use strict";
 
   try {
@@ -4029,7 +3681,7 @@ function DATE_SECOND (value) {
 /// @brief return the milliseconds of the date passed
 ////////////////////////////////////////////////////////////////////////////////
 
-function DATE_MILLISECOND (value) {
+function AQL_DATE_MILLISECOND (value) {
   "use strict";
 
   try {
@@ -4073,7 +3725,7 @@ function GET_SUB_EDGES (edgeCollections, direction, vertexId) {
 /// @brief find all paths through a graph, INTERNAL part called recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-function GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, vertices, level) {
+function SUBNODES (searchAttributes, vertexId, visited, edges, vertices, level) {
   "use strict";
 
   var result = [ ];
@@ -4129,7 +3781,7 @@ function GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, vertices, l
         // avoid "document not found error" in case referenced vertices were deleted
       }
 
-      var connected = GRAPH_SUBNODES(searchAttributes,
+      var connected = SUBNODES(searchAttributes,
                                      targetId,
                                      CLONE(visited),
                                      clonedEdges,
@@ -4152,7 +3804,7 @@ function GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, vertices, l
 /// @brief find all paths through a graph
 ////////////////////////////////////////////////////////////////////////////////
 
-function GRAPH_PATHS (vertices, edgeCollection, direction, followCycles, minLength, maxLength) {
+function AQL_PATHS (vertices, edgeCollection, direction, followCycles, minLength, maxLength) {
   "use strict";
 
   var searchDirection;
@@ -4197,7 +3849,7 @@ function GRAPH_PATHS (vertices, edgeCollection, direction, followCycles, minLeng
     var visited = { };
 
     visited[vertex._id] = true;
-    var connected = GRAPH_SUBNODES(searchAttributes, vertex._id, visited, [ ], [ vertex ], 0);
+    var connected = SUBNODES(searchAttributes, vertex._id, visited, [ ], [ vertex ], 0);
     for (j = 0; j < connected.length; ++j) {
       result.push(connected[j]);
     }
@@ -4253,7 +3905,7 @@ function GRAPH_PATHS (vertices, edgeCollection, direction, followCycles, minLeng
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-function GENERAL_GRAPH_PATHS (graphName, options) {
+function AQL_GRAPH_PATHS (graphName, options) {
   "use strict";
 
   var searchDirection;
@@ -4335,7 +3987,7 @@ function GENERAL_GRAPH_PATHS (graphName, options) {
       var visited = { };
 
       visited[vertex._id] = true;
-      var connected = GRAPH_SUBNODES(searchAttributes, vertex._id, visited, [ ], [ vertex ], 0);
+      var connected = SUBNODES(searchAttributes, vertex._id, visited, [ ], [ vertex ], 0);
       for (j = 0; j < connected.length; ++j) {
         result.push(connected[j]);
       }
@@ -4421,8 +4073,8 @@ function TRAVERSAL_EDGE_EXAMPLE_FILTER (config, vertex, edge, path) {
     }
   }
   if (config.expandEdgeExamples) {
-    var e = MATCHES(edge, config.expandEdgeExamples);
-    return MATCHES(edge, config.expandEdgeExamples);
+    var e = AQL_MATCHES(edge, config.expandEdgeExamples);
+    return AQL_MATCHES(edge, config.expandEdgeExamples);
   }
   return true;
 }
@@ -4433,7 +4085,7 @@ function TRAVERSAL_EDGE_EXAMPLE_FILTER (config, vertex, edge, path) {
 
 function TRAVERSAL_VERTEX_FILTER (config, vertex, path) {
   "use strict";
-  if (config.filterVertexExamples && !MATCHES(vertex, config.filterVertexExamples)) {
+  if (config.filterVertexExamples && ! AQL_MATCHES(vertex, config.filterVertexExamples)) {
     if (config.filterVertexCollections
       && config.vertexFilterMethod.indexOf("exclude") === -1
       && config.filterVertexCollections.indexOf(vertex._id.split("/")[0]) === -1
@@ -4961,12 +4613,12 @@ function SHORTEST_PATH_PARAMS (params) {
 /// @brief shortest path algorithm
 ////////////////////////////////////////////////////////////////////////////////
 
-function GRAPH_SHORTEST_PATH (vertexCollection,
-                              edgeCollection,
-                              startVertex,
-                              endVertex,
-                              direction,
-                              params) {
+function AQL_SHORTEST_PATH (vertexCollection,
+                            edgeCollection,
+                            startVertex,
+                            endVertex,
+                            direction,
+                            params) {
   "use strict";
 
   params = SHORTEST_PATH_PARAMS(params);
@@ -5160,17 +4812,16 @@ function TRAVERSAL_PARAMS (params) {
     params = { };
   }
 
-  params.visitor  = TRAVERSAL_VISITOR;
+  params.visitor = TRAVERSAL_VISITOR;
   return params;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief merge list of edges with list of examples
 ////////////////////////////////////////////////////////////////////////////////
 
 function MERGE_EXAMPLES_WITH_EDGES (examples, edges) {
-  var result = [],filter;
+  var result = [], filter;
   if (examples === "null") {
     examples = [{}];
   }
@@ -5228,7 +4879,7 @@ function CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA (graphName, options) {
         return;
       }
       params.prefill = Object.keys(calculated);
-      var e = TRAVERSAL_FUNC("GENERAL_GRAPH_SHORTEST_PATH",
+      var e = TRAVERSAL_FUNC("GRAPH_SHORTEST_PATH",
         factory,
         TO_ID(v),
         TO_ID(t),
@@ -5348,10 +4999,10 @@ function IS_EXAMPLE_SET (example) {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-function GENERAL_GRAPH_SHORTEST_PATH (graphName,
-                                      startVertexExample,
-                                      endVertexExample,
-                                      options) {
+function AQL_GRAPH_SHORTEST_PATH (graphName,
+                                  startVertexExample,
+                                  endVertexExample,
+                                  options) {
   "use strict";
 
   if (! options) {
@@ -5359,12 +5010,12 @@ function GENERAL_GRAPH_SHORTEST_PATH (graphName,
   }
   options.fromVertexExample = startVertexExample;
   options.toVertexExample = endVertexExample;
-  if (!options.direction) {
+  if (! options.direction) {
     options.direction =  'any';
   }
 
-  if (!options.algorithm) {
-    if (!IS_EXAMPLE_SET(startVertexExample) && !IS_EXAMPLE_SET(endVertexExample)) {
+  if (! options.algorithm) {
+    if (! IS_EXAMPLE_SET(startVertexExample) && ! IS_EXAMPLE_SET(endVertexExample)) {
       options.algorithm = "Floyd-Warshall";
     }
   }
@@ -5372,20 +5023,18 @@ function GENERAL_GRAPH_SHORTEST_PATH (graphName,
     var graph = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
     return CALCULATE_SHORTEST_PATHES_WITH_FLOYD_WARSHALL(graph, options);
   }
-  return CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA(
-    graphName, options
-  );
+  return CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA(graphName, options);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief traverse a graph
 ////////////////////////////////////////////////////////////////////////////////
 
-function GRAPH_TRAVERSAL (vertexCollection,
-                          edgeCollection,
-                          startVertex,
-                          direction,
-                          params) {
+function AQL_TRAVERSAL (vertexCollection,
+                        edgeCollection,
+                        startVertex,
+                        direction,
+                        params) {
   "use strict";
 
   params = TRAVERSAL_PARAMS(params);
@@ -5468,10 +5117,10 @@ function GRAPH_TRAVERSAL (vertexCollection,
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-function GENERAL_GRAPH_TRAVERSAL (graphName,
-                                  startVertexExample,
-                                  direction,
-                                  options) {
+function AQL_GRAPH_TRAVERSAL (graphName,
+                              startVertexExample,
+                              direction,
+                              options) {
   "use strict";
 
   var result = [];
@@ -5521,12 +5170,12 @@ function TRAVERSAL_TREE_PARAMS (params, connectName, funcName) {
 /// a different visitor to create the result
 ////////////////////////////////////////////////////////////////////////////////
 
-function GRAPH_TRAVERSAL_TREE (vertexCollection,
-                               edgeCollection,
-                               startVertex,
-                               direction,
-                               connectName,
-                               params) {
+function AQL_TRAVERSAL_TREE (vertexCollection,
+                             edgeCollection,
+                             startVertex,
+                             direction,
+                             connectName,
+                             params) {
   "use strict";
 
   params = TRAVERSAL_TREE_PARAMS(params, connectName, "TRAVERSAL_TREE");
@@ -5585,17 +5234,17 @@ function GRAPH_TRAVERSAL_TREE (vertexCollection,
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-function GENERAL_GRAPH_DISTANCE_TO (graphName,
-                                    startVertexExample,
-                                    endVertexExample,
-                                    options) {
+function AQL_GRAPH_DISTANCE_TO (graphName,
+                                startVertexExample,
+                                endVertexExample,
+                                options) {
   "use strict";
 
   if (! options) {
     options = {};
   }
   options.noPaths = true;
-  var res = GENERAL_GRAPH_SHORTEST_PATH(
+  var res = AQL_GRAPH_SHORTEST_PATH(
     graphName, startVertexExample, endVertexExample, options
   ), result = [];
   res.forEach(function (r) {
@@ -5659,11 +5308,11 @@ function GENERAL_GRAPH_DISTANCE_TO (graphName,
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-function GENERAL_GRAPH_TRAVERSAL_TREE (graphName,
-                                       startVertexExample,
-                                       direction,
-                                       connectName,
-                                       options) {
+function AQL_GRAPH_TRAVERSAL_TREE (graphName,
+                                   startVertexExample,
+                                   direction,
+                                   connectName,
+                                   options) {
   "use strict";
 
   var result = [];
@@ -5692,10 +5341,10 @@ function GENERAL_GRAPH_TRAVERSAL_TREE (graphName,
 /// @brief return connected edges
 ////////////////////////////////////////////////////////////////////////////////
 
-function GRAPH_EDGES (edgeCollection,
-                      vertex,
-                      direction,
-                      examples) {
+function AQL_EDGES (edgeCollection,
+                    vertex,
+                    direction,
+                    examples) {
   "use strict";
 
   var c = COLLECTION(edgeCollection), result;
@@ -5761,15 +5410,15 @@ function FILTERED_EDGES (edges, vertex, direction, examples) {
 /// @brief return connected neighbors
 ////////////////////////////////////////////////////////////////////////////////
 
-function GRAPH_NEIGHBORS (vertexCollection,
-                          edgeCollection,
-                          vertex,
-                          direction,
-                          examples) {
+function AQL_NEIGHBORS (vertexCollection,
+                        edgeCollection,
+                        vertex,
+                        direction,
+                        examples) {
   "use strict";
 
   vertex = TO_ID(vertex, vertexCollection);
-  var edges = GRAPH_EDGES(edgeCollection, vertex, direction);
+  var edges = AQL_EDGES(edgeCollection, vertex, direction);
   return FILTERED_EDGES(edges, vertex, direction, examples);
 }
 
@@ -5835,9 +5484,9 @@ function GRAPH_NEIGHBORS (vertexCollection,
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-function GENERAL_GRAPH_NEIGHBORS (graphName,
-                                  vertexExample,
-                                  options) {
+function AQL_GRAPH_NEIGHBORS (graphName,
+                              vertexExample,
+                              options) {
   "use strict";
   if (! options) {
     options = {  };
@@ -5955,13 +5604,12 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-function GENERAL_GRAPH_EDGES (
-  graphName,
-  vertexExample,
-  options) {
+function AQL_GRAPH_EDGES (graphName,
+                          vertexExample,
+                          options) {
   "use strict";
 
-  var neighbors = GENERAL_GRAPH_NEIGHBORS(graphName,
+  var neighbors = AQL_GRAPH_NEIGHBORS(graphName,
     vertexExample,
     options), result = [],ids = [];
 
@@ -6024,10 +5672,9 @@ function GENERAL_GRAPH_EDGES (
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-function GENERAL_GRAPH_VERTICES (
-  graphName,
-  vertexExamples,
-  options) {
+function AQL_GRAPH_VERTICES (graphName,
+                             vertexExamples,
+                             options) {
   "use strict";
 
   if (! options) {
@@ -6057,7 +5704,7 @@ function GENERAL_GRAPH_VERTICES (
 /// @brief return common neighbors of two vertices lists
 ////////////////////////////////////////////////////////////////////////////////
 
-function TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT (result)  {
+function TRANSFER_GRAPH_NEIGHBORS_RESULT (result)  {
   var ret = {};
   result.forEach(function (r) {
     var v = JSON.stringify(r.vertex);
@@ -6118,22 +5765,21 @@ function TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT (result)  {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-function GENERAL_GRAPH_COMMON_NEIGHBORS (
-  graphName,
-  vertex1Examples,
-  vertex2Examples,
-  options1,
-  options2) {
+function AQL_GRAPH_COMMON_NEIGHBORS (graphName,
+                                     vertex1Examples,
+                                     vertex2Examples,
+                                     options1,
+                                     options2) {
   "use strict";
 
-  var neighbors1 = TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT(
-    GENERAL_GRAPH_NEIGHBORS(graphName, vertex1Examples, options1)
+  var neighbors1 = TRANSFER_GRAPH_NEIGHBORS_RESULT(
+    AQL_GRAPH_NEIGHBORS(graphName, vertex1Examples, options1)
   ), neighbors2;
   if (vertex1Examples === vertex2Examples && options1 === options2) {
     neighbors2 = CLONE(neighbors1);
   } else {
-    neighbors2 = TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT(
-      GENERAL_GRAPH_NEIGHBORS(graphName, vertex2Examples, options2)
+    neighbors2 = TRANSFER_GRAPH_NEIGHBORS_RESULT(
+      AQL_GRAPH_NEIGHBORS(graphName, vertex2Examples, options2)
     );
   }
   var res = {}, res2 = {}, res3 = [];
@@ -6228,11 +5874,10 @@ function GENERAL_GRAPH_COMMON_NEIGHBORS (
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-function GENERAL_GRAPH_COMMON_PROPERTIES (
-  graphName,
-  vertex1Examples,
-  vertex2Examples,
-  options) {
+function AQL_GRAPH_COMMON_PROPERTIES (graphName,
+                                      vertex1Examples,
+                                      vertex2Examples,
+                                      options) {
   "use strict";
 
   if (! options) {
@@ -6390,7 +6035,7 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-function GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options) {
+function AQL_GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options) {
   "use strict";
   if (! options) {
     options = {  };
@@ -6399,8 +6044,8 @@ function GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options)
     options.direction =  'any';
   }
 
-  var distanceMap = GENERAL_GRAPH_DISTANCE_TO(
-    graphName, vertexExample , {}, options), result = {};
+  var distanceMap = AQL_GRAPH_DISTANCE_TO(graphName, vertexExample, {}, options), 
+      result = {};
   distanceMap.forEach(function(d) {
     if (!result[d.startVertex]) {
       result[d.startVertex] = d.distance;
@@ -6464,7 +6109,7 @@ function GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options)
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-function GENERAL_GRAPH_ECCENTRICITY (graphName, options) {
+function AQL_GRAPH_ECCENTRICITY (graphName, options) {
   "use strict";
 
   if (! options) {
@@ -6474,7 +6119,7 @@ function GENERAL_GRAPH_ECCENTRICITY (graphName, options) {
     options.algorithm = "Floyd-Warshall";
   }
 
-  var result = GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY(graphName, {}, options), max = 0;
+  var result = AQL_GRAPH_ABSOLUTE_ECCENTRICITY(graphName, {}, options), max = 0;
   Object.keys(result).forEach(function (r) {
     result[r] = result[r] === 0 ? 0 : 1 / result[r];
     if (result[r] > max) {
@@ -6567,7 +6212,7 @@ function GENERAL_GRAPH_ECCENTRICITY (graphName, options) {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-function GENERAL_GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options) {
+function AQL_GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options) {
   "use strict";
 
   if (! options) {
@@ -6577,7 +6222,7 @@ function GENERAL_GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options) {
     options.direction =  'any';
   }
 
-  var distanceMap = GENERAL_GRAPH_DISTANCE_TO(graphName, vertexExample , {}, options), result = {};
+  var distanceMap = AQL_GRAPH_DISTANCE_TO(graphName, vertexExample , {}, options), result = {};
   distanceMap.forEach(function(d) {
     if (options.direction !==  'any' && options.calcNormalized) {
       d.distance = d.distance === 0 ?  0 : 1 / d.distance;
@@ -6658,7 +6303,7 @@ function GENERAL_GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options) {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-function GENERAL_GRAPH_CLOSENESS (graphName, options) {
+function AQL_GRAPH_CLOSENESS (graphName, options) {
   "use strict";
 
   if (! options) {
@@ -6670,7 +6315,7 @@ function GENERAL_GRAPH_CLOSENESS (graphName, options) {
     options.algorithm = "Floyd-Warshall";
   }
 
-  var result = GENERAL_GRAPH_ABSOLUTE_CLOSENESS(graphName, {}, options), max = 0;
+  var result = AQL_GRAPH_ABSOLUTE_CLOSENESS(graphName, {}, options), max = 0;
   Object.keys(result).forEach(function (r) {
     if (options.direction ===  'any') {
       result[r] = result[r]  === 0 ? 0 : 1 / result[r];
@@ -6748,7 +6393,7 @@ function GENERAL_GRAPH_CLOSENESS (graphName, options) {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-function GENERAL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
+function AQL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
   "use strict";
 
   if (! options) {
@@ -6759,7 +6404,7 @@ function GENERAL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
   }
   options.algorithm = "Floyd-Warshall";
 
-  var distanceMap = GENERAL_GRAPH_SHORTEST_PATH(graphName, {} , {}, options),
+  var distanceMap = AQL_GRAPH_SHORTEST_PATH(graphName, {} , {}, options),
     result = {};
   distanceMap.forEach(function(d) {
     var tmp = {};
@@ -6853,14 +6498,14 @@ function GENERAL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-function GENERAL_GRAPH_BETWEENNESS (graphName, options) {
+function AQL_GRAPH_BETWEENNESS (graphName, options) {
   "use strict";
 
   if (! options) {
     options = {  };
   }
 
-  var result = GENERAL_GRAPH_ABSOLUTE_BETWEENNESS(graphName, options),  max = 0;
+  var result = AQL_GRAPH_ABSOLUTE_BETWEENNESS(graphName, options),  max = 0;
   Object.keys(result).forEach(function (r) {
     if (result[r] > max) {
       max = result[r];
@@ -6935,7 +6580,7 @@ function GENERAL_GRAPH_BETWEENNESS (graphName, options) {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-function GENERAL_GRAPH_RADIUS (graphName, options) {
+function AQL_GRAPH_RADIUS (graphName, options) {
   "use strict";
 
   if (! options) {
@@ -6948,7 +6593,7 @@ function GENERAL_GRAPH_RADIUS (graphName, options) {
     options.algorithm = "Floyd-Warshall";
   }
 
-  var result = GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY(graphName, {}, options), min = Infinity;
+  var result = AQL_GRAPH_ABSOLUTE_ECCENTRICITY(graphName, {}, options), min = Infinity;
   Object.keys(result).forEach(function (r) {
     if (result[r] === 0) {
       return;
@@ -7026,7 +6671,7 @@ function GENERAL_GRAPH_RADIUS (graphName, options) {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-function GENERAL_GRAPH_DIAMETER (graphName, options) {
+function AQL_GRAPH_DIAMETER (graphName, options) {
   "use strict";
 
   if (! options) {
@@ -7039,7 +6684,7 @@ function GENERAL_GRAPH_DIAMETER (graphName, options) {
     options.algorithm = "Floyd-Warshall";
   }
 
-  var result = GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY(graphName, {}, options), max = 0;
+  var result = AQL_GRAPH_ABSOLUTE_ECCENTRICITY(graphName, {}, options), max = 0;
   Object.keys(result).forEach(function (r) {
     if (result[r] > max) {
       max = result[r];
@@ -7058,19 +6703,7 @@ exports.KEYS = KEYS;
 exports.GET_INDEX = GET_INDEX;
 exports.DOCUMENT_MEMBER = DOCUMENT_MEMBER;
 exports.LIST = LIST;
-exports.DOCUMENT = DOCUMENT;
 exports.GET_DOCUMENTS = GET_DOCUMENTS;
-exports.GET_DOCUMENTS_INCREMENTAL_INIT = GET_DOCUMENTS_INCREMENTAL_INIT;
-exports.GET_DOCUMENTS_INCREMENTAL_CONT = GET_DOCUMENTS_INCREMENTAL_CONT;
-exports.GET_DOCUMENTS_PRIMARY = GET_DOCUMENTS_PRIMARY;
-exports.GET_DOCUMENTS_PRIMARY_LIST = GET_DOCUMENTS_PRIMARY_LIST;
-exports.GET_DOCUMENTS_HASH = GET_DOCUMENTS_HASH;
-exports.GET_DOCUMENTS_HASH_LIST = GET_DOCUMENTS_HASH_LIST;
-exports.GET_DOCUMENTS_EDGE = GET_DOCUMENTS_EDGE;
-exports.GET_DOCUMENTS_EDGE_LIST = GET_DOCUMENTS_EDGE_LIST;
-exports.GET_DOCUMENTS_SKIPLIST = GET_DOCUMENTS_SKIPLIST;
-exports.GET_DOCUMENTS_SKIPLIST_LIST = GET_DOCUMENTS_SKIPLIST_LIST;
-exports.COLLECTIONS = COLLECTIONS;
 exports.TERNARY_OPERATOR = TERNARY_OPERATOR;
 exports.TERNARY_OPERATOR_FN = TERNARY_OPERATOR_FN;
 exports.LOGICAL_AND = LOGICAL_AND;
@@ -7094,117 +6727,117 @@ exports.ARITHMETIC_MINUS = ARITHMETIC_MINUS;
 exports.ARITHMETIC_TIMES = ARITHMETIC_TIMES;
 exports.ARITHMETIC_DIVIDE = ARITHMETIC_DIVIDE;
 exports.ARITHMETIC_MODULUS = ARITHMETIC_MODULUS;
-exports.STRING_CONCAT = STRING_CONCAT;
-exports.STRING_CONCAT_SEPARATOR = STRING_CONCAT_SEPARATOR;
-exports.CHAR_LENGTH = CHAR_LENGTH;
-exports.STRING_LOWER = STRING_LOWER;
-exports.STRING_UPPER = STRING_UPPER;
-exports.STRING_SUBSTRING = STRING_SUBSTRING;
-exports.STRING_CONTAINS = STRING_CONTAINS;
-exports.STRING_LIKE = STRING_LIKE;
-exports.STRING_LEFT = STRING_LEFT;
-exports.STRING_RIGHT = STRING_RIGHT;
-exports.STRING_TRIM = STRING_TRIM;
-exports.STRING_FIND_FIRST = STRING_FIND_FIRST;
-exports.STRING_FIND_LAST = STRING_FIND_LAST;
-exports.CAST_BOOL = CAST_BOOL;
-exports.CAST_NUMBER = CAST_NUMBER;
-exports.CAST_STRING = CAST_STRING;
-exports.CAST_LIST = CAST_LIST;
-exports.IS_NULL = IS_NULL;
-exports.IS_BOOL = IS_BOOL;
-exports.IS_NUMBER = IS_NUMBER;
-exports.IS_STRING = IS_STRING;
-exports.IS_LIST = IS_LIST;
-exports.IS_DOCUMENT = IS_DOCUMENT;
-exports.NUMBER_FLOOR = NUMBER_FLOOR;
-exports.NUMBER_CEIL = NUMBER_CEIL;
-exports.NUMBER_ROUND = NUMBER_ROUND;
-exports.NUMBER_ABS = NUMBER_ABS;
-exports.NUMBER_RAND = NUMBER_RAND;
-exports.NUMBER_SQRT = NUMBER_SQRT;
-exports.SORT = SORT;
-exports.GROUP = GROUP;
-exports.LIMIT = LIMIT;
-exports.LENGTH = LENGTH;
-exports.FIRST = FIRST;
-exports.LAST = LAST;
-exports.POSITION = POSITION;
-exports.NTH = NTH;
-exports.REVERSE = REVERSE;
-exports.RANGE = RANGE;
-exports.UNIQUE = UNIQUE;
-exports.UNION = UNION;
-exports.UNION_DISTINCT = UNION_DISTINCT;
-exports.SLICE = SLICE;
-exports.MINUS = MINUS;
-exports.INTERSECTION = INTERSECTION;
-exports.FLATTEN = FLATTEN;
-exports.MAX = MAX;
-exports.MIN = MIN;
-exports.SUM = SUM;
-exports.AVERAGE = AVERAGE;
-exports.MEDIAN = MEDIAN;
-exports.VARIANCE_SAMPLE = VARIANCE_SAMPLE;
-exports.VARIANCE_POPULATION = VARIANCE_POPULATION;
-exports.STDDEV_SAMPLE = STDDEV_SAMPLE;
-exports.STDDEV_POPULATION = STDDEV_POPULATION;
-exports.GEO_NEAR = GEO_NEAR;
-exports.GEO_WITHIN = GEO_WITHIN;
-exports.FULLTEXT = FULLTEXT;
-exports.GRAPH_PATHS = GRAPH_PATHS;
-exports.GRAPH_SHORTEST_PATH = GRAPH_SHORTEST_PATH;
-exports.GRAPH_TRAVERSAL = GRAPH_TRAVERSAL;
-exports.GRAPH_TRAVERSAL_TREE = GRAPH_TRAVERSAL_TREE;
-exports.GRAPH_EDGES = GRAPH_EDGES;
-exports.GRAPH_NEIGHBORS = GRAPH_NEIGHBORS;
-exports.GENERAL_GRAPH_TRAVERSAL = GENERAL_GRAPH_TRAVERSAL;
-exports.GENERAL_GRAPH_TRAVERSAL_TREE = GENERAL_GRAPH_TRAVERSAL_TREE;
-exports.GENERAL_GRAPH_EDGES = GENERAL_GRAPH_EDGES;
-exports.GENERAL_GRAPH_VERTICES = GENERAL_GRAPH_VERTICES;
-exports.GENERAL_GRAPH_PATHS = GENERAL_GRAPH_PATHS;
-exports.GENERAL_GRAPH_SHORTEST_PATH = GENERAL_GRAPH_SHORTEST_PATH;
-exports.GENERAL_GRAPH_DISTANCE_TO = GENERAL_GRAPH_DISTANCE_TO;
-exports.GENERAL_GRAPH_NEIGHBORS = GENERAL_GRAPH_NEIGHBORS;
-exports.GENERAL_GRAPH_COMMON_NEIGHBORS = GENERAL_GRAPH_COMMON_NEIGHBORS;
-exports.GENERAL_GRAPH_COMMON_PROPERTIES = GENERAL_GRAPH_COMMON_PROPERTIES;
-exports.GENERAL_GRAPH_ECCENTRICITY = GENERAL_GRAPH_ECCENTRICITY;
-exports.GENERAL_GRAPH_BETWEENNESS = GENERAL_GRAPH_BETWEENNESS;
-exports.GENERAL_GRAPH_CLOSENESS = GENERAL_GRAPH_CLOSENESS;
-exports.GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY = GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY;
-exports.GENERAL_GRAPH_ABSOLUTE_BETWEENNESS = GENERAL_GRAPH_ABSOLUTE_BETWEENNESS;
-exports.GENERAL_GRAPH_ABSOLUTE_CLOSENESS = GENERAL_GRAPH_ABSOLUTE_CLOSENESS;
-exports.GENERAL_GRAPH_DIAMETER = GENERAL_GRAPH_DIAMETER;
-exports.GENERAL_GRAPH_RADIUS = GENERAL_GRAPH_RADIUS;
-exports.NOT_NULL = NOT_NULL;
-exports.FIRST_LIST = FIRST_LIST;
-exports.FIRST_DOCUMENT = FIRST_DOCUMENT;
-exports.PARSE_IDENTIFIER = PARSE_IDENTIFIER;
-exports.SKIPLIST_QUERY = SKIPLIST_QUERY;
-exports.HAS = HAS;
-exports.ATTRIBUTES = ATTRIBUTES;
-exports.UNSET = UNSET;
-exports.KEEP = KEEP;
-exports.MERGE = MERGE;
-exports.MERGE_RECURSIVE = MERGE_RECURSIVE;
-exports.TRANSLATE = TRANSLATE;
-exports.MATCHES = MATCHES;
-exports.PASSTHRU = PASSTHRU;
-exports.SLEEP = SLEEP;
-exports.CURRENT_DATABASE = CURRENT_DATABASE;
-exports.CURRENT_USER = CURRENT_USER;
-exports.FAIL = FAIL;
-exports.DATE_NOW = DATE_NOW;
-exports.DATE_TIMESTAMP = DATE_TIMESTAMP;
-exports.DATE_ISO8601 = DATE_ISO8601;
-exports.DATE_DAYOFWEEK = DATE_DAYOFWEEK;
-exports.DATE_YEAR = DATE_YEAR;
-exports.DATE_MONTH = DATE_MONTH;
-exports.DATE_DAY = DATE_DAY;
-exports.DATE_HOUR = DATE_HOUR;
-exports.DATE_MINUTE = DATE_MINUTE;
-exports.DATE_SECOND = DATE_SECOND;
-exports.DATE_MILLISECOND = DATE_MILLISECOND;
+
+exports.AQL_DOCUMENT = AQL_DOCUMENT;
+exports.AQL_COLLECTIONS = AQL_COLLECTIONS;
+exports.AQL_CONCAT = AQL_CONCAT;
+exports.AQL_CONCAT_SEPARATOR = AQL_CONCAT_SEPARATOR;
+exports.AQL_CHAR_LENGTH = AQL_CHAR_LENGTH;
+exports.AQL_LOWER = AQL_LOWER;
+exports.AQL_UPPER = AQL_UPPER;
+exports.AQL_SUBSTRING = AQL_SUBSTRING;
+exports.AQL_CONTAINS = AQL_CONTAINS;
+exports.AQL_LIKE = AQL_LIKE;
+exports.AQL_LEFT = AQL_LEFT;
+exports.AQL_RIGHT = AQL_RIGHT;
+exports.AQL_TRIM = AQL_TRIM;
+exports.AQL_FIND_FIRST = AQL_FIND_FIRST;
+exports.AQL_FIND_LAST = AQL_FIND_LAST;
+exports.AQL_TO_BOOL = AQL_TO_BOOL;
+exports.AQL_TO_NUMBER = AQL_TO_NUMBER;
+exports.AQL_TO_STRING = AQL_TO_STRING;
+exports.AQL_TO_LIST = AQL_TO_LIST;
+exports.AQL_IS_NULL = AQL_IS_NULL;
+exports.AQL_IS_BOOL = AQL_IS_BOOL;
+exports.AQL_IS_NUMBER = AQL_IS_NUMBER;
+exports.AQL_IS_STRING = AQL_IS_STRING;
+exports.AQL_IS_LIST = AQL_IS_LIST;
+exports.AQL_IS_DOCUMENT = AQL_IS_DOCUMENT;
+exports.AQL_FLOOR = AQL_FLOOR;
+exports.AQL_CEIL = AQL_CEIL;
+exports.AQL_ROUND = AQL_ROUND;
+exports.AQL_ABS = AQL_ABS;
+exports.AQL_RAND = AQL_RAND;
+exports.AQL_SQRT = AQL_SQRT;
+exports.AQL_LENGTH = AQL_LENGTH;
+exports.AQL_FIRST = AQL_FIRST;
+exports.AQL_LAST = AQL_LAST;
+exports.AQL_POSITION = AQL_POSITION;
+exports.AQL_NTH = AQL_NTH;
+exports.AQL_REVERSE = AQL_REVERSE;
+exports.AQL_RANGE = AQL_RANGE;
+exports.AQL_UNIQUE = AQL_UNIQUE;
+exports.AQL_UNION = AQL_UNION;
+exports.AQL_UNION_DISTINCT = AQL_UNION_DISTINCT;
+exports.AQL_SLICE = AQL_SLICE;
+exports.AQL_MINUS = AQL_MINUS;
+exports.AQL_INTERSECTION = AQL_INTERSECTION;
+exports.AQL_FLATTEN = AQL_FLATTEN;
+exports.AQL_MAX = AQL_MAX;
+exports.AQL_MIN = AQL_MIN;
+exports.AQL_SUM = AQL_SUM;
+exports.AQL_AVERAGE = AQL_AVERAGE;
+exports.AQL_MEDIAN = AQL_MEDIAN;
+exports.AQL_VARIANCE_SAMPLE = AQL_VARIANCE_SAMPLE;
+exports.AQL_VARIANCE_POPULATION = AQL_VARIANCE_POPULATION;
+exports.AQL_STDDEV_SAMPLE = AQL_STDDEV_SAMPLE;
+exports.AQL_STDDEV_POPULATION = AQL_STDDEV_POPULATION;
+exports.AQL_NEAR = AQL_NEAR;
+exports.AQL_WITHIN = AQL_WITHIN;
+exports.AQL_FULLTEXT = AQL_FULLTEXT;
+exports.AQL_PATHS = AQL_PATHS;
+exports.AQL_SHORTEST_PATH = AQL_SHORTEST_PATH;
+exports.AQL_TRAVERSAL = AQL_TRAVERSAL;
+exports.AQL_TRAVERSAL_TREE = AQL_TRAVERSAL_TREE;
+exports.AQL_EDGES = AQL_EDGES;
+exports.AQL_NEIGHBORS = AQL_NEIGHBORS;
+exports.AQL_GRAPH_TRAVERSAL = AQL_GRAPH_TRAVERSAL;
+exports.AQL_GRAPH_TRAVERSAL_TREE = AQL_GRAPH_TRAVERSAL_TREE;
+exports.AQL_GRAPH_EDGES = AQL_GRAPH_EDGES;
+exports.AQL_GRAPH_VERTICES = AQL_GRAPH_VERTICES;
+exports.AQL_GRAPH_PATHS = AQL_GRAPH_PATHS;
+exports.AQL_GRAPH_SHORTEST_PATH = AQL_GRAPH_SHORTEST_PATH;
+exports.AQL_GRAPH_DISTANCE_TO = AQL_GRAPH_DISTANCE_TO;
+exports.AQL_GRAPH_NEIGHBORS = AQL_GRAPH_NEIGHBORS;
+exports.AQL_GRAPH_COMMON_NEIGHBORS = AQL_GRAPH_COMMON_NEIGHBORS;
+exports.AQL_GRAPH_COMMON_PROPERTIES = AQL_GRAPH_COMMON_PROPERTIES;
+exports.AQL_GRAPH_ECCENTRICITY = AQL_GRAPH_ECCENTRICITY;
+exports.AQL_GRAPH_BETWEENNESS = AQL_GRAPH_BETWEENNESS;
+exports.AQL_GRAPH_CLOSENESS = AQL_GRAPH_CLOSENESS;
+exports.AQL_GRAPH_ABSOLUTE_ECCENTRICITY = AQL_GRAPH_ABSOLUTE_ECCENTRICITY;
+exports.AQL_GRAPH_ABSOLUTE_BETWEENNESS = AQL_GRAPH_ABSOLUTE_BETWEENNESS;
+exports.AQL_GRAPH_ABSOLUTE_CLOSENESS = AQL_GRAPH_ABSOLUTE_CLOSENESS;
+exports.AQL_GRAPH_DIAMETER = AQL_GRAPH_DIAMETER;
+exports.AQL_GRAPH_RADIUS = AQL_GRAPH_RADIUS;
+exports.AQL_NOT_NULL = AQL_NOT_NULL;
+exports.AQL_FIRST_LIST = AQL_FIRST_LIST;
+exports.AQL_FIRST_DOCUMENT = AQL_FIRST_DOCUMENT;
+exports.AQL_PARSE_IDENTIFIER = AQL_PARSE_IDENTIFIER;
+exports.AQL_SKIPLIST = AQL_SKIPLIST;
+exports.AQL_HAS = AQL_HAS;
+exports.AQL_ATTRIBUTES = AQL_ATTRIBUTES;
+exports.AQL_UNSET = AQL_UNSET;
+exports.AQL_KEEP = AQL_KEEP;
+exports.AQL_MERGE = AQL_MERGE;
+exports.AQL_MERGE_RECURSIVE = AQL_MERGE_RECURSIVE;
+exports.AQL_TRANSLATE = AQL_TRANSLATE;
+exports.AQL_MATCHES = AQL_MATCHES;
+exports.AQL_PASSTHRU = AQL_PASSTHRU;
+exports.AQL_SLEEP = AQL_SLEEP;
+exports.AQL_CURRENT_DATABASE = AQL_CURRENT_DATABASE;
+exports.AQL_CURRENT_USER = AQL_CURRENT_USER;
+exports.AQL_FAIL = AQL_FAIL;
+exports.AQL_DATE_NOW = AQL_DATE_NOW;
+exports.AQL_DATE_TIMESTAMP = AQL_DATE_TIMESTAMP;
+exports.AQL_DATE_ISO8601 = AQL_DATE_ISO8601;
+exports.AQL_DATE_DAYOFWEEK = AQL_DATE_DAYOFWEEK;
+exports.AQL_DATE_YEAR = AQL_DATE_YEAR;
+exports.AQL_DATE_MONTH = AQL_DATE_MONTH;
+exports.AQL_DATE_DAY = AQL_DATE_DAY;
+exports.AQL_DATE_HOUR = AQL_DATE_HOUR;
+exports.AQL_DATE_MINUTE = AQL_DATE_MINUTE;
+exports.AQL_DATE_SECOND = AQL_DATE_SECOND;
+exports.AQL_DATE_MILLISECOND = AQL_DATE_MILLISECOND;
 
 exports.reload = reloadUserFunctions;
 
