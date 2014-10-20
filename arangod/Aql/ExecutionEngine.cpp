@@ -512,7 +512,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
     // pick up the remote query ids
     std::unordered_map<std::string, std::string> queryIds;
-  
+
+    std::string error;
     int count = 0;
     int nrok = 0;
     for (count = (int) shardIds.size(); count > 0; count--) {
@@ -537,6 +538,13 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           std::cout << "DB SERVER ANSWERED WITH ERROR: " << res->answer->body() << "\n";
         }
       }
+      else {
+        error += std::string("Communication with shard '") + 
+          std::string(res->shardID) + 
+          std::string("' on cluster node '") +
+          std::string(res->serverID) +
+          std::string("' failed.");
+      }
       delete res;
     }
 
@@ -544,7 +552,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
     if (nrok != (int) shardIds.size()) {
       // TODO: provide sensible error message with more details
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "did not receive response from all shards");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, error);
     }
           
     return queryIds;
@@ -742,10 +750,10 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
     }
 
     TRI_ASSERT(root != nullptr);
+    engine->_root = root;
     root->initialize();
     root->initializeCursor(nullptr, 0);
 
-    engine->_root = root;
   
     return engine;
   }
