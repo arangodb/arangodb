@@ -33,6 +33,7 @@ var TRAVERSAL = require("org/arangodb/graph/traversal");
 var ArangoError = require("org/arangodb").ArangoError;
 var ShapedJson = INTERNAL.ShapedJson;
 var isCoordinator = require("org/arangodb/cluster").isCoordinator();
+var console = require("console");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -491,9 +492,14 @@ function FCALL_USER (name, parameters) {
   }
 
   if (UserFunctions[prefix].hasOwnProperty(name)) {
-    var result = UserFunctions[prefix][name].func.apply(null, parameters);
-
-    return FIX_VALUE(result);
+    try {
+      var result = UserFunctions[prefix][name].func.apply(null, parameters);
+      return FIX_VALUE(result);
+    }
+    catch (err) {
+      console.warn("AQL user function '%s' returned an exception. result is converted to null", name);
+      return null;
+    }
   }
 
   THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, NORMALIZE_FNAME(name));
