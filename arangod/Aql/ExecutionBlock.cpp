@@ -4289,9 +4289,11 @@ static void throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
       
       v = TRI_LookupArrayJson(json, "errorNum");
       if (TRI_IsNumberJson(v)) {
-        /* if we've got an error num, error has to be true. */
-        TRI_ASSERT(errorNum != TRI_ERROR_INTERNAL);
-        errorNum = static_cast<int>(v->_value._number);
+        if (static_cast<int>(v->_value._number) != TRI_ERROR_NO_ERROR) {
+          /* if we've got an error num, error has to be true. */
+          TRI_ASSERT(errorNum == TRI_ERROR_INTERNAL);
+          errorNum = static_cast<int>(v->_value._number);
+        }
       }
 
       v = TRI_LookupArrayJson(json, "errorMessage");
