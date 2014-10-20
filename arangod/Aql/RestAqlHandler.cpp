@@ -40,7 +40,6 @@
 #include "GeneralServer/GeneralServer.h"
 
 #include "VocBase/server.h"
-//#include "V8Server/v8-vocbaseprivate.h"
 
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionBlock.h"
@@ -114,7 +113,7 @@ void RestAqlHandler::createQueryFromJson () {
     return;
   }
 
-  std::cout << "createQueryFromJson" << queryJson.toString() << std::endl;
+  std::cout << "createQueryFromJson: " << queryJson.toString() << std::endl;
   
   Json plan;
   Json options;
