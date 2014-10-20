@@ -5860,6 +5860,7 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
 
   if (options.hasOwnProperty("neighborExamples") && typeof options.neighborExamples === "string") {
     options.neighborExamples = {_id : options.neighborExamples};
+  }
   var neighbors = [],
     params = TRAVERSAL_PARAMS(),
     factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
