@@ -357,6 +357,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           ExecutionNode const* current = (*it).nodes.front();
           ExecutionNode* previous = nullptr;
 
+          // TODO: fix instanciation here as in DBserver case
           while (current != nullptr) {
             auto clone = current->clone(newPlan, false, true);
             newPlan->registerNode(clone);
