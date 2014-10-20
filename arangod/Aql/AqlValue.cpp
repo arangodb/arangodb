@@ -494,13 +494,13 @@ Json AqlValue::toJson (triagens::arango::AqlTransaction* trx,
 
       if (TRI_IS_EDGE_MARKER(_marker)) {
         // _from
-        std::string from(trx->resolver()->getCollectionName(TRI_EXTRACT_MARKER_FROM_CID(_marker)));
+        std::string from(trx->resolver()->getCollectionNameCluster(TRI_EXTRACT_MARKER_FROM_CID(_marker)));
         from.push_back('/');
         from.append(TRI_EXTRACT_MARKER_FROM_KEY(_marker));
         json(TRI_VOC_ATTRIBUTE_FROM, Json(from));
         
         // _to
-        std::string to(trx->resolver()->getCollectionName(TRI_EXTRACT_MARKER_TO_CID(_marker)));
+        std::string to(trx->resolver()->getCollectionNameCluster(TRI_EXTRACT_MARKER_TO_CID(_marker)));
         to.push_back('/');
         to.append(TRI_EXTRACT_MARKER_TO_KEY(_marker));
         json(TRI_VOC_ATTRIBUTE_TO, Json(to));
@@ -605,13 +605,13 @@ Json AqlValue::extractArrayMember (triagens::arango::AqlTransaction* trx,
           return Json(TRI_UNKNOWN_MEM_ZONE, JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, rid));
         }
         else if (strcmp(name, TRI_VOC_ATTRIBUTE_FROM) == 0) {
-          std::string from(trx->resolver()->getCollectionName(TRI_EXTRACT_MARKER_FROM_CID(_marker)));
+          std::string from(trx->resolver()->getCollectionNameCluster(TRI_EXTRACT_MARKER_FROM_CID(_marker)));
           from.push_back('/');
           from.append(TRI_EXTRACT_MARKER_FROM_KEY(_marker));
           return Json(TRI_UNKNOWN_MEM_ZONE, from);
         }
         else if (strcmp(name, TRI_VOC_ATTRIBUTE_TO) == 0) {
-          std::string to(trx->resolver()->getCollectionName(TRI_EXTRACT_MARKER_TO_CID(_marker)));
+          std::string to(trx->resolver()->getCollectionNameCluster(TRI_EXTRACT_MARKER_TO_CID(_marker)));
           to.push_back('/');
           to.append(TRI_EXTRACT_MARKER_TO_KEY(_marker));
           return Json(TRI_UNKNOWN_MEM_ZONE, to);

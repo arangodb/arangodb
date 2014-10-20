@@ -235,19 +235,28 @@ int ExecutionBlock::initialize () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ExecutionBlock::shutdown () {
-  for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
-    int res = (*it)->shutdown();
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-  }
+  int ret = TRI_ERROR_NO_ERROR;
+  int res;
 
   for (auto it = _buffer.begin(); it != _buffer.end(); ++it) {
     delete *it;
   }
   _buffer.clear();
-  return TRI_ERROR_NO_ERROR;
+
+  for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
+    try {
+      res = (*it)->shutdown();
+    }
+    catch (...) {
+      ret = TRI_ERROR_INTERNAL;
+    }
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      ret = res;
+    }
+  }
+
+  return ret;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -288,7 +297,7 @@ int ExecutionBlock::resolve (char const* handle,
     std::string const name(handle, p - handle);
     cid = _trx->resolver()->getCollectionIdCluster(name);
   }
-  
+                              
   if (cid == 0) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
@@ -803,6 +812,7 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
     _allBoundsConstant(true) {
    
   std::vector<std::vector<RangeInfo>> const& orRanges = en->_ranges;
+  TRI_ASSERT(en->_index != nullptr);
 
   TRI_ASSERT(orRanges.size() == 1);  // OR expressions not yet implemented
 
@@ -888,7 +898,6 @@ int IndexRangeBlock::initialize () {
 }
 
 bool IndexRangeBlock::readIndex () {
-
   // This is either called from initialize if all bounds are constant,
   // in this case it is never called again. If there is at least one
   // variable bound, then readIndex is called once for every item coming
@@ -907,6 +916,8 @@ bool IndexRangeBlock::readIndex () {
 
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
   IndexOrCondition const* condition = &en->_ranges;
+  
+  TRI_ASSERT(en->_index != nullptr);
    
   std::unique_ptr<IndexOrCondition> newCondition;
 
@@ -4227,20 +4238,33 @@ size_t DistributeBlock::sendToClient (AqlValue val) {
 /// @brief local helper to throw an exception if a HTTP request went wrong
 ////////////////////////////////////////////////////////////////////////////////
 
-static void throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
+static bool throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
                                                bool isShutdown) {
   if (res->status == CL_COMM_TIMEOUT) {
+    std::string errorMessage;
+    errorMessage += std::string("Timeout in communication with shard '") + 
+      std::string(res->shardID) + 
+      std::string("' on cluster node '") +
+      std::string(res->serverID) +
+      std::string("' failed.");
+    
     // No reply, we give up:
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_TIMEOUT,
-           "timeout in cluster AQL operation");
+                                   errorMessage);
   }
 
   if (res->status == CL_COMM_ERROR) {
+    std::string errorMessage;
     // This could be a broken connection or an Http error:
     if (res->result == nullptr || ! res->result->isComplete()) {
       // there is no result
+      errorMessage += std::string("Empty result in communication with shard '") + 
+        std::string(res->shardID) + 
+        std::string("' on cluster node '") +
+        std::string(res->serverID) +
+        std::string("' failed.");
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_CONNECTION_LOST,
-             "lost connection within cluster");
+                                     errorMessage);
     }
       
     StringBuffer const& responseBodyBuf(res->result->getBody());
@@ -4248,20 +4272,39 @@ static void throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
  
     // extract error number and message from response
     int errorNum = TRI_ERROR_NO_ERROR;
-    std::string errorMessage;
     TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, responseBodyBuf.c_str());
 
+    if (JsonHelper::getBooleanValue(json, "error", true)) {
+      errorNum = TRI_ERROR_INTERNAL;
+
+      errorMessage += std::string("Error message received from shard '") + 
+        std::string(res->shardID) + 
+        std::string("' on cluster node '") +
+        std::string(res->serverID) +
+        std::string("': ");
+    }
+
     if (TRI_IsArrayJson(json)) {
-      TRI_json_t const* v;
-      
-      v = TRI_LookupArrayJson(json, "errorNum");
+      TRI_json_t const* v = TRI_LookupArrayJson(json, "errorNum");
+
       if (TRI_IsNumberJson(v)) {
-        errorNum = static_cast<int>(v->_value._number);
+        if (static_cast<int>(v->_value._number) != TRI_ERROR_NO_ERROR) {
+          /* if we've got an error num, error has to be true. */
+          TRI_ASSERT(errorNum == TRI_ERROR_INTERNAL);
+          errorNum = static_cast<int>(v->_value._number);
+        }
       }
+
       v = TRI_LookupArrayJson(json, "errorMessage");
       if (TRI_IsStringJson(v)) {
-        errorMessage = std::string(v->_value._string.data, v->_value._string.length - 1);
+        errorMessage += std::string(v->_value._string.data, v->_value._string.length - 1);
       }
+      else {
+        errorMessage += std::string("(No valid error in response)");
+      }
+    }
+    else {
+      errorMessage += std::string("(No valid response)");
     }
 
     if (json != nullptr) {
@@ -4271,9 +4314,9 @@ static void throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
     if (isShutdown && 
         errorNum == TRI_ERROR_QUERY_NOT_FOUND) {
       // this error may happen on shutdown and is thus tolerated
-      return;
+      // pass the info to the caller who can opt to ignore this error
+      return true;
     }
-
 
     // In this case a proper HTTP error was reported by the DBserver,
     if (errorNum > 0 && ! errorMessage.empty()) {
@@ -4283,6 +4326,8 @@ static void throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
     // default error
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
   }
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4406,7 +4451,10 @@ int RemoteBlock::shutdown () {
   res.reset(sendRequest(rest::HttpRequest::HTTP_REQUEST_PUT,
                         "/_api/aql/shutdown/",
                         string()));
-  throwExceptionAfterBadSyncRequest(res.get(), true);
+  if (throwExceptionAfterBadSyncRequest(res.get(), true)) {
+    // artificially ignore error in case query was not found during shutdown
+    return TRI_ERROR_NO_ERROR;
+  }
 
   // If we get here, then res->result is the response which will be
   // a serialized AqlItemBlock:
@@ -4414,6 +4462,7 @@ int RemoteBlock::shutdown () {
   Json responseBodyJson(TRI_UNKNOWN_MEM_ZONE,
                         TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
                                        responseBodyBuf.begin()));
+
   return JsonHelper::getNumericValue<int>
               (responseBodyJson.json(), "code", TRI_ERROR_INTERNAL);
 }

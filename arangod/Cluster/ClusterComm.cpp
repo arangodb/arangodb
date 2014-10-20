@@ -338,7 +338,7 @@ ClusterCommResult* ClusterComm::syncRequest (
 
       res->result = client->request(reqtype, path, body.c_str(), body.size(),
                                     headersCopy);
-      if (! res->result->isComplete()) {
+      if (res->result == nullptr || ! res->result->isComplete()) {
         cm->brokenConnection(connection);
         if (client->getErrorMessage() == "Request timeout reached") {
           res->status = CL_COMM_TIMEOUT;
@@ -723,7 +723,7 @@ void ClusterComm::asyncAnswer (string& coordinatorHeader,
   httpclient::SimpleHttpResult* result =
                  client->request(rest::HttpRequest::HTTP_REQUEST_PUT,
                                  "/_api/shard-comm", body, len, headers);
-  if (! result->isComplete()) {
+  if (result == nullptr || ! result->isComplete()) {
     cm->brokenConnection(connection);
   }
   else {
@@ -1011,17 +1011,17 @@ void ClusterCommThread::run () {
 
               // We add this result to the operation struct without acquiring
               // a lock, since we know that only we do such a thing:
-              if (0 != op->body) {
+              if (nullptr != op->body) {
                 op->result = client->request(op->reqtype, op->path,
                              op->body->c_str(), op->body->size(),
                              *(op->headerFields));
               }
               else {
                 op->result = client->request(op->reqtype, op->path,
-                             NULL, 0, *(op->headerFields));
+                             nullptr, 0, *(op->headerFields));
               }
 
-              if (! op->result->isComplete()) {
+              if (op->result == nullptr || ! op->result->isComplete()) {
                 cm->brokenConnection(connection);
                 if (client->getErrorMessage() == "Request timeout reached") {
                   op->status = CL_COMM_TIMEOUT;
@@ -1042,7 +1042,7 @@ void ClusterCommThread::run () {
         }
       }
 
-      if (!cc->moveFromSendToReceived(op->operationID)) {
+      if (! cc->moveFromSendToReceived(op->operationID)) {
         // It was dropped in the meantime, so forget about it:
         delete op;
       }
