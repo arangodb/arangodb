@@ -344,29 +344,6 @@ void RestAqlHandler::createQueryFromString () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief DELETE method for /_api/aql/<queryId>
-/// The query specified by <queryId> is deleted.
-////////////////////////////////////////////////////////////////////////////////
-
-void RestAqlHandler::deleteQuery (std::string const& idString) {
-  // the DELETE verb
-  Query* query = nullptr;
-  if (findQuery(idString, query)) {
-    return;
-  }
-
-  TRI_ASSERT(_qId > 0);
-  _queryRegistry->destroy(_vocbase, _qId);
-
-  _response = createResponse(triagens::rest::HttpResponse::OK);
-  _response->setContentType("application/json; charset=utf-8");
-  Json answerBody(Json::Array, 2);
-  answerBody("error", Json(false))
-            ("queryId", Json(idString));
-  _response->body().appendText(answerBody.toString());
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief PUT method for /_api/aql/<operation>/<queryId>, this is using 
 /// the part of the cursor API with side effects.
 /// <operation>: can be "getSome" or "skip" or "initializeCursor" or 
@@ -624,15 +601,6 @@ triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
       }
       break;
     }
-    case HttpRequest::HTTP_REQUEST_DELETE: {
-      if (suffix.size() != 1) {
-        generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-      }
-      else {
-        deleteQuery(suffix[0]);
-      }
-      break;
-    }
     case HttpRequest::HTTP_REQUEST_PUT: {
       if (suffix.size() != 2) {
         generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
@@ -651,6 +619,7 @@ triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
       }
       break;
     }
+    case HttpRequest::HTTP_REQUEST_DELETE:
     case HttpRequest::HTTP_REQUEST_HEAD:
     case HttpRequest::HTTP_REQUEST_PATCH:
     case HttpRequest::HTTP_REQUEST_OPTIONS:
