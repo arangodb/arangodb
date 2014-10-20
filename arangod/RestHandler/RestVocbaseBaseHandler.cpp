@@ -270,7 +270,7 @@ void RestVocbaseBaseHandler::generateNotModified (TRI_voc_rid_t rid) {
 /// @brief generates next entry from a result set
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateDocument (SingleCollectionReadOnlyTransaction<RestTransactionContext>& trx,
+void RestVocbaseBaseHandler::generateDocument (SingleCollectionReadOnlyTransaction& trx,
                                                TRI_voc_cid_t cid,
                                                TRI_doc_mptr_copy_t const& mptr,
                                                TRI_shaper_t* shaper,

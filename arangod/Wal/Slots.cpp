@@ -416,6 +416,14 @@ SyncRegion Slots::getSyncRegion () {
     TRI_ASSERT(slot != nullptr);
 
     if (! slot->isReturned()) {
+      // found a slot that is not yet returned
+      // if it belongs to another logfile, we can seal the logfile we created
+      // the region for
+      auto otherId = slot->logfileId();
+      if (region.logfileId != 0 && otherId != 0 && 
+          otherId != region.logfileId) {
+        region.canSeal = true;
+      }
       break;
     }
 
@@ -437,6 +445,7 @@ SyncRegion Slots::getSyncRegion () {
       if (slot->logfileId() != region.logfileId) {
         // got a different logfile
         region.checkMore = true;
+        region.canSeal   = true;
         break;
       }
 

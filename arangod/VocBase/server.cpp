@@ -755,6 +755,28 @@ static int OpenDatabases (TRI_server_t* server,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief stop the replication appliers in all databases
+////////////////////////////////////////////////////////////////////////////////
+
+static void StopReplicationAppliers (TRI_server_t* server) {
+  DatabaseWriteLocker locker(&server->_databasesLock);
+
+  size_t n = server->_databases._nrAlloc;
+
+  for (size_t i = 0; i < n; ++i) {
+    TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_databases._table[i]);
+
+    if (vocbase != nullptr) {
+      TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
+
+      if (vocbase->_replicationApplier != nullptr) {
+        TRI_StopReplicationApplier(vocbase->_replicationApplier, false);
+      }
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief close all opened databases
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1981,6 +2003,14 @@ int TRI_StopServer (TRI_server_t* server) {
   TRI_DestroyLockFile(server->_lockFilename);
 
   return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stop the replication appliers
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_StopReplicationAppliersServer (TRI_server_t* server) {
+  StopReplicationAppliers(server);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -712,7 +712,7 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
     int res = TRI_ERROR_INTERNAL;
 
     {
-      SingleCollectionWriteTransaction<RestTransactionContext, UINT64_MAX> trx(_vocbase, cid);
+      SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, cid);
 
       res = trx.begin();
 

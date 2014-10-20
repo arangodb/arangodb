@@ -739,7 +739,7 @@ int TRI_PushBack3ListJson (TRI_memory_zone_t* zone, TRI_json_t* list, TRI_json_t
 /// @brief looks up a value in a json list
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_LookupListJson (const TRI_json_t* const object, const size_t pos) {
+TRI_json_t* TRI_LookupListJson (TRI_json_t const* object, size_t pos) {
   size_t n;
 
   TRI_ASSERT(object->_type == TRI_JSON_LIST);
@@ -1323,6 +1323,89 @@ bool TRI_EqualJsonJson (TRI_json_t* left, TRI_json_t* right) {
   return false; // stops the vc++ compiler from complaining
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts a json object into a number
+////////////////////////////////////////////////////////////////////////////////
+
+int64_t TRI_ToInt64Json (TRI_json_t* json) {
+  switch (json->_type) {
+    case TRI_JSON_UNUSED:
+    case TRI_JSON_NULL:
+      return 0;
+    case TRI_JSON_BOOLEAN:
+      return (json->_value._boolean ? 1 : 0);
+    case TRI_JSON_NUMBER:
+      return static_cast<int64_t>(json->_value._number);
+    case TRI_JSON_STRING:
+    case TRI_JSON_STRING_REFERENCE:
+      try {
+        // try converting string to number
+        double v = std::stod(json->_value._string.data);
+        return static_cast<int64_t>(v);
+      }
+      catch (...) {
+        // conversion failed
+      }
+      break;
+    case TRI_JSON_LIST: {
+      size_t const n = TRI_LengthListJson(json);
+      if (n == 0) {
+        return 0;
+      }
+      else if (n == 1) {
+        return TRI_ToInt64Json(TRI_LookupListJson(json, 0));
+      }
+      break;
+    }
+    case TRI_JSON_ARRAY:
+      break;
+  }
+  
+  // TODO: must convert to null here
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts a json object into a number
+////////////////////////////////////////////////////////////////////////////////
+
+double TRI_ToDoubleJson (TRI_json_t* json) {
+  switch (json->_type) {
+    case TRI_JSON_UNUSED:
+    case TRI_JSON_NULL:
+      return 0.0;
+    case TRI_JSON_BOOLEAN:
+      return (json->_value._boolean ? 1.0 : 0.0);
+    case TRI_JSON_NUMBER:
+      return json->_value._number;
+    case TRI_JSON_STRING:
+    case TRI_JSON_STRING_REFERENCE:
+      try {
+        // try converting string to number
+        double v = std::stod(json->_value._string.data);
+        return v;
+      }
+      catch (...) {
+        // conversion failed
+      }
+      break;
+    case TRI_JSON_LIST: {
+      size_t const n = TRI_LengthListJson(json);
+      if (n == 0) {
+        return 0.0;
+      }
+      else if (n == 1) {
+        return TRI_ToDoubleJson(TRI_LookupListJson(json, 0));
+      }
+      break;
+    }
+    case TRI_JSON_ARRAY:
+      break;
+  }
+
+  // TODO: must convert to null here
+  return 0.0;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

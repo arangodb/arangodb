@@ -78,7 +78,7 @@ var optiondoku = [
 ////////////////////////////////////////////////////////////////////////////////
 
 var _ = require("underscore");
-
+var cleanupDirectories = [];
 var testFuncs = {'all': function(){}};
 var print = require("internal").print;
 var time = require("internal").time;
@@ -163,6 +163,41 @@ function printUsage () {
   }
 }
 
+function filterTestcaseByOptions (testname, options, whichFilter)
+{
+  if ((testname.indexOf("-cluster") !== -1) && (options.cluster === false)) {
+    whichFilter.filter = 'cluster';
+    return false;
+  }
+
+  if (testname.indexOf("-noncluster") !== -1 && (options.cluster === true)) {
+    whichFilter.filter = 'noncluster';
+    return false;
+  }
+
+  if (testname.indexOf("-timecritical") !== -1 && (options.skipTimeCritical === true)) {
+    whichFilter.filter = 'timecritical';
+    return false;
+  }
+
+  if (testname.indexOf("-geo") !== -1 && options.skipGeo) {
+    whichFilter.filter = 'geo';
+    return false;
+  }
+
+  if (testname.indexOf("-disabled") !== -1) {
+    whichFilter.filter = 'disabled';
+    return false;
+  }
+
+  if (testname.indexOf("replication") !== -1) {
+    whichFilter.filter = 'replication';
+    return false;
+  }
+
+  return true;
+}
+
 function findTopDir () {
   var topDir = fs.normalize(fs.makeAbsolute("."));
   if (! fs.exists("3rdParty") && ! fs.exists("arangod") &&
@@ -207,7 +242,9 @@ function startInstance (protocol, options, addArgs, testname) {
   var topDir = findTopDir();
   var instanceInfo = {};
   instanceInfo.topDir = topDir;
-  var tmpDataDir = fs.getTempFile();
+  var tmpDataDir = '/var/' + fs.getTempFile();
+
+  instanceInfo.flatTmpDataDir = tmpDataDir;
 
   tmpDataDir += '/' + testname + '/';
   print(tmpDataDir);
@@ -293,20 +330,45 @@ function startInstance (protocol, options, addArgs, testname) {
       break;
     }
   }
-
   instanceInfo.endpoint = endpoint;
   instanceInfo.url = url;
 
   return instanceInfo;
 }
 
-function checkInstanceAlive(instanceInfo) {  
-  var res = statusExternal(instanceInfo.pid, false);
-  var ret = res.status === "RUNNING";
-  if (! ret) {
-    instanceInfo.exitStatus = res;
+
+function copy (src, dst) {
+  var fs = require("fs");
+  var buffer = fs.readBuffer(src);
+
+  fs.write(dst, buffer);
+}
+
+function checkInstanceAlive(instanceInfo, options) {  
+  if (options.cluster === false) {
+    var res = statusExternal(instanceInfo.pid, false);
+    var ret = res.status === "RUNNING";
+    if (! ret) {
+      print("ArangoD with PID " + instanceInfo.pid.pid + " gone:");
+      instanceInfo.exitStatus = res;
+      print(instanceInfo);
+      if (res.hasOwnProperty('signal') && 
+          (res.signal === 11))
+      {
+        var storeArangodPath = "/var/tmp/arangod_" + instanceInfo.pid.pid;
+        print("Core dump written; copying arangod to " + 
+              storeArangodPath + " for later analysis.");
+        res.gdbHint = "Run debugger with 'gdb " + 
+          storeArangodPath + 
+          " /var/tmp/core*" + instanceInfo.pid.pid + "*'";
+        copy("bin/arangod", storeArangodPath);
+      }
+    }
+    return ret;
   }
-  return ret;
+  else {
+    return instanceInfo.kickstarter.isHealthy();
+  }
 }
 
 function shutdownInstance (instanceInfo, options) {
@@ -320,16 +382,34 @@ function shutdownInstance (instanceInfo, options) {
     if (typeof(instanceInfo.exitStatus) === 'undefined') {
       download(instanceInfo.url+"/_admin/shutdown","",
                makeAuthorisationHeaders(options));
-      wait(10);
-      killExternal(instanceInfo.pid);
+
+      if (typeof(options.valgrind) === 'string') {
+        print("Waiting for server shut down");
+        var res = statusExternal(instanceInfo.pid, true);
+        print("Server gone: ");
+        print(res);
+      }
+      else {
+        wait(10);
+        killExternal(instanceInfo.pid);
+      }
     }
     else {
       print("Server already dead, doing nothing.");
     }
     
   }
+  cleanupDirectories = cleanupDirectories.concat([instanceInfo.tmpDataDir, instanceInfo.flatTmpDataDir]);
+}
+
+function cleanupDBDirectories(options) {
   if (options.cleanup) {
-    fs.removeDirectoryRecursive(instanceInfo.tmpDataDir);
+    for (var i in cleanupDirectories) {
+      if (cleanupDirectories.hasOwnProperty(i)) {
+        fs.removeDirectoryRecursive(cleanupDirectories[i], true);
+        // print("deleted " + cleanupDirectories[i]);
+      }
+    }
   }
 }
 
@@ -531,21 +611,19 @@ function performTests(options, testList, testname) {
   var i;
   var te;
   var continueTesting = true;
+  var filtered = {};
 
   for (i = 0; i < testList.length; i++) {
     te = testList[i];
-    print("\nTrying",te,"...");
-    if ((te.indexOf("-cluster") === -1 || options.cluster) &&
-        (te.indexOf("-noncluster") === -1 || options.cluster === false) &&
-        (te.indexOf("-timecritical") === -1 || options.skipTimeCritical === false) &&
-        (te.indexOf("-disabled") === -1)) {
-
+    if (filterTestcaseByOptions(te, options, filtered)) {
       if (!continueTesting) {
-        print("Skipping, server is gone.");
+        print("Skipping, " + te + " server is gone.");
         results[te] = {status: false, message: instanceInfo.exitStatus};
+        instanceInfo.exitStatus = "server is gone.";
         continue;
       }
 
+      print("\nTrying",te,"...");
       var r = runThere(options, instanceInfo, te);
       if (r.hasOwnProperty('status')) {
         results[te] = r;
@@ -556,10 +634,10 @@ function performTests(options, testList, testname) {
       if (r !== true && !options.force) {
         break;
       }
-      continueTesting = checkInstanceAlive(instanceInfo);
+      continueTesting = checkInstanceAlive(instanceInfo, options);
     }
     else {
-      print("Skipped because of cluster/non-cluster/timecritical or disabled.");
+      print("Skipped " + te + " because of " + filtered.filter);
     }
   }
   print("Shutting down...");
@@ -568,13 +646,13 @@ function performTests(options, testList, testname) {
   return results;
 }
 
-function single_usage(testsuite) {
+function single_usage (testsuite, list) {
   print("single_" + testsuite + ": No test specified!\n Available tests:");
   var filelist = "";
-  var list = fs.list(makePath("js/server/tests"));
+
   for (var fileNo in list) {
     if (/\.js$/.test(list[fileNo])) {
-      filelist += " js/server/tests/"+list[fileNo];
+      filelist += " " + list[fileNo];
     }
   }
   print(filelist);
@@ -585,9 +663,9 @@ function single_usage(testsuite) {
 
 
 testFuncs.single_server = function (options) {
-  var instanceInfo = startInstance("tcp", options, [], "single");
   var result = { };
   if (options.test !== undefined) {
+    var instanceInfo = startInstance("tcp", options, [], "single_server");
     var te = options.test;
     print("\nTrying",te,"on server...");
     result = {};
@@ -598,32 +676,26 @@ testFuncs.single_server = function (options) {
     return result;
   }
   else {
-    return single_usage("server");
+    findTests();
+    return single_usage("server", tests_shell_server);
   }
 };
 
 testFuncs.single_client = function (options) {
-  var instanceInfo = startInstance("tcp", options, [], "single");
   var result = { };
   if (options.test !== undefined) {
+    var instanceInfo = startInstance("tcp", options, [], "single_client");
     var te = options.test;
-    var topDir = findTopDir();
-    var args = makeTestingArgsClient(options);
-    args.push("--server.endpoint");
-    args.push(instanceInfo.endpoint);
-    args.push("--javascript.unit-tests");
-    args.push(fs.join(topDir,te));
-    print("\nTrying",te,"on client...");
-    var arangosh = fs.join("bin","arangosh");
-    result = {};
-    result[te] = executeAndWait(arangosh, args);
+    print("\nTrying ",te," on client...");
+    result[te] = runInArangosh(options, instanceInfo, te);
     print("Shutting down...");
     shutdownInstance(instanceInfo,options);
     print("done.");
     return result;
   }
   else {
-    return single_usage("client");
+    findTests();
+    return single_usage("client", tests_shell_client);
   }
 };
 
@@ -631,19 +703,19 @@ testFuncs.shell_server_perf = function(options) {
   findTests();
   return performTests(options,
                       tests_shell_server_aql_performance,
-                      'tests_shell_server_aql_performance');
+                      'shell_server_perf');
 };
 
 testFuncs.shell_server = function (options) {
   findTests();
-  return performTests(options, tests_shell_server, 'tests_shell_server');
+  return performTests(options, tests_shell_server, 'shell_server');
 };
 
 testFuncs.shell_server_only = function (options) {
   findTests();
   return performTests(options,
                       tests_shell_server_only,
-                      'tests_shell_server_only');
+                      'shell_server_only');
 };
 
 testFuncs.shell_server_ahuacatl = function(options) {
@@ -652,12 +724,14 @@ testFuncs.shell_server_ahuacatl = function(options) {
     if (options.skipRanges) {
       return performTests(options,
                           tests_shell_server_ahuacatl,
-                          'tests_shell_server_ahuacatl');
+                          'shell_server_ahuacatl_skipranges');
     }
-    return performTests(options,
-                        tests_shell_server_ahuacatl.concat(
-                          tests_shell_server_ahuacatl_extended),
-                        'tests_shell_server_ahuacatl_extended');
+    else {
+      return performTests(options,
+                          tests_shell_server_ahuacatl.concat(
+                            tests_shell_server_ahuacatl_extended),
+                          'shell_server_ahuacatl');
+    }
   }
   return "skipped";
 };
@@ -668,12 +742,14 @@ testFuncs.shell_server_aql = function(options) {
     if (options.skipRanges) {
       return performTests(options,
                           tests_shell_server_aql,
-                          'tests_shell_server_aql');
+                          'shell_server_aql_skipranges');
     }
-    return performTests(options,
-                        tests_shell_server_aql.concat(
-                          tests_shell_server_aql_extended),
-                        'tests_shell_server_aql_extended');
+    else {
+      return performTests(options,
+                          tests_shell_server_aql.concat(
+                            tests_shell_server_aql_extended),
+                          'shell_server_aql');
+    }
   }
   return "skipped";
 };
@@ -685,20 +761,20 @@ testFuncs.shell_client = function(options) {
   var i;
   var te;
   var continueTesting = true;
+  var filtered = {};
 
   for (i = 0; i < tests_shell_client.length; i++) {
     te = tests_shell_client[i];
-    print("\nTrying",te,"...");
-    if ((te.indexOf("-cluster") === -1 || options.cluster) &&
-        (te.indexOf("-noncluster") === -1 || options.cluster === false) &&
-        (te.indexOf("-timecritical") === -1 || options.skipTimeCritical === false) &&
-        (te.indexOf("-disabled") === -1)) {
+    if (filterTestcaseByOptions(te, options, filtered)) {
 
       if (!continueTesting) {
-        print("Skipping, server is gone.");
+        print("Skipping, " + te + " server is gone.");
         results[te] = {status: false, message: instanceInfo.exitStatus};
+        instanceInfo.exitStatus = "server is gone.";
         continue;
       }
+
+      print("\nTrying",te,"...");
 
       var r = runInArangosh(options, instanceInfo, te);
       results[te] = r;
@@ -706,10 +782,10 @@ testFuncs.shell_client = function(options) {
         break;
       }
 
-      continueTesting = checkInstanceAlive(instanceInfo);
+      continueTesting = checkInstanceAlive(instanceInfo, options);
     }
     else {
-      print("Skipped because of cluster/non-cluster/timecritical.");
+      print("Skipped " + te + " because of " + filtered.filter);
     }
   }
   print("Shutting down...");
@@ -761,10 +837,10 @@ testFuncs.boost = function (options) {
 function rubyTests (options, ssl) {
   var instanceInfo;
   if (ssl) {
-    instanceInfo = startInstance("ssl", options, [], "rubyTestsSsl");
+    instanceInfo = startInstance("ssl", options, [], "ssl_server");
   }
   else {
-    instanceInfo = startInstance("tcp", options, [], "rubyTestsTcp");
+    instanceInfo = startInstance("tcp", options, [], "http_server");
   }
 
   var tmpname = fs.getTempFile()+".rb";
@@ -786,40 +862,39 @@ function rubyTests (options, ssl) {
   catch (err) {
   }
   var files = fs.list(fs.join("UnitTests","HttpInterface"));
+  var filtered = {};
   var result = {};
   var args;
   var i;
   var continueTesting = true;
 
   for (i = 0; i < files.length; i++) {
-    var n = files[i];
-    if (n.substr(0,4) === "api-" && n.substr(-3) === ".rb") {
-      print("Considering",n,"...");
-      if ((n.indexOf("-cluster") === -1 || options.cluster) &&
-          (n.indexOf("-noncluster") === -1 || options.cluster === false) &&
-          (n.indexOf("-timecritical") === -1 || options.skipTimeCritical === false) &&
-          (n.indexOf("-disabled") === -1) && 
-          n.indexOf("replication") === -1) {
+    var te = files[i];
+    if (te.substr(0,4) === "api-" && te.substr(-3) === ".rb") {
+      if (filterTestcaseByOptions(te, options, filtered)) {
+        
         args = ["--color", "-I", fs.join("UnitTests","HttpInterface"),
                 "--format", "d", "--require", tmpname,
-                fs.join("UnitTests","HttpInterface",n)];
+                fs.join("UnitTests","HttpInterface", te)];
 
         if (!continueTesting) {
-          print("Skipping, server is gone.");
-          result[n] = {status: false, message: instanceInfo.exitStatus};
+          print("Skipping " + te + " server is gone.");
+          result[te] = {status: false, message: instanceInfo.exitStatus};
+          instanceInfo.exitStatus = "server is gone.";
           continue;
         }
+        print("\nTrying ",te,"...");
 
-        result[n] = executeAndWait("rspec", args);
-        if (result[n].status === false && !options.force) {
+        result[te] = executeAndWait("rspec", args);
+        if (result[te].status === false && !options.force) {
           break;
         }
 
-        continueTesting = checkInstanceAlive(instanceInfo);
+        continueTesting = checkInstanceAlive(instanceInfo, options);
 
       }
       else {
-        print("Skipped because of cluster/non-cluster/timecritical or replication.");
+        print("Skipped " + te + " because of " + filtered.filter);
       }
     }
   }
@@ -1026,7 +1101,7 @@ testFuncs.dump = function (options) {
     cluster = "";
   }
   print("dump tests...");
-  var instanceInfo = startInstance("tcp",options, [], "dump_test");
+  var instanceInfo = startInstance("tcp",options, [], "dump");
   var results = {};
   results.setup = runInArangosh(options, instanceInfo,
        makePath("js/server/tests/dump-setup"+cluster+".js"));
@@ -1070,7 +1145,7 @@ var benchTodo = [
 
 testFuncs.arangob = function (options) {
   print("arangob tests...");
-  var instanceInfo = startInstance("tcp",options, [], "arangobench");
+  var instanceInfo = startInstance("tcp",options, [], "arangob");
   var results = {};
   var i,r;
   var continueTesting = true;
@@ -1082,15 +1157,16 @@ testFuncs.arangob = function (options) {
          benchTodo[i].indexOf("multitrx") === -1)) {
 
       if (!continueTesting) {
-        print("Skipping, server is gone.");
+        print("Skipping " + benchTodo[i] + ", server is gone.");
         results[i] = {status: false, message: instanceInfo.exitStatus};
+        instanceInfo.exitStatus = "server is gone.";
         continue;
       }
 
       r = runArangoBenchmark(options, instanceInfo, benchTodo[i]);
       results[i] = r;
 
-      continueTesting = checkInstanceAlive(instanceInfo);
+      continueTesting = checkInstanceAlive(instanceInfo, options);
 
       if (r !== 0 && !options.force) {
         break;
@@ -1107,7 +1183,7 @@ testFuncs.authentication = function (options) {
   print("Authentication tests...");
   var instanceInfo = startInstance("tcp", options,
                                    ["--server.disable-authentication", "false"],
-                                   "authtest");
+                                   "authentication");
   var results = {};
   results.auth = runInArangosh(options, instanceInfo,
                                fs.join("js","client","tests","auth.js"));
@@ -1134,7 +1210,7 @@ testFuncs.authentication_parameters = function (options) {
   var instanceInfo = startInstance("tcp", options,
                        ["--server.disable-authentication", "false",
                         "--server.authenticate-system-only", "false"],
-                       "authparams");
+                       "authentication_parameters_1");
   var r;
   var i;
   var expectAuthFullRC = [401, 401, 401, 401, 401, 401, 401];
@@ -1146,8 +1222,9 @@ testFuncs.authentication_parameters = function (options) {
   for (i = 0; i < urlsTodo.length; i++) {
 
     if (!continueTesting) {
-      print("Skipping, server is gone.");
+      print("Skipping " + urlsTodo[i] + ", server is gone.");
       results.auth_full[urlsTodo[i]] = {status: false, message: instanceInfo.exitStatus};
+      instanceInfo.exitStatus = "server is gone.";
       all_ok = false;
       continue;
     }
@@ -1163,7 +1240,7 @@ testFuncs.authentication_parameters = function (options) {
       };
       all_ok = false;
     }
-    continueTesting = checkInstanceAlive(instanceInfo);
+    continueTesting = checkInstanceAlive(instanceInfo, options);
   }
   results.auth_full.status = all_ok;
 
@@ -1175,15 +1252,16 @@ testFuncs.authentication_parameters = function (options) {
   instanceInfo = startInstance("tcp", options,
                    ["--server.disable-authentication", "false",
                     "--server.authenticate-system-only", "true"],
-                   "authparams2");
+                   "authentication_parameters_2");
   var expectAuthSystemRC = [401, 401, 401, 401, 401, 404, 404];
   all_ok = true;
   print("Starting System test");
   results.auth_system = {};
   for (i = 0;i < urlsTodo.length;i++) {
     if (!continueTesting) {
-      print("Skipping, server is gone.");
+      print("Skipping " + urlsTodo[i] + " server is gone.");
       results.auth_full[urlsTodo[i]] = {status: false, message: instanceInfo.exitStatus};
+      instanceInfo.exitStatus = "server is gone.";
       all_ok = false;
       continue;
     }
@@ -1198,7 +1276,7 @@ testFuncs.authentication_parameters = function (options) {
       };
       all_ok = false;
     }
-    continueTesting = checkInstanceAlive(instanceInfo);
+    continueTesting = checkInstanceAlive(instanceInfo, options);
   }
   results.auth_system.status = all_ok;
 
@@ -1209,7 +1287,7 @@ testFuncs.authentication_parameters = function (options) {
   instanceInfo = startInstance("tcp", options,
                    ["--server.disable-authentication", "true",
                     "--server.authenticate-system-only", "true"],
-                   "authparams3");
+                   "authentication_parameters_3");
   var expectAuthNoneRC = [404, 404, 200, 301, 301, 404, 404];
   results.auth_none = {};
   all_ok = true;
@@ -1217,8 +1295,9 @@ testFuncs.authentication_parameters = function (options) {
   print("Starting None test");
   for (i = 0;i < urlsTodo.length;i++) {
     if (!continueTesting) {
-      print("Skipping, server is gone.");
+      print("Skipping " + urlsTodo[i] + " server is gone.");
       results.auth_full[urlsTodo[i]] = {status: false, message: instanceInfo.exitStatus};
+      instanceInfo.exitStatus = "server is gone.";
       all_ok = false;
       continue;
     }
@@ -1234,7 +1313,7 @@ testFuncs.authentication_parameters = function (options) {
       };
       all_ok = false;
     }
-    continueTesting = checkInstanceAlive(instanceInfo);
+    continueTesting = checkInstanceAlive(instanceInfo, options);
   }
   results.auth_none.status = all_ok;
 
@@ -1338,6 +1417,7 @@ function UnitTest (which, options) {
       results.all_ok = allok;
     }
     results.all_ok = allok;
+    cleanupDBDirectories(options);
     if (jsonReply === true ) {
       return results;
     }
@@ -1365,6 +1445,7 @@ function UnitTest (which, options) {
     }
     r.ok = ok;
     results.all_ok = ok;
+    cleanupDBDirectories(options);
     if (jsonReply === true ) {
       return results;
     }

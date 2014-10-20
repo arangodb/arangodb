@@ -514,6 +514,33 @@ bool TRI_IsContainedString (char const* full, char const* part) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief tests if second string is contained in the first, byte-safe
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_IsContainedMemory (char const* full, 
+                             size_t fullLength, 
+                             char const* part,
+                             size_t partLength) {
+  if (fullLength == 0 || partLength == 0 || fullLength < partLength) {
+    return nullptr;
+  }
+
+  if (partLength == 1) {
+    return static_cast<char*>(const_cast<void*>(memchr(static_cast<void const*>(full), (int) *part, fullLength)));
+  }
+
+  char const* end = full + fullLength - partLength;
+
+  for (char const* p = full; p <= end; ++p) {
+    if (*p == *part && memcmp(static_cast<void const*>(p), static_cast<void const*>(part), partLength) == 0) {
+      return const_cast<char*>(p);
+    }
+  }
+
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief duplicates a string, without using a memory zone
 ////////////////////////////////////////////////////////////////////////////////
 

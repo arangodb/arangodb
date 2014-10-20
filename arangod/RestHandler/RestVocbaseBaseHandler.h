@@ -182,7 +182,7 @@ namespace triagens {
 /// @brief generates message for a saved document
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateSaved (triagens::arango::SingleCollectionWriteTransaction<RestTransactionContext, 1>& trx,
+        void generateSaved (triagens::arango::SingleCollectionWriteTransaction<1>& trx,
                             TRI_voc_cid_t cid,
                             TRI_doc_mptr_copy_t const& mptr) {
           TRI_ASSERT(mptr.getDataPtr() != nullptr); // PROTECTED by trx here
@@ -202,7 +202,7 @@ namespace triagens {
 /// @brief generates deleted message
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateDeleted (triagens::arango::SingleCollectionWriteTransaction<RestTransactionContext, 1>& trx,
+        void generateDeleted (triagens::arango::SingleCollectionWriteTransaction<1>& trx,
                               TRI_voc_cid_t cid,
                               TRI_voc_key_t key,
                               TRI_voc_rid_t rid) {
@@ -222,7 +222,7 @@ namespace triagens {
 /// @brief generates document not found error message, read transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateDocumentNotFound (triagens::arango::SingleCollectionReadOnlyTransaction<RestTransactionContext>& trx,
+        void generateDocumentNotFound (triagens::arango::SingleCollectionReadOnlyTransaction& trx,
                                        TRI_voc_cid_t cid,
                                        TRI_voc_key_t key) {
           generateDocumentNotFound(trx.resolver()->getCollectionName(cid), key);
@@ -232,7 +232,7 @@ namespace triagens {
 /// @brief generates document not found error message, write transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateDocumentNotFound (triagens::arango::SingleCollectionWriteTransaction<RestTransactionContext, 1>& trx,
+        void generateDocumentNotFound (triagens::arango::SingleCollectionWriteTransaction<1>& trx,
                                        TRI_voc_cid_t cid,
                                        TRI_voc_key_t key) {
           generateDocumentNotFound(trx.resolver()->getCollectionName(cid), key);
@@ -266,7 +266,7 @@ namespace triagens {
 /// @brief generates precondition failed, for a read-transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generatePreconditionFailed (SingleCollectionReadOnlyTransaction<RestTransactionContext>& trx,
+        void generatePreconditionFailed (SingleCollectionReadOnlyTransaction& trx,
                                          TRI_voc_cid_t cid,
                                          TRI_doc_mptr_copy_t const& mptr,
                                          TRI_voc_rid_t rid) {
@@ -277,7 +277,7 @@ namespace triagens {
 /// @brief generates precondition failed, for a write-transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generatePreconditionFailed (SingleCollectionWriteTransaction<RestTransactionContext, 1>& trx,
+        void generatePreconditionFailed (SingleCollectionWriteTransaction<1>& trx,
                                          TRI_voc_cid_t cid,
                                          TRI_doc_mptr_copy_t const& mptr,
                                          TRI_voc_rid_t rid) {
@@ -302,7 +302,7 @@ namespace triagens {
 /// @brief generates first entry from a result set
 ////////////////////////////////////////////////////////////////////////////////
 
-        void generateDocument (SingleCollectionReadOnlyTransaction<RestTransactionContext>& trx,
+        void generateDocument (SingleCollectionReadOnlyTransaction& trx,
                                TRI_voc_cid_t,
                                TRI_doc_mptr_copy_t const&,
                                TRI_shaper_t*,

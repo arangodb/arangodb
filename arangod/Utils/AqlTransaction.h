@@ -36,17 +36,15 @@
 #include "Cluster/ServerState.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
-#include "Utils/V8TransactionContext.h"
+#include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
-
-#define AQL_TRANSACTION_V8 triagens::arango::AqlTransaction<triagens::arango::V8TransactionContext<true>>
+#include <v8.h>
 
 namespace triagens {
   namespace arango {
 
-    template<typename T>
-    class AqlTransaction : public Transaction<T> {
+    class AqlTransaction : public Transaction {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              class AqlTransaction
@@ -63,11 +61,17 @@ namespace triagens {
 /// context
 ////////////////////////////////////////////////////////////////////////////////
 
-        AqlTransaction (TRI_vocbase_t* vocbase,
-                        std::map<std::string, triagens::aql::Collection*>* collections)
-          : Transaction<T>(vocbase, 0) {
+        AqlTransaction (TransactionContext* transactionContext,
+                        TRI_vocbase_t* vocbase,
+                        std::map<std::string, triagens::aql::Collection*> const* collections,
+                        bool isMainTransaction)
+          : Transaction(transactionContext, vocbase, 0),
+            _collections(*collections) {
 
           this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
+          if (! isMainTransaction) {
+            this->addHint(TRI_TRANSACTION_HINT_LOCK_NEVER, true);
+          }
 
           for (auto it = collections->begin(); it != collections->end(); ++it) {
             if (processCollection((*it).second) != TRI_ERROR_NO_ERROR) {
@@ -162,25 +166,25 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief registerTransaction
+/// @brief clone, used to make daughter transactions for parts of a distributed
+/// AQL query running on the coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-        int registerTransactionWithContext () {
-          // modify the v8g globals to match the globals of the current isolate / thread
-          this->setV8Globals(static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData()));
-          // This calls the method in the V8TransactionContext
-          return this->registerTransaction(this->_trx);
+        triagens::arango::AqlTransaction* clone () const {
+          return new triagens::arango::AqlTransaction(
+                           new triagens::arango::StandaloneTransactionContext(),
+                           this->_vocbase, 
+                           &_collections, false);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief unregisterTransaction
+/// @brief keep a copy of the collections, this is needed for the clone 
+/// operation
 ////////////////////////////////////////////////////////////////////////////////
 
-        int unregisterTransactionWithContext () {
-          // This calls the method in the V8TransactionContext
-          return this->unregisterTransaction();
-        }
+      private:
 
+        std::map<std::string, triagens::aql::Collection*> _collections;
     };
 
   }

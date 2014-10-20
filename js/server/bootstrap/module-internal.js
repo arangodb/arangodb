@@ -6,7 +6,7 @@
   REPLICATION_APPLIER_CONFIGURE, REPLICATION_APPLIER_START, REPLICATION_APPLIER_SHUTDOWN,
   REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_STATE, REPLICATION_SYNCHRONISE,
   ENABLE_STATISTICS, DISPATCHER_THREADS, SYS_CREATE_NAMED_QUEUE, SYS_ADD_JOB,
-  SYS_RAW_REQUEST_BODY */
+  SYS_RAW_REQUEST_BODY, SYS_REQUEST_PARTS */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -343,6 +343,11 @@
   if (typeof SYS_RAW_REQUEST_BODY !== "undefined") {
     internal.rawRequestBody = SYS_RAW_REQUEST_BODY;
     delete SYS_RAW_REQUEST_BODY;
+  }
+
+  if (typeof SYS_REQUEST_PARTS !== "undefined") {
+    internal.requestParts = SYS_REQUEST_PARTS;
+    delete SYS_REQUEST_PARTS;
   }
 
 }());

@@ -32,10 +32,11 @@
 
 #include "Basics/Common.h"
 
-#include <v8.h>
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/V8TransactionContext.h"
 #include "VocBase/vocbase.h"
 #include "V8/v8-globals.h"
+#include <v8.h>
 
 namespace triagens {
   namespace arango {
@@ -60,8 +61,8 @@ namespace triagens {
           : _v8g(static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData())),
             _ownResolver(false) {
 
-          if (_v8g->_resolver == nullptr) {
-            _v8g->_resolver = static_cast<void*>(new CollectionNameResolver(vocbase));
+          if (! static_cast<V8TransactionContext*>(_v8g->_transactionContext)->hasResolver()) {
+            static_cast<V8TransactionContext*>(_v8g->_transactionContext)->setResolver(new CollectionNameResolver(vocbase));
             _ownResolver = true;
           }
         }
@@ -71,9 +72,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ~V8ResolverGuard () {
-          if (_ownResolver && _v8g->_resolver != nullptr) {
-            delete static_cast<CollectionNameResolver*>(_v8g->_resolver);
-            _v8g->_resolver = nullptr;
+          if (_ownResolver && static_cast<V8TransactionContext*>(_v8g->_transactionContext)->hasResolver()) {
+            static_cast<V8TransactionContext*>(_v8g->_transactionContext)->deleteResolver();
           }
         }
 
@@ -88,8 +88,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         inline CollectionNameResolver const* getResolver () const { 
-          TRI_ASSERT_EXPENSIVE(_v8g->_resolver != nullptr);
-          return static_cast<CollectionNameResolver*>(_v8g->_resolver);
+          TRI_ASSERT_EXPENSIVE(static_cast<V8TransactionContext*>(_v8g->_transactionContext)->hasResolver());
+          return static_cast<V8TransactionContext*>(_v8g->_transactionContext)->getResolver();
         }
 
 // -----------------------------------------------------------------------------

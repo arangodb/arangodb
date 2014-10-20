@@ -107,13 +107,13 @@ function optimizerRuleTestSuite () {
       var queries = [ 
         "FOR i IN 1..10 FOR j IN 1..10 FILTER i > 1 RETURN i",
         "FOR i IN 1..10 LET x = (FOR j IN [i] RETURN j) FILTER i > 1 RETURN i",
-        "FOR i IN 1..10 LET a = 2 * i FILTER i == 1 RETURN a",
-        "FOR i IN 1..10 LET a = 2 * i FILTER i == 1 LIMIT 1 RETURN a"
+        "FOR i IN 1..10 FOR l IN 1..10 LET a = 2 * i FILTER i == 1 RETURN a",
+        "FOR i IN 1..10 FOR l IN 1..10 LET a = 2 * i FILTER i == 1 LIMIT 1 RETURN a"
       ];
 
       queries.forEach(function(query) {
         var result = AQL_EXPLAIN(query, { }, paramEnabled);
-        assertTrue(result.plan.rules.indexOf(ruleName) === 1, query);
+        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
       });
     },
 
@@ -126,13 +126,13 @@ function optimizerRuleTestSuite () {
       var plans = [ 
         [ "FOR i IN 1..10 FOR j IN 1..10 FILTER i > 1 RETURN i", [ "SingletonNode", "CalculationNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "EnumerateListNode", "ReturnNode" ] ],
         [ "FOR i IN 1..10 LET x = (FOR j IN [i] RETURN j) FILTER i > 1 RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "SubqueryNode", "ReturnNode" ] ],
-        [ "FOR i IN 1..10 LET a = 2 * i FILTER i == 1 RETURN a", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ] ],
+        [ "FOR i IN 1..10 FOR l IN 1..10 LET a = 2 * i FILTER i == 1 RETURN a", [ "SingletonNode", "CalculationNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "CalculationNode", "FilterNode", "EnumerateListNode", "ReturnNode" ] ],
         [ "FOR i IN 1..10 FOR j IN 1..10 FILTER i == 1 FILTER j == 2 RETURN i", [ "SingletonNode", "CalculationNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "EnumerateListNode", "CalculationNode", "FilterNode", "ReturnNode" ] ]
       ];
 
       plans.forEach(function(plan) {
         var result = AQL_EXPLAIN(plan[0], { }, paramEnabled);
-        assertTrue(result.plan.rules.indexOf(ruleName) !== -1, plan[0]);
+        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), plan[0]);
         assertEqual(plan[1], helper.getCompactPlan(result).map(function(node) { return node.type; }), plan[0]);
       });
     },
@@ -145,7 +145,7 @@ function optimizerRuleTestSuite () {
       var queries = [ 
         [ "FOR i IN 1..10 FOR j IN 1..10 FILTER i > 9 RETURN j", [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] ],
         [ "FOR i IN 1..10 LET x = (FOR j IN [i] RETURN j) FILTER i > 9 RETURN x", [ [ 10 ] ] ],
-        [ "FOR i IN 1..10 LET a = 2 * i FILTER i == 1 RETURN a", [ 2 ] ],
+        [ "FOR i IN 1..10 FOR l IN 1..1 LET a = 2 * i FILTER i == 1 RETURN a", [ 2 ] ],
         [ "FOR i IN 1..10 LET a = i FOR j IN 1..10 LET b = j FILTER a == 1 FILTER b == 2 RETURN [ a, b ]", [ [ 1, 2 ] ] ]
       ];
 
@@ -157,8 +157,8 @@ function optimizerRuleTestSuite () {
 
         assertTrue(isEqual(resultDisabled, resultEnabled), query[0]);
 
-        assertTrue(planDisabled.plan.rules.indexOf(ruleName) === -1, query[0]);
-        assertTrue(planEnabled.plan.rules.indexOf(ruleName) !== -1, query[0]);
+        assertEqual(-1, planDisabled.plan.rules.indexOf(ruleName), query[0]);
+        assertNotEqual(-1, planEnabled.plan.rules.indexOf(ruleName), query[0]);
 
         assertEqual(resultDisabled, query[1]);
         assertEqual(resultEnabled, query[1]);

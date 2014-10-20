@@ -482,7 +482,7 @@ int Syncer::createIndex (TRI_json_t const* json) {
 
     TRI_document_collection_t* document = guard.collection()->_collection;
   
-    SingleCollectionWriteTransaction<RestTransactionContext, UINT64_MAX> trx(_vocbase, cid);
+    SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, cid);
 
     int res = trx.begin();
 

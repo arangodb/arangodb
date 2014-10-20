@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief rest transaction context
+/// @brief standalone transaction context
 ///
 /// @file
 ///
@@ -27,22 +27,24 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILS_REST_TRANSACTION_CONTEXT_H
-#define ARANGODB_UTILS_REST_TRANSACTION_CONTEXT_H 1
+#ifndef ARANGODB_UTILS_STANDALONE_TRANSACTION_CONTEXT_H
+#define ARANGODB_UTILS_STANDALONE_TRANSACTION_CONTEXT_H 1
 
 #include "Basics/Common.h"
 
 #include "VocBase/transaction.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/Transaction.h"
+#include "Utils/TransactionContext.h"
+
+struct TRI_transaction_s;
 
 namespace triagens {
   namespace arango {
 
-    class RestTransactionContext {
+    class StandaloneTransactionContext : public TransactionContext {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                      class RestTransactionContext
+// --SECTION--                                class StandaloneTransactionContext
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -55,16 +57,13 @@ namespace triagens {
 /// @brief create the context
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestTransactionContext () {
-        }
+        StandaloneTransactionContext (); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the context
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ~RestTransactionContext () {
-//          unregisterTransaction();
-        }
+        ~StandaloneTransactionContext ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -76,54 +75,31 @@ namespace triagens {
 /// @brief return the resolver
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline CollectionNameResolver const* getResolver () const {
-          return _resolver;
-        }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               protected functions
-// -----------------------------------------------------------------------------
-
-      protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the transaction is embeddable
-////////////////////////////////////////////////////////////////////////////////
-
-        inline bool isEmbeddable () {
-          return false;
-        }
+        CollectionNameResolver const* getResolver () const override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the parent transaction (none in our case)
 ////////////////////////////////////////////////////////////////////////////////
-
-        inline TRI_transaction_t* getParentTransaction () const {
-          return nullptr;
-        }
+        
+        struct TRI_transaction_s* getParentTransaction () const override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register the transaction, does nothing
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline int registerTransaction (TRI_transaction_t* trx) {
-          _resolver = new CollectionNameResolver(trx->_vocbase);
-
-          return TRI_ERROR_NO_ERROR;
-        }
+        int registerTransaction (struct TRI_transaction_s*) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unregister the transaction, does nothing
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline int unregisterTransaction () {
-          if (_resolver != nullptr) {
-            delete _resolver;
-            _resolver = nullptr;
-          }
+        int unregisterTransaction () override;
 
-          return TRI_ERROR_NO_ERROR;
-        }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the transaction is embeddable
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isEmbeddable () const override;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

@@ -117,7 +117,7 @@ BOOST_AUTO_TEST_CASE (test_Split2) {
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE (test_Split3) {
-  vector<string> lines = StringUtils::split("Hallo\nWorld\\/Me", '\n', 0);
+  vector<string> lines = StringUtils::split("Hallo\nWorld\\/Me", '\n', '\0');
 
   BOOST_CHECK_EQUAL(lines.size(), (size_t) 2);
 

@@ -1,4 +1,4 @@
-/*global require, exports */
+/*global require, exports, Buffer */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx BaseMiddleware
@@ -47,7 +47,9 @@ BaseMiddleware = function () {
       console = require("console"),
       crypto = require("org/arangodb/crypto"),
       actions = require("org/arangodb/actions"),
-      internal = require("internal");
+      internal = require("internal"),
+      fs = require("fs"),
+      arangodb = require("org/arangodb");
 
     requestFunctions = {
 
@@ -63,8 +65,8 @@ BaseMiddleware = function () {
 /// * *name*: the name of the cookie to read from the request.
 /// * *cfg* (optional): an object with any of the following properties:
 ///   * *signed* (optional): an object with any of the following properties:
-///     * *secret*: a secret string that was used to sign the cookie.
-///     * *algorithm*: hashing algorithm that was used to sign the cookie. Default: *"sha256"*.
+///   * *secret*: a secret string that was used to sign the cookie.
+///   * *algorithm*: hashing algorithm that was used to sign the cookie. Default: *"sha256"*.
 ///
 /// If *signed* is a string, it will be used as the *secret* instead.
 ///
@@ -121,7 +123,10 @@ BaseMiddleware = function () {
 ///
 /// `request.rawBody()`
 ///
-/// The raw request body, not parsed. Returned as a UTF-8 string.
+/// The raw request body, not parsed. The body is returned as a UTF-8 string.
+/// Note that this can only be used sensibly if the request body contains
+/// valid UTF-8. If the request body is known to contain non-UTF-8 data, the
+/// request body can be accessed by using `request.rawBodyBuffer`.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -140,6 +145,23 @@ BaseMiddleware = function () {
 
       rawBodyBuffer: function () {
         return internal.rawRequestBody(this);
+      },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_BaseMiddleware_request_requestParts
+///
+/// `request.requestParts()`
+///
+/// Returns a list containing the individual parts of a multi-part request.
+/// Each part contains a `headers` attribute with all headers of the part,
+/// and a `data` attribute with the content of the part in a Buffer object.
+/// If the request is not a multi-part request, this function will throw an
+/// error.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+      requestParts: function () {
+        return internal.requestParts(this);
       },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -298,6 +320,87 @@ BaseMiddleware = function () {
       json: function (obj) {
         this.contentType = "application/json";
         this.body = JSON.stringify(obj);
+      },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_BaseMiddleware_response_send
+///
+/// `response.send(value)`
+///
+/// Sets the response body to the specified *value*. If *value* is a Buffer
+/// object, the content type will be set to `application/octet-stream` if not 
+/// yet set. If *value* is a string, the content type will be set to `text/html`
+/// if not yet set. If *value* is an object, it will be treated as in `res.json`.
+///
+/// @EXAMPLES
+///
+/// ```js
+/// response.send({"born": "December 12, 1915"});
+/// response.send(new Buffer("some binary data"));
+/// response.send("<html><head><title>Hello World</title></head><body></body></html>");
+/// ```
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+      send: function (obj) {
+        if (obj instanceof Buffer) {
+          // Buffer 
+          if (! this.contentType) {
+            this.contentType = "application/octet-stream";
+          }
+          // fallthrough
+        }
+        else if (obj !== null && typeof obj === 'object' && ! Array.isArray(obj)) {
+          // JSON body, treat regularly
+          this.json(obj);
+          return;
+        }
+        else if (typeof obj === 'string') {
+          // string
+          if (! this.contentType) {
+            this.contentType = "text/html";
+          }
+        }
+          
+        this.body = obj;
+      },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_BaseMiddleware_response_sendFile
+///
+/// `response.sendFile(filename, options)`
+///
+/// Sets the content of the specified file as the response body. The filename
+/// must be absolute. If no content type is yet set for the response, the 
+/// response's content type will be determined automatically based
+/// on the filename extension. If no content type is known for the extension,
+/// the content type will default to `application/octet-stream`.
+///
+/// The `options` array can be used to control the behavior of sendFile.
+/// Currently only the following option exists:
+/// - `lastModified`: if set to true, the last modification date and time
+///   of the file will be returned in the `Last-Modified` HTTP header
+///
+/// @EXAMPLES
+///
+/// ```js
+/// response.sendFile('/tmp/results.json');
+/// response.sendFile(applicationContext.foxxFilename('image.png'), { lastModified: true });
+/// ```
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+      sendFile: function (filename, options) {
+        options = options || { };
+
+        this.body = fs.readBuffer(filename); 
+        if (options.lastModified) {
+          this.set("Last-Modified", new Date(fs.mtime(filename) * 1000).toUTCString());
+        }
+
+        if (! this.contentType) {
+          this.contentType = arangodb.guessContentType(filename, 'application/octet-stream');
+        }
       }
     };
 

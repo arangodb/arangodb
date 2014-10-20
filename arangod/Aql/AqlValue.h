@@ -29,7 +29,7 @@
 #define ARANGODB_AQL_AQL_VALUE_H 1
 
 #include "Basics/Common.h"
-#include "Aql/Types.h"
+#include "Aql/Range.h"
 #include "Basics/JsonHelper.h"
 #include "Utils/V8TransactionContext.h"
 #include "Utils/AqlTransaction.h"
@@ -193,37 +193,18 @@ namespace triagens {
       size_t listSize () const;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the numeric value of an AqlValue
+////////////////////////////////////////////////////////////////////////////////
+
+      int64_t toInt64 () const;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get a string representation of the AqlValue
 /// this will fail if the value is not a string
 ////////////////////////////////////////////////////////////////////////////////
 
       std::string toString () const;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the numeric value of an AqlValue
-/// this will fail if the value is not a number
-////////////////////////////////////////////////////////////////////////////////
-
-      template<typename T>
-      T toNumber () const {
-        switch (_type) {
-          case JSON: {
-            TRI_json_t const* json = _json->json();
-            TRI_ASSERT(TRI_IsNumberJson(json));
-            return static_cast<T>(json->_value._number);
-          }
-
-          case SHAPED: 
-          case DOCVEC: 
-          case RANGE: 
-          case EMPTY: {
-            // cannot convert these types
-            return 0;
-          }
-        }   
-
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-      }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a string representation of the AqlValue
@@ -236,14 +217,14 @@ namespace triagens {
 /// @brief construct a V8 value as input for the expression execution in V8
 ////////////////////////////////////////////////////////////////////////////////
 
-      v8::Handle<v8::Value> toV8 (AQL_TRANSACTION_V8*, 
+      v8::Handle<v8::Value> toV8 (triagens::arango::AqlTransaction*, 
                                   TRI_document_collection_t const*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson method
 ////////////////////////////////////////////////////////////////////////////////
       
-      triagens::basics::Json toJson (AQL_TRANSACTION_V8*,
+      triagens::basics::Json toJson (triagens::arango::AqlTransaction*,
                                      TRI_document_collection_t const*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -251,7 +232,7 @@ namespace triagens {
 /// this will return null if the value is not an array
 ////////////////////////////////////////////////////////////////////////////////
 
-      triagens::basics::Json extractArrayMember (AQL_TRANSACTION_V8*,
+      triagens::basics::Json extractArrayMember (triagens::arango::AqlTransaction*,
                                                  TRI_document_collection_t const*,
                                                  char const*) const;
 
@@ -260,7 +241,7 @@ namespace triagens {
 /// this will return null if the value is not a list
 ////////////////////////////////////////////////////////////////////////////////
 
-      triagens::basics::Json extractListMember (AQL_TRANSACTION_V8*,
+      triagens::basics::Json extractListMember (triagens::arango::AqlTransaction*,
                                                 TRI_document_collection_t const*,
                                                 int64_t) const;
 
@@ -268,7 +249,7 @@ namespace triagens {
 /// @brief create an AqlValue from a vector of AqlItemBlock*s
 ////////////////////////////////////////////////////////////////////////////////
 
-      static AqlValue CreateFromBlocks (AQL_TRANSACTION_V8*,
+      static AqlValue CreateFromBlocks (triagens::arango::AqlTransaction*,
                                         std::vector<AqlItemBlock*> const&,
                                         std::vector<std::string> const&);
 
@@ -276,7 +257,7 @@ namespace triagens {
 /// @brief 3-way comparison for AqlValue objects
 ////////////////////////////////////////////////////////////////////////////////
     
-      static int Compare (AQL_TRANSACTION_V8*,
+      static int Compare (triagens::arango::AqlTransaction*,
                           AqlValue const&,  
                           TRI_document_collection_t const*,
                           AqlValue const&, 

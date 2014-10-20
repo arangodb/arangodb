@@ -32,7 +32,7 @@
 
 #include "Basics/Common.h"
 #include "Aql/AqlValue.h"
-#include "Aql/Types.h"
+#include "Aql/types.h"
 #include <v8.h>
 
 namespace triagens {
@@ -71,7 +71,7 @@ namespace triagens {
 /// @brief execute the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-      AqlValue execute (AQL_TRANSACTION_V8*,
+      AqlValue execute (triagens::arango::AqlTransaction*,
                         std::vector<TRI_document_collection_t const*>&,
                         std::vector<AqlValue>&,
                         size_t,

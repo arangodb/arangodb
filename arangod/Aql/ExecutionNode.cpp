@@ -222,11 +222,11 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
     _plan(plan),
     _depth(JsonHelper::checkAndGetNumericValue<int>(json.json(), "depth")) {
 
-  TRI_ASSERT(_varOverview.get() == nullptr); 
-  _varOverview.reset(new VarOverview());
-  _varOverview->clear();
-  _varOverview->depth = _depth;
-  _varOverview->totalNrRegs = JsonHelper::checkAndGetNumericValue<unsigned int>(json.json(), "totalNrRegs"); 
+  TRI_ASSERT(_registerPlan.get() == nullptr); 
+  _registerPlan.reset(new RegisterPlan());
+  _registerPlan->clear();
+  _registerPlan->depth = _depth;
+  _registerPlan->totalNrRegs = JsonHelper::checkAndGetNumericValue<unsigned int>(json.json(), "totalNrRegs"); 
 
   auto jsonVarInfoList = json.get("varInfoList");
   if (! jsonVarInfoList.isList()) {
@@ -234,7 +234,7 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
   }
  
   size_t len = jsonVarInfoList.size();
-  _varOverview->varInfo.reserve(len);
+  _registerPlan->varInfo.reserve(len);
 
   for (size_t i = 0; i < len; i++) {
     auto jsonVarInfo = jsonVarInfoList.at(i);
@@ -245,7 +245,7 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
     RegisterId registerId = JsonHelper::checkAndGetNumericValue<RegisterId>      (jsonVarInfo.json(), "RegisterId");
     unsigned int    depth = JsonHelper::checkAndGetNumericValue<unsigned int>(jsonVarInfo.json(), "depth");
   
-    _varOverview->varInfo.emplace(make_pair(variableId, VarInfo(depth, registerId)));
+    _registerPlan->varInfo.emplace(make_pair(variableId, VarInfo(depth, registerId)));
   }
 
   auto jsonNrRegsList = json.get("nrRegs");
@@ -254,10 +254,10 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
   }
 
   len = jsonNrRegsList.size();
-  _varOverview->nrRegs.reserve(len);
+  _registerPlan->nrRegs.reserve(len);
   for (size_t i = 0; i < len; i++) {
     RegisterId oneReg = JsonHelper::getNumericValue<RegisterId>(jsonNrRegsList.at(i).json(), 0);
-    _varOverview->nrRegs.push_back(oneReg);
+    _registerPlan->nrRegs.push_back(oneReg);
   }
   
   auto jsonNrRegsHereList = json.get("nrRegsHere");
@@ -266,10 +266,10 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
   }
 
   len = jsonNrRegsHereList.size();
-  _varOverview->nrRegsHere.reserve(len);
+  _registerPlan->nrRegsHere.reserve(len);
   for (size_t i = 0; i < len; i++) {
     RegisterId oneReg = JsonHelper::getNumericValue<RegisterId>(jsonNrRegsHereList.at(i).json(), 0);
-    _varOverview->nrRegsHere.push_back(oneReg);
+    _registerPlan->nrRegsHere.push_back(oneReg);
   }
 
   auto jsonRegsToClearList = json.get("regsToClear");
@@ -375,9 +375,9 @@ void ExecutionNode::CloneHelper (ExecutionNode* other,
       TRI_ASSERT(var != nullptr);
       other->_varsValid.insert(var);
     }
-    if (_varOverview.get() != nullptr) {
-      auto othervarOverview = std::shared_ptr<VarOverview>(_varOverview->clone(plan, _plan));
-      other->_varOverview = othervarOverview;
+    if (_registerPlan.get() != nullptr) {
+      auto otherRegisterPlan = std::shared_ptr<RegisterPlan>(_registerPlan->clone(plan, _plan));
+      other->_registerPlan = otherRegisterPlan;
     }
   }
   else {
@@ -387,7 +387,7 @@ void ExecutionNode::CloneHelper (ExecutionNode* other,
     other->_varUsageValid = _varUsageValid;
     other->_varsUsedLater = _varsUsedLater;
     other->_varsValid = _varsValid;
-    other->_varOverview = _varOverview;
+    other->_registerPlan = _registerPlan;
   }
   plan->registerNode(other);
 
@@ -528,6 +528,18 @@ bool ExecutionNode::walk (WalkerWorker<ExecutionNode>* worker) {
     return true;
   }
   
+  // Now handle a subquery:
+  if ((getType() == SUBQUERY) && worker->EnterSubQueryFirst()) {
+    auto p = static_cast<SubqueryNode*>(this);
+    if (worker->enterSubquery(this, p->getSubquery())) {
+      bool abort = p->getSubquery()->walk(worker);
+      worker->leaveSubquery(this, p->getSubquery());
+      if (abort) {
+        return true;
+      }
+    }
+  }
+
   // Now the children in their natural order:
   for (auto it = _dependencies.begin();
             it != _dependencies.end(); 
@@ -538,7 +550,7 @@ bool ExecutionNode::walk (WalkerWorker<ExecutionNode>* worker) {
   }
   
   // Now handle a subquery:
-  if (getType() == SUBQUERY) {
+  if ((getType() == SUBQUERY) && ! worker->EnterSubQueryFirst()) {
     auto p = static_cast<SubqueryNode*>(this);
     if (worker->enterSubquery(this, p->getSubquery())) {
       bool abort = p->getSubquery()->walk(worker);
@@ -624,9 +636,9 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
   if (verbose) {
     json("depth", triagens::basics::Json(static_cast<double>(_depth)));
  
-    if (_varOverview) {
-      triagens::basics::Json jsonVarInfoList(triagens::basics::Json::List, _varOverview->varInfo.size());
-      for (auto oneVarInfo: _varOverview->varInfo) {
+    if (_registerPlan) {
+      triagens::basics::Json jsonVarInfoList(triagens::basics::Json::List, _registerPlan->varInfo.size());
+      for (auto oneVarInfo: _registerPlan->varInfo) {
         triagens::basics::Json jsonOneVarInfoArray(triagens::basics::Json::Array, 2);
         jsonOneVarInfoArray(
                             "VariableId", 
@@ -638,18 +650,18 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
       }
       json("varInfoList", jsonVarInfoList);
 
-      triagens::basics::Json jsonNRRegsList(triagens::basics::Json::List, _varOverview->nrRegs.size());
-      for (auto oneRegisterID: _varOverview->nrRegs) {
+      triagens::basics::Json jsonNRRegsList(triagens::basics::Json::List, _registerPlan->nrRegs.size());
+      for (auto oneRegisterID: _registerPlan->nrRegs) {
         jsonNRRegsList(triagens::basics::Json(static_cast<double>(oneRegisterID)));
       }
       json("nrRegs", jsonNRRegsList);
     
-      triagens::basics::Json jsonNRRegsHereList(triagens::basics::Json::List, _varOverview->nrRegsHere.size());
-      for (auto oneRegisterID: _varOverview->nrRegsHere) {
+      triagens::basics::Json jsonNRRegsHereList(triagens::basics::Json::List, _registerPlan->nrRegsHere.size());
+      for (auto oneRegisterID: _registerPlan->nrRegsHere) {
         jsonNRRegsHereList(triagens::basics::Json(static_cast<double>(oneRegisterID)));
       }
       json("nrRegsHere", jsonNRRegsHereList);
-      json("totalNrRegs", triagens::basics::Json(static_cast<double>(_varOverview->totalNrRegs)));
+      json("totalNrRegs", triagens::basics::Json(static_cast<double>(_registerPlan->totalNrRegs)));
     }
     else {
       json("varInfoList", triagens::basics::Json(triagens::basics::Json::List));
@@ -707,12 +719,12 @@ struct RegisterPlanningDebugger : public WalkerWorker<ExecutionNode> {
     std::cout << ep->getTypeString() << " ";
     std::cout << "regsUsedHere: ";
     for (auto v : ep->getVariablesUsedHere()) {
-      std::cout << ep->getVarOverview()->varInfo.find(v->id)->second.registerId
+      std::cout << ep->getRegisterPlan()->varInfo.find(v->id)->second.registerId
                 << " ";
     }
     std::cout << "regsSetHere: ";
     for (auto v : ep->getVariablesSetHere()) {
-      std::cout << ep->getVarOverview()->varInfo.find(v->id)->second.registerId
+      std::cout << ep->getRegisterPlan()->varInfo.find(v->id)->second.registerId
                 << " ";
     }
     std::cout << "regsToClear: ";
@@ -730,12 +742,12 @@ struct RegisterPlanningDebugger : public WalkerWorker<ExecutionNode> {
 void ExecutionNode::planRegisters (ExecutionNode* super) {
   // std::cout << triagens::arango::ServerState::instance()->getId() << ": PLAN REGISTERS\n";
   // The super is only for the case of subqueries.
-  shared_ptr<VarOverview> v;
+  shared_ptr<RegisterPlan> v;
   if (super == nullptr) {
-    v.reset(new VarOverview());
+    v.reset(new RegisterPlan());
   }
   else {
-    v.reset(new VarOverview(*(super->_varOverview), super->_depth));
+    v.reset(new RegisterPlan(*(super->_registerPlan), super->_depth));
   }
   v->setSharedPtr(&v);
 
@@ -757,12 +769,12 @@ void ExecutionNode::planRegisters (ExecutionNode* super) {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                 struct ExecutionNode::VarOverview
+// --SECTION--                                struct ExecutionNode::RegisterPlan
 // -----------------------------------------------------------------------------
 
 // Copy constructor used for a subquery:
-ExecutionNode::VarOverview::VarOverview (VarOverview const& v,
-                                         unsigned int newdepth)
+ExecutionNode::RegisterPlan::RegisterPlan (RegisterPlan const& v,
+                                           unsigned int newdepth)
   : varInfo(v.varInfo),
     nrRegsHere(v.nrRegsHere),
     nrRegs(v.nrRegs),
@@ -776,7 +788,7 @@ ExecutionNode::VarOverview::VarOverview (VarOverview const& v,
   nrRegs.push_back(nrRegs.back());
 }
 
-void ExecutionNode::VarOverview::clear () {
+void ExecutionNode::RegisterPlan::clear () {
   varInfo.clear();
   nrRegsHere.clear();
   nrRegs.clear();
@@ -785,8 +797,8 @@ void ExecutionNode::VarOverview::clear () {
   totalNrRegs = 0;
 }
 
-ExecutionNode::VarOverview* ExecutionNode::VarOverview::clone (ExecutionPlan* otherPlan, ExecutionPlan* plan) {
-  VarOverview* other = new VarOverview();
+ExecutionNode::RegisterPlan* ExecutionNode::RegisterPlan::clone (ExecutionPlan* otherPlan, ExecutionPlan* plan) {
+  std::unique_ptr<RegisterPlan> other(new RegisterPlan());
 
   other->nrRegsHere  = nrRegsHere;
   other->nrRegs      = nrRegs;
@@ -795,15 +807,13 @@ ExecutionNode::VarOverview* ExecutionNode::VarOverview::clone (ExecutionPlan* ot
 
   other->varInfo = varInfo;
 
-  for (auto en: subQueryNodes) {
-    auto otherId = en->id();
-    auto otherEN = otherPlan->getNodeById(otherId);
-    other->subQueryNodes.push_back(otherEN);
-  }
-  return other;
+  // No need to clone subQueryNodes because this was only used during
+  // the buildup.
+
+  return other.release();
 }
 
-void ExecutionNode::VarOverview::after (ExecutionNode *en) {
+void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
   switch (en->getType()) {
     case ExecutionNode::ENUMERATE_COLLECTION: 
     case ExecutionNode::INDEX_RANGE: {
@@ -954,7 +964,7 @@ void ExecutionNode::VarOverview::after (ExecutionNode *en) {
   }
 
   en->_depth = depth;
-  en->_varOverview = *me;
+  en->_registerPlan = *me;
 
   // Now find out which registers ought to be erased after this node:
   if (en->getType() != ExecutionNode::RETURN) {
@@ -2433,7 +2443,6 @@ void DistributeNode::toJsonHelper (triagens::basics::Json& nodes,
   json("database", triagens::basics::Json(_vocbase->_name))
       ("collection", triagens::basics::Json(_collection->getName()))
       ("varId", triagens::basics::Json(static_cast<int>(_varId)));
-
 
   // And add it:
   nodes(json);

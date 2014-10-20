@@ -425,15 +425,13 @@ namespace triagens {
 /// @brief reserve space in a logfile
 ////////////////////////////////////////////////////////////////////////////////
 
-        SlotInfo allocate (void const*,
-                           uint32_t);
+        SlotInfo allocate (uint32_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reserve space in a logfile, version for legends
 ////////////////////////////////////////////////////////////////////////////////
 
-        SlotInfo allocate (void const*,
-                           uint32_t,
+        SlotInfo allocate (uint32_t,
                            TRI_voc_cid_t cid,
                            TRI_shape_sid_t sid,
                            uint32_t legendOffset,
@@ -647,7 +645,8 @@ namespace triagens {
 /// @brief wait for the collector thread to collect a specific logfile
 ////////////////////////////////////////////////////////////////////////////////
 
-        void waitForCollector (Logfile::IdType);
+        void waitForCollector (Logfile::IdType,
+                               double);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run the recovery procedure

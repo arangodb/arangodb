@@ -54,9 +54,9 @@ var Controller,
 /// @EXAMPLES
 ///
 /// ```js
-///   app = new Controller(applicationContext, {
-///     urlPrefix: "/meadow"
-///   });
+/// app = new Controller(applicationContext, {
+///   urlPrefix: "/meadow"
+/// });
 /// ```
 ///
 /// @endDocuBlock
@@ -428,7 +428,7 @@ extend(Controller.prototype, {
 /// that it should execute around the function which normally handles the
 /// route. If you do omit the path, the function will be executed before each
 /// request, no matter the path.  Your function gets a Request and a Response
-/// object and a next funcion, which you must call to execute the handler for
+/// object and a next function, which you must call to execute the handler for
 /// that route.
 ///
 /// @EXAMPLES
@@ -503,12 +503,12 @@ extend(Controller.prototype, {
 /// @EXAMPLES
 ///
 /// ```js
-///     app.activateAuthentication({
-///       type: "cookie",
-///       cookieLifetime: 360000,
-///       cookieName: "my_cookie",
-///       sessionLifetime: 400,
-///     });
+/// app.activateAuthentication({
+///   type: "cookie",
+///   cookieLifetime: 360000,
+///   cookieName: "my_cookie",
+///   sessionLifetime: 400,
+/// });
 /// ```
 ///
 /// @endDocuBlock

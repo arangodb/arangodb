@@ -34,16 +34,17 @@
 #include <VocBase/voc-types.h>
 #include <VocBase/vocbase.h>
 
+#include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Expression.h"
 #include "Aql/Index.h"
 #include "Aql/ModificationOptions.h"
 #include "Aql/Query.h"
 #include "Aql/RangeInfo.h"
-#include "Aql/Types.h"
+#include "Aql/Range.h"
+#include "Aql/types.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
-#include "Aql/Ast.h"
 
 #include "lib/Basics/json-utilities.h"
 
@@ -512,7 +513,7 @@ namespace triagens {
           }
         };
 
-        struct VarOverview : public WalkerWorker<ExecutionNode> {
+        struct RegisterPlan : public WalkerWorker<ExecutionNode> {
           // The following are collected for global usage in the ExecutionBlock,
           // although they are stored here in the node:
 
@@ -535,10 +536,14 @@ namespace triagens {
           unsigned int depth;
           unsigned int totalNrRegs;
 
-          // This is used to tell all nodes and share a pointer to ourselves
-          shared_ptr<VarOverview>* me;
+        private:
 
-          VarOverview ()
+          // This is used to tell all nodes and share a pointer to ourselves
+          shared_ptr<RegisterPlan>* me;
+
+        public:
+
+          RegisterPlan ()
             : depth(0), totalNrRegs(0), me(nullptr) {
             nrRegsHere.push_back(0);
             nrRegs.push_back(0);
@@ -546,13 +551,13 @@ namespace triagens {
           
           void clear ();
 
-          void setSharedPtr (shared_ptr<VarOverview>* shared) {
+          void setSharedPtr (shared_ptr<RegisterPlan>* shared) {
             me = shared;
           }
 
           // Copy constructor used for a subquery:
-          VarOverview (VarOverview const& v, unsigned int newdepth);
-          ~VarOverview () {};
+          RegisterPlan (RegisterPlan const& v, unsigned int newdepth);
+          ~RegisterPlan () {};
 
           virtual bool enterSubquery (ExecutionNode*,
                                       ExecutionNode*) {
@@ -561,7 +566,7 @@ namespace triagens {
 
           virtual void after (ExecutionNode *eb);
 
-          VarOverview* clone(ExecutionPlan* otherPlan, ExecutionPlan* plan);
+          RegisterPlan* clone(ExecutionPlan* otherPlan, ExecutionPlan* plan);
 
         };
 
@@ -572,12 +577,12 @@ namespace triagens {
         void planRegisters (ExecutionNode* super = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get varOverview
+/// @brief get RegisterPlan
 ////////////////////////////////////////////////////////////////////////////////
 
-        VarOverview const* getVarOverview () const {
-          TRI_ASSERT(_varOverview.get() != nullptr);
-          return _varOverview.get();
+        RegisterPlan const* getRegisterPlan () const {
+          TRI_ASSERT(_registerPlan.get() != nullptr);
+          return _registerPlan.get();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -701,7 +706,7 @@ namespace triagens {
 /// @brief info about variables, filled in by planRegisters
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::shared_ptr<VarOverview> _varOverview;
+        std::shared_ptr<RegisterPlan> _registerPlan;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief depth of the current frame, will be filled in by planRegisters

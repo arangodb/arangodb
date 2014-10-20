@@ -1268,7 +1268,7 @@ static int ScanTrxCollection (TRI_vocbase_t* vocbase) {
   int res = TRI_ERROR_INTERNAL;
 
   {
-    triagens::arango::SingleCollectionReadOnlyTransaction<triagens::arango::RestTransactionContext> trx(vocbase, collection->_cid);
+    triagens::arango::SingleCollectionReadOnlyTransaction trx(new triagens::arango::StandaloneTransactionContext(), vocbase, collection->_cid);
 
     res = trx.begin();
 
@@ -2334,6 +2334,18 @@ TRI_vocbase_col_t* TRI_UseCollectionByNameVocBase (TRI_vocbase_t* vocbase,
 void TRI_ReleaseCollectionVocBase (TRI_vocbase_t* vocbase,
                                    TRI_vocbase_col_t* collection) {
   TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the vocbase has been marked as deleted
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsDeletedVocBase (TRI_vocbase_t* vocbase) {
+  TRI_LockSpin(&vocbase->_usage._lock);
+  bool isDeleted = vocbase->_usage._isDeleted;
+  TRI_UnlockSpin(&vocbase->_usage._lock);
+
+  return isDeleted;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

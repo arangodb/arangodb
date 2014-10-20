@@ -32,18 +32,14 @@
 
 #include "Basics/Common.h"
 
-#include <v8.h>
+#include "Utils/TransactionContext.h"
 
-#include "V8/v8-globals.h"
-
-#include "Utils/CollectionNameResolver.h"
-#include "Utils/Transaction.h"
+struct TRI_transaction_s;
 
 namespace triagens {
   namespace arango {
 
-    template<bool EMBEDDABLE>
-    class V8TransactionContext {
+    class V8TransactionContext : public TransactionContext {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        class V8TransactionContext
@@ -59,17 +55,13 @@ namespace triagens {
 /// @brief create the context
 ////////////////////////////////////////////////////////////////////////////////
 
-        V8TransactionContext ()
-          : _v8g(static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData())),
-            _ownResolver(false) {
-        }
+        explicit V8TransactionContext (bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the context
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ~V8TransactionContext () {
-        }
+        virtual ~V8TransactionContext ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -78,96 +70,70 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set the thread-specific pointer to the v8 globals
-/// it is necessary to update this pointer if the same transaction is going to
-/// be used in multiple requests / threads
-////////////////////////////////////////////////////////////////////////////////
-
-        inline void setV8Globals (TRI_v8_global_t* v8g) {
-          _v8g = v8g;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the resolver
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline CollectionNameResolver const* getResolver () const { 
-          TRI_ASSERT(_v8g != nullptr);
-          TRI_ASSERT_EXPENSIVE(_v8g->_resolver != nullptr);
-          return static_cast<CollectionNameResolver*>(_v8g->_resolver);
+        CollectionNameResolver const* getResolver () const override; 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get parent transaction (if any)
+////////////////////////////////////////////////////////////////////////////////
+
+        struct TRI_transaction_s* getParentTransaction () const override;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register the transaction in the context
+////////////////////////////////////////////////////////////////////////////////
+
+        int registerTransaction (struct TRI_transaction_s* trx) override;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unregister the transaction from the context
+////////////////////////////////////////////////////////////////////////////////
+
+        int unregisterTransaction () override;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the transaction is embeddable
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isEmbeddable () const override;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief make this transaction context a global context
+////////////////////////////////////////////////////////////////////////////////
+
+        void makeGlobal ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief delete the resolver from the context
+////////////////////////////////////////////////////////////////////////////////
+
+        void deleteResolver ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the context contains a resolver
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool hasResolver () const {
+          return _resolver != nullptr;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set a resolver in the context
+////////////////////////////////////////////////////////////////////////////////
+
+        inline void setResolver (CollectionNameResolver const* resolver) {
+          TRI_ASSERT(_resolver == nullptr);
+          TRI_ASSERT(resolver != nullptr);
+          _resolver = resolver;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether the transaction is embedded
 ////////////////////////////////////////////////////////////////////////////////
 
-        static inline bool IsEmbedded () {
-          TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
-          return (v8g->_currentTransaction != nullptr);
-        }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               protected functions
-// -----------------------------------------------------------------------------
-
-      protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the transaction is embeddable
-////////////////////////////////////////////////////////////////////////////////
-
-        inline bool isEmbeddable () const {
-          return EMBEDDABLE;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get parent transaction (if any)
-////////////////////////////////////////////////////////////////////////////////
-
-        inline TRI_transaction_t* getParentTransaction () const {
-          TRI_ASSERT(_v8g != nullptr);
-          if (_v8g->_currentTransaction != nullptr) {
-            return static_cast<TRI_transaction_t*>(_v8g->_currentTransaction);
-          }
-
-          return nullptr;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief register the transaction in the context
-////////////////////////////////////////////////////////////////////////////////
-
-        inline int registerTransaction (TRI_transaction_t* trx) {
-          TRI_ASSERT(_v8g != nullptr);
-          TRI_ASSERT_EXPENSIVE(_v8g->_currentTransaction == nullptr);
-          _v8g->_currentTransaction = trx;
-
-          if (_v8g->_resolver == nullptr) {
-            _v8g->_resolver = static_cast<void*>(new CollectionNameResolver(trx->_vocbase));
-            _ownResolver = true;
-          }
-
-          return TRI_ERROR_NO_ERROR;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unregister the transaction from the context
-////////////////////////////////////////////////////////////////////////////////
-
-        inline int unregisterTransaction () {
-          TRI_ASSERT(_v8g != nullptr);
-          _v8g->_currentTransaction = nullptr;
-
-          if (_ownResolver && _v8g->_resolver != nullptr) {
-            _ownResolver = false;
-            CollectionNameResolver* resolver = static_cast<CollectionNameResolver*>(_v8g->_resolver);
-            delete resolver;
-
-            _v8g->_resolver = nullptr;
-          }
-
-          return TRI_ERROR_NO_ERROR;
-        }
+        static bool IsEmbedded ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -176,16 +142,34 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief v8 global context
+/// @brief the v8 thread-local "global" transaction context
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_v8_global_t* _v8g;
+        V8TransactionContext* _sharedTransactionContext;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the collection name resolver
+////////////////////////////////////////////////////////////////////////////////
+
+        CollectionNameResolver const* _resolver;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the currently ongoing transaction
+////////////////////////////////////////////////////////////////////////////////
+
+        struct TRI_transaction_s* _currentTransaction;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not we are responsible for the resolver
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _ownResolver;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not further transactions can be embedded
+////////////////////////////////////////////////////////////////////////////////
+
+        bool const _embeddable;
 
     };
 

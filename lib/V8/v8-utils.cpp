@@ -1705,6 +1705,37 @@ static v8::Handle<v8::Value> JS_MarkNonce (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the last modification time of a file
+/// @startDocuBlock JS_MTime
+/// `fs.mtime(filename)`
+///
+/// Returns the last modification date of the specified file. The date is
+/// returned as a Unix timestamp (number of seconds elapsed since January 1 1970).
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_MTime (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract two arguments
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "mtime(<filename>)");
+  }
+
+  string filename = TRI_ObjectToString(argv[0]);
+
+  int64_t mtime;
+  int res = TRI_MTimeFile(filename.c_str(), &mtime);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, res);
+  }
+
+  return scope.Close(v8::Number::New(static_cast<double>(mtime)));
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a file
 /// @startDocuBlock JS_Move
 /// `fs.move(source, destination)`
@@ -1920,18 +1951,18 @@ static v8::Handle<v8::Value> JS_Read (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads in a file
-/// @startDocuBlock JS_ReadFile
-/// `fs.readFile(filename)`
+/// @startDocuBlock JS_ReadBuffer
+/// `fs.readBuffer(filename)`
 ///
-/// Reads in a file and returns the content in a Buffer object.
+/// Reads in a file and returns its content in a Buffer object.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_ReadFile (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_ReadBuffer (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "readFile(<filename>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "readBuffer(<filename>)");
   }
 
   TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
@@ -3761,7 +3792,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
 
   // check the isolate
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
-  TRI_v8_global_t* v8g = TRI_CreateV8Globals(isolate);
+  TRI_v8_global_t* v8g = TRI_GetV8Globals(isolate);
 
   v8::Handle<v8::FunctionTemplate> ft;
   v8::Handle<v8::ObjectTemplate> rt;
@@ -3819,6 +3850,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "FS_LIST_TREE", JS_ListTree);
   TRI_AddGlobalFunctionVocbase(context, "FS_MAKE_DIRECTORY", JS_MakeDirectory);
   TRI_AddGlobalFunctionVocbase(context, "FS_MOVE", JS_Move);
+  TRI_AddGlobalFunctionVocbase(context, "FS_MTIME", JS_MTime);
   TRI_AddGlobalFunctionVocbase(context, "FS_REMOVE", JS_Remove);
   TRI_AddGlobalFunctionVocbase(context, "FS_REMOVE_DIRECTORY", JS_RemoveDirectory);
   TRI_AddGlobalFunctionVocbase(context, "FS_REMOVE_RECURSIVE_DIRECTORY", JS_RemoveRecursiveDirectory);
@@ -3853,7 +3885,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SYS_PROCESS_STATISTICS", JS_ProcessStatistics);
   TRI_AddGlobalFunctionVocbase(context, "SYS_RAND", JS_Rand);
   TRI_AddGlobalFunctionVocbase(context, "SYS_READ", JS_Read);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_READ_FILE", JS_ReadFile);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_READ_BUFFER", JS_ReadBuffer);
   TRI_AddGlobalFunctionVocbase(context, "SYS_READ64", JS_Read64);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SAVE", JS_Save);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SERVER_STATISTICS", JS_ServerStatistics);

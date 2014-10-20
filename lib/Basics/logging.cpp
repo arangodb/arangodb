@@ -154,6 +154,12 @@ static size_t BufferCurrent[OUTPUT_LOG_LEVELS] = { 0, 0, 0, 0, 0, 0 };
 static TRI_log_buffer_t BufferOutput[OUTPUT_LOG_LEVELS][OUTPUT_BUFFER_SIZE];
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief lock for the logging thread start / stop
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_mutex_t LogThreadLock;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief buffer lock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -187,7 +193,7 @@ static TRI_thread_t LoggingThread;
 /// @brief thread used for logging
 ////////////////////////////////////////////////////////////////////////////////
 
-static sig_atomic_t LoggingThreadActive = 0;
+static int LoggingThreadActive = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief usage logging
@@ -701,7 +707,9 @@ static void MessageQueueWorker (void* data) {
   TRI_InitVector(&buffer, TRI_CORE_MEM_ZONE, sizeof(log_message_t));
 
   sl = 100;
+  TRI_LockMutex(&LogThreadLock);
   LoggingThreadActive = 1;
+  TRI_UnlockMutex(&LogThreadLock);
 
   while (true) {
     TRI_LockMutex(&LogMessageQueueLock);
@@ -808,7 +816,9 @@ static void MessageQueueWorker (void* data) {
 
   TRI_UnlockMutex(&LogMessageQueueLock);
 
+  TRI_LockMutex(&LogThreadLock);
   LoggingThreadActive = 0;
+  TRI_UnlockMutex(&LogThreadLock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1914,6 +1924,7 @@ void TRI_InitialiseLogging (bool threaded) {
 
   TRI_InitVectorPointer(&Appenders, TRI_CORE_MEM_ZONE);
   TRI_InitMutex(&BufferLock);
+  TRI_InitMutex(&LogThreadLock);
   TRI_InitSpin(&OutputPrefixLock);
   TRI_InitSpin(&AppendersLock);
 
@@ -1932,7 +1943,14 @@ void TRI_InitialiseLogging (bool threaded) {
     TRI_InitThread(&LoggingThread);
     TRI_StartThread(&LoggingThread, nullptr, "[logging]", MessageQueueWorker, 0);
 
-    while (LoggingThreadActive == 0) {
+    while (true) {
+      TRI_LockMutex(&LogThreadLock);
+      bool isActive = (LoggingThreadActive != 0);
+      TRI_UnlockMutex(&LogThreadLock);
+
+      if (isActive) {
+        break;
+      }
       usleep(1000);
     }
   }
@@ -2021,6 +2039,7 @@ bool TRI_ShutdownLogging (bool clearBuffers) {
   TRI_DestroySpin(&OutputPrefixLock);
   TRI_DestroySpin(&AppendersLock);
   TRI_DestroyMutex(&BufferLock);
+  TRI_DestroyMutex(&LogThreadLock);
 
   Initialised = 0;
 

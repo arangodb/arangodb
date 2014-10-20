@@ -47,7 +47,6 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
-
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::httpclient;
@@ -62,19 +61,19 @@ using namespace triagens::arango;
 /// @brief base class for clients
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoClient BaseClient;
+ArangoClient BaseClient("arangorestore");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the initial default connection
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::httpclient::GeneralClientConnection* Connection = 0;
+triagens::httpclient::GeneralClientConnection* Connection = nullptr;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief HTTP client
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::httpclient::SimpleHttpClient* Client = 0;
+triagens::httpclient::SimpleHttpClient* Client = nullptr;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief chunk size
@@ -272,7 +271,7 @@ static string GetHttpErrorMessage (SimpleHttpResult* result) {
 
   TRI_json_t* json = JsonHelper::fromString(body.c_str(), body.length());
 
-  if (json != 0) {
+  if (json != nullptr) {
     const string& errorMessage = JsonHelper::getStringValue(json, "errorMessage", "");
     const int errorNum = JsonHelper::getNumericValue<int>(json, "errorNum", 0);
 
@@ -298,12 +297,12 @@ static string GetArangoVersion () {
 
   SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET,
                                                "/_api/version",
-                                               0,
+                                               nullptr,
                                                0,
                                                headers);
 
-  if (response == 0 || ! response->isComplete()) {
-    if (response != 0) {
+  if (response == nullptr || ! response->isComplete()) {
+    if (response != nullptr) {
       delete response;
     }
 
@@ -358,8 +357,8 @@ static bool GetArangoIsCluster () {
                                         0,
                                         headers);
 
-  if (response == 0 || ! response->isComplete()) {
-    if (response != 0) {
+  if (response == nullptr || ! response->isComplete()) {
+    if (response != nullptr) {
       delete response;
     }
 
@@ -373,7 +372,7 @@ static bool GetArangoIsCluster () {
     TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE,
                                       response->getBody().c_str());
 
-    if (json != 0) {
+    if (json != nullptr) {
       // look up "server" value
       role = JsonHelper::getStringValue(json, "role", "UNDEFINED");
 
@@ -414,10 +413,10 @@ static int SendRestoreCollection (TRI_json_t const* json,
                                                body.size(),
                                                headers);
 
-  if (response == 0 || ! response->isComplete()) {
+  if (response == nullptr || ! response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();
 
-    if (response != 0) {
+    if (response != nullptr) {
       delete response;
     }
 
@@ -453,10 +452,10 @@ static int SendRestoreIndexes (TRI_json_t const* json,
                                                body.size(),
                                                headers);
 
-  if (response == 0 || ! response->isComplete()) {
+  if (response == nullptr || ! response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();
 
-    if (response != 0) {
+    if (response != nullptr) {
       delete response;
     }
 
@@ -497,10 +496,10 @@ static int SendRestoreData (string const& cname,
                                                headers);
 
 
-  if (response == 0 || ! response->isComplete()) {
+  if (response == nullptr || ! response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();
 
-    if (response != 0) {
+    if (response != nullptr) {
       delete response;
     }
 
@@ -557,7 +556,7 @@ static int ProcessInputDirectory (string& errorMsg) {
 
   TRI_json_t* collections = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
 
-  if (collections == 0) {
+  if (collections == nullptr) {
     errorMsg = "out of memory";
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -605,7 +604,7 @@ static int ProcessInputDirectory (string& errorMsg) {
           ! JsonHelper::isList(indexes)) {
         errorMsg = "could not read collection structure file '" + name + "'";
 
-        if (json != 0) {
+        if (json != nullptr) {
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
         }
 
@@ -751,7 +750,7 @@ static int ProcessInputDirectory (string& errorMsg) {
               char* found = (char*) memrchr((const void*) buffer.begin(), '\n', buffer.length());
               size_t length;
 
-              if (found == 0) {
+              if (found == nullptr) {
                 // no \n found...
                 if (numRead == 0) {
                   // we're at the end. send the complete buffer anyway
@@ -891,12 +890,12 @@ int main (int argc, char* argv[]) {
 
   if (InputDirectory == "" || ! TRI_IsDirectory(InputDirectory.c_str())) {
     cerr << "input directory '" << InputDirectory << "' does not exist" << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   if (! ImportStructure && ! ImportData) {
     cerr << "must specify either --create-collection or --import-data" << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   // .............................................................................
@@ -905,9 +904,9 @@ int main (int argc, char* argv[]) {
 
   BaseClient.createEndpoint();
 
-  if (BaseClient.endpointServer() == 0) {
+  if (BaseClient.endpointServer() == nullptr) {
     cerr << "invalid value for --server.endpoint ('" << BaseClient.endpointString() << "')" << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   Connection = GeneralClientConnection::factory(BaseClient.endpointServer(),
@@ -916,16 +915,16 @@ int main (int argc, char* argv[]) {
                                                 ArangoClient::DEFAULT_RETRIES,
                                                 BaseClient.sslProtocol());
 
-  if (Connection == 0) {
+  if (Connection == nullptr) {
     cerr << "out of memory" << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   Client = new SimpleHttpClient(Connection, BaseClient.requestTimeout(), false);
 
-  if (Client == 0) {
+  if (Client == nullptr) {
     cerr << "out of memory" << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   Client->setLocationRewriter(0, &rewriteLocation);
@@ -936,7 +935,7 @@ int main (int argc, char* argv[]) {
   if (! Connection->isConnected()) {
     cerr << "Could not connect to endpoint " << BaseClient.endpointServer()->getSpecification() << endl;
     cerr << "Error message: '" << Client->getErrorMessage() << "'" << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   // successfully connected
@@ -948,7 +947,7 @@ int main (int argc, char* argv[]) {
 
   if (sscanf(versionString.c_str(), "%d.%d", &major, &minor) != 2) {
     cerr << "invalid server version '" << versionString << "'" << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   if (major < 1 ||
@@ -957,7 +956,7 @@ int main (int argc, char* argv[]) {
     // we can connect to 1.4, 2.0 and higher only
     cerr << "got incompatible server version '" << versionString << "'" << endl;
     if (! Force) {
-      TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
     }
   }
 
@@ -973,7 +972,20 @@ int main (int argc, char* argv[]) {
   memset(&Stats, 0, sizeof(Stats));
 
   string errorMsg = "";
-  int res = ProcessInputDirectory(errorMsg);
+
+  int res;
+  try {
+    res = ProcessInputDirectory(errorMsg);
+  }
+  catch (std::exception const& ex) {
+    cerr << "caught exception " << ex.what() << endl;
+    res = TRI_ERROR_INTERNAL;
+  }
+  catch (...) {
+    cerr << "caught unknown exception" << endl;
+    res = TRI_ERROR_INTERNAL;
+  }
+
 
   if (Progress) {
     if (ImportData) {
@@ -992,13 +1004,13 @@ int main (int argc, char* argv[]) {
     ret = EXIT_FAILURE;
   }
 
-  if (Client != 0) {
+  if (Client != nullptr) {
     delete Client;
   }
 
   TRIAGENS_REST_SHUTDOWN;
 
-  arangorestoreExitFunction(ret, NULL);
+  arangorestoreExitFunction(ret, nullptr);
 
   return ret;
 }

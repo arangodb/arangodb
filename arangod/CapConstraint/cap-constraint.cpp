@@ -116,7 +116,7 @@ static int InitialiseCap (TRI_cap_constraint_t* cap,
     TRI_vocbase_t* vocbase = document->_vocbase;
     TRI_voc_cid_t cid = document->_info._cid;
 
-    triagens::arango::SingleCollectionWriteTransaction<triagens::arango::RestTransactionContext, UINT64_MAX> trx(vocbase, cid);
+    triagens::arango::SingleCollectionWriteTransaction<UINT64_MAX> trx(new triagens::arango::StandaloneTransactionContext(), vocbase, cid);
     trx.addHint(TRI_TRANSACTION_HINT_LOCK_NEVER, false);
     trx.addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, false);
     trx.addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, false);

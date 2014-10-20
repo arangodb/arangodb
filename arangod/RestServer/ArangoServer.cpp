@@ -291,6 +291,8 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _queryRegistry(nullptr),
     _pairForAql(nullptr) {
 
+  TRI_SetApplicationName("arangod");
+
   char* p = TRI_GetTempPath();
   // copy the string
   _tempPath = string(p);
@@ -398,6 +400,7 @@ void ArangoServer::buildApplicationServer () {
   // ...........................................................................
 
   _queryRegistry = new aql::QueryRegistry();
+  _server->_queryRegistry = static_cast<void*>(_queryRegistry);
 
   // .............................................................................
   // V8 engine
@@ -850,7 +853,6 @@ int ArangoServer::startupServer () {
   _pairForAql = new std::pair<ApplicationV8*, aql::QueryRegistry*>;
   _pairForAql->first = _applicationV8;
   _pairForAql->second = _queryRegistry;
-  _server->_queryRegistry = static_cast<void*>(_queryRegistry);
 
   // ...........................................................................
   // create endpoints and handlers
@@ -1184,6 +1186,9 @@ void ArangoServer::closeDatabases () {
   TRI_ASSERT(_server != nullptr);
 
   TRI_CleanupActions();
+  
+  // stop the replication appliers so all replication transactions can end
+  TRI_StopReplicationAppliersServer(_server);
 
   // enfore logfile manager shutdown so we are sure no one else will
   // write to the logs

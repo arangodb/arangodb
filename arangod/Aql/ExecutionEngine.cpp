@@ -277,7 +277,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     std::vector<ExecutionNode*>  nodes;
   };
 
-  std::shared_ptr<AQL_TRANSACTION_V8> trx;
   Query*                   query;
   QueryRegistry*           queryRegistry;
   ExecutionBlock*          root;
@@ -286,18 +285,19 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   std::vector<EngineInfo>  engines;
   std::vector<size_t>      engineIds; // stack of engine ids, used for subqueries
 
+  virtual bool EnterSubQueryFirst () {
+    return true;
+  }
   
   CoordinatorInstanciator (Query* query,
                            QueryRegistry* queryRegistry)
-    : trx(query->getTrxPtr()),
-      query(query),
+    : query(query),
       queryRegistry(queryRegistry),
       root(nullptr),
       currentLocation(COORDINATOR),
       currentEngineId(0),
       engines() {
 
-    TRI_ASSERT(trx != nullptr);
     TRI_ASSERT(query != nullptr);
     TRI_ASSERT(queryRegistry != nullptr);
 
@@ -337,10 +337,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           ExecutionNode const* current = (*it).nodes.front();
           ExecutionNode* previous = nullptr;
 
-          // clone nodes until we reach a remote node
           while (current != nullptr) {
-            bool stop = false;
-
             auto clone = current->clone(newPlan, false, true);
             newPlan->registerNode(clone);
         
@@ -354,10 +351,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
             auto const& deps = current->getDependencies();
             if (deps.size() != 1) {
-              stop = true;
-            }
-
-            if (stop) {
               break;
             }
 
@@ -426,24 +419,18 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     auto&& shardIds = collection->shardIds();
  
     // iterate over all shards of the collection
-    for (auto shardId : shardIds) {
+    for (auto const& shardId : shardIds) {
       // copy the relevant fragment of the plan for each shard
       ExecutionPlan plan(query->ast());
 
       ExecutionNode const* current = info.nodes.front();
       ExecutionNode* previous = nullptr;
 
-      // clone nodes until we reach a remote node
       while (current != nullptr) {
-        bool stop = false;
-
         auto clone = current->clone(&plan, false, true);
         plan.registerNode(clone);
         
         if (current->getType() == ExecutionNode::REMOTE) {
-          // we'll stop after a remote
-          stop = true;
-
           // update the remote node with the information about the query
           static_cast<RemoteNode*>(clone)->server("server:" + triagens::arango::ServerState::instance()->getId());
           static_cast<RemoteNode*>(clone)->ownName(shardId);
@@ -461,10 +448,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
         auto const& deps = current->getDependencies();
         if (deps.size() != 1) {
-          stop = true;
-        }
-
-        if (stop) {
           break;
         }
 
@@ -490,7 +473,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       jsonNodesList.set("variables", query->ast()->variables()->toJson(TRI_UNKNOWN_MEM_ZONE));
 
       result.set("plan", jsonNodesList);
-      result.set("part", Json("main")); // TODO: set correct query type
+      result.set("part", Json("dependent")); // TODO: set correct query type
 
       Json optimizerOptionsRules(Json::List);
       Json optimizerOptions(Json::Array);
@@ -544,12 +527,12 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           triagens::basics::Json response(TRI_UNKNOWN_MEM_ZONE, triagens::basics::JsonHelper::fromString(res->answer->body()));
           std::string queryId = triagens::basics::JsonHelper::getStringValue(response.json(), "queryId", "");
 
-          // std::cout << "DB SERVER ANSWERED WITHOUT ERROR: " << res->answer->body() << ", SHARDID:"  << res->shardID << ", QUERYID: " << queryId << "\n";
+          std::cout << "DB SERVER ANSWERED WITHOUT ERROR: " << res->answer->body() << ", SHARDID:"  << res->shardID << ", QUERYID: " << queryId << "\n";
           queryIds.emplace(std::make_pair(res->shardID, queryId));
           
         }
         else {
-          // std::cout << "DB SERVER ANSWERED WITH ERROR: " << res->answer->body() << "\n";
+          std::cout << "DB SERVER ANSWERED WITH ERROR: " << res->answer->body() << "\n";
         }
       }
       delete res;
@@ -614,7 +597,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         // now we'll create a remote node for each shard and add it to the gather node
         auto&& shardIds = static_cast<GatherNode const*>((*en))->collection()->shardIds();
 
-        for (auto shardId : shardIds) {
+        for (auto const& shardId : shardIds) {
           // TODO: pass actual queryId into RemoteBlock
           auto it = queryIds.find(shardId);
           if (it == queryIds.end()) {
