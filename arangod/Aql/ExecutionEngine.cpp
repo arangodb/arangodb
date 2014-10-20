@@ -452,8 +452,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
         previous = clone;
       }
-      std::cout << "Hallo " << shardId << std::endl;
-      
       // inject the current shard id into the collection
       collection->setCurrentShard(shardId);
       plan.setVarUsageComputed();
@@ -720,8 +718,10 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
       std::unique_ptr<CoordinatorInstanciator> inst(new CoordinatorInstanciator(query, queryRegistry));
       plan->root()->walk(inst.get());
 
-      std::cout << "ORIGINAL PLAN:\n" << plan->toJson(query->ast(), TRI_UNKNOWN_MEM_ZONE, true).toString() << "\n\n";
+      // std::cout << "ORIGINAL PLAN:\n" << plan->toJson(query->ast(), TRI_UNKNOWN_MEM_ZONE, true).toString() << "\n\n";
 
+#if 0
+      // Just for debugging
       for (auto& ei : inst->engines) {
         std::cout << "EngineInfo: id=" << ei.id 
                   << " Location=" << ei.location << std::endl;
@@ -729,6 +729,7 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
           std::cout << "Node: type=" << n->getTypeString() << std::endl;
         }
       }
+#endif
       engine = inst.get()->buildEngines(); 
       root = engine->root();
     }
