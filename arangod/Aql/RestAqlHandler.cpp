@@ -90,7 +90,7 @@ RestAqlHandler::RestAqlHandler (triagens::rest::HttpRequest* request,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestAqlHandler::isDirect () {
-  return true;
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -114,8 +114,6 @@ void RestAqlHandler::createQueryFromJson () {
     return;
   }
 
-  std::cout << "createQueryFromJson: " << queryJson.toString() << std::endl;
-  
   Json plan;
   Json options;
 
@@ -170,7 +168,6 @@ void RestAqlHandler::createQueryFromJson () {
   answerBody("queryId", Json(StringUtils::itoa(_qId)))
             ("ttl",     Json(ttl));
 
- std::cout << "RESPONSE BODY IS: " << answerBody.toString() << "\n";            
   _response->body().appendText(answerBody.toString());
 }
 
@@ -427,11 +424,6 @@ void RestAqlHandler::useQuery (std::string const& operation,
       _queryRegistry->close(_vocbase, _qId);
       return;
     }
-    std::cout << "useQuery op:" << operation << "," << idString << std::endl
-              << queryJson.toString() << std::endl;
-  }
-  else {
-    std::cout << "useQuery shutdown" << std::endl;
   }
 
   try {
@@ -468,8 +460,6 @@ void RestAqlHandler::useQuery (std::string const& operation,
                   TRI_ERROR_HTTP_SERVER_ERROR,
                   "an unknown exception occurred");
   }
-  std::cout << "Response of useQuery:" << _response->body().c_str() << 
-          std::endl;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -592,7 +582,7 @@ void RestAqlHandler::getInfoQuery (std::string const& operation,
 ////////////////////////////////////////////////////////////////////////////////
 
 triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
-//std::cout << "GOT INCOMING REQUEST: " << triagens::rest::HttpRequest::translateMethod(_request->requestType()) << ", " << triagens::arango::ServerState::instance()->getId() << ": " << _request->fullUrl() << ": " << _request->body() << "\n";
+std::cout << "GOT INCOMING REQUEST: " << triagens::rest::HttpRequest::translateMethod(_request->requestType()) << ", " << triagens::arango::ServerState::instance()->getId() << ": " << _request->fullUrl() << ": " << _request->body() << "\n";
 
   std::vector<std::string> const& suffix = _request->suffix();
 

@@ -68,9 +68,11 @@ namespace triagens {
           : Transaction(transactionContext, vocbase, 0),
             _collections(*collections) {
 
-          this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
           if (! isMainTransaction) {
             this->addHint(TRI_TRANSACTION_HINT_LOCK_NEVER, true);
+          }
+          else {
+            this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
           }
 
           for (auto it = collections->begin(); it != collections->end(); ++it) {

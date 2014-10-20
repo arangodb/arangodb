@@ -4268,7 +4268,6 @@ static bool throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
     }
       
     StringBuffer const& responseBodyBuf(res->result->getBody());
-    std::cout << "ERROR WAS: " << responseBodyBuf.c_str() << "\n";
  
     // extract error number and message from response
     int errorNum = TRI_ERROR_NO_ERROR;
@@ -4377,17 +4376,18 @@ ClusterCommResult* RemoteBlock::sendRequest (
     headers.insert(make_pair("Shard-Id", _ownName));
   }
 
-std::cout << "SENDING REQUEST TO " << _server << ", URLPART: " << urlPart << ", QUERYID: " << _queryId << "\n";
-  return cc->syncRequest(clientTransactionId,
-                         coordTransactionId,
-                         _server,
-                         type,
-                         std::string("/_db/") 
-                         + triagens::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase()->_name)
-                           + urlPart + _queryId,
-                         body,
-                         headers,
-                         defaultTimeOut);
+  auto result = cc->syncRequest(clientTransactionId,
+                                coordTransactionId,
+                                _server,
+                                type,
+                                std::string("/_db/") 
+                                + triagens::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase()->_name)
+                                + urlPart + _queryId,
+                                body,
+                                headers,
+                                defaultTimeOut);
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4495,10 +4495,9 @@ AqlItemBlock* RemoteBlock::getSome (size_t atLeast,
   if (JsonHelper::getBooleanValue(responseBodyJson.json(), "exhausted", true)) {
     return nullptr;
   }
-  else {
-    auto items = new triagens::aql::AqlItemBlock(responseBodyJson);
-    return items;
-  }
+    
+  auto items = new triagens::aql::AqlItemBlock(responseBodyJson);
+  return items;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
