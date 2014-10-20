@@ -1684,13 +1684,15 @@ namespace triagens {
         ScatterBlock (ExecutionEngine* engine,
                       ScatterNode const* ep, 
                       std::vector<std::string> const& shardIds) 
-                      : BlockWithClients(engine, ep, shardIds) {}
+          : BlockWithClients(engine, ep, shardIds) {
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~ScatterBlock () {}
+        ~ScatterBlock () {
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializeCursor
@@ -1755,7 +1757,8 @@ namespace triagens {
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~DistributeBlock () {}
+        ~DistributeBlock () {
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializeCursor
@@ -1767,7 +1770,7 @@ namespace triagens {
 /// @brief remainingForShard: remaining for shard <shardId>?
 ////////////////////////////////////////////////////////////////////////////////
         
-        int64_t remainingForShard (std::string const& shardId){
+        int64_t remainingForShard (std::string const& shardId) {
           return -1;
         }
 
