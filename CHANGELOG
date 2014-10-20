@@ -1,7 +1,8 @@
-v2.2.6 (XXXX-XX-XX)
+v2.2.6 (2014-10-20)
 -------------------
 
 * fixed issue #972: Compilation Issue
+
 * fixed issue #743: temporary directories are now unique and one can read
   off the tool that created them, if empty, they are removed atexit
 
