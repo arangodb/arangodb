@@ -466,16 +466,6 @@ function COMPILE_REGEX (regex, modifiers) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief call a function
-////////////////////////////////////////////////////////////////////////////////
-
-function FCALL (name, parameters) {
-  "use strict";
-
-  return name.apply(null, parameters);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief call a user function
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -7063,7 +7053,6 @@ function GENERAL_GRAPH_DIAMETER (graphName, options) {
 // --SECTION--                                                    MODULE EXPORTS
 // -----------------------------------------------------------------------------
 
-exports.FCALL = FCALL;
 exports.FCALL_USER = FCALL_USER;
 exports.KEYS = KEYS;
 exports.GET_INDEX = GET_INDEX;
