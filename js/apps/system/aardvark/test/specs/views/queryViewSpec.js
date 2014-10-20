@@ -1,7 +1,7 @@
 /*jshint browser: true */
 /*jshint unused: false */
 /*global describe, beforeEach, afterEach, it, spyOn, expect, jQuery, _, jqconsole, $*/
-/*global arangoHelper, ace*/
+/*global arangoHelper, ace, window, document, localStorage, Joi*/
 
 
 (function() {
@@ -9,9 +9,11 @@
 
   describe("The query view", function() {
 
-    var view, div, div2, jQueryDummy;
+    var view, div, div2, jQueryDummy, collectionDummy,
+        localStorageFake;
 
     beforeEach(function() {
+      spyOn($, "ajax");
       window.App = {
         notificationList: {
           add: function() {
@@ -19,6 +21,38 @@
           }
         }
       };
+      localStorageFake = {
+        value: undefined
+      };
+      spyOn(localStorage, "getItem").andCallFake(function() {
+        return localStorageFake.value;
+      });
+      var DummyModel = function(vals) {
+         this.get = function (attr) {
+           return vals[attr];
+         };
+      };
+
+      collectionDummy = {
+        list: [],
+        fetch: function() {
+          throw "Should be a spy";
+        },
+        add: function(item) {
+          this.list.push(new DummyModel(item));
+        },
+        each: function(func) {
+          return this.list.forEach(func);
+        },
+        saveCollectionQueries: function() {
+          throw "Should be a spy";
+        },
+        findWhere: function(ex) {
+          
+        }
+      };
+      spyOn(collectionDummy, "fetch");
+      spyOn(collectionDummy, "saveCollectionQueries");
 
       spyOn(window.App.notificationList, "add");
 
@@ -27,6 +61,7 @@
       document.body.appendChild(div);
 
       view = new window.queryView({
+        collection: collectionDummy
       });
 
       window.modalView = new window.ModalView();
@@ -60,24 +95,23 @@
         'click #clearQueryButton': 'clearInput',
         'click #addAQL': 'addAQL',
         'change #querySelect': 'importSelected',
-        'change #querySize': 'changeSize',
         'keypress #aqlEditor': 'aqlShortcuts',
         'click #arangoQueryTable .table-cell0': 'editCustomQuery',
         'click #arangoQueryTable .table-cell1': 'editCustomQuery',
         'click #arangoQueryTable .table-cell2 a': 'deleteAQL',
         'click #confirmQueryImport': 'importCustomQueries',
-        'click #confirmQueryExport': 'exportCustomQueries'
+        'click #confirmQueryExport': 'exportCustomQueries',
+        'click #downloadQueryResult': 'downloadQueryResult',
+        'click #importQueriesToggle': 'showImportMenu'
       };
       expect(events).toEqual(view.events);
     });
 
     it("should execute all functions when view initializes", function () {
       spyOn(view, "getAQL");
-      spyOn(localStorage, "setItem");
       view.initialize();
       expect(view.tableDescription.rows).toEqual(view.customQueries);
       expect(view.getAQL).toHaveBeenCalled();
-      expect(localStorage.setItem).toHaveBeenCalled();
     });
 
     it("should create a custom query modal", function() {
@@ -86,7 +120,13 @@
       spyOn(window.modalView, "show");
       view.createCustomQueryModal();
       expect(window.modalView.createTextEntry).toHaveBeenCalledWith(
-        'new-query-name', 'Name', '', undefined, undefined, false, /[<>&'"]/
+        'new-query-name', 'Name', '', undefined, undefined, false,
+        [
+          {
+            rule: Joi.string().required(),
+            msg: "No query name given."
+          }
+        ]
       );
       expect(window.modalView.createSuccessButton).toHaveBeenCalled();
       expect(window.modalView.show).toHaveBeenCalled();
@@ -117,9 +157,7 @@
         name: "123123123",
         value: "for var yx do something"
       }];
-      localStorage.setItem("customQueries", JSON.stringify(customQueries));
-      view.initialize();
-      spyOn(localStorage, "getItem");
+      localStorageFake.value = JSON.stringify(customQueries);
       view.getAQL();
       expect(localStorage.getItem).toHaveBeenCalledWith("customQueries");
       expect(view.customQueries).toEqual(customQueries);
@@ -225,8 +263,10 @@
         name: "myname",
         value: "for var yx do something"
       }];
-      localStorage.setItem("customQueries", JSON.stringify(customQueries));
+      localStorageFake.value = JSON.stringify(customQueries);
+
       view.initialize();
+      expect(localStorage.getItem).toHaveBeenCalledWith("customQueries");
 
       jQueryDummy = {
         removeClass: function () {
@@ -263,7 +303,7 @@
       }], e = {
         target: "dontcare"
       };
-      localStorage.setItem("customQueries", JSON.stringify(customQueries));
+      localStorageFake.value = JSON.stringify(customQueries);
 
       spyOn(view, "switchTab");
       spyOn(view, "deselect");
@@ -283,7 +323,8 @@
       }], e = {
         target: "dontcare"
       };
-      localStorage.setItem("customQueries", JSON.stringify(customQueries));
+      localStorageFake.value = JSON.stringify(customQueries);
+
       view.initialize();
 
       spyOn(view, "renderSelectboxes");
@@ -306,7 +347,7 @@
         target: "dontcare",
         stopPropagation: function() {throw "Should be a spy";}
       };
-      localStorage.setItem("customQueries", JSON.stringify(customQueries));
+      localStorageFake.value = JSON.stringify(customQueries);
       view.initialize();
 
       div2 = document.createElement("div");
@@ -338,7 +379,7 @@
           throw "Should be a spy";
         }
       };
-      localStorage.setItem("customQueries", JSON.stringify(customQueries));
+      localStorageFake.value = JSON.stringify(customQueries);
       view.initialize();
 
       div2 = document.createElement("div");
@@ -370,7 +411,7 @@
           throw "Should be a spy";
         }
       };
-      localStorage.setItem("customQueries", JSON.stringify(customQueries));
+      localStorageFake = JSON.stringify(customQueries);
       view.initialize();
 
       div2 = document.createElement("div");
@@ -402,7 +443,7 @@
           throw "Should be a spy";
         }
       };
-      localStorage.setItem("customQueries", JSON.stringify(customQueries));
+      localStorageFake = JSON.stringify(customQueries);
       view.initialize();
 
       div2 = document.createElement("div");
@@ -430,7 +471,7 @@
         value: "for var yx do something"
       }],
       returnValue;
-      localStorage.setItem("customQueries", JSON.stringify(customQueries));
+      localStorageFake = JSON.stringify(customQueries);
       view.initialize();
 
       returnValue = view.getCustomQueryValueByName("hallotest");
@@ -442,7 +483,7 @@
       div2.id = "test123";
       document.body.appendChild(div2);
 
-      localStorage.setItem("querySize", 5000);
+      localStorageFake = 5000;
 
       view.initialize();
       spyOn(localStorage, "getItem");
@@ -489,7 +530,7 @@
         }
       };
       $('#findme').val('findme');
-      localStorage.setItem("customQueries", JSON.stringify(customQueries));
+      localStorageFake = JSON.stringify(customQueries);
       view.initialize();
 
       view.importSelected(e);
