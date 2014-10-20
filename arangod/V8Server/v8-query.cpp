@@ -280,7 +280,7 @@ static int SetupExampleObject (v8::Handle<v8::Object> const example,
 static TRI_index_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
                                                       TRI_shaper_t* shaper,
                                                       v8::Handle<v8::Object> conditions) {
-  TRI_index_operator_t* lastOperator = 0;
+  TRI_index_operator_t* lastOperator = nullptr;
   size_t numEq = 0;
   size_t lastNonEq = 0;
 
@@ -449,7 +449,7 @@ static TRI_index_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
 MEM_ERROR:
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
 
-  if (lastOperator == nullptr) {
+  if (lastOperator != nullptr) {
     TRI_FreeIndexOperator(lastOperator);
   }
 
