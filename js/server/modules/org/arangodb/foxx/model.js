@@ -269,7 +269,9 @@ _.extend(Model.prototype, {
           metadataSchema[attributeName] ||
           joi.forbidden()
         ),
-        result = schema.validate(value);
+        result = (
+          schema.isJoi ? schema : joi.object().keys(schema)
+        ).validate(value);
 
       if (result.error) {
         this.errors[attributeName] = result.error;
