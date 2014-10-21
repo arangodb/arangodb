@@ -2086,13 +2086,6 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
             if (vars.size() != 1 || vars[0]->id != varsToRemove[0]->id) {
               break; // abort . . . 
             }
-            // TODO check if we are accessing the _key attribute, maybe this is
-            // not required:
-            // AQL_EXPLAIN("FOR d IN docs FILTER d.Hallo < 5 REMOVE d.blah in docs")
-            // returns a plan but:
-            // AQL_EXECUTE("FOR d IN docs FILTER d.Hallo < 5 REMOVE d.blah in docs")
-            // doesn't work (in the non-cluster, neither work in the cluster)
-            
             // set the _variable to the variable in the expression of this
             // node and also define _enumColl
             varsToRemove = cn->getVariablesUsedHere();
@@ -2158,7 +2151,7 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
           // FIXME should the following be an assertion? I.e. can it
           // ever happen?
           
-          // check these as a Calc-Filter pair
+          // check these are a Calc-Filter pair
           if (cn->getVariablesSetHere()[0]->id
               != fn->getVariablesUsedHere()[0]->id) {
             break; // abort . . .
