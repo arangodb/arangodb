@@ -81,6 +81,7 @@ Collection::~Collection () {
 size_t Collection::count () const {
   if (numDocuments == UNINITIALIZED) {
     if (ExecutionEngine::isCoordinator()) {
+      // cluster case
       uint64_t result;
       int res = triagens::arango::countOnCoordinator(vocbase->_name, name, result); 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -89,6 +90,7 @@ size_t Collection::count () const {
       numDocuments = static_cast<int64_t>(result);
     }
     else {
+      // local case
       auto document = documentCollection();
       // cache the result
       numDocuments = static_cast<int64_t>(document->size(document));
@@ -214,14 +216,45 @@ void Collection::fillIndexes () const {
     }
 
     TRI_json_t const* json = (*collectionInfo).getIndexes();
-    size_t const n = document->_allIndexes._length;
+    if (! TRI_IsListJson(json)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected index list format");
+    }
+
+    size_t const n = TRI_LengthListJson(json);
     indexes.reserve(n);
       
     // register indexes
     for (size_t i = 0; i < n; ++i) {
       TRI_json_t const* v = TRI_LookupListJson(json, i);
-      if (v != nullptr) {
-        indexes.emplace_back(new Index(v));
+      if (TRI_IsArrayJson(v)) {
+        // lookup index id
+        TRI_json_t const* id = TRI_LookupArrayJson(v, "id");
+        if (! TRI_IsStringJson(id)) {
+          continue;
+        }
+
+        // use numeric index id
+        uint64_t iid = triagens::basics::StringUtils::uint64(id->_value._string.data, id->_value._string.length - 1);
+        TRI_index_t* data = nullptr;
+
+        // now check if we can find the local index and map it
+        for (size_t j = 0; j < document->_allIndexes._length; ++j) {
+          auto localIndex = static_cast<TRI_index_t*>(document->_allIndexes._buffer[j]);
+          if (localIndex != nullptr && localIndex->_iid == iid) {
+            // found
+            data = localIndex;
+            break;
+          }
+          else if (localIndex->_type == TRI_IDX_TYPE_PRIMARY_INDEX || 
+                   localIndex->_type == TRI_IDX_TYPE_EDGE_INDEX) {
+          }
+        }
+
+        auto idx = new Index(v);
+        // assign the found local index
+        idx->data = data; 
+
+        indexes.push_back(idx);
       }
     }
   }

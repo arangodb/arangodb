@@ -62,7 +62,7 @@ namespace triagens {
 
         for (size_t i = 0; i < n; ++i) {
           char const* field = idx->_fields._buffer[i];
-          fields.push_back(std::string(field));
+          fields.emplace_back(std::string(field));
         }
         
         TRI_ASSERT(data != nullptr);
@@ -84,10 +84,12 @@ namespace triagens {
           for (size_t i = 0; i < n; ++i) {
             TRI_json_t const* name = static_cast<TRI_json_t const*>(TRI_AtVector(&f->_value._objects, i));
             if (TRI_IsStringJson(name)) {
-              fields.push_back(std::string(name->_value._string.data, name->_value._string.length - 1));
+              fields.emplace_back(std::string(name->_value._string.data, name->_value._string.length - 1));
             }
           }
         }
+
+        // it is the caller's responsibility to fill the data attribute with something sensible later!
       }
       
       ~Index() {
