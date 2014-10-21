@@ -1915,7 +1915,9 @@ ExecutionNode* AggregateNode::clone (ExecutionPlan* plan,
   auto aggregateVariables = _aggregateVariables;
 
   if (withProperties) {
-    outVariable = plan->getAst()->variables()->createVariable(outVariable);
+    if (outVariable != nullptr) {
+      outVariable = plan->getAst()->variables()->createVariable(outVariable);
+    }
 
     for (auto oneAggregate: _aggregateVariables) {
       auto in  = plan->getAst()->variables()->createVariable(oneAggregate.first);
@@ -2242,7 +2244,9 @@ ExecutionNode* UpdateNode::clone (ExecutionPlan* plan,
     if (_outVariable != nullptr) {
       outVariable = plan->getAst()->variables()->createVariable(outVariable);
     }
-    inKeyVariable = plan->getAst()->variables()->createVariable(inKeyVariable);
+    if (inKeyVariable != nullptr) {
+      inKeyVariable = plan->getAst()->variables()->createVariable(inKeyVariable);
+    }
     inDocVariable = plan->getAst()->variables()->createVariable(inDocVariable);
   }
 
@@ -2313,7 +2317,9 @@ ExecutionNode* ReplaceNode::clone (ExecutionPlan* plan,
     if (_outVariable != nullptr) {
       outVariable = plan->getAst()->variables()->createVariable(outVariable);
     }
-    inKeyVariable = plan->getAst()->variables()->createVariable(inKeyVariable);
+    if (inKeyVariable != nullptr) {
+      inKeyVariable = plan->getAst()->variables()->createVariable(inKeyVariable);
+    }
     inDocVariable = plan->getAst()->variables()->createVariable(inDocVariable);
   }
 
