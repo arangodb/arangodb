@@ -104,7 +104,10 @@ createErrorBubbleWrap = function (handler, errorClass, code, reason, errorHandle
     try {
       handler(req, res);
     } catch (e) {
-      if ((typeof errorClass === 'string' && e.name === errorClass) || e instanceof errorClass) {
+      if (
+        (typeof errorClass === 'string' && e.name === errorClass) ||
+        (typeof errorClass === 'function' && e instanceof errorClass)
+      ) {
         res.status(code);
         res.json(errorHandler(e));
       } else {
