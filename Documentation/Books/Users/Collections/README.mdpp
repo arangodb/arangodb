@@ -4,15 +4,15 @@ This is an introduction to ArangoDB's interface for collections and how to handl
 collections from the JavaScript shell _arangosh_. For other languages see the
 corresponding language API.
 
-The most import call is the call to create a new collection
+The most important call is the call to create a new collection.
 
 !SECTION Address of a Collection 
 
-All collections in ArangoDB have an unique identifier and an unique
+All collections in ArangoDB have a unique identifier and a unique
 name. ArangoDB internally uses the collection's unique identifier to look up
 collections. This identifier, however, is managed by ArangoDB and the user has
 no control over it. In order to allow users to use their own names, each collection
-also has an unique name which is specified by the user. To access a collection
+also has a unique name which is specified by the user. To access a collection
 from the user perspective, the [collection name](../Glossary/README.html#collection_name) should be used, i.e.:
 
 !SUBSECTION Collection

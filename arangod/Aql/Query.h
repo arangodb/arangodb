@@ -344,8 +344,8 @@ namespace triagens {
 /// @brief return the transaction, if prepared
 ////////////////////////////////////////////////////////////////////////////////
 
-        triagens::arango::AqlTransaction* trx () {
-          return &*_trx;
+        inline triagens::arango::AqlTransaction* trx () {
+          return _trx;
         }
 
 ////////////////////////////////////////////////////////////////////////////////

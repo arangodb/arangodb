@@ -188,6 +188,14 @@ bool ExecutionEngine::isCoordinator () {
   return triagens::arango::ServerState::instance()->isCoordinator();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// @brief whether or not we are a db server
+////////////////////////////////////////////////////////////////////////////////
+       
+bool ExecutionEngine::isDBServer () {
+  return triagens::arango::ServerState::instance()->isDBserver();
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                     walker class for ExecutionNode to instanciate
 // -----------------------------------------------------------------------------
@@ -222,7 +230,8 @@ struct Instanciator : public WalkerWorker<ExecutionNode> {
         nodeType == ExecutionNode::REPLACE) {
       root = eb;
     }
-    else if (nodeType == ExecutionNode::SCATTER ||
+    else if (nodeType == ExecutionNode::DISTRIBUTE ||
+             nodeType == ExecutionNode::SCATTER ||
              nodeType == ExecutionNode::GATHER) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "logic error, got cluster node in local query");
     }
@@ -266,15 +275,18 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
   struct EngineInfo {
     EngineInfo (EngineLocation location,
-                size_t id)
+                size_t id,
+                triagens::aql::QueryPart p)
       : location(location),
         id(id),
-        nodes() {
+        nodes(),
+        part(p) {
     }
 
     EngineLocation const         location;
     size_t const                 id;
     std::vector<ExecutionNode*>  nodes;
+    triagens::aql::QueryPart     part;   // only relevant for DBserver parts
   };
 
   Query*                   query;
@@ -284,6 +296,10 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   size_t                   currentEngineId;
   std::vector<EngineInfo>  engines;
   std::vector<size_t>      engineIds; // stack of engine ids, used for subqueries
+  std::unordered_set<std::string> collNamesSeenOnDBServer;  
+     // names of sharded collections that we have already seen on a DBserver
+     // this is relevant to decide whether or not the engine there is a main
+     // query or a dependent one.
 
   virtual bool EnterSubQueryFirst () {
     return true;
@@ -301,7 +317,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     TRI_ASSERT(query != nullptr);
     TRI_ASSERT(queryRegistry != nullptr);
 
-    engines.emplace_back(EngineInfo(COORDINATOR, 0));
+    engines.emplace_back(EngineInfo(COORDINATOR, 0, PART_MAIN));
   }
   
   ~CoordinatorInstanciator () {
@@ -323,6 +339,11 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         if ((*it).id > 0) {
           Query* otherQuery = query->clone(PART_DEPENDENT);
           otherQuery->engine(engine);
+          
+          int res = otherQuery->trx()->begin();
+          if (res != TRI_ERROR_NO_ERROR) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(res, "could not begin transaction");
+          }
 
           auto* newPlan = new ExecutionPlan(otherQuery->ast());
           otherQuery->setPlan(newPlan);
@@ -337,6 +358,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           ExecutionNode const* current = (*it).nodes.front();
           ExecutionNode* previous = nullptr;
 
+          // TODO: fix instanciation here as in DBserver case
           while (current != nullptr) {
             auto clone = current->clone(newPlan, false, true);
             newPlan->registerNode(clone);
@@ -423,10 +445,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       // copy the relevant fragment of the plan for each shard
       ExecutionPlan plan(query->ast());
 
-      ExecutionNode const* current = info.nodes.front();
       ExecutionNode* previous = nullptr;
-
-      while (current != nullptr) {
+      for (ExecutionNode const* current : info.nodes) {
         auto clone = current->clone(&plan, false, true);
         plan.registerNode(clone);
         
@@ -436,7 +456,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           static_cast<RemoteNode*>(clone)->ownName(shardId);
           static_cast<RemoteNode*>(clone)->queryId(connectedId);
         }
-     
       
         if (previous == nullptr) {
           // set the root node
@@ -446,15 +465,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           previous->addDependency(clone);
         }
 
-        auto const& deps = current->getDependencies();
-        if (deps.size() != 1) {
-          break;
-        }
-
         previous = clone;
-        current = deps[0];
       }
-      
       // inject the current shard id into the collection
       collection->setCurrentShard(shardId);
       plan.setVarUsageComputed();
@@ -473,7 +485,12 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       jsonNodesList.set("variables", query->ast()->variables()->toJson(TRI_UNKNOWN_MEM_ZONE));
 
       result.set("plan", jsonNodesList);
-      result.set("part", Json("dependent")); // TODO: set correct query type
+      if (info.part == triagens::aql::PART_MAIN) {
+        result.set("part", Json("main"));
+      }
+      else {
+        result.set("part", Json("dependent"));
+      }
 
       Json optimizerOptionsRules(Json::List);
       Json optimizerOptions(Json::Array);
@@ -510,7 +527,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
     // pick up the remote query ids
     std::unordered_map<std::string, std::string> queryIds;
-  
+
+    std::string error;
     int count = 0;
     int nrok = 0;
     for (count = (int) shardIds.size(); count > 0; count--) {
@@ -535,6 +553,13 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           std::cout << "DB SERVER ANSWERED WITH ERROR: " << res->answer->body() << "\n";
         }
       }
+      else {
+        error += std::string("Communication with shard '") + 
+          std::string(res->shardID) + 
+          std::string("' on cluster node '") +
+          std::string(res->serverID) +
+          std::string("' failed.");
+      }
       delete res;
     }
 
@@ -542,7 +567,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
     if (nrok != (int) shardIds.size()) {
       // TODO: provide sensible error message with more details
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "did not receive response from all shards");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, error);
     }
           
     return queryIds;
@@ -658,7 +683,18 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       // flip current location
       currentLocation = (currentLocation == COORDINATOR ? DBSERVER : COORDINATOR);
       currentEngineId = engines.size();
-      engines.emplace_back(EngineInfo(currentLocation, currentEngineId));
+      QueryPart part = PART_DEPENDENT;
+      if (currentLocation == DBSERVER) {
+        auto rn = static_cast<RemoteNode*>(en);
+        Collection const* coll = rn->collection();
+        if (collNamesSeenOnDBServer.find(coll->name) == 
+            collNamesSeenOnDBServer.end()) {
+          part = PART_MAIN;
+          collNamesSeenOnDBServer.insert(coll->name);
+        }
+      }
+      // For the coordinator we do not care about main or part:
+      engines.emplace_back(EngineInfo(currentLocation, currentEngineId, part));
     }
 
     return false;
@@ -706,6 +742,17 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
       plan->root()->walk(inst.get());
 
       // std::cout << "ORIGINAL PLAN:\n" << plan->toJson(query->ast(), TRI_UNKNOWN_MEM_ZONE, true).toString() << "\n\n";
+
+#if 0
+      // Just for debugging
+      for (auto& ei : inst->engines) {
+        std::cout << "EngineInfo: id=" << ei.id 
+                  << " Location=" << ei.location << std::endl;
+        for (auto& n : ei.nodes) {
+          std::cout << "Node: type=" << n->getTypeString() << std::endl;
+        }
+      }
+#endif
       engine = inst.get()->buildEngines(); 
       root = engine->root();
     }
@@ -718,10 +765,10 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
     }
 
     TRI_ASSERT(root != nullptr);
+    engine->_root = root;
     root->initialize();
     root->initializeCursor(nullptr, 0);
 
-    engine->_root = root;
   
     return engine;
   }
