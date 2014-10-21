@@ -3328,12 +3328,6 @@ int GatherBlock::initialize () {
     return res;
   }
 
-  /*if (! _isSimple) {
-    _gatherBlockBuffer.reserve(_dependencies.size());
-    for(size_t i = 0; i < _dependencies.size(); i++) {
-      _gatherBlockBuffer.emplace_back(); 
-    }
-  }*/
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -4025,6 +4019,9 @@ int DistributeBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 
   _distBuffer.clear();
   _distBuffer.reserve(_nrClients);
+  for (size_t i = 0; i < _nrClients; i++) {
+    _distBuffer.emplace_back();
+  }
 
   return TRI_ERROR_NO_ERROR;
 }

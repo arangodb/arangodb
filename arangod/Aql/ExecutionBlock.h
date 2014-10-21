@@ -1727,10 +1727,7 @@ namespace triagens {
       private: 
        
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _posForClient: _posForClient.at(i).second is the nr of rows of
-/// _gatherBlockBuffer.at(_posForClient.at(i).first) sent to the client 
-/// with id <i>, i.e. it is the position we should read from in
-/// _gatherBlockBuffer.at(_posForClient.at(i).first)
+/// @brief _posForClient:
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<std::pair<size_t, size_t>> _posForClient; 
