@@ -1154,7 +1154,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void handleResult (int,
-                           bool);
+                           bool,
+                           std::string const *errorMessage = nullptr);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
