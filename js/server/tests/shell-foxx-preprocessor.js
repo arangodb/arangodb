@@ -1,5 +1,3 @@
-require("internal").flushModuleCache();
-
 var jsunity = require("jsunity"),
   preprocess = require("org/arangodb/foxx/preprocessor").preprocess,
   Preprocessor = require("org/arangodb/foxx/preprocessor").Preprocessor;
