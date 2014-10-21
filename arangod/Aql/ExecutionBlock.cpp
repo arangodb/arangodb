@@ -1219,11 +1219,18 @@ void IndexRangeBlock::readPrimaryIndex (IndexOrCondition const& ranges) {
         // parse _id value
         int errorCode = resolve(json->_value._string.data, documentCid, documentKey);
 
-        if (errorCode == TRI_ERROR_NO_ERROR &&
-            documentCid == _collection->documentCollection()->_info._cid) {
+        if (errorCode == TRI_ERROR_NO_ERROR) {
+          bool const isCluster = (ExecutionEngine::isCoordinator() || ExecutionEngine::isDBServer());
+          if (! isCluster && documentCid == _collection->documentCollection()->_info._cid) {
+            // only continue lookup if the id value is syntactically correct and
+            // refers to "our" collection, using local collection id
+            key = documentKey;
+          }
+          else if (isCluster && documentCid == _collection->documentCollection()->_info._planId) {
           // only continue lookup if the id value is syntactically correct and
-          // refers to "our" collection
-          key = documentKey;
+          // refers to "our" collection, using cluster collection id
+            key = documentKey;
+          }
         }
       }
       break;
