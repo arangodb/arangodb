@@ -227,6 +227,33 @@ function startInstance (protocol, options, addArgs) {
   return instanceInfo;
 }
 
+function checkInstanceAlive(instanceInfo, options) {  
+  if (options.cluster === false) {
+    var res = statusExternal(instanceInfo.pid, false);
+    var ret = res.status === "RUNNING";
+    if (! ret) {
+      print("ArangoD with PID " + instanceInfo.pid.pid + " gone:");
+      instanceInfo.exitStatus = res;
+      print(instanceInfo);
+      if (res.hasOwnProperty('signal') && 
+          (res.signal === 11))
+      {
+        var storeArangodPath = "/var/tmp/arangod_" + instanceInfo.pid.pid;
+        print("Core dump written; copying arangod to " + 
+              storeArangodPath + " for later analysis.");
+        res.gdbHint = "Run debugger with 'gdb " + 
+          storeArangodPath + 
+          " /var/tmp/core*" + instanceInfo.pid.pid + "*'";
+        copy("bin/arangod", storeArangodPath);
+      }
+    }
+    return ret;
+  }
+  else {
+    return instanceInfo.kickstarter.isHealthy();
+  }
+}
+
 function shutdownInstance (instanceInfo, options) {
   if (options.cluster) {
     instanceInfo.kickstarter.shutdown();
@@ -548,6 +575,8 @@ function rubyTests (options, ssl) {
   var result = {};
   var args;
   var i;
+  var continueTesting = true;
+
   for (i = 0; i < files.length; i++) {
     var n = files[i];
     if (n.substr(0,4) === "api-" && n.substr(-3) === ".rb") {
@@ -563,6 +592,11 @@ function rubyTests (options, ssl) {
         result[n] = r.exit;
         if (r.exit !== 0 && !options.force) {
           break;
+        }
+        continueTesting = checkInstanceAlive(instanceInfo, options);
+        if (!continueTesting) {
+          print(instanceInfo);
+          throw "aborting tests, server is gone away.";
         }
       }
       else {
