@@ -110,7 +110,7 @@ std::string const& RestAqlHandler::queue () const {
 void RestAqlHandler::createQueryFromJson () {
   Json queryJson(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
   if (queryJson.isEmpty()) {
-    LOG_ERROR("Invalid JSON Plan in Query");
+    LOG_ERROR("invalid JSON plan in query");
     return;
   }
 
@@ -119,7 +119,7 @@ void RestAqlHandler::createQueryFromJson () {
 
   plan = queryJson.get("plan").copy();   // cannot throw
   if (plan.isEmpty()) {
-    LOG_ERROR("Invalid JSON: \"plan\"-Attribute missing.");
+    LOG_ERROR("Invalid JSON: \"plan\" attribute missing.");
     generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
       "body must be an object with attribute \"plan\"");
     return;
@@ -131,7 +131,7 @@ void RestAqlHandler::createQueryFromJson () {
   auto query = new Query(_applicationV8, false, _vocbase, plan, options.steal(), (part == "main" ? PART_MAIN : PART_DEPENDENT));
   QueryResult res = query->prepare(_queryRegistry);
   if (res.code != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("Failed to instanciate the Query: %s", res.details.c_str());
+    LOG_ERROR("failed to instanciate the query: %s", res.details.c_str());
 
     generateError(HttpResponse::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN,
       res.details);
@@ -182,7 +182,7 @@ void RestAqlHandler::createQueryFromJson () {
 void RestAqlHandler::parseQuery () {
   Json queryJson(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
   if (queryJson.isEmpty()) {
-    LOG_ERROR("Invalid JSON Plan in Query");
+    LOG_ERROR("invalid JSON plan in query");
     return;
   }
   
@@ -198,7 +198,7 @@ void RestAqlHandler::parseQuery () {
                          nullptr, nullptr, PART_MAIN);
   QueryResult res = query->parse();
   if (res.code != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("Failed to instanciate the Query: %s", res.details.c_str());
+    LOG_ERROR("failed to instanciate the Query: %s", res.details.c_str());
     generateError(HttpResponse::BAD, res.code, res.details);
     delete query;
     return;
@@ -256,7 +256,7 @@ void RestAqlHandler::explainQuery () {
                          parameters.steal(), options.steal(), PART_MAIN);
   QueryResult res = query->explain();
   if (res.code != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("Failed to instanciate the Query: %s", res.details.c_str());
+    LOG_ERROR("failed to instanciate the Query: %s", res.details.c_str());
     generateError(HttpResponse::BAD, res.code, res.details);
     delete query;
     return;
@@ -319,7 +319,7 @@ void RestAqlHandler::createQueryFromString () {
                          parameters.steal(), options.steal(), (part == "main" ? PART_MAIN : PART_DEPENDENT));
   QueryResult res = query->prepare(_queryRegistry);
   if (res.code != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("Failed to instanciate the Query: %s", res.details.c_str());
+    LOG_ERROR("failed to instanciate the Query: %s", res.details.c_str());
     generateError(HttpResponse::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN,
       res.details);
     delete query;
@@ -438,7 +438,7 @@ void RestAqlHandler::useQuery (std::string const& operation,
   }
   catch (triagens::arango::Exception const& ex) {
     _queryRegistry->close(_vocbase, _qId);
-    LOG_ERROR("Failed during use of Query: %s", ex.message().c_str());
+    LOG_ERROR("failed during use of Query: %s", ex.message().c_str());
     generateError(HttpResponse::SERVER_ERROR, 
                   ex.code(),
                   ex.message());
@@ -446,7 +446,7 @@ void RestAqlHandler::useQuery (std::string const& operation,
   catch (std::exception const& ex) {
     _queryRegistry->close(_vocbase, _qId);
     
-    LOG_ERROR("Failed during use of Query: %s", ex.what());
+    LOG_ERROR("failed during use of Query: %s", ex.what());
 
     generateError(HttpResponse::SERVER_ERROR, 
                   TRI_ERROR_HTTP_SERVER_ERROR,
@@ -454,7 +454,7 @@ void RestAqlHandler::useQuery (std::string const& operation,
   }
   catch (...) {
     _queryRegistry->close(_vocbase, _qId);
-    LOG_ERROR("Failed during use of Query: Unknown exeption occured");
+    LOG_ERROR("failed during use of Query: Unknown exeption occured");
 
     generateError(HttpResponse::SERVER_ERROR, 
                   TRI_ERROR_HTTP_SERVER_ERROR,
@@ -548,14 +548,14 @@ void RestAqlHandler::getInfoQuery (std::string const& operation,
     }
     else {
       _queryRegistry->close(_vocbase, _qId);
-      LOG_ERROR("Referenced qery not found");
+      LOG_ERROR("referenced query not found");
       generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       return;
     }
   }
   catch (triagens::arango::Exception const& ex) {
     _queryRegistry->close(_vocbase, _qId);
-    LOG_ERROR("Failed during use of Query: %s", ex.message().c_str());    
+    LOG_ERROR("failed during use of query: %s", ex.message().c_str());    
     generateError(HttpResponse::SERVER_ERROR, 
                   ex.code(),
                   ex.message());
@@ -563,7 +563,7 @@ void RestAqlHandler::getInfoQuery (std::string const& operation,
   catch (std::exception const& ex) {
     _queryRegistry->close(_vocbase, _qId);
     
-    LOG_ERROR("Failed during use of Query: %s", ex.what());
+    LOG_ERROR("failed during use of query: %s", ex.what());
 
     generateError(HttpResponse::SERVER_ERROR, 
                   TRI_ERROR_HTTP_SERVER_ERROR,
@@ -572,7 +572,7 @@ void RestAqlHandler::getInfoQuery (std::string const& operation,
   catch (...) {
     _queryRegistry->close(_vocbase, _qId);
       
-    LOG_ERROR("Failed during use of Query: Unknown exeption occured");
+    LOG_ERROR("failed during use of query: Unknown exeption occured");
 
     generateError(HttpResponse::SERVER_ERROR, 
                   TRI_ERROR_HTTP_SERVER_ERROR,
@@ -604,7 +604,6 @@ triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
   switch (type) {
     case HttpRequest::HTTP_REQUEST_POST: {
       if (suffix.size() != 1) {
-        LOG_ERROR("Empty POST!");
         generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       }
       else if (suffix[0] == "instanciate") {
@@ -650,7 +649,6 @@ triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
     case HttpRequest::HTTP_REQUEST_PATCH:
     case HttpRequest::HTTP_REQUEST_OPTIONS:
     case HttpRequest::HTTP_REQUEST_ILLEGAL: {
-      LOG_ERROR("Unknown HTTP-method for /_api/aql");
       generateError(HttpResponse::METHOD_NOT_ALLOWED, 
                     TRI_ERROR_NOT_IMPLEMENTED,
                     "illegal method for /_api/aql");
@@ -670,22 +668,32 @@ triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
 bool RestAqlHandler::findQuery (std::string const& idString,
                                 Query*& query) {
   _qId = StringUtils::uint64(idString);
-
   query = nullptr;
 
-  try {
-    query = _queryRegistry->open(_vocbase, _qId);
-  }
-  catch (...) {
-    _qId = 0;
-    LOG_ERROR("Query not found.");
-    generateError(HttpResponse::FORBIDDEN, TRI_ERROR_QUERY_IN_USE);
-    return true;
+  // sleep for 10ms each time, wait for at most 30 seconds...
+  static const int64_t SingleWaitPeriod = 10 * 1000;
+  static int64_t const MaxIterations = static_cast<int64_t>(30.0 * 1000000.0 / (double) SingleWaitPeriod); 
+
+  int64_t iterations = 0;
+
+  // probably need to cycle here until we can get hold of the query
+  while (++iterations < MaxIterations) {
+    try {
+      query = _queryRegistry->open(_vocbase, _qId);
+      // we got the query (or it was not found - at least no one else
+      // can now have access to the same query)
+      break;
+    }
+    catch (...) {
+      // we can only get here if the query is currently used by someone 
+      // else. in this case we sleep for a while and re-try
+      usleep(SingleWaitPeriod);
+    }
   }
 
   if (query == nullptr) {
     _qId = 0;
-    LOG_ERROR("Query not found.");
+    LOG_ERROR("Query not found");
     generateError(HttpResponse::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND);
     return true;
   }
