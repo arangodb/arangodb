@@ -230,7 +230,8 @@ struct Instanciator : public WalkerWorker<ExecutionNode> {
         nodeType == ExecutionNode::REPLACE) {
       root = eb;
     }
-    else if (nodeType == ExecutionNode::SCATTER ||
+    else if (nodeType == ExecutionNode::DISTRIBUTE ||
+             nodeType == ExecutionNode::SCATTER ||
              nodeType == ExecutionNode::GATHER) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "logic error, got cluster node in local query");
     }
