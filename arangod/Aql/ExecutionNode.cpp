@@ -631,7 +631,7 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
   }
 
   json("id", triagens::basics::Json(static_cast<double>(id())));
-  json("estimatedCost", triagens::basics::Json(_estimatedCost));
+  json("estimatedCost", triagens::basics::Json(getCost()));
 
   if (verbose) {
     json("depth", triagens::basics::Json(static_cast<double>(_depth)));
@@ -1340,7 +1340,7 @@ ExecutionNode::IndexMatch IndexRangeNode::MatchesIndex (IndexMatchVec const& pat
 /// its unique dependency
 ////////////////////////////////////////////////////////////////////////////////
         
-double IndexRangeNode::estimateCost () { 
+double IndexRangeNode::estimateCost () const { 
   // the cost of the enumerate collection node we are replacing . . .
   double const dependencyCost = _dependencies.at(0)->getCost();
   double const oldCost = static_cast<double>(_collection->count()) * dependencyCost; 
