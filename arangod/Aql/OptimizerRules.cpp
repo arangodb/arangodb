@@ -1638,14 +1638,11 @@ int triagens::aql::scatterInCluster (Optimizer* opt,
       auto parents = node->getParents();
       auto deps = node->getDependencies();
       TRI_ASSERT(deps.size() == 1);
-
-      // unlink the node
       bool const isRootNode = plan->isRoot(node);
-      if (isRootNode) {
-        if (deps[0]->getType() == ExecutionNode::REMOTE &&
-            deps[0]->getDependencies()[0]->getType() == ExecutionNode::DISTRIBUTE){
-          continue;
-        }
+      // don't do this if we are already distributing!
+      if (deps[0]->getType() == ExecutionNode::REMOTE &&
+          deps[0]->getDependencies()[0]->getType() == ExecutionNode::DISTRIBUTE){
+        continue;
       }
       plan->unlinkNode(node, isRootNode);
 
@@ -1782,8 +1779,19 @@ int triagens::aql::distributeInCluster (Optimizer* opt,
     // re-link with the remote node
     node->addDependency(remoteNode);
 
-    // make node the root again
-    plan->root(node);
+    // insert another remote node
+    remoteNode = new RemoteNode(plan, plan->nextId(), vocbase, collection, "", "", "");
+    plan->registerNode(remoteNode);
+    remoteNode->addDependency(node);
+    
+    // insert a gather node 
+    ExecutionNode* gatherNode = new GatherNode(plan, plan->nextId(), vocbase,
+        collection);
+    plan->registerNode(gatherNode);
+    gatherNode->addDependency(remoteNode);
+
+    // we replaced the root node, set a new root node
+    plan->root(gatherNode);
     wasModified = true;
   }
    

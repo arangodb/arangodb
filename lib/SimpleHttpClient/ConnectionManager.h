@@ -93,13 +93,19 @@ namespace triagens {
           GeneralClientConnection* connection;
           triagens::rest::Endpoint* endpoint;
           time_t lastUsed;
-          string ep_spec;
+          std::string ep_spec;
 
           SingleServerConnection (GeneralClientConnection* c,
                                   triagens::rest::Endpoint* e,
                                   std::string& ep_spec)
-              : connection(c), endpoint(e), lastUsed(0), ep_spec(ep_spec) {}
+            : connection(c), 
+              endpoint(e), 
+              lastUsed(0), 
+              ep_spec(ep_spec) {
+          }
+
           ~SingleServerConnection ();
+
         };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -107,11 +113,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         struct ServerConnections {
-          vector<SingleServerConnection*> connections;
-          list<SingleServerConnection*> unused;
+          std::vector<SingleServerConnection*> connections;
+          std::list<SingleServerConnection*> unused;
           triagens::basics::ReadWriteLock lock;
 
-          ServerConnections () {}
+          ServerConnections () {
+          }
+
           ~ServerConnections ();   // closes all connections
         };
 
@@ -123,11 +131,11 @@ namespace triagens {
 /// @brief get the unique instance
 ////////////////////////////////////////////////////////////////////////////////
 
-        static ConnectionManager* instance ( ) {
+        static ConnectionManager* instance () {
           // This does not have to be thread-safe, because we guarantee that
           // this is called very early in the startup phase when there is still
           // a single thread.
-          if (0 == _theinstance) {
+          if (nullptr == _theinstance) {
             _theinstance = new ConnectionManager( );
             // this now happens exactly once
           }
@@ -147,7 +155,7 @@ namespace triagens {
 
         static void cleanup () {
           delete _theinstance;
-          _theinstance = 0;
+          _theinstance = nullptr;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -198,7 +206,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         // We keep connections to servers open:
-        map<std::string, ServerConnections*> allConnections;
+        std::map<std::string, ServerConnections*> allConnections;
         triagens::basics::ReadWriteLock allLock;
 
     };

@@ -1303,7 +1303,8 @@ IndexRangeNode::IndexRangeNode (ExecutionPlan* plan,
     _vocbase(plan->getAst()->query()->vocbase()),
     _collection(plan->getAst()->query()->collections()->get(JsonHelper::checkAndGetStringValue(json.json(), 
             "collection"))),
-    _outVariable(varFromJson(plan->getAst(), json, "outVariable")), 
+    _outVariable(varFromJson(plan->getAst(), json, "outVariable")),
+    _index(nullptr), 
     _ranges(),
     _reverse(false) {
 
@@ -1324,6 +1325,10 @@ IndexRangeNode::IndexRangeNode (ExecutionPlan* plan,
 
   _index = _collection->getIndex(iid);
   _reverse = JsonHelper::checkAndGetBooleanValue(json.json(), "reverse");
+
+  if (_index == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "index not found");
+  }
 }
 
 ExecutionNode::IndexMatch IndexRangeNode::MatchesIndex (IndexMatchVec const& pattern) const {

@@ -142,13 +142,11 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool processRead () {
-          if (this->_requestPending || this->_readBuffer->c_str() == 0) {
-
+          if (this->_requestPending || this->_readBuffer->c_str() == nullptr) {
             return true;
           }
 
           bool handleRequest = false;
-
 
           if (! this->_readRequestBody) {
 #ifdef TRI_ENABLE_FIGURES

@@ -166,12 +166,12 @@ function printUsage () {
 function filterTestcaseByOptions (testname, options, whichFilter)
 {
   if ((testname.indexOf("-cluster") !== -1) && (options.cluster === false)) {
-    whichFilter.filter = 'cluster';
+    whichFilter.filter = 'noncluster';
     return false;
   }
 
   if (testname.indexOf("-noncluster") !== -1 && (options.cluster === true)) {
-    whichFilter.filter = 'noncluster';
+    whichFilter.filter = 'cluster';
     return false;
   }
 

@@ -6272,15 +6272,13 @@ function GENERAL_GRAPH_VERTICES (
   if (! options.direction) {
     options.direction =  'any';
   }
-  if (options.direction ===  'any') {
-    options.includeOrphans = true;
-  }
   if (options.vertexCollectionRestriction) {
     if (options.direction === "inbound") {
       options.endVertexCollectionRestriction = options.vertexCollectionRestriction;
     } else if (options.direction === "outbound")  {
       options.startVertexCollectionRestriction = options.vertexCollectionRestriction;
     } else {
+      options.includeOrphans = true;
       options.endVertexCollectionRestriction = options.vertexCollectionRestriction;
       options.startVertexCollectionRestriction = options.vertexCollectionRestriction;
       options.orphanCollectionRestriction = options.vertexCollectionRestriction;

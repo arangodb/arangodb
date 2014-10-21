@@ -299,6 +299,8 @@ Query* Query::clone (QueryPart part) {
     }
   }
 
+  TRI_ASSERT(clone->_trx == nullptr);
+
   clone->_trx = _trx->clone();  // A daughter transaction which does not
                                 // actually lock the collections
   return clone.release();
@@ -550,7 +552,7 @@ QueryResult Query::execute (QueryRegistry* registry) {
         AqlValue val = value->getValue(i, 0);
 
         if (! val.isEmpty()) {
-          json.add(val.toJson(trx(), doc)); 
+          json.add(val.toJson(_trx, doc)); 
         }
       }
       delete value;
@@ -974,16 +976,16 @@ std::string Query::getStateString () const {
 
 void Query::cleanupPlanAndEngine () {
   if (_engine != nullptr) {
+    _engine->shutdown();
     delete _engine;
     _engine = nullptr;
   }
 
   if (_trx != nullptr) {
-    // TODO: this doesn't unblock the collection on the coordinator. Y?
     _trx->abort();
+    delete _trx;
+    _trx = nullptr;
   }
-  delete _trx;
-  _trx = nullptr;
 
   if (_parser != nullptr) {
     delete _parser;
