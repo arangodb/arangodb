@@ -1502,54 +1502,42 @@ exports.appRoutes = function () {
   "use strict";
 
   var aal = getStorage();
+  var find = aal.byExample({ type: "mount", active: true });
 
-  return arangodb.db._executeTransaction({
-    collections: {
-      read: [ '_queues', '_jobs', aal.name() ],
-      write: [ '_queues', '_jobs' ]
-    },
-    params: {
-      aal : aal
-    },
-    action: function (params) {
-      var find = params.aal.byExample({ type: "mount", active: true });
+  var routes = [];
 
-      var routes = [];
+  while (find.hasNext()) {
+    var doc = find.next();
+    var appId = doc.app;
+    var mount = doc.mount;
+    var options = doc.options || {};
 
-      while (find.hasNext()) {
-        var doc = find.next();
-        var appId = doc.app;
-        var mount = doc.mount;
-        var options = doc.options || { };
+    try {
+      var app = module.createApp(appId, options);
 
-        try {
-          var app = module.createApp(appId, options || {});
-
-          if (app === null) {
-            throw new Error("Cannot find application '" + appId + "'");
-          }
-
-          var r = routingAalApp(app, mount, options);
-
-          if (r === null) {
-            throw new Error("Cannot compute the routing table for Foxx application '"
-                            + app._id + "', check the log file for errors!");
-          }
-
-          routes.push(r);
-
-          if (!developmentMode) {
-            console.debug("Mounted Foxx application '%s' on '%s'", appId, mount);
-          }
-        }
-        catch (err) {
-          console.error("Cannot mount Foxx application '%s': %s", appId, String(err.stack || err));
-        }
+      if (app === null) {
+        throw new Error("Cannot find application '" + appId + "'");
       }
 
-      return routes;
+      var r = routingAalApp(app, mount, options);
+
+      if (r === null) {
+        throw new Error("Cannot compute the routing table for Foxx application '"
+                        + app._id + "', check the log file for errors!");
+      }
+
+      routes.push(r);
+
+      if (! developmentMode) {
+        console.debug("Mounted Foxx application '%s' on '%s'", appId, mount);
+      }
     }
-  });
+    catch (err) {
+      console.error("Cannot mount Foxx application '%s': %s", appId, String(err.stack || err));
+    }
+  }
+
+  return routes;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

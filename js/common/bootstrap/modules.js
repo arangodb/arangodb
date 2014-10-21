@@ -162,6 +162,15 @@ function require (path) {
 
   var appDescription;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief in-flight modules
+///
+/// These modules are currently loading and must be cleanup when a cancellation
+/// occured.
+////////////////////////////////////////////////////////////////////////////////
+
+  var inFlight = {};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
@@ -506,7 +515,14 @@ function require (path) {
       var localModule = currentPackage.defineModule(
         id,
         "js",
-        new Module(id, currentPackage, currentModule._applicationContext, path, origin, false));
+        new Module(id,
+                   currentPackage,
+                   currentModule._applicationContext,
+                   path,
+                   origin,
+                   currentPackage._isSystem));
+
+      inFlight[id] = localModule;
 
       // create a new sandbox and execute
       var env = currentPackage._environment;
@@ -580,10 +596,15 @@ function require (path) {
 
       fun(sandbox);
 
+      delete inFlight[id];
+
       return localModule;
     }
     catch (err) {
+      delete inFlight[id];
+
       currentPackage.clearModule(id, "js");
+
       throw err;
     }
   }
@@ -733,7 +754,7 @@ function require (path) {
     description.content = fs.read(fname);
 
     // create a new package and module
-    var pkg = new Package(path, desc, currentPackage, path2FileUri(dirname));
+    var pkg = new Package(path, desc, currentPackage, path2FileUri(dirname), currentPackage._isSystem);
 
     pkg._environment = {
       global: {},
@@ -921,7 +942,18 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function cleanupCancelation () {
-    module.unloadAll();
+    var i;
+
+    for (i in inFlight) {
+      if (inFlight.hasOwnProperty(i)) {
+        var m = inFlight[i];
+        var p = m._package;
+
+        p.clearModule(i, "js");
+      }
+    }
+
+    inFlight = {};
   }
 
 // -----------------------------------------------------------------------------
@@ -936,7 +968,7 @@ function require (path) {
 /// @brief Package constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-  Package = function (id, description, parent, origin) {
+  Package = function (id, description, parent, origin, isSystem) {
     'use strict';
 
     this.id = id;			// name of the package
@@ -948,6 +980,7 @@ function require (path) {
     this._packageCache = {};            // package chache
 
     this._origin = origin;              // root of the package
+    this._isSystem = isSystem;          // is a system package
   };
 
   (function () {
@@ -959,14 +992,14 @@ function require (path) {
     for (i = 0;  i < modulesPaths.length;  ++i) {
       var path = modulesPaths[i];
 
-      pkg = new Package("/", { name: "ArangoDB root" }, undefined, path2FileUri(path));
+      pkg = new Package("/", { name: "ArangoDB root" }, undefined, path2FileUri(path), true);
       globalPackages.push(pkg);
     }
 
-    pkg = new Package("/", {}, undefined, "db://_modules/");
+    pkg = new Package("/", {}, undefined, "db://_modules/", false);
     globalPackages.push(pkg);
 
-    systemPackage = new Package("/", { name: "ArangoDB system" }, undefined, "system:///");
+    systemPackage = new Package("/", { name: "ArangoDB system" }, undefined, "system:///", true);
   }());
 
 // -----------------------------------------------------------------------------
@@ -984,7 +1017,12 @@ function require (path) {
       throw new Error("path '" + path + "' must be absolute");
     }
 
-    return new Module(path, this, undefined, path, "system://" + path, true);
+    return new Module(path,
+                      this,
+                      undefined,
+                      path,
+                      "system://" + path,
+                      true);
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1355,32 +1393,6 @@ function require (path) {
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief unloadAll
-////////////////////////////////////////////////////////////////////////////////
-
-  Module.prototype.unloadAll = function () {
-    'use strict';
-
-    var i;
-
-    for (i = 0;  i < globalPackages.length;  ++i) {
-      var c = globalPackages[i]._moduleCache;
-      var k = Object.keys(c);
-      var j;
-
-      for (j = 0;  j < k.length;  ++j) {
-        var m = c[k[j]];
-
-        if (! m.isSystem) {
-          delete c[k[j]];
-        }
-      }
-
-      globalPackages[i]._packageCache = {};
-    }
-  };
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief createTestEnvironment
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1388,9 +1400,15 @@ function require (path) {
     var pkg = new Package("/test",
                           { name: "ArangoDB test" },
                           undefined,
-                          "file:///" + path);
+                          "file:///" + path,
+                          false);
 
-    return new Module("/", pkg, undefined, "/", "system:///", true);
+    return new Module("/",
+                      pkg,
+                      undefined,
+                      "/",
+                      "system:///",
+                      false);
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1640,14 +1658,15 @@ function require (path) {
     var pkg = new Package("application-package",
                           {name: "application '" + this._name + "'"},
                           undefined,
-                          path2FileUri(libpath));
+                          path2FileUri(libpath),
+                          false);
 
     return new Module("/application-module",
                       pkg,
                       appContext,
                       "/",
                       path2FileUri(libpath),
-                      true);
+                      false);
   };
 
 ////////////////////////////////////////////////////////////////////////////////
