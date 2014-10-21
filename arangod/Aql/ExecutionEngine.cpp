@@ -545,12 +545,12 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           triagens::basics::Json response(TRI_UNKNOWN_MEM_ZONE, triagens::basics::JsonHelper::fromString(res->answer->body()));
           std::string queryId = triagens::basics::JsonHelper::getStringValue(response.json(), "queryId", "");
 
-          std::cout << "DB SERVER ANSWERED WITHOUT ERROR: " << res->answer->body() << ", SHARDID:"  << res->shardID << ", QUERYID: " << queryId << "\n";
+          // std::cout << "DB SERVER ANSWERED WITHOUT ERROR: " << res->answer->body() << ", SHARDID:"  << res->shardID << ", QUERYID: " << queryId << "\n";
           queryIds.emplace(std::make_pair(res->shardID, queryId));
           
         }
         else {
-          std::cout << "DB SERVER ANSWERED WITH ERROR: " << res->answer->body() << "\n";
+          // std::cout << "DB SERVER ANSWERED WITH ERROR: " << res->answer->body() << "\n";
         }
       }
       else {
