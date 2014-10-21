@@ -502,6 +502,7 @@ void RestAqlHandler::getInfoQuery (std::string const& operation,
   try {
     int64_t number;
     if (operation == "count") {
+      //TODO shardId.empty()!
       number = query->engine()->count();
       if (number == -1) {
         answerBody("count", Json("unknown"));
@@ -511,9 +512,17 @@ void RestAqlHandler::getInfoQuery (std::string const& operation,
       }
     }
     else if (operation == "remaining") {
-      // FIXME:
-      // Do the !shardId.empty() case once the ScatterBlock has remainingForShard
-      number = query->engine()->remaining();
+      if (shardId.empty()) {
+        number = query->engine()->remaining();
+      } 
+      else {
+        auto block = static_cast<BlockWithClients*>(query->engine()->root());
+        if (block->getPlanNode()->getType() != ExecutionNode::SCATTER 
+            && block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+        }
+        number = block->remainingForShard(shardId);
+      }
       if (number == -1) {
         answerBody("remaining", Json("unknown"));
       }
@@ -527,11 +536,12 @@ void RestAqlHandler::getInfoQuery (std::string const& operation,
         hasMore = query->engine()->hasMore();
       }
       else {
-        auto scatter = static_cast<ScatterBlock*>(query->engine()->root());
-        if (scatter->getPlanNode()->getType() != ExecutionNode::SCATTER) {
+        auto block = static_cast<BlockWithClients*>(query->engine()->root());
+        if (block->getPlanNode()->getType() != ExecutionNode::SCATTER 
+            && block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
         }
-        hasMore = scatter->hasMoreForShard(shardId);
+        hasMore = block->hasMoreForShard(shardId);
       }
 
       answerBody("hasMore", Json(hasMore));
@@ -715,11 +725,12 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
       items.reset(query->engine()->getSome(atLeast, atMost));
     }
     else {
-      auto scatter = static_cast<ScatterBlock*>(query->engine()->root());
-      if (scatter->getPlanNode()->getType() != ExecutionNode::SCATTER) {
+      auto block = static_cast<BlockWithClients*>(query->engine()->root());
+      if (block->getPlanNode()->getType() != ExecutionNode::SCATTER 
+          && block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
       }
-      items.reset(scatter->getSomeForShard(atLeast, atMost, shardId));
+      items.reset(block->getSomeForShard(atLeast, atMost, shardId));
     }
     if (items.get() == nullptr) {
       answerBody("exhausted", Json(true))
@@ -749,11 +760,12 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
         skipped = query->engine()->skipSome(atLeast, atMost);
       }
       else {
-        auto scatter = static_cast<ScatterBlock*>(query->engine()->root());
-        if (scatter->getPlanNode()->getType() != ExecutionNode::SCATTER) {
+        auto block = static_cast<BlockWithClients*>(query->engine()->root());
+        if (block->getPlanNode()->getType() != ExecutionNode::SCATTER 
+            && block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
         }
-        skipped = scatter->skipSomeForShard(atLeast, atMost, shardId);
+        skipped = block->skipSomeForShard(atLeast, atMost, shardId);
       }
     }
     catch (...) {
@@ -774,11 +786,12 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
         exhausted = query->engine()->skip(number);
       }
       else {
-        auto scatter = static_cast<ScatterBlock*>(query->engine()->root());
-        if (scatter->getPlanNode()->getType() != ExecutionNode::SCATTER) {
+        auto block = static_cast<BlockWithClients*>(query->engine()->root());
+        if (block->getPlanNode()->getType() != ExecutionNode::SCATTER 
+            && block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
         }
-        exhausted = scatter->skipForShard(number, shardId);
+        exhausted = block->skipForShard(number, shardId);
       }
 
       answerBody("exhausted", Json(exhausted))
