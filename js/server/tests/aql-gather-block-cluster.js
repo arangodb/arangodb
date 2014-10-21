@@ -90,8 +90,8 @@ function gatherBlockTestSuite () {
       assertTrue(explain(AQL_EXPLAIN(query)).indexOf("GatherNode") !== -1, query);
       
       // check the return value
-      var expected = [ 6, 0, 7, 1, 7, 9, 4, 4, 2, 8 ];
-      var actual = AQL_EXECUTE(query).json;
+      var expected = 10;
+      var actual = AQL_EXECUTE(query).json.length;
 
       assertEqual(expected, actual, query);
     },
@@ -122,8 +122,8 @@ function gatherBlockTestSuite () {
       assertTrue(explain(AQL_EXPLAIN(query)).indexOf("GatherNode") !== -1, query);
       
       // check the return value
-      var expected = [ 6, 0 ];
-      var actual = AQL_EXECUTE(query).json;
+      var expected = 2;
+      var actual = AQL_EXECUTE(query).json.length;
 
       assertEqual(expected, actual, query);
     },
@@ -137,8 +137,8 @@ function gatherBlockTestSuite () {
       assertTrue(explain(AQL_EXPLAIN(query)).indexOf("GatherNode") !== -1, query);
       
       // check the return value
-      var expected = [ 6, 0, 0, 0, 0, 5, 5, 6, 0, 0 ];
-      var actual = AQL_EXECUTE(query).json;
+      var expected = 10;
+      var actual = AQL_EXECUTE(query).json.length;
 
       assertEqual(expected, actual, query);
     },
@@ -223,8 +223,8 @@ function gatherBlockTestSuite () {
       assertTrue(explain(AQL_EXPLAIN(query)).indexOf("GatherNode") !== -1, query);
       
       // check the return value
-      var expected = [ 5, 3, 6, 7, 5, 2, 9, 1, 0, 4 ];
-      var actual = AQL_EXECUTE(query).json;
+      var expected = 10;
+      var actual = AQL_EXECUTE(query).json.length;
 
       assertEqual(expected, actual, query);
     },
@@ -252,8 +252,8 @@ function gatherBlockTestSuite () {
       assertTrue(explain(AQL_EXPLAIN(query)).indexOf("GatherNode") !== -1, query);
       
       // check the return value
-      var expected = [ 5, 5 ];
-      var actual = AQL_EXECUTE(query).json;
+      var expected = 2;
+      var actual = AQL_EXECUTE(query).json.length;
 
       assertEqual(expected, actual, query);
     },
@@ -267,8 +267,8 @@ function gatherBlockTestSuite () {
       assertTrue(explain(AQL_EXPLAIN(query)).indexOf("GatherNode") !== -1, query);
       
       // check the return value
-      var expected = [ 0, 5, 5, 5, 6, 6, 5, 5, 0, 0, 0, 5, 6, 6, 6, 5, 5, 0, 6, 0, 6 ];
-      var actual = AQL_EXECUTE(query).json;
+      var expected = 21; 
+      var actual = AQL_EXECUTE(query).json.length;
 
       assertEqual(expected, actual, query);
     },
@@ -297,8 +297,8 @@ function gatherBlockTestSuite () {
       assertTrue(explain(AQL_EXPLAIN(query)).indexOf("GatherNode") !== -1, query);
       
       // check the return value
-      var expected = [ 6, 5 ];
-      var actual = AQL_EXECUTE(query).json;
+      var expected = 2;
+      var actual = AQL_EXECUTE(query).json.length;
 
       assertEqual(expected, actual, query);
     },
