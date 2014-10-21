@@ -1,0 +1,64 @@
+!CHAPTER Type cast functions
+
+As mentioned before, some of the operators expect their operands to have a
+certain data type. For example, the logical operators expect their operands to
+be boolean values, and the arithmetic operators expect their operands to be
+numeric values.  If an operation is performed with operands of an unexpected type,
+the operation will fail with an error. To avoid such failures, value types can
+be converted explicitly in a query. This is called type casting.
+
+In an AQL query, type casts are performed only upon request and not implicitly.
+This helps avoiding unexpected results. All type casts have to be performed by
+invoking a type cast function. AQL offers several type cast functions for this
+task. Each of the these functions takes an operand of any data type and returns
+a result value of type corresponding to the function name (e.g. *TO_NUMBER()*
+will return a number value):
+
+- *TO_BOOL(value)*: Takes an input *valu*e of any type and converts it 
+  into the appropriate boolean value as follows:
+  - *null* is converted to *false*.
+  - Numbers are converted to *true* if they are unequal to 0, and to *false* otherwise. 
+  - Strings are converted to *true* if they are non-empty, and to *false* otherwise. 
+  - Lists are converted to *true* if they are non-empty, and to *false* otherwise.
+  - Documents are converted to *true* if they are non-empty, and to *false* otherwise.
+
+- *TO_NUMBER(value)*: Takes an input *value* of any type and converts it 
+  into a numeric value as follows:
+  - *null*, *false*, lists, and documents are converted to the value *0*.
+  - *true* is converted to *1*.
+  - Strings are converted to their numeric equivalent if the full string content is
+    is a valid number, and to *0* otherwise.
+
+- *TO_STRING(value)*: Takes an input *value* of any type and converts it 
+  into a string value as follows:
+  - *null* is converted to the string *"null"*
+  - *false* is converted to the string *"false"*, *true* to the string *"true"*
+  - Numbers, lists and documents are converted to their string equivalents. 
+
+- *TO_LIST(value)*: Takes an input *value* of any type and converts it 
+  into a list value as follows:
+  - *null* is converted to an empty list
+  - Boolean values, numbers and strings are converted to a list containing the original
+    value as its single element
+  - Documents are converted to a list containing their attribute values as list elements
+
+!SECTION Type check functions
+
+AQL also offers functions to check the data type of a value at runtime. The
+following type check functions are available. Each of these functions takes an
+argument of any data type and returns true if the value has the type that is
+checked for, and false otherwise.
+
+The following type check functions are available:
+
+- *IS_NULL(value)*: Checks whether *value* is a *null* value
+
+- *IS_BOOL(value)*: Checks whether *value* is a *boolean* value
+
+- *IS_NUMBER(value)*: Checks whether *value* is a *numeric* value
+
+- *IS_STRING(value)*: Checks whether *value* is a *string* value
+
+- *IS_LIST(value)*: Checks whether *value* is a *list* value
+
+- *IS_DOCUMENT(value)*: Checks whether *value* is a *document* value
