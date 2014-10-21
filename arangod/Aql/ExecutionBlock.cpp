@@ -2828,7 +2828,8 @@ int ModificationBlock::extractKey (AqlValue const& value,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ModificationBlock::handleResult (int code,
-                                      bool ignoreErrors) {
+                                      bool ignoreErrors,
+                                      std::string const *errorMessage) {
   if (code == TRI_ERROR_NO_ERROR) {
     // update the success counter
     ++_engine->_stats.writesExecuted;
@@ -2840,7 +2841,12 @@ void ModificationBlock::handleResult (int code,
     }
     else {
       // bubble up the error
-      THROW_ARANGO_EXCEPTION(code);
+      if (errorMessage != nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(code, *errorMessage);
+      }
+      else {
+        THROW_ARANGO_EXCEPTION(code);
+      }
     }
   }
 }
@@ -3058,6 +3064,7 @@ void UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
   RegisterId keyRegisterId = 0; // default initialization
 
   bool const hasKeyVariable = (ep->_inKeyVariable != nullptr);
+  std::string errorMessage;
   
   if (hasKeyVariable) {
     it = ep->getRegisterPlan()->varInfo.find(ep->_inKeyVariable->id);
@@ -3102,6 +3109,10 @@ void UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
         }
         else {
           errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
+          errorMessage += std::string("expecting 'array', got: ") +
+            a.getTypeString() + 
+            std::string(" while handling: ") + 
+            _exeNode->getTypeString();
         }
 
         if (errorCode == TRI_ERROR_NO_ERROR) {
@@ -3141,7 +3152,7 @@ void UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
           }
         }
 
-        handleResult(errorCode, ep->_options.ignoreErrors); 
+        handleResult(errorCode, ep->_options.ignoreErrors, &errorMessage); 
       }
       // done with a block
 
