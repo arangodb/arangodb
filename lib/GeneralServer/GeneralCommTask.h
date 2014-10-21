@@ -205,7 +205,7 @@ namespace triagens {
             TRI_request_statistics_t* statistics = _writeBuffersStats.front();
             _writeBuffersStats.pop_front();
 #else
-            TRI_request_statistics_t* statistics = 0;
+            TRI_request_statistics_t* statistics = nullptr;
 #endif
 
             setWriteBuffer(buffer, statistics);
@@ -242,22 +242,6 @@ namespace triagens {
           }
           else if (! res) {
             _server->handleCommunicationFailure(this);
-          }
-
-          return res;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        bool handleWrite (bool& closed) {
-          bool res = SocketTask::handleWrite(closed);
-
-          if (! closed) {
-            if (this->_readPosition == 0 && this->_readBuffer->c_str() != this->_readBuffer->end()) {
-              res = processRead();
-            }
           }
 
           return res;
