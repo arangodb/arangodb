@@ -329,7 +329,7 @@ void TRI_InitV8Shell (v8::Handle<v8::Context> context) {
   TRI_AddGlobalFunctionVocbase(context, "SYS_PROCESS_CSV_FILE", JS_ProcessCsvFile);
   TRI_AddGlobalFunctionVocbase(context, "SYS_PROCESS_JSON_FILE", JS_ProcessJsonFile);
 
-  bool isTty = isatty(STDOUT_FILENO);
+  bool isTty = (isatty(STDOUT_FILENO) != 0);
 
   // .............................................................................
   // create the global variables
