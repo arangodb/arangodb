@@ -248,7 +248,7 @@ int ExecutionBlock::shutdown () {
       res = (*it)->shutdown();
     }
     catch (...) {
-      ret = TRI_ERROR_INTERNAL;
+      res = TRI_ERROR_INTERNAL;
     }
 
     if (res != TRI_ERROR_NO_ERROR) {
