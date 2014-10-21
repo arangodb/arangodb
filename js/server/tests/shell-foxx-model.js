@@ -1,5 +1,3 @@
-require("internal").flushModuleCache();
-
 var _ = require("underscore"),
   joi = require("joi"),
   jsunity = require("jsunity");

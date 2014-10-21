@@ -62,10 +62,20 @@ Exception::Exception (int code,
                       string const& errorMessage,
                       char const* file,
                       int line)
-  : _errorMessage(errorMessage),
+  :
+    _errorMessage(errorMessage),
     _file(file),
     _line(line),
     _code(code) {
+
+  if (code != TRI_ERROR_INTERNAL) {
+    _errorMessage = std::string("(");
+    _errorMessage += TRI_errno_string(code);
+    _errorMessage += std::string(") ");
+    _errorMessage += errorMessage;
+  }
+  else {
+   }
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 #if HAVE_BACKTRACE
   _errorMessage += std::string("\n\n");
