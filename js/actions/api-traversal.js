@@ -80,73 +80,73 @@ function notFound (req, res, code, message) {
 /// - *edgeCollection*: (optional) name of the collection that contains the edges.
 ///
 /// - *graphName*: (optional) name of the graph that contains the edges.
-///         Either *edgeCollection* or *graphName* has to be given.
-///         In case both values are set the *graphName* is prefered.
+///     Either *edgeCollection* or *graphName* has to be given.
+///     In case both values are set the *graphName* is prefered.
 ///
 /// - *filter* (optional, default is to include all nodes):
-///         body (JavaScript code) of custom filter function
-///         function signature: (config, vertex, path) -> mixed
-///         can return four different string values:
-///         - *"exclude"* -> this vertex will not be visited.
-///         - *"prune"* -> the edges of this vertex will not be followed.
-///         - *""* or *undefined* -> visit the vertex and follow it's edges.
-///         - *Array* -> containing any combination of the above.
-///             If there is at least one *"exclude"* or *"prune"* respectivly
-///             is contained, it's effect will occur.
+///     body (JavaScript code) of custom filter function
+///     function signature: (config, vertex, path) -> mixed
+///     can return four different string values:
+///     - *"exclude"* -> this vertex will not be visited.
+///     - *"prune"* -> the edges of this vertex will not be followed.
+///     - *""* or *undefined* -> visit the vertex and follow it's edges.
+///     - *Array* -> containing any combination of the above.
+///       If there is at least one *"exclude"* or *"prune"* respectivly
+///       is contained, it's effect will occur.
 ///
 /// - *minDepth* (optional, ANDed with any existing filters):
-///    visits only nodes in at least the given depth
+///     visits only nodes in at least the given depth
 ///
 /// - *maxDepth* (optional, ANDed with any existing filters):
-///    visits only nodes in at most the given depth
+///     visits only nodes in at most the given depth
 ///
 /// - *visitor* (optional): body (JavaScript) code of custom visitor function
-///          function signature: (config, result, vertex, path) -> void
-///          visitor function can do anything, but its return value is ignored. To
-///          populate a result, use the *result* variable by reference
+///     function signature: (config, result, vertex, path) -> void
+///     visitor function can do anything, but its return value is ignored. To
+///     populate a result, use the *result* variable by reference
 ///
 /// - *direction* (optional): direction for traversal
 ///   - *if set*, must be either *"outbound"*, *"inbound"*, or *"any"*
 ///   - *if not set*, the *expander* attribute must be specified
 ///
 /// - *init* (optional): body (JavaScript) code of custom result initialisation function
-///       function signature: (config, result) -> void
-///       initialise any values in result with what is required
+///     function signature: (config, result) -> void
+///     initialise any values in result with what is required
 ///
 /// - *expander* (optional): body (JavaScript) code of custom expander function
-///           *must* be set if *direction* attribute is **not** set
-///           function signature: (config, vertex, path) -> array
-///           expander must return an array of the connections for *vertex*
-///           each connection is an object with the attributes *edge* and *vertex*
+///      *must* be set if *direction* attribute is **not** set
+///      function signature: (config, vertex, path) -> array
+///      expander must return an array of the connections for *vertex*
+///      each connection is an object with the attributes *edge* and *vertex*
 /// - *sort* (optional): body (JavaScript) code of a custom comparison function
-///           for the edges. The signature of this function is
-///           (l, r) -> integer (where l and r are edges) and must
-///           return -1 if l is smaller than, +1 if l is greater than,
-///           and 0 if l and r are equal. The reason for this is the
-///           following: The order of edges returned for a certain
-///           vertex is undefined. This is because there is no natural
-///           order of edges for a vertex with multiple connected edges.
-///           To explicitly define the order in which edges on the
-///           vertex are followed, you can specify an edge comparator
-///           function with this attribute. Note that the value here has
-///           to be a string to conform to the JSON standard, which in
-///           turn is parsed as function body on the server side. Furthermore
-///           note that this attribute is only used for the standard
-///           expanders. If you use your custom expander you have to
-///           do the sorting yourself within the expander code.
+///      for the edges. The signature of this function is
+///      (l, r) -> integer (where l and r are edges) and must
+///      return -1 if l is smaller than, +1 if l is greater than,
+///      and 0 if l and r are equal. The reason for this is the
+///      following: The order of edges returned for a certain
+///      vertex is undefined. This is because there is no natural
+///      order of edges for a vertex with multiple connected edges.
+///      To explicitly define the order in which edges on the
+///      vertex are followed, you can specify an edge comparator
+///      function with this attribute. Note that the value here has
+///      to be a string to conform to the JSON standard, which in
+///      turn is parsed as function body on the server side. Furthermore
+///      note that this attribute is only used for the standard
+///      expanders. If you use your custom expander you have to
+///      do the sorting yourself within the expander code.
 ///
 /// - *strategy* (optional): traversal strategy
-///           can be *"depthfirst"* or *"breadthfirst"*
+///      can be *"depthfirst"* or *"breadthfirst"*
 ///
 /// - *order* (optional): traversal order
-///        can be *"preorder"* or *"postorder"*
+///      can be *"preorder"* or *"postorder"*
 ///
 /// - *itemOrder* (optional): item iteration order
-///            can be *"forward"* or *"backward"*
+///     can be *"forward"* or *"backward"*
 ///
 /// - *uniqueness* (optional): specifies uniqueness for vertices and edges visited
-///             if set, must be an object like this:
-///             *"uniqueness": {"vertices": "none"|"global"|path", "edges": "none"|"global"|"path"}*
+///      if set, must be an object like this:
+///      *"uniqueness": {"vertices": "none"|"global"|path", "edges": "none"|"global"|"path"}*
 ///
 /// - *maxIterations* (optional): Maximum number of iterations in each traversal. This number can be
 ///    set to prevent endless loops in traversal of cyclic graphs. When a traversal performs
