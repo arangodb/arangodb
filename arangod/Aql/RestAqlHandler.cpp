@@ -747,6 +747,7 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
     else {
       try {
         answerBody = items->toJson(query->trx());
+        answerBody.set("stats", query->getStats());
         // std::cout << "ANSWERBODY: " << JsonHelper::toString(answerBody.json()) << "\n\n";        
       }
       catch (...) {
