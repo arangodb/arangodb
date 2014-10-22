@@ -89,7 +89,8 @@ namespace triagens {
             _readRequestBody(false),
             _request(nullptr),
             _maximalHeaderSize(0),
-            _maximalBodySize(0) {
+            _maximalBodySize(0),
+            _maximalPipelineSize(0) {
 
           LOG_TRACE("connection established, client %d, server ip %s, server port %d, client ip %s, client port %d",
                     (int) TRI_get_fd_or_handle_of_socket(socket),
@@ -98,10 +99,11 @@ namespace triagens {
                     _connectionInfo.clientAddress.c_str(),
                     (int) _connectionInfo.clientPort);
 
-          pair<size_t, size_t> p = server->getHandlerFactory()->sizeRestrictions();
+          const auto p = server->getHandlerFactory()->sizeRestrictions();
 
-          _maximalHeaderSize = p.first;
-          _maximalBodySize = p.second;
+          _maximalHeaderSize = p.maximalHeaderSize;
+          _maximalBodySize = p.maximalBodySize;
+          _maximalPipelineSize = p.maximalPipelineSize;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -225,16 +227,8 @@ namespace triagens {
         bool handleRead (bool& closed)  {
           bool res = fillReadBuffer(closed);
 
-          if (res) {
-            if (_request == nullptr || _readRequestBody) {
-              res = processRead();
-            }
-          }
-          else if (! closed) {
-            if (this->_readPosition == 0 && this->_readBuffer->c_str() != this->_readBuffer->end()) {
-              res = processRead();
-            }
-          }
+          // process as much data as we got
+          processRead();
 
           if (closed) {
             res = false;
@@ -366,6 +360,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         size_t _maximalBodySize;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the maximal pipeline size
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t _maximalPipelineSize;
     };
   }
 }
