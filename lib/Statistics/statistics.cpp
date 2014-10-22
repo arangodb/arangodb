@@ -226,6 +226,7 @@ void TRI_ReleaseConnectionStatistics (TRI_connection_statistics_t* statistics) {
   STATISTICS_LOCK(&ConnectionListLock);
 
   if (statistics == nullptr) {
+    STATISTICS_UNLOCK(&ConnectionListLock);
     return;
   }
 
