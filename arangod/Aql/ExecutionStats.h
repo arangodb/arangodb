@@ -52,12 +52,28 @@ namespace triagens {
 
       triagens::basics::Json toJson () const;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sumarize two sets of ExecutionStats      
+////////////////////////////////////////////////////////////////////////////////
+
       void add (ExecutionStats const& summand) {
         writesExecuted += summand.writesExecuted;
         writesIgnored  += summand.writesIgnored;
         scannedFull    += summand.scannedFull;
         scannedIndex   += summand.scannedIndex;
       }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sumarize the delta of two other sets of ExecutionStats to us
+////////////////////////////////////////////////////////////////////////////////
+
+      void addDelta (ExecutionStats const& lastStats, ExecutionStats const& newStats) {
+        writesExecuted += newStats.writesExecuted - lastStats.writesExecuted;
+        writesIgnored  += newStats.writesIgnored  - lastStats.writesIgnored;
+        scannedFull    += newStats.scannedFull    - lastStats.scannedFull;
+        scannedIndex   += newStats.scannedIndex   - lastStats.scannedIndex;
+      }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of successfully executed write operations
