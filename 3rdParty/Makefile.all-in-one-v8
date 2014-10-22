@@ -21,13 +21,13 @@ BUILT_SOURCES += @V8_LIBS@
 
 if ENABLE_ARM
 	cd @top_srcdir@/3rdParty/V8 \
-		&& CFLAGS="-O2 -g -fsigned-char" \
-		   CXXFLAGS="-O2 -g -fsigned-char" \
+		&& CFLAGS="-O2 -g -fsigned-char -DENABLE_GDB_JIT_INTERFACE -Wno-unused-local-typedefs" \
+		   CXXFLAGS="-O2 -g -fsigned-char -DENABLE_GDB_JIT_INTERFACE -Wno-unused-local-typedefs" \
 		   $(MAKE) CXX=$(CXX) LINK=$(CXX) library=static strictaliasing=off snapshot=off werror=no hardfp=on @V8_TARGET@
 else
 	cd @top_srcdir@/3rdParty/V8 \
-		&& CFLAGS="-O2 -g" \
-		   CXXFLAGS="-O2 -g" \
+		&& CFLAGS="-O2 -g -DENABLE_GDB_JIT_INTERFACE -Wno-unused-local-typedefs" \
+		   CXXFLAGS="-O2 -g -DENABLE_GDB_JIT_INTERFACE -Wno-unused-local-typedefs" \
 		   $(MAKE) CXX=$(CXX) LINK=$(CXX) library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 endif
 
