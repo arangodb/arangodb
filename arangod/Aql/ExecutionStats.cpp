@@ -44,8 +44,8 @@ Json ExecutionStats::toJson () const {
   Json json(Json::Array);
   json.set("writesExecuted", Json(static_cast<double>(writesExecuted)));
   json.set("writesIgnored",  Json(static_cast<double>(writesIgnored)));
-  //json.set("scannedFull",    Json(static_cast<double>(scannedFull)));
-  //json.set("scannedIndex",   Json(static_cast<double>(scannedIndex)));
+  json.set("scannedFull",    Json(static_cast<double>(scannedFull)));
+  json.set("scannedIndex",   Json(static_cast<double>(scannedIndex)));
 
   return json;
 }
