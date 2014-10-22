@@ -62,7 +62,7 @@ ExecutionStats::ExecutionStats (triagens::basics::Json const& jsonStats) {
   if (!jsonStats.isArray()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "stats is not an Array");
   }
-  std::cout << jsonStats.toString() << "\n";
+
   writesExecuted = JsonHelper::checkAndGetNumericValue<int>(jsonStats.json(), "writesExecuted");
   writesIgnored  = JsonHelper::checkAndGetNumericValue<int>(jsonStats.json(), "writesIgnored");
   scannedFull    = JsonHelper::checkAndGetNumericValue<int>(jsonStats.json(), "scannedFull");
