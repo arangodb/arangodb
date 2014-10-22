@@ -205,7 +205,7 @@ namespace triagens {
             TRI_request_statistics_t* statistics = _writeBuffersStats.front();
             _writeBuffersStats.pop_front();
 #else
-            TRI_request_statistics_t* statistics = 0;
+            TRI_request_statistics_t* statistics = nullptr;
 #endif
 
             setWriteBuffer(buffer, statistics);
@@ -227,6 +227,11 @@ namespace triagens {
 
           if (res) {
             if (_request == nullptr || _readRequestBody) {
+              res = processRead();
+            }
+          }
+          else if (! closed) {
+            if (this->_readPosition == 0 && this->_readBuffer->c_str() != this->_readBuffer->end()) {
               res = processRead();
             }
           }

@@ -107,28 +107,181 @@ namespace triagens {
       protected:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief handles CORS options
+////////////////////////////////////////////////////////////////////////////////
+
+        void processCorsOptions (uint32_t compatibility) {
+          const string allowedMethods = "DELETE, GET, HEAD, PATCH, POST, PUT";
+
+          HttpResponse response(HttpResponse::OK, compatibility);
+
+          response.setHeader("allow", strlen("allow"), allowedMethods);
+
+          if (! this->_origin.empty()) {
+            LOG_TRACE("got CORS preflight request");
+            const string allowHeaders = triagens::basics::StringUtils::trim(this->_request->header("access-control-request-headers"));
+
+            // send back which HTTP methods are allowed for the resource
+            // we'll allow all
+            response.setHeader("access-control-allow-methods", strlen("access-control-allow-methods"), allowedMethods);
+
+            if (! allowHeaders.empty()) {
+              // allow all extra headers the client requested
+              // we don't verify them here. the worst that can happen is that the client
+              // sends some broken headers and then later cannot access the data on the
+              // server. that's a client problem.
+              response.setHeader("access-control-allow-headers", strlen("access-control-allow-headers"), allowHeaders);
+              LOG_TRACE("client requested validation of the following headers: %s", allowHeaders.c_str());
+            }
+
+            // set caching time (hard-coded value)
+            response.setHeader("access-control-max-age", strlen("access-control-max-age"), "1800");
+          }
+
+          this->clearRequest();
+          this->handleResponse(&response);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handles CORS options
+////////////////////////////////////////////////////////////////////////////////
+
+        void processRequest (uint32_t compatibility) {
+          HttpHandler* handler = this->_server->getHandlerFactory()->createHandler(this->_request);
+          bool ok = false;
+
+          if (handler == nullptr) {
+            LOG_TRACE("no handler is known, giving up");
+
+            HttpResponse response(HttpResponse::NOT_FOUND, compatibility);
+
+            this->clearRequest();
+            this->handleResponse(&response);
+
+            return;
+          }
+
+          bool found;
+          string const& acceptEncoding = this->_request->header("accept-encoding", found);
+
+          if (found) {
+            if (acceptEncoding.find("deflate") != string::npos) {
+              _acceptDeflate = true;
+            }
+          }
+
+          // check for an async request
+          string const& asyncExecution = this->_request->header("x-arango-async", found);
+
+          // clear request object
+          this->_request = nullptr;
+          this->RequestStatisticsAgent::transfer(handler);
+
+          // async execution
+          if (found && (asyncExecution == "true" || asyncExecution == "store")) {
+
+#ifdef TRI_ENABLE_FIGURES
+            RequestStatisticsAgentSetAsync(this);
+#endif
+
+            uint64_t jobId = 0;
+
+            if (asyncExecution == "store") {
+              // persist the responses
+              ok = this->_server->handleRequestAsync(handler, &jobId);
+            }
+            else {
+              // don't persist the responses
+              ok = this->_server->handleRequestAsync(handler, 0);
+            }
+
+            if (ok) {
+              HttpResponse response(HttpResponse::ACCEPTED, compatibility);
+
+              if (jobId > 0) {
+                // return the job id we just created
+                response.setHeader("x-arango-async-id",
+                                   strlen("x-arango-async-id"),
+                                   triagens::basics::StringUtils::itoa(jobId));
+              }
+
+              this->handleResponse(&response);
+
+              return;
+            }
+          }
+
+          // synchronous request
+          else {
+            this->RequestStatisticsAgent::transfer(handler);
+
+            ok = this->_server->handleRequest(this, handler);
+          }
+
+          if (! ok) {
+            HttpResponse response(HttpResponse::SERVER_ERROR, compatibility);
+            this->handleResponse(&response);
+          }
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clears the request object
+////////////////////////////////////////////////////////////////////////////////
+
+        void clearRequest () {
+          if (this->_request != nullptr) {
+            delete this->_request;
+            this->_request = nullptr;
+          }
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief reset the internal state
+///
 /// this method can be called to clean up when the request handling aborts
 /// prematurely
 ////////////////////////////////////////////////////////////////////////////////
 
-        void resetState () {
-          if (this->_request != 0) {
-            delete this->_request;
-            this->_request       = 0;
+        void resetState (bool close) {
+          if (close) {
+            this->clearRequest();
+
+            this->_requestPending = false;
+            this->_closeRequested = true;
+          }
+          else {
+            this->_readBuffer->erase_front(this->_bodyPosition + this->_bodyLength);
+            this->_requestPending = true;
           }
 
           this->_readPosition    = 0;
           this->_bodyPosition    = 0;
           this->_bodyLength      = 0;
-          this->_readRequestBody = false;
-          this->_requestPending  = false;
 
-          this->_httpVersion     = HttpRequest::HTTP_UNKNOWN;
-          this->_requestType     = HttpRequest::HTTP_REQUEST_ILLEGAL;
-          this->_fullUrl         = "";
-          this->_denyCredentials = false;
-          this->_acceptDeflate   = false;
+          this->_readRequestBody = false;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief decide whether or not we should send back a www-authenticate header
+////////////////////////////////////////////////////////////////////////////////
+
+        bool sendWwwAuthenticateHeader () const {
+          bool found;
+          string const value = this->_request->header("x-omit-www-authenticate", found);
+
+          return ! found;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get request compatibility
+////////////////////////////////////////////////////////////////////////////////
+
+        int32_t getCompatibility () const {
+          if (this->_request != nullptr) {
+            return this->_request->compatibility();
+          }
+
+          return HttpRequest::MinCompatibility;
         }
 
 // -----------------------------------------------------------------------------
@@ -148,15 +301,23 @@ namespace triagens {
 
           bool handleRequest = false;
 
+          // still trying to read the header fields
           if (! this->_readRequestBody) {
-#ifdef TRI_ENABLE_FIGURES
 
+            // starting a new request
             if (this->_readPosition == 0 && this->_readBuffer->c_str() != this->_readBuffer->end()) {
+#ifdef TRI_ENABLE_FIGURES
               RequestStatisticsAgent::acquire();
               RequestStatisticsAgentSetReadStart(this);
+#endif
+
+              this->_httpVersion     = HttpRequest::HTTP_UNKNOWN;
+              this->_requestType     = HttpRequest::HTTP_REQUEST_ILLEGAL;
+              this->_fullUrl         = "";
+              this->_denyCredentials = false;
+              this->_acceptDeflate   = false;
             }
 
-#endif
 
             const char * ptr = this->_readBuffer->c_str() + this->_readPosition;
             const char * end = this->_readBuffer->end() - 3;
@@ -168,18 +329,24 @@ namespace triagens {
             }
 
 
+            // check if header is too large
             size_t headerLength = ptr - this->_readBuffer->c_str();
-
 
             if (headerLength > this->_maximalHeaderSize) {
               LOG_WARNING("maximal header size is %d, request header size is %d", (int) this->_maximalHeaderSize, (int) headerLength);
+
               // header is too large
               HttpResponse response(HttpResponse::REQUEST_HEADER_FIELDS_TOO_LARGE, getCompatibility());
+
+              // we need to close the connection, because there is no way we 
+              // know what to remove and then continue
+              this->resetState(true);
               this->handleResponse(&response);
 
               return true;
             }
 
+            // header is complete
             if (ptr < end) {
               this->_readPosition = ptr - this->_readBuffer->c_str() + 4;
 
@@ -192,10 +359,14 @@ namespace triagens {
 
               if (this->_request == nullptr) {
                 LOG_ERROR("cannot generate request");
+
                 // internal server error
                 HttpResponse response(HttpResponse::SERVER_ERROR, getCompatibility());
+
+                // we need to close the connection, because there is no way we 
+                // know how to remove the body and then continue
+                this->resetState(true);
                 this->handleResponse(&response);
-                this->resetState();
 
                 return true;
               }
@@ -207,27 +378,33 @@ namespace triagens {
 
               if (_httpVersion != HttpRequest::HTTP_1_0 &&
                   _httpVersion != HttpRequest::HTTP_1_1) {
+
                 HttpResponse response(HttpResponse::HTTP_VERSION_NOT_SUPPORTED, getCompatibility());
+
+                // we need to close the connection, because there is no way we 
+                // know what to remove and then continue
+                this->resetState(true);
                 this->handleResponse(&response);
-                this->resetState();
 
                 return true;
               }
 
               // check max URL length
               _fullUrl = this->_request->fullUrl();
+
               if (_fullUrl.size() > 16384) {
                 HttpResponse response(HttpResponse::REQUEST_URI_TOO_LONG, getCompatibility());
+
+                // we need to close the connection, because there is no way we 
+                // know what to remove and then continue
+                this->resetState(true);
                 this->handleResponse(&response);
-                this->resetState();
 
                 return true;
               }
 
               // update the connection information, i. e. client and server addresses and ports
-              //this->_request->setConnectionInfo(this->_connectionInfo);
               this->_request->setProtocol(S::protocol());
-
 
               LOG_TRACE("server port %d, client port %d",
                         (int) this->_connectionInfo.serverPort,
@@ -236,14 +413,16 @@ namespace triagens {
               // set body start to current position
               this->_bodyPosition = this->_readPosition;
 
-
               // keep track of the original value of the "origin" request header (if any)
               // we need this value to handle CORS requests
               this->_origin = this->_request->header("origin");
+
               if (! this->_origin.empty()) {
+
                 // check for Access-Control-Allow-Credentials header
                 bool found;
                 string const& allowCredentials = this->_request->header("access-control-allow-credentials", found);
+
                 if (found) {
                   this->_denyCredentials = ! triagens::basics::StringUtils::boolean(allowCredentials);
                 }
@@ -254,7 +433,6 @@ namespace triagens {
               this->_requestType = this->_request->requestType();
 
 #ifdef TRI_ENABLE_FIGURES
-
               RequestStatisticsAgentSetRequestType(this, this->_requestType);
 #endif
 
@@ -268,11 +446,11 @@ namespace triagens {
                 case HttpRequest::HTTP_REQUEST_PUT:
                 case HttpRequest::HTTP_REQUEST_PATCH: {
                   // technically, sending a body for an HTTP DELETE request is not forbidden, but it is not explicitly supported
-                  const bool expectContentLength = (this->_requestType == HttpRequest::HTTP_REQUEST_POST ||
-                                                    this->_requestType == HttpRequest::HTTP_REQUEST_PUT ||
-                                                    this->_requestType == HttpRequest::HTTP_REQUEST_PATCH ||
-                                                    this->_requestType == HttpRequest::HTTP_REQUEST_OPTIONS ||
-                                                    this->_requestType == HttpRequest::HTTP_REQUEST_DELETE);
+                  const bool expectContentLength = (this->_requestType == HttpRequest::HTTP_REQUEST_POST
+                                                 || this->_requestType == HttpRequest::HTTP_REQUEST_PUT
+                                                 || this->_requestType == HttpRequest::HTTP_REQUEST_PATCH
+                                                 || this->_requestType == HttpRequest::HTTP_REQUEST_OPTIONS
+                                                 || this->_requestType == HttpRequest::HTTP_REQUEST_DELETE);
 
                   if (! checkContentLength(expectContentLength)) {
                     return true;
@@ -281,6 +459,7 @@ namespace triagens {
                   if (this->_bodyLength == 0) {
                     handleRequest = true;
                   }
+
                   break;
                 }
 
@@ -289,8 +468,11 @@ namespace triagens {
                               string(this->_readBuffer->c_str(), (this->_readPosition < 6 ? this->_readPosition : 6)).c_str());
                   // bad request, method not allowed
                   HttpResponse response(HttpResponse::METHOD_NOT_ALLOWED, getCompatibility());
+
+                  // we need to close the connection, because there is no way we 
+                  // know what to remove and then continue
+                  this->resetState(true);
                   this->handleResponse(&response);
-                  this->resetState();
 
                   return true;
                 }
@@ -305,9 +487,13 @@ namespace triagens {
               if (scheduler != nullptr && ! scheduler->isActive()) {
                 // server is inactive and will intentionally respond with HTTP 503
                 LOG_TRACE("cannot serve request - server is inactive");
+
                 HttpResponse response(HttpResponse::SERVICE_UNAVAILABLE, getCompatibility());
+
+                // we need to close the connection, because there is no way we 
+                // know what to remove and then continue
+                this->resetState(true);
                 this->handleResponse(&response);
-                this->resetState();
 
                 return true;
               }
@@ -342,23 +528,10 @@ namespace triagens {
 
           // readRequestBody might have changed, so cannot use else
           if (this->_readRequestBody) {
-            if (this->_bodyLength > this->_maximalBodySize) {
-              // request entity too large
-              LOG_WARNING("maximal body size is %d, request body size is %d",
-                          (int) this->_maximalBodySize,
-                          (int) this->_bodyLength);
-
-              HttpResponse response(HttpResponse::REQUEST_ENTITY_TOO_LARGE, getCompatibility());
-              this->handleResponse(&response);
-              this->resetState();
-
-              return true;
-            }
-
             if (this->_readBuffer->length() - this->_bodyPosition < this->_bodyLength) {
               // still more data to be read
-
               SocketTask* socketTask = dynamic_cast<SocketTask*>(this);
+
               if (socketTask) {
                 // set read request time-out
                 LOG_TRACE("waiting for rest of body to be received. request timeout set to 60 s");
@@ -380,237 +553,111 @@ namespace triagens {
             handleRequest = true;
           }
 
-          // we have to delete request in here or pass it to a handler, which will delete it
-          if (handleRequest) {
-            RequestStatisticsAgentSetReadEnd(this);
-            RequestStatisticsAgentAddReceivedBytes(this, this->_bodyPosition + this->_bodyLength);
+          // .............................................................................
+          // request complete
+          //
+          // we have to delete request in here or pass it to a handler, which will delete
+          // it
+          // .............................................................................
 
-            this->_readBuffer->erase_front(this->_bodyPosition + this->_bodyLength);
+          if (! handleRequest) {
+            return true;
+          }
 
-            if (this->_readBuffer->length() > 0) {
-              // we removed the front of the read buffer, but it still contains data.
-              // this means that the content-length header of the request must have been wrong
-              // (value in content-length header smaller than actual body size)
+          RequestStatisticsAgentSetReadEnd(this);
+          RequestStatisticsAgentAddReceivedBytes(this, this->_bodyPosition + this->_bodyLength);
 
-              // check if there is invalid stuff left in the readbuffer
-              // whitespace is allowed
-              const char* p = this->_readBuffer->begin();
-              const char* e = this->_readBuffer->end();
-              while (p < e) {
-                const char c = *(p++);
-                if (c != '\n' && c != '\r' && c != ' ' && c != '\t' && c != '\0') {
-                  LOG_WARNING("read buffer is not empty. probably got a wrong Content-Length header?");
+          bool isOptions = (this->_requestType == HttpRequest::HTTP_REQUEST_OPTIONS);
+          this->resetState(false);
 
-                  HttpResponse response(HttpResponse::BAD, getCompatibility());
-                  this->handleResponse(&response);
-                  this->resetState();
+          // .............................................................................
+          // keep-alive handling
+          // .............................................................................
 
-                  return true;
-                }
-              }
+          string connectionType = triagens::basics::StringUtils::tolower(this->_request->header("connection"));
+
+          if (connectionType == "close") {
+            // client has sent an explicit "Connection: Close" header. we should close the connection
+            LOG_DEBUG("connection close requested by client");
+            this->_closeRequested = true;
+          }
+          else if (this->_request->isHttp10() && connectionType != "keep-alive") {
+            // HTTP 1.0 request, and no "Connection: Keep-Alive" header sent
+            // we should close the connection
+            LOG_DEBUG("no keep-alive, connection close requested by client");
+            this->_closeRequested = true;
+          }
+          else if (this->_keepAliveTimeout <= 0.0) {
+            // if keepAliveTimeout was set to 0.0, we'll close even keep-alive connections immediately
+            LOG_DEBUG("keep-alive disabled by admin");
+            this->_closeRequested = true;
+          }
+
+          // we keep the connection open in all other cases (HTTP 1.1 or Keep-Alive header sent)
+
+          // .............................................................................
+          // authenticate
+          // .............................................................................
+
+          auto const compatibility = this->_request->compatibility();
+
+          HttpResponse::HttpResponseCode authResult = this->_server->getHandlerFactory()->authenticateRequest(this->_request);
+
+          // authenticated or an OPTIONS request. OPTIONS requests currently go unauthenticated
+          if (authResult == HttpResponse::OK || isOptions) {
+
+            // handle HTTP OPTIONS requests directly
+            if (isOptions) {
+              this->processCorsOptions(compatibility);
             }
-
-            this->_requestPending = true;
-
-            // .............................................................................
-            // keep-alive handling
-            // .............................................................................
-
-            string connectionType = triagens::basics::StringUtils::tolower(this->_request->header("connection"));
-
-            if (connectionType == "close") {
-              // client has sent an explicit "Connection: Close" header. we should close the connection
-              LOG_DEBUG("connection close requested by client");
-              this->_closeRequested = true;
-            }
-            else if (this->_request->isHttp10() && connectionType != "keep-alive") {
-              // HTTP 1.0 request, and no "Connection: Keep-Alive" header sent
-              // we should close the connection
-              LOG_DEBUG("no keep-alive, connection close requested by client");
-              this->_closeRequested = true;
-            }
-            else if (this->_keepAliveTimeout <= 0.0) {
-              // if keepAliveTimeout was set to 0.0, we'll close even keep-alive connections immediately
-              LOG_DEBUG("keep-alive disabled by admin");
-              this->_closeRequested = true;
-            }
-            // we keep the connection open in all other cases (HTTP 1.1 or Keep-Alive header sent)
-
-            this->_readPosition = 0;
-            this->_bodyPosition = 0;
-            this->_bodyLength = 0;
-
-            auto const compatibility = this->_request->compatibility();
-
-            // .............................................................................
-            // authenticate
-            // .............................................................................
-
-            HttpResponse::HttpResponseCode authResult = this->_server->getHandlerFactory()->authenticateRequest(this->_request);
-
-            // authenticated
-            // or an HTTP OPTIONS request. OPTIONS requests currently go unauthenticated
-            if (authResult == HttpResponse::OK || this->_requestType == HttpRequest::HTTP_REQUEST_OPTIONS) {
-
-              // handle HTTP OPTIONS requests directly
-              if (this->_requestType == HttpRequest::HTTP_REQUEST_OPTIONS) {
-                const string allowedMethods = "DELETE, GET, HEAD, PATCH, POST, PUT";
-
-                HttpResponse response(HttpResponse::OK, compatibility);
-
-                response.setHeader("allow", strlen("allow"), allowedMethods);
-
-                if (! this->_origin.empty()) {
-                  LOG_TRACE("got CORS preflight request");
-                  const string allowHeaders = triagens::basics::StringUtils::trim(this->_request->header("access-control-request-headers"));
-
-                  // send back which HTTP methods are allowed for the resource
-                  // we'll allow all
-                  response.setHeader("access-control-allow-methods", strlen("access-control-allow-methods"), allowedMethods);
-
-                  if (! allowHeaders.empty()) {
-                    // allow all extra headers the client requested
-                    // we don't verify them here. the worst that can happen is that the client
-                    // sends some broken headers and then later cannot access the data on the
-                    // server. that's a client problem.
-                    response.setHeader("access-control-allow-headers", strlen("access-control-allow-headers"), allowHeaders);
-                    LOG_TRACE("client requested validation of the following headers: %s", allowHeaders.c_str());
-                  }
-                  // set caching time (hard-coded value)
-                  response.setHeader("access-control-max-age", strlen("access-control-max-age"), "1800");
-                }
-                // End of CORS handling
-
-                this->handleResponse(&response);
-
-                this->resetState();
-
-                // we're done
-                return true;
-              }
-              // end HTTP OPTIONS handling
-
-
-              HttpHandler* handler = this->_server->getHandlerFactory()->createHandler(this->_request);
-              bool ok = false;
-
-              if (handler == nullptr) {
-                LOG_TRACE("no handler is known, giving up");
-                HttpResponse response(HttpResponse::NOT_FOUND, compatibility);
-                this->handleResponse(&response);
-
-                this->resetState();
-              }
-              else {
-                bool found;
-                string const& acceptEncoding = this->_request->header("accept-encoding", found);
-                if (found) {
-                  if (acceptEncoding.find("deflate") != string::npos) {
-                    _acceptDeflate = true;
-                  }
-                }
-
-                // check for an async request
-                string const& asyncExecution = this->_request->header("x-arango-async", found);
-
-                if (found && (asyncExecution == "true" || asyncExecution == "store")) {
-                  // we have an async request
-
-
-#ifdef TRI_ENABLE_FIGURES
-
-                  RequestStatisticsAgentSetAsync(this);
-#endif
-
-                  this->RequestStatisticsAgent::transfer(handler);
-
-                  this->_request = nullptr;
-
-                  uint64_t jobId = 0;
-                  if (asyncExecution == "store") {
-                    // persist the responses
-                    ok = this->_server->handleRequestAsync(handler, &jobId);
-                  }
-                  else {
-                    // don't persist the responses
-                    ok = this->_server->handleRequestAsync(handler, 0);
-                  }
-
-                  if (ok) {
-                    HttpResponse response(HttpResponse::ACCEPTED, compatibility);
-
-                    if (jobId > 0) {
-                      // return the job id we just created
-                      response.setHeader("x-arango-async-id",
-                                         strlen("x-arango-async-id"),
-                                         triagens::basics::StringUtils::itoa(jobId));
-                    }
-
-                    this->handleResponse(&response);
-                  }
-                }
-                else {
-                  // synchronous request
-                  this->RequestStatisticsAgent::transfer(handler);
-
-                  this->_request = nullptr;
-
-                  ok = this->_server->handleRequest(this, handler);
-                }
-
-                if (! ok) {
-                  HttpResponse response(HttpResponse::SERVER_ERROR, compatibility);
-                  this->handleResponse(&response);
-                }
-              }
-            }
-
-            // not found
-            else if (authResult == HttpResponse::NOT_FOUND) {
-              HttpResponse response(authResult, compatibility);
-              response.setContentType("application/json; charset=utf-8");
-
-              response.body().appendText("{\"error\":true,\"errorMessage\":\"")
-                             .appendText(TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND))
-                             .appendText("\",\"code\":")
-                             .appendInteger((int) authResult)
-                             .appendText(",\"errorNum\":")
-                             .appendInteger(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)
-                             .appendText("}");
-
-              this->handleResponse(&response);
-              this->resetState();
-            }
-
-            // forbidden
-            else if (authResult == HttpResponse::FORBIDDEN) {
-              HttpResponse response(authResult, compatibility);
-              response.setContentType("application/json; charset=utf-8");
-
-              response.body().appendText("{\"error\":true,\"errorMessage\":\"change password\",\"code\":")
-                             .appendInteger((int) authResult)
-                             .appendText(",\"errorNum\":")
-                             .appendInteger(TRI_ERROR_USER_CHANGE_PASSWORD)
-                             .appendText("}");
-
-              this->handleResponse(&response);
-              this->resetState();
-            }
-
-            // not authenticated
             else {
-              HttpResponse response(HttpResponse::UNAUTHORIZED, compatibility);
-              const string realm = "basic realm=\"" + this->_server->getHandlerFactory()->authenticationRealm(this->_request) + "\"";
+              this->processRequest(compatibility);
+            }
+          }
 
-              if (sendWwwAuthenticateHeader()) {
-                response.setHeader("www-authenticate", strlen("www-authenticate"), realm.c_str());
-              }
+          // not found
+          else if (authResult == HttpResponse::NOT_FOUND) {
+            HttpResponse response(authResult, compatibility);
+            response.setContentType("application/json; charset=utf-8");
 
-              this->handleResponse(&response);
-              this->resetState();
+            response.body().appendText("{\"error\":true,\"errorMessage\":\"")
+                           .appendText(TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND))
+                           .appendText("\",\"code\":")
+                           .appendInteger((int) authResult)
+                           .appendText(",\"errorNum\":")
+                           .appendInteger(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)
+                           .appendText("}");
+
+            this->clearRequest();
+            this->handleResponse(&response);
+          }
+
+          // forbidden
+          else if (authResult == HttpResponse::FORBIDDEN) {
+            HttpResponse response(authResult, compatibility);
+            response.setContentType("application/json; charset=utf-8");
+
+            response.body().appendText("{\"error\":true,\"errorMessage\":\"change password\",\"code\":")
+                           .appendInteger((int) authResult)
+                           .appendText(",\"errorNum\":")
+                           .appendInteger(TRI_ERROR_USER_CHANGE_PASSWORD)
+                           .appendText("}");
+
+            this->clearRequest();
+            this->handleResponse(&response);
+          }
+
+          // not authenticated
+          else {
+            HttpResponse response(HttpResponse::UNAUTHORIZED, compatibility);
+            const string realm = "basic realm=\"" + this->_server->getHandlerFactory()->authenticationRealm(this->_request) + "\"";
+
+            if (sendWwwAuthenticateHeader()) {
+              response.setHeader("www-authenticate", strlen("www-authenticate"), realm.c_str());
             }
 
-            return processRead();
+            this->clearRequest();
+            this->handleResponse(&response);
           }
 
           return true;
@@ -621,6 +668,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void addResponse (HttpResponse* response) {
+
           // CORS response handling
           if (! this->_origin.empty()) {
             // the request contained an Origin header. We have to send back the
@@ -643,7 +691,7 @@ namespace triagens {
           }
           // CORS request handling EOF
 
-
+          // set "connection" header
           if (this->_closeRequested) {
             response->setHeader("connection", strlen("connection"), "Close");
           }
@@ -671,6 +719,7 @@ namespace triagens {
 
           // reserve some outbuffer size
           triagens::basics::StringBuffer* buffer = new triagens::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE, responseBodyLength + 128);
+
           // write header
           response->writeHeader(buffer);
 
@@ -682,9 +731,7 @@ namespace triagens {
           this->_writeBuffers.push_back(buffer);
 
 #ifdef TRI_ENABLE_FIGURES
-
           this->_writeBuffersStats.push_back(RequestStatisticsAgent::transfer());
-
 #endif
 
           LOG_TRACE("HTTP WRITE FOR %p: %s", (void*) this, buffer->c_str());
@@ -704,6 +751,9 @@ namespace triagens {
 
           // start output
           this->fillWriteBuffer();
+
+          // and process any remaining input
+          processRead();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -714,8 +764,11 @@ namespace triagens {
           const int64_t bodyLength = this->_request->contentLength();
 
           if (bodyLength < 0) {
+
             // bad request, body length is < 0. this is a client error
             HttpResponse response(HttpResponse::LENGTH_REQUIRED, getCompatibility());
+
+            this->resetState(true);
             this->handleResponse(&response);
 
             return false;
@@ -728,9 +781,12 @@ namespace triagens {
           }
 
           if ((size_t) bodyLength > this->_maximalBodySize) {
-            // request entity too large
             LOG_WARNING("maximal body size is %d, request body size is %d", (int) this->_maximalBodySize, (int) bodyLength);
+
+            // request entity too large
             HttpResponse response(HttpResponse::REQUEST_ENTITY_TOO_LARGE, getCompatibility());
+
+            this->resetState(true);
             this->handleResponse(&response);
 
             return false;
@@ -738,6 +794,7 @@ namespace triagens {
 
           // set instance variable to content-length value
           this->_bodyLength = (size_t) bodyLength;
+
           if (this->_bodyLength > 0) {
             // we'll read the body
             this->_readRequestBody = true;
@@ -745,32 +802,6 @@ namespace triagens {
 
           // everything's fine
           return true;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief decide whether or not we should send back a www-authenticate header
-////////////////////////////////////////////////////////////////////////////////
-
-        bool sendWwwAuthenticateHeader () const {
-          bool found;
-          string const value = this->_request->header("x-omit-www-authenticate", found);
-          if (found) {
-            return false;
-          }
-
-          return true;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get request compatibility
-////////////////////////////////////////////////////////////////////////////////
-
-        int32_t getCompatibility () const {
-          if (this->_request != nullptr) {
-            return this->_request->compatibility();
-          }
-
-          return HttpRequest::MinCompatibility;
         }
 
 // -----------------------------------------------------------------------------
