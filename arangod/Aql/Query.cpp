@@ -258,9 +258,12 @@ Query::~Query () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone a query
+/// note: as a side-effect, this will also create and start a transaction for
+/// the query
 ////////////////////////////////////////////////////////////////////////////////
 
-Query* Query::clone (QueryPart part) {
+Query* Query::clone (QueryPart part,
+                     bool withPlan) {
   TRI_json_t* options = nullptr;
 
   if (_options != nullptr) {
@@ -287,7 +290,10 @@ Query* Query::clone (QueryPart part) {
   }
 
   if (_plan != nullptr) {
-    clone->_plan = _plan->clone(*clone);
+    if (withPlan) {
+      // clone the existing plan
+      clone->setPlan(_plan->clone(*clone));
+    }
    
     // clone all variables 
     for (auto it : _ast->variables()->variables(true)) {
@@ -296,11 +302,23 @@ Query* Query::clone (QueryPart part) {
       clone->ast()->variables()->createVariable(var);
     }
   }
+    
+  if (clone->_plan == nullptr) {
+    // initialize an empty plan
+    clone->setPlan(new ExecutionPlan(ast()));
+  }
 
   TRI_ASSERT(clone->_trx == nullptr);
 
   clone->_trx = _trx->clone();  // A daughter transaction which does not
                                 // actually lock the collections
+
+  int res = clone->_trx->begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(res, "could not begin transaction");
+  }
+
   return clone.release();
 }
 

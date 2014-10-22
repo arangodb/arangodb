@@ -151,7 +151,7 @@ void RestAqlHandler::createQueryFromJson () {
   _qId = TRI_NewTickServer();
   
   try {
-    _queryRegistry->insert(_vocbase, _qId, query, ttl);
+    _queryRegistry->insert(_qId, query, ttl);
   }
   catch (...) {
     LOG_ERROR("could not keep query in registry");
@@ -336,7 +336,7 @@ void RestAqlHandler::createQueryFromString () {
 
   _qId = TRI_NewTickServer();
   try {
-    _queryRegistry->insert(_vocbase, _qId, query, ttl);
+    _queryRegistry->insert(_qId, query, ttl);
   }
   catch (...) {
     LOG_ERROR("could not keep query in registry");
