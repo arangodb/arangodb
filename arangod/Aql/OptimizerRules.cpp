@@ -1638,14 +1638,11 @@ int triagens::aql::scatterInCluster (Optimizer* opt,
       auto parents = node->getParents();
       auto deps = node->getDependencies();
       TRI_ASSERT(deps.size() == 1);
-
-      // unlink the node
       bool const isRootNode = plan->isRoot(node);
-      if (isRootNode) {
-        if (deps[0]->getType() == ExecutionNode::REMOTE &&
-            deps[0]->getDependencies()[0]->getType() == ExecutionNode::DISTRIBUTE){
-          continue;
-        }
+      // don't do this if we are already distributing!
+      if (deps[0]->getType() == ExecutionNode::REMOTE &&
+          deps[0]->getDependencies()[0]->getType() == ExecutionNode::DISTRIBUTE){
+        continue;
       }
       plan->unlinkNode(node, isRootNode);
 
@@ -1782,8 +1779,19 @@ int triagens::aql::distributeInCluster (Optimizer* opt,
     // re-link with the remote node
     node->addDependency(remoteNode);
 
-    // make node the root again
-    plan->root(node);
+    // insert another remote node
+    remoteNode = new RemoteNode(plan, plan->nextId(), vocbase, collection, "", "", "");
+    plan->registerNode(remoteNode);
+    remoteNode->addDependency(node);
+    
+    // insert a gather node 
+    ExecutionNode* gatherNode = new GatherNode(plan, plan->nextId(), vocbase,
+        collection);
+    plan->registerNode(gatherNode);
+    gatherNode->addDependency(remoteNode);
+
+    // we replaced the root node, set a new root node
+    plan->root(gatherNode);
     wasModified = true;
   }
    
@@ -2078,13 +2086,6 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
             if (vars.size() != 1 || vars[0]->id != varsToRemove[0]->id) {
               break; // abort . . . 
             }
-            // TODO check if we are accessing the _key attribute, maybe this is
-            // not required:
-            // AQL_EXPLAIN("FOR d IN docs FILTER d.Hallo < 5 REMOVE d.blah in docs")
-            // returns a plan but:
-            // AQL_EXECUTE("FOR d IN docs FILTER d.Hallo < 5 REMOVE d.blah in docs")
-            // doesn't work (in the non-cluster, neither work in the cluster)
-            
             // set the _variable to the variable in the expression of this
             // node and also define _enumColl
             varsToRemove = cn->getVariablesUsedHere();
@@ -2150,7 +2151,7 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
           // FIXME should the following be an assertion? I.e. can it
           // ever happen?
           
-          // check these as a Calc-Filter pair
+          // check these are a Calc-Filter pair
           if (cn->getVariablesSetHere()[0]->id
               != fn->getVariablesUsedHere()[0]->id) {
             break; // abort . . .

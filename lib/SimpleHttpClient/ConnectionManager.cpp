@@ -111,12 +111,12 @@ ConnectionManager::leaseConnection (std::string& endpoint) {
     }
   }
 
-  TRI_ASSERT(s != 0);
+  TRI_ASSERT(s != nullptr);
 
   // Now get an unused one:
   {
     WRITE_LOCKER(s->lock);
-    if (!s->unused.empty()) {
+    if (! s->unused.empty()) {
       c = s->unused.back();
       s->unused.pop_back();
       return c;
@@ -125,8 +125,8 @@ ConnectionManager::leaseConnection (std::string& endpoint) {
 
   triagens::rest::Endpoint* e
       = triagens::rest::Endpoint::clientFactory(endpoint);
-  if (0 == e) {
-    return 0;
+  if (nullptr == e) {
+    return nullptr;
   }
   triagens::httpclient::GeneralClientConnection*
          g = triagens::httpclient::GeneralClientConnection::factory(
@@ -135,20 +135,21 @@ ConnectionManager::leaseConnection (std::string& endpoint) {
                    _globalConnectionOptions._connectTimeout,
                    _globalConnectionOptions._connectRetries,
                    _globalConnectionOptions._sslProtocol);
-  if (0 == g) {
+  if (nullptr == g) {
     delete e;
-    return 0;
+    return nullptr;
   }
-  if (!g->connect()) {
+  if (! g->connect()) {
     delete g;
     delete e;
-    return 0;
+    return nullptr;
   }
-  c = new SingleServerConnection(g,e,endpoint);
-  if (0 == c) {
+
+  c = new SingleServerConnection(g, e, endpoint);
+  if (nullptr == c) {
     delete g;
     delete e;
-    return 0;
+    return nullptr;
   }
 
   // Now put it into our administration:
@@ -287,11 +288,6 @@ void ConnectionManager::closeUnusedConnections (double limit) {
     }
   }
 }
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

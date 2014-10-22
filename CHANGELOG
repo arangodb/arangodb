@@ -1,6 +1,8 @@
 v2.3.0 (XXXX-XX-XX)
 -------------------
 
+* removed internal "_admin/modules/flush" in order to fix requireApp
+
 * added basic support for handling binary data in Foxx
 
   Buffer objects can now be used when setting the response body of any Foxx action.

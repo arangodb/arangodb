@@ -645,6 +645,32 @@ void TRI_FreeJson (TRI_memory_zone_t* zone, TRI_json_t* object) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a user printeable string
+////////////////////////////////////////////////////////////////////////////////
+
+const char *TRI_GetTypeString(TRI_json_t* object) {
+  switch (object->_type) {
+    case TRI_JSON_UNUSED:
+      return "unused";
+    case TRI_JSON_NULL:
+      return "null";
+    case TRI_JSON_BOOLEAN:
+      return "boolean";
+    case TRI_JSON_NUMBER:
+      return "number";
+    case TRI_JSON_STRING:
+      return "string";
+    case TRI_JSON_STRING_REFERENCE:
+      return "string-reference";
+    case TRI_JSON_ARRAY:
+      return "array";
+    case TRI_JSON_LIST:
+      return "list";
+  }
+  return "unknown";
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief determines the length of a list json
 ////////////////////////////////////////////////////////////////////////////////
 

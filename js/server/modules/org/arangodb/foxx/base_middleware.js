@@ -328,7 +328,7 @@ BaseMiddleware = function () {
 /// `response.send(value)`
 ///
 /// Sets the response body to the specified *value*. If *value* is a Buffer
-/// object, the content type will be set to `application/octet-stream` if not 
+/// object, the content type will be set to `application/octet-stream` if not
 /// yet set. If *value* is a string, the content type will be set to `text/html`
 /// if not yet set. If *value* is an object, it will be treated as in `res.json`.
 ///
@@ -344,7 +344,7 @@ BaseMiddleware = function () {
 
       send: function (obj) {
         if (obj instanceof Buffer) {
-          // Buffer 
+          // Buffer
           if (! this.contentType) {
             this.contentType = "application/octet-stream";
           }
@@ -361,7 +361,7 @@ BaseMiddleware = function () {
             this.contentType = "text/html";
           }
         }
-          
+
         this.body = obj;
       },
 
@@ -371,7 +371,7 @@ BaseMiddleware = function () {
 /// `response.sendFile(filename, options)`
 ///
 /// Sets the content of the specified file as the response body. The filename
-/// must be absolute. If no content type is yet set for the response, the 
+/// must be absolute. If no content type is yet set for the response, the
 /// response's content type will be determined automatically based
 /// on the filename extension. If no content type is known for the extension,
 /// the content type will default to `application/octet-stream`.
@@ -393,7 +393,7 @@ BaseMiddleware = function () {
       sendFile: function (filename, options) {
         options = options || { };
 
-        this.body = fs.readBuffer(filename); 
+        this.body = fs.readBuffer(filename);
         if (options.lastModified) {
           this.set("Last-Modified", new Date(fs.mtime(filename) * 1000).toUTCString());
         }

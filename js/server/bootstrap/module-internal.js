@@ -116,7 +116,6 @@
   internal.resetEngine = function () {
     'use strict';
 
-    internal.flushModuleCache();
     require("org/arangodb/actions").reloadRouting();
   };
 

@@ -64,9 +64,9 @@ function optimizerRuleTestSuite () {
       db._drop(cn2);
       c1 = db._create(cn1, {numberOfShards:9});
       c2 = db._create(cn2, {numberOfShards:9, shardKeys:["a","b"]});
-      for (i = 0; i < 10; i++){ 
-          c1.insert({Hallo1:i});
-          c2.insert({Hallo2:i});
+      for (i = 0; i < 10; i++) { 
+        c1.insert({Hallo1:i});
+        c2.insert({Hallo2:i});
       }
     },
 
@@ -85,10 +85,10 @@ function optimizerRuleTestSuite () {
 
     testThisRuleEnabled : function () {
       var queries = [ 
-        [ "FOR d IN " + cn1 + " REMOVE d in " + cn1, 0],
-        [ "FOR d IN " + cn1 + " REMOVE d._key in " + cn1, 1],
-        [ "FOR d IN " + cn1 + " INSERT d in " + cn2, 2],
-        [ "FOR d IN " + cn1 + " INSERT d._key in " + cn2, 3]
+        "FOR d IN " + cn1 + " REMOVE d in " + cn1,
+        "FOR d IN " + cn1 + " REMOVE d._key in " + cn1,
+        "FOR d IN " + cn1 + " INSERT d in " + cn2,
+        "FOR d IN " + cn1 + " INSERT d._key in " + cn2
       ];
 
       var expectedRules = [
@@ -104,6 +104,11 @@ function optimizerRuleTestSuite () {
                             [
                               "distribute-in-cluster", 
                               "scatter-in-cluster" 
+                            ],
+                            [ 
+                              "distribute-in-cluster", 
+                              "scatter-in-cluster", 
+                              "distribute-filtercalc-to-cluster"
                             ]
                           ];
 
@@ -116,7 +121,37 @@ function optimizerRuleTestSuite () {
                               "RemoteNode", 
                               "GatherNode",
                               "DistributeNode",
-                              "RemoteNode"
+                              "RemoteNode",
+                              "RemoveNode",
+                              "RemoteNode",
+                              "GatherNode"
+                            ],
+                            [
+                              "SingletonNode",
+                              "ScatterNode", 
+                              "RemoteNode", 
+                              "EnumerateCollectionNode",
+                              "CalculationNode", 
+                              "RemoteNode", 
+                              "GatherNode",
+                              "DistributeNode",
+                              "RemoteNode",
+                              "RemoveNode",
+                              "RemoteNode",
+                              "GatherNode"
+                            ],
+                            [
+                              "SingletonNode",
+                              "ScatterNode", 
+                              "RemoteNode", 
+                              "EnumerateCollectionNode", 
+                              "RemoteNode", 
+                              "GatherNode",
+                              "DistributeNode",
+                              "RemoteNode",
+                              "InsertNode",
+                              "RemoteNode",
+                              "GatherNode"
                             ],
                             [
                               "SingletonNode",
@@ -127,23 +162,17 @@ function optimizerRuleTestSuite () {
                               "RemoteNode", 
                               "GatherNode",
                               "DistributeNode",
-                              "RemoteNode"
+                              "RemoteNode",
+                              "InsertNode",
+                              "RemoteNode",
+                              "GatherNode"
                             ]
                           ];
 
-      var finalNodes = [
-                        "RemoveNode", "RemoveNode", 
-                        "InsertNode", "InsertNode"
-                       ];
-
-      queries.forEach(function(query) {
-        var i = query[1] % 2;
-        var result = AQL_EXPLAIN(query[0], { }, thisRuleEnabled);
+      queries.forEach(function(query, i) {
+        var result = AQL_EXPLAIN(query, { }, thisRuleEnabled);
         assertEqual(expectedRules[i], result.plan.rules, query);
-        expectedNodes[i].push(finalNodes[query[1]]);
         assertEqual(expectedNodes[i], explain(result), query);
-        expectedNodes[i].pop();
-        
       });
     },
 
@@ -153,13 +182,24 @@ function optimizerRuleTestSuite () {
 
     testThisRuleDisabled : function () {
       var queries = [ 
-        [ "FOR d IN " + cn1 + " REMOVE d in " + cn1, 0],
-        [ "FOR d IN " + cn1 + " REMOVE d._key in " + cn1, 1],
-        [ "FOR d IN " + cn1 + " INSERT d in " + cn2, 2],
-        [ "FOR d IN " + cn1 + " INSERT d._key in " + cn2, 3],
+        "FOR d IN " + cn1 + " REMOVE d in " + cn1,
+        "FOR d IN " + cn1 + " REMOVE d._key in " + cn1,
+        "FOR d IN " + cn1 + " INSERT d in " + cn2,
+        "FOR d IN " + cn1 + " INSERT d._key in " + cn2,
       ];
 
       var expectedRules = [
+                            [ 
+                              "distribute-in-cluster", 
+                              "scatter-in-cluster", 
+                              "remove-unnecessary-remote-scatter" 
+                            ], 
+                            [ 
+                              "distribute-in-cluster", 
+                              "scatter-in-cluster", 
+                              "distribute-filtercalc-to-cluster", 
+                              "remove-unnecessary-remote-scatter" 
+                            ],
                             [ 
                               "distribute-in-cluster", 
                               "scatter-in-cluster", 
@@ -180,7 +220,10 @@ function optimizerRuleTestSuite () {
                               "RemoteNode", 
                               "GatherNode",
                               "DistributeNode",
-                              "RemoteNode"
+                              "RemoteNode",
+                              "RemoveNode", 
+                              "RemoteNode",
+                              "GatherNode"
                             ],
                             [
                               "SingletonNode",
@@ -189,24 +232,43 @@ function optimizerRuleTestSuite () {
                               "RemoteNode", 
                               "GatherNode",
                               "DistributeNode",
-                              "RemoteNode"
+                              "RemoteNode",
+                              "RemoveNode",
+                              "RemoteNode",
+                              "GatherNode"
+                            ],
+                            [ 
+                              "SingletonNode", 
+                              "EnumerateCollectionNode", 
+                              "RemoteNode", 
+                              "GatherNode", 
+                              "DistributeNode", 
+                              "RemoteNode", 
+                              "InsertNode", 
+                              "RemoteNode", 
+                              "GatherNode" 
+                            ],
+                            [ 
+                              "SingletonNode", 
+                              "EnumerateCollectionNode", 
+                              "CalculationNode", 
+                              "RemoteNode", 
+                              "GatherNode", 
+                              "DistributeNode", 
+                              "RemoteNode", 
+                              "InsertNode", 
+                              "RemoteNode", 
+                              "GatherNode" 
                             ]
                           ];
 
-      var finalNodes = [ 
-                        "RemoveNode", "RemoveNode", 
-                        "InsertNode", "InsertNode"
-                       ];
-
-      queries.forEach(function(query) {
+      queries.forEach(function(query, i) {
         // can't turn this rule off so should always get the same answer
-        var i = query[1] % 2;
-        var result = AQL_EXPLAIN(query[0], { }, rulesAll);
+        var result = AQL_EXPLAIN(query, { }, rulesAll);
+
         assertEqual(expectedRules[i], result.plan.rules, query);
-        expectedNodes[i].push(finalNodes[query[1]]);
-        result = AQL_EXPLAIN(query[0], { }, thisRuleDisabled);
+        result = AQL_EXPLAIN(query, { }, thisRuleDisabled);
         assertEqual(expectedNodes[i], explain(result), query);
-        expectedNodes[i].pop();
       });
     },
 
@@ -216,13 +278,24 @@ function optimizerRuleTestSuite () {
 
     testRulesAll : function () {
       var queries = [ 
-        [ "FOR d IN " + cn1 + " REMOVE d in " + cn1, 0],
-        [ "FOR d IN " + cn1 + " REMOVE d._key in " + cn1, 1],
-        [ "FOR d IN " + cn1 + " INSERT d in " + cn2, 2],
-        [ "FOR d IN " + cn1 + " INSERT d._key in " + cn2, 3],
+        "FOR d IN " + cn1 + " REMOVE d in " + cn1,
+        "FOR d IN " + cn1 + " REMOVE d._key in " + cn1,
+        "FOR d IN " + cn1 + " INSERT d in " + cn2,
+        "FOR d IN " + cn1 + " INSERT d._key in " + cn2,
       ];
 
       var expectedRules = [
+                            [ 
+                              "distribute-in-cluster", 
+                              "scatter-in-cluster", 
+                              "remove-unnecessary-remote-scatter" 
+                            ], 
+                            [ 
+                              "distribute-in-cluster", 
+                              "scatter-in-cluster", 
+                              "distribute-filtercalc-to-cluster", 
+                              "remove-unnecessary-remote-scatter" 
+                            ],
                             [ 
                               "distribute-in-cluster", 
                               "scatter-in-cluster", 
@@ -243,7 +316,10 @@ function optimizerRuleTestSuite () {
                               "RemoteNode", 
                               "GatherNode",
                               "DistributeNode",
-                              "RemoteNode"
+                              "RemoteNode",
+                              "RemoveNode",
+                              "RemoteNode",
+                              "GatherNode"
                             ],
                             [
                               "SingletonNode",
@@ -252,23 +328,41 @@ function optimizerRuleTestSuite () {
                               "RemoteNode", 
                               "GatherNode",
                               "DistributeNode",
-                              "RemoteNode"
+                              "RemoteNode",
+                              "RemoveNode",
+                              "RemoteNode",
+                              "GatherNode"
+                            ],
+                            [ 
+                              "SingletonNode", 
+                              "EnumerateCollectionNode", 
+                              "RemoteNode", 
+                              "GatherNode", 
+                              "DistributeNode", 
+                              "RemoteNode", 
+                              "InsertNode", 
+                              "RemoteNode", 
+                              "GatherNode" 
+                            ],
+                            [ 
+                              "SingletonNode", 
+                              "EnumerateCollectionNode", 
+                              "CalculationNode", 
+                              "RemoteNode", 
+                              "GatherNode", 
+                              "DistributeNode", 
+                              "RemoteNode", 
+                              "InsertNode", 
+                              "RemoteNode", 
+                              "GatherNode" 
                             ]
                           ];
 
-      var finalNodes = [ 
-                        "RemoveNode", "RemoveNode", 
-                        "InsertNode", "InsertNode"
-                       ];
-
-      queries.forEach(function(query) {
+      queries.forEach(function(query, i) {
         // can't turn this rule off so should always get the same answer
-        var i = query[1] % 2;
-        var result = AQL_EXPLAIN(query[0], { }, rulesAll);
+        var result = AQL_EXPLAIN(query, { }, rulesAll);
         assertEqual(expectedRules[i], result.plan.rules, query);
-        expectedNodes[i].push(finalNodes[query[1]]);
         assertEqual(expectedNodes[i], explain(result), query);
-        expectedNodes[i].pop();
       });
     },
 
@@ -278,13 +372,22 @@ function optimizerRuleTestSuite () {
 
     testRulesNone : function () {
       var queries = [ 
-        [ "FOR d IN " + cn1 + " REMOVE d in " + cn1, 0],
-        [ "FOR d IN " + cn1 + " REMOVE d._key in " + cn1, 1],
-        [ "FOR d IN " + cn1 + " INSERT d in " + cn2, 2],
-        [ "FOR d IN " + cn1 + " INSERT d._key in " + cn2, 3],
+        "FOR d IN " + cn1 + " REMOVE d in " + cn1,
+        "FOR d IN " + cn1 + " REMOVE d._key in " + cn1,
+        "FOR d IN " + cn1 + " INSERT d in " + cn2,
+        "FOR d IN " + cn1 + " INSERT d._key in " + cn2,
       ];
 
       var expectedRules = [
+                            [ 
+                              "distribute-in-cluster", 
+                              "scatter-in-cluster", 
+                            ], 
+                            [ 
+                              "distribute-in-cluster", 
+                              "scatter-in-cluster", 
+                              "distribute-filtercalc-to-cluster", 
+                            ],
                             [ 
                               "distribute-in-cluster", 
                               "scatter-in-cluster", 
@@ -305,7 +408,10 @@ function optimizerRuleTestSuite () {
                               "RemoteNode", 
                               "GatherNode",
                               "DistributeNode",
-                              "RemoteNode"
+                              "RemoteNode",
+                              "RemoveNode",
+                              "RemoteNode",
+                              "GatherNode",
                             ],
                             [
                               "SingletonNode",
@@ -316,24 +422,45 @@ function optimizerRuleTestSuite () {
                               "RemoteNode", 
                               "GatherNode",
                               "DistributeNode",
-                              "RemoteNode"
+                              "RemoteNode",
+                              "RemoveNode",
+                              "RemoteNode",
+                              "GatherNode"
+                            ],
+                            [ 
+                              "SingletonNode", 
+                              "ScatterNode", 
+                              "RemoteNode", 
+                              "EnumerateCollectionNode", 
+                              "RemoteNode", 
+                              "GatherNode", 
+                              "DistributeNode", 
+                              "RemoteNode", 
+                              "InsertNode", 
+                              "RemoteNode", 
+                              "GatherNode" 
+                            ],
+                            [ 
+                              "SingletonNode", 
+                              "ScatterNode", 
+                              "RemoteNode", 
+                              "EnumerateCollectionNode", 
+                              "CalculationNode", 
+                              "RemoteNode", 
+                              "GatherNode", 
+                              "DistributeNode", 
+                              "RemoteNode", 
+                              "InsertNode", 
+                              "RemoteNode", 
+                              "GatherNode" 
                             ]
                           ];
 
-      var finalNodes = [ 
-                        "RemoveNode", "RemoveNode", 
-                        "InsertNode", "InsertNode"
-                       ];
-
-      queries.forEach(function(query) {
+      queries.forEach(function(query, i) {
         // can't turn this rule off so should always get the same answer
-        var i = query[1] % 2;
-        var result = AQL_EXPLAIN(query[0], { }, rulesNone);
+        var result = AQL_EXPLAIN(query, { }, rulesNone);
         assertEqual(expectedRules[i], result.plan.rules, query);
-        expectedNodes[i].push(finalNodes[query[1]]);
         assertEqual(expectedNodes[i], explain(result), query);
-        expectedNodes[i].pop();
-        
       });
     },
 
