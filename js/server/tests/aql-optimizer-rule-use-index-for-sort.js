@@ -26,6 +26,7 @@
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
+
 var internal = require("internal");
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
@@ -182,7 +183,6 @@ function optimizerRuleTestSuite() {
     /// @brief test that rule has no effect
     ////////////////////////////////////////////////////////////////////////////////
 
-
     testRuleNoEffect : function () {
       var j;
       var queries = [ 
@@ -221,6 +221,7 @@ function optimizerRuleTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test that rule has an effect
     ////////////////////////////////////////////////////////////////////////////////
+
     testRuleHasEffect : function () {
       var allresults;
       var queries = [ 
@@ -240,7 +241,7 @@ function optimizerRuleTestSuite() {
         var result = AQL_EXPLAIN(query, { }, paramIndexFromSort);
         assertEqual([ ruleName ], result.plan.rules, query);
         QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
-        QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort ).json;
+        QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort).json;
         
         assertTrue(isEqual(QResults[0], QResults[1]), "Result " + i + " is Equal?");
 
