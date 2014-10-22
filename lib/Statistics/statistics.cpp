@@ -100,6 +100,7 @@ void TRI_ReleaseRequestStatistics (TRI_request_statistics_t* statistics) {
   STATISTICS_LOCK(&RequestListLock);
 
   if (statistics == nullptr) {
+    STATISTICS_UNLOCK(&RequestListLock);
     return;
   }
 
