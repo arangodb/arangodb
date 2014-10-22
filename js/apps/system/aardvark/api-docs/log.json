@@ -16,7 +16,7 @@
                             "code": "403"
                         },
                         {
-                            "reason": "is returned if the server cannot generate the result due to an out-of-memory error. @endDocuBlock",
+                            "reason": "is returned if the server cannot generate the result due to an out-of-memory error. <br><br>",
                             "code": "500"
                         }
                     ],
