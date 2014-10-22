@@ -185,7 +185,7 @@ namespace triagens {
 /// @brief shutdown, will be called exactly once for the whole query
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual int shutdown ();
+        virtual int shutdown (int);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getOne, gets one more item
@@ -388,7 +388,7 @@ namespace triagens {
 
         int initializeCursor (AqlItemBlock* items, size_t pos) override;
 
-        int shutdown ();
+        int shutdown (int) override final;
 
         bool hasMore () override final {
           return ! _done;
@@ -1390,7 +1390,7 @@ namespace triagens {
 /// @brief shutdown: need our own method since our _buffer is different
 ////////////////////////////////////////////////////////////////////////////////
          
-        int shutdown ();
+        int shutdown (int) override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializeCursor
@@ -1528,7 +1528,7 @@ namespace triagens {
 /// @brief shutdown
 ////////////////////////////////////////////////////////////////////////////////
 
-      int shutdown ();
+      int shutdown (int) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getSome: shouldn't be used, use skipSomeForShard
@@ -1867,7 +1867,7 @@ namespace triagens {
 /// @brief shutdown, will be called exactly once for the whole query
 ////////////////////////////////////////////////////////////////////////////////
 
-        int shutdown () final;
+        int shutdown (int) override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getSome
@@ -1908,7 +1908,7 @@ namespace triagens {
 
         triagens::arango::ClusterCommResult* sendRequest (
                   rest::HttpRequest::HttpRequestType type,
-                  std::string urlPart,
+                  std::string const& urlPart,
                   std::string const& body) const;
 
 ////////////////////////////////////////////////////////////////////////////////

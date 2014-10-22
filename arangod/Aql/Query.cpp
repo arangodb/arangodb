@@ -210,7 +210,7 @@ Query::Query (triagens::arango::ApplicationV8* applicationV8,
 ////////////////////////////////////////////////////////////////////////////////
 
 Query::~Query () {
-  cleanupPlanAndEngine();
+  cleanupPlanAndEngine(TRI_ERROR_INTERNAL); // abort the transaction
 
   if (_profile != nullptr) {
     delete _profile;
@@ -524,19 +524,19 @@ QueryResult Query::prepare (QueryRegistry* registry) {
     return QueryResult();
   }
   catch (triagens::arango::Exception const& ex) {
-    cleanupPlanAndEngine();
+    cleanupPlanAndEngine(ex.code());
     return QueryResult(ex.code(), getStateString() + ex.message());
   }
   catch (std::bad_alloc const&) {
-    cleanupPlanAndEngine();
+    cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY);
     return QueryResult(TRI_ERROR_OUT_OF_MEMORY, getStateString() + TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
   }
   catch (std::exception const& ex) {
-    cleanupPlanAndEngine();
+    cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
     return QueryResult(TRI_ERROR_INTERNAL, getStateString() + ex.what());
   }
   catch (...) {
-    cleanupPlanAndEngine();
+    cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
     return QueryResult(TRI_ERROR_INTERNAL, getStateString() + TRI_errno_string(TRI_ERROR_INTERNAL));
   }
 }
@@ -578,7 +578,7 @@ QueryResult Query::execute (QueryRegistry* registry) {
 
     _trx->commit();
    
-    cleanupPlanAndEngine();
+    cleanupPlanAndEngine(TRI_ERROR_NO_ERROR);
 
     enterState(FINALIZATION); 
 
@@ -593,19 +593,19 @@ QueryResult Query::execute (QueryRegistry* registry) {
     return result;
   }
   catch (triagens::arango::Exception const& ex) {
-    cleanupPlanAndEngine();
+    cleanupPlanAndEngine(ex.code());
     return QueryResult(ex.code(), getStateString() + ex.message());
   }
   catch (std::bad_alloc const&) {
-    cleanupPlanAndEngine();
+    cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY);
     return QueryResult(TRI_ERROR_OUT_OF_MEMORY, getStateString() + TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
   }
   catch (std::exception const& ex) {
-    cleanupPlanAndEngine();
+    cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
     return QueryResult(TRI_ERROR_INTERNAL, getStateString() + ex.what());
   }
   catch (...) {
-    cleanupPlanAndEngine();
+    cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
     return QueryResult(TRI_ERROR_INTERNAL, getStateString() + TRI_errno_string(TRI_ERROR_INTERNAL));
   }
 }
@@ -972,9 +972,15 @@ std::string Query::getStateString () const {
 /// @brief cleanup plan and engine for current query
 ////////////////////////////////////////////////////////////////////////////////
 
-void Query::cleanupPlanAndEngine () {
+void Query::cleanupPlanAndEngine (int errorCode) {
   if (_engine != nullptr) {
-    _engine->shutdown();
+    try {
+      _engine->shutdown(errorCode); 
+    }
+    catch (...) {
+      // shutdown may fail but we must not throw here 
+      // (we're also called from the destructor)
+    }
     delete _engine;
     _engine = nullptr;
   }

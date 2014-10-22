@@ -416,14 +416,10 @@ void RestAqlHandler::useQuery (std::string const& operation,
   TRI_ASSERT(_qId > 0);
   TRI_ASSERT(query->engine() != nullptr);
 
-  Json queryJson;
-  if (operation != "shutdown") {
-    // /shutdown does not require a body
-    queryJson = Json(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
-    if (queryJson.isEmpty()) {
-      _queryRegistry->close(_vocbase, _qId);
-      return;
-    }
+  Json queryJson = Json(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
+  if (queryJson.isEmpty()) {
+    _queryRegistry->close(_vocbase, _qId);
+    return;
   }
 
   try {
@@ -837,9 +833,11 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
   }
   else if (operation == "shutdown") {
     int res = TRI_ERROR_INTERNAL;
+    int errorCode = JsonHelper::getNumericValue<int>(queryJson.json(), "code", TRI_ERROR_INTERNAL);
+
     try {
-      res = query->engine()->shutdown();
-      _queryRegistry->destroy(_vocbase, _qId);
+      res = query->engine()->shutdown(errorCode); // pass errorCode to shutdown
+      _queryRegistry->destroy(_vocbase, _qId, errorCode);
     }
     catch (...) {
       LOG_ERROR("shutdown lead to an exception");

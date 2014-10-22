@@ -59,7 +59,7 @@ QueryRegistry::~QueryRegistry () {
   }
   for (auto& p : toDelete) {
     try {  // just in case
-      destroy(p.first, p.second);
+      destroy(p.first, p.second, TRI_ERROR_TRANSACTION_ABORTED);
     }
     catch (...) {
     }
@@ -172,7 +172,9 @@ void QueryRegistry::close (TRI_vocbase_t* vocbase, QueryId id, double ttl) {
 /// @brief destroy
 ////////////////////////////////////////////////////////////////////////////////
 
-void QueryRegistry::destroy (std::string const& vocbase, QueryId id) {
+void QueryRegistry::destroy (std::string const& vocbase, 
+                             QueryId id,
+                             int errorCode) {
   WRITE_LOCKER(_lock);
 
   auto m = _queries.find(vocbase);
@@ -194,6 +196,11 @@ void QueryRegistry::destroy (std::string const& vocbase, QueryId id) {
     triagens::arango::TransactionBase::increaseNumbers(1, 1);
   }
 
+  if (errorCode == TRI_ERROR_NO_ERROR) {
+    // commit the operation
+    qi->_query->trx()->commit();
+  }
+
   // Now we can delete it:
   delete qi->_query;
   delete qi;
@@ -206,8 +213,10 @@ void QueryRegistry::destroy (std::string const& vocbase, QueryId id) {
 /// @brief destroy
 ////////////////////////////////////////////////////////////////////////////////
 
-void QueryRegistry::destroy (TRI_vocbase_t* vocbase, QueryId id) {
-  destroy(vocbase->_name, id);
+void QueryRegistry::destroy (TRI_vocbase_t* vocbase, 
+                             QueryId id,
+                             int errorCode) {
+  destroy(vocbase->_name, id, errorCode);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -233,8 +242,8 @@ void QueryRegistry::expireQueries () {
     }
   }
   for (auto& p : toDelete) {
-    try {  // just in case
-      destroy(p.first, p.second);
+    try { // just in case
+      destroy(p.first, p.second, TRI_ERROR_TRANSACTION_ABORTED);
     }
     catch (...) {
     }
