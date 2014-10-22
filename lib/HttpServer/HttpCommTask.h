@@ -84,7 +84,10 @@ namespace triagens {
           _requestType(HttpRequest::HTTP_REQUEST_ILLEGAL),
           _origin(),
           _denyCredentials(false),
-          _acceptDeflate(false) {
+          _acceptDeflate(false),
+          _newRequest(true),
+          _startPosition(0),
+          _sinceCompactification(0) {
           ConnectionStatisticsAgentSetHttp(this);
           ConnectionStatisticsAgent::release();
 
@@ -243,21 +246,45 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void resetState (bool close) {
+          const size_t COMPACT_EVERY = 500;
+
           if (close) {
             this->clearRequest();
 
             this->_requestPending = false;
             this->_closeRequested = true;
+
+            this->_readPosition    = 0;
+            this->_bodyPosition    = 0;
+            this->_bodyLength      = 0;
           }
           else {
-            this->_readBuffer->erase_front(this->_bodyPosition + this->_bodyLength);
             this->_requestPending = true;
+
+            bool compact = false;
+
+            if (this->_sinceCompactification > COMPACT_EVERY) {
+              compact = true;
+            }
+            else if (this->_readBuffer->length() > this->_maximalPipelineSize) {
+              compact = true;
+            }
+
+            if (compact) {
+              this->_readBuffer->erase_front(this->_bodyPosition + this->_bodyLength);
+
+              this->_sinceCompactification = 0;
+              this->_readPosition = 0;
+            }
+            else {
+              this->_readPosition = this->_bodyPosition + this->_bodyLength;
+            }
+
+            this->_bodyPosition    = 0;
+            this->_bodyLength      = 0;
           }
 
-          this->_readPosition    = 0;
-          this->_bodyPosition    = 0;
-          this->_bodyLength      = 0;
-
+          this->_newRequest      = true;
           this->_readRequestBody = false;
         }
 
@@ -305,17 +332,21 @@ namespace triagens {
           if (! this->_readRequestBody) {
 
             // starting a new request
-            if (this->_readPosition == 0 && this->_readBuffer->c_str() != this->_readBuffer->end()) {
+            if (this->_newRequest) {
 #ifdef TRI_ENABLE_FIGURES
               RequestStatisticsAgent::acquire();
               RequestStatisticsAgentSetReadStart(this);
 #endif
 
+              this->_newRequest      = false;
+              this->_startPosition   = this->_readPosition;
               this->_httpVersion     = HttpRequest::HTTP_UNKNOWN;
               this->_requestType     = HttpRequest::HTTP_REQUEST_ILLEGAL;
               this->_fullUrl         = "";
               this->_denyCredentials = false;
               this->_acceptDeflate   = false;
+
+              this->_sinceCompactification++;
             }
 
 
@@ -330,10 +361,12 @@ namespace triagens {
 
 
             // check if header is too large
-            size_t headerLength = ptr - this->_readBuffer->c_str();
+            size_t headerLength = ptr - (this->_readBuffer->c_str() + this->_startPosition);
 
             if (headerLength > this->_maximalHeaderSize) {
-              LOG_WARNING("maximal header size is %d, request header size is %d", (int) this->_maximalHeaderSize, (int) headerLength);
+              LOG_WARNING("maximal header size is %d, request header size is %d",
+                          (int) this->_maximalHeaderSize,
+                          (int) headerLength);
 
               // header is too large
               HttpResponse response(HttpResponse::REQUEST_HEADER_FIELDS_TOO_LARGE, getCompatibility());
@@ -350,12 +383,17 @@ namespace triagens {
             if (ptr < end) {
               this->_readPosition = ptr - this->_readBuffer->c_str() + 4;
 
-              LOG_TRACE("HTTP READ FOR %p: %s", (void*) this, string(this->_readBuffer->c_str(), this->_readPosition).c_str());
+              LOG_TRACE("HTTP READ FOR %p: %s", (void*) this,
+                        string(this->_readBuffer->c_str() + this->_startPosition,
+                               this->_readPosition - this->_startPosition).c_str());
 
               // check that we know, how to serve this request
               // and update the connection information, i. e. client and server addresses and ports
               // and create a request context for that request
-              this->_request = this->_server->getHandlerFactory()->createRequest(this->_connectionInfo, this->_readBuffer->c_str(), this->_readPosition);
+              this->_request = this->_server->getHandlerFactory()->createRequest(
+                this->_connectionInfo,
+                this->_readBuffer->c_str() + this->_startPosition,
+                this->_readPosition - this->_startPosition);
 
               if (this->_request == nullptr) {
                 LOG_ERROR("cannot generate request");
@@ -412,6 +450,7 @@ namespace triagens {
 
               // set body start to current position
               this->_bodyPosition = this->_readPosition;
+              this->_bodyLength = 0;
 
               // keep track of the original value of the "origin" request header (if any)
               // we need this value to handle CORS requests
@@ -464,8 +503,15 @@ namespace triagens {
                 }
 
                 default: {
+                  size_t l = this->_readPosition - this->_startPosition;
+
+                  if (6 < l) {
+                    l = 6;
+                  }
+
                   LOG_WARNING("got corrupted HTTP request '%s'",
-                              string(this->_readBuffer->c_str(), (this->_readPosition < 6 ? this->_readPosition : 6)).c_str());
+                              string(this->_readBuffer->c_str() + this->_startPosition, l).c_str());
+
                   // bad request, method not allowed
                   HttpResponse response(HttpResponse::METHOD_NOT_ALLOWED, getCompatibility());
 
@@ -473,6 +519,9 @@ namespace triagens {
                   // know what to remove and then continue
                   this->resetState(true);
                   this->handleResponse(&response);
+
+                  // force a socket close, response will be ignored!
+                  TRI_CLOSE_SOCKET(this->_commSocket);
 
                   return true;
                 }
@@ -565,7 +614,7 @@ namespace triagens {
           }
 
           RequestStatisticsAgentSetReadEnd(this);
-          RequestStatisticsAgentAddReceivedBytes(this, this->_bodyPosition + this->_bodyLength);
+          RequestStatisticsAgentAddReceivedBytes(this, this->_bodyPosition - this->_startPosition + this->_bodyLength);
 
           bool isOptions = (this->_requestType == HttpRequest::HTTP_REQUEST_OPTIONS);
           this->resetState(false);
@@ -848,6 +897,23 @@ namespace triagens {
 
         bool _acceptDeflate;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief new request started
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _newRequest;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start position of current request
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t _startPosition;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief number of requests since last compactification
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t _sinceCompactification;
     };
   }
 }
