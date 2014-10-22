@@ -28,9 +28,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/ExecutionStats.h"
-
+#include "Utils/Exception.h"
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
+using JsonHelper = triagens::basics::JsonHelper;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -44,10 +45,28 @@ Json ExecutionStats::toJson () const {
   Json json(Json::Array);
   json.set("writesExecuted", Json(static_cast<double>(writesExecuted)));
   json.set("writesIgnored",  Json(static_cast<double>(writesIgnored)));
-  //json.set("scannedFull",    Json(static_cast<double>(scannedFull)));
-  //json.set("scannedIndex",   Json(static_cast<double>(scannedIndex)));
+  json.set("scannedFull",    Json(static_cast<double>(scannedFull)));
+  json.set("scannedIndex",   Json(static_cast<double>(scannedIndex)));
 
   return json;
+}
+
+ExecutionStats::ExecutionStats()
+  :writesExecuted(0),
+   writesIgnored(0),
+   scannedFull(0),
+   scannedIndex(0) {
+}
+
+ExecutionStats::ExecutionStats (triagens::basics::Json const& jsonStats) {
+  if (!jsonStats.isArray()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "stats is not an Array");
+  }
+
+  writesExecuted = JsonHelper::checkAndGetNumericValue<int>(jsonStats.json(), "writesExecuted");
+  writesIgnored  = JsonHelper::checkAndGetNumericValue<int>(jsonStats.json(), "writesIgnored");
+  scannedFull    = JsonHelper::checkAndGetNumericValue<int>(jsonStats.json(), "scannedFull");
+  scannedIndex   = JsonHelper::checkAndGetNumericValue<int>(jsonStats.json(), "scannedIndex");
 }
 
 // -----------------------------------------------------------------------------
