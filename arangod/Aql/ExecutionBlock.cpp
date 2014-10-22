@@ -248,7 +248,7 @@ int ExecutionBlock::shutdown () {
       res = (*it)->shutdown();
     }
     catch (...) {
-      ret = TRI_ERROR_INTERNAL;
+      res = TRI_ERROR_INTERNAL;
     }
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -297,7 +297,7 @@ int ExecutionBlock::resolve (char const* handle,
     std::string const name(handle, p - handle);
     cid = _trx->resolver()->getCollectionIdCluster(name);
   }
-  
+                              
   if (cid == 0) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
@@ -812,6 +812,7 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
     _allBoundsConstant(true) {
    
   std::vector<std::vector<RangeInfo>> const& orRanges = en->_ranges;
+  TRI_ASSERT(en->_index != nullptr);
 
   TRI_ASSERT(orRanges.size() == 1);  // OR expressions not yet implemented
 
@@ -897,7 +898,6 @@ int IndexRangeBlock::initialize () {
 }
 
 bool IndexRangeBlock::readIndex () {
-
   // This is either called from initialize if all bounds are constant,
   // in this case it is never called again. If there is at least one
   // variable bound, then readIndex is called once for every item coming
@@ -916,6 +916,8 @@ bool IndexRangeBlock::readIndex () {
 
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
   IndexOrCondition const* condition = &en->_ranges;
+  
+  TRI_ASSERT(en->_index != nullptr);
    
   std::unique_ptr<IndexOrCondition> newCondition;
 
@@ -1217,11 +1219,18 @@ void IndexRangeBlock::readPrimaryIndex (IndexOrCondition const& ranges) {
         // parse _id value
         int errorCode = resolve(json->_value._string.data, documentCid, documentKey);
 
-        if (errorCode == TRI_ERROR_NO_ERROR &&
-            documentCid == _collection->documentCollection()->_info._cid) {
+        if (errorCode == TRI_ERROR_NO_ERROR) {
+          bool const isCluster = (ExecutionEngine::isCoordinator() || ExecutionEngine::isDBServer());
+          if (! isCluster && documentCid == _collection->documentCollection()->_info._cid) {
+            // only continue lookup if the id value is syntactically correct and
+            // refers to "our" collection, using local collection id
+            key = documentKey;
+          }
+          else if (isCluster && documentCid == _collection->documentCollection()->_info._planId) {
           // only continue lookup if the id value is syntactically correct and
-          // refers to "our" collection
-          key = documentKey;
+          // refers to "our" collection, using cluster collection id
+            key = documentKey;
+          }
         }
       }
       break;
@@ -2826,7 +2835,8 @@ int ModificationBlock::extractKey (AqlValue const& value,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ModificationBlock::handleResult (int code,
-                                      bool ignoreErrors) {
+                                      bool ignoreErrors,
+                                      std::string const *errorMessage) {
   if (code == TRI_ERROR_NO_ERROR) {
     // update the success counter
     ++_engine->_stats.writesExecuted;
@@ -2838,7 +2848,12 @@ void ModificationBlock::handleResult (int code,
     }
     else {
       // bubble up the error
-      THROW_ARANGO_EXCEPTION(code);
+      if (errorMessage != nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(code, *errorMessage);
+      }
+      else {
+        THROW_ARANGO_EXCEPTION(code);
+      }
     }
   }
 }
@@ -3056,6 +3071,7 @@ void UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
   RegisterId keyRegisterId = 0; // default initialization
 
   bool const hasKeyVariable = (ep->_inKeyVariable != nullptr);
+  std::string errorMessage;
   
   if (hasKeyVariable) {
     it = ep->getRegisterPlan()->varInfo.find(ep->_inKeyVariable->id);
@@ -3100,6 +3116,10 @@ void UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
         }
         else {
           errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
+          errorMessage += std::string("expecting 'array', got: ") +
+            a.getTypeString() + 
+            std::string(" while handling: ") + 
+            _exeNode->getTypeString();
         }
 
         if (errorCode == TRI_ERROR_NO_ERROR) {
@@ -3139,7 +3159,7 @@ void UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
           }
         }
 
-        handleResult(errorCode, ep->_options.ignoreErrors); 
+        handleResult(errorCode, ep->_options.ignoreErrors, &errorMessage); 
       }
       // done with a block
 
@@ -3308,12 +3328,6 @@ int GatherBlock::initialize () {
     return res;
   }
 
-  /*if (! _isSimple) {
-    _gatherBlockBuffer.reserve(_dependencies.size());
-    for(size_t i = 0; i < _dependencies.size(); i++) {
-      _gatherBlockBuffer.emplace_back(); 
-    }
-  }*/
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -4005,6 +4019,9 @@ int DistributeBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 
   _distBuffer.clear();
   _distBuffer.reserve(_nrClients);
+  for (size_t i = 0; i < _nrClients; i++) {
+    _distBuffer.emplace_back();
+  }
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -4236,7 +4253,7 @@ size_t DistributeBlock::sendToClient (AqlValue val) {
 /// @brief local helper to throw an exception if a HTTP request went wrong
 ////////////////////////////////////////////////////////////////////////////////
 
-static void throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
+static bool throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
                                                bool isShutdown) {
   if (res->status == CL_COMM_TIMEOUT) {
     std::string errorMessage;
@@ -4266,14 +4283,12 @@ static void throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
     }
       
     StringBuffer const& responseBodyBuf(res->result->getBody());
-    std::cout << "ERROR WAS: " << responseBodyBuf.c_str() << "\n";
  
     // extract error number and message from response
     int errorNum = TRI_ERROR_NO_ERROR;
     TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, responseBodyBuf.c_str());
 
     if (JsonHelper::getBooleanValue(json, "error", true)) {
-
       errorNum = TRI_ERROR_INTERNAL;
 
       errorMessage += std::string("Error message received from shard '") + 
@@ -4284,13 +4299,14 @@ static void throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
     }
 
     if (TRI_IsArrayJson(json)) {
-      TRI_json_t const* v;
-      
-      v = TRI_LookupArrayJson(json, "errorNum");
+      TRI_json_t const* v = TRI_LookupArrayJson(json, "errorNum");
+
       if (TRI_IsNumberJson(v)) {
-        /* if we've got an error num, error has to be true. */
-        TRI_ASSERT(errorNum != TRI_ERROR_INTERNAL);
-        errorNum = static_cast<int>(v->_value._number);
+        if (static_cast<int>(v->_value._number) != TRI_ERROR_NO_ERROR) {
+          /* if we've got an error num, error has to be true. */
+          TRI_ASSERT(errorNum == TRI_ERROR_INTERNAL);
+          errorNum = static_cast<int>(v->_value._number);
+        }
       }
 
       v = TRI_LookupArrayJson(json, "errorMessage");
@@ -4312,9 +4328,9 @@ static void throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
     if (isShutdown && 
         errorNum == TRI_ERROR_QUERY_NOT_FOUND) {
       // this error may happen on shutdown and is thus tolerated
-      return;
+      // pass the info to the caller who can opt to ignore this error
+      return true;
     }
-
 
     // In this case a proper HTTP error was reported by the DBserver,
     if (errorNum > 0 && ! errorMessage.empty()) {
@@ -4324,6 +4340,8 @@ static void throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
     // default error
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
   }
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4373,17 +4391,18 @@ ClusterCommResult* RemoteBlock::sendRequest (
     headers.insert(make_pair("Shard-Id", _ownName));
   }
 
-std::cout << "SENDING REQUEST TO " << _server << ", URLPART: " << urlPart << ", QUERYID: " << _queryId << "\n";
-  return cc->syncRequest(clientTransactionId,
-                         coordTransactionId,
-                         _server,
-                         type,
-                         std::string("/_db/") 
-                         + triagens::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase()->_name)
-                           + urlPart + _queryId,
-                         body,
-                         headers,
-                         defaultTimeOut);
+  auto result = cc->syncRequest(clientTransactionId,
+                                coordTransactionId,
+                                _server,
+                                type,
+                                std::string("/_db/") 
+                                + triagens::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase()->_name)
+                                + urlPart + _queryId,
+                                body,
+                                headers,
+                                defaultTimeOut);
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4447,7 +4466,10 @@ int RemoteBlock::shutdown () {
   res.reset(sendRequest(rest::HttpRequest::HTTP_REQUEST_PUT,
                         "/_api/aql/shutdown/",
                         string()));
-  throwExceptionAfterBadSyncRequest(res.get(), true);
+  if (throwExceptionAfterBadSyncRequest(res.get(), true)) {
+    // artificially ignore error in case query was not found during shutdown
+    return TRI_ERROR_NO_ERROR;
+  }
 
   // If we get here, then res->result is the response which will be
   // a serialized AqlItemBlock:
@@ -4455,6 +4477,7 @@ int RemoteBlock::shutdown () {
   Json responseBodyJson(TRI_UNKNOWN_MEM_ZONE,
                         TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
                                        responseBodyBuf.begin()));
+
   return JsonHelper::getNumericValue<int>
               (responseBodyJson.json(), "code", TRI_ERROR_INTERNAL);
 }
@@ -4487,10 +4510,9 @@ AqlItemBlock* RemoteBlock::getSome (size_t atLeast,
   if (JsonHelper::getBooleanValue(responseBodyJson.json(), "exhausted", true)) {
     return nullptr;
   }
-  else {
-    auto items = new triagens::aql::AqlItemBlock(responseBodyJson);
-    return items;
-  }
+    
+  auto items = new triagens::aql::AqlItemBlock(responseBodyJson);
+  return items;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

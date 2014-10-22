@@ -631,7 +631,7 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
   }
 
   json("id", triagens::basics::Json(static_cast<double>(id())));
-  json("estimatedCost", triagens::basics::Json(_estimatedCost));
+  json("estimatedCost", triagens::basics::Json(getCost()));
 
   if (verbose) {
     json("depth", triagens::basics::Json(static_cast<double>(_depth)));
@@ -1303,7 +1303,8 @@ IndexRangeNode::IndexRangeNode (ExecutionPlan* plan,
     _vocbase(plan->getAst()->query()->vocbase()),
     _collection(plan->getAst()->query()->collections()->get(JsonHelper::checkAndGetStringValue(json.json(), 
             "collection"))),
-    _outVariable(varFromJson(plan->getAst(), json, "outVariable")), 
+    _outVariable(varFromJson(plan->getAst(), json, "outVariable")),
+    _index(nullptr), 
     _ranges(),
     _reverse(false) {
 
@@ -1324,6 +1325,10 @@ IndexRangeNode::IndexRangeNode (ExecutionPlan* plan,
 
   _index = _collection->getIndex(iid);
   _reverse = JsonHelper::checkAndGetBooleanValue(json.json(), "reverse");
+
+  if (_index == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "index not found");
+  }
 }
 
 ExecutionNode::IndexMatch IndexRangeNode::MatchesIndex (IndexMatchVec const& pattern) const {
@@ -1335,7 +1340,7 @@ ExecutionNode::IndexMatch IndexRangeNode::MatchesIndex (IndexMatchVec const& pat
 /// its unique dependency
 ////////////////////////////////////////////////////////////////////////////////
         
-double IndexRangeNode::estimateCost () { 
+double IndexRangeNode::estimateCost () const { 
   // the cost of the enumerate collection node we are replacing . . .
   double const dependencyCost = _dependencies.at(0)->getCost();
   double const oldCost = static_cast<double>(_collection->count()) * dependencyCost; 
@@ -1910,7 +1915,9 @@ ExecutionNode* AggregateNode::clone (ExecutionPlan* plan,
   auto aggregateVariables = _aggregateVariables;
 
   if (withProperties) {
-    outVariable = plan->getAst()->variables()->createVariable(outVariable);
+    if (outVariable != nullptr) {
+      outVariable = plan->getAst()->variables()->createVariable(outVariable);
+    }
 
     for (auto oneAggregate: _aggregateVariables) {
       auto in  = plan->getAst()->variables()->createVariable(oneAggregate.first);
@@ -2237,7 +2244,9 @@ ExecutionNode* UpdateNode::clone (ExecutionPlan* plan,
     if (_outVariable != nullptr) {
       outVariable = plan->getAst()->variables()->createVariable(outVariable);
     }
-    inKeyVariable = plan->getAst()->variables()->createVariable(inKeyVariable);
+    if (inKeyVariable != nullptr) {
+      inKeyVariable = plan->getAst()->variables()->createVariable(inKeyVariable);
+    }
     inDocVariable = plan->getAst()->variables()->createVariable(inDocVariable);
   }
 
@@ -2308,7 +2317,9 @@ ExecutionNode* ReplaceNode::clone (ExecutionPlan* plan,
     if (_outVariable != nullptr) {
       outVariable = plan->getAst()->variables()->createVariable(outVariable);
     }
-    inKeyVariable = plan->getAst()->variables()->createVariable(inKeyVariable);
+    if (inKeyVariable != nullptr) {
+      inKeyVariable = plan->getAst()->variables()->createVariable(inKeyVariable);
+    }
     inDocVariable = plan->getAst()->variables()->createVariable(inDocVariable);
   }
 

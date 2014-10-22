@@ -90,7 +90,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool empty () const {
-          return (0 == _json); //|| (id() == 0);
+          return (nullptr == _json); //|| (id() == 0);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -189,11 +189,11 @@ namespace triagens {
         TRI_json_t* keyOptions () const {
           TRI_json_t const* keyOptions = triagens::basics::JsonHelper::getArrayElement(_json, "keyOptions");
 
-          if (keyOptions != 0) {
+          if (keyOptions != nullptr) {
             return TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
           }
 
-          return 0;
+          return nullptr;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -203,7 +203,7 @@ namespace triagens {
         bool allowUserKeys () const {
           TRI_json_t const* keyOptions = triagens::basics::JsonHelper::getArrayElement(_json, "keyOptions");
 
-          if (keyOptions != 0) {
+          if (keyOptions != nullptr) {
             return triagens::basics::JsonHelper::getBooleanValue(keyOptions, "allowUserKeys", true);
           }
 
@@ -422,7 +422,7 @@ namespace triagens {
             TRI_json_t* _json = it->second;
             b = triagens::basics::JsonHelper::getBooleanValue(_json,
                                                               name, false);
-            m.insert(make_pair(it->first,b));
+            m.insert(make_pair(it->first, b));
           }
           return m;
         }
@@ -539,15 +539,12 @@ namespace triagens {
                  = triagens::basics::JsonHelper::getArrayElement
                                         (_json, "keyOptions");
 
-            if (keyOptions != 0) {
+            if (keyOptions != nullptr) {
               return TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
             }
+          }
 
-            return 0;
-          }
-          else {
-            return 0;
-          }
+          return nullptr;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
