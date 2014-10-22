@@ -2770,7 +2770,6 @@ ModificationBlock::~ModificationBlock () {
 
 AqlItemBlock* ModificationBlock::getSome (size_t atLeast,
                                           size_t atMost) {
-  
   std::vector<AqlItemBlock*> blocks;
 
   auto freeBlocks = [](std::vector<AqlItemBlock*>& blocks) {
@@ -3291,6 +3290,7 @@ GatherBlock::GatherBlock (ExecutionEngine* engine,
   : ExecutionBlock(engine, en),
     _sortRegisters(),
     _isSimple(en->getElements().empty()) {
+
   if (! _isSimple) {
     for (auto p : en->getElements()) {
       // We know that planRegisters has been run, so
@@ -3786,7 +3786,6 @@ size_t BlockWithClients::skipSomeForShard (size_t atLeast,
 
 bool BlockWithClients::skipForShard (size_t number, 
                                      std::string const& shardId) {
-
   size_t skipped = skipSomeForShard(number, number, shardId);
   size_t nr = skipped;
   while (nr != 0 && skipped < number) {
@@ -3825,7 +3824,7 @@ size_t BlockWithClients::getClientId (std::string const& shardId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool BlockWithClients::preInitCursor () {
-  if (!_initOrShutdown) {
+  if (! _initOrShutdown) {
     return false;
   }
 
@@ -3849,7 +3848,6 @@ bool BlockWithClients::preInitCursor () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ScatterBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
-
   if (! preInitCursor()) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -3927,7 +3925,7 @@ int64_t ScatterBlock::remainingForShard (std::string const& shardId) {
 int ScatterBlock::getOrSkipSomeForShard (size_t atLeast, 
     size_t atMost, bool skipping, AqlItemBlock*& result, 
     size_t& skipped, std::string const& shardId) {
-
+  
   TRI_ASSERT(0 < atLeast && atLeast <= atMost);
   TRI_ASSERT(result == nullptr && skipped == 0);
 
@@ -4063,7 +4061,6 @@ int DistributeBlock::getOrSkipSomeForShard (size_t atLeast,
                                             AqlItemBlock*& result,
                                             size_t& skipped,
                                             std::string const& shardId) {
-  
   TRI_ASSERT(0 < atLeast && atLeast <= atMost);
   TRI_ASSERT(result == nullptr && skipped == 0);
   
@@ -4139,15 +4136,18 @@ int DistributeBlock::getOrSkipSomeForShard (size_t atLeast,
 
   freeCollector();
   
-  //check if we can pop from the front of _buffer
+  // check if we can pop from the front of _buffer
   size_t smallestIndex = 0;
+
   for (size_t i = 0; i < _nrClients; i++) {
-    size_t index = _distBuffer.at(i).at(0).first;
-    if (index == 0) {
-      return TRI_ERROR_NO_ERROR; // don't have to do any clean-up
-    }
-    else {
-      smallestIndex = (std::min)(index, smallestIndex);
+    if (! _distBuffer.at(i).empty()) {
+      size_t index = _distBuffer.at(i).at(0).first;
+      if (index == 0) {
+        return TRI_ERROR_NO_ERROR; // don't have to do any clean-up
+      }
+      else {
+        smallestIndex = (std::min)(index, smallestIndex);
+      }
     }
   }
 
@@ -4179,7 +4179,6 @@ int DistributeBlock::getOrSkipSomeForShard (size_t atLeast,
 bool DistributeBlock::getBlockForClient (size_t atLeast, 
                                          size_t atMost,
                                          size_t clientId) {
- 
   if (_buffer.empty()) {
     _index = 0;         // position in _buffer
     _pos = 0;           // position in _buffer.at(_index)
@@ -4397,7 +4396,6 @@ ClusterCommResult* RemoteBlock::sendRequest (
           triagens::rest::HttpRequest::HttpRequestType type,
           std::string urlPart,
           std::string const& body) const {
-
   ClusterComm* cc = ClusterComm::instance();
 
   // Later, we probably want to set these sensibly:
