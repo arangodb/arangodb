@@ -27,7 +27,6 @@ def replaceCode(pathOfFile, newVersionNumber):
   lines = lines.replace("<a href=\"../ModuleGraph/GraphConstructor.html\">","<a class=\"fa fa-exclamation-triangle\" style=\"color:rgba(240,210,0,1)\" href=\"../ModuleGraph/GraphConstructor.html\">")
   lines = lines.replace("<a href=\"../ModuleGraph/VertexMethods.html\">","<a class=\"fa fa-exclamation-triangle\" style=\"color:rgba(240,210,0,1)\" href=\"../ModuleGraph/VertexMethods.html\">")
   lines = lines.replace("<a href=\"../ModuleGraph/EdgeMethods.html\">","<a class=\"fa fa-exclamation-triangle\" style=\"color:rgba(240,210,0,1)\" href=\"../ModuleGraph/EdgeMethods.html\">")
-  lines = lines.replace("<a href=\"../Aql/GraphFunctions.html\">","<a class=\"fa fa-exclamation-triangle\" style=\"color:rgba(240,210,0,1)\" href=\"../Aql/GraphFunctions.html\">")
   lines = lines.replace("VERSION_NUMBER", newVersionNumber)
   f.write(lines)
   f.close()
