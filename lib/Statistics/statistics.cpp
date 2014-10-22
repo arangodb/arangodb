@@ -78,11 +78,11 @@ static TRI_statistics_list_t RequestFreeList;
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_request_statistics_t* TRI_AcquireRequestStatistics () {
-  TRI_request_statistics_t* statistics = NULL;
+  TRI_request_statistics_t* statistics = nullptr;
 
   STATISTICS_LOCK(&RequestListLock);
 
-  if (RequestFreeList._first != NULL) {
+  if (RequestFreeList._first != nullptr) {
     statistics = (TRI_request_statistics_t*) RequestFreeList._first;
     RequestFreeList._first = RequestFreeList._first->_next;
   }
@@ -98,6 +98,11 @@ TRI_request_statistics_t* TRI_AcquireRequestStatistics () {
 
 void TRI_ReleaseRequestStatistics (TRI_request_statistics_t* statistics) {
   STATISTICS_LOCK(&RequestListLock);
+
+  if (statistics == nullptr) {
+    STATISTICS_UNLOCK(&RequestListLock);
+    return;
+  }
 
   if (! statistics->_ignore) {
     TRI_TotalRequestsStatistics.incCounter();
@@ -138,7 +143,7 @@ void TRI_ReleaseRequestStatistics (TRI_request_statistics_t* statistics) {
   memset(statistics, 0, sizeof(TRI_request_statistics_t));
   statistics->_requestType = triagens::rest::HttpRequest::HTTP_REQUEST_ILLEGAL;
 
-  if (RequestFreeList._first == NULL) {
+  if (RequestFreeList._first == nullptr) {
     RequestFreeList._first = (TRI_statistics_entry_t*) statistics;
     RequestFreeList._last = (TRI_statistics_entry_t*) statistics;
   }
@@ -203,7 +208,7 @@ TRI_connection_statistics_t* TRI_AcquireConnectionStatistics () {
 
   STATISTICS_LOCK(&ConnectionListLock);
 
-  if (ConnectionFreeList._first != NULL) {
+  if (ConnectionFreeList._first != nullptr) {
     statistics = (TRI_connection_statistics_t*) ConnectionFreeList._first;
     ConnectionFreeList._first = ConnectionFreeList._first->_next;
   }
@@ -219,6 +224,11 @@ TRI_connection_statistics_t* TRI_AcquireConnectionStatistics () {
 
 void TRI_ReleaseConnectionStatistics (TRI_connection_statistics_t* statistics) {
   STATISTICS_LOCK(&ConnectionListLock);
+
+  if (statistics == nullptr) {
+    STATISTICS_UNLOCK(&ConnectionListLock);
+    return;
+  }
 
   if (statistics->_http) {
     if (statistics->_connStart != 0) {
@@ -237,7 +247,7 @@ void TRI_ReleaseConnectionStatistics (TRI_connection_statistics_t* statistics) {
   // clear statistics and put back an the free list
   memset(statistics, 0, sizeof(TRI_connection_statistics_t));
 
-  if (ConnectionFreeList._first == NULL) {
+  if (ConnectionFreeList._first == nullptr) {
     ConnectionFreeList._first = (TRI_statistics_entry_t*) statistics;
     ConnectionFreeList._last = (TRI_statistics_entry_t*) statistics;
   }
@@ -319,13 +329,13 @@ static void FillStatisticsList (TRI_statistics_list_t* list, size_t element, siz
 
 static void DestroyStatisticsList (TRI_statistics_list_t* list) {
   TRI_statistics_entry_t* entry = list->_first;
-  while (entry != NULL) {
+  while (entry != nullptr) {
     TRI_statistics_entry_t* next = entry->_next;
     TRI_Free(TRI_CORE_MEM_ZONE, entry);
     entry = next;
   }
 
-  list->_first = list->_last = NULL;
+  list->_first = list->_last = nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -343,7 +353,7 @@ static uint64_t GetPhysicalMemory () {
   mib[0] = CTL_HW;
   mib[1] = HW_MEMSIZE;
   length = sizeof(int64_t);
-  sysctl(mib, 2, &physicalMemory, &length, NULL, 0);
+  sysctl(mib, 2, &physicalMemory, &length, nullptr, 0);
 
   return (uint64_t) physicalMemory;
 }
@@ -574,7 +584,7 @@ void TRI_InitialiseStatistics () {
   // generate the request statistics queue
   // .............................................................................
 
-  RequestFreeList._first = RequestFreeList._last = NULL;
+  RequestFreeList._first = RequestFreeList._last = nullptr;
 
   FillStatisticsList(&RequestFreeList, sizeof(TRI_request_statistics_t), QUEUE_SIZE);
 
@@ -584,7 +594,7 @@ void TRI_InitialiseStatistics () {
   // generate the connection statistics queue
   // .............................................................................
 
-  ConnectionFreeList._first = ConnectionFreeList._last = NULL;
+  ConnectionFreeList._first = ConnectionFreeList._last = nullptr;
 
   FillStatisticsList(&ConnectionFreeList, sizeof(TRI_connection_statistics_t), QUEUE_SIZE);
 
