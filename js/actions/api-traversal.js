@@ -81,9 +81,11 @@ function notFound (req, res, code, message) {
 ///
 /// - *startVertex*: id of the startVertex, e.g. *"users/foo"*.
 ///
-/// - *edgeCollection*: **Deprecated** name of the collection that contains the edges.
+/// - *edgeCollection*: (optional) name of the collection that contains the edges.
 ///
-/// - *graphName*: name of the graph that contains the edges.
+/// - *graphName*: (optional) name of the graph that contains the edges.
+///         Either *edgeCollection* or *graphName* has to be given.
+///         In case both values are set the *graphName* is prefered.
 ///
 /// - *filter* (optional, default is to include all nodes):
 ///         body (JavaScript code) of custom filter function

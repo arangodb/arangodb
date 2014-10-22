@@ -698,10 +698,8 @@ will fail with an error.
 
 AQL has the following functions to traverse graphs:
 
-**Warning Deprecated**
-
-This query is deprecated and will be removed soon.
-Please use [Graph operations](../Aql/GraphOperations.md) instead.
+If you have created a graph in the general-graph module you may want to use
+[Graph operations](../Aql/GraphOperations.md) instead.
 
 - *PATHS(vertexcollection, edgecollection, direction, followcycles)*: 
   returns a list of paths through the graph defined by the nodes in the collection 
@@ -730,10 +728,8 @@ Please use [Graph operations](../Aql/GraphOperations.md) instead.
         FILTER p.source._id == "123456/123456" && LENGTH(p.edges) == 2
         RETURN p.vertices[*].name
 
-**Warning Deprecated**
-
-This query is deprecated and will be removed soon.
-Please use [Graph operations](../Aql/GraphOperations.md) instead.
+If you have created a graph in the general-graph module you may want to use
+[Graph operations](../Aql/GraphOperations.md) instead.
 
 - *TRAVERSAL(vertexcollection, edgecollection, startVertex, direction, options)*: 
   Traverses the graph described by *vertexcollection* and *edgecollection*, 
@@ -871,10 +867,8 @@ Please use [Graph operations](../Aql/GraphOperations.md) instead.
         return [ ]; // include everything else
       }, false);
 
-**Warning Deprecated**
-
-This query is deprecated and will be removed soon.
-Please use [Graph operations](../Aql/GraphOperations.md) instead.
+If you have created a graph in the general-graph module you may want to use
+[Graph operations](../Aql/GraphOperations.md) instead.
 
 - *TRAVERSAL_TREE(vertexcollection, edgecollection, startVertex, direction, connectName, options)*: 
   Traverses the graph described by *vertexcollection* and *edgecollection*, 
@@ -900,10 +894,8 @@ If no bounds are set, a traversal might run into an endless loop in a cyclic gra
 and even in a non-cyclic graph, traversing far into the graph might consume a lot of processing
 time and memory for the result set.
 
-**Warning Deprecated**
-
-This query is deprecated and will be removed soon.
-Please use [Graph operations](../Aql/GraphOperations.md) instead.
+If you have created a graph in the general-graph module you may want to use
+[Graph operations](../Aql/GraphOperations.md) instead.
 
 - *SHORTEST_PATH(vertexcollection, edgecollection, startVertex, endVertex, direction, options)*: 
   Determines the first shortest path from the *startVertex* to the *endVertex*.
@@ -1022,10 +1014,8 @@ Please use [Graph operations](../Aql/GraphOperations.md) instead.
       EDGES(friendrelations, "friends/john", "outbound")
       EDGES(friendrelations, "friends/john", "any", [ { "$label": "knows" } ])
 
-**Warning Deprecated**
-
-This query is deprecated and will be removed soon.
-Please use [Graph operations](../Aql/GraphOperations.md) instead.
+If you have created a graph in the general-graph module you may want to use
+[Graph operations](../Aql/GraphOperations.md) instead.
 
 - *NEIGHBORS(vertexcollection, edgecollection, startvertex, direction, edgeexamples)*:
   Return all neighbors that are directly connected to the vertex *startvertex* as a list. 
