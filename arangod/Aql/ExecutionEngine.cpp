@@ -615,15 +615,26 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         }
       }
 
-      if (nodeType == ExecutionNode::GATHER) {
-        // we found a gather node
+      if (nodeType == ExecutionNode::GATHER ||
+          nodeType == ExecutionNode::DISTRIBUTE) {
+        // we found a gather or distribute node
         TRI_ASSERT(remoteNode != nullptr);
 
-        // now we'll create a remote node for each shard and add it to the gather node
-        auto&& shardIds = static_cast<GatherNode const*>((*en))->collection()->shardIds();
+        // now we'll create a remote node for each shard and add it to the gather|distribute node
+        Collection const* collection = nullptr;
+        if (nodeType == ExecutionNode::GATHER) {
+          collection = static_cast<GatherNode const*>((*en))->collection();
+        }
+        else if (nodeType == ExecutionNode::DISTRIBUTE) {
+          collection = static_cast<DistributeNode const*>((*en))->collection();
+        }
+        else {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+        }
+        
+        auto&& shardIds = collection->shardIds();
 
         for (auto const& shardId : shardIds) {
-          // TODO: pass actual queryId into RemoteBlock
           auto it = queryIds.find(shardId);
           if (it == queryIds.end()) {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not find query id in list");

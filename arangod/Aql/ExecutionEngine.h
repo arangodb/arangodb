@@ -135,7 +135,7 @@ namespace triagens {
           if (_root != nullptr) {
             return _root->shutdown();
           }
-          else return 0;
+          return TRI_ERROR_NO_ERROR;
         }
 
 ////////////////////////////////////////////////////////////////////////////////

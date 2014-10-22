@@ -75,7 +75,7 @@ Collection::~Collection () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief count the LOCAL number of documents in the collection
+/// @brief count the number of documents in the collection
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t Collection::count () const {
@@ -98,6 +98,21 @@ size_t Collection::count () const {
   }
 
   return static_cast<size_t>(numDocuments);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the collection's plan id
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_voc_cid_t Collection::getPlanId () const {
+  auto clusterInfo = triagens::arango::ClusterInfo::instance();
+  auto collectionInfo = clusterInfo->getCollection(std::string(vocbase->_name), name);
+
+  if (collectionInfo.get() == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "collection not found");
+  }
+
+  return collectionInfo.get()->id();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

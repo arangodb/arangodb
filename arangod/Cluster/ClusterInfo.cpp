@@ -628,13 +628,13 @@ void ClusterInfo::loadPlannedCollections (bool acquireLock) {
       if (it2 == _collections.end()) {
         // not yet, so create an entry for the database
         DatabaseCollections empty;
-        _collections.insert(std::make_pair(database, empty));
+        _collections.emplace(std::make_pair(database, empty));
         it2 = _collections.find(database);
       }
 
       TRI_json_t* json = (*it).second._json;
       // steal the json
-      (*it).second._json = 0;
+      (*it).second._json = nullptr;
 
       shared_ptr<CollectionInfo> collectionData (new CollectionInfo(json));
       vector<string>* shardKeys = new vector<string>;
@@ -647,16 +647,16 @@ void ClusterInfo::loadPlannedCollections (bool acquireLock) {
       for (it3 = shardIDs.begin(); it3 != shardIDs.end(); ++it3) {
         shards->push_back(it3->first);
       }
-      _shards.insert(
-              make_pair(collection,shared_ptr<vector<string> >(shards)));
+      _shards.emplace(
+              std::make_pair(collection, shared_ptr<vector<string> >(shards)));
 
       // insert the collection into the existing map, insert it under its
       // ID as well as under its name, so that a lookup can be done with
       // either of the two.
 
-      (*it2).second.insert(std::make_pair(collection, collectionData));
-      (*it2).second.insert(std::make_pair(collectionData->name(),
-                                          collectionData));
+      (*it2).second.emplace(std::make_pair(collection, collectionData));
+      (*it2).second.emplace(std::make_pair(collectionData->name(),
+                                           collectionData));
 
     }
     _collectionsValid = true;
@@ -2074,11 +2074,12 @@ int ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
     {
       // Get the sharding keys and the number of shards:
       READ_LOCKER(_lock);
-      map<CollectionID, shared_ptr<vector<string> > >::iterator it
+      map<CollectionID, shared_ptr<vector<string>>>::iterator it
           = _shards.find(collectionID);
+
       if (it != _shards.end()) {
         shards = it->second;
-        map<CollectionID, shared_ptr<vector<string> > >::iterator it2
+        map<CollectionID, shared_ptr<vector<string>>>::iterator it2
             = _shardKeys.find(collectionID);
         if (it2 != _shardKeys.end()) {
           shardKeysPtr = it2->second;
@@ -2098,7 +2099,7 @@ int ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
     }
     loadPlannedCollections();
   }
-  if (!found) {
+  if (! found) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
