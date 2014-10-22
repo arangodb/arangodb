@@ -36,6 +36,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/Range.h"
 #include "Aql/WalkerWorker.h"
+#include "Aql/ExecutionStats.h"
 #include "Utils/AqlTransaction.h"
 #include "Utils/transactions.h"
 #include "Utils/V8TransactionContext.h"
@@ -1929,6 +1930,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::string _queryId;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the ID of the query on the server as a string
+////////////////////////////////////////////////////////////////////////////////
+
+        ExecutionStats _deltaStats;
+        
 
     };
 

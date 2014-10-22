@@ -4536,6 +4536,12 @@ AqlItemBlock* RemoteBlock::getSome (size_t atLeast,
   }
     
   auto items = new triagens::aql::AqlItemBlock(responseBodyJson);
+
+  ExecutionStats newStats(responseBodyJson.get("stats"));
+  
+  _engine->_stats.addDelta(_deltaStats, newStats);
+  _deltaStats = newStats;
+
   return items;
 }
 
