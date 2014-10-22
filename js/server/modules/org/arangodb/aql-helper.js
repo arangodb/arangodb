@@ -531,8 +531,9 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
     }
 
     results[i] = AQL_EXECUTEJSON(plans[i].plan, paramNone);
-    // ignore statistics for comparisons
-    delete results[i].stats;
+    // ignore these statistics for comparisons
+    delete results[i].stats.scannedFull;
+    delete results[i].stats.scannedIndex;
 
     if (debug) {
       require("internal").print("\n" + i + " DONE\n");

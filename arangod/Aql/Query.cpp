@@ -146,7 +146,6 @@ Query::Query (triagens::arango::ApplicationV8* applicationV8,
     _trx(nullptr),
     _engine(nullptr),
     _part(part),
-    _clusterStatus(-1),
     _contextOwnedByExterior(contextOwnedByExterior) {
 
   TRI_ASSERT(_vocbase != nullptr);
@@ -191,7 +190,6 @@ Query::Query (triagens::arango::ApplicationV8* applicationV8,
     _trx(nullptr),
     _engine(nullptr),
     _part(part),
-    _clusterStatus(-1),
     _contextOwnedByExterior(contextOwnedByExterior) {
 
   TRI_ASSERT(_vocbase != nullptr);
@@ -797,22 +795,6 @@ char* Query::registerString (std::string const& p,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not we are running in a cluster
-////////////////////////////////////////////////////////////////////////////////
-
-bool Query::isRunningInCluster () {
-  if (_clusterStatus == -1) {
-    // not yet determined
-    _clusterStatus = 0;
-    if (triagens::arango::ServerState::instance()->isRunningInCluster()) {
-      _clusterStatus = 1;
-    }
-  }
-  TRI_ASSERT(_clusterStatus == 0 || _clusterStatus == 1);
-  return (_clusterStatus == 1);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief enter a V8 context
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -844,17 +826,15 @@ void Query::enterContext () {
 void Query::exitContext () {
   if (! _contextOwnedByExterior) {
     if (_context != nullptr) {
-      if (isRunningInCluster()) {
-        // unregister transaction and resolver in context
-        TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
-        auto ctx = static_cast<triagens::arango::V8TransactionContext*>(v8g->_transactionContext);
-        if (ctx != nullptr) {
-          ctx->unregisterTransaction();
-        }
-
-        _applicationV8->exitContext(_context);
-        _context = nullptr;
+      // unregister transaction and resolver in context
+      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+      auto ctx = static_cast<triagens::arango::V8TransactionContext*>(v8g->_transactionContext);
+      if (ctx != nullptr) {
+        ctx->unregisterTransaction();
       }
+
+      _applicationV8->exitContext(_context);
+      _context = nullptr;
     }
     TRI_ASSERT(_context == nullptr);
   }

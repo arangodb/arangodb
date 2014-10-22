@@ -34,7 +34,6 @@ var helper = require("org/arangodb/aql-helper");
 var cluster = require("org/arangodb/cluster");
 var getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -95,7 +94,7 @@ function ahuacatlRemoveSuite () {
       var allresults = getQueryMultiplePlansAndExecutions(query, {}, this);
 
       assertEqual(100, c1.count());
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i <  allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -113,7 +112,7 @@ function ahuacatlRemoveSuite () {
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 }, this);
 
       assertEqual(100, c1.count());
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i <  allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -399,7 +398,6 @@ function ahuacatlInsertSuite () {
       }
       db._drop("UnitTestsAhuacatlEdge");
       edge = db._createEdgeCollection("UnitTestsAhuacatlEdge"); 
-
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -424,7 +422,7 @@ function ahuacatlInsertSuite () {
       var allresults = getQueryMultiplePlansAndExecutions(query, {}, this);
     
       assertEqual(100, c1.count());
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i < allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -439,7 +437,7 @@ function ahuacatlInsertSuite () {
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 }, this);
 
       assertEqual(100, c1.count());
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i < allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -455,7 +453,7 @@ function ahuacatlInsertSuite () {
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 }, this);
 
       assertEqual(100, c1.count());
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i < allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -471,7 +469,7 @@ function ahuacatlInsertSuite () {
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 }, this);
 
       assertEqual(101, c1.count());
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i < allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
