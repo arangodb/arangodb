@@ -3805,9 +3805,16 @@ bool BlockWithClients::skipForShard (size_t number,
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t BlockWithClients::getClientId (std::string const& shardId) {
+  if (shardId.empty()) {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "got empty shard id");
+  }
+
   auto it = _shardIdMap.find(shardId);
   if (it == _shardIdMap.end()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "AQL: unknown shard id");
+    std::string message("AQL: unknown shard id ");
+    message.append(shardId);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }
   return ((*it).second);
 }
@@ -3818,7 +3825,6 @@ size_t BlockWithClients::getClientId (std::string const& shardId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool BlockWithClients::preInitCursor () {
-  
   if (!_initOrShutdown) {
     return false;
   }
@@ -4007,8 +4013,7 @@ DistributeBlock::DistributeBlock (ExecutionEngine* engine,
 ////////////////////////////////////////////////////////////////////////////////
 
 int DistributeBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
-
-  if (!preInitCursor()) {
+  if (! preInitCursor()) {
     return TRI_ERROR_NO_ERROR;
   }
   
@@ -4220,14 +4225,18 @@ bool DistributeBlock::getBlockForClient (size_t atLeast,
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t DistributeBlock::sendToClient (AqlValue val) {
- 
   TRI_json_t const* json;
   if (val._type == AqlValue::JSON) {
     json = val._json->json();
   } 
+  /*
+  // TODO: if the DistributeBlock is supposed to run on coordinators only, it
+  // cannot have any AqlValues of type SHAPED. These are only present when there
+  // are physical collections
   else if (val._type == AqlValue::SHAPED) {
     json = val.toJson(_trx, _collection->documentCollection()).json();
   } 
+  */
   else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, 
         "DistributeBlock: can only send JSON or SHAPED");
@@ -4235,13 +4244,21 @@ size_t DistributeBlock::sendToClient (AqlValue val) {
   
   std::string shardId;
   bool usesDefaultShardingAttributes;  
-  
   auto clusterInfo = triagens::arango::ClusterInfo::instance();
-  clusterInfo->getResponsibleShard( _collection->getName(),
-                                    json,
-                                    true,
-                                    shardId,
-                                    usesDefaultShardingAttributes);
+  auto const planId = triagens::basics::StringUtils::itoa(_collection->getPlanId());
+
+  int res = clusterInfo->getResponsibleShard(planId,
+                                             json,
+                                             true,
+                                             shardId,
+                                             usesDefaultShardingAttributes);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  TRI_ASSERT(!shardId.empty());
+
   return getClientId(shardId); 
 }
 
