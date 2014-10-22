@@ -161,7 +161,8 @@ ExecutionEngine::ExecutionEngine (Query* query)
   : _stats(),
     _blocks(),
     _root(nullptr),
-    _query(query) {
+    _query(query),
+    _wasShutdown(false) {
 
   _blocks.reserve(8);
 }
@@ -171,8 +172,11 @@ ExecutionEngine::ExecutionEngine (Query* query)
 ////////////////////////////////////////////////////////////////////////////////
 
 ExecutionEngine::~ExecutionEngine () {
-  if (_root != nullptr) {
-    _root->shutdown();
+  try {
+    shutdown(TRI_ERROR_INTERNAL);
+  }
+  catch (...) {
+    // shutdown can throw - ignore it in the destructor
   }
 
   for (auto it = _blocks.begin(); it != _blocks.end(); ++it) {
@@ -602,19 +606,21 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         }
       }
 
-      if (nodeType == ExecutionNode::GATHER ||
-          nodeType == ExecutionNode::DISTRIBUTE) {
-        // we found a gather or distribute node
+      if (nodeType == ExecutionNode::GATHER /* ||
+          nodeType == ExecutionNode::DISTRIBUTE */) {
+        // we found a gather node
         TRI_ASSERT(remoteNode != nullptr);
 
-        // now we'll create a remote node for each shard and add it to the gather|distribute node
+        // now we'll create a remote node for each shard and add it to the gather node
         Collection const* collection = nullptr;
         if (nodeType == ExecutionNode::GATHER) {
           collection = static_cast<GatherNode const*>((*en))->collection();
         }
+        /* TODO: do we need to handle distribute nodes here, too??
         else if (nodeType == ExecutionNode::DISTRIBUTE) {
           collection = static_cast<DistributeNode const*>((*en))->collection();
         }
+        */
         else {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
         }
