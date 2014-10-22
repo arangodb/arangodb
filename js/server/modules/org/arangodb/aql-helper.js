@@ -515,7 +515,7 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
     plans[i + 1] = {'plan': allPlans.plans[i]};
   }
   // Now execute each of these variations.
-  for (i=0; i < plans.length; i++) {
+  for (i = 0; i < plans.length; i++) {
     if (debug) {
       require("internal").print("Executing Plan No: " + i + "\n");
     }
@@ -531,6 +531,8 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
     }
 
     results[i] = AQL_EXECUTEJSON(plans[i].plan, paramNone);
+    // ignore statistics for comparisons
+    delete results[i].stats;
 
     if (debug) {
       require("internal").print("\n" + i + " DONE\n");
