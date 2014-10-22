@@ -286,7 +286,7 @@ ApplicationV8::ApplicationV8 (TRI_server_t* server,
     _gcFrequency(10.0),
     _v8Options(""),
     _startupLoader(),
-    _vocbase(0),
+    _vocbase(nullptr),
     _nrInstances(),
     _contexts(),
     _contextCondition(),
@@ -352,7 +352,7 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (std::string const& name,
   // in case we are in the shutdown phase, do not enter a context!
   // the context might have been deleted by the shutdown
   if (_stopping) {
-    return 0;
+    return nullptr;
   }
 
   LOG_TRACE("found unused V8 context");
@@ -594,7 +594,7 @@ void ApplicationV8::collectGarbage () {
         // there is no context to clean up, probably they all have been cleaned up
         // already. increase the wait time so we don't cycle too much in the GC loop
         // and waste CPU unnecessary
-        useReducedWait = (context != 0);
+        useReducedWait = (context != nullptr);
       }
     }
 
