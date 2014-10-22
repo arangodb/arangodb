@@ -426,7 +426,7 @@ namespace triagens {
 /// @brief cleanup plan and engine for current query
 ////////////////////////////////////////////////////////////////////////////////
 
-        void cleanupPlanAndEngine ();
+        void cleanupPlanAndEngine (int);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

@@ -234,9 +234,8 @@ int ExecutionBlock::initialize () {
 /// @brief shutdown, will be called exactly once for the whole query
 ////////////////////////////////////////////////////////////////////////////////
 
-int ExecutionBlock::shutdown () {
+int ExecutionBlock::shutdown (int errorCode) {
   int ret = TRI_ERROR_NO_ERROR;
-  int res;
 
   for (auto it = _buffer.begin(); it != _buffer.end(); ++it) {
     delete *it;
@@ -244,8 +243,9 @@ int ExecutionBlock::shutdown () {
   _buffer.clear();
 
   for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
+    int res;
     try {
-      res = (*it)->shutdown();
+      res = (*it)->shutdown(errorCode);
     }
     catch (...) {
       res = TRI_ERROR_INTERNAL;
@@ -558,12 +558,18 @@ int SingletonBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   return TRI_ERROR_NO_ERROR;
 }
 
-int SingletonBlock::shutdown () {
-  int res = ExecutionBlock::shutdown();
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shutdown the singleton block
+////////////////////////////////////////////////////////////////////////////////
+
+int SingletonBlock::shutdown (int errorCode) {
+  int res = ExecutionBlock::shutdown(errorCode);
+
   if (_inputRegisterValues != nullptr) {
     delete _inputRegisterValues;
     _inputRegisterValues = nullptr;
   }
+
   return res;
 }
 
@@ -3336,11 +3342,11 @@ int GatherBlock::initialize () {
 /// @brief shutdown: need our own method since our _buffer is different
 ////////////////////////////////////////////////////////////////////////////////
 
-int GatherBlock::shutdown () {
+int GatherBlock::shutdown (int errorCode) {
   // don't call default shutdown method since it does the wrong thing to
   // _gatherBlockBuffer
   for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
-    int res = (*it)->shutdown();
+    int res = (*it)->shutdown(errorCode);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
@@ -3726,10 +3732,11 @@ bool GatherBlock::OurLessThan::operator() (std::pair<size_t, size_t> const& a,
 
 BlockWithClients::BlockWithClients (ExecutionEngine* engine,
                                     ExecutionNode const* ep, 
-                                    std::vector<std::string> const& shardIds) :
-                                    ExecutionBlock(engine, ep), 
-                                    _nrClients(shardIds.size()),
-                                    _initOrShutdown(true) {
+                                    std::vector<std::string> const& shardIds) 
+  : ExecutionBlock(engine, ep), 
+    _nrClients(shardIds.size()),
+    _initOrShutdown(true) {
+
   _shardIdMap.reserve(_nrClients);
   for (size_t i = 0; i < _nrClients; i++) {
     _shardIdMap.emplace(std::make_pair(shardIds[i], i));
@@ -3740,12 +3747,13 @@ BlockWithClients::BlockWithClients (ExecutionEngine* engine,
 /// @brief shutdown
 ////////////////////////////////////////////////////////////////////////////////
 
-int BlockWithClients::shutdown () {
-  if (!_initOrShutdown) {
+int BlockWithClients::shutdown (int errorCode) {
+  if (! _initOrShutdown) {
     return TRI_ERROR_NO_ERROR;
   }
+
   _initOrShutdown = false;
-  return ExecutionBlock::shutdown();
+  return ExecutionBlock::shutdown(errorCode);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4395,7 +4403,7 @@ RemoteBlock::~RemoteBlock () {
 
 ClusterCommResult* RemoteBlock::sendRequest (
           triagens::rest::HttpRequest::HttpRequestType type,
-          std::string urlPart,
+          std::string const& urlPart,
           std::string const& body) const {
   ClusterComm* cc = ClusterComm::instance();
 
@@ -4475,13 +4483,13 @@ int RemoteBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 /// @brief shutdown, will be called exactly once for the whole query
 ////////////////////////////////////////////////////////////////////////////////
 
-int RemoteBlock::shutdown () {
+int RemoteBlock::shutdown (int errorCode) {
   // For every call we simply forward via HTTP
 
   std::unique_ptr<ClusterCommResult> res;
   res.reset(sendRequest(rest::HttpRequest::HTTP_REQUEST_PUT,
                         "/_api/aql/shutdown/",
-                        string()));
+                        string("{\"code\":\"" + std::to_string(errorCode) + "\"}")));
   if (throwExceptionAfterBadSyncRequest(res.get(), true)) {
     // artificially ignore error in case query was not found during shutdown
     return TRI_ERROR_NO_ERROR;

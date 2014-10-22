@@ -98,9 +98,9 @@ namespace triagens {
 /// from the same thread that has opened it!
 ////////////////////////////////////////////////////////////////////////////////
 
-        void destroy (std::string const& vocbase, QueryId id);
+        void destroy (std::string const& vocbase, QueryId id, int errorCode);
         
-        void destroy (TRI_vocbase_t* vocbase, QueryId id);
+        void destroy (TRI_vocbase_t* vocbase, QueryId id, int errorCode);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief expireQueries, this deletes all expired queries from the registry
