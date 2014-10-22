@@ -2330,6 +2330,7 @@ int AggregateBlock::getOrSkipSome (size_t atLeast,
       _pos = 0;
 
       bool hasMore = ! _buffer.empty();
+
       if (! hasMore) {
         hasMore = ExecutionBlock::getBlock(atLeast, atMost);
       }

@@ -65,8 +65,7 @@ namespace triagens {
 /// query will be deleted if it is not opened for that amount of time.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void insert (TRI_vocbase_t* vocbase,
-                     QueryId id,
+        void insert (QueryId id,
                      Query* query,
                      double ttl = 3600.0);
 

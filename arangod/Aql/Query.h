@@ -146,7 +146,13 @@ namespace triagens {
 
         ~Query ();
 
-        Query* clone (QueryPart);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone a query
+/// note: as a side-effect, this will also create and start a transaction for
+/// the query
+////////////////////////////////////////////////////////////////////////////////
+
+        Query* clone (QueryPart, bool);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -349,16 +355,11 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set the transaction for the query
+/// @brief get the plan for the query
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setTrx (triagens::arango::AqlTransaction* trx) {
-          TRI_ASSERT(_trx == nullptr);
-          _trx = trx;
-        }
-
-        triagens::arango::AqlTransaction* getTrx () {
-          return _trx;
+        ExecutionPlan* plan () const {
+          return _plan;
         }
 
 ////////////////////////////////////////////////////////////////////////////////

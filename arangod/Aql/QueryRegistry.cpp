@@ -70,12 +70,13 @@ QueryRegistry::~QueryRegistry () {
 /// @brief insert
 ////////////////////////////////////////////////////////////////////////////////
 
-void QueryRegistry::insert (TRI_vocbase_t* vocbase,
-                            QueryId id,
+void QueryRegistry::insert (QueryId id,
                             Query* query,
                             double ttl) {
 
+  TRI_ASSERT(query != nullptr);
   TRI_ASSERT(query->trx() != nullptr);
+  auto vocbase = query->vocbase();
 
   WRITE_LOCKER(_lock);
 
