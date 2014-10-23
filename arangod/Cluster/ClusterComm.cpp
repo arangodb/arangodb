@@ -546,7 +546,7 @@ ClusterCommResult* ClusterComm::wait (
         }
       }
       // If we found nothing, we have to look through the send queue:
-      if (!found) {
+      if (! found) {
         basics::ConditionLocker sendlocker(&somethingToSend);
         for (q = toSend.begin(); q != toSend.end(); q++) {
           op = *q;
@@ -556,7 +556,7 @@ ClusterCommResult* ClusterComm::wait (
           }
         }
       }
-      if (!found) {
+      if (! found) {
         // Nothing known about this operation, return with failure:
         res = new ClusterCommResult();
         res->clientTransactionID = clientTransactionID;

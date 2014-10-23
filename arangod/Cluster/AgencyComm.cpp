@@ -687,7 +687,7 @@ bool AgencyComm::addEndpoint (std::string const& endpointSpecification,
     while (it != _globalEndpoints.end()) {
       AgencyEndpoint const* agencyEndpoint = (*it);
 
-      TRI_ASSERT(agencyEndpoint != 0);
+      TRI_ASSERT(agencyEndpoint != nullptr);
 
       if (agencyEndpoint->_endpoint->getSpecification() == endpointSpecification) {
         // a duplicate. just ignore
@@ -701,7 +701,7 @@ bool AgencyComm::addEndpoint (std::string const& endpointSpecification,
     for (size_t i = 0; i < NumConnections; ++i) {
       AgencyEndpoint* agencyEndpoint = createAgencyEndpoint(endpointSpecification);
 
-      if (agencyEndpoint == 0) {
+      if (agencyEndpoint == nullptr) {
         return false;
       }
 
@@ -793,7 +793,7 @@ const std::vector<std::string> AgencyComm::getEndpoints () {
     while (it != AgencyComm::_globalEndpoints.end()) {
       AgencyEndpoint const* agencyEndpoint = (*it);
 
-      TRI_ASSERT(agencyEndpoint != 0);
+      TRI_ASSERT(agencyEndpoint != nullptr);
 
       result.push_back(agencyEndpoint->_endpoint->getSpecification());
       ++it;
@@ -823,7 +823,7 @@ const std::string AgencyComm::getEndpointsString () {
 
       AgencyEndpoint const* agencyEndpoint = (*it);
 
-      TRI_ASSERT(agencyEndpoint != 0);
+      TRI_ASSERT(agencyEndpoint != nullptr);
 
       result.append(agencyEndpoint->_endpoint->getSpecification());
       ++it;
@@ -893,9 +893,9 @@ std::string AgencyComm::generateStamp () {
 AgencyEndpoint* AgencyComm::createAgencyEndpoint (std::string const& endpointSpecification) {
   triagens::rest::Endpoint* endpoint = triagens::rest::Endpoint::clientFactory(endpointSpecification);
 
-  if (endpoint == 0) {
+  if (endpoint == nullptr) {
     // could not create endpoint...
-    return 0;
+    return nullptr;
   }
 
   triagens::httpclient::GeneralClientConnection* connection =
@@ -905,10 +905,10 @@ AgencyEndpoint* AgencyComm::createAgencyEndpoint (std::string const& endpointSpe
                                                            _globalConnectionOptions._connectRetries,
                                                            0);
 
-  if (connection == 0) {
+  if (connection == nullptr) {
     delete endpoint;
 
-    return 0;
+    return nullptr;
   }
 
   return new AgencyEndpoint(endpoint, connection);
@@ -926,7 +926,7 @@ AgencyCommResult AgencyComm::sendServerState (double ttl) {
   // construct JSON value { "status": "...", "time": "..." }
   TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
 
-  if (json == 0) {
+  if (json == nullptr) {
     return AgencyCommResult();
   }
 
@@ -979,7 +979,7 @@ bool AgencyComm::increaseVersion (std::string const& key) {
     // no version key found, now set it
     TRI_json_t* json = triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, 1);
 
-    if (json == 0) {
+    if (json == nullptr) {
       return false;
     }
 
@@ -1008,13 +1008,13 @@ bool AgencyComm::increaseVersion (std::string const& key) {
   // version key found, now update it
   TRI_json_t* oldJson = triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, version);
 
-  if (oldJson == 0) {
+  if (oldJson == nullptr) {
     return false;
   }
 
   TRI_json_t* newJson = triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, version + 1);
 
-  if (newJson == 0) {
+  if (newJson == nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, oldJson);
     return false;
   }
@@ -1231,7 +1231,7 @@ bool AgencyComm::lockRead (std::string const& key,
                            double timeout) {
   TRI_json_t* json = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, "READ", 4);
 
-  if (json == 0) {
+  if (json == nullptr) {
     return false;
   }
 
@@ -1249,7 +1249,7 @@ bool AgencyComm::lockWrite (std::string const& key,
                             double timeout) {
   TRI_json_t* json = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, "WRITE", 5);
 
-  if (json == 0) {
+  if (json == nullptr) {
     return false;
   }
 
@@ -1266,7 +1266,7 @@ bool AgencyComm::unlockRead (std::string const& key,
                              double timeout) {
   TRI_json_t* json = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, "READ", 4);
 
-  if (json == 0) {
+  if (json == nullptr) {
     return false;
   }
 
@@ -1283,7 +1283,7 @@ bool AgencyComm::unlockWrite (std::string const& key,
                               double timeout) {
   TRI_json_t* json = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, "WRITE", 5);
 
-  if (json == 0) {
+  if (json == nullptr) {
     return false;
   }
 
@@ -1311,7 +1311,7 @@ AgencyCommResult AgencyComm::uniqid (std::string const& key,
     if (result.httpCode() == (int) triagens::rest::HttpResponse::NOT_FOUND) {
       TRI_json_t* json = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, "0", 1);
 
-      if (json != 0) {
+      if (json != nullptr) {
         // create the key on the fly
         setValue(key, json, 0.0);
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -1327,20 +1327,20 @@ AgencyCommResult AgencyComm::uniqid (std::string const& key,
 
     result.parse("", false);
 
-    TRI_json_t* oldJson = 0;
+    TRI_json_t* oldJson = nullptr;
 
     std::map<std::string, AgencyCommResultEntry>::iterator it = result._values.begin();
 
     if (it != result._values.end()) {
       // steal the json
       oldJson = (*it).second._json;
-      (*it).second._json = 0;
+      (*it).second._json = nullptr;
     }
     else {
       oldJson = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, "0", 1);
     }
 
-    if (oldJson == 0) {
+    if (oldJson == nullptr) {
       return AgencyCommResult();
     }
 
@@ -1348,7 +1348,7 @@ AgencyCommResult AgencyComm::uniqid (std::string const& key,
     const uint64_t newValue = oldValue + count;
     TRI_json_t* newJson = triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, newValue);
 
-    if (newJson == 0) {
+    if (newJson == nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, oldJson);
       return AgencyCommResult();
     }
@@ -1406,7 +1406,7 @@ bool AgencyComm::lock (std::string const& key,
   while (true) {
     TRI_json_t* oldJson = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, "UNLOCKED", 8);
 
-    if (oldJson == 0) {
+    if (oldJson == nullptr) {
       return false;
     }
 
@@ -1466,7 +1466,7 @@ bool AgencyComm::unlock (std::string const& key,
   while (true) {
     TRI_json_t* newJson = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, "UNLOCKED", 8);
 
-    if (newJson == 0) {
+    if (newJson == nullptr) {
       return false;
     }
 
@@ -1516,7 +1516,7 @@ AgencyEndpoint* AgencyComm::popEndpoint (std::string const& endpoint) {
       while (it != _globalEndpoints.end()) {
         AgencyEndpoint* agencyEndpoint = (*it);
 
-        TRI_ASSERT(agencyEndpoint != 0);
+        TRI_ASSERT(agencyEndpoint != nullptr);
 
         if (! endpoint.empty() &&
             agencyEndpoint->_endpoint->getSpecification() != endpoint) {
@@ -1556,7 +1556,7 @@ AgencyEndpoint* AgencyComm::popEndpoint (std::string const& endpoint) {
 
   // just to shut up compilers
   TRI_ASSERT(false);
-  return 0;
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1568,7 +1568,7 @@ void AgencyComm::requeueEndpoint (AgencyEndpoint* agencyEndpoint,
   WRITE_LOCKER(AgencyComm::_globalLock);
   const size_t numEndpoints TRI_UNUSED = _globalEndpoints.size();
 
-  TRI_ASSERT(agencyEndpoint != 0);
+  TRI_ASSERT(agencyEndpoint != nullptr);
   TRI_ASSERT(agencyEndpoint->_busy);
 
   // set to non-busy
@@ -1633,7 +1633,7 @@ bool AgencyComm::sendWithFailover (triagens::rest::HttpRequest::HttpRequestType 
   while (tries++ < numEndpoints) {
     AgencyEndpoint* agencyEndpoint = popEndpoint(forceEndpoint);
 
-    TRI_ASSERT(agencyEndpoint != 0);
+    TRI_ASSERT(agencyEndpoint != nullptr);
 
     send(agencyEndpoint->_connection,
          method,
@@ -1738,7 +1738,7 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
                        std::string const& url,
                        std::string const& body) {
 
-  TRI_ASSERT(connection != 0);
+  TRI_ASSERT(connection != nullptr);
 
   if (method == triagens::rest::HttpRequest::HTTP_REQUEST_GET ||
       method == triagens::rest::HttpRequest::HTTP_REQUEST_HEAD ||
@@ -1778,7 +1778,7 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
                                                                     body.size(),
                                                                     headers);
 
-  if (response == 0) {
+  if (response == nullptr) {
     result._message = "could not send request to agency";
     LOG_TRACE("sending request to agency failed");
 
