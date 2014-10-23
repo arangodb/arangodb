@@ -950,8 +950,21 @@ bool IndexRangeBlock::readIndex () {
     // must have a V8 context here to protect Expression::execute()
     auto engine = _engine;
     triagens::basics::ScopeGuard guard{
-      [&engine]() -> void { engine->getQuery()->enterContext(); },
-      [&engine]() -> void { engine->getQuery()->exitContext(); }
+      [&engine]() -> void { 
+        engine->getQuery()->enterContext(); 
+      },
+      [&]() -> void {
+        
+        // must invalidate the expression now as we might be called from
+        // different threads
+        if (ExecutionEngine::isDBServer()) {
+          for (auto e : _allVariableBoundExpressions) {
+            e->invalidate();
+          }
+        }
+         
+        engine->getQuery()->exitContext(); 
+      }
     };
 
     v8::HandleScope scope; // do not delete this!
@@ -984,8 +997,12 @@ bool IndexRangeBlock::readIndex () {
               "AQL: computed a variable bound and got non-JSON");
         }
       }
+
       for (auto h : r._highs) {
         Expression* e = _allVariableBoundExpressions[posInExpressions];
+
+        TRI_ASSERT(e != nullptr);
+
         AqlValue a = e->execute(_trx, docColls, data, nrRegs * _pos,
                                 _inVars[posInExpressions],
                                 _inRegs[posInExpressions]);
@@ -1887,11 +1904,22 @@ void CalculationBlock::doEvaluation (AqlItemBlock* result) {
     RegisterId nrRegs = result->getNrRegs();
     result->setDocumentCollection(_outReg, nullptr);
 
+    TRI_ASSERT(_expression != nullptr);
+
     // must have a V8 context here to protect Expression::execute()
     auto engine = _engine;
     triagens::basics::ScopeGuard guard{
-      [&engine]() -> void { engine->getQuery()->enterContext(); },
-      [&engine]() -> void { engine->getQuery()->exitContext(); }
+      [&engine]() -> void { 
+        engine->getQuery()->enterContext(); 
+      },
+      [&]() -> void { 
+        // must invalidate the expression now as we might be called from
+        // different threads
+        if (ExecutionEngine::isDBServer()) {
+          _expression->invalidate();
+        }
+        engine->getQuery()->exitContext(); 
+      }
     };
     
     v8::HandleScope scope; // do not delete this!
@@ -4316,8 +4344,7 @@ static bool throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
                                                bool isShutdown) {
   ENTER_BLOCK
   if (res->status == CL_COMM_TIMEOUT) {
-    std::string errorMessage;
-    errorMessage += std::string("Timeout in communication with shard '") + 
+    std::string errorMessage = std::string("Timeout in communication with shard '") + 
       std::string(res->shardID) + 
       std::string("' on cluster node '") +
       std::string(res->serverID) +
@@ -4337,7 +4364,7 @@ static bool throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
         std::string(res->shardID) + 
         std::string("' on cluster node '") +
         std::string(res->serverID) +
-        std::string("' failed.");
+        std::string("'");
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_CONNECTION_LOST,
                                      errorMessage);
     }
@@ -4350,8 +4377,7 @@ static bool throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
 
     if (JsonHelper::getBooleanValue(json, "error", true)) {
       errorNum = TRI_ERROR_INTERNAL;
-
-      errorMessage += std::string("Error message received from shard '") + 
+      std::string errorMessage = std::string("Error message received from shard '") + 
         std::string(res->shardID) + 
         std::string("' on cluster node '") +
         std::string(res->serverID) +
@@ -4374,11 +4400,11 @@ static bool throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
         errorMessage += std::string(v->_value._string.data, v->_value._string.length - 1);
       }
       else {
-        errorMessage += std::string("(No valid error in response)");
+        errorMessage += std::string("(no valid error in response)");
       }
     }
     else {
-      errorMessage += std::string("(No valid response)");
+      errorMessage += std::string("(no valid response)");
     }
 
     if (json != nullptr) {
@@ -4532,7 +4558,7 @@ int RemoteBlock::shutdown (int errorCode) {
   std::unique_ptr<ClusterCommResult> res;
   res.reset(sendRequest(rest::HttpRequest::HTTP_REQUEST_PUT,
                         "/_api/aql/shutdown/",
-                        string("{\"code\":\"" + std::to_string(errorCode) + "\"}")));
+                        string("{\"code\":" + std::to_string(errorCode) + "}")));
   if (throwExceptionAfterBadSyncRequest(res.get(), true)) {
     // artificially ignore error in case query was not found during shutdown
     return TRI_ERROR_NO_ERROR;
