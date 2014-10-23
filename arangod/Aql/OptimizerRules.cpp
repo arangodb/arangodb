@@ -1748,7 +1748,7 @@ int triagens::aql::distributeInCluster (Optimizer* opt,
     if (nodeType == ExecutionNode::REMOVE) {
       // check if collection shard keys are only _key
       std::vector<std::string> shardKeys = collection->shardKeys();
-      if (shardKeys.size() != 1 || shardKeys[0] != "_key") {
+      if (shardKeys.size() != 1 || shardKeys[0] != TRI_VOC_ATTRIBUTE_KEY) {
         opt->addPlan(plan, rule->level, wasModified);
         return TRI_ERROR_NO_ERROR;
       }
@@ -2078,7 +2078,7 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
           if (_setter->getType() == EN::CALCULATION) {
             // this should be an attribute access for _key
             auto cn = static_cast<CalculationNode*>(_setter);
-            if (!(cn->expression()->isAttributeAccess())) {
+            if (! cn->expression()->isAttributeAccess()) {
               break; // abort . . .
             }
             // check the variable is the same as the remove variable
@@ -2114,6 +2114,7 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
           _lastNode = en;
           return false; // continue . . .
         }
+        case EN::DISTRIBUTE:
         case EN::SCATTER: {
           if (_scatter) { // met more than one scatter node
             break;        // abort . . . 
@@ -2152,8 +2153,7 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
           // ever happen?
           
           // check these are a Calc-Filter pair
-          if (cn->getVariablesSetHere()[0]->id
-              != fn->getVariablesUsedHere()[0]->id) {
+          if (cn->getVariablesSetHere()[0]->id != fn->getVariablesUsedHere()[0]->id) {
             break; // abort . . .
           }
 
@@ -2186,7 +2186,6 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
         case EN::INSERT:
         case EN::REPLACE:
         case EN::UPDATE:
-        case EN::DISTRIBUTE:
         case EN::RETURN:
         case EN::NORESULTS:
         case EN::ILLEGAL:
@@ -2218,7 +2217,7 @@ int triagens::aql::undistributeRemoveAfterEnumColl (Optimizer* opt,
   }
 
   bool modified = false;
-  if (!toUnlink.empty()) {
+  if (! toUnlink.empty()) {
     plan->unlinkNodes(toUnlink);
     plan->findVarUsage();
     modified = true;

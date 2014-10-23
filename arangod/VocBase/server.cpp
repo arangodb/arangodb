@@ -1988,15 +1988,13 @@ int TRI_InitDatabasesServer (TRI_server_t* server) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_StopServer (TRI_server_t* server) {
-  int res;
-
   // set shutdown flag
   TRI_LockMutex(&server->_createLock);
   server->_shutdown = true;
   TRI_UnlockMutex(&server->_createLock);
 
   // stop dbm thread
-  res = TRI_JoinThread(&server->_databaseManager);
+  int res = TRI_JoinThread(&server->_databaseManager);
 
   CloseDatabases(server);
 

@@ -241,7 +241,7 @@ AnyServer::AnyServer ()
     _supervisorMode(false),
     _pidFile(""),
     _workingDirectory(""),
-    _applicationServer(0) {
+    _applicationServer(nullptr) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -249,7 +249,7 @@ AnyServer::AnyServer ()
 ////////////////////////////////////////////////////////////////////////////////
 
 AnyServer::~AnyServer () {
-  if (_applicationServer != 0) {
+  if (_applicationServer != nullptr) {
     delete _applicationServer;
   }
 }

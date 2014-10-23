@@ -51,6 +51,17 @@ Json ExecutionStats::toJson () const {
   return json;
 }
 
+Json ExecutionStats::toJsonStatic () {
+  Json json(Json::Array);
+  json.set("writesExecuted", Json(static_cast<double>(0)));
+  json.set("writesIgnored",  Json(static_cast<double>(0)));
+  json.set("scannedFull",    Json(static_cast<double>(0)));
+  json.set("scannedIndex",   Json(static_cast<double>(0)));
+  json.set("static",   Json(static_cast<double>(0)));
+
+  return json;
+}
+
 ExecutionStats::ExecutionStats()
   :writesExecuted(0),
    writesIgnored(0),
