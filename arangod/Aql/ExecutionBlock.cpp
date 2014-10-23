@@ -4201,35 +4201,7 @@ int DistributeBlock::getOrSkipSomeForShard (size_t atLeast,
 
   freeCollector();
   
-  // check if we can pop from the front of _buffer
-  size_t smallestIndex = _buffer.size(); 
-  // in case we popped everything from _distBuffer
-
-  for (size_t i = 0; i < _nrClients; i++) {
-    if (! _distBuffer.at(i).empty()) {
-      size_t index = _distBuffer.at(i).front().first;
-      if (index == 0) {
-        return TRI_ERROR_NO_ERROR; // don't have to do any clean-up
-      }
-      else {
-        smallestIndex = (std::min)(index, smallestIndex);
-      }
-    }
-  }
-
-  // pop from _buffer
-  for (size_t i = 0; i < smallestIndex; i++) {
-    AqlItemBlock* cur = _buffer.front();
-    delete cur;
-    _buffer.pop_front();
-  }
-  
-  // reset first coord of pairs in _distBuffer
-  for (size_t i = 0; i < _nrClients; i++) {
-    for (size_t j = 0; j < _distBuffer.at(i).size(); j++) {
-      _distBuffer.at(i).at(j).first -= smallestIndex;
-    }
-  }
+  // _buffer is left intact, deleted and cleared at shutdown
 
   return TRI_ERROR_NO_ERROR;
   LEAVE_BLOCK
