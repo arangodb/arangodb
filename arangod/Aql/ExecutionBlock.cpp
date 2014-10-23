@@ -957,7 +957,7 @@ bool IndexRangeBlock::readIndex () {
         
         // must invalidate the expression now as we might be called from
         // different threads
-        if (ExecutionEngine::isDBServer()) {
+        if (ExecutionEngine::isDBServer() || ExecutionEngine::isCoordinator()) {
           for (auto e : _allVariableBoundExpressions) {
             e->invalidate();
           }
@@ -1915,7 +1915,7 @@ void CalculationBlock::doEvaluation (AqlItemBlock* result) {
       [&]() -> void { 
         // must invalidate the expression now as we might be called from
         // different threads
-        if (ExecutionEngine::isDBServer()) {
+        if (ExecutionEngine::isDBServer() || ExecutionEngine::isCoordinator()) {
           _expression->invalidate();
         }
         engine->getQuery()->exitContext(); 

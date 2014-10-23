@@ -1080,9 +1080,14 @@ AstNode* Ast::createArithmeticResultNode (double value) {
 
 AstNode* Ast::executeConstExpression (AstNode const* node) {
   // must enter v8 before we can execute any expression
-  v8::HandleScope scope; // do not delete this!
   _query->enterContext();
+  
+  v8::HandleScope scope; // do not delete this!
+
   TRI_json_t* result = _query->executor()->executeExpression(node); 
+
+  // context is not left here, but later
+  // this allows re-using the same context for multiple expressions
 
   if (result == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
