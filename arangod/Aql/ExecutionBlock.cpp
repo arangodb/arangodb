@@ -4555,7 +4555,7 @@ int RemoteBlock::shutdown (int errorCode) {
   std::unique_ptr<ClusterCommResult> res;
   res.reset(sendRequest(rest::HttpRequest::HTTP_REQUEST_PUT,
                         "/_api/aql/shutdown/",
-                        string("{\"code\":\"" + std::to_string(errorCode) + "\"}")));
+                        string("{\"code\":" + std::to_string(errorCode) + "}")));
   if (throwExceptionAfterBadSyncRequest(res.get(), true)) {
     // artificially ignore error in case query was not found during shutdown
     return TRI_ERROR_NO_ERROR;
