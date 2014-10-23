@@ -717,7 +717,7 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
     shardId = shardIdCharP;
   }
 
-  Json answerBody(Json::Array, 2);
+  Json answerBody(Json::Array, 3);
 
   if (operation == "getSome") {
     auto atLeast = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
@@ -738,7 +738,8 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
     }
     if (items.get() == nullptr) {
       answerBody("exhausted", Json(true))
-                ("error", Json(false));
+        ("error", Json(false))
+        ("stats", query->getStats());
     }
     else {
       try {
@@ -781,6 +782,7 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
     }
     answerBody("skipped", Json(static_cast<double>(skipped)))
               ("error", Json(false));
+    answerBody.set("stats", query->getStats());
   }
   else if (operation == "skip") {
     auto number = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
@@ -801,6 +803,7 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
 
       answerBody("exhausted", Json(exhausted))
                 ("error", Json(false));
+      answerBody.set("stats", query->getStats());
     }
     catch (...) {
       LOG_ERROR("skip lead to an exception");
@@ -831,6 +834,7 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
     }
     answerBody("error", Json(res != TRI_ERROR_NO_ERROR))
               ("code", Json(static_cast<double>(res)));
+    answerBody.set("stats", query->getStats());
   }
   else if (operation == "shutdown") {
     int res = TRI_ERROR_INTERNAL;
@@ -848,6 +852,7 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
     }
     answerBody("error", res == TRI_ERROR_NO_ERROR ? Json(false) : Json(true))
               ("code", Json(static_cast<double>(res)));
+    answerBody.set("stats", query->getStats());
   }
   else {
     LOG_ERROR("Unknown operation!");
