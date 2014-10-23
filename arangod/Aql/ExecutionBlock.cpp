@@ -950,8 +950,21 @@ bool IndexRangeBlock::readIndex () {
     // must have a V8 context here to protect Expression::execute()
     auto engine = _engine;
     triagens::basics::ScopeGuard guard{
-      [&engine]() -> void { engine->getQuery()->enterContext(); },
-      [&engine]() -> void { engine->getQuery()->exitContext(); }
+      [&engine]() -> void { 
+        engine->getQuery()->enterContext(); 
+      },
+      [&]() -> void {
+        
+        // must invalidate the expression now as we might be called from
+        // different threads
+        if (ExecutionEngine::isDBServer()) {
+          for (auto e : _allVariableBoundExpressions) {
+            e->invalidate();
+          }
+        }
+         
+        engine->getQuery()->exitContext(); 
+      }
     };
 
     v8::HandleScope scope; // do not delete this!
@@ -984,8 +997,12 @@ bool IndexRangeBlock::readIndex () {
               "AQL: computed a variable bound and got non-JSON");
         }
       }
+
       for (auto h : r._highs) {
         Expression* e = _allVariableBoundExpressions[posInExpressions];
+
+        TRI_ASSERT(e != nullptr);
+
         AqlValue a = e->execute(_trx, docColls, data, nrRegs * _pos,
                                 _inVars[posInExpressions],
                                 _inRegs[posInExpressions]);
@@ -1887,11 +1904,22 @@ void CalculationBlock::doEvaluation (AqlItemBlock* result) {
     RegisterId nrRegs = result->getNrRegs();
     result->setDocumentCollection(_outReg, nullptr);
 
+    TRI_ASSERT(_expression != nullptr);
+
     // must have a V8 context here to protect Expression::execute()
     auto engine = _engine;
     triagens::basics::ScopeGuard guard{
-      [&engine]() -> void { engine->getQuery()->enterContext(); },
-      [&engine]() -> void { engine->getQuery()->exitContext(); }
+      [&engine]() -> void { 
+        engine->getQuery()->enterContext(); 
+      },
+      [&]() -> void { 
+        // must invalidate the expression now as we might be called from
+        // different threads
+        if (ExecutionEngine::isDBServer()) {
+          _expression->invalidate();
+        }
+        engine->getQuery()->exitContext(); 
+      }
     };
     
     v8::HandleScope scope; // do not delete this!
@@ -3365,15 +3393,18 @@ int GatherBlock::shutdown (int errorCode) {
       return res;
     }
   }
-
-  for (std::deque<AqlItemBlock*>& x : _gatherBlockBuffer) {
-    for (AqlItemBlock* y: x) {
-      delete y;
-    }
-    x.clear();
-  }
-  _gatherBlockBuffer.clear();
   
+  if (! _isSimple) {
+    for (std::deque<AqlItemBlock*>& x : _gatherBlockBuffer) {
+      for (AqlItemBlock* y: x) {
+        delete y;
+      }
+      x.clear();
+    }
+    _gatherBlockBuffer.clear();
+    _gatherBlockPos.clear();
+  }
+    
   return TRI_ERROR_NO_ERROR;
   LEAVE_BLOCK
 }
@@ -3698,6 +3729,7 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
 bool GatherBlock::getBlock (size_t i, size_t atLeast, size_t atMost) {
   ENTER_BLOCK
   TRI_ASSERT(0 <= i && i < _dependencies.size());
+  TRI_ASSERT(! _isSimple);
   AqlItemBlock* docs = _dependencies.at(i)->getSome(atLeast, atMost);
   if (docs != nullptr) {
     try {
@@ -4197,34 +4229,7 @@ int DistributeBlock::getOrSkipSomeForShard (size_t atLeast,
 
   freeCollector();
   
-  // check if we can pop from the front of _buffer
-  size_t smallestIndex = 0;
-
-  for (size_t i = 0; i < _nrClients; i++) {
-    if (! _distBuffer.at(i).empty()) {
-      size_t index = _distBuffer.at(i).at(0).first;
-      if (index == 0) {
-        return TRI_ERROR_NO_ERROR; // don't have to do any clean-up
-      }
-      else {
-        smallestIndex = (std::min)(index, smallestIndex);
-      }
-    }
-  }
-
-  // pop from _buffer
-  for (size_t i = 0; i < smallestIndex; i++) {
-    AqlItemBlock* cur = _buffer.front();
-    delete cur;
-    _buffer.pop_front();
-  }
-  
-  // reset first coord of pairs in _distBuffer
-  for (size_t i = 0; i < _nrClients; i++) {
-    for (size_t j = 0; j < _distBuffer.at(i).size(); j++) {
-      _distBuffer.at(i).at(j).first -= smallestIndex;
-    }
-  }
+  // _buffer is left intact, deleted and cleared at shutdown
 
   return TRI_ERROR_NO_ERROR;
   LEAVE_BLOCK
@@ -4339,8 +4344,7 @@ static bool throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
                                                bool isShutdown) {
   ENTER_BLOCK
   if (res->status == CL_COMM_TIMEOUT) {
-    std::string errorMessage;
-    errorMessage += std::string("Timeout in communication with shard '") + 
+    std::string errorMessage = std::string("Timeout in communication with shard '") + 
       std::string(res->shardID) + 
       std::string("' on cluster node '") +
       std::string(res->serverID) +
@@ -4360,7 +4364,7 @@ static bool throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
         std::string(res->shardID) + 
         std::string("' on cluster node '") +
         std::string(res->serverID) +
-        std::string("' failed.");
+        std::string("'");
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_CONNECTION_LOST,
                                      errorMessage);
     }
@@ -4373,8 +4377,7 @@ static bool throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
 
     if (JsonHelper::getBooleanValue(json, "error", true)) {
       errorNum = TRI_ERROR_INTERNAL;
-
-      errorMessage += std::string("Error message received from shard '") + 
+      std::string errorMessage = std::string("Error message received from shard '") + 
         std::string(res->shardID) + 
         std::string("' on cluster node '") +
         std::string(res->serverID) +
@@ -4397,11 +4400,11 @@ static bool throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
         errorMessage += std::string(v->_value._string.data, v->_value._string.length - 1);
       }
       else {
-        errorMessage += std::string("(No valid error in response)");
+        errorMessage += std::string("(no valid error in response)");
       }
     }
     else {
-      errorMessage += std::string("(No valid response)");
+      errorMessage += std::string("(no valid response)");
     }
 
     if (json != nullptr) {

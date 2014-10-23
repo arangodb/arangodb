@@ -75,8 +75,8 @@ namespace triagens {
             this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
           }
 
-          for (auto it = collections->begin(); it != collections->end(); ++it) {
-            if (processCollection((*it).second) != TRI_ERROR_NO_ERROR) {
+          for (auto it : *collections) {
+            if (processCollection(it.second) != TRI_ERROR_NO_ERROR) {
               break;
             }
           }
@@ -95,8 +95,8 @@ namespace triagens {
 
         int addCollectionList (std::map<std::string, triagens::aql::Collection*>* collections) {
           int ret = TRI_ERROR_NO_ERROR;
-          for (auto it = collections->begin(); it != collections->end(); ++it) {
-            ret = processCollection((*it).second);
+          for (auto it : *collections) {
+            ret = processCollection(it.second);
             if (ret != TRI_ERROR_NO_ERROR) {
               break;
             }

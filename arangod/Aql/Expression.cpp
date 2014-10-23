@@ -162,7 +162,7 @@ void Expression::replaceVariables (std::unordered_map<VariableId, Variable const
 
   _ast->replaceVariables(const_cast<AstNode*>(_node), replacements);
  
-  invalidateExpression(); 
+  invalidate(); 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -172,7 +172,7 @@ void Expression::replaceVariables (std::unordered_map<VariableId, Variable const
 /// multiple V8 contexts, it must be invalidated in between
 ////////////////////////////////////////////////////////////////////////////////
 
-void Expression::invalidateExpression () {
+void Expression::invalidate () {
   if (_type == V8) {
     delete _func;
     _type = UNPROCESSED;
