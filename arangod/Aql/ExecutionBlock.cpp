@@ -3393,15 +3393,18 @@ int GatherBlock::shutdown (int errorCode) {
       return res;
     }
   }
-
-  for (std::deque<AqlItemBlock*>& x : _gatherBlockBuffer) {
-    for (AqlItemBlock* y: x) {
-      delete y;
-    }
-    x.clear();
-  }
-  _gatherBlockBuffer.clear();
   
+  if (! _isSimple) {
+    for (std::deque<AqlItemBlock*>& x : _gatherBlockBuffer) {
+      for (AqlItemBlock* y: x) {
+        delete y;
+      }
+      x.clear();
+    }
+    _gatherBlockBuffer.clear();
+    _gatherBlockPos.clear();
+  }
+    
   return TRI_ERROR_NO_ERROR;
   LEAVE_BLOCK
 }
@@ -3726,6 +3729,7 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
 bool GatherBlock::getBlock (size_t i, size_t atLeast, size_t atMost) {
   ENTER_BLOCK
   TRI_ASSERT(0 <= i && i < _dependencies.size());
+  TRI_ASSERT(! _isSimple);
   AqlItemBlock* docs = _dependencies.at(i)->getSome(atLeast, atMost);
   if (docs != nullptr) {
     try {
@@ -4225,34 +4229,7 @@ int DistributeBlock::getOrSkipSomeForShard (size_t atLeast,
 
   freeCollector();
   
-  // check if we can pop from the front of _buffer
-  size_t smallestIndex = 0;
-
-  for (size_t i = 0; i < _nrClients; i++) {
-    if (! _distBuffer.at(i).empty()) {
-      size_t index = _distBuffer.at(i).at(0).first;
-      if (index == 0) {
-        return TRI_ERROR_NO_ERROR; // don't have to do any clean-up
-      }
-      else {
-        smallestIndex = (std::min)(index, smallestIndex);
-      }
-    }
-  }
-
-  // pop from _buffer
-  for (size_t i = 0; i < smallestIndex; i++) {
-    AqlItemBlock* cur = _buffer.front();
-    delete cur;
-    _buffer.pop_front();
-  }
-  
-  // reset first coord of pairs in _distBuffer
-  for (size_t i = 0; i < _nrClients; i++) {
-    for (size_t j = 0; j < _distBuffer.at(i).size(); j++) {
-      _distBuffer.at(i).at(j).first -= smallestIndex;
-    }
-  }
+  // _buffer is left intact, deleted and cleared at shutdown
 
   return TRI_ERROR_NO_ERROR;
   LEAVE_BLOCK
