@@ -3893,7 +3893,6 @@ size_t BlockWithClients::skipSomeForShard (size_t atLeast,
 bool BlockWithClients::skipForShard (size_t number, 
                                      std::string const& shardId) {
   ENTER_BLOCK
-  _ignoreInitCursor = false;
   size_t skipped = skipSomeForShard(number, number, shardId);
   size_t nr = skipped;
   while (nr != 0 && skipped < number) {
