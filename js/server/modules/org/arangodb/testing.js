@@ -1417,7 +1417,13 @@ function UnitTest (which, options) {
       results.all_ok = allok;
     }
     results.all_ok = allok;
-    cleanupDBDirectories(options);
+    if (allok) {
+      cleanupDBDirectories(options);
+    }
+    else {
+      print("since some tests weren't successfully, not cleaning up: ");
+      print(cleanupDirectories);
+    }
     if (jsonReply === true ) {
       return results;
     }
@@ -1445,7 +1451,14 @@ function UnitTest (which, options) {
     }
     r.ok = ok;
     results.all_ok = ok;
-    cleanupDBDirectories(options);
+
+    if (allok) {
+      cleanupDBDirectories(options);
+    }
+    else {
+      print("since some tests weren't successfully, not cleaning up: ");
+      print(cleanupDirectories);
+    }
     if (jsonReply === true ) {
       return results;
     }

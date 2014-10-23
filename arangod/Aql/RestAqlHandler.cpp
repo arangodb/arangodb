@@ -151,7 +151,7 @@ void RestAqlHandler::createQueryFromJson () {
   _qId = TRI_NewTickServer();
   
   try {
-    _queryRegistry->insert(_vocbase, _qId, query, ttl);
+    _queryRegistry->insert(_qId, query, ttl);
   }
   catch (...) {
     LOG_ERROR("could not keep query in registry");
@@ -336,7 +336,7 @@ void RestAqlHandler::createQueryFromString () {
 
   _qId = TRI_NewTickServer();
   try {
-    _queryRegistry->insert(_vocbase, _qId, query, ttl);
+    _queryRegistry->insert(_qId, query, ttl);
   }
   catch (...) {
     LOG_ERROR("could not keep query in registry");
@@ -416,14 +416,10 @@ void RestAqlHandler::useQuery (std::string const& operation,
   TRI_ASSERT(_qId > 0);
   TRI_ASSERT(query->engine() != nullptr);
 
-  Json queryJson;
-  if (operation != "shutdown") {
-    // /shutdown does not require a body
-    queryJson = Json(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
-    if (queryJson.isEmpty()) {
-      _queryRegistry->close(_vocbase, _qId);
-      return;
-    }
+  Json queryJson = Json(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
+  if (queryJson.isEmpty()) {
+    _queryRegistry->close(_vocbase, _qId);
+    return;
   }
 
   try {
@@ -721,7 +717,7 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
     shardId = shardIdCharP;
   }
 
-  Json answerBody(Json::Array, 2);
+  Json answerBody(Json::Array, 3);
 
   if (operation == "getSome") {
     auto atLeast = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
@@ -742,7 +738,8 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
     }
     if (items.get() == nullptr) {
       answerBody("exhausted", Json(true))
-                ("error", Json(false));
+        ("error", Json(false))
+        ("stats", query->getStats());
     }
     else {
       try {
@@ -785,6 +782,7 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
     }
     answerBody("skipped", Json(static_cast<double>(skipped)))
               ("error", Json(false));
+    answerBody.set("stats", query->getStats());
   }
   else if (operation == "skip") {
     auto number = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
@@ -805,6 +803,7 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
 
       answerBody("exhausted", Json(exhausted))
                 ("error", Json(false));
+      answerBody.set("stats", query->getStats());
     }
     catch (...) {
       LOG_ERROR("skip lead to an exception");
@@ -835,12 +834,15 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
     }
     answerBody("error", Json(res != TRI_ERROR_NO_ERROR))
               ("code", Json(static_cast<double>(res)));
+    answerBody.set("stats", query->getStats());
   }
   else if (operation == "shutdown") {
     int res = TRI_ERROR_INTERNAL;
+    int errorCode = JsonHelper::getNumericValue<int>(queryJson.json(), "code", TRI_ERROR_INTERNAL);
+
     try {
-      res = query->engine()->shutdown();
-      _queryRegistry->destroy(_vocbase, _qId);
+      res = query->engine()->shutdown(errorCode); // pass errorCode to shutdown
+      _queryRegistry->destroy(_vocbase, _qId, errorCode);
     }
     catch (...) {
       LOG_ERROR("shutdown lead to an exception");
@@ -850,6 +852,7 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
     }
     answerBody("error", res == TRI_ERROR_NO_ERROR ? Json(false) : Json(true))
               ("code", Json(static_cast<double>(res)));
+    answerBody.set("stats", query->getStats());
   }
   else {
     LOG_ERROR("Unknown operation!");

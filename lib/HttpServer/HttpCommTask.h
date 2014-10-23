@@ -146,7 +146,7 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief handles CORS options
+/// @brief handles request
 ////////////////////////////////////////////////////////////////////////////////
 
         void processRequest (uint32_t compatibility) {
@@ -216,8 +216,6 @@ namespace triagens {
 
           // synchronous request
           else {
-            this->RequestStatisticsAgent::transfer(handler);
-
             ok = this->_server->handleRequest(this, handler);
           }
 
@@ -348,7 +346,6 @@ namespace triagens {
 
               this->_sinceCompactification++;
             }
-
 
             const char * ptr = this->_readBuffer->c_str() + this->_readPosition;
             const char * end = this->_readBuffer->end() - 3;
@@ -569,8 +566,10 @@ namespace triagens {
               }
             }
             else {
-              if (this->_readBuffer->c_str() < end) {
-                this->_readPosition = end - this->_readBuffer->c_str();
+              size_t l = (this->_readBuffer->end() - this->_readBuffer->c_str());
+
+              if (this->_startPosition + 4 <= l) {
+                this->_readPosition = l - 4;
               }
             }
           }
