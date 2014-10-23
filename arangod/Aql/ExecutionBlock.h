@@ -1432,13 +1432,6 @@ namespace triagens {
 
         size_t skipSome (size_t, size_t);
         
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _gatherBlockPos: pairs (i, _pos in _buffer.at(i)), i.e. the same as
-/// the usual _pos but one pair per dependency
-////////////////////////////////////////////////////////////////////////////////
-        
-        std::vector<std::pair<size_t, size_t>> _gatherBlockPos;
-
       protected:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1456,6 +1449,13 @@ namespace triagens {
         std::vector<std::deque<AqlItemBlock*>> _gatherBlockBuffer; 
 
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _gatherBlockPos: pairs (i, _pos in _buffer.at(i)), i.e. the same as
+/// the usual _pos but one pair per dependency
+////////////////////////////////////////////////////////////////////////////////
+        
+        std::vector<std::pair<size_t, size_t>> _gatherBlockPos;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _atDep: currently pulling blocks from _dependencies.at(_atDep),
