@@ -1192,7 +1192,7 @@ void ArangoServer::closeDatabases () {
   // stop the replication appliers so all replication transactions can end
   TRI_StopReplicationAppliersServer(_server);
 
-  // enfore logfile manager shutdown so we are sure no one else will
+  // enforce logfile manager shutdown so we are sure no one else will
   // write to the logs
   wal::LogfileManager::instance()->stop();
 

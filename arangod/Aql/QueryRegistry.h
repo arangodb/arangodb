@@ -65,8 +65,7 @@ namespace triagens {
 /// query will be deleted if it is not opened for that amount of time.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void insert (TRI_vocbase_t* vocbase,
-                     QueryId id,
+        void insert (QueryId id,
                      Query* query,
                      double ttl = 3600.0);
 
@@ -99,9 +98,9 @@ namespace triagens {
 /// from the same thread that has opened it!
 ////////////////////////////////////////////////////////////////////////////////
 
-        void destroy (std::string const& vocbase, QueryId id);
+        void destroy (std::string const& vocbase, QueryId id, int errorCode);
         
-        void destroy (TRI_vocbase_t* vocbase, QueryId id);
+        void destroy (TRI_vocbase_t* vocbase, QueryId id, int errorCode);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief expireQueries, this deletes all expired queries from the registry
