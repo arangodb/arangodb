@@ -82,6 +82,7 @@ Expression::Expression (Ast* ast,
 Expression::~Expression () {
   if (_type == V8) {
     delete _func;
+    _func = nullptr;
   }
   else if (_type == JSON) {
     TRI_ASSERT(_data != nullptr);
