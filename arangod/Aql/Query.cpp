@@ -472,6 +472,7 @@ QueryResult Query::prepare (QueryRegistry* registry) {
       parser->ast()->variables()->fromJson(_queryJson);
       // creating the plan may have produced some collections
       // we need to add them to the transaction now (otherwise the query will fail)
+
       int res = _trx->addCollectionList(_collections.collections());
       
       if (res == TRI_ERROR_NO_ERROR) {
@@ -973,7 +974,7 @@ void Query::enterState (ExecutionState state) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string Query::getStateString () const {
-  return "in state " + StateNames[_state] + ": ";
+  return "in state '" + StateNames[_state] + "': ";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
