@@ -161,7 +161,8 @@ ExecutionEngine::ExecutionEngine (Query* query)
   : _stats(),
     _blocks(),
     _root(nullptr),
-    _query(query) {
+    _query(query),
+    _wasShutdown(false) {
 
   _blocks.reserve(8);
 }
@@ -171,8 +172,11 @@ ExecutionEngine::ExecutionEngine (Query* query)
 ////////////////////////////////////////////////////////////////////////////////
 
 ExecutionEngine::~ExecutionEngine () {
-  if (_root != nullptr) {
-    _root->shutdown();
+  try {
+    shutdown(TRI_ERROR_INTERNAL);
+  }
+  catch (...) {
+    // shutdown can throw - ignore it in the destructor
   }
 
   for (auto it = _blocks.begin(); it != _blocks.end(); ++it) {
@@ -333,39 +337,25 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       if ((*it).location == COORDINATOR) {
         // create a coordinator-based engine
         engine = buildEngineCoordinator((*it), queryIds);
-
         TRI_ASSERT(engine != nullptr);
+        
+        auto plan = engine->getQuery()->plan();
+        TRI_ASSERT(plan != nullptr);
+        TRI_ASSERT(plan->empty());
+
 
         if ((*it).id > 0) {
-          Query* otherQuery = query->clone(PART_DEPENDENT);
-          otherQuery->engine(engine);
-          
-          int res = otherQuery->trx()->begin();
-          if (res != TRI_ERROR_NO_ERROR) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(res, "could not begin transaction");
-          }
-
-          auto* newPlan = new ExecutionPlan(otherQuery->ast());
-          otherQuery->setPlan(newPlan);
-    
-          // clone all variables 
-          for (auto it2 : query->ast()->variables()->variables(true)) {
-            auto var = query->ast()->variables()->getVariable(it2.first);
-            TRI_ASSERT(var != nullptr);
-            otherQuery->ast()->variables()->createVariable(var);
-          }
-
           ExecutionNode const* current = (*it).nodes.front();
           ExecutionNode* previous = nullptr;
 
           // TODO: fix instanciation here as in DBserver case
           while (current != nullptr) {
-            auto clone = current->clone(newPlan, false, true);
-            newPlan->registerNode(clone);
+            auto clone = current->clone(plan, false, true);
+            plan->registerNode(clone);
         
             if (previous == nullptr) {
               // set the root node
-              newPlan->root(clone);
+              plan->root(clone);
             }
             else {
               previous->addDependency(clone);
@@ -380,16 +370,13 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
             current = deps[0];
           }
 
-          // TODO: test if this is necessary or does harm
-          // newPlan->setVarUsageComputed();
-      
           // we need to instanciate this engine in the registry
 
           // create a remote id for the engine that we can pass to
           // the plans to be created for the DBServers
           id = TRI_NewTickServer();
 
-          queryRegistry->insert(otherQuery->vocbase(), id, otherQuery, 3600.0);
+          queryRegistry->insert(id, engine->getQuery(), 3600.0);
         }
       }
       else {
@@ -576,7 +563,11 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
   ExecutionEngine* buildEngineCoordinator (EngineInfo& info,
                                            std::unordered_map<std::string, std::string> const& queryIds) {
-    std::unique_ptr<ExecutionEngine> engine(new ExecutionEngine(query));
+    // need a new query instance on the coordinator
+    auto clone = query->clone(PART_DEPENDENT, false);
+
+    std::unique_ptr<ExecutionEngine> engine(new ExecutionEngine(clone));
+    clone->engine(engine.get());
 
     std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
     RemoteNode* remoteNode = nullptr;
@@ -615,19 +606,21 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         }
       }
 
-      if (nodeType == ExecutionNode::GATHER ||
-          nodeType == ExecutionNode::DISTRIBUTE) {
-        // we found a gather or distribute node
+      if (nodeType == ExecutionNode::GATHER /* ||
+          nodeType == ExecutionNode::DISTRIBUTE */) {
+        // we found a gather node
         TRI_ASSERT(remoteNode != nullptr);
 
-        // now we'll create a remote node for each shard and add it to the gather|distribute node
+        // now we'll create a remote node for each shard and add it to the gather node
         Collection const* collection = nullptr;
         if (nodeType == ExecutionNode::GATHER) {
           collection = static_cast<GatherNode const*>((*en))->collection();
         }
+        /* TODO: do we need to handle distribute nodes here, too??
         else if (nodeType == ExecutionNode::DISTRIBUTE) {
           collection = static_cast<DistributeNode const*>((*en))->collection();
         }
+        */
         else {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
         }

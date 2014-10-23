@@ -131,10 +131,15 @@ namespace triagens {
 /// @brief shutdown, will be called exactly once for the whole query
 ////////////////////////////////////////////////////////////////////////////////
 
-        int shutdown () {
-          if (_root != nullptr) {
-            return _root->shutdown();
+        int shutdown (int errorCode) {
+          if (_root != nullptr && ! _wasShutdown) {
+            // prevent a duplicate shutdown
+            int res = _root->shutdown(errorCode);
+            _wasShutdown = true;
+
+            return res;
           }
+
           return TRI_ERROR_NO_ERROR;
         }
 
@@ -236,6 +241,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         Query*                       _query;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not shutdown() was executed
+////////////////////////////////////////////////////////////////////////////////
+
+        bool                         _wasShutdown;
     };
 
   }

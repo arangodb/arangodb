@@ -151,7 +151,7 @@ void RestAqlHandler::createQueryFromJson () {
   _qId = TRI_NewTickServer();
   
   try {
-    _queryRegistry->insert(_vocbase, _qId, query, ttl);
+    _queryRegistry->insert(_qId, query, ttl);
   }
   catch (...) {
     LOG_ERROR("could not keep query in registry");
@@ -336,7 +336,7 @@ void RestAqlHandler::createQueryFromString () {
 
   _qId = TRI_NewTickServer();
   try {
-    _queryRegistry->insert(_vocbase, _qId, query, ttl);
+    _queryRegistry->insert(_qId, query, ttl);
   }
   catch (...) {
     LOG_ERROR("could not keep query in registry");
@@ -416,14 +416,10 @@ void RestAqlHandler::useQuery (std::string const& operation,
   TRI_ASSERT(_qId > 0);
   TRI_ASSERT(query->engine() != nullptr);
 
-  Json queryJson;
-  if (operation != "shutdown") {
-    // /shutdown does not require a body
-    queryJson = Json(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
-    if (queryJson.isEmpty()) {
-      _queryRegistry->close(_vocbase, _qId);
-      return;
-    }
+  Json queryJson = Json(TRI_UNKNOWN_MEM_ZONE, parseJsonBody());
+  if (queryJson.isEmpty()) {
+    _queryRegistry->close(_vocbase, _qId);
+    return;
   }
 
   try {
@@ -747,6 +743,7 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
     else {
       try {
         answerBody = items->toJson(query->trx());
+        answerBody.set("stats", query->getStats());
         // std::cout << "ANSWERBODY: " << JsonHelper::toString(answerBody.json()) << "\n\n";        
       }
       catch (...) {
@@ -837,9 +834,11 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
   }
   else if (operation == "shutdown") {
     int res = TRI_ERROR_INTERNAL;
+    int errorCode = JsonHelper::getNumericValue<int>(queryJson.json(), "code", TRI_ERROR_INTERNAL);
+
     try {
-      res = query->engine()->shutdown();
-      _queryRegistry->destroy(_vocbase, _qId);
+      res = query->engine()->shutdown(errorCode); // pass errorCode to shutdown
+      _queryRegistry->destroy(_vocbase, _qId, errorCode);
     }
     catch (...) {
       LOG_ERROR("shutdown lead to an exception");

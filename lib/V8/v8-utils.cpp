@@ -2838,7 +2838,7 @@ static v8::Handle<v8::Value> JS_PBKDF2 (v8::Arguments const& argv) {
 
   // extract arguments
   if (argv.Length() < 4 || ! argv[0]->IsString() || ! argv[1]->IsString() || ! argv[2]->IsNumber() || ! argv[3]->IsNumber()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "PBKDF2(<salt>, <password>, <iterations>, <keyLength>, <algorithm>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "PBKDF2(<salt>, <password>, <iterations>, <keyLength>)");
   }
 
   string salt = TRI_ObjectToString(argv[0]);
