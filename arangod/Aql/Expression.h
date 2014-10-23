@@ -208,7 +208,7 @@ namespace triagens {
 /// multiple V8 contexts, it must be invalidated in between
 ////////////////////////////////////////////////////////////////////////////////
 
-        void invalidateExpression ();
+        void invalidate ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions

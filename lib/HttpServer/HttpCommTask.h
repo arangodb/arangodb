@@ -146,7 +146,7 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief handles CORS options
+/// @brief handles request
 ////////////////////////////////////////////////////////////////////////////////
 
         void processRequest (uint32_t compatibility) {
@@ -216,8 +216,6 @@ namespace triagens {
 
           // synchronous request
           else {
-            this->RequestStatisticsAgent::transfer(handler);
-
             ok = this->_server->handleRequest(this, handler);
           }
 
