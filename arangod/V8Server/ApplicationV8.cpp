@@ -356,6 +356,7 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (std::string const& name,
   }
 
   LOG_TRACE("found unused V8 context");
+  TRI_ASSERT(! _freeContexts[name].empty());
 
   V8Context* context = _freeContexts[name].back();
 
@@ -368,6 +369,9 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (std::string const& name,
   context->_locker = new v8::Locker(context->_isolate);
   context->_isolate->Enter();
   context->_context->Enter();
+
+  TRI_ASSERT(context->_locker->IsLocked(context->_isolate));
+  TRI_ASSERT(v8::Locker::IsLocked(context->_isolate));
 
   // set the current database
   v8::HandleScope scope;
@@ -405,6 +409,9 @@ void ApplicationV8::exitContext (V8Context* context) {
   double lastGc = gc->getLastGcStamp();
 
   CONDITION_LOCKER(guard, _contextCondition);
+      
+  TRI_ASSERT(context->_locker->IsLocked(context->_isolate));
+  TRI_ASSERT(v8::Locker::IsLocked(context->_isolate));
 
   // update data for later garbage collection
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(context->_isolate->GetData());
@@ -445,6 +452,9 @@ void ApplicationV8::exitContext (V8Context* context) {
       context->_isolate->Enter();
       context->_context->Enter();
 
+      TRI_ASSERT(context->_locker->IsLocked(context->_isolate));
+      TRI_ASSERT(v8::Locker::IsLocked(context->_isolate));
+
       context->handleGlobalContextMethods();
 
       context->_context->Exit();
@@ -480,6 +490,7 @@ void ApplicationV8::exitContext (V8Context* context) {
     _busyContexts[name].erase(context);
 
     delete context->_locker;
+    TRI_ASSERT(! v8::Locker::IsLocked(context->_isolate));
 
     guard.broadcast();
   }
@@ -502,6 +513,9 @@ void ApplicationV8::exitContext (V8Context* context) {
 
       context->_isolate->Enter();
       context->_context->Enter();
+      
+      TRI_ASSERT(context->_locker->IsLocked(context->_isolate));
+      TRI_ASSERT(v8::Locker::IsLocked(context->_isolate));
 
       v8::V8::LowMemoryNotification();
       while (! v8::V8::IdleNotification()) {
@@ -608,6 +622,9 @@ void ApplicationV8::collectGarbage () {
       context->_locker = new v8::Locker(context->_isolate);
       context->_isolate->Enter();
       context->_context->Enter();
+      
+      TRI_ASSERT(context->_locker->IsLocked(context->_isolate));
+      TRI_ASSERT(v8::Locker::IsLocked(context->_isolate));
 
       v8::V8::LowMemoryNotification();
       while (! v8::V8::IdleNotification()) {
@@ -1343,6 +1360,7 @@ void ApplicationV8::shutdownV8Instance (const string& name, size_t i) {
   if (v8g != nullptr) {
     if (v8g->_transactionContext != nullptr) {
       delete static_cast<V8TransactionContext*>(v8g->_transactionContext);
+      v8g->_transactionContext = nullptr;
     }
     delete v8g;
   }
