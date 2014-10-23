@@ -3856,6 +3856,7 @@ AqlItemBlock* BlockWithClients::getSomeForShard (size_t atLeast,
                                                  std::string const& shardId) {
   ENTER_BLOCK
   _ignoreInitCursor = false;
+  _ignoreShutdown = false;
   size_t skipped = 0;
   AqlItemBlock* result = nullptr;
   int out = getOrSkipSomeForShard(atLeast, atMost, false, result, skipped, shardId);
@@ -3875,6 +3876,7 @@ size_t BlockWithClients::skipSomeForShard (size_t atLeast,
                                            std::string const& shardId) {
   ENTER_BLOCK
   _ignoreInitCursor = false;
+  _ignoreShutdown = false;
   size_t skipped = 0;
   AqlItemBlock* result = nullptr;
   int out = getOrSkipSomeForShard(atLeast, atMost, true, result, skipped, shardId);
@@ -3993,6 +3995,7 @@ bool ScatterBlock::hasMoreForShard (std::string const& shardId) {
 
   // TODO is this correct? 
   _ignoreInitCursor = false;
+  _ignoreShutdown = false;
 
   std::pair<size_t,size_t> pos = _posForClient.at(clientId); 
   // (i, j) where i is the position in _buffer, and j is the position in
@@ -4187,6 +4190,7 @@ bool DistributeBlock::hasMoreForShard (std::string const& shardId) {
 
   // TODO is this correct? 
   _ignoreInitCursor = false;
+  _ignoreShutdown = false;
         
   if (! _distBuffer.at(clientId).empty()) {
     return true;
