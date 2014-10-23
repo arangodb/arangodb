@@ -46,22 +46,24 @@ using namespace triagens::aql;
 QueryRegistry::~QueryRegistry () {
   std::vector<std::pair<std::string, QueryId>> toDelete;
 
-  WRITE_LOCKER(_lock);
+  {
+    WRITE_LOCKER(_lock);
 
-  try {
-    for (auto& x : _queries) {
-      // x.first is a TRI_vocbase_t* and
-      // x.second is a std::unordered_map<QueryId, QueryInfo*>
-      for (auto& y : x.second) {
-        // y.first is a QueryId and
-        // y.second is a QueryInfo*
-        toDelete.emplace_back(x.first, y.first);
+    try {
+      for (auto& x : _queries) {
+        // x.first is a TRI_vocbase_t* and
+        // x.second is a std::unordered_map<QueryId, QueryInfo*>
+        for (auto& y : x.second) {
+          // y.first is a QueryId and
+          // y.second is a QueryInfo*
+          toDelete.emplace_back(x.first, y.first);
+        }
       }
     }
-  }
-  catch (...) {
-    // the emplace_back() above might fail
-    // prevent throwing exceptions in the destructor
+    catch (...) {
+      // the emplace_back() above might fail
+      // prevent throwing exceptions in the destructor
+    }
   }
 
   for (auto& p : toDelete) {
