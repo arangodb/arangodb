@@ -864,7 +864,12 @@ void Query::exitContext () {
 ////////////////////////////////////////////////////////////////////////////////
 
 triagens::basics::Json Query::getStats() {
-  return _engine->_stats.toJson();
+  if (_engine) {
+    return _engine->_stats.toJson();
+  }
+  else {
+    return ExecutionStats::toJsonStatic();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

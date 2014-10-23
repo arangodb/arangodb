@@ -4602,16 +4602,17 @@ AqlItemBlock* RemoteBlock::getSome (size_t atLeast,
   Json responseBodyJson(TRI_UNKNOWN_MEM_ZONE,
                         TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
                                        responseBodyBuf.begin()));
-  if (JsonHelper::getBooleanValue(responseBodyJson.json(), "exhausted", true)) {
-    return nullptr;
-  }
-    
-  auto items = new triagens::aql::AqlItemBlock(responseBodyJson);
 
   ExecutionStats newStats(responseBodyJson.get("stats"));
   
   _engine->_stats.addDelta(_deltaStats, newStats);
   _deltaStats = newStats;
+
+  if (JsonHelper::getBooleanValue(responseBodyJson.json(), "exhausted", true)) {
+    return nullptr;
+  }
+    
+  auto items = new triagens::aql::AqlItemBlock(responseBodyJson);
 
   return items;
   LEAVE_BLOCK
