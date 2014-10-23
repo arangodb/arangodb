@@ -146,7 +146,6 @@ Query::Query (triagens::arango::ApplicationV8* applicationV8,
     _trx(nullptr),
     _engine(nullptr),
     _part(part),
-    _clusterStatus(-1),
     _contextOwnedByExterior(contextOwnedByExterior) {
 
   TRI_ASSERT(_vocbase != nullptr);
@@ -191,7 +190,6 @@ Query::Query (triagens::arango::ApplicationV8* applicationV8,
     _trx(nullptr),
     _engine(nullptr),
     _part(part),
-    _clusterStatus(-1),
     _contextOwnedByExterior(contextOwnedByExterior) {
 
   TRI_ASSERT(_vocbase != nullptr);
@@ -212,7 +210,7 @@ Query::Query (triagens::arango::ApplicationV8* applicationV8,
 ////////////////////////////////////////////////////////////////////////////////
 
 Query::~Query () {
-  cleanupPlanAndEngine();
+  cleanupPlanAndEngine(TRI_ERROR_INTERNAL); // abort the transaction
 
   if (_profile != nullptr) {
     delete _profile;
@@ -260,9 +258,12 @@ Query::~Query () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone a query
+/// note: as a side-effect, this will also create and start a transaction for
+/// the query
 ////////////////////////////////////////////////////////////////////////////////
 
-Query* Query::clone (QueryPart part) {
+Query* Query::clone (QueryPart part,
+                     bool withPlan) {
   TRI_json_t* options = nullptr;
 
   if (_options != nullptr) {
@@ -289,7 +290,10 @@ Query* Query::clone (QueryPart part) {
   }
 
   if (_plan != nullptr) {
-    clone->_plan = _plan->clone(*clone);
+    if (withPlan) {
+      // clone the existing plan
+      clone->setPlan(_plan->clone(*clone));
+    }
    
     // clone all variables 
     for (auto it : _ast->variables()->variables(true)) {
@@ -298,11 +302,23 @@ Query* Query::clone (QueryPart part) {
       clone->ast()->variables()->createVariable(var);
     }
   }
+    
+  if (clone->_plan == nullptr) {
+    // initialize an empty plan
+    clone->setPlan(new ExecutionPlan(ast()));
+  }
 
   TRI_ASSERT(clone->_trx == nullptr);
 
   clone->_trx = _trx->clone();  // A daughter transaction which does not
                                 // actually lock the collections
+
+  int res = clone->_trx->begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(res, "could not begin transaction");
+  }
+
   return clone.release();
 }
 
@@ -508,19 +524,19 @@ QueryResult Query::prepare (QueryRegistry* registry) {
     return QueryResult();
   }
   catch (triagens::arango::Exception const& ex) {
-    cleanupPlanAndEngine();
+    cleanupPlanAndEngine(ex.code());
     return QueryResult(ex.code(), getStateString() + ex.message());
   }
   catch (std::bad_alloc const&) {
-    cleanupPlanAndEngine();
+    cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY);
     return QueryResult(TRI_ERROR_OUT_OF_MEMORY, getStateString() + TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
   }
   catch (std::exception const& ex) {
-    cleanupPlanAndEngine();
+    cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
     return QueryResult(TRI_ERROR_INTERNAL, getStateString() + ex.what());
   }
   catch (...) {
-    cleanupPlanAndEngine();
+    cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
     return QueryResult(TRI_ERROR_INTERNAL, getStateString() + TRI_errno_string(TRI_ERROR_INTERNAL));
   }
 }
@@ -562,7 +578,7 @@ QueryResult Query::execute (QueryRegistry* registry) {
 
     _trx->commit();
    
-    cleanupPlanAndEngine();
+    cleanupPlanAndEngine(TRI_ERROR_NO_ERROR);
 
     enterState(FINALIZATION); 
 
@@ -577,19 +593,19 @@ QueryResult Query::execute (QueryRegistry* registry) {
     return result;
   }
   catch (triagens::arango::Exception const& ex) {
-    cleanupPlanAndEngine();
+    cleanupPlanAndEngine(ex.code());
     return QueryResult(ex.code(), getStateString() + ex.message());
   }
   catch (std::bad_alloc const&) {
-    cleanupPlanAndEngine();
+    cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY);
     return QueryResult(TRI_ERROR_OUT_OF_MEMORY, getStateString() + TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
   }
   catch (std::exception const& ex) {
-    cleanupPlanAndEngine();
+    cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
     return QueryResult(TRI_ERROR_INTERNAL, getStateString() + ex.what());
   }
   catch (...) {
-    cleanupPlanAndEngine();
+    cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
     return QueryResult(TRI_ERROR_INTERNAL, getStateString() + TRI_errno_string(TRI_ERROR_INTERNAL));
   }
 }
@@ -797,22 +813,6 @@ char* Query::registerString (std::string const& p,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not we are running in a cluster
-////////////////////////////////////////////////////////////////////////////////
-
-bool Query::isRunningInCluster () {
-  if (_clusterStatus == -1) {
-    // not yet determined
-    _clusterStatus = 0;
-    if (triagens::arango::ServerState::instance()->isRunningInCluster()) {
-      _clusterStatus = 1;
-    }
-  }
-  TRI_ASSERT(_clusterStatus == 0 || _clusterStatus == 1);
-  return (_clusterStatus == 1);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief enter a V8 context
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -844,20 +844,26 @@ void Query::enterContext () {
 void Query::exitContext () {
   if (! _contextOwnedByExterior) {
     if (_context != nullptr) {
-      if (isRunningInCluster()) {
-        // unregister transaction and resolver in context
-        TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
-        auto ctx = static_cast<triagens::arango::V8TransactionContext*>(v8g->_transactionContext);
-        if (ctx != nullptr) {
-          ctx->unregisterTransaction();
-        }
-
-        _applicationV8->exitContext(_context);
-        _context = nullptr;
+      // unregister transaction and resolver in context
+      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+      auto ctx = static_cast<triagens::arango::V8TransactionContext*>(v8g->_transactionContext);
+      if (ctx != nullptr) {
+        ctx->unregisterTransaction();
       }
+
+      _applicationV8->exitContext(_context);
+      _context = nullptr;
     }
     TRI_ASSERT(_context == nullptr);
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns statistics for current query.
+////////////////////////////////////////////////////////////////////////////////
+
+triagens::basics::Json Query::getStats() {
+  return _engine->_stats.toJson();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -974,9 +980,15 @@ std::string Query::getStateString () const {
 /// @brief cleanup plan and engine for current query
 ////////////////////////////////////////////////////////////////////////////////
 
-void Query::cleanupPlanAndEngine () {
+void Query::cleanupPlanAndEngine (int errorCode) {
   if (_engine != nullptr) {
-    _engine->shutdown();
+    try {
+      _engine->shutdown(errorCode); 
+    }
+    catch (...) {
+      // shutdown may fail but we must not throw here 
+      // (we're also called from the destructor)
+    }
     delete _engine;
     _engine = nullptr;
   }
