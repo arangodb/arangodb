@@ -66,6 +66,8 @@ QueryRegistry::~QueryRegistry () {
     }
   }
 
+  // note: destroy() will acquire _lock itself, so it must be called without
+  // holding the lock
   for (auto& p : toDelete) {
     try {  // just in case
       destroy(p.first, p.second, TRI_ERROR_TRANSACTION_ABORTED);
