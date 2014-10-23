@@ -3345,15 +3345,18 @@ int GatherBlock::shutdown () {
       return res;
     }
   }
-
-  for (std::deque<AqlItemBlock*>& x : _gatherBlockBuffer) {
-    for (AqlItemBlock* y: x) {
-      delete y;
-    }
-    x.clear();
-  }
-  _gatherBlockBuffer.clear();
   
+  if (! _isSimple) {
+    for (std::deque<AqlItemBlock*>& x : _gatherBlockBuffer) {
+      for (AqlItemBlock* y: x) {
+        delete y;
+      }
+      x.clear();
+    }
+    _gatherBlockBuffer.clear();
+    _gatherBlockPos.clear();
+  }
+    
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -3664,6 +3667,7 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
 
 bool GatherBlock::getBlock (size_t i, size_t atLeast, size_t atMost) {
   TRI_ASSERT(0 <= i && i < _dependencies.size());
+  TRI_ASSERT(! _isSimple);
   AqlItemBlock* docs = _dependencies.at(i)->getSome(atLeast, atMost);
   if (docs != nullptr) {
     try {
@@ -4137,11 +4141,12 @@ int DistributeBlock::getOrSkipSomeForShard (size_t atLeast,
   freeCollector();
   
   // check if we can pop from the front of _buffer
-  size_t smallestIndex = 0;
+  size_t smallestIndex = _buffer.size(); 
+  // in case we popped everything from _distBuffer
 
   for (size_t i = 0; i < _nrClients; i++) {
     if (! _distBuffer.at(i).empty()) {
-      size_t index = _distBuffer.at(i).at(0).first;
+      size_t index = _distBuffer.at(i).front().first;
       if (index == 0) {
         return TRI_ERROR_NO_ERROR; // don't have to do any clean-up
       }
