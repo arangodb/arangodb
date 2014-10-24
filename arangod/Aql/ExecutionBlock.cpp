@@ -55,6 +55,19 @@ using StringBuffer = triagens::basics::StringBuffer;
 // -----------------------------------------------------------------------------
 // --SECTION--                                            struct AggregatorGroup
 // -----------------------------------------------------------------------------
+      
+AggregatorGroup::AggregatorGroup ()
+  : firstRow(0),
+    lastRow(0),
+    rowsAreValid(false) {
+}
+
+AggregatorGroup::~AggregatorGroup () {
+  //reset();
+  for (auto it = groupBlocks.begin(); it != groupBlocks.end(); ++it) {
+    delete (*it);
+  }
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -2389,11 +2402,11 @@ int AggregateBlock::getOrSkipSome (size_t atLeast,
         _currentGroup.collections[i] = cur->getDocumentCollection((*it).second);
         ++i;
       }
-      if(! skipping){
+      if (! skipping) {
         _currentGroup.setFirstRow(_pos);
       }
     }
-    if(! skipping){
+    if (! skipping) {
       _currentGroup.setLastRow(_pos);
     }
 
