@@ -29,11 +29,6 @@
 
 #include "index-operator.h"
 
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   SELECT DOCUMENT
-// -----------------------------------------------------------------------------
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -51,9 +46,7 @@ TRI_index_operator_t* TRI_CreateIndexOperator (TRI_index_operator_type_e operato
                                                TRI_index_operator_t* rightOperand,
                                                TRI_json_t* parameters,
                                                TRI_shaper_t* shaper,
-                                               TRI_shaped_json_t* fields,
-                                               size_t numFields,
-                                               void* collection) {
+                                               size_t numFields) {
 
   TRI_index_operator_t* newOperator;
 
@@ -91,7 +84,7 @@ TRI_index_operator_t* TRI_CreateIndexOperator (TRI_index_operator_type_e operato
       newRelationOperator->base._type   = operatorType;
       newRelationOperator->base._shaper = shaper;
       newRelationOperator->_parameters  = parameters;
-      newRelationOperator->_fields      = fields;
+      newRelationOperator->_fields      = nullptr;
       newRelationOperator->_numFields   = numFields;
 
       newOperator = &(newRelationOperator->base);
@@ -126,9 +119,7 @@ void TRI_ClearIndexOperator(TRI_index_operator_t* indexOperator) {
 
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, logicalOperator);
       break;
-
     }
-
 
     case TRI_EQ_INDEX_OPERATOR:
     case TRI_GE_INDEX_OPERATOR:
@@ -222,7 +213,12 @@ TRI_index_operator_t* TRI_CopyIndexOperator (TRI_index_operator_t* indexOperator
         newRelationOperator->_fields = nullptr;
       }
 
-      newRelationOperator->_numFields    = oldRelationOperator->_numFields;
+      if (newRelationOperator->_fields != nullptr) {
+        newRelationOperator->_numFields = oldRelationOperator->_numFields;
+      }
+      else {
+        newRelationOperator->_numFields = 0;
+      }
 
       newOperator = &(newRelationOperator->base);
 
