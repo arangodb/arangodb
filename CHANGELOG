@@ -152,7 +152,15 @@ v2.3.0 (XXXX-XX-XX)
   storing JavaScript date objects in the database in a sensible manner.
 
 
-v2.2.6 (XXXX-XX-XX)
+v2.2.7 (XXXX-XX-XX)
+-------------------
+
+* fixed issue #1063: Docs: measuring unit of --wal.logfile-size?
+
+* fixed issue #1062: Docs: typo in 14.2 Example data 
+
+
+v2.2.6 (2014-10-20)
 -------------------
 
 * fixed issue #972: Compilation Issue
@@ -160,6 +168,17 @@ v2.2.6 (XXXX-XX-XX)
 * fixed issue #743: temporary directories are now unique and one can read
   off the tool that created them, if empty, they are removed atexit
 
+* Highly improved performance of all AQL GRAPH_* functions.
+
+* Orphan collections in general graphs can now be found via GRAPH_VERTICES
+  if either "any" or no direction is defined
+
+* Fixed documentation for AQL function GRAPH_NEIGHBORS.
+  The option "vertexCollectionRestriction" is meant to filter the target
+  vertices only, and should not filter the path.
+
+* Fixed a bug in GRAPH_NEIGHBORS which enforced only empty results
+  under certain conditions
 
 
 v2.2.5 (2014-10-09)
