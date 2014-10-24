@@ -1635,7 +1635,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
 /// Creates a new document collection named *collection-name*.
 /// If the collection name already exists or if the name format is invalid, an
 /// error is thrown. For more information on valid collection names please refer
-/// to the [naming conventions](../NamingConvention/README.md).
+/// to the [naming conventions](../NamingConventions/README.md).
 ///
 /// `db._create(collection-name, properties)`
 ///

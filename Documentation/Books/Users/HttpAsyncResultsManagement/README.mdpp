@@ -50,7 +50,8 @@ the server will reject the request with an HTTP 500 error.
 
 Finally, please note that it is not possible to cancel such a
 non-blocking request after the fact. If you need to cancel requests,
-use [Async Execution and later Result Retrieval](#async_execution_and_later_result_retrieval) and [HttpJobPutCancel](../HttpAsyncResultsManagement/README.html#managing_async_results_via_http) below.
+use [Async Execution and later Result Retrieval](#async_execution_and_later_result_retrieval) 
+and [HttpJobPutCancel](..#managing_async_results_via_http) below.
 
 !SUBSUBSECTION Async Execution and later Result Retrieval 
 
