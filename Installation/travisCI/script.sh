@@ -24,7 +24,7 @@ echo
 echo "$0: testing ArangoDB"
 
 ulimit -c unlimited # enable core files
-make jslint unittests-shell-server unittests-shell-server-ahuacatl unittests-http-server SKIP_RANGES=1 || exit 1
+make jslint unittests-shell-server unittests-shell-server-ahuacatl unittests-shell-server-aql unittests-http-server SKIP_RANGES=1 || exit 1
 
 echo
 echo "$0: done"
