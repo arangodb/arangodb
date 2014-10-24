@@ -256,7 +256,7 @@ void TRI_ReleaseConnectionStatistics (TRI_connection_statistics_t* statistics) {
     ConnectionFreeList._last = (TRI_statistics_entry_t*) statistics;
   }
 
-  ConnectionFreeList._last->_next = 0;
+  ConnectionFreeList._last->_next = nullptr;
 
   STATISTICS_UNLOCK(&ConnectionListLock);
 }
