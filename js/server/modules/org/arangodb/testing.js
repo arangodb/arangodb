@@ -244,14 +244,12 @@ function checkInstanceAlive(instanceInfo, options) {
         res.gdbHint = "Run debugger with 'gdb " + 
           storeArangodPath + 
           " /var/tmp/core*" + instanceInfo.pid.pid + "*'";
-        copy("bin/arangod", storeArangodPath);
+        require("fs").copy("bin/arangod", storeArangodPath);
       }
     }
     return ret;
   }
-  else {
-    return instanceInfo.kickstarter.isHealthy();
-  }
+  return instanceInfo.kickstarter.isHealthy();
 }
 
 function shutdownInstance (instanceInfo, options) {
