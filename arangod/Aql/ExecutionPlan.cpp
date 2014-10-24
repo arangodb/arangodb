@@ -600,6 +600,17 @@ ExecutionNode* ExecutionPlan::fromNodeLimit (ExecutionNode* previous,
 
   TRI_ASSERT(offset->type == NODE_TYPE_VALUE);
   TRI_ASSERT(count->type == NODE_TYPE_VALUE);
+    
+  if ((offset->value.type != VALUE_TYPE_INT && 
+       offset->value.type != VALUE_TYPE_DOUBLE) ||
+      offset->getIntValue() < 0) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, "LIMIT value is not a number or out of range");
+  }
+  if ((count->value.type != VALUE_TYPE_INT && 
+       count->value.type != VALUE_TYPE_DOUBLE) ||
+      count->getIntValue() < 0) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, "LIMIT value is not a number or out of range");
+  }
 
   auto en = registerNode(new LimitNode(this, nextId(), static_cast<size_t>(offset->getIntValue()), static_cast<size_t>(count->getIntValue())));
 

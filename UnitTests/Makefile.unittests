@@ -656,7 +656,7 @@ UNITTESTS_SERVER_AQL = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER_AQL))
 unittests-shell-server-aql:
 	@echo
 	@echo "================================================================================"
-	@echo "<< SHELL SERVER TESTS (AQL)                                              >>"
+	@echo "<< SHELL SERVER TESTS (AQL)                                                   >>"
 	@echo "================================================================================"
 	@echo
 

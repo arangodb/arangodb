@@ -407,11 +407,11 @@ AstNode* Ast::createNodeVariable (char const* name,
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::createNodeCollection (char const* name) {
-  if (name == nullptr || *name == '\0') {
+  if (name == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  if (! TRI_IsAllowedNameCollection(true, name)) {
+  if (*name == '\0' || ! TRI_IsAllowedNameCollection(true, name)) {
     _query->registerError(TRI_ERROR_ARANGO_ILLEGAL_NAME, name);
     return nullptr;
   }
