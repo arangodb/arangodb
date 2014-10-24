@@ -516,7 +516,7 @@ SkiplistIndex* SkiplistIndex_new (TRI_document_collection_t* document,
 
 static bool skiplistIndex_findHelperIntervalValid(
                         SkiplistIndex* skiplistIndex,
-                        TRI_skiplist_iterator_interval_t* interval) {
+                        TRI_skiplist_iterator_interval_t const* interval) {
   int compareResult;
   triagens::basics::SkipListNode* lNode;
   triagens::basics::SkipListNode* rNode;
@@ -632,8 +632,8 @@ static bool skiplistIndex_findHelperIntervalIntersectionValid (
 }
 
 static void SkiplistIndex_findHelper (SkiplistIndex* skiplistIndex,
-                                      TRI_vector_t* shapeList,
-                                      TRI_index_operator_t* indexOperator,
+                                      TRI_vector_t const* shapeList,
+                                      TRI_index_operator_t const* indexOperator,
                                       TRI_vector_t* resultIntervalList) {
   TRI_skiplist_index_key_t          values;
   TRI_vector_t                      leftResult;
@@ -648,8 +648,8 @@ static void SkiplistIndex_findHelper (SkiplistIndex* skiplistIndex,
   TRI_InitVector(&(rightResult), TRI_UNKNOWN_MEM_ZONE,
                  sizeof(TRI_skiplist_iterator_interval_t));
 
-  relationOperator  = (TRI_relation_index_operator_t*)(indexOperator);
-  logicalOperator   = (TRI_logical_index_operator_t*)(indexOperator);
+  relationOperator  = (TRI_relation_index_operator_t*) indexOperator;
+  logicalOperator   = (TRI_logical_index_operator_t*) indexOperator;
 
   switch (indexOperator->_type) {
     case TRI_EQ_INDEX_OPERATOR:
@@ -660,7 +660,6 @@ static void SkiplistIndex_findHelper (SkiplistIndex* skiplistIndex,
 
       values._fields     = relationOperator->_fields;
       values._numFields  = relationOperator->_numFields;
-
       break;   // this is to silence a compiler warning
     default: {
       // must not access relationOperator->xxx if the operator is not a
@@ -670,30 +669,11 @@ static void SkiplistIndex_findHelper (SkiplistIndex* skiplistIndex,
   }
 
   switch (indexOperator->_type) {
-
-    /*
-    case TRI_SL_OR_OPERATOR: {
-      SkiplistIndex_findHelper(skiplistIndex,shapeList,logicalOperator->_left,
-                               &leftResult);
-      SkiplistIndex_findHelper(skiplistIndex,shapeList,logicalOperator->_right,
-                               &leftResult);
-      i = 0;
-      while (i < leftResult._length - 1) {
-        tempLeftInterval  =  (TRI_skiplist_iterator_interval_t*)
-                             (TRI_AtVector(&leftResult, i));
-        tempRightInterval =  (TRI_skiplist_iterator_interval_t*)
-                             (TRI_AtVector(&leftResult, i + 1));
-        // if intervals intersect, optimise and start again
-      }
-      TRI_ASSERT(0);
-    }
-    */
-
     case TRI_AND_INDEX_OPERATOR: {
       SkiplistIndex_findHelper(skiplistIndex,shapeList,
-                               logicalOperator->_left,&leftResult);
+                               logicalOperator->_left, &leftResult);
       SkiplistIndex_findHelper(skiplistIndex,shapeList,
-                               logicalOperator->_right,&rightResult);
+                               logicalOperator->_right, &rightResult);
 
       for (size_t i = 0; i < leftResult._length; ++i) {
         for (size_t j = 0; j < rightResult._length; ++j) {
@@ -701,9 +681,9 @@ static void SkiplistIndex_findHelper (SkiplistIndex* skiplistIndex,
           TRI_skiplist_iterator_interval_t* tempRightInterval;
 
           tempLeftInterval  =  (TRI_skiplist_iterator_interval_t*)
-                               (TRI_AtVector(&leftResult, i));
+                               TRI_AtVector(&leftResult, i);
           tempRightInterval =  (TRI_skiplist_iterator_interval_t*)
-                               (TRI_AtVector(&rightResult, j));
+                               TRI_AtVector(&rightResult, j);
 
           if (skiplistIndex_findHelperIntervalIntersectionValid(
                             skiplistIndex,
@@ -753,7 +733,7 @@ static void SkiplistIndex_findHelper (SkiplistIndex* skiplistIndex,
       temp = skiplistIndex->skiplist->rightKeyLookup(&values);
       interval._rightEndPoint = temp->nextNode();
 
-      if (skiplistIndex_findHelperIntervalValid(skiplistIndex,&interval)) {
+      if (skiplistIndex_findHelperIntervalValid(skiplistIndex, &interval)) {
         TRI_PushBackVector(resultIntervalList, &interval);
       }
       return;
@@ -764,7 +744,7 @@ static void SkiplistIndex_findHelper (SkiplistIndex* skiplistIndex,
       temp = skiplistIndex->skiplist->leftKeyLookup(&values);
       interval._rightEndPoint = temp->nextNode();
 
-      if (skiplistIndex_findHelperIntervalValid(skiplistIndex,&interval)) {
+      if (skiplistIndex_findHelperIntervalValid(skiplistIndex, &interval)) {
         TRI_PushBackVector(resultIntervalList, &interval);
       }
       return;
@@ -775,7 +755,7 @@ static void SkiplistIndex_findHelper (SkiplistIndex* skiplistIndex,
       interval._leftEndPoint = temp;
       interval._rightEndPoint = skiplistIndex->skiplist->endNode();
 
-      if (skiplistIndex_findHelperIntervalValid(skiplistIndex,&interval)) {
+      if (skiplistIndex_findHelperIntervalValid(skiplistIndex, &interval)) {
         TRI_PushBackVector(resultIntervalList, &interval);
       }
       return;
@@ -786,7 +766,7 @@ static void SkiplistIndex_findHelper (SkiplistIndex* skiplistIndex,
       interval._leftEndPoint = temp;
       interval._rightEndPoint = skiplistIndex->skiplist->endNode();
 
-      if (skiplistIndex_findHelperIntervalValid(skiplistIndex,&interval)) {
+      if (skiplistIndex_findHelperIntervalValid(skiplistIndex, &interval)) {
         TRI_PushBackVector(resultIntervalList, &interval);
       }
       return;
@@ -801,8 +781,8 @@ static void SkiplistIndex_findHelper (SkiplistIndex* skiplistIndex,
 
 TRI_skiplist_iterator_t* SkiplistIndex_find (
                             SkiplistIndex* skiplistIndex,
-                            TRI_vector_t* shapeList,
-                            TRI_index_operator_t* indexOperator,
+                            TRI_vector_t const* shapeList,
+                            TRI_index_operator_t const* indexOperator,
                             bool reverse) {
   TRI_skiplist_iterator_t* results = static_cast<TRI_skiplist_iterator_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_iterator_t), true));
 

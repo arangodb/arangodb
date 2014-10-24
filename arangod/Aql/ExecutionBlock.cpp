@@ -1426,21 +1426,21 @@ void IndexRangeBlock::readEdgeIndex (IndexOrCondition const& ranges) {
 // && x.b == 2 && x.c > 3 && x.c <= 4). Then we do: 
 //
 //   TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, left, right, NULL, shaper,
-//     NULL, 2, NULL);
+//     2);
 //
 // where 
 //
 //   left =  TRI_CreateIndexOperator(TRI_GT_INDEX_OPERATOR, NULL, NULL, [1,2,3],
-//     shaper, NULL, 3, NULL)
+//     shaper, 3)
 //
 //   right =  TRI_CreateIndexOperator(TRI_LE_INDEX_OPERATOR, NULL, NULL, [1,2,4],
-//     shaper, NULL, 3, NULL)
+//     shaper, 3)
 //
 // If the final comparison is an equality (x.a == 1 && x.b == 2 && x.c ==3), then 
 // we just do:
 //
 //   TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, NULL, NULL, [1,2,3],
-//     shaper, NULL, 3, NULL)
+//     shaper, 3)
 //
 // It is necessary that values of the attributes are listed in the correct
 // order (i.e. <a> must be the first attribute indexed, and <b> must be the
@@ -1477,13 +1477,13 @@ void IndexRangeBlock::readSkiplistIndex (IndexOrCondition const& ranges) {
     else {                          // it's not an equality and so the final comparison 
       if (parameters.size() != 0) {
         skiplistOperator = TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, nullptr,
-            nullptr, parameters.copy().steal(), shaper, nullptr, i, nullptr);
+            nullptr, parameters.copy().steal(), shaper, i);
       }
       if (range._lowConst.isDefined()) {
         auto op = range._lowConst.toIndexOperator(false, parameters.copy(), shaper);
         if (skiplistOperator != nullptr) {
           skiplistOperator = TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, 
-              skiplistOperator, op, nullptr, shaper, nullptr, 2, nullptr);
+              skiplistOperator, op, nullptr, shaper, 2);
         } 
         else {
           skiplistOperator = op;
@@ -1493,7 +1493,7 @@ void IndexRangeBlock::readSkiplistIndex (IndexOrCondition const& ranges) {
         auto op = range._highConst.toIndexOperator(true, parameters.copy(), shaper);
         if (skiplistOperator != nullptr) {
           skiplistOperator = TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, 
-              skiplistOperator, op, nullptr, shaper, nullptr, 2, nullptr);
+              skiplistOperator, op, nullptr, shaper, 2);
         } 
         else {
           skiplistOperator = op;
@@ -1508,16 +1508,18 @@ void IndexRangeBlock::readSkiplistIndex (IndexOrCondition const& ranges) {
       Json hass(Json::List);
       hass.add(Json(Json::Null));
       skiplistOperator = TRI_CreateIndexOperator(TRI_GE_INDEX_OPERATOR, nullptr,
-          nullptr, hass.steal(), shaper, nullptr, 1, nullptr);
+          nullptr, hass.steal(), shaper, 1);
     }
     else {
       skiplistOperator = TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, nullptr,
-          nullptr, parameters.steal(), shaper, nullptr, i, nullptr);
+          nullptr, parameters.steal(), shaper, i);
     }
   }
 
   TRI_skiplist_iterator_t* skiplistIterator = TRI_LookupSkiplistIndex(idx, skiplistOperator, en->_reverse);
-  //skiplistOperator is deleted by the prev line 
+  if (skiplistOperator != nullptr) {
+    TRI_FreeIndexOperator(skiplistOperator);
+  }
   
   if (skiplistIterator == nullptr) {
     int res = TRI_errno();
