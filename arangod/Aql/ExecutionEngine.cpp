@@ -488,7 +488,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   triagens::basics::Json buildAllPlans (bool verbose) {
     ExecutionEngine* engine = nullptr;
     QueryId id              = 0;
-    int queryCount = 0;
+    //int queryCount = 0;
     std::unordered_map<std::string, std::string> queryIds;
     Json coordinatorPlans(triagens::basics::Json::List, 1);
     Json dbServerPlans(triagens::basics::Json::List, 1);
