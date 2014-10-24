@@ -65,15 +65,9 @@ namespace triagens {
       size_t lastRow;
       bool rowsAreValid;
 
-      AggregatorGroup ()
-        : firstRow(0),
-          lastRow(0),
-          rowsAreValid(false) {
-      }
+      AggregatorGroup ();
 
-      ~AggregatorGroup () {
-        reset();
-      }
+      ~AggregatorGroup ();
 
       void initialize (size_t capacity);
       void reset ();
