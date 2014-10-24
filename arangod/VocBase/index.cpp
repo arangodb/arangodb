@@ -1148,7 +1148,7 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator,
 
       if (relationOperator->_fields != nullptr) {
         for (size_t j = 0; j < relationOperator->_numFields; ++j) {
-          TRI_json_t* jsonObject = (TRI_json_t*) TRI_AtVector(&(relationOperator->_parameters->_value._objects), j);
+          TRI_json_t const* jsonObject = static_cast<TRI_json_t* const>(TRI_AtVector(&(relationOperator->_parameters->_value._objects), j));
 
           // find out if the search value is a list or an array
           if ((TRI_IsListJson(jsonObject) || TRI_IsArrayJson(jsonObject)) &&
@@ -1161,6 +1161,8 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator,
             // seen previous such objects
 
             // we still allow looking for list or array values using equality. this is safe.
+            TRI_Free(TRI_UNKNOWN_MEM_ZONE, relationOperator->_fields);
+            relationOperator->_fields = nullptr;
             return TRI_ERROR_BAD_PARAMETER;
           }
 
@@ -1174,6 +1176,8 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator,
           }
           else {
             // shape not found
+            TRI_Free(TRI_UNKNOWN_MEM_ZONE, relationOperator->_fields);
+            relationOperator->_fields = nullptr;
             return TRI_RESULT_ELEMENT_NOT_FOUND;
           }
         }
@@ -1201,7 +1205,9 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator,
 TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t* idx,
                                                   TRI_index_operator_t* slOperator,
                                                   bool reverse) {
-  TRI_skiplist_index_t* skiplistIndex = (TRI_skiplist_index_t*) idx;
+  if (slOperator == nullptr) {
+    return nullptr;
+  }
 
   // .........................................................................
   // fill the relation operators which may be embedded in the slOperator with
@@ -1209,6 +1215,7 @@ TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t* idx,
   // received from a user for query the skiplist.
   // .........................................................................
 
+  TRI_skiplist_index_t* skiplistIndex = (TRI_skiplist_index_t*) idx;
   int errorResult = FillLookupSLOperator(slOperator, skiplistIndex->base._collection);
 
   if (errorResult != TRI_ERROR_NO_ERROR) {
@@ -1222,12 +1229,6 @@ TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t* idx,
                                       &skiplistIndex->_paths,
                                       slOperator, 
                                       reverse);
-
-  // .........................................................................
-  // we must deallocate any memory we allocated in FillLookupSLOperator
-  // .........................................................................
-
-  TRI_FreeIndexOperator(slOperator);
 
   return iteratorResult;
 }

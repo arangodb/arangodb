@@ -586,7 +586,7 @@ function TaskSuite () {
         command: command, 
         period: 1,
         offset: 0,
-        params: 23 
+        params: 17 
       });
 
       assertEqual("UnitTests1", task.id);
@@ -600,7 +600,7 @@ function TaskSuite () {
       tasks.unregister(task);
 
       assertTrue(db[cn].count() > 0);
-      assertTrue(db[cn].byExample({ value: 23 }).toArray().length > 0);
+      assertTrue(db[cn].byExample({ value: 17 }).toArray().length > 0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -637,7 +637,6 @@ function TaskSuite () {
       tasks.unregister(task);
 
       assertTrue(db[cn].count() > 0);
-      assertTrue(db[cn].byExample({ value: 23 }).toArray().length === 0);
       assertTrue(db[cn].byExample({ value: 42 }).toArray().length > 0);
     }
 

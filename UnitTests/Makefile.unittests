@@ -34,6 +34,7 @@ unittests-brief: \
 	unittests-shell-client-readonly\
 	unittests-shell-server \
 	unittests-shell-server-ahuacatl \
+	unittests-shell-server-aql \
 	unittests-http-server \
 	unittests-ssl-server \
 	unittests-shell-client \
@@ -549,14 +550,14 @@ SHELL_SERVER_AHUACATL = @top_srcdir@/js/server/tests/ahuacatl-ranges.js \
 			@top_srcdir@/js/server/tests/ahuacatl-modify-noncluster.js \
 			@top_srcdir@/js/server/tests/ahuacatl-refaccess-variable.js \
 			@top_srcdir@/js/server/tests/ahuacatl-refaccess-attribute.js \
-		        @top_srcdir@/js/server/tests/ahuacatl-queries-simple.js \
-		        @top_srcdir@/js/server/tests/ahuacatl-queries-variables.js \
-		        @top_srcdir@/js/server/tests/ahuacatl-queries-geo.js \
-		        @top_srcdir@/js/server/tests/ahuacatl-queries-fulltext.js \
-		        @top_srcdir@/js/server/tests/ahuacatl-queries-collection.js \
-		        @top_srcdir@/js/server/tests/ahuacatl-queries-noncollection.js \
-		        @top_srcdir@/js/server/tests/ahuacatl-subquery.js \
-		        @top_srcdir@/js/server/tests/ahuacatl-operators.js
+			@top_srcdir@/js/server/tests/ahuacatl-queries-simple.js \
+			@top_srcdir@/js/server/tests/ahuacatl-queries-variables.js \
+			@top_srcdir@/js/server/tests/ahuacatl-queries-geo.js \
+			@top_srcdir@/js/server/tests/ahuacatl-queries-fulltext.js \
+			@top_srcdir@/js/server/tests/ahuacatl-queries-collection.js \
+			@top_srcdir@/js/server/tests/ahuacatl-queries-noncollection.js \
+			@top_srcdir@/js/server/tests/ahuacatl-subquery.js \
+			@top_srcdir@/js/server/tests/ahuacatl-operators.js
 
 SHELL_SERVER_AHUACATL_EXTENDED = \
 			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-01.js \
@@ -596,6 +597,77 @@ unittests-shell-server-ahuacatl:
 
 	@rm -rf "$(VOCDIR)"
 	@echo
+
+################################################################################
+### @brief SHELL SERVER TESTS (AQL)
+################################################################################
+
+SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
+			@top_srcdir@/js/server/tests/aql-bind.js \
+			@top_srcdir@/js/server/tests/aql-complex.js \
+			@top_srcdir@/js/server/tests/aql-cross.js \
+			@top_srcdir@/js/server/tests/aql-edges-noncluster.js \
+			@top_srcdir@/js/server/tests/aql-escaping.js \
+			@top_srcdir@/js/server/tests/aql-explain-noncluster.js \
+			@top_srcdir@/js/server/tests/aql-functions.js \
+			@top_srcdir@/js/server/tests/aql-general-graph.js \
+			@top_srcdir@/js/server/tests/aql-graph.js \
+			@top_srcdir@/js/server/tests/aql-hash-noncluster.js \
+			@top_srcdir@/js/server/tests/aql-logical.js \
+			@top_srcdir@/js/server/tests/aql-modify-noncluster.js \
+			@top_srcdir@/js/server/tests/aql-modify-noncluster-serializetest.js \
+			@top_srcdir@/js/server/tests/aql-operators.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-dynamic-bounds.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-rule-interchange-adjacent-enumerations.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-rule-move-calculations-up.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-rule-move-filters-up.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-redundant-calculations.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-redundant-sorts.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-unnecessary-calculations.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-unnecessary-filters.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-rule-use-index-for-sort.js \
+			@top_srcdir@/js/server/tests/aql-parse.js \
+			@top_srcdir@/js/server/tests/aql-primary-index-noncluster.js \
+			@top_srcdir@/js/server/tests/aql-queries-collection.js \
+			@top_srcdir@/js/server/tests/aql-queries-fulltext.js \
+			@top_srcdir@/js/server/tests/aql-queries-geo.js \
+			@top_srcdir@/js/server/tests/aql-queries-noncollection.js \
+			@top_srcdir@/js/server/tests/aql-queries-optimiser-in.js \
+			@top_srcdir@/js/server/tests/aql-queries-optimiser.js \
+			@top_srcdir@/js/server/tests/aql-queries-optimiser-limit-noncluster.js \
+			@top_srcdir@/js/server/tests/aql-queries-optimiser-ref.js \
+			@top_srcdir@/js/server/tests/aql-queries-optimiser-sort.js \
+			@top_srcdir@/js/server/tests/aql-queries-simple.js \
+			@top_srcdir@/js/server/tests/aql-queries-variables.js \
+			@top_srcdir@/js/server/tests/aql-range.js \
+			@top_srcdir@/js/server/tests/aql-ranges.js \
+			@top_srcdir@/js/server/tests/aql-refaccess-attribute.js \
+			@top_srcdir@/js/server/tests/aql-refaccess-variable.js \
+			@top_srcdir@/js/server/tests/aql-relational.js \
+			@top_srcdir@/js/server/tests/aql-skiplist-noncluster.js \
+			@top_srcdir@/js/server/tests/aql-subquery.js \
+			@top_srcdir@/js/server/tests/aql-ternary.js \
+			@top_srcdir@/js/server/tests/aql-variables.js 
+
+.PHONY: unittests-shell-server-aql
+
+UNITTESTS_SERVER_AQL = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER_AQL))
+
+unittests-shell-server-aql:
+	@echo
+	@echo "================================================================================"
+	@echo "<< SHELL SERVER TESTS (AQL)                                                   >>"
+	@echo "================================================================================"
+	@echo
+
+	@rm -rf "$(VOCDIR)"
+	@mkdir -p "$(VOCDIR)/databases"
+
+	@$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true --server.threads 2 $(UNITTESTS_SERVER_AQL) || test "x$(FORCE)" == "x1"
+
+	@rm -rf "$(VOCDIR)"
+	@echo
+
 
 ################################################################################
 ### @brief SHELL CLIENT TESTS
