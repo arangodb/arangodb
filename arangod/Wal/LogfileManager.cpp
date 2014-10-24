@@ -231,7 +231,7 @@ void LogfileManager::setupOptions (std::map<std::string, triagens::basics::Progr
     ("wal.historic-logfiles", &_historicLogfiles, "maximum number of historic logfiles to keep after collection")
     ("wal.ignore-logfile-errors", &_ignoreLogfileErrors, "ignore logfile errors. this will read recoverable data from corrupted logfiles but ignore any unrecoverable data")
     ("wal.ignore-recovery-errors", &_ignoreRecoveryErrors, "continue recovery even if re-applying operations fails")
-    ("wal.logfile-size", &_filesize, "size of each logfile")
+    ("wal.logfile-size", &_filesize, "size of each logfile (in bytes)")
     ("wal.open-logfiles", &_maxOpenLogfiles, "maximum number of parallel open logfiles")
     ("wal.reserve-logfiles", &_reserveLogfiles, "maximum number of reserve logfiles to maintain")
     ("wal.slots", &_numberOfSlots, "number of logfile slots to use")
