@@ -361,7 +361,7 @@
 
     delete timers[label];
 
-    logGroup('%s: %dms', label, duration);
+    logGroup("info", sprintf('%s: %dms', label, duration));
 };
 
 ////////////////////////////////////////////////////////////////////////////////
