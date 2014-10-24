@@ -3,6 +3,8 @@ v2.2.7 (XXXX-XX-XX)
 
 * fixed issue #1059: bug in js module console
 
+* fixed issue #1056: "fs": zip functions fail with passwords
+
 * fixed issue #1063: Docs: measuring unit of --wal.logfile-size?
 
 * fixed issue #1062: Docs: typo in 14.2 Example data 

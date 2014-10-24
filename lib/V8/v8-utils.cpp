@@ -1296,10 +1296,10 @@ static v8::Handle<v8::Value> JS_MakeDirectory (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unzips a file
 /// @startDocuBlock JS_Unzip
-/// `fs.unzip(filename, outpath, skipPaths, overwrite, password)`
+/// `fs.unzipFile(filename, outpath, skipPaths, overwrite, password)`
 ///
 /// Unzips the zip file specified by *filename* into the path specified by
-/// * outpath*. Overwrites any existing target files if *overwrite* is set
+/// *outpath*. Overwrites any existing target files if *overwrite* is set
 /// to *true*.
 ///
 /// Returns *true* if the file was unzipped successfully.
@@ -1311,7 +1311,7 @@ static v8::Handle<v8::Value> JS_UnzipFile (v8::Arguments const& argv) {
 
   // extract arguments
   if (argv.Length() < 2) {
-    TRI_V8_EXCEPTION_USAGE(scope, "unzip(<filename>, <outPath>, <skipPaths>, <overwrite>, <password>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "unzipFile(<filename>, <outPath>, <skipPaths>, <overwrite>, <password>)");
   }
 
   const string filename = TRI_ObjectToString(argv[0]);
@@ -1327,14 +1327,11 @@ static v8::Handle<v8::Value> JS_UnzipFile (v8::Arguments const& argv) {
     overwrite = TRI_ObjectToBoolean(argv[3]);
   }
 
-  const char* p;
+  const char* p = nullptr;
   string password;
   if (argv.Length() > 4) {
     password = TRI_ObjectToString(argv[4]);
     p = password.c_str();
-  }
-  else {
-    p = NULL;
   }
 
   int res = TRI_UnzipFile(filename.c_str(), outPath.c_str(), skipPaths, overwrite, p);
@@ -1349,9 +1346,14 @@ static v8::Handle<v8::Value> JS_UnzipFile (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief zips a file
 /// @startDocuBlock JS_Zip
-/// `fs.zip(filename, files)`
+/// `fs.zipFile(filename, chdir, files, password)`
 ///
-/// Stores the files specified by *files* in the zip file *filename*.
+/// Stores the files specified by *files* in the zip file *filename*. If 
+/// the file *filename* already exists, an error is thrown. The list of input
+/// files *files* must be given as a list of absolute filenames. If *chdir* is
+/// not empty, the *chdir* prefix will be stripped from the filename in the
+/// zip file, so when it is unzipped filenames will be relative. 
+/// Specifying a password is optional. 
 ///
 /// Returns *true* if the file was zipped successfully.
 /// @endDocuBlock
@@ -1362,14 +1364,14 @@ static v8::Handle<v8::Value> JS_ZipFile (v8::Arguments const& argv) {
 
   // extract arguments
   if (argv.Length() < 3 || argv.Length() > 4) {
-    TRI_V8_EXCEPTION_USAGE(scope, "zip(<filename>, <chdir>, <files>, <password>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "zipFile(<filename>, <chdir>, <files>, <password>)");
   }
 
   const string filename = TRI_ObjectToString(argv[0]);
   const string dir = TRI_ObjectToString(argv[1]);
 
   if (! argv[2]->IsArray()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "zip(<filename>, <chdir>, <files>, <password>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "<files> must be a list");
   }
 
   v8::Handle<v8::Array> files = v8::Handle<v8::Array>::Cast(argv[2]);
@@ -1393,17 +1395,14 @@ static v8::Handle<v8::Value> JS_ZipFile (v8::Arguments const& argv) {
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_DestroyVectorString(&filenames);
 
-    TRI_V8_EXCEPTION_USAGE(scope, "zip(<filename>, <files>, <password>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "zipFile(<filename>, <chdir>, <files>, <password>)");
   }
 
-  const char* p;
+  const char* p = nullptr;
   string password;
   if (argv.Length() == 4) {
     password = TRI_ObjectToString(argv[3]);
     p = password.c_str();
-  }
-  else {
-    p = NULL;
   }
 
   res = TRI_ZipFile(filename.c_str(), dir.c_str(), &filenames, p);
