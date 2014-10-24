@@ -1304,8 +1304,6 @@ namespace triagens {
 
           if (! this->_transactionContext->isEmbeddable()) {
             // we are embedded but this is disallowed...
-            LOG_WARNING("logic error. invalid nesting of transactions");
-
             return TRI_ERROR_TRANSACTION_NESTED;
           }
 
