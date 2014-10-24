@@ -59,7 +59,8 @@ Expression::Expression (Ast* ast,
     _node(node),
     _type(UNPROCESSED),
     _canThrow(true),
-    _isDeterministic(false) {
+    _isDeterministic(false),
+    _built(false) {
 
   TRI_ASSERT(_ast != nullptr);
   TRI_ASSERT(_executor != nullptr);
@@ -73,6 +74,7 @@ Expression::Expression (Ast* ast,
 Expression::Expression (Ast* ast,
                         triagens::basics::Json const& json)
   : Expression(ast, new AstNode(ast, json.get("expression"))) {
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -80,15 +82,17 @@ Expression::Expression (Ast* ast,
 ////////////////////////////////////////////////////////////////////////////////
 
 Expression::~Expression () {
-  if (_type == V8) {
-    delete _func;
-    _func = nullptr;
-  }
-  else if (_type == JSON) {
-    TRI_ASSERT(_data != nullptr);
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _data);
-    _data = nullptr;
-    // _json is freed automatically by AqlItemBlock
+  if (_built) {
+    if (_type == V8) {
+      delete _func;
+      _func = nullptr;
+    }
+    else if (_type == JSON) {
+      TRI_ASSERT(_data != nullptr);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _data);
+      _data = nullptr;
+      // _json is freed automatically by AqlItemBlock
+    }
   }
 }
 
@@ -114,11 +118,13 @@ AqlValue Expression::execute (triagens::arango::AqlTransaction* trx,
                               size_t startPos,
                               std::vector<Variable*> const& vars,
                               std::vector<RegisterId> const& regs) {
-  if (_type == UNPROCESSED) {
-    analyzeExpression();
+
+  if (! _built) {
+    buildExpression();
   }
 
   TRI_ASSERT(_type != UNPROCESSED);
+  TRI_ASSERT(_built);
 
   // and execute
   switch (_type) {
@@ -130,7 +136,8 @@ AqlValue Expression::execute (triagens::arango::AqlTransaction* trx,
     case V8: {
       TRI_ASSERT(_func != nullptr);
       try {
-        // Dump the expression in question  std::cout << triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, _node->toJson(TRI_UNKNOWN_MEM_ZONE, true)).toString()<< "\n";
+        // Dump the expression in question  
+        // std::cout << triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, _node->toJson(TRI_UNKNOWN_MEM_ZONE, true)).toString()<< "\n";
         return _func->execute(trx, docColls, argv, startPos, vars, regs);
       }
       catch (triagens::arango::Exception& ex) {
@@ -175,10 +182,15 @@ void Expression::replaceVariables (std::unordered_map<VariableId, Variable const
 
 void Expression::invalidate () {
   if (_type == V8) {
-    delete _func;
-    _func = nullptr;
-    _type = UNPROCESSED;
+    // V8 expressions need a special handling
+    if (_built) {
+      delete _func;
+      _func = nullptr;
+      _built = false;
+    }
   }
+  // we do not need to invalidate the other expression type 
+  // expression data will be freed in the destructor
 }
 
 // -----------------------------------------------------------------------------
@@ -186,37 +198,60 @@ void Expression::invalidate () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief analyze the expression (and, if appropriate, compile it into 
-/// executable code)
+/// @brief analyze the expression (determine its type etc.)
 ////////////////////////////////////////////////////////////////////////////////
 
 void Expression::analyzeExpression () {
   TRI_ASSERT(_type == UNPROCESSED);
+  TRI_ASSERT(_built == false);
 
   if (_node->isConstant()) {
+    // expression is a constant value
+    _type = JSON;
+    _canThrow = false;
+    _isDeterministic = true;
+    _data = nullptr;
+  }
+  else if (_node->isSimple()) {
+    // expression is a simple expression
+    _type = SIMPLE;
+    _canThrow = _node->canThrow();
+    _isDeterministic = _node->isDeterministic();
+  }
+  else {
+    // expression is a V8 expression
+    _type = V8;
+    _canThrow = _node->canThrow();
+    _isDeterministic = _node->isDeterministic();
+    _func = nullptr;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief build the expression
+////////////////////////////////////////////////////////////////////////////////
+
+void Expression::buildExpression () {
+  TRI_ASSERT(! _built);
+
+  if (_type == UNPROCESSED) {
+    analyzeExpression();
+  }
+
+  if (_type == JSON) {
     // generate a constant value
     _data = _node->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
 
     if (_data == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid json in simple expression");
     }
-
-    _type = JSON;
-    _canThrow = false;
-    _isDeterministic = true;
   }
-  else if (_node->isSimple()) {
-    _type = SIMPLE;
-    _canThrow = _node->canThrow();
-    _isDeterministic = _node->isDeterministic();
-  }
-  else {
+  else if (_type == V8) {
     // generate a V8 expression
     _func = _executor->generateExpression(_node);
-    _type = V8;
-    _canThrow = _node->canThrow();
-    _isDeterministic = _node->isDeterministic();
   }
+
+  _built = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
