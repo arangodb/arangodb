@@ -287,11 +287,36 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         part(p) {
     }
 
+    Collection *getCollection () const {
+      Collection* collection = nullptr;
+     
+      for (auto en = nodes.rbegin(); en != nodes.rend(); ++en) {
+        // find the collection to be used 
+        if ((*en)->getType() == ExecutionNode::ENUMERATE_COLLECTION) {
+          collection = const_cast<Collection*>(static_cast<EnumerateCollectionNode*>((*en))->collection());
+        }
+        else if ((*en)->getType() == ExecutionNode::INDEX_RANGE) {
+          collection = const_cast<Collection*>(static_cast<IndexRangeNode*>((*en))->collection());
+        }
+        else if ((*en)->getType() == ExecutionNode::INSERT ||
+                 (*en)->getType() == ExecutionNode::UPDATE ||
+                 (*en)->getType() == ExecutionNode::REPLACE ||
+                 (*en)->getType() == ExecutionNode::REMOVE) {
+          collection = const_cast<Collection*>(static_cast<ModificationNode*>((*en))->collection());
+        }
+      }
+
+      TRI_ASSERT(collection != nullptr);
+      return collection;
+    }
+
     EngineLocation const         location;
     size_t const                 id;
     std::vector<ExecutionNode*>  nodes;
     triagens::aql::QueryPart     part;   // only relevant for DBserver parts
   };
+
+  std::vector<std::pair<std::string, TRI_json_t*>> _plans;
 
   Query*                   query;
   QueryRegistry*           queryRegistry;
@@ -323,112 +348,54 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
     engines.emplace_back(EngineInfo(COORDINATOR, 0, PART_MAIN));
   }
-  
+ 
+  void ResetPlans() {
+    for (auto onePlan: _plans) {
+      /// todo delete onePlan.second;///TODO
+    }
+    _plans.clear();
+  }
   ~CoordinatorInstanciator () {
+    ResetPlans();
   }
 
+  void generatePlanForCoordinator (ExecutionPlan *plan, 
+                                   ExecutionNode const* current)
+  {
+    ExecutionNode* previous = nullptr;
 
-  ExecutionEngine* buildEngines () {
-    ExecutionEngine* engine = nullptr;
-    QueryId id              = 0;
-    std::unordered_map<std::string, std::string> queryIds;
-    
-    for (auto it = engines.rbegin(); it != engines.rend(); ++it) {
-      if ((*it).location == COORDINATOR) {
-        // create a coordinator-based engine
-        engine = buildEngineCoordinator((*it), queryIds);
-        TRI_ASSERT(engine != nullptr);
+    // TODO: fix instanciation here as in DBserver case
+    while (current != nullptr) {
+      auto clone = current->clone(plan, false, true);
+      plan->registerNode(clone);
         
-        auto plan = engine->getQuery()->plan();
-        TRI_ASSERT(plan != nullptr);
-        TRI_ASSERT(plan->empty());
-
-
-        if ((*it).id > 0) {
-          ExecutionNode const* current = (*it).nodes.front();
-          ExecutionNode* previous = nullptr;
-
-          // TODO: fix instanciation here as in DBserver case
-          while (current != nullptr) {
-            auto clone = current->clone(plan, false, true);
-            plan->registerNode(clone);
-        
-            if (previous == nullptr) {
-              // set the root node
-              plan->root(clone);
-            }
-            else {
-              previous->addDependency(clone);
-            }
-
-            auto const& deps = current->getDependencies();
-            if (deps.size() != 1) {
-              break;
-            }
-
-            previous = clone;
-            current = deps[0];
-          }
-
-          // we need to instanciate this engine in the registry
-
-          // create a remote id for the engine that we can pass to
-          // the plans to be created for the DBServers
-          id = TRI_NewTickServer();
-
-          queryRegistry->insert(id, engine->getQuery(), 3600.0);
-        }
+      if (previous == nullptr) {
+        // set the root node
+        plan->root(clone);
       }
       else {
-        // create an engine on a remote DB server
-        // hand in the previous engine's id
-        queryIds = buildEngineDBServer((*it), id);
+        previous->addDependency(clone);
       }
+
+      auto const& deps = current->getDependencies();
+      if (deps.size() != 1) {
+        break;
+      }
+      auto const nodeType = current->getType();
+      if (nodeType == ExecutionNode::REMOTE) {
+        break;
+      }
+
+      previous = clone;
+      current = deps[0];
     }
-
-    TRI_ASSERT(engine != nullptr);
-
-    // return the last created coordinator-based engine
-    // this is the local engine that we'll use to run the query
-    return engine;
   }
 
-
-  std::unordered_map<std::string, std::string> buildEngineDBServer (EngineInfo const& info,
-                                                                    QueryId connectedId) {
-    Collection* collection = nullptr;
-     
-    for (auto en = info.nodes.rbegin(); en != info.nodes.rend(); ++en) {
-      // find the collection to be used 
-      if ((*en)->getType() == ExecutionNode::ENUMERATE_COLLECTION) {
-        collection = const_cast<Collection*>(static_cast<EnumerateCollectionNode*>((*en))->collection());
-      }
-      else if ((*en)->getType() == ExecutionNode::INDEX_RANGE) {
-        collection = const_cast<Collection*>(static_cast<IndexRangeNode*>((*en))->collection());
-      }
-      else if ((*en)->getType() == ExecutionNode::INSERT ||
-               (*en)->getType() == ExecutionNode::UPDATE ||
-               (*en)->getType() == ExecutionNode::REPLACE ||
-               (*en)->getType() == ExecutionNode::REMOVE) {
-        collection = const_cast<Collection*>(static_cast<ModificationNode*>((*en))->collection());
-      }
-    }
-
-    TRI_ASSERT(collection != nullptr);
-    
-
-    // now send the plan to the remote servers
-    auto cc = triagens::arango::ClusterComm::instance();
-    TRI_ASSERT(cc != nullptr);
-                             
-    triagens::arango::CoordTransactionID coordTransactionID = TRI_NewTickServer();
-    std::string const url("/_db/" + triagens::basics::StringUtils::urlEncode(collection->vocbase->_name) + 
-                          "/_api/aql/instanciate");
-
-    auto&& shardIds = collection->shardIds();
- 
-    // iterate over all shards of the collection
-    for (auto const& shardId : shardIds) {
+  triagens::basics::Json GeneratePlanForOneShard (EngineInfo const& info,
+                                                  QueryId & connectedId,
+                                                  std::string const & shardId,
+                                                  bool verbose)
+  {
       // copy the relevant fragment of the plan for each shard
       ExecutionPlan plan(query->ast());
 
@@ -454,13 +421,146 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
         previous = clone;
       }
+      plan.setVarUsageComputed();
+      return plan.root()->toJson(TRI_UNKNOWN_MEM_ZONE, verbose);
+  }
+
+  void generatePlansForDBServers (EngineInfo const& info,
+                                  QueryId connectedId,
+                                  bool verbose) {
+    Collection* collection = info.getCollection();
+    
+    // iterate over all shards of the collection
+    for (auto & shardId : collection->shardIds()) {
       // inject the current shard id into the collection
       collection->setCurrentShard(shardId);
-      plan.setVarUsageComputed();
+      auto jsonPlan = GeneratePlanForOneShard(info, connectedId, shardId, verbose);
+      _plans.push_back(std::make_pair(shardId, jsonPlan.steal()));  
+    }
+    // fix collection  
+    collection->resetCurrentShard();
+  }
 
+
+  ExecutionEngine* buildEngines () {
+    ExecutionEngine* engine = nullptr;
+    QueryId id              = 0;
+    std::unordered_map<std::string, std::string> queryIds;
+    
+    for (auto it = engines.rbegin(); it != engines.rend(); ++it) {
+      if ((*it).location == COORDINATOR) {
+        // create a coordinator-based engine
+        engine = buildEngineCoordinator((*it), queryIds);
+        TRI_ASSERT(engine != nullptr);
+        
+        auto plan = engine->getQuery()->plan();
+        TRI_ASSERT(plan != nullptr);
+        TRI_ASSERT(plan->empty());
+
+
+        if ((*it).id > 0) {
+          generatePlanForCoordinator(plan, (*it).nodes.front());
+          // we need to instanciate this engine in the registry
+
+          // create a remote id for the engine that we can pass to
+          // the plans to be created for the DBServers
+          id = TRI_NewTickServer();
+
+          queryRegistry->insert(id, engine->getQuery(), 3600.0);
+        }
+      }
+      else {
+        // create an engine on a remote DB server
+        // hand in the previous engine's id
+        generatePlansForDBServers((*it), id, true);
+        queryIds = DistributePlansToShards((*it), id);
+        ResetPlans();
+      }
+    }
+
+    TRI_ASSERT(engine != nullptr);
+
+    // return the last created coordinator-based engine
+    // this is the local engine that we'll use to run the query
+    return engine;
+  }
+ 
+  triagens::basics::Json buildAllPlans (bool verbose) {
+    ExecutionEngine* engine = nullptr;
+    QueryId id              = 0;
+    int queryCount = 0;
+    std::unordered_map<std::string, std::string> queryIds;
+    Json coordinatorPlans(triagens::basics::Json::List, 1);
+    Json dbServerPlans(triagens::basics::Json::List, 1);
+    Json shards(triagens::basics::Json::List, 1);
+    Json primaryPlan;
+    
+    for (auto it = engines.rbegin(); it != engines.rend(); ++it) {
+      if ((*it).location == COORDINATOR) {
+        // create a coordinator-based engine
+        engine = buildEngineCoordinator((*it), queryIds);
+        TRI_ASSERT(engine != nullptr);
+        
+        auto plan = engine->getQuery()->plan();
+        TRI_ASSERT(plan != nullptr);
+
+        generatePlanForCoordinator(plan, (*it).nodes.front());
+        auto jsonPlan = plan->root()->toJson(TRI_UNKNOWN_MEM_ZONE, verbose);
+
+        if ((*it).id > 0) {
+          //          TRI_ASSERT(plan->empty());
+          coordinatorPlans.add(jsonPlan);
+        }
+        else {
+          //TRI_ASSERT(!plan->empty());
+          primaryPlan = jsonPlan;
+        }
+        //// todo: else???
+        delete engine;
+        engine = nullptr;
+      }
+      else {
+        Json oneDBServerPlanSet(triagens::basics::Json::Array, 1);
+        // create an engine on a remote DB server
+        // hand in the previous engine's id
+        generatePlansForDBServers((*it), id, verbose);
+        for (auto onePlan: _plans) {
+          shards.add(triagens::basics::Json(onePlan.first));
+          oneDBServerPlanSet(onePlan.first.c_str(), onePlan.second);
+          onePlan.second = nullptr;////TODO
+          // Build dummy query id mapping (we don't distribute our stuff, so we got none)
+          queryIds.emplace(std::make_pair(onePlan.first, std::string("blarg"))); // todo: how?queryCount++)));
+        }
+        ResetPlans();
+        dbServerPlans.add(oneDBServerPlanSet);
+      }
+    }
+
+
+    // return the last created coordinator-based engine
+    // this is the local engine that we'll use to run the query
+    return Json(triagens::basics::Json::Array)
+      ("coordinatorPlans", coordinatorPlans)
+      ("dbServerPlans", dbServerPlans)
+      ("primaryPlan", primaryPlan)
+      ("shards", shards);
+  }
+
+  void distributePlanToShard (triagens::arango::ClusterComm*& cc,
+                              triagens::arango::CoordTransactionID &coordTransactionID,
+                              EngineInfo const& info,
+                              Collection* collection,
+                              QueryId & connectedId,
+                              std::string const &url,
+                              std::string const & shardId, 
+                              TRI_json_t * jsonPlan) {
       // create a JSON representation of the plan
       Json result(Json::Array);
-      Json jsonNodesList(plan.root()->toJson(TRI_UNKNOWN_MEM_ZONE, true));
+
+      // inject the current shard id into the collection
+      collection->setCurrentShard(shardId);
+
+      Json jsonNodesList(TRI_UNKNOWN_MEM_ZONE, jsonPlan, Json::NOFREE);
     
       // add the collection
       Json jsonCollectionsList(Json::List);
@@ -507,13 +607,15 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       if (res != nullptr) {
         delete res;
       }
-    }
-      
-    // fix collection  
-    collection->resetCurrentShard();
+  }
+
+  std::unordered_map<std::string, std::string> aggregateQueryIds(triagens::arango::ClusterComm*& cc,
+                                                                 triagens::arango::CoordTransactionID &coordTransactionID,
+                                                                 Collection *collection) {
 
     // pick up the remote query ids
     std::unordered_map<std::string, std::string> queryIds;
+    std::vector<std::string> shardIds = collection->shardIds();
 
     std::string error;
     int count = 0;
@@ -558,6 +660,30 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     }
           
     return queryIds;
+  }
+
+  std::unordered_map<std::string, std::string> DistributePlansToShards(EngineInfo const& info,
+                                                                       QueryId connectedId)
+  {
+    Collection* collection = info.getCollection();
+    // now send the plan to the remote servers
+    std::string const url("/_db/" + triagens::basics::StringUtils::urlEncode(collection->vocbase->_name) + 
+                          "/_api/aql/instanciate");
+
+    triagens::arango::CoordTransactionID coordTransactionID = TRI_NewTickServer();
+    auto cc = triagens::arango::ClusterComm::instance();
+    TRI_ASSERT(cc != nullptr);
+
+    // iterate over all shards of the collection
+    for (auto onePlan: _plans) {
+      collection->setCurrentShard(onePlan.first);
+
+      distributePlanToShard(cc, coordTransactionID, info, collection, connectedId, url, onePlan.first, onePlan.second );
+    }
+
+    // fix collection  
+    collection->resetCurrentShard();
+    return aggregateQueryIds (cc, coordTransactionID, collection);
   }
 
 
@@ -781,6 +907,21 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
     throw;
   }
 }
+
+Json ExecutionEngine::getJsonPlans (QueryRegistry* queryRegistry,
+                                    Query* query,
+                                    ExecutionPlan* plan,
+                                    bool verbose) {
+  TRI_ASSERT(isCoordinator());
+  // instanciate the engine on the coordinator
+  std::unique_ptr<CoordinatorInstanciator> inst(new CoordinatorInstanciator(query, queryRegistry));
+  plan->root()->walk(inst.get());
+  
+  // std::cout << "ORIGINAL PLAN:\n" << plan->toJson(query->ast(), TRI_UNKNOWN_MEM_ZONE, true).toString() << "\n\n";
+
+  return inst.get()->buildAllPlans(verbose);
+}
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

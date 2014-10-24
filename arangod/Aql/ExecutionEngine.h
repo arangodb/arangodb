@@ -93,6 +93,11 @@ namespace triagens {
                                                      ExecutionPlan*,
                                                      bool);
 
+        static triagens::basics::Json getJsonPlans (QueryRegistry* queryRegistry,
+                                                    Query* query,
+                                                    ExecutionPlan* plan,
+                                                    bool verbose);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the root block 
 ////////////////////////////////////////////////////////////////////////////////

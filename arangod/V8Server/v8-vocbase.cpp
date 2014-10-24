@@ -924,6 +924,9 @@ static v8::Handle<v8::Value> JS_ExplainAql (v8::Arguments const& argv) {
     else {
       result->Set(TRI_V8_STRING("plan"), TRI_ObjectJson(queryResult.json));
     }
+    if (queryResult.clusterplan != nullptr) {
+      result->Set(TRI_V8_STRING("clusterplans"), TRI_ObjectJson(queryResult.clusterplan));
+    }
   }
 
   return scope.Close(result);
