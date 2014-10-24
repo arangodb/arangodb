@@ -176,6 +176,7 @@ void Expression::replaceVariables (std::unordered_map<VariableId, Variable const
 void Expression::invalidate () {
   if (_type == V8) {
     delete _func;
+    _func = nullptr;
     _type = UNPROCESSED;
   }
 }
