@@ -235,17 +235,6 @@ function checkInstanceAlive(instanceInfo, options) {
       print("ArangoD with PID " + instanceInfo.pid.pid + " gone:");
       instanceInfo.exitStatus = res;
       print(instanceInfo);
-      if (res.hasOwnProperty('signal') && 
-          (res.signal === 11))
-      {
-        var storeArangodPath = "/var/tmp/arangod_" + instanceInfo.pid.pid;
-        print("Core dump written; copying arangod to " + 
-              storeArangodPath + " for later analysis.");
-        res.gdbHint = "Run debugger with 'gdb " + 
-          storeArangodPath + 
-          " /var/tmp/core*" + instanceInfo.pid.pid + "*'";
-        require("fs").copy("bin/arangod", storeArangodPath);
-      }
     }
     return ret;
   }
