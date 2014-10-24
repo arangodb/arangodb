@@ -361,7 +361,7 @@ function checkInstanceAlive(instanceInfo, options) {
         res.gdbHint = "Run debugger with 'gdb " + 
           storeArangodPath + 
           " /var/tmp/core*" + instanceInfo.pid.pid + "*'";
-        require("fs").copy("bin/arangod", storeArangodPath);
+        copy("bin/arangod", storeArangodPath);
       }
     }
     return ret;
