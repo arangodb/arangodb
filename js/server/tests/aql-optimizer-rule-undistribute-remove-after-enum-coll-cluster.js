@@ -145,7 +145,9 @@ function optimizerRuleTestSuite () {
                              "GatherNode",
                              "DistributeNode", 
                              "RemoteNode", 
-                             "RemoveNode"
+                             "RemoveNode",
+                             "RemoteNode", 
+                             "GatherNode"
                             ],
                             [ "SingletonNode", 
                               "ScatterNode", 
@@ -158,7 +160,9 @@ function optimizerRuleTestSuite () {
                               "GatherNode", 
                               "DistributeNode", 
                               "RemoteNode", 
-                              "RemoveNode" 
+                              "RemoveNode",
+                              "RemoteNode", 
+                              "GatherNode"
                             ] ];
 
       queries.forEach(function(query) {
