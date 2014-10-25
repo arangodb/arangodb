@@ -192,13 +192,15 @@ function optimizerRuleTestSuite () {
                             [ 
                               "distribute-in-cluster", 
                               "scatter-in-cluster", 
-                              "remove-unnecessary-remote-scatter" 
+                              "remove-unnecessary-remote-scatter",
+                              "undistribute-remove-after-enum-coll" 
                             ], 
                             [ 
                               "distribute-in-cluster", 
                               "scatter-in-cluster", 
                               "distribute-filtercalc-to-cluster", 
-                              "remove-unnecessary-remote-scatter" 
+                              "remove-unnecessary-remote-scatter",
+                              "undistribute-remove-after-enum-coll" 
                             ],
                             [ 
                               "distribute-in-cluster", 
@@ -217,10 +219,6 @@ function optimizerRuleTestSuite () {
                             [
                               "SingletonNode", 
                               "EnumerateCollectionNode", 
-                              "RemoteNode", 
-                              "GatherNode",
-                              "DistributeNode",
-                              "RemoteNode",
                               "RemoveNode", 
                               "RemoteNode",
                               "GatherNode"
@@ -229,10 +227,6 @@ function optimizerRuleTestSuite () {
                               "SingletonNode",
                               "EnumerateCollectionNode", 
                               "CalculationNode", 
-                              "RemoteNode", 
-                              "GatherNode",
-                              "DistributeNode",
-                              "RemoteNode",
                               "RemoveNode",
                               "RemoteNode",
                               "GatherNode"
@@ -288,13 +282,15 @@ function optimizerRuleTestSuite () {
                             [ 
                               "distribute-in-cluster", 
                               "scatter-in-cluster", 
-                              "remove-unnecessary-remote-scatter" 
+                              "remove-unnecessary-remote-scatter",
+                              "undistribute-remove-after-enum-coll" 
                             ], 
                             [ 
                               "distribute-in-cluster", 
                               "scatter-in-cluster", 
                               "distribute-filtercalc-to-cluster", 
-                              "remove-unnecessary-remote-scatter" 
+                              "remove-unnecessary-remote-scatter",
+                              "undistribute-remove-after-enum-coll" 
                             ],
                             [ 
                               "distribute-in-cluster", 
@@ -313,10 +309,6 @@ function optimizerRuleTestSuite () {
                             [
                               "SingletonNode", 
                               "EnumerateCollectionNode", 
-                              "RemoteNode", 
-                              "GatherNode",
-                              "DistributeNode",
-                              "RemoteNode",
                               "RemoveNode",
                               "RemoteNode",
                               "GatherNode"
@@ -325,10 +317,6 @@ function optimizerRuleTestSuite () {
                               "SingletonNode",
                               "EnumerateCollectionNode", 
                               "CalculationNode", 
-                              "RemoteNode", 
-                              "GatherNode",
-                              "DistributeNode",
-                              "RemoteNode",
                               "RemoveNode",
                               "RemoteNode",
                               "GatherNode"
