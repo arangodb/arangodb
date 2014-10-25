@@ -2086,8 +2086,14 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
             if (vars.size() != 1 || vars[0]->id != varsToRemove[0]->id) {
               break; // abort . . . 
             }
-            // set the _variable to the variable in the expression of this
-            // node and also define _enumColl
+            // check the remove node's collection is sharded over _key
+            std::vector<std::string> shardKeys = rn->collection()->shardKeys();
+            if (shardKeys.size() != 1 || shardKeys[0] != TRI_VOC_ATTRIBUTE_KEY) {
+              break; // abort . . .
+            }
+
+            // set the varsToRemove to the variable in the expression of this
+            // node and also define enumColl
             varsToRemove = cn->getVariablesUsedHere();
             TRI_ASSERT(varsToRemove.size() == 1);
             enumColl = _plan->getVarSetBy(varsToRemove[0]->id);
