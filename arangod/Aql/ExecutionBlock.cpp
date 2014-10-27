@@ -4402,14 +4402,6 @@ size_t DistributeBlock::sendToClient (AqlValue val) {
   if (val._type == AqlValue::JSON) {
     json = val._json->json();
   } 
-  /*
-  // TODO: if the DistributeBlock is supposed to run on coordinators only, it
-  // cannot have any AqlValues of type SHAPED. These are only present when there
-  // are physical collections
-  else if (val._type == AqlValue::SHAPED) {
-    json = val.toJson(_trx, _collection->documentCollection()).json();
-  } 
-  */
   else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, 
         "DistributeBlock: can only send JSON or SHAPED");
