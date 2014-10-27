@@ -56,7 +56,7 @@ var getStorage = function () {
 
   if (functions === null) {
     var err = new ArangoError();
-    err.errorNum = arangodb.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code;
+    err.errorNum = internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code;
     err.errorMessage = "collection '_aqlfunctions' not found";
 
     throw err;
@@ -101,8 +101,8 @@ var validateName = function (name) {
       ! name.match(/^[a-zA-Z0-9_]+(::[a-zA-Z0-9_]+)+$/) ||
       name.substr(0, 1) === "_") {
     var err = new ArangoError();
-    err.errorNum = arangodb.errors.ERROR_QUERY_FUNCTION_INVALID_NAME.code;
-    err.errorMessage = arangodb.errors.ERROR_QUERY_FUNCTION_INVALID_NAME.message;
+    err.errorNum = internal.errors.ERROR_QUERY_FUNCTION_INVALID_NAME.code;
+    err.errorMessage = internal.errors.ERROR_QUERY_FUNCTION_INVALID_NAME.message;
 
     throw err;
   }
@@ -138,8 +138,8 @@ var stringifyFunction = function (code, name) {
   // fall-through intentional
 
   var err = new ArangoError();
-  err.errorNum = arangodb.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.code;
-  err.errorMessage = arangodb.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.message;
+  err.errorNum = internal.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.code;
+  err.errorMessage = internal.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.message;
     
   throw err;
 };
@@ -190,8 +190,8 @@ var unregisterFunction = function (name) {
 
   if (func === null) {
     var err = new ArangoError();
-    err.errorNum = arangodb.errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code;
-    err.errorMessage = internal.sprintf(arangodb.errors.ERROR_QUERY_FUNCTION_NOT_FOUND.message, name);
+    err.errorNum = internal.errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code;
+    err.errorMessage = internal.sprintf(internal.errors.ERROR_QUERY_FUNCTION_NOT_FOUND.message, name);
 
     throw err;
   }
@@ -226,8 +226,8 @@ var unregisterFunction = function (name) {
 var unregisterFunctionsGroup = function (group) {
   if (group.length === 0) {
     var err = new ArangoError();
-    err.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;
-    err.errorMessage = arangodb.errors.ERROR_BAD_PARAMETER.message;
+    err.errorNum = internal.errors.ERROR_BAD_PARAMETER.code;
+    err.errorMessage = internal.errors.ERROR_BAD_PARAMETER.message;
 
     throw err;
   }
@@ -284,12 +284,14 @@ var registerFunction = function (name, code, isDeterministic) {
   var testCode = "(function() { var callback = " + code + "; return callback; })()";
     
   try {
-    internal.executeScript(testCode, undefined, "(user function " + name + ")"); 
+    if (internal && internal.hasOwnProperty("executeScript")) {
+      internal.executeScript(testCode, undefined, "(user function " + name + ")");
+    }
   }
   catch (err1) {
     var err = new ArangoError();
-    err.errorNum = arangodb.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.code;
-    err.errorMessage = arangodb.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.message;
+    err.errorNum = internal.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.code;
+    err.errorMessage = internal.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.message;
     
     throw err;
   }

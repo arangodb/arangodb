@@ -301,6 +301,7 @@
     if (window) { 
       internal.sprintf = function (format) {
         var n = arguments.length;
+
         if (n === 0) {
           return "";
         }
@@ -308,10 +309,15 @@
           return String(format);
         }
 
-        var i = 0;
+        var i;
+        var args = [ ];
+        for (i = 1; i < arguments.length; ++i) {
+          args.push(arguments[i]);
+        }
+        i = 0;
 
         return format.replace(/%[dfs]/, function (match) {
-          return String(arguments[++i]);
+          return String(args[i++]);
         });
       };
     }

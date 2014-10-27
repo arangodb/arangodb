@@ -150,7 +150,7 @@ exports.HELP = exports.createHelpHeadline("Help") +
   'To cancel the current prompt, press CTRL + z.                      ' + "\n" +
   '                                                                   ' + "\n" +
   'Please note that all variables defined with the var keyword will   ' + "\n" +
-  'disapper when the command is finished. To introduce variables that ' + "\n" +
+  'disappear when the command is finished. To introduce variables that' + "\n" +
   'are persisting until the next command, omit the var keyword.       ' + "\n" : 
   'To cancel the current prompt, press CTRL + d.                      ' + "\n");
 

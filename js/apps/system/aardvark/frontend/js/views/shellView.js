@@ -52,7 +52,12 @@
         internal.browserOutputBuffer = "";
       } catch (e) {
         if (e instanceof internal.ArangoError) {
-          jqconsole.Write(e.message + '\n', 'jserror');
+          if (e.hasOwnProperty("errorMessage")) {
+            jqconsole.Write(e.errorMessage + '\n', 'jserror');
+          }
+          else {
+            jqconsole.Write(e.message + '\n', 'jserror');
+          }
         }
         else {
           jqconsole.Write(e.name + ': ' + e.message + '\n', 'jserror');

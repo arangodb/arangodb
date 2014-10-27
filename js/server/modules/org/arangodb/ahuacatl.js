@@ -706,6 +706,10 @@ function FCALL_USER (name, parameters) {
       THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, NORMALIZE_FNAME(name));
     }
   }
+  
+  if (! UserFunctions[prefix].hasOwnProperty(name)) {
+    reloadUserFunctions();
+  }
 
   if (UserFunctions[prefix].hasOwnProperty(name)) {
     var result = UserFunctions[prefix][name].func.apply(null, parameters);
