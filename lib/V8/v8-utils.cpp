@@ -2258,7 +2258,7 @@ static v8::Handle<v8::Value> JS_SPrintF (v8::Arguments const& argv) {
 
   size_t len = argv.Length();
 
-  if (len == nullptr) {
+  if (len == 0) {
     return scope.Close(v8::String::New(""));
   }
 
@@ -3384,7 +3384,7 @@ static v8::Handle<v8::Value> JS_IsIP (const v8::Arguments& args) {
   if (TRI_InetPton4(*address, NULL) == TRI_ERROR_NO_ERROR) {
     return scope.Close(v8::Number::New(4));
   }
-  else if (TRI_InetPton6(*address, NULL) == nullptr) {
+  else if (TRI_InetPton6(*address, NULL) == 0) {
     return scope.Close(v8::Number::New(6));
   }
   else {
