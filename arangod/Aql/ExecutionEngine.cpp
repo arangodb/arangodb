@@ -732,8 +732,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         }
       }
 
-      if (nodeType == ExecutionNode::GATHER /* ||
-          nodeType == ExecutionNode::DISTRIBUTE */) {
+      if (nodeType == ExecutionNode::GATHER) {
         // we found a gather node
         TRI_ASSERT(remoteNode != nullptr);
 
@@ -742,11 +741,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         if (nodeType == ExecutionNode::GATHER) {
           collection = static_cast<GatherNode const*>((*en))->collection();
         }
-        /* TODO: do we need to handle distribute nodes here, too??
-        else if (nodeType == ExecutionNode::DISTRIBUTE) {
-          collection = static_cast<DistributeNode const*>((*en))->collection();
-        }
-        */
         else {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
         }
