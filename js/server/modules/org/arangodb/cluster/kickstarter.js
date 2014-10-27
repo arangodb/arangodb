@@ -385,7 +385,17 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
     if (arangodPath !== cmd.arangodPath) {
       arangodPath = ArangoServerState.arangodPath();
     }
-    pids.push(executeExternal(arangodPath, args));
+    if (cmd.valgrind !== '') {
+      var valgrindopts = cmd.valgrindopts.concat(
+        ["--xml-file="+cmd.valgrindXmlFileBase + '_' + cmd.valgrindTestname + '_' + id  + '.%p.xml',
+         "--log-file="+cmd.valgrindXmlFileBase + '_' + cmd.valgrindTestname + '_' + id  + '.%p.valgrind.log']);
+      var newargs = valgrindopts.concat([arangodPath]).concat(args);
+      var cmdline = cmd.valgrind;
+      pids.push(executeExternal(cmdline, newargs));
+    }
+    else {
+      pids.push(executeExternal(arangodPath, args));
+    }
     ep = exchangePort(dispatchers[cmd.dispatcher].endpoint,port);
     ep = exchangeProtocol(ep,useSSL);
     endpoints.push(ep);
