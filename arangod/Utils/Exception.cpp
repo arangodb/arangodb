@@ -61,7 +61,8 @@ Exception::Exception (int code,
 Exception::Exception (int code,
                       string const& errorMessage,
                       char const* file,
-                      int line)
+                      int line,
+                      bool errnoStringResolved)
   :
     _errorMessage(errorMessage),
     _file(file),
@@ -69,10 +70,12 @@ Exception::Exception (int code,
     _code(code) {
 
   if (code != TRI_ERROR_INTERNAL) {
-    _errorMessage = std::string("(");
-    _errorMessage += TRI_errno_string(code);
-    _errorMessage += std::string(") ");
-    _errorMessage += errorMessage;
+    if (!errnoStringResolved) {
+      _errorMessage = std::string("(");
+      _errorMessage += TRI_errno_string(code);
+      _errorMessage += std::string(")      ");
+      _errorMessage += errorMessage;
+    }
   }
   else {
    }
