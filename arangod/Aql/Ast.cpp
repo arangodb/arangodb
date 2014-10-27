@@ -1061,7 +1061,7 @@ AstNode* Ast::createArithmeticResultNode (int64_t value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::createArithmeticResultNode (double value) {
-  if (value != value || 
+  if (value != value || // intentional! 
       value == HUGE_VAL || 
       value == - HUGE_VAL) {
     // IEEE754 NaN values have an interesting property that we can exploit...
