@@ -1671,14 +1671,11 @@ struct CanThrowFinder : public WalkerWorker<ExecutionNode> {
   }
 
   bool before (ExecutionNode* node) {
-
     if (node->canThrow()) {
       _canThrow = true;
       return true;
     }
-    else {
-      return false;
-    }
+    return false;
   }
 
 };

@@ -59,6 +59,7 @@ Expression::Expression (Ast* ast,
     _node(node),
     _type(UNPROCESSED),
     _canThrow(true),
+    _canRunOnDBServer(false),
     _isDeterministic(false),
     _built(false) {
 
@@ -209,6 +210,7 @@ void Expression::analyzeExpression () {
     // expression is a constant value
     _type = JSON;
     _canThrow = false;
+    _canRunOnDBServer = true;
     _isDeterministic = true;
     _data = nullptr;
   }
@@ -216,12 +218,14 @@ void Expression::analyzeExpression () {
     // expression is a simple expression
     _type = SIMPLE;
     _canThrow = _node->canThrow();
+    _canRunOnDBServer = _node->canRunOnDBServer();
     _isDeterministic = _node->isDeterministic();
   }
   else {
     // expression is a V8 expression
     _type = V8;
     _canThrow = _node->canThrow();
+    _canRunOnDBServer = _node->canRunOnDBServer();
     _isDeterministic = _node->isDeterministic();
     _func = nullptr;
   }

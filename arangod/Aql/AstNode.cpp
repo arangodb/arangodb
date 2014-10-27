@@ -1000,6 +1000,38 @@ bool AstNode::canThrow () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a node (and its subnodes) can safely be executed on
+/// a DB server
+////////////////////////////////////////////////////////////////////////////////
+
+bool AstNode::canRunOnDBServer () const {
+  // check sub-nodes first
+  size_t const n = numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    auto member = getMember(i);
+    if (! member->canRunOnDBServer()) {
+      // if any sub-node cannot run on a DB server, we can't either
+      return false;
+    }
+  }
+
+  // now check ourselves
+  if (type == NODE_TYPE_FCALL) {
+    // built-in function
+    auto func = static_cast<Function*>(getData());
+    return func->canRunOnDBServer;
+  }
+  
+  if (type == NODE_TYPE_FCALL_USER) {
+    // user function. we don't know anything about it
+    return false;
+  }
+
+  // everyhing else can run everywhere
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a node (and its subnodes) is deterministic
 ////////////////////////////////////////////////////////////////////////////////
 
