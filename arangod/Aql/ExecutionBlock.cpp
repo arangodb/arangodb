@@ -4473,7 +4473,7 @@ static bool throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
 
     if (JsonHelper::getBooleanValue(json, "error", true)) {
       errorNum = TRI_ERROR_INTERNAL;
-      std::string errorMessage = std::string("Error message received from shard '") + 
+      errorMessage = std::string("Error message received from shard '") + 
         std::string(res->shardID) + 
         std::string("' on cluster node '") +
         std::string(res->serverID) +
