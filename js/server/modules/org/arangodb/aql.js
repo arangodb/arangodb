@@ -471,13 +471,19 @@ function COMPILE_REGEX (regex, modifiers) {
 function FCALL_USER (name, parameters) {
   "use strict";
 
+  var reloaded = false;
   var prefix = DB_PREFIX();
   if (! UserFunctions.hasOwnProperty(prefix)) {
     reloadUserFunctions();
+    reloaded = true;
 
     if (! UserFunctions.hasOwnProperty(prefix)) {
       THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, NORMALIZE_FNAME(name));
     }
+  }
+  
+  if (! reloaded && ! UserFunctions[prefix].hasOwnProperty(name)) {
+    reloadUserFunctions();
   }
 
   if (UserFunctions[prefix].hasOwnProperty(name)) {
