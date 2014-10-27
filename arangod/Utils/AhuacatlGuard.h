@@ -62,7 +62,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AhuacatlGuard (TRI_vocbase_t* vocbase,
-                       const string& query,
+                       const std::string& query,
                        TRI_json_t* userOptions) :
           _context(0) {
             const bool isCoordinator = ServerState::instance()->isCoordinator();

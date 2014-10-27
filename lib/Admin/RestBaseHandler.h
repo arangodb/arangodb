@@ -112,7 +112,7 @@ namespace triagens {
 
         virtual void generateError (rest::HttpResponse::HttpResponseCode,
                                     int,
-                                    string const&);
+                                    std::string const&);
 
     };
   }

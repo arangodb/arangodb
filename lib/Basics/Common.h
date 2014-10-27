@@ -233,7 +233,7 @@ static inline uint64_t TRI_DecModU64 (uint64_t i, uint64_t len) {
 // -----------------------------------------------------------------------------
 
 namespace triagens {
-  using namespace std;
+//  using namespace std;
 
   typedef TRI_blob_t blob_t;
   typedef TRI_datetime_t datetime_t;

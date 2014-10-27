@@ -287,7 +287,7 @@ void Version::getJson (TRI_memory_zone_t* zone, TRI_json_t* dst) {
     triagens::basics::StringUtils::trimInPlace(value);
 
     if (! value.empty()) {
-      string const& key = it.first;
+      std::string const& key = it.first;
 
       TRI_Insert3ArrayJson(zone, dst, key.c_str(), TRI_CreateString2CopyJson(zone, value.c_str(), value.size()));
     }

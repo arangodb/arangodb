@@ -67,10 +67,10 @@ namespace triagens {
 /// the task.
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit Task (string const& id,
-                       string const& name);
+        explicit Task (std::string const& id,
+                       std::string const& name);
 
-        explicit Task (string const& name);
+        explicit Task (std::string const& name);
 
       public:
 
@@ -182,13 +182,13 @@ namespace triagens {
 /// @brief task id
 ////////////////////////////////////////////////////////////////////////////////
 
-        string const _id;
+        std::string const _id;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief task name
 ////////////////////////////////////////////////////////////////////////////////
 
-        string const _name;
+        std::string const _name;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the task is active

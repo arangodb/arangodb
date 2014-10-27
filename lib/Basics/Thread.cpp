@@ -179,7 +179,7 @@ bool Thread::start (ConditionVariable * finishedCondition) {
 
   _started = 1;
 
-  string text = "[" + _name + "]";
+  std::string text = "[" + _name + "]";
   bool ok = TRI_StartThread(&_thread, &_threadId, text.c_str(), &startThread, this);
 
   if (! ok) {

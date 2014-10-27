@@ -104,7 +104,7 @@ namespace triagens {
 /// @brief checks if help option was given
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::set<string> needHelp (std::string const& name) const;
+        std::set<std::string> needHelp (std::string const& name) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the last error
@@ -134,7 +134,7 @@ namespace triagens {
 /// @brief result data
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool extractValues (ProgramOptionsDescription const&, struct TRI_program_options_s*, set<string> seen);
+        bool extractValues (ProgramOptionsDescription const&, struct TRI_program_options_s*, std::set<std::string> seen);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

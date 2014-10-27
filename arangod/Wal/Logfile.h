@@ -422,7 +422,7 @@ namespace triagens {
           WRITE_LOCKER(_legendCacheLock);
           auto it = _legendCache.find(cs);
           if (it == _legendCache.end()) {
-            _legendCache.insert(make_pair(cs,l));
+            _legendCache.insert(std::make_pair(cs,l));
           }
         }
 

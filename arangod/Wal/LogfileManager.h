@@ -119,7 +119,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setupOptions (std::map<string, triagens::basics::ProgramOptionsDescription>&);
+        void setupOptions (std::map<std::string, triagens::basics::ProgramOptionsDescription>&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
