@@ -112,91 +112,91 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     int createDocumentOnCoordinator (
-                 string const& dbname,
-                 string const& collname,
+                 std::string const& dbname,
+                 std::string const& collname,
                  bool waitForSync,
                  TRI_json_t* json,
-                 map<string, string> const& headers,
+                 std::map<std::string, std::string> const& headers,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-                 map<string, string>& resultHeaders,
-                 string& resultBody);
+                 std::map<std::string, std::string>& resultHeaders,
+                 std::string& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
     int deleteDocumentOnCoordinator (
-                 string const& dbname,
-                 string const& collname,
-                 string const& key,
+                 std::string const& dbname,
+                 std::string const& collname,
+                 std::string const& key,
                  TRI_voc_rid_t const rev,
                  TRI_doc_update_policy_e policy,
                  bool waitForSync,
-                 map<string, string> const& headers,
+                 std::map<std::string, std::string> const& headers,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-                 map<string, string>& resultHeaders,
-                 string& resultBody);
+                 std::map<std::string, std::string>& resultHeaders,
+                 std::string& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
     int getDocumentOnCoordinator (
-                 string const& dbname,
-                 string const& collname,
-                 string const& key,
+                 std::string const& dbname,
+                 std::string const& collname,
+                 std::string const& key,
                  TRI_voc_rid_t const rev,
-                 map<string, string> const& headers,
+                 std::map<std::string, std::string> const& headers,
                  bool generateDocument,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-                 map<string, string>& resultHeaders,
-                 string& resultBody);
+                 std::map<std::string, std::string>& resultHeaders,
+                 std::string& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get all documents in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
     int getAllDocumentsOnCoordinator (
-                 string const& dbname,
-                 string const& collname,
-                 string const& returnType,
+                 std::string const& dbname,
+                 std::string const& collname,
+                 std::string const& returnType,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-                 string& contentType,
-                 string& resultBody);
+                 std::string& contentType,
+                 std::string& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief modify a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
     int modifyDocumentOnCoordinator (
-                 string const& dbname,
-                 string const& collname,
-                 string const& key,
+                 std::string const& dbname,
+                 std::string const& collname,
+                 std::string const& key,
                  TRI_voc_rid_t const rev,
                  TRI_doc_update_policy_e policy,
                  bool waitForSync,
                  bool isPatch,
                  bool keepNull,   // only counts for isPatch == true
                  TRI_json_t* json,
-                 map<string, string> const& headers,
+                 std::map<std::string, std::string> const& headers,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-                 map<string, string>& resultHeaders,
-                 string& resultBody);
+                 std::map<std::string, std::string>& resultHeaders,
+                 std::string& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an edge in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
     int createEdgeOnCoordinator (
-                 string const& dbname,
-                 string const& collname,
+                 std::string const& dbname,
+                 std::string const& collname,
                  bool waitForSync,
                  TRI_json_t* json,
                  char const* from,
                  char const* to,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-                 map<string, string>& resultHeaders,
-                 string& resultBody);
+                 std::map<std::string, std::string>& resultHeaders,
+                 std::string& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get indexes from coordinator
@@ -209,14 +209,14 @@ namespace triagens {
 /// @brief truncate a cluster collection on a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-    int truncateCollectionOnCoordinator ( string const& dbname,
-                                          string const& collname );
+    int truncateCollectionOnCoordinator (std::string const& dbname,
+                                         std::string const& collname);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flush Wal on all DBservers
 ////////////////////////////////////////////////////////////////////////////////
 
-    int flushWalOnAllDBServers ( bool, bool );
+    int flushWalOnAllDBServers (bool, bool);
 
   }  // namespace arango
 }   // namespace triagens

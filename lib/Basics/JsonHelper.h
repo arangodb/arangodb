@@ -297,7 +297,7 @@ namespace triagens {
 #endif
 #endif
         }
-        JsonException (string msg) : _msg(msg) {
+        JsonException (std::string msg) : _msg(msg) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 #if HAVE_BACKTRACE
           _msg += std::string("\n\n");

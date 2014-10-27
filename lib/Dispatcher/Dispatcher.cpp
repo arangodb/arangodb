@@ -39,6 +39,7 @@
 #include "Dispatcher/DispatcherThread.h"
 #include "Dispatcher/Job.h"
 
+using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
 

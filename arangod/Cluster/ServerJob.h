@@ -116,8 +116,8 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        string const& queue () {
-          static string const standard = "STANDARD";
+        std::string const& queue () {
+          static std::string const standard = "STANDARD";
           return standard;
         }
 

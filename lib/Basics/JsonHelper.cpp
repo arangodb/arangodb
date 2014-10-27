@@ -32,6 +32,7 @@
 #include "Basics/conversions.h"
 #include "Basics/string-buffer.h"
 
+using namespace std;
 using namespace triagens::basics;
 
 // -----------------------------------------------------------------------------

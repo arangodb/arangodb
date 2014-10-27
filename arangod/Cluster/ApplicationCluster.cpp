@@ -108,7 +108,7 @@ ApplicationCluster::~ApplicationCluster () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationCluster::setupOptions (map<string, basics::ProgramOptionsDescription>& options) {
+void ApplicationCluster::setupOptions (std::map<std::string, basics::ProgramOptionsDescription>& options) {
   options["Cluster options:help-cluster"]
     ("cluster.agency-endpoint", &_agencyEndpoints, "agency endpoint to connect to")
     ("cluster.agency-prefix", &_agencyPrefix, "agency prefix")
@@ -174,7 +174,7 @@ bool ApplicationCluster::prepare () {
   }
 
   for (size_t i = 0; i < _agencyEndpoints.size(); ++i) {
-    const string unified = triagens::rest::Endpoint::getUnifiedForm(_agencyEndpoints[i]);
+    const std::string unified = triagens::rest::Endpoint::getUnifiedForm(_agencyEndpoints[i]);
 
     if (unified.empty()) {
       LOG_FATAL_AND_EXIT("invalid endpoint '%s' specified for --cluster.agency-endpoint",
@@ -254,7 +254,7 @@ bool ApplicationCluster::start () {
   }
 
   // now we can validate --cluster.my-address
-  const string unified = triagens::rest::Endpoint::getUnifiedForm(_myAddress);
+  const std::string unified = triagens::rest::Endpoint::getUnifiedForm(_myAddress);
 
   if (unified.empty()) {
     LOG_FATAL_AND_EXIT("invalid endpoint '%s' specified for --cluster.my-address",

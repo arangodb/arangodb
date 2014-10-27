@@ -85,7 +85,7 @@ namespace triagens {
 /// @brief get host string for HTTP requests
 ////////////////////////////////////////////////////////////////////////////////
 
-        string getHostString  () const {
+        std::string getHostString  () const {
           return '[' + getHost() + "]:" + triagens::basics::StringUtils::itoa(getPort());
         }
 

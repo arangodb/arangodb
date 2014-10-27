@@ -45,7 +45,7 @@ namespace triagens {
 /// @brief get last SSL error
 ////////////////////////////////////////////////////////////////////////////////
 
-    string lastSSLError ();
+    std::string lastSSLError ();
   }
 }
 

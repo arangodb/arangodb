@@ -32,6 +32,7 @@
 #include "Aql/Ast.h"
 #include "Basics/StringBuffer.h"
 
+using namespace std;
 using namespace triagens::basics;
 using namespace triagens::aql;
 using Json = triagens::basics::Json;

@@ -114,7 +114,7 @@ namespace triagens {
 /// @brief returns a string representation of the connection endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        const string getEndpointSpecification () const {
+        const std::string getEndpointSpecification () const {
           return _endpoint->getSpecification();
         }
 

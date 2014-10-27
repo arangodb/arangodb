@@ -189,9 +189,9 @@ void HeartbeatThread::run () {
           uint64_t userVersion = triagens::basics::JsonHelper::stringUInt64((*it).second._json);
           if (userVersion != oldUserVersion) {
             // reload user cache for all databases
-            vector<DatabaseID> dbs
+            std::vector<DatabaseID> dbs
                 = ClusterInfo::instance()->listDatabases(true);
-            vector<DatabaseID>::iterator i;
+            std::vector<DatabaseID>::iterator i;
             bool allOK = true;
             for (i = dbs.begin(); i != dbs.end(); ++i) {
               TRI_vocbase_t* vocbase = TRI_UseCoordinatorDatabaseServer(_server,
@@ -364,7 +364,7 @@ static bool myDBnamesComparer (std::string const& a, std::string const& b) {
 
 bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
                                                    uint64_t& remotePlanVersion) {
-  static const string prefix = "Plan/Databases";
+  static const std::string prefix = "Plan/Databases";
 
   bool fetchingUsersFailed = false;
   LOG_TRACE("found a plan update");
@@ -385,7 +385,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
   if (result.successful()) {
     result.parse(prefix + "/", false);
 
-    vector<TRI_voc_tick_t> ids;
+    std::vector<TRI_voc_tick_t> ids;
 
     // When we run through the databases, we need to do the _system database
     // first, otherwise, we cannot handle incoming requests from DBservers
@@ -402,7 +402,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
     std::vector<std::string>::iterator it1;
     for (it1 = names.begin(); it1 != names.end(); ++it1) {
       it = result._values.find(*it1);
-      string const& name = *it1;
+      std::string const& name = *it1;
       TRI_json_t const* options = (*it).second._json;
 
       TRI_voc_tick_t id = 0;
@@ -463,7 +463,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
       TRI_voc_tick_t* p = localIds;
 
       while (*p != 0) {
-        vector<TRI_voc_tick_t>::const_iterator r = std::find(ids.begin(), ids.end(), *p);
+        std::vector<TRI_voc_tick_t>::const_iterator r = std::find(ids.begin(), ids.end(), *p);
 
         if (r == ids.end()) {
           TRI_DropByIdCoordinatorDatabaseServer(_server, *p, false);
@@ -590,7 +590,7 @@ bool HeartbeatThread::fetchUsers (TRI_vocbase_t* vocbase) {
   
   LOG_TRACE("fetching users for database '%s'", vocbase->_name);  
 
-  int res = usersOnCoordinator(string(vocbase->_name), json, 10.0);
+  int res = usersOnCoordinator(std::string(vocbase->_name), json, 10.0);
   
   if (res == TRI_ERROR_NO_ERROR) {
     // we were able to read from the _users collection

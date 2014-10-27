@@ -567,7 +567,7 @@ bool LogfileManager::registerTransaction (TRI_voc_tid_t transactionId) {
   {
     WRITE_LOCKER(_logfilesLock);
 
-    _transactions.insert(make_pair(transactionId, make_pair(_lastCollectedId, _lastSealedId)));
+    _transactions.emplace(std::make_pair(transactionId, std::make_pair(_lastCollectedId, _lastSealedId)));
     TRI_ASSERT(_lastCollectedId <= _lastSealedId);
   }
 
@@ -949,7 +949,7 @@ void LogfileManager::relinkLogfile (Logfile* logfile) {
   Logfile::IdType const id = logfile->id();
 
   WRITE_LOCKER(_logfilesLock);
-  _logfiles.insert(make_pair(id, logfile));
+  _logfiles.emplace(std::make_pair(id, logfile));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1814,7 +1814,7 @@ int LogfileManager::inventory () {
         TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
 
         WRITE_LOCKER(_logfilesLock);
-        _logfiles.insert(make_pair(id, nullptr));
+        _logfiles.emplace(std::make_pair(id, nullptr));
       }
     }
   }
@@ -1945,7 +1945,7 @@ int LogfileManager::createReserveLogfile (uint32_t size) {
   }
 
   WRITE_LOCKER(_logfilesLock);
-  _logfiles.insert(make_pair(id, logfile));
+  _logfiles.emplace(std::make_pair(id, logfile));
 
   return TRI_ERROR_NO_ERROR;
 }

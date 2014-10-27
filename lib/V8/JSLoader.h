@@ -72,13 +72,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         v8::Handle<v8::Value> executeGlobalScript (v8::Handle<v8::Context> context,
-                                                   string const& name);
+                                                   std::string const& name);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief loads a named script
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool loadScript (v8::Persistent<v8::Context>, string const& name);
+        bool loadScript (v8::Persistent<v8::Context>, std::string const& name);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief loads all scripts
@@ -90,7 +90,7 @@ namespace triagens {
 /// @brief executes a named script
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool executeScript (v8::Persistent<v8::Context>, string const& name);
+        bool executeScript (v8::Persistent<v8::Context>, std::string const& name);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes all scripts

@@ -362,7 +362,7 @@ namespace triagens {
 /// @brief assigns text from a string
 ////////////////////////////////////////////////////////////////////////////////
 
-        StringBuffer& operator= (string const& str) {
+        StringBuffer& operator= (std::string const& str) {
           TRI_ReplaceStringStringBuffer(&_buffer, str.c_str(), str.length());
           return *this;
         }
@@ -485,7 +485,7 @@ namespace triagens {
 /// @brief appends string
 ////////////////////////////////////////////////////////////////////////////////
 
-        StringBuffer& appendText (string const& str) {
+        StringBuffer& appendText (std::string const& str) {
           TRI_AppendString2StringBuffer(&_buffer, str.c_str(), str.length());
           return *this;
         }
@@ -760,7 +760,7 @@ namespace triagens {
 /// @brief appends csv string
 ////////////////////////////////////////////////////////////////////////////////
 
-        StringBuffer& appendCsvString (string const& text) {
+        StringBuffer& appendCsvString (std::string const& text) {
 
           // do not escape here, because some string - i.e. lists of identifier - have no special characters
           TRI_AppendString2StringBuffer(&_buffer, text.c_str(), text.size());

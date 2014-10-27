@@ -156,7 +156,7 @@ namespace triagens {
 /// @brief part content type
 ////////////////////////////////////////////////////////////////////////////////
 
-        const string _partContentType;
+        const std::string _partContentType;
 
      };
   }

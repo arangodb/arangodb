@@ -98,7 +98,7 @@ namespace triagens {
 /// @brief return all databases for an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<std::string> getMapping (const string&) const;
+        std::vector<std::string> getMapping (const std::string&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return all endpoints
@@ -134,7 +134,7 @@ namespace triagens {
 /// @brief return an encryption name
 ////////////////////////////////////////////////////////////////////////////////
 
-        static string getEncryptionName (const Endpoint::EncryptionType);
+        static std::string getEncryptionName (const Endpoint::EncryptionType);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

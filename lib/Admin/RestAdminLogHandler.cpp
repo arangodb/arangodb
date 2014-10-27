@@ -33,6 +33,7 @@
 #include "Basics/logging.h"
 #include "Rest/HttpRequest.h"
 
+using namespace std;
 using namespace triagens;
 using namespace triagens::basics;
 using namespace triagens::rest;

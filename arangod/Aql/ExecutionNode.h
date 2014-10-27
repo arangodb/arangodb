@@ -539,7 +539,7 @@ namespace triagens {
         private:
 
           // This is used to tell all nodes and share a pointer to ourselves
-          shared_ptr<RegisterPlan>* me;
+          std::shared_ptr<RegisterPlan>* me;
 
         public:
 
@@ -551,7 +551,7 @@ namespace triagens {
           
           void clear ();
 
-          void setSharedPtr (shared_ptr<RegisterPlan>* shared) {
+          void setSharedPtr (std::shared_ptr<RegisterPlan>* shared) {
             me = shared;
           }
 
