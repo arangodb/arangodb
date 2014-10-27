@@ -25,7 +25,7 @@
             {% endif %}
             {% if item.articles.length > 0 %}
             <ul class="articles">
-                {{ articles(item.articles) }}
+                {{ articles(item.articles) }}
             </ul>
             {% endif %}
         </li>
@@ -34,19 +34,64 @@
 
 <div class="book-summary">
     <div class="book-search">
-        <input type="text" placeholder="Search" class="form-control" />
+        <a id="clear-search" href="#">&times;</a>
+        <input type="text" placeholder="Type to search" class="form-control" />
     </div>
     <ul class="summary">
         {% set _divider = false %}
-        {% if options.links.issues !== false && (options.links.issues || githubId) %}
-        {% set _divider = true %}
+        {% if options.links.sidebar %}
+      {% for link in options.links.sidebar %}
+          {% set _divider = true %}
+            <li>
+                <a href="{{ options.links.sidebar[loop.key] }}" target="blank" class="custom-link">{{ loop.key }}</a>
+            </li>
+    	{% endfor %}
+    	{% endif %}
+
+        {% if options.links.gitbook !== false %}
         <li>
-            <a href="http://docs.arangodb.org" target="blank">Documentation</a>
+            <a href="https://github.com/triAGENS/ArangoDB/issues" target="blank"class="issues-link"><i class="fa fa-github"></i> Have any issues?</a>
+            <a href="http://stackoverflow.com/questions/tagged/arangodb" target="blank"><i class="fa fa-stack-overflow"></i> Have any questions?</a>
+        </li>
+        <li>
+            <a href="https://www.arangodb.org/whats-new" target="_blank"><i class="fa fa-bullhorn"></i> Whats new in the latest version?</a>
         </li>
         {% endif %}
+        <li class="divider"></li>
         {% if _divider %}
         <li class="divider"></li>
         {% endif %}
+
         {{ articles(summary.chapters) }}
     </ul>
 </div>
+<script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
+<script type="text/javascript">
+$(function(){
+  jQuery(".summary>li").each(function(){
+    var flag = true;
+    var x = window.location.href.split("/");
+    x = x[x.length - 2] + '/' + x[x.length - 1];
+    jQuery('a',this).each(function(){
+      var str = jQuery(this).attr('href');
+      if(str.search(x) != -1){
+        flag = false;
+      }
+    });
+    if(flag){
+      jQuery('ul',this).hide();
+    }
+    else {
+      jQuery(this).show();
+      jQuery("ul", this).show();
+      $(this).get(0).scrollIntoView();
+    }
+  });
+});
+</script>
+<script type="text/javascript">
+$('#clear-search').on('click', function(event){
+    event.preventDefault();
+    $('.book-search input').val("").trigger("keyup");
+});
+</script>
