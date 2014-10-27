@@ -295,10 +295,15 @@
           return String(format);
         }
 
-        var i = 0;
+        var i;
+        var args = [ ];
+        for (i = 1; i < arguments.length; ++i) {
+          args.push(arguments[i]);
+        }
+        i = 0;
 
         return format.replace(/%[dfs]/, function () {
-          return String(arguments[++i]);
+          return String(args[i++]);
         });
       };
     }
