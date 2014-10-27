@@ -61,7 +61,7 @@ ConsoleThread::ConsoleThread (ApplicationServer* applicationServer,
   : Thread("console"),
     _applicationServer(applicationServer),
     _applicationV8(applicationV8),
-    _context(0),
+    _context(nullptr),
     _vocbase(vocbase),
     _done(0),
     _userAborted(false) {
@@ -151,13 +151,13 @@ void ConsoleThread::inner () {
     char* input = console.prompt("arangod> ");
 
     if (_userAborted) {
-      if (input != 0) {
+      if (input != nullptr) {
         TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
       }
       throw "user aborted";
     }
 
-    if (input == 0) {
+    if (input == nullptr) {
       _userAborted = true;
 
       // this will be caught by "run"

@@ -111,25 +111,29 @@ Thread::Thread (std::string const& name)
 ////////////////////////////////////////////////////////////////////////////////
 
 Thread::~Thread () {
-  int res;
-
   if (_running != 0) {
     if (! isSilent()) {
       LOG_WARNING("forcefully shutting down thread '%s'", _name.c_str());
     }
 
-    res = TRI_StopThread(&_thread);
+    int res = TRI_StopThread(&_thread);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_WARNING("unable to stop thread '%s': %s", _name.c_str(), TRI_errno_string(res));
+      errno = res;
+      TRI_set_errno(TRI_ERROR_SYS_ERROR);
+      
+      LOG_WARNING("unable to stop thread '%s': %s", _name.c_str(), TRI_last_error());
     }
   }
 
   if (! _joined) {
-    res = TRI_DetachThread(&_thread);
+    int res = TRI_DetachThread(&_thread);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_WARNING("unable to detach thread '%s': %s", _name.c_str(), TRI_errno_string(res));
+      errno = res;
+      TRI_set_errno(TRI_ERROR_SYS_ERROR);
+
+      LOG_WARNING("unable to detach thread '%s': %s", _name.c_str(), TRI_last_error());
     }
   }
 }
@@ -236,9 +240,12 @@ int Thread::shutdown () {
     int res = TRI_StopThread(&_thread);
 
     if (res != TRI_ERROR_NO_ERROR) {
+      errno = res;
+      TRI_set_errno(TRI_ERROR_SYS_ERROR);
+
       LOG_WARNING("unable to stop thread '%s': %s",
                   _name.c_str(),
-                  TRI_errno_string(res));
+                  TRI_last_error());
     }
   }
 
