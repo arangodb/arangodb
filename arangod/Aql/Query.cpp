@@ -678,7 +678,7 @@ QueryResult Query::explain () {
       
     QueryResult result(TRI_ERROR_NO_ERROR);
     QueryRegistry localRegistry;
-    triagens::basics::Json clusterplans(TRI_UNKNOWN_MEM_ZONE, Json::List, 1);
+
     if (allPlans()) {
       triagens::basics::Json out(Json::List);
 
@@ -689,10 +689,6 @@ QueryResult Query::explain () {
         it->findVarUsage();
         it->planRegisters();
         out.add(it->toJson(parser.ast(), TRI_UNKNOWN_MEM_ZONE, verbosePlans()));
-
-        if (ExecutionEngine::isCoordinator()) {
-          clusterplans.add(ExecutionEngine::getJsonPlans(&localRegistry, this, it, verbosePlans()));
-        }
       }
       result.json = out.steal();
     }
@@ -703,17 +699,10 @@ QueryResult Query::explain () {
       plan->findVarUsage();
       plan->planRegisters();
       result.json = plan->toJson(parser.ast(), TRI_UNKNOWN_MEM_ZONE, verbosePlans()).steal(); 
-      if (ExecutionEngine::isCoordinator()) {
-        clusterplans.add(ExecutionEngine::getJsonPlans(&localRegistry, this, plan, verbosePlans()));
-      }
       delete plan;
     }
 
     _trx->commit();
-
-    if (ExecutionEngine::isCoordinator()) {
-      result.clusterplan = clusterplans.steal();
-    }
 
     return result;
   }

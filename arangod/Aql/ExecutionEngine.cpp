@@ -349,14 +349,11 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     engines.emplace_back(EngineInfo(COORDINATOR, 0, PART_MAIN));
   }
  
-  void ResetPlans() {
-    for (auto onePlan: _plans) {
-      /// todo delete onePlan.second;///TODO
-    }
+  void resetPlans() {
     _plans.clear();
   }
   ~CoordinatorInstanciator () {
-    ResetPlans();
+    resetPlans();
   }
 
   void generatePlanForCoordinator (ExecutionPlan *plan, 
@@ -391,7 +388,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     }
   }
 
-  triagens::basics::Json GeneratePlanForOneShard (EngineInfo const& info,
+  triagens::basics::Json generatePlanForOneShard (EngineInfo const& info,
                                                   QueryId & connectedId,
                                                   std::string const & shardId,
                                                   bool verbose)
@@ -434,7 +431,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     for (auto & shardId : collection->shardIds()) {
       // inject the current shard id into the collection
       collection->setCurrentShard(shardId);
-      auto jsonPlan = GeneratePlanForOneShard(info, connectedId, shardId, verbose);
+      auto jsonPlan = generatePlanForOneShard(info, connectedId, shardId, verbose);
       _plans.push_back(std::make_pair(shardId, jsonPlan.steal()));  
     }
     // fix collection  
@@ -473,8 +470,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         // create an engine on a remote DB server
         // hand in the previous engine's id
         generatePlansForDBServers((*it), id, true);
-        queryIds = DistributePlansToShards((*it), id);
-        ResetPlans();
+        queryIds = distributePlansToShards((*it), id);
+        resetPlans();
       }
     }
 
@@ -485,67 +482,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     return engine;
   }
  
-  triagens::basics::Json buildAllPlans (bool verbose) {
-    ExecutionEngine* engine = nullptr;
-    QueryId id              = 0;
-    //int queryCount = 0;
-    std::unordered_map<std::string, std::string> queryIds;
-    Json coordinatorPlans(triagens::basics::Json::List, 1);
-    Json dbServerPlans(triagens::basics::Json::List, 1);
-    Json shards(triagens::basics::Json::List, 1);
-    Json primaryPlan;
-    
-    for (auto it = engines.rbegin(); it != engines.rend(); ++it) {
-      if ((*it).location == COORDINATOR) {
-        // create a coordinator-based engine
-        engine = buildEngineCoordinator((*it), queryIds);
-        TRI_ASSERT(engine != nullptr);
-        
-        auto plan = engine->getQuery()->plan();
-        TRI_ASSERT(plan != nullptr);
-
-        generatePlanForCoordinator(plan, (*it).nodes.front());
-        auto jsonPlan = plan->root()->toJson(TRI_UNKNOWN_MEM_ZONE, verbose);
-
-        if ((*it).id > 0) {
-          //          TRI_ASSERT(plan->empty());
-          coordinatorPlans.add(jsonPlan);
-        }
-        else {
-          //TRI_ASSERT(!plan->empty());
-          primaryPlan = jsonPlan;
-        }
-        //// todo: else???
-        delete engine;
-        engine = nullptr;
-      }
-      else {
-        Json oneDBServerPlanSet(triagens::basics::Json::Array, 1);
-        // create an engine on a remote DB server
-        // hand in the previous engine's id
-        generatePlansForDBServers((*it), id, verbose);
-        for (auto onePlan: _plans) {
-          shards.add(triagens::basics::Json(onePlan.first));
-          oneDBServerPlanSet(onePlan.first.c_str(), onePlan.second);
-          onePlan.second = nullptr;////TODO
-          // Build dummy query id mapping (we don't distribute our stuff, so we got none)
-          queryIds.emplace(std::make_pair(onePlan.first, std::string("blarg"))); // todo: how?queryCount++)));
-        }
-        ResetPlans();
-        dbServerPlans.add(oneDBServerPlanSet);
-      }
-    }
-
-
-    // return the last created coordinator-based engine
-    // this is the local engine that we'll use to run the query
-    return Json(triagens::basics::Json::Array)
-      ("coordinatorPlans", coordinatorPlans)
-      ("dbServerPlans", dbServerPlans)
-      ("primaryPlan", primaryPlan)
-      ("shards", shards);
-  }
-
   void distributePlanToShard (triagens::arango::ClusterComm*& cc,
                               triagens::arango::CoordTransactionID &coordTransactionID,
                               EngineInfo const& info,
@@ -662,7 +598,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     return queryIds;
   }
 
-  std::unordered_map<std::string, std::string> DistributePlansToShards(EngineInfo const& info,
+  std::unordered_map<std::string, std::string> distributePlansToShards(EngineInfo const& info,
                                                                        QueryId connectedId)
   {
     Collection* collection = info.getCollection();
@@ -678,7 +614,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     for (auto onePlan: _plans) {
       collection->setCurrentShard(onePlan.first);
 
-      distributePlanToShard(cc, coordTransactionID, info, collection, connectedId, url, onePlan.first, onePlan.second );
+      distributePlanToShard(cc, coordTransactionID, info, collection, connectedId, url, onePlan.first, onePlan.second);
+      onePlan.second = nullptr;
     }
 
     // fix collection  
@@ -900,20 +837,6 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
     delete engine;
     throw;
   }
-}
-
-Json ExecutionEngine::getJsonPlans (QueryRegistry* queryRegistry,
-                                    Query* query,
-                                    ExecutionPlan* plan,
-                                    bool verbose) {
-  TRI_ASSERT(isCoordinator());
-  // instanciate the engine on the coordinator
-  std::unique_ptr<CoordinatorInstanciator> inst(new CoordinatorInstanciator(query, queryRegistry));
-  plan->root()->walk(inst.get());
-  
-  // std::cout << "ORIGINAL PLAN:\n" << plan->toJson(query->ast(), TRI_UNKNOWN_MEM_ZONE, true).toString() << "\n\n";
-
-  return inst.get()->buildAllPlans(verbose);
 }
 
 
