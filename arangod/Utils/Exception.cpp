@@ -47,7 +47,7 @@ Exception::Exception (int code,
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 #if HAVE_BACKTRACE
   _errorMessage += std::string("\n\n");
-  _getBacktrace(_errorMessage);
+  TRI_GetBacktrace(_errorMessage);
   _errorMessage += std::string("\n\n");
 #endif
 #endif
@@ -82,7 +82,7 @@ Exception::Exception (int code,
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 #if HAVE_BACKTRACE
   _errorMessage += std::string("\n\n");
-  _getBacktrace(_errorMessage);
+  TRI_GetBacktrace(_errorMessage);
   _errorMessage += std::string("\n\n");
 #endif
 #endif

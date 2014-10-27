@@ -292,7 +292,7 @@ namespace triagens {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 #if HAVE_BACKTRACE
           _msg += std::string("\n\n");
-          _getBacktrace(_msg);
+          TRI_GetBacktrace(_msg);
           _msg += std::string("\n\n");
 #endif
 #endif
@@ -301,7 +301,7 @@ namespace triagens {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 #if HAVE_BACKTRACE
           _msg += std::string("\n\n");
-          _getBacktrace(_msg);
+          TRI_GetBacktrace(_msg);
           _msg += std::string("\n\n");
 #endif
 #endif

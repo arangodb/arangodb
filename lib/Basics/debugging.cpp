@@ -31,6 +31,15 @@
 #include "Basics/locks.h"
 #include "Basics/logging.h"
 
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+#if HAVE_BACKTRACE
+
+#include <execinfo.h>
+#include <cxxabi.h>
+
+#endif
+#endif
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -294,6 +303,92 @@ void TRI_ShutdownDebugging () {
   FailurePoints = nullptr;
 
   TRI_DestroyReadWriteLock(&FailurePointsLock);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief appends a backtrace to the string provided
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_GetBacktrace (std::string& btstr) {
+#if HAVE_BACKTRACE
+  void* stack_frames[50];
+  size_t size, i;
+  char** strings;
+
+  size = backtrace(stack_frames, sizeof(stack_frames) / sizeof(void*));
+  strings = backtrace_symbols(stack_frames, size);
+  for (i = 0; i < size; i++) {
+    std::stringstream ss;
+    if (strings != nullptr) {
+      char *mangled_name = nullptr, *offset_begin = nullptr, *offset_end = nullptr;
+
+      // find parantheses and +address offset surrounding mangled name
+      for (char *p = strings[i]; *p; ++p) {
+        if (*p == '(') {
+          mangled_name = p; 
+        }
+        else if (*p == '+') {
+          offset_begin = p;
+        }
+        else if (*p == ')') {
+          offset_end = p;
+          break;
+        }
+      }
+
+      // if the line could be processed, attempt to demangle the symbol
+      if (mangled_name && offset_begin && offset_end && 
+          mangled_name < offset_begin) {
+        *mangled_name++ = '\0';
+        *offset_begin++ = '\0';
+        *offset_end++ = '\0';
+        int status = 0;
+        char * demangled_name = abi::__cxa_demangle(mangled_name, 0, 0, &status);
+
+        if (demangled_name != nullptr) {
+          if (status == 0) {
+            ss << stack_frames[i];
+            btstr +=  strings[i] +
+              std::string("() [") +
+              ss.str() +
+              std::string("] ") +
+              demangled_name +
+              std::string("\n");
+          }
+          else {
+            btstr += strings[i] +
+              std::string("\n");
+          }
+          TRI_SystemFree(demangled_name);
+        }
+      }
+      else {
+        btstr += strings[i] +
+          std::string("\n");
+      }
+    }
+    else {
+      ss << stack_frames[i];
+      btstr += ss.str() +
+        std::string("\n");
+    }
+  }
+  if (strings != nullptr) {
+    TRI_SystemFree(strings);  
+  }
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints a backtrace on stderr
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_PrintBacktrace () {
+#if HAVE_BACKTRACE
+  std::string out;
+  TRI_GetBacktrace(out);
+  fprintf(stderr, "%s", out.c_str());
+#endif
 }
 
 // -----------------------------------------------------------------------------

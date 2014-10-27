@@ -116,28 +116,6 @@ typedef long suseconds_t;
 #endif
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                            basic triAGENS headers
-// -----------------------------------------------------------------------------
-
-#define TRI_WITHIN_COMMON 1
-#include "Basics/voc-errors.h"
-#include "Basics/error.h"
-#include "Basics/debugging.h"
-#include "Basics/memory.h"
-#include "Basics/mimetypes.h"
-#include "Basics/structures.h"
-#undef TRI_WITHIN_COMMON
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                              basic compiler stuff
-// -----------------------------------------------------------------------------
-
-#define TRI_WITHIN_COMMON 1
-#include "Basics/system-compiler.h"
-#include "Basics/system-functions.h"
-#undef TRI_WITHIN_COMMON
-
-// -----------------------------------------------------------------------------
 // --SECTION--           C++ header files that are always present on all systems
 // -----------------------------------------------------------------------------
 
@@ -159,6 +137,28 @@ typedef long suseconds_t;
 #include <unordered_set>
 #include <memory>
 #include <atomic>
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            basic triAGENS headers
+// -----------------------------------------------------------------------------
+
+#define TRI_WITHIN_COMMON 1
+#include "Basics/voc-errors.h"
+#include "Basics/error.h"
+#include "Basics/debugging.h"
+#include "Basics/memory.h"
+#include "Basics/mimetypes.h"
+#include "Basics/structures.h"
+#undef TRI_WITHIN_COMMON
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              basic compiler stuff
+// -----------------------------------------------------------------------------
+
+#define TRI_WITHIN_COMMON 1
+#include "Basics/system-compiler.h"
+#include "Basics/system-functions.h"
+#undef TRI_WITHIN_COMMON
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 low level helpers
@@ -202,163 +202,19 @@ static inline uint64_t TRI_DecModU64 (uint64_t i, uint64_t len) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
+
 #define TRI_FAKE_SPIN_LOCKS 1
-#else
-#undef TRI_FAKE_SPIN_LOCKS
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief backtrace functionality
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-
-#if HAVE_BACKTRACE
-
-#include <execinfo.h>
-
-#define TRI_USE_DEMANGLING
-#include <cxxabi.h>
-
-#endif
-static inline void _backtrace (void) {
-#if HAVE_BACKTRACE
-  void* stack_frames[50];
-  size_t size, i;
-  char** strings;
-
-  size = backtrace(stack_frames, sizeof(stack_frames) / sizeof(void*));
-  strings = backtrace_symbols(stack_frames, size);
-  for (i = 0; i < size; i++) {
-    if (strings != nullptr) {
-#ifdef TRI_USE_DEMANGLING
-      char *mangled_name = nullptr, *offset_begin = nullptr, *offset_end = nullptr;
-
-      // find parentheses and +address offset surrounding mangled name
-      for (char *p = strings[i]; *p; ++p) {
-        if (*p == '(') {
-          mangled_name = p; 
-        }
-        else if (*p == '+') {
-          offset_begin = p;
-        }
-        else if (*p == ')') {
-          offset_end = p;
-          break;
-        }
-      }
-
-      // if the line could be processed, attempt to demangle the symbol
-      if (mangled_name && offset_begin && offset_end && 
-          mangled_name < offset_begin) {
-        *mangled_name++ = '\0';
-        *offset_begin++ = '\0';
-        *offset_end++ = '\0';
-        int status = 0;
-        char * demangled_name = abi::__cxa_demangle(mangled_name, 0, 0, &status);
-        if (demangled_name != nullptr) {
-          if (status == 0) {
-            fprintf(stderr, "%s() [%p] %s\n", strings[i], stack_frames[i], demangled_name);
-          }
-          else {
-            fprintf(stderr, "%s\n", strings[i]);
-          }
-          TRI_SystemFree(demangled_name);
-        }
-      }
-      else
-#endif
-      {
-        fprintf(stderr, "%s\n", strings[i]);
-      }
-    }
-    else {
-      fprintf(stderr, "[%p]\n", stack_frames[i]);
-    }
-  }
-  if (strings != nullptr) {
-    TRI_SystemFree(strings);  
-  }
-#endif
-}
-
-static inline void _getBacktrace (std::string& btstr) {
-#if HAVE_BACKTRACE
-  void* stack_frames[50];
-  size_t size, i;
-  char** strings;
-
-  size = backtrace(stack_frames, sizeof(stack_frames) / sizeof(void*));
-  strings = backtrace_symbols(stack_frames, size);
-  for (i = 0; i < size; i++) {
-    std::stringstream ss;
-    if (strings != nullptr) {
-
-      char *mangled_name = nullptr, *offset_begin = nullptr, *offset_end = nullptr;
-
-      // find parantheses and +address offset surrounding mangled name
-      for (char *p = strings[i]; *p; ++p) {
-        if (*p == '(') {
-          mangled_name = p; 
-        }
-        else if (*p == '+') {
-          offset_begin = p;
-        }
-        else if (*p == ')') {
-          offset_end = p;
-          break;
-        }
-      }
-
-      // if the line could be processed, attempt to demangle the symbol
-      if (mangled_name && offset_begin && offset_end && 
-          mangled_name < offset_begin) {
-            *mangled_name++ = '\0';
-            *offset_begin++ = '\0';
-            *offset_end++ = '\0';
-            int status = 0;
-            char * demangled_name = abi::__cxa_demangle(mangled_name, 0, 0, &status);
-
-            if (demangled_name != nullptr) {
-              if (status == 0) {
-                ss << stack_frames[i];
-                btstr +=  strings[i] +
-                  std::string("() [") +
-                  ss.str() +
-                  std::string("] ") +
-                  demangled_name +
-                  std::string("\n");
-              }
-              else {
-                btstr += strings[i] +
-                  std::string("\n");
-              }
-              TRI_SystemFree(demangled_name);
-            }
-      }
-      else {
-        btstr += strings[i] +
-          std::string("\n");
-      }
-    }
-    else {
-      ss << stack_frames[i];
-      btstr += ss.str() +
-        std::string("\n");
-    }
-  }
-  if (strings != nullptr) {
-    TRI_SystemFree(strings);  
-  }
-#endif
-}
 
 #ifndef TRI_ASSERT
-#define TRI_ASSERT(expr) { if (! (expr)) _backtrace(); assert(expr); }
-#define TRI_ASSERT_EXPENSIVE(expr) { if (! (expr)) _backtrace(); assert(expr); }
+#define TRI_ASSERT(expr) { if (! (expr)) TRI_PrintBacktrace(); assert(expr); }
+#define TRI_ASSERT_EXPENSIVE(expr) { if (! (expr)) TRI_PrintBacktrace(); assert(expr); }
 #endif
 
+
 #else
+
+
+#undef TRI_FAKE_SPIN_LOCKS
 
 #ifndef TRI_ASSERT
 #define TRI_ASSERT(expr) (static_cast<void>(0))
@@ -366,6 +222,7 @@ static inline void _getBacktrace (std::string& btstr) {
 #endif
 
 #endif
+
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
