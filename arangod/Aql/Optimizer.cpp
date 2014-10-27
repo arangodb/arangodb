@@ -464,7 +464,7 @@ void Optimizer::setupRules () {
     registerRule("distribute-filtercalc-to-cluster",
                  distributeFilternCalcToCluster,
                  distributeFilternCalcToCluster_pass10,
-                 false);
+                 true);
 
     registerRule("distribute-sort-to-cluster",
                  distributeSortToCluster,
