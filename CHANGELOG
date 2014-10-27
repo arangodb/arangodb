@@ -155,6 +155,11 @@ v2.3.0 (XXXX-XX-XX)
 v2.2.7 (XXXX-XX-XX)
 -------------------
 
+* fixed registration of AQL user-defined functions in Web UI (JS shell)
+
+* fixed error display in Web UI for certain errors
+  (now error message is printed instead of 'undefined')
+
 * fixed issue #1059: bug in js module console
 
 * fixed issue #1056: "fs": zip functions fail with passwords
