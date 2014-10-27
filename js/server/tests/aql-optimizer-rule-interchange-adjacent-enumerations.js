@@ -90,7 +90,7 @@ function optimizerRuleTestSuite () {
       queries.forEach(function(query) {
         var result = AQL_EXPLAIN(query, { }, opts);
         result.plans.forEach(function(plan) {
-          assertEqual([ ], plan.rules);
+          assertEqual([ "scatter-in-cluster" ], plan.rules);
         });
       });
     },

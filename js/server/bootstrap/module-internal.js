@@ -207,7 +207,6 @@
   }
   else {
     internal.executeGlobalContextFunction = SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION;
-    delete SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -226,6 +225,7 @@
       require("org/arangodb/ahuacatl").reload();
       require("org/arangodb/aql").reload();
     };
+    delete SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION;
   }
 
 ////////////////////////////////////////////////////////////////////////////////

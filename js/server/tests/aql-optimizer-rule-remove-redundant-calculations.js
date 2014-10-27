@@ -94,7 +94,6 @@ function optimizerRuleTestSuite () {
 
       queryList.forEach(function(query) {
         var result = AQL_EXPLAIN(query[0], { }, paramEnabled);
-        var blarg = AQL_EXECUTE(query[0], { }, paramEnabled);
         assertEqual([ ], result.plan.rules, query[0]);
         var allresults = getQueryMultiplePlansAndExecutions(query[0], {});
         if (query[1]) {
