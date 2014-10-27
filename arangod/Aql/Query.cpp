@@ -54,13 +54,13 @@ using Json = triagens::basics::Json;
 // -----------------------------------------------------------------------------
 
 static std::string StateNames[] = {
-  "initialization",         // INITIALIZATION 
+  "initializing",           // INITIALIZATION 
   "parsing",                // PARSING
-  "ast optimization",       // AST_OPTIMIZATION
-  "plan instanciation",     // PLAN_INSTANCIATION
-  "plan optimization",      // PLAN_OPTIMIZATION
-  "execution",              // EXECUTION
-  "finalization"            // FINALIZATION
+  "ast optimizing",         // AST_OPTIMIZATION
+  "plan instanciating",     // PLAN_INSTANCIATION
+  "plan optimizing",        // PLAN_OPTIMIZATION
+  "executing",              // EXECUTION
+  "finalizating"            // FINALIZATION
 };
 
 // make sure the state strings and the actual states match
@@ -991,7 +991,7 @@ void Query::enterState (ExecutionState state) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string Query::getStateString () const {
-  return "in state '" + StateNames[_state] + "': ";
+  return "while " + StateNames[_state] + ": ";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
