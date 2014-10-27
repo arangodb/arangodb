@@ -235,6 +235,16 @@ function explainSuite () {
       prev = node.id;
       
       node = nodes[n++];
+      assertEqual("RemoteNode", node.type);
+      assertEqual([ prev ], node.dependencies);
+      prev = node.id;
+      
+      node = nodes[n++];
+      assertEqual("GatherNode", node.type);
+      assertEqual([ prev ], node.dependencies);
+      prev = node.id;
+      
+      node = nodes[n++];
       assertEqual("CalculationNode", node.type);
       assertEqual([ prev ], node.dependencies);
       assertTrue(node.hasOwnProperty("expression"));
@@ -245,7 +255,6 @@ function explainSuite () {
       node = nodes[n++];
       assertEqual("FilterNode", node.type);
       assertEqual([ prev ], node.dependencies);
-      assertEqual(0, node.estimatedCost);
       assertEqual(out, node.inVariable.name);
       prev = node.id;
       
@@ -273,16 +282,6 @@ function explainSuite () {
       assertTrue(node.stable);
       prev = node.id;
       
-      node = nodes[n++];
-      assertEqual("RemoteNode", node.type);
-      assertEqual([ prev ], node.dependencies);
-      prev = node.id;
-      
-      node = nodes[n++];
-      assertEqual("GatherNode", node.type);
-      assertEqual([ prev ], node.dependencies);
-      prev = node.id;
-     
       node = nodes[n++];
       assertEqual("AggregateNode", node.type);
       assertEqual([ prev ], node.dependencies);

@@ -82,7 +82,7 @@ function ahuacatlHashTestSuite () {
 
       assertEqual(expected, actual);
       
-      assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "RemoteNode", "GatherNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "IndexRangeNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -96,7 +96,7 @@ function ahuacatlHashTestSuite () {
 
       assertEqual(expected, actual);
       
-      assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "RemoteNode", "GatherNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "IndexRangeNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -134,7 +134,7 @@ function ahuacatlHashTestSuite () {
 
           assertEqual(expected, actual);
       
-          assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "RemoteNode", "GatherNode", "ReturnNode" ], explain(query, { a: i, b: j }));
+          assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "IndexRangeNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query, { a: i, b: j }));
         }
       }
     },
@@ -152,7 +152,7 @@ function ahuacatlHashTestSuite () {
 
           assertEqual(expected, actual);
           
-          assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "RemoteNode", "GatherNode", "ReturnNode" ], explain(query, { a: i, b: j }));
+          assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "IndexRangeNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query, { a: i, b: j }));
         }
       }
     },
@@ -168,7 +168,7 @@ function ahuacatlHashTestSuite () {
 
       assertEqual(expected, actual);
       
-      assertEqual([ "SingletonNode", "CalculationNode", "ScatterNode", "RemoteNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "RemoteNode", "GatherNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "CalculationNode", "ScatterNode", "RemoteNode", "IndexRangeNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -258,7 +258,7 @@ function ahuacatlHashTestSuite () {
 
       assertEqual(expected, actual);
 
-      assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "RemoteNode", "GatherNode", "ReturnNode" ], explain(query, { a: 2, b: 3 }));
+      assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "IndexRangeNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query, { a: 2, b: 3 }));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -272,7 +272,7 @@ function ahuacatlHashTestSuite () {
       
       assertEqual(expected, actual);
 
-      assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "RemoteNode", "GatherNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -286,7 +286,7 @@ function ahuacatlHashTestSuite () {
       
       assertEqual(expected, actual);
 
-      assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "RemoteNode", "GatherNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -300,7 +300,7 @@ function ahuacatlHashTestSuite () {
       
       assertEqual(expected, actual);
 
-      assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "RemoteNode", "GatherNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -314,7 +314,7 @@ function ahuacatlHashTestSuite () {
       
       assertEqual(expected, actual);
 
-      assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "RemoteNode", "GatherNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -328,7 +328,7 @@ function ahuacatlHashTestSuite () {
       
       assertEqual(expected, actual);
 
-      assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "RemoteNode", "GatherNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     }
 
   };
