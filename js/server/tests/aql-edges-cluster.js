@@ -90,7 +90,7 @@ function ahuacatlQueryEdgesTestSuite () {
     testFromQueryExplain : function () {
       var query = "FOR r IN UnitTestsAhuacatlUserRelations FILTER r._from == \"" + docs["John"]._id +"\" RETURN { \"from\" : r._from, \"to\" : r._to }";
       
-      assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "RemoteNode", "GatherNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "IndexRangeNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -100,7 +100,7 @@ function ahuacatlQueryEdgesTestSuite () {
     testToQueryExplain : function () {
       var query = "FOR r IN UnitTestsAhuacatlUserRelations FILTER r._to == \"" + docs["Fred"]._id +"\" RETURN { \"from\" : r._from, \"to\" : r._to }";
 
-      assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "RemoteNode", "GatherNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "IndexRangeNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -110,7 +110,7 @@ function ahuacatlQueryEdgesTestSuite () {
     testFromToQueryExplain : function () {
       var query = "FOR r IN UnitTestsAhuacatlUserRelations FILTER r._from == \"" + docs["John"]._id +"\" && r._to == \"" + docs["Fred"]._id + "\" RETURN { \"from\" : r._from, \"to\" : r._to }";
 
-      assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "RemoteNode", "GatherNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "IndexRangeNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -120,7 +120,7 @@ function ahuacatlQueryEdgesTestSuite () {
     testFromToQuerySelfExplain : function () {
       var query = "FOR r IN UnitTestsAhuacatlUserRelations FILTER r._from == \"" + docs["Self"]._id +"\" && r._to == \"" + docs["Self"]._id + "\" RETURN { \"from\" : r._from, \"to\" : r._to }";
       
-      assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "RemoteNode", "GatherNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "IndexRangeNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
