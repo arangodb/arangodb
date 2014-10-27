@@ -1853,7 +1853,15 @@ int triagens::aql::distributeFilternCalcToCluster (Optimizer* opt,
         case EN::ENUMERATE_COLLECTION:
           stopSearching = true;
           break;
-        case EN::CALCULATION:
+        case EN::CALCULATION: {
+          auto calc = static_cast<CalculationNode const*>(inspectNode);
+          // check if the expression can be executed on a DB server safely
+          if (! calc->expression()->canRunOnDBServer()) {
+            stopSearching = true;
+            break;
+          }
+          // intentionally fall through here
+        }
         case EN::FILTER:
           // remember our cursor...
           parents = inspectNode->getParents();
@@ -1923,8 +1931,6 @@ int triagens::aql::distributeSortToCluster (Optimizer* opt,
         case EN::UPDATE:
         case EN::CALCULATION:
         case EN::FILTER:
-          parents = inspectNode->getParents();
-          continue;
         case EN::SUBQUERY:
         case EN::RETURN:
         case EN::NORESULTS:
@@ -1932,11 +1938,15 @@ int triagens::aql::distributeSortToCluster (Optimizer* opt,
         case EN::DISTRIBUTE:
         case EN::GATHER:
         case EN::ILLEGAL:
-          //do break
         case EN::REMOTE:
         case EN::LIMIT:
         case EN::INDEX_RANGE:
         case EN::ENUMERATE_COLLECTION:
+          // For all these, we do not want to pull a SortNode further down
+          // out to the DBservers, note that potential FilterNodes and
+          // CalculationNodes that can be moved to the DBservers have 
+          // already been moved over by the distribute-filtercalc-to-cluster
+          // rule which is done first.
           stopSearching = true;
           break;
         case EN::SORT:
