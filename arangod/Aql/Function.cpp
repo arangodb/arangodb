@@ -45,12 +45,14 @@ Function::Function (std::string const& externalName,
                     std::string const& arguments,
                     bool isDeterministic,
                     bool canThrow,
+                    bool canRunOnDBServer,
                     FunctionImplementation implementation)
   : internalName(internalName),
     externalName(externalName),
     arguments(arguments),
     isDeterministic(isDeterministic),
     canThrow(canThrow),
+    canRunOnDBServer(canRunOnDBServer),
     implementation(implementation),
     conversions() {
 

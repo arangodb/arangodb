@@ -2010,6 +2010,15 @@ int triagens::aql::removeUnnecessaryRemoteScatter (Optimizer* opt,
         canOptimize = false;
         break;
       }
+
+      if (node->getType() == EN::CALCULATION) {
+        auto calc = static_cast<CalculationNode const*>(node);
+        // check if the expression can be executed on a DB server safely
+        if (! calc->expression()->canRunOnDBServer()) {
+          canOptimize = false;
+          break;
+        }
+      }
     }
 
     if (canOptimize) {
