@@ -59,7 +59,11 @@ var PlannerLocalDefaults = {
   "dispatchers"             : {"me": {"endpoint": "tcp://localhost:"}},
                               // this means only we as a local instance
   "useSSLonDBservers"       : false,
-  "useSSLonCoordinators"    : false
+  "useSSLonCoordinators"    : false,
+  "valgrind"                : "",
+  "valgrindopts"            : [],
+  "valgrindXmlFileBase"     : "",
+  "valgrindTestname"        : ""
 };
 
 // Some helpers using underscore:
@@ -346,6 +350,11 @@ function fillConfigWithDefaults (config, defaultConfig) {
 ///     we use SSL on all DBservers in the cluster
 ///   - *useSSLonCoordinators*: a boolean flag indicating whether or not
 ///     we use SSL on all coordinators in the cluster
+///   - *valgrind*: a string to contain the path of the valgrind binary
+///     if we should run the cluster components in it
+///   - *valgrindopts*: commandline options to the valgrind process
+///   - *valgrindXmlFileBase*: pattern for logfiles
+///   - *valgrindTestname*: name of test to add to the logfiles
 ///
 /// All these values have default values. Here is the current set of
 /// default values:
@@ -610,7 +619,12 @@ Planner.prototype.makePlan = function() {
              "dataPath": config.dataPath,
              "logPath": config.logPath,
              "agentPath": config.agentPath,
-             "onlyLocalhost": config.onlyLocalhost };
+             "onlyLocalhost": config.onlyLocalhost,
+             "valgrind": config.valgrind,
+             "valgrindopts": config.valgrindopts,
+             "valgrindXmlFileBase" : config.valgrindXmlFileBase,
+             "valgrindTestname" : config.valgrindXmlFileBase
+           };
     for (j = 0; j < i; j++) {
       ep = dispatchers[agents[j].dispatcher].endpoint;
       tmp2.peers.push( exchangePort( ep, agents[j].intPort ) );
@@ -635,7 +649,12 @@ Planner.prototype.makePlan = function() {
                 "onlyLocalhost": config.onlyLocalhost,
                 "agency": copy(agencyPos),
                 "useSSLonDBservers": config.useSSLonDBservers,
-                "useSSLonCoordinators": config.useSSLonCoordinators } );
+                "useSSLonCoordinators": config.useSSLonCoordinators,
+                "valgrind": config.valgrind,
+                "valgrindopts": config.valgrindopts,
+                "valgrindXmlFileBase" : config.valgrindXmlFileBase,
+                "valgrindTestname" : config.valgrindTestname
+              } );
   }
 
   var cc = [];
