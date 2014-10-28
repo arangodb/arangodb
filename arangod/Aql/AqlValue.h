@@ -239,11 +239,15 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract a value from a list AqlValue 
 /// this will return null if the value is not a list
+/// depending on the last parameter, the return value will either contain a
+/// copy of the original value in the list or a reference to it (which must
+/// not be freed)
 ////////////////////////////////////////////////////////////////////////////////
 
       triagens::basics::Json extractListMember (triagens::arango::AqlTransaction*,
                                                 TRI_document_collection_t const*,
-                                                int64_t) const;
+                                                int64_t,
+                                                bool) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AqlValue from a vector of AqlItemBlock*s
