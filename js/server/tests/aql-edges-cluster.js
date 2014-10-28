@@ -1,3 +1,5 @@
+/*jshint strict: false, sub: true, maxlen: 500 */
+/*global require, assertEqual, AQL_EXPLAIN */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, edges
 ///
@@ -450,19 +452,6 @@ function ahuacatlQueryEdgesTestSuite () {
     testFromToQueryLinked3 : function () {
       var actual = getQueryResults("FOR u IN UnitTestsAhuacatlUsers FOR r IN UnitTestsAhuacatlUserRelations FILTER r._from == \"" + docs["John"]._id +"\" && r._to == \"" + docs["Jacob"]._id + "\" && r._to == u._id RETURN { \"from\" : r._from, \"to\" : r._to, \"link\" : u.name }");
       assertEqual(0, actual.length);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks an edge index query using _from and _to
-////////////////////////////////////////////////////////////////////////////////
-
-    testFromToQueryLinkedSelf : function () {
-      var actual = getQueryResults("FOR u IN UnitTestsAhuacatlUsers FOR r IN UnitTestsAhuacatlUserRelations FILTER r._from == \"" + docs["Self"]._id +"\" && r._to == \"" + docs["Self"]._id + "\" && r._to == u._id RETURN { \"from\" : r._from, \"to\" : r._to, \"link\" : u.name }");
-      assertEqual(1, actual.length);
-
-      assertEqual(docs["Self"]._id, actual[0]["from"]);
-      assertEqual(docs["Self"]._id, actual[0]["to"]);
-      assertEqual("Self", actual[0]["link"]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

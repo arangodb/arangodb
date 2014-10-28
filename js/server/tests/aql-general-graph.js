@@ -1,5 +1,6 @@
-/*jslint */
-/*global assertEqual, assertTrue, fail*/
+/*jshint strict: false, maxlen: 500 */
+/*global require, assertEqual, assertTrue, fail */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, graph functions
 ///
@@ -33,7 +34,6 @@ var graph = require("org/arangodb/general-graph");
 var helper = require("org/arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults2;
 var getRawQueryResults = helper.getRawQueryResults;
-var assertQueryError = helper.assertQueryError2;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite for EDGES() function
@@ -961,16 +961,6 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       assertEqual(actual[1].vertex._key, "v2");
       assertEqual(actual[2].vertex._key, "v5");
       assertEqual(actual[3].vertex._key, "v5");
-    },
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief checks EDGES() exceptions
-    ////////////////////////////////////////////////////////////////////////////////
-
-    testEdgesExceptions: function () {
-      return undefined;
-      //assertQueryError(errors.ERROR_GRAPH_INVALID_GRAPH.code, "FOR e IN GRAPH_EDGES('notExistingGraph', 'UnitTestsAhuacatlVertex1/v1', 'outbound') RETURN e.what");
-
-      //assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex1/v1', 'noDirection') RETURN e.what");
     }
 
   };

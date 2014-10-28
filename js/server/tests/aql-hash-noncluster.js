@@ -1,3 +1,6 @@
+/*jshint strict: false, sub: true, maxlen: 500 */
+/*global require, assertEqual, AQL_EXPLAIN */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for Ahuacatl, hash index queries
 ///
