@@ -388,33 +388,32 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
                                                   QueryId& connectedId,
                                                   std::string const& shardId,
                                                   bool verbose) {
-      // copy the relevant fragment of the plan for each shard
-      ExecutionPlan plan(query->ast());
+    // copy the relevant fragment of the plan for each shard
+    // Note that in these parts of the query there are no SubqueryNodes,
+    // since they are all on the coordinator!
+    ExecutionPlan plan(query->ast());
 
-      ExecutionNode* previous = nullptr;
-      for (ExecutionNode const* current : info.nodes) {
-        auto clone = current->clone(&plan, false, true);
-        plan.registerNode(clone);
-        
-        if (current->getType() == ExecutionNode::REMOTE) {
-          // update the remote node with the information about the query
-          static_cast<RemoteNode*>(clone)->server("server:" + triagens::arango::ServerState::instance()->getId());
-          static_cast<RemoteNode*>(clone)->ownName(shardId);
-          static_cast<RemoteNode*>(clone)->queryId(connectedId);
-        }
+    ExecutionNode* previous = nullptr;
+    for (ExecutionNode const* current : info.nodes) {
+      auto clone = current->clone(&plan, false, true);
+      // UNNECESSARY, because clone does it: plan.registerNode(clone);
       
-        if (previous == nullptr) {
-          // set the root node
-          plan.root(clone);
-        }
-        else {
-          previous->addDependency(clone);
-        }
-
-        previous = clone;
+      if (current->getType() == ExecutionNode::REMOTE) {
+        // update the remote node with the information about the query
+        static_cast<RemoteNode*>(clone)->server("server:" + triagens::arango::ServerState::instance()->getId());
+        static_cast<RemoteNode*>(clone)->ownName(shardId);
+        static_cast<RemoteNode*>(clone)->queryId(connectedId);
       }
-      plan.setVarUsageComputed();
-      return plan.root()->toJson(TRI_UNKNOWN_MEM_ZONE, verbose);
+    
+      if (previous != nullptr) {
+        clone->addDependency(previous);
+      }
+
+      previous = clone;
+    }
+    plan.root(previous);
+    plan.setVarUsageComputed();
+    return plan.root()->toJson(TRI_UNKNOWN_MEM_ZONE, verbose);
   }
 
   void generatePlansForDBServers (EngineInfo const& info,
@@ -464,7 +463,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         // create an engine on a remote DB server
         // hand in the previous engine's id
         generatePlansForDBServers((*it), id, true);
-        queryIds = distributePlansToShards((*it), id);
+        distributePlansToShards((*it), id, queryIds);
         resetPlans();
       }
     }
@@ -542,12 +541,14 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     }
   }
 
-  std::unordered_map<std::string, std::string> aggregateQueryIds (triagens::arango::ClusterComm*& cc,
-                                                                  triagens::arango::CoordTransactionID& coordTransactionID,
-                                                                  Collection* collection) {
+  void aggregateQueryIds (
+                     triagens::arango::ClusterComm*& cc,
+                     triagens::arango::CoordTransactionID& coordTransactionID,
+                     Collection* collection,
+                     std::unordered_map<std::string, std::string>& queryIds) {
 
     // pick up the remote query ids
-    std::unordered_map<std::string, std::string> queryIds;
+    queryIds.clear();
     std::vector<std::string> shardIds = collection->shardIds();
 
     std::string error;
@@ -591,12 +592,13 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       // TODO: provide sensible error message with more details
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, error);
     }
-          
-    return queryIds;
   }
 
-  std::unordered_map<std::string, std::string> distributePlansToShards (EngineInfo const& info,
-                                                                        QueryId connectedId) {
+  void distributePlansToShards (
+             EngineInfo const& info,
+             QueryId connectedId,
+             std::unordered_map<std::string, std::string>& queryIds ) {
+
     Collection* collection = info.getCollection();
     // now send the plan to the remote servers
     triagens::arango::CoordTransactionID coordTransactionID = TRI_NewTickServer();
@@ -613,7 +615,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
     // fix collection  
     collection->resetCurrentShard();
-    return aggregateQueryIds (cc, coordTransactionID, collection);
+    aggregateQueryIds(cc, coordTransactionID, collection, queryIds);
   }
 
 
@@ -713,10 +715,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     return engine.release();
   }
 
-  virtual bool enterSubquery (ExecutionNode*, ExecutionNode*) override final {
-    return true;
-  }
-  
   virtual bool before (ExecutionNode* en) override final {
     auto const nodeType = en->getType();
 
