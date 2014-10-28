@@ -242,12 +242,11 @@ function startInstance (protocol, options, addArgs, testname) {
   var topDir = findTopDir();
   var instanceInfo = {};
   instanceInfo.topDir = topDir;
-  var tmpDataDir = '/var/' + fs.getTempFile();
+  var tmpDataDir = fs.getTempFile();
 
   instanceInfo.flatTmpDataDir = tmpDataDir;
 
-  tmpDataDir += '/' + testname + '/';
-  print(tmpDataDir);
+  tmpDataDir = fs.join(tmpDataDir, testname);
   fs.makeDirectoryRecursive(tmpDataDir);
   instanceInfo.tmpDataDir = tmpDataDir;
 
@@ -256,13 +255,17 @@ function startInstance (protocol, options, addArgs, testname) {
   var valgrindopts = [];
   var dispatcher;
   if (options.cluster) {
+    var extraargs = makeTestingArgs();
+    if (typeof(options.extraargs) === 'object') {
+      extraargs = extraargs.concat(options.extraargs);
+    }
+    if (addArgs !== undefined) {
+      extraargs = extraargs.concat(addArgs);
+    }
     dispatcher = {"endpoint":"tcp://localhost:",
-                  "arangodExtraArgs":makeTestingArgs(),
+                  "arangodExtraArgs": extraargs,
                   "username": "root",
                   "password": ""};
-    if (addArgs !== undefined) {
-      dispatcher.arangodExtraArgs = addArgs;
-    }
     print("Temporary cluster data and logs are in",tmpDataDir);
 
     var runInValgrind = "";
@@ -272,17 +275,17 @@ function startInstance (protocol, options, addArgs, testname) {
       valgrindopts = options.valgrindargs;
       valgrindXmlFileBase = options.valgrindXmlFileBase;
     }
-    var p = new Planner({"numberOfDBservers":2,
-                         "numberOfCoordinators":1,
-                         "dispatchers": {"me": dispatcher},
-                         "dataPath": tmpDataDir,
-                         "logPath": tmpDataDir,
-                         "useSSLonCoordinators": protocol === "ssl",
-                         "valgrind": runInValgrind,
-                         "valgrindopts": valgrindopts,
-                         "valgrindXmlFileBase"     : valgrindXmlFileBase,
-                         "valgrindTestname"        : testname
 
+    var p = new Planner({"numberOfDBservers"      : 2,
+                         "numberOfCoordinators"   : 1,
+                         "dispatchers"            : {"me": dispatcher},
+                         "dataPath"               : tmpDataDir,
+                         "logPath"                : tmpDataDir,
+                         "useSSLonCoordinators"   : protocol === "ssl",
+                         "valgrind"               : runInValgrind,
+                         "valgrindopts"           : valgrindopts,
+                         "valgrindXmlFileBase"    : valgrindXmlFileBase,
+                         "valgrindTestname"       : testname
                         });
     instanceInfo.kickstarter = new Kickstarter(p.getPlan());
     instanceInfo.kickstarter.launch();
