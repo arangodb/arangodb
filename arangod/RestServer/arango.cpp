@@ -62,7 +62,7 @@ static bool IsRunning = false;
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
-static string ServiceName = "ArangoDB";
+static std::string ServiceName = "ArangoDB";
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -164,17 +164,17 @@ static void TRI_GlobalExitFunction(int exitCode, void* data) {
 
 #ifdef _WIN32
 
-static void InstallServiceCommand (string command) {
-  string friendlyServiceName = "ArangoDB - the multi-purpose database";
+static void InstallServiceCommand (std::string command) {
+  std::string friendlyServiceName = "ArangoDB - the multi-purpose database";
 
-  cout << "INFO: adding service '" << friendlyServiceName
-       << "' (internal '" << ServiceName << "')"
-       << endl;
+  std::cout << "INFO: adding service '" << friendlyServiceName
+            << "' (internal '" << ServiceName << "')"
+            << std::endl;
 
   SC_HANDLE schSCManager = OpenSCManager(NULL, SERVICES_ACTIVE_DATABASE, SC_MANAGER_ALL_ACCESS);
 
   if (schSCManager == 0) {
-    cerr << "FATAL: OpenSCManager failed with " << GetLastError() << endl;
+    std::cerr << "FATAL: OpenSCManager failed with " << GetLastError() << std::endl;
     exit(EXIT_FAILURE);
   }
 
@@ -196,14 +196,14 @@ static void InstallServiceCommand (string command) {
   CloseServiceHandle(schSCManager);
 
   if (schService == 0) {
-    cerr << "FATAL: CreateServiceA failed with " << GetLastError() << endl;
+    std::cerr << "FATAL: CreateServiceA failed with " << GetLastError() << std::endl;
     exit(EXIT_FAILURE);
   }
 
   SERVICE_DESCRIPTION description = { "multi-purpose NoSQL database (version " TRI_VERSION ")" };
   ChangeServiceConfig2(schService, SERVICE_CONFIG_DESCRIPTION, &description);
 
-  cout << "INFO: added service with command line '" << command << "'" << endl;
+  std::cout << "INFO: added service with command line '" << command << "'" << std::endl;
 
   CloseServiceHandle(schService);
 }
@@ -220,12 +220,12 @@ static void InstallService (int argc, char* argv[]) {
   CHAR path[MAX_PATH];
 
   if(! GetModuleFileNameA(NULL, path, MAX_PATH)) {
-    cerr << "FATAL: GetModuleFileNameA failed" << endl;
+    std::cerr << "FATAL: GetModuleFileNameA failed" << std::endl;
     exit(EXIT_FAILURE);
   }
 
   // build command
-  string command;
+  std::string command;
 
   command += "\"";
   command += path;
@@ -246,12 +246,12 @@ static void InstallService (int argc, char* argv[]) {
 #ifdef _WIN32
 
 static void DeleteService (int argc, char* argv[]) {
-  cout << "INFO: removing service '" << ServiceName << "'" << endl;
+  std::cout << "INFO: removing service '" << ServiceName << "'" << std::endl;
 
   SC_HANDLE schSCManager = OpenSCManager(NULL, SERVICES_ACTIVE_DATABASE, SC_MANAGER_ALL_ACCESS);
 
   if (schSCManager == 0) {
-    cerr << "FATAL: OpenSCManager failed with " << GetLastError() << endl;
+    std::cerr << "FATAL: OpenSCManager failed with " << GetLastError() << std::endl;
     exit(EXIT_FAILURE);
   }
 
@@ -263,12 +263,12 @@ static void DeleteService (int argc, char* argv[]) {
   CloseServiceHandle(schSCManager);
 
   if (schService == 0) {
-    cerr << "FATAL: OpenServiceA failed with " << GetLastError() << endl;
+    std::cerr << "FATAL: OpenServiceA failed with " << GetLastError() << std::endl;
     exit(EXIT_FAILURE);
   }
 
   if (! DeleteService(schService)) {
-    cerr << "FATAL: DeleteService failed with " << GetLastError() << endl;
+    std::cerr << "FATAL: DeleteService failed with " << GetLastError() << std::endl;
     exit(EXIT_FAILURE);
   }
 
@@ -440,7 +440,7 @@ int main (int argc, char* argv[]) {
     ARGV = argv;
 
     if (! StartServiceCtrlDispatcher(ste)) {
-      cerr << "FATAL: StartServiceCtrlDispatcher has failed with " << GetLastError() << endl;
+      std::cerr << "FATAL: StartServiceCtrlDispatcher has failed with " << GetLastError() << std::endl;
       exit(EXIT_FAILURE);
     }
   }
