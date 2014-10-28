@@ -53,18 +53,18 @@ namespace triagens {
             : allowSymbolicLink(false), cacheMaxAge(0) {
           }
 
-          Options (string const& path)
+          Options (std::string const& path)
             : path(path), contentType("text/html"), allowSymbolicLink(false), cacheMaxAge(0) {
           }
 
-          Options (string const& path, string const& contentType)
+          Options (std::string const& path, std::string const& contentType)
             : path(path), contentType(contentType), allowSymbolicLink(false), cacheMaxAge(0) {
           }
 
-          string path;
-          string contentType;
+          std::string path;
+          std::string contentType;
           bool allowSymbolicLink;
-          string defaultFile;
+          std::string defaultFile;
           int64_t cacheMaxAge;
         };
 
@@ -111,12 +111,12 @@ namespace triagens {
         void handleError (basics::TriagensError const&);
 
       private:
-        string path;
-        string contentType;
+        std::string path;
+        std::string contentType;
         bool allowSymbolicLink;
-        string defaultFile;
+        std::string defaultFile;
         int64_t cacheMaxAge;
-        string maxAgeHeader;
+        std::string maxAgeHeader;
     };
   }
 }

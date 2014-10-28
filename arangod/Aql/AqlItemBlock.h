@@ -116,7 +116,7 @@ namespace triagens {
         if (! value.isEmpty()) {
           auto it = _valueCount.find(value);
           if (it == _valueCount.end()) {
-            _valueCount.insert(make_pair(value, 1));
+            _valueCount.insert(std::make_pair(value, 1));
           }
           else {
             it->second++;
@@ -229,7 +229,7 @@ namespace triagens {
 /// @brief getter for _data
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline vector<AqlValue>& getData () {
+        inline std::vector<AqlValue>& getData () {
           return _data;
         }
 
@@ -237,7 +237,7 @@ namespace triagens {
 /// @brief getter for _docColls
 ////////////////////////////////////////////////////////////////////////////////
 
-        vector<TRI_document_collection_t const*>& getDocumentCollections () {
+        std::vector<TRI_document_collection_t const*>& getDocumentCollections () {
           return _docColls;
         }
 
@@ -278,7 +278,7 @@ namespace triagens {
 /// to which our AqlValues point will vanish.
 ////////////////////////////////////////////////////////////////////////////////
 
-        AqlItemBlock* steal (vector<size_t>& chosen, size_t from, size_t to);
+        AqlItemBlock* steal (std::vector<size_t>& chosen, size_t from, size_t to);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief concatenate multiple blocks, note that the new block now owns all

@@ -116,7 +116,7 @@ namespace triagens {
           LOG_TRACE("connection closed, client %d", (int) TRI_get_fd_or_handle_of_socket(_commSocket));
 
           // free write buffers
-          for (deque<basics::StringBuffer*>::iterator i = _writeBuffers.begin();  i != _writeBuffers.end();  i++) {
+          for (std::deque<basics::StringBuffer*>::iterator i = _writeBuffers.begin();  i != _writeBuffers.end();  i++) {
             basics::StringBuffer* buffer = *i;
 
             delete buffer;
@@ -124,7 +124,7 @@ namespace triagens {
 
 #ifdef TRI_ENABLE_FIGURES
 
-          for (deque<TRI_request_statistics_t*>::iterator i = _writeBuffersStats.begin();  i != _writeBuffersStats.end();  i++) {
+          for (std::deque<TRI_request_statistics_t*>::iterator i = _writeBuffersStats.begin();  i != _writeBuffersStats.end();  i++) {
             TRI_request_statistics_t* buffer = *i;
 
             TRI_ReleaseRequestStatistics(buffer);
@@ -295,7 +295,7 @@ namespace triagens {
 /// @brief write buffers
 ////////////////////////////////////////////////////////////////////////////////
 
-        deque<basics::StringBuffer*> _writeBuffers;
+        std::deque<basics::StringBuffer*> _writeBuffers;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief statistics buffers
@@ -303,7 +303,7 @@ namespace triagens {
 
 #ifdef TRI_ENABLE_FIGURES
 
-        deque<TRI_request_statistics_t*> _writeBuffersStats;
+        std::deque<TRI_request_statistics_t*> _writeBuffersStats;
 
 #endif
 

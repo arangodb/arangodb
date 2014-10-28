@@ -134,7 +134,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ~GeneralServer () {
-          for (typename set<GeneralCommTask<S, HF>*>::iterator i = _commTasks.begin();  i != _commTasks.end();  ++i) {
+          for (typename std::set<GeneralCommTask<S, HF>*>::iterator i = _commTasks.begin();  i != _commTasks.end();  ++i) {
             _scheduler->destroyTask(*i);
           }
 
@@ -163,9 +163,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void startListening () {
-          map<string, Endpoint*> endpoints = _endpointList->getByPrefix(this->getEncryption());
+          std::map<std::string, Endpoint*> endpoints = _endpointList->getByPrefix(this->getEncryption());
 
-          for (map<string, Endpoint*>::iterator i = endpoints.begin(); i != endpoints.end(); ++i) {
+          for (std::map<std::string, Endpoint*>::iterator i = endpoints.begin(); i != endpoints.end(); ++i) {
             LOG_TRACE("trying to bind to endpoint '%s' for requests", (*i).first.c_str());
 
             bool ok = openEndpoint((*i).second);
@@ -200,7 +200,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool removeEndpoint (Endpoint* endpoint) {
-          for (vector<ListenTask*>::iterator i = _listenTasks.begin();  i != _listenTasks.end();  ++i) {
+          for (std::vector<ListenTask*>::iterator i = _listenTasks.begin();  i != _listenTasks.end();  ++i) {
             ListenTask* task = (*i);
 
             if (task->endpoint() == endpoint) {
@@ -224,7 +224,7 @@ namespace triagens {
         virtual void shutdownHandlers () {
           GENERAL_SERVER_LOCK(&_commTasksLock);
 
-          for (typename set<GeneralCommTask<S, HF>*>::iterator i = _commTasks.begin();  i != _commTasks.end();  ++i) {
+          for (typename std::set<GeneralCommTask<S, HF>*>::iterator i = _commTasks.begin();  i != _commTasks.end();  ++i) {
             (*i)->beginShutdown();
           }
 
@@ -236,7 +236,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void stopListening () {
-          for (vector<ListenTask*>::iterator i = _listenTasks.begin();  i != _listenTasks.end();  ++i) {
+          for (std::vector<ListenTask*>::iterator i = _listenTasks.begin();  i != _listenTasks.end();  ++i) {
             _scheduler->destroyTask(*i);
           }
 

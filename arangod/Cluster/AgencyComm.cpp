@@ -1812,7 +1812,7 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
 
   result._message    = response->getHttpReturnMessage();
   basics::StringBuffer& sb = response->getBody();
-  result._body       = string(sb.c_str(), sb.length());
+  result._body       = std::string(sb.c_str(), sb.length());
   result._index      = 0;
   result._statusCode = response->getHttpReturnCode();
 
@@ -1837,8 +1837,8 @@ bool AgencyComm::send (triagens::httpclient::GeneralClientConnection* connection
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string AgencyComm::encodeKey (std::string s) {
-  string::iterator i;
-  string res;
+  std::string::iterator i;
+  std::string res;
   for (i = s.begin(); i != s.end(); ++i) {
     if (*i == '_') {
       res.push_back('@');
@@ -1860,8 +1860,8 @@ std::string AgencyComm::encodeKey (std::string s) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string AgencyComm::decodeKey (std::string s) {
-  string::iterator i;
-  string res;
+  std::string::iterator i;
+  std::string res;
   for (i = s.begin(); i != s.end(); ++i) {
     if (*i == '@') {
       ++i;

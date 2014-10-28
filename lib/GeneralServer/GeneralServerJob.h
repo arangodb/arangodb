@@ -137,7 +137,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        string const& queue () {
+        std::string const& queue () {
           return _handler->queue();
         }
 

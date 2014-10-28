@@ -620,7 +620,7 @@ namespace triagens {
           int res = this->addCollection(cid, type);
 
           if (res != TRI_ERROR_NO_ERROR) {
-            _errorData = string(name);
+            _errorData = std::string(name);
           }
 
           return res;

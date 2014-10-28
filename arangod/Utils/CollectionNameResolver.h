@@ -131,7 +131,7 @@ namespace triagens {
 
           // We have to look up the collection info:
           ClusterInfo* ci = ClusterInfo::instance();
-          shared_ptr<CollectionInfo> cinfo
+          std::shared_ptr<CollectionInfo> cinfo
             = ci->getCollection(DatabaseID(_vocbase->_name),
                                 name);
           if (cinfo->empty()) {
@@ -176,7 +176,7 @@ namespace triagens {
               else {
                 // DBserver case of a shard:
                 name = triagens::basics::StringUtils::itoa(found->_planId);
-                shared_ptr<CollectionInfo> ci
+                std::shared_ptr<CollectionInfo> ci
                   = ClusterInfo::instance()->getCollection(found->_dbName,name);
                 name = ci->name();   // can be empty, if collection unknown
               }
@@ -242,7 +242,7 @@ namespace triagens {
           int tries = 0;
 
           while (tries++ < 2) {
-            shared_ptr<CollectionInfo> ci
+            std::shared_ptr<CollectionInfo> ci
               = ClusterInfo::instance()->getCollection(_vocbase->_name,
                              triagens::basics::StringUtils::itoa(cid));
             std::string name = ci->name();
@@ -275,7 +275,7 @@ namespace triagens {
           int tries = 0;
 
           while (tries++ < 2) {
-            shared_ptr<CollectionInfo> ci
+            std::shared_ptr<CollectionInfo> ci
               = ClusterInfo::instance()->getCollection(_vocbase->_name,
                              triagens::basics::StringUtils::itoa(cid));
             std::string name = ci->name();

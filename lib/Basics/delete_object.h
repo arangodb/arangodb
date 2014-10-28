@@ -56,7 +56,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     struct DeleteObjectKey {
-      template<typename T, typename S> void operator () (pair<T,S>& ptr) const {
+      template<typename T, typename S> void operator () (std::pair<T,S>& ptr) const {
         if (ptr.first != 0) {
           delete ptr.first;
         }
@@ -68,7 +68,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     struct DeleteObjectValue {
-      template<typename T, typename S> void operator () (pair<T,S>& ptr) const {
+      template<typename T, typename S> void operator () (std::pair<T,S>& ptr) const {
         if (ptr.second != 0) {
           delete ptr.second;
         }

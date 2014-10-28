@@ -114,7 +114,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void processCorsOptions (uint32_t compatibility) {
-          const string allowedMethods = "DELETE, GET, HEAD, PATCH, POST, PUT";
+          const std::string allowedMethods = "DELETE, GET, HEAD, PATCH, POST, PUT";
 
           HttpResponse response(HttpResponse::OK, compatibility);
 
@@ -122,7 +122,7 @@ namespace triagens {
 
           if (! this->_origin.empty()) {
             LOG_TRACE("got CORS preflight request");
-            const string allowHeaders = triagens::basics::StringUtils::trim(this->_request->header("access-control-request-headers"));
+            const std::string allowHeaders = triagens::basics::StringUtils::trim(this->_request->header("access-control-request-headers"));
 
             // send back which HTTP methods are allowed for the resource
             // we'll allow all
@@ -165,16 +165,16 @@ namespace triagens {
           }
 
           bool found;
-          string const& acceptEncoding = this->_request->header("accept-encoding", found);
+          std::string const& acceptEncoding = this->_request->header("accept-encoding", found);
 
           if (found) {
-            if (acceptEncoding.find("deflate") != string::npos) {
+            if (acceptEncoding.find("deflate") != std::string::npos) {
               _acceptDeflate = true;
             }
           }
 
           // check for an async request
-          string const& asyncExecution = this->_request->header("x-arango-async", found);
+          std::string const& asyncExecution = this->_request->header("x-arango-async", found);
 
           // clear request object
           this->_request = nullptr;
@@ -292,7 +292,7 @@ namespace triagens {
 
         bool sendWwwAuthenticateHeader () const {
           bool found;
-          string const value = this->_request->header("x-omit-www-authenticate", found);
+          std::string const value = this->_request->header("x-omit-www-authenticate", found);
 
           return ! found;
         }
@@ -381,8 +381,8 @@ namespace triagens {
               this->_readPosition = ptr - this->_readBuffer->c_str() + 4;
 
               LOG_TRACE("HTTP READ FOR %p: %s", (void*) this,
-                        string(this->_readBuffer->c_str() + this->_startPosition,
-                               this->_readPosition - this->_startPosition).c_str());
+                        std::string(this->_readBuffer->c_str() + this->_startPosition,
+                                    this->_readPosition - this->_startPosition).c_str());
 
               // check that we know, how to serve this request
               // and update the connection information, i. e. client and server addresses and ports
@@ -457,7 +457,7 @@ namespace triagens {
 
                 // check for Access-Control-Allow-Credentials header
                 bool found;
-                string const& allowCredentials = this->_request->header("access-control-allow-credentials", found);
+                std::string const& allowCredentials = this->_request->header("access-control-allow-credentials", found);
 
                 if (found) {
                   this->_denyCredentials = ! triagens::basics::StringUtils::boolean(allowCredentials);
@@ -507,7 +507,7 @@ namespace triagens {
                   }
 
                   LOG_WARNING("got corrupted HTTP request '%s'",
-                              string(this->_readBuffer->c_str() + this->_startPosition, l).c_str());
+                              std::string(this->_readBuffer->c_str() + this->_startPosition, l).c_str());
 
                   // bad request, method not allowed
                   HttpResponse response(HttpResponse::METHOD_NOT_ALLOWED, getCompatibility());
@@ -547,7 +547,7 @@ namespace triagens {
               // check for a 100-continue
               if (this->_readRequestBody) {
                 bool found;
-                string const& expect = this->_request->header("expect", found);
+                std::string const& expect = this->_request->header("expect", found);
 
                 if (found && triagens::basics::StringUtils::trim(expect) == "100-continue") {
                   LOG_TRACE("received a 100-continue request");
@@ -594,7 +594,7 @@ namespace triagens {
             // read "bodyLength" from read buffer and add this body to "httpRequest"
             this->_request->setBody(this->_readBuffer->c_str() + this->_bodyPosition, this->_bodyLength);
 
-            LOG_TRACE("%s", string(this->_readBuffer->c_str() + this->_bodyPosition, this->_bodyLength).c_str());
+            LOG_TRACE("%s", std::string(this->_readBuffer->c_str() + this->_bodyPosition, this->_bodyLength).c_str());
 
             // remove body from read buffer and reset read position
             this->_readRequestBody = false;
@@ -622,7 +622,7 @@ namespace triagens {
           // keep-alive handling
           // .............................................................................
 
-          string connectionType = triagens::basics::StringUtils::tolower(this->_request->header("connection"));
+          std::string connectionType = triagens::basics::StringUtils::tolower(this->_request->header("connection"));
 
           if (connectionType == "close") {
             // client has sent an explicit "Connection: Close" header. we should close the connection
@@ -698,7 +698,7 @@ namespace triagens {
           // not authenticated
           else {
             HttpResponse response(HttpResponse::UNAUTHORIZED, compatibility);
-            const string realm = "basic realm=\"" + this->_server->getHandlerFactory()->authenticationRealm(this->_request) + "\"";
+            const std::string realm = "basic realm=\"" + this->_server->getHandlerFactory()->authenticationRealm(this->_request) + "\"";
 
             if (sendWwwAuthenticateHeader()) {
               response.setHeader("www-authenticate", strlen("www-authenticate"), realm.c_str());

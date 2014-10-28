@@ -40,6 +40,7 @@
 #include "Rest/EndpointIpV4.h"
 #include "Rest/EndpointIpV6.h"
 
+using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
 

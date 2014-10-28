@@ -173,13 +173,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
           explicit
-          UniformCharacter (string const& characters);
+          UniformCharacter (std::string const& characters);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-          UniformCharacter (size_t length, string const& characters);
+          UniformCharacter (size_t length, std::string const& characters);
 
         public:
 
@@ -187,17 +187,17 @@ namespace triagens {
 /// @brief returns a random string of fixed length
 ////////////////////////////////////////////////////////////////////////////////
 
-          string random ();
+          std::string random ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a random string of given length
 ////////////////////////////////////////////////////////////////////////////////
 
-          string random (size_t length);
+          std::string random (size_t length);
 
         private:
           size_t length;
-          string const characters;
+          std::string const characters;
           UniformInteger generator;
       };
     }

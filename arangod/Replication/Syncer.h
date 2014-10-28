@@ -95,7 +95,7 @@ namespace triagens {
 /// @brief request location rewriter (injects database name)
 ////////////////////////////////////////////////////////////////////////////////
 
-        static string rewriteLocation (void*, const string&);
+        static std::string rewriteLocation (void*, const std::string&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
