@@ -357,7 +357,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int createPlans (ExecutionPlan* p,
-                         std::vector<std::string> const&);
+                         std::vector<std::string> const&,
+                         bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a plan to the optimizer

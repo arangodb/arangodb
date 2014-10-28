@@ -1,3 +1,6 @@
+/*jshint strict: false, maxlen: 500 */
+/*global require, assertEqual, AQL_EXPLAIN */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, limit optimisations
 ///
@@ -70,8 +73,9 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitNonCollectionNoRestriction : function () {
+      var i;
       var list = [ ];
-      for (var i = 0; i < 100; ++i) {
+      for (i = 0; i < 100; ++i) {
         list.push(i);
       }
 
@@ -92,7 +96,7 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
         { offset: 100, limit: 2, expectedLength: 0 }
       ];
 
-      for (var i = 0; i < tests.length; ++i) {
+      for (i = 0; i < tests.length; ++i) {
         var test = tests[i];
 
         var query = "FOR c IN " + JSON.stringify(list) + " LIMIT " + test.offset + ", " + test.limit + " RETURN c";
@@ -143,8 +147,9 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitNonCollectionNoRestrictionEmpty : function () {
+      var i;
       var list = [ ];
-      for (var i = 0; i < 100; ++i) {
+      for (i = 0; i < 100; ++i) {
         list.push(i);
       }
 
@@ -158,7 +163,7 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
         { offset: 100, limit: 0 }
       ];
 
-      for (var i = 0; i < tests.length; ++i) {
+      for (i = 0; i < tests.length; ++i) {
         var test = tests[i];
 
         var query = "FOR c IN " + JSON.stringify(list) + " LIMIT " + test.offset + ", " + test.limit + " RETURN c";
@@ -233,8 +238,9 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitNonCollectionLimitLimit : function () {
+      var i;
       var list = [ ];
-      for (var i = 0; i < 100; ++i) {
+      for (i = 0; i < 100; ++i) {
         list.push(i);
       }
 
@@ -250,7 +256,7 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
         { offset: 50, limit: 50, offset2: 50, limit2: 50, expectedLength: 0 }
       ];
 
-      for (var i = 0; i < tests.length; ++i) {
+      for (i = 0; i < tests.length; ++i) {
         var test = tests[i];
 
         var query = "FOR c IN " + JSON.stringify(list) + " LIMIT " + test.offset + ", " + test.limit + " LIMIT " + test.offset2 + ", " + test.limit2 + " RETURN c";
@@ -295,8 +301,9 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitNonCollectionFilter : function () {
+      var i;
       var list = [ ];
-      for (var i = 0; i < 100; ++i) {
+      for (i = 0; i < 100; ++i) {
         list.push(i);
       }
 
@@ -328,7 +335,7 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
         { offset: 50, limit: 5, value: 50, expectedLength: 0 }
       ];
 
-      for (var i = 0; i < tests.length; ++i) {
+      for (i = 0; i < tests.length; ++i) {
         var test = tests[i];
 
         var query = "FOR c IN " + JSON.stringify(list) + " FILTER c >= " + test.value + " LIMIT " + test.offset + ", " + test.limit + " RETURN c";

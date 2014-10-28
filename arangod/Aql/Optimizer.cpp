@@ -103,8 +103,11 @@ bool Optimizer::addPlan (ExecutionPlan* plan,
 ////////////////////////////////////////////////////////////////////////////////
 
 int Optimizer::createPlans (ExecutionPlan* plan,
-                            std::vector<std::string> const& rulesSpecification) {
-  if (! ExecutionEngine::isCoordinator() && plan->isDeadSimple()) {
+                            std::vector<std::string> const& rulesSpecification,
+                            bool inspectSimplePlans) {
+  if (! inspectSimplePlans &&
+      ! ExecutionEngine::isCoordinator() && 
+      plan->isDeadSimple()) {
     // the plan is so simple that any further optimizations would probably cost
     // more than simply executing the plan
     _plans.clear();

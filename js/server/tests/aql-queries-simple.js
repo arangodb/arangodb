@@ -1,3 +1,6 @@
+/*jshint strict: false, maxlen: 500 */
+/*global require, assertEqual, AQL_EXECUTE */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, simple queries
 ///

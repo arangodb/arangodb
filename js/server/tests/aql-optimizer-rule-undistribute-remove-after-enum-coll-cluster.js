@@ -1,4 +1,6 @@
-/*global require, assertTrue, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*jshint strict: false, maxlen: 500 */
+/*global require, assertTrue, assertEqual, AQL_EXPLAIN */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
 ///
@@ -29,7 +31,6 @@
 var db = require("org/arangodb").db;
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
-var getQueryResults = helper.getQueryResults2;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -41,7 +42,6 @@ function optimizerRuleTestSuite () {
   var rulesNone        = { optimizer: { rules: [ "-all" ] } };
   var rulesAll         = { optimizer: { rules: [ "+all" ] } };
   var thisRuleEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
-  var thisRuleDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
 
   var cn1 = "UnitTestsAqlOptimizerRuleUndist1";
   var cn2 = "UnitTestsAqlOptimizerRuleUndist2";
