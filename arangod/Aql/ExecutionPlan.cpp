@@ -1288,31 +1288,67 @@ ExecutionNode* ExecutionPlan::fromJson (Json const& json) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns true if a plan is so simple that optimizations would
+/// probably cost more than simply executing the plan
+////////////////////////////////////////////////////////////////////////////////
+
+bool ExecutionPlan::isDeadSimple () const {
+  auto current = _root;
+  while (current != nullptr) {
+    auto deps = current->getDependencies();
+
+    if (deps.size() != 1) {
+      break;
+    }
+
+    auto const nodeType = current->getType();
+
+    if (nodeType == ExecutionNode::SUBQUERY ||
+        nodeType == ExecutionNode::ENUMERATE_COLLECTION ||
+        nodeType == ExecutionNode::INDEX_RANGE) {
+      // these node types are not simple
+      return false;
+    }
+
+    current = deps[0];
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief show an overview over the plan
 ////////////////////////////////////////////////////////////////////////////////
 
 struct Shower : public WalkerWorker<ExecutionNode> {
   int indent;
+
   Shower () : indent(0) {
   }
-  ~Shower () {}
 
-  bool enterSubquery (ExecutionNode*, ExecutionNode*) {
+  ~Shower () {
+  }
+
+  bool enterSubquery (ExecutionNode*, ExecutionNode*) override final {
     indent++;
     return true;
   }
 
-  void leaveSubquery (ExecutionNode*, ExecutionNode*) {
+  void leaveSubquery (ExecutionNode*, ExecutionNode*) override final {
     indent--;
   }
 
-  void after (ExecutionNode* en) {
+  void after (ExecutionNode* en) override final {
     for (int i = 0; i < indent; i++) {
       std::cout << ' ';
     }
     std::cout << en->getTypeString() << std::endl;
   }
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief show an overview over the plan
+////////////////////////////////////////////////////////////////////////////////
 
 void ExecutionPlan::show () {
   Shower shower;
