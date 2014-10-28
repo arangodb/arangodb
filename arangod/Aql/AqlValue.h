@@ -82,17 +82,17 @@ namespace triagens {
           _type(EMPTY) {
       }
 
-      AqlValue (triagens::basics::Json* json)
+      explicit AqlValue (triagens::basics::Json* json)
         : _json(json), 
           _type(JSON) {
       }
       
-      AqlValue (TRI_df_marker_t const* marker)
+      explicit AqlValue (TRI_df_marker_t const* marker)
         : _marker(marker), 
           _type(SHAPED) {
       }
       
-      AqlValue (std::vector<AqlItemBlock*>* vector)
+      explicit AqlValue (std::vector<AqlItemBlock*>* vector)
         : _vector(vector), 
           _type(DOCVEC) {
       }
