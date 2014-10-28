@@ -89,7 +89,7 @@ function explainSuite () {
       var query = "FOR i IN " + cn + " FILTER i._key == @key RETURN i";
 
       keys.forEach(function(key) {
-        assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "IndexRangeNode", "CalculationNode", "FilterNode", "RemoteNode", "GatherNode", "ReturnNode" ], explain(query, { key: key }));
+        assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "IndexRangeNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "ReturnNode" ], explain(query, { key: key }));
         assertEqual([ ], AQL_EXECUTE(query, { key: key }).json);
       });
     }, 
@@ -101,7 +101,7 @@ function explainSuite () {
     testKeyExisting : function () {
       var query = "FOR i IN " + cn + " FILTER i._key == @key RETURN i.value";
       for (var i = 0; i < 100; ++i) {
-        assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "RemoteNode", "GatherNode", "ReturnNode" ], explain(query, { key: "testkey" + i }));
+        assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "IndexRangeNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query, { key: "testkey" + i }));
         assertEqual([ i ], AQL_EXECUTE(query, { key: "testkey" + i }).json);
       }
     }, 
@@ -137,7 +137,7 @@ function explainSuite () {
       var query = "FOR i IN " + cn + " FILTER i._id == @id RETURN i";
 
       ids.forEach(function(id) {
-        assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "IndexRangeNode", "CalculationNode", "FilterNode", "RemoteNode", "GatherNode", "ReturnNode" ], explain(query, { id: id }));
+        assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "IndexRangeNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "ReturnNode" ], explain(query, { id: id }));
         assertEqual([ ], AQL_EXECUTE(query, { id: id }).json);
       });
     }, 
@@ -149,7 +149,7 @@ function explainSuite () {
     testIdExisting : function () {
       var query = "FOR i IN " + cn + " FILTER i._id == @id RETURN i.value";
       for (var i = 0; i < 100; ++i) {
-        assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "RemoteNode", "GatherNode", "ReturnNode" ], explain(query, { id: cn + "/testkey" + i }));
+        assertEqual([ "SingletonNode", "ScatterNode", "RemoteNode", "IndexRangeNode", "RemoteNode", "GatherNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query, { id: cn + "/testkey" + i }));
         assertEqual([ i ], AQL_EXECUTE(query, { id: cn + "/testkey" + i }).json);
       }
     }
