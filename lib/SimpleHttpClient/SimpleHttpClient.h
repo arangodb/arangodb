@@ -166,7 +166,7 @@ namespace triagens {
 
       void setErrorMessage (const std::string& message,
                             int error) {
-        if (error != 0) {
+        if (error != TRI_ERROR_NO_ERROR) {
           _errorMessage = message + ": " + strerror(error);
         }
         else {
