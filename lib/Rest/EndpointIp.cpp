@@ -238,7 +238,7 @@ TRI_socket_t EndpointIp::connect (double connectTimeout,
   hints.ai_flags = TRI_CONNECT_AI_FLAGS;
   hints.ai_socktype = SOCK_STREAM;
 
-  string portString = StringUtils::itoa(_port);
+  std::string portString = StringUtils::itoa(_port);
 
   error = getaddrinfo(_host.c_str(), portString.c_str(), &hints, &result);
 

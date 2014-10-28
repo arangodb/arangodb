@@ -253,6 +253,7 @@ function startInstance (protocol, options, addArgs, testname) {
 
   var endpoint;
   var pos;
+  var valgrindopts = [];
   var dispatcher;
   if (options.cluster) {
     dispatcher = {"endpoint":"tcp://localhost:",
@@ -263,12 +264,26 @@ function startInstance (protocol, options, addArgs, testname) {
       dispatcher.arangodExtraArgs = addArgs;
     }
     print("Temporary cluster data and logs are in",tmpDataDir);
+
+    var runInValgrind = "";
+    var valgrindXmlFileBase = "";
+    if (typeof(options.valgrind) === 'string') {
+      runInValgrind = options.valgrind;
+      valgrindopts = options.valgrindargs;
+      valgrindXmlFileBase = options.valgrindXmlFileBase;
+    }
     var p = new Planner({"numberOfDBservers":2,
                          "numberOfCoordinators":1,
                          "dispatchers": {"me": dispatcher},
                          "dataPath": tmpDataDir,
                          "logPath": tmpDataDir,
-                         "useSSLonCoordinators": protocol === "ssl"});
+                         "useSSLonCoordinators": protocol === "ssl",
+                         "valgrind": runInValgrind,
+                         "valgrindopts": valgrindopts,
+                         "valgrindXmlFileBase"     : valgrindXmlFileBase,
+                         "valgrindTestname"        : testname
+
+                        });
     instanceInfo.kickstarter = new Kickstarter(p.getPlan());
     instanceInfo.kickstarter.launch();
     var runInfo = instanceInfo.kickstarter.runInfo;
@@ -309,7 +324,7 @@ function startInstance (protocol, options, addArgs, testname) {
     }
     if (typeof(options.valgrind) === 'string') {
       var run = fs.join("bin","arangod");
-      var valgrindopts = options.valgrindargs.concat(
+      valgrindopts = options.valgrindargs.concat(
         ["--xml-file="+options.valgrindXmlFileBase + '_' + testname + '.%p.xml',
          "--log-file="+options.valgrindXmlFileBase + '_' + testname + '.%p.valgrind.log']);
       var newargs=valgrindopts.concat([run]).concat(args);      
