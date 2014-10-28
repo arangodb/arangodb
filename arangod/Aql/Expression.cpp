@@ -304,7 +304,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
 
     if (result.isList()) {
       if (index->isNumericValue()) {
-        auto j = result.extractListMember(trx, myCollection, index->getIntValue());
+        auto j = result.extractListMember(trx, myCollection, index->getIntValue(), true);
         result.destroy();
         return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
       }
@@ -315,7 +315,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
         try {
           // stoll() might throw an exception if the string is not a number
           int64_t position = static_cast<int64_t>(std::stoll(p));
-          auto j = result.extractListMember(trx, myCollection, position);
+          auto j = result.extractListMember(trx, myCollection, position, true);
           result.destroy();
           return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
         }
@@ -517,7 +517,8 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
       size_t const n = right.listSize();
 
       for (size_t i = 0; i < n; ++i) {
-        auto listItem = right.extractListMember(trx, rightCollection, i);
+        // do not copy the list element we're looking at
+        auto listItem = right.extractListMember(trx, rightCollection, i, false);
         AqlValue listItemValue(&listItem);
 
         int compareResult = AqlValue::Compare(trx, left, leftCollection, listItemValue, nullptr);
