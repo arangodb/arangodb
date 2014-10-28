@@ -1,3 +1,6 @@
+/*jshint strict: false, maxlen: 700 */
+/*global require, assertEqual, assertTrue */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, PARSE function
 ///
@@ -37,19 +40,6 @@ var assertParseError = helper.assertParseError;
 
 function ahuacatlParseTestSuite () {
   var errors = internal.errors;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the error code from a result
-////////////////////////////////////////////////////////////////////////////////
-
-  function getErrorCode (fn) {
-    try {
-      fn();
-    }
-    catch (e) {
-      return e.errorNum;
-    }
-  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the collection names from the result

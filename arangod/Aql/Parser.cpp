@@ -106,7 +106,7 @@ bool Parser::configureWriteQuery (QueryType type,
 /// @brief parse the query
 ////////////////////////////////////////////////////////////////////////////////
 
-QueryResult Parser::parse () {
+QueryResult Parser::parse (bool withDetails) {
   char const* q = queryString();
   if (q == nullptr || *q == '\0') {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_EMPTY);
@@ -139,9 +139,12 @@ QueryResult Parser::parse () {
   TRI_ASSERT(scopes->numActive() == 0);
 
   QueryResult result;
-  result.collectionNames = _query->collectionNames();
-  result.bindParameters  = _ast->bindParameters();
-  result.json            = _ast->toJson(TRI_UNKNOWN_MEM_ZONE, false);
+
+  if (withDetails) {
+    result.collectionNames = _query->collectionNames();
+    result.bindParameters  = _ast->bindParameters();
+    result.json            = _ast->toJson(TRI_UNKNOWN_MEM_ZONE, false);
+  }
 
   return result;
 }

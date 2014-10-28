@@ -1,3 +1,6 @@
+/*jshint strict: false, maxlen: 500 */
+/*global require, assertEqual, assertFalse, assertTrue, assertException */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, operators
 ///
@@ -3419,7 +3422,7 @@ function ahuacatlOperatorsTestSuite () {
       assertException(function() { aql.ARITHMETIC_PLUS({ }, 1); });
       assertException(function() { aql.ARITHMETIC_PLUS({ 'a' : 0 }, 1); });
       assertException(function() { aql.ARITHMETIC_PLUS('0', '0'); });
-      assertException(function() { aql.ARITHMETIC_PLUS(1.3e317, 1.3e317); });
+      assertException(function() { aql.ARITHMETIC_PLUS(1.3e308 * 10, 1.3e308 * 10); });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3508,7 +3511,7 @@ function ahuacatlOperatorsTestSuite () {
       assertException(function() { aql.ARITHMETIC_MINUS({ }, 1); });
       assertException(function() { aql.ARITHMETIC_MINUS({ 'a' : 0 }, 1); });
       assertException(function() { aql.ARITHMETIC_MINUS('0', '0'); });
-      assertException(function() { aql.ARITHMETIC_MINUS(-1.3e317, 1.3e317); });
+      assertException(function() { aql.ARITHMETIC_MINUS(-1.3e308 * 10, 1.3e308 * 10); });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3602,7 +3605,7 @@ function ahuacatlOperatorsTestSuite () {
       assertException(function() { aql.ARITHMETIC_TIMES({ 'a' : 0 }, 1); });
       assertException(function() { aql.ARITHMETIC_TIMES(1.3e190, 1.3e190); });
       assertException(function() { aql.ARITHMETIC_TIMES(1.3e307, 1.3e307); });
-      assertException(function() { aql.ARITHMETIC_TIMES(1.3e317, 1.3e317); });
+      assertException(function() { aql.ARITHMETIC_TIMES(1.3e308 * 10, 1.3e308 * 10); });
       assertException(function() { aql.ARITHMETIC_TIMES('0', '0'); });
     },
 

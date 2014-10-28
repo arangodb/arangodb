@@ -1,3 +1,6 @@
+/*jshint strict: false, maxlen: 500 */
+/*global require, assertEqual, AQL_EXPLAIN */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, in
 ///
@@ -30,8 +33,6 @@ var internal = require("internal");
 var helper = require("org/arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults2;
 var getQueryResultsAQL2 = helper.getQueryResultsAQL2;
-var assertQueryError = helper.assertQueryError2;
-var errors = internal.errors;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -305,8 +306,9 @@ function ahuacatlQueryOptimiserInTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInEdgeConst : function () {
+      var i;
       c.save({ _key: "test0" });
-      for (var i = 1; i < 100; ++i) {
+      for (i = 1; i < 100; ++i) {
         c.save({ _key: "test" + i });
       }
       
@@ -314,7 +316,7 @@ function ahuacatlQueryOptimiserInTestSuite () {
       internal.db._drop(en);
       var e = internal.db._createEdgeCollection(en);
       
-      for (var i = 1; i < 100; ++i) {
+      for (i = 1; i < 100; ++i) {
         e.save(cn + "/test" + i, cn + "/test" + (i - 1), { });
       }
 
@@ -333,8 +335,9 @@ function ahuacatlQueryOptimiserInTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInEdgeDynamic : function () {
+      var i;
       c.save({ _key: "test0" });
-      for (var i = 1; i < 100; ++i) {
+      for (i = 1; i < 100; ++i) {
         c.save({ _key: "test" + i });
       }
       
@@ -342,7 +345,7 @@ function ahuacatlQueryOptimiserInTestSuite () {
       internal.db._drop(en);
       var e = internal.db._createEdgeCollection(en);
       
-      for (var i = 1; i < 100; ++i) {
+      for (i = 1; i < 100; ++i) {
         e.save(cn + "/test" + i, cn + "/test" + (i - 1), { });
       }
 
@@ -361,8 +364,9 @@ function ahuacatlQueryOptimiserInTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInEdgeDynamicRef : function () {
+      var i;
       c.save({ _key: "test0" });
-      for (var i = 1; i < 100; ++i) {
+      for (i = 1; i < 100; ++i) {
         c.save({ _key: "test" + i });
       }
       
@@ -370,7 +374,7 @@ function ahuacatlQueryOptimiserInTestSuite () {
       internal.db._drop(en);
       var e = internal.db._createEdgeCollection(en);
       
-      for (var i = 1; i < 100; ++i) {
+      for (i = 1; i < 100; ++i) {
         e.save(cn + "/test" + i, cn + "/test" + (i - 1), { });
       }
 
@@ -386,8 +390,9 @@ function ahuacatlQueryOptimiserInTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInEdgeRef : function () {
+      var i;
       c.save({ _key: "test0" });
-      for (var i = 1; i < 100; ++i) {
+      for (i = 1; i < 100; ++i) {
         c.save({ _key: "test" + i, ids: [ cn + "/test" + i ] });
       }
       
@@ -395,7 +400,7 @@ function ahuacatlQueryOptimiserInTestSuite () {
       internal.db._drop(en);
       var e = internal.db._createEdgeCollection(en);
       
-      for (var i = 1; i < 100; ++i) {
+      for (i = 1; i < 100; ++i) {
         e.save(cn + "/test" + i, cn + "/test" + (i - 1), { });
       }
 

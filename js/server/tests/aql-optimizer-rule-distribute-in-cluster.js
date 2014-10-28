@@ -1,4 +1,6 @@
-/*global require, assertTrue, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*jshint strict: false, maxlen: 500 */
+/*global require, assertEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
 ///
@@ -29,7 +31,6 @@
 var db = require("org/arangodb").db;
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
-var getQueryResults = helper.getQueryResults2;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -1013,9 +1014,9 @@ function interactionOtherRulesTestSuite () {
         assertEqual(expectedNodes[i], explain(result), query);
       });
     }
-  }
-};
-//jsunity.run(optimizerRuleTestSuite);
+  };
+}
+jsunity.run(optimizerRuleTestSuite);
 jsunity.run(interactionOtherRulesTestSuite);
 
 return jsunity.done();

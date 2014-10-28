@@ -1,4 +1,5 @@
-/*global require, assertTrue, assertEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*jshint strict: false, maxlen: 500 */
+/*global require, assertEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -85,9 +86,6 @@ function optimizerRuleTestSuite() {
     assertEqual(findExecutionNodes(plan, "CalculationNode").length,
                 countXPect,
                 "Has " + countXPect +  " CalculationNode");
-  };
-  var hasNoCalculationNode = function (plan) {
-    assertEqual(findExecutionNodes(plan, "CalculationNode").length, 0, "Has NO CalculationNode");
   };
   var hasIndexRangeNode_WithRanges = function (plan, haveRanges) {
     var rn = findExecutionNodes(plan, "IndexRangeNode");
