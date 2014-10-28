@@ -1,4 +1,6 @@
-/*global _, require, assertTrue, assertEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*jshint strict: false, maxlen: 500 */
+/*global require, assertEqual, assertNotEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
 ///
@@ -27,7 +29,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var errors = require("internal").errors;
 var helper = require("org/arangodb/aql-helper");
 var isEqual = helper.isEqual;
 var getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
@@ -82,7 +83,6 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRuleNoEffect : function () {
-      var j;
       var collection = "{ a: [1,2] }, { a: [2,7] }, { a: [3,25] }";
       var queryList = [ 
         ["FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET a = i.a LET b = i.b RETURN [ a, b ]", true],
@@ -97,7 +97,7 @@ function optimizerRuleTestSuite () {
         assertEqual([ ], result.plan.rules, query[0]);
         var allresults = getQueryMultiplePlansAndExecutions(query[0], {});
         if (query[1]) {
-          for (j = 1; j < allresults.results.length; j++) {
+          for (var j = 1; j < allresults.results.length; j++) {
             assertTrue(isEqual(allresults.results[0],
                                allresults.results[j]),
                        "whether the execution of '" + query +
@@ -115,7 +115,6 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRuleHasEffect : function () {
-      var j;
       var collection = "{ a: [1,2] }, { a: [2,7] }, { a: [3,25] }";
       var queries = [ 
         "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET a = i.a LET b = i.a RETURN [ a, b ]",
@@ -125,13 +124,13 @@ function optimizerRuleTestSuite () {
         "FOR i IN [ " + collection + " ] LET a = MAX(i.a) COLLECT x = a LET i = x.a, j = x.a RETURN [ i, j ]",
         "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a, i.a RETURN i",
         "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET x = i.a SORT i.a RETURN x"
-      ]
+      ];
 
       queries.forEach(function(query) {
         var result = AQL_EXPLAIN(query, { }, paramEnabled);
         assertEqual([ ruleName ], result.plan.rules, query);
         var allresults = getQueryMultiplePlansAndExecutions(query, {});
-        for (j = 1; j < allresults.results.length; j++) {
+        for (var j = 1; j < allresults.results.length; j++) {
             assertTrue(isEqual(allresults.results[0],
                                allresults.results[j]),
                        "whether the execution of '" + query +
@@ -148,7 +147,6 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testPlans : function () {
-      var i;
       var query = "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] LET x = i.a RETURN i.a";
       var actual = AQL_EXPLAIN(query, null, paramEnabled);
       var nodes = helper.getLinearizedPlan(actual).reverse(), node;
@@ -169,7 +167,7 @@ function optimizerRuleTestSuite () {
       node = nodes[3];
       assertEqual("EnumerateListNode", node.type);
       var allresults = getQueryMultiplePlansAndExecutions(query, {});
-      for (j = 1; j < allresults.results.length; j++) {
+      for (var j = 1; j < allresults.results.length; j++) {
         assertTrue(isEqual(allresults.results[0],
                            allresults.results[j]),
                    "whether the execution of '" + query +
@@ -211,7 +209,7 @@ function optimizerRuleTestSuite () {
         assertEqual(resultDisabled, query[1], query[0]);
         assertEqual(resultEnabled, query[1], query[0]);
         var allresults = getQueryMultiplePlansAndExecutions(query[0], {});
-        for (j = 1; j < allresults.results.length; j++) {
+        for (var j = 1; j < allresults.results.length; j++) {
             assertTrue(isEqual(allresults.results[0],
                                allresults.results[j]),
                        "whether the execution of '" + query[0] +

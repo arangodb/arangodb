@@ -427,7 +427,7 @@ QueryResult Query::prepare (QueryRegistry* registry) {
     std::unique_ptr<ExecutionPlan> plan;
 
     if (_queryString != nullptr) {
-      parser->parse();
+      parser->parse(false);
       // put in bind parameters
       parser->ast()->injectBindParameters(_bindParameters);
 
@@ -461,7 +461,7 @@ QueryResult Query::prepare (QueryRegistry* registry) {
       enterState(PLAN_OPTIMIZATION);
       triagens::aql::Optimizer opt(maxNumberOfPlans());
       // getenabled/disabled rules
-      opt.createPlans(plan.release(), getRulesFromOptions());
+      opt.createPlans(plan.release(), getRulesFromOptions(), inspectSimplePlans());
       // Now plan and all derived plans belong to the optimizer
       plan.reset(opt.stealBest()); // Now we own the best one again
       planRegisters = true;
@@ -619,7 +619,7 @@ QueryResult Query::execute (QueryRegistry* registry) {
 QueryResult Query::parse () {
   try {
     Parser parser(this);
-    return parser.parse();
+    return parser.parse(true);
   }
   catch (triagens::arango::Exception const& ex) {
     return QueryResult(ex.code(), ex.message());
@@ -640,7 +640,7 @@ QueryResult Query::explain () {
     ExecutionPlan* plan = nullptr;
     Parser parser(this);
 
-    parser.parse();
+    parser.parse(true);
     // put in bind parameters
     parser.ast()->injectBindParameters(_bindParameters);
 
@@ -671,7 +671,7 @@ QueryResult Query::explain () {
     enterState(PLAN_OPTIMIZATION);
     triagens::aql::Optimizer opt(maxNumberOfPlans());
     // get enabled/disabled rules
-    opt.createPlans(plan, getRulesFromOptions());
+    opt.createPlans(plan, getRulesFromOptions(), inspectSimplePlans());
       
 
     enterState(FINALIZATION);
@@ -924,6 +924,28 @@ QueryResult Query::transactionError (int errorCode) const {
   }
 
   return QueryResult(errorCode, err);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read the "optimizer.inspectSimplePlans" section from the options
+////////////////////////////////////////////////////////////////////////////////
+
+bool Query::inspectSimplePlans () const {
+  if (! TRI_IsArrayJson(_options)) {
+    return true; // default
+  }
+  
+  TRI_json_t const* optJson = TRI_LookupArrayJson(_options, "optimizer");
+
+  if (! TRI_IsArrayJson(optJson)) {
+    return true; // default
+  }
+  
+  TRI_json_t const* j = TRI_LookupArrayJson(optJson, "inspectSimplePlans");
+  if (TRI_IsBooleanJson(j)) {
+    return j->_value._boolean;
+  }
+  return true; // default;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

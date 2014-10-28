@@ -103,7 +103,20 @@ bool Optimizer::addPlan (ExecutionPlan* plan,
 ////////////////////////////////////////////////////////////////////////////////
 
 int Optimizer::createPlans (ExecutionPlan* plan,
-                            std::vector<std::string> const& rulesSpecification) {
+                            std::vector<std::string> const& rulesSpecification,
+                            bool inspectSimplePlans) {
+  if (! inspectSimplePlans &&
+      ! ExecutionEngine::isCoordinator() && 
+      plan->isDeadSimple()) {
+    // the plan is so simple that any further optimizations would probably cost
+    // more than simply executing the plan
+    _plans.clear();
+    _plans.push_back(plan, 0);
+    estimatePlans();
+
+    return TRI_ERROR_NO_ERROR;
+  }
+
   int leastDoneLevel = 0;
 
   TRI_ASSERT(! _rules.empty());
