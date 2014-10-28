@@ -3771,7 +3771,7 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
 
 bool GatherBlock::getBlock (size_t i, size_t atLeast, size_t atMost) {
   ENTER_BLOCK
-  TRI_ASSERT(0 <= i && i < _dependencies.size());
+  TRI_ASSERT(i < _dependencies.size());
   TRI_ASSERT(! _isSimple);
   AqlItemBlock* docs = _dependencies.at(i)->getSome(atLeast, atMost);
   if (docs != nullptr) {
