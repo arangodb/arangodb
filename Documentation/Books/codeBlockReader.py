@@ -188,9 +188,15 @@ def fetch_comments(dirpath):
                 shouldIgnoreLine = False
   fh.close()
 
-
 if __name__ == "__main__":
-  open("allComments.txt", "w").close()  
+  errorsFile = open("../../lib/Basics/errors.dat", "r")
+  commentsFile = open("allComments.txt", "w")
+  commentsFile.write("@startDocuBlock errorCodes \n")
+  for line in errorsFile:
+    commentsFile.write(line + "\n")
+  commentsFile.write("@endDocuBlock \n")
+  commentsFile.close()
+  errorsFile.close()
   path = ["arangod/cluster","arangod/RestHandler","arangod/V8Server","arangod/RestServer","arangod/Wal",
       "lib/Admin","lib/HttpServer","lib/V8","lib/ApplicationServer","lib/Scheduler","lib/Rest","lib/BasicsC",
       "js/actions","js/client","js/apps/databases","js/apps/system/cerberus","js/apps/system/gharial","js/common","js/server"]

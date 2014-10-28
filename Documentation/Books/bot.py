@@ -63,8 +63,28 @@ def replaceText(text, pathOfFile, searchText):
   replaced = re.sub(r"@RESTBODYPARAMS{(.*)}", r"*(\g<1>)*", replaced)
   replaced = replaced.replace("@EXAMPLES","**Examples**")
   # Error codes replace
+<<<<<<< HEAD
   replaced = re.sub(r"- (\w+):\s*@LIT{(.+)}", r"\n*\g<1>* - **\g<2>**:", replaced)
   f.write(replaced)
+=======
+  lines = re.sub(r"(##)#+", r"", lines)
+#  lines = re.sub(r"- (\w+):\s*@LIT{(.+)}", r"\n*\g<1>* - **\g<2>**:", lines)
+  lines = re.sub(r"(.+),(\d+),\"(.+)\",\"(.+)\"", r"\n*\g<2>* - **\g<3>**: \g<4>", lines)
+  f.write(lines)
+  f.close()
+
+def replaceCodeIndex(pathOfFile):
+  f=open(pathOfFile,"rU")
+  if f:
+    s=f.read()
+  f.close()
+  f=open(pathOfFile,'w')
+  lines = re.sub(r"<!--(\s*.+\s)-->","",s)
+  #HTTP API changing code
+  lines = re.sub(r"@brief(.+)",r"\g<1>", lines)
+  lines = re.sub(r"@RESTHEADER{([\s\w\/\_{}-]*),([\s\w-]*)}", r"###\g<2>\n`\g<1>`", lines)
+  f.write(lines)
+>>>>>>> 370219d... Error Codes will be shown correctly in the documentation
   f.close()
 
         
