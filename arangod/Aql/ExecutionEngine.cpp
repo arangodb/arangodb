@@ -324,16 +324,13 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   EngineLocation           currentLocation;
   size_t                   currentEngineId;
   std::vector<EngineInfo>  engines;
-  std::vector<size_t>      engineIds; // stack of engine ids, used for subqueries
+  std::vector<size_t>      engineStack;  // stack of engine ids, used for
+                                         // RemoteNodes
   std::unordered_set<std::string> collNamesSeenOnDBServer;  
      // names of sharded collections that we have already seen on a DBserver
      // this is relevant to decide whether or not the engine there is a main
      // query or a dependent one.
 
-  virtual bool enterSubQueryFirst () override final {
-    return true;
-  }
-  
   CoordinatorInstanciator (Query* query,
                            QueryRegistry* queryRegistry)
     : query(query),
@@ -451,7 +448,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         auto plan = engine->getQuery()->plan();
         TRI_ASSERT(plan != nullptr);
         TRI_ASSERT(plan->empty());
-
 
         if ((*it).id > 0) {
           generatePlanForCoordinator(plan, (*it).nodes.front());
@@ -632,7 +628,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
     RemoteNode* remoteNode = nullptr;
 
-    for (auto en = info.nodes.rbegin(); en != info.nodes.rend(); ++en) {
+    for (auto en = info.nodes.begin(); en != info.nodes.end(); ++en) {
       auto const nodeType = (*en)->getType();
 
       if (nodeType == ExecutionNode::REMOTE) {
@@ -707,8 +703,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       
       // the last block is always the root 
       engine->root(eb);
-      // TODO: handle subqueries
  
+      // put it into our cache:
       cache.emplace(std::make_pair((*en), eb));
     }
 
@@ -718,24 +714,17 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   }
 
   virtual bool enterSubquery (ExecutionNode*, ExecutionNode*) override final {
-    engineIds.push_back(currentEngineId);
     return true;
   }
   
-  virtual void leaveSubquery (ExecutionNode*, ExecutionNode*) override final {
-    currentEngineId = engineIds.back();
-    engineIds.pop_back();
-  }
-  
   virtual bool before (ExecutionNode* en) override final {
-    // assign the current node to the current engine
-    engines[currentEngineId].nodes.push_back(en);
-
     auto const nodeType = en->getType();
 
     if (nodeType == ExecutionNode::REMOTE) {
       // got a remote node
       // this indicates the end of an execution section
+
+      engineStack.push_back(currentEngineId);
 
       // begin a new engine
       // flip current location
@@ -758,6 +747,17 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     return false;
   }
 
+  virtual void after (ExecutionNode* en) override final {
+    auto const nodeType = en->getType();
+
+    if (nodeType == ExecutionNode::REMOTE) {
+      currentEngineId = engineStack.back();
+      engineStack.pop_back();
+    }
+
+    // assign the current node to the current engine
+    engines[currentEngineId].nodes.push_back(en);
+  }
 };
 
 // -----------------------------------------------------------------------------
