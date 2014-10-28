@@ -289,7 +289,7 @@ bool AgencyCommResult::parseJsonNode (TRI_json_t const* node,
       entry._index = 0;
       entry._json  = 0;
       entry._isDir = true;
-      _values.insert(std::make_pair(prefix, entry));
+      _values.emplace(std::make_pair(prefix, entry));
     }
 
     // is a directory, so there may be a "nodes" attribute
@@ -325,7 +325,7 @@ bool AgencyCommResult::parseJsonNode (TRI_json_t const* node,
         entry._json  = triagens::basics::JsonHelper::fromString(value->_value._string.data, value->_value._string.length - 1);
         entry._isDir = false;
 
-        _values.insert(std::make_pair(prefix, entry));
+        _values.emplace(std::make_pair(prefix, entry));
       }
     }
   }

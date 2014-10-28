@@ -335,7 +335,7 @@ ClusterCommResult* ClusterComm::syncRequest (
       client->keepConnectionOnDestruction(true);
 
       map<string, string> headersCopy(headerFields);
-      headersCopy.insert(make_pair(string("Authorization"), ServerState::instance()->getAuthentication()));
+      headersCopy.emplace(make_pair(string("Authorization"), ServerState::instance()->getAuthentication()));
 
       res->result = client->request(reqtype, path, body.c_str(), body.size(),
                                     headersCopy);

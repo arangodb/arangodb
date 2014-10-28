@@ -62,7 +62,7 @@ TRI_json_t* JsonHelper::uint64String (TRI_memory_zone_t* zone,
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t JsonHelper::stringUInt64 (TRI_json_t const* json) {
-  if (json != 0) {
+  if (json != nullptr) {
     if (json->_type == TRI_JSON_STRING) {
       return TRI_UInt64String2(json->_value._string.data, json->_value._string.length - 1);
     }
@@ -81,7 +81,7 @@ uint64_t JsonHelper::stringUInt64 (TRI_json_t const* json) {
 uint64_t JsonHelper::stringUInt64 (TRI_json_t const* json,
                                    char const* name) {
 
-  if (json == 0) {
+  if (json == nullptr) {
     return 0;
   }
 
@@ -97,8 +97,8 @@ TRI_json_t* JsonHelper::stringObject (TRI_memory_zone_t* zone,
                                       std::map<std::string, std::string> const& values) {
   TRI_json_t* json = TRI_CreateArray2Json(zone, values.size());
 
-  if (json == 0) {
-    return 0;
+  if (json == nullptr) {
+    return nullptr;
   }
 
   std::map<std::string, std::string>::const_iterator it;
@@ -107,7 +107,7 @@ TRI_json_t* JsonHelper::stringObject (TRI_memory_zone_t* zone,
     std::string const value = (*it).second;
 
     TRI_json_t* v = TRI_CreateString2CopyJson(zone, value.c_str(), value.size());
-    if (v != 0) {
+    if (v != nullptr) {
       TRI_Insert3ArrayJson(zone, json, key.c_str(), v);
     }
   }
@@ -130,7 +130,7 @@ std::map<std::string, std::string> JsonHelper::stringObject (TRI_json_t const* j
       if (isString(k) && isString(v)) {
         std::string const key = std::string(k->_value._string.data, k->_value._string.length - 1);
         std::string const value = std::string(v->_value._string.data, v->_value._string.length - 1);
-        result.insert(std::pair<std::string, std::string>(key, value));
+        result.emplace(std::make_pair(key, value));
       }
     }
   }
@@ -146,13 +146,13 @@ TRI_json_t* JsonHelper::stringList (TRI_memory_zone_t* zone,
                                     std::vector<std::string> const& values) {
   TRI_json_t* json = TRI_CreateList2Json(zone, values.size());
 
-  if (json == 0) {
-    return 0;
+  if (json == nullptr) {
+    return nullptr;
   }
 
   for (size_t i = 0, n = values.size(); i < n; ++i) {
     TRI_json_t* v = TRI_CreateString2CopyJson(zone, values[i].c_str(), values[i].size());
-    if (v != 0) {
+    if (v != nullptr) {
       TRI_PushBack3ListJson(zone, json, v);
     }
   }
