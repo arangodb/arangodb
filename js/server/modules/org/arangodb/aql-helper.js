@@ -546,6 +546,18 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
   return {'plans': plans, 'results': results};
 }
 
+function removeAlwaysOnClusterRules (rules) {
+  var pos;
+  var copy = [];
+  for (pos = 0; pos < rules.length; pos++) {
+    if (rules[pos] !== "scatter-in-cluster" &&
+        rules[pos] !== "distribute-in-cluster") {
+      copy.push(rules[pos]);
+    }
+  }
+  return copy;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    module exports
 // -----------------------------------------------------------------------------
@@ -567,6 +579,8 @@ exports.getCompactPlan                     = getCompactPlan;
 exports.findExecutionNodes                 = findExecutionNodes;
 exports.findReferencedNodes                = findReferencedNodes;
 exports.getQueryMultiplePlansAndExecutions = getQueryMultiplePlansAndExecutions;
+exports.removeAlwaysOnClusterRules         = removeAlwaysOnClusterRules;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
