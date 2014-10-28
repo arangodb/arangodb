@@ -34,6 +34,7 @@ var isEqual = helper.isEqual;
 var findExecutionNodes = helper.findExecutionNodes;
 var findReferencedNodes = helper.findReferencedNodes;
 var getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
+var removeAlwaysOnClusterRules = helper.removeAlwaysOnClusterRules;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -200,7 +201,7 @@ function optimizerRuleTestSuite() {
       queries.forEach(function(query) {
         
         var result = AQL_EXPLAIN(query[0], { }, paramIndexFromSort);
-        assertEqual([], result.plan.rules, query);
+        assertEqual([], removeAlwaysOnClusterRules(result.plan.rules), query);
         if (query[1]) {
           var allresults = getQueryMultiplePlansAndExecutions(query[0], {});
           for (j = 1; j < allresults.results.length; j++) {
@@ -239,7 +240,8 @@ function optimizerRuleTestSuite() {
         var j;
 
         var result = AQL_EXPLAIN(query, { }, paramIndexFromSort);
-        assertEqual([ ruleName ], result.plan.rules, query);
+        assertEqual([ ruleName ], 
+                    removeAlwaysOnClusterRules(result.plan.rules), query);
         QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
         QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort).json;
         
@@ -276,7 +278,7 @@ function optimizerRuleTestSuite() {
       queries.forEach(function(query) {
         var j;
         var result = AQL_EXPLAIN(query, { }, paramIndexFromSort);
-        assertEqual([ ruleName ], result.plan.rules);
+        assertEqual([ ruleName ], removeAlwaysOnClusterRules(result.plan.rules));
         hasIndexRangeNode_WithRanges(result, false);
         hasSortNode(result);
         QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
@@ -322,7 +324,7 @@ function optimizerRuleTestSuite() {
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort);
       QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort).json;
       // our rule should have been applied.
-      assertEqual([ ruleName ], XPresult.plan.rules);
+      assertEqual([ ruleName ], removeAlwaysOnClusterRules(XPresult.plan.rules));
       // The sortnode and its calculation node should have been removed.
       hasNoSortNode(XPresult);
       // the dependencies of the sortnode weren't removed...
@@ -334,7 +336,7 @@ function optimizerRuleTestSuite() {
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort_RemoveCalculations);
       QResults[2] = AQL_EXECUTE(query, { }, paramIndexFromSort_RemoveCalculations).json;
       // our rule should have been applied.
-      assertEqual([ ruleName, removeCalculationNodes ].sort(), XPresult.plan.rules.sort());
+      assertEqual([ ruleName, removeCalculationNodes ].sort(), removeAlwaysOnClusterRules(XPresult.plan.rules).sort());
       // The sortnode and its calculation node should have been removed.
       hasNoSortNode(XPresult);
       // now the dependencies of the sortnode should be gone:
@@ -392,7 +394,7 @@ function optimizerRuleTestSuite() {
       QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort).json;
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort);
       // our rule should be there.
-      assertEqual([ ruleName ], XPresult.plan.rules);
+      assertEqual([ ruleName ], removeAlwaysOnClusterRules(XPresult.plan.rules));
       // The sortnode and its calculation node should have been removed.
       
       hasSortNode(XPresult);
@@ -405,7 +407,7 @@ function optimizerRuleTestSuite() {
       QResults[2] = AQL_EXECUTE(query, { }, paramIndexFromSort_IndexRange).json;
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort_IndexRange);
 
-      assertEqual([ secondRuleName ], XPresult.plan.rules.sort());
+      assertEqual([ secondRuleName ], removeAlwaysOnClusterRules(XPresult.plan.rules).sort());
       // The sortnode and its calculation node should not have been removed.
       hasSortNode(XPresult);
       hasCalculationNodes(XPresult, 4);
@@ -415,7 +417,7 @@ function optimizerRuleTestSuite() {
       // -> use-index-range alone.
       QResults[3] = AQL_EXECUTE(query, { }, paramIndexRange).json;
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
-      assertEqual([ secondRuleName ], XPresult.plan.rules);
+      assertEqual([ secondRuleName ], removeAlwaysOnClusterRules(XPresult.plan.rules));
       // the sortnode and its calculation node should be there. 
 
       hasSortNode(XPresult);
@@ -463,7 +465,7 @@ function optimizerRuleTestSuite() {
       QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort).json;
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort);
       // our rule should be there.
-      assertEqual([ ruleName ], XPresult.plan.rules);
+      assertEqual([ ruleName ], removeAlwaysOnClusterRules(XPresult.plan.rules));
       // The sortnode should be gone, its calculation node should not have been removed yet.
       hasNoSortNode(XPresult);
       hasCalculationNodes(XPresult, 3);
@@ -475,7 +477,7 @@ function optimizerRuleTestSuite() {
       // -> combined use-index-for-sort and use-index-range
       QResults[2] = AQL_EXECUTE(query, { }, paramIndexFromSort_IndexRange).json;
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort_IndexRange);
-      assertEqual([ secondRuleName, ruleName ].sort(), XPresult.plan.rules.sort());
+      assertEqual([ secondRuleName, ruleName ].sort(), removeAlwaysOnClusterRules(XPresult.plan.rules).sort());
       // The sortnode should be gone, its calculation node should not have been removed yet.
       hasNoSortNode(XPresult);
       hasCalculationNodes(XPresult, 3);
@@ -485,7 +487,7 @@ function optimizerRuleTestSuite() {
       // -> use-index-range alone.
       QResults[3] = AQL_EXECUTE(query, { }, paramIndexRange).json;
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
-      assertEqual([ secondRuleName ], XPresult.plan.rules);
+      assertEqual([ secondRuleName ], removeAlwaysOnClusterRules(XPresult.plan.rules));
       // the sortnode and its calculation node should be there.
       hasSortNode(XPresult);
       hasCalculationNodes(XPresult, 3);
@@ -500,7 +502,7 @@ function optimizerRuleTestSuite() {
       QResults[4] = AQL_EXECUTE(query, { }, paramIndexFromSort_IndexRange_RemoveCalculations).json;
 
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort_IndexRange_RemoveCalculations);
-      assertEqual([ secondRuleName, removeCalculationNodes, ruleName ].sort(), XPresult.plan.rules.sort());
+      assertEqual([ secondRuleName, removeCalculationNodes, ruleName ].sort(), removeAlwaysOnClusterRules(XPresult.plan.rules).sort());
       // the sortnode and its calculation node should be gone.
       hasNoSortNode(XPresult);
       hasCalculationNodes(XPresult, 2);
@@ -542,7 +544,7 @@ function optimizerRuleTestSuite() {
       QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort).json;
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort);
       // our rule should be there.
-      assertEqual([ ruleName ], XPresult.plan.rules);
+      assertEqual([ ruleName ], removeAlwaysOnClusterRules(XPresult.plan.rules));
       // The sortnode should be gone, its calculation node should not have been removed yet.
       hasNoSortNode(XPresult);
       hasCalculationNodes(XPresult, 4);
@@ -554,7 +556,7 @@ function optimizerRuleTestSuite() {
 
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort_IndexRange);
       
-      assertEqual([ secondRuleName, ruleName ].sort(), XPresult.plan.rules.sort());
+      assertEqual([ secondRuleName, ruleName ].sort(), removeAlwaysOnClusterRules(XPresult.plan.rules).sort());
       // The sortnode should be gone, its calculation node should not have been removed yet.
       hasNoSortNode(XPresult);
 
@@ -565,7 +567,7 @@ function optimizerRuleTestSuite() {
       // -> use-index-range alone.
       QResults[3] = AQL_EXECUTE(query, { }, paramIndexRange).json;
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
-      assertEqual([ secondRuleName ], XPresult.plan.rules);
+      assertEqual([ secondRuleName ], removeAlwaysOnClusterRules(XPresult.plan.rules));
       // the sortnode and its calculation node should be there.
       hasSortNode(XPresult);
       hasCalculationNodes(XPresult, 4);
@@ -580,7 +582,7 @@ function optimizerRuleTestSuite() {
       // -> combined use-index-for-sort, remove-unnecessary-calculations-2 and use-index-range
       QResults[4] = AQL_EXECUTE(query, { }, paramIndexFromSort_IndexRange_RemoveCalculations).json;
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort_IndexRange_RemoveCalculations);
-      assertEqual([ ruleName, secondRuleName, removeCalculationNodes].sort(), XPresult.plan.rules.sort());
+      assertEqual([ ruleName, secondRuleName, removeCalculationNodes].sort(), removeAlwaysOnClusterRules(XPresult.plan.rules).sort());
       // the sortnode and its calculation node should be there.
       hasNoSortNode(XPresult);
       hasCalculationNodes(XPresult, 2);
@@ -627,7 +629,7 @@ function optimizerRuleTestSuite() {
       // -> use-index-range alone.
       QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
-      assertEqual([ secondRuleName ], XPresult.plan.rules);
+      assertEqual([ secondRuleName ], removeAlwaysOnClusterRules(XPresult.plan.rules));
       // the sortnode and its calculation node should be there.
       hasCalculationNodes(XPresult, 2);
 
@@ -673,7 +675,7 @@ function optimizerRuleTestSuite() {
       QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
 
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
-      assertEqual([ secondRuleName ], XPresult.plan.rules);
+      assertEqual([ secondRuleName ], removeAlwaysOnClusterRules(XPresult.plan.rules));
       // the sortnode and its calculation node should be there.
       hasCalculationNodes(XPresult, 2);
 
@@ -716,7 +718,7 @@ function optimizerRuleTestSuite() {
       QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
 
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
-      assertEqual([ secondRuleName ], XPresult.plan.rules);
+      assertEqual([ secondRuleName ], removeAlwaysOnClusterRules(XPresult.plan.rules));
       // the sortnode and its calculation node should be there.
       hasCalculationNodes(XPresult, 2);
 
@@ -761,7 +763,7 @@ function optimizerRuleTestSuite() {
       QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
 
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
-      assertEqual([ secondRuleName ], XPresult.plan.rules);
+      assertEqual([ secondRuleName ], removeAlwaysOnClusterRules(XPresult.plan.rules));
       // the sortnode and its calculation node should be there.
       hasCalculationNodes(XPresult, 2);
 
@@ -810,7 +812,7 @@ function optimizerRuleTestSuite() {
 
 
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
-      assertEqual([ secondRuleName ], XPresult.plan.rules);
+      assertEqual([ secondRuleName ], removeAlwaysOnClusterRules(XPresult.plan.rules));
       // the sortnode and its calculation node should be there.
       hasCalculationNodes(XPresult, 2);
 
@@ -849,10 +851,10 @@ function optimizerRuleTestSuite() {
       QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
 
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
-      assertEqual([ ], XPresult.plan.rules);
+      assertEqual([ ], removeAlwaysOnClusterRules(XPresult.plan.rules));
 
       // TODO: activate the following once OR is implemented
-      // assertEqual([ secondRuleName ], XPresult.plan.rules);
+      // assertEqual([ secondRuleName ], removeAlwaysOnClusterRules(XPresult.plan.rules));
 
       // the sortnode and its calculation node should be there.
       assertEqual(0, findExecutionNodes(XPresult, "IndexRangeNode").length);
@@ -891,7 +893,7 @@ function optimizerRuleTestSuite() {
       QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
 
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
-      assertEqual([ ], XPresult.plan.rules);
+      assertEqual([ ], removeAlwaysOnClusterRules(XPresult.plan.rules));
       // TODO: activate the following once OR is implemented
 
       // the sortnode and its calculation node should be there.
