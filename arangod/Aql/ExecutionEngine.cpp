@@ -356,7 +356,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     resetPlans();
   }
 
-  void generatePlanForCoordinator (ExecutionPlan *plan, 
+  void generatePlanForCoordinator (ExecutionPlan* plan, 
                                    ExecutionNode const* current) {
     ExecutionNode* previous = nullptr;
 
@@ -480,72 +480,75 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     return engine;
   }
  
-  void distributePlanToShard (triagens::arango::ClusterComm*& cc,
-                              triagens::arango::CoordTransactionID &coordTransactionID,
+  void distributePlanToShard (triagens::arango::CoordTransactionID& coordTransactionID,
                               EngineInfo const& info,
                               Collection* collection,
                               QueryId& connectedId,
-                              std::string const &url,
-                              std::string const & shardId, 
+                              std::string const& shardId, 
                               TRI_json_t* jsonPlan) {
-      // create a JSON representation of the plan
-      Json result(Json::Array);
+    // create a JSON representation of the plan
+    Json result(Json::Array);
 
-      // inject the current shard id into the collection
-      collection->setCurrentShard(shardId);
+    // inject the current shard id into the collection
+    collection->setCurrentShard(shardId);
 
-      Json jsonNodesList(TRI_UNKNOWN_MEM_ZONE, jsonPlan, Json::NOFREE);
+    Json jsonNodesList(TRI_UNKNOWN_MEM_ZONE, jsonPlan, Json::NOFREE);
     
-      // add the collection
-      Json jsonCollectionsList(Json::List);
-      Json json(Json::Array);
-      jsonCollectionsList(json("name", Json(collection->getName()))
-                              ("type", Json(TRI_TransactionTypeGetStr(collection->accessType))));
+    // add the collection
+    Json jsonCollectionsList(Json::List);
+    Json json(Json::Array);
+    jsonCollectionsList(json("name", Json(collection->getName()))
+                            ("type", Json(TRI_TransactionTypeGetStr(collection->accessType))));
 
-      jsonNodesList.set("collections", jsonCollectionsList);
-      jsonNodesList.set("variables", query->ast()->variables()->toJson(TRI_UNKNOWN_MEM_ZONE));
+    jsonNodesList.set("collections", jsonCollectionsList);
+    jsonNodesList.set("variables", query->ast()->variables()->toJson(TRI_UNKNOWN_MEM_ZONE));
 
-      result.set("plan", jsonNodesList);
-      if (info.part == triagens::aql::PART_MAIN) {
-        result.set("part", Json("main"));
-      }
-      else {
-        result.set("part", Json("dependent"));
-      }
+    result.set("plan", jsonNodesList);
+    if (info.part == triagens::aql::PART_MAIN) {
+      result.set("part", Json("main"));
+    }
+    else {
+      result.set("part", Json("dependent"));
+    }
 
-      Json optimizerOptionsRules(Json::List);
-      Json optimizerOptions(Json::Array);
+    Json optimizerOptionsRules(Json::List);
+    Json optimizerOptions(Json::Array);
 
-      Json options(Json::Array);
-      optimizerOptionsRules.add(Json("-all"));
-      optimizerOptions.set("rules", optimizerOptionsRules);
-      options.set("optimizer", optimizerOptions);
-      result.set("options", options);
-      std::unique_ptr<std::string> body(new std::string(triagens::basics::JsonHelper::toString(result.json())));
+    Json options(Json::Array);
+    optimizerOptionsRules.add(Json("-all"));
+    optimizerOptions.set("rules", optimizerOptionsRules);
+    options.set("optimizer", optimizerOptions);
+    result.set("options", options);
+    std::unique_ptr<std::string> body(new std::string(triagens::basics::JsonHelper::toString(result.json())));
     
-      // std::cout << "GENERATED A PLAN FOR THE REMOTE SERVERS: " << *(body.get()) << "\n";
+    // std::cout << "GENERATED A PLAN FOR THE REMOTE SERVERS: " << *(body.get()) << "\n";
     
-      // TODO: pass connectedId to the shard so it can fetch data using the correct query id
-      auto headers = new std::map<std::string, std::string>;
-      auto res = cc->asyncRequest("", 
-                                  coordTransactionID,
-                                  "shard:" + shardId,  
-                                  triagens::rest::HttpRequest::HTTP_REQUEST_POST, 
-                                  url,
-                                  body.release(),
-                                  true,
-                                  headers,
-                                  nullptr,
-                                  30.0);
+    // TODO: pass connectedId to the shard so it can fetch data using the correct query id
+    auto cc = triagens::arango::ClusterComm::instance();
 
-      if (res != nullptr) {
-        delete res;
-      }
+    std::string const url("/_db/" + triagens::basics::StringUtils::urlEncode(collection->vocbase->_name) + 
+                          "/_api/aql/instanciate");
+
+    auto headers = new std::map<std::string, std::string>;
+    auto res = cc->asyncRequest("", 
+                                coordTransactionID,
+                                "shard:" + shardId,  
+                                triagens::rest::HttpRequest::HTTP_REQUEST_POST, 
+                                url,
+                                body.release(),
+                                true,
+                                headers,
+                                nullptr,
+                                30.0);
+
+    if (res != nullptr) {
+      delete res;
+    }
   }
 
-  std::unordered_map<std::string, std::string> aggregateQueryIds(triagens::arango::ClusterComm*& cc,
-                                                                 triagens::arango::CoordTransactionID &coordTransactionID,
-                                                                 Collection *collection) {
+  std::unordered_map<std::string, std::string> aggregateQueryIds (triagens::arango::ClusterComm*& cc,
+                                                                  triagens::arango::CoordTransactionID& coordTransactionID,
+                                                                  Collection* collection) {
 
     // pick up the remote query ids
     std::unordered_map<std::string, std::string> queryIds;
@@ -596,14 +599,10 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     return queryIds;
   }
 
-  std::unordered_map<std::string, std::string> distributePlansToShards(EngineInfo const& info,
-                                                                       QueryId connectedId)
-  {
+  std::unordered_map<std::string, std::string> distributePlansToShards (EngineInfo const& info,
+                                                                        QueryId connectedId) {
     Collection* collection = info.getCollection();
     // now send the plan to the remote servers
-    std::string const url("/_db/" + triagens::basics::StringUtils::urlEncode(collection->vocbase->_name) + 
-                          "/_api/aql/instanciate");
-
     triagens::arango::CoordTransactionID coordTransactionID = TRI_NewTickServer();
     auto cc = triagens::arango::ClusterComm::instance();
     TRI_ASSERT(cc != nullptr);
@@ -612,7 +611,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     for (auto onePlan: _plans) {
       collection->setCurrentShard(onePlan.first);
 
-      distributePlanToShard(cc, coordTransactionID, info, collection, connectedId, url, onePlan.first, onePlan.second);
+      distributePlanToShard(coordTransactionID, info, collection, connectedId, onePlan.first, onePlan.second);
       onePlan.second = nullptr;
     }
 
