@@ -363,6 +363,7 @@ function copy (src, dst) {
 }
 
 function checkInstanceAlive(instanceInfo, options) {  
+  var storeArangodPath;
   if (options.cluster === false) {
     var res = statusExternal(instanceInfo.pid, false);
     var ret = res.status === "RUNNING";
@@ -373,7 +374,7 @@ function checkInstanceAlive(instanceInfo, options) {
       if (res.hasOwnProperty('signal') && 
           (res.signal === 11))
       {
-        var storeArangodPath = "/var/tmp/arangod_" + instanceInfo.pid.pid;
+        storeArangodPath = "/var/tmp/arangod_" + instanceInfo.pid.pid;
         print("Core dump written; copying arangod to " + 
               storeArangodPath + " for later analysis.");
         res.gdbHint = "Run debugger with 'gdb " + 
@@ -388,27 +389,28 @@ function checkInstanceAlive(instanceInfo, options) {
   for (var part in instanceInfo.kickstarter.runInfo) {
     if (instanceInfo.kickstarter.runInfo[part].hasOwnProperty("pids")) {
       for (var pid in instanceInfo.kickstarter.runInfo[part].pids) {
-        var checkpid=instanceInfo.kickstarter.runInfo[part].pids[pid];
-        var ress = statusExternal(checkpid, false);
-        print(ress);
-        print(checkpid.pid);
-        if (ress.hasOwnProperty('signal') && 
-            (ress.signal === 11))
-        {
-          var storeArangodPath = "/var/tmp/arangod_" + checkpid.pid;
-          print("Core dump written; copying arangod to " + 
-                storeArangodPath + " for later analysis.");
-          instanceInfo.exitStatus = ress;
-          ress.gdbHint = "Run debugger with 'gdb " + 
-            storeArangodPath + 
-            " /var/tmp/core*" + checkpid.pid + "*'";
-          copy("bin/arangod", storeArangodPath);
-          ClusterFit = false;
+        if (instanceInfo.kickstarter.runInfo[part].pids.hasOwnProperty(pid)) {
+          var checkpid = instanceInfo.kickstarter.runInfo[part].pids[pid];
+          var ress = statusExternal(checkpid, false);
+          print(ress);
+          print(checkpid.pid);
+          if (ress.hasOwnProperty('signal') && 
+              (ress.signal === 11)) {
+            storeArangodPath = "/var/tmp/arangod_" + checkpid.pid;
+            print("Core dump written; copying arangod to " + 
+                  storeArangodPath + " for later analysis.");
+            instanceInfo.exitStatus = ress;
+            ress.gdbHint = "Run debugger with 'gdb " + 
+              storeArangodPath + 
+              " /var/tmp/core*" + checkpid.pid + "*'";
+            copy("bin/arangod", storeArangodPath);
+            ClusterFit = false;
+          }
         }
       }
     }
   }
-  return ClusterFit & instanceInfo.kickstarter.isHealthy();
+  return ClusterFit && instanceInfo.kickstarter.isHealthy();
 }
 
 function shutdownInstance (instanceInfo, options) {
