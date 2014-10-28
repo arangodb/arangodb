@@ -202,9 +202,10 @@ bool ExecutionBlock::walk (WalkerWorker<ExecutionBlock>* worker) {
     return true;
   }
 
+  bool const isSubQuery = (_exeNode->getType() == ExecutionNode::SUBQUERY);
+
   // Now handle a subquery:
-  if ((_exeNode->getType() == ExecutionNode::SUBQUERY) &&
-      worker->EnterSubQueryFirst()) {
+  if (isSubQuery && worker->enterSubQueryFirst()) {
     auto p = static_cast<SubqueryBlock*>(this);
     if (worker->enterSubquery(this, p->getSubquery())) {
       bool abort = p->getSubquery()->walk(worker);
@@ -222,8 +223,7 @@ bool ExecutionBlock::walk (WalkerWorker<ExecutionBlock>* worker) {
     }
   }
   // Now handle a subquery:
-  if ((_exeNode->getType() == ExecutionNode::SUBQUERY) &&
-      ! worker->EnterSubQueryFirst()) {
+  if (isSubQuery && ! worker->enterSubQueryFirst()) {
     auto p = static_cast<SubqueryBlock*>(this);
     if (worker->enterSubquery(this, p->getSubquery())) {
       bool abort = p->getSubquery()->walk(worker);
@@ -236,7 +236,6 @@ bool ExecutionBlock::walk (WalkerWorker<ExecutionBlock>* worker) {
   worker->after(this);
   return false;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize

@@ -1014,7 +1014,7 @@ struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
     ~VarUsageFinder () {
     }
 
-    bool before (ExecutionNode* en) {
+    bool before (ExecutionNode* en) override final {
       en->invalidateVarUsage();
       en->setVarsUsedLater(_usedLater);
       // Add variables used here to _usedLater:
@@ -1025,7 +1025,7 @@ struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
       return false;
     }
 
-    void after (ExecutionNode* en) {
+    void after (ExecutionNode* en) override final {
       // Add variables set here to _valid:
       auto&& setHere = en->getVariablesSetHere();
       for (auto v : setHere) {
@@ -1036,7 +1036,7 @@ struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
       en->setVarUsageValid();
     }
 
-    bool enterSubquery (ExecutionNode*, ExecutionNode* sub) {
+    bool enterSubquery (ExecutionNode*, ExecutionNode* sub) override final {
       VarUsageFinder subfinder;
       subfinder._valid = _valid;  // need a copy for the subquery!
       sub->walk(&subfinder);

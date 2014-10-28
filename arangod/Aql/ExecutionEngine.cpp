@@ -217,7 +217,7 @@ struct Instanciator : public WalkerWorker<ExecutionNode> {
   ~Instanciator () {
   }
 
-  virtual void after (ExecutionNode* en) override {
+  virtual void after (ExecutionNode* en) override final {
     ExecutionBlock* eb = createBlock(engine, en, cache);
         
     if (eb == nullptr) {
@@ -287,7 +287,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         part(p) {
     }
 
-    Collection *getCollection () const {
+    Collection* getCollection () const {
       Collection* collection = nullptr;
      
       for (auto en = nodes.rbegin(); en != nodes.rend(); ++en) {
@@ -330,7 +330,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
      // this is relevant to decide whether or not the engine there is a main
      // query or a dependent one.
 
-  virtual bool EnterSubQueryFirst () {
+  virtual bool enterSubQueryFirst () override final {
     return true;
   }
   
@@ -357,8 +357,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   }
 
   void generatePlanForCoordinator (ExecutionPlan *plan, 
-                                   ExecutionNode const* current)
-  {
+                                   ExecutionNode const* current) {
     ExecutionNode* previous = nullptr;
 
     // TODO: fix instanciation here as in DBserver case
@@ -389,10 +388,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   }
 
   triagens::basics::Json generatePlanForOneShard (EngineInfo const& info,
-                                                  QueryId & connectedId,
-                                                  std::string const & shardId,
-                                                  bool verbose)
-  {
+                                                  QueryId& connectedId,
+                                                  std::string const& shardId,
+                                                  bool verbose) {
       // copy the relevant fragment of the plan for each shard
       ExecutionPlan plan(query->ast());
 
@@ -486,10 +484,10 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
                               triagens::arango::CoordTransactionID &coordTransactionID,
                               EngineInfo const& info,
                               Collection* collection,
-                              QueryId & connectedId,
+                              QueryId& connectedId,
                               std::string const &url,
                               std::string const & shardId, 
-                              TRI_json_t * jsonPlan) {
+                              TRI_json_t* jsonPlan) {
       // create a JSON representation of the plan
       Json result(Json::Array);
 
@@ -720,17 +718,17 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     return engine.release();
   }
 
-  virtual bool enterSubquery (ExecutionNode*, ExecutionNode*) override {
+  virtual bool enterSubquery (ExecutionNode*, ExecutionNode*) override final {
     engineIds.push_back(currentEngineId);
     return true;
   }
   
-  virtual void leaveSubquery (ExecutionNode*, ExecutionNode*) override {
+  virtual void leaveSubquery (ExecutionNode*, ExecutionNode*) override final {
     currentEngineId = engineIds.back();
     engineIds.pop_back();
   }
   
-  virtual bool before (ExecutionNode* en) override {
+  virtual bool before (ExecutionNode* en) override final {
     // assign the current node to the current engine
     engines[currentEngineId].nodes.push_back(en);
 

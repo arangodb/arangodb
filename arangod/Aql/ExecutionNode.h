@@ -560,13 +560,13 @@ namespace triagens {
           ~RegisterPlan () {};
 
           virtual bool enterSubquery (ExecutionNode*,
-                                      ExecutionNode*) {
+                                      ExecutionNode*) override final {
             return false;  // do not walk into subquery
           }
 
-          virtual void after (ExecutionNode *eb);
+          virtual void after (ExecutionNode *eb) override final;
 
-          RegisterPlan* clone(ExecutionPlan* otherPlan, ExecutionPlan* plan);
+          RegisterPlan* clone (ExecutionPlan* otherPlan, ExecutionPlan* plan);
 
         };
 
