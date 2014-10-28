@@ -104,7 +104,6 @@ bool Optimizer::addPlan (ExecutionPlan* plan,
 
 int Optimizer::createPlans (ExecutionPlan* plan,
                             std::vector<std::string> const& rulesSpecification) {
-  int res;
   int leastDoneLevel = 0;
 
   TRI_ASSERT(! _rules.empty());
@@ -169,6 +168,7 @@ int Optimizer::createPlans (ExecutionPlan* plan,
 
         _currentRule = level;
 
+        int res;
         try {
           res = (*it).second.func(this, p, &(it->second));
         }
