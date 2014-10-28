@@ -311,7 +311,7 @@ bool ApplicationCluster::start () {
     // start heartbeat thread
     _heartbeat = new HeartbeatThread(_server, _dispatcher, _applicationV8, _heartbeatInterval * 1000, 5);
 
-    if (_heartbeat == 0) {
+    if (_heartbeat == nullptr) {
       LOG_FATAL_AND_EXIT("unable to start cluster heartbeat thread");
     }
 
@@ -320,7 +320,7 @@ bool ApplicationCluster::start () {
                          endpoints.c_str());
     }
 
-    while (! _heartbeat->ready()) {
+    while (! _heartbeat->isReady()) {
       // wait until heartbeat is ready
       usleep(10000);
     }
