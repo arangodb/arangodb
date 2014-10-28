@@ -31,6 +31,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/logging.h"
+#include "Basics/MutexLocker.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerJob.h"
@@ -70,6 +71,7 @@ HeartbeatThread::HeartbeatThread (TRI_server_t* server,
     _server(server),
     _dispatcher(dispatcher),
     _applicationV8(applicationV8),
+    _statusLock(),
     _agency(),
     _condition(),
     _refetchUsers(),
@@ -77,8 +79,9 @@ HeartbeatThread::HeartbeatThread (TRI_server_t* server,
     _interval(interval),
     _maxFailsBeforeWarning(maxFailsBeforeWarning),
     _numFails(0),
-    _stop(0),
-    _ready(0) {
+    _numDispatchedJobs(0),
+    _ready(false),
+    _stop(0) {
 
   TRI_ASSERT(_dispatcher != nullptr);
   allowAsynchronousCancelation();
@@ -123,7 +126,7 @@ void HeartbeatThread::run () {
   const bool isCoordinator = ServerState::instance()->isCoordinator();
 
   if (isCoordinator) {
-    ready(true);
+    setReady();
   }
 
 
@@ -237,8 +240,9 @@ void HeartbeatThread::run () {
           uint64_t planVersion = triagens::basics::JsonHelper::stringUInt64((*it).second._json);
 
           if (planVersion > lastPlanVersion) {
-            handlePlanChangeDBServer(planVersion, lastPlanVersion);
-            changed = true;
+            if (handlePlanChangeDBServer(planVersion, lastPlanVersion)) {
+              changed = true;
+            }
           }
         }
 
@@ -267,8 +271,9 @@ void HeartbeatThread::run () {
                 uint64_t planVersion = triagens::basics::JsonHelper::stringUInt64((*it).second._json);
 
                 if (planVersion > lastPlanVersion) {
-                  handlePlanChangeDBServer(planVersion, lastPlanVersion);
-                  shouldSleep = false;
+                  if (handlePlanChangeDBServer(planVersion, lastPlanVersion)) {
+                    shouldSleep = false;
+                  }
                 }
               }
             }
@@ -309,6 +314,35 @@ bool HeartbeatThread::init () {
   }
 
   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the thread is ready
+////////////////////////////////////////////////////////////////////////////////
+
+bool HeartbeatThread::isReady () {
+  MUTEX_LOCKER(_statusLock);
+
+  return _ready;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the thread status to ready
+////////////////////////////////////////////////////////////////////////////////
+
+void HeartbeatThread::setReady () {
+  MUTEX_LOCKER(_statusLock);
+  _ready = true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief decrement the counter for dispatched jobs
+////////////////////////////////////////////////////////////////////////////////
+
+void HeartbeatThread::removeDispatchedJob () {
+  MUTEX_LOCKER(_statusLock);
+  TRI_ASSERT(_numDispatchedJobs > 0);
+  --_numDispatchedJobs;
 }
 
 // -----------------------------------------------------------------------------
@@ -506,21 +540,30 @@ bool HeartbeatThread::handlePlanChangeDBServer (uint64_t currentPlanVersion,
   // invalidate our local cache
   ClusterInfo::instance()->flush();
 
+  MUTEX_LOCKER(_statusLock);
+  if (_numDispatchedJobs > 0) {
+    // do not flood the dispatcher queue with multiple server jobs
+    // as this may lead to all dispatcher threads being blocked
+    return false;
+  }
+
   // schedule a job for the change
   triagens::rest::Job* job = new ServerJob(this, _server, _applicationV8);
 
   TRI_ASSERT(job != nullptr);
 
   if (_dispatcher->dispatcher()->addJob(job) == TRI_ERROR_NO_ERROR) {
+    ++_numDispatchedJobs;
     remotePlanVersion = currentPlanVersion;
 
     LOG_TRACE("scheduled plan update handler");
+    return true;
   }
-  else {
-    LOG_ERROR("could not schedule plan update handler");
-  }
+    
+  delete job;
+  LOG_ERROR("could not schedule plan update handler");
 
-  return true;
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

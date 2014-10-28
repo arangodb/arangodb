@@ -1,4 +1,5 @@
-/*global require, exports, assertTrue, assertEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*jshint strict: false, maxlen: 500 */
+/*global require, fail, assertEqual, assertTrue, assertFalse, AQL_EXPLAIN */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
 ///

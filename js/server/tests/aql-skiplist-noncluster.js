@@ -1,3 +1,6 @@
+/*jshint strict: false, maxlen: 500 */
+/*global require, assertEqual, AQL_EXPLAIN */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for Ahuacatl, skiplist index queries
 ///
@@ -221,23 +224,7 @@ function ahuacatlSkiplistTestSuite () {
 /// @brief test the first skiplist index field with greater equal 
 ////////////////////////////////////////////////////////////////////////////////
 
-    testGeSingle1 : function () {
-      var query = "FOR v IN " + skiplist.name() + " FILTER v.a >= 5 SORT v.b RETURN [ v.a, v.b ]";
-      var expected = [ [ 5, 1 ], [ 5, 2 ], [ 5, 3 ], [ 5, 4 ], [ 5, 5 ] ];
-      var actual = getQueryResults(query);
-
-      assertEqual(expected, actual);
-      
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("index", explain[0].expression.extra.accessType);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the first skiplist index field with greater equal 
-////////////////////////////////////////////////////////////////////////////////
-
-    testGeSingle2 : function () {
+    testLeSingle2 : function () {
       var expected = [ [ 5, 1 ], [ 5, 2 ], [ 5, 3 ], [ 5, 4 ], [ 5, 5 ] ];
       var actual = getQueryResults("FOR v IN " + skiplist.name() + " FILTER 5 <= v.a SORT v.b RETURN [ v.a, v.b ]");
 
