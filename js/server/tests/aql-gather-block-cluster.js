@@ -1,4 +1,6 @@
-/*global require, assertTrue, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*jshint strict: false, maxlen: 500 */
+/*global require, assertEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
 ///
@@ -35,7 +37,6 @@ var helper = require("org/arangodb/aql-helper");
 ////////////////////////////////////////////////////////////////////////////////
 
 function gatherBlockTestSuite () {
-  
   var cn1 = "UnitTestsGatherBlock1";
   var cn2 = "UnitTestsGatherBlock2";
   var cn3 = "UnitTestsGatherBlock3";
@@ -105,7 +106,7 @@ function gatherBlockTestSuite () {
       
       // check the return value
       var expected = [ ];
-      for (i = 0; i < 400; i++) {
+      for (var i = 0; i < 400; i++) {
         expected.push(5);
       }
       var actual = AQL_EXECUTE(query).json;
