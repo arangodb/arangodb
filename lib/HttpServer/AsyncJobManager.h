@@ -826,7 +826,7 @@ namespace triagens {
 
         const std::vector<AsyncJobResult::IdType> byStatus (AsyncJobResult::Status status,
                                                             size_t maxCount) {
-          vector<AsyncJobResult::IdType> jobs;
+          std::vector<AsyncJobResult::IdType> jobs;
           size_t n = 0;
 
           {

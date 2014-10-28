@@ -106,7 +106,7 @@ void QueryRegistry::insert (QueryId id,
     p->_isOpen = false;
     p->_timeToLive = ttl;
     p->_expires = TRI_microtime() + ttl;
-    m->second.insert(make_pair(id, p.release()));
+    m->second.insert(std::make_pair(id, p.release()));
 
     TRI_ASSERT_EXPENSIVE(_queries.find(vocbase->_name)->second.find(id) != _queries.find(vocbase->_name)->second.end());
   

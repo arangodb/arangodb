@@ -43,6 +43,8 @@
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 
+using namespace std;
+
 namespace triagens {
   namespace basics {
     namespace FileUtils {

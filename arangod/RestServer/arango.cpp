@@ -461,7 +461,7 @@ int main (int argc, char* argv[]) {
       res = EXIT_FAILURE;
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-      cerr << "Caught an exception during shutdown";
+      std::cerr << "Caught an exception during shutdown";
 #endif      
     }
     ArangoInstance = nullptr;

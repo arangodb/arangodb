@@ -71,9 +71,9 @@ namespace triagens {
         int serverPort;
         int clientPort;
 
-        string serverAddress;
-        string clientAddress;
-        string endpoint;
+        std::string serverAddress;
+        std::string clientAddress;
+        std::string endpoint;
         Endpoint::DomainType endpointType;
 
         void* sslContext;

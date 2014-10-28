@@ -61,7 +61,7 @@ ConsoleThread::ConsoleThread (ApplicationServer* applicationServer,
   : Thread("console"),
     _applicationServer(applicationServer),
     _applicationV8(applicationV8),
-    _context(0),
+    _context(nullptr),
     _vocbase(vocbase),
     _done(0),
     _userAborted(false) {
@@ -120,7 +120,7 @@ void ConsoleThread::inner () {
   v8::HandleScope globalScope;
 
   // run the shell
-  cout << "ArangoDB JavaScript emergency console (" << rest::Version::getVerboseVersionString() << ")" << endl;
+  std::cout << "ArangoDB JavaScript emergency console (" << rest::Version::getVerboseVersionString() << ")" << std::endl;
 
   v8::Local<v8::String> name(v8::String::New("(arango)"));
   v8::Context::Scope contextScope(_context->_context);
@@ -132,7 +132,7 @@ void ConsoleThread::inner () {
   const uint64_t gcInterval = 10;
   uint64_t nrCommands = 0;
 
-  const string pretty = "start_pretty_print();";
+  const std::string pretty = "start_pretty_print();";
   TRI_ExecuteJavaScriptString(_context->_context, v8::String::New(pretty.c_str(), (int) pretty.size()), v8::String::New("(internal)"), false);
 
   V8LineEditor console(_context->_context, ".arangod.history");
@@ -151,13 +151,13 @@ void ConsoleThread::inner () {
     char* input = console.prompt("arangod> ");
 
     if (_userAborted) {
-      if (input != 0) {
+      if (input != nullptr) {
         TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
       }
       throw "user aborted";
     }
 
-    if (input == 0) {
+    if (input == nullptr) {
       _userAborted = true;
 
       // this will be caught by "run"
@@ -179,7 +179,7 @@ void ConsoleThread::inner () {
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
 
     if (tryCatch.HasCaught()) {
-      cout << TRI_StringifyV8Exception(&tryCatch);
+      std::cout << TRI_StringifyV8Exception(&tryCatch);
     }
   }
 

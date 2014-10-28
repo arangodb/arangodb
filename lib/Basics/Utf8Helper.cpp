@@ -53,7 +53,7 @@ Utf8Helper::Utf8Helper () : _coll(0) {
   setCollatorLanguage("");
 }
 
-Utf8Helper::Utf8Helper (const string& lang) : _coll(0) {
+Utf8Helper::Utf8Helper (std::string const& lang) : _coll(0) {
   setCollatorLanguage(lang);
 }
 
@@ -106,7 +106,7 @@ int Utf8Helper::compareUtf16 (const uint16_t* left, size_t leftLength, const uin
   return _coll->compare((const UChar*) left, (int32_t) leftLength, (const UChar*) right, (int32_t) rightLength);
 }
 
-void Utf8Helper::setCollatorLanguage (const string& lang) {
+void Utf8Helper::setCollatorLanguage (std::string const& lang) {
   UErrorCode status = U_ZERO_ERROR;
 
   if (_coll) {
@@ -158,7 +158,7 @@ void Utf8Helper::setCollatorLanguage (const string& lang) {
   _coll = coll;
 }
 
-string Utf8Helper::getCollatorLanguage () {
+std::string Utf8Helper::getCollatorLanguage () {
   if (_coll) {
     UErrorCode status = U_ZERO_ERROR;
     ULocDataLocaleType type = ULOC_VALID_LOCALE;
@@ -173,7 +173,7 @@ string Utf8Helper::getCollatorLanguage () {
   return "";
 }
 
-string Utf8Helper::getCollatorCountry () {
+std::string Utf8Helper::getCollatorCountry () {
   if (_coll) {
     UErrorCode status = U_ZERO_ERROR;
     ULocDataLocaleType type = ULOC_VALID_LOCALE;
@@ -192,7 +192,7 @@ string Utf8Helper::getCollatorCountry () {
 /// @brief Lowercase the characters in a UTF-8 string.
 ////////////////////////////////////////////////////////////////////////////////
 
-string Utf8Helper::toLowerCase (const string& src) {
+std::string Utf8Helper::toLowerCase (std::string const& src) {
   int32_t utf8len = 0;
   char* utf8 = tolower(TRI_UNKNOWN_MEM_ZONE, src.c_str(), (int32_t) src.length(), utf8len);
   if (utf8 == 0) {
@@ -278,7 +278,7 @@ char* Utf8Helper::tolower (TRI_memory_zone_t* zone, const char *src, int32_t src
 /// @brief Uppercase the characters in a UTF-8 string.
 ////////////////////////////////////////////////////////////////////////////////
 
-string Utf8Helper::toUpperCase (const string& src) {
+std::string Utf8Helper::toUpperCase (std::string const& src) {
   int32_t utf8len = 0;
   char* utf8 = toupper(TRI_UNKNOWN_MEM_ZONE, src.c_str(), (int32_t) src.length(), utf8len);
   if (utf8 == 0) {

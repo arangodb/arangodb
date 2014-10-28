@@ -124,7 +124,7 @@ namespace triagens {
         EventToken watcher[MAX_SIGNALS];
 
       private:
-        set<int> signals;
+        std::set<int> signals;
         basics::Mutex changeLock;
     };
   }

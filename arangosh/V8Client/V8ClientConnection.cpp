@@ -123,11 +123,11 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
       }
     }
     else {
-      // initial request for /_api/version return some non-HTTP 200 response.
+      // initial request for /_api/version returned some non-HTTP 200 response.
       // now set up an error message
       _lastErrorMessage = _client->getErrorMessage();
 
-      if (result) {
+      if (result && result->getHttpReturnCode() > 0) {
         _lastErrorMessage = StringUtils::itoa(result->getHttpReturnCode()) + ": " + result->getHttpReturnMessage();
       }
     }
