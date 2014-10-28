@@ -611,19 +611,20 @@ Planner.prototype.makePlan = function() {
   tmp = this.commands = [];
   var tmp2,j;
   for (i = 0; i < agents.length; i++) {
-    tmp2 = { "action" : "startAgent", "dispatcher": agents[i].dispatcher,
-             "extPort": agents[i].extPort,
-             "intPort": agents[i].intPort,
-             "peers": [],
-             "agencyPrefix": config.agencyPrefix,
-             "dataPath": config.dataPath,
-             "logPath": config.logPath,
-             "agentPath": config.agentPath,
-             "onlyLocalhost": config.onlyLocalhost,
-             "valgrind": config.valgrind,
-             "valgrindopts": config.valgrindopts,
+    tmp2 = { "action"              : "startAgent",
+             "dispatcher"          : agents[i].dispatcher,
+             "extPort"             : agents[i].extPort,
+             "intPort"             : agents[i].intPort,
+             "peers"               : [],
+             "agencyPrefix"        : config.agencyPrefix,
+             "dataPath"            : config.dataPath,
+             "logPath"             : config.logPath,
+             "agentPath"           : config.agentPath,
+             "onlyLocalhost"       : config.onlyLocalhost,
+             "valgrind"            : config.valgrind,
+             "valgrindopts"        : config.valgrindopts,
              "valgrindXmlFileBase" : config.valgrindXmlFileBase,
-             "valgrindTestname" : config.valgrindXmlFileBase
+             "valgrindTestname"    : config.valgrindXmlFileBase
            };
     for (j = 0; j < i; j++) {
       ep = dispatchers[agents[j].dispatcher].endpoint;
@@ -639,21 +640,22 @@ Planner.prototype.makePlan = function() {
               "agency": agencyPos,
               "data": agencyData } );
   for (i = 0; i < dispList.length; i++) {
-    tmp.push( { "action": "startServers", "dispatcher": dispList[i],
-                "DBservers": copy(launchers[dispList[i]].DBservers),
-                "Coordinators": copy(launchers[dispList[i]].Coordinators),
-                "name": dispList[i],
-                "dataPath": config.dataPath,
-                "logPath": config.logPath,
-                "arangodPath": config.arangodPath,
-                "onlyLocalhost": config.onlyLocalhost,
-                "agency": copy(agencyPos),
-                "useSSLonDBservers": config.useSSLonDBservers,
-                "useSSLonCoordinators": config.useSSLonCoordinators,
-                "valgrind": config.valgrind,
-                "valgrindopts": config.valgrindopts,
-                "valgrindXmlFileBase" : config.valgrindXmlFileBase,
-                "valgrindTestname" : config.valgrindTestname
+    tmp.push( { "action"                 : "startServers",
+                "dispatcher"             : dispList[i],
+                "DBservers"              : copy(launchers[dispList[i]].DBservers),
+                "Coordinators"           : copy(launchers[dispList[i]].Coordinators),
+                "name"                   : dispList[i],
+                "dataPath"               : config.dataPath,
+                "logPath"                : config.logPath,
+                "arangodPath"            : config.arangodPath,
+                "onlyLocalhost"          : config.onlyLocalhost,
+                "agency"                 : copy(agencyPos),
+                "useSSLonDBservers"      : config.useSSLonDBservers,
+                "useSSLonCoordinators"   : config.useSSLonCoordinators,
+                "valgrind"               : config.valgrind,
+                "valgrindopts"           : config.valgrindopts,
+                "valgrindXmlFileBase"    : config.valgrindXmlFileBase,
+                "valgrindTestname"       : config.valgrindTestname
               } );
   }
 
