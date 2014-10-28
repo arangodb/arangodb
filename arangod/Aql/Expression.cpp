@@ -95,6 +95,11 @@ Expression::~Expression () {
       // _json is freed automatically by AqlItemBlock
     }
   }
+
+  // free all items in the cache
+  for (auto it : _valueCache) {
+    delete it.second;
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -199,6 +204,74 @@ void Expression::invalidate () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief find a value in a list node
+/// this performs either a binary search (if the node is sorted) or a
+/// linear search (if the node is not sorted)
+////////////////////////////////////////////////////////////////////////////////
+
+bool Expression::findInList (AqlValue const& left, 
+                             AqlValue const& right, 
+                             TRI_document_collection_t const* leftCollection, 
+                             TRI_document_collection_t const* rightCollection,
+                             triagens::arango::AqlTransaction* trx,
+                             AstNode const* node) const {
+  TRI_ASSERT_EXPENSIVE(right.isList());
+ 
+  size_t const n = right.listSize();
+
+  if (node->getMember(1)->isSorted()) {
+    // node values are sorted. can use binary search
+    size_t l = 0;
+    size_t r = n - 1;
+
+    while (true) {
+      // determine midpoint
+      size_t m = l + ((r - l) / 2);
+      auto listItem = right.extractListMember(trx, rightCollection, m, false);
+      AqlValue listItemValue(&listItem);
+
+      int compareResult = AqlValue::Compare(trx, left, leftCollection, listItemValue, nullptr);
+
+      if (compareResult == 0) {
+        // item found in the list
+        return true;
+      }
+
+      if (compareResult < 0) {
+        if (m == 0) {
+          // not found
+          return false;
+        }
+        r = m - 1;
+      }
+      else {
+        l = m + 1;
+      }
+      if (r < l) {
+        return false;
+      }
+    }
+  }
+  else {
+    // use linear search
+    for (size_t i = 0; i < n; ++i) {
+      // do not copy the list element we're looking at
+      auto listItem = right.extractListMember(trx, rightCollection, i, false);
+      AqlValue listItemValue(&listItem);
+
+      int compareResult = AqlValue::Compare(trx, left, leftCollection, listItemValue, nullptr);
+
+      if (compareResult == 0) {
+        // item found in the list
+        return true;
+      }
+    }
+    
+    return false;  
+  }
+} 
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief analyze the expression (determine its type etc.)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -271,7 +344,6 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
                                               size_t startPos,
                                               std::vector<Variable*> const& vars,
                                               std::vector<RegisterId> const& regs) {
-
   if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     // array lookup, e.g. users.name
     TRI_ASSERT(node->numMembers() == 1);
@@ -348,7 +420,22 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
   }
   
   else if (node->type == NODE_TYPE_LIST) {
+    // a list must have at least this many items in order to be put into the cache
+    // note: the value is arbitrary, but we do not want to put small lists into the cache
+    static size_t const MinQualifyingSize = 5; 
+
     size_t const n = node->numMembers();
+    bool const eligibleForCaching = (node->isConstant() && n >= MinQualifyingSize);
+
+    if (eligibleForCaching) {
+      // check in the cache if we have pre-calculated the subexpression
+      auto it = _valueCache.find(node);
+      if (it != _valueCache.end()) {
+        // return a pointer to the internals of the pre-calculated value
+        return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, (*it).second->json(), Json::NOFREE));
+      }
+    }
+
     auto list = new Json(Json::List, n);
 
     try {
@@ -360,6 +447,14 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
         list->add(result.toJson(trx, myCollection));
         result.destroy();
       }
+
+      if (eligibleForCaching) {
+        // insert the value into the cache
+        _valueCache.emplace(std::make_pair(node, list));
+        // return a copy that does not free the internals
+        return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, list->json(), Json::NOFREE));
+      }
+
       return AqlValue(list);
     }
     catch (...) {
@@ -508,36 +603,23 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
         node->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
       // IN and NOT IN
       if (! right.isList()) {
-        // right operand must be a list, other we return false
+        // right operand must be a list, otherwise we return false
         left.destroy();
         right.destroy();
         return AqlValue(new triagens::basics::Json(false));
       }
-    
-      size_t const n = right.listSize();
+   
+      bool result = findInList(left, right, leftCollection, rightCollection, trx, node); 
 
-      for (size_t i = 0; i < n; ++i) {
-        // do not copy the list element we're looking at
-        auto listItem = right.extractListMember(trx, rightCollection, i, false);
-        AqlValue listItemValue(&listItem);
-
-        int compareResult = AqlValue::Compare(trx, left, leftCollection, listItemValue, nullptr);
-
-        if (compareResult == 0) {
-          // item found in the list
-          left.destroy();
-          right.destroy();
-      
-          // found
-          return AqlValue(new triagens::basics::Json(node->type == NODE_TYPE_OPERATOR_BINARY_IN));
-        }
+      if (node->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
+        // revert the result in case of a NOT IN
+        result = ! result;
       }
        
       left.destroy();
       right.destroy();
     
-      // not found
-      return AqlValue(new triagens::basics::Json(node->type != NODE_TYPE_OPERATOR_BINARY_IN));
+      return AqlValue(new triagens::basics::Json(result));
     }
 
     // all other comparison operators
@@ -580,7 +662,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     // return false part  
     return executeSimpleExpression(node->getMember(2), &myCollection, trx, docColls, argv, startPos, vars, regs);
   }
-  
+ 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unhandled type in simple expression");
 }
 

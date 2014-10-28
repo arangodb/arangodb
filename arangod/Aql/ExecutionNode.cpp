@@ -822,7 +822,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
       nrRegs.push_back(1 + nrRegs.back());
       auto ep = static_cast<EnumerateCollectionNode const*>(en);
       TRI_ASSERT(ep != nullptr);
-      varInfo.insert(make_pair(ep->_outVariable->id,
+      varInfo.emplace(make_pair(ep->_outVariable->id,
                                VarInfo(depth, totalNrRegs)));
       totalNrRegs++;
       break;
@@ -833,7 +833,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
       nrRegs.push_back(1 + nrRegs.back());
       auto ep = static_cast<EnumerateListNode const*>(en);
       TRI_ASSERT(ep != nullptr);
-      varInfo.insert(make_pair(ep->_outVariable->id,
+      varInfo.emplace(make_pair(ep->_outVariable->id,
                                VarInfo(depth, totalNrRegs)));
       totalNrRegs++;
       break;
@@ -843,7 +843,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
       nrRegs[depth]++;
       auto ep = static_cast<CalculationNode const*>(en);
       TRI_ASSERT(ep != nullptr);
-      varInfo.insert(make_pair(ep->_outVariable->id,
+      varInfo.emplace(make_pair(ep->_outVariable->id,
                                VarInfo(depth, totalNrRegs)));
       totalNrRegs++;
       break;
@@ -854,7 +854,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
       nrRegs[depth]++;
       auto ep = static_cast<SubqueryNode const*>(en);
       TRI_ASSERT(ep != nullptr);
-      varInfo.insert(make_pair(ep->_outVariable->id,
+      varInfo.emplace(make_pair(ep->_outVariable->id,
                                VarInfo(depth, totalNrRegs)));
       totalNrRegs++;
       subQueryNodes.push_back(en);
@@ -874,14 +874,14 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
         // frame:
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.insert(make_pair(p.first->id,
+        varInfo.emplace(make_pair(p.first->id,
                                  VarInfo(depth, totalNrRegs)));
         totalNrRegs++;
       }
       if (ep->_outVariable != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.insert(make_pair(ep->_outVariable->id,
+        varInfo.emplace(make_pair(ep->_outVariable->id,
                                  VarInfo(depth, totalNrRegs)));
         totalNrRegs++;
       }
@@ -903,7 +903,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
       if (ep->_outVariable != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.insert(make_pair(ep->_outVariable->id,
+        varInfo.emplace(make_pair(ep->_outVariable->id,
                                  VarInfo(depth, totalNrRegs)));
         totalNrRegs++;
       }
@@ -915,7 +915,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
       if (ep->_outVariable != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.insert(make_pair(ep->_outVariable->id,
+        varInfo.emplace(make_pair(ep->_outVariable->id,
                                  VarInfo(depth, totalNrRegs)));
         totalNrRegs++;
       }
@@ -927,7 +927,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
       if (ep->_outVariable != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.insert(make_pair(ep->_outVariable->id,
+        varInfo.emplace(make_pair(ep->_outVariable->id,
                                  VarInfo(depth, totalNrRegs)));
         totalNrRegs++;
       }
@@ -939,7 +939,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
       if (ep->_outVariable != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.insert(make_pair(ep->_outVariable->id,
+        varInfo.emplace(make_pair(ep->_outVariable->id,
                                  VarInfo(depth, totalNrRegs)));
         totalNrRegs++;
       }

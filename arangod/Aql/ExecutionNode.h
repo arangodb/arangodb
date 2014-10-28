@@ -677,9 +677,9 @@ namespace triagens {
 /// out as false
 ////////////////////////////////////////////////////////////////////////////////
 
-        mutable double _estimatedCost;
+        double mutable _estimatedCost;
 
-        mutable bool _estimatedCostSet;
+        bool mutable _estimatedCostSet;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _varsUsedLater and _varsValid, the former contains those
