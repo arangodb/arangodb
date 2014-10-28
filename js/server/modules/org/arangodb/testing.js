@@ -272,8 +272,12 @@ function startInstance (protocol, options, addArgs, testname) {
     var valgrindXmlFileBase = "";
     if (typeof(options.valgrind) === 'string') {
       runInValgrind = options.valgrind;
-      valgrindopts = options.valgrindargs;
-      valgrindXmlFileBase = options.valgrindXmlFileBase;
+      if (options.hasOwnProperty("valgrindargs")) {
+        valgrindopts = options.valgrindargs;
+      }
+      if (options.hasOwnProperty("valgrindXmlFileBase")) {
+        valgrindXmlFileBase = options.valgrindXmlFileBase;
+      }
     }
 
     var p = new Planner({"numberOfDBservers"      : 2,
