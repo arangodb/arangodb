@@ -2015,8 +2015,16 @@ SubqueryBlock::SubqueryBlock (ExecutionEngine* engine,
   TRI_ASSERT(_outReg < ExecutionNode::MaxRegisterId);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
 SubqueryBlock::~SubqueryBlock () {
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize, tell dependency and the subquery
+////////////////////////////////////////////////////////////////////////////////
 
 int SubqueryBlock::initialize () {
   int res = ExecutionBlock::initialize();
@@ -2026,6 +2034,10 @@ int SubqueryBlock::initialize () {
 
   return getSubquery()->initialize();
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getSome
+////////////////////////////////////////////////////////////////////////////////
 
 AqlItemBlock* SubqueryBlock::getSome (size_t atLeast,
                                       size_t atMost) {
@@ -2066,6 +2078,19 @@ AqlItemBlock* SubqueryBlock::getSome (size_t atLeast,
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
   return res.release();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shutdown, tell dependency and the subquery
+////////////////////////////////////////////////////////////////////////////////
+
+int SubqueryBlock::shutdown (int errorCode) {
+  int res = ExecutionBlock::shutdown(errorCode);
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  return getSubquery()->shutdown(errorCode);
 }
 
 // -----------------------------------------------------------------------------
