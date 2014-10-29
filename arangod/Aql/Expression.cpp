@@ -95,11 +95,6 @@ Expression::~Expression () {
       // _json is freed automatically by AqlItemBlock
     }
   }
-
-  // free all items in the cache
-  for (auto it : _valueCache) {
-    delete it.second;
-  }
 }
 
 // -----------------------------------------------------------------------------
@@ -424,22 +419,18 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
   }
   
   else if (node->type == NODE_TYPE_LIST) {
-    // a list must have at least this many items in order to be put into the cache
-    // note: the value is arbitrary, but we do not want to put small lists into the cache
-    static size_t const MinQualifyingSize = 5; 
+    if (node->isConstant()) {
+      auto json = node->computeJson();
 
-    size_t const n = node->numMembers();
-    bool const eligibleForCaching = (node->isConstant() && n >= MinQualifyingSize);
-
-    if (eligibleForCaching) {
-      // check in the cache if we have pre-calculated the subexpression
-      auto it = _valueCache.find(node);
-      if (it != _valueCache.end()) {
-        // return a pointer to the internals of the pre-calculated value
-        return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, (*it).second->json(), Json::NOFREE));
+      if (json == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
+
+      // we do not own the JSON but the node does!
+      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, json, Json::NOFREE));
     }
 
+    size_t const n = node->numMembers();
     auto list = new Json(Json::List, n);
 
     try {
@@ -452,13 +443,6 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
         result.destroy();
       }
 
-      if (eligibleForCaching) {
-        // insert the value into the cache
-        _valueCache.emplace(std::make_pair(node, list));
-        // return a copy that does not free the internals
-        return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, list->json(), Json::NOFREE));
-      }
-
       return AqlValue(list);
     }
     catch (...) {
@@ -468,6 +452,17 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
   }
 
   else if (node->type == NODE_TYPE_ARRAY) {
+    if (node->isConstant()) {
+      auto json = node->computeJson();
+
+      if (json == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
+
+      // we do not own the JSON but the node does!
+      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, json, Json::NOFREE));
+    }
+
     size_t const n = node->numMembers();
     auto resultArray = new Json(Json::Array, n);
 
@@ -492,6 +487,17 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     }
   }
 
+  else if (node->type == NODE_TYPE_VALUE) {
+    auto json = node->computeJson();
+
+    if (json == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+
+    // we do not own the JSON but the node does!
+    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, json, Json::NOFREE)); 
+  }
+
   else if (node->type == NODE_TYPE_REFERENCE) {
     auto v = static_cast<Variable*>(node->getData());
 
@@ -508,16 +514,6 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     // fall-through to exception
   }
   
-  else if (node->type == NODE_TYPE_VALUE) {
-    auto j = node->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
-
-    if (j == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
-
-    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j)); 
-  }
- 
   else if (node->type == NODE_TYPE_FCALL) {
     // some functions have C++ handlers
     // check if the called function has one
