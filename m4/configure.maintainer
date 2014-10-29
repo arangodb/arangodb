@@ -120,6 +120,23 @@ else
 fi
 
 dnl ----------------------------------------------------------------------------
+dnl execinfo - for backtraces in the C/C++ parts
+dnl ----------------------------------------------------------------------------
+
+if test "x$USE_MAINTAINER_MODE" = xyes;  then
+  AC_ARG_WITH(backtrace, 
+                    [  --with-backtrace        enable backtrace dumps],
+                        [ if test "x$withval" != "xno" ; then
+                             CFLAGS="$CFLAGS -rdynamic "
+                             LDFLAGS="$LDFLAGS -rdynamic "
+                             SERVER_LDFLAGS="$SERVER_LDFLAGS -rdynamic "
+                             AC_CHECK_FUNCS(backtrace)
+                          fi
+                        ]
+)
+fi
+
+dnl ----------------------------------------------------------------------------
 dnl --SECTION--                                                      END-OF-FILE
 dnl ----------------------------------------------------------------------------
 
