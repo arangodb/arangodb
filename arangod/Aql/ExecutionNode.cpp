@@ -529,19 +529,6 @@ bool ExecutionNode::walk (WalkerWorker<ExecutionNode>* worker) {
     return true;
   }
   
-  bool const isSubQuery = (getType() == SUBQUERY); 
-  // Now handle a subquery:
-  if (isSubQuery && worker->enterSubQueryFirst()) {
-    auto p = static_cast<SubqueryNode*>(this);
-    if (worker->enterSubquery(this, p->getSubquery())) {
-      bool abort = p->getSubquery()->walk(worker);
-      worker->leaveSubquery(this, p->getSubquery());
-      if (abort) {
-        return true;
-      }
-    }
-  }
-
   // Now the children in their natural order:
   for (auto it : _dependencies) {
     if (it->walk(worker)) {
@@ -550,7 +537,7 @@ bool ExecutionNode::walk (WalkerWorker<ExecutionNode>* worker) {
   }
   
   // Now handle a subquery:
-  if (isSubQuery && ! worker->enterSubQueryFirst()) {
+  if (getType() == SUBQUERY) {
     auto p = static_cast<SubqueryNode*>(this);
     if (worker->enterSubquery(this, p->getSubquery())) {
       bool abort = p->getSubquery()->walk(worker);
