@@ -158,19 +158,19 @@ bool shardKeysChanged (std::string const& dbname,
 
     TRI_json_t const* n = TRI_LookupArrayJson(newJson, shardKeys[i].c_str());
 
-    if (n == 0 && isPatch) {
+    if (n == nullptr && isPatch) {
       // attribute not set in patch document. this means no update
       continue;
     }
 
     TRI_json_t const* o = TRI_LookupArrayJson(oldJson, shardKeys[i].c_str());
 
-    if (o == 0) {
+    if (o == nullptr) {
       // if attribute is undefined, use "null" instead
       o = &nullJson;
     }
 
-    if (n == 0) {
+    if (n == nullptr) {
       // if attribute is undefined, use "null" instead
       n = &nullJson;
     }
@@ -374,7 +374,7 @@ int figuresOnCoordinator (string const& dbname,
   // prefill with 0s
   result = (TRI_doc_collection_info_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_collection_info_t), true);
 
-  if (result == 0) {
+  if (result == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -559,7 +559,7 @@ int createDocumentOnCoordinator (
   TRI_json_t* subjson = TRI_LookupArrayJson(json, "_key");
   bool userSpecifiedKey = false;
   string _key;
-  if (0 == subjson) {
+  if (subjson == nullptr) {
     // The user did not specify a key, let's create one:
     uint64_t uid = ci->uniqid();
     _key = triagens::basics::StringUtils::itoa(uid);
@@ -661,7 +661,7 @@ int deleteDocumentOnCoordinator (
   // delete the document. All but one will not know it.
   // Now find the responsible shard:
   TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-  if (0 == json) {
+  if (json == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
@@ -736,7 +736,7 @@ int deleteDocumentOnCoordinator (
                            "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document/" +
                            StringUtils::urlEncode(it->first) + "/" + StringUtils::urlEncode(key) +
                            "?waitForSync=" + (waitForSync ? "true" : "false")+
-                           revstr+policystr, 0, false, headersCopy, NULL, 60.0);
+                           revstr + policystr, 0, false, headersCopy, NULL, 60.0);
     delete res;
   }
   // Now listen to the results:
@@ -749,8 +749,8 @@ int deleteDocumentOnCoordinator (
           (nrok == 0 && count == 1)) {
         nrok++;
         responseCode = res->answer_code;
-        resultBody = string(res->answer->body(), res->answer->bodySize());
         resultHeaders = res->answer->headers();
+        resultBody = string(res->answer->body(), res->answer->bodySize());
       }
     }
     delete res;
@@ -852,7 +852,7 @@ int getDocumentOnCoordinator (
   // delete the document. All but one will not know it.
   // Now find the responsible shard:
   TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-  if (0 == json) {
+  if (json == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
@@ -933,7 +933,7 @@ int getDocumentOnCoordinator (
   int count;
   int nrok = 0;
   for (count = (int) shards.size(); count > 0; count--) {
-    res = cc->wait( "", coordTransactionID, 0, "", 0.0);
+    res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res->status == CL_COMM_RECEIVED) {
       if (res->answer_code != triagens::rest::HttpResponse::NOT_FOUND ||
           (nrok == 0 && count == 1)) {
@@ -945,6 +945,7 @@ int getDocumentOnCoordinator (
     }
     delete res;
   }
+
   // Note that nrok is always at least 1!
   if (nrok > 1) {
     return TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS;
@@ -1187,7 +1188,7 @@ int modifyDocumentOnCoordinator (
   int count;
   int nrok = 0;
   for (count = (int) shards.size(); count > 0; count--) {
-    res = cc->wait( "", coordTransactionID, 0, "", 0.0);
+    res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res->status == CL_COMM_RECEIVED) {
       if (res->answer_code != triagens::rest::HttpResponse::NOT_FOUND ||
           (nrok == 0 && count == 1)) {
@@ -1199,6 +1200,7 @@ int modifyDocumentOnCoordinator (
     }
     delete res;
   }
+
   // Note that nrok is always at least 1!
   if (nrok > 1) {
     return TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS;
@@ -1360,7 +1362,7 @@ TRI_vector_pointer_t* getIndexesCoordinator (string const& databaseName,
 
         TRI_index_t* idx = (TRI_index_t*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_index_t), false);
 
-        if (idx == 0) {
+        if (idx == nullptr) {
           continue;
         }
 
