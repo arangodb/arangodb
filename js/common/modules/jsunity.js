@@ -140,7 +140,11 @@ function Run (testsuite) {
   FAILED += result.failed;
   DURATION += result.duration;
 
-  for (var attrname in RESULTS) { COMPLETE[attrname] = RESULTS[attrname]; }
+  for (var attrname in RESULTS) {
+    if (RESULTS.hasOwnProperty(attrname)) { 
+      COMPLETE[attrname] = RESULTS[attrname];
+    } 
+  }
 
   return result;
 }
