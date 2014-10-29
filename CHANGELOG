@@ -1,4 +1,4 @@
-v2.3.0-alpha5 (XXXX-XX-XX)
+v2.3.0-alpha6 (XXXX-XX-XX)
 -------------------
 
 * removed internal "_admin/modules/flush" in order to fix requireApp
