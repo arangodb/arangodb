@@ -363,37 +363,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     resetPlans();
   }
 
-  void generatePlanForCoordinator (ExecutionPlan* plan, 
-                                   ExecutionNode const* current) {
-    ExecutionNode* previous = nullptr;
-
-    // TODO: fix instanciation here as in DBserver case
-    while (current != nullptr) {
-      auto clone = current->clone(plan, false, true);
-      plan->registerNode(clone);
-        
-      if (previous == nullptr) {
-        // set the root node
-        plan->root(clone);
-      }
-      else {
-        previous->addDependency(clone);
-      }
-
-      auto const& deps = current->getDependencies();
-      if (deps.size() != 1) {
-        break;
-      }
-      auto const nodeType = current->getType();
-      if (nodeType == ExecutionNode::REMOTE) {
-        break;
-      }
-
-      previous = clone;
-      current = deps[0];
-    }
-  }
-
   triagens::basics::Json generatePlanForOneShard (EngineInfo const& info,
                                                   QueryId& connectedId,
                                                   std::string const& shardId,
@@ -455,14 +424,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         engine = buildEngineCoordinator(*it);
         TRI_ASSERT(engine != nullptr);
         
-        auto plan = engine->getQuery()->plan();
-        TRI_ASSERT(plan != nullptr);
-        TRI_ASSERT(plan->empty());
-
         if ((*it).id > 0) {
-          generatePlanForCoordinator(plan, (*it).nodes.front());
-          // we need to instanciate this engine in the registry
-
           // create a remote id for the engine that we can pass to
           // the plans to be created for the DBServers
           id = TRI_NewTickServer();
