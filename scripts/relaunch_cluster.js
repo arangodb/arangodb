@@ -1,16 +1,20 @@
+/*jshint unused: false */
+/*global require */
+
 function main (argv) {
+  "use strict";
+
   var runInfoName = "runInfo.json";
   var fs = require("fs");
   var print = require("internal").print;
   if (argv.length > 1) {
     runInfoName = argv[1];
-    print("Using runInfo from:",runInfoName);
+    print("Using runInfo from:", runInfoName);
   }
   var Kickstarter = require("org/arangodb/cluster").Kickstarter;
   var runInfo = JSON.parse(fs.read(runInfoName));
   var k = new Kickstarter(runInfo.plan);
   var r = k.relaunch();
-  var fs = require("fs");
   fs.write(runInfoName,JSON.stringify({"plan": runInfo.plan,
                                        "runInfo": r.runInfo}));
   print("Endpoints:");

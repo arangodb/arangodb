@@ -1,7 +1,9 @@
+/*jshint unused: false */
+/*global require, start_pretty_print */
+
 var internalMembers = ["code", "error", "status", "duration", "failed", "total", "message"];
 var fs = require("fs");
 var print = require("internal").print;
-
 
 function resultsToXml(results, baseName) {
   "use strict";
@@ -13,82 +15,96 @@ function resultsToXml(results, baseName) {
     });
   }
 
-  for (var testrun in results) {
-    
-    for (var test in  results[testrun]) {
-      var xml = [ "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" ];
+  function buildXml () {
+    var xml = [ "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" ];
 
-      xml.text = function (s) {
-        Array.prototype.push.call(this, s);
-        return this;
-      };
+    xml.text = function (s) {
+      Array.prototype.push.call(this, s);
+      return this;
+    };
       
-      xml.elem = function (tagName, attrs, close) {
-        this.text("<").text(tagName);
-        
-        for (var a in attrs || {}) {
+    xml.elem = function (tagName, attrs, close) {
+      this.text("<").text(tagName);
+      attrs = attrs || { }; 
+            
+      for (var a in attrs) {
+        if (attrs.hasOwnProperty(a)) {
           this.text(" ").text(a).text("=\"")
             .text(xmlEscape(String(attrs[a]))).text("\"");
         }
+      }
 
-        if (close) {
-          this.text("/");
-        }
-        this.text(">\n");
+      if (close) {
+        this.text("/");
+      }
+      this.text(">\n");
 
-        return this;
-      };
+      return this;
+    };
 
-      xml.elem("testsuite", {
-        errors: 0,
-        failures: results[testrun][test].failed,
-        name: test,
-        tests: results[testrun][test].total,
-        time: results[testrun][test].duration
-      });
+    return xml;
+  }
 
-      for (var oneTest in  results[testrun][test]) {
-        if (internalMembers.indexOf(oneTest) === -1) {
-          var result = results[testrun][test][oneTest].status;
-          var success = (typeof(result) === 'boolean')? result : false;
+  for (var testrun in results) {
+    if (results.hasOwnProperty(testrun)) { 
+      for (var test in results[testrun]) {
+        if (results[testrun].hasOwnProperty(test)) { 
+          var xml = buildXml();
+
+          xml.elem("testsuite", {
+            errors: 0,
+            failures: results[testrun][test].failed,
+            name: test,
+            tests: results[testrun][test].total,
+            time: results[testrun][test].duration
+          });
+
+          for (var oneTest in  results[testrun][test]) {
+            if (internalMembers.indexOf(oneTest) === -1) {
+              var result = results[testrun][test][oneTest].status;
+              var success = (typeof(result) === 'boolean')? result : false;
           
-          xml.elem("testcase", {
-            name: oneTest,
-            time: results[testrun][test][oneTest].duration
-          }, success);
+              xml.elem("testcase", {
+                name: oneTest,
+                time: results[testrun][test][oneTest].duration
+              }, success);
           
-          if (!success) {
+              if (! success) {
+                xml.elem("failure");
+                xml.text('<![CDATA[' + results[testrun][test][oneTest].message + ']]>\n');
+                xml.elem("/failure");
+                xml.elem("/testcase");
+              }
+            }
+          }
+
+          if ((! results[testrun][test].status)                 && 
+              results[testrun][test].hasOwnProperty('message')) { 
+
+            xml.elem("testcase", {
+              name: 'all tests in ' + test,
+              time: results[testrun][test].duration
+            }, false);
             xml.elem("failure");
-            xml.text('<![CDATA[' + results[testrun][test][oneTest].message + ']]>\n');
+            xml.text('<![CDATA[' + JSON.stringify(results[testrun][test].message) + ']]>\n');
             xml.elem("/failure");
             xml.elem("/testcase");
           }
+
+          xml.elem("/testsuite");
+
+          var fn = baseName + testrun.replace(/\//g, '_') + '_' + test.replace(/\//g, '_') + ".xml";
+          fs.write(fn, xml.join(""));
         }
       }
-
-      if ((!results[testrun][test].status)                 && 
-          results[testrun][test].hasOwnProperty('message')) 
-      {
-
-        xml.elem("testcase", {
-          name: 'all tests in ' + test,
-          time: results[testrun][test].duration
-        }, false);
-        xml.elem("failure");
-        xml.text('<![CDATA[' + JSON.stringify(results[testrun][test].message) + ']]>\n');
-        xml.elem("/failure");
-        xml.elem("/testcase");
-      }
-      xml.elem("/testsuite");
-      var fn = baseName + testrun.replace(/\//g, '_') + '_' + test.replace(/\//g, '_') + ".xml";
-      fs.write(fn, xml.join(""));
-
     }
   }
 }
 
 
 function main (argv) {
+  "use strict";
+
   var test = argv[1];
   var options = {};
   var r;

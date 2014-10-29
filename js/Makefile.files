@@ -74,6 +74,8 @@ JAVASCRIPT_JSLINT = \
 	`find @srcdir@/js/apps/system/aardvark/test/specs -name "*.js"` \
 	`find @srcdir@/js/apps/system/aardvark/test/clusterSpecs -name "*.js"` \
 	\
+	`find @srcdir@/scripts -name "*.js"` \
+	\
 	@srcdir@/js/common/modules/jsunity.js \
 	@srcdir@/js/client/client.js \
 	@srcdir@/js/server/server.js \
