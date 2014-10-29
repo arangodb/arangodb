@@ -116,7 +116,7 @@ namespace triagens {
         if (! value.isEmpty()) {
           auto it = _valueCount.find(value);
           if (it == _valueCount.end()) {
-            _valueCount.insert(std::make_pair(value, 1));
+            _valueCount.emplace(std::make_pair(value, 1));
           }
           else {
             it->second++;

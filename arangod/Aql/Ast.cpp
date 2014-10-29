@@ -1314,6 +1314,15 @@ AstNode* Ast::optimizeBinaryOperatorRelational (AstNode* node) {
   }
 
   if (! lhsIsConst) {
+    if (rhs->numMembers() >= 10 &&
+        (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
+         node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
+      // if the IN list contains a considerable amount of items, we will sort
+      // it, so we can find elements quicker later using a binary search
+      // note that sorting will also set a flag for the node
+      rhs->sort();
+    }
+
     return node;
   }
 

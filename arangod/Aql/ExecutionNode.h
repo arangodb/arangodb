@@ -560,13 +560,13 @@ namespace triagens {
           ~RegisterPlan () {};
 
           virtual bool enterSubquery (ExecutionNode*,
-                                      ExecutionNode*) {
+                                      ExecutionNode*) override final {
             return false;  // do not walk into subquery
           }
 
-          virtual void after (ExecutionNode *eb);
+          virtual void after (ExecutionNode *eb) override final;
 
-          RegisterPlan* clone(ExecutionPlan* otherPlan, ExecutionPlan* plan);
+          RegisterPlan* clone (ExecutionPlan* otherPlan, ExecutionPlan* plan);
 
         };
 
@@ -677,9 +677,9 @@ namespace triagens {
 /// out as false
 ////////////////////////////////////////////////////////////////////////////////
 
-        mutable double _estimatedCost;
+        double mutable _estimatedCost;
 
-        mutable bool _estimatedCostSet;
+        bool mutable _estimatedCostSet;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _varsUsedLater and _varsValid, the former contains those

@@ -55,7 +55,7 @@ files = {
   "js/actions/api-graph.js" : "graph",
   "arangod/RestHandler/RestImportHandler.cpp" : "import",
   "js/actions/api-index.js" : "index",
-  "lib/Admin/RestJobHandler.cpp" : "job",
+  "lib/HttpServer/AsyncJobManager.h" : "job",
   "lib/Admin/RestAdminLogHandler.cpp" : "log",
   "js/actions/api-query.js" : "query",
   "arangod/RestHandler/RestReplicationHandler.cpp" : "replication",

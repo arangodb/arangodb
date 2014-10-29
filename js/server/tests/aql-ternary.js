@@ -1,3 +1,6 @@
+/*jshint strict: false, maxlen: 500 */
+/*global require, assertEqual */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, tenary operator
 ///
@@ -25,11 +28,9 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var errors = require("internal").errors;
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
 var getQueryResults = helper.getQueryResultsAQL2;
-var assertQueryError = helper.assertQueryError2;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

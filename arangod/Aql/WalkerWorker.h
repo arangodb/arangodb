@@ -54,7 +54,8 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-        virtual bool EnterSubQueryFirst () {
+
+        virtual bool enterSubQueryFirst () {
           return false;
         }
 
@@ -65,9 +66,7 @@ namespace triagens {
         virtual void after (T*) {
         }
 
-        virtual bool enterSubquery (T*, // super 
-                                    T*  // sub
-                                   ) {
+        virtual bool enterSubquery (T*, T*) { // super, sub
           return true;
         }
 

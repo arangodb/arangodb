@@ -1,3 +1,6 @@
+/*jshint strict: false, maxlen: 500 */
+/*global require, assertEqual, AQL_EXPLAIN */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, sort optimisations
 ///
@@ -427,7 +430,7 @@ function ahuacatlQueryOptimiserSortTestSuite () {
       assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
     }
 
-  }
+  };
 }
 
 ////////////////////////////////////////////////////////////////////////////////

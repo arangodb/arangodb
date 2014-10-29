@@ -1,4 +1,6 @@
-/*global require, exports, assertTrue, assertEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*jshint strict: false, maxlen: 500 */
+/*global require, assertEqual, AQL_EXECUTE, AQL_EXPLAIN */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for primary index
 ///
@@ -27,7 +29,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var internal = require("internal");
 var helper = require("org/arangodb/aql-helper");
 var db = require("org/arangodb").db;
 

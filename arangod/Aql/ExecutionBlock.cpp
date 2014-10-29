@@ -202,9 +202,10 @@ bool ExecutionBlock::walk (WalkerWorker<ExecutionBlock>* worker) {
     return true;
   }
 
+  bool const isSubQuery = (_exeNode->getType() == ExecutionNode::SUBQUERY);
+
   // Now handle a subquery:
-  if ((_exeNode->getType() == ExecutionNode::SUBQUERY) &&
-      worker->EnterSubQueryFirst()) {
+  if (isSubQuery && worker->enterSubQueryFirst()) {
     auto p = static_cast<SubqueryBlock*>(this);
     if (worker->enterSubquery(this, p->getSubquery())) {
       bool abort = p->getSubquery()->walk(worker);
@@ -222,8 +223,7 @@ bool ExecutionBlock::walk (WalkerWorker<ExecutionBlock>* worker) {
     }
   }
   // Now handle a subquery:
-  if ((_exeNode->getType() == ExecutionNode::SUBQUERY) &&
-      ! worker->EnterSubQueryFirst()) {
+  if (isSubQuery && ! worker->enterSubQueryFirst()) {
     auto p = static_cast<SubqueryBlock*>(this);
     if (worker->enterSubquery(this, p->getSubquery())) {
       bool abort = p->getSubquery()->walk(worker);
@@ -236,7 +236,6 @@ bool ExecutionBlock::walk (WalkerWorker<ExecutionBlock>* worker) {
   worker->after(this);
   return false;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize
@@ -2652,7 +2651,7 @@ void SortBlock::doSorting () {
                 // Was already stolen for another block
                 AqlValue b = a.clone();
                 try {
-                  cache.insert(make_pair(a,b));
+                  cache.emplace(make_pair(a, b));
                 }
                 catch (...) {
                   b.destroy();
@@ -2690,7 +2689,7 @@ void SortBlock::doSorting () {
 
                 // If the following does not work, we will create a
                 // few unnecessary copies, but this does not matter:
-                cache.insert(make_pair(a,a));
+                cache.emplace(make_pair(a,a));
               }
             }
           }
@@ -3797,7 +3796,7 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
 
 bool GatherBlock::getBlock (size_t i, size_t atLeast, size_t atMost) {
   ENTER_BLOCK
-  TRI_ASSERT(0 <= i && i < _dependencies.size());
+  TRI_ASSERT(i < _dependencies.size());
   TRI_ASSERT(! _isSimple);
   AqlItemBlock* docs = _dependencies.at(i)->getSome(atLeast, atMost);
   if (docs != nullptr) {
@@ -4597,7 +4596,7 @@ ClusterCommResult* RemoteBlock::sendRequest (
   CoordTransactionID const coordTransactionId = 1;
   std::map<std::string, std::string> headers;
   if (! _ownName.empty()) {
-    headers.insert(make_pair("Shard-Id", _ownName));
+    headers.emplace(make_pair("Shard-Id", _ownName));
   }
 
   auto result = cc->syncRequest(clientTransactionId,

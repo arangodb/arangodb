@@ -1,3 +1,6 @@
+/*jshint strict: false, maxlen: 500 */
+/*global require, assertEqual, assertException */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, bind parameters
 ///
@@ -354,7 +357,7 @@ function ahuacatlBindTestSuite () {
         for (limit = 0; limit < 6; ++limit) {
           var actual = getQueryResults("FOR u IN [ 1, 2, 3, 4 ] LIMIT @offset, @count RETURN u", { "offset" : offset, "count": limit });
        
-          assertEqual(data.slice(offset, limit == 0 ? limit : offset + limit), actual);
+          assertEqual(data.slice(offset, limit === 0 ? limit : offset + limit), actual);
         }
       }
     },

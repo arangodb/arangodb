@@ -242,12 +242,11 @@ function startInstance (protocol, options, addArgs, testname) {
   var topDir = findTopDir();
   var instanceInfo = {};
   instanceInfo.topDir = topDir;
-  var tmpDataDir = '/var/' + fs.getTempFile();
+  var tmpDataDir = fs.getTempFile();
 
   instanceInfo.flatTmpDataDir = tmpDataDir;
 
-  tmpDataDir += '/' + testname + '/';
-  print(tmpDataDir);
+  tmpDataDir = fs.join(tmpDataDir, testname);
   fs.makeDirectoryRecursive(tmpDataDir);
   instanceInfo.tmpDataDir = tmpDataDir;
 
@@ -256,33 +255,41 @@ function startInstance (protocol, options, addArgs, testname) {
   var valgrindopts = [];
   var dispatcher;
   if (options.cluster) {
+    var extraargs = makeTestingArgs();
+    if (typeof(options.extraargs) === 'object') {
+      extraargs = extraargs.concat(options.extraargs);
+    }
+    if (addArgs !== undefined) {
+      extraargs = extraargs.concat(addArgs);
+    }
     dispatcher = {"endpoint":"tcp://localhost:",
-                  "arangodExtraArgs":makeTestingArgs(),
+                  "arangodExtraArgs": extraargs,
                   "username": "root",
                   "password": ""};
-    if (addArgs !== undefined) {
-      dispatcher.arangodExtraArgs = addArgs;
-    }
     print("Temporary cluster data and logs are in",tmpDataDir);
 
     var runInValgrind = "";
     var valgrindXmlFileBase = "";
     if (typeof(options.valgrind) === 'string') {
       runInValgrind = options.valgrind;
-      valgrindopts = options.valgrindargs;
-      valgrindXmlFileBase = options.valgrindXmlFileBase;
+      if (options.hasOwnProperty("valgrindargs")) {
+        valgrindopts = options.valgrindargs;
+      }
+      if (options.hasOwnProperty("valgrindXmlFileBase")) {
+        valgrindXmlFileBase = options.valgrindXmlFileBase;
+      }
     }
-    var p = new Planner({"numberOfDBservers":2,
-                         "numberOfCoordinators":1,
-                         "dispatchers": {"me": dispatcher},
-                         "dataPath": tmpDataDir,
-                         "logPath": tmpDataDir,
-                         "useSSLonCoordinators": protocol === "ssl",
-                         "valgrind": runInValgrind,
-                         "valgrindopts": valgrindopts,
-                         "valgrindXmlFileBase"     : valgrindXmlFileBase,
-                         "valgrindTestname"        : testname
 
+    var p = new Planner({"numberOfDBservers"      : 2,
+                         "numberOfCoordinators"   : 1,
+                         "dispatchers"            : {"me": dispatcher},
+                         "dataPath"               : tmpDataDir,
+                         "logPath"                : tmpDataDir,
+                         "useSSLonCoordinators"   : protocol === "ssl",
+                         "valgrind"               : runInValgrind,
+                         "valgrindopts"           : valgrindopts,
+                         "valgrindXmlFileBase"    : valgrindXmlFileBase,
+                         "valgrindTestname"       : testname
                         });
     instanceInfo.kickstarter = new Kickstarter(p.getPlan());
     instanceInfo.kickstarter.launch();
@@ -360,6 +367,7 @@ function copy (src, dst) {
 }
 
 function checkInstanceAlive(instanceInfo, options) {  
+  var storeArangodPath;
   if (options.cluster === false) {
     var res = statusExternal(instanceInfo.pid, false);
     var ret = res.status === "RUNNING";
@@ -370,7 +378,7 @@ function checkInstanceAlive(instanceInfo, options) {
       if (res.hasOwnProperty('signal') && 
           (res.signal === 11))
       {
-        var storeArangodPath = "/var/tmp/arangod_" + instanceInfo.pid.pid;
+        storeArangodPath = "/var/tmp/arangod_" + instanceInfo.pid.pid;
         print("Core dump written; copying arangod to " + 
               storeArangodPath + " for later analysis.");
         res.gdbHint = "Run debugger with 'gdb " + 
@@ -381,7 +389,32 @@ function checkInstanceAlive(instanceInfo, options) {
     }
     return ret;
   }
-  return instanceInfo.kickstarter.isHealthy();
+  var ClusterFit = true;
+  for (var part in instanceInfo.kickstarter.runInfo) {
+    if (instanceInfo.kickstarter.runInfo[part].hasOwnProperty("pids")) {
+      for (var pid in instanceInfo.kickstarter.runInfo[part].pids) {
+        if (instanceInfo.kickstarter.runInfo[part].pids.hasOwnProperty(pid)) {
+          var checkpid = instanceInfo.kickstarter.runInfo[part].pids[pid];
+          var ress = statusExternal(checkpid, false);
+          print(ress);
+          print(checkpid.pid);
+          if (ress.hasOwnProperty('signal') && 
+              (ress.signal === 11)) {
+            storeArangodPath = "/var/tmp/arangod_" + checkpid.pid;
+            print("Core dump written; copying arangod to " + 
+                  storeArangodPath + " for later analysis.");
+            instanceInfo.exitStatus = ress;
+            ress.gdbHint = "Run debugger with 'gdb " + 
+              storeArangodPath + 
+              " /var/tmp/core*" + checkpid.pid + "*'";
+            copy("bin/arangod", storeArangodPath);
+            ClusterFit = false;
+          }
+        }
+      }
+    }
+  }
+  return ClusterFit && instanceInfo.kickstarter.isHealthy();
 }
 
 function shutdownInstance (instanceInfo, options) {
