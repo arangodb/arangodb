@@ -73,6 +73,7 @@ var optiondoku = [
   '   - `valgrindargs`: list of commandline parameters to add to valgrind',
   '',
   '   - `extraargs`: list of extra commandline arguments to add to arangod',
+  '   - `portOffset`: move our base port by n ports up',
   ''
 ];
 ////////////////////////////////////////////////////////////////////////////////
@@ -110,7 +111,14 @@ var optionsDefaults = { "cluster": false,
                         "password": "",
                         "test": undefined,
                         "cleanup": true,
-                        "jsonReply": false};
+                        "jsonReply": false,
+                        "portOffset": 0,
+                        "valgrindargs": [],
+                        "valgrindXmlFileBase" : "",
+                        "extraargs": []
+
+
+};
 var allTests =
   [
     "config",
@@ -256,9 +264,7 @@ function startInstance (protocol, options, addArgs, testname) {
   var dispatcher;
   if (options.cluster) {
     var extraargs = makeTestingArgs();
-    if (typeof(options.extraargs) === 'object') {
-      extraargs = extraargs.concat(options.extraargs);
-    }
+    extraargs = extraargs.concat(options.extraargs);
     if (addArgs !== undefined) {
       extraargs = extraargs.concat(addArgs);
     }
@@ -272,12 +278,8 @@ function startInstance (protocol, options, addArgs, testname) {
     var valgrindXmlFileBase = "";
     if (typeof(options.valgrind) === 'string') {
       runInValgrind = options.valgrind;
-      if (options.hasOwnProperty("valgrindargs")) {
-        valgrindopts = options.valgrindargs;
-      }
-      if (options.hasOwnProperty("valgrindXmlFileBase")) {
-        valgrindXmlFileBase = options.valgrindXmlFileBase;
-      }
+      valgrindopts = options.valgrindargs;
+      valgrindXmlFileBase = options.valgrindXmlFileBase;
     }
 
     var p = new Planner({"numberOfDBservers"      : 2,
@@ -307,7 +309,7 @@ function startInstance (protocol, options, addArgs, testname) {
     // We use the PortFinder to find a free port for our subinstance,
     // to this end, we have to fake a dummy dispatcher:
     dispatcher = {endpoint: "tcp://localhost:", avoidPorts: {}, id: "me"};
-    var pf = new PortFinder([8529],dispatcher);
+    var pf = new PortFinder([8529 + options.portOffset],dispatcher);
     var port = pf.next();
     instanceInfo.port = port;
     var args = makeTestingArgs();
@@ -323,9 +325,7 @@ function startInstance (protocol, options, addArgs, testname) {
       args.push("--server.keyfile");
       args.push(fs.join("UnitTests","server.pem"));
     }
-    if (typeof(options.extraargs) === 'object') {
-      args = args.concat(options.extraargs);
-    }
+    args = args.concat(options.extraargs);
     if (addArgs !== undefined) {
       args = args.concat(addArgs);
     }
@@ -396,8 +396,6 @@ function checkInstanceAlive(instanceInfo, options) {
         if (instanceInfo.kickstarter.runInfo[part].pids.hasOwnProperty(pid)) {
           var checkpid = instanceInfo.kickstarter.runInfo[part].pids[pid];
           var ress = statusExternal(checkpid, false);
-          print(ress);
-          print(checkpid.pid);
           if (ress.hasOwnProperty('signal') && 
               (ress.signal === 11)) {
             storeArangodPath = "/var/tmp/arangod_" + checkpid.pid;
