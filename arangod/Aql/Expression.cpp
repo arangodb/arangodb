@@ -610,6 +610,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
         // right operand must be a list, otherwise we return false
         left.destroy();
         right.destroy();
+        // do not throw, but return "false" instead
         return AqlValue(new triagens::basics::Json(false));
       }
    

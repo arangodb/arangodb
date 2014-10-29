@@ -1057,16 +1057,6 @@ bool AstNode::canThrow () const {
 
   // no sub-node throws, now check ourselves
 
-  if (type == NODE_TYPE_INDEXED_ACCESS) {
-    // TODO: validate whether this can actually throw
-    return true;
-  }
-
-  if (type == NODE_TYPE_EXPAND) {
-    // TODO: validate whether this can actually throw
-    return true;
-  }
-  
   if (type == NODE_TYPE_FCALL) {
     // built-in functions may or may not throw
     auto func = static_cast<Function*>(getData());
@@ -1078,6 +1068,7 @@ bool AstNode::canThrow () const {
     return true;
   }
 
+  // everything else does not throw!
   return false;
 }
 
