@@ -4,34 +4,9 @@ dnl ----------------------------------------------------------------------------
 dnl --SECTION--                                                    DOCUMENTATION
 dnl ----------------------------------------------------------------------------
 
-AC_ARG_WITH(dot,
-	    AS_HELP_STRING([--with-dot=DIR], [where the dot executable is located]),
-	    tr_DOT_PATH="$withval",
-            tr_DOT_PATH="$PATH")
-
 AC_MSG_NOTICE([................................................................................])
 AC_MSG_NOTICE([CHECKING FOR DOCUMENTATION UTILS])
 AC_MSG_NOTICE([................................................................................])
-
-dnl ----------------------------------------------------------------------------
-dnl checks for dot
-dnl ----------------------------------------------------------------------------
-
-AC_PATH_PROG([DOT_EXEC], [dot], [], [$tr_DOT_PATH])
-
-if test -n "$DOT_EXEC";  then
-  HAVE_DOT="YES"
-  DOT_PATH=`dirname "$DOT_EXEC"`
-else
-  HAVE_DOT="NO"
-  DOT_PATH=""
-fi
-
-AC_SUBST(HAVE_DOT) dnl for doxygen input file
-AC_SUBST(DOT_PATH) dnl for doxygen input file
-AC_SUBST(DOT_EXEC)
-
-AM_CONDITIONAL(ENABLE_DOT, test "x$HAVE_DOT" = xYES)
 
 dnl ----------------------------------------------------------------------------
 dnl checks for markdown
@@ -68,12 +43,6 @@ AM_CONDITIONAL(ENABLE_HTML2TEXT, test "x$HAVE_HTML2TEXT" = xYES)
 dnl ----------------------------------------------------------------------------
 dnl informational output
 dnl ----------------------------------------------------------------------------
-
-if test "x$HAVE_DOT" = xYES;  then
-  BASIC_INFO="$BASIC_INFO|DOT support: enabled ($DOT_EXEC)"
-else
-  BASIC_INFO="$BASIC_INFO|DOT support: disabled"
-fi
 
 if test "x$HAVE_MARKDOWN" = xYES;  then
   BASIC_INFO="$BASIC_INFO|MARKDOWN support: enabled ($MARKDOWN_EXEC)"
