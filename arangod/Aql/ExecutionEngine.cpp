@@ -271,6 +271,92 @@ struct Instanciator : public WalkerWorker<ExecutionNode> {
 // --SECTION--                     walker class for ExecutionNode to instanciate
 // -----------------------------------------------------------------------------
 
+// Here is a description of how the instanciation of an execution plan
+// works in the cluster. See below for a complete example
+//
+// The instanciation of this works as follows:
+// (0) Variable usage and register planning is done in the global plan
+// (1) A walk with subqueries is done on the whole plan
+//     The purpose is to plan how many ExecutionEngines we need, where they
+//     have to be instanciated and which plan nodes belong to each of them.
+//     Such a walk is depth first and visits subqueries after it has visited
+//     the dependencies of the subquery node recursively. Whenever the
+//     walk passes by a RemoteNode it switches location between coordinator
+//     and DBserver and starts a new engine. The nodes of an engine are
+//     collected in the after method.
+//     This walk results in a list of engines and a list of nodes for
+//     each engine. It follows that the order in these lists is as follows:
+//     The first engine is the main one on the coordinator, it has id 0.
+//     The order of the engines is exactly as they are discovered in the
+//     walk. That is, engines closer to the root are earlier and engines
+//     in subqueries are later. The nodes in each engine are always
+//     done in a way such that a dependency D of a node N is earlier in the
+//     list as N, and a subquery node is later in the list than the nodes
+//     of the subquery.
+// (2) buildEngines is called with that data. It proceeds engine by engine,
+//     starting from the back of the list. This means that an engine that
+//     is referred to in a RemoteNode (because its nodes are dependencies
+//     of that node) are always already instanciated before the RemoteNode
+//     is instanciated. The corresponding query ids are collected in a
+//     global hash table, for which the key consists of the id of the 
+//     RemoteNode using the query and the actual query id. For each engine,
+//     the nodes are instanciated along the list of nodes for that engine.
+//     This means that all dependencies of a node N are already instanciated
+//     when N is instanciated. We distintuish the coordinator and the
+//     DBserver case. In the former one we have to clone a part of the
+//     plan and in the latter we have to send a part to a DBserver via HTTP.
+//
+// Here is a fully worked out example:
+//
+// FOR i IN [1,2]
+//   FOR d IN coll
+//     FILTER d.pass == i
+//     LET s = (FOR e IN coll2 FILTER e.name == d.name RETURN e)
+//     RETURN {d:d, s:s}
+//
+// this is optimized to, variable and register planning is done in this plan:
+//
+//    Singleton
+//        ^                       
+//   EnumList [1,2]             Singleton
+//        ^                         ^
+//     Scatter (2)            Enum coll2                 
+//        ^                         ^
+//     Remote              Calc e.name==d.name
+//        ^                         ^
+//    Enum coll                  Filter (3)
+//        ^                         ^
+//  Calc d.pass==i               Remote
+//        ^                         ^
+//     Filter (1)                Gather
+//        ^                         ^
+//     Remote                    Return
+//        ^                         ^
+//     Gather                       |
+//        ^                         |
+//     Subquery  -------------------/
+//        ^
+//  Calc {d:d, s:s}
+//        ^
+//      Return (0)
+//
+// There are 4 engines here, their corresponding root nodes are labelled
+// in the above picture in round brackets with the ids of the engine.
+// Engines 1 and 3 have to be replicated for each shard of coll or coll2
+// respectively, and sent to the right DBserver via HTTP. Engine 0 is the
+// main one on the coordinator and engine 2 is a non-main part on the 
+// coordinator. Recall that the walk goes first to the dependencies before
+// it visits the nodes of the subquery. Thus, the walk builds up the lists
+// in this order:
+//   engine 0: [Remote, Gather, Remote, Gather, Return, Subquery, Calc, Return]
+//   engine 1: [Remote, Enum coll, Calc d.pass==i, Filter]
+//   engine 2: [Singleton, EnumList [1,2], Scatter]
+//   engine 3: [Singleton, Enum coll2, Calc e.name==d.name, Filter]
+// buildEngines will then do engines in the order 3, 2, 1, 0 and for each
+// of them the nodes from left to right in these lists. In the end, we have
+// a proper instanciation of the whole thing.
+
+
 struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   enum EngineLocation {
     COORDINATOR,
