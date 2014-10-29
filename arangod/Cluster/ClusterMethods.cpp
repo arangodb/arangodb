@@ -563,9 +563,9 @@ int createDocumentOnCoordinator (
     // The user did not specify a key, let's create one:
     uint64_t uid = ci->uniqid();
     _key = triagens::basics::StringUtils::itoa(uid);
-    TRI_InsertArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
-                        TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE,
-                                                     _key.c_str(), _key.size()));
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
+                         TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE,
+                                                        _key.c_str(), _key.size()));
   }
   else {
     userSpecifiedKey = true;
@@ -1248,9 +1248,9 @@ int createEdgeOnCoordinator (
     // The user did not specify a key, let's create one:
     uint64_t uid = ci->uniqid();
     _key = triagens::basics::StringUtils::itoa(uid);
-    TRI_InsertArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
-                        TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE,
-                                                     _key.c_str(), _key.size()));
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
+                         TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE,
+                                                        _key.c_str(), _key.size()));
   }
   else {
     userSpecifiedKey = true;
