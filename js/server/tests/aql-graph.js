@@ -1,3 +1,6 @@
+/*jshint strict: false, sub: true, maxlen: 500 */
+/*global require, assertEqual */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, graph functions
 ///
@@ -593,7 +596,7 @@ function ahuacatlQueryShortestPathTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testShortestPathDijkstraVertexFilter1 : function () {
-      aqlfunctions.register("UnitTests::distance", function (config, vertex, path) {
+      aqlfunctions.register("UnitTests::distance", function (config, vertex) {
         if (vertex._key === 'B' || vertex._key === 'C') {
           return [ 'exclude', 'prune' ];
         }
@@ -614,7 +617,7 @@ function ahuacatlQueryShortestPathTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testShortestPathDijkstraVertexFilter2 : function () {
-      aqlfunctions.register("UnitTests::distance", function (config, vertex, path) {
+      aqlfunctions.register("UnitTests::distance", function () {
         return [ 'exclude', 'prune' ];
       }, false);
 
@@ -633,7 +636,7 @@ function ahuacatlQueryShortestPathTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testShortestPathDijkstraEdgeFilter : function () {
-      aqlfunctions.register("UnitTests::distance", function (config, vertex, edge, path) {
+      aqlfunctions.register("UnitTests::distance", function (config, vertex, edge) {
         return edge.weight <= 6;
       }, false);
 
@@ -768,7 +771,7 @@ function ahuacatlQueryTraversalFilterTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testTraversalVertexFilterCallback : function () {
-      aqlfunctions.register("UnitTests::filter", function (config, vertex, path) {
+      aqlfunctions.register("UnitTests::filter", function (config, vertex) {
         if (vertex._key.substr(0, 3) === '1-1') {
           return;
         }
@@ -918,7 +921,7 @@ function ahuacatlQueryTraversalFilterTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testTraversalEdgeFilterCallback : function () {
-      aqlfunctions.register("UnitTests::filter", function (config, vertex, edge, path) {
+      aqlfunctions.register("UnitTests::filter", function (config, vertex) {
         return ! vertex.isDeleted;
       });
 

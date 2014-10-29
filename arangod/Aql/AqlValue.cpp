@@ -650,11 +650,15 @@ Json AqlValue::extractArrayMember (triagens::arango::AqlTransaction* trx,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract a value from a list AqlValue 
 /// this will return null if the value is not a list
+/// depending on the last parameter, the return value will either contain a
+/// copy of the original value in the list or a reference to it (which must
+/// not be freed)
 ////////////////////////////////////////////////////////////////////////////////
 
 Json AqlValue::extractListMember (triagens::arango::AqlTransaction* trx,
                                   TRI_document_collection_t const* document,
-                                  int64_t position) const {
+                                  int64_t position,
+                                  bool copy) const {
   switch (_type) {
     case JSON: {
       TRI_ASSERT(_json != nullptr);
@@ -672,7 +676,13 @@ Json AqlValue::extractListMember (triagens::arango::AqlTransaction* trx,
           TRI_json_t const* found = TRI_LookupListJson(json, static_cast<size_t>(position));
 
           if (found != nullptr) {
-            return Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, found));
+            if (copy) {
+              // return a copy of the value
+              return Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, found), triagens::basics::Json::AUTOFREE);
+            }
+
+            // return a pointer to the original value, without asking for its ownership
+            return Json(TRI_UNKNOWN_MEM_ZONE, found, triagens::basics::Json::NOFREE);
           }
         }
       }

@@ -1,3 +1,6 @@
+/*jshint strict: false, maxlen: 500 */
+/*global require, assertEqual, assertFalse, assertNull */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, bind parameters
 ///
@@ -161,6 +164,7 @@ function ahuacatlRemoveSuite () {
   var cn1 = "UnitTestsAhuacatlRemove1";
   var cn2 = "UnitTestsAhuacatlRemove2";
   var c1;
+  var c2;
 
   return {
 
@@ -169,15 +173,16 @@ function ahuacatlRemoveSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
+      var i;
       db._drop(cn1);
       db._drop(cn2);
       c1 = db._create(cn1);
       c2 = db._create(cn2);
 
-      for (var i = 0; i < 100; ++i) {
+      for (i = 0; i < 100; ++i) {
         c1.save({ _key: "test" + i, value1: i, value2: "test" + i });
       }
-      for (var i = 0; i < 50; ++i) {
+      for (i = 0; i < 50; ++i) {
         c2.save({ _key: "test" + i, value1: i, value2: "test" + i });
       }
     },
@@ -482,6 +487,7 @@ function ahuacatlInsertSuite () {
   var cn1 = "UnitTestsAhuacatlInsert1";
   var cn2 = "UnitTestsAhuacatlInsert2";
   var c1;
+  var c2;
 
   return {
 
@@ -490,15 +496,16 @@ function ahuacatlInsertSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
+      var i;
       db._drop(cn1);
       db._drop(cn2);
       c1 = db._create(cn1);
       c2 = db._create(cn2);
 
-      for (var i = 0; i < 100; ++i) {
+      for (i = 0; i < 100; ++i) {
         c1.save({ _key: "test" + i, value1: i, value2: "test" + i });
       }
-      for (var i = 0; i < 50; ++i) {
+      for (i = 0; i < 50; ++i) {
         c2.save({ _key: "test" + i, value1: i, value2: "test" + i });
       }
     },
@@ -750,20 +757,6 @@ function ahuacatlInsertSuite () {
 /// @brief test insert
 ////////////////////////////////////////////////////////////////////////////////
 
-    testInsertEdgeInvalid : function () {
-      db._drop("UnitTestsAhuacatlEdge");
-      var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge"); 
-
-      assertQueryError(errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, "FOR i IN 1..50 INSERT { } INTO @@cn", { "@cn": edge.name() });
-      assertEqual(0, edge.count());
-
-      db._drop("UnitTestsAhuacatlEdge");
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
-
     testInsertEdge : function () {
       db._drop("UnitTestsAhuacatlEdge");
       var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge"); 
@@ -796,6 +789,7 @@ function ahuacatlUpdateSuite () {
   var cn1 = "UnitTestsAhuacatlUpdate1";
   var cn2 = "UnitTestsAhuacatlUpdate2";
   var c1;
+  var c2;
 
   return {
 
@@ -804,15 +798,16 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
+      var i;
       db._drop(cn1);
       db._drop(cn2);
       c1 = db._create(cn1);
       c2 = db._create(cn2);
 
-      for (var i = 0; i < 100; ++i) {
+      for (i = 0; i < 100; ++i) {
         c1.save({ _key: "test" + i, value1: i, value2: "test" + i });
       }
-      for (var i = 0; i < 50; ++i) {
+      for (i = 0; i < 50; ++i) {
         c2.save({ _key: "test" + i, value1: i, value2: "test" + i });
       }
     },
@@ -1080,13 +1075,14 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateUpdate : function () {
+      var i;
       var expected = { executed: 100, ignored: 0 };
-      for (var i = 0; i < 5; ++i) {
+      for (i = 0; i < 5; ++i) {
         var actual = getModifyQueryResults("FOR d IN @@cn UPDATE d._key WITH { counter: HAS(d, 'counter') ? d.counter + 1 : 1 } INTO @@cn", { "@cn": cn1 });
         assertEqual(expected, actual.operations);
       }
 
-      for (var i = 0; i < 100; ++i) {
+      for (i = 0; i < 100; ++i) {
         var doc = c1.document("test" + i);
         assertEqual(5, doc.counter);
       }
@@ -1097,13 +1093,14 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReplace1 : function () {
+      var i;
       var expected = { executed: 100, ignored: 0 };
-      for (var i = 0; i < 5; ++i) {
+      for (i = 0; i < 5; ++i) {
         var actual = getModifyQueryResults("FOR d IN @@cn REPLACE d._key WITH { value4: 12 } INTO @@cn", { "@cn": cn1 });
         assertEqual(expected, actual.operations);
       }
 
-      for (var i = 0; i < 100; ++i) {
+      for (i = 0; i < 100; ++i) {
         var doc = c1.document("test" + i);
         assertFalse(doc.hasOwnProperty("value1"));
         assertFalse(doc.hasOwnProperty("value2"));
@@ -1117,13 +1114,14 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReplace2 : function () {
+      var i;
       var expected = { executed: 100, ignored: 0 };
-      for (var i = 0; i < 5; ++i) {
+      for (i = 0; i < 5; ++i) {
         var actual = getModifyQueryResults("FOR d IN @@cn REPLACE { _key: d._key, value4: 13 } INTO @@cn", { "@cn": cn1 });
         assertEqual(expected, actual.operations);
       }
 
-      for (var i = 0; i < 100; ++i) {
+      for (i = 0; i < 100; ++i) {
         var doc = c1.document("test" + i);
         assertFalse(doc.hasOwnProperty("value1"));
         assertFalse(doc.hasOwnProperty("value2"));
@@ -1137,13 +1135,14 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReplaceReplace : function () {
+      var i;
       var expected = { executed: 100, ignored: 0 };
-      for (var i = 0; i < 5; ++i) {
+      for (i = 0; i < 5; ++i) {
         var actual = getModifyQueryResults("FOR d IN @@cn REPLACE d._key WITH { value1: d.value1 + 1 } INTO @@cn", { "@cn": cn1 });
         assertEqual(expected, actual.operations);
       }
 
-      for (var i = 0; i < 100; ++i) {
+      for (i = 0; i < 100; ++i) {
         var doc = c1.document("test" + i);
         assertEqual(i + 5, doc.value1);
         assertFalse(doc.hasOwnProperty("value2"));

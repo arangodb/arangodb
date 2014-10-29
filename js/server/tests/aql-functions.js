@@ -1,3 +1,5 @@
+/*jshint strict: false, maxlen: 500 */
+/*global require, assertEqual, assertNull, assertTrue, assertFalse */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, functions
 ///
@@ -623,7 +625,7 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUnique5 : function () {
-      var expected = [ [ { "the fox" : "jumped" }, { "the fox" : "jumped over" }, { "over" : "the dog", "the fox" : "jumped" }]]
+      var expected = [ [ { "the fox" : "jumped" }, { "the fox" : "jumped over" }, { "over" : "the dog", "the fox" : "jumped" }]];
 
       var actual = getQueryResults("RETURN UNIQUE([ { \"the fox\" : \"jumped\" }, { \"the fox\" : \"jumped over\" }, { \"the fox\" : \"jumped\", \"over\" : \"the dog\" }, { \"over\" : \"the dog\", \"the fox\" : \"jumped\" } ])");
       assertEqual(expected, actual);
@@ -1329,11 +1331,10 @@ function ahuacatlFunctionsTestSuite () {
     testRand : function () {
       var actual = getQueryResultsAQL2("FOR r IN [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 ] RETURN RAND()");
       for (var i in actual) {
-        if (! actual.hasOwnProperty(i)) {
-          continue;
+        if (actual.hasOwnProperty(i)) {
+          var value = actual[i];
+          assertTrue(value >= 0.0 && value < 1.0);
         }
-        var value = actual[i];
-        assertTrue(value >= 0.0 && value < 1.0);
       }
     },
 
@@ -2427,7 +2428,7 @@ function ahuacatlFunctionsTestSuite () {
 /// @brief test parse identifier function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testParseIdentifier : function () {
+    testParseIdentifierInvalidate : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN PARSE_IDENTIFIER()"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN PARSE_IDENTIFIER('foo', 'bar')");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER(null)"); 
@@ -2651,8 +2652,8 @@ function ahuacatlFunctionsTestSuite () {
         cx.save({ created: i });
       }
       
-      expected = [ { created: 0 } ];
-      actual = getQueryResults("FOR x IN SKIPLIST(" + cn + ", { created: [[ '>=', 0 ]] }, 0, 1) RETURN x"); 
+      var expected = [ { created: 0 } ];
+      var actual = getQueryResults("FOR x IN SKIPLIST(" + cn + ", { created: [[ '>=', 0 ]] }, 0, 1) RETURN x"); 
       assertEqual(expected, actual);
       actual = getQueryResults("FOR x IN SKIPLIST(" + cn + ", { created: [[ '>=', 0 ], [ '<', 1 ]] }) RETURN x"); 
       assertEqual(expected, actual);
@@ -2711,8 +2712,8 @@ function ahuacatlFunctionsTestSuite () {
         cx.save({ a: i, b: i + 1 });
       }
       
-      expected = [ { a: 1, b: 2 } ];
-      actual = getQueryResults("FOR x IN SKIPLIST(" + cn + ", { a: [[ '==', 1 ]], b: [[ '>=', 2 ], [ '<=', 3 ]] }) RETURN x"); 
+      var expected = [ { a: 1, b: 2 } ];
+      var actual = getQueryResults("FOR x IN SKIPLIST(" + cn + ", { a: [[ '==', 1 ]], b: [[ '>=', 2 ], [ '<=', 3 ]] }) RETURN x"); 
       assertEqual(expected, actual);
       
       expected = [ { a: 1, b: 2 } ];
@@ -3437,11 +3438,11 @@ function ahuacatlFunctionsTestSuite () {
           flag: true,
           expected: [ 5 ]
         }
-      ]
+      ];
 
       tests.forEach(function (data) {
         var query = "RETURN MATCHES(" + JSON.stringify(data.doc) + ", " + JSON.stringify(data.examples);
-        if (data.flag != null) {
+        if (data.flag !== null) {
           query += ", " + JSON.stringify(data.flag) + ")";
         }
         else {
@@ -4266,7 +4267,7 @@ function ahuacatlFunctionsTestSuite () {
 /// @brief test date_year function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testDateDayOfWeekInvalid : function () {
+    testDateYearInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_YEAR()");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_YEAR(1, 1)");
       assertQueryError(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_YEAR(null)"); 
@@ -5018,7 +5019,7 @@ function ahuacatlFunctionsTestSuite () {
       values.forEach(function (value) {
         var query = "RETURN DATE_ISO8601(" + 
             value[0].map(function(v) {
-              return JSON.stringify(v)
+              return JSON.stringify(v);
             }).join(", ") + ")";
        
         var actual = getQueryResults(query);

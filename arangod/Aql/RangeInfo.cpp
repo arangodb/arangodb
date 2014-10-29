@@ -201,15 +201,15 @@ void RangesInfo::insert (RangeInfo newRange) {
 
   if (oldMap == nullptr) {
     std::unordered_map<std::string, RangeInfo> newMap;
-    newMap.insert(make_pair(newRange._attr, newRange));
-    _ranges.insert(std::make_pair(newRange._var, newMap));
+    newMap.emplace(make_pair(newRange._attr, newRange));
+    _ranges.emplace(std::make_pair(newRange._var, newMap));
     return;
   }
   
   auto it = oldMap->find(newRange._attr); 
   
   if (it == oldMap->end()) {
-    oldMap->insert(make_pair(newRange._attr, newRange));
+    oldMap->emplace(make_pair(newRange._attr, newRange));
     return;
   }
 

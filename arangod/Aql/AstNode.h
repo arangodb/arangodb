@@ -47,16 +47,39 @@ namespace triagens {
     class Ast;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief enumeration of AST node value types
+/// @brief type for node flags
 ////////////////////////////////////////////////////////////////////////////////
 
-    enum AstNodeValueType {
+    typedef uint8_t AstNodeFlagsType;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief different flags for nodes
+////////////////////////////////////////////////////////////////////////////////
+
+    enum AstNodeFlagType : uint8_t {
+      FLAG_SORTED   = 1,   // node is a list and its members are sorted asc.
+      FLAG_CONSTANT = 2,   // node value is constant
+      FLAG_SIMPLE   = 4    // node value is simple (i.e. for use in a simple expression)
+
+    };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enumeration of AST node value types
+/// note: these types must be declared in asc. sort order
+////////////////////////////////////////////////////////////////////////////////
+
+    enum AstNodeValueType : uint8_t {
       VALUE_TYPE_NULL   = 0,
       VALUE_TYPE_BOOL   = 1,
       VALUE_TYPE_INT    = 2,
       VALUE_TYPE_DOUBLE = 3,
       VALUE_TYPE_STRING = 4
     };
+
+    static_assert(VALUE_TYPE_NULL < VALUE_TYPE_BOOL, "incorrect ast node value types");
+    static_assert(VALUE_TYPE_BOOL < VALUE_TYPE_INT, "incorrect ast node value types");
+    static_assert(VALUE_TYPE_INT < VALUE_TYPE_DOUBLE, "incorrect ast node value types");
+    static_assert(VALUE_TYPE_DOUBLE < VALUE_TYPE_STRING, "incorrect ast node value types");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief AST node value
@@ -69,7 +92,8 @@ namespace triagens {
         bool        _bool;
         char const* _string;
         void*       _data;
-      } value;
+      } 
+      value;
       AstNodeValueType type;
     };
 
@@ -131,6 +155,9 @@ namespace triagens {
       NODE_TYPE_NOP                           = 50
     };
 
+    static_assert(NODE_TYPE_VALUE < NODE_TYPE_LIST, "incorrect node types");
+    static_assert(NODE_TYPE_LIST < NODE_TYPE_ARRAY, "incorrect node types");
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    struct AstNode
 // -----------------------------------------------------------------------------
@@ -187,6 +214,13 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief sort the members of a (list) node
+/// this will also set the FLAG_SORTED flag for the node
+////////////////////////////////////////////////////////////////////////////////
+  
+        void sort ();
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type name of a node
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -223,6 +257,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_json_t* toJsonValue (TRI_memory_zone_t*) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a textual representation of the node
+////////////////////////////////////////////////////////////////////////////////
         
         std::string toInfoString (TRI_memory_zone_t* zone) const;
 
@@ -268,6 +306,22 @@ namespace triagens {
         AstNode* castToString (Ast*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check a flag for the node
+////////////////////////////////////////////////////////////////////////////////
+  
+        inline bool hasFlag (AstNodeFlagType flag) const {
+          return ((flags & static_cast<decltype(flags)>(flag)) != 0); 
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set a flag for the node
+////////////////////////////////////////////////////////////////////////////////
+  
+        inline void setFlag (AstNodeFlagType flag) const {
+          flags |= static_cast<decltype(flags)>(flag);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the node value is trueish
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -278,6 +332,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool isFalse () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the members of a list node are sorted
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool isSorted () const {
+          return ((flags & static_cast<decltype(flags)>(FLAG_SORTED)) != 0);
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a value node is NULL
@@ -347,12 +409,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a node is simple enough to be used in a simple
 /// expression
+/// this may also set the FLAG_SIMPLE flag for the node
 ////////////////////////////////////////////////////////////////////////////////
 
         bool isSimple () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a node has a constant value
+/// this may also set the FLAG_CONSTANT flag for the node
 ////////////////////////////////////////////////////////////////////////////////
 
         bool isConstant () const;
@@ -583,13 +647,19 @@ namespace triagens {
 /// @brief the node type
 ////////////////////////////////////////////////////////////////////////////////
   
-        AstNodeType const     type;
+        AstNodeType const         type;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief flags for the node
+////////////////////////////////////////////////////////////////////////////////
+
+        AstNodeFlagsType mutable  flags;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the node value
 ////////////////////////////////////////////////////////////////////////////////
 
-        AstNodeValue          value;
+        AstNodeValue              value;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

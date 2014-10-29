@@ -56,9 +56,9 @@ namespace triagens {
                     std::vector<ExecutionNode*>&,
                     bool);
 
-        bool before (ExecutionNode*);
+        bool before (ExecutionNode*) override final;
 
-        bool enterSubquery (ExecutionNode*, ExecutionNode*) {
+        bool enterSubquery (ExecutionNode*, ExecutionNode*) override final {
           return _enterSubqueries;
         }
 

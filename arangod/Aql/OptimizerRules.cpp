@@ -431,9 +431,7 @@ class triagens::aql::RedundantCalculationsReplacer : public WalkerWorker<Executi
       }
     }
 
-    bool enterSubQuery () { return true; }
-
-    bool before (ExecutionNode* en) {
+    bool before (ExecutionNode* en) override final {
       switch (en->getType()) {
         case EN::ENUMERATE_LIST: {
           replaceInVariable<EnumerateListNode>(en);
@@ -705,7 +703,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       delete _ranges;
     }
 
-    bool before (ExecutionNode* en) {
+    bool before (ExecutionNode* en) override final {
       _canThrow = (_canThrow || en->canThrow()); // can any node walked over throw?
 
       switch (en->getType()) {
@@ -1391,9 +1389,11 @@ class SortToIndexNode : public WalkerWorker<ExecutionNode> {
     return true;
   }
 
-  bool enterSubQuery () { return false; }
+  bool enterSubquery (ExecutionNode*, ExecutionNode*) override final { 
+    return false; 
+  }
 
-  bool before (ExecutionNode* en) {
+  bool before (ExecutionNode* en) override final {
     switch (en->getType()) {
     case EN::ENUMERATE_LIST:
     case EN::CALCULATION:
@@ -2079,7 +2079,7 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
     ~RemoveToEnumCollFinder () {
     }
 
-    bool before (ExecutionNode* en) {
+    bool before (ExecutionNode* en) override final {
       switch (en->getType()) {
         case EN::REMOVE: {
           TRI_ASSERT(_remove == false);

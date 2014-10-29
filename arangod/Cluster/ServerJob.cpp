@@ -89,11 +89,23 @@ Job::status_t ServerJob::work () {
   if (_shutdown != 0) {
     return status_t(Job::JOB_DONE);
   }
+ 
+  _heartbeat->setReady();
 
-  bool result = execute();
-  _heartbeat->ready(true);
+  bool result;
+
+  { 
+    // only one plan change at a time
+    MUTEX_LOCKER(ExecutorLock);
+
+    result = execute();
+  }
+    
+  _heartbeat->removeDispatchedJob();
 
   if (result) {
+    // tell the heartbeat thread that the server job was
+    // executed successfully
     return status_t(Job::JOB_DONE);
   }
 
@@ -124,9 +136,6 @@ bool ServerJob::execute () {
     // database is gone
     return false;
   }
-
-  // only one plan change at a time
-  MUTEX_LOCKER(ExecutorLock);
 
   ApplicationV8::V8Context* context = _applicationV8->enterContext("STANDARD", vocbase, false, true);
 

@@ -529,8 +529,9 @@ bool ExecutionNode::walk (WalkerWorker<ExecutionNode>* worker) {
     return true;
   }
   
+  bool const isSubQuery = (getType() == SUBQUERY); 
   // Now handle a subquery:
-  if ((getType() == SUBQUERY) && worker->EnterSubQueryFirst()) {
+  if (isSubQuery && worker->enterSubQueryFirst()) {
     auto p = static_cast<SubqueryNode*>(this);
     if (worker->enterSubquery(this, p->getSubquery())) {
       bool abort = p->getSubquery()->walk(worker);
@@ -542,16 +543,14 @@ bool ExecutionNode::walk (WalkerWorker<ExecutionNode>* worker) {
   }
 
   // Now the children in their natural order:
-  for (auto it = _dependencies.begin();
-            it != _dependencies.end(); 
-            ++it) {
-    if ((*it)->walk(worker)) {
+  for (auto it : _dependencies) {
+    if (it->walk(worker)) {
       return true;
     }
   }
   
   // Now handle a subquery:
-  if ((getType() == SUBQUERY) && ! worker->EnterSubQueryFirst()) {
+  if (isSubQuery && ! worker->enterSubQueryFirst()) {
     auto p = static_cast<SubqueryNode*>(this);
     if (worker->enterSubquery(this, p->getSubquery())) {
       bool abort = p->getSubquery()->walk(worker);
@@ -704,16 +703,16 @@ struct RegisterPlanningDebugger : public WalkerWorker<ExecutionNode> {
 
   int indent;
 
-  bool enterSubquery (ExecutionNode*, ExecutionNode*) {
+  bool enterSubquery (ExecutionNode*, ExecutionNode*) override final {
     indent++;
     return true;
   }
 
-  void leaveSubquery (ExecutionNode*, ExecutionNode*) {
+  void leaveSubquery (ExecutionNode*, ExecutionNode*) override final {
     indent--;
   }
 
-  void after (ExecutionNode* ep) {
+  void after (ExecutionNode* ep) override final {
     for (int i = 0; i < indent; i++) {
       std::cout << " ";
     }
@@ -823,7 +822,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
       nrRegs.push_back(1 + nrRegs.back());
       auto ep = static_cast<EnumerateCollectionNode const*>(en);
       TRI_ASSERT(ep != nullptr);
-      varInfo.insert(make_pair(ep->_outVariable->id,
+      varInfo.emplace(make_pair(ep->_outVariable->id,
                                VarInfo(depth, totalNrRegs)));
       totalNrRegs++;
       break;
@@ -834,7 +833,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
       nrRegs.push_back(1 + nrRegs.back());
       auto ep = static_cast<EnumerateListNode const*>(en);
       TRI_ASSERT(ep != nullptr);
-      varInfo.insert(make_pair(ep->_outVariable->id,
+      varInfo.emplace(make_pair(ep->_outVariable->id,
                                VarInfo(depth, totalNrRegs)));
       totalNrRegs++;
       break;
@@ -844,7 +843,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
       nrRegs[depth]++;
       auto ep = static_cast<CalculationNode const*>(en);
       TRI_ASSERT(ep != nullptr);
-      varInfo.insert(make_pair(ep->_outVariable->id,
+      varInfo.emplace(make_pair(ep->_outVariable->id,
                                VarInfo(depth, totalNrRegs)));
       totalNrRegs++;
       break;
@@ -855,7 +854,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
       nrRegs[depth]++;
       auto ep = static_cast<SubqueryNode const*>(en);
       TRI_ASSERT(ep != nullptr);
-      varInfo.insert(make_pair(ep->_outVariable->id,
+      varInfo.emplace(make_pair(ep->_outVariable->id,
                                VarInfo(depth, totalNrRegs)));
       totalNrRegs++;
       subQueryNodes.push_back(en);
@@ -875,14 +874,14 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
         // frame:
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.insert(make_pair(p.first->id,
+        varInfo.emplace(make_pair(p.first->id,
                                  VarInfo(depth, totalNrRegs)));
         totalNrRegs++;
       }
       if (ep->_outVariable != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.insert(make_pair(ep->_outVariable->id,
+        varInfo.emplace(make_pair(ep->_outVariable->id,
                                  VarInfo(depth, totalNrRegs)));
         totalNrRegs++;
       }
@@ -904,7 +903,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
       if (ep->_outVariable != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.insert(make_pair(ep->_outVariable->id,
+        varInfo.emplace(make_pair(ep->_outVariable->id,
                                  VarInfo(depth, totalNrRegs)));
         totalNrRegs++;
       }
@@ -916,7 +915,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
       if (ep->_outVariable != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.insert(make_pair(ep->_outVariable->id,
+        varInfo.emplace(make_pair(ep->_outVariable->id,
                                  VarInfo(depth, totalNrRegs)));
         totalNrRegs++;
       }
@@ -928,7 +927,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
       if (ep->_outVariable != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.insert(make_pair(ep->_outVariable->id,
+        varInfo.emplace(make_pair(ep->_outVariable->id,
                                  VarInfo(depth, totalNrRegs)));
         totalNrRegs++;
       }
@@ -940,7 +939,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
       if (ep->_outVariable != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.insert(make_pair(ep->_outVariable->id,
+        varInfo.emplace(make_pair(ep->_outVariable->id,
                                  VarInfo(depth, totalNrRegs)));
         totalNrRegs++;
       }
@@ -1602,7 +1601,7 @@ struct SubqueryVarUsageFinder : public WalkerWorker<ExecutionNode> {
   ~SubqueryVarUsageFinder () {
   }
 
-  bool before (ExecutionNode* en) {
+  bool before (ExecutionNode* en) override final {
     // Add variables used here to _usedLater:
     auto&& usedHere = en->getVariablesUsedHere();
     for (auto v : usedHere) {
@@ -1611,7 +1610,7 @@ struct SubqueryVarUsageFinder : public WalkerWorker<ExecutionNode> {
     return false;
   }
 
-  void after (ExecutionNode* en) {
+  void after (ExecutionNode* en) override final {
     // Add variables set here to _valid:
     auto&& setHere = en->getVariablesSetHere();
     for (auto v : setHere) {
@@ -1619,7 +1618,7 @@ struct SubqueryVarUsageFinder : public WalkerWorker<ExecutionNode> {
     }
   }
 
-  bool enterSubquery (ExecutionNode*, ExecutionNode* sub) {
+  bool enterSubquery (ExecutionNode*, ExecutionNode* sub) override final {
     SubqueryVarUsageFinder subfinder;
     sub->walk(&subfinder);
 
@@ -1661,17 +1660,18 @@ std::vector<Variable const*> SubqueryNode::getVariablesUsedHere () const {
 struct CanThrowFinder : public WalkerWorker<ExecutionNode> {
   bool _canThrow;
 
-  CanThrowFinder () : _canThrow(false) {
-  };
+  CanThrowFinder () 
+    : _canThrow(false) {
+  }
 
   ~CanThrowFinder () {
-  };
+  }
 
-  bool enterSubQuery (ExecutionNode*, ExecutionNode*) {
+  bool enterSubquery (ExecutionNode*, ExecutionNode*) override final {
     return false;
   }
 
-  bool before (ExecutionNode* node) {
+  bool before (ExecutionNode* node) override final {
     if (node->canThrow()) {
       _canThrow = true;
       return true;
@@ -1778,13 +1778,11 @@ public:
 
   SortNodeFindMyExpressions(SortNode* me)
     : _foundCalcNodes(0),
-      _elms(me->getElements())
-  {
+      _elms(me->getElements()) {
     _myVars.resize(_elms.size());
   }
 
-  bool before (ExecutionNode* en) {
-
+  bool before (ExecutionNode* en) override final {
     auto vars = en->getVariablesSetHere();
     for (auto v : vars) {
       for (size_t n = 0; n < _elms.size(); n++) {
@@ -1799,8 +1797,7 @@ public:
   }
 };
 
-std::vector<std::pair<ExecutionNode*, bool>> SortNode::getCalcNodePairs ()
-{
+std::vector<std::pair<ExecutionNode*, bool>> SortNode::getCalcNodePairs () {
   SortNodeFindMyExpressions findExp(this);
   _dependencies[0]->walk(&findExp);
   if (findExp._foundCalcNodes < _elements.size()) {
@@ -1942,10 +1939,11 @@ struct UserVarFinder : public WalkerWorker<ExecutionNode> {
   ~UserVarFinder () {};
   std::vector<Variable const*> userVars;
 
-  bool enterSubquery (ExecutionNode*, ExecutionNode*) {
+  bool enterSubquery (ExecutionNode*, ExecutionNode*) override final {
     return false;
   }
-  bool before (ExecutionNode* en) {
+
+  bool before (ExecutionNode* en) override final {
     auto vars = en->getVariablesSetHere();
     for (auto v : vars) {
       if (v->isUserDefined()) {
