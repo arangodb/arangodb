@@ -1,6 +1,8 @@
 v2.2.7 (XXXX-XX-XX)
 -------------------
 
+* fix memory leak in cluster nodes
+
 * fixed registration of AQL user-defined functions in Web UI (JS shell)
 
 * fixed error display in Web UI for certain errors
