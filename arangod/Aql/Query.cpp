@@ -993,6 +993,17 @@ void Query::enterState (ExecutionState state) {
     _profile->enter(_state);
   }
 
+#if 0
+  // Just for debugging:
+  std::cout << "enterState: " << state;
+  if (_queryString != nullptr) {
+    std::cout << _queryString << std::endl;
+  }
+  else {
+    std::cout << "no querystring" << std::endl;
+  }
+#endif
+
   // and adjust the state
   _state = state;
 }
