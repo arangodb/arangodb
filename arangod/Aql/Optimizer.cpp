@@ -197,7 +197,7 @@ int Optimizer::createPlans (ExecutionPlan* plan,
         }
       }
 
-      // TODO: abort early here if we found a good-enough plan
+      // future optimization: abort early here if we found a good-enough plan
       // a good-enough plan is probably every plan with costs below some
       // defined threshold. this requires plan costs to be calculated here
     }
