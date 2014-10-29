@@ -341,6 +341,9 @@
 /// - 1473: @LIT{could not truncate collection}
 ///   Will be raised if a coordinator cannot truncate all shards of a cluster
 ///   collection.
+/// - 1474: @LIT{error in cluster internal communication for AQL}
+///   Will be raised if the internal communication of the cluster for AQL
+///   produces an error.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -423,6 +426,11 @@
 ///   options specification."
 /// - 1577: @LIT{JSON describing execution plan was bad}
 ///    "Will be raised when an HTTP API for a query got an invalid JSON object."
+/// - 1578: @LIT{query ID not found}
+///    "Will be raised when an Id of a query is not found by the HTTP API."
+/// - 1579: @LIT{query with this ID is in use}
+///    "Will be raised when an Id of a query is found by the HTTP API but the
+///   query is in use."
 /// - 1580: @LIT{invalid user function name}
 ///   Will be raised when a user function with an invalid name is registered.
 /// - 1581: @LIT{invalid user function code}
@@ -1992,6 +2000,17 @@ void TRI_InitialiseErrorMessages (void);
 #define TRI_ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION                   (1473)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1474: ERROR_CLUSTER_AQL_COMMUNICATION
+///
+/// error in cluster internal communication for AQL
+///
+/// Will be raised if the internal communication of the cluster for AQL
+/// produces an error.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_AQL_COMMUNICATION                               (1474)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED
 ///
 /// query killed
@@ -2326,6 +2345,27 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_BAD_JSON_PLAN                                     (1577)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1578: ERROR_QUERY_NOT_FOUND
+///
+/// query ID not found
+///
+///  "Will be raised when an Id of a query is not found by the HTTP API."
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_NOT_FOUND                                         (1578)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1579: ERROR_QUERY_IN_USE
+///
+/// query with this ID is in use
+///
+///  "Will be raised when an Id of a query is found by the HTTP API but the
+/// query is in use."
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_IN_USE                                            (1579)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1580: ERROR_QUERY_FUNCTION_INVALID_NAME

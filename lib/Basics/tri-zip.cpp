@@ -120,6 +120,7 @@ static int ExtractCurrentFile (unzFile uf,
     fullPath = TRI_Concatenate2File(outPath, writeFilename);
 
     if (! overwrite && TRI_ExistsFile(fullPath)) {
+      TRI_Free(TRI_CORE_MEM_ZONE, fullPath);
       return TRI_ERROR_CANNOT_OVERWRITE_FILE;
     }
 

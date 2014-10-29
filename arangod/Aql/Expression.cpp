@@ -31,7 +31,6 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
 #include "Aql/Executor.h"
-#include "Aql/Types.h"
 #include "Aql/V8Expression.h"
 #include "Aql/Variable.h"
 #include "Basics/JsonHelper.h"
@@ -60,7 +59,9 @@ Expression::Expression (Ast* ast,
     _node(node),
     _type(UNPROCESSED),
     _canThrow(true),
-    _isDeterministic(false) {
+    _canRunOnDBServer(false),
+    _isDeterministic(false),
+    _built(false) {
 
   TRI_ASSERT(_ast != nullptr);
   TRI_ASSERT(_executor != nullptr);
@@ -74,6 +75,7 @@ Expression::Expression (Ast* ast,
 Expression::Expression (Ast* ast,
                         triagens::basics::Json const& json)
   : Expression(ast, new AstNode(ast, json.get("expression"))) {
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -81,13 +83,22 @@ Expression::Expression (Ast* ast,
 ////////////////////////////////////////////////////////////////////////////////
 
 Expression::~Expression () {
-  if (_type == V8) {
-    delete _func;
+  if (_built) {
+    if (_type == V8) {
+      delete _func;
+      _func = nullptr;
+    }
+    else if (_type == JSON) {
+      TRI_ASSERT(_data != nullptr);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _data);
+      _data = nullptr;
+      // _json is freed automatically by AqlItemBlock
+    }
   }
-  else if (_type == JSON) {
-    TRI_ASSERT(_data != nullptr);
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _data);
-    // _json is freed automatically by AqlItemBlock
+
+  // free all items in the cache
+  for (auto it : _valueCache) {
+    delete it.second;
   }
 }
 
@@ -107,17 +118,19 @@ std::unordered_set<Variable*> Expression::variables () const {
 /// @brief execute the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Expression::execute (AQL_TRANSACTION_V8* trx,
+AqlValue Expression::execute (triagens::arango::AqlTransaction* trx,
                               std::vector<TRI_document_collection_t const*>& docColls,
                               std::vector<AqlValue>& argv,
                               size_t startPos,
                               std::vector<Variable*> const& vars,
                               std::vector<RegisterId> const& regs) {
-  if (_type == UNPROCESSED) {
-    analyzeExpression();
+
+  if (! _built) {
+    buildExpression();
   }
 
   TRI_ASSERT(_type != UNPROCESSED);
+  TRI_ASSERT(_built);
 
   // and execute
   switch (_type) {
@@ -129,12 +142,14 @@ AqlValue Expression::execute (AQL_TRANSACTION_V8* trx,
     case V8: {
       TRI_ASSERT(_func != nullptr);
       try {
+        // Dump the expression in question  
+        // std::cout << triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, _node->toJson(TRI_UNKNOWN_MEM_ZONE, true)).toString()<< "\n";
         return _func->execute(trx, docColls, argv, startPos, vars, regs);
       }
       catch (triagens::arango::Exception& ex) {
         ex.addToMessage("\nwhile evaluating expression");
         ex.addToMessage(_node->toInfoString(TRI_UNKNOWN_MEM_ZONE));
-        throw ex;
+        throw;
       }
     }
 
@@ -160,11 +175,28 @@ void Expression::replaceVariables (std::unordered_map<VariableId, Variable const
   TRI_ASSERT(_node != nullptr);
 
   _ast->replaceVariables(const_cast<AstNode*>(_node), replacements);
-    
+ 
+  invalidate(); 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalidates an expression
+/// this only has an effect for V8-based functions, which need to be created,
+/// used and destroyed in the same context. when a V8 function is used across
+/// multiple V8 contexts, it must be invalidated in between
+////////////////////////////////////////////////////////////////////////////////
+
+void Expression::invalidate () {
   if (_type == V8) {
-    delete _func;
-    _type = UNPROCESSED;
+    // V8 expressions need a special handling
+    if (_built) {
+      delete _func;
+      _func = nullptr;
+      _built = false;
+    }
   }
+  // we do not need to invalidate the other expression type 
+  // expression data will be freed in the destructor
 }
 
 // -----------------------------------------------------------------------------
@@ -172,37 +204,131 @@ void Expression::replaceVariables (std::unordered_map<VariableId, Variable const
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief analyze the expression (and, if appropriate, compile it into 
-/// executable code)
+/// @brief find a value in a list node
+/// this performs either a binary search (if the node is sorted) or a
+/// linear search (if the node is not sorted)
+////////////////////////////////////////////////////////////////////////////////
+
+bool Expression::findInList (AqlValue const& left, 
+                             AqlValue const& right, 
+                             TRI_document_collection_t const* leftCollection, 
+                             TRI_document_collection_t const* rightCollection,
+                             triagens::arango::AqlTransaction* trx,
+                             AstNode const* node) const {
+  TRI_ASSERT_EXPENSIVE(right.isList());
+ 
+  size_t const n = right.listSize();
+
+  if (node->getMember(1)->isSorted()) {
+    // node values are sorted. can use binary search
+    size_t l = 0;
+    size_t r = n - 1;
+
+    while (true) {
+      // determine midpoint
+      size_t m = l + ((r - l) / 2);
+      auto listItem = right.extractListMember(trx, rightCollection, m, false);
+      AqlValue listItemValue(&listItem);
+
+      int compareResult = AqlValue::Compare(trx, left, leftCollection, listItemValue, nullptr);
+
+      if (compareResult == 0) {
+        // item found in the list
+        return true;
+      }
+
+      if (compareResult < 0) {
+        if (m == 0) {
+          // not found
+          return false;
+        }
+        r = m - 1;
+      }
+      else {
+        l = m + 1;
+      }
+      if (r < l) {
+        return false;
+      }
+    }
+  }
+  else {
+    // use linear search
+    for (size_t i = 0; i < n; ++i) {
+      // do not copy the list element we're looking at
+      auto listItem = right.extractListMember(trx, rightCollection, i, false);
+      AqlValue listItemValue(&listItem);
+
+      int compareResult = AqlValue::Compare(trx, left, leftCollection, listItemValue, nullptr);
+
+      if (compareResult == 0) {
+        // item found in the list
+        return true;
+      }
+    }
+    
+    return false;  
+  }
+} 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief analyze the expression (determine its type etc.)
 ////////////////////////////////////////////////////////////////////////////////
 
 void Expression::analyzeExpression () {
   TRI_ASSERT(_type == UNPROCESSED);
+  TRI_ASSERT(_built == false);
 
   if (_node->isConstant()) {
+    // expression is a constant value
+    _type = JSON;
+    _canThrow = false;
+    _canRunOnDBServer = true;
+    _isDeterministic = true;
+    _data = nullptr;
+  }
+  else if (_node->isSimple()) {
+    // expression is a simple expression
+    _type = SIMPLE;
+    _canThrow = _node->canThrow();
+    _canRunOnDBServer = _node->canRunOnDBServer();
+    _isDeterministic = _node->isDeterministic();
+  }
+  else {
+    // expression is a V8 expression
+    _type = V8;
+    _canThrow = _node->canThrow();
+    _canRunOnDBServer = _node->canRunOnDBServer();
+    _isDeterministic = _node->isDeterministic();
+    _func = nullptr;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief build the expression
+////////////////////////////////////////////////////////////////////////////////
+
+void Expression::buildExpression () {
+  TRI_ASSERT(! _built);
+
+  if (_type == UNPROCESSED) {
+    analyzeExpression();
+  }
+
+  if (_type == JSON) {
     // generate a constant value
     _data = _node->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
 
     if (_data == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid json in simple expression");
     }
-
-    _type = JSON;
-    _canThrow = false;
-    _isDeterministic = true;
   }
-  else if (_node->isSimple()) {
-    _type = SIMPLE;
-    _canThrow = _node->canThrow();
-    _isDeterministic = _node->isDeterministic();
-  }
-  else {
+  else if (_type == V8) {
     // generate a V8 expression
     _func = _executor->generateExpression(_node);
-    _type = V8;
-    _canThrow = _node->canThrow();
-    _isDeterministic = _node->isDeterministic();
   }
+
+  _built = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -212,13 +338,12 @@ void Expression::analyzeExpression () {
 
 AqlValue Expression::executeSimpleExpression (AstNode const* node,
                                               TRI_document_collection_t const** collection, 
-                                              AQL_TRANSACTION_V8* trx,
+                                              triagens::arango::AqlTransaction* trx,
                                               std::vector<TRI_document_collection_t const*>& docColls,
                                               std::vector<AqlValue>& argv,
                                               size_t startPos,
                                               std::vector<Variable*> const& vars,
                                               std::vector<RegisterId> const& regs) {
-
   if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     // array lookup, e.g. users.name
     TRI_ASSERT(node->numMembers() == 1);
@@ -251,7 +376,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
 
     if (result.isList()) {
       if (index->isNumericValue()) {
-        auto j = result.extractListMember(trx, myCollection, index->getIntValue());
+        auto j = result.extractListMember(trx, myCollection, index->getIntValue(), true);
         result.destroy();
         return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
       }
@@ -262,7 +387,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
         try {
           // stoll() might throw an exception if the string is not a number
           int64_t position = static_cast<int64_t>(std::stoll(p));
-          auto j = result.extractListMember(trx, myCollection, position);
+          auto j = result.extractListMember(trx, myCollection, position, true);
           result.destroy();
           return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
         }
@@ -295,7 +420,22 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
   }
   
   else if (node->type == NODE_TYPE_LIST) {
+    // a list must have at least this many items in order to be put into the cache
+    // note: the value is arbitrary, but we do not want to put small lists into the cache
+    static size_t const MinQualifyingSize = 5; 
+
     size_t const n = node->numMembers();
+    bool const eligibleForCaching = (node->isConstant() && n >= MinQualifyingSize);
+
+    if (eligibleForCaching) {
+      // check in the cache if we have pre-calculated the subexpression
+      auto it = _valueCache.find(node);
+      if (it != _valueCache.end()) {
+        // return a pointer to the internals of the pre-calculated value
+        return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, (*it).second->json(), Json::NOFREE));
+      }
+    }
+
     auto list = new Json(Json::List, n);
 
     try {
@@ -307,6 +447,14 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
         list->add(result.toJson(trx, myCollection));
         result.destroy();
       }
+
+      if (eligibleForCaching) {
+        // insert the value into the cache
+        _valueCache.emplace(std::make_pair(node, list));
+        // return a copy that does not free the internals
+        return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, list->json(), Json::NOFREE));
+      }
+
       return AqlValue(list);
     }
     catch (...) {
@@ -387,17 +535,9 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
 
     auto low = node->getMember(0);
     auto high = node->getMember(1);
-    AqlValue resultLow = executeSimpleExpression(low, &leftCollection, trx, docColls, argv, startPos, vars, regs);
+    AqlValue resultLow  = executeSimpleExpression(low, &leftCollection, trx, docColls, argv, startPos, vars, regs);
     AqlValue resultHigh = executeSimpleExpression(high, &rightCollection, trx, docColls, argv, startPos, vars, regs);
-
-    if (! resultLow.isNumber() || ! resultHigh.isNumber()) {
-      resultLow.destroy();
-      resultHigh.destroy();
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid data type for range");
-    }
-    
-    AqlValue res = AqlValue(resultLow.toNumber<int64_t>(), resultHigh.toNumber<int64_t>());
-
+    AqlValue res = AqlValue(resultLow.toInt64(), resultHigh.toInt64());
     resultLow.destroy();
     resultHigh.destroy();
 
@@ -408,15 +548,8 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     TRI_document_collection_t const* myCollection = nullptr;
     AqlValue operand = executeSimpleExpression(node->getMember(0), &myCollection, trx, docColls, argv, startPos, vars, regs);
     
-    bool operandIsBoolean = operand.isBoolean();
-    bool operandIsTrue    = operand.isTrue();
-      
+    bool const operandIsTrue = operand.isTrue();
     operand.destroy();
-
-    if (! operandIsBoolean) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE);
-    }
-
     return AqlValue(new triagens::basics::Json(! operandIsTrue));
   }
   
@@ -427,43 +560,29 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     TRI_document_collection_t const* rightCollection = nullptr;
     AqlValue right = executeSimpleExpression(node->getMember(1), &rightCollection, trx, docColls, argv, startPos, vars, regs);
     
-    bool leftIsBoolean  = left.isBoolean();
-    bool rightIsBoolean = right.isBoolean();
-    bool leftIsTrue     = left.isTrue();
-    bool rightIsTrue    = right.isTrue();
-    left.destroy();
-    right.destroy();
-
-    if (! leftIsBoolean) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE);
-    }
-
-    // left is a boolean
-
     if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
       // AND
-      if (leftIsTrue) {
-        if (! rightIsBoolean) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE);
-        }
-          
-        return AqlValue(new triagens::basics::Json(rightIsTrue));
+      if (left.isTrue()) {
+        // left is true => return right
+        left.destroy();
+        return right;
       }
-      
-      return AqlValue(new triagens::basics::Json(false));
+
+      // left is false, return left
+      right.destroy();
+      return left;
     }
     else {
       // OR
-      if (! leftIsTrue) {
-        if (! rightIsBoolean) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE);
-        }
-        
-        return AqlValue(new triagens::basics::Json(rightIsTrue));
+      if (left.isTrue()) {
+        // left is true => return left
+        right.destroy();
+        return left;
       }
-      // fall-through intentional
-    
-      return AqlValue(new triagens::basics::Json(true));
+
+      // left is false => return right
+      left.destroy();
+      return right;
     }
   }
   
@@ -484,35 +603,23 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
         node->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
       // IN and NOT IN
       if (! right.isList()) {
-        // right operand must be a list
+        // right operand must be a list, otherwise we return false
         left.destroy();
         right.destroy();
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_LIST_EXPECTED);
+        return AqlValue(new triagens::basics::Json(false));
       }
-    
-      size_t const n = right.listSize();
+   
+      bool result = findInList(left, right, leftCollection, rightCollection, trx, node); 
 
-      for (size_t i = 0; i < n; ++i) {
-        auto listItem = right.extractListMember(trx, rightCollection, i);
-        AqlValue listItemValue(&listItem);
-
-        int compareResult = AqlValue::Compare(trx, left, leftCollection, listItemValue, nullptr);
-
-        if (compareResult == 0) {
-          // item found in the list
-          left.destroy();
-          right.destroy();
-      
-          // found
-          return AqlValue(new triagens::basics::Json(node->type == NODE_TYPE_OPERATOR_BINARY_IN));
-        }
+      if (node->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
+        // revert the result in case of a NOT IN
+        result = ! result;
       }
        
       left.destroy();
       right.destroy();
     
-      // not found
-      return AqlValue(new triagens::basics::Json(node->type != NODE_TYPE_OPERATOR_BINARY_IN));
+      return AqlValue(new triagens::basics::Json(result));
     }
 
     // all other comparison operators
@@ -541,6 +648,21 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     // fall-through intentional
   }
   
+  else if (node->type == NODE_TYPE_OPERATOR_TERNARY) {
+    TRI_document_collection_t const* myCollection = nullptr;
+    AqlValue condition  = executeSimpleExpression(node->getMember(0), &myCollection, trx, docColls, argv, startPos, vars, regs);
+
+    bool const isTrue = condition.isTrue();
+    condition.destroy();
+    if (isTrue) {
+      // return true part
+      return executeSimpleExpression(node->getMember(1), &myCollection, trx, docColls, argv, startPos, vars, regs);
+    }
+    
+    // return false part  
+    return executeSimpleExpression(node->getMember(2), &myCollection, trx, docColls, argv, startPos, vars, regs);
+  }
+ 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unhandled type in simple expression");
 }
 
@@ -621,7 +743,7 @@ std::pair<std::string, std::string> Expression::getMultipleAttributes() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Expression::stringify (triagens::basics::StringBuffer* buffer) const {
-  _node->append(buffer);
+  _node->append(buffer, true);
 }
 
 // -----------------------------------------------------------------------------

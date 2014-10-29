@@ -53,7 +53,7 @@ struct TRI_server_s;
 /// @brief shortcut for single-operation write transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-#define SingleWriteTransactionType triagens::arango::SingleCollectionWriteTransaction<triagens::arango::RestTransactionContext, 1>
+#define SingleWriteTransactionType triagens::arango::SingleCollectionWriteTransaction<1>
 
 
 namespace triagens {

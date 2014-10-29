@@ -1,3 +1,6 @@
+/*jshint strict: false, sub: true, maxlen: 500 */
+/*global require, assertEqual, assertException */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, logical operators
 ///
@@ -25,19 +28,15 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
-var getQueryResults = helper.getQueryResults2;
-var assertQueryError = helper.assertQueryError2;
+var getQueryResults = helper.getQueryResultsAQL2;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlLogicalTestSuite () {
-  var errors = internal.errors;
-
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -128,13 +127,16 @@ function ahuacatlLogicalTestSuite () {
 /// @brief test unary not
 ////////////////////////////////////////////////////////////////////////////////
     
-    testUnaryNotInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN !null"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN !0"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN !1"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN !\"value\""); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN ![]"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN !{}"); 
+    testUnaryNotNonBoolean : function () {
+      assertEqual([ true ], getQueryResults("RETURN !null")); 
+      assertEqual([ true ], getQueryResults("RETURN !0")); 
+      assertEqual([ true ], getQueryResults("RETURN !\"\"")); 
+      assertEqual([ false ], getQueryResults("RETURN !\" \"")); 
+      assertEqual([ false ], getQueryResults("RETURN !\"0\"")); 
+      assertEqual([ false ], getQueryResults("RETURN !\"1\"")); 
+      assertEqual([ false ], getQueryResults("RETURN !\"value\"")); 
+      assertEqual([ false ], getQueryResults("RETURN ![]")); 
+      assertEqual([ false ], getQueryResults("RETURN !{}")); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -143,10 +145,14 @@ function ahuacatlLogicalTestSuite () {
     
     testUnaryNotPrecedence : function () {
       // not has higher precedence than ==
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN !1 == 0"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN !1 == !1"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN !1 > 7"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN !1 IN [1]"); 
+      assertEqual([ false ], getQueryResults("RETURN !1 == 0")); 
+      assertEqual([ true ], getQueryResults("RETURN !1 == !1")); 
+      assertEqual([ false ], getQueryResults("RETURN !1 != !1")); 
+      assertEqual([ false ], getQueryResults("RETURN !1 > 7")); 
+      assertEqual([ true ], getQueryResults("RETURN !1 < 7")); 
+      assertEqual([ true ], getQueryResults("RETURN !1 IN [!1]")); 
+      assertEqual([ false ], getQueryResults("RETURN !1 NOT IN [!1]")); 
+      assertEqual([ false ], getQueryResults("RETURN !1 IN [1]")); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -203,34 +209,42 @@ function ahuacatlLogicalTestSuite () {
 /// @brief test binary and 
 ////////////////////////////////////////////////////////////////////////////////
     
-    testBinaryAndInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN null && true"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN 1 && true"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN \"\" && true"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN \"false\" && true"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN [ ] && true"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN { } && true"); 
-
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN true && null"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN true && 1"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN true && \"\""); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN true && \"false\""); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN true && [ ]"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN true && { }"); 
-
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN null && false"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN 1 && false"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN \"\" && false"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN \"false\" && false"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN [ ] && false"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN { } && false"); 
-
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN false && null"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN false && 1"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN false && \"\""); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN false && \"false\""); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN false && [ ]"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN false && { }"); 
+    testBinaryAndNonBoolean : function () {
+      assertEqual([ null ], getQueryResults("RETURN null && true"));
+      assertEqual([ true ], getQueryResults("RETURN 1 && true"));
+      assertEqual([ 0 ], getQueryResults("RETURN 1 && 0"));
+      assertEqual([ false ], getQueryResults("RETURN 1 && false"));
+      assertEqual([ 1 ], getQueryResults("RETURN 1 && 1"));
+      assertEqual([ 0 ], getQueryResults("RETURN 0 && true"));
+      assertEqual([ 0 ], getQueryResults("RETURN 0 && 0"));
+      assertEqual([ 0 ], getQueryResults("RETURN 0 && false"));
+      assertEqual([ 0 ], getQueryResults("RETURN 0 && 1"));
+      assertEqual([ "" ], getQueryResults("RETURN \"\" && true"));
+      assertEqual([ true ], getQueryResults("RETURN \" \" && true"));
+      assertEqual([ true ], getQueryResults("RETURN \"false\" && true"));
+      assertEqual([ true ], getQueryResults("RETURN [ ] && true"));
+      assertEqual([ true ], getQueryResults("RETURN { } && true"));
+      assertEqual([ [ ] ], getQueryResults("RETURN 23 && [ ]"));
+      assertEqual([ { } ], getQueryResults("RETURN 23 && { }"));
+      assertEqual([ null ], getQueryResults("RETURN true && null"));
+      assertEqual([ 1 ], getQueryResults("RETURN true && 1"));
+      assertEqual([ "" ], getQueryResults("RETURN true && \"\""));
+      assertEqual([ "false" ], getQueryResults("RETURN true && \"false\""));
+      assertEqual([ false ], getQueryResults("RETURN true && false"));
+      assertEqual([ [ ] ], getQueryResults("RETURN true && [ ]"));
+      assertEqual([ { } ], getQueryResults("RETURN true && { }"));
+      assertEqual([ null ], getQueryResults("RETURN null && false"));
+      assertEqual([ false ], getQueryResults("RETURN 1 && false"));
+      assertEqual([ "" ], getQueryResults("RETURN \"\" && false"));
+      assertEqual([ false ], getQueryResults("RETURN \"false\" && false"));
+      assertEqual([ false ], getQueryResults("RETURN [ ] && false"));
+      assertEqual([ false ], getQueryResults("RETURN { } && false"));
+      assertEqual([ false ], getQueryResults("RETURN false && null"));
+      assertEqual([ false ], getQueryResults("RETURN false && 1"));
+      assertEqual([ false ], getQueryResults("RETURN false && \"\""));
+      assertEqual([ false ], getQueryResults("RETURN false && \"false\""));
+      assertEqual([ false ], getQueryResults("RETURN false && [ ]"));
+      assertEqual([ false ], getQueryResults("RETURN false && { }"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -249,24 +263,6 @@ function ahuacatlLogicalTestSuite () {
     
     testBinaryAndShortCircuit2 : function () {
       assertException(function() { getQueryResults("RETURN true && FAIL('this will fail')"); });
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test binary or, short circuit evaluation
-////////////////////////////////////////////////////////////////////////////////
-    
-    testBinaryOrShortCircuit1 : function () {
-      var expected = [ true ];
-      var actual = getQueryResults("RETURN true || FAIL('this will fail')");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test binary or, short circuit evaluation
-////////////////////////////////////////////////////////////////////////////////
-    
-    testBinaryOrShortCircuit2 : function () {
-      assertException(function() { getQueryResults("RETURN false || FAIL('this will fail')"); });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -333,34 +329,45 @@ function ahuacatlLogicalTestSuite () {
 /// @brief test binary or
 ////////////////////////////////////////////////////////////////////////////////
     
-    testBinaryOrInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN null || true"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN 1 || true"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN \"\" || true"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN \"false\" || true"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN [ ] || true"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN { } || true"); 
-
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN true || null"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN true || 1"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN true || \"\""); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN true || \"false\""); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN true || [ ]"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN true || { }"); 
-
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN null || false"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN 1 || false"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN \"\" || false"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN \"false\" || false"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN [ ] || false"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN { } || false"); 
-
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN false || null"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN false || 1"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN false || \"\""); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN false || \"false\""); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN false || [ ]"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN false || { }"); 
+    testBinaryOrNonBoolean : function () {
+      assertEqual([ true ], getQueryResults("RETURN null || true"));
+      assertEqual([ true ], getQueryResults("RETURN 0 || true"));
+      assertEqual([ true ], getQueryResults("RETURN false || true"));
+      assertEqual([ 1 ], getQueryResults("RETURN 1 || true"));
+      assertEqual([ true ], getQueryResults("RETURN \"\" || true"));
+      assertEqual([ " " ], getQueryResults("RETURN \" \" || true"));
+      assertEqual([ "0" ], getQueryResults("RETURN \"0\" || true"));
+      assertEqual([ "1" ], getQueryResults("RETURN \"1\" || true"));
+      assertEqual([ "false" ], getQueryResults("RETURN \"false\" || true"));
+      assertEqual([ [ ] ], getQueryResults("RETURN [ ] || true"));
+      assertEqual([ { } ], getQueryResults("RETURN { } || true"));
+      assertEqual([ true ], getQueryResults("RETURN true || null"));
+      assertEqual([ true ], getQueryResults("RETURN true || 1"));
+      assertEqual([ true ], getQueryResults("RETURN true || \"\""));
+      assertEqual([ true ], getQueryResults("RETURN true || \"false\""));
+      assertEqual([ true ], getQueryResults("RETURN true || [ ]"));
+      assertEqual([ true ], getQueryResults("RETURN true || { }"));
+      assertEqual([ false ], getQueryResults("RETURN null || false"));
+      assertEqual([ false ], getQueryResults("RETURN 0 || false"));
+      assertEqual([ 1 ], getQueryResults("RETURN 1 || false"));
+      assertEqual([ false ], getQueryResults("RETURN false || false"));
+      assertEqual([ true ], getQueryResults("RETURN true || false"));
+      assertEqual([ false ], getQueryResults("RETURN \"\" || false"));
+      assertEqual([ " " ], getQueryResults("RETURN \" \" || false"));
+      assertEqual([ "0" ], getQueryResults("RETURN \"0\" || false"));
+      assertEqual([ "1" ], getQueryResults("RETURN \"1\" || false"));
+      assertEqual([ "false" ], getQueryResults("RETURN \"false\" || false"));
+      assertEqual([ [ ] ], getQueryResults("RETURN [ ] || false"));
+      assertEqual([ { } ], getQueryResults("RETURN { } || false"));
+      assertEqual([ null ], getQueryResults("RETURN false || null"));
+      assertEqual([ 1 ], getQueryResults("RETURN false || 1"));
+      assertEqual([ "" ], getQueryResults("RETURN false || \"\""));
+      assertEqual([ " " ], getQueryResults("RETURN false || \" \""));
+      assertEqual([ "0" ], getQueryResults("RETURN false || \"0\""));
+      assertEqual([ "1" ], getQueryResults("RETURN false || \"1\""));
+      assertEqual([ "false" ], getQueryResults("RETURN false || \"false\""));
+      assertEqual([ [ ] ], getQueryResults("RETURN false || [ ]"));
+      assertEqual([ { } ], getQueryResults("RETURN false || { }"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -368,10 +375,7 @@ function ahuacatlLogicalTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testBinaryOrShortCircuit1 : function () {
-      // TODO: FIXME                              
-      // var expected = [ true ];
-      // var actual = getQueryResults("RETURN true || FAIL('this will fail')");
-      //assertEqual(expected, actual);
+      assertEqual([ true ], getQueryResults("RETURN true || FAIL('this will fail')")); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////

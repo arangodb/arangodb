@@ -162,23 +162,26 @@ void HttpHandlerFactory::setMaintenance (bool value) {
 /// @brief returns header and body size restrictions
 ////////////////////////////////////////////////////////////////////////////////
 
-pair<size_t, size_t> HttpHandlerFactory::sizeRestrictions () const {
-  // size restrictions:
-  // - header: 1 MB
-  // - body: 512 MB
-  return make_pair(1 * 1024 * 1024,
-                   512 * 1024 * 1024);
+HttpHandlerFactory::size_restriction_t HttpHandlerFactory::sizeRestrictions () const {
+  size_restriction_t restrictions;
+
+  restrictions.maximalHeaderSize = 1 * 1024 * 1024;  // 1 MByte
+  restrictions.maximalBodySize = 512 * 1024 * 1024;  // 512 MByte
+  restrictions.maximalPipelineSize = 2 * restrictions.maximalBodySize;
+
+  return restrictions;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief authenticates a new request, wrapper method that will consider
-/// disabled authentication etc.
+/// @brief authenticates a new request
+///
+/// wrapper method that will consider disabled authentication etc.
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpResponse::HttpResponseCode HttpHandlerFactory::authenticateRequest (HttpRequest* request) {
   RequestContext* rc = request->getRequestContext();
 
-  if (rc == 0) {
+  if (rc == nullptr) {
     if (! setRequestContext(request)) {
       return HttpResponse::NOT_FOUND;
     }
@@ -186,7 +189,7 @@ HttpResponse::HttpResponseCode HttpHandlerFactory::authenticateRequest (HttpRequ
     rc = request->getRequestContext();
   }
 
-  TRI_ASSERT(rc != 0);
+  TRI_ASSERT(rc != nullptr);
 
   return rc->authenticate();
 }
@@ -216,7 +219,7 @@ HttpRequest* HttpHandlerFactory::createRequest (ConnectionInfo const& info,
                                                 size_t length) {
   HttpRequest* request = new HttpRequest(info, ptr, length, _minCompatibility, _allowMethodOverride);
 
-  if (request != 0) {
+  if (request != nullptr) {
     setRequestContext(request);
   }
 
@@ -232,11 +235,10 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
     return new MaintenanceHandler(request);
   }
 
-
   map<string, create_fptr> const& ii = _constructors;
   string path = request->requestPath();
   map<string, create_fptr>::const_iterator i = ii.find(path);
-  void* data = 0;
+  void* data = nullptr;
 
 
   // no direct match, check prefix matches

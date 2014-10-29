@@ -1499,6 +1499,34 @@ static v8::Handle<v8::Value> ObjectJsonList (TRI_json_t const* json) {
   return object;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts keys or values from a TRI_json_t* array
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> ExtractArray (TRI_json_t const* json,
+                                           size_t offset) {
+  v8::HandleScope scope;
+
+  if (json == nullptr || json->_type != TRI_JSON_ARRAY) {
+    return scope.Close(v8::Undefined());
+  }
+  
+  size_t const n = TRI_LengthVector(&json->_value._objects);
+  
+  v8::Handle<v8::Array> result = v8::Array::New(static_cast<int>(n / 2));
+  uint32_t count = 0;
+
+  for (size_t i = offset; i < n; i += 2) {
+    TRI_json_t const* value = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
+
+    if (value != nullptr) {
+      result->Set(count++, TRI_ObjectJson(value));
+    }
+  }
+
+  return scope.Close(result);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -1525,6 +1553,26 @@ v8::Handle<v8::Array> TRI_ArrayAssociativePointer (TRI_associative_pointer_t con
   }
 
   return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the keys of a TRI_json_t* array into a V8 list
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Value> TRI_KeysJson (TRI_json_t const* json) {
+  v8::HandleScope scope;
+
+  return scope.Close(ExtractArray(json, 0));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the values of a TRI_json_t* array into a V8 list
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Value> TRI_ValuesJson (TRI_json_t const* json) {
+  v8::HandleScope scope;
+
+  return scope.Close(ExtractArray(json, 1));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

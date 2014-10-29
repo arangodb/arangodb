@@ -93,6 +93,16 @@ namespace triagens {
 
         typedef bool (*context_fptr) (HttpRequest*, void*);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief size restrictions
+////////////////////////////////////////////////////////////////////////////////
+        
+        typedef struct {
+          size_t maximalHeaderSize;
+          size_t maximalBodySize;
+          size_t maximalPipelineSize;
+        } size_restriction_t;
+        
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
@@ -149,7 +159,7 @@ namespace triagens {
 /// @brief returns header and body size restrictions
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual pair<size_t, size_t> sizeRestrictions () const;
+        virtual size_restriction_t sizeRestrictions () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief authenticates a new request, wrapper method
@@ -187,13 +197,13 @@ namespace triagens {
 /// @brief adds a path and constructor to the factory
 ////////////////////////////////////////////////////////////////////////////////
 
-        void addHandler (string const& path, create_fptr, void* data = 0);
+        void addHandler (std::string const& path, create_fptr, void* data = 0);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a prefix path and constructor to the factory
 ////////////////////////////////////////////////////////////////////////////////
 
-        void addPrefixHandler (string const& path, create_fptr, void* data = 0);
+        void addPrefixHandler (std::string const& path, create_fptr, void* data = 0);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a path and constructor to the factory
@@ -211,7 +221,7 @@ namespace triagens {
 /// @brief authentication realm
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _authenticationRealm;
+        std::string _authenticationRealm;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief minimum compatibility
@@ -255,19 +265,19 @@ namespace triagens {
 /// @brief list of constructors
 ////////////////////////////////////////////////////////////////////////////////
 
-        map<string, create_fptr> _constructors;
+        std::map<std::string, create_fptr> _constructors;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief list of data pointers for constructors
 ////////////////////////////////////////////////////////////////////////////////
 
-        map<string, void*> _datas;
+        std::map<std::string, void*> _datas;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief list of prefix handlers
 ////////////////////////////////////////////////////////////////////////////////
 
-        vector<string> _prefixes;
+        std::vector<std::string> _prefixes;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor for a not-found handler

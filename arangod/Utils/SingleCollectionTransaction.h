@@ -36,6 +36,7 @@
 #include "Basics/voc-errors.h"
 #include "Basics/StringUtils.h"
 #include "Utils/Transaction.h"
+#include "Utils/TransactionContext.h"
 
 #include "VocBase/barrier.h"
 #include "VocBase/document-collection.h"
@@ -47,8 +48,7 @@
 namespace triagens {
   namespace arango {
 
-    template<typename T>
-    class SingleCollectionTransaction : public Transaction<T> {
+    class SingleCollectionTransaction : public Transaction {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                 class SingleCollectionTransaction
@@ -64,10 +64,11 @@ namespace triagens {
 /// @brief create the transaction, using a collection id
 ////////////////////////////////////////////////////////////////////////////////
 
-        SingleCollectionTransaction (TRI_vocbase_t* vocbase,
+        SingleCollectionTransaction (TransactionContext* transactionContext,
+                                     TRI_vocbase_t* vocbase,
                                      TRI_voc_cid_t cid,
                                      TRI_transaction_type_e accessType) 
-          : Transaction<T>(vocbase, 0),
+          : Transaction(transactionContext, vocbase, 0),
             _cid(cid),
             _trxCollection(nullptr),
             _documentCollection(nullptr),
@@ -81,10 +82,11 @@ namespace triagens {
 /// @brief create the transaction, using a collection name
 ////////////////////////////////////////////////////////////////////////////////
 
-        SingleCollectionTransaction (TRI_vocbase_t* vocbase,
+        SingleCollectionTransaction (TransactionContext* transactionContext,
+                                     TRI_vocbase_t* vocbase,
                                      std::string const& name,
                                      TRI_transaction_type_e accessType) 
-          : Transaction<T>(vocbase, 0),
+          : Transaction(transactionContext, vocbase, 0),
             _cid(this->resolver()->getCollectionId(name)),
             _trxCollection(nullptr),
             _documentCollection(nullptr),
@@ -220,7 +222,7 @@ namespace triagens {
 /// @brief read a document within a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline int read (TRI_doc_mptr_copy_t* mptr, const string& key) {
+        inline int read (TRI_doc_mptr_copy_t* mptr, const std::string& key) {
           TRI_ASSERT(mptr != nullptr);
           return this->readSingle(this->trxCollection(), mptr, key);
         }
@@ -247,7 +249,7 @@ namespace triagens {
 /// @brief read documents within a transaction, using skip and limit
 ////////////////////////////////////////////////////////////////////////////////
 
-        int read (vector<TRI_doc_mptr_copy_t>& docs,
+        int read (std::vector<TRI_doc_mptr_copy_t>& docs,
                   TRI_voc_ssize_t skip,
                   TRI_voc_size_t limit,
                   uint32_t* total) {
@@ -259,7 +261,7 @@ namespace triagens {
 /// @brief read all documents within a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        int read (vector<TRI_doc_mptr_t*>& docs) {
+        int read (std::vector<TRI_doc_mptr_t*>& docs) {
           return this->readSlice(this->trxCollection(), docs);
         }
 

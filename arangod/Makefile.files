@@ -43,6 +43,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/Ast.cpp \
 	arangod/Aql/AstNode.cpp \
 	arangod/Aql/BindParameters.cpp \
+	arangod/Aql/Collection.cpp \
 	arangod/Aql/ExecutionBlock.cpp \
 	arangod/Aql/ExecutionEngine.cpp \
 	arangod/Aql/ExecutionNode.cpp \
@@ -60,9 +61,9 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/Query.cpp \
 	arangod/Aql/QueryRegistry.cpp \
 	arangod/Aql/RangeInfo.cpp \
+	arangod/Aql/Range.cpp \
 	arangod/Aql/RestAqlHandler.cpp \
 	arangod/Aql/Scopes.cpp \
-	arangod/Aql/Types.cpp \
 	arangod/Aql/tokens.cpp \
 	arangod/Aql/V8Expression.cpp \
 	arangod/Aql/Variable.cpp \
@@ -88,6 +89,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/GeoIndex/GeoIndex.cpp \
 	arangod/GeoIndex/geo-index.cpp \
 	arangod/HashIndex/hash-array.cpp \
+	arangod/HashIndex/hash-array-multi.cpp \
 	arangod/HashIndex/hash-index.cpp \
 	arangod/IndexOperators/index-operator.cpp \
 	arangod/Replication/ContinuousSyncer.cpp \
@@ -108,7 +110,10 @@ arangod_libarangod_a_SOURCES = \
 	arangod/SkipLists/skiplistIndex.cpp \
 	arangod/Utils/DocumentHelper.cpp \
 	arangod/Utils/Exception.cpp \
+	arangod/Utils/StandaloneTransactionContext.cpp \
 	arangod/Utils/Transaction.cpp \
+	arangod/Utils/TransactionContext.cpp \
+	arangod/Utils/V8TransactionContext.cpp \
 	arangod/V8Server/ApplicationV8.cpp \
 	arangod/V8Server/V8DispatcherThread.cpp \
 	arangod/V8Server/V8Job.cpp \
@@ -116,16 +121,17 @@ arangod_libarangod_a_SOURCES = \
 	arangod/V8Server/V8QueueJob.cpp \
 	arangod/V8Server/V8TimerTask.cpp \
 	arangod/V8Server/v8-actions.cpp \
-	arangod/V8Server/v8-dispatcher.cpp \
-	arangod/V8Server/v8-query.cpp \
-	arangod/V8Server/v8-vocbase.cpp \
-	arangod/V8Server/v8-wrapshapedjson.cpp \
-	arangod/V8Server/v8-vocindex.cpp \
-	arangod/V8Server/v8-voccursor.cpp \
-	arangod/V8Server/v8-replication.cpp \
 	arangod/V8Server/v8-collection.cpp \
 	arangod/V8Server/v8-collection-util.cpp \
+	arangod/V8Server/v8-dispatcher.cpp \
+	arangod/V8Server/v8-query.cpp \
+	arangod/V8Server/v8-replication.cpp \
+	arangod/V8Server/v8-vocbase.cpp \
+	arangod/V8Server/v8-vocindex.cpp \
+	arangod/V8Server/v8-voccursor.cpp \
+	arangod/V8Server/v8-user-structures.cpp \
 	arangod/V8Server/v8-util.cpp \
+	arangod/V8Server/v8-wrapshapedjson.cpp \
 	arangod/VocBase/auth.cpp \
 	arangod/VocBase/barrier.cpp \
 	arangod/VocBase/cleanup.cpp \

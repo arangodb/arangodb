@@ -132,6 +132,11 @@ ApplicationEndpointServer::~ApplicationEndpointServer () {
   if (_handlerFactory != nullptr) {
     delete _handlerFactory;
   }
+
+  if (_sslContext != nullptr) {
+    SSL_CTX_free(_sslContext);
+    _sslContext = nullptr;
+  }
 }
 
 // -----------------------------------------------------------------------------

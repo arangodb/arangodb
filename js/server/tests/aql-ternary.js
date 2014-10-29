@@ -1,3 +1,6 @@
+/*jshint strict: false, maxlen: 500 */
+/*global require, assertEqual */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, tenary operator
 ///
@@ -25,11 +28,9 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var errors = require("internal").errors;
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
-var getQueryResults = helper.getQueryResults2;
-var assertQueryError = helper.assertQueryError2;
+var getQueryResults = helper.getQueryResultsAQL2;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -167,14 +168,19 @@ function ahuacatlTernaryTestSuite () {
 /// @brief test ternary with non-boolean condition
 ////////////////////////////////////////////////////////////////////////////////
     
-    testTernaryInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN 1 ? 2 : 3"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN null ? 2 : 3");
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN (4) ? 2 : 3"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN (4 - 3) ? 2 : 3"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN \"true\" ? 2 : 3");
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN [ ] ? 2 : 3"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_LOGICAL_VALUE.code, "RETURN { } ? 2 : 3"); 
+    testTernaryNonBoolean : function () {
+      assertEqual([ 2 ], getQueryResults("RETURN 1 ? 2 : 3"));
+      assertEqual([ 3 ], getQueryResults("RETURN 0 ? 2 : 3"));
+      assertEqual([ 3 ], getQueryResults("RETURN null ? 2 : 3"));
+      assertEqual([ 3 ], getQueryResults("RETURN false ? 2 : 3"));
+      assertEqual([ 2 ], getQueryResults("RETURN true ? 2 : 3"));
+      assertEqual([ 2 ], getQueryResults("RETURN (4) ? 2 : 3"));
+      assertEqual([ 2 ], getQueryResults("RETURN (4 - 3) ? 2 : 3"));
+      assertEqual([ 2 ], getQueryResults("RETURN \"true\" ? 2 : 3"));
+      assertEqual([ 3 ], getQueryResults("RETURN \"\" ? 2 : 3"));
+      assertEqual([ 2 ], getQueryResults("RETURN [ ] ? 2 : 3"));
+      assertEqual([ 2 ], getQueryResults("RETURN [ 0 ] ? 2 : 3"));
+      assertEqual([ 2 ], getQueryResults("RETURN { } ? 2 : 3"));
     }
 
   };

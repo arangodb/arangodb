@@ -308,8 +308,8 @@ BAD_CALL:
 
 int RestReplicationHandler::sortCollections (const void* l,
                                              const void* r) {
-  TRI_json_t const* left  = JsonHelper::getArrayElement((TRI_json_t const*) l, "parameters");
-  TRI_json_t const* right = JsonHelper::getArrayElement((TRI_json_t const*) r, "parameters");
+  TRI_json_t const* left  = JsonHelper::getArrayElement(static_cast<TRI_json_t const*>(l), "parameters");
+  TRI_json_t const* right = JsonHelper::getArrayElement(static_cast<TRI_json_t const*>(r), "parameters");
 
   int leftType  = JsonHelper::getNumericValue<int>(left,  "type", (int) TRI_COL_TYPE_DOCUMENT);
   int rightType = JsonHelper::getNumericValue<int>(right, "type", (int) TRI_COL_TYPE_DOCUMENT);
@@ -564,6 +564,7 @@ void RestReplicationHandler::handleCommandLoggerState () {
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, server, "version", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_VERSION));
   char* serverIdString = TRI_StringUInt64(TRI_GetIdServer());
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, server, "serverId", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, serverIdString));
+  TRI_FreeString(TRI_CORE_MEM_ZONE, serverIdString);
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "server", server);
  
   // clients
@@ -860,7 +861,7 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
   }
   if (res->status == CL_COMM_ERROR) {
     // This could be a broken connection or an Http error:
-    if (res->result == 0 || !res->result->isComplete()) {
+    if (res->result == nullptr || !res->result->isComplete()) {
       // there is no result
       delete res;
       generateError(HttpResponse::BAD, TRI_ERROR_CLUSTER_CONNECTION_LOST,
@@ -1791,7 +1792,7 @@ int RestReplicationHandler::processRestoreCollection (TRI_json_t const* collecti
         // some collections must not be dropped
 
         // instead, truncate them
-        SingleCollectionWriteTransaction<RestTransactionContext, UINT64_MAX> trx(_vocbase, col->_cid);
+        SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, col->_cid);
 
         res = trx.begin();
         if (res != TRI_ERROR_NO_ERROR) {
@@ -2040,7 +2041,7 @@ int RestReplicationHandler::processRestoreIndexes (TRI_json_t const* collection,
 
     TRI_document_collection_t* document = guard.collection()->_collection;
 
-    SingleCollectionWriteTransaction<RestTransactionContext, UINT64_MAX> trx(_vocbase, document->_info._cid); 
+    SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, document->_info._cid); 
 
     int res = trx.begin();
 
@@ -2148,8 +2149,8 @@ int RestReplicationHandler::processRestoreIndexesCoordinator (
 
   int res = TRI_ERROR_NO_ERROR;
   for (size_t i = 0; i < n; ++i) {
-    TRI_json_t const* idxDef = (TRI_json_t const*) TRI_AtVector(&indexes->_value._objects, i);
-    TRI_json_t* res_json = 0;
+    TRI_json_t const* idxDef = static_cast<TRI_json_t const*>(TRI_AtVector(&indexes->_value._objects, i));
+    TRI_json_t* res_json = nullptr;
     res = ci->ensureIndexCoordinator(dbName, col->id_as_string(), idxDef,
                      true, IndexComparator, res_json, errorMsg, 3600.0);
     if (res != TRI_ERROR_NO_ERROR) {
@@ -2340,7 +2341,7 @@ int RestReplicationHandler::processRestoreDataBatch (CollectionNameResolver cons
       const size_t n = json->_value._objects._length;
 
       for (size_t i = 0; i < n; i += 2) {
-        TRI_json_t const* element = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i);
+        TRI_json_t const* element = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
 
         if (! JsonHelper::isString(element)) {
           TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
@@ -2350,7 +2351,7 @@ int RestReplicationHandler::processRestoreDataBatch (CollectionNameResolver cons
         }
 
         const char* attributeName = element->_value._string.data;
-        TRI_json_t const* value = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i + 1);
+        TRI_json_t const* value = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i + 1));
 
         if (TRI_EqualString(attributeName, "type")) {
           if (JsonHelper::isNumber(value)) {
@@ -2410,7 +2411,7 @@ int RestReplicationHandler::processRestoreData (CollectionNameResolver const& re
                                                 bool force,
                                                 string& errorMsg) {
 
-  SingleCollectionWriteTransaction<RestTransactionContext, UINT64_MAX> trx(_vocbase, cid);
+  SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, cid);
 
   int res = trx.begin();
 
@@ -2576,8 +2577,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
       const size_t n = json->_value._objects._length;
 
       for (size_t i = 0; i < n; i += 2) {
-        TRI_json_t const* element
-            = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i);
+        TRI_json_t const* element = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
 
         if (! JsonHelper::isString(element)) {
           TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
@@ -2588,7 +2588,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
         }
 
         const char* attributeName = element->_value._string.data;
-        TRI_json_t const* value = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i + 1);
+        TRI_json_t const* value = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i + 1));
 
         if (TRI_EqualString(attributeName, "type")) {
           if (JsonHelper::isNumber(value)) {
@@ -3148,7 +3148,7 @@ void RestReplicationHandler::handleCommandSync () {
     const size_t n = restriction->_value._objects._length;
 
     for (i = 0; i < n; ++i) {
-      TRI_json_t const* cname = (TRI_json_t const*) TRI_AtVector(&restriction->_value._objects, i);
+      TRI_json_t const* cname = static_cast<TRI_json_t const*>(TRI_AtVector(&restriction->_value._objects, i));
 
       if (JsonHelper::isString(cname)) {
         restrictCollections.insert(pair<string, bool>(string(cname->_value._string.data, cname->_value._string.length - 1), true));

@@ -539,7 +539,7 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
     }
   }
 
-  V8ReadTransaction trx(collection->_vocbase, collection->_cid);
+  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), collection->_vocbase, collection->_cid);
 
   int res = trx.begin();
 
@@ -1247,7 +1247,7 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
     return scope.Close(DropIndexCoordinator(collection, argv[0]));
   }
 
-  V8ReadTransaction trx(collection->_vocbase, collection->_cid);
+  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), collection->_vocbase, collection->_cid);
 
   int res = trx.begin();
 
@@ -1290,6 +1290,7 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
 
   return scope.Close(v8::Boolean::New(ok));
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the indexes, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
@@ -1378,7 +1379,7 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
     return scope.Close(GetIndexesCoordinator(collection));
   }
 
-  V8ReadTransaction trx(collection->_vocbase, collection->_cid);
+  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), collection->_vocbase, collection->_cid);
 
   int res = trx.begin();
 
@@ -1634,7 +1635,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
 /// Creates a new document collection named *collection-name*.
 /// If the collection name already exists or if the name format is invalid, an
 /// error is thrown. For more information on valid collection names please refer
-/// to the [naming conventions](../NamingConvention/README.md).
+/// to the [naming conventions](../NamingConventions/README.md).
 ///
 /// `db._create(collection-name, properties)`
 ///
@@ -1673,7 +1674,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
 ///     *false*, then the key generator will solely be responsible for
 ///     generating keys and supplying own key values in the *_key* attribute
 ///     of documents is considered an error.
-///   * *{increment*: increment value for *autoincrement* key generator.
+///   * *increment*: increment value for *autoincrement* key generator.
 ///     Not used for other key generator types.
 ///   * *offset*: initial offset value for *autoincrement* key generator.
 ///     Not used for other key generator types.
@@ -1704,6 +1705,12 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
 ///   the database has to enforce the unique constraint on the *_key*
 ///   attribute and this can only be done efficiently if this is the
 ///   only shard key by delegating to the individual shards.
+///
+/// `db._create(collection-name, properties, type)`
+///
+/// Specifies the optional *type* of the collection, it can either be *document* 
+/// or *edge*. On default it is document. Instead of giving a type you can also use 
+/// *db._createEdgeCollection* or *db._createDocumentCollection*.
 ///
 /// @EXAMPLES
 ///
@@ -1751,14 +1758,11 @@ static v8::Handle<v8::Value> JS_CreateVocbase (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new document collection
-/// @startDocuBlock collectionCreateDocumentaion
+/// @startDocuBlock collectionCreateDocumentCollection
 /// `db._createDocumentCollection(collection-name)`
 ///
-/// `db._createDocumentCollection(collection-name, properties)`
-///
-/// Creates a new document collection named *collection-name*.
-/// This is an alias for @ref JS_CreateVocbase, with the difference that the
-/// collection type is not automatically detected.
+/// Creates a new document collection named *collection-name*. If the
+/// document name already exists and error is thrown. 
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1772,7 +1776,7 @@ static v8::Handle<v8::Value> JS_CreateDocumentCollectionVocbase (v8::Arguments c
 /// `db._createEdgeCollection(collection-name)`
 ///
 /// Creates a new edge collection named *collection-name*. If the
-/// collection name already exists, then an error is thrown. The default value
+/// collection name already exists an error is thrown. The default value
 /// for *waitForSync* is *false*.
 ///
 /// `db._createEdgeCollection(collection-name, properties)`
@@ -1781,14 +1785,11 @@ static v8::Handle<v8::Value> JS_CreateDocumentCollectionVocbase (v8::Arguments c
 ///
 /// * *waitForSync* (optional, default *false*): If *true* creating
 ///   a document will only return after the data was synced to disk.
-/// * *journalSize* (optional, default is a @ref CommandLineArangod
+/// * *journalSize* (optional, default is 
 ///   "configuration parameter"):  The maximal size of
 ///   a journal or datafile.  Note that this also limits the maximal
-///   size of a single object. Must be at least 1MB.
+///   size of a single object and must be at least 1MB.
 ///
-/// @EXAMPLES
-///
-/// See @ref JS_CreateVocbase for example.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -1,3 +1,6 @@
+/*jshint strict: false, maxlen: 500 */
+/*global require, assertEqual */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, escaping
 ///
@@ -69,12 +72,10 @@ function ahuacatlEscapingTestSuite () {
       var names = [ "for", "let", "return", "sort", "collect", "limit", "filter", "asc", "desc", "in", "into" ];
 
       for (var i in names) {
-        if (! names.hasOwnProperty(i)) {
-          continue;
+        if (names.hasOwnProperty(i)) {
+          var actual = getQueryResults("FOR `" + names[i] + "` IN [ 1, 2, 3 ] RETURN `" + names[i] + "`");
+          assertEqual(expected, actual);
         }
-
-        var actual = getQueryResults("FOR `" + names[i] + "` IN [ 1, 2, 3 ] RETURN `" + names[i] + "`");
-        assertEqual(expected, actual);
       }
     },
 

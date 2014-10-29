@@ -28,7 +28,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-actions.h"
-
 #include "Actions/actions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
@@ -41,6 +40,7 @@
 #include "Basics/tri-strings.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
+#include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8Server/ApplicationV8.h"
@@ -403,6 +403,8 @@ static v8::Handle<v8::Object> RequestCppToV8 ( TRI_v8_global_t const* v8g,
   clientArray->Set(v8g->PortKey, v8::Number::New(info.clientPort));
   req->Set(v8g->ClientKey, clientArray);
 
+  req->Set(v8::String::New("internals"), v8::External::New(request));
+
   // copy prefix
   string path = request->prefix();
 
@@ -575,7 +577,16 @@ static HttpResponse* ResponseV8ToCpp (TRI_v8_global_t const* v8g,
       response->body().appendText(out);
     }
     else {
-      response->body().appendText(TRI_ObjectToString(res->Get(v8g->BodyKey)));
+      v8::Handle<v8::Value> b = res->Get(v8g->BodyKey);
+      if (V8Buffer::hasInstance(b)) {
+        // body is a Buffer
+        auto obj = b.As<v8::Object>();
+        response->body().appendText(V8Buffer::data(obj), V8Buffer::length(obj));
+      }
+      else {
+        // treat body as a string
+        response->body().appendText(TRI_ObjectToString(res->Get(v8g->BodyKey)));
+      }
     }
   }
 
@@ -861,6 +872,201 @@ static v8::Handle<v8::Value> JS_GetCurrentRequest (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the raw body of the current request
+///
+/// @FUN{internal.rawRequestBody()}
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_RawRequestBody (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "rawRequestBody(req)");
+  }
+
+  v8::Handle<v8::Value> current = argv[0];
+  if (current->IsObject()) {
+    v8::Handle<v8::Object> obj = v8::Handle<v8::Object>::Cast(current);
+    v8::Handle<v8::Value> property = obj->Get(v8::String::New("internals"));
+    if (property->IsExternal()) {
+      v8::Handle<v8::External> e = v8::Handle<v8::External>::Cast(property);
+      auto request = static_cast<triagens::rest::HttpRequest*>(e->Value());
+
+      if (request != nullptr) {
+        V8Buffer* buffer = V8Buffer::New(request->body(), request->bodySize());
+
+        return scope.Close(buffer->_handle);
+      }
+    }
+  }
+
+  return scope.Close(v8::Undefined());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the raw body of the current request
+///
+/// @FUN{internal.rawRequestBody()}
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_RequestParts (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "requestParts(req)");
+  }
+
+  v8::Handle<v8::Value> current = argv[0];
+  if (current->IsObject()) {
+    v8::Handle<v8::Object> obj = v8::Handle<v8::Object>::Cast(current);
+    v8::Handle<v8::Value> property = obj->Get(v8::String::New("internals"));
+    if (property->IsExternal()) {
+      v8::Handle<v8::External> e = v8::Handle<v8::External>::Cast(property);
+      auto request = static_cast<triagens::rest::HttpRequest*>(e->Value());
+
+      char const* beg = request->body();
+      char const* end = beg + request->bodySize();
+
+      while (beg < end && (*beg == '\r' || *beg == '\n' || *beg == ' ')) {
+        ++beg;
+      }
+
+      // find delimiter
+      char const* ptr = beg;
+      while (ptr < end && *ptr == '-') {
+        ++ptr;
+      }
+
+      while (ptr < end && *ptr != '\r' && *ptr != '\n') {
+        ++ptr;
+      }
+      if (ptr == beg) {
+        // oops
+        TRI_V8_EXCEPTION_PARAMETER(scope, "request is no multipart request"); 
+      }
+
+      std::string const delimiter(beg, ptr - beg);
+      if (ptr < end && *ptr == '\r') {
+        ++ptr;
+      }
+      if (ptr < end && *ptr == '\n') {
+        ++ptr;
+      }
+
+      std::vector<std::pair<char const*, size_t>> parts;
+
+      while (ptr < end) {
+        char const* p = TRI_IsContainedMemory(ptr, end - ptr, delimiter.c_str(), delimiter.size());
+        if (p == nullptr || p + delimiter.size() + 2 >= end || p - 2 <= ptr) {
+          TRI_V8_EXCEPTION_PARAMETER(scope, "bad request data"); 
+        }
+
+        char const* q = p;
+        if (*(q - 1) == '\n') {
+          --q;
+        }
+        if (*(q - 1) == '\r') {
+          --q;
+        }
+       
+        parts.push_back(std::make_pair(ptr, q - ptr));
+        ptr = p + delimiter.size();
+        if (*ptr == '-' && *(ptr + 1) == '-') {
+          // eom
+          break;
+        }
+        if (*ptr == '\r') {
+          ++ptr;
+        }
+        if (ptr < end && *ptr == '\n') {
+          ++ptr;
+        }
+      }
+
+      v8::Handle<v8::Array> result = v8::Array::New();
+
+      uint32_t j = 0;
+      for (auto& part : parts) {
+        v8::Handle<v8::Object> headersObject = v8::Object::New();
+     
+        auto ptr = part.first;
+        auto end = part.first + part.second;
+        char const* data = nullptr;
+
+        while (ptr < end) {
+          while (ptr < end && *ptr == ' ') {
+            ++ptr;
+          }
+          if (ptr < end && (*ptr == '\r' || *ptr == '\n')) {
+            // end of headers
+            if (*ptr == '\r') {
+              ++ptr;
+            }
+            if (ptr < end && *ptr == '\n') {
+              ++ptr;
+            }
+            data = ptr;
+            break;
+          }
+
+          // header line
+          char const* eol = TRI_IsContainedMemory(ptr, end - ptr, "\r\n", 2);
+          if (eol == nullptr) {
+            eol = TRI_IsContainedMemory(ptr, end - ptr, "\n", 1);
+          }
+          if (eol == nullptr) {
+            TRI_V8_EXCEPTION_PARAMETER(scope, "bad request data"); 
+          }
+          char const* colon = TRI_IsContainedMemory(ptr, end - ptr, ":", 1);
+          if (colon == nullptr) {
+            TRI_V8_EXCEPTION_PARAMETER(scope, "bad request data"); 
+          }
+          char const* p = colon; 
+          while (p > ptr && *(p - 1) == ' ') {
+            --p; 
+          }
+          ++colon;
+          while (colon < eol && *colon == ' ') {
+            ++colon;     
+          }
+          char const* q = eol;
+          while (q > ptr && *(q - 1) == ' ') {
+            --q; 
+          }
+
+          headersObject->Set(v8::String::New(ptr, (int) (p - ptr)), v8::String::New(colon, (int) (eol - colon)));
+
+          ptr = eol;
+          if (*ptr == '\r') {
+            ++ptr;
+          }
+          if (ptr < end && *ptr == '\n') {
+            ++ptr;
+          }
+        }
+
+        if (data == nullptr) {
+          TRI_V8_EXCEPTION_PARAMETER(scope, "bad request data"); 
+        }
+
+        v8::Handle<v8::Object> partObject = v8::Object::New();
+        partObject->Set(v8::String::New("headers"), headersObject);
+ 
+        V8Buffer* buffer = V8Buffer::New(data, end - data);
+
+        partObject->Set(v8::String::New("data"), buffer->_handle); 
+        
+        result->Set(j++, partObject);
+      }
+
+      return scope.Close(result);
+    }
+  }
+
+  return scope.Close(v8::Undefined());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the current response
 ///
 /// @FUN{internal.getCurrentRequest()}
@@ -981,7 +1187,7 @@ static v8::Handle<v8::Value> JS_ClusterTest (v8::Arguments const& argv) {
                          reqType, path, &body, false, headerFields,
                          new CallbackTest("Hello Callback"), timeout);
 
-    if (res == 0) {
+    if (res == nullptr) {
       TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL,
                                "couldn't queue async request");
     }
@@ -1137,8 +1343,7 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context,
   GlobalV8Dealer = applicationV8;
 
   // check the isolate
-  v8::Isolate* isolate = v8::Isolate::GetCurrent();
-  /* TRI_v8_global_t* v8g = */ TRI_CreateV8Globals(isolate);
+  v8::Isolate::GetCurrent();
 
   // .............................................................................
   // create the global functions
@@ -1149,6 +1354,8 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SYS_GET_CURRENT_REQUEST", JS_GetCurrentRequest);
   TRI_AddGlobalFunctionVocbase(context, "SYS_GET_CURRENT_RESPONSE", JS_GetCurrentResponse);
   TRI_AddGlobalFunctionVocbase(context, "SYS_CLUSTER_TEST", JS_ClusterTest, true);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_RAW_REQUEST_BODY", JS_RawRequestBody, true);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_REQUEST_PARTS", JS_RequestParts, true);
 }
 
 // -----------------------------------------------------------------------------

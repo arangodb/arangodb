@@ -1,3 +1,6 @@
+/*jshint strict: false, maxlen: 500 */
+/*global require, assertEqual, AQL_EXPLAIN */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for Ahuacatl, subqueries
 ///
@@ -28,6 +31,7 @@
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults2;
+var findExecutionNodes = helper.findExecutionNodes;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -126,6 +130,14 @@ function ahuacatlSubqueryTestSuite () {
       var actual = getQueryResults("LET a = (FOR i IN [ 1, 2, 3 ] LET s = (FOR j IN [ 1, 2 ] RETURN j) RETURN i * s[1]) RETURN a");
 
       assertEqual(expected, actual);
+    },
+
+    testSubqueryOutVariableName : function () {
+      var XPResult = AQL_EXPLAIN('FOR u IN _users LET theLetVariable = (FOR j IN _users RETURN j) RETURN theLetVariable');
+
+      var SubqueryNode = findExecutionNodes(XPResult, "SubqueryNode")[0];
+
+      assertEqual(SubqueryNode.outVariable.name, "theLetVariable");
     }
 
   };

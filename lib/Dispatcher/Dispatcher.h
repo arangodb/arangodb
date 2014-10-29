@@ -106,7 +106,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int addStandardQueue (size_t nrThreads,
-                               size_t maxSize);
+                              size_t maxSize);
 
 /////////////////////////////////////////////////////////////////////////
 /// @brief starts a new named queue
@@ -181,7 +181,7 @@ namespace triagens {
 /// @brief looks up a queue by name
 ////////////////////////////////////////////////////////////////////////////////
 
-        DispatcherQueue* lookupQueue (string const&);
+        DispatcherQueue* lookupQueue (std::string const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -211,7 +211,7 @@ namespace triagens {
 /// @brief dispatcher queues
 ////////////////////////////////////////////////////////////////////////////////
 
-        map<string, DispatcherQueue*> _queues;
+        std::map<std::string, DispatcherQueue*> _queues;
     };
   }
 }

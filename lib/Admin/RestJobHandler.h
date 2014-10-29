@@ -64,7 +64,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         RestJobHandler (rest::HttpRequest* request,
-                        pair<rest::Dispatcher*, rest::AsyncJobManager*>*);
+                        std::pair<rest::Dispatcher*, rest::AsyncJobManager*>*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
@@ -82,7 +82,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        string const& queue () const;
+        std::string const& queue () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the handler

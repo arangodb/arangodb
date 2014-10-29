@@ -31,6 +31,7 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Aql/Query.h"
+#include "Aql/types.h"
 
 namespace triagens {
   namespace aql {
@@ -50,14 +51,7 @@ namespace triagens {
         QueryRegistry () {
         }
 
-        ~QueryRegistry () {
-          for (auto& m : _queries) {
-            for (auto& q : m.second) {
-              QueryInfo*& p = q.second;
-              delete p->_query;
-            }
-          }
-        }
+        ~QueryRegistry ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -71,8 +65,7 @@ namespace triagens {
 /// query will be deleted if it is not opened for that amount of time.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void insert (TRI_vocbase_t* vocbase,
-                     QueryId id,
+        void insert (QueryId id,
                      Query* query,
                      double ttl = 3600.0);
 
@@ -80,7 +73,8 @@ namespace triagens {
 /// @brief open, find a query in the registry, if none is found, a nullptr
 /// is returned, otherwise, ownership of the query is transferred to the
 /// caller, however, the registry retains the entry and will open will
-/// succeed only once. Further calls to open block until it is closed.
+/// succeed only once. If an already open query with the given id is
+/// found, an exception is thrown.
 /// An open query can directly be destroyed by the destroy method.
 /// Note that an open query will not expire, so users should please
 /// protect against leaks. If an already open query is found, an exception
@@ -104,7 +98,9 @@ namespace triagens {
 /// from the same thread that has opened it!
 ////////////////////////////////////////////////////////////////////////////////
 
-        void destroy (TRI_vocbase_t* vocbase, QueryId id);
+        void destroy (std::string const& vocbase, QueryId id, int errorCode);
+        
+        void destroy (TRI_vocbase_t* vocbase, QueryId id, int errorCode);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief expireQueries, this deletes all expired queries from the registry
@@ -123,7 +119,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         struct QueryInfo {
-          TRI_vocbase_t* _vocbase;  // name of vocbase
+          TRI_vocbase_t* _vocbase;   // the vocbase
           QueryId _id;               // id of the query
           Query* _query;             // the actual query pointer
           bool _isOpen;              // flag indicating whether or not the query
@@ -133,11 +129,10 @@ namespace triagens {
         };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _queries, the actual map of maps for the registry, the bool
-/// indicates
+/// @brief _queries, the actual map of maps for the registry
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::unordered_map<TRI_vocbase_t*, std::unordered_map<QueryId, QueryInfo*>> _queries;
+        std::unordered_map<std::string, std::unordered_map<QueryId, QueryInfo*>> _queries;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _lock, the read/write lock for access

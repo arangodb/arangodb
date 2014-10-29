@@ -72,7 +72,7 @@ HttpRequest::HttpRequest (ConnectionInfo const& info,
     _arrayValues(10),
     _cookies(1),
     _contentLength(0),
-    _body(0),
+    _body(nullptr),
     _bodySize(0),
     _freeables(),
     _connectionInfo(info),
@@ -82,9 +82,9 @@ HttpRequest::HttpRequest (ConnectionInfo const& info,
     _version(HTTP_UNKNOWN),
     _databaseName(),
     _user(),
-    _requestContext(0),
-    _isRequestContextOwner(false),
+    _requestContext(nullptr),
     _defaultApiCompatibility(defaultApiCompatibility),
+    _isRequestContextOwner(false),
     _allowMethodOverride(allowMethodOverride) {
 
   // copy request - we will destroy/rearrange the content to compute the
@@ -92,7 +92,7 @@ HttpRequest::HttpRequest (ConnectionInfo const& info,
 
   char* request = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, header, length);
 
-  if (request != 0) {
+  if (request != nullptr) {
     _freeables.push_back(request);
 
     parseHeader(request, length);
@@ -109,7 +109,7 @@ HttpRequest::~HttpRequest () {
   for (_arrayValues.range(begin, end);  begin < end;  ++begin) {
     char const* key = begin->_key;
 
-    if (key == 0) {
+    if (key == nullptr) {
       continue;
     }
 
@@ -121,7 +121,7 @@ HttpRequest::~HttpRequest () {
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, (*i));
   }
 
-  if (_requestContext != 0 && _isRequestContextOwner) {
+  if (_requestContext != nullptr && _isRequestContextOwner) {
     // only delete if we are the owner of the context
     delete _requestContext;
   }
@@ -163,7 +163,7 @@ void HttpRequest::write (TRI_string_buffer_t* buffer) const {
   for (_values.range(begin, end);  begin < end;  ++begin) {
     char const* key = begin->_key;
 
-    if (key == 0) {
+    if (key == nullptr) {
       continue;
     }
 
@@ -188,7 +188,7 @@ void HttpRequest::write (TRI_string_buffer_t* buffer) const {
   for (_headers.range(begin, end);  begin < end;  ++begin) {
     char const* key = begin->_key;
 
-    if (key == 0) {
+    if (key == nullptr) {
       continue;
     }
 
@@ -210,7 +210,7 @@ void HttpRequest::write (TRI_string_buffer_t* buffer) const {
   for (_cookies.range(begin, end);  begin < end;  ++begin) {
     char const* key = begin->_key;
 
-    if (key == 0) {
+    if (key == nullptr) {
       continue;
     }
 
@@ -234,7 +234,7 @@ void HttpRequest::write (TRI_string_buffer_t* buffer) const {
   TRI_AppendInt64StringBuffer(buffer, _contentLength);
   TRI_AppendString2StringBuffer(buffer, "\r\n\r\n", 4);
 
-  if (_body != 0 && 0 < _bodySize) {
+  if (_body != nullptr && 0 < _bodySize) {
     TRI_AppendString2StringBuffer(buffer, _body, _bodySize);
   }
 }
@@ -254,7 +254,7 @@ int64_t HttpRequest::contentLength () const {
 char const* HttpRequest::header (char const* key) const {
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key);
 
-  if (kv == 0) {
+  if (kv == nullptr) {
     return EMPTY_STR;
   }
   else {
@@ -269,7 +269,7 @@ char const* HttpRequest::header (char const* key) const {
 char const* HttpRequest::header (char const* key, bool& found) const {
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key);
 
-  if (kv == 0) {
+  if (kv == nullptr) {
     found = false;
     return EMPTY_STR;
   }
@@ -292,7 +292,7 @@ map<string, string> HttpRequest::headers () const {
   for (_headers.range(begin, end);  begin < end;  ++begin) {
     char const* key = begin->_key;
 
-    if (key == 0) {
+    if (key == nullptr) {
       continue;
     }
 
@@ -311,7 +311,7 @@ map<string, string> HttpRequest::headers () const {
 char const* HttpRequest::value (char const* key) const {
   Dictionary<char const*>::KeyValue const* kv = _values.lookup(key);
 
-  if (kv == 0) {
+  if (kv == nullptr) {
     return EMPTY_STR;
   }
   else {
@@ -326,7 +326,7 @@ char const* HttpRequest::value (char const* key) const {
 char const* HttpRequest::value (char const* key, bool& found) const {
   Dictionary<char const*>::KeyValue const* kv = _values.lookup(key);
 
-  if (kv == 0) {
+  if (kv == nullptr) {
     found = false;
     return EMPTY_STR;
   }
@@ -349,7 +349,7 @@ map<string, string> HttpRequest::values () const {
   for (_values.range(begin, end);  begin < end;  ++begin) {
     char const* key = begin->_key;
 
-    if (key == 0) {
+    if (key == nullptr) {
       continue;
     }
 
@@ -366,8 +366,8 @@ map<string, string> HttpRequest::values () const {
 vector<char const*> const* HttpRequest::arrayValue (char const* key) const {
   Dictionary< vector<char const*>* >::KeyValue const* kv = _arrayValues.lookup(key);
 
-  if (kv == 0) {
-    return 0;
+  if (kv == nullptr) {
+    return nullptr;
   }
   else {
     return kv->_value;
@@ -381,9 +381,9 @@ vector<char const*> const* HttpRequest::arrayValue (char const* key) const {
 vector<char const*> const* HttpRequest::arrayValue (char const* key, bool& found) const {
   Dictionary< vector<char const*>* >::KeyValue const* kv = _arrayValues.lookup(key);
 
-  if (kv == 0) {
+  if (kv == nullptr) {
     found = false;
-    return 0;
+    return nullptr;
   }
   else {
     found = true;
@@ -404,7 +404,7 @@ map<string, vector<char const*>* > HttpRequest::arrayValues () const {
   for (_arrayValues.range(begin, end);  begin < end;  ++begin) {
     char const* key = begin->_key;
 
-    if (key == 0) {
+    if (key == nullptr) {
       continue;
     }
 
@@ -421,7 +421,7 @@ map<string, vector<char const*>* > HttpRequest::arrayValues () const {
 char const* HttpRequest::cookieValue (char const* key) const {
   Dictionary<char const*>::KeyValue const* kv = _cookies.lookup(key);
 
-  if (kv == 0) {
+  if (kv == nullptr) {
     return EMPTY_STR;
   }
   else {
@@ -436,7 +436,7 @@ char const* HttpRequest::cookieValue (char const* key) const {
 char const* HttpRequest::cookieValue (char const* key, bool& found) const {
   Dictionary<char const*>::KeyValue const* kv = _cookies.lookup(key);
 
-  if (kv == 0) {
+  if (kv == nullptr) {
     found = false;
     return EMPTY_STR;
   }
@@ -459,7 +459,7 @@ map<string, string> HttpRequest::cookieValues () const {
   for (_cookies.range(begin, end);  begin < end;  ++begin) {
     char const* key = begin->_key;
 
-    if (key == 0) {
+    if (key == nullptr) {
       continue;
     }
 
@@ -474,7 +474,7 @@ map<string, string> HttpRequest::cookieValues () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 char const* HttpRequest::body () const {
-  return _body == 0 ? EMPTY_STR : _body;
+  return _body == nullptr ? EMPTY_STR : _body;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -493,7 +493,7 @@ int HttpRequest::setBody (char const* newBody,
                           size_t length) {
   _body = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, newBody, length);
 
-  if (_body == 0) {
+  if (_body == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -760,7 +760,7 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
   int lineNum = 0;
 
   // begin and end of current line
-  char* lineBegin = 0;
+  char* lineBegin = nullptr;
 
   // split request
   while (start < end) {
@@ -784,8 +784,8 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
       char* keyBegin = lineBegin;
       char* keyEnd = e;
 
-      char* valueBegin = 0;
-      char* valueEnd = 0;
+      char* valueBegin = nullptr;
+      char* valueEnd = nullptr;
 
       // we found a space (*end is '\0')
       if (*e == ' ') {
@@ -888,10 +888,10 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
         // extract the path and decode the url and parameters
         if (_type != HTTP_REQUEST_ILLEGAL) {
           char* pathBegin = valueBegin;
-          char* pathEnd = 0;
+          char* pathEnd = nullptr;
 
-          char* paramBegin = 0;
-          char* paramEnd = 0;
+          char* paramBegin = nullptr;
+          char* paramEnd = nullptr;
 
           // find a question mark or space
           char* f = pathBegin;
@@ -1009,8 +1009,8 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
 
       // we found a colon (*end is '\0')
       if (*e == ':') {
-        char* valueBegin = 0;
-        char* valueEnd = 0;
+        char* valueBegin = nullptr;
+        char* valueEnd = nullptr;
 
         // extract the value
         keyEnd = e++;
@@ -1103,8 +1103,8 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpRequest::setFullUrl (char const* begin, char const* end) {
-  TRI_ASSERT(begin != 0);
-  TRI_ASSERT(end != 0);
+  TRI_ASSERT(begin != nullptr);
+  TRI_ASSERT(end != nullptr);
   TRI_ASSERT(begin <= end);
 
   _fullUrl = string(begin, end - begin);
@@ -1115,11 +1115,11 @@ void HttpRequest::setFullUrl (char const* begin, char const* end) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpRequest::setValues (char* buffer, char* end) {
-  char* keyBegin = 0;
-  char* key = 0;
+  char* keyBegin = nullptr;
+  char* key = nullptr;
 
-  char* valueBegin = 0;
-  char* value = 0;
+  char* valueBegin = nullptr;
+  char* value = nullptr;
 
   enum { KEY, VALUE } phase = KEY;
   enum { NORMAL, HEX1, HEX2 } reader = NORMAL;
@@ -1147,7 +1147,7 @@ void HttpRequest::setValues (char* buffer, char* end) {
       *key = '\0';
 
       // check for missing value phase
-      if (valueBegin == 0) {
+      if (valueBegin == nullptr) {
         valueBegin = value = key;
       }
       else {
@@ -1214,7 +1214,7 @@ void HttpRequest::setValues (char* buffer, char* end) {
     *key = '\0';
 
     // check for missing value phase
-    if (valueBegin == 0) {
+    if (valueBegin == nullptr) {
       valueBegin = value = key;
     }
     else {
@@ -1416,9 +1416,9 @@ const string& HttpRequest::getMultipartContentType () {
 
 void HttpRequest::setArrayValue (char* key, size_t length, char const* value) {
   Dictionary< vector<char const*>* >::KeyValue const* kv = _arrayValues.lookup(key);
-  vector<char const*>* v = 0;
+  vector<char const*>* v = nullptr;
 
-  if (kv == 0) {
+  if (kv == nullptr) {
     v = new vector<char const*>;
     _arrayValues.insert(key, length, v);
   }
@@ -1442,11 +1442,11 @@ void HttpRequest::setCookie (char* key, size_t length, char const* value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpRequest::parseCookies (const char* buffer) {
-  char* keyBegin = 0;
-  char* key = 0;
+  char* keyBegin = nullptr;
+  char* key = nullptr;
 
-  char* valueBegin = 0;
-  char* value = 0;
+  char* valueBegin = nullptr;
+  char* value = nullptr;
 
   enum { KEY, VALUE } phase = KEY;
   enum { NORMAL, HEX1, HEX2 } reader = NORMAL;
@@ -1477,7 +1477,7 @@ void HttpRequest::parseCookies (const char* buffer) {
       *key = '\0';
 
       // check for missing value phase
-      if (valueBegin == 0) {
+      if (valueBegin == nullptr) {
         valueBegin = value = key;
       }
       else {
@@ -1490,7 +1490,7 @@ void HttpRequest::parseCookies (const char* buffer) {
       while ( *(keyBegin = key = buffer2 + 1) == SPACE && buffer2 < end) {
         buffer2++;
       }
-      valueBegin = value = 0;
+      valueBegin = value = nullptr;
 
       continue;
     }
@@ -1537,7 +1537,7 @@ void HttpRequest::parseCookies (const char* buffer) {
     *key = '\0';
 
     // check for missing value phase
-    if (valueBegin == 0) {
+    if (valueBegin == nullptr) {
       valueBegin = value = key;
     }
     else {

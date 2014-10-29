@@ -85,7 +85,7 @@ bool DocumentHelper::parseDocumentId (CollectionNameResolver const& resolver,
     return false;
   }
 
-  cid = resolver.getCollectionIdCluster(string(input, pos - input));
+  cid = resolver.getCollectionIdCluster(std::string(input, pos - input));
   *key = (char*) (pos + 1);
 
   if (cid == 0 || **key == '\0') {

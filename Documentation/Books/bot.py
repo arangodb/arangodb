@@ -13,7 +13,6 @@ def walk_on_files(dirpath):
         else:  
           full_path= os.path.join(root, file)
           f=open(full_path,"rU")
-          print "checking file: " + full_path + file
           textFile=f.read()
           f.close()
           findStartCode(textFile,full_path)
@@ -76,7 +75,9 @@ def replaceCode(pathOfFile):
   lines = lines.replace("@RESTPARAMETERS","")
   lines = lines.replace("@RESTPARAMS","")
   # Error codes replace
-  lines = re.sub(r"- (\w+):\s*@LIT{(.+)}", r"\n*\g<1>* - **\g<2>**:", lines)
+  lines = re.sub(r"(##)#+", r"", lines)
+#  lines = re.sub(r"- (\w+):\s*@LIT{(.+)}", r"\n*\g<1>* - **\g<2>**:", lines)
+  lines = re.sub(r"(.+),(\d+),\"(.+)\",\"(.+)\"", r"\n*\g<2>* - **\g<3>**: \g<4>", lines)
   f.write(lines)
   f.close()
 
@@ -93,9 +94,9 @@ def replaceCodeIndex(pathOfFile):
   f.write(lines)
   f.close()
 
-
 if __name__ == '__main__':
-    path = ["Documentation/Books/Users"]
-    for i in path:
-      dirpath = os.path.abspath(os.path.join(os.path.dirname( __file__ ), os.pardir,"ArangoDB/../../"+i))  
+  path = ["Documentation/Books/Users"]
+  for i in path:
+    dirpath = os.path.abspath(os.path.join(os.path.dirname( __file__ ), os.pardir,"ArangoDB/../../"+i))  
+    print "Replacing docublocks with content..."
     walk_on_files(dirpath)

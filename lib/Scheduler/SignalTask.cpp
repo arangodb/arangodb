@@ -90,7 +90,7 @@ bool SignalTask::setup (Scheduler* scheduler, EventLoop loop) {
 
   size_t pos = 0;
 
-  for (set<int>::iterator i = signals.begin();  i != signals.end() && pos < MAX_SIGNALS;  ++i, ++pos) {
+  for (std::set<int>::iterator i = signals.begin();  i != signals.end() && pos < MAX_SIGNALS;  ++i, ++pos) {
     watcher[pos] = scheduler->installSignalEvent(loop, this, *i);
   }
   return true;

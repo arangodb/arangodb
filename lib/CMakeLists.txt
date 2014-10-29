@@ -64,6 +64,7 @@ add_library(
     Basics/json.cpp
     Basics/json-utilities.cpp
     Basics/JsonHelper.cpp
+    Basics/levenshtein.cpp 
     Basics/linked-list.cpp
     Basics/logging.cpp
     Basics/memory.cpp

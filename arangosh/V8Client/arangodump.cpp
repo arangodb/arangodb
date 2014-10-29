@@ -62,7 +62,7 @@ using namespace triagens::arango;
 /// @brief base class for clients
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoClient BaseClient;
+ArangoClient BaseClient("arangodump");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the initial default connection
@@ -1300,9 +1300,9 @@ int main (int argc, char* argv[]) {
 
   BaseClient.createEndpoint();
 
-  if (BaseClient.endpointServer() == 0) {
+  if (BaseClient.endpointServer() == nullptr) {
     cerr << "invalid value for --server.endpoint ('" << BaseClient.endpointString() << "')" << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   Connection = GeneralClientConnection::factory(BaseClient.endpointServer(),
@@ -1311,16 +1311,16 @@ int main (int argc, char* argv[]) {
                                                 ArangoClient::DEFAULT_RETRIES,
                                                 BaseClient.sslProtocol());
 
-  if (Connection == 0) {
+  if (Connection == nullptr) {
     cerr << "out of memory" << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   Client = new SimpleHttpClient(Connection, BaseClient.requestTimeout(), false);
 
-  if (Client == 0) {
+  if (Client == nullptr) {
     cerr << "out of memory" << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   Client->setLocationRewriter(0, &rewriteLocation);
@@ -1397,22 +1397,33 @@ int main (int argc, char* argv[]) {
   string errorMsg = "";
 
   int res;
-  if (!clusterMode) {
-    res = StartBatch("",errorMsg);
-    if (res != TRI_ERROR_NO_ERROR && Force) {
-      res = TRI_ERROR_NO_ERROR;
-    }
 
-    if (res == TRI_ERROR_NO_ERROR) {
-      res = RunDump(errorMsg);
-    }
+  try {
+    if (! clusterMode) {
+      res = StartBatch("",errorMsg);
+      if (res != TRI_ERROR_NO_ERROR && Force) {
+        res = TRI_ERROR_NO_ERROR;
+      }
 
-    if (BatchId > 0) {
-      EndBatch("");
+      if (res == TRI_ERROR_NO_ERROR) {
+        res = RunDump(errorMsg);
+      }
+
+      if (BatchId > 0) {
+        EndBatch("");
+      }
+    }
+    else {   // clusterMode == true
+      res = RunClusterDump(errorMsg);
     }
   }
-  else {   // clusterMode == true
-    res = RunClusterDump(errorMsg);
+  catch (std::exception const& ex) {
+    cerr << "caught exception " << ex.what() << endl;
+    res = TRI_ERROR_INTERNAL;
+  }
+  catch (...) {
+    cerr << "caught unknown exception" << endl;
+    res = TRI_ERROR_INTERNAL;
   }
 
   if (Progress) {
@@ -1431,13 +1442,13 @@ int main (int argc, char* argv[]) {
     ret = EXIT_FAILURE;
   }
 
-  if (Client != 0) {
+  if (Client != nullptr) {
     delete Client;
   }
 
   TRIAGENS_REST_SHUTDOWN;
 
-  arangodumpExitFunction(ret, NULL);
+  arangodumpExitFunction(ret, nullptr);
 
   return ret;
 }

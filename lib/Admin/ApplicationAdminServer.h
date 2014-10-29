@@ -100,7 +100,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void addBasicHandlers (rest::HttpHandlerFactory*,
-                               string const &prefix,
+                               std::string const &prefix,
                                rest::Dispatcher*,
                                rest::AsyncJobManager*);
 
@@ -111,7 +111,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void addHandlers (rest::HttpHandlerFactory*,
-                          string const& prefix);
+                          std::string const& prefix);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        ApplicationFeature methods
@@ -123,7 +123,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setupOptions (map<string, basics::ProgramOptionsDescription>&);
+        void setupOptions (std::map<std::string, basics::ProgramOptionsDescription>&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}

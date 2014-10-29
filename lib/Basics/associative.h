@@ -31,6 +31,8 @@
 #ifndef ARANGODB_BASICS_C_ASSOCIATIVE_H
 #define ARANGODB_BASICS_C_ASSOCIATIVE_H 1
 
+#include <functional>
+
 #include "Basics/Common.h"
 
 #include "Basics/locks.h"
@@ -398,6 +400,34 @@ void TRI_FreeAssociativeSynced (TRI_memory_zone_t*, TRI_associative_synced_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 void const* TRI_LookupByKeyAssociativeSynced (TRI_associative_synced_t*, void const* key);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookups an element given a key and calls the callback function while
+/// the read-lock is held
+////////////////////////////////////////////////////////////////////////////////
+
+template<typename T>
+T TRI_ProcessByKeyAssociativeSynced (TRI_associative_synced_t* array, 
+                                     void const* key,
+                                     std::function<T(void const*)> callback) {
+  // compute the hash
+  uint64_t hash = array->hashKey(array, key);
+
+  // search the table
+  TRI_ReadLockReadWriteLock(&array->_lock);
+  uint64_t i = hash % array->_nrAlloc;
+
+  while (array->_table[i] != NULL && ! array->isEqualKeyElement(array, key, array->_table[i])) {
+    i = TRI_IncModU64(i, array->_nrAlloc);
+  }
+
+  T result = callback(array->_table[i]);
+
+  TRI_ReadUnlockReadWriteLock(&array->_lock);
+
+  // return whatever we found
+  return result;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookups an element given an element

@@ -120,7 +120,7 @@ std::map<std::string, std::string> getForwardableRequestHeaders (triagens::rest:
         key != "host" &&
         key != "origin" &&
         key.substr(0, 14) != "access-control") {
-      result.insert(make_pair(key, (*it).second));
+      result.emplace(make_pair(key, (*it).second));
     }
     ++it;
   }
@@ -188,7 +188,8 @@ bool shardKeysChanged (std::string const& dbname,
 ////////////////////////////////////////////////////////////////////////////////
 
 int usersOnCoordinator (std::string const& dbname,
-                        TRI_json_t*& result) {
+                        TRI_json_t*& result,
+                        double timeout) {
 
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
@@ -203,7 +204,7 @@ int usersOnCoordinator (std::string const& dbname,
 
   result = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
 
-  if (result == 0) {
+  if (result == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -236,7 +237,7 @@ int usersOnCoordinator (std::string const& dbname,
   int count;
   int nrok = 0;
   for (count = (int) shards.size(); count > 0; count--) {
-    res = cc->wait( "", coordTransactionID, 0, "", 0.0);
+    res = cc->wait("", coordTransactionID, 0, "", timeout);
     if (res->status == CL_COMM_RECEIVED) {
       if (res->answer_code == triagens::rest::HttpResponse::OK ||
           res->answer_code == triagens::rest::HttpResponse::CREATED) {
@@ -257,7 +258,7 @@ int usersOnCoordinator (std::string const& dbname,
           nrok++;
         }
 
-        if (json != 0) {
+        if (json != nullptr) {
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
         }
       }
@@ -609,12 +610,8 @@ int createDocumentOnCoordinator (
   }
   if (res->status == CL_COMM_ERROR) {
     // This could be a broken connection or an Http error:
-    if (res->result == 0) {
+    if (res->result == nullptr || ! res->result->isComplete()) {
       // there is not result
-      delete res;
-      return TRI_ERROR_CLUSTER_CONNECTION_LOST;
-    }
-    if (!res->result->isComplete()) {
       delete res;
       return TRI_ERROR_CLUSTER_CONNECTION_LOST;
     }
@@ -709,7 +706,7 @@ int deleteDocumentOnCoordinator (
     }
     if (res->status == CL_COMM_ERROR) {
       // This could be a broken connection or an Http error:
-      if (!res->result->isComplete()) {
+      if (res->result == nullptr || ! res->result->isComplete()) {
         delete res;
         return TRI_ERROR_CLUSTER_CONNECTION_LOST;
       }
@@ -746,7 +743,7 @@ int deleteDocumentOnCoordinator (
   int count;
   int nrok = 0;
   for (count = (int) shards.size(); count > 0; count--) {
-    res = cc->wait( "", coordTransactionID, 0, "", 0.0);
+    res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res->status == CL_COMM_RECEIVED) {
       if (res->answer_code != triagens::rest::HttpResponse::NOT_FOUND ||
           (nrok == 0 && count == 1)) {
@@ -900,7 +897,7 @@ int getDocumentOnCoordinator (
     }
     if (res->status == CL_COMM_ERROR) {
       // This could be a broken connection or an Http error:
-      if (!res->result || !res->result->isComplete()) {
+      if (! res->result || ! res->result->isComplete()) {
         delete res;
         return TRI_ERROR_CLUSTER_CONNECTION_LOST;
       }
@@ -1149,7 +1146,7 @@ int modifyDocumentOnCoordinator (
     }
     if (res->status == CL_COMM_ERROR) {
       // This could be a broken connection or an Http error:
-      if (!res->result->isComplete()) {
+      if (res->result == nullptr || ! res->result->isComplete()) {
         delete res;
         return TRI_ERROR_CLUSTER_CONNECTION_LOST;
       }
@@ -1296,7 +1293,8 @@ int createEdgeOnCoordinator (
   }
   if (res->status == CL_COMM_ERROR) {
     // This could be a broken connection or an Http error:
-    if (!res->result->isComplete()) {
+    if (res->result == nullptr || ! res->result->isComplete()) {
+      // there is not result
       delete res;
       return TRI_ERROR_CLUSTER_CONNECTION_LOST;
     }
@@ -1322,13 +1320,13 @@ TRI_vector_pointer_t* getIndexesCoordinator (string const& databaseName,
   shared_ptr<CollectionInfo> c = ClusterInfo::instance()->getCollection(databaseName, collectionName);
 
   if ((*c).empty()) {
-    return 0;
+    return nullptr;
   }
 
   TRI_vector_pointer_t* result = (TRI_vector_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t), false);
 
-  if (result == 0) {
-    return 0;
+  if (result == nullptr) {
+    return nullptr;
   }
 
   TRI_InitVectorPointer(result, TRI_UNKNOWN_MEM_ZONE);

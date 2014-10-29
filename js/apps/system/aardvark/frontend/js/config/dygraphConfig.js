@@ -106,7 +106,20 @@
         visibility: [true, false],
         labels: ["datetime", "Major Page", "Minor Page"],
         div: "pageFaultsChart",
-        labelsKMG2: false
+        labelsKMG2: false,
+        axes: {
+          y: {
+            valueFormatter: function (y) {
+              return parseFloat(y.toPrecision(3));
+            },
+            axisLabelFormatter: function (y) {
+              if (y === 0) {
+                return 0;
+              }
+              return parseFloat(y.toPrecision(3));
+            }
+          }
+        }
       },
 
       systemUserTime: {
@@ -162,7 +175,20 @@
         header: "Requests",
         labels: ["datetime", "GET", "PUT", "POST", "DELETE", "PATCH", "HEAD", "OPTIONS", "OTHER"],
         stackedGraph: true,
-        div: "requestsChart"
+        div: "requestsChart",
+        axes: {
+          y: {
+            valueFormatter: function (y) {
+              return parseFloat(y.toPrecision(3));
+            },
+            axisLabelFormatter: function (y) {
+              if (y === 0) {
+                return 0;
+              }
+              return parseFloat(y.toPrecision(3));
+            }
+          }
+        }
       }
     },
 

@@ -1,8 +1,8 @@
 /*jshint -W051: true */
 /*global require, FS_MAKE_DIRECTORY, FS_MOVE, FS_REMOVE, FS_REMOVE_DIRECTORY, FS_LIST,
   FS_REMOVE_RECURSIVE_DIRECTORY, FS_EXISTS, FS_IS_DIRECTORY, FS_IS_FILE, FS_MAKE_ABSOLUTE, FS_FILESIZE,
-  FS_GET_TEMP_FILE, FS_GET_TEMP_PATH, FS_LIST_TREE, FS_UNZIP_FILE, FS_ZIP_FILE,
-  SYS_READ, SYS_READ64, SYS_SAVE, PATH_SEPARATOR, HOME */
+  FS_GET_TEMP_FILE, FS_GET_TEMP_PATH, FS_LIST_TREE, FS_UNZIP_FILE, FS_ZIP_FILE, FS_MTIME,
+  SYS_READ, SYS_READ_BUFFER, SYS_READ64, SYS_SAVE, PATH_SEPARATOR, HOME */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "js"
@@ -417,6 +417,15 @@
   };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief mtime
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof FS_MTIME !== "undefined") {
+    exports.mtime = FS_MTIME;
+    delete FS_MTIME;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief move
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -435,12 +444,20 @@
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief readFileSync (node compatibility)
+/// @brief readBuffer and readFileSync
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.readFileSync = function (filename) {
-    return exports.read(filename);
-  };
+  if (typeof SYS_READ_BUFFER !== "undefined") {
+    exports.readBuffer = SYS_READ_BUFFER;
+    delete SYS_READ_BUFFER;
+  
+    exports.readFileSync = function (filename, encoding) {
+      if (encoding !== undefined && encoding !== null) {
+        return exports.readBuffer(filename).toString(encoding);
+      }
+      return exports.readBuffer(filename);
+    };
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read64
@@ -504,6 +521,14 @@
     exports.write = SYS_SAVE;
     delete SYS_SAVE;
   }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief writeFileSync (node compatibility)
+////////////////////////////////////////////////////////////////////////////////
+
+  exports.writeFileSync = function (filename, content) {
+    return exports.write(filename, content);
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief zipFile

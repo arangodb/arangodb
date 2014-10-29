@@ -1,4 +1,4 @@
-/*global require, db, assertEqual, assertTrue, ArangoCollection */
+/*global require, db, assertEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the unique constraint
@@ -356,6 +356,143 @@ function HashIndexSuite() {
 
       var doc2 = collection.save({ a : "test3", b : 1});
       assertTrue(doc2._key !== "");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multi hash querying
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiHashQuery1 : function () {
+      var i;
+
+      collection.ensureHashIndex("value");
+      for (i = 0; i < 1000; ++i) {
+        collection.save({ _key: "test" + i, value: 1 });
+      }
+
+      assertEqual(1000, collection.byExampleHash(collection.getIndexes()[1], { value: 1 }).toArray().length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multi hash querying
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiHashQuery2 : function () {
+      var i;
+
+      collection.ensureHashIndex("value");
+      for (i = 0; i < 1000; ++i) {
+        collection.save({ _key: "test" + i, value: i });
+      }
+
+      for (i = 0; i < 1000; ++i) {
+        var docs = collection.byExampleHash(collection.getIndexes()[1], { value: i }).toArray();
+        assertEqual(1, docs.length);
+        assertEqual("test" + i, docs[0]._key);
+        assertEqual(i, docs[0].value);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multi hash querying
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiHashQuery3 : function () {
+      var i;
+
+      collection.ensureHashIndex("value");
+      for (i = 0; i < 1000; ++i) {
+        collection.save({ _key: "test" + i, value: i % 4 });
+      }
+
+      for (i = 0; i < 4; ++i) {
+        var docs = collection.byExampleHash(collection.getIndexes()[1], { value: i }).toArray();
+        assertEqual(250, docs.length);
+        docs.forEach(function(doc) {
+          assertEqual(i, doc.value);
+        });
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test collisions
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiHashQuery4 : function () {
+      var i;
+
+      collection.ensureHashIndex("value");
+      for (i = 0; i < 10000; ++i) {
+        collection.save({ _key: "test" + i, value: "testvalue" + i });
+      }
+
+      for (i = 0; i < 10000; ++i) {
+        var docs = collection.byExampleHash(collection.getIndexes()[1], { value: "testvalue" + i }).toArray();
+        assertEqual(1, docs.length);
+        assertEqual("test" + i, docs[0]._key);
+        assertEqual("testvalue" + i, docs[0].value);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test multi hash updating
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiHashUpdate : function () {
+      var i;
+
+      collection.ensureHashIndex("value");
+      for (i = 0; i < 1000; ++i) {
+        collection.save({ _key: "test" + i, value: i % 4 });
+      }
+
+      for (i = 0; i < 4; ++i) {
+        var docs = collection.byExampleHash(collection.getIndexes()[1], { value: i }).toArray();
+        assertEqual(250, docs.length);
+        docs.forEach(function(doc) {
+          assertEqual(i, doc.value);
+        });
+      }
+
+      for (i = 500; i < 1000; ++i) {
+        collection.update("test" + i, { value: (i % 4) + 4 });
+      }
+
+      for (i = 0; i < 8; ++i) {
+        var docs = collection.byExampleHash(collection.getIndexes()[1], { value: i }).toArray();
+        assertEqual(125, docs.length);
+        docs.forEach(function(doc) {
+          assertEqual(i, doc.value);
+        });
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief multi hash index removal
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiHashRemoval : function () {
+      var i;
+
+      collection.ensureHashIndex("value");
+      for (i = 0; i < 1000; ++i) {
+        collection.save({ _key: "test" + i, value: 1 });
+      }
+
+      assertEqual(1000, collection.byExampleHash(collection.getIndexes()[1], { value: 1 }).toArray().length);
+
+      // remove head of list
+      collection.remove("test0");
+      assertEqual(999, collection.byExampleHash(collection.getIndexes()[1], { value: 1 }).toArray().length);
+
+      // remove new head of list
+      collection.remove("test999");
+      assertEqual(998, collection.byExampleHash(collection.getIndexes()[1], { value: 1 }).toArray().length);
+
+      for (i = 1; i < 998; ++i) {
+        collection.remove("test" + i);
+        assertEqual(998 - i, collection.byExampleHash(collection.getIndexes()[1], { value: 1 }).toArray().length);
+      }
     }
 
   };

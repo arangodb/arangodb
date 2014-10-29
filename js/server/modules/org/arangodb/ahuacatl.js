@@ -705,6 +705,10 @@ function FCALL_USER (name, parameters) {
       THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, NORMALIZE_FNAME(name));
     }
   }
+  
+  if (! UserFunctions[prefix].hasOwnProperty(name)) {
+    reloadUserFunctions();
+  }
 
   if (UserFunctions[prefix].hasOwnProperty(name)) {
     var result = UserFunctions[prefix][name].func.apply(null, parameters);
@@ -2350,6 +2354,73 @@ function STRING_TRIM (value, type) {
   }
 
   return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds search in value
+////////////////////////////////////////////////////////////////////////////////
+
+function STRING_FIND_FIRST (value, search, start, end) {
+  "use strict";
+
+  ARG_CHECK(value, TYPEWEIGHT_STRING, "FIND_FIRST");
+  ARG_CHECK(search, TYPEWEIGHT_STRING, "FIND_FIRST");
+
+  if (start !== undefined && start !== null) {
+    ARG_CHECK(start, TYPEWEIGHT_NUMBER, "FIND_FIRST");
+    if (start < 0) {
+      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FIND_FIRST");
+    }
+  }
+  else {
+    start = 0;
+  }
+  if (end !== undefined && end !== null) {
+    ARG_CHECK(end, TYPEWEIGHT_NUMBER, "FIND_FIRST");
+    if (end < start || end < 0) {
+      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FIND_FIRST");
+    }
+  }
+  else {
+    end = undefined;
+  }
+
+  if (end !== undefined) {
+    return value.substr(0, end + 1).indexOf(search, start);
+  }
+  return value.indexOf(search, start);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds search in value
+////////////////////////////////////////////////////////////////////////////////
+
+function STRING_FIND_LAST (value, search, start, end) {
+  "use strict";
+
+  ARG_CHECK(value, TYPEWEIGHT_STRING, "FIND_LAST");
+  ARG_CHECK(search, TYPEWEIGHT_STRING, "FIND_LAST");
+
+  if (start !== undefined) {
+    ARG_CHECK(start, TYPEWEIGHT_NUMBER, "FIND_LAST");
+  }
+  else {
+    start = 0;
+  }
+  if (end !== undefined) {
+    ARG_CHECK(end, TYPEWEIGHT_NUMBER, "FIND_LAST");
+    if (end < start || end < 0) {
+      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FIND_LAST");
+    }
+  }
+  else {
+    end = undefined;
+  }
+
+  if (end !== undefined && end < search.length) {
+    return value.lastIndexOf(search.substr(0, end + 1), start);
+  }
+  return value.lastIndexOf(search, start);
 }
 
 // -----------------------------------------------------------------------------
@@ -4522,7 +4593,6 @@ function TRAVERSAL_VISITOR (config, result, vertex, path) {
 
 function TRAVERSAL_NEIGHBOR_VISITOR (config, result, vertex, path) {
   "use strict";
-
   result.push(CLONE({ vertex: vertex, path: path, startVertex : config.startVertex }));
 }
 
@@ -4586,9 +4656,22 @@ function TRAVERSAL_EDGE_EXAMPLE_FILTER (config, vertex, edge, path) {
 
 function TRAVERSAL_VERTEX_FILTER (config, vertex, path) {
   "use strict";
-
-  if (! MATCHES(vertex, config.filterVertexExamples)) {
+  if (config.filterVertexExamples && !MATCHES(vertex, config.filterVertexExamples)) {
+    if (config.filterVertexCollections
+      && config.vertexFilterMethod.indexOf("exclude") === -1
+      && config.filterVertexCollections.indexOf(vertex._id.split("/")[0]) === -1
+    ) {
+      if (config.vertexFilterMethod.indexOf("prune") === -1) {
+        return ["exclude"];
+      }
+      return ["prune", "exclude"];
+    }
     return config.vertexFilterMethod;
+  }
+  if (config.filterVertexCollections
+    && config.filterVertexCollections.indexOf(vertex._id.split("/")[0]) === -1
+  ){
+    return ["exclude"];
   }
 }
 
@@ -4721,6 +4804,11 @@ function TRAVERSAL_FUNC (func,
       config.filterVertexExamples = params.filterVertices;
       config.vertexFilterMethod = params.vertexFilterMethod || ["prune", "exclude"];
     }
+  }
+  if (params.filterVertexCollections) {
+    config.filter = config.filter || TRAVERSAL_VERTEX_FILTER;
+    config.vertexFilterMethod = config.vertexFilterMethod || ["prune", "exclude"];
+    config.filterVertexCollections = params.filterVertexCollections;
   }
 
   if (params._sort) {
@@ -5556,8 +5644,6 @@ function GRAPH_TRAVERSAL (vertexCollection,
 /// `GRAPH_TRAVERSAL (graphName, startVertexExample, direction, options)`
 ///
 /// This function performs traversals on the given graph.
-/// For a more detailed documentation on the optional parameters see
-/// [Traversals](../Traversals/README.md).
 ///
 /// The complexity of this function strongly depends on the usage.
 ///
@@ -5567,8 +5653,31 @@ function GRAPH_TRAVERSAL (vertexCollection,
 /// vertices (see [example](#short_explanation_of_the_example_parameter)).
 /// * *direction*          : The direction of the edges as a string. Possible values
 /// are *outbound*, *inbound* and *any* (default).
-/// * *options* (optional) : Object containing optional options, see
-///   [Traversals](../Traversals/README.md):
+/// * *options*: Object containing optional options.
+///
+/// *Options*:
+///  
+/// * *strategy*: determines the visitation strategy. Possible values are 
+/// *depthfirst* and *breadthfirst*. Default is *breadthfirst*.
+/// * *order*: determines the visitation order. Possible values are 
+/// *preorder* and *postorder*.
+/// * *itemOrder*: determines the order in which connections returned by the 
+/// expander will be processed. Possible values are *forward* and *backward*.
+/// * *maxDepth*: if set to a value greater than *0*, this will limit the 
+/// traversal to this maximum depth. 
+/// * *minDepth*: if set to a value greater than *0*, all vertices found on 
+/// a level below the *minDepth* level will not be included in the result.
+/// * *maxIterations*: the maximum number of iterations that the traversal is 
+/// allowed to perform. It is sensible to set this number so unbounded traversals 
+/// will terminate at some point.
+/// * *uniqueness*: an object that defines how repeated visitations of vertices should 
+/// be handled. The *uniqueness* object can have a sub-attribute *vertices*, and a
+/// sub-attribute *edges*. Each sub-attribute can have one of the following values:
+///   * *"none"*: no uniqueness constraints
+///   * *"path"*: element is excluded if it is already contained in the current path.
+///    This setting may be sensible for graphs that contain cycles (e.g. A -> B -> C -> A).
+///   * *"global"*: element is excluded if it was already found/visited at any 
+///   point during the traversal.
 ///
 /// @EXAMPLES
 ///
@@ -5746,8 +5855,6 @@ function GENERAL_GRAPH_DISTANCE_TO (graphName,
 /// This function creates a tree format from the result for a better visualization of
 /// the path.
 /// This function performs traversals on the given graph.
-/// For a more detailed documentation on the optional parameters see
-/// [Traversals](../Traversals/README.md).
 ///
 /// The complexity of this function strongly depends on the usage.
 ///
@@ -5761,7 +5868,7 @@ function GENERAL_GRAPH_DISTANCE_TO (graphName,
 /// * *connectName*        : The result attribute which
 ///  contains the connection.
 /// * *options* (optional) : An object containing options, see
-///  [Traversals](../Traversals/README.md):
+///  [Graph Traversals](../AQL/GraphOperations.html#graph_traversal):
 ///
 /// @EXAMPLES
 ///
@@ -5934,8 +6041,8 @@ function GRAPH_NEIGHBORS (vertexCollection,
 ///   * *edgeCollectionRestriction*        : One or multiple edge
 ///   collection names. Only edges from these collections will be considered for the path.
 ///   * *vertexCollectionRestriction* : One or multiple vertex
-///   collection names. Only vertices from these collections will be considered as
-///   neighbor.
+///   collection names. Only vertices from these collections will be contained in the
+///   result. This does not effect vertices on the path.
 ///   * *minDepth*                         : Defines the minimal
 ///      depth a path to a neighbor must have to be returned (default is 1).
 ///   * *maxDepth*                         : Defines the maximal
@@ -5978,21 +6085,12 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
   }
 
   options.fromVertexExample = vertexExample;
-  if (! options.direction) {
+  if (! options.hasOwnProperty("direction")) {
     options.direction =  'any';
   }
 
-  if (options.vertexCollectionRestriction) {
-    if (options.direction === "inbound") {
-      options.endVertexCollectionRestriction = options.vertexCollectionRestriction;
-    } else {
-      options.startVertexCollectionRestriction = options.vertexCollectionRestriction;
-    }
-  }
-  if (options.neighborExamples) {
-    if (typeof options.neighborExamples === "string") {
-      options.neighborExamples = {_id : options.neighborExamples};
-    }
+  if (options.hasOwnProperty("neighborExamples") && typeof options.neighborExamples === "string") {
+    options.neighborExamples = {_id : options.neighborExamples};
   }
   var neighbors = [],
     params = TRAVERSAL_PARAMS(),
@@ -6007,6 +6105,9 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
   }
   if (options.edgeCollectionRestriction) {
     params.edgeCollectionRestriction = options.edgeCollectionRestriction;
+  }
+  if (options.vertexCollectionRestriction) {
+    params.filterVertexCollections = options.vertexCollectionRestriction;
   }
   fromVertices.forEach(function (v) {
     var e = TRAVERSAL_FUNC("GRAPH_NEIGHBORS",
@@ -6175,15 +6276,13 @@ function GENERAL_GRAPH_VERTICES (
   if (! options.direction) {
     options.direction =  'any';
   }
-  if (options.direction ===  'any') {
-    options.includeOrphans = true;
-  }
   if (options.vertexCollectionRestriction) {
     if (options.direction === "inbound") {
       options.endVertexCollectionRestriction = options.vertexCollectionRestriction;
     } else if (options.direction === "outbound")  {
       options.startVertexCollectionRestriction = options.vertexCollectionRestriction;
     } else {
+      options.includeOrphans = true;
       options.endVertexCollectionRestriction = options.vertexCollectionRestriction;
       options.startVertexCollectionRestriction = options.vertexCollectionRestriction;
       options.orphanCollectionRestriction = options.vertexCollectionRestriction;
@@ -7269,6 +7368,8 @@ exports.STRING_LIKE = STRING_LIKE;
 exports.STRING_LEFT = STRING_LEFT;
 exports.STRING_RIGHT = STRING_RIGHT;
 exports.STRING_TRIM = STRING_TRIM;
+exports.STRING_FIND_FIRST = STRING_FIND_FIRST;
+exports.STRING_FIND_LAST = STRING_FIND_LAST;
 exports.CAST_BOOL = CAST_BOOL;
 exports.CAST_NUMBER = CAST_NUMBER;
 exports.CAST_STRING = CAST_STRING;

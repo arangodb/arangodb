@@ -56,7 +56,7 @@ namespace triagens {
 /// @brief constructs a new V8 queue job
 ////////////////////////////////////////////////////////////////////////////////
 
-        V8QueueJob (const string& queue,
+        V8QueueJob (const std::string& queue,
                     struct TRI_vocbase_s*,
                     ApplicationV8*,
                     const TRI_json_t*);
@@ -125,7 +125,7 @@ namespace triagens {
 /// @brief queue name
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _queue;
+        std::string _queue;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief vocbase

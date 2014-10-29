@@ -104,7 +104,10 @@ createErrorBubbleWrap = function (handler, errorClass, code, reason, errorHandle
     try {
       handler(req, res);
     } catch (e) {
-      if ((typeof errorClass === 'string' && e.name === errorClass) || e instanceof errorClass) {
+      if (
+        (typeof errorClass === 'string' && e.name === errorClass) ||
+        (typeof errorClass === 'function' && e instanceof errorClass)
+      ) {
         res.status(code);
         res.json(errorHandler(e));
       } else {
@@ -432,7 +435,7 @@ extend(RequestContext.prototype, {
 /// return an array of models.
 ///
 /// The behavior of *bodyParam* changes depending on the *rootElement* option
-/// set in the [manifest](../Foxx/Manifest.md). If it is set to true, it is
+/// set in the [manifest](../FoxxManifest.md). If it is set to true, it is
 /// expected that the body is an
 /// object with a key of the same name as the *paramName* argument.
 /// The value of this object is either a single object or in the case of a multi
@@ -441,9 +444,10 @@ extend(RequestContext.prototype, {
 /// @EXAMPLES
 ///
 /// ```js
-/// app.post("/foxx", function {
-///   // Do something
-/// }).bodyParam("body", {
+/// app.post("/foxx", function (req, res) {
+///   var foxxBody = req.parameters.foxxBody;
+///   // Do something with foxxBody
+/// }).bodyParam("foxxBody", {
 ///   description: "Body of the Foxx",
 ///   type: FoxxBodyModel
 /// });

@@ -60,7 +60,7 @@ namespace triagens {
 
         AsyncCallbackContext (std::string const& coordHeader)
           : _coordHeader(coordHeader),
-            _response(0) {
+            _response(nullptr) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -68,7 +68,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ~AsyncCallbackContext () {
-          if (_response != 0) {
+          if (_response != nullptr) {
             delete _response;
           }
         }
@@ -149,7 +149,7 @@ namespace triagens {
 
         AsyncJobResult () :
           _jobId(0),
-          _response(0),
+          _response(nullptr),
           _stamp(0.0),
           _status(JOB_UNDEFINED),
           _ctx(nullptr) {
@@ -245,7 +245,7 @@ namespace triagens {
 /// @brief joblist typedef
 ////////////////////////////////////////////////////////////////////////////////
 
-        typedef std::map<AsyncJobResult::IdType, AsyncJobResult> JobList;
+        typedef std::unordered_map<AsyncJobResult::IdType, AsyncJobResult> JobList;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -390,7 +390,7 @@ namespace triagens {
                                     bool removeFromList) {
           WRITE_LOCKER(_lock);
 
-          JobList::iterator it = _jobs.find(jobId);
+          auto it = _jobs.find(jobId);
 
           if (it == _jobs.end()) {
             status = AsyncJobResult::JOB_UNDEFINED;
@@ -602,7 +602,7 @@ namespace triagens {
         bool deleteJobResult (AsyncJobResult::IdType jobId) {
           WRITE_LOCKER(_lock);
 
-          JobList::iterator it = _jobs.find(jobId);
+          auto it = _jobs.find(jobId);
 
           if (it == _jobs.end()) {
             return false;
@@ -626,7 +626,7 @@ namespace triagens {
         void deleteJobResults () {
           WRITE_LOCKER(_lock);
 
-          JobList::iterator it = _jobs.begin();
+          auto it = _jobs.begin();
 
           while (it != _jobs.end()) {
             HttpResponse* response = (*it).second._response;
@@ -648,7 +648,7 @@ namespace triagens {
         void deleteExpiredJobResults (double stamp) {
           WRITE_LOCKER(_lock);
 
-          JobList::iterator it = _jobs.begin();
+          auto it = _jobs.begin();
 
           while (it != _jobs.end()) {
             AsyncJobResult ajr = (*it).second;
@@ -826,12 +826,12 @@ namespace triagens {
 
         const std::vector<AsyncJobResult::IdType> byStatus (AsyncJobResult::Status status,
                                                             size_t maxCount) {
-          vector<AsyncJobResult::IdType> jobs;
+          std::vector<AsyncJobResult::IdType> jobs;
           size_t n = 0;
 
           {
             READ_LOCKER(_lock);
-            JobList::iterator it = _jobs.begin();
+            auto it = _jobs.begin();
 
             // iterate the list. the list is sorted by id
             while (it != _jobs.end()) {
@@ -879,14 +879,14 @@ namespace triagens {
           }
 
           AsyncJobResult ajr(*jobId,
-                             0,
+                             nullptr,
                              TRI_microtime(),
                              AsyncJobResult::JOB_PENDING,
                              ctx);
 
           WRITE_LOCKER(_lock);
 
-          _jobs[*jobId] = ajr;
+          _jobs.emplace(*jobId, ajr);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -906,13 +906,13 @@ namespace triagens {
             return;
           }
 
-          const double now = TRI_microtime();
+          double const now = TRI_microtime();
           AsyncCallbackContext* ctx = nullptr;
           HttpResponse* response    = nullptr;
 
           {
             WRITE_LOCKER(_lock);
-            JobList::iterator it = _jobs.find(jobId);
+            auto it = _jobs.find(jobId);
 
             if (it == _jobs.end()) {
               // job is already deleted.

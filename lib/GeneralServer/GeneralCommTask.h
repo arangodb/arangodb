@@ -89,7 +89,8 @@ namespace triagens {
             _readRequestBody(false),
             _request(nullptr),
             _maximalHeaderSize(0),
-            _maximalBodySize(0) {
+            _maximalBodySize(0),
+            _maximalPipelineSize(0) {
 
           LOG_TRACE("connection established, client %d, server ip %s, server port %d, client ip %s, client port %d",
                     (int) TRI_get_fd_or_handle_of_socket(socket),
@@ -98,10 +99,11 @@ namespace triagens {
                     _connectionInfo.clientAddress.c_str(),
                     (int) _connectionInfo.clientPort);
 
-          pair<size_t, size_t> p = server->getHandlerFactory()->sizeRestrictions();
+          const auto p = server->getHandlerFactory()->sizeRestrictions();
 
-          _maximalHeaderSize = p.first;
-          _maximalBodySize = p.second;
+          _maximalHeaderSize = p.maximalHeaderSize;
+          _maximalBodySize = p.maximalBodySize;
+          _maximalPipelineSize = p.maximalPipelineSize;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -114,7 +116,7 @@ namespace triagens {
           LOG_TRACE("connection closed, client %d", (int) TRI_get_fd_or_handle_of_socket(_commSocket));
 
           // free write buffers
-          for (deque<basics::StringBuffer*>::iterator i = _writeBuffers.begin();  i != _writeBuffers.end();  i++) {
+          for (std::deque<basics::StringBuffer*>::iterator i = _writeBuffers.begin();  i != _writeBuffers.end();  i++) {
             basics::StringBuffer* buffer = *i;
 
             delete buffer;
@@ -122,7 +124,7 @@ namespace triagens {
 
 #ifdef TRI_ENABLE_FIGURES
 
-          for (deque<TRI_request_statistics_t*>::iterator i = _writeBuffersStats.begin();  i != _writeBuffersStats.end();  i++) {
+          for (std::deque<TRI_request_statistics_t*>::iterator i = _writeBuffersStats.begin();  i != _writeBuffersStats.end();  i++) {
             TRI_request_statistics_t* buffer = *i;
 
             TRI_ReleaseRequestStatistics(buffer);
@@ -205,7 +207,7 @@ namespace triagens {
             TRI_request_statistics_t* statistics = _writeBuffersStats.front();
             _writeBuffersStats.pop_front();
 #else
-            TRI_request_statistics_t* statistics = 0;
+            TRI_request_statistics_t* statistics = nullptr;
 #endif
 
             setWriteBuffer(buffer, statistics);
@@ -225,11 +227,8 @@ namespace triagens {
         bool handleRead (bool& closed)  {
           bool res = fillReadBuffer(closed);
 
-          if (res) {
-            if (_request == nullptr || _readRequestBody) {
-              res = processRead();
-            }
-          }
+          // process as much data as we got
+          processRead();
 
           if (closed) {
             res = false;
@@ -296,7 +295,7 @@ namespace triagens {
 /// @brief write buffers
 ////////////////////////////////////////////////////////////////////////////////
 
-        deque<basics::StringBuffer*> _writeBuffers;
+        std::deque<basics::StringBuffer*> _writeBuffers;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief statistics buffers
@@ -304,7 +303,7 @@ namespace triagens {
 
 #ifdef TRI_ENABLE_FIGURES
 
-        deque<TRI_request_statistics_t*> _writeBuffersStats;
+        std::deque<TRI_request_statistics_t*> _writeBuffersStats;
 
 #endif
 
@@ -361,6 +360,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         size_t _maximalBodySize;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the maximal pipeline size
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t _maximalPipelineSize;
     };
   }
 }

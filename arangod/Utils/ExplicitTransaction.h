@@ -33,6 +33,7 @@
 #include "Basics/Common.h"
 
 #include "Utils/Transaction.h"
+#include "Utils/V8TransactionContext.h"
 #include "VocBase/server.h"
 #include "VocBase/transaction.h"
 
@@ -41,8 +42,7 @@ struct TRI_vocbase_s;
 namespace triagens {
   namespace arango {
 
-    template<typename T>
-    class ExplicitTransaction : public Transaction<T> {
+    class ExplicitTransaction : public Transaction {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         class ExplicitTransaction
@@ -63,7 +63,7 @@ namespace triagens {
                              std::vector<std::string> const& writeCollections,
                              double lockTimeout,
                              bool waitForSync)
-          : Transaction<T>(vocbase, 0) {
+          : Transaction(new V8TransactionContext(false), vocbase, 0) {
 
           this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
 

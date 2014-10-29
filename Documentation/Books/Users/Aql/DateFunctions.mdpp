@@ -1,0 +1,118 @@
+!CHAPTER Date functions
+
+AQL offers functionality to work with dates. Dates are no datatypes of their own in 
+AQL (neither they are in JSON, which is often used as a format to ship data into and
+out of ArangoDB). Instead, dates in AQL are internally represented by either numbers 
+(timestamps) or strings. The date functions in AQL provide mechanisms to convert from 
+a numeric timestamp to a string representation and vice versa. 
+
+There are two date functions in AQL to create dates for further use:
+
+- *DATE_TIMESTAMP(date)*: Creates a UTC timestamp value from *date*. The return
+  value has millisecond precision. To convert the return value to seconds, divide
+  it by 1000.
+
+- *DATE_TIMESTAMP(year, month, day, hour, minute, second, millisecond)*: 
+  Same as before, but allows specifying the individual date components separately.
+  All parameters after *day* are optional.
+
+- *DATE_ISO8601(date)*: Returns an ISO8601 date time string from *date*.
+  The date time string will always use UTC time, indicated by the *Z* at its end.
+
+- *DATE_ISO8601(year, month, day, hour, minute, second, millisecond)*: 
+  same as before, but allows specifying the individual date components separately.
+  All parameters after *day* are optional.
+
+These two above date functions accept the following input values:
+
+- numeric timestamps, indicating the number of milliseconds elapsed since the UNIX
+  epoch (i.e. January 1st 1970 00:00:00 UTC).
+  An example timestamp value is *1399472349522*, which translates to 
+  *2014-05-07T14:19:09.522Z*.
+
+- date time strings in formats *YYYY-MM-DDTHH:MM:SS.MMM*, 
+  *YYYY-MM-DD HH:MM:SS.MMM*, or *YYYY-MM-DD* Milliseconds are always optional.
+  A timezone difference may optionally be added at the end of the string, with the
+  hours and minutes that need to be added or subtracted to the date time value.
+  For example, *2014-05-07T14:19:09+01:00* can be used to specify a one hour offset,
+  and *2014-05-07T14:19:09+07:30* can be specified for seven and half hours offset. 
+  Negative offsets are also possible. Alternatively to an offset, a *Z* can be used
+  to indicate UTC / Zulu time. 
+ 
+  An example value is *2014-05-07T14:19:09.522Z* meaning May 7th 2014, 14:19:09 and 
+  522 milliseconds, UTC / Zulu time. Another example value without time component is 
+  *2014-05-07Z*.
+
+  Please note that if no timezone offset is specified in a datestring, ArangoDB will
+  assume UTC time automatically. This is done to ensure portability of queries across
+  servers with different timezone settings, and because timestamps will always be
+  UTC-based. 
+
+- individual date components as separate function arguments, in the following order:
+  - year 
+  - month
+  - day
+  - hour
+  - minute
+  - second
+  - millisecond
+
+  All components following *day* are optional and can be omitted. Note that no
+  timezone offsets can be specified when using separate date components, and UTC /
+  Zulu time will be used.
+ 
+The following calls to *DATE_TIMESTAMP* are equivalent and will all return 
+*1399472349522*:
+
+    DATE_TIMESTAMP("2014-05-07T14:19:09.522")
+    DATE_TIMESTAMP("2014-05-07T14:19:09.522Z")
+    DATE_TIMESTAMP("2014-05-07 14:19:09.522")
+    DATE_TIMESTAMP("2014-05-07 14:19:09.522Z")
+    DATE_TIMESTAMP(2014, 5, 7, 14, 19, 9, 522)
+    DATE_TIMESTAMP(1399472349522)
+
+The same is true for calls to *DATE_ISO8601* that also accepts variable input 
+formats:
+
+    DATE_ISO8601("2014-05-07T14:19:09.522Z")
+    DATE_ISO8601("2014-05-07 14:19:09.522Z")
+    DATE_ISO8601(2014, 5, 7, 14, 19, 9, 522)
+    DATE_ISO8601(1399472349522)
+
+The above functions are all equivalent and will return *"2014-05-07T14:19:09.522Z"*.
+
+The following date functions can be used with dates created by *DATE_TIMESTAMP* and
+*DATE_ISO8601*:
+
+- *DATE_DAYOFWEEK(date)*: Returns the weekday number of *date*. The
+  return values have the following meanings:
+  - 0: Sunday
+  - 1: Monday
+  - 2: Tuesday
+  - 3: Wednesday
+  - 4: Thursday
+  - 5: Friday
+  - 6: Saturday
+
+- *DATE_YEAR(date)*: Returns the year part of *date* as a number. 
+
+- *DATE_MONTH(date)*: Returns the month part of *date* as a number.
+
+- *DATE_DAY(date)*: Returns the day part of *date* as a number. 
+
+- *DATE_HOUR(date)*: Returns the hour part of *date* as a number. 
+
+- *DATE_MINUTE(date)*: Returns the minute part of *date* as a number. 
+
+- *DATE_SECOND(date)*: Returns the seconds part of *date* as a number. 
+
+- *DATE_MILLISECOND(date)*: Returns the milliseconds part of *date* as a number. 
+
+The following other date functions are also available:
+
+- *DATE_NOW()*: Returns the current time as a timestamp.
+  The return value has millisecond precision. To convert the return value to seconds, 
+  divide it by 1000.
+  
+  Note that this function is evaluated on every invocation and may return different 
+  values when invoked multiple times in the same query.

@@ -34,6 +34,7 @@ unittests-brief: \
 	unittests-shell-client-readonly\
 	unittests-shell-server \
 	unittests-shell-server-ahuacatl \
+	unittests-shell-server-aql \
 	unittests-http-server \
 	unittests-ssl-server \
 	unittests-shell-client \
@@ -208,6 +209,8 @@ unittests-recovery:
 	@echo "================================================================================"
 	@echo
 
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="collection-rename-recreate"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="collection-rename-recreate-flush"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="leftover-database-directory"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="leftover-collection-directory"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="collection-unload"
@@ -433,6 +436,7 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-keygen.js \
                @top_srcdir@/js/common/tests/shell-keygen-noncluster.js \
                @top_srcdir@/js/common/tests/shell-index-ensure.js \
+               @top_srcdir@/js/common/tests/shell-rename-noncluster.js \
                @top_srcdir@/js/common/tests/shell-simple-query.js \
                @top_srcdir@/js/common/tests/shell-statement.js \
                @top_srcdir@/js/common/tests/shell-transactions.js \
@@ -454,9 +458,9 @@ SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/shell-readonly-noncluster-disabled.js\
                @top_srcdir@/js/server/tests/shell-wal-noncluster.js \
                @top_srcdir@/js/server/tests/shell-sharding-helpers.js \
-               @top_srcdir@/js/server/tests/shell-compaction-noncluster.js \
+               @top_srcdir@/js/server/tests/shell-compaction-noncluster-timecritical.js \
                @top_srcdir@/js/server/tests/shell-shaped-noncluster.js \
-               @top_srcdir@/js/server/tests/shell-tasks.js \
+               @top_srcdir@/js/server/tests/shell-tasks-timecritical.js \
                @top_srcdir@/js/server/tests/shell-transactions-noncluster.js \
                @top_srcdir@/js/server/tests/shell-routing.js \
                @top_srcdir@/js/server/tests/shell-any-noncluster.js \
@@ -470,7 +474,7 @@ SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/shell-foxx-format-middleware.js \
                @top_srcdir@/js/server/tests/shell-foxx-preprocessor.js \
                @top_srcdir@/js/server/tests/shell-skiplist-index.js \
-               @top_srcdir@/js/server/tests/shell-skiplist-rm-performance.js \
+               @top_srcdir@/js/server/tests/shell-skiplist-rm-performance-timecritical.js \
                @top_srcdir@/js/server/tests/shell-skiplist-correctness.js
 
 SHELL_SERVER = $(SHELL_COMMON) $(SHELL_SERVER_ONLY)
@@ -546,14 +550,14 @@ SHELL_SERVER_AHUACATL = @top_srcdir@/js/server/tests/ahuacatl-ranges.js \
 			@top_srcdir@/js/server/tests/ahuacatl-modify-noncluster.js \
 			@top_srcdir@/js/server/tests/ahuacatl-refaccess-variable.js \
 			@top_srcdir@/js/server/tests/ahuacatl-refaccess-attribute.js \
-		        @top_srcdir@/js/server/tests/ahuacatl-queries-simple.js \
-		        @top_srcdir@/js/server/tests/ahuacatl-queries-variables.js \
-		        @top_srcdir@/js/server/tests/ahuacatl-queries-geo.js \
-		        @top_srcdir@/js/server/tests/ahuacatl-queries-fulltext.js \
-		        @top_srcdir@/js/server/tests/ahuacatl-queries-collection.js \
-		        @top_srcdir@/js/server/tests/ahuacatl-queries-noncollection.js \
-		        @top_srcdir@/js/server/tests/ahuacatl-subquery.js \
-		        @top_srcdir@/js/server/tests/ahuacatl-operators.js
+			@top_srcdir@/js/server/tests/ahuacatl-queries-simple.js \
+			@top_srcdir@/js/server/tests/ahuacatl-queries-variables.js \
+			@top_srcdir@/js/server/tests/ahuacatl-queries-geo.js \
+			@top_srcdir@/js/server/tests/ahuacatl-queries-fulltext.js \
+			@top_srcdir@/js/server/tests/ahuacatl-queries-collection.js \
+			@top_srcdir@/js/server/tests/ahuacatl-queries-noncollection.js \
+			@top_srcdir@/js/server/tests/ahuacatl-subquery.js \
+			@top_srcdir@/js/server/tests/ahuacatl-operators.js
 
 SHELL_SERVER_AHUACATL_EXTENDED = \
 			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-01.js \
@@ -595,6 +599,77 @@ unittests-shell-server-ahuacatl:
 	@echo
 
 ################################################################################
+### @brief SHELL SERVER TESTS (AQL)
+################################################################################
+
+SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
+			@top_srcdir@/js/server/tests/aql-bind.js \
+			@top_srcdir@/js/server/tests/aql-complex.js \
+			@top_srcdir@/js/server/tests/aql-cross.js \
+			@top_srcdir@/js/server/tests/aql-edges-noncluster.js \
+			@top_srcdir@/js/server/tests/aql-escaping.js \
+			@top_srcdir@/js/server/tests/aql-explain-noncluster.js \
+			@top_srcdir@/js/server/tests/aql-functions.js \
+			@top_srcdir@/js/server/tests/aql-general-graph.js \
+			@top_srcdir@/js/server/tests/aql-graph.js \
+			@top_srcdir@/js/server/tests/aql-hash-noncluster.js \
+			@top_srcdir@/js/server/tests/aql-logical.js \
+			@top_srcdir@/js/server/tests/aql-modify-noncluster.js \
+			@top_srcdir@/js/server/tests/aql-modify-noncluster-serializetest.js \
+			@top_srcdir@/js/server/tests/aql-operators.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-dynamic-bounds.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-rule-interchange-adjacent-enumerations-noncluster.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-rule-move-calculations-up.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-rule-move-filters-up.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-redundant-calculations.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-redundant-sorts.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-unnecessary-calculations.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-unnecessary-filters.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-rule-use-index-for-sort.js \
+			@top_srcdir@/js/server/tests/aql-parse.js \
+			@top_srcdir@/js/server/tests/aql-primary-index-noncluster.js \
+			@top_srcdir@/js/server/tests/aql-queries-collection.js \
+			@top_srcdir@/js/server/tests/aql-queries-fulltext.js \
+			@top_srcdir@/js/server/tests/aql-queries-geo.js \
+			@top_srcdir@/js/server/tests/aql-queries-noncollection.js \
+			@top_srcdir@/js/server/tests/aql-queries-optimiser-in.js \
+			@top_srcdir@/js/server/tests/aql-queries-optimiser.js \
+			@top_srcdir@/js/server/tests/aql-queries-optimiser-limit-noncluster.js \
+			@top_srcdir@/js/server/tests/aql-queries-optimiser-ref.js \
+			@top_srcdir@/js/server/tests/aql-queries-optimiser-sort.js \
+			@top_srcdir@/js/server/tests/aql-queries-simple.js \
+			@top_srcdir@/js/server/tests/aql-queries-variables.js \
+			@top_srcdir@/js/server/tests/aql-range.js \
+			@top_srcdir@/js/server/tests/aql-ranges.js \
+			@top_srcdir@/js/server/tests/aql-refaccess-attribute.js \
+			@top_srcdir@/js/server/tests/aql-refaccess-variable.js \
+			@top_srcdir@/js/server/tests/aql-relational.js \
+			@top_srcdir@/js/server/tests/aql-skiplist-noncluster.js \
+			@top_srcdir@/js/server/tests/aql-subquery.js \
+			@top_srcdir@/js/server/tests/aql-ternary.js \
+			@top_srcdir@/js/server/tests/aql-variables.js 
+
+.PHONY: unittests-shell-server-aql
+
+UNITTESTS_SERVER_AQL = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER_AQL))
+
+unittests-shell-server-aql:
+	@echo
+	@echo "================================================================================"
+	@echo "<< SHELL SERVER TESTS (AQL)                                                   >>"
+	@echo "================================================================================"
+	@echo
+
+	@rm -rf "$(VOCDIR)"
+	@mkdir -p "$(VOCDIR)/databases"
+
+	@$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true --server.threads 2 $(UNITTESTS_SERVER_AQL) || test "x$(FORCE)" == "x1"
+
+	@rm -rf "$(VOCDIR)"
+	@echo
+
+
+################################################################################
 ### @brief SHELL CLIENT TESTS
 ################################################################################
 
@@ -632,12 +707,12 @@ unittests-shell-client-readonly:
 	@echo
 
 SHELL_CLIENT_ONLY = \
-               @top_srcdir@/js/client/tests/shell-download.js \
+	       @top_srcdir@/js/client/tests/shell-download.js \
 	       @top_srcdir@/js/client/tests/shell-endpoints.js \
 	       @top_srcdir@/js/client/tests/shell-fm.js \
 	       @top_srcdir@/js/client/tests/shell-client.js
 
-SHELL_CLIENT = $(SHELL_CLIENT_ONLY)
+SHELL_CLIENT = $(SHELL_COMMON)
 
 .PHONY: unittests-shell-client
 UNITTESTS_CLIENT = $(addprefix --javascript.unit-tests ,$(SHELL_CLIENT))
@@ -728,9 +803,9 @@ unittests-import:
 	@echo
 
 	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --javascript.unit-tests @top_srcdir@/js/server/tests/import-setup.js || test "x$(FORCE)" == "x1"
-	for i in 1 2 3 4; do $(VALGRIND) @builddir@/bin/arangoimp --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --file UnitTests/import-$$i.json --collection UnitTestsImportJson$$i --type json || test "x$(FORCE)" == "x1"; done
+	for i in 1 2 3 4 5; do $(VALGRIND) @builddir@/bin/arangoimp --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --file UnitTests/import-$$i.json --collection UnitTestsImportJson$$i --type json || test "x$(FORCE)" == "x1"; done
 	for i in 1 2 3; do $(VALGRIND) @builddir@/bin/arangoimp --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --file UnitTests/import-$$i.csv --collection UnitTestsImportCsv$$i --create-collection true --type csv || test "x$(FORCE)" == "x1"; done
-	for i in 4; do $(VALGRIND) @builddir@/bin/arangoimp --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --file UnitTests/import-$$i.csv --collection UnitTestsImportCsv$$i --create-collection true --type csv --backslash-escape true --separator ";" || test "x$(FORCE)" == "x1"; done
+	for i in 4 5; do $(VALGRIND) @builddir@/bin/arangoimp --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --file UnitTests/import-$$i.csv --collection UnitTestsImportCsv$$i --create-collection true --type csv --backslash-escape true --separator ";" || test "x$(FORCE)" == "x1"; done
 	for i in 1 2; do $(VALGRIND) @builddir@/bin/arangoimp --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --file UnitTests/import-$$i.tsv --collection UnitTestsImportTsv$$i --create-collection true --type tsv || test "x$(FORCE)" == "x1"; done
 	$(VALGRIND) @builddir@/bin/arangoimp --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --file UnitTests/import-edges.json --collection UnitTestsImportEdge --create-collection false --type json || test "x$(FORCE)" == "x1"
 	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --javascript.unit-tests @top_srcdir@/js/server/tests/import.js || test "x$(FORCE)" == "x1"

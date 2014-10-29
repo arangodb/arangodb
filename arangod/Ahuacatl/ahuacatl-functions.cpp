@@ -603,6 +603,8 @@ TRI_associative_pointer_t* TRI_CreateFunctionsAql (void) {
   REGISTER_FUNCTION("LEFT", "STRING_LEFT", true, false, "s,n", NULL);
   REGISTER_FUNCTION("RIGHT", "STRING_RIGHT", true, false, "s,n", NULL);
   REGISTER_FUNCTION("TRIM", "STRING_TRIM", true, false, "s|n", NULL);
+  REGISTER_FUNCTION("FIND_FIRST", "STRING_FIND_FIRST", true, false, "s,s|zn,zn", NULL);
+  REGISTER_FUNCTION("FIND_LAST", "STRING_FIND_LAST", true, false, "s,s|zn,zn", NULL);
 
   // numeric functions
   REGISTER_FUNCTION("FLOOR", "NUMBER_FLOOR", true, false, "n", NULL);

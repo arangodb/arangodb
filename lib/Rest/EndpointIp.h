@@ -85,7 +85,7 @@ namespace triagens {
 /// @brief default host if none specified
 ////////////////////////////////////////////////////////////////////////////////
 
-        static const string _defaultHost;
+        static const std::string _defaultHost;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods

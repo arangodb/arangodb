@@ -135,9 +135,27 @@ namespace triagens {
 /// "Pass 10": final transformations for the cluster
 //////////////////////////////////////////////////////////////////////////////
 
+        // make operations on sharded collections use distribute 
+        distributeInCluster_pass10              = 1000,
+        
         // make operations on sharded collections use scatter / gather / remote
-        distributeInCluster_pass10                = 1000
+        scatterInCluster_pass10                 = 1010,
+          
+        // move FilterNodes & Calculation nodes inbetween
+        // scatter(remote) <-> gather(remote) so they're
+        // distributed to the cluster nodes.
+        distributeFilternCalcToCluster_pass10   = 1020,
 
+        // move SortNodes into the distribution.
+        // adjust gathernode to also contain the sort criterions.
+        distributeSortToCluster_pass10          = 1030,
+        
+        // try to get rid of a RemoteNode->ScatterNode combination which has
+        // only a SingletonNode and possibly some CalculationNodes as dependencies
+        removeUnnecessaryRemoteScatter_pass10  = 1040,
+
+        //recognise that a RemoveNode can be moved to the shards
+        undistributeRemoveAfterEnumColl_pass10 = 1050
       };
     
       public:
@@ -339,7 +357,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int createPlans (ExecutionPlan* p,
-                         std::vector<std::string> const&);
+                         std::vector<std::string> const&,
+                         bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a plan to the optimizer
@@ -443,13 +462,13 @@ namespace triagens {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "duplicate optimizer rule name");
           }
 
-          _ruleLookup.insert(std::make_pair(name, level));
+          _ruleLookup.emplace(std::make_pair(name, level));
 
           if (_rules.find(level) != _rules.end()) {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "duplicate optimizer rule level");
           }
 
-          _rules.insert(std::make_pair(level, Rule(name, func, level, canBeDisabled)));
+          _rules.emplace(std::make_pair(level, Rule(name, func, level, canBeDisabled)));
         }
 
 ////////////////////////////////////////////////////////////////////////////////

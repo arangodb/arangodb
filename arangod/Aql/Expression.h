@@ -31,8 +31,9 @@
 #include "Basics/Common.h"
 #include "Aql/AstNode.h"
 #include "Aql/Query.h"
-#include "Aql/Types.h"
+#include "Aql/Range.h"
 #include "Aql/Variable.h"
+#include "Aql/types.h"
 #include "Basics/JsonHelper.h"
 #include "Utils/AqlTransaction.h"
 
@@ -111,6 +112,17 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the expression can safely run on a DB server
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool canRunOnDBServer () {
+          if (_type == UNPROCESSED) {
+            analyzeExpression();
+          }
+          return _canRunOnDBServer;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the expression is deterministic
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -150,7 +162,7 @@ namespace triagens {
 /// @brief execute the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-        AqlValue execute (AQL_TRANSACTION_V8* trx,
+        AqlValue execute (triagens::arango::AqlTransaction* trx,
                           std::vector<TRI_document_collection_t const*>&,
                           std::vector<AqlValue>&, size_t,
                           std::vector<Variable*> const&,
@@ -200,6 +212,15 @@ namespace triagens {
 
         void replaceVariables (std::unordered_map<VariableId, Variable const*> const&);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalidates an expression
+/// this only has an effect for V8-based functions, which need to be created,
+/// used and destroyed in the same context. when a V8 function is used across
+/// multiple V8 contexts, it must be invalidated in between
+////////////////////////////////////////////////////////////////////////////////
+
+        void invalidate ();
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
@@ -207,11 +228,28 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief analyze the expression (and, if appropriate, compile it into 
-/// executable code)
+/// @brief find a value in a list
+////////////////////////////////////////////////////////////////////////////////
+
+        bool findInList (AqlValue const&, 
+                         AqlValue const&, 
+                         TRI_document_collection_t const*, 
+                         TRI_document_collection_t const*,
+                         triagens::arango::AqlTransaction*,
+                         AstNode const*) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief analyze the expression (determine its type etc.)
 ////////////////////////////////////////////////////////////////////////////////
 
         void analyzeExpression ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief build the expression (if appropriate, compile it into 
+/// executable code)
+////////////////////////////////////////////////////////////////////////////////
+
+        void buildExpression ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE
@@ -219,7 +257,7 @@ namespace triagens {
 
         AqlValue executeSimpleExpression (AstNode const*,
                                           TRI_document_collection_t const**,
-                                          AQL_TRANSACTION_V8*,
+                                          triagens::arango::AqlTransaction*,
                                           std::vector<TRI_document_collection_t const*>&,
                                           std::vector<AqlValue>&, size_t,
                                           std::vector<Variable*> const&,
@@ -250,6 +288,13 @@ namespace triagens {
         AstNode const*            _node;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief a cache for already calculated Json values
+/// this cache saves recalculation of expensive sub-expressions
+////////////////////////////////////////////////////////////////////////////////
+
+        std::unordered_map<AstNode const*, triagens::basics::Json*> _valueCache; 
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief a v8 function that will be executed for the expression
 /// if the expression is a constant, it will be stored as plain JSON instead
 ////////////////////////////////////////////////////////////////////////////////
@@ -273,10 +318,22 @@ namespace triagens {
         bool                      _canThrow;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the expression can be run safely on a DB server
+////////////////////////////////////////////////////////////////////////////////
+        
+        bool                      _canRunOnDBServer;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the expression is deterministic
 ////////////////////////////////////////////////////////////////////////////////
 
         bool                      _isDeterministic;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the expression has been built/compiled
+////////////////////////////////////////////////////////////////////////////////
+
+        bool                      _built;
 
     };
 

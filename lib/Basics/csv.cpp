@@ -40,8 +40,8 @@
 void TRI_InitCsvParser (TRI_csv_parser_t* parser,
                         TRI_memory_zone_t* zone,
                         void (*begin) (TRI_csv_parser_t*, size_t),
-                        void (*add) (TRI_csv_parser_t*, char const*, size_t, size_t, bool),
-                        void (*end) (TRI_csv_parser_t*, char const*, size_t, size_t, bool)) {
+                        void (*add) (TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool),
+                        void (*end) (TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool)) {
   size_t length;
 
   parser->_state = TRI_CSV_PARSER_BOL;
@@ -316,7 +316,7 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t leng
             if (*ptr == parser->_separator) {
               *qtr = '\0';
 
-              parser->add(parser, parser->_start, parser->_row, parser->_column, false);
+              parser->add(parser, parser->_start, qtr - parser->_start, parser->_row, parser->_column, false);
 
               ptr++;
               parser->_column++;
@@ -328,7 +328,7 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t leng
               char c = *ptr;
               *qtr = '\0';
 
-              parser->end(parser, parser->_start, parser->_row, parser->_column, false);
+              parser->end(parser, parser->_start, qtr - parser->_start, parser->_row, parser->_column, false);
               parser->_row++;
               if (c == '\r') {
                 parser->_state = TRI_CSV_PARSER_BOL2;
@@ -389,7 +389,7 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t leng
             if (*ptr == parser->_separator) {
               *qtr = '\0';
 
-              parser->add(parser, parser->_start, parser->_row, parser->_column, true);
+              parser->add(parser, parser->_start, qtr - parser->_start, parser->_row, parser->_column, true);
 
               ptr++;
               parser->_column++;
@@ -400,7 +400,7 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t leng
               char c = *ptr;
               *qtr = '\0';
 
-              parser->end(parser, parser->_start, parser->_row, parser->_column, true);
+              parser->end(parser, parser->_start, qtr - parser->_start, parser->_row, parser->_column, true);
               parser->_row++;
 
               if (c == '\r') {

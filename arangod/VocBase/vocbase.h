@@ -31,6 +31,7 @@
 #define ARANGODB_VOC_BASE_VOCBASE_H 1
 
 #include "Basics/Common.h"
+#include "Basics/ReadWriteLock.h"
 
 #include "Basics/associative.h"
 #include "Basics/locks.h"
@@ -308,6 +309,9 @@ typedef struct TRI_vocbase_s {
 
   TRI_read_write_lock_t      _inventoryLock;      // object lock needed when replication is assessing the state of the vocbase
 
+  // structures for user-defined volatile data
+  void*                      _userStructures;
+
   TRI_associative_pointer_t  _authInfo;
   TRI_associative_pointer_t  _authCache;
   TRI_read_write_lock_t      _authInfoLock;
@@ -378,6 +382,9 @@ typedef struct TRI_vocbase_col_s {
 
   TRI_read_write_lock_t             _lock;       // lock protecting the status and name
 
+  uint32_t                          _internalVersion; // is incremented when a collection is renamed
+                                                 // this is used to prevent caching of collection objects
+                                                 // with "wrong" names in the "db" object
   TRI_vocbase_col_status_e          _status;     // status of the collection
   struct TRI_document_collection_t*  _collection; // NULL or pointer to loaded collection
   char _name[TRI_COL_NAME_LENGTH + 1];           // name of the collection
@@ -592,6 +599,12 @@ TRI_vocbase_col_t* TRI_UseCollectionByNameVocBase (TRI_vocbase_t*,
 
 void TRI_ReleaseCollectionVocBase (TRI_vocbase_t*,
                                    TRI_vocbase_col_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the vocbase has been marked as deleted
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsDeletedVocBase (TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief increase the reference counter for a database

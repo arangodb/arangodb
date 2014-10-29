@@ -62,9 +62,7 @@ namespace triagens {
         virtual void after (T*) {
         }
 
-        virtual bool enterSubquery (T*, // super 
-                                    T*  // sub
-                                   ) {
+        virtual bool enterSubquery (T*, T*) { // super, sub
           return true;
         }
 

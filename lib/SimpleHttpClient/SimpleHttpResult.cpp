@@ -42,8 +42,15 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     SimpleHttpResult::SimpleHttpResult ()
-      : _resultBody(TRI_UNKNOWN_MEM_ZONE) {
-      clear();
+      : _returnMessage(),
+        _contentLength(0),
+        _returnCode(0),
+        _foundHeader(false),
+        _hasContentLength(false),
+        _chunked(false),
+        _deflated(false),
+        _resultBody(TRI_UNKNOWN_MEM_ZONE),
+        _requestResultType(UNKNOWN) {
     }
 
     SimpleHttpResult::~SimpleHttpResult () {
@@ -54,9 +61,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     void SimpleHttpResult::clear () {
-      _returnCode = 0;
       _returnMessage = "";
       _contentLength = 0;
+      _returnCode = 0;
       _hasContentLength = false;
       _chunked = false;
       _deflated = false;
@@ -69,7 +76,7 @@ namespace triagens {
       return _resultBody;
     }
 
-    string SimpleHttpResult::getResultTypeMessage () {
+    string SimpleHttpResult::getResultTypeMessage () const {
       switch (_requestResultType) {
         case (COMPLETE):
           return "No error.";
@@ -85,62 +92,113 @@ namespace triagens {
     }
     
     void SimpleHttpResult::addHeaderField (char const* line, size_t length) {
-      addHeaderField(std::string(line, length));
+      auto find = static_cast<char const*>(memchr(static_cast<void const*>(line), ':', length));
+
+      if (find == nullptr) {
+        find = static_cast<char const*>(memchr(static_cast<void const*>(line), ' ', length));
+      }
+
+      if (find != nullptr) {
+        size_t l = find - line;
+        addHeaderField(line, l, find + 1, length - l - 1);
+      }
     }
 
-    void SimpleHttpResult::addHeaderField (std::string const& line) {
-       size_t find = line.find(": ");
+    void SimpleHttpResult::addHeaderField (char const* key, 
+                                           size_t keyLength,
+                                           char const* value,
+                                           size_t valueLength) {
+      // trim key
+      char const* end = key + keyLength;
 
-       if (find != string::npos) {
-         string&& key = line.substr(0, find);
-         string&& value = StringUtils::trim(line.substr(find + 2));
-         addHeaderField(key, value);
-         return;
-       }
+      while (key < end && 
+             (*key == ' ' || *key == '\t')) {
+        ++key;
+        --keyLength;
+      }
 
-       find = line.find(" ");
-       if (find != string::npos) {
-         string&& key = line.substr(0, find);
-         if (find + 1 < line.length()) {
-           string&& value = StringUtils::trim(line.substr(find + 1));
-           addHeaderField(key, value);
-         }
-         else {
-           addHeaderField(key, "");
-         }
-       }
+      // lower-case key
+      std::string keyString(key, keyLength);
+      StringUtils::tolowerInPlace(&keyString);
+
+      // trim value
+      end = value + valueLength;
+
+      while (value < end && 
+             (*value == ' ' || *value == '\t')) {
+        ++value;
+        --valueLength;
+      }
+
+      if (keyString[0] == 'h') {
+        if (! _foundHeader &&
+            (keyString == "http/1.1" || keyString == "http/1.0")) {
+          if (valueLength > 2) {
+            _foundHeader = true;
+
+            // we assume the status code is 3 chars long
+            if ((value[0] >= '0' && value[0] <= '9') &&
+                (value[1] >= '0' && value[1] <= '9') &&
+                (value[2] >= '0' && value[2] <= '9')) {
+              // set response code
+              setHttpReturnCode(100 * (value[0] - '0') + 10 * (value[1] - '0') + (value[2] - '0'));
+            }
+         
+            if (valueLength >= 4) {
+              setHttpReturnMessage(std::string(value + 4, valueLength - 4));
+            }
+          }
+        }
+      }
+
+      else if (keyString[0] == 'c') {
+
+        if (keyString.size() == strlen("content-length") &&
+            keyString == "content-length") {
+          setContentLength((size_t) StringUtils::int64(value, valueLength));
+        }
+        else if (keyString.size() == strlen("content-encoding") &&
+                 keyString == "content-encoding") {
+          if (valueLength == strlen("deflate") &&
+              (value[0] == 'd' || value[0] == 'D') &&
+              (value[1] == 'e' || value[1] == 'E') &&
+              (value[2] == 'f' || value[2] == 'F') &&
+              (value[3] == 'l' || value[3] == 'L') &&
+              (value[4] == 'a' || value[4] == 'A') &&
+              (value[5] == 't' || value[5] == 'T') &&
+              (value[6] == 'e' || value[6] == 'E')) {
+            _deflated = true;
+          }
+        }
+      }
+
+      else if (keyString[0] == 't') {
+
+        if (keyString.size() == strlen("transfer-encoding") &&
+            keyString == "transfer-encoding") {
+          if (valueLength == strlen("chunked") &&
+              (value[0] == 'c' || value[0] == 'C') &&
+              (value[1] == 'h' || value[1] == 'H') &&
+              (value[2] == 'u' || value[2] == 'U') &&
+              (value[3] == 'n' || value[3] == 'N') &&
+              (value[4] == 'k' || value[4] == 'K') &&
+              (value[5] == 'e' || value[5] == 'E') &&
+              (value[6] == 'd' || value[6] == 'D')) {
+            _chunked = true;
+          }
+        }
+      }
+
+      auto result = _headerFields.emplace(keyString, std::string(value, valueLength));
+      if (! result.second) {
+        // header already present
+        _headerFields[keyString] = std::string(value, valueLength);
+      }
     }
 
-    void SimpleHttpResult::addHeaderField (std::string const& key, std::string const& value) {
-      string&& k = StringUtils::trim(StringUtils::tolower(key));
+    std::string SimpleHttpResult::getHeaderField (std::string const& name, bool& found) const {
+      auto find = _headerFields.find(name);
 
-      if (k == "http/1.1" || k == "http/1.0") {
-        if (value.length() > 2) {
-          // we assume the status code is 3 chars long
-          string code = value.substr(0, 3);
-          setHttpReturnCode(atoi(code.c_str()));
-          setHttpReturnMessage(value.substr(3 + 1));
-        }
-      }
-      else if (k == "content-length") {
-        setContentLength((size_t) StringUtils::int64(value.c_str()));
-      }
-      else if (k == "transfer-encoding") {
-        if (StringUtils::tolower(value) == "chunked") {
-          _chunked = true;
-        }
-      }
-      else if (k == "content-encoding") {
-        if (StringUtils::tolower(value) == "deflate") {
-          _deflated = true;
-        }
-      }
-
-      _headerFields[k] = value;
-    }
-
-    string SimpleHttpResult::getHeaderField (const string& name, bool& found) const {
-      map<string, string>::const_iterator find = _headerFields.find(name);
       if (find == _headerFields.end()) {
         found = false;
         return string("");
@@ -150,25 +208,26 @@ namespace triagens {
       return (*find).second;
     }
 
-    const string SimpleHttpResult::getContentType (const bool partial) {
-      map<string, string>::const_iterator find = _headerFields.find("content-type");
-      if (find != _headerFields.end()) {
-        // header found
-        if (partial) {
-          // return partial match before first semicolon
-          size_t semicolon = find->second.find(";");
-          if (semicolon != string::npos) {
-            // partial match found
-            return find->second.substr(0, semicolon);
-          }
-        }
-        return find->second;
+    bool SimpleHttpResult::isJson () const {
+      auto find = _headerFields.find("content-type");
+
+      if (find == _headerFields.end()) {
+        return false;
       }
 
-      return "";
+      // header found
+      // return partial match before first semicolon
+      if (strncmp(find->second.c_str(), "application/json", strlen("application/json")) != 0) {
+        return false;
+      }
+
+      char const* ptr = find->second.c_str() + strlen("application/json");
+      return (*ptr == '\0' || *ptr == ';' || *ptr == ' ');
     }
+
   }
 }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

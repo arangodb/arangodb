@@ -98,6 +98,7 @@ static void CleanupDocumentCollection (TRI_vocbase_col_t* collection,
         container->_numBarrierElements > 0) {
       // did not find anything at the head of the barrier list or found an element marker
       // this means we must exit and cannot throw away datafiles and can unload collections
+
       TRI_UnlockSpin(&container->_lock);
       return;
     }
@@ -131,11 +132,17 @@ static void CleanupDocumentCollection (TRI_vocbase_col_t* collection,
         if (! TRI_IsFullyCollectedDocumentCollection(document)) {
           bool isDeleted = false;
 
-          // if there is still some collection to perform, check if the collection was deleted already
+          // if there is still some garbage collection to perform, 
+          // check if the collection was deleted already
           if (TRI_TRY_READ_LOCK_STATUS_VOCBASE_COL(collection)) {
             isDeleted = (collection->_status == TRI_VOC_COL_STATUS_DELETED);
             TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
           }
+
+          if (! isDeleted && TRI_IsDeletedVocBase(collection->_vocbase)) {
+             // the collection was not marked as deleted, but the database was
+             isDeleted = true;
+           }
 
           if (! isDeleted) {
             // collection is not fully collected and still undeleted - postpone the unload

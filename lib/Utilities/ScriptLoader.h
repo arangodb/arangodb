@@ -69,33 +69,33 @@ namespace triagens {
 /// @brief gets the directory for scripts
 ////////////////////////////////////////////////////////////////////////////////
 
-        string const& getDirectory () const;
+        std::string const& getDirectory () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the directory for scripts
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setDirectory (string const&);
+        void setDirectory (std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief build a script from an array of strings
 ////////////////////////////////////////////////////////////////////////////////
 
-        string buildScript (const char** script);
+        std::string buildScript (const char** script);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines a new named script
 ////////////////////////////////////////////////////////////////////////////////
 
-        void defineScript (string const& name, string const& script);
+        void defineScript (std::string const& name, std::string const& script);
 
-        void defineScript (const string& name, const char** script);
+        void defineScript (std::string const& name, const char** script);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a named script
 ////////////////////////////////////////////////////////////////////////////////
 
-        string const& findScript (string const& name);
+        std::string const& findScript (std::string const& name);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
@@ -107,7 +107,7 @@ namespace triagens {
 /// @brief gets a list of all specified directory parts
 ////////////////////////////////////////////////////////////////////////////////
 
-        vector<string> getDirectoryParts ();
+        std::vector<std::string> getDirectoryParts ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
@@ -119,7 +119,7 @@ namespace triagens {
 /// @brief all scripts
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::map<string, string> _scripts;
+        std::map<std::string, std::string> _scripts;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief script directory

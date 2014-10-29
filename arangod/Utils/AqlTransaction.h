@@ -36,17 +36,15 @@
 #include "Cluster/ServerState.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
-#include "Utils/V8TransactionContext.h"
+#include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
-
-#define AQL_TRANSACTION_V8 triagens::arango::AqlTransaction<triagens::arango::V8TransactionContext<true>>
+#include <v8.h>
 
 namespace triagens {
   namespace arango {
 
-    template<typename T>
-    class AqlTransaction : public Transaction<T> {
+    class AqlTransaction : public Transaction {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              class AqlTransaction
@@ -63,14 +61,22 @@ namespace triagens {
 /// context
 ////////////////////////////////////////////////////////////////////////////////
 
-        AqlTransaction (TRI_vocbase_t* vocbase,
-                        std::map<std::string, triagens::aql::Collection*>* collections)
-          : Transaction<T>(vocbase, 0) {
+        AqlTransaction (TransactionContext* transactionContext,
+                        TRI_vocbase_t* vocbase,
+                        std::map<std::string, triagens::aql::Collection*> const* collections,
+                        bool isMainTransaction)
+          : Transaction(transactionContext, vocbase, 0),
+            _collections(*collections) {
 
-          this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
+          if (! isMainTransaction) {
+            this->addHint(TRI_TRANSACTION_HINT_LOCK_NEVER, true);
+          }
+          else {
+            this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
+          }
 
-          for (auto it = collections->begin(); it != collections->end(); ++it) {
-            if (processCollection((*it).second) != TRI_ERROR_NO_ERROR) {
+          for (auto it : *collections) {
+            if (processCollection(it.second) != TRI_ERROR_NO_ERROR) {
               break;
             }
           }
@@ -83,10 +89,14 @@ namespace triagens {
         ~AqlTransaction () {
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a list of collections to the transaction
+////////////////////////////////////////////////////////////////////////////////
+
         int addCollectionList (std::map<std::string, triagens::aql::Collection*>* collections) {
           int ret = TRI_ERROR_NO_ERROR;
-          for (auto it = collections->begin(); it != collections->end(); ++it) {
-            ret = processCollection((*it).second);
+          for (auto it : *collections) {
+            ret = processCollection(it.second);
             if (ret != TRI_ERROR_NO_ERROR) {
               break;
             }
@@ -112,9 +122,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int processCollectionCoordinator (triagens::aql::Collection* collection) {
-          TRI_voc_cid_t cid = this->resolver()->getCollectionIdCluster(collection->name);
+          TRI_voc_cid_t cid = this->resolver()->getCollectionIdCluster(collection->getName());
 
-          return this->addCollection(cid, collection->name.c_str(), collection->accessType);
+          return this->addCollection(cid, collection->getName().c_str(), collection->accessType);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -122,14 +132,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int processCollectionNormal (triagens::aql::Collection* collection) {
-          TRI_vocbase_col_t const* col = this->resolver()->getCollectionStruct(collection->name);
+          TRI_vocbase_col_t const* col = this->resolver()->getCollectionStruct(collection->getName());
           TRI_voc_cid_t cid = 0;
 
           if (col != nullptr) {
             cid = col->_cid;
           }
 
-          int res = this->addCollection(cid, collection->name.c_str(), collection->accessType);
+          int res = this->addCollection(cid, collection->getName().c_str(), collection->accessType);
 
           if (res == TRI_ERROR_NO_ERROR &&
               col != nullptr) {
@@ -157,6 +167,26 @@ namespace triagens {
           return trxColl->_collection->_collection;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone, used to make daughter transactions for parts of a distributed
+/// AQL query running on the coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+        triagens::arango::AqlTransaction* clone () const {
+          return new triagens::arango::AqlTransaction(
+                           new triagens::arango::StandaloneTransactionContext(),
+                           this->_vocbase, 
+                           &_collections, false);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief keep a copy of the collections, this is needed for the clone 
+/// operation
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+        std::map<std::string, triagens::aql::Collection*> _collections;
     };
 
   }

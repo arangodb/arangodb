@@ -176,8 +176,8 @@ def Typography(txt):
         txt = txt[0:-1]
 
     txt = BackTicks(txt)
-    txt = AsteriskItalic(txt)
     txt = AsteriskBold(txt)
+    txt = AsteriskItalic(txt)
     txt = FN(txt)
     txt = LIT(txt)
     txt = FA(txt)
@@ -187,6 +187,7 @@ def Typography(txt):
 
     r = rc(r"""@ref [a-zA-Z0-9]+""", MS)
     txt = r.sub("the manual", txt)
+    txt = re.sub(r"@endDocuBlock", "", txt)
 
     return txt
 

@@ -32,7 +32,7 @@
 
 #include "Basics/Common.h"
 #include "Aql/AqlValue.h"
-#include "Aql/Types.h"
+#include "Aql/types.h"
 #include <v8.h>
 
 namespace triagens {
@@ -71,7 +71,7 @@ namespace triagens {
 /// @brief execute the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-      AqlValue execute (AQL_TRANSACTION_V8*,
+      AqlValue execute (triagens::arango::AqlTransaction*,
                         std::vector<TRI_document_collection_t const*>&,
                         std::vector<AqlValue>&,
                         size_t,
@@ -82,10 +82,18 @@ namespace triagens {
 // --SECTION--                                                  public variables
 // -----------------------------------------------------------------------------
 
-     v8::Isolate* isolate;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the isolate used when executing and destroying the expression
+////////////////////////////////////////////////////////////////////////////////
 
-     v8::Persistent<v8::Function> func;
-    
+       v8::Isolate* isolate;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the compiled expression as a V8 function
+////////////////////////////////////////////////////////////////////////////////
+
+       v8::Persistent<v8::Function> func;
+
     };
 
   }

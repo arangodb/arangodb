@@ -139,7 +139,7 @@ namespace triagens {
 /// client.
 ////////////////////////////////////////////////////////////////////////////////
 
-        static string responseString (HttpResponseCode);
+        static std::string responseString (HttpResponseCode);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get http response code from string
@@ -147,13 +147,13 @@ namespace triagens {
 /// Converts the response code string to the internal code
 ////////////////////////////////////////////////////////////////////////////////
 
-        static HttpResponseCode responseCode (string const& str);
+        static HttpResponseCode responseCode (std::string const& str);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the batch response error count header
 ////////////////////////////////////////////////////////////////////////////////
 
-        static const string& getBatchErrorHeader ();
+        static const std::string& getBatchErrorHeader ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -206,7 +206,7 @@ namespace triagens {
 /// Sets the content type of the information of the body.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setContentType (string const& contentType);
+        void setContentType (std::string const& contentType);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a header field
@@ -216,7 +216,7 @@ namespace triagens {
 /// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
-        string header (string const& field) const;
+        std::string header (std::string const& field) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a header field
@@ -227,7 +227,7 @@ namespace triagens {
 /// The header field name must already be trimmed and lower-cased
 ////////////////////////////////////////////////////////////////////////////////
 
-        string header (const char*, const size_t) const;
+        std::string header (const char*, const size_t) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a header field
@@ -237,7 +237,7 @@ namespace triagens {
 /// returned. found is set if the client specified the header field.
 ////////////////////////////////////////////////////////////////////////////////
 
-        string header (string const& field, bool& found) const;
+        std::string header (std::string const& field, bool& found) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a header field
@@ -247,7 +247,7 @@ namespace triagens {
 /// returned. found is set if the client specified the header field.
 ////////////////////////////////////////////////////////////////////////////////
 
-        string header (const char*, const size_t, bool& found) const;
+        std::string header (const char*, const size_t, bool& found) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all header fields
@@ -255,7 +255,7 @@ namespace triagens {
 /// Returns all header fields
 ////////////////////////////////////////////////////////////////////////////////
 
-        map<string, string> headers () const;
+        std::map<std::string, std::string> headers () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets a header field
@@ -264,7 +264,7 @@ namespace triagens {
 /// The key string must remain valid until the response is destroyed
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setHeader (const char*, const size_t, string const& value);
+        void setHeader (const char*, const size_t, std::string const& value);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets a header field
@@ -282,7 +282,7 @@ namespace triagens {
 /// The key is automatically converted to lower case and trimmed.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setHeader (string const& key, string const& value);
+        void setHeader (std::string const& key, std::string const& value);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets many header fields
@@ -290,7 +290,7 @@ namespace triagens {
 /// The key is automatically converted to lower case.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setHeaders (string const& headers, bool includeLine0);
+        void setHeaders (std::string const& headers, bool includeLine0);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets a cookie
@@ -298,11 +298,11 @@ namespace triagens {
 /// The name is automatically trimmed.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setCookie (string const& name,
-                        string const& value,
+        void setCookie (std::string const& name,
+                        std::string const& value,
                         int lifeTimeSeconds,
-                        string const& path,
-                        string const& domain,
+                        std::string const& path,
+                        std::string const& domain,
                         bool secure,
                         bool httpOnly);
 
@@ -388,7 +388,7 @@ namespace triagens {
 /// @brief cookies
 ////////////////////////////////////////////////////////////////////////////////
 
-        vector<char const*> _cookies;
+        std::vector<char const*> _cookies;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief body
@@ -406,7 +406,7 @@ namespace triagens {
 /// @brief freeable list
 ////////////////////////////////////////////////////////////////////////////////
 
-        vector<char const*> _freeables;
+        std::vector<char const*> _freeables;
     };
   }
 }

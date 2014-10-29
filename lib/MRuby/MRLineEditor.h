@@ -51,9 +51,9 @@ class MRCompleter : public Completer {
   // --SECTION--                                                    public methods
   // -----------------------------------------------------------------------------
   public:
-    virtual bool isComplete (string const& source, size_t lineno, size_t column);
+    virtual bool isComplete (std::string const& source, size_t lineno, size_t column);
 
-    virtual void getAlternatives(char const *, vector<string> &);
+    virtual void getAlternatives(char const*, std::vector<std::string>&);
 };
 
 // -----------------------------------------------------------------------------

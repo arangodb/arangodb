@@ -33,10 +33,6 @@
 
 #include "Basics/Common.h"
 
-#include <regex.h>
-
-#include <v8.h>
-
 #include "Basics/csv.h"
 #include "Basics/StringBuffer.h"
 
@@ -108,7 +104,7 @@ namespace triagens {
 /// this is a string because the quote might also be empty if not used
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setQuote (string quote) {
+      void setQuote (std::string quote) {
         _quote = quote;
       }
 
@@ -124,7 +120,7 @@ namespace triagens {
 /// @brief sets the separator
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setSeparator (string separator) {
+      void setSeparator (std::string separator) {
         _separator = separator;
       }
 
@@ -198,21 +194,21 @@ namespace triagens {
 /// @return string       get the error message
 ////////////////////////////////////////////////////////////////////////////////
 
-      string getErrorMessage () {
+      std::string getErrorMessage () {
         return _errorMessage;
       }
 
     private:
-      static void ProcessCsvBegin (TRI_csv_parser_t* , size_t );
-      static void ProcessCsvAdd (TRI_csv_parser_t* parser, char const* field, size_t row, size_t column, bool escaped);
-      static void ProcessCsvEnd (TRI_csv_parser_t* parser, char const* field, size_t row, size_t column, bool escaped);
+      static void ProcessCsvBegin (TRI_csv_parser_t*, size_t);
+      static void ProcessCsvAdd (TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool);
+      static void ProcessCsvEnd (TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool);
 
       void reportProgress (int64_t, int64_t, double&);
 
       std::string getCollectionUrlPart ();
       void beginLine (size_t row);
-      void addField (char const* field, size_t row, size_t column, bool escaped);
-      void addLastField (char const* field, size_t row, size_t column, bool escaped);
+      void addField (char const*, size_t, size_t row, size_t column, bool escaped);
+      void addLastField (char const*, size_t, size_t row, size_t column, bool escaped);
 
       void sendCsvBuffer ();
       void sendJsonBuffer (char const* str, size_t len, bool isArray);
@@ -241,9 +237,6 @@ namespace triagens {
       triagens::basics::StringBuffer _lineBuffer;
       triagens::basics::StringBuffer _outputBuffer;
       std::string _firstLine;
-
-      regex_t _doubleRegex;
-      regex_t _intRegex;
 
       bool _hasError;
       std::string _errorMessage;

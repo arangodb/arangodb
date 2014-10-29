@@ -1,0 +1,57 @@
+!CHAPTER String functions
+
+For string processing, AQL offers the following functions:
+
+- *CONCAT(value1, value2, ... valuen)*: Concatenate the strings 
+  passed as in *value1* to *valuen*. *null* values are ignored
+
+- *CONCAT_SEPARATOR(separator, value1, value2, ... valuen)*: 
+  Concatenate the strings passed as arguments *value1* to *valuen* using the 
+  *separator* string. *null* values are ignored
+
+- *CHAR_LENGTH(value)*: Return the number of characters in *value*. This is
+  a synonym for *LENGTH(value)*
+
+- *LOWER(value)*: Lower-case *value*
+
+- *UPPER(value)*: Upper-case *value*
+
+- *SUBSTRING(value, offset, length)*: Return a substring of *value*,
+  starting at *offset* and with a maximum length of *length* characters. Offsets
+  start at position 0
+
+- *LEFT(value, LENGTH)*: Returns the *LENGTH* leftmost characters of
+  the string *value*
+
+- *RIGHT(value, LENGTH)*: Returns the *LENGTH* rightmost characters of
+  the string *value*
+
+- *TRIM(value, type)*: Returns the string *value* with whitespace stripped 
+  from the start and/or end. The optional *type* parameter specifies from which parts
+  of the string the whitespace is stripped:
+  - *type* 0 will strip whitespace from the start and end of the string
+  - *type* 1 will strip whitespace from the start of the string only
+  - *type* 2 will strip whitespace from the end of the string only
+
+- *REVERSE(value)*: Returns the reverse of the string *value*
+
+- *CONTAINS(text, search, return-index)*: Checks whether the string
+  *search* is contained in the string *text*. By default, this function returns 
+  *true* if *search* is contained in *text*, and *false* otherwise. By
+  passing *true* as the third function parameter *return-index*, the function
+  will return the position of the first occurrence of *search* within *text*, 
+  starting at offset 0, or *-1* if *search* is not contained in *text*.
+
+  The string matching performed by *CONTAINS* is case-sensitive.
+
+- *LIKE(text, search, case-insensitive)*: Checks whether the pattern
+  *search* is contained in the string *text*, using wildcard matching. 
+  Returns *true* if the pattern is contained in *text*, and *false* otherwise. 
+  The *pattern* string can contain the wildcard characters *%* (meaning any
+  sequence of characters) and *_* (any single character).
+
+  The string matching performed by *LIKE* is case-sensitive by default, but by
+  passing *true* as the third parameter, the matching will be case-insensitive.
+
+  The value for *search* cannot be a variable or a document attribute. The actual 
+  value must be present at query parse time already.

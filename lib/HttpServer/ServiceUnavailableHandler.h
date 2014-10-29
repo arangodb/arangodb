@@ -73,7 +73,8 @@ namespace triagens {
         void handleError (basics::TriagensError const&);
 
       private:
-        string _redirect;
+
+        std::string _redirect;
     };
   }
 }

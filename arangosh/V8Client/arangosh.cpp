@@ -81,7 +81,7 @@ static string Prompt = "arangosh [%d]> ";
 /// @brief base class for clients
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoClient BaseClient;
+ArangoClient BaseClient("arangosh");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the initial default connection
@@ -173,7 +173,7 @@ static uint64_t GcInterval = 10;
 /// @brief console object
 ////////////////////////////////////////////////////////////////////////////////
 
-static V8LineEditor* Console = 0;
+static V8LineEditor* Console = nullptr;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief voice mode
@@ -517,14 +517,14 @@ static vector<string> ParseProgramOptions (int argc, char* argv[]) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void objectToMap (map<string, string>& myMap, v8::Handle<v8::Value> val) {
-  v8::Handle<v8::Object> v8Headers = val.As<v8::Object> ();
+  v8::Handle<v8::Object> v8Headers = val.As<v8::Object>();
 
   if (v8Headers->IsObject()) {
-    v8::Handle<v8::Array> props = v8Headers->GetPropertyNames();
+    v8::Handle<v8::Array> const props = v8Headers->GetPropertyNames();
 
     for (uint32_t i = 0; i < props->Length(); i++) {
       v8::Handle<v8::Value> key = props->Get(v8::Integer::New(i));
-      myMap[TRI_ObjectToString(key)] = TRI_ObjectToString(v8Headers->Get(key));
+      myMap.emplace(TRI_ObjectToString(key), TRI_ObjectToString(v8Headers->Get(key)));
     }
   }
 }
@@ -583,13 +583,13 @@ static v8::Handle<v8::Value> ClientConnection_ConstructorCallback (v8::Arguments
 
     BaseClient.createEndpoint(definition);
 
-    if (BaseClient.endpointServer() == 0) {
+    if (BaseClient.endpointServer() == nullptr) {
       string errorMessage = "error in '" + definition + "'";
       TRI_V8_EXCEPTION_PARAMETER(scope, errorMessage.c_str());
     }
   }
 
-  if (BaseClient.endpointServer() == 0) {
+  if (BaseClient.endpointServer() == nullptr) {
     return v8::Undefined();
   }
 
@@ -704,7 +704,7 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
       if (dbObj->Has(TRI_V8_STRING("_flushCache")) && dbObj->Get(TRI_V8_STRING("_flushCache"))->IsFunction()) {
         v8::Handle<v8::Function> func = v8::Handle<v8::Function>::Cast(dbObj->Get(TRI_V8_STRING("_flushCache")));
 
-        v8::Handle<v8::Value>* args = 0;
+        v8::Handle<v8::Value>* args = nullptr;
         func->Call(dbObj, 0, args);
       }
     }
@@ -751,7 +751,7 @@ static v8::Handle<v8::Value> ClientConnection_httpGetAny (v8::Arguments const& a
   // get the connection
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
-  if (connection == 0) {
+  if (connection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
@@ -761,7 +761,6 @@ static v8::Handle<v8::Value> ClientConnection_httpGetAny (v8::Arguments const& a
   }
 
   TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, argv[0]);
-
   // check header fields
   map<string, string> headerFields;
 
@@ -798,7 +797,7 @@ static v8::Handle<v8::Value> ClientConnection_httpHeadAny (v8::Arguments const& 
   // get the connection
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
-  if (connection == 0) {
+  if (connection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
@@ -845,7 +844,7 @@ static v8::Handle<v8::Value> ClientConnection_httpDeleteAny (v8::Arguments const
   // get the connection
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
-  if (connection == 0) {
+  if (connection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
@@ -891,7 +890,7 @@ static v8::Handle<v8::Value> ClientConnection_httpOptionsAny (v8::Arguments cons
   // get the connection
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
-  if (connection == 0) {
+  if (connection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
@@ -938,7 +937,7 @@ static v8::Handle<v8::Value> ClientConnection_httpPostAny (v8::Arguments const& 
   // get the connection
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
-  if (connection == 0) {
+  if (connection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
@@ -985,7 +984,7 @@ static v8::Handle<v8::Value> ClientConnection_httpPutAny (v8::Arguments const& a
   // get the connection
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
-  if (connection == 0) {
+  if (connection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
@@ -1032,7 +1031,7 @@ static v8::Handle<v8::Value> ClientConnection_httpPatchAny (v8::Arguments const&
   // get the connection
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
-  if (connection == 0) {
+  if (connection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
@@ -1079,7 +1078,7 @@ static v8::Handle<v8::Value> ClientConnection_httpSendFile (v8::Arguments const&
   // get the connection
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
-  if (connection == 0) {
+  if (connection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
@@ -1099,7 +1098,7 @@ static v8::Handle<v8::Value> ClientConnection_httpSendFile (v8::Arguments const&
   size_t bodySize;
   char* body = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, infile.c_str(), &bodySize);
 
-  if (body == 0) {
+  if (body == nullptr) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "could not read file");
   }
 
@@ -1128,7 +1127,7 @@ static v8::Handle<v8::Value> ClientConnection_getEndpoint (v8::Arguments const& 
   // get the connection
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
-  if (connection == 0) {
+  if (connection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
@@ -1151,7 +1150,7 @@ static v8::Handle<v8::Value> ClientConnection_lastHttpReturnCode (v8::Arguments 
   // get the connection
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
-  if (connection == 0) {
+  if (connection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
@@ -1173,7 +1172,7 @@ static v8::Handle<v8::Value> ClientConnection_lastErrorMessage (v8::Arguments co
   // get the connection
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
-  if (connection == 0) {
+  if (connection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
@@ -1195,7 +1194,7 @@ static v8::Handle<v8::Value> ClientConnection_isConnected (v8::Arguments const& 
   // get the connection
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
-  if (connection == 0) {
+  if (connection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
@@ -1216,7 +1215,7 @@ static v8::Handle<v8::Value> ClientConnection_toString (v8::Arguments const& arg
   // get the connection
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
-  if (connection == 0) {
+  if (connection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
@@ -1248,7 +1247,7 @@ static v8::Handle<v8::Value> ClientConnection_getVersion (v8::Arguments const& a
   // get the connection
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
-  if (connection == 0) {
+  if (connection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
@@ -1269,7 +1268,7 @@ static v8::Handle<v8::Value> ClientConnection_getDatabaseName (v8::Arguments con
   // get the connection
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
-  if (connection == 0) {
+  if (connection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
@@ -1290,7 +1289,7 @@ static v8::Handle<v8::Value> ClientConnection_setDatabaseName (v8::Arguments con
   // get the connection
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
-  if (connection == 0) {
+  if (connection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
@@ -1364,13 +1363,13 @@ static std::string BuildPrompt () {
 #else
 
 static void SignalHandler (int signal) {
-  if (Console != 0) {
+  if (Console != nullptr) {
     Console->close();
-    Console = 0;
+    Console = nullptr;
   }
   printf("\n");
 
-  TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
+  TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
 }
 #endif
 
@@ -1489,7 +1488,7 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
 
     char* input = Console->prompt(promptError ? badPrompt.c_str() : goodPrompt.c_str());
 
-    if (input == 0) {
+    if (input == nullptr) {
       break;
     }
 
@@ -1511,7 +1510,7 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
     if (i == "help" || i == "help;") {
       TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
       input = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, "help()");
-      if (input == 0) {
+      if (input == nullptr) {
         LOG_FATAL_AND_EXIT("out of memory");
       }
     }
@@ -1565,7 +1564,7 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
 
   Console->close();
   delete Console;
-  Console = 0;
+  Console = nullptr;
 
   BaseClient.printLine("");
 
@@ -1755,7 +1754,7 @@ static bool RunJsLint (v8::Handle<v8::Context> context) {
 /// @brief startup and exit functions
 ////////////////////////////////////////////////////////////////////////////////
 
-void* arangoshResourcesAllocated = NULL;
+void* arangoshResourcesAllocated = nullptr;
 static void arangoshEntryFunction ();
 static void arangoshExitFunction (int, void*);
 
@@ -1797,17 +1796,15 @@ void arangoshEntryFunction() {
   }
 
   TRI_Application_Exit_SetExit(arangoshExitFunction);
-
 }
 
 static void arangoshExitFunction(int exitCode, void* data) {
-  int res = 0;
   // ...........................................................................
   // TODO: need a terminate function for windows to be called and cleanup
   // any windows specific stuff.
   // ...........................................................................
 
-  res = finaliseWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
+  int res = finaliseWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
 
   if (res != 0) {
     exit(1);
@@ -1863,13 +1860,13 @@ int main (int argc, char* argv[]) {
   if (useServer) {
     BaseClient.createEndpoint();
 
-    if (BaseClient.endpointServer() == 0) {
+    if (BaseClient.endpointServer() == nullptr) {
       ostringstream s;
       s << "invalid value for --server.endpoint ('" << BaseClient.endpointString() << "')";
 
       BaseClient.printErrLine(s.str());
 
-      TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
     }
 
     ClientConnection = CreateConnection();
@@ -1891,7 +1888,7 @@ int main (int argc, char* argv[]) {
 
   if (context.IsEmpty()) {
     BaseClient.printErrLine("cannot initialize V8 engine");
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   context->Enter();
@@ -2063,7 +2060,7 @@ int main (int argc, char* argv[]) {
     BaseClient.printLine("");
 
     ostringstream s;
-    s << "Welcome to arangosh " << TRI_VERSION_FULL << ". Copyright (c) triAGENS GmbH";
+    s << "Welcome to arangosh " << TRI_VERSION_FULL << ". Copyright (c) ArangoDB GmbH";
 
     BaseClient.printLine(s.str(), true);
 
@@ -2220,25 +2217,35 @@ int main (int argc, char* argv[]) {
   else {
     bool ok = false;
 
-    if (isExecuteScript) {
-      // we have scripts to execute
-      ok = RunScripts(context, ExecuteScripts, true);
+    try {
+      if (isExecuteScript) {
+        // we have scripts to execute
+        ok = RunScripts(context, ExecuteScripts, true);
+      }
+      else if (isExecuteString) {
+        // we have string to execute
+        ok = RunString(context, ExecuteString);
+      }
+      else if (isCheckScripts) {
+        // we have scripts to syntax check
+        ok = RunScripts(context, CheckScripts, false);
+      }
+      else if (isUnitTests) {
+        // we have unit tests
+        ok = RunUnitTests(context);
+      }
+      else if (isJsLint) {
+        // we don't have unittests, but we have files to jslint
+        ok = RunJsLint(context);
+      }
     }
-    else if (isExecuteString) {
-      // we have string to execute
-      ok = RunString(context, ExecuteString);
+    catch (std::exception const& ex) {
+      cerr << "caught exception " << ex.what() << endl;
+      ok = false;
     }
-    else if (isCheckScripts) {
-      // we have scripts to syntax check
-      ok = RunScripts(context, CheckScripts, false);
-    }
-    else if (isUnitTests) {
-      // we have unit tests
-      ok = RunUnitTests(context);
-    }
-    else if (isJsLint) {
-      // we don't have unittests, but we have files to jslint
-      ok = RunJsLint(context);
+    catch (...) {
+      cerr << "caught unknown exception" << endl;
+      ok = false;
     }
 
     if (! ok) {
@@ -2267,7 +2274,7 @@ int main (int argc, char* argv[]) {
 
   TRIAGENS_REST_SHUTDOWN;
 
-  arangoshExitFunction(ret, NULL);
+  arangoshExitFunction(ret, nullptr);
 
   return ret;
 }

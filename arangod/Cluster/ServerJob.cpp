@@ -89,11 +89,23 @@ Job::status_t ServerJob::work () {
   if (_shutdown != 0) {
     return status_t(Job::JOB_DONE);
   }
+ 
+  _heartbeat->setReady();
 
-  bool result = execute();
-  _heartbeat->ready(true);
+  bool result;
+
+  { 
+    // only one plan change at a time
+    MUTEX_LOCKER(ExecutorLock);
+
+    result = execute();
+  }
+    
+  _heartbeat->removeDispatchedJob();
 
   if (result) {
+    // tell the heartbeat thread that the server job was
+    // executed successfully
     return status_t(Job::JOB_DONE);
   }
 
@@ -117,7 +129,6 @@ bool ServerJob::cancel (bool running) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ServerJob::execute () {
-
   // default to system database
   TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
 
@@ -126,8 +137,6 @@ bool ServerJob::execute () {
     return false;
   }
 
-  MUTEX_LOCKER(ExecutorLock);
-
   ApplicationV8::V8Context* context = _applicationV8->enterContext("STANDARD", vocbase, false, true);
 
   if (context == nullptr) {
@@ -135,14 +144,17 @@ bool ServerJob::execute () {
     return false;
   }
 
-  {
+  try {
     v8::HandleScope scope;
     // execute script inside the context
     char const* file = "handle-plan-change";
     char const* content = "require('org/arangodb/cluster').handlePlanChange();";
 
-    TRI_ExecuteJavaScriptString(v8::Context::GetCurrent(), v8::String::New(content), v8::String::New(file), false);
+    TRI_ExecuteJavaScriptString(v8::Context::GetCurrent(), v8::String::New(content, (int) strlen(content)), v8::String::New(file), false);
   }
+  catch (...) {
+  }
+
 
   // get the pointer to the last used vocbase
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(context->_isolate->GetData());

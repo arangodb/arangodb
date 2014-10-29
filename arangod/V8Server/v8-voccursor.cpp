@@ -50,8 +50,6 @@ using namespace triagens::rest;
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wrapped class for general cursors
 ///
@@ -62,11 +60,10 @@ using namespace triagens::rest;
 
 static int32_t const WRP_GENERAL_CURSOR_TYPE = 3;
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief function that encapsulates execution of an AQL query
 ////////////////////////////////////////////////////////////////////////////////
+
 v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* context,
                                                   TRI_json_t const* parameters) {
   v8::HandleScope scope;
@@ -83,7 +80,7 @@ v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* context,
 
   // note: a query is not necessarily collection-based.
   // this means that the _collections array might contain 0 collections!
-  AhuacatlTransaction<V8TransactionContext<true>> trx(context->_vocbase, context);
+  AhuacatlTransaction trx(context->_vocbase, context);
 
   int res = trx.begin();
 
@@ -533,7 +530,9 @@ static v8::Handle<v8::Value> JS_PersistGeneralCursor (v8::Arguments const& argv)
     TRI_V8_EXCEPTION_USAGE(scope, "persist()");
   }
 
-  TRI_PersistGeneralCursor(UnwrapGeneralCursor(argv.Holder()));
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+
+  TRI_PersistGeneralCursor(vocbase, UnwrapGeneralCursor(argv.Holder()));
   return scope.Close(v8::True());
 }
 

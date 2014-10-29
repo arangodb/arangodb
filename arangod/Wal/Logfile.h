@@ -66,13 +66,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         enum class StatusType : uint32_t {
-          UNKNOWN,
-          EMPTY,
-          OPEN,
-          SEAL_REQUESTED,
-          SEALED,
-          COLLECTION_REQUESTED,
-          COLLECTED
+          UNKNOWN                = 0,
+          EMPTY                  = 1,
+          OPEN                   = 2,
+          SEAL_REQUESTED         = 3,
+          SEALED                 = 4,
+          COLLECTION_REQUESTED   = 5,
+          COLLECTED              = 6
         };
 
 // -----------------------------------------------------------------------------
@@ -422,7 +422,7 @@ namespace triagens {
           WRITE_LOCKER(_legendCacheLock);
           auto it = _legendCache.find(cs);
           if (it == _legendCache.end()) {
-            _legendCache.insert(make_pair(cs,l));
+            _legendCache.emplace(std::make_pair(cs,l));
           }
         }
 

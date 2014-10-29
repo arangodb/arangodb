@@ -39,6 +39,7 @@
 #include "Ahuacatl/ahuacatl-result.h"
 #include "Ahuacatl/ahuacatl-explain.h"
 #include "Aql/Query.h"
+#include "Aql/QueryRegistry.h"
 #include "Basics/Utf8Helper.h"
 
 #include "Basics/conversions.h"
@@ -313,11 +314,11 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
 
 
   // start actual transaction
-  ExplicitTransaction<V8TransactionContext<false>> trx(vocbase,
-                                                       readCollections,
-                                                       writeCollections,
-                                                       lockTimeout,
-                                                       waitForSync);
+  ExplicitTransaction trx(vocbase,
+                          readCollections,
+                          writeCollections,
+                          lockTimeout,
+                          waitForSync);
 
   int res = trx.begin();
 
@@ -741,14 +742,14 @@ static v8::Handle<v8::Value> JS_parseDatetime (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool ReloadAuthCoordinator (TRI_vocbase_t* vocbase) {
-  TRI_json_t* json = 0;
+  TRI_json_t* json = nullptr;
   bool result;
 
   int res = usersOnCoordinator(string(vocbase->_name),
-                               json);
+                               json, 60.0);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    TRI_ASSERT(json != 0);
+    TRI_ASSERT(json != nullptr);
 
     result = TRI_PopulateAuthInfo(vocbase, json);
   }
@@ -756,7 +757,7 @@ static bool ReloadAuthCoordinator (TRI_vocbase_t* vocbase) {
     result = false;
   }
 
-  if (json != 0) {
+  if (json != nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   }
 
@@ -820,7 +821,8 @@ static v8::Handle<v8::Value> JS_ParseAql (v8::Arguments const& argv) {
 
   string const&& queryString = TRI_ObjectToString(argv[0]);
 
-  triagens::aql::Query query(vocbase, queryString.c_str(), queryString.size(), nullptr, nullptr);
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+  triagens::aql::Query query(v8g->_applicationV8, true, vocbase, queryString.c_str(), queryString.size(), nullptr, nullptr, triagens::aql::PART_MAIN);
 
   auto parseResult = query.parse();
 
@@ -905,7 +907,8 @@ static v8::Handle<v8::Value> JS_ExplainAql (v8::Arguments const& argv) {
   }
 
   // bind parameters will be freed by the query later
-  triagens::aql::Query query(vocbase, queryString.c_str(), queryString.size(), parameters, options);
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+  triagens::aql::Query query(v8g->_applicationV8, true, vocbase, queryString.c_str(), queryString.size(), parameters, options, triagens::aql::PART_MAIN);
   
   auto queryResult = query.explain();
   
@@ -920,6 +923,9 @@ static v8::Handle<v8::Value> JS_ExplainAql (v8::Arguments const& argv) {
     }
     else {
       result->Set(TRI_V8_STRING("plan"), TRI_ObjectJson(queryResult.json));
+    }
+    if (queryResult.clusterplan != nullptr) {
+      result->Set(TRI_V8_STRING("clusterplans"), TRI_ObjectJson(queryResult.clusterplan));
     }
   }
 
@@ -996,9 +1002,10 @@ static v8::Handle<v8::Value> JS_ExecuteAqlJson (v8::Arguments const& argv) {
     options = TRI_ObjectToJson(argv[1]);
   }
 
-  triagens::aql::Query query(vocbase, Json(TRI_UNKNOWN_MEM_ZONE, queryjson), options);
-  
-  auto queryResult = query.execute();
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+  triagens::aql::Query query(v8g->_applicationV8, true, vocbase, Json(TRI_UNKNOWN_MEM_ZONE, queryjson), options, triagens::aql::PART_MAIN);
+
+  auto queryResult = query.execute(static_cast<triagens::aql::QueryRegistry*>(v8g->_queryRegistry));
   
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_FULL(scope, queryResult.code, queryResult.details);
@@ -1130,11 +1137,12 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
 
     options = TRI_ObjectToJson(argv[2]);
   }
-
+      
   // bind parameters will be freed by the query later
-  triagens::aql::Query query(vocbase, queryString.c_str(), queryString.size(), parameters, options);
-  
-  auto queryResult = query.execute();
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+  triagens::aql::Query query(v8g->_applicationV8, true, vocbase, queryString.c_str(), queryString.size(), parameters, options, triagens::aql::PART_MAIN);
+
+  auto queryResult = query.execute(static_cast<triagens::aql::QueryRegistry*>(v8g->_queryRegistry));
   
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_FULL(scope, queryResult.code, queryResult.details);
@@ -1411,7 +1419,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> const name,
 
   if (*key == '_') {
     // special treatment for all properties starting with _
-    v8::Local<v8::String> const l = v8::String::New(key);
+    v8::Local<v8::String> const l = v8::String::New(key, (int) keyLength);
 
     if (holder->HasRealNamedProperty(l)) {
       // some internal function inside db
@@ -1439,6 +1447,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> const name,
       TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
       TRI_vocbase_col_status_e status = collection->_status;
       TRI_voc_cid_t cid = collection->_cid;
+      uint32_t internalVersion = collection->_internalVersion;
       TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
       // check if the collection is still alive
@@ -1447,13 +1456,17 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> const name,
 
         if (value->Has(v8g->_IdKey)) {
           TRI_voc_cid_t cachedCid = static_cast<TRI_voc_cid_t>(TRI_ObjectToUInt64(value->Get(v8g->_IdKey), true));
+          uint32_t cachedVersion = (uint32_t) TRI_ObjectToInt64(value->Get(v8g->VersionKey));
 
-          if (cachedCid == cid) {
+          if (cachedCid == cid && cachedVersion == internalVersion) {
             // cache hit
             return scope.Close(value);
           }
 
-          // cid has changed (i.e. collection has been dropped and re-created)
+          // store the updated version number in the object for future comparisons
+          value->Set(v8g->VersionKey, v8::Number::New((double) internalVersion), v8::DontEnum);
+
+          // cid has changed (i.e. collection has been dropped and re-created) or version has changed
         }
       }
     }
@@ -2370,12 +2383,12 @@ static v8::Handle<v8::Value> JS_ListEndpoints (v8::Arguments const& argv) {
 
 int TRI_ParseVertex (CollectionNameResolver const* resolver,
                      TRI_voc_cid_t& cid,
-                     TRI_voc_key_t& key,
+                     std::unique_ptr<char[]>& key,
                      v8::Handle<v8::Value> const val) {
 
   v8::HandleScope scope;
 
-  TRI_ASSERT(key == nullptr);
+  TRI_ASSERT(key.get() == nullptr);
 
   // reset everything
   string collectionName;
@@ -2387,13 +2400,10 @@ int TRI_ParseVertex (CollectionNameResolver const* resolver,
   }
 
   // we have at least a key, we also might have a collection name
-  TRI_ASSERT(key != nullptr);
+  TRI_ASSERT(key.get() != nullptr);
 
   if (collectionName.empty()) {
     // we do not know the collection
-    TRI_FreeString(TRI_CORE_MEM_ZONE, key);
-    key = nullptr;
-
     return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
   }
 
@@ -2405,8 +2415,6 @@ int TRI_ParseVertex (CollectionNameResolver const* resolver,
   }
 
   if (cid == 0) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, key);
-    key = nullptr;
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
@@ -2486,16 +2494,25 @@ void TRI_V8ReloadRouting (v8::Handle<v8::Context> context) {
 /// @brief creates a TRI_vocbase_t global context
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
+void TRI_InitV8VocBridge (triagens::arango::ApplicationV8* applicationV8,
+                          v8::Handle<v8::Context> context,
+                          triagens::aql::QueryRegistry* queryRegistry,
                           TRI_server_t* server,
                           TRI_vocbase_t* vocbase,
                           JSLoader* loader,
-                          const size_t threadNumber) {
+                          size_t threadNumber) {
   v8::HandleScope scope;
 
   // check the isolate
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   TRI_v8_global_t* v8g = TRI_CreateV8Globals(isolate);
+
+  TRI_ASSERT(v8g->_transactionContext == nullptr);
+  v8g->_transactionContext = new V8TransactionContext(true);
+  static_cast<V8TransactionContext*>(v8g->_transactionContext)->makeGlobal();
+
+  // register the query registry
+  v8g->_queryRegistry = queryRegistry;
 
   // register the server
   v8g->_server = server;
@@ -2505,6 +2522,9 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
 
   // register the startup loader
   v8g->_loader = loader;
+  
+  // register the context dealer
+  v8g->_applicationV8 = applicationV8;
 
   v8::Handle<v8::ObjectTemplate> ArangoNS;
   v8::Handle<v8::ObjectTemplate> rt;

@@ -321,7 +321,7 @@ bool RestDocumentHandler::createDocument () {
   }
 
   // find and load collection given by name or identifier
-  SingleCollectionWriteTransaction<RestTransactionContext, 1> trx(_vocbase, collection);
+  SingleCollectionWriteTransaction<1> trx(new StandaloneTransactionContext(), _vocbase, collection);
 
   // .............................................................................
   // inside write transaction
@@ -551,7 +551,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   }
 
   // find and load collection given by name or identifier
-  SingleCollectionReadOnlyTransaction<RestTransactionContext> trx(_vocbase, collection);
+  SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(), _vocbase, collection);
 
   // .............................................................................
   // inside read transaction
@@ -568,7 +568,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   // name for error reporting:
   string collectionName = collection;
   if (ServerState::instance()->isDBserver()) {
-    collectionName = trx.getResolver()->getCollectionName(cid);
+    collectionName = trx.resolver()->getCollectionName(cid);
   }
   TRI_doc_mptr_copy_t mptr;
 
@@ -775,7 +775,7 @@ bool RestDocumentHandler::readAllDocuments () {
   }
 
   // find and load collection given by name or identifier
-  SingleCollectionReadOnlyTransaction<RestTransactionContext> trx(_vocbase, collection);
+  SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(), _vocbase, collection);
 
   vector<string> ids;
 
@@ -1372,7 +1372,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   TRI_doc_mptr_copy_t mptr;
 
   // find and load collection given by name or identifier
-  SingleCollectionWriteTransaction<RestTransactionContext, 1> trx(_vocbase, collection);
+  SingleCollectionWriteTransaction<1> trx(new StandaloneTransactionContext(), _vocbase, collection);
 
   // .............................................................................
   // inside write transaction
@@ -1391,7 +1391,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   // name for error reporting:
   string collectionName = collection;
   if (ServerState::instance()->isDBserver()) {
-    collectionName = trx.getResolver()->getCollectionName(cid);
+    collectionName = trx.resolver()->getCollectionName(cid);
   }
 
   TRI_voc_rid_t rid = 0;
@@ -1756,7 +1756,7 @@ bool RestDocumentHandler::deleteDocument () {
                                      waitForSync);
   }
 
-  SingleCollectionWriteTransaction<RestTransactionContext, 1> trx(_vocbase, collection);
+  SingleCollectionWriteTransaction<1> trx(new StandaloneTransactionContext(), _vocbase, collection);
 
   // .............................................................................
   // inside write transaction
@@ -1773,7 +1773,7 @@ bool RestDocumentHandler::deleteDocument () {
   // name for error reporting:
   string collectionName = collection;
   if (ServerState::instance()->isDBserver()) {
-    collectionName = trx.getResolver()->getCollectionName(cid);
+    collectionName = trx.resolver()->getCollectionName(cid);
   }
 
   TRI_voc_rid_t rid = 0;

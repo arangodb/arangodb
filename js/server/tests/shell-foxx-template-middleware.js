@@ -1,5 +1,3 @@
-require("internal").flushModuleCache();
-
 var jsunity = require("jsunity"),
   arangodb = require("org/arangodb"),
   db = arangodb.db;

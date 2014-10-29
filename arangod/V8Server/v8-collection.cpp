@@ -150,9 +150,9 @@ static inline v8::Handle<v8::Value> V8CollectionId (TRI_voc_cid_t cid) {
 
 static int ExtractDocumentKey (TRI_v8_global_t* v8g,
                                v8::Handle<v8::Object> const arg,
-                               TRI_voc_key_t& key) {
+                               std::unique_ptr<char[]>& key) {
   TRI_ASSERT(v8g != nullptr);
-  key = nullptr;
+  TRI_ASSERT(key.get() == nullptr);
 
   v8::Local<v8::Object> obj = arg->ToObject();
 
@@ -169,7 +169,12 @@ static int ExtractDocumentKey (TRI_v8_global_t* v8g,
         return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
       }
 
-      key = TRI_DuplicateString2(*str, str.length());
+      // copy the string from v8
+      auto const length = str.length();
+      auto buffer = new char[length + 1];
+      memcpy(buffer, *str, length);
+      buffer[length] = '\0';
+      key.reset(buffer);
 
       return TRI_ERROR_NO_ERROR;
     }
@@ -187,12 +192,12 @@ static int ExtractDocumentKey (TRI_v8_global_t* v8g,
 static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocbase,
                                                             CollectionNameResolver const* resolver,
                                                             TRI_vocbase_col_t const*& collection,
-                                                            TRI_voc_key_t& key,
+                                                            std::unique_ptr<char[]>& key,
                                                             TRI_voc_rid_t& rid,
                                                             v8::Handle<v8::Value> const val) {
   v8::HandleScope scope;
 
-  TRI_ASSERT(key == nullptr);
+  TRI_ASSERT(key.get() == nullptr);
 
   // reset the collection identifier and the revision
   string collectionName;
@@ -206,7 +211,7 @@ static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocba
   }
 
   // we have at least a key, we also might have a collection name
-  TRI_ASSERT(key != nullptr);
+  TRI_ASSERT(key.get() != nullptr);
 
 
   if (collectionName.empty()) {
@@ -419,7 +424,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (bool useCollection,
     TRI_V8_EXCEPTION_USAGE(scope, "document(<document-handle>)");
   }
 
-  TRI_voc_key_t key = nullptr;
+  std::unique_ptr<char[]> key;
   TRI_voc_rid_t rid;
   TRI_vocbase_t* vocbase;
   TRI_vocbase_col_t const* col = nullptr;
@@ -448,48 +453,43 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (bool useCollection,
 
   LocalCollectionGuard g(useCollection ? nullptr : const_cast<TRI_vocbase_col_t*>(col));
 
-  if (key == nullptr) {
+  if (key.get() == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
   if (! err.IsEmpty()) {
-    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     return scope.Close(v8::ThrowException(err));
   }
 
   TRI_ASSERT(col != nullptr);
-  TRI_ASSERT(key != nullptr);
+  TRI_ASSERT(key.get() != nullptr);
 
   if (ServerState::instance()->isCoordinator()) {
     return scope.Close(DocumentVocbaseColCoordinator(col, argv, true));
   }
 
-  V8ReadTransaction trx(vocbase, col->_cid);
+  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), vocbase, col->_cid);
 
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION(scope, res);
   }
 
   if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
-    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
   v8::Handle<v8::Value> result;
   TRI_doc_mptr_copy_t document;
-  res = trx.read(&document, key);
+  res = trx.read(&document, key.get());
   res = trx.finish(res);
 
   TRI_ASSERT(trx.hasBarrier());
 
   if (res == TRI_ERROR_NO_ERROR) {
-    result = TRI_WrapShapedJson<V8ReadTransaction>(trx, col->_cid, document.getDataPtr());
+    result = TRI_WrapShapedJson<SingleCollectionReadOnlyTransaction>(trx, col->_cid, document.getDataPtr());
   }
-
-  FREE_STRING(TRI_CORE_MEM_ZONE, key);
 
   if (res != TRI_ERROR_NO_ERROR || document.getDataPtr() == nullptr) {  // PROTECTED by trx here
     if (res == TRI_ERROR_NO_ERROR) {
@@ -599,7 +599,7 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (bool useCollection,
     TRI_V8_EXCEPTION_USAGE(scope, "exists(<document-handle>)");
   }
 
-  TRI_voc_key_t key = nullptr;
+  std::unique_ptr<char[]> key;
   TRI_voc_rid_t rid;
   TRI_vocbase_t* vocbase;
   TRI_vocbase_col_t const* col = nullptr;
@@ -628,13 +628,11 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (bool useCollection,
 
   LocalCollectionGuard g(useCollection ? nullptr : const_cast<TRI_vocbase_col_t*>(col));
 
-  if (key == nullptr) {
+  if (key.get() == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
   if (! err.IsEmpty()) {
-    FREE_STRING(TRI_CORE_MEM_ZONE, key);
-
     // check if we got an error object in return
     if (err->IsObject()) {
       // yes
@@ -654,13 +652,13 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (bool useCollection,
   }
 
   TRI_ASSERT(col != nullptr);
-  TRI_ASSERT(key != nullptr);
+  TRI_ASSERT(key.get() != nullptr);
 
   if (ServerState::instance()->isCoordinator()) {
     return scope.Close(DocumentVocbaseColCoordinator(col, argv, false));
   }
 
-  V8ReadTransaction trx(vocbase, col->_cid);
+  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), vocbase, col->_cid);
 
   int res = trx.begin();
 
@@ -672,12 +670,9 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (bool useCollection,
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
-  v8::Handle<v8::Value> result;
   TRI_doc_mptr_copy_t document;
-  res = trx.read(&document, key);
+  res = trx.read(&document, key.get());
   res = trx.finish(res);
-
-  TRI_FreeString(TRI_CORE_MEM_ZONE, key);
 
   if (res != TRI_ERROR_NO_ERROR || document.getDataPtr() == nullptr) {  // PROTECTED by trx here
     if (res == TRI_ERROR_NO_ERROR) {
@@ -835,7 +830,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
     }
   }
 
-  TRI_voc_key_t key = nullptr;
+  std::unique_ptr<char[]> key;
   TRI_voc_rid_t rid;
   TRI_voc_rid_t actualRevision = 0;
 
@@ -866,17 +861,16 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
 
   LocalCollectionGuard g(useCollection ? nullptr : const_cast<TRI_vocbase_col_t*>(col));
 
-  if (key == nullptr) {
+  if (key.get() == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
   if (! err.IsEmpty()) {
-    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     return scope.Close(v8::ThrowException(err));
   }
 
   TRI_ASSERT(col != nullptr);
-  TRI_ASSERT(key != nullptr);
+  TRI_ASSERT(key.get() != nullptr);
 
   if (ServerState::instance()->isCoordinator()) {
     return scope.Close(ModifyVocbaseColCoordinator(col,
@@ -888,11 +882,10 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
                                                    argv));
   }
 
-  SingleCollectionWriteTransaction<V8TransactionContext<true>, 1> trx(vocbase, col->_cid);
+  SingleCollectionWriteTransaction<1> trx(new V8TransactionContext(true), vocbase, col->_cid);
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION(scope, res);
   }
 
@@ -902,7 +895,6 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
   TRI_doc_mptr_copy_t mptr;
 
   if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
@@ -918,15 +910,13 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
     TRI_json_t* json = TRI_ObjectToJson(argv[1]);
 
     if (json == nullptr) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, key);
       TRI_V8_EXCEPTION_MEMORY(scope);
     }
 
-    res = trx.read(&mptr, key);
+    res = trx.read(&mptr, key.get());
 
     if (res != TRI_ERROR_NO_ERROR || mptr.getDataPtr() == nullptr) {  // PROTECTED by trx here
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, key);
       TRI_V8_EXCEPTION(scope, res);
     }
 
@@ -936,14 +926,12 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
 
     if (old == nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, key);
       TRI_V8_EXCEPTION_MEMORY(scope);
     }
 
     if (shardKeysChanged(col->_dbName, cidString, old, json, false)) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, old);
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, key);
       TRI_V8_EXCEPTION(scope, TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
     }
 
@@ -954,16 +942,14 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[1], document->getShaper(), true);  // PROTECTED by trx here
 
   if (shaped == nullptr) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> cannot be converted into JSON shape");
   }
 
-  res = trx.updateDocument(key, &mptr, shaped, policy, options.waitForSync, rid, &actualRevision);
+  res = trx.updateDocument(key.get(), &mptr, shaped, policy, options.waitForSync, rid, &actualRevision);
 
   res = trx.finish(res);
 
   TRI_FreeShapedJson(zone, shaped);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, key);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, res);
@@ -991,10 +977,8 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
 /// @brief inserts a document
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> InsertVocbaseCol (
-    SingleCollectionWriteTransaction<V8TransactionContext<true>, 1>* trx,
-    TRI_vocbase_col_t* col,
-    v8::Arguments const& argv) {
+static v8::Handle<v8::Value> InsertVocbaseCol (TRI_vocbase_col_t* col,
+                                               v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   uint32_t const argLength = argv.Length();
@@ -1019,7 +1003,7 @@ static v8::Handle<v8::Value> InsertVocbaseCol (
   }
 
   // set document key
-  TRI_voc_key_t key = nullptr;
+  std::unique_ptr<char[]> key;
   int res;
 
   if (argv[0]->IsObject() && ! argv[0]->IsArray()) {
@@ -1033,26 +1017,35 @@ static v8::Handle<v8::Value> InsertVocbaseCol (
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-  TRI_document_collection_t* document = trx->documentCollection();
-  TRI_memory_zone_t* zone = document->getShaper()->_memoryZone;  // PROTECTED by trx from above
+  SingleCollectionWriteTransaction<1> trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
 
-  trx->lockWrite();
+  res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, res);
+  }
+
+  // fetch a barrier so nobody unlinks datafiles with the shapes & attributes we might
+  // need for this document
+  if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+
+  TRI_document_collection_t* document = trx.documentCollection();
+  TRI_memory_zone_t* zone = document->getShaper()->_memoryZone;  // PROTECTED by trx from above
 
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[0], document->getShaper(), true);  // PROTECTED by trx from above
 
   if (shaped == nullptr) {
-    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> cannot be converted into JSON shape");
   }
 
   TRI_doc_mptr_copy_t mptr;
-  res = trx->createDocument(key, &mptr, shaped, options.waitForSync);
+  res = trx.createDocument(key.get(), &mptr, shaped, options.waitForSync);
 
-  res = trx->finish(res);
+  res = trx.finish(res);
 
   TRI_FreeShapedJson(zone, shaped);
-
-  FREE_STRING(TRI_CORE_MEM_ZONE, key);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, res);
@@ -1067,7 +1060,7 @@ static v8::Handle<v8::Value> InsertVocbaseCol (
     char const* docKey = TRI_EXTRACT_MARKER_KEY(&mptr);  // PROTECTED by trx here
 
     v8::Handle<v8::Object> result = v8::Object::New();
-    result->Set(v8g->_IdKey, V8DocumentId(trx->resolver()->getCollectionName(col->_cid), docKey));
+    result->Set(v8g->_IdKey, V8DocumentId(trx.resolver()->getCollectionName(col->_cid), docKey));
     result->Set(v8g->_RevKey, V8RevisionId(mptr._rid));
     result->Set(v8g->_KeyKey, v8::String::New(docKey));
 
@@ -1123,7 +1116,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
     }
   }
 
-  TRI_voc_key_t key = nullptr;
+  std::unique_ptr<char[]> key;
   TRI_voc_rid_t rid;
   TRI_voc_rid_t actualRevision = 0;
   TRI_vocbase_t* vocbase;
@@ -1153,17 +1146,16 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
 
   LocalCollectionGuard g(useCollection ? nullptr : const_cast<TRI_vocbase_col_t*>(col));
 
-  if (key == nullptr) {
+  if (key.get() == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
   if (! err.IsEmpty()) {
-    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     return scope.Close(v8::ThrowException(err));
   }
 
   TRI_ASSERT(col != nullptr);
-  TRI_ASSERT(key != nullptr);
+  TRI_ASSERT(key.get() != nullptr);
 
   if (ServerState::instance()->isCoordinator()) {
     return scope.Close(ModifyVocbaseColCoordinator(col,
@@ -1177,24 +1169,21 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
 
   if (! argv[1]->IsObject() || argv[1]->IsArray()) {
     // we're only accepting "real" object documents
-    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
   TRI_json_t* json = TRI_ObjectToJson(argv[1]);
 
   if (json == nullptr) {
-    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> is no valid JSON");
   }
 
 
-  SingleCollectionWriteTransaction<V8TransactionContext<true>, 1> trx(vocbase, col->_cid);
+  SingleCollectionWriteTransaction<1> trx(new V8TransactionContext(true), vocbase, col->_cid);
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION(scope, res);
   }
 
@@ -1203,17 +1192,15 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
   trx.lockWrite();
 
   TRI_doc_mptr_copy_t mptr;
-  res = trx.read(&mptr, key);
+  res = trx.read(&mptr, key.get());
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION(scope, res);
   }
 
   if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
@@ -1227,7 +1214,6 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
 
   if (old == nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
@@ -1238,7 +1224,6 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
     if (shardKeysChanged(col->_dbName, cidString, old, json, true)) {
       TRI_FreeJson(document->getShaper()->_memoryZone, old);  // PROTECTED by trx here
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-      FREE_STRING(TRI_CORE_MEM_ZONE, key);
 
       TRI_V8_EXCEPTION(scope, TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
     }
@@ -1249,16 +1234,14 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   if (patchedJson == nullptr) {
-    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
-  res = trx.updateDocument(key, &mptr, patchedJson, policy, options.waitForSync, rid, &actualRevision);
+  res = trx.updateDocument(key.get(), &mptr, patchedJson, policy, options.waitForSync, rid, &actualRevision);
 
   res = trx.finish(res);
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, patchedJson);
-  FREE_STRING(TRI_CORE_MEM_ZONE, key);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, res);
@@ -1395,7 +1378,7 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (bool useCollection,
     }
   }
 
-  TRI_voc_key_t key = nullptr;
+  std::unique_ptr<char[]> key;
   TRI_voc_rid_t rid;
   TRI_voc_rid_t actualRevision = 0;
   TRI_vocbase_t* vocbase;
@@ -1425,34 +1408,30 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (bool useCollection,
 
   LocalCollectionGuard g(useCollection ? nullptr : const_cast<TRI_vocbase_col_t*>(col));
 
-  if (key == nullptr) {
+  if (key.get() == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
   if (! err.IsEmpty()) {
-    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     return scope.Close(v8::ThrowException(err));
   }
 
   TRI_ASSERT(col != nullptr);
-  TRI_ASSERT(key != nullptr);
+  TRI_ASSERT(key.get() != nullptr);
 
   if (ServerState::instance()->isCoordinator()) {
     return scope.Close(RemoveVocbaseColCoordinator(col, policy, options.waitForSync, argv));
   }
 
-  SingleCollectionWriteTransaction<V8TransactionContext<true>, 1> trx(vocbase, col->_cid);
+  SingleCollectionWriteTransaction<1> trx(new V8TransactionContext(true), vocbase, col->_cid);
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  res = trx.deleteDocument(key, policy, options.waitForSync, rid, &actualRevision);
+  res = trx.deleteDocument(key.get(), policy, options.waitForSync, rid, &actualRevision);
   res = trx.finish(res);
-
-  TRI_FreeString(TRI_CORE_MEM_ZONE, key);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && policy == TRI_DOC_UPDATE_LAST_WRITE) {
@@ -1663,7 +1642,7 @@ static TRI_doc_collection_info_t* GetFiguresCoordinator (TRI_vocbase_col_t* coll
 static TRI_doc_collection_info_t* GetFigures (TRI_vocbase_col_t* collection) {
   TRI_ASSERT(collection != nullptr);
 
-  V8ReadTransaction trx(collection->_vocbase, collection->_cid);
+  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), collection->_vocbase, collection->_cid);
 
   int res = trx.begin();
 
@@ -2493,9 +2472,9 @@ static v8::Handle<v8::Value> JS_ReplaceVocbaseCol (v8::Arguments const& argv) {
 
 static int GetRevision (TRI_vocbase_col_t* collection,
                         TRI_voc_rid_t& rid) {
-  TRI_ASSERT(collection != 0);
+  TRI_ASSERT(collection != nullptr);
 
-  V8ReadTransaction trx(collection->_vocbase, collection->_cid);
+  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), collection->_vocbase, collection->_cid);
 
   int res = trx.begin();
 
@@ -2877,10 +2856,8 @@ static string GetId (v8::Handle<v8::Value> const arg) {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> InsertEdgeCol (
-    SingleCollectionWriteTransaction<V8TransactionContext<true>, 1>* trx,
-    TRI_vocbase_col_t* col,
-    v8::Arguments const& argv) {
+static v8::Handle<v8::Value> InsertEdgeCol (TRI_vocbase_col_t* col,
+                                            v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
@@ -2891,9 +2868,9 @@ static v8::Handle<v8::Value> InsertEdgeCol (
   }
 
   InsertOptions options;
-  // set document key
 
-  TRI_voc_key_t key = nullptr;
+  // set document key
+  std::unique_ptr<char[]> key;
   int res;
 
   if (argv[2]->IsObject() && ! argv[2]->IsArray()) {
@@ -2920,6 +2897,9 @@ static v8::Handle<v8::Value> InsertEdgeCol (
     options.waitForSync = ExtractWaitForSync(argv, 4);
   }
 
+  std::unique_ptr<char[]> fromKey;
+  std::unique_ptr<char[]> toKey;
+
   TRI_document_edge_t edge;
   // the following values are defaults that will be overridden below
   edge._fromCid = 0;
@@ -2927,46 +2907,54 @@ static v8::Handle<v8::Value> InsertEdgeCol (
   edge._fromKey = nullptr;
   edge._toKey   = nullptr;
 
+  SingleCollectionWriteTransaction<1> trx(new V8TransactionContext(true), col->_vocbase, col->_cid);
+
   // extract from
-  res = TRI_ParseVertex(trx->resolver(), edge._fromCid, edge._fromKey, argv[0]);
+  res = TRI_ParseVertex(trx.resolver(), edge._fromCid, fromKey, argv[0]);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION(scope, res);
   }
+  edge._fromKey = fromKey.get();
 
   // extract to
-  res = TRI_ParseVertex(trx->resolver(), edge._toCid, edge._toKey, argv[1]);
+  res = TRI_ParseVertex(trx.resolver(), edge._toCid, toKey, argv[1]);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    FREE_STRING(TRI_CORE_MEM_ZONE, edge._fromKey);
-    FREE_STRING(TRI_CORE_MEM_ZONE, key);
+    TRI_V8_EXCEPTION(scope, res);
+  }
+  edge._toKey = toKey.get();
+
+
+  //  start transaction
+  res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  TRI_document_collection_t* document = trx->documentCollection();
+  TRI_document_collection_t* document = trx.documentCollection();
   TRI_memory_zone_t* zone = document->getShaper()->_memoryZone;  // PROTECTED by trx from above
+  
+  // fetch a barrier so nobody unlinks datafiles with the shapes & attributes we might
+  // need for this document
+  if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
 
-  trx->lockWrite();
   // extract shaped data
   TRI_shaped_json_t* shaped = TRI_ShapedJsonV8Object(argv[2], document->getShaper(), true);  // PROTECTED by trx here
 
   if (shaped == nullptr) {
-    FREE_STRING(TRI_CORE_MEM_ZONE, edge._fromKey);
-    FREE_STRING(TRI_CORE_MEM_ZONE, edge._toKey);
-    FREE_STRING(TRI_CORE_MEM_ZONE, key);
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "<data> cannot be converted into JSON shape");
   }
 
   TRI_doc_mptr_copy_t mptr;
-  res = trx->createEdge(key, &mptr, shaped, options.waitForSync, &edge);
+  res = trx.createEdge(key.get(), &mptr, shaped, options.waitForSync, &edge);
 
-  res = trx->finish(res);
+  res = trx.finish(res);
 
   TRI_FreeShapedJson(zone, shaped);
-  FREE_STRING(TRI_CORE_MEM_ZONE, edge._fromKey);
-  FREE_STRING(TRI_CORE_MEM_ZONE, edge._toKey);
-  FREE_STRING(TRI_CORE_MEM_ZONE, key);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, res);
@@ -2981,7 +2969,7 @@ static v8::Handle<v8::Value> InsertEdgeCol (
     char const* docKey = TRI_EXTRACT_MARKER_KEY(&mptr);  // PROTECTED by trx here
 
     v8::Handle<v8::Object> result = v8::Object::New();
-    result->Set(v8g->_IdKey, V8DocumentId(trx->resolver()->getCollectionName(col->_cid), docKey));
+    result->Set(v8g->_IdKey, V8DocumentId(trx.resolver()->getCollectionName(col->_cid), docKey));
     result->Set(v8g->_RevKey, V8RevisionId(mptr._rid));
     result->Set(v8g->_KeyKey, v8::String::New(docKey));
 
@@ -3129,32 +3117,20 @@ static v8::Handle<v8::Value> JS_InsertVocbaseCol (v8::Arguments const& argv) {
   }
 
   if (ServerState::instance()->isCoordinator()) {
+    // coordinator case
     if ((TRI_col_type_e) collection->_type == TRI_COL_TYPE_DOCUMENT) {
       return scope.Close(InsertVocbaseColCoordinator(collection, argv));
     }
-    else {
-      return scope.Close(InsertEdgeColCoordinator(collection, argv));
-    }
+
+    return scope.Close(InsertEdgeColCoordinator(collection, argv));
   }
-
-  SingleCollectionWriteTransaction<V8TransactionContext<true>, 1> trx(collection->_vocbase, collection->_cid);
-
-  int res = trx.begin();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION(scope, res);
-  }
-
-  v8::Handle<v8::Value> result;
-
+    
+  // single server case
   if ((TRI_col_type_e) collection->_type == TRI_COL_TYPE_DOCUMENT) {
-    result = InsertVocbaseCol(&trx, collection, argv);
-  }
-  else if ((TRI_col_type_e) collection->_type == TRI_COL_TYPE_EDGE) {
-    result = InsertEdgeCol(&trx, collection, argv);
+    return scope.Close(InsertVocbaseCol(collection, argv));
   }
 
-  return scope.Close(result);
+  return scope.Close(InsertEdgeCol(collection, argv));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3208,7 +3184,7 @@ static v8::Handle<v8::Value> JS_TruncateVocbaseCol (v8::Arguments const& argv) {
 
   TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
 
-  SingleCollectionWriteTransaction<V8TransactionContext<true>, UINT64_MAX> trx(collection->_vocbase, collection->_cid);
+  SingleCollectionWriteTransaction<UINT64_MAX> trx(new V8TransactionContext(true), collection->_vocbase, collection->_cid);
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -3409,7 +3385,7 @@ static v8::Handle<v8::Value> JS_CheckPointersVocbaseCol (v8::Arguments const& ar
 
   TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
 
-  V8ReadTransaction trx(collection->_vocbase, collection->_cid);
+  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), collection->_vocbase, collection->_cid);
 
   int res = trx.begin();
 
@@ -4073,7 +4049,7 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(v8::Number::New((double) count));
   }
 
-  V8ReadTransaction trx(collection->_vocbase, collection->_cid);
+  SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), collection->_vocbase, collection->_cid);
 
   int res = trx.begin();
 

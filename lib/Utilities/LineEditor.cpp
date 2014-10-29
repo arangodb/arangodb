@@ -140,9 +140,8 @@ void LineEditor::sortAlternatives (vector<string>& completions) {
 
 
 void LineEditor::prepareShell () {
-  if (!_shellImpl) {
+  if (! _shellImpl) {
     initializeShell();
-  //  assert _shellImpl != 0;
   }
 }
 // -----------------------------------------------------------------------------

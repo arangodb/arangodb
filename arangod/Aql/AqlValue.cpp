@@ -41,23 +41,30 @@ using JsonHelper = triagens::basics::JsonHelper;
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AqlValue::isTrue () const {
-  if (_type != JSON) {
+  if (_type == JSON) {
+    TRI_json_t* json = _json->json();
+    if (TRI_IsBooleanJson(json) && json->_value._boolean) {
+      return true;
+    }
+    else if (TRI_IsNumberJson(json) && json->_value._number != 0.0) {
+      return true;
+    }
+    else if (TRI_IsStringJson(json) && json->_value._string.length != 0) {
+      return true;
+    }
+    else if (TRI_IsListJson(json) || TRI_IsArrayJson(json)) {
+      return true;
+    }
+  }
+  else if (_type == RANGE || _type == DOCVEC) {
+    // a range or a docvec is equivalent to a list
+    return true;
+  }
+  else if (_type == EMPTY) {
     return false;
   }
-  
-  TRI_json_t* json = _json->json();
-  if (TRI_IsBooleanJson(json) && json->_value._boolean) {
-    return true;
-  }
-  else if (TRI_IsNumberJson(json) && json->_value._number != 0.0) {
-    return true;
-  }
-  else if (TRI_IsStringJson(json) && json->_value._string.length != 0) {
-    return true;
-  }
-  else {
-    return false;
-  }
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -90,8 +97,9 @@ void AqlValue::destroy () {
       // do nothing here, since data pointers need not be freed
       break;
     }
-    default: {
-      TRI_ASSERT(false);
+    case EMPTY: {
+      // do nothing
+      break;
     }
   }
  
@@ -106,7 +114,7 @@ void AqlValue::destroy () {
 std::string AqlValue::getTypeString () const {
   switch (_type) {
     case JSON: 
-      return "json";
+      return std::string("json (") + std::string(TRI_GetTypeString(_json->json())) + std::string(")");
     case SHAPED: 
       return "shaped";
     case DOCVEC: 
@@ -323,6 +331,26 @@ size_t AqlValue::listSize () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the numeric value of an AqlValue
+////////////////////////////////////////////////////////////////////////////////
+
+int64_t AqlValue::toInt64 () const {
+  switch (_type) {
+    case JSON: 
+      return TRI_ToInt64Json(_json->json());
+    case RANGE: 
+      return _range->at(0);
+    case DOCVEC: 
+    case SHAPED: 
+    case EMPTY: 
+      // cannot convert these types
+      return 0;
+  }
+
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get a string representation of the AqlValue
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -372,7 +400,7 @@ char const* AqlValue::toChar () const {
 /// @brief construct a V8 value as input for the expression execution in V8
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> AqlValue::toV8 (AQL_TRANSACTION_V8* trx, 
+v8::Handle<v8::Value> AqlValue::toV8 (triagens::arango::AqlTransaction* trx, 
                                       TRI_document_collection_t const* document) const {
   switch (_type) {
     case JSON: {
@@ -383,7 +411,7 @@ v8::Handle<v8::Value> AqlValue::toV8 (AQL_TRANSACTION_V8* trx,
     case SHAPED: {
       TRI_ASSERT(document != nullptr);
       TRI_ASSERT(_marker != nullptr);
-      return TRI_WrapShapedJson<AQL_TRANSACTION_V8>(*trx, document->_info._cid, _marker);
+      return TRI_WrapShapedJson<triagens::arango::AqlTransaction>(*trx, document->_info._cid, _marker);
     }
 
     case DOCVEC: {
@@ -426,7 +454,7 @@ v8::Handle<v8::Value> AqlValue::toV8 (AQL_TRANSACTION_V8* trx,
     }
 
     case EMPTY: {
-      return v8::Object::New(); // TODO?
+      return v8::Undefined();
     }
   }
       
@@ -438,7 +466,7 @@ v8::Handle<v8::Value> AqlValue::toV8 (AQL_TRANSACTION_V8* trx,
 /// @brief toJson method
 ////////////////////////////////////////////////////////////////////////////////
       
-Json AqlValue::toJson (AQL_TRANSACTION_V8* trx,
+Json AqlValue::toJson (triagens::arango::AqlTransaction* trx,
                        TRI_document_collection_t const* document) const {
   switch (_type) {
     case JSON: {
@@ -467,19 +495,18 @@ Json AqlValue::toJson (AQL_TRANSACTION_V8* trx,
 
       if (TRI_IS_EDGE_MARKER(_marker)) {
         // _from
-        std::string from(trx->resolver()->getCollectionName(TRI_EXTRACT_MARKER_FROM_CID(_marker)));
+        std::string from(trx->resolver()->getCollectionNameCluster(TRI_EXTRACT_MARKER_FROM_CID(_marker)));
         from.push_back('/');
         from.append(TRI_EXTRACT_MARKER_FROM_KEY(_marker));
         json(TRI_VOC_ATTRIBUTE_FROM, Json(from));
         
         // _to
-        std::string to(trx->resolver()->getCollectionName(TRI_EXTRACT_MARKER_TO_CID(_marker)));
+        std::string to(trx->resolver()->getCollectionNameCluster(TRI_EXTRACT_MARKER_TO_CID(_marker)));
         to.push_back('/');
         to.append(TRI_EXTRACT_MARKER_TO_KEY(_marker));
         json(TRI_VOC_ATTRIBUTE_TO, Json(to));
       }
 
-      // TODO: return _from and _to, and fix order of attributes!
       return json;
     }
           
@@ -535,7 +562,7 @@ Json AqlValue::toJson (AQL_TRANSACTION_V8* trx,
 /// this will return an empty Json if the value is not an array
 ////////////////////////////////////////////////////////////////////////////////
 
-Json AqlValue::extractArrayMember (AQL_TRANSACTION_V8* trx,
+Json AqlValue::extractArrayMember (triagens::arango::AqlTransaction* trx,
                                    TRI_document_collection_t const* document,
                                    char const* name) const {
   switch (_type) {
@@ -578,13 +605,13 @@ Json AqlValue::extractArrayMember (AQL_TRANSACTION_V8* trx,
           return Json(TRI_UNKNOWN_MEM_ZONE, JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, rid));
         }
         else if (strcmp(name, TRI_VOC_ATTRIBUTE_FROM) == 0) {
-          std::string from(trx->resolver()->getCollectionName(TRI_EXTRACT_MARKER_FROM_CID(_marker)));
+          std::string from(trx->resolver()->getCollectionNameCluster(TRI_EXTRACT_MARKER_FROM_CID(_marker)));
           from.push_back('/');
           from.append(TRI_EXTRACT_MARKER_FROM_KEY(_marker));
           return Json(TRI_UNKNOWN_MEM_ZONE, from);
         }
         else if (strcmp(name, TRI_VOC_ATTRIBUTE_TO) == 0) {
-          std::string to(trx->resolver()->getCollectionName(TRI_EXTRACT_MARKER_TO_CID(_marker)));
+          std::string to(trx->resolver()->getCollectionNameCluster(TRI_EXTRACT_MARKER_TO_CID(_marker)));
           to.push_back('/');
           to.append(TRI_EXTRACT_MARKER_TO_KEY(_marker));
           return Json(TRI_UNKNOWN_MEM_ZONE, to);
@@ -623,11 +650,15 @@ Json AqlValue::extractArrayMember (AQL_TRANSACTION_V8* trx,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract a value from a list AqlValue 
 /// this will return null if the value is not a list
+/// depending on the last parameter, the return value will either contain a
+/// copy of the original value in the list or a reference to it (which must
+/// not be freed)
 ////////////////////////////////////////////////////////////////////////////////
 
-Json AqlValue::extractListMember (AQL_TRANSACTION_V8* trx,
+Json AqlValue::extractListMember (triagens::arango::AqlTransaction* trx,
                                   TRI_document_collection_t const* document,
-                                  int64_t position) const {
+                                  int64_t position,
+                                  bool copy) const {
   switch (_type) {
     case JSON: {
       TRI_ASSERT(_json != nullptr);
@@ -645,7 +676,13 @@ Json AqlValue::extractListMember (AQL_TRANSACTION_V8* trx,
           TRI_json_t const* found = TRI_LookupListJson(json, static_cast<size_t>(position));
 
           if (found != nullptr) {
-            return Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, found));
+            if (copy) {
+              // return a copy of the value
+              return Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, found), triagens::basics::Json::AUTOFREE);
+            }
+
+            // return a pointer to the original value, without asking for its ownership
+            return Json(TRI_UNKNOWN_MEM_ZONE, found, triagens::basics::Json::NOFREE);
           }
         }
       }
@@ -699,7 +736,7 @@ Json AqlValue::extractListMember (AQL_TRANSACTION_V8* trx,
 /// @brief create an AqlValue from a vector of AqlItemBlock*s
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue AqlValue::CreateFromBlocks (AQL_TRANSACTION_V8* trx,
+AqlValue AqlValue::CreateFromBlocks (triagens::arango::AqlTransaction* trx,
                                      std::vector<AqlItemBlock*> const& src,
                                      std::vector<std::string> const& variableNames) {
   size_t totalSize = 0;
@@ -735,7 +772,7 @@ AqlValue AqlValue::CreateFromBlocks (AQL_TRANSACTION_V8* trx,
 /// @brief 3-way comparison for AqlValue objects
 ////////////////////////////////////////////////////////////////////////////////
 
-int AqlValue::Compare (AQL_TRANSACTION_V8* trx,
+int AqlValue::Compare (triagens::arango::AqlTransaction* trx,
                        AqlValue const& left,  
                        TRI_document_collection_t const* leftcoll,
                        AqlValue const& right, 

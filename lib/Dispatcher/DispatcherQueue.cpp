@@ -38,6 +38,7 @@
 #include "Basics/logging.h"
 #include "Dispatcher/DispatcherThread.h"
 
+using namespace std;
 using namespace triagens::rest;
 
 // -----------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-var internalMembers = ["code", "error", "status", "duration", "failed", "total"];
+var internalMembers = ["code", "error", "status", "duration", "failed", "total", "message"];
 var fs = require("fs");
 var print = require("internal").print;
 
@@ -31,7 +31,9 @@ function resultsToXml(results, baseName) {
             .text(xmlEscape(String(attrs[a]))).text("\"");
         }
 
-        close && this.text("/");
+        if (close) {
+          this.text("/");
+        }
         this.text(">\n");
 
         return this;
@@ -64,9 +66,21 @@ function resultsToXml(results, baseName) {
         }
       }
 
+      if ((!results[testrun][test].status)                 && 
+          results[testrun][test].hasOwnProperty('message')) 
+      {
+
+        xml.elem("testcase", {
+          name: 'all tests in ' + test,
+          time: results[testrun][test].duration
+        }, false);
+        xml.elem("failure");
+        xml.text('<![CDATA[' + JSON.stringify(results[testrun][test].message) + ']]>\n');
+        xml.elem("/failure");
+        xml.elem("/testcase");
+      }
       xml.elem("/testsuite");
       var fn = baseName + testrun.replace(/\//g, '_') + '_' + test.replace(/\//g, '_') + ".xml";
-      //print('Writing: '+ fn);
       fs.write(fn, xml.join(""));
 
     }
@@ -75,19 +89,31 @@ function resultsToXml(results, baseName) {
 
 
 function main (argv) {
-  if (argv.length < 2) {
-    print("Usage: unittest TESTNAME [OPTIONS]");
-    return;
-  }
   var test = argv[1];
   var options = {};
+  var r;
   if (argv.length >= 3) {
-    options = JSON.parse(argv[2]);
+    try {
+      options = JSON.parse(argv[2]);
+    }
+    catch (x) {
+      print("failed to parse the json options");
+      print(x);
+      return -1;
+    }
   }
   options.jsonReply = true;
   var UnitTest = require("org/arangodb/testing");
   start_pretty_print();
-  var r = UnitTest.UnitTest(test,options); 
+
+  try {
+    r = UnitTest.UnitTest(test,options); 
+  }
+  catch (x) {
+    print("Caught exception during test execution!");
+    print(x.message);
+    print(JSON.stringify(r));
+  }
   fs.write("UNITTEST_RESULT.json",JSON.stringify(r));
   fs.write("UNITTEST_RESULT_SUMMARY.txt",JSON.stringify(r.all_ok));
   try {
@@ -96,6 +122,7 @@ function main (argv) {
   catch (x) {
     print("Exception while serializing status xml!");
     print(x.message);
+    print(JSON.stringify(r));
   }
 
   UnitTest.unitTestPrettyPrintResults(r);

@@ -47,6 +47,7 @@
 #include "Basics/logging.h"
 #include "Basics/messages.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/HeartbeatThread.h"
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "Dispatcher/Dispatcher.h"
 #include "HttpServer/ApplicationEndpointServer.h"
@@ -206,7 +207,7 @@ static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* re
 
       // requested database not found
       if (! found) {
-        return 0;
+        return nullptr;
       }
     }
   }
@@ -225,7 +226,7 @@ static TRI_vocbase_t* LookupDatabaseFromRequest (triagens::rest::HttpRequest* re
 static bool SetRequestContext (triagens::rest::HttpRequest* request,
                                void* data) {
 
-  TRI_server_t* server   = (TRI_server_t*) data;
+  TRI_server_t* server   = static_cast<TRI_server_t*>(data);
   TRI_vocbase_t* vocbase = LookupDatabaseFromRequest(request, server);
 
   // invalid database name specified, database not found etc.
@@ -289,6 +290,8 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _server(nullptr),
     _queryRegistry(nullptr),
     _pairForAql(nullptr) {
+
+  TRI_SetApplicationName("arangod");
 
   char* p = TRI_GetTempPath();
   // copy the string
@@ -391,12 +394,20 @@ void ArangoServer::buildApplicationServer () {
   _applicationDispatcher->setApplicationScheduler(_applicationScheduler);
 
   _applicationServer->addFeature(_applicationScheduler);
+  
+  // ...........................................................................
+  // create QueryRegistry
+  // ...........................................................................
+
+  _queryRegistry = new aql::QueryRegistry();
+  _server->_queryRegistry = static_cast<void*>(_queryRegistry);
 
   // .............................................................................
   // V8 engine
   // .............................................................................
 
   _applicationV8 = new ApplicationV8(_server,
+                                     _queryRegistry,
                                      _applicationScheduler,
                                      _applicationDispatcher);
 
@@ -838,11 +849,7 @@ int ArangoServer::startupServer () {
     _applicationV8->prepareServer();
   }
 
-  // ...........................................................................
-  // create QueryRegistry
-  // ...........................................................................
 
-  _queryRegistry = new aql::QueryRegistry();
   _pairForAql = new std::pair<ApplicationV8*, aql::QueryRegistry*>;
   _pairForAql->first = _applicationV8;
   _pairForAql->second = _queryRegistry;
@@ -857,7 +864,6 @@ int ArangoServer::startupServer () {
   httpOptions._queue = "STANDARD";
 
   if (startServer) {
-
     // start with enabled maintenance mode
     HttpHandlerFactory::setMaintenance(true);
 
@@ -883,7 +889,9 @@ int ArangoServer::startupServer () {
 
   // for a cluster coordinator, the users are loaded at a later stage;
   // the kickstarter will trigger a bootstrap process
-  if (ServerState::instance()->getRole() != ServerState::ROLE_COORDINATOR) {
+  const auto role = ServerState::instance()->getRole();
+
+  if (role != ServerState::ROLE_COORDINATOR && role != ServerState::ROLE_PRIMARY && role != ServerState::ROLE_SECONDARY) {
 
     // if the authentication info could not be loaded, but authentication is turned on,
     // then we refuse to start
@@ -915,6 +923,8 @@ int ArangoServer::startupServer () {
 
   _applicationServer->stop();
 
+  _server->_queryRegistry = nullptr;
+
   delete _queryRegistry;
   _queryRegistry = nullptr;
   delete _pairForAql;
@@ -934,12 +944,32 @@ int ArangoServer::startupServer () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief wait for the heartbeat thread to run
+/// before the server responds to requests, the heartbeat thread should have
+/// run at least once
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoServer::waitForHeartbeat () {
+  if (! ServerState::instance()->isCoordinator()) {
+    // waiting for the heartbeart thread is necessary on coordinator only
+    return;
+  }
+
+  while (true) {
+    if (HeartbeatThread::hasRunOnce()) {
+      break;
+    }
+    usleep(100 * 1000);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief runs the server
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::runServer (TRI_vocbase_t* vocbase) {
-
   // disabled maintenance mode
+  waitForHeartbeat();
   HttpHandlerFactory::setMaintenance(false);
 
   // just wait until we are signalled
@@ -963,6 +993,7 @@ int ArangoServer::runConsole (TRI_vocbase_t* vocbase) {
 #endif
 
   // disabled maintenance mode
+  waitForHeartbeat();
   HttpHandlerFactory::setMaintenance(false);
 
   // just wait until we are signalled
@@ -1157,8 +1188,11 @@ void ArangoServer::closeDatabases () {
   TRI_ASSERT(_server != nullptr);
 
   TRI_CleanupActions();
+  
+  // stop the replication appliers so all replication transactions can end
+  TRI_StopReplicationAppliersServer(_server);
 
-  // enfore logfile manager shutdown so we are sure no one else will
+  // enforce logfile manager shutdown so we are sure no one else will
   // write to the logs
   wal::LogfileManager::instance()->stop();
 

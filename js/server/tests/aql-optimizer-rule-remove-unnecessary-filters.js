@@ -1,5 +1,6 @@
-/*jslint indent: 2, nomen: true, maxlen: 200, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, assertTrue, assertEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*jshint strict: false, maxlen: 500 */
+/*global require, assertEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
 ///
@@ -28,10 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var errors = require("internal").errors;
 var helper = require("org/arangodb/aql-helper");
-var getQueryResults = helper.getQueryResults2;
-var assertQueryError = helper.assertQueryError2;
 var isEqual = helper.isEqual;
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Ast.h"
+#include "Aql/Arithmetic.h"
 #include "Aql/Collection.h"
 #include "Aql/Executor.h"
 #include "Basics/tri-strings.h"
@@ -41,10 +42,28 @@ using namespace triagens::aql;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise a singleton NOP node instance
+/// @brief initialise a singleton no-op node instance
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode const Ast::NopNode = { NODE_TYPE_NOP }; 
+AstNode const Ast::NopNode{ NODE_TYPE_NOP }; 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise a singleton null node instance
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode const Ast::NullNode{ NODE_TYPE_VALUE, VALUE_TYPE_NULL }; 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise a singleton false node instance
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode const Ast::FalseNode{ false }; 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise a singleton true node instance
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode const Ast::TrueNode{ true }; 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inverse comparison operators
@@ -71,7 +90,6 @@ std::unordered_map<int, AstNodeType> const Ast::ReverseOperators{
 
 Ast::Ast (Query* query)
   : _query(query),
-    _nodes(),
     _scopes(),
     _variables(),
     _bindParameters(),
@@ -80,8 +98,6 @@ Ast::Ast (Query* query)
     _writeCollection(nullptr) {
 
   TRI_ASSERT(_query != nullptr);
-
-  _nodes.reserve(32);
 
   startSubQuery();
 
@@ -93,10 +109,6 @@ Ast::Ast (Query* query)
 ////////////////////////////////////////////////////////////////////////////////
 
 Ast::~Ast () {
-  // free nodes
-  for (auto it = _nodes.begin(); it != _nodes.end(); ++it) {
-    delete (*it);
-  }
 }
 
 // -----------------------------------------------------------------------------
@@ -395,11 +407,11 @@ AstNode* Ast::createNodeVariable (char const* name,
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::createNodeCollection (char const* name) {
-  if (name == nullptr || *name == '\0') {
+  if (name == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  if (! TRI_IsAllowedNameCollection(true, name)) {
+  if (*name == '\0' || ! TRI_IsAllowedNameCollection(true, name)) {
     _query->registerError(TRI_ERROR_ARANGO_ILLEGAL_NAME, name);
     return nullptr;
   }
@@ -594,10 +606,9 @@ AstNode* Ast::createNodeIterator (char const* variableName,
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::createNodeValueNull () {
-  AstNode* node = createNode(NODE_TYPE_VALUE);
-  node->setValueType(VALUE_TYPE_NULL); 
-
-  return node;
+  // return a pointer to the singleton null node
+  // note: this node is never registered nor freed
+  return const_cast<AstNode*>(&NullNode);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -605,11 +616,12 @@ AstNode* Ast::createNodeValueNull () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::createNodeValueBool (bool value) {
-  AstNode* node = createNode(NODE_TYPE_VALUE);
-  node->setValueType(VALUE_TYPE_BOOL);
-  node->setBoolValue(value);
-
-  return node;
+  // return a pointer to the singleton bool nodes
+  // note: these nodes are never registered nor freed
+  if (value) {
+    return const_cast<AstNode*>(&TrueNode);
+  }
+  return const_cast<AstNode*>(&FalseNode);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -936,11 +948,6 @@ void Ast::optimize () {
       return optimizeReference(node);
     }
     
-    // range
-    if (node->type == NODE_TYPE_RANGE) {
-      return optimizeRange(node);
-    }
-    
     // LET
     if (node->type == NODE_TYPE_LET) {
       return optimizeLet(node);
@@ -982,14 +989,6 @@ std::unordered_set<Variable*> Ast::getReferencedVariables (AstNode const* node) 
   traverse(node, func, &result); 
 
   return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add a node to the list of nodes
-////////////////////////////////////////////////////////////////////////////////
-
-void Ast::addNode (AstNode* node) {
-  _nodes.push_back(node);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1050,11 +1049,45 @@ AstNode* Ast::clone (AstNode const* node) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a number node for an arithmetic result, integer
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createArithmeticResultNode (int64_t value) {
+  return createNodeValueInt(value);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a number node for an arithmetic result, double
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createArithmeticResultNode (double value) {
+  if (value != value || // intentional! 
+      value == HUGE_VAL || 
+      value == - HUGE_VAL) {
+    // IEEE754 NaN values have an interesting property that we can exploit...
+    // if the architecture does not use IEEE754 values then this shouldn't do
+    // any harm either
+    // TODO: log an error: _query->registerError(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE);
+    return createNodeValueNull();
+  }
+
+  return createNodeValueDouble(value);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes an expression with constant parameters
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::executeConstExpression (AstNode const* node) {
+  // must enter v8 before we can execute any expression
+  _query->enterContext();
+  
+  v8::HandleScope scope; // do not delete this!
+
   TRI_json_t* result = _query->executor()->executeExpression(node); 
+
+  // context is not left here, but later
+  // this allows re-using the same context for multiple expressions
 
   if (result == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -1095,27 +1128,26 @@ AstNode* Ast::optimizeUnaryOperatorArithmetic (AstNode* node) {
     return node;
   }
 
-  if (! operand->isNumericValue()) {
-    _query->registerError(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
-    return node;
-  }
+  // operand is a constant, now convert it into a number
+  auto converted = operand->castToNumber(this);
 
-  TRI_ASSERT(operand->value.type == VALUE_TYPE_INT ||
-             operand->value.type == VALUE_TYPE_DOUBLE);
+  if (converted->isNullValue()) {
+    return createNodeValueNull();
+  }
 
   if (node->type == NODE_TYPE_OPERATOR_UNARY_PLUS) {
     // + number => number
-    return operand;
+    return converted;
   }
   else {
     // - number
-    if (operand->value.type == VALUE_TYPE_INT) {
+    if (converted->value.type == VALUE_TYPE_INT) {
       // int64
-      return createNodeValueInt(- operand->getIntValue());
+      return createNodeValueInt(- converted->getIntValue());
     }
     else {
       // double
-      double const value = - operand->getDoubleValue();
+      double const value = - converted->getDoubleValue();
       
       if (value != value || 
           value == HUGE_VAL || 
@@ -1123,13 +1155,14 @@ AstNode* Ast::optimizeUnaryOperatorArithmetic (AstNode* node) {
         // IEEE754 NaN values have an interesting property that we can exploit...
         // if the architecture does not use IEEE754 values then this shouldn't do
         // any harm either
-        _query->registerError(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE);
-        return node;
+        return createNodeValueNull();
       }
 
       return createNodeValueDouble(value);
     }
   }
+
+  TRI_ASSERT(false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1175,13 +1208,10 @@ AstNode* Ast::optimizeUnaryOperatorLogical (AstNode* node) {
     return optimizeNotExpression(node);
   }
 
-  if (! operand->isBoolValue()) {
-    _query->registerError(TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE);
-    return node;
-  }
+  auto converted = operand->castToBool(this);
 
   // replace unary negation operation with result of negation
-  return createNodeValueBool(! operand->getBoolValue());
+  return createNodeValueBool(! converted->getBoolValue());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1201,55 +1231,31 @@ AstNode* Ast::optimizeBinaryOperatorLogical (AstNode* node) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  bool const lhsIsConst = lhs->isConstant();
-  bool const rhsIsConst = rhs->isConstant();
-
-  if (lhsIsConst && ! lhs->isBoolValue()) {
-    // left operand is a constant value, but no boolean
-    _query->registerError(TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE);
-    return node;
-  }
-
-  if (rhsIsConst && ! rhs->isBoolValue()) {
-    // right operand is a constant value, but no boolean
-    _query->registerError(TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE);
-    return node;
-  }
-
-  if (! lhsIsConst) {
-    if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
-      if (rhsIsConst && ! rhs->getBoolValue()) {
-        // (lhs || false) => lhs
+  if (lhs->isConstant()) {
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
+      // left operand is a constant value
+      if (lhs->isFalse()) {
+        // return it if it is falsey
         return lhs;
       }
-    }
 
-    // default: don't optimize
-    return node;
-  }
-
-  if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
-    // logical and
-
-    if (lhs->getBoolValue()) {
-      // (true && rhs) => rhs
+      // left-operand was trueish, now return right operand
       return rhs;
     }
+    else if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
+      // left operand is a constant value
+      if (lhs->isTrue()) {
+        // return it if it is trueish
+        return lhs;
+      }
 
-    // (false && rhs) => false
-    return lhs;
-  }
-  else {
-    // logical or
-
-    if (lhs->getBoolValue()) {
-      // (true || rhs) => true
-      return lhs;
+      // left-operand was falsey, now return right operand
+      return rhs;
     }
-
-    // (false || rhs) => rhs
-    return rhs;
   }
+
+  // default case
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1303,12 +1309,20 @@ AstNode* Ast::optimizeBinaryOperatorRelational (AstNode* node) {
   if (rhs->type != NODE_TYPE_LIST &&
       (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
        node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
-    // right operand of IN or NOT IN must be a list
-    _query->registerError(TRI_ERROR_QUERY_LIST_EXPECTED);
-    return node;
+    // right operand of IN or NOT IN must be a list, otherwise we return false
+    return createNodeValueBool(false);
   }
 
   if (! lhsIsConst) {
+    if (rhs->numMembers() >= 10 &&
+        (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
+         node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
+      // if the IN list contains a considerable amount of items, we will sort
+      // it, so we can find elements quicker later using a binary search
+      // note that sorting will also set a flag for the node
+      rhs->sort();
+    }
+
     return node;
   }
 
@@ -1330,71 +1344,161 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic (AstNode* node) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  bool const lhsIsConst = lhs->isConstant(); 
-  bool const rhsIsConst = rhs->isConstant(); 
+  if (lhs->isConstant() && rhs->isConstant()) {
+    // now calculate the expression result
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_PLUS) {
+      if (lhs->isStringValue() || lhs->isList() || lhs->isArray() ||
+          rhs->isStringValue() || rhs->isList() || rhs->isArray()) {
+        // + means string concatenation if one of the operands is a string, a list or an array
+        auto left  = lhs->castToString(this);
+        auto right = rhs->castToString(this);
 
-  if (lhsIsConst && ! lhs->isNumericValue()) {
-    // lhs is not a number
-    _query->registerError(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
-    return node;
-  }
-  
-  if (rhsIsConst && ! rhs->isNumericValue()) {
-    // rhs is not a number
-    _query->registerError(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
-    return node;
-  }
+        TRI_ASSERT(left->type == NODE_TYPE_VALUE && left->value.type == VALUE_TYPE_STRING);
+        TRI_ASSERT(right->type == NODE_TYPE_VALUE && right->value.type == VALUE_TYPE_STRING);
 
-  if (! lhsIsConst || ! rhsIsConst) {
-    return node;
-  }
+        if (*left->value.value._string == '\0') {
+          // left side is empty
+          return right;
+        }
+        else if (*right->value.value._string == '\0') {
+          // right side is empty
+          return left;
+        }
 
-  // now calculate the expression result
+        // must concat
+        char* concatenated = _query->registerStringConcat(left->value.value._string, right->value.value._string);
+        TRI_ASSERT(concatenated != nullptr);
+        return createNodeValueString(concatenated);
+      }
 
-  double value;
-  double const l = lhs->getDoubleValue();
-  double const r = rhs->getDoubleValue();
+      // arithmetic +
+      auto left  = lhs->castToNumber(this);
+      auto right = rhs->castToNumber(this);
 
-  if (node->type == NODE_TYPE_OPERATOR_BINARY_PLUS) {
-    value = l + r;
-  }
-  else if (node->type == NODE_TYPE_OPERATOR_BINARY_MINUS) {
-    value = l - r;
-  }
-  else if (node->type == NODE_TYPE_OPERATOR_BINARY_TIMES) {
-    value = l * r;
-  }
-  else if (node->type == NODE_TYPE_OPERATOR_BINARY_DIV) {
-    if (r == 0.0) {
-      _query->registerError(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
-      return node;
+      bool useDoublePrecision = (left->isDoubleValue() || right->isDoubleValue());
+
+      if (! useDoublePrecision) {
+        auto l = left->getIntValue();
+        auto r = right->getIntValue();
+        // check if the result would overflow
+        useDoublePrecision = IsUnsafeAddition<int64_t>(l, r); 
+      
+        if (! useDoublePrecision) {
+          // can calculate using integers
+          return createArithmeticResultNode(l + r);
+        }
+      }
+        
+      // must use double precision
+      return createArithmeticResultNode(left->getDoubleValue() + right->getDoubleValue());
     }
+    else if (node->type == NODE_TYPE_OPERATOR_BINARY_MINUS) {
+      auto left  = lhs->castToNumber(this);
+      auto right = rhs->castToNumber(this);
 
-    value = l / r;
-  }
-  else if (node->type == NODE_TYPE_OPERATOR_BINARY_MOD) {
-    if (r == 0.0) {
-      _query->registerError(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
-      return node;
+      bool useDoublePrecision = (left->isDoubleValue() || right->isDoubleValue());
+
+      if (! useDoublePrecision) {
+        auto l = left->getIntValue();
+        auto r = right->getIntValue();
+        // check if the result would overflow
+        useDoublePrecision = IsUnsafeSubtraction<int64_t>(l, r); 
+      
+        if (! useDoublePrecision) {
+          // can calculate using integers
+          return createArithmeticResultNode(l - r);
+        }
+      }
+        
+      // must use double precision
+      return createArithmeticResultNode(left->getDoubleValue() - right->getDoubleValue());
     }
+    else if (node->type == NODE_TYPE_OPERATOR_BINARY_TIMES) {
+      auto left  = lhs->castToNumber(this);
+      auto right = rhs->castToNumber(this);
 
-    value = fmod(l, r);
-  }
-  else {
+      bool useDoublePrecision = (left->isDoubleValue() || right->isDoubleValue());
+      
+      if (! useDoublePrecision) {
+        auto l = left->getIntValue();
+        auto r = right->getIntValue();
+        // check if the result would overflow
+        useDoublePrecision = IsUnsafeMultiplication<int64_t>(l, r);
+
+        if (! useDoublePrecision) {
+          // can calculate using integers
+          return createArithmeticResultNode(l * r);
+        }
+      }
+        
+      // must use double precision
+      return createArithmeticResultNode(left->getDoubleValue() * right->getDoubleValue());
+    }
+    else if (node->type == NODE_TYPE_OPERATOR_BINARY_DIV) {
+      auto left  = lhs->castToNumber(this);
+      auto right = rhs->castToNumber(this);
+
+      bool useDoublePrecision = (left->isDoubleValue() || right->isDoubleValue());
+      if (! useDoublePrecision) {
+        auto l = left->getIntValue();
+        auto r = right->getIntValue();
+
+        if (r == 0) {
+          // TODO: log an error _query->registerError(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
+          return createNodeValueNull();
+        }
+
+        // check if the result would overflow
+        useDoublePrecision = (IsUnsafeDivision<int64_t>(l, r) || r < -1 || r > 1);
+
+        if (! useDoublePrecision) {
+          // can calculate using integers
+          return createArithmeticResultNode(l / r);
+        }
+      }
+
+      if (right->getDoubleValue() == 0.0) {
+        // TODO: log an error _query->registerError(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
+        return createNodeValueNull();
+      }
+
+      return createArithmeticResultNode(left->getDoubleValue() / right->getDoubleValue());
+    }
+    else if (node->type == NODE_TYPE_OPERATOR_BINARY_MOD) {
+      auto left  = lhs->castToNumber(this);
+      auto right = rhs->castToNumber(this);
+
+      bool useDoublePrecision = (left->isDoubleValue() || right->isDoubleValue());
+      if (! useDoublePrecision) {
+        auto l = left->getIntValue();
+        auto r = right->getIntValue();
+
+        if (r == 0) {
+          // TODO: log an error _query->registerError(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
+          return createNodeValueNull();
+        }
+
+        // check if the result would overflow
+        useDoublePrecision = IsUnsafeDivision<int64_t>(l, r);
+
+        if (! useDoublePrecision) {
+          // can calculate using integers
+          return createArithmeticResultNode(l % r);
+        }
+      }
+
+      if (right->getDoubleValue() == 0.0) {
+        // TODO: log an error _query->registerError(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
+        return createNodeValueNull();
+      }
+
+      return createArithmeticResultNode(fmod(left->getDoubleValue(), right->getDoubleValue()));
+    }
+      
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid operator");
   }
-      
-  if (value != value || 
-      value == HUGE_VAL || 
-      value == - HUGE_VAL) {
-    // IEEE754 NaN values have an interesting property that we can exploit...
-    // if the architecture does not use IEEE754 values then this shouldn't do
-    // any harm either
-    _query->registerError(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE);
-    return node;
-  }
 
-  return createNodeValueDouble(value);
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1422,12 +1526,7 @@ AstNode* Ast::optimizeTernaryOperator (AstNode* node) {
     return node;
   }
 
-  if (! condition->isBoolValue()) {
-    _query->registerError(TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE);
-    return node;
-  }
-
-  if (condition->getBoolValue()) {
+  if (condition->isTrue()) {
     // condition is always true, replace ternary operation with true part
     return truePart;
   }
@@ -1482,33 +1581,6 @@ AstNode* Ast::optimizeReference (AstNode* node) {
   }
 
   return static_cast<AstNode*>(variable->constValue());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief optimizes the range operator
-////////////////////////////////////////////////////////////////////////////////
-
-AstNode* Ast::optimizeRange (AstNode* node) {
-  TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->type == NODE_TYPE_RANGE);
-  TRI_ASSERT(node->numMembers() == 2);
-
-  AstNode* lhs = node->getMember(0);
-  AstNode* rhs = node->getMember(1);
-
-  if (lhs == nullptr || rhs == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  if (! lhs->isConstant() || ! rhs->isConstant()) {
-    return node;
-  }
-
-  if (! lhs->isNumericValue() || ! rhs->isNumericValue()) {
-    _query->registerError(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
-  }
-
-  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1677,7 +1749,8 @@ AstNode* Ast::createNode (AstNodeType type) {
   auto node = new AstNode(type);
 
   try {
-    addNode(node);
+    // register the node so it gets freed automatically later
+    _query->addNode(node);
   }
   catch (...) {
     delete node;

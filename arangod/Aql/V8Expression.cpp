@@ -44,10 +44,9 @@ using namespace triagens::aql;
 ////////////////////////////////////////////////////////////////////////////////
 
 V8Expression::V8Expression (v8::Isolate* isolate,
-                            v8::Persistent<v8::Function> func) 
+                            v8::Persistent<v8::Function> func)
   : isolate(isolate),
     func(func) {
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -67,7 +66,7 @@ V8Expression::~V8Expression () {
 /// @brief execute the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue V8Expression::execute (AQL_TRANSACTION_V8* trx,
+AqlValue V8Expression::execute (triagens::arango::AqlTransaction* trx,
                                 std::vector<TRI_document_collection_t const*>& docColls,
                                 std::vector<AqlValue>& argv,
                                 size_t startPos,
@@ -76,8 +75,8 @@ AqlValue V8Expression::execute (AQL_TRANSACTION_V8* trx,
   size_t const n = vars.size();
   TRI_ASSERT(regs.size() == n); // assert same vector length
 
-  // TODO: only convert those variables to V8 that are actually used in the expression
   v8::Handle<v8::Object> values = v8::Object::New();
+
   for (size_t i = 0; i < n; ++i) {
     auto varname = vars[i]->name;
     auto reg = regs[i];
