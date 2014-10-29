@@ -43,6 +43,7 @@ function optimizerRuleTestSuite () {
   var rulesAll         = { optimizer: { rules: [ "+all" ] } };
   var thisRuleEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
   var thisRuleDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
+  var maxPlans         = { optimizer: { rules: [ "-all" ] }, maxNumberOfPlans: 1 };
 
   var cn1 = "UnitTestsAqlOptimizerRuleUndist1";
   var cn2 = "UnitTestsAqlOptimizerRuleUndist2";
@@ -79,6 +80,43 @@ function optimizerRuleTestSuite () {
       db._drop(cn1);
       db._drop(cn2);
     },
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test that the rules fire even if the max number of plans is reached
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testThisRuleEnabledMaxNumberOfPlans : function () {
+      var queries = [ 
+        "FOR d IN " + cn1 + " REMOVE d in " + cn1,
+        "FOR d IN " + cn1 + " REMOVE d._key in " + cn1,
+        "FOR d IN " + cn1 + " INSERT d in " + cn2,
+        "FOR d IN " + cn1 + " INSERT d._key in " + cn2
+      ];
+
+      var expectedRules = [
+                            [ 
+                              "distribute-in-cluster", 
+                              "scatter-in-cluster", 
+                            ], 
+                            [ 
+                              "distribute-in-cluster", 
+                              "scatter-in-cluster" 
+                            ],
+                            [
+                              "distribute-in-cluster", 
+                              "scatter-in-cluster" 
+                            ],
+                            [ 
+                              "distribute-in-cluster", 
+                              "scatter-in-cluster" 
+                            ]
+                          ];
+
+      queries.forEach(function(query, i) {
+        var result = AQL_EXPLAIN(query, { }, maxPlans);
+        assertEqual(expectedRules[i], result.plan.rules, query);
+      });
+    },
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test that the rule fires when it is enabled
@@ -100,7 +138,6 @@ function optimizerRuleTestSuite () {
                             [ 
                               "distribute-in-cluster", 
                               "scatter-in-cluster", 
-                              "distribute-filtercalc-to-cluster"
                             ],
                             [
                               "distribute-in-cluster", 
@@ -109,7 +146,6 @@ function optimizerRuleTestSuite () {
                             [ 
                               "distribute-in-cluster", 
                               "scatter-in-cluster", 
-                              "distribute-filtercalc-to-cluster"
                             ]
                           ];
 
@@ -132,9 +168,9 @@ function optimizerRuleTestSuite () {
                               "ScatterNode", 
                               "RemoteNode", 
                               "EnumerateCollectionNode",
-                              "CalculationNode", 
                               "RemoteNode", 
                               "GatherNode",
+                              "CalculationNode", 
                               "DistributeNode",
                               "RemoteNode",
                               "RemoveNode",
@@ -159,9 +195,9 @@ function optimizerRuleTestSuite () {
                               "ScatterNode", 
                               "RemoteNode", 
                               "EnumerateCollectionNode", 
-                              "CalculationNode", 
                               "RemoteNode", 
                               "GatherNode",
+                              "CalculationNode", 
                               "DistributeNode",
                               "RemoteNode",
                               "InsertNode",
@@ -375,7 +411,6 @@ function optimizerRuleTestSuite () {
                             [ 
                               "distribute-in-cluster", 
                               "scatter-in-cluster", 
-                              "distribute-filtercalc-to-cluster", 
                             ],
                             [ 
                               "distribute-in-cluster", 
@@ -384,7 +419,6 @@ function optimizerRuleTestSuite () {
                             [ 
                               "distribute-in-cluster", 
                               "scatter-in-cluster", 
-                              "distribute-filtercalc-to-cluster", 
                             ]
                           ];
 
@@ -407,9 +441,9 @@ function optimizerRuleTestSuite () {
                               "ScatterNode", 
                               "RemoteNode", 
                               "EnumerateCollectionNode", 
-                              "CalculationNode", 
                               "RemoteNode", 
                               "GatherNode",
+                              "CalculationNode", 
                               "DistributeNode",
                               "RemoteNode",
                               "RemoveNode",
@@ -434,9 +468,9 @@ function optimizerRuleTestSuite () {
                               "ScatterNode", 
                               "RemoteNode", 
                               "EnumerateCollectionNode", 
-                              "CalculationNode", 
                               "RemoteNode", 
                               "GatherNode", 
+                              "CalculationNode", 
                               "DistributeNode", 
                               "RemoteNode", 
                               "InsertNode", 
