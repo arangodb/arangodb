@@ -117,6 +117,7 @@ int Optimizer::createPlans (ExecutionPlan* plan,
     return TRI_ERROR_NO_ERROR;
   }
 
+  bool runOnlyRequiredRules = false;
   int leastDoneLevel = 0;
 
   TRI_ASSERT(! _rules.empty());
@@ -169,9 +170,10 @@ int Optimizer::createPlans (ExecutionPlan* plan,
         */
 
         level = (*it).first;
-        if (disabledIds.find(level) != disabledIds.end() &&
+        if ((runOnlyRequiredRules || disabledIds.find(level) != disabledIds.end()) &&
             (*it).second.canBeDisabled) {
-          // we picked a disabled rule
+          // we picked a disabled rule or we have reached the max number of plans
+          // and just skip this rule
           level = it->first;
 
           _newPlans.push_back(p, level);  // nothing to do, just keep it
@@ -210,13 +212,12 @@ int Optimizer::createPlans (ExecutionPlan* plan,
     // std::cout << "Least done level is " << leastDoneLevel << std::endl;
 
     // Stop if the result gets out of hand:
-    if (_plans.size() >= _maxNumberOfPlans) {
-      // TODO: must iterate over all REQUIRED remaining transformation rules 
+    if (! runOnlyRequiredRules &&
+        _plans.size() >= _maxNumberOfPlans) {
+      // must still iterate over all REQUIRED remaining transformation rules 
       // because there are some rules which are required to make the query
       // work in cluster mode
-      // rules that have their canBeDisabled flag set to false must still
-      // be carried out!
-      break;
+      runOnlyRequiredRules = true;
     }
   }
   
