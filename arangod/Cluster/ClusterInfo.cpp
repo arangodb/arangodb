@@ -952,6 +952,7 @@ int ClusterInfo::createDatabaseCoordinator (string const& name,
   }
 
   // Now wait for it to appear and be complete:
+  res.clear();
   res = ac.getValues("Current/Version", false);
   if (! res.successful()) {
     return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
@@ -964,6 +965,7 @@ int ClusterInfo::createDatabaseCoordinator (string const& name,
 
   string where = "Current/Databases/" + name;
   while (TRI_microtime() <= endTime) {
+    res.clear();
     res = ac.getValues(where, true);
     if (res.successful() && res.parse(where+"/", false)) {
       if (res._values.size() == DBServers.size()) {
@@ -999,6 +1001,7 @@ int ClusterInfo::createDatabaseCoordinator (string const& name,
       }
     }
 
+    res.clear();
     res = ac.watchValue("Current/Version", index, getReloadServerListTimeout() / interval, false);
     index = res._index;
     if (++count >= static_cast<int>(getReloadServerListTimeout() / interval)) {
@@ -1050,6 +1053,7 @@ int ClusterInfo::dropDatabaseCoordinator (string const& name, string& errorMsg,
                           errorMsg);
     }
 
+    res.clear();
     res = ac.removeValues("Plan/Collections/" + name, true);
 
     if (! res.successful() && res.httpCode() != (int) rest::HttpResponse::NOT_FOUND) {
@@ -1061,6 +1065,7 @@ int ClusterInfo::dropDatabaseCoordinator (string const& name, string& errorMsg,
   _collectionsValid = false;
 
   // Now wait for it to appear and be complete:
+  res.clear();
   res = ac.getValues("Current/Version", false);
   if (!res.successful()) {
     return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
@@ -1070,11 +1075,13 @@ int ClusterInfo::dropDatabaseCoordinator (string const& name, string& errorMsg,
 
   string where = "Current/Databases/" + name;
   while (TRI_microtime() <= endTime) {
+    res.clear();
     res = ac.getValues(where, true);
     if (res.successful() && res.parse(where+"/", false)) {
       if (res._values.size() == 0) {
         AgencyCommLocker locker("Current", "WRITE");
         if (locker.successful()) {
+          res.clear();
           res = ac.removeValues(where, true);
           if (res.successful()) {
             return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
@@ -1085,7 +1092,7 @@ int ClusterInfo::dropDatabaseCoordinator (string const& name, string& errorMsg,
         return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
       }
     }
-
+    res.clear();
     res = ac.watchValue("Current/Version", index, interval, false);
     index = res._index;
   }
@@ -1162,6 +1169,7 @@ int ClusterInfo::createCollectionCoordinator (string const& databaseName,
 
   string where = "Current/Collections/" + databaseName + "/" + collectionID;
   while (TRI_microtime() <= endTime) {
+    res.clear();
     res = ac.getValues(where, true);
     if (res.successful() && res.parse(where+"/", false)) {
       if (res._values.size() == (size_t) numberOfShards) {
@@ -1197,6 +1205,7 @@ int ClusterInfo::createCollectionCoordinator (string const& databaseName,
       }
     }
 
+    res.clear();
     res = ac.watchValue("Current/Version", index, interval, false);
     index = res._index;
   }
@@ -1245,6 +1254,7 @@ int ClusterInfo::dropCollectionCoordinator (string const& databaseName,
   flush();
 
   // Now wait for it to appear and be complete:
+  res.clear();
   res = ac.getValues("Current/Version", false);
   if (!res.successful()) {
     return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
@@ -1255,6 +1265,7 @@ int ClusterInfo::dropCollectionCoordinator (string const& databaseName,
   // monitor the entry for the collection
   const string where = "Current/Collections/" + databaseName + "/" + collectionID;
   while (TRI_microtime() <= endTime) {
+    res.clear();
     res = ac.getValues(where, true);
     if (res.successful() && res.parse(where+"/", false)) {
       // if there are no more active shards for the collection...
@@ -1262,6 +1273,7 @@ int ClusterInfo::dropCollectionCoordinator (string const& databaseName,
         // ...remove the entire directory for the collection
         AgencyCommLocker locker("Current", "WRITE");
         if (locker.successful()) {
+          res.clear();
           res = ac.removeValues("Current/Collections/"+databaseName+"/"+
                                 collectionID, true);
           if (res.successful()) {
@@ -1274,6 +1286,7 @@ int ClusterInfo::dropCollectionCoordinator (string const& databaseName,
       }
     }
 
+    res.clear();
     res = ac.watchValue("Current/Version", index, interval, false);
     index = res._index;
   }
@@ -1331,6 +1344,7 @@ int ClusterInfo::setCollectionPropertiesCoordinator (string const& databaseName,
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, copy, "journalSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_maximalSize));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, copy, "waitForSync", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->_waitForSync));
 
+  res.clear();
   res = ac.setValue("Plan/Collections/" + databaseName + "/" + collectionID, copy, 0.0);
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, copy);
@@ -1396,6 +1410,7 @@ int ClusterInfo::setCollectionStatusCoordinator (string const& databaseName,
   TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, copy, "status");
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, copy, "status", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, status));
 
+  res.clear();
   res = ac.setValue("Plan/Collections/" + databaseName + "/" + collectionID, copy, 0.0);
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, copy);
@@ -1576,6 +1591,7 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
 
   string where = "Current/Collections/" + databaseName + "/" + collectionID;
   while (TRI_microtime() <= endTime) {
+    res.clear();
     res = ac.getValues(where, true);
     if (res.successful() && res.parse(where + "/", false)) {
       if (res._values.size() == (size_t) numberOfShards) {
@@ -1631,7 +1647,7 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
         }
       }
     }
-
+    res.clear();
     res = ac.watchValue("Current/Version", index, interval, false);
     index = res._index;
   }
@@ -1772,6 +1788,7 @@ int ClusterInfo::dropIndexCoordinator (string const& databaseName,
 
   string where = "Current/Collections/" + databaseName + "/" + collectionID;
   while (TRI_microtime() <= endTime) {
+    res.clear();
     res = ac.getValues(where, true);
     if (res.successful() && res.parse(where + "/", false)) {
       if (res._values.size() == (size_t) numberOfShards) {
@@ -1807,6 +1824,7 @@ int ClusterInfo::dropIndexCoordinator (string const& databaseName,
       }
     }
 
+    res.clear();
     res = ac.watchValue("Current/Version", index, interval, false);
     index = res._index;
   }
@@ -1845,7 +1863,7 @@ void ClusterInfo::loadServers () {
         = triagens::basics::JsonHelper::getArrayElement((*it).second._json,
                                                         "endpoint");
       if (nullptr != sub) {
-        const std::string server = triagens::basics::JsonHelper::getStringValue(sub, "");
+        std::string server = triagens::basics::JsonHelper::getStringValue(sub, "");
 
         _servers.emplace(std::make_pair((*it).first, server));
       }
