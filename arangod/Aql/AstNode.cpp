@@ -693,7 +693,6 @@ TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone,
 
     TRI_ASSERT(variable != nullptr);
 
-    /// TODO: use variable.toJson()!!!
     TRI_Insert3ArrayJson(zone, node, "name", TRI_CreateStringCopyJson(zone, variable->name.c_str()));
     TRI_Insert3ArrayJson(zone, node, "id", TRI_CreateNumberJson(zone, static_cast<double>(variable->id)));
   }

@@ -1365,7 +1365,7 @@ class SortToIndexNode : public WalkerWorker<ExecutionNode> {
                                       node->vocbase(), 
                                       node->collection(),
                                       node->outVariable(),
-                                      idx.index, /// TODO: estimate cost on match quality
+                                      idx.index,
                                       result.second,
                                       (idx.doesMatch && idx.reverse));
         newPlan->registerNode(newNode);
@@ -1397,7 +1397,7 @@ class SortToIndexNode : public WalkerWorker<ExecutionNode> {
     switch (en->getType()) {
     case EN::ENUMERATE_LIST:
     case EN::CALCULATION:
-    case EN::SUBQUERY:        /// TODO: find out whether it may throw
+    case EN::SUBQUERY:
     case EN::FILTER:
       return false;                           // skip. we don't care.
 
@@ -1439,9 +1439,9 @@ int triagens::aql::useIndexForSort (Optimizer* opt,
   for (auto n : nodes) {
     auto thisSortNode = static_cast<SortNode*>(n);
     SortAnalysis node(thisSortNode);
-    if (node.isAnalyzeable()) {
+    if (node.isAnalyzeable() && ! n->getDependencies().empty()) {
       SortToIndexNode finder(opt, plan, &node, rule->level);
-      thisSortNode->walk(&finder);/// todo auf der dependency anfangen
+      thisSortNode->getDependencies()[0]->walk(&finder);
       if (finder.planModified) {
         planModified = true;
       }
@@ -2174,8 +2174,6 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
           }
           auto cn = static_cast<CalculationNode*>(en);
           auto fn = static_cast<FilterNode*>(_lastNode);
-          // FIXME should the following be an assertion? I.e. can it
-          // ever happen?
           
           // check these are a Calc-Filter pair
           if (cn->getVariablesSetHere()[0]->id != fn->getVariablesUsedHere()[0]->id) {
@@ -2190,7 +2188,7 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
             break; //abort . . .
           }
           if (varsUsedHere[0]->id != _variable->id) {
-            break; // abort . . . FIXME is this the desired behaviour??
+            break;
           }
           _lastNode = en;
           return false; // continue . . .
@@ -2200,7 +2198,7 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
           // and that we have already seen a remove node
           TRI_ASSERT(_enumColl != nullptr);
           if (en->id() != _enumColl->id()) {
-            break; // abort . . . FIXME is this the desired behaviour??
+            break;
           }
           return true; // reached the end!
         }

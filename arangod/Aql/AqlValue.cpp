@@ -97,8 +97,9 @@ void AqlValue::destroy () {
       // do nothing here, since data pointers need not be freed
       break;
     }
-    default: {
-      TRI_ASSERT(false);
+    case EMPTY: {
+      // do nothing
+      break;
     }
   }
  
@@ -453,7 +454,7 @@ v8::Handle<v8::Value> AqlValue::toV8 (triagens::arango::AqlTransaction* trx,
     }
 
     case EMPTY: {
-      return v8::Object::New(); // TODO?
+      return v8::Undefined();
     }
   }
       
@@ -506,7 +507,6 @@ Json AqlValue::toJson (triagens::arango::AqlTransaction* trx,
         json(TRI_VOC_ATTRIBUTE_TO, Json(to));
       }
 
-      // TODO: return _from and _to, and fix order of attributes!
       return json;
     }
           
