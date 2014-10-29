@@ -179,7 +179,7 @@ function Done (suiteName) {
   FAILED = 0;
   DURATION = 0;
 
-  return COMPLETE.RESULTS;
+  return RESULTS;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
