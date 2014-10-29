@@ -35,7 +35,6 @@
 #include "v8-vocbase.h"
 #include "Ahuacatl/ahuacatl-error.h"
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wrapped class for TRI_vocbase_t
 ///
@@ -45,7 +44,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 extern int32_t const WRP_VOCBASE_TYPE;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wrapped class for TRI_vocbase_col_t
@@ -58,8 +56,6 @@ extern int32_t const WRP_VOCBASE_TYPE;
 
 extern int32_t const WRP_VOCBASE_COL_TYPE;
 
-
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private defines
 // -----------------------------------------------------------------------------
@@ -69,18 +65,8 @@ extern int32_t const WRP_VOCBASE_COL_TYPE;
 ////////////////////////////////////////////////////////////////////////////////
 
 #define PREVENT_EMBEDDED_TRANSACTION(scope)                               \
-  if (V8TransactionContext<true>::IsEmbedded()) {                         \
+  if (triagens::arango::V8TransactionContext::IsEmbedded()) {             \
     TRI_V8_EXCEPTION(scope, TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);  \
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free a string if defined, nop otherwise
-////////////////////////////////////////////////////////////////////////////////
-
-#define FREE_STRING(zone, what)                                           \
-  if (what != nullptr) {                                                  \
-    TRI_Free(zone, what);                                                 \
-    what = nullptr;                                                       \
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -120,7 +106,7 @@ v8::Handle<v8::Object> CreateErrorObjectAhuacatl (TRI_aql_error_t* error);
 
 bool ExtractDocumentHandle (v8::Handle<v8::Value> const val,
                             std::string& collectionName,
-                            TRI_voc_key_t& key,
+                            std::unique_ptr<char[]>& key,
                             TRI_voc_rid_t& rid);
 
 #endif

@@ -1,4 +1,6 @@
-/*global require, assertTrue, assertEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*jshint strict: false, sub: true, maxlen: 500 */
+/*global require, assertEqual, assertFalse, assertNull */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, bind parameters
 ///
@@ -25,26 +27,22 @@
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-var PY = function (plan) { require("internal").print(require("js-yaml").safeDump(plan));};
 
-var internal = require("internal");
 var db = require("org/arangodb").db;
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
-var cluster = require("org/arangodb/cluster");
 var getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlRemoveSuite () {
-  var errors = internal.errors;
   var edge;
   var cn1 = "UnitTestsAhuacatlRemove1";
   var cn2 = "UnitTestsAhuacatlRemove2";
   var c1;
+  var c2;
 
   return {
 
@@ -95,7 +93,7 @@ function ahuacatlRemoveSuite () {
       var allresults = getQueryMultiplePlansAndExecutions(query, {}, this);
 
       assertEqual(100, c1.count());
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i <  allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -113,7 +111,7 @@ function ahuacatlRemoveSuite () {
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 }, this);
 
       assertEqual(100, c1.count());
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i <  allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -373,10 +371,10 @@ function ahuacatlRemoveSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlInsertSuite () {
-  var errors = internal.errors;
   var cn1 = "UnitTestsAhuacatlInsert1";
   var cn2 = "UnitTestsAhuacatlInsert2";
   var c1;
+  var c2;
   var edge;
 
   return {
@@ -399,7 +397,6 @@ function ahuacatlInsertSuite () {
       }
       db._drop("UnitTestsAhuacatlEdge");
       edge = db._createEdgeCollection("UnitTestsAhuacatlEdge"); 
-
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -424,7 +421,7 @@ function ahuacatlInsertSuite () {
       var allresults = getQueryMultiplePlansAndExecutions(query, {}, this);
     
       assertEqual(100, c1.count());
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i < allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -439,7 +436,7 @@ function ahuacatlInsertSuite () {
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 }, this);
 
       assertEqual(100, c1.count());
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i < allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -455,7 +452,7 @@ function ahuacatlInsertSuite () {
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 }, this);
 
       assertEqual(100, c1.count());
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i < allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -471,7 +468,7 @@ function ahuacatlInsertSuite () {
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 }, this);
 
       assertEqual(101, c1.count());
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i < allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -597,18 +594,18 @@ function ahuacatlInsertSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertEdge : function () {
-
+      var i;
       var expected = { writesExecuted: 50, writesIgnored: 0 };
       var query = "FOR i IN 1..50 INSERT { _key: CONCAT('test', TO_STRING(i)), _from: CONCAT('UnitTestsAhuacatlInsert1/', TO_STRING(i)), _to: CONCAT('UnitTestsAhuacatlInsert2/', TO_STRING(i)), value: [ i ], sub: { foo: 'bar' } } INTO @@cn";
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": edge.name() }, this);
 
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (i = 0; i < allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
       assertEqual(50, edge.count());
 
-      for (var i = 1; i <= 50; ++i) {
+      for (i = 1; i <= 50; ++i) {
         var doc = edge.document("test" + i);
         assertEqual("UnitTestsAhuacatlInsert1/" + i, doc._from);
         assertEqual("UnitTestsAhuacatlInsert2/" + i, doc._to);
@@ -625,10 +622,10 @@ function ahuacatlInsertSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlUpdateSuite () {
-  var errors = internal.errors;
   var cn1 = "UnitTestsAhuacatlUpdate1";
   var cn2 = "UnitTestsAhuacatlUpdate2";
   var c1;
+  var c2;
 
   return {
 
@@ -637,15 +634,16 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
+      var i;
       db._drop(cn1);
       db._drop(cn2);
       c1 = db._create(cn1);
       c2 = db._create(cn2);
 
-      for (var i = 0; i < 100; ++i) {
+      for (i = 0; i < 100; ++i) {
         c1.save({ _key: "test" + i, value1: i, value2: "test" + i });
       }
-      for (var i = 0; i < 50; ++i) {
+      for (i = 0; i < 50; ++i) {
         c2.save({ _key: "test" + i, value1: i, value2: "test" + i });
       }
     },
@@ -670,7 +668,7 @@ function ahuacatlUpdateSuite () {
       var query = "FOR d IN " + cn1 + " FILTER d.value1 < 0 UPDATE { foxx: true } IN " + cn1;
       var allresults = getQueryMultiplePlansAndExecutions(query, {}, this);
 
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i < allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -685,7 +683,7 @@ function ahuacatlUpdateSuite () {
       var query = "FOR d IN @@cn FILTER d.value1 < 0 UPDATE { foxx: true } IN @@cn";
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 });
 
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i < allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -701,7 +699,7 @@ function ahuacatlUpdateSuite () {
       var query = "FOR d IN @@cn UPDATE d WITH { value3: 1 } IN @@cn OPTIONS { ignoreErrors: true }";
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 });
 
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i < allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -717,7 +715,7 @@ function ahuacatlUpdateSuite () {
       var query = "FOR i IN 50..100 UPDATE { _key: CONCAT('test', TO_STRING(i)), value1: 1 } IN @@cn OPTIONS { ignoreErrors: true }";
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 });
 
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i < allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -728,15 +726,16 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateEmpty1 : function () {
+      var i;
       var expected = { writesExecuted: 100, writesIgnored: 0 };
       var query = "FOR d IN @@cn UPDATE { _key: d._key } IN @@cn";
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 });
 
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (i = 0; i < allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
-      for (var i = 0; i < 100; ++i) {
+      for (i = 0; i < 100; ++i) {
         var doc = c1.document("test" + i);
         assertEqual(i, doc.value1);
         assertEqual("test" + i, doc.value2);
@@ -748,15 +747,16 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateEmpty2 : function () {
+      var i;
       var expected = { writesExecuted: 100, writesIgnored: 0 };
       var query = "FOR d IN @@cn UPDATE d IN @@cn";
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 });
 
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (i = 0; i < allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
-      for (var i = 0; i < 100; ++i) {
+      for (i = 0; i < 100; ++i) {
         var doc = c1.document("test" + i);
         assertEqual(i, doc.value1);
         assertEqual("test" + i, doc.value2);
@@ -773,7 +773,7 @@ function ahuacatlUpdateSuite () {
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 });
 
       assertEqual("foobar", c1.document("test17").value);
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i < allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -784,15 +784,16 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateOldValue : function () {
+      var i;
       var expected = { writesExecuted: 100, writesIgnored: 0 };
       var query = "FOR d IN @@cn UPDATE { _key: d._key, value1: d.value2, value2: d.value1, value3: d.value1 + 5 } IN @@cn";
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 }, this);
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (i = 0; i < allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
 
-      for (var i = 0; i < 100; ++i) {
+      for (i = 0; i < 100; ++i) {
         var doc = c1.document("test" + i);
         assertEqual("test" + i, doc.value1);
         assertEqual(i, doc.value2);
@@ -805,15 +806,16 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateWaitForSync : function () {
+      var i;
       var expected = { writesExecuted: 50, writesIgnored: 0 };
       var query = "FOR i IN 1..50 UPDATE { _key: CONCAT('test', TO_STRING(i)) } INTO @@cn OPTIONS { waitForSync: true }";
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 });
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (i = 0; i < allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
 
-      for (var i = 0; i < 100; ++i) {
+      for (i = 0; i < 100; ++i) {
         var doc = c1.document("test" + i);
         assertEqual(i, doc.value1);
         assertEqual("test" + i, doc.value2);
@@ -825,15 +827,16 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateKeepNullDefault : function () {
+      var i;
       var expected = { writesExecuted: 100, writesIgnored: 0 };
       var query = "FOR d IN @@cn UPDATE d._key WITH { value1: null, value3: 'foobar', value9: null } INTO @@cn";
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 });
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (i = 0; i < allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
 
-      for (var i = 0; i < 100; ++i) {
+      for (i = 0; i < 100; ++i) {
         var doc = c1.document("test" + i);
         assertNull(doc.value1);
         assertEqual("test" + i, doc.value2);
@@ -847,15 +850,16 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateKeepNullTrue : function () {
+      var i;
       var expected = { writesExecuted: 100, writesIgnored: 0 };
       var query = "FOR d IN @@cn UPDATE d._key WITH { value1: null, value3: 'foobar', value9: null } INTO @@cn OPTIONS { keepNull: true }";
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 });
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (i = 0; i < allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
 
-      for (var i = 0; i < 100; ++i) {
+      for (i = 0; i < 100; ++i) {
         var doc = c1.document("test" + i);
         assertNull(doc.value1);
         assertEqual("test" + i, doc.value2);
@@ -869,15 +873,16 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateKeepNullFalse : function () {
+      var i;
       var expected = { writesExecuted: 100, writesIgnored: 0 };
       var query = "FOR d IN @@cn UPDATE d._key WITH { value1: null, value3: 'foobar', value9: null } INTO @@cn OPTIONS { keepNull: false }";
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 });
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (i = 0; i < allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
 
-      for (var i = 0; i < 100; ++i) {
+      for (i = 0; i < 100; ++i) {
         var doc = c1.document("test" + i);
         assertFalse(doc.hasOwnProperty("value1"));
         assertEqual("test" + i, doc.value2);
@@ -891,16 +896,17 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateFilter : function () {
+      var i;
       var expected = { writesExecuted: 50, writesIgnored: 0 };
       var query = "FOR d IN @@cn FILTER d.value1 % 2 == 0 UPDATE d._key WITH { value2: 100 } INTO @@cn";
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 }, this);
 
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (i = 0; i < allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
 
-      for (var i = 0; i < 100; ++i) {
+      for (i = 0; i < 100; ++i) {
         var doc = c1.document("test" + i);
         if (i % 2 === 0) {
           assertEqual(100, doc.value2);
@@ -916,19 +922,20 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateUpdate : function () {
+      var i, j;
       var expected = { writesExecuted: 100, writesIgnored: 0 };
       var query = "FOR d IN @@cn UPDATE d._key WITH { counter: HAS(d, 'counter') ? d.counter + 1 : 1 } INTO @@cn";
 
-      for (var j = 0; j < 5; ++j) {
+      for (j = 0; j < 5; ++j) {
 
         var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 });
-        for (var i=0; i <  allresults.results.length; i++) {
+        for (i = 0; i < allresults.results.length; i++) {
           assertEqual(expected, allresults.results[i].stats,
                       "comparing " + i + " : "  + allresults.results[i].stats);
         }
       }
 
-      for (var i = 0; i < 100; ++i) {
+      for (i = 0; i < 100; ++i) {
         var doc = c1.document("test" + i);
         assertEqual(10, doc.counter);
       }
@@ -939,17 +946,18 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReplace1 : function () {
+      var i, j;
       var expected = { writesExecuted: 100, writesIgnored: 0 };
-      for (var j = 0; j < 5; ++j) {
+      for (j = 0; j < 5; ++j) {
         var query = "FOR d IN @@cn REPLACE d._key WITH { value4: 12 } INTO @@cn";
         var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 });
-        for (var i=0; i <  allresults.results.length; i++) {
+        for (i = 0; i < allresults.results.length; i++) {
           assertEqual(expected, allresults.results[i].stats,
                       "comparing " + i + " : "  + allresults.results[i].stats);
         }
       }
 
-      for (var i = 0; i < 100; ++i) {
+      for (i = 0; i < 100; ++i) {
         var doc = c1.document("test" + i);
         assertFalse(doc.hasOwnProperty("value1"));
         assertFalse(doc.hasOwnProperty("value2"));
@@ -963,17 +971,18 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReplace2 : function () {
+      var i, j;
       var expected = { writesExecuted: 100, writesIgnored: 0 };
-      for (var j = 0; j < 5; ++j) {
+      for (j = 0; j < 5; ++j) {
         var query = "FOR d IN @@cn REPLACE { _key: d._key, value4: 13 } INTO @@cn";
         var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 });
-        for (var i=0; i <  allresults.results.length; i++) {
+        for (i = 0; i < allresults.results.length; i++) {
           assertEqual(expected, allresults.results[i].stats,
                       "comparing " + i + " : "  + allresults.results[i].stats);
         }
       }
 
-      for (var i = 0; i < 100; ++i) {
+      for (i = 0; i < 100; ++i) {
         var doc = c1.document("test" + i);
         assertFalse(doc.hasOwnProperty("value1"));
         assertFalse(doc.hasOwnProperty("value2"));
@@ -987,17 +996,18 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReplaceReplace : function () {
+      var i, j;
       var expected = { writesExecuted: 100, writesIgnored: 0 };
-      for (var j = 0; j < 5; ++j) {
+      for (j = 0; j < 5; ++j) {
         var query = "FOR d IN @@cn REPLACE d._key WITH { value1: d.value1 + 1 } INTO @@cn";
         var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 }, this);
-        for (var i=0; i <  allresults.results.length; i++) {
+        for (i = 0; i < allresults.results.length; i++) {
           assertEqual(expected, allresults.results[i].stats,
                       "comparing " + i + " : "  + allresults.results[i].stats);
         }
       }
 
-      for (var i = 0; i < 100; ++i) {
+      for (i = 0; i < 100; ++i) {
         var doc = c1.document("test" + i);
         assertEqual(i + 1, doc.value1);
         assertFalse(doc.hasOwnProperty("value2"));

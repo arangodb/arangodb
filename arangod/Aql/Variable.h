@@ -32,11 +32,10 @@
 
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
+#include "Aql/types.h"
 
 namespace triagens {
   namespace aql {
-
-    typedef uint32_t VariableId; 
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   struct Variable
@@ -52,6 +51,10 @@ namespace triagens {
                 VariableId);
 
       Variable (basics::Json const& json);
+
+      Variable *clone() const {
+        return new Variable(name, id);
+      }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the variable

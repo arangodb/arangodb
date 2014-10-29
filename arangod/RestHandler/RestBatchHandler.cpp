@@ -557,7 +557,7 @@ bool RestBatchHandler::extractPart (SearchHelper* helper) {
 
     char* eol = strstr(found, "\r\n");
 
-    if (eol == 0) {
+    if (eol == nullptr) {
       breakLength = 1;
       eol = strchr(found, '\n');
 
@@ -568,55 +568,60 @@ bool RestBatchHandler::extractPart (SearchHelper* helper) {
     else {
       char* eol2 = strchr(found, '\n');
 
-      if (eol2 != 0 && eol2 < eol) {
+      if (eol2 != nullptr && eol2 < eol) {
         breakLength = 1;
         eol = eol2;
       }
     }
 
-    if (eol == 0 || eol == found) {
+    if (eol == nullptr || eol == found) {
       break;
     }
 
     // split key/value of header
     char* colon = (char*) memchr(found, (int) ':', eol - found);
 
-    if (0 == colon) {
+    if (nullptr == colon) {
       // invalid header, not containing ':'
       return false;
     }
 
-    // set up key/value pair
+    // set up the key
     string key(found, colon - found);
     StringUtils::trimInPlace(key);
-    StringUtils::tolowerInPlace(&key);
 
-    // skip the colon itself
-    ++colon;
-    // skip any whitespace
-    while (*colon == ' ') {
+    if (key[0] == 'c' || key[0] == 'C') {
+      // got an interesting key. now process it
+      StringUtils::tolowerInPlace(&key);
+    
+      // skip the colon itself
       ++colon;
-    }
+      // skip any whitespace
+      while (*colon == ' ') {
+        ++colon;
+      }
 
-    string value(colon, eol - colon);
-    StringUtils::trimInPlace(value);
+      if ("content-type" == key) {
+        // extract the value, too
+        string value(colon, eol - colon);
+        StringUtils::trimInPlace(value);
 
-    if ("content-type" == key) {
-      if (_partContentType == value) {
-        hasTypeHeader = true;
+        if (_partContentType == value) {
+          hasTypeHeader = true;
+        }
+        else {
+          LOG_WARNING("unexpected content-type '%s' for multipart-message. expected: '%s'",
+                      value.c_str(),
+                      _partContentType.c_str());
+        }
+      }
+      else if ("content-id" == key) {
+        helper->contentId = colon;
+        helper->contentIdLength = eol - colon;
       }
       else {
-        LOG_WARNING("unexpected content-type '%s' for multipart-message. expected: '%s'",
-                    value.c_str(),
-                    _partContentType.c_str());
+        // ignore other headers
       }
-    }
-    else if ("content-id" == key) {
-      helper->contentId = colon;
-      helper->contentIdLength = eol - colon;
-    }
-    else {
-      // ignore other headers
     }
 
     found = eol + breakLength; // plus the \n

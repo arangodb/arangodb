@@ -31,14 +31,16 @@
 #include <Basics/JsonHelper.h>
 #include <ShapedJson/shaped-json.h>
 
-#include "Aql/Types.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/Range.h"
 #include "Aql/WalkerWorker.h"
+#include "Aql/ExecutionStats.h"
 #include "Utils/AqlTransaction.h"
 #include "Utils/transactions.h"
 #include "Utils/V8TransactionContext.h"
+#include "Cluster/ClusterComm.h"
 
 namespace triagens {
   namespace aql {
@@ -63,15 +65,9 @@ namespace triagens {
       size_t lastRow;
       bool rowsAreValid;
 
-      AggregatorGroup ()
-        : firstRow(0),
-          lastRow(0),
-          rowsAreValid(false) {
-      }
+      AggregatorGroup ();
 
-      ~AggregatorGroup () {
-        reset();
-      }
+      ~AggregatorGroup ();
 
       void initialize (size_t capacity);
       void reset ();
@@ -86,7 +82,8 @@ namespace triagens {
         rowsAreValid = true;
       }
 
-      void addValues (AqlItemBlock const* src, RegisterId groupRegister);
+      void addValues (AqlItemBlock const* src, 
+                      RegisterId groupRegister);
     };
 
 // -----------------------------------------------------------------------------
@@ -154,73 +151,9 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief static analysis, walker class and information collector
-////////////////////////////////////////////////////////////////////////////////
-
-        struct VarInfo {
-          unsigned int const depth;
-          RegisterId const registerId;
-
-          VarInfo () = delete;
-          VarInfo (int depth, int registerId)
-            : depth(depth), registerId(registerId) {
-          }
-        };
-
-        struct VarOverview : public WalkerWorker<ExecutionBlock> {
-          // The following are collected for global usage in the ExecutionBlock:
-
-          // map VariableIds to their depth and registerId:
-          std::unordered_map<VariableId, VarInfo> varInfo;
-
-          // number of variables in the frame of the current depth:
-          std::vector<RegisterId>                 nrRegsHere;
-
-          // number of variables in this and all outer frames together,
-          // the entry with index i here is always the sum of all values
-          // in nrRegsHere from index 0 to i (inclusively) and the two
-          // have the same length:
-          std::vector<RegisterId>                 nrRegs;
-
-          // We collect the subquery blocks to deal with them at the end:
-          std::vector<ExecutionBlock*>            subQueryBlocks;
-
-          // Local for the walk:
-          unsigned int depth;
-          unsigned int totalNrRegs;
-
-          // This is used to tell all Blocks and share a pointer to ourselves
-          shared_ptr<VarOverview>* me;
-
-          VarOverview ()
-            : depth(0), totalNrRegs(0), me(nullptr) {
-            nrRegsHere.push_back(0);
-            nrRegs.push_back(0);
-          };
-
-          void setSharedPtr (shared_ptr<VarOverview>* shared) {
-            me = shared;
-          }
-
-          // Copy constructor used for a subquery:
-          VarOverview (VarOverview const& v, unsigned int newdepth);
-          ~VarOverview () {};
-
-          virtual bool enterSubquery (ExecutionBlock*,
-                                      ExecutionBlock*) {
-            return false;  // do not walk into subquery
-          }
-
-          virtual void after (ExecutionBlock *eb);
-
-        };
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Methods for execution
 /// Lifecycle is:
 ///    CONSTRUCTOR
-///    then the ExecutionEngine automatically calls
-///      staticAnalysis() once, including subqueries
 ///    then the ExecutionEngine automatically calls 
 ///      initialize() once, including subqueries
 ///    possibly repeat many times:
@@ -230,12 +163,6 @@ namespace triagens {
 ///      shutdown()
 ///    DESTRUCTOR
 ////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief static analysis
-////////////////////////////////////////////////////////////////////////////////
-
-        void staticAnalysis (ExecutionBlock* super = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize
@@ -253,7 +180,7 @@ namespace triagens {
 /// @brief shutdown, will be called exactly once for the whole query
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual int shutdown ();
+        virtual int shutdown (int);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getOne, gets one more item
@@ -346,16 +273,8 @@ namespace triagens {
 
         virtual int64_t remaining ();
 
-        ExecutionNode const* getPlanNode () {
+        ExecutionNode const* getPlanNode () const {
           return _exeNode;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set regs to be deleted
-////////////////////////////////////////////////////////////////////////////////
-
-        void setRegsToClear (std::unordered_set<RegisterId>& toClear) {
-          _regsToClear = toClear;
         }
 
       protected:
@@ -380,7 +299,7 @@ namespace triagens {
 /// @brief the transaction for this query
 ////////////////////////////////////////////////////////////////////////////////
 
-        AQL_TRANSACTION_V8* _trx;
+        triagens::arango::AqlTransaction* _trx;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief our corresponding ExecutionNode node
@@ -407,39 +326,16 @@ namespace triagens {
         std::deque<AqlItemBlock*> _buffer;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief info about variables, filled in by staticAnalysis
-////////////////////////////////////////////////////////////////////////////////
-
-public:
-        std::shared_ptr<VarOverview> _varOverview;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief current working position in the first entry of _buffer
 ////////////////////////////////////////////////////////////////////////////////
 
         size_t _pos;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief depth of frames (number of FOR statements here or above)
-////////////////////////////////////////////////////////////////////////////////
-
-        int _depth;  // will be filled in by staticAnalysis
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief if this is set, we are done, this is reset to false by execute()
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _done;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the following contains the registers which should be cleared
-/// just before this node hands on results. This is computed during
-/// the static analysis for each node using the variable usage in the plan.
-////////////////////////////////////////////////////////////////////////////////
-
-public:
-
-        std::unordered_set<RegisterId> _regsToClear;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables
@@ -452,6 +348,7 @@ public:
 ////////////////////////////////////////////////////////////////////////////////
 
         static size_t const DefaultBatchSize;
+
     };
 
 // -----------------------------------------------------------------------------
@@ -475,7 +372,7 @@ public:
           }
         }
 
-        int initialize () {
+        int initialize () override {
           _inputRegisterValues = nullptr;   // just in case
           return ExecutionBlock::initialize();
         }
@@ -484,19 +381,19 @@ public:
 /// @brief initializeCursor, store a copy of the register values coming from above
 ////////////////////////////////////////////////////////////////////////////////
 
-        int initializeCursor (AqlItemBlock* items, size_t pos);
+        int initializeCursor (AqlItemBlock* items, size_t pos) override;
 
-        int shutdown ();
+        int shutdown (int) override final;
 
-        bool hasMore () {
+        bool hasMore () override final {
           return ! _done;
         }
 
-        int64_t count () const {
+        int64_t count () const override final {
           return 1;
         }
 
-        int64_t remaining () {
+        int64_t remaining () override final {
           return _done ? 0 : 1;
         }
 
@@ -539,30 +436,35 @@ public:
 
         void initializeDocuments () {
           _internalSkip = 0;
-          if (! moreDocuments()) {
-            _done = true;
+          if (!_atBeginning) {
+            _documents.clear();
           }
+          _posInDocuments = 0;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief continue fetching of documents
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool moreDocuments ();
+        bool moreDocuments (size_t hint);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize, here we fetch all docs from the database
 ////////////////////////////////////////////////////////////////////////////////
 
-        int initialize ();
+        int initialize () override;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initCursor, here we release our docs from this collection
+/// @brief initializeCursor
 ////////////////////////////////////////////////////////////////////////////////
 
-        int initializeCursor (AqlItemBlock* items, size_t pos);
+        int initializeCursor (AqlItemBlock* items, size_t pos) override;
 
-        AqlItemBlock* getSome (size_t atLeast, size_t atMost);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getSome
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlItemBlock* getSome (size_t atLeast, size_t atMost) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 // skip between atLeast and atMost, returns the number actually skipped . . .
@@ -570,7 +472,7 @@ public:
 // things to skip overall.
 ////////////////////////////////////////////////////////////////////////////////
 
-        size_t skipSome (size_t atLeast, size_t atMost);
+        size_t skipSome (size_t atLeast, size_t atMost) override final;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -603,11 +505,16 @@ public:
         std::vector<TRI_doc_mptr_copy_t> _documents;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief current position in _allDocs
+/// @brief current position in _documents
 ////////////////////////////////////////////////////////////////////////////////
 
-        size_t _posInAllDocs;
+        size_t _posInDocuments;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief current position in _documents
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _atBeginning;
     };
 
 // -----------------------------------------------------------------------------
@@ -627,15 +534,15 @@ public:
 /// @brief initialize, here we fetch all docs from the database
 ////////////////////////////////////////////////////////////////////////////////
 
-        int initialize ();
+        int initialize () override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializeCursor, here we release our docs from this collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        int initializeCursor (AqlItemBlock* items, size_t pos);
+        int initializeCursor (AqlItemBlock* items, size_t pos) override;
 
-        AqlItemBlock* getSome (size_t atLeast, size_t atMost);
+        AqlItemBlock* getSome (size_t atLeast, size_t atMost) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 // skip between atLeast and atMost, returns the number actually skipped . . .
@@ -643,7 +550,7 @@ public:
 // things to skip overall.
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual size_t skipSome (size_t atLeast, size_t atMost);
+        size_t skipSome (size_t atLeast, size_t atMost) override final;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -691,7 +598,7 @@ public:
 /// @brief collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        Collection* _collection;
+        Collection const* _collection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document buffer
@@ -743,24 +650,20 @@ public:
 
       public:
 
-        EnumerateListBlock (ExecutionEngine* engine,
-                            EnumerateListNode const* ep)
-          : ExecutionBlock(engine, ep) {
+        EnumerateListBlock (ExecutionEngine*,
+                            EnumerateListNode const*);
 
-        }
+        ~EnumerateListBlock ();
 
-        ~EnumerateListBlock () {
-        }
-
-        int initialize ();
+        int initialize () override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializeCursor, here we release our docs from this collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        int initializeCursor (AqlItemBlock* items, size_t pos);
+        int initializeCursor (AqlItemBlock* items, size_t pos) override;
 
-        AqlItemBlock* getSome (size_t atLeast, size_t atMost);
+        AqlItemBlock* getSome (size_t atLeast, size_t atMost) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 // skip between atLeast and atMost returns the number actually skipped . . .
@@ -768,7 +671,7 @@ public:
 // things to skip overall.
 ////////////////////////////////////////////////////////////////////////////////
 
-        size_t skipSome (size_t atLeast, size_t atMost);
+        size_t skipSome (size_t atLeast, size_t atMost) override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AqlValue from the inVariable using the current _index
@@ -824,18 +727,12 @@ public:
 
       public:
 
-        CalculationBlock (ExecutionEngine* engine,
-                          CalculationNode const* en)
-          : ExecutionBlock(engine, en),
-            _expression(en->expression()),
-            _outReg(0) {
+        CalculationBlock (ExecutionEngine*,
+                          CalculationNode const*);
 
-        }
+        ~CalculationBlock ();
 
-        ~CalculationBlock () {
-        }
-
-        int initialize ();
+        int initialize () override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief doEvaluation, private helper to do the work
@@ -851,8 +748,8 @@ public:
 /// @brief getSome
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual AqlItemBlock* getSome (size_t atLeast,
-                                       size_t atMost);
+        AqlItemBlock* getSome (size_t atLeast,
+                               size_t atMost) override;
 
       private:
 
@@ -896,21 +793,34 @@ public:
 
       public:
 
-        SubqueryBlock (ExecutionEngine* engine,
-                       SubqueryNode const* en,
-                       ExecutionBlock* subquery)
-          : ExecutionBlock(engine, en), 
-            _outReg(0),
-           _subquery(subquery) {
-        }
+        SubqueryBlock (ExecutionEngine*,
+                       SubqueryNode const*,
+                       ExecutionBlock*);
 
-        ~SubqueryBlock () {
-        }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
 
-        int initialize ();
+        ~SubqueryBlock ();
 
-        virtual AqlItemBlock* getSome (size_t atLeast,
-                                       size_t atMost);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize, tell dependency and the subquery
+////////////////////////////////////////////////////////////////////////////////
+
+        int initialize () override;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getSome
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlItemBlock* getSome (size_t atLeast,
+                               size_t atMost) override;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shutdown, tell dependency and the subquery
+////////////////////////////////////////////////////////////////////////////////
+
+        int shutdown (int errorCode) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getter for the pointer to the subquery
@@ -943,15 +853,12 @@ public:
 
       public:
 
-        FilterBlock (ExecutionEngine* engine,
-                     FilterNode const* ep)
-          : ExecutionBlock(engine, ep) {
-        }
+        FilterBlock (ExecutionEngine*,
+                     FilterNode const*);
 
-        ~FilterBlock () {
-        }
+        ~FilterBlock ();
 
-        int initialize ();
+        int initialize () override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief internal function to actually decide
@@ -959,7 +866,7 @@ public:
 
       private:
 
-        bool takeItem (AqlItemBlock* items, size_t index) {
+        bool takeItem (AqlItemBlock* items, size_t index) const {
           AqlValue v = items->getValue(index, _inReg);
           return v.isTrue();
         }
@@ -976,13 +883,13 @@ public:
                            AqlItemBlock*& result,
                            size_t& skipped);
 
-        bool hasMore ();
+        bool hasMore () override final;
 
-        int64_t count () const {
+        int64_t count () const override final {
           return -1;   // refuse to work
         }
 
-        int64_t remaining () {
+        int64_t remaining () override final {
           return -1;   // refuse to work
         }
 
@@ -1011,16 +918,12 @@ public:
 
       public:
 
-        AggregateBlock (ExecutionEngine* engine,
-                        ExecutionNode const* ep)
-          : ExecutionBlock(engine, ep),
-            _groupRegister(0),
-            _variableNames() {
-        }
+        AggregateBlock (ExecutionEngine*,
+                        AggregateNode const*);
 
-        virtual ~AggregateBlock () {};
+        ~AggregateBlock ();
 
-        int initialize ();
+        int initialize () override;
 
       private:
 
@@ -1075,15 +978,12 @@ public:
 
       public:
 
-        SortBlock (ExecutionEngine* engine,
-                   ExecutionNode const* ep)
-          : ExecutionBlock(engine, ep),
-            _stable(static_cast<SortNode const*>(ep)->_stable) {
-        }
+        SortBlock (ExecutionEngine*,
+                   SortNode const*);
 
-        virtual ~SortBlock () {};
+        ~SortBlock ();
 
-        int initialize ();
+        int initialize () override;
 
         virtual int initializeCursor (AqlItemBlock* items, size_t pos);
 
@@ -1101,7 +1001,7 @@ public:
 
         class OurLessThan {
           public:
-            OurLessThan (AQL_TRANSACTION_V8* trx,
+            OurLessThan (triagens::arango::AqlTransaction* trx,
                          std::deque<AqlItemBlock*>& buffer,
                          std::vector<std::pair<RegisterId, bool>>& sortRegisters,
                          std::vector<TRI_document_collection_t const*>& colls)
@@ -1115,7 +1015,7 @@ public:
                              std::pair<size_t, size_t> const& b);
 
           private:
-            AQL_TRANSACTION_V8* _trx;
+            triagens::arango::AqlTransaction* _trx;
             std::deque<AqlItemBlock*>& _buffer;
             std::vector<std::pair<RegisterId, bool>>& _sortRegisters;
             std::vector<TRI_document_collection_t const*>& _colls;
@@ -1155,7 +1055,7 @@ public:
         ~LimitBlock () {
         }
 
-        int initialize ();
+        int initialize () override;
 
         int initializeCursor (AqlItemBlock* items, size_t pos);
 
@@ -1219,8 +1119,8 @@ public:
 /// @brief getSome
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual AqlItemBlock* getSome (size_t atLeast,
-                                       size_t atMost);
+        AqlItemBlock* getSome (size_t atLeast,
+                               size_t atMost) override;
 
     };
 
@@ -1249,8 +1149,8 @@ public:
 /// @brief getSome
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual AqlItemBlock* getSome (size_t atLeast,
-                                       size_t atMost);
+        AqlItemBlock* getSome (size_t atLeast,
+                               size_t atMost) override final;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
@@ -1277,7 +1177,8 @@ public:
 ////////////////////////////////////////////////////////////////////////////////
 
         void handleResult (int,
-                           bool);
+                           bool,
+                           std::string const *errorMessage = nullptr);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
@@ -1289,7 +1190,7 @@ public:
 /// @brief collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        Collection* _collection;
+        Collection const* _collection;
 
     };
 
@@ -1449,7 +1350,7 @@ public:
         ~NoResultsBlock () {
         }
 
-        int initialize () {
+        int initialize () override {
           return ExecutionBlock::initialize();
         }
 
@@ -1459,15 +1360,15 @@ public:
 
         int initializeCursor (AqlItemBlock* items, size_t pos);
 
-        bool hasMore () {
+        bool hasMore () override final {
           return false;
         }
 
-        int64_t count () const {
+        int64_t count () const override final {
           return 0;
         }
 
-        int64_t remaining () {
+        int64_t remaining () override final {
           return 0;
         }
 
@@ -1482,77 +1383,135 @@ public:
     };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    GatherBlock
+// --SECTION--                                                       GatherBlock
 // -----------------------------------------------------------------------------
 
     class GatherBlock : public ExecutionBlock {
 
       public:
 
-        GatherBlock (ExecutionEngine* engine,
-                        GatherNode const* ep)
-          : ExecutionBlock(engine, ep) {
-        }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
 
-        ~GatherBlock () {
-        }
-
-        int initialize () {
-          return ExecutionBlock::initialize();
-        }
+        GatherBlock (ExecutionEngine*,
+                     GatherNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initializeCursor, store a copy of the register values coming from above
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+        ~GatherBlock ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize
+////////////////////////////////////////////////////////////////////////////////
+
+        int initialize () override;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shutdown: need our own method since our _buffer is different
+////////////////////////////////////////////////////////////////////////////////
+         
+        int shutdown (int) override final;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initializeCursor
 ////////////////////////////////////////////////////////////////////////////////
 
         int initializeCursor (AqlItemBlock* items, size_t pos);
 
-        //bool hasMore ();
+////////////////////////////////////////////////////////////////////////////////
+/// @brief count: the sum of the count() of the dependencies or -1 (if any
+/// dependency has count -1
+////////////////////////////////////////////////////////////////////////////////
+        
+        int64_t count () const override final;
 
-        int64_t count () const;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remaining: the sum of the remaining() of the dependencies or -1 (if
+/// any dependency has remaining -1
+////////////////////////////////////////////////////////////////////////////////
 
-        int64_t remaining ();
+        int64_t remaining () override final;
 
-        AqlItemBlock* getSome (size_t, size_t);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hasMore: true if any position of _buffer hasMore and false
+/// otherwise.
+////////////////////////////////////////////////////////////////////////////////
 
-        size_t skipSome (size_t, size_t);
+        bool hasMore () override final;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getSome
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlItemBlock* getSome (size_t, size_t) override final;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief skipSome
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t skipSome (size_t, size_t) override final;
+        
+      protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getBlock: from dependency i into _gatherBlockBuffer.at(i),
+/// non-simple case only 
+////////////////////////////////////////////////////////////////////////////////
+        
+        bool getBlock (size_t i, size_t atLeast, size_t atMost);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _gatherBlockBuffer: buffer the incoming block from each dependency
+/// separately 
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<std::deque<AqlItemBlock*>> _gatherBlockBuffer; 
 
       private:
 
-        // the block is simple if we do not do merge sort . . .
-        bool isSimple () {
-          auto en = static_cast<GatherNode const*>(getPlanNode());
-          if (en->getElements().empty()) {
-            return true;
-          }
-          return false;
-        }
-        // for the simple case . . .
-        size_t _atDep = 0; // the current dependency 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _gatherBlockPos: pairs (i, _pos in _buffer.at(i)), i.e. the same as
+/// the usual _pos but one pair per dependency
+////////////////////////////////////////////////////////////////////////////////
         
-        // for the non-simple case . . .
-        bool getBlock (size_t i, size_t atLeast, size_t atMost);
-        std::pair<size_t,size_t> nextValue ();
+        std::vector<std::pair<size_t, size_t>> _gatherBlockPos;
 
-        std::vector<std::deque<AqlItemBlock*>> _buffer; 
-        // buffer the incoming values from each dependency separately
-        std::vector<std::pair<size_t, size_t>> _pos;
-        // pairs (i, _buffer.at(i)) 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _atDep: currently pulling blocks from _dependencies.at(_atDep),
+/// simple case only
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t _atDep = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pairs, consisting of variable and sort direction
+/// (true = ascending | false = descending)
+////////////////////////////////////////////////////////////////////////////////
+        
         std::vector<std::pair<RegisterId, bool>> _sortRegisters;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief OurLessThan
+/// @brief isSimple: the block is simple if we do not do merge sort . . .
+////////////////////////////////////////////////////////////////////////////////
+
+        bool const _isSimple;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief OurLessThan: comparison method for elements of _gatherBlockPos
 ////////////////////////////////////////////////////////////////////////////////
 
         class OurLessThan {
 
           public:
-            OurLessThan (AQL_TRANSACTION_V8* trx,
-                         std::vector<std::deque<AqlItemBlock*>>& buffer,
+            OurLessThan (triagens::arango::AqlTransaction* trx,
+                         std::vector<std::deque<AqlItemBlock*>>& gatherBlockBuffer,
                          std::vector<std::pair<RegisterId, bool>>& sortRegisters,
                          std::vector<TRI_document_collection_t const*>& colls)
               : _trx(trx),
-                _buffer(buffer),
+                _gatherBlockBuffer(gatherBlockBuffer),
                 _sortRegisters(sortRegisters),
                 _colls(colls) {
             }
@@ -1561,11 +1520,464 @@ public:
                              std::pair<size_t, size_t> const& b);
 
           private:
-            AQL_TRANSACTION_V8* _trx;
-            std::vector<std::deque<AqlItemBlock*>>& _buffer;
+            triagens::arango::AqlTransaction* _trx;
+            std::vector<std::deque<AqlItemBlock*>>& _gatherBlockBuffer;
             std::vector<std::pair<RegisterId, bool>>& _sortRegisters;
             std::vector<TRI_document_collection_t const*>& _colls;
         };
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  BlockWithClients
+// -----------------------------------------------------------------------------
+
+    class BlockWithClients : public ExecutionBlock {
+
+      public:
+      
+      BlockWithClients (ExecutionEngine* engine,
+                        ExecutionNode const* ep, 
+                        std::vector<std::string> const& shardIds); 
+
+      virtual ~BlockWithClients () {}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                   BlockWithClients public methods
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initializeCursor
+////////////////////////////////////////////////////////////////////////////////
+
+        int initializeCursor (AqlItemBlock* items, size_t pos);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initializeCursor
+////////////////////////////////////////////////////////////////////////////////
+
+        int shutdown (int);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getSome: shouldn't be used, use skipSomeForShard
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlItemBlock* getSome (size_t atLeast, size_t atMost) override final {
+          TRI_ASSERT(false);
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief skipSome: shouldn't be used, use skipSomeForShard
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t skipSome (size_t atLeast, size_t atMost) override final {
+          TRI_ASSERT(false);
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+        }
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remaining
+////////////////////////////////////////////////////////////////////////////////
+
+        int64_t remaining () override final {
+          TRI_ASSERT(false);
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hasMore 
+////////////////////////////////////////////////////////////////////////////////
+
+        bool hasMore () override final {
+          TRI_ASSERT(false);
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getSomeForShard
+////////////////////////////////////////////////////////////////////////////////
+        
+        AqlItemBlock* getSomeForShard (size_t atLeast, size_t atMost,
+            std::string const& shardId);
+        
+////////////////////////////////////////////////////////////////////////////////
+/// @brief skipSomeForShard
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t skipSomeForShard (size_t atLeast, size_t atMost, std::string
+            const& shardId);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief skipForShard
+////////////////////////////////////////////////////////////////////////////////
+
+        bool skipForShard (size_t number, std::string const& shardId);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hasMoreForShard: any more for shard <shardId>?
+////////////////////////////////////////////////////////////////////////////////
+        
+        virtual bool hasMoreForShard (std::string const& shardId) = 0;
+       
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remainingForShard: remaining for shard <shardId>?
+////////////////////////////////////////////////////////////////////////////////
+        
+        virtual int64_t remainingForShard (std::string const& shardId) = 0;
+
+      protected:
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                BlockWithClients protected methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getOrSkipSomeForShard
+////////////////////////////////////////////////////////////////////////////////
+        
+        virtual int getOrSkipSomeForShard (size_t atLeast, 
+                                           size_t atMost, 
+                                           bool skipping, 
+                                           AqlItemBlock*& result, 
+                                           size_t& skipped, 
+                                           std::string const& shardId) = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getClientId: get the number <clientId> (used internally)
+/// corresponding to <shardId>
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t getClientId (std::string const& shardId);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                   BlockWithClients protected data
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _shardIdMap: map from shardIds to clientNrs
+////////////////////////////////////////////////////////////////////////////////
+
+        std::unordered_map<std::string, size_t> _shardIdMap;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _nrClients: total number of clients
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t _nrClients;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _doneForClient: the analogue of _done: _doneForClient.at(i) = true
+/// if we are done for the shard with clientId = i
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<bool> _doneForClient;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _ignoreInitCursor: should we really initialiseCursor? 
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _ignoreInitCursor;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _shutdown: should we really shutdown? 
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _ignoreShutdown;
+
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      ScatterBlock
+// -----------------------------------------------------------------------------
+
+    class ScatterBlock : public BlockWithClients {
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+        ScatterBlock (ExecutionEngine* engine,
+                      ScatterNode const* ep, 
+                      std::vector<std::string> const& shardIds) 
+          : BlockWithClients(engine, ep, shardIds) {
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+        ~ScatterBlock () {
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initializeCursor
+////////////////////////////////////////////////////////////////////////////////
+
+        int initializeCursor (AqlItemBlock* items, size_t pos);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shutdown
+////////////////////////////////////////////////////////////////////////////////
+
+        int shutdown (int);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hasMoreForShard: any more for shard <shardId>?
+////////////////////////////////////////////////////////////////////////////////
+        
+        bool hasMoreForShard (std::string const& shardId);
+       
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remainingForShard: remaining for shard <shardId>?
+////////////////////////////////////////////////////////////////////////////////
+        
+        int64_t remainingForShard (std::string const& shardId);
+
+
+      private: 
+       
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getOrSkipSomeForShard
+////////////////////////////////////////////////////////////////////////////////
+        
+        int getOrSkipSomeForShard (size_t atLeast, 
+                                   size_t atMost, 
+                                   bool skipping, 
+                                   AqlItemBlock*& result, 
+                                   size_t& skipped, 
+                                   std::string const& shardId);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _posForClient:
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<std::pair<size_t, size_t>> _posForClient; 
+
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   DistributeBlock
+// -----------------------------------------------------------------------------
+
+    class DistributeBlock : public BlockWithClients {
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+        DistributeBlock (ExecutionEngine* engine,
+                         DistributeNode const* ep, 
+                         std::vector<std::string> const& shardIds, 
+                         Collection const* collection);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+        ~DistributeBlock () {
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initializeCursor
+////////////////////////////////////////////////////////////////////////////////
+
+        int initializeCursor (AqlItemBlock* items, size_t pos);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shutdown
+////////////////////////////////////////////////////////////////////////////////
+
+        int shutdown (int);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remainingForShard: remaining for shard <shardId>?
+////////////////////////////////////////////////////////////////////////////////
+        
+        int64_t remainingForShard (std::string const& shardId) {
+          return -1;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hasMoreForShard: any more for shard <shardId>?
+////////////////////////////////////////////////////////////////////////////////
+
+        bool hasMoreForShard (std::string const& shardId);
+  
+
+      private: 
+       
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getOrSkipSomeForShard
+////////////////////////////////////////////////////////////////////////////////
+        
+        int getOrSkipSomeForShard (size_t atLeast, 
+                                   size_t atMost, 
+                                   bool skipping, 
+                                   AqlItemBlock*& result, 
+                                   size_t& skipped, 
+                                   std::string const& shardId);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getBlockForClient: try to get at atLeast/atMost pairs into
+/// _distBuffer.at(clientId).
+////////////////////////////////////////////////////////////////////////////////
+
+        bool getBlockForClient (size_t atLeast, 
+                                size_t atMost,
+                                size_t clientId);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sendToClient: for each row of the incoming AqlItemBlock use the 
+/// attributes <shardKeys> of the register <id> to determine to which shard the
+/// row should be sent. 
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t sendToClient (AqlValue val);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _distBuffer.at(i) is a deque containing pairs (j,k) such that
+//  _buffer.at(j) row k should be sent to the client with id = i.
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<std::deque<std::pair<size_t, size_t>>> _distBuffer;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _colectionName: the name of the sharded collection 
+////////////////////////////////////////////////////////////////////////////////
+
+        Collection const* _collection;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _index: the block in _buffer we are currently considering
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t _index;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _regId: the register to inspect
+////////////////////////////////////////////////////////////////////////////////
+
+        RegisterId _regId;
+
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       RemoteBlock
+// -----------------------------------------------------------------------------
+
+    class RemoteBlock : public ExecutionBlock {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructors/destructors
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+
+        RemoteBlock (ExecutionEngine* engine,
+                     RemoteNode const* en,
+                     std::string const& server,
+                     std::string const& ownName,
+                     std::string const& queryId);
+
+        ~RemoteBlock ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief timeout
+////////////////////////////////////////////////////////////////////////////////
+
+        static double const defaultTimeOut;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize
+////////////////////////////////////////////////////////////////////////////////
+
+        int initialize () override final;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initializeCursor, could be called multiple times
+////////////////////////////////////////////////////////////////////////////////
+
+        int initializeCursor (AqlItemBlock* items, size_t pos) final;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shutdown, will be called exactly once for the whole query
+////////////////////////////////////////////////////////////////////////////////
+
+        int shutdown (int) override final;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getSome
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlItemBlock* getSome (size_t atLeast,
+                               size_t atMost) override final;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief skipSome
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t skipSome (size_t atLeast, size_t atMost) override final;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hasMore
+////////////////////////////////////////////////////////////////////////////////
+
+        bool hasMore () override final;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief count
+////////////////////////////////////////////////////////////////////////////////
+
+        int64_t count () const override final;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remaining
+////////////////////////////////////////////////////////////////////////////////
+
+        int64_t remaining () override final;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal method to send a request
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+        triagens::arango::ClusterCommResult* sendRequest (
+                  rest::HttpRequest::HttpRequestType type,
+                  std::string const& urlPart,
+                  std::string const& body) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief our server, can be like "shard:S1000" or like "server:Claus"
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _server;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief our own identity, in case of the coordinator this is empty,
+/// in case of the DBservers, this is the shard ID as a string
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _ownName;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the ID of the query on the server as a string
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _queryId;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the ID of the query on the server as a string
+////////////////////////////////////////////////////////////////////////////////
+
+        ExecutionStats _deltaStats;
+        
 
     };
 

@@ -46,6 +46,92 @@ using namespace triagens::httpclient;
 using namespace triagens::rest;
 using namespace std;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function to determine if a field value is an integer
+/// this function is here to avoid usage of regexes, which are too slow
+////////////////////////////////////////////////////////////////////////////////
+
+static bool IsInteger (char const* field, 
+                       size_t fieldLength) {
+  char const* end = field + fieldLength;
+
+  if (*field == '+' || *field == '-') {
+    ++field;
+  }
+
+  while (field < end) {
+    if (*field < '0' || *field > '9') {
+      return false;
+    }
+    ++field;
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function to determine if a field value maybe is a decimal
+/// value. this function peeks into the first few bytes of the value only
+/// this function is here to avoid usage of regexes, which are too slow
+////////////////////////////////////////////////////////////////////////////////
+
+static bool IsDecimal (char const* field,
+                       size_t fieldLength) {
+  char const* ptr = field;
+  char const* end = ptr + fieldLength;
+
+  if (*ptr == '+' || *ptr == '-') {
+    ++ptr;
+  }
+
+  bool nextMustBeNumber = false;
+
+  while (ptr < end) {
+    if (*ptr == '.') {
+      if (nextMustBeNumber) {
+        return false;
+      }
+      // expect a number after the .
+      nextMustBeNumber = true;
+    }
+    else if (*ptr == 'e' || *ptr == 'E') {
+      if (nextMustBeNumber) {
+        return false;
+      }
+      // expect a number after the exponent
+      nextMustBeNumber = true;
+
+      ++ptr;
+      if (ptr >= end) {
+        return false;
+      }
+      // skip over optional + or -
+      if (*ptr == '+' || *ptr == '-') {
+        ++ptr;
+      }
+      // do not advance ptr anymore
+      continue;
+    }
+    else if (*ptr >= '0' && *ptr <= '9') {
+      // found a number
+      nextMustBeNumber = false;
+    }
+    else {
+      // something else
+      return false;
+    }
+
+    ++ptr;
+  }
+
+  if (nextMustBeNumber) {
+    return false;
+  }
+
+  return true;
+}
+
+
 namespace triagens {
   namespace v8client {
 
@@ -53,7 +139,7 @@ namespace triagens {
 /// initialise step value for progress reports
 ////////////////////////////////////////////////////////////////////////////////
 
-    const double ImportHelper::ProgressStep = 2.0;
+    const double ImportHelper::ProgressStep = 3.0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// constructor and destructor
@@ -73,14 +159,10 @@ namespace triagens {
       _lineBuffer(TRI_UNKNOWN_MEM_ZONE),
       _outputBuffer(TRI_UNKNOWN_MEM_ZONE) {
 
-      regcomp(&_doubleRegex, "^[-+]?([0-9]+\\.?[0-9]*|\\.[0-9]+)([eE][-+]?[0-8]+)?$", REG_EXTENDED);
-      regcomp(&_intRegex, "^[-+]?([0-9]+)$", REG_EXTENDED);
       _hasError = false;
     }
 
     ImportHelper::~ImportHelper () {
-      regfree(&_doubleRegex);
-      regfree(&_intRegex);
     }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -127,7 +209,7 @@ namespace triagens {
       size_t separatorLength;
       char* separator = TRI_UnescapeUtf8StringZ(TRI_UNKNOWN_MEM_ZONE, _separator.c_str(), _separator.size(), &separatorLength);
 
-      if (separator == 0) {
+      if (separator == nullptr) {
         if (fd != STDIN_FILENO) {
           TRI_CLOSE(fd);
         }
@@ -297,7 +379,7 @@ namespace triagens {
           char const* first = _outputBuffer.c_str();
           char* pos = (char*) memrchr(first, '\n', _outputBuffer.length());
 
-          if (pos != 0) {
+          if (pos != nullptr) {
             size_t len = pos - first + 1;
             sendJsonBuffer(first, len, isArray);
             _outputBuffer.erase_front(len);
@@ -319,7 +401,6 @@ namespace triagens {
       return ! _hasError;
     }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// private functions
 ////////////////////////////////////////////////////////////////////////////////
@@ -334,8 +415,8 @@ namespace triagens {
       double pct = 100.0 * ((double) totalRead / (double) totalLength);
 
       if (pct >= nextProgress && totalLength >= 1024) {
-        LOG_INFO("processed %lld bytes (%0.2f%%) of input file", (long long) totalRead, pct);
-        nextProgress = pct + ProgressStep;
+        LOG_INFO("processed %lld bytes (%0.1f%%) of input file", (long long) totalRead, nextProgress);
+        nextProgress = (double) ((int) (pct + ProgressStep));
       }
     }
 
@@ -366,11 +447,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     void ImportHelper::ProcessCsvBegin (TRI_csv_parser_t* parser, size_t row) {
-      ImportHelper* ih = reinterpret_cast<ImportHelper*> (parser->_dataAdd);
-
-      if (ih) {
-        ih->beginLine(row);
-      }
+      static_cast<ImportHelper*>(parser->_dataAdd)->beginLine(row);
     }
 
     void ImportHelper::beginLine (size_t row) {
@@ -392,56 +469,95 @@ namespace triagens {
 /// @brief adds a new CSV field
 ////////////////////////////////////////////////////////////////////////////////
 
-    void ImportHelper::ProcessCsvAdd (TRI_csv_parser_t* parser, char const* field, size_t row, size_t column, bool escaped) {
-      ImportHelper* ih = reinterpret_cast<ImportHelper*> (parser->_dataAdd);
-
-      if (ih) {
-        ih->addField(field, row, column, escaped);
-      }
+    void ImportHelper::ProcessCsvAdd (TRI_csv_parser_t* parser, 
+                                      char const* field, 
+                                      size_t fieldLength, 
+                                      size_t row, 
+                                      size_t column, 
+                                      bool escaped) {
+      static_cast<ImportHelper*>(parser->_dataAdd)->addField(field, fieldLength, row, column, escaped);
     }
 
-    void ImportHelper::addField (char const* field, size_t row, size_t column, bool escaped) {
+    void ImportHelper::addField (char const* field,
+                                 size_t fieldLength, 
+                                 size_t row, 
+                                 size_t column, 
+                                 bool escaped) {
       if (column > 0) {
         _lineBuffer.appendChar(',');
       }
 
-      if (row == 0) {
-        // head line
+      if (row == 0 || escaped) {
+        // head line or escaped value
         _lineBuffer.appendChar('"');
-        _lineBuffer.appendText(StringUtils::escapeUnicode(field));
+        _lineBuffer.appendJsonEncoded(field);
+        _lineBuffer.appendChar('"');
+        return;
+      }
+
+      if (*field == '\0') {
+        // do nothing
+        _lineBuffer.appendText("null", strlen("null"));
+        return;
+      }
+
+      // check for literals null, false and true
+      if (fieldLength == 4 &&
+          (memcmp(field, "true", 4) == 0 ||
+           memcmp(field, "null", 4) == 0)) {
+        _lineBuffer.appendText(field, fieldLength);
+        return;
+      }
+      else if (fieldLength == 5 && memcmp(field, "false", 5) == 0) {
+        _lineBuffer.appendText(field, fieldLength);
+        return;
+      }
+
+      if (IsInteger(field, fieldLength)) {
+        // integer value
+        // conversion might fail with out-of-range error
+        try {
+          if (fieldLength > 8) {
+            // long integer numbers might be problematic. check if we get out of range
+            std::stoll(std::string(field, fieldLength)); // this will fail if the number cannot be converted
+          }
+
+          int64_t num = StringUtils::int64(field, fieldLength);
+          _lineBuffer.appendInteger(num);
+        }
+        catch (...) {
+          // conversion failed
+          _lineBuffer.appendChar('"');
+          _lineBuffer.appendJsonEncoded(field);
+          _lineBuffer.appendChar('"');
+        }
+      }
+      else if (IsDecimal(field, fieldLength)) {
+        // double value
+        // conversion might fail with out-of-range error
+        try {
+          double num = StringUtils::doubleDecimal(field, fieldLength);
+          bool failed = (num != num || num == HUGE_VAL || num == -HUGE_VAL); 
+          if (! failed) {
+            _lineBuffer.appendDecimal(num);
+            return;
+          }
+          // NaN, +inf, -inf
+          // fall-through to appending the number as a string
+        }
+        catch (...) {
+          // conversion failed
+          // fall-through to appending the number as a string
+        }
+
+        _lineBuffer.appendChar('"');
+        _lineBuffer.appendText(field, fieldLength);
         _lineBuffer.appendChar('"');
       }
       else {
-        if (escaped) {
-          _lineBuffer.appendChar('"');
-          _lineBuffer.appendText(StringUtils::escapeUnicode(field));
-          _lineBuffer.appendChar('"');
-        }
-        else {
-          string s(field);
-          if (s.length() == 0) {
-            // do nothing
-            _lineBuffer.appendText("null");
-          }
-          else if ("true" == s || "false" == s) {
-            _lineBuffer.appendText(field);
-          }
-          else {
-            if (regexec(&_intRegex, s.c_str(), 0, 0, 0) == 0) {
-              int64_t num = StringUtils::int64(s);
-              _lineBuffer.appendInteger(num);
-            }
-            else if (regexec(&_doubleRegex, s.c_str(), 0, 0, 0) == 0) {
-              double num = StringUtils::doubleDecimal(s);
-              _lineBuffer.appendDecimal(num);
-            }
-            else {
-              _lineBuffer.appendChar('"');
-              _lineBuffer.appendText(StringUtils::escapeUnicode(field));
-              _lineBuffer.appendChar('"');
-            }
-          }
-        }
+        _lineBuffer.appendChar('"');
+        _lineBuffer.appendJsonEncoded(field);
+        _lineBuffer.appendChar('"');
       }
     }
 
@@ -449,23 +565,32 @@ namespace triagens {
 /// @brief ends a CSV line
 ////////////////////////////////////////////////////////////////////////////////
 
-    void ImportHelper::ProcessCsvEnd (TRI_csv_parser_t* parser, char const* field, size_t row, size_t column, bool escaped) {
-      ImportHelper* ih = reinterpret_cast<ImportHelper*> (parser->_dataAdd);
+    void ImportHelper::ProcessCsvEnd (TRI_csv_parser_t* parser, 
+                                      char const* field, 
+                                      size_t fieldLength,
+                                      size_t row, 
+                                      size_t column, 
+                                      bool escaped) {
+      ImportHelper* ih = static_cast<ImportHelper*>(parser->_dataAdd);
 
       if (ih) {
-        ih->addLastField(field, row, column, escaped);
+        ih->addLastField(field, fieldLength, row, column, escaped);
         ih->incRowsRead();
       }
     }
 
-    void ImportHelper::addLastField (char const* field, size_t row, size_t column, bool escaped) {
-      if (column == 0 && StringUtils::trim(field) == "") {
+    void ImportHelper::addLastField (char const* field, 
+                                     size_t fieldLength, 
+                                     size_t row, 
+                                     size_t column, 
+                                     bool escaped) {
+      if (column == 0 && *field == '\0') {
         // ignore empty line
-        _lineBuffer.clear();
+        _lineBuffer.reset();
         return;
       }
 
-      addField(field, row, column, escaped);
+      addField(field, fieldLength, row, column, escaped);
 
       _lineBuffer.appendChar(']');
 
@@ -473,10 +598,10 @@ namespace triagens {
         // save the first line
         _firstLine = _lineBuffer.c_str();
       }
-      else if (row > 0 && _firstLine == "") {
+      else if (row > 0 && _firstLine.empty()) {
         // error
         ++_numberError;
-        _lineBuffer.clear();
+        _lineBuffer.reset();
         return;
       }
 
@@ -484,7 +609,7 @@ namespace triagens {
 
       if (_lineBuffer.length() > 0) {
         _outputBuffer.appendText(_lineBuffer);
-        _lineBuffer.clear();
+        _lineBuffer.reset();
       }
       else {
         ++_numberError;
@@ -494,7 +619,6 @@ namespace triagens {
         sendCsvBuffer();
         _outputBuffer.appendText(_firstLine);
       }
-
     }
 
 
@@ -509,7 +633,7 @@ namespace triagens {
 
       handleResult(result);
 
-      _outputBuffer.clear();
+      _outputBuffer.reset();
       _rowOffset = _rowsRead;
     }
 
@@ -520,6 +644,7 @@ namespace triagens {
 
       map<string, string> headerFields;
       SimpleHttpResult* result;
+
       if (isArray) {
         result = _client->request(HttpRequest::HTTP_REQUEST_POST, "/_api/import?type=array&" + getCollectionUrlPart() + "&details=true", str, len, headerFields);
       }
@@ -531,22 +656,22 @@ namespace triagens {
     }
 
     void ImportHelper::handleResult (SimpleHttpResult* result) {
-      if (result == 0) {
+      if (result == nullptr) {
         return;
       }
 
       TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE,
                                         result->getBody().c_str());
 
-      if (json != 0) {
+      if (json != nullptr) {
         // error details
         TRI_json_t const* details = TRI_LookupArrayJson(json, "details");
 
         if (TRI_IsListJson(details)) {
-          const size_t n = details->_value._objects._length;
+          size_t const n = details->_value._objects._length;
 
           for (size_t i = 0; i < n; ++i) {
-            TRI_json_t const* detail = (TRI_json_t const*) TRI_AtVector(&details->_value._objects, i);
+            TRI_json_t const* detail = static_cast<TRI_json_t const*>(TRI_AtVector(&details->_value._objects, i));
 
             if (TRI_IsStringJson(detail)) {
               LOG_WARNING("%s", detail->_value._string.data);

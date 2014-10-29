@@ -1155,8 +1155,7 @@ namespace triagens {
         return result;
       }
 
-
-
+      
       string join (vector<string> const& source, char delim) {
         string result = "";
         bool first = true;

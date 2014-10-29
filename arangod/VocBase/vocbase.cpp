@@ -57,6 +57,7 @@
 #include "VocBase/server.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase-defaults.h"
+#include "V8Server/v8-user-structures.h"
 #include "Wal/LogfileManager.h"
 
 #include "Ahuacatl/ahuacatl-functions.h"
@@ -475,18 +476,19 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
   // create the init object
   TRI_vocbase_col_t init;
 
-  init._vocbase     = vocbase;
-  init._cid         = cid;
-  init._planId      = 0;
-  init._type        = static_cast<TRI_col_type_t>(type);
+  init._vocbase         = vocbase;
+  init._cid             = cid;
+  init._planId          = 0;
+  init._type            = static_cast<TRI_col_type_t>(type);
+  init._internalVersion = 0;
 
-  init._status      = TRI_VOC_COL_STATUS_CORRUPTED;
-  init._collection  = nullptr;
+  init._status          = TRI_VOC_COL_STATUS_CORRUPTED;
+  init._collection      = nullptr;
 
   // default flags: everything is allowed
-  init._canDrop     = true;
-  init._canRename   = true;
-  init._canUnload   = true;
+  init._canDrop         = true;
+  init._canRename       = true;
+  init._canUnload       = true;
 
   // check for special system collection names
   if (TRI_IsSystemNameCollection(name)) {
@@ -807,6 +809,9 @@ static int RenameCollection (TRI_vocbase_t* vocbase,
   TRI_ASSERT_EXPENSIVE(vocbase->_collectionsByName._nrUsed == vocbase->_collectionsById._nrUsed);
 
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
+
+  // to prevent caching
+  collection->_internalVersion++;
 
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
@@ -1158,6 +1163,7 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
       return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
     }
 
+    collection->_internalVersion = 0;
     collection->_collection = document;
     collection->_status = TRI_VOC_COL_STATUS_LOADED;
     TRI_CopyString(collection->_path, document->_directory, sizeof(collection->_path) - 1);
@@ -1262,7 +1268,7 @@ static int ScanTrxCollection (TRI_vocbase_t* vocbase) {
   int res = TRI_ERROR_INTERNAL;
 
   {
-    triagens::arango::SingleCollectionReadOnlyTransaction<triagens::arango::RestTransactionContext> trx(vocbase, collection->_cid);
+    triagens::arango::SingleCollectionReadOnlyTransaction trx(new triagens::arango::StandaloneTransactionContext(), vocbase, collection->_cid);
 
     res = trx.begin();
 
@@ -1342,6 +1348,7 @@ TRI_vocbase_t* TRI_CreateInitialVocBase (TRI_server_t* server,
   vocbase->_hasCompactor       = false;
   vocbase->_isOwnAppsDirectory = true;
   vocbase->_replicationApplier = nullptr;
+  vocbase->_userStructures     = nullptr;
 
   vocbase->_oldTransactions    = nullptr;
 
@@ -1403,6 +1410,8 @@ TRI_vocbase_t* TRI_CreateInitialVocBase (TRI_server_t* server,
   TRI_InitCondition(&vocbase->_compactorCondition);
   TRI_InitCondition(&vocbase->_cleanupCondition);
 
+  TRI_CreateUserStructuresVocBase(vocbase);
+  
   return vocbase;
 }
 
@@ -1411,6 +1420,10 @@ TRI_vocbase_t* TRI_CreateInitialVocBase (TRI_server_t* server,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyInitialVocBase (TRI_vocbase_t* vocbase) {
+  if (vocbase->_userStructures != nullptr) {
+    TRI_FreeUserStructuresVocBase(vocbase);
+  }
+
   // free replication
   if (vocbase->_replicationApplier != nullptr) {
     TRI_FreeReplicationApplier(vocbase->_replicationApplier);
@@ -2321,6 +2334,18 @@ TRI_vocbase_col_t* TRI_UseCollectionByNameVocBase (TRI_vocbase_t* vocbase,
 void TRI_ReleaseCollectionVocBase (TRI_vocbase_t* vocbase,
                                    TRI_vocbase_col_t* collection) {
   TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the vocbase has been marked as deleted
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsDeletedVocBase (TRI_vocbase_t* vocbase) {
+  TRI_LockSpin(&vocbase->_usage._lock);
+  bool isDeleted = vocbase->_usage._isDeleted;
+  TRI_UnlockSpin(&vocbase->_usage._lock);
+
+  return isDeleted;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -58,6 +58,7 @@ ExecutionPlan::ExecutionPlan (Ast* ast)
     _varUsageComputed(false),
     _nextId(0),
     _ast(ast) {
+  _lastSubqueryNodeId = (size_t)-1;
 
 }
 
@@ -131,13 +132,23 @@ ExecutionPlan* ExecutionPlan::instanciateFromJson (Ast* ast,
 
   try {
     plan->_root = plan->fromJson(json);
-    plan->findVarUsage();
+    plan->_varUsageComputed = true;
     return plan;
   }
   catch (...) {
     delete plan;
     throw;
   }
+}
+
+ExecutionPlan* ExecutionPlan::clone (Query& onThatQuery) {
+  ExecutionPlan* OtherPlan = new ExecutionPlan(onThatQuery.ast());
+
+  for (auto it: _ids) {
+    OtherPlan->registerNode(it.second->clone(OtherPlan, false, true));
+  }
+
+  return OtherPlan;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -165,9 +176,10 @@ triagens::basics::Json ExecutionPlan::toJson (Ast* ast,
 
     jsonCollectionList(json("name", Json(c.first))
                            ("type", Json(TRI_TransactionTypeGetStr(c.second->accessType))));
-
   }
+
   result.set("collections", jsonCollectionList);
+  result.set("variables", ast->variables()->toJson(TRI_UNKNOWN_MEM_ZONE));
   result.set("estimatedCost", triagens::basics::Json(_root->getCost()));
 
   return result;
@@ -225,14 +237,14 @@ ModificationOptions ExecutionPlan::createOptions (AstNode const* node) {
         TRI_ASSERT(value->isConstant());
 
         if (strcmp(name, "waitForSync") == 0) {
-          options.waitForSync = value->toBoolean();
+          options.waitForSync = value->isTrue();
         }
         else if (strcmp(name, "ignoreErrors") == 0) {
-          options.ignoreErrors = value->toBoolean();
+          options.ignoreErrors = value->isTrue();
         }
         else if (strcmp(name, "keepNull") == 0) {
           // nullMeansRemove is the opposite of keepNull
-          options.nullMeansRemove = (! value->toBoolean());
+          options.nullMeansRemove = value->isFalse();
         }
       }
     }
@@ -415,8 +427,15 @@ ExecutionNode* ExecutionPlan::fromNodeLet (ExecutionNode* previous,
     }
 
     en = registerNode(new SubqueryNode(this, nextId(), subquery, v));
+    _lastSubqueryNodeId = en->id();
   }
   else {
+    if ((expression->type == NODE_TYPE_REFERENCE) &&
+        (_lastSubqueryNodeId == _nextId)) {
+      auto sn = static_cast<SubqueryNode*>(getNodeById(_lastSubqueryNodeId));
+      sn->replaceOutVariable(v);
+      return sn;
+    }
     // operand is some misc expression, including references to other variables
     auto expr = new Expression(_ast, const_cast<AstNode*>(expression));
 
@@ -581,6 +600,17 @@ ExecutionNode* ExecutionPlan::fromNodeLimit (ExecutionNode* previous,
 
   TRI_ASSERT(offset->type == NODE_TYPE_VALUE);
   TRI_ASSERT(count->type == NODE_TYPE_VALUE);
+    
+  if ((offset->value.type != VALUE_TYPE_INT && 
+       offset->value.type != VALUE_TYPE_DOUBLE) ||
+      offset->getIntValue() < 0) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, "LIMIT value is not a number or out of range");
+  }
+  if ((count->value.type != VALUE_TYPE_INT && 
+       count->value.type != VALUE_TYPE_DOUBLE) ||
+      count->getIntValue() < 0) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, "LIMIT value is not a number or out of range");
+  }
 
   auto en = registerNode(new LimitNode(this, nextId(), static_cast<size_t>(offset->getIntValue()), static_cast<size_t>(count->getIntValue())));
 
@@ -974,7 +1004,6 @@ void ExecutionPlan::checkLinkage () {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
-
     std::unordered_set<Variable const*> _usedLater;
     std::unordered_set<Variable const*> _valid;
     std::unordered_map<VariableId, ExecutionNode*> _varSetBy;
@@ -985,7 +1014,7 @@ struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
     ~VarUsageFinder () {
     }
 
-    bool before (ExecutionNode* en) {
+    bool before (ExecutionNode* en) override final {
       en->invalidateVarUsage();
       en->setVarsUsedLater(_usedLater);
       // Add variables used here to _usedLater:
@@ -996,7 +1025,7 @@ struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
       return false;
     }
 
-    void after (ExecutionNode* en) {
+    void after (ExecutionNode* en) override final {
       // Add variables set here to _valid:
       auto&& setHere = en->getVariablesSetHere();
       for (auto v : setHere) {
@@ -1007,7 +1036,7 @@ struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
       en->setVarUsageValid();
     }
 
-    bool enterSubquery (ExecutionNode*, ExecutionNode* sub) {
+    bool enterSubquery (ExecutionNode*, ExecutionNode* sub) override final {
       VarUsageFinder subfinder;
       subfinder._valid = _valid;  // need a copy for the subquery!
       sub->walk(&subfinder);
@@ -1160,10 +1189,15 @@ class CloneNodeAdder : public WalkerWorker<ExecutionNode> {
     }
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone an existing execution plan
+////////////////////////////////////////////////////////////////////////////////
+
 ExecutionPlan* ExecutionPlan::clone () {
   auto plan = new ExecutionPlan(_ast);
+
   try {
-    plan->_root = _root->clone(plan);
+    plan->_root = _root->clone(plan, true, false);
     plan->_nextId = _nextId;
     plan->_appliedRules = _appliedRules;
     CloneNodeAdder adder(plan);
@@ -1254,31 +1288,68 @@ ExecutionNode* ExecutionPlan::fromJson (Json const& json) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns true if a plan is so simple that optimizations would
+/// probably cost more than simply executing the plan
+////////////////////////////////////////////////////////////////////////////////
+
+bool ExecutionPlan::isDeadSimple () const {
+  auto current = _root;
+  while (current != nullptr) {
+    auto deps = current->getDependencies();
+
+    if (deps.size() != 1) {
+      break;
+    }
+
+    auto const nodeType = current->getType();
+
+    if (nodeType == ExecutionNode::SUBQUERY ||
+        nodeType == ExecutionNode::ENUMERATE_COLLECTION ||
+        nodeType == ExecutionNode::ENUMERATE_LIST ||
+        nodeType == ExecutionNode::INDEX_RANGE) {
+      // these node types are not simple
+      return false;
+    }
+
+    current = deps[0];
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief show an overview over the plan
 ////////////////////////////////////////////////////////////////////////////////
 
 struct Shower : public WalkerWorker<ExecutionNode> {
   int indent;
+
   Shower () : indent(0) {
   }
-  ~Shower () {}
 
-  bool enterSubquery (ExecutionNode*, ExecutionNode*) {
+  ~Shower () {
+  }
+
+  bool enterSubquery (ExecutionNode*, ExecutionNode*) override final {
     indent++;
     return true;
   }
 
-  void leaveSubquery (ExecutionNode*, ExecutionNode*) {
+  void leaveSubquery (ExecutionNode*, ExecutionNode*) override final {
     indent--;
   }
 
-  void after (ExecutionNode* en) {
+  void after (ExecutionNode* en) override final {
     for (int i = 0; i < indent; i++) {
       std::cout << ' ';
     }
     std::cout << en->getTypeString() << std::endl;
   }
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief show an overview over the plan
+////////////////////////////////////////////////////////////////////////////////
 
 void ExecutionPlan::show () {
   Shower shower;

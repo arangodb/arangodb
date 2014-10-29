@@ -27,19 +27,19 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_Index_H
-#define ARANGODB_AQL_Index_H 1
+#ifndef ARANGODB_AQL_INDEX_H
+#define ARANGODB_AQL_INDEX_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/document-collection.h"
-#include "VocBase/transaction.h"
-#include "VocBase/vocbase.h"
+#include "Basics/json.h"
+#include "Basics/JsonHelper.h"
+#include "VocBase/index.h"
 
 namespace triagens {
   namespace aql {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 struct Index
+// --SECTION--                                                      struct Index
 // -----------------------------------------------------------------------------
 
     struct Index {
@@ -49,42 +49,78 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       Index& operator= (Index const&) = delete;
-      Index (Index const&) = delete;
-      Index () = delete;
       
-      Index (TRI_idx_iid_t id, Collection const* collection) 
-        : _id(id), _collection(collection){
+      Index (TRI_index_t* idx)
+        : id(idx->_iid),
+          type(idx->_type),
+          unique(idx->_unique),
+          fields(),
+          data(idx) {
+
+        size_t const n = idx->_fields._length;
+        fields.reserve(n);
+
+        for (size_t i = 0; i < n; ++i) {
+          char const* field = idx->_fields._buffer[i];
+          fields.emplace_back(std::string(field));
+        }
+        
+        TRI_ASSERT(data != nullptr);
+      }
+      
+      Index (TRI_json_t const* json)
+        : id(triagens::basics::StringUtils::uint64(triagens::basics::JsonHelper::checkAndGetStringValue(json, "id"))),
+          type(TRI_TypeIndex(triagens::basics::JsonHelper::checkAndGetStringValue(json, "type").c_str())),
+          unique(triagens::basics::JsonHelper::checkAndGetBooleanValue(json, "unique")),
+          fields(),
+          data(nullptr) {
+
+        TRI_json_t const* f = TRI_LookupArrayJson(json, "fields");
+
+        if (TRI_IsListJson(f)) {
+          size_t const n = TRI_LengthListJson(f);
+          fields.reserve(n);
+
+          for (size_t i = 0; i < n; ++i) {
+            TRI_json_t const* name = static_cast<TRI_json_t const*>(TRI_AtVector(&f->_value._objects, i));
+            if (TRI_IsStringJson(name)) {
+              fields.emplace_back(std::string(name->_value._string.data, name->_value._string.length - 1));
+            }
+          }
+        }
+
+        // it is the caller's responsibility to fill the data attribute with something sensible later!
       }
       
       ~Index() {
       }
+  
+  
+      triagens::basics::Json toJson () const {
+        triagens::basics::Json json(triagens::basics::Json::Array);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
+        json("type", triagens::basics::Json(TRI_TypeNameIndex(type)))
+            ("id", triagens::basics::Json(triagens::basics::StringUtils::itoa(id))) 
+            ("unique", triagens::basics::Json(unique));
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a pointer to the underlying TRI_index_s of the Index
-////////////////////////////////////////////////////////////////////////////////
-      
-      inline TRI_index_s* index () const {
-        return TRI_LookupIndex(_collection->documentCollection(), _id);
-      }
+        triagens::basics::Json f(triagens::basics::Json::List);
+        for (auto& field : fields) {
+          f.add(triagens::basics::Json(field));
+        }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the index type
-////////////////////////////////////////////////////////////////////////////////
-      
-      inline TRI_idx_type_e type () const {
-        return this->index()->_type;
+        json("fields", f);
+        return json;
       }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables
 // -----------------------------------------------------------------------------
 
-      TRI_idx_iid_t         _id;
-      Collection const*     _collection;
+      TRI_idx_iid_t const        id;
+      TRI_idx_type_e const       type;
+      bool const                 unique;
+      std::vector<std::string>   fields;
+      TRI_index_t*               data;
 
     };
 

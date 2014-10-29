@@ -106,7 +106,7 @@ static string extractErrorMessage (string const& shardId,
 ////////////////////////////////////////////////////////////////////////////////
 
 CollectionInfo::CollectionInfo ()
-  : _json(0) {
+  : _json(nullptr) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -124,7 +124,7 @@ CollectionInfo::CollectionInfo (TRI_json_t* json)
 CollectionInfo::CollectionInfo (CollectionInfo const& other) :
   _json(other._json) {
 
-  if (other._json != 0) {
+  if (other._json != nullptr) {
     _json = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, other._json);
   }
 }
@@ -134,11 +134,11 @@ CollectionInfo::CollectionInfo (CollectionInfo const& other) :
 ////////////////////////////////////////////////////////////////////////////////
 
 CollectionInfo& CollectionInfo::operator= (CollectionInfo const& other) {
-  if (other._json != 0 && this != &other) {
+  if (other._json != nullptr && this != &other) {
     _json = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, other._json);
   }
   else {
-    _json = 0;
+    _json = nullptr;
   }
 
   return *this;
@@ -149,7 +149,7 @@ CollectionInfo& CollectionInfo::operator= (CollectionInfo const& other) {
 ////////////////////////////////////////////////////////////////////////////////
 
 CollectionInfo::~CollectionInfo () {
-  if (_json != 0) {
+  if (_json != nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _json);
   }
 }
@@ -215,7 +215,7 @@ CollectionInfoCurrent::~CollectionInfoCurrent () {
 void CollectionInfoCurrent::freeAllJsons () {
   map<ShardID, TRI_json_t*>::iterator it;
   for (it = _jsons.begin(); it != _jsons.end(); ++it) {
-    if (it->second != 0) {
+    if (it->second != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, it->second);
     }
   }
@@ -228,7 +228,7 @@ void CollectionInfoCurrent::freeAllJsons () {
 void CollectionInfoCurrent::copyAllJsons () {
   map<ShardID, TRI_json_t*>::iterator it;
   for (it = _jsons.begin(); it != _jsons.end(); ++it) {
-    if (0 != it->second) {
+    if (nullptr != it->second) {
       it->second = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, it->second);
     }
   }
@@ -435,7 +435,7 @@ void ClusterInfo::clearPlannedDatabases () {
   while (it != _plannedDatabases.end()) {
     TRI_json_t* json = (*it).second;
 
-    if (json != 0) {
+    if (json != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
     ++it;
@@ -457,7 +457,7 @@ void ClusterInfo::clearCurrentDatabases () {
     while (it2 != (*it).second.end()) {
       TRI_json_t* json = (*it2).second;
 
-      if (json != 0) {
+      if (json != nullptr) {
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       }
 
@@ -500,7 +500,7 @@ void ClusterInfo::loadPlannedDatabases () {
       TRI_json_t* options = (*it).second._json;
 
       // steal the json
-      (*it).second._json = 0;
+      (*it).second._json = nullptr;
       _plannedDatabases.insert(std::make_pair(name, options));
 
       ++it;
@@ -562,7 +562,7 @@ void ClusterInfo::loadCurrentDatabases () {
         // got a server name
         TRI_json_t* json = (*it).second._json;
         // steal the JSON
-        (*it).second._json = 0;
+        (*it).second._json = nullptr;
         (*it2).second.insert(std::make_pair(parts[1], json));
       }
 
@@ -628,13 +628,13 @@ void ClusterInfo::loadPlannedCollections (bool acquireLock) {
       if (it2 == _collections.end()) {
         // not yet, so create an entry for the database
         DatabaseCollections empty;
-        _collections.insert(std::make_pair(database, empty));
+        _collections.emplace(std::make_pair(database, empty));
         it2 = _collections.find(database);
       }
 
       TRI_json_t* json = (*it).second._json;
       // steal the json
-      (*it).second._json = 0;
+      (*it).second._json = nullptr;
 
       shared_ptr<CollectionInfo> collectionData (new CollectionInfo(json));
       vector<string>* shardKeys = new vector<string>;
@@ -647,16 +647,16 @@ void ClusterInfo::loadPlannedCollections (bool acquireLock) {
       for (it3 = shardIDs.begin(); it3 != shardIDs.end(); ++it3) {
         shards->push_back(it3->first);
       }
-      _shards.insert(
-              make_pair(collection,shared_ptr<vector<string> >(shards)));
+      _shards.emplace(
+              std::make_pair(collection, shared_ptr<vector<string> >(shards)));
 
       // insert the collection into the existing map, insert it under its
       // ID as well as under its name, so that a lookup can be done with
       // either of the two.
 
-      (*it2).second.insert(std::make_pair(collection, collectionData));
-      (*it2).second.insert(std::make_pair(collectionData->name(),
-                                          collectionData));
+      (*it2).second.emplace(std::make_pair(collection, collectionData));
+      (*it2).second.emplace(std::make_pair(collectionData->name(),
+                                           collectionData));
 
     }
     _collectionsValid = true;
@@ -941,7 +941,7 @@ int ClusterInfo::createDatabaseCoordinator (string const& name,
     }
 
     res = ac.casValue("Plan/Databases/"+name, json, false, 0.0, realTimeout);
-    if (!res.successful()) {
+    if (! res.successful()) {
       if (res._statusCode == triagens::rest::HttpResponse::PRECONDITION_FAILED) {
         return setErrormsg(TRI_ERROR_ARANGO_DUPLICATE_NAME, errorMsg);
       }
@@ -953,7 +953,7 @@ int ClusterInfo::createDatabaseCoordinator (string const& name,
 
   // Now wait for it to appear and be complete:
   res = ac.getValues("Current/Version", false);
-  if (!res.successful()) {
+  if (! res.successful()) {
     return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
                        errorMsg);
   }
@@ -1233,7 +1233,7 @@ int ClusterInfo::dropCollectionCoordinator (string const& databaseName,
 
     res = ac.removeValues("Plan/Collections/"+databaseName+"/"+collectionID,
                           false);
-    if (!res.successful()) {
+    if (! res.successful()) {
       if (res._statusCode == rest::HttpResponse::NOT_FOUND) {
         return setErrormsg(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg);
       }
@@ -1844,10 +1844,10 @@ void ClusterInfo::loadServers () {
       TRI_json_t const* sub
         = triagens::basics::JsonHelper::getArrayElement((*it).second._json,
                                                         "endpoint");
-      if (0 != sub) {
+      if (nullptr != sub) {
         const std::string server = triagens::basics::JsonHelper::getStringValue(sub, "");
 
-        _servers.insert(std::make_pair((*it).first, server));
+        _servers.emplace(std::make_pair((*it).first, server));
       }
       ++it;
     }
@@ -1922,7 +1922,7 @@ void ClusterInfo::loadCurrentDBServers () {
     std::map<std::string, AgencyCommResultEntry>::const_iterator it = result._values.begin();
 
     for (; it != result._values.end(); ++it) {
-      _DBServers.insert(std::make_pair((*it).first, triagens::basics::JsonHelper::getStringValue((*it).second._json, "")));
+      _DBServers.emplace(std::make_pair((*it).first, triagens::basics::JsonHelper::getStringValue((*it).second._json, "")));
     }
 
     _DBServersValid = true;
@@ -1942,20 +1942,30 @@ void ClusterInfo::loadCurrentDBServers () {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<ServerID> ClusterInfo::getCurrentDBServers () {
-  if (! _DBServersValid) {
+  std::vector<ServerID> result;
+
+  int tries = 0;
+  while (++tries <= 2) {
+    {
+      // return a consistent state of servers
+      READ_LOCKER(_lock);
+
+      if (_DBServersValid) {
+        result.reserve(_DBServers.size());
+
+        for (auto& it : _DBServers) {
+          result.emplace_back(it.first);
+        }
+
+        return result;
+      }
+    }
+
+    // loadCurrentDBServers needs the write lock
     loadCurrentDBServers();
   }
 
-  std::vector<ServerID> result;
-
-  READ_LOCKER(_lock);
-  std::map<ServerID, ServerID>::iterator it = _DBServers.begin();
-
-  while (it != _DBServers.end()) {
-    result.push_back((*it).first);
-    ++it;
-  }
-
+  // note that the result will be empty if we get here
   return result;
 }
 
@@ -2064,11 +2074,12 @@ int ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
     {
       // Get the sharding keys and the number of shards:
       READ_LOCKER(_lock);
-      map<CollectionID, shared_ptr<vector<string> > >::iterator it
+      map<CollectionID, shared_ptr<vector<string>>>::iterator it
           = _shards.find(collectionID);
+
       if (it != _shards.end()) {
         shards = it->second;
-        map<CollectionID, shared_ptr<vector<string> > >::iterator it2
+        map<CollectionID, shared_ptr<vector<string>>>::iterator it2
             = _shardKeys.find(collectionID);
         if (it2 != _shardKeys.end()) {
           shardKeysPtr = it2->second;
@@ -2088,7 +2099,7 @@ int ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
     }
     loadPlannedCollections();
   }
-  if (!found) {
+  if (! found) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 

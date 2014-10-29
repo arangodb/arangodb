@@ -186,8 +186,10 @@ ClusterCommResult* ClusterComm::asyncRequest (
   op->coordTransactionID   = coordTransactionID;
   do {
     op->operationID        = getOperationID();
-  } while (op->operationID == 0);   // just to make sure
-  if (destination.substr(0,6) == "shard:") {
+  } 
+  while (op->operationID == 0);   // just to make sure
+
+  if (destination.substr(0, 6) == "shard:") {
     op->shardID = destination.substr(6);
     op->serverID = ClusterInfo::instance()->getResponsibleServer(op->shardID);
     LOG_DEBUG("Responsible server: %s", op->serverID.c_str());
@@ -271,23 +273,24 @@ ClusterCommResult* ClusterComm::syncRequest (
   res->coordTransactionID   = coordTransactionID;
   do {
     res->operationID        = getOperationID();
-  } while (res->operationID == 0);   // just to make sure
+  } 
+  while (res->operationID == 0);   // just to make sure
   res->status               = CL_COMM_SENDING;
 
   double currentTime = TRI_microtime();
-  double endTime = timeout == 0.0 ? currentTime+24*60*60.0
-                                  : currentTime+timeout;
+  double endTime = timeout == 0.0 ? currentTime + 24 * 60 * 60.0
+                                  : currentTime + timeout;
 
-  if (destination.substr(0,6) == "shard:") {
+  if (destination.substr(0, 6) == "shard:") {
     res->shardID = destination.substr(6);
     res->serverID = ClusterInfo::instance()->getResponsibleServer(res->shardID);
     LOG_DEBUG("Responsible server: %s", res->serverID.c_str());
-    if (res->serverID == "") {
+    if (res->serverID.empty()) {
       res->status = CL_COMM_ERROR;
       return res;
     }
   }
-  else if (destination.substr(0,7) == "server:") {
+  else if (destination.substr(0, 7) == "server:") {
     res->shardID = "";
     res->serverID = destination.substr(7);
   }
@@ -298,7 +301,7 @@ ClusterCommResult* ClusterComm::syncRequest (
 
   // We need a connection to this server:
   string endpoint = ClusterInfo::instance()->getServerEndpoint(res->serverID);
-  if (endpoint == "") {
+  if (endpoint.empty()) {
     res->status = CL_COMM_ERROR;
     if (logConnectionErrors()) {
       LOG_ERROR("cannot find endpoint of server '%s'", res->serverID.c_str());
@@ -308,11 +311,11 @@ ClusterCommResult* ClusterComm::syncRequest (
     }
   }
   else {
-    httpclient::ConnectionManager* cm
-        = httpclient::ConnectionManager::instance();
+    httpclient::ConnectionManager* cm = httpclient::ConnectionManager::instance();
     httpclient::ConnectionManager::SingleServerConnection* connection
         = cm->leaseConnection(endpoint);
-    if (0 == connection) {
+  
+    if (nullptr == connection) {
       res->status = CL_COMM_ERROR;
       if (logConnectionErrors()) {
         LOG_ERROR("cannot create connection to server '%s'", res->serverID.c_str());
@@ -328,15 +331,16 @@ ClusterCommResult* ClusterComm::syncRequest (
       triagens::httpclient::SimpleHttpClient* client
           = new triagens::httpclient::SimpleHttpClient(
                                 connection->connection,
-                                endTime-currentTime, false);
+                                endTime - currentTime, false);
       client->keepConnectionOnDestruction(true);
 
       map<string, string> headersCopy(headerFields);
-      headersCopy.insert(make_pair(string("Authorization"), ServerState::instance()->getAuthentication()));
+      headersCopy.emplace(make_pair(string("Authorization"), ServerState::instance()->getAuthentication()));
 
       res->result = client->request(reqtype, path, body.c_str(), body.size(),
                                     headersCopy);
-      if (! res->result->isComplete()) {
+
+      if (res->result == nullptr || ! res->result->isComplete()) {
         cm->brokenConnection(connection);
         if (client->getErrorMessage() == "Request timeout reached") {
           res->status = CL_COMM_TIMEOUT;
@@ -542,7 +546,7 @@ ClusterCommResult* ClusterComm::wait (
         }
       }
       // If we found nothing, we have to look through the send queue:
-      if (!found) {
+      if (! found) {
         basics::ConditionLocker sendlocker(&somethingToSend);
         for (q = toSend.begin(); q != toSend.end(); q++) {
           op = *q;
@@ -552,7 +556,7 @@ ClusterCommResult* ClusterComm::wait (
           }
         }
       }
-      if (!found) {
+      if (! found) {
         // Nothing known about this operation, return with failure:
         res = new ClusterCommResult();
         res->clientTransactionID = clientTransactionID;
@@ -721,7 +725,7 @@ void ClusterComm::asyncAnswer (string& coordinatorHeader,
   httpclient::SimpleHttpResult* result =
                  client->request(rest::HttpRequest::HTTP_REQUEST_PUT,
                                  "/_api/shard-comm", body, len, headers);
-  if (! result->isComplete()) {
+  if (result == nullptr || ! result->isComplete()) {
     cm->brokenConnection(connection);
   }
   else {
@@ -1009,17 +1013,17 @@ void ClusterCommThread::run () {
 
               // We add this result to the operation struct without acquiring
               // a lock, since we know that only we do such a thing:
-              if (0 != op->body) {
+              if (nullptr != op->body) {
                 op->result = client->request(op->reqtype, op->path,
                              op->body->c_str(), op->body->size(),
                              *(op->headerFields));
               }
               else {
                 op->result = client->request(op->reqtype, op->path,
-                             NULL, 0, *(op->headerFields));
+                             nullptr, 0, *(op->headerFields));
               }
 
-              if (! op->result->isComplete()) {
+              if (op->result == nullptr || ! op->result->isComplete()) {
                 cm->brokenConnection(connection);
                 if (client->getErrorMessage() == "Request timeout reached") {
                   op->status = CL_COMM_TIMEOUT;
@@ -1040,7 +1044,7 @@ void ClusterCommThread::run () {
         }
       }
 
-      if (!cc->moveFromSendToReceived(op->operationID)) {
+      if (! cc->moveFromSendToReceived(op->operationID)) {
         // It was dropped in the meantime, so forget about it:
         delete op;
       }

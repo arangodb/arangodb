@@ -214,6 +214,7 @@ v8::Handle<v8::Object> WrapCollection (TRI_vocbase_col_t const* collection) {
 
     result->Set(v8g->_IdKey, V8CollectionId(collection->_cid), v8::ReadOnly);
     result->Set(v8g->_DbNameKey, v8::String::New(collection->_dbName));
+    result->Set(v8g->VersionKey, v8::Number::New((double) collection->_internalVersion), v8::DontEnum);
   }
 
   return scope.Close(result);

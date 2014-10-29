@@ -66,9 +66,9 @@ var loadTestRunner = function (tests, options, testMethods) {
       }
     }
 
-    if (typeof test.setup === "function") {
+    if (typeof test.setUp === "function") {
 
-      test.setup(options);
+      test.setUp(options);
     }
 
     for (oneTestMethod in testMethods) {
@@ -80,8 +80,8 @@ var loadTestRunner = function (tests, options, testMethods) {
       }
     }
 
-    if (typeof test.teardown === "function") {
-      test.teardown();
+    if (typeof test.tearDown === "function") {
+      test.tearDown();
     }
     return results;
   };
@@ -123,8 +123,8 @@ var loadTestRunner = function (tests, options, testMethods) {
     for (i = 0; i < tests.length; ++i) {
       test = tests[i];
       if ((typeof(test.func) !== "function") &&
-          (typeof(test.setup) === "function")){
-        test.setup(options);
+          (typeof(test.setUp) === "function")){
+        test.setUp(options);
       }
     }
 
@@ -133,16 +133,13 @@ var loadTestRunner = function (tests, options, testMethods) {
       if (typeof(test.func) === "function") {
         var resultSet;
         resultSet  = measure(test, options);
-        results[test.name] = resultSet;
-        results[test.name].status = true;
 
         var oneResult;
 
         for (oneResult in resultSet) {
           if (resultSet.hasOwnProperty(oneResult) && (oneResult !== 'status')) {
+            results[test.name + '/' + oneResult] = {status: true};
             var stats = calc(resultSet[oneResult], options);
-            results[test.name][oneResult][0].calced = stats;
-            results[test.name][oneResult].status = true;
 
             for (j = 0; j < measurements.length;j ++) {
               if (stats.hasOwnProperty(measurements[j])) {
@@ -162,19 +159,28 @@ var loadTestRunner = function (tests, options, testMethods) {
                       pad(stats[measurements[j]].avg.toFixed(options.digits), cellLength, "left") + sep + 
                       pad(stats[measurements[j]].har.toFixed(options.digits), cellLength, "left") + sep + 
                       pad(stats[measurements[j]].rat.toFixed(2), runsLength, "left") + sep + measurements[j]);
+                for (var calculation in stats[measurements[j]]) {
+                  results[test.name + '/' + oneResult][measurements[j] + '/' + calculation] = {
+                    status: true,
+                    message: '',
+                    duration: stats[measurements[j]][calculation]
+                  };
+                }
               }
             }
 
             print(new Array(lineLength).join("-"));
           }
+
         }
+
       }
     }
     for (i = 0; i < tests.length; ++i) {
       test = tests[i];
       if ((typeof(test.func) !== "function") &&
-          (typeof(test.teardown) === "function")){
-        test.teardown(options);
+          (typeof(test.tearDown) === "function")){
+        test.tearDown(options);
       }
     }
     results.status = true;

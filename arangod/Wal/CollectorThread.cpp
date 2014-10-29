@@ -71,7 +71,7 @@ static inline TRI_doc_datafile_info_t& createDfi (CollectorCache* cache,
 
   TRI_doc_datafile_info_t dfi;
   memset(&dfi, 0, sizeof(TRI_doc_datafile_info_t));
-  cache->dfi.insert(std::make_pair(fid, dfi));
+  cache->dfi.emplace(std::make_pair(fid, dfi));
 
   return getDfi(cache, fid);
 }
@@ -288,8 +288,9 @@ CollectorThread::CollectorThread (LogfileManager* logfileManager,
     _condition(),
     _operationsQueueLock(),
     _operationsQueue(),
-    _numPendingOperations(0),
-    _stop(0) {
+    _operationsQueueInUse(false),
+    _stop(0),
+    _numPendingOperations(0) {
 
   allowAsynchronousCancelation();
 }
@@ -354,7 +355,15 @@ void CollectorThread::run () {
       }
 
       // step 2: update master pointers
-      worked |= this->processQueuedOperations();
+      try {
+        worked |= this->processQueuedOperations();
+      }
+      catch (...) {
+        // re-activate the queue
+        MUTEX_LOCKER(_operationsQueueLock);
+        _operationsQueueInUse = false;
+        throw;
+      }
     }
     catch (triagens::arango::Exception const& ex) {
       int res = ex.code();
@@ -370,7 +379,7 @@ void CollectorThread::run () {
 
       if (! guard.wait(Interval)) {
         if (++counter > 10) {
-          LOG_TRACE("wal collector has queued operations: %d", (int) _operationsQueue.size());
+          LOG_TRACE("wal collector has queued operations: %d", (int) numQueuedOperations());
           counter = 0;
         }
       }
@@ -432,12 +441,20 @@ bool CollectorThread::processQueuedOperations () {
     return false;
   }
 
-  MUTEX_LOCKER(_operationsQueueLock);
+  {
+    MUTEX_LOCKER(_operationsQueueLock);
+    TRI_ASSERT(! _operationsQueueInUse);
 
-  if (_operationsQueue.empty()) {
-    // nothing to do
-    return false;
+    if (_operationsQueue.empty()) {
+      // nothing to do
+      return false;
+    }
+
+    // this flag indicates that no one else must write to the queue
+    _operationsQueueInUse = true;
   }
+
+  // go on without the mutex!
 
   // process operations for each collection
   for (auto it = _operationsQueue.begin(); it != _operationsQueue.end(); ++it) {
@@ -508,13 +525,20 @@ bool CollectorThread::processQueuedOperations () {
   }
 
   // finally remove all entries from the map with empty vectors
-  for (auto it = _operationsQueue.begin(); it != _operationsQueue.end(); /* no hoisting */) {
-    if ((*it).second.empty()) {
-      it = _operationsQueue.erase(it);
+  {
+    MUTEX_LOCKER(_operationsQueueLock);
+
+    for (auto it = _operationsQueue.begin(); it != _operationsQueue.end(); /* no hoisting */) {
+      if ((*it).second.empty()) {
+        it = _operationsQueue.erase(it);
+      }
+      else {
+        ++it;
+      }
     }
-    else {
-      ++it;
-    }
+
+    // the queue can now be used by others, too
+    _operationsQueueInUse = false;
   }
 
   return true;
@@ -528,6 +552,16 @@ bool CollectorThread::hasQueuedOperations () {
   MUTEX_LOCKER(_operationsQueueLock);
 
   return ! _operationsQueue.empty();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the number of queued operations
+////////////////////////////////////////////////////////////////////////////////
+
+size_t CollectorThread::numQueuedOperations () {
+  MUTEX_LOCKER(_operationsQueueLock);
+
+  return _operationsQueue.size();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1083,20 +1117,31 @@ int CollectorThread::queueOperations (triagens::wal::Logfile* logfile,
  
   TRI_ASSERT(! cache->operations->empty());
 
-  {
-    MUTEX_LOCKER(_operationsQueueLock);
+  while (true) {
+    {
+      MUTEX_LOCKER(_operationsQueueLock);
 
-    auto it = _operationsQueue.find(cid);
-    if (it == _operationsQueue.end()) {
-      std::vector<CollectorCache*> ops;
-      ops.push_back(cache);
-      _operationsQueue.insert(it, std::make_pair(cid, ops));
-      _logfileManager->increaseCollectQueueSize(logfile);
+      if (! _operationsQueueInUse) {
+        // it is only safe to access the queue if this flag is not set
+        auto it = _operationsQueue.find(cid);
+        if (it == _operationsQueue.end()) {
+          std::vector<CollectorCache*> ops;
+          ops.push_back(cache);
+          _operationsQueue.emplace(std::make_pair(cid, ops));
+          _logfileManager->increaseCollectQueueSize(logfile);
+        }
+        else {
+          (*it).second.push_back(cache);
+          _logfileManager->increaseCollectQueueSize(logfile);
+        }
+
+        // exit the loop
+        break;
+      }
     }
-    else {
-      (*it).second.push_back(cache);
-      _logfileManager->increaseCollectQueueSize(logfile);
-    }
+
+    // wait outside the mutex for the flag to be cleared
+    usleep(10000);
   }
   
   uint64_t numOperations = cache->operations->size();

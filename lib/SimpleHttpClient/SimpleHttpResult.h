@@ -34,10 +34,6 @@
 #include "Basics/Common.h"
 #include "Basics/StringBuffer.h"
 
-#include <map>
-#include <string>
-#include <sstream>
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class for storing a request result
 ////////////////////////////////////////////////////////////////////////////////
@@ -114,7 +110,7 @@ namespace triagens {
 /// @brief returns the http return message
 ////////////////////////////////////////////////////////////////////////////////
 
-      string getHttpReturnMessage () const {
+      std::string getHttpReturnMessage () const {
         return _returnMessage;
       }
 
@@ -122,7 +118,7 @@ namespace triagens {
 /// @brief sets the http return message
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setHttpReturnMessage (const string& message) {
+      void setHttpReturnMessage (const std::string& message) {
         this->_returnMessage = message;
       }
 
@@ -201,7 +197,7 @@ namespace triagens {
 /// @brief returns a message for the result type
 ////////////////////////////////////////////////////////////////////////////////
 
-      std::string getResultTypeMessage ();
+      std::string getResultTypeMessage () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add header field
@@ -210,47 +206,44 @@ namespace triagens {
       void addHeaderField (char const*, size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add header field
-////////////////////////////////////////////////////////////////////////////////
-
-      void addHeaderField (std::string const& line);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add header field
-////////////////////////////////////////////////////////////////////////////////
-
-      void addHeaderField (std::string const& key, std::string const& value);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the value of a single header
 ////////////////////////////////////////////////////////////////////////////////
 
-      string getHeaderField (const string&, bool&) const;
+      std::string getHeaderField (std::string const&, bool&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get X-VOC-* header fields
+/// @brief get all header fields
 ////////////////////////////////////////////////////////////////////////////////
 
-      const std::map<std::string, std::string>& getHeaderFields () {
+      std::map<std::string, std::string> const& getHeaderFields () const {
         return _headerFields;
       }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get content type header field
+/// @brief returns whether the result is JSON-encoded
+////////////////////////////////////////////////////////////////////////////////
+    
+      bool isJson () const;
+
+    private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add header field
 ////////////////////////////////////////////////////////////////////////////////
 
-      const std::string getContentType (const bool partial);
+      void addHeaderField (char const*, size_t, char const*, size_t);
 
 
     private:
 
       // header informtion
-      int _returnCode;
-      string _returnMessage;
-      size_t _contentLength;
-      bool _hasContentLength;
-      bool _chunked;
-      bool _deflated;
+      std::string  _returnMessage;
+      size_t       _contentLength;
+      int          _returnCode;
+      bool         _foundHeader;
+      bool         _hasContentLength;
+      bool         _chunked;
+      bool         _deflated;
 
       // body content
       triagens::basics::StringBuffer _resultBody;

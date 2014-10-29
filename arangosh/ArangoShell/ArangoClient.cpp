@@ -123,10 +123,11 @@ char const * ArangoClient::PROMPT_IGNORE_END = "\002";
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoClient::ArangoClient ()
+ArangoClient::ArangoClient (char const* appName)
   : _configFile(),
     _tempPath(),
     _logLevel("info"),
+    _logLocalTime(false),
     _quiet(false),
 
     _colorOptions(false),
@@ -159,6 +160,7 @@ ArangoClient::ArangoClient ()
     _requestTimeout(DEFAULT_REQUEST_TIMEOUT),
     _sslProtocol(4) {
 
+  TRI_SetApplicationName(appName);
   char* p = TRI_GetTempPath();
 
   if (p != nullptr) {
@@ -187,6 +189,7 @@ void ArangoClient::setupGeneral (ProgramOptionsDescription& description) {
 
   loggingOptions
     ("log.level,l", &_logLevel,  "log level")
+    ("log.use-local-time", "log local dates and times in log messages")
   ;
 
   description
@@ -318,9 +321,14 @@ void ArangoClient::parse (ProgramOptions& options,
   if (! options.parse(description, argc, argv)) {
     LOG_FATAL_AND_EXIT("%s", options.lastError().c_str());
   }
+  
+  if (options.has("log.use-local-time")) {
+    _logLocalTime = true;
+  }
 
   // setup the logging
   TRI_SetLogLevelLogging(_logLevel.c_str());
+  TRI_SetUseLocalTimeLogging(_logLocalTime);
   TRI_CreateLogAppenderFile("-", 0, TRI_LOG_SEVERITY_UNKNOWN, false);
   TRI_SetLineNumberLogging(false);
   TRI_SetThreadIdentifierLogging(false);
@@ -400,7 +408,7 @@ void ArangoClient::parse (ProgramOptions& options,
     // if a username is specified explicitly, assume authentication is desired
     _disableAuthentication = false;
   }
-
+  
   // check if have a password
   _hasPassword = options.has("server.password")
               || _disableAuthentication

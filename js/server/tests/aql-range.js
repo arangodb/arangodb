@@ -1,4 +1,6 @@
-/*global require, exports, assertTrue, assertEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*jshint strict: false, maxlen: 500 */
+/*global require, assertEqual, AQL_EXECUTE */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
 ///
@@ -27,10 +29,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var errors = require("internal").errors;
-var internal = require("internal");
-var errors = internal.errors;
-var db = require("org/arangodb").db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

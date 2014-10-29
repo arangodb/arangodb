@@ -245,7 +245,7 @@ size_t HttpResponse::contentLength () {
   else {
     Dictionary<char const*>::KeyValue const* kv = _headers.lookup("content-length", 14);
 
-    if (kv == 0) {
+    if (kv == nullptr) {
       return 0;
     }
 

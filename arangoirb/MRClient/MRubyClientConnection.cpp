@@ -309,12 +309,10 @@ mrb_value MRubyClientConnection::requestData (HttpRequest::HttpRequestType metho
 
     // got a body
     if (_httpResult->getBody().length() > 0) {
-      string contentType = _httpResult->getContentType(true);
-
-      if (contentType == "application/json") {
+      if (_httpResult->isJson()) {
         TRI_json_t* js = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, _httpResult->getBody().c_str());
 
-        if (js != NULL) {
+        if (js != nullptr) {
           mrb_value result = MR_ObjectJson(_mrb, js);
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, js);
 

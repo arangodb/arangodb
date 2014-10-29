@@ -62,6 +62,7 @@ add_executable(
     Aql/Ast.cpp
     Aql/AstNode.cpp
     Aql/BindParameters.cpp
+    Aql/Collection.cpp
     Aql/ExecutionBlock.cpp
     Aql/ExecutionEngine.cpp
     Aql/ExecutionNode.cpp
@@ -79,9 +80,9 @@ add_executable(
     Aql/Query.cpp
     Aql/QueryRegistry.cpp
     Aql/RangeInfo.cpp
+    Aql/Range.cpp
     Aql/RestAqlHandler.cpp
     Aql/Scopes.cpp
-    Aql/Types.cpp
     Aql/tokens.cpp
     Aql/V8Expression.cpp
     Aql/Variable.cpp
@@ -107,6 +108,7 @@ add_executable(
     GeoIndex/GeoIndex.cpp
     GeoIndex/geo-index.cpp
     HashIndex/hash-array.cpp
+    HashIndex/hash-array-multi.cpp
     HashIndex/hash-index.cpp
     IndexOperators/index-operator.cpp
     Replication/ContinuousSyncer.cpp
@@ -127,7 +129,10 @@ add_executable(
     SkipLists/skiplistIndex.cpp
     Utils/DocumentHelper.cpp
     Utils/Exception.cpp
+    Utils/StandaloneTransactionContext.cpp
     Utils/Transaction.cpp
+    Utils/TransactionContext.cpp
+    Utils/V8TransactionContext.cpp
     V8Server/ApplicationV8.cpp
     V8Server/V8DispatcherThread.cpp
     V8Server/V8Job.cpp
@@ -135,16 +140,17 @@ add_executable(
     V8Server/V8QueueJob.cpp
     V8Server/V8TimerTask.cpp
     V8Server/v8-actions.cpp
-    V8Server/v8-dispatcher.cpp
-    V8Server/v8-query.cpp
-    V8Server/v8-vocbase.cpp
-    V8Server/v8-wrapshapedjson.cpp
-    V8Server/v8-vocindex.cpp
-    V8Server/v8-voccursor.cpp
-    V8Server/v8-replication.cpp
     V8Server/v8-collection.cpp
     V8Server/v8-collection-util.cpp
+    V8Server/v8-dispatcher.cpp
+    V8Server/v8-query.cpp
+    V8Server/v8-replication.cpp
+    V8Server/v8-user-structures.cpp
     V8Server/v8-util.cpp
+    V8Server/v8-vocbase.cpp
+    V8Server/v8-voccursor.cpp
+    V8Server/v8-vocindex.cpp
+    V8Server/v8-wrapshapedjson.cpp
     VocBase/auth.cpp
     VocBase/barrier.cpp
     VocBase/cleanup.cpp

@@ -1,6 +1,6 @@
 !CHAPTER Example Data
 
-The above examples all use a vertex collection *e* and an [edge collection](../Glossary/README.html#edge_collection) *e*. The vertex
+The following examples all use a vertex collection *v* and an [edge collection](../Glossary/README.html#edge_collection) *e*. The vertex
 collection *v* contains continents, countries, and capitals. The edge collection *e* 
 contains connections between continents and countries, and between countries and capitals.
 

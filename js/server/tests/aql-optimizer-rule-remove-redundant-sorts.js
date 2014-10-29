@@ -1,4 +1,6 @@
-/*global require, assertTrue, assertEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*jshint strict: false, maxlen: 500 */
+/*global require, assertTrue, assertEqual, AQL_EXPLAIN, AQL_EXECUTE */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
 ///
@@ -27,10 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var errors = require("internal").errors;
 var helper = require("org/arangodb/aql-helper");
-var getQueryResults = helper.getQueryResults2;
-var assertQueryError = helper.assertQueryError2;
 var isEqual = helper.isEqual;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -87,7 +86,7 @@ function optimizerRuleTestSuite () {
     testRuleNoEffect : function () {
       var queries = [ 
         "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a RETURN i",
-        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a + 1 SORT i.b RETURN i",
+        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a + FAIL() SORT i.b RETURN i",
         "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a SORT RAND() RETURN i",
         "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] COLLECT x = i.a SORT x RETURN x"
       ];
@@ -106,6 +105,7 @@ function optimizerRuleTestSuite () {
       var queries = [ 
         "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a SORT i.a RETURN i",
         "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a, i.b SORT i.a, i.b RETURN i",
+        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a + 1 SORT i.b RETURN i",
         "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a DESC SORT i.a DESC RETURN i",
         "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a, i.b DESC SORT i.a, i.b DESC RETURN i",
         "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a FILTER i.a == 1 SORT i.a RETURN i",

@@ -447,6 +447,8 @@
    * This has to contain the vertex-collection name.
    */
   controller.post("/:graph/vertex", function(req, res) {
+	  require("console").log("+++++++++++++++++++++++++");
+	  require("console").log(req);
     var name = req.params("graph");
     var body = req.params("collection");
     var g;
@@ -751,7 +753,7 @@
   /** Delete an edge definition.
    *
    * Removes an existing edge definition from this graph.
-   * All data stored in the collections is dropped as well as long
+   * All data stored in the edge collection is dropped as well as long
    * as it is not used in other graphs.
    */
   controller.del("/:graph/edge/:definition", function(req, res) {

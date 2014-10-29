@@ -201,7 +201,7 @@ BOOST_AUTO_TEST_CASE (tst_non_printable) {
 /// @brief test Japanese
 ////////////////////////////////////////////////////////////////////////////////
 
-BOOST_AUTO_TEST_CASE (tst_japanse) {
+BOOST_AUTO_TEST_CASE (tst_japanese) {
   size_t outLength;
   char* result;
 

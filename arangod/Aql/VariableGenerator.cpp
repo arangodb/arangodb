@@ -27,9 +27,11 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Utils/Exception.h"
 #include "Aql/VariableGenerator.h"
 
 using namespace triagens::aql;
+using Json = triagens::basics::Json;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -129,6 +131,22 @@ Variable* VariableGenerator::createVariable (std::string const& name,
   return variable;
 }
 
+Variable* VariableGenerator::createVariable (Variable const* original) {
+  TRI_ASSERT(original != nullptr);
+  auto variable = original->clone();
+  
+  try {
+    _variables.emplace(std::make_pair(variable->id, variable));
+  }
+  catch (...) {
+    // prevent memleak
+    delete variable;
+    throw;
+  }
+
+  return variable;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate a variable from JSON
 ////////////////////////////////////////////////////////////////////////////////
@@ -185,6 +203,35 @@ std::string VariableGenerator::nextName () const {
   // note: if the naming scheme is adjusted, it may be necessary to adjust
   // Variable::isUserDefined, too!
   return std::to_string(_id); // to_string: c++11
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief export to JSON, returns an AUTOFREE Json object
+////////////////////////////////////////////////////////////////////////////////
+
+triagens::basics::Json VariableGenerator::toJson (TRI_memory_zone_t* zone) const {
+  Json jsonAllVariablesList(Json::List, _variables.size());
+  for (auto oneVariable: _variables) {
+    jsonAllVariablesList(oneVariable.second->toJson());
+  }
+  return jsonAllVariablesList;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief import from JSON
+////////////////////////////////////////////////////////////////////////////////
+
+void VariableGenerator::fromJson (Json const& query) {
+  Json jsonAllVariablesList = query.get("variables");
+  if (! jsonAllVariablesList.isList()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "variables needs to be a list");
+  }
+  
+  auto len = jsonAllVariablesList.size();
+  _variables.reserve(len);
+  for (size_t i = 0; i < len; i++) {
+    createVariable(jsonAllVariablesList.at(i));
+  }
 }
 
 // -----------------------------------------------------------------------------

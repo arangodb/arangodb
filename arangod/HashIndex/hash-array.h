@@ -125,7 +125,8 @@ struct TRI_hash_index_element_s* TRI_FindByKeyHashArray (TRI_hash_array_t*,
 int TRI_InsertKeyHashArray (TRI_hash_array_t*,
                             struct TRI_index_search_value_s* key,
                             struct TRI_hash_index_element_s* element,
-                            bool overwrite);
+                            bool overwrite,
+                            bool isRollback);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an element from the array
@@ -133,36 +134,6 @@ int TRI_InsertKeyHashArray (TRI_hash_array_t*,
 
 int TRI_RemoveElementHashArray (TRI_hash_array_t*,
                                 struct TRI_hash_index_element_s* element);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  MULTI HASH ARRAY
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lookups an element given a key
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vector_pointer_t TRI_LookupByKeyHashArrayMulti (TRI_hash_array_t*,
-                                                    struct TRI_index_search_value_s* key);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an element to the array
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_InsertElementHashArrayMulti (TRI_hash_array_t*,
-                                     struct TRI_hash_index_element_s* element,
-                                     bool overwrite);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an element from the array
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_RemoveElementHashArrayMulti (TRI_hash_array_t*,
-                                     struct TRI_hash_index_element_s* element);
 
 #endif
 

@@ -84,7 +84,7 @@ void BindParameters::process () {
 
     if (! TRI_IsStringJson(key)) {
       // no string, should not happen
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE); // TODO: add parameter name
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE);
     }
 
     std::string const k(key->_value._string.data, key->_value._string.length - 1);

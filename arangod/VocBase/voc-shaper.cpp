@@ -150,13 +150,14 @@ static TRI_shape_aid_t LookupAttributeByName (TRI_shaper_t* shaper,
   TRI_ASSERT(name != nullptr);
 
   voc_shaper_t* s = reinterpret_cast<voc_shaper_t*>(shaper);
-  void const* p = TRI_LookupByKeyAssociativeSynced(&s->_attributeNames, name);
+  std::function<TRI_shape_aid_t(void const*)> callback = [](void const* element) -> TRI_shape_aid_t {
+    if (element == nullptr) {
+      return 0;
+    }
+    return GetAttributeId(element);
+  };
 
-  if (p != nullptr) {
-    return GetAttributeId(p);
-  }
-
-  return 0;
+  return TRI_ProcessByKeyAssociativeSynced<TRI_shape_aid_t>(&s->_attributeNames, name, callback);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -264,14 +265,15 @@ static bool EqualKeyAttributeId (TRI_associative_synced_t* array, void const* ke
 
 static char const* LookupAttributeId (TRI_shaper_t* shaper,
                                       TRI_shape_aid_t aid) {
-  voc_shaper_t* s = (voc_shaper_t*) shaper;
-  void const* p = TRI_LookupByKeyAssociativeSynced(&s->_attributeIds, &aid);
+  voc_shaper_t* s = reinterpret_cast<voc_shaper_t*>(shaper);
+  std::function<char const*(void const*)> callback = [](void const* element) -> char const* {
+    if (element == nullptr) {
+      return nullptr;
+    }
+    return GetAttributeName(element);
+  };
 
-  if (p == nullptr) {
-    return nullptr;
-  }
-
-  return GetAttributeName(p);
+  return TRI_ProcessByKeyAssociativeSynced<char const*>(&s->_attributeIds, &aid, callback);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -372,9 +374,15 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper,
     TRI_shape_t const* result = reinterpret_cast<TRI_shape_t const*>(m);
 
     void* f = TRI_InsertKeyAssociativeSynced(&s->_shapeIds, &sid, (void*) m, false);
+    if (f != nullptr) {
+      LOG_ERROR("logic error when inserting shape");
+    }
     TRI_ASSERT(f == nullptr);
 
     f = TRI_InsertElementAssociativeSynced(&s->_shapeDictionary, (void*) m, false);
+    if (f != nullptr) {
+      LOG_ERROR("logic error when inserting shape");
+    }
     TRI_ASSERT(f == nullptr);
 
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);

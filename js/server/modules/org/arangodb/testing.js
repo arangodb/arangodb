@@ -35,63 +35,61 @@
 /// This function gets one or two arguments, the first describes which tests
 /// to perform and the second is an options object. For `which` the following
 /// values are allowed:
-///
-///   - "all": do all tests
-///   - "config"
-///   - "boost"
-///   - "shell_server"
-///   - "shell_server_ahuacatl"
-///   - "shell_server_aql"
-///   - "shell_server_perf": bulk tests intended to get an overview of executiontime needed.
-///   - "http_server"
-///   - "ssl_server"
-///   - "shell_client"
-///   - "dump"
-///   - "arangob"
-///   - "import"
-///   - "upgrade"
-///   - "dfdb"
-///   - "foxx-manager"
-///   - "authentication"
-///   - "authentication-parameters
-///   - "single": convenience to execute a single test file
-///
-/// The following properties of `options` are defined:
-///
-///   - `jsonReply`: if set a json is returned which the caller has to 
-///        present the user
-///   - `force`: if set to true the tests are continued even if one fails
-///   - `skipBoost`: if set to true the boost unittests are skipped
-///   - `skipGeo`: if set to true the geo index tests are skipped
-///   - `skipAhuacatl`: if set to true the ahuacatl tests are skipped
-///   - `skipAql`: if set to true the AQL tests are skipped
-///   - `skipRanges`: if set to true the ranges tests are skipped
-///   - `valgrind`: if set to true the arangods are run with the valgrind
-///     memory checker
-///   - `valgrindXmlFileBase`: string to prepend to the xml report name
-///   - `valgrindargs`: commandline parameters to add to valgrind
-///   - `extraargs`: extra commandline arguments to add to arangod
-///   - `cluster`: if set to true the tests are run with the coordinator
-///     of a small local cluster
-///   - `test`: path to single test to execute for "single" test target
-///   - `skipServer`: flag for "single" test target to skip the server test
-///   - `skipClient`: flag for "single" test target to skip the client test
-///   - `cleanup`: if set to true (the default), the cluster data files
-///     and logs are removed after termination of the test.
-///   - `jasmineReportFormat`: this option is passed on to the `format`
-///     option of the Jasmin options object, only for Jasmin tests.
+///  Empty will give you a complete list.
+var functionDoku = {
+  'all'               : " do all tests (marked with [x])",
+  "shell_server_perf" : "bulk tests intended to get an overview of executiontime needed.",
+  "single_client"     : "run one test suite isolated via the arangosh; options required\n" +
+    "            Run without to get more detail",
+  "single_server"     : "run one test suite on the server; options required\n" + 
+    "            Run without to get more detail"
+};
+
+var optiondoku = [
+  '',
+  ' The following properties of `options` are defined:',
+  '',
+  '   - `jsonReply`: if set a json is returned which the caller has to ',
+  '        present the user',
+  '   - `force`: if set to true the tests are continued even if one fails',
+  '   - `skipBoost`: if set to true the boost unittests are skipped',
+  '   - `skipGeo`: if set to true the geo index tests are skipped',
+  '   - `skipAhuacatl`: if set to true the ahuacatl tests are skipped',
+  '   - `skipAql`: if set to true the AQL tests are skipped',
+  '   - `skipRanges`: if set to true the ranges tests are skipped',
+  '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
+  '',
+  '   - `cluster`: if set to true the tests are run with the coordinator',
+  '     of a small local cluster',
+  '   - `test`: path to single test to execute for "single" test target',
+  '   - `cleanup`: if set to true (the default), the cluster data files',
+  '     and logs are removed after termination of the test.',
+  '   - `jasmineReportFormat`: this option is passed on to the `format`',
+  '     option of the Jasmin options object, only for Jasmin tests.',
+  '',
+  '   - `valgrind`: if set to true the arangods are run with the valgrind',
+  '     memory checker',
+  '   - `valgrindXmlFileBase`: string to prepend to the xml report name',
+  '   - `valgrindargs`: list of commandline parameters to add to valgrind',
+  '',
+  '   - `extraargs`: list of extra commandline arguments to add to arangod',
+  '   - `portOffset`: move our base port by n ports up',
+  ''
+];
 ////////////////////////////////////////////////////////////////////////////////
 
 var _ = require("underscore");
-
-var testFuncs = {};
+var cleanupDirectories = [];
+var testFuncs = {'all': function(){}};
 var print = require("internal").print;
+var time = require("internal").time;
 var fs = require("fs");
 var download = require("internal").download;
 var wait = require("internal").wait;
 var executeExternal = require("internal").executeExternal;
 var killExternal = require("internal").killExternal;
 var statusExternal = require("internal").statusExternal;
+var executeExternalAndWait = require("internal").executeExternalAndWait;
 var base64Encode = require("internal").base64Encode;
 
 var PortFinder = require("org/arangodb/cluster").PortFinder;
@@ -106,15 +104,107 @@ var optionsDefaults = { "cluster": false,
                         "skipBoost": false,
                         "skipGeo": false,
                         "skipAhuacatl": false,
+                        "skipTimeCritical": false,
                         "skipAql": false,
                         "skipRanges": false,
                         "username": "root",
                         "password": "",
                         "test": undefined,
-                        "skipServer": false,
-                        "skipClient": false,
                         "cleanup": true,
-                        "jsonReply": false};
+                        "jsonReply": false,
+                        "portOffset": 0,
+                        "valgrindargs": [],
+                        "valgrindXmlFileBase" : "",
+                        "extraargs": []
+
+
+};
+var allTests =
+  [
+    "config",
+    "boost",
+    "shell_server",
+    "shell_server_ahuacatl",
+    "shell_server_aql",
+    "http_server",
+    "ssl_server",
+    "shell_client",
+    "dump",
+    "arangob",
+    "importing",
+    "upgrade",
+    "foxx_manager",
+    "authentication",
+    "authentication_parameters"
+  ];
+
+
+function printUsage () {
+  print();
+  print("Usage: UnitTest( which, options )");
+  print();
+  print('       where "which" is one of:\n');
+  var i;
+  var checkAll;
+  var oneFunctionDoku;
+  for (i in testFuncs) {
+    if (testFuncs.hasOwnProperty(i)) {
+      if (functionDoku.hasOwnProperty(i)) {
+        oneFunctionDoku = ' - ' + functionDoku[i];
+      }
+      else {
+        oneFunctionDoku = '';
+      }
+      if (allTests.indexOf(i) !== -1) {
+        checkAll = '[x]';
+      }
+      else {
+        checkAll = '   ';
+      }
+      print('    ' + checkAll + ' '+i+' ' + oneFunctionDoku);
+    }
+  }
+  for (i in optiondoku) {
+    if (optiondoku.hasOwnProperty(i)) {
+      print(optiondoku[i]);
+    }
+  }
+}
+
+function filterTestcaseByOptions (testname, options, whichFilter)
+{
+  if ((testname.indexOf("-cluster") !== -1) && (options.cluster === false)) {
+    whichFilter.filter = 'noncluster';
+    return false;
+  }
+
+  if (testname.indexOf("-noncluster") !== -1 && (options.cluster === true)) {
+    whichFilter.filter = 'cluster';
+    return false;
+  }
+
+  if (testname.indexOf("-timecritical") !== -1 && (options.skipTimeCritical === true)) {
+    whichFilter.filter = 'timecritical';
+    return false;
+  }
+
+  if (testname.indexOf("-geo") !== -1 && options.skipGeo) {
+    whichFilter.filter = 'geo';
+    return false;
+  }
+
+  if (testname.indexOf("-disabled") !== -1) {
+    whichFilter.filter = 'disabled';
+    return false;
+  }
+
+  if (testname.indexOf("replication") !== -1) {
+    whichFilter.filter = 'replication';
+    return false;
+  }
+
+  return true;
+}
 
 function findTopDir () {
   var topDir = fs.normalize(fs.makeAbsolute("."));
@@ -161,28 +251,48 @@ function startInstance (protocol, options, addArgs, testname) {
   var instanceInfo = {};
   instanceInfo.topDir = topDir;
   var tmpDataDir = fs.getTempFile();
+
+  instanceInfo.flatTmpDataDir = tmpDataDir;
+
+  tmpDataDir = fs.join(tmpDataDir, testname);
   fs.makeDirectoryRecursive(tmpDataDir);
   instanceInfo.tmpDataDir = tmpDataDir;
 
   var endpoint;
   var pos;
+  var valgrindopts = [];
   var dispatcher;
   if (options.cluster) {
-    // FIXME: valgrind currently ignored!
+    var extraargs = makeTestingArgs();
+    extraargs = extraargs.concat(options.extraargs);
+    if (addArgs !== undefined) {
+      extraargs = extraargs.concat(addArgs);
+    }
     dispatcher = {"endpoint":"tcp://localhost:",
-                  "arangodExtraArgs":makeTestingArgs(),
+                  "arangodExtraArgs": extraargs,
                   "username": "root",
                   "password": ""};
-    if (addArgs !== undefined) {
-      dispatcher.arangodExtraArgs = addArgs;
-    }
     print("Temporary cluster data and logs are in",tmpDataDir);
-    var p = new Planner({"numberOfDBservers":2,
-                         "numberOfCoordinators":1,
-                         "dispatchers": {"me": dispatcher},
-                         "dataPath": tmpDataDir,
-                         "logPath": tmpDataDir,
-                         "useSSLonCoordinators": protocol === "ssl"});
+
+    var runInValgrind = "";
+    var valgrindXmlFileBase = "";
+    if (typeof(options.valgrind) === 'string') {
+      runInValgrind = options.valgrind;
+      valgrindopts = options.valgrindargs;
+      valgrindXmlFileBase = options.valgrindXmlFileBase;
+    }
+
+    var p = new Planner({"numberOfDBservers"      : 2,
+                         "numberOfCoordinators"   : 1,
+                         "dispatchers"            : {"me": dispatcher},
+                         "dataPath"               : tmpDataDir,
+                         "logPath"                : tmpDataDir,
+                         "useSSLonCoordinators"   : protocol === "ssl",
+                         "valgrind"               : runInValgrind,
+                         "valgrindopts"           : valgrindopts,
+                         "valgrindXmlFileBase"    : valgrindXmlFileBase,
+                         "valgrindTestname"       : testname
+                        });
     instanceInfo.kickstarter = new Kickstarter(p.getPlan());
     instanceInfo.kickstarter.launch();
     var runInfo = instanceInfo.kickstarter.runInfo;
@@ -199,7 +309,7 @@ function startInstance (protocol, options, addArgs, testname) {
     // We use the PortFinder to find a free port for our subinstance,
     // to this end, we have to fake a dummy dispatcher:
     dispatcher = {endpoint: "tcp://localhost:", avoidPorts: {}, id: "me"};
-    var pf = new PortFinder([8529],dispatcher);
+    var pf = new PortFinder([8529 + options.portOffset],dispatcher);
     var port = pf.next();
     instanceInfo.port = port;
     var args = makeTestingArgs();
@@ -215,16 +325,15 @@ function startInstance (protocol, options, addArgs, testname) {
       args.push("--server.keyfile");
       args.push(fs.join("UnitTests","server.pem"));
     }
-    if (typeof(options.extraargs) === 'object') {
-      args = args.concat(options.extraargs);
-    }
+    args = args.concat(options.extraargs);
     if (addArgs !== undefined) {
       args = args.concat(addArgs);
     }
     if (typeof(options.valgrind) === 'string') {
       var run = fs.join("bin","arangod");
-      var valgrindopts = options.valgrindargs.concat(
-        ["--xml-file="+options.valgrindXmlFileBase + '_' + testname + '.xml']);
+      valgrindopts = options.valgrindargs.concat(
+        ["--xml-file="+options.valgrindXmlFileBase + '_' + testname + '.%p.xml',
+         "--log-file="+options.valgrindXmlFileBase + '_' + testname + '.%p.valgrind.log']);
       var newargs=valgrindopts.concat([run]).concat(args);      
       var cmdline = options.valgrind;
       instanceInfo.pid = executeExternal(cmdline, newargs);
@@ -243,11 +352,67 @@ function startInstance (protocol, options, addArgs, testname) {
       break;
     }
   }
-
   instanceInfo.endpoint = endpoint;
   instanceInfo.url = url;
 
   return instanceInfo;
+}
+
+
+function copy (src, dst) {
+  var fs = require("fs");
+  var buffer = fs.readBuffer(src);
+
+  fs.write(dst, buffer);
+}
+
+function checkInstanceAlive(instanceInfo, options) {  
+  var storeArangodPath;
+  if (options.cluster === false) {
+    var res = statusExternal(instanceInfo.pid, false);
+    var ret = res.status === "RUNNING";
+    if (! ret) {
+      print("ArangoD with PID " + instanceInfo.pid.pid + " gone:");
+      instanceInfo.exitStatus = res;
+      print(instanceInfo);
+      if (res.hasOwnProperty('signal') && 
+          (res.signal === 11))
+      {
+        storeArangodPath = "/var/tmp/arangod_" + instanceInfo.pid.pid;
+        print("Core dump written; copying arangod to " + 
+              storeArangodPath + " for later analysis.");
+        res.gdbHint = "Run debugger with 'gdb " + 
+          storeArangodPath + 
+          " /var/tmp/core*" + instanceInfo.pid.pid + "*'";
+        copy("bin/arangod", storeArangodPath);
+      }
+    }
+    return ret;
+  }
+  var ClusterFit = true;
+  for (var part in instanceInfo.kickstarter.runInfo) {
+    if (instanceInfo.kickstarter.runInfo[part].hasOwnProperty("pids")) {
+      for (var pid in instanceInfo.kickstarter.runInfo[part].pids) {
+        if (instanceInfo.kickstarter.runInfo[part].pids.hasOwnProperty(pid)) {
+          var checkpid = instanceInfo.kickstarter.runInfo[part].pids[pid];
+          var ress = statusExternal(checkpid, false);
+          if (ress.hasOwnProperty('signal') && 
+              (ress.signal === 11)) {
+            storeArangodPath = "/var/tmp/arangod_" + checkpid.pid;
+            print("Core dump written; copying arangod to " + 
+                  storeArangodPath + " for later analysis.");
+            instanceInfo.exitStatus = ress;
+            ress.gdbHint = "Run debugger with 'gdb " + 
+              storeArangodPath + 
+              " /var/tmp/core*" + checkpid.pid + "*'";
+            copy("bin/arangod", storeArangodPath);
+            ClusterFit = false;
+          }
+        }
+      }
+    }
+  }
+  return ClusterFit && instanceInfo.kickstarter.isHealthy();
 }
 
 function shutdownInstance (instanceInfo, options) {
@@ -258,13 +423,37 @@ function shutdownInstance (instanceInfo, options) {
     }
   }
   else {
-    download(instanceInfo.url+"/_admin/shutdown","",
-             makeAuthorisationHeaders(options));
-    wait(10);
-    killExternal(instanceInfo.pid);
+    if (typeof(instanceInfo.exitStatus) === 'undefined') {
+      download(instanceInfo.url+"/_admin/shutdown","",
+               makeAuthorisationHeaders(options));
+
+      if (typeof(options.valgrind) === 'string') {
+        print("Waiting for server shut down");
+        var res = statusExternal(instanceInfo.pid, true);
+        print("Server gone: ");
+        print(res);
+      }
+      else {
+        wait(10);
+        killExternal(instanceInfo.pid);
+      }
+    }
+    else {
+      print("Server already dead, doing nothing.");
+    }
+    
   }
+  cleanupDirectories = cleanupDirectories.concat([instanceInfo.tmpDataDir, instanceInfo.flatTmpDataDir]);
+}
+
+function cleanupDBDirectories(options) {
   if (options.cleanup) {
-    fs.removeDirectoryRecursive(instanceInfo.tmpDataDir);
+    for (var i in cleanupDirectories) {
+      if (cleanupDirectories.hasOwnProperty(i)) {
+        fs.removeDirectoryRecursive(cleanupDirectories[i], true);
+        // print("deleted " + cleanupDirectories[i]);
+      }
+    }
   }
 }
 
@@ -387,11 +576,10 @@ function runThere (options, instanceInfo, file) {
     if (!r.error && r.code === 200) {
       r = JSON.parse(r.body);
     }
-/*
-    else {
-      print("Error on the remote arangod:\n" + r.body);
+    if (file.indexOf("-spec") !== -1) {
+      // remoting a jasmine suite... 
+      r = {status: r, message: ''};
     }
-*/
   }
   catch (err) {
     r = err;
@@ -400,13 +588,41 @@ function runThere (options, instanceInfo, file) {
 }
 
 function executeAndWait (cmd, args) {
-  var pid = executeExternal(cmd, args);
-  var res = statusExternal(pid, true);
+  var startTime = time();
+  var res = executeExternalAndWait(cmd, args);
+  var deltaTime = time() - startTime;
+  var errorMessage = ' - ';
+
   if (res.status === "TERMINATED") {
-    return { status: (res.exit === 0), message: ""};
+    print("Finished: " + res.status + " exit code: " + res.exit + " Time elapsed: " + deltaTime);
+    if (res.exit === 0) {
+      return { status: true, message: "", duration: deltaTime};
+    }
+    else {
+      return { status: false, message: "exit code was " + res.exit, duration: deltaTime};
+    }
+  }
+  else if (res.status === "ABORTED") {
+    if (typeof(res.errorMessage) !== 'undefined') {
+      errorMessage += res.errorMessage;
+    }
+    print("Finished: " + res.status + " Signal: " + res.signal + " Time elapsed: " + deltaTime + errorMessage);
+    return {
+      status: false,
+      message: "irregular termination: " + res.status + " exit signal: " + res.signal + errorMessage,
+      duration: deltaTime
+    };
   }
   else {
-    return { status: (res === 0), message: res.exit};
+    if (typeof(res.errorMessage) !== 'undefined') {
+      errorMessage += res.errorMessage;
+    }
+    print("Finished: " + res.status + " exit code: " + res.signal + " Time elapsed: " + deltaTime + errorMessage);
+    return {
+      status: false,
+      message: "irregular termination: " + res.status + " exit code: " + res.exit + errorMessage,
+      duration: deltaTime
+    };
   }
 }
 
@@ -438,12 +654,20 @@ function performTests(options, testList, testname) {
   var results = {};
   var i;
   var te;
+  var continueTesting = true;
+  var filtered = {};
+
   for (i = 0; i < testList.length; i++) {
     te = testList[i];
-    print("\nTrying",te,"...");
-    if ((te.indexOf("-cluster") === -1 || options.cluster) &&
-        (te.indexOf("-noncluster") === -1 || options.cluster === false) &&
-        (te.indexOf("-disabled") === -1)) {
+    if (filterTestcaseByOptions(te, options, filtered)) {
+      if (!continueTesting) {
+        print("Skipping, " + te + " server is gone.");
+        results[te] = {status: false, message: instanceInfo.exitStatus};
+        instanceInfo.exitStatus = "server is gone.";
+        continue;
+      }
+
+      print("\nTrying",te,"...");
       var r = runThere(options, instanceInfo, te);
       if (r.hasOwnProperty('status')) {
         results[te] = r;
@@ -454,9 +678,10 @@ function performTests(options, testList, testname) {
       if (r !== true && !options.force) {
         break;
       }
+      continueTesting = checkInstanceAlive(instanceInfo, options);
     }
     else {
-      print("Skipped because of cluster/non-cluster or disabled.");
+      print("Skipped " + te + " because of " + filtered.filter);
     }
   }
   print("Shutting down...");
@@ -465,16 +690,76 @@ function performTests(options, testList, testname) {
   return results;
 }
 
+function single_usage (testsuite, list) {
+  print("single_" + testsuite + ": No test specified!\n Available tests:");
+  var filelist = "";
+
+  for (var fileNo in list) {
+    if (/\.js$/.test(list[fileNo])) {
+      filelist += " " + list[fileNo];
+    }
+  }
+  print(filelist);
+  print("usage: single_" + testsuite + " '{\"test\":\"<testfilename>\"}'");
+  print(" where <testfilename> is one from the list above.");
+  return { status: false, message: "No test specified!"};
+}
+
+
+testFuncs.single_server = function (options) {
+  var result = { };
+  if (options.test !== undefined) {
+    var instanceInfo = startInstance("tcp", options, [], "single_server");
+    var te = options.test;
+    print("\nTrying",te,"on server...");
+    result = {};
+    result[te] = runThere(options, instanceInfo, makePath(te));
+    print("Shutting down...");
+    shutdownInstance(instanceInfo,options);
+    print("done.");
+    return result;
+  }
+  else {
+    findTests();
+    return single_usage("server", tests_shell_server);
+  }
+};
+
+testFuncs.single_client = function (options) {
+  var result = { };
+  if (options.test !== undefined) {
+    var instanceInfo = startInstance("tcp", options, [], "single_client");
+    var te = options.test;
+    print("\nTrying ",te," on client...");
+    result[te] = runInArangosh(options, instanceInfo, te);
+    print("Shutting down...");
+    shutdownInstance(instanceInfo,options);
+    print("done.");
+    return result;
+  }
+  else {
+    findTests();
+    return single_usage("client", tests_shell_client);
+  }
+};
+
+testFuncs.shell_server_perf = function(options) {
+  findTests();
+  return performTests(options,
+                      tests_shell_server_aql_performance,
+                      'shell_server_perf');
+};
+
 testFuncs.shell_server = function (options) {
   findTests();
-  return performTests(options, tests_shell_server, 'tests_shell_server');
+  return performTests(options, tests_shell_server, 'shell_server');
 };
 
 testFuncs.shell_server_only = function (options) {
   findTests();
   return performTests(options,
                       tests_shell_server_only,
-                      'tests_shell_server_only');
+                      'shell_server_only');
 };
 
 testFuncs.shell_server_ahuacatl = function(options) {
@@ -483,12 +768,14 @@ testFuncs.shell_server_ahuacatl = function(options) {
     if (options.skipRanges) {
       return performTests(options,
                           tests_shell_server_ahuacatl,
-                          'tests_shell_server_ahuacatl');
+                          'shell_server_ahuacatl_skipranges');
     }
-    return performTests(options,
-                        tests_shell_server_ahuacatl.concat(
-                          tests_shell_server_ahuacatl_extended),
-                        'tests_shell_server_ahuacatl_extended');
+    else {
+      return performTests(options,
+                          tests_shell_server_ahuacatl.concat(
+                            tests_shell_server_ahuacatl_extended),
+                          'shell_server_ahuacatl');
+    }
   }
   return "skipped";
 };
@@ -499,21 +786,16 @@ testFuncs.shell_server_aql = function(options) {
     if (options.skipRanges) {
       return performTests(options,
                           tests_shell_server_aql,
-                          'tests_shell_server_aql');
+                          'shell_server_aql_skipranges');
     }
-    return performTests(options,
-                        tests_shell_server_aql.concat(
-                          tests_shell_server_aql_extended),
-                        'tests_shell_server_aql_extended');
+    else {
+      return performTests(options,
+                          tests_shell_server_aql.concat(
+                            tests_shell_server_aql_extended),
+                          'shell_server_aql');
+    }
   }
   return "skipped";
-};
-
-testFuncs.shell_server_perf = function(options) {
-  findTests();
-  return performTests(options,
-                      tests_shell_server_aql_performance,
-                      'tests_shell_server_aql_performance');
 };
 
 testFuncs.shell_client = function(options) {
@@ -522,20 +804,32 @@ testFuncs.shell_client = function(options) {
   var results = {};
   var i;
   var te;
+  var continueTesting = true;
+  var filtered = {};
+
   for (i = 0; i < tests_shell_client.length; i++) {
     te = tests_shell_client[i];
-    print("\nTrying",te,"...");
-    if ((te.indexOf("-cluster") === -1 || options.cluster) &&
-        (te.indexOf("-noncluster") === -1 || options.cluster === false) &&
-        (te.indexOf("-disabled") === -1)) {
+    if (filterTestcaseByOptions(te, options, filtered)) {
+
+      if (!continueTesting) {
+        print("Skipping, " + te + " server is gone.");
+        results[te] = {status: false, message: instanceInfo.exitStatus};
+        instanceInfo.exitStatus = "server is gone.";
+        continue;
+      }
+
+      print("\nTrying",te,"...");
+
       var r = runInArangosh(options, instanceInfo, te);
       results[te] = r;
       if (r !== 0 && !options.force) {
         break;
       }
+
+      continueTesting = checkInstanceAlive(instanceInfo, options);
     }
     else {
-      print("Skipped because of cluster/non-cluster.");
+      print("Skipped " + te + " because of " + filtered.filter);
     }
   }
   print("Shutting down...");
@@ -584,41 +878,13 @@ testFuncs.boost = function (options) {
   return results;
 };
 
-testFuncs.single = function (options) {
-  var instanceInfo = startInstance("tcp", options, [], "single");
-  var result = { };
-  if (options.test !== undefined) {
-    var te = options.test;
-    result.test = te;
-    if (!options.skipServer) {
-      print("\nTrying",te,"on server...");
-      result.server = runThere(options, instanceInfo, makePath(te));
-    }
-    if (!options.skipClient) {
-      var topDir = findTopDir();
-      var args = makeTestingArgsClient(options);
-      args.push("--server.endpoint");
-      args.push(instanceInfo.endpoint);
-      args.push("--javascript.unit-tests");
-      args.push(fs.join(topDir,te));
-      print("\nTrying",te,"on client...");
-      var arangosh = fs.join("bin","arangosh");
-      result.client = executeAndWait(arangosh, args);
-    }
-  }
-  print("Shutting down...");
-  shutdownInstance(instanceInfo,options);
-  print("done.");
-  return result;
-};
-
 function rubyTests (options, ssl) {
   var instanceInfo;
   if (ssl) {
-    instanceInfo = startInstance("ssl", options, [], "rubyTestsSsl");
+    instanceInfo = startInstance("ssl", options, [], "ssl_server");
   }
   else {
-    instanceInfo = startInstance("tcp", options, [], "rubyTestsTcp");
+    instanceInfo = startInstance("tcp", options, [], "http_server");
   }
 
   var tmpname = fs.getTempFile()+".rb";
@@ -640,34 +906,39 @@ function rubyTests (options, ssl) {
   catch (err) {
   }
   var files = fs.list(fs.join("UnitTests","HttpInterface"));
+  var filtered = {};
   var result = {};
   var args;
   var i;
+  var continueTesting = true;
+
   for (i = 0; i < files.length; i++) {
-    var n = files[i];
-    if (n.substr(0,4) === "api-" && n.substr(-3) === ".rb") {
-      print("Considering",n,"...");
-      if ((n.indexOf("-cluster") === -1 || options.cluster) &&
-          (n.indexOf("-noncluster") === -1 || options.cluster === false) &&
-          n.indexOf("replication") === -1) {
+    var te = files[i];
+    if (te.substr(0,4) === "api-" && te.substr(-3) === ".rb") {
+      if (filterTestcaseByOptions(te, options, filtered)) {
+        
         args = ["--color", "-I", fs.join("UnitTests","HttpInterface"),
                 "--format", "d", "--require", tmpname,
-                fs.join("UnitTests","HttpInterface",n)];
-        var pid = executeExternal("rspec", args);
-        var r = statusExternal(pid, true);
+                fs.join("UnitTests","HttpInterface", te)];
 
-        if (r.status === "TERMINATED") {
-          result[n] =  { status: (r.exit === 0), message: r.exit};
+        if (!continueTesting) {
+          print("Skipping " + te + " server is gone.");
+          result[te] = {status: false, message: instanceInfo.exitStatus};
+          instanceInfo.exitStatus = "server is gone.";
+          continue;
         }
-        else {
-          result[n] = { status: (r === 0), message: r.exit};
-        }
-        if (r.exit !== 0 && !options.force) {
+        print("\nTrying ",te,"...");
+
+        result[te] = executeAndWait("rspec", args);
+        if (result[te].status === false && !options.force) {
           break;
         }
+
+        continueTesting = checkInstanceAlive(instanceInfo, options);
+
       }
       else {
-        print("Skipped because of cluster/non-cluster or replication.");
+        print("Skipped " + te + " because of " + filtered.filter);
       }
     }
   }
@@ -874,7 +1145,7 @@ testFuncs.dump = function (options) {
     cluster = "";
   }
   print("dump tests...");
-  var instanceInfo = startInstance("tcp",options, [], "dump_test");
+  var instanceInfo = startInstance("tcp",options, [], "dump");
   var results = {};
   results.setup = runInArangosh(options, instanceInfo,
        makePath("js/server/tests/dump-setup"+cluster+".js"));
@@ -918,16 +1189,29 @@ var benchTodo = [
 
 testFuncs.arangob = function (options) {
   print("arangob tests...");
-  var instanceInfo = startInstance("tcp",options, [], "arangobench");
+  var instanceInfo = startInstance("tcp",options, [], "arangob");
   var results = {};
   var i,r;
+  var continueTesting = true;
+
   for (i = 0; i < benchTodo.length; i++) {
     // On the cluster we do not yet have working transaction functionality:
     if (!options.cluster ||
         (benchTodo[i].indexOf("counttrx") === -1 &&
          benchTodo[i].indexOf("multitrx") === -1)) {
+
+      if (!continueTesting) {
+        print("Skipping " + benchTodo[i] + ", server is gone.");
+        results[i] = {status: false, message: instanceInfo.exitStatus};
+        instanceInfo.exitStatus = "server is gone.";
+        continue;
+      }
+
       r = runArangoBenchmark(options, instanceInfo, benchTodo[i]);
       results[i] = r;
+
+      continueTesting = checkInstanceAlive(instanceInfo, options);
+
       if (r !== 0 && !options.force) {
         break;
       }
@@ -943,7 +1227,7 @@ testFuncs.authentication = function (options) {
   print("Authentication tests...");
   var instanceInfo = startInstance("tcp", options,
                                    ["--server.disable-authentication", "false"],
-                                   "authtest");
+                                   "authentication");
   var results = {};
   results.auth = runInArangosh(options, instanceInfo,
                                fs.join("js","client","tests","auth.js"));
@@ -970,13 +1254,25 @@ testFuncs.authentication_parameters = function (options) {
   var instanceInfo = startInstance("tcp", options,
                        ["--server.disable-authentication", "false",
                         "--server.authenticate-system-only", "false"],
-                       "authparams");
+                       "authentication_parameters_1");
   var r;
   var i;
   var expectAuthFullRC = [401, 401, 401, 401, 401, 401, 401];
   var all_ok = true;
+  var continueTesting = true;
+
+  print("Starting Full test");
   results.auth_full = {};
   for (i = 0; i < urlsTodo.length; i++) {
+
+    if (!continueTesting) {
+      print("Skipping " + urlsTodo[i] + ", server is gone.");
+      results.auth_full[urlsTodo[i]] = {status: false, message: instanceInfo.exitStatus};
+      instanceInfo.exitStatus = "server is gone.";
+      all_ok = false;
+      continue;
+    }
+
     r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false,returnBodyOnError:true});
     if (r.code === expectAuthFullRC[i]) {
       results.auth_full[urlsTodo[i]] = { status: true, message: ""};
@@ -988,21 +1284,31 @@ testFuncs.authentication_parameters = function (options) {
       };
       all_ok = false;
     }
+    continueTesting = checkInstanceAlive(instanceInfo, options);
   }
   results.auth_full.status = all_ok;
 
-  print("Shutting down...");
+  print("Shutting down Full test...");
   shutdownInstance(instanceInfo,options);
-  print("done.");
+  print("done with Full test.");
   // Only system authentication:
+  continueTesting = true;
   instanceInfo = startInstance("tcp", options,
                    ["--server.disable-authentication", "false",
                     "--server.authenticate-system-only", "true"],
-                   "authparams2");
+                   "authentication_parameters_2");
   var expectAuthSystemRC = [401, 401, 401, 401, 401, 404, 404];
   all_ok = true;
+  print("Starting System test");
   results.auth_system = {};
   for (i = 0;i < urlsTodo.length;i++) {
+    if (!continueTesting) {
+      print("Skipping " + urlsTodo[i] + " server is gone.");
+      results.auth_full[urlsTodo[i]] = {status: false, message: instanceInfo.exitStatus};
+      instanceInfo.exitStatus = "server is gone.";
+      all_ok = false;
+      continue;
+    }
     r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false,returnBodyOnError:true});
     if (r.code === expectAuthSystemRC[i]) {
       results.auth_system[urlsTodo[i]] = { status: true, message: ""};
@@ -1014,21 +1320,32 @@ testFuncs.authentication_parameters = function (options) {
       };
       all_ok = false;
     }
+    continueTesting = checkInstanceAlive(instanceInfo, options);
   }
   results.auth_system.status = all_ok;
 
-  print("Shutting down...");
+  print("Shutting down System test...");
   shutdownInstance(instanceInfo,options);
-  print("done.");
+  print("done with System test.");
   // No authentication:
   instanceInfo = startInstance("tcp", options,
                    ["--server.disable-authentication", "true",
                     "--server.authenticate-system-only", "true"],
-                   "authparams3");
+                   "authentication_parameters_3");
   var expectAuthNoneRC = [404, 404, 200, 301, 301, 404, 404];
   results.auth_none = {};
   all_ok = true;
+  continueTesting = true;
+  print("Starting None test");
   for (i = 0;i < urlsTodo.length;i++) {
+    if (!continueTesting) {
+      print("Skipping " + urlsTodo[i] + " server is gone.");
+      results.auth_full[urlsTodo[i]] = {status: false, message: instanceInfo.exitStatus};
+      instanceInfo.exitStatus = "server is gone.";
+      all_ok = false;
+      continue;
+    }
+
     r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false,returnBodyOnError:true});
     if (r.code === expectAuthNoneRC[i]) {
       results.auth_none[urlsTodo[i]] = { status: true, message: ""};
@@ -1040,42 +1357,56 @@ testFuncs.authentication_parameters = function (options) {
       };
       all_ok = false;
     }
+    continueTesting = checkInstanceAlive(instanceInfo, options);
   }
   results.auth_none.status = all_ok;
 
-  print("Shutting down...");
+  print("Shutting down None test...");
   shutdownInstance(instanceInfo,options);
-  print("done.");
+  print("done with None test.");
   return results;
 };
 
 var internalMembers = ["code", "error", "status", "duration", "failed", "total"];
 
 function unitTestPrettyPrintResults(r) {
-  for (var testrun in r) {    
-    if (r.hasOwnProperty(testrun) && (testrun !== 'all_ok')) {
-      print("Testrun: " + testrun);
-      for (var test in  r[testrun]) {
-        if (r[testrun].hasOwnProperty(test) && (test !== 'ok')) {
-          if (r[testrun][test].status) {
-            print("     " + test + ": Success");
-          }
-          else {
-            if (r[testrun][test].hasOwnProperty('message')) {
-              print("     " + test + ": Fail - Whole testsuite failed!");
-              print(r[testrun][test].message);
-              if (r[testrun][test].message.hasOwnProperty('body')) {
-                print(r[testrun][test].message.body);
-              }
+  var testrun;
+  var test;
+  var oneTest;
+  var testFail = 0;
+  var testSuiteFail = 0;
+
+  try {
+    for (testrun in r) {    
+      if (r.hasOwnProperty(testrun) && (testrun !== 'all_ok')) {
+        print("Testrun: " + testrun);
+        for (test in  r[testrun]) {
+          if (r[testrun].hasOwnProperty(test) && (test !== 'ok')) {
+            if (r[testrun][test].status) {
+              print("     " + test + ": Success");
             }
             else {
-              print("     " + test + ": Fail");
-              for (var oneTest in r[testrun][test]) {
-                if ((r[testrun][test].hasOwnProperty(oneTest)) && 
-                    (internalMembers.indexOf(oneTest) === -1) &&
-                    (!r[testrun][test][oneTest].status)) {
-                  print("          -> " + oneTest + " Failed; Verbose message:");
-                  print(r[testrun][test][oneTest].message);
+              testSuiteFail++;
+              if (r[testrun][test].hasOwnProperty('message')) {
+                print("     " + test + ": Fail - Whole testsuite failed!");
+                if (typeof r[testrun][test].message === "object" &&
+                    r[testrun][test].message.hasOwnProperty('body')) {
+                  print(r[testrun][test].message.body);
+                }
+                else {
+                  print(r[testrun][test].message);
+                }
+              }
+              else {
+                print("     " + test + ": Fail");
+                for (oneTest in r[testrun][test]) {
+                  if ((r[testrun][test].hasOwnProperty(oneTest)) && 
+                      (internalMembers.indexOf(oneTest) === -1) &&
+                      (!r[testrun][test][oneTest].status)) {
+                    testFail++;
+                    print("          -> " + oneTest + " Failed; Verbose message:");
+                    print(r[testrun][test][oneTest].message);
+                  }
                 }
               }
             }
@@ -1083,53 +1414,16 @@ function unitTestPrettyPrintResults(r) {
         }
       }
     }
-  }
-  print("Overal state: " + ((r.all_ok === true) ? "Success" : "Fail"));
-}
-
-
-var allTests =
-  [
-    "config",
-    "boost",
-    "shell_server",
-    "shell_server_ahuacatl",
-    "shell_server_aql",
-//    "shell_server_perf",
-    "http_server",
-    "ssl_server",
-    "shell_client",
-    "dump",
-    "arangob",
-    "importing",
-    "upgrade",
-    "foxx_manager",
-    "authentication",
-    "authentication_parameters"
-  ];
-
-function printUsage () {
-  print("Usage: UnitTest( which, options )");
-  print('       where "which" is one of:');
-  print('         "all": do all tests');
-  var i;
-  for (i in testFuncs) {
-    if (testFuncs.hasOwnProperty(i)) {
-      print('         "'+i+'"');
+    print("Overall state: " + ((r.all_ok === true) ? "Success" : "Fail"));
+    if (r.all_ok !== true) {
+      print("   Suites failed: " + testSuiteFail + " Tests Failed: " + testFail);
     }
   }
-  print('       and options can contain the following boolean properties:');
-  print('         "force": continue despite a failed test');
-  print('         "skipBoost": skip the boost unittests');
-  print('         "skipGeo": skip the geo index tests');
-  print('         "skipAhuacatl": skip the ahuacatl tests');
-  print('         "skipAql": skip the AQL tests');
-  print('         "skipRanges": skip the ranges tests');
-  print('         "valgrind": arangods are run with valgrind');
-  print('         "cluster": tests are run on a small local cluster');
-  print('         "test": name of test to run for "single" test');
-  print('         "skipClient": for "single" test');
-  print('         "skipServer": for "single" test');
+  catch (x) {
+    print("exception caught while pretty printing result: ");
+    print(x.message);
+    print(JSON.stringify(r));
+  }
 }
 
 function UnitTest (which, options) {
@@ -1144,7 +1438,7 @@ function UnitTest (which, options) {
     return;
   }
   var jsonReply = options.jsonReply;
-  delete(options.jsonReply);
+  delete options.jsonReply;
   var i;
   var ok;
   if (which === "all") {
@@ -1167,6 +1461,13 @@ function UnitTest (which, options) {
       results.all_ok = allok;
     }
     results.all_ok = allok;
+    if (allok) {
+      cleanupDBDirectories(options);
+    }
+    else {
+      print("since some tests weren't successfully, not cleaning up: ");
+      print(cleanupDirectories);
+    }
     if (jsonReply === true ) {
       return results;
     }
@@ -1194,6 +1495,14 @@ function UnitTest (which, options) {
     }
     r.ok = ok;
     results.all_ok = ok;
+
+    if (allok) {
+      cleanupDBDirectories(options);
+    }
+    else {
+      print("since some tests weren't successfully, not cleaning up: ");
+      print(cleanupDirectories);
+    }
     if (jsonReply === true ) {
       return results;
     }

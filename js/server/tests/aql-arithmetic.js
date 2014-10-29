@@ -1,3 +1,6 @@
+/*jshint strict: false */
+/*global require, assertEqual */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, arithmetic operators
 ///
@@ -25,11 +28,9 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var errors = require("internal").errors;
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
-var getQueryResults = helper.getQueryResults2;
-var assertQueryError = helper.assertQueryError2;
+var getQueryResults = helper.getQueryResultsAQL2;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -107,13 +108,18 @@ function ahuacatlArithmeticTestSuite () {
 /// @brief test unary plus
 ////////////////////////////////////////////////////////////////////////////////
     
-    testUnaryPlusInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN +null"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN +true"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN +false"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN +\"value\""); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN +[ ]"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN +{ }"); 
+    testUnaryPlusNonNumeric : function () {
+      assertEqual([ 0 ], getQueryResults("RETURN +null"));
+      assertEqual([ 1 ], getQueryResults("RETURN +true"));
+      assertEqual([ 0 ], getQueryResults("RETURN +false"));
+      assertEqual([ null ], getQueryResults("RETURN +\"value\""));
+      assertEqual([ 1 ], getQueryResults("RETURN +\"1\""));
+      assertEqual([ -3 ], getQueryResults("RETURN +\"-3\""));
+      assertEqual([ 0 ], getQueryResults("RETURN +[ ]"));
+      assertEqual([ 0 ], getQueryResults("RETURN +[ 0 ]"));
+      assertEqual([ -34 ], getQueryResults("RETURN +[ -34 ]"));
+      assertEqual([ null ], getQueryResults("RETURN +[ 1, 2 ]"));
+      assertEqual([ null ], getQueryResults("RETURN +{ }"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -170,13 +176,18 @@ function ahuacatlArithmeticTestSuite () {
 /// @brief test unary minus
 ////////////////////////////////////////////////////////////////////////////////
     
-    testUnaryMinusInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN -null"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN -true"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN -false"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN -\"value\"");
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN -[ ]"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN -{ }"); 
+    testUnaryMinusNonNumeric : function () {
+      assertEqual([ 0 ], getQueryResults("RETURN -null"));
+      assertEqual([ -1 ], getQueryResults("RETURN -true"));
+      assertEqual([ 0 ], getQueryResults("RETURN -false"));
+      assertEqual([ null ], getQueryResults("RETURN -\"value\""));
+      assertEqual([ -1 ], getQueryResults("RETURN -\"1\""));
+      assertEqual([ 3 ], getQueryResults("RETURN -\"-3\""));
+      assertEqual([ 0 ], getQueryResults("RETURN -[ ]"));
+      assertEqual([ 0 ], getQueryResults("RETURN -[ 0 ]"));
+      assertEqual([ 34 ], getQueryResults("RETURN -[ -34 ]"));
+      assertEqual([ null ], getQueryResults("RETURN -[ 1, 2 ]"));
+      assertEqual([ null ], getQueryResults("RETURN -{ }"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -254,19 +265,29 @@ function ahuacatlArithmeticTestSuite () {
 /// @brief test binary plus
 ////////////////////////////////////////////////////////////////////////////////
     
-    testBinaryPlusInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 + null"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 + false");
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 + \"0\"");
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 + [ ]"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 + [ 0 ]"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 + { }"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN null + 1"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN false + 1");
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN \"0\" + 1");
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN [ ] + 1"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN [ 0 ] + 1");
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN { } + 1"); 
+    testBinaryPlusNonNumeric : function () {
+      assertEqual([ 1 ], getQueryResults("RETURN 1 + null"));
+      assertEqual([ 1 ], getQueryResults("RETURN 1 + false"));
+      assertEqual([ 2 ], getQueryResults("RETURN 1 + true"));
+      assertEqual([ "10" ], getQueryResults("RETURN 1 + \"0\""));
+      assertEqual([ "142" ], getQueryResults("RETURN 1 + \"42\""));
+      assertEqual([ "1-17" ], getQueryResults("RETURN 1 + \"-17\""));
+      assertEqual([ 1 ], getQueryResults("RETURN 1 + [ ]"));
+      assertEqual([ "10" ], getQueryResults("RETURN 1 + [ 0 ]"));
+      assertEqual([ "14" ], getQueryResults("RETURN 1 + [ 4 ]"));
+      assertEqual([ "1-4" ], getQueryResults("RETURN 1 + [ -4 ]"));
+      assertEqual([ "1[object Object]" ], getQueryResults("RETURN 1 + { }"));
+      assertEqual([ 1 ], getQueryResults("RETURN null + 1"));
+      assertEqual([ 1 ], getQueryResults("RETURN false + 1"));
+      assertEqual([ 2 ], getQueryResults("RETURN true + 1"));
+      assertEqual([ "01" ], getQueryResults("RETURN \"0\" + 1"));
+      assertEqual([ "231" ], getQueryResults("RETURN \"23\" + 1"));
+      assertEqual([ "-91" ], getQueryResults("RETURN \"-9\" + 1"));
+      assertEqual([ "1" ], getQueryResults("RETURN [ ] + 1"));
+      assertEqual([ "01" ], getQueryResults("RETURN [ 0 ] + 1"));
+      assertEqual([ "41" ], getQueryResults("RETURN [ 4 ] + 1"));
+      assertEqual([ "-41" ], getQueryResults("RETURN [ -4 ] + 1"));
+      assertEqual([ "[object Object]1" ], getQueryResults("RETURN { } + 1"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -303,19 +324,30 @@ function ahuacatlArithmeticTestSuite () {
 /// @brief test binary minus
 ////////////////////////////////////////////////////////////////////////////////
     
-    testBinaryMinusInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 - null"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 - false"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 - \"0\""); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 - [ ]"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 - [ 0 ]"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 - { }"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN null - 1"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN false - 1");
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN \"0\" - 1"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN [ ] - 1");
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN [ 0 ] - 1");
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN { } - 1"); 
+    testBinaryMinusNonNumeric : function () {
+      assertEqual([ 1 ], getQueryResults("RETURN 1 - null"));
+      assertEqual([ 1 ], getQueryResults("RETURN 1 - false"));
+      assertEqual([ 0 ], getQueryResults("RETURN 1 - true"));
+      assertEqual([ 1 ], getQueryResults("RETURN 1 - \"0\""));
+      assertEqual([ -41 ], getQueryResults("RETURN 1 - \"42\""));
+      assertEqual([ 18 ], getQueryResults("RETURN 1 - \"-17\""));
+      assertEqual([ 1 ], getQueryResults("RETURN 1 - [ ]"));
+      assertEqual([ 1 ], getQueryResults("RETURN 1 - [ 0 ]"));
+      assertEqual([ -3 ], getQueryResults("RETURN 1 - [ 4 ]"));
+      assertEqual([ 5 ], getQueryResults("RETURN 1 - [ -4 ]"));
+      assertEqual([ 1 ], getQueryResults("RETURN 1 - { }"));
+      assertEqual([ -1 ], getQueryResults("RETURN null - 1"));
+      assertEqual([ -1 ], getQueryResults("RETURN false - 1"));
+      assertEqual([ 0 ], getQueryResults("RETURN true - 1"));
+      assertEqual([ -1 ], getQueryResults("RETURN \"0\" - 1"));
+      assertEqual([ -1 ], getQueryResults("RETURN \"0\" - \"1\""));
+      assertEqual([ 22 ], getQueryResults("RETURN \"23\" - 1"));
+      assertEqual([ -10 ], getQueryResults("RETURN \"-9\" - 1"));
+      assertEqual([ -1 ], getQueryResults("RETURN [ ] - 1"));
+      assertEqual([ -1 ], getQueryResults("RETURN [ 0 ] - 1"));
+      assertEqual([ 3 ], getQueryResults("RETURN [ 4 ] - 1"));
+      assertEqual([ -5 ], getQueryResults("RETURN [ -4 ] - 1"));
+      assertEqual([ -1 ], getQueryResults("RETURN { } - 1"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -392,19 +424,31 @@ function ahuacatlArithmeticTestSuite () {
 /// @brief test binary multiplication
 ////////////////////////////////////////////////////////////////////////////////
     
-    testBinaryMultiplicationInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 * null"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 * false"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 * \"0\""); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 * [ ]"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 * [ 0 ]"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 * { }"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN null * 1"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN false * 1"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN \"0\" * 1"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN [ ] * 1"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN [ 0 ] * 1"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN { } * 1"); 
+    testBinaryMultiplicationNonNumeric : function () {
+      assertEqual([ 0 ], getQueryResults("RETURN 1 * null"));
+      assertEqual([ 0 ], getQueryResults("RETURN 1 * false"));
+      assertEqual([ 1 ], getQueryResults("RETURN 1 * true"));
+      assertEqual([ 37 ], getQueryResults("RETURN 37 * true"));
+      assertEqual([ 0 ], getQueryResults("RETURN 1 * \"0\""));
+      assertEqual([ 42 ], getQueryResults("RETURN 1 * \"42\""));
+      assertEqual([ -17 ], getQueryResults("RETURN 1 * \"-17\""));
+      assertEqual([ 0 ], getQueryResults("RETURN 1 * [ ]"));
+      assertEqual([ 0 ], getQueryResults("RETURN 1 * [ 0 ]"));
+      assertEqual([ 4 ], getQueryResults("RETURN 1 * [ 4 ]"));
+      assertEqual([ -4 ], getQueryResults("RETURN 1 * [ -4 ]"));
+      assertEqual([ 0 ], getQueryResults("RETURN 1 * { }"));
+      assertEqual([ 0 ], getQueryResults("RETURN null * 1"));
+      assertEqual([ 0 ], getQueryResults("RETURN false * 1"));
+      assertEqual([ 1 ], getQueryResults("RETURN true * 1"));
+      assertEqual([ 0 ], getQueryResults("RETURN \"0\" * 1"));
+      assertEqual([ 0 ], getQueryResults("RETURN \"0\" * \"1\""));
+      assertEqual([ 23 ], getQueryResults("RETURN \"23\" * 1"));
+      assertEqual([ -9 ], getQueryResults("RETURN \"-9\" * 1"));
+      assertEqual([ 0 ], getQueryResults("RETURN [ ] * 1"));
+      assertEqual([ 0 ], getQueryResults("RETURN [ 0 ] * 1"));
+      assertEqual([ 4 ], getQueryResults("RETURN [ 4 ] * 1"));
+      assertEqual([ -4 ], getQueryResults("RETURN [ -4 ] * 1"));
+      assertEqual([ 0 ], getQueryResults("RETURN { } * 1"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -491,22 +535,35 @@ function ahuacatlArithmeticTestSuite () {
 /// @brief test binary division
 ////////////////////////////////////////////////////////////////////////////////
     
-    testBinaryDivisionInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 / null"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 / false"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 / \"0\"");
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 / [ ]"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 / [ 0 ]"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 / { }"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN null / 1"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN false / 1"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN \"0\" / 1");
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN [ ] / 1"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN [ 0 ] / 1");
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN { } / 1"); 
-      assertQueryError(errors.ERROR_QUERY_DIVISION_BY_ZERO.code, "RETURN 1 / 0"); 
-      assertQueryError(errors.ERROR_QUERY_DIVISION_BY_ZERO.code, "RETURN 1 / 0.0");
-      assertQueryError(errors.ERROR_QUERY_DIVISION_BY_ZERO.code, "RETURN 1 / (1 - 1)"); 
+    testBinaryDivisionNonNumeric : function () {
+      assertEqual([ null ], getQueryResults("RETURN 1 / (1 - 1)"));
+      assertEqual([ null ], getQueryResults("RETURN 1 / 0"));
+      assertEqual([ null ], getQueryResults("RETURN 1 / 0.0"));
+      assertEqual([ null ], getQueryResults("RETURN 1 / (1 / 0)"));
+      assertEqual([ null ], getQueryResults("RETURN 1 / null"));
+      assertEqual([ null ], getQueryResults("RETURN 1 / false"));
+      assertEqual([ 1 ], getQueryResults("RETURN 1 / true"));
+      assertEqual([ 37 ], getQueryResults("RETURN 37 / true"));
+      assertEqual([ null ], getQueryResults("RETURN 1 / \"0\""));
+      assertEqual([ 0.25 ], getQueryResults("RETURN 1 / \"4\""));
+      assertEqual([ -2 ], getQueryResults("RETURN 34 / \"-17\""));
+      assertEqual([ null ], getQueryResults("RETURN 1 / [ ]"));
+      assertEqual([ null ], getQueryResults("RETURN 1 / [ 0 ]"));
+      assertEqual([ 0.25 ], getQueryResults("RETURN 1 / [ 4 ]"));
+      assertEqual([ -0.25 ], getQueryResults("RETURN 1 / [ -4 ]"));
+      assertEqual([ null ], getQueryResults("RETURN 1 / { }"));
+      assertEqual([ 0 ], getQueryResults("RETURN null / 1"));
+      assertEqual([ 0 ], getQueryResults("RETURN false / 1"));
+      assertEqual([ 1 ], getQueryResults("RETURN true / 1"));
+      assertEqual([ 0 ], getQueryResults("RETURN \"0\" / 1"));
+      assertEqual([ 0 ], getQueryResults("RETURN \"0\" / \"1\""));
+      assertEqual([ 23 ], getQueryResults("RETURN \"23\" / 1"));
+      assertEqual([ -9 ], getQueryResults("RETURN \"-9\" / 1"));
+      assertEqual([ 0 ], getQueryResults("RETURN [ ] / 1"));
+      assertEqual([ 0 ], getQueryResults("RETURN [ 0 ] / 1"));
+      assertEqual([ 4 ], getQueryResults("RETURN [ 4 ] / 1"));
+      assertEqual([ -4 ], getQueryResults("RETURN [ -4 ] / 1"));
+      assertEqual([ 0 ], getQueryResults("RETURN { } / 1"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -514,21 +571,45 @@ function ahuacatlArithmeticTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testBinaryModulusInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 % null"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 % false"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 % \"0\""); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 % [ ]"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 % [ 0 ]"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN 1 % { }"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN null % 1"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN false % 1"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN \"0\" % 1"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN [ ] % 1"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN [ 0 ] % 1"); 
-      assertQueryError(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN { } % 1"); 
-      assertQueryError(errors.ERROR_QUERY_DIVISION_BY_ZERO.code, "RETURN 1 % 0"); 
-      assertQueryError(errors.ERROR_QUERY_DIVISION_BY_ZERO.code, "RETURN 1 % 0.0"); 
-      assertQueryError(errors.ERROR_QUERY_DIVISION_BY_ZERO.code, "RETURN 1 % (1 - 1)"); 
+      assertEqual([ null ], getQueryResults("RETURN 1 % (1 - 1)"));
+      assertEqual([ null ], getQueryResults("RETURN 1 % 0"));
+      assertEqual([ null ], getQueryResults("RETURN 1 % 0.0"));
+      assertEqual([ null ], getQueryResults("RETURN 1 % (1 / 0)"));
+      assertEqual([ null ], getQueryResults("RETURN 1 % null"));
+      assertEqual([ null ], getQueryResults("RETURN 1 % false"));
+      assertEqual([ 0 ], getQueryResults("RETURN 1 % true"));
+      assertEqual([ 0 ], getQueryResults("RETURN 37 % true"));
+      assertEqual([ null ], getQueryResults("RETURN 1 % \"0\""));
+      assertEqual([ 1 ], getQueryResults("RETURN 1 % \"4\""));
+      assertEqual([ 3 ], getQueryResults("RETURN 7 % \"4\""));
+      assertEqual([ 3 ], getQueryResults("RETURN 7 % \"-4\""));
+      assertEqual([ 0 ], getQueryResults("RETURN 34 % \"-17\""));
+      assertEqual([ 1 ], getQueryResults("RETURN 35 % \"17\""));
+      assertEqual([ 1 ], getQueryResults("RETURN 35 % \"-17\""));
+      assertEqual([ null ], getQueryResults("RETURN 1 % [ ]"));
+      assertEqual([ null ], getQueryResults("RETURN 1 % [ 0 ]"));
+      assertEqual([ 1 ], getQueryResults("RETURN 13 % [ 4 ]"));
+      assertEqual([ 1 ], getQueryResults("RETURN 1 % [ -4 ]"));
+      assertEqual([ 1 ], getQueryResults("RETURN 13 % [ -4 ]"));
+      assertEqual([ null ], getQueryResults("RETURN 1 % { }"));
+      assertEqual([ 0 ], getQueryResults("RETURN null % 1"));
+      assertEqual([ 0 ], getQueryResults("RETURN false % 1"));
+      assertEqual([ 0 ], getQueryResults("RETURN true % 1"));
+      assertEqual([ 0 ], getQueryResults("RETURN \"0\" % 1"));
+      assertEqual([ 0 ], getQueryResults("RETURN \"0\" % \"1\""));
+      assertEqual([ 0 ], getQueryResults("RETURN \"23\" % 1"));
+      assertEqual([ 1 ], getQueryResults("RETURN \"23\" % 2"));
+      assertEqual([ 2 ], getQueryResults("RETURN \"23\" % 3"));
+      assertEqual([ 2 ], getQueryResults("RETURN \"23\" % 7"));
+      assertEqual([ 11 ], getQueryResults("RETURN \"23\" % 12"));
+      assertEqual([ 11 ], getQueryResults("RETURN \"23\" % \"12\""));
+      assertEqual([ 0 ], getQueryResults("RETURN \"-9\" % 1"));
+      assertEqual([ 0 ], getQueryResults("RETURN [ ] % 1"));
+      assertEqual([ 0 ], getQueryResults("RETURN [ 0 ] % 1"));
+      assertEqual([ 0 ], getQueryResults("RETURN [ 4 ] % 1"));
+      assertEqual([ 1 ], getQueryResults("RETURN [ 4 ] % 3"));
+      assertEqual([ 0 ], getQueryResults("RETURN [ -4 ] % 1"));
+      assertEqual([ 0 ], getQueryResults("RETURN { } % 1"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1121,7 +1202,7 @@ function ahuacatlArithmeticTestSuite () {
       assertEqual(expected, actual);
     }
 
-  }
+  };
 }
 
 ////////////////////////////////////////////////////////////////////////////////

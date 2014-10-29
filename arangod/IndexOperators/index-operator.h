@@ -145,10 +145,7 @@ TRI_index_operator_t* TRI_CreateIndexOperator (TRI_index_operator_type_e,
                                                TRI_index_operator_t*,
                                                TRI_json_t*,
                                                TRI_shaper_t*,
-                                               TRI_shaped_json_t*,
-                                               size_t,
-                                               void*);
-
+                                               size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copy an index  operator recursively (deep copy)

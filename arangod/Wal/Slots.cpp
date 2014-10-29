@@ -416,15 +416,27 @@ SyncRegion Slots::getSyncRegion () {
     TRI_ASSERT(slot != nullptr);
 
     if (! slot->isReturned()) {
+      // found a slot that is not yet returned
+      // if it belongs to another logfile, we can seal the logfile we created
+      // the region for
+      auto otherId = slot->logfileId();
+      if (region.logfileId != 0 && otherId != 0 && 
+          otherId != region.logfileId) {
+        region.canSeal = true;
+      }
       break;
     }
 
     if (region.logfileId == 0) {
       // first member
+      Logfile::StatusType status;
+
       region.logfileId      = slot->logfileId();
-      region.logfile        = _logfileManager->getLogfile(slot->logfileId());
+      // the following call also updates status
+      region.logfile        = _logfileManager->getLogfile(slot->logfileId(), status);
       region.mem            = static_cast<char*>(slot->mem());
       region.size           = slot->size();
+      region.logfileStatus  = status;
       region.firstSlotIndex = slotIndex;
       region.lastSlotIndex  = slotIndex;
       region.waitForSync    = slot->waitForSync();
@@ -433,6 +445,7 @@ SyncRegion Slots::getSyncRegion () {
       if (slot->logfileId() != region.logfileId) {
         // got a different logfile
         region.checkMore = true;
+        region.canSeal   = true;
         break;
       }
 

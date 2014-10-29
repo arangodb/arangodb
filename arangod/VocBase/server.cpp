@@ -35,6 +35,7 @@
 
 #include <regex.h>
 
+#include "Aql/QueryRegistry.h"
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/hashes.h"
@@ -751,6 +752,28 @@ static int OpenDatabases (TRI_server_t* server,
   TRI_DestroyVectorString(&files);
 
   return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stop the replication appliers in all databases
+////////////////////////////////////////////////////////////////////////////////
+
+static void StopReplicationAppliers (TRI_server_t* server) {
+  DatabaseWriteLocker locker(&server->_databasesLock);
+
+  size_t n = server->_databases._nrAlloc;
+
+  for (size_t i = 0; i < n; ++i) {
+    TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_databases._table[i]);
+
+    if (vocbase != nullptr) {
+      TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
+
+      if (vocbase->_replicationApplier != nullptr) {
+        TRI_StopReplicationApplier(vocbase->_replicationApplier, false);
+      }
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1493,6 +1516,12 @@ static void DatabaseManager (void* data) {
       }
 
       usleep(DATABASE_MANAGER_INTERVAL);
+      // The following is only necessary after a wait:
+      auto queryRegistry = static_cast<triagens::aql::QueryRegistry*>
+                                      (server->_queryRegistry);
+      if (queryRegistry != nullptr) {
+        queryRegistry->expireQueries();
+      }
     }
 
     // next iteration
@@ -1625,6 +1654,8 @@ int TRI_InitServer (TRI_server_t* server,
   TRI_InitMutex(&server->_createLock);
 
   server->_disableReplicationAppliers = disableAppliers;
+
+  server->_queryRegistry = nullptr;   // will be filled in later
 
   server->_initialised = true;
 
@@ -1957,21 +1988,27 @@ int TRI_InitDatabasesServer (TRI_server_t* server) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_StopServer (TRI_server_t* server) {
-  int res;
-
   // set shutdown flag
   TRI_LockMutex(&server->_createLock);
   server->_shutdown = true;
   TRI_UnlockMutex(&server->_createLock);
 
   // stop dbm thread
-  res = TRI_JoinThread(&server->_databaseManager);
+  int res = TRI_JoinThread(&server->_databaseManager);
 
   CloseDatabases(server);
 
   TRI_DestroyLockFile(server->_lockFilename);
 
   return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stop the replication appliers
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_StopReplicationAppliersServer (TRI_server_t* server) {
+  StopReplicationAppliers(server);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2031,6 +2068,7 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
   if (vocbase->_replicationApplier == nullptr) {
     TRI_DestroyInitialVocBase(vocbase);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
+    TRI_UnlockMutex(&server->_createLock);
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -2041,6 +2079,7 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
 
   // increase reference counter
   TRI_UseVocBase(vocbase);
+  vocbase->_state = (sig_atomic_t) TRI_VOCBASE_STATE_NORMAL;
 
   {
     DatabaseWriteLocker locker(&server->_databasesLock);
@@ -2048,8 +2087,6 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
   }
 
   TRI_UnlockMutex(&server->_createLock);
-
-  vocbase->_state = (sig_atomic_t) TRI_VOCBASE_STATE_NORMAL;
 
   *database = vocbase;
 

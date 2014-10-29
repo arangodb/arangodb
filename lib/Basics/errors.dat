@@ -180,6 +180,7 @@ ERROR_CLUSTER_UNSUPPORTED,1470,"unsupported operation or parameter","Will be rai
 ERROR_CLUSTER_ONLY_ON_COORDINATOR,1471,"this operation is only valid on a coordinator in a cluster","Will be raised if there is an attempt to run a coordinator-only operation on a different type of node."
 ERROR_CLUSTER_READING_PLAN_AGENCY,1472,"error reading Plan in agency","Will be raised if a coordinator or DBserver cannot read the Plan in the agency."
 ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION,1473,"could not truncate collection","Will be raised if a coordinator cannot truncate all shards of a cluster collection."
+ERROR_CLUSTER_AQL_COMMUNICATION,1474,"error in cluster internal communication for AQL","Will be raised if the internal communication of the cluster for AQL produces an error."
 
 ################################################################################
 ## ArangoDB query errors
@@ -217,6 +218,8 @@ ERROR_QUERY_MODIFY_IN_SUBQUERY,1574,"modify operation in subquery", "Will be rai
 ERROR_QUERY_COMPILE_TIME_OPTIONS,1575,"query options must be readable at query compile time", "Will be raised when an AQL data-modification query contains options that cannot be figured out at query compile time."
 ERROR_QUERY_EXCEPTION_OPTIONS,1576,"query options expected", "Will be raised when an AQL data-modification query contains an invalid options specification."
 ERROR_QUERY_BAD_JSON_PLAN,1577,"JSON describing execution plan was bad", "Will be raised when an HTTP API for a query got an invalid JSON object."
+ERROR_QUERY_NOT_FOUND,1578,"query ID not found", "Will be raised when an Id of a query is not found by the HTTP API."
+ERROR_QUERY_IN_USE,1579,"query with this ID is in use", "Will be raised when an Id of a query is found by the HTTP API but the query is in use."
 
 ################################################################################
 ## AQL user functions

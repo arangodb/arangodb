@@ -270,7 +270,7 @@ void RestVocbaseBaseHandler::generateNotModified (TRI_voc_rid_t rid) {
 /// @brief generates next entry from a result set
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateDocument (SingleCollectionReadOnlyTransaction<RestTransactionContext>& trx,
+void RestVocbaseBaseHandler::generateDocument (SingleCollectionReadOnlyTransaction& trx,
                                                TRI_voc_cid_t cid,
                                                TRI_doc_mptr_copy_t const& mptr,
                                                TRI_shaper_t* shaper,
@@ -616,26 +616,42 @@ int RestVocbaseBaseHandler::parseDocumentId (CollectionNameResolver const* resol
                                              string const& handle,
                                              TRI_voc_cid_t& cid,
                                              TRI_voc_key_t& key) {
-  vector<string>&& split(StringUtils::split(handle, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR));
+  char const* ptr = handle.c_str();
+  char const* end = ptr + handle.size();
 
-  if (split.size() != 2) {
+  if (end - ptr < 3) {
+    // minimum length of document id is 3:
+    // at least 1 byte for collection name, '/' + at least 1 byte for key
     return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
-  const char first = split[0][0];
+  char const* pos = static_cast<char const*>(memchr(static_cast<void const*>(ptr), TRI_DOCUMENT_HANDLE_SEPARATOR_CHR, handle.size()));
+
+  if (pos == nullptr || pos >= end - 1) {
+    // if no '/' is found, the id is invalid
+    // if '/' is at the very end, the id is invalid too
+    return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+  }
+  
+  // check if the id contains a second '/'
+  if (memchr(static_cast<void const*>(pos + 1), TRI_DOCUMENT_HANDLE_SEPARATOR_CHR, end - pos - 1) != nullptr) {
+    return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+  }
+
+  char const first = *ptr;
 
   if (first >= '0' && first <= '9') {
-    cid = StringUtils::uint64(split[0].c_str(), split[0].size());
+    cid = TRI_UInt64String2(ptr, ptr - pos);
   }
   else {
-    cid = resolver->getCollectionIdCluster(split[0]);
+    cid = resolver->getCollectionIdCluster(std::string(ptr, pos - ptr));
   }
 
   if (cid == 0) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  key = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, split[1].c_str());
+  key = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, pos + 1, end - pos - 1);
 
   return TRI_ERROR_NO_ERROR;
 }

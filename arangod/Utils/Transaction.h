@@ -51,6 +51,7 @@
 
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/DocumentHelper.h"
+#include "Utils/TransactionContext.h"
 
 namespace triagens {
   namespace arango {
@@ -59,16 +60,15 @@ namespace triagens {
 // --SECTION--                                                 class Transaction
 // -----------------------------------------------------------------------------
 
-      template<typename T>
-      class Transaction : public T, public TransactionBase {
+      class Transaction : public TransactionBase {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Transaction
 ////////////////////////////////////////////////////////////////////////////////
 
         private:
-          Transaction (const Transaction&) = delete;
-          Transaction& operator= (const Transaction&) = delete;
+          Transaction (Transaction const&) = delete;
+          Transaction& operator= (Transaction const&) = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -80,10 +80,10 @@ namespace triagens {
 /// @brief create the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-          Transaction (TRI_vocbase_t* vocbase,
+          Transaction (TransactionContext* transactionContext,
+                       TRI_vocbase_t* vocbase,
                        TRI_voc_tid_t externalId)
-            : T(),
-              _externalId(externalId),
+            : _externalId(externalId),
               _setupState(TRI_ERROR_NO_ERROR),
               _nestingLevel(0),
               _errorData(),
@@ -92,9 +92,11 @@ namespace triagens {
               _waitForSync(false),
               _isReal(true),
               _trx(nullptr),
-              _vocbase(vocbase) {
+              _vocbase(vocbase),
+              _transactionContext(transactionContext) {
 
             TRI_ASSERT(_vocbase != nullptr);
+            TRI_ASSERT(_transactionContext != nullptr);
 
             if (ServerState::instance()->isCoordinator()) {
               _isReal = false;
@@ -124,6 +126,8 @@ namespace triagens {
               // free the data associated with the transaction
               freeTransaction();
             }
+
+            delete _transactionContext;
           }
 
 // -----------------------------------------------------------------------------
@@ -138,6 +142,14 @@ namespace triagens {
 
           inline TRI_vocbase_t* vocbase () const {
             return _vocbase;
+          }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return internals of transaction
+////////////////////////////////////////////////////////////////////////////////
+
+          inline TRI_transaction_t* getInternals () const {
+            return _trx;
           }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -179,7 +191,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
           CollectionNameResolver const* resolver () const {
-            CollectionNameResolver const* r = this->getResolver();
+            CollectionNameResolver const* r = this->_transactionContext->getResolver();
             TRI_ASSERT(r != nullptr);
             return r;
           }
@@ -251,6 +263,7 @@ namespace triagens {
               }
 #ifdef TRI_ENABLE_MAINTAINER_MODE
               TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
+              TRI_ASSERT(_numberTrxActive > 0);
               _numberTrxActive--;  // Every transaction gets here at most once
 #endif
               return TRI_ERROR_NO_ERROR;
@@ -260,6 +273,7 @@ namespace triagens {
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
             TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
+            TRI_ASSERT(_numberTrxActive > 0);
             _numberTrxActive--;  // Every transaction gets here at most once
 #endif
 
@@ -283,6 +297,7 @@ namespace triagens {
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
               TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
+              TRI_ASSERT(_numberTrxActive > 0);
               _numberTrxActive--;  // Every transaction gets here at most once
 #endif
               return TRI_ERROR_NO_ERROR;
@@ -292,6 +307,7 @@ namespace triagens {
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
             TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
+            TRI_ASSERT(_numberTrxActive > 0);
             _numberTrxActive--;  // Every transaction gets here at most once
 #endif
 
@@ -604,7 +620,7 @@ namespace triagens {
           int res = this->addCollection(cid, type);
 
           if (res != TRI_ERROR_NO_ERROR) {
-            _errorData = string(name);
+            _errorData = std::string(name);
           }
 
           return res;
@@ -1022,31 +1038,33 @@ namespace triagens {
             return res;
           }
 
-          if (document->_primaryIndex._nrUsed == 0) {
-            // nothing to do
-            this->unlock(trxCollection, TRI_TRANSACTION_READ);
+          if (document->_primaryIndex._nrUsed > 0) {
+            if (orderBarrier(trxCollection) == nullptr) {
+              return TRI_ERROR_OUT_OF_MEMORY;
+            }
+            
+            docs.reserve(static_cast<size_t>(document->_primaryIndex._nrUsed) % static_cast<size_t>(numberOfPartitions));
+          
+            void** ptr = document->_primaryIndex._table;
+            void** end = ptr + document->_primaryIndex._nrAlloc;
+            *total = (uint32_t) document->_primaryIndex._nrUsed;
 
-            // READ-LOCK END
-            return TRI_ERROR_NO_ERROR;
-          }
+            // fetch documents, taking partition into account
+            for (; ptr < end; ++ptr) {
+              if (*ptr) {
+                TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
 
-          if (orderBarrier(trxCollection) == nullptr) {
-            return TRI_ERROR_OUT_OF_MEMORY;
-          }
+                if (d->_hash % numberOfPartitions == partitionId) {
+                  // correct partition
+                  docs.emplace_back(*d);
+                }
+              }
+            }
 
-          void** beg = document->_primaryIndex._table;
-          void** end = beg + document->_primaryIndex._nrAlloc;
-          void** ptr = beg;
-          *total = (uint32_t) document->_primaryIndex._nrUsed;
-
-          // fetch documents, taking partition into account
-          for (; ptr < end; ++ptr) {
-            if (*ptr) {
-              TRI_doc_mptr_t* d = (TRI_doc_mptr_t*) *ptr;
-
-              if (d->_hash % numberOfPartitions == partitionId) {
-                // correct partition
-                docs.emplace_back(*d);
+            for (;  ptr < end;  ++ptr) {
+              if (*ptr) {
+                TRI_doc_mptr_t const* d = (TRI_doc_mptr_t const*) *ptr;
+                docs.push_back(*d);  // PROTECTED by trx in trxCollection
               }
             }
           }
@@ -1260,7 +1278,7 @@ namespace triagens {
 
         int setupTransaction () {
           // check in the context if we are running embedded
-          _trx = this->getParentTransaction();
+          _trx = this->_transactionContext->getParentTransaction();
 
           if (_trx != nullptr) {
             // yes, we are embedded
@@ -1284,10 +1302,8 @@ namespace triagens {
 
           _nestingLevel = ++_trx->_nestingLevel;
 
-          if (! this->isEmbeddable()) {
+          if (! this->_transactionContext->isEmbeddable()) {
             // we are embedded but this is disallowed...
-            LOG_WARNING("logic error. invalid nesting of transactions");
-
             return TRI_ERROR_TRANSACTION_NESTED;
           }
 
@@ -1312,7 +1328,7 @@ namespace triagens {
           }
 
           // register the transaction in the context
-          return this->registerTransaction(_trx);
+          return this->_transactionContext->registerTransaction(_trx);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1323,7 +1339,7 @@ namespace triagens {
           TRI_ASSERT(! isEmbeddedTransaction());
 
           if (_trx != nullptr) {
-            this->unregisterTransaction();
+            this->_transactionContext->unregisterTransaction();
 
             TRI_FreeTransaction(_trx);
             _trx = nullptr;
@@ -1403,6 +1419,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_vocbase_t* const _vocbase;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the transaction context
+////////////////////////////////////////////////////////////////////////////////
+
+        TransactionContext* _transactionContext;
 
     };
 

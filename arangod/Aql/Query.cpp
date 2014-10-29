@@ -37,25 +37,30 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/json.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ServerState.h"
 #include "Utils/AqlTransaction.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/Exception.h"
+#include "Utils/StandaloneTransactionContext.h"
 #include "Utils/V8TransactionContext.h"
+#include "V8Server/ApplicationV8.h"
 #include "VocBase/vocbase.h"
 
 using namespace triagens::aql;
+using Json = triagens::basics::Json;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               static const values
 // -----------------------------------------------------------------------------
 
 static std::string StateNames[] = {
-  "initialization",         // INITIALIZATION 
+  "initializing",           // INITIALIZATION 
   "parsing",                // PARSING
-  "ast optimization",       // AST_OPTIMIZATION
-  "plan instanciation",     // PLAN_INSTANCIATION
-  "plan optimization",      // PLAN_OPTIMIZATION
-  "execution",              // EXECUTION
-  "finalization"            // FINALIZATION
+  "ast optimizing",         // AST_OPTIMIZATION
+  "plan instanciating",     // PLAN_INSTANCIATION
+  "plan optimizing",        // PLAN_OPTIMIZATION
+  "executing",              // EXECUTION
+  "finalizating"            // FINALIZATION
 };
 
 // make sure the state strings and the actual states match
@@ -115,13 +120,18 @@ TRI_json_t* Profile::toJson (TRI_memory_zone_t*) {
 /// @brief creates a query
 ////////////////////////////////////////////////////////////////////////////////
 
-Query::Query (TRI_vocbase_t* vocbase,
+Query::Query (triagens::arango::ApplicationV8* applicationV8,
+              bool contextOwnedByExterior,
+              TRI_vocbase_t* vocbase,
               char const* queryString,
               size_t queryLength,
               TRI_json_t* bindParameters,
-              TRI_json_t* options)
-  : _vocbase(vocbase),
+              TRI_json_t* options,
+              QueryPart part)
+  : _applicationV8(applicationV8),
+    _vocbase(vocbase),
     _executor(nullptr),
+    _context(nullptr),
     _queryString(queryString),
     _queryLength(queryLength),
     _queryJson(),
@@ -135,7 +145,9 @@ Query::Query (TRI_vocbase_t* vocbase,
     _plan(nullptr),
     _parser(nullptr),
     _trx(nullptr),
-    _engine(nullptr) {
+    _engine(nullptr),
+    _part(part),
+    _contextOwnedByExterior(contextOwnedByExterior) {
 
   TRI_ASSERT(_vocbase != nullptr);
 
@@ -146,14 +158,24 @@ Query::Query (TRI_vocbase_t* vocbase,
   
   _ast = new Ast(this);
 
+  _nodes.reserve(32);
   _strings.reserve(32);
 }
 
-Query::Query (TRI_vocbase_t* vocbase,
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a query from Json
+////////////////////////////////////////////////////////////////////////////////
+
+Query::Query (triagens::arango::ApplicationV8* applicationV8,
+              bool contextOwnedByExterior,
+              TRI_vocbase_t* vocbase,
               triagens::basics::Json queryStruct,
-              TRI_json_t* options)
-  : _vocbase(vocbase),
+              TRI_json_t* options,
+              QueryPart part)
+  : _applicationV8(applicationV8),
+    _vocbase(vocbase),
     _executor(nullptr),
+    _context(nullptr),
     _queryString(nullptr),
     _queryLength(0),
     _queryJson(queryStruct),
@@ -167,7 +189,9 @@ Query::Query (TRI_vocbase_t* vocbase,
     _plan(nullptr),
     _parser(nullptr),
     _trx(nullptr),
-    _engine(nullptr) {
+    _engine(nullptr),
+    _part(part),
+    _contextOwnedByExterior(contextOwnedByExterior) {
 
   TRI_ASSERT(_vocbase != nullptr);
 
@@ -175,6 +199,8 @@ Query::Query (TRI_vocbase_t* vocbase,
     _profile = new Profile;
   }
   enterState(INITIALIZATION);
+
+  _nodes.reserve(32);
 
   _ast = new Ast(this);
   _strings.reserve(32);
@@ -185,7 +211,8 @@ Query::Query (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 Query::~Query () {
-  cleanupPlanAndEngine();
+  cleanupPlanAndEngine(TRI_ERROR_INTERNAL); // abort the transaction
+
   if (_profile != nullptr) {
     delete _profile;
     _profile = nullptr;
@@ -201,6 +228,20 @@ Query::~Query () {
     _executor = nullptr;
   }
 
+  if (_context != nullptr) {
+    TRI_ASSERT(! _contextOwnedByExterior);
+        
+    // unregister transaction and resolver in context
+    TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+    auto ctx = static_cast<triagens::arango::V8TransactionContext*>(v8g->_transactionContext);
+    if (ctx != nullptr) {
+      ctx->unregisterTransaction();
+    }
+
+    _applicationV8->exitContext(_context);
+    _context = nullptr;
+  }
+
   if (_ast != nullptr) {
     delete _ast;
     _ast = nullptr;
@@ -210,6 +251,84 @@ Query::~Query () {
   for (auto it = _strings.begin(); it != _strings.end(); ++it) {
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, const_cast<char*>(*it));
   }
+  // free nodes
+  for (auto it = _nodes.begin(); it != _nodes.end(); ++it) {
+    delete (*it);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone a query
+/// note: as a side-effect, this will also create and start a transaction for
+/// the query
+////////////////////////////////////////////////////////////////////////////////
+
+Query* Query::clone (QueryPart part,
+                     bool withPlan) {
+  TRI_json_t* options = nullptr;
+
+  if (_options != nullptr) {
+    options = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, _options);
+  }
+
+  std::unique_ptr<Query> clone;
+
+  try {
+    clone.reset(new Query(_applicationV8, 
+                          false,
+                          _vocbase,
+                          _queryString,
+                          _queryLength,
+                          nullptr,
+                          options,
+                          part));
+  }
+  catch (...) {
+    if (options != nullptr) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, options);
+    }
+    throw;
+  }
+
+  if (_plan != nullptr) {
+    if (withPlan) {
+      // clone the existing plan
+      clone->setPlan(_plan->clone(*clone));
+    }
+   
+    // clone all variables 
+    for (auto it : _ast->variables()->variables(true)) {
+      auto var = _ast->variables()->getVariable(it.first);
+      TRI_ASSERT(var != nullptr);
+      clone->ast()->variables()->createVariable(var);
+    }
+  }
+    
+  if (clone->_plan == nullptr) {
+    // initialize an empty plan
+    clone->setPlan(new ExecutionPlan(ast()));
+  }
+
+  TRI_ASSERT(clone->_trx == nullptr);
+
+  clone->_trx = _trx->clone();  // A daughter transaction which does not
+                                // actually lock the collections
+
+  int res = clone->_trx->begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(res, "could not begin transaction");
+  }
+
+  return clone.release();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a node to the list of nodes
+////////////////////////////////////////////////////////////////////////////////
+
+void Query::addNode (AstNode* node) {
+  _nodes.push_back(node);
 }
 
 // -----------------------------------------------------------------------------
@@ -300,7 +419,7 @@ void Query::registerError (int code,
 /// QueryRegistry.
 ////////////////////////////////////////////////////////////////////////////////
 
-QueryResult Query::prepare () {
+QueryResult Query::prepare (QueryRegistry* registry) {
   enterState(PARSING);
 
   try {
@@ -308,7 +427,7 @@ QueryResult Query::prepare () {
     std::unique_ptr<ExecutionPlan> plan;
 
     if (_queryString != nullptr) {
-      parser->parse();
+      parser->parse(false);
       // put in bind parameters
       parser->ast()->injectBindParameters(_bindParameters);
 
@@ -318,15 +437,17 @@ QueryResult Query::prepare () {
       // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser->ast()->toJson(TRI_UNKNOWN_MEM_ZONE, false)) << "\n";
     }
 
-    // create the transaction object, but do not start it yet
-    std::unique_ptr<AQL_TRANSACTION_V8> trx(new AQL_TRANSACTION_V8(_vocbase, _collections.collections()));
+    auto trx = new triagens::arango::AqlTransaction(new triagens::arango::StandaloneTransactionContext(), _vocbase, _collections.collections(), _part == PART_MAIN);
+    _trx = trx;   // Save the transaction in our object
+
+    bool planRegisters;
 
     if (_queryString != nullptr) {
       // we have an AST
-      int res = trx->begin();
+      int res = _trx->begin();
 
       if (res != TRI_ERROR_NO_ERROR) {
-        return transactionError(res, *trx);
+        return transactionError(res);
       }
 
       enterState(PLAN_INSTANCIATION);
@@ -335,21 +456,32 @@ QueryResult Query::prepare () {
         // oops
         return QueryResult(TRI_ERROR_INTERNAL, "failed to create query execution engine");
       }
+
+      // Run the query optimiser:
+      enterState(PLAN_OPTIMIZATION);
+      triagens::aql::Optimizer opt(maxNumberOfPlans());
+      // getenabled/disabled rules
+      opt.createPlans(plan.release(), getRulesFromOptions(), inspectSimplePlans());
+      // Now plan and all derived plans belong to the optimizer
+      plan.reset(opt.stealBest()); // Now we own the best one again
+      planRegisters = true;
     }
-    else {
+    else {   // no queryString, we are instanciating from _queryJson
       enterState(PLAN_INSTANCIATION);
       ExecutionPlan::getCollectionsFromJson(parser->ast(), _queryJson);
 
+      parser->ast()->variables()->fromJson(_queryJson);
       // creating the plan may have produced some collections
       // we need to add them to the transaction now (otherwise the query will fail)
-      int res = trx->addCollectionList(_collections.collections());
+
+      int res = _trx->addCollectionList(_collections.collections());
       
       if (res == TRI_ERROR_NO_ERROR) {
-        res = trx->begin();
+        res = _trx->begin();
       }
 
       if (res != TRI_ERROR_NO_ERROR) {
-        return transactionError(res, *trx);
+        return transactionError(res);
       }
 
       // we have an execution plan in JSON format
@@ -358,16 +490,11 @@ QueryResult Query::prepare () {
         // oops
         return QueryResult(TRI_ERROR_INTERNAL);
       }
+
+      // std::cout << "GOT PLAN:\n" << plan.get()->toJson(parser->ast(), TRI_UNKNOWN_MEM_ZONE, true).toString() << "\n\n";
+      planRegisters = false;
     }
 
-    // Run the query optimiser:
-    enterState(PLAN_OPTIMIZATION);
-    triagens::aql::Optimizer opt(maxNumberOfPlans());
-    // get enabled/disabled rules
-    opt.createPlans(plan.release(), getRulesFromOptions());  
-
-    // Now plan and all derived plans belong to the optimizer
-    plan.reset(opt.stealBest()); // Now we own the best one again
     TRI_ASSERT(plan.get() != nullptr);
     /* // for debugging of serialisation/deserialisation . . . * /
     auto JsonPlan = plan->toJson(parser->ast(),TRI_UNKNOWN_MEM_ZONE, true);
@@ -380,33 +507,38 @@ QueryResult Query::prepare () {
     auto otherJsonString =
       otherPlan->toJson(parser->ast(), TRI_UNKNOWN_MEM_ZONE, true).toString(); 
     std::cout << "deserialised plan: \n" << otherJsonString << "\n";
-    TRI_ASSERT(otherJsonString == JsonString); */
+    //TRI_ASSERT(otherJsonString == JsonString); */
+    
+    // varsUsedLater and varsValid are unordered_sets and so their orders
+    // are not the same in the serialised and deserialised plans 
+
+    // return the V8 context
+    exitContext();
 
     enterState(EXECUTION);
-    ExecutionEngine* engine(ExecutionEngine::instanciateFromPlan(trx.get(), this, plan.get()));
+    ExecutionEngine* engine(ExecutionEngine::instanciateFromPlan(registry, this, plan.get(), planRegisters));
 
     // If all went well so far, then we keep _plan, _parser and _trx and
     // return:
     _plan = plan.release();
     _parser = parser.release();
-    _trx = trx.release();
     _engine = engine;
     return QueryResult();
   }
   catch (triagens::arango::Exception const& ex) {
-    cleanupPlanAndEngine();
+    cleanupPlanAndEngine(ex.code());
     return QueryResult(ex.code(), getStateString() + ex.message());
   }
   catch (std::bad_alloc const&) {
-    cleanupPlanAndEngine();
+    cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY);
     return QueryResult(TRI_ERROR_OUT_OF_MEMORY, getStateString() + TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
   }
   catch (std::exception const& ex) {
-    cleanupPlanAndEngine();
+    cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
     return QueryResult(TRI_ERROR_INTERNAL, getStateString() + ex.what());
   }
   catch (...) {
-    cleanupPlanAndEngine();
+    cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
     return QueryResult(TRI_ERROR_INTERNAL, getStateString() + TRI_errno_string(TRI_ERROR_INTERNAL));
   }
 }
@@ -415,14 +547,14 @@ QueryResult Query::prepare () {
 /// @brief execute an AQL query 
 ////////////////////////////////////////////////////////////////////////////////
 
-QueryResult Query::execute () {
-  QueryResult res = prepare();
-  if (res.code != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
+QueryResult Query::execute (QueryRegistry* registry) {
   // Now start the execution:
   try {
+    QueryResult res = prepare(registry);
+    if (res.code != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+
     triagens::basics::Json json(triagens::basics::Json::List, 16);
     triagens::basics::Json stats;
 
@@ -448,7 +580,7 @@ QueryResult Query::execute () {
 
     _trx->commit();
    
-    cleanupPlanAndEngine();
+    cleanupPlanAndEngine(TRI_ERROR_NO_ERROR);
 
     enterState(FINALIZATION); 
 
@@ -463,46 +595,21 @@ QueryResult Query::execute () {
     return result;
   }
   catch (triagens::arango::Exception const& ex) {
-    cleanupPlanAndEngine();
+    cleanupPlanAndEngine(ex.code());
     return QueryResult(ex.code(), getStateString() + ex.message());
   }
   catch (std::bad_alloc const&) {
-    cleanupPlanAndEngine();
+    cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY);
     return QueryResult(TRI_ERROR_OUT_OF_MEMORY, getStateString() + TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
   }
   catch (std::exception const& ex) {
-    cleanupPlanAndEngine();
+    cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
     return QueryResult(TRI_ERROR_INTERNAL, getStateString() + ex.what());
   }
   catch (...) {
-    cleanupPlanAndEngine();
+    cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
     return QueryResult(TRI_ERROR_INTERNAL, getStateString() + TRI_errno_string(TRI_ERROR_INTERNAL));
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief close transaction to suspend query
-////////////////////////////////////////////////////////////////////////////////
-
-int Query::closeTransaction () {
-  TRI_ASSERT(_trx != nullptr);
-  _trx->commit();
-  delete _trx;
-  _trx = nullptr;
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reopen transaction after suspend of query
-////////////////////////////////////////////////////////////////////////////////
-
-int Query::reOpenTransaction () {
-  TRI_ASSERT(_trx == nullptr);
-  _trx = new AQL_TRANSACTION_V8(_vocbase, _collections.collections());
-  if (_trx == nullptr) {
-    return TRI_ERROR_INTERNAL;
-  }
-  return _trx->begin();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -512,7 +619,7 @@ int Query::reOpenTransaction () {
 QueryResult Query::parse () {
   try {
     Parser parser(this);
-    return parser.parse();
+    return parser.parse(true);
   }
   catch (triagens::arango::Exception const& ex) {
     return QueryResult(ex.code(), ex.message());
@@ -533,7 +640,7 @@ QueryResult Query::explain () {
     ExecutionPlan* plan = nullptr;
     Parser parser(this);
 
-    parser.parse();
+    parser.parse(true);
     // put in bind parameters
     parser.ast()->injectBindParameters(_bindParameters);
 
@@ -543,13 +650,14 @@ QueryResult Query::explain () {
     // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE)) << "\n";
 
     // create the transaction object, but do not start it yet
-    AQL_TRANSACTION_V8 trx(_vocbase, _collections.collections());
+    auto trx = new triagens::arango::AqlTransaction(new triagens::arango::StandaloneTransactionContext(), _vocbase, _collections.collections(), true);
+    _trx = trx;  // save the pointer in this
 
     // we have an AST
-    int res = trx.begin();
+    int res = _trx->begin();
 
     if (res != TRI_ERROR_NO_ERROR) {
-      return transactionError(res, trx);
+      return transactionError(res);
     }
 
     enterState(PLAN_INSTANCIATION);
@@ -563,36 +671,39 @@ QueryResult Query::explain () {
     enterState(PLAN_OPTIMIZATION);
     triagens::aql::Optimizer opt(maxNumberOfPlans());
     // get enabled/disabled rules
-    opt.createPlans(plan, getRulesFromOptions());
+    opt.createPlans(plan, getRulesFromOptions(), inspectSimplePlans());
       
-    trx.commit();
 
     enterState(FINALIZATION);
       
     QueryResult result(TRI_ERROR_NO_ERROR);
+    QueryRegistry localRegistry;
 
     if (allPlans()) {
-      triagens::basics::Json out(triagens::basics::Json::List);
+      triagens::basics::Json out(Json::List);
 
       auto plans = opt.getPlans();
       for (auto it : plans) {
         TRI_ASSERT(it != nullptr);
 
+        it->findVarUsage();
+        it->planRegisters();
         out.add(it->toJson(parser.ast(), TRI_UNKNOWN_MEM_ZONE, verbosePlans()));
       }
-      
       result.json = out.steal();
     }
     else {
       // Now plan and all derived plans belong to the optimizer
       plan = opt.stealBest(); // Now we own the best one again
       TRI_ASSERT(plan != nullptr);
-
+      plan->findVarUsage();
+      plan->planRegisters();
       result.json = plan->toJson(parser.ast(), TRI_UNKNOWN_MEM_ZONE, verbosePlans()).steal(); 
-
       delete plan;
     }
-    
+
+    _trx->commit();
+
     return result;
   }
   catch (triagens::arango::Exception const& ex) {
@@ -621,6 +732,29 @@ Executor* Query::executor () {
 
   TRI_ASSERT(_executor != nullptr);
   return _executor;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register the concatenation of two strings
+/// the string is freed when the query is destroyed
+////////////////////////////////////////////////////////////////////////////////
+
+char* Query::registerStringConcat (char const* a,
+                                   char const* b) {
+  char* concatenated = TRI_Concatenate2StringZ(TRI_UNKNOWN_MEM_ZONE, a, b);
+
+  if (concatenated == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  try {
+    _strings.push_back(concatenated);
+  }
+  catch (...) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  return concatenated;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -681,6 +815,65 @@ char* Query::registerString (std::string const& p,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief enter a V8 context
+////////////////////////////////////////////////////////////////////////////////
+
+void Query::enterContext () {
+  if (! _contextOwnedByExterior) {
+    if (_context == nullptr) {
+      _context = _applicationV8->enterContext("STANDARD", _vocbase, false, false);
+
+      if (_context == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot enter V8 context");
+      }
+    
+      // register transaction and resolver in context
+      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+      auto ctx = static_cast<triagens::arango::V8TransactionContext*>(v8g->_transactionContext);
+      if (ctx != nullptr) {
+        ctx->registerTransaction(_trx->getInternals());
+      }
+    }
+
+    TRI_ASSERT(_context != nullptr);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a V8 context
+////////////////////////////////////////////////////////////////////////////////
+
+void Query::exitContext () {
+  if (! _contextOwnedByExterior) {
+    if (_context != nullptr) {
+      // unregister transaction and resolver in context
+      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+      auto ctx = static_cast<triagens::arango::V8TransactionContext*>(v8g->_transactionContext);
+      if (ctx != nullptr) {
+        ctx->unregisterTransaction();
+      }
+
+      _applicationV8->exitContext(_context);
+      _context = nullptr;
+    }
+    TRI_ASSERT(_context == nullptr);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns statistics for current query.
+////////////////////////////////////////////////////////////////////////////////
+
+triagens::basics::Json Query::getStats() {
+  if (_engine) {
+    return _engine->_stats.toJson();
+  }
+  else {
+    return ExecutionStats::toJsonStatic();
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief fetch a boolean value from the options
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -718,19 +911,41 @@ double Query::getNumericOption (char const* option, double defaultValue) const {
 /// @brief neatly format transaction error to the user.
 ////////////////////////////////////////////////////////////////////////////////
 
-QueryResult Query::transactionError (int errorCode, 
-                                     AQL_TRANSACTION_V8 const& trx) const
-{
+QueryResult Query::transactionError (int errorCode) const {
   std::string err(TRI_errno_string(errorCode));
 
-  auto detail = trx.getErrorData();
+  auto detail = _trx->getErrorData();
   if (detail.size() > 0) {
     err += std::string(" (") + detail + std::string(")");
   }
 
-  err += std::string("\nwhile executing:\n") + _queryString + std::string("\n");
+  if (_queryString != nullptr) {
+    err += std::string("\nwhile executing:\n") + _queryString + std::string("\n");
+  }
 
   return QueryResult(errorCode, err);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read the "optimizer.inspectSimplePlans" section from the options
+////////////////////////////////////////////////////////////////////////////////
+
+bool Query::inspectSimplePlans () const {
+  if (! TRI_IsArrayJson(_options)) {
+    return true; // default
+  }
+  
+  TRI_json_t const* optJson = TRI_LookupArrayJson(_options, "optimizer");
+
+  if (! TRI_IsArrayJson(optJson)) {
+    return true; // default
+  }
+  
+  TRI_json_t const* j = TRI_LookupArrayJson(optJson, "inspectSimplePlans");
+  if (TRI_IsBooleanJson(j)) {
+    return j->_value._boolean;
+  }
+  return true; // default;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -778,6 +993,17 @@ void Query::enterState (ExecutionState state) {
     _profile->enter(_state);
   }
 
+#if 0
+  // Just for debugging:
+  std::cout << "enterState: " << state;
+  if (_queryString != nullptr) {
+    std::cout << _queryString << std::endl;
+  }
+  else {
+    std::cout << "no querystring" << std::endl;
+  }
+#endif
+
   // and adjust the state
   _state = state;
 }
@@ -787,20 +1013,28 @@ void Query::enterState (ExecutionState state) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string Query::getStateString () const {
-  return "in state " + StateNames[_state] + ": ";
+  return "while " + StateNames[_state] + ": ";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleanup plan and engine for current query
 ////////////////////////////////////////////////////////////////////////////////
 
-void Query::cleanupPlanAndEngine () {
+void Query::cleanupPlanAndEngine (int errorCode) {
   if (_engine != nullptr) {
+    try {
+      _engine->shutdown(errorCode); 
+    }
+    catch (...) {
+      // shutdown may fail but we must not throw here 
+      // (we're also called from the destructor)
+    }
     delete _engine;
     _engine = nullptr;
   }
 
   if (_trx != nullptr) {
+    _trx->abort();
     delete _trx;
     _trx = nullptr;
   }
@@ -814,6 +1048,17 @@ void Query::cleanupPlanAndEngine () {
     delete _plan;
     _plan = nullptr;
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the plan for the query
+////////////////////////////////////////////////////////////////////////////////
+
+void Query::setPlan (ExecutionPlan *plan) {
+  if (_plan != nullptr) {
+    delete _plan;
+  }
+  _plan = plan;
 }
 
 // -----------------------------------------------------------------------------

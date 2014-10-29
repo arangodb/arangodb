@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Optimizer.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/OptimizerRules.h"
 #include "Cluster/ServerState.h"
 
@@ -102,8 +103,20 @@ bool Optimizer::addPlan (ExecutionPlan* plan,
 ////////////////////////////////////////////////////////////////////////////////
 
 int Optimizer::createPlans (ExecutionPlan* plan,
-                            std::vector<std::string> const& rulesSpecification) {
-  int res;
+                            std::vector<std::string> const& rulesSpecification,
+                            bool inspectSimplePlans) {
+  if (! inspectSimplePlans &&
+      ! ExecutionEngine::isCoordinator() && 
+      plan->isDeadSimple()) {
+    // the plan is so simple that any further optimizations would probably cost
+    // more than simply executing the plan
+    _plans.clear();
+    _plans.push_back(plan, 0);
+    estimatePlans();
+
+    return TRI_ERROR_NO_ERROR;
+  }
+
   int leastDoneLevel = 0;
 
   TRI_ASSERT(! _rules.empty());
@@ -168,6 +181,7 @@ int Optimizer::createPlans (ExecutionPlan* plan,
 
         _currentRule = level;
 
+        int res;
         try {
           res = (*it).second.func(this, p, &(it->second));
         }
@@ -447,12 +461,39 @@ void Optimizer::setupRules () {
                useIndexForSort_pass6,
                true);
 
-  if (triagens::arango::ServerState::instance()->isCoordinator()) {
+  if (ExecutionEngine::isCoordinator()) {
     // distribute operations in cluster
+    registerRule("scatter-in-cluster",
+                 scatterInCluster,
+                 scatterInCluster_pass10,
+                 false);
+    
     registerRule("distribute-in-cluster",
                  distributeInCluster,
                  distributeInCluster_pass10,
                  false);
+
+    // distribute operations in cluster
+    registerRule("distribute-filtercalc-to-cluster",
+                 distributeFilternCalcToCluster,
+                 distributeFilternCalcToCluster_pass10,
+                 true);
+
+    registerRule("distribute-sort-to-cluster",
+                 distributeSortToCluster,
+                 distributeSortToCluster_pass10,
+                 true);
+    
+    registerRule("remove-unnecessary-remote-scatter",
+                 removeUnnecessaryRemoteScatter,
+                 removeUnnecessaryRemoteScatter_pass10,
+                 true);
+    
+    registerRule("undistribute-remove-after-enum-coll",
+                 undistributeRemoveAfterEnumColl,
+                 undistributeRemoveAfterEnumColl_pass10,
+                 true);
+
   }
 }
 

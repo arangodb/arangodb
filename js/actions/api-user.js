@@ -48,16 +48,21 @@ var users = require("org/arangodb/users");
 ///
 /// @RESTHEADER{GET /_api/user/{user}, Fetch User}
 ///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{user,string,optional}
+/// The name of the user
+///
 /// @RESTDESCRIPTION
 ///
 /// Fetches data about the specified user.
 ///
 /// The call will return a JSON document with at least the following attributes on success:
 ///
-/// * *user*: The name of the user as a string.
-/// * *active*: An optional flag that specifies whether the user is active.
-/// * *extra*: An optional JSON object with arbitrary extra data about the user.
-/// * *changePassword*: An optional flag that specifies whether the user must
+/// - *user*: The name of the user as a string.
+/// - *active*: An optional flag that specifies whether the user is active.
+/// - *extra*: An optional JSON object with arbitrary extra data about the user.
+/// - *changePassword*: An optional flag that specifies whether the user must
 ///   change the password or not.
 ///
 /// @RESTRETURNCODES
@@ -66,7 +71,7 @@ var users = require("org/arangodb/users");
 /// The user was found
 ///
 /// @RESTRETURNCODE{404}
-/// The user with user does not exist
+/// The user with the specified name does not exist
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -113,13 +118,13 @@ function get_api_user (req, res) {
 /// The following data need to be passed in a JSON representation in the body
 /// of the POST request:
 ///
-/// * *user*: The name of the user as a string. This is mandatory
-/// * *passwd*: The user password as a string. If no password is specified,
+/// - *user*: The name of the user as a string. This is mandatory
+/// - *passwd*: The user password as a string. If no password is specified,
 ///   the empty string will be used
-/// * *active*: An optional flag that specifies whether the user is active.
+/// - *active*: An optional flag that specifies whether the user is active.
 ///   If not specified, this will default to true
-/// * *extra*: An optional JSON object with arbitrary extra data about the user
-/// * *changePassword*: An optional flag that specifies whethers the user must
+/// - *extra*: An optional JSON object with arbitrary extra data about the user
+/// - *changePassword*: An optional flag that specifies whethers the user must
 ///   change the password or not. If not specified, this will default to false
 ///
 /// If set to true, the only operations allowed are PUT /_api/user or PATCH /_api/user.
@@ -127,8 +132,8 @@ function get_api_user (req, res) {
 /// If the user can be added by the server, the server will respond with HTTP 201.
 /// In case of success, the returned JSON object has the following properties:
 ///
-/// * *error*: Boolean flag to indicate that an error occurred (false in this case)
-/// * *code*: The HTTP status code
+/// - *error*: Boolean flag to indicate that an error occurred (false in this case)
+/// - *code*: The HTTP status code
 ///
 /// If the JSON representation is malformed or mandatory data is missing from the request,
 /// the server will respond with HTTP 400.
@@ -136,10 +141,10 @@ function get_api_user (req, res) {
 /// The body of the response will contain a JSON object with additional error details.
 /// The object has the following attributes:
 ///
-/// * *error*: Boolean flag to indicate that an error occurred (true in this case)
-/// * *code*: The HTTP status code
-/// * *errorNum*: The server error number
-/// * *errorMessage*: A descriptive error message
+/// - *error*: Boolean flag to indicate that an error occurred (true in this case)
+/// - *code*: The HTTP status code
+/// - *errorNum*: The server error number
+/// - *errorMessage*: A descriptive error message
 ///
 /// @RESTRETURNCODES
 ///
@@ -207,26 +212,31 @@ function post_api_user (req, res) {
 ///
 /// @RESTHEADER{PUT /_api/user/{user}, Replace User}
 ///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{user,string,optional}
+/// The name of the user
+///
 /// @RESTDESCRIPTION
 ///
 /// Replaces the data of an existing user. The name of an existing user must be specified in user.
 ///
 /// The following data can to be passed in a JSON representation in the body of the POST request:
 ///
-/// * *passwd*: The user password as a string. Specifying a password is mandatory,
+/// - *passwd*: The user password as a string. Specifying a password is mandatory,
 ///   but the empty string is allowed for passwords
-/// * *active*: An optional flag that specifies whether the user is active.
+/// - *active*: An optional flag that specifies whether the user is active.
 ///   If not specified, this will default to true
-/// * *extra*: An optional JSON object with arbitrary extra data about the user
-/// * *changePassword*: An optional flag that specifies whether the user must change
+/// - *extra*: An optional JSON object with arbitrary extra data about the user
+/// - *changePassword*: An optional flag that specifies whether the user must change
 ///   the password or not. If not specified, this will default to false
 ///
 /// If the user can be replaced by the server, the server will respond with HTTP 200.
 ///
 /// In case of success, the returned JSON object has the following properties:
 ///
-/// * *error*: Boolean flag to indicate that an error occurred (false in this case)
-/// * *code*: The HTTP status code
+/// - *error*: Boolean flag to indicate that an error occurred (false in this case)
+/// - *code*: The HTTP status code
 ///
 /// If the JSON representation is malformed or mandatory data is missing from the request,
 /// the server will respond with HTTP 400. If the specified user does not exist,
@@ -235,10 +245,10 @@ function post_api_user (req, res) {
 /// The body of the response will contain a JSON object with additional
 /// error details. The object has the following attributes:
 ///
-/// * *error*: Boolean flag to indicate that an error occurred (true in this case)
-/// * *code*: The HTTP status code
-/// * *errorNum*: The server error number
-/// * *errorMessage*: A descriptive error message
+/// - *error*: Boolean flag to indicate that an error occurred (true in this case)
+/// - *code*: The HTTP status code
+/// - *errorNum*: The server error number
+/// - *errorMessage*: A descriptive error message
 ///
 /// @RESTRETURNCODES
 ///
@@ -295,6 +305,11 @@ function put_api_user (req, res) {
 ///
 /// @RESTHEADER{PATCH /_api/user/{user}, Update User}
 ///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{user,string,optional}
+/// The name of the user
+///
 /// @RESTDESCRIPTION
 ///
 /// Partially updates the data of an existing user. The name of an existing
@@ -303,21 +318,21 @@ function put_api_user (req, res) {
 /// The following data can be passed in a JSON representation in the body of the
 /// POST request:
 ///
-/// * *passwd*: The user password as a string. Specifying a password is optional.
+/// - *passwd*: The user password as a string. Specifying a password is optional.
 ///   If not specified, the previously existing value will not be modified.
-/// * *active*: An optional flag that specifies whether the user is active.
+/// - *active*: An optional flag that specifies whether the user is active.
 ///   If not specified, the previously existing value will not be modified.
-/// * *extra*: An optional JSON object with arbitrary extra data about the user.
+/// - *extra*: An optional JSON object with arbitrary extra data about the user.
 ///   If not specified, the previously existing value will not be modified.
-/// * *changePassword*: An optional flag that specifies whether the user must change
+/// - *changePassword*: An optional flag that specifies whether the user must change
 ///   the password or not. If not specified, the previously existing value will not be modified.
 ///
 /// If the user can be updated by the server, the server will respond with HTTP 200.
 ///
 /// In case of success, the returned JSON object has the following properties:
 ///
-/// * *error*: Boolean flag to indicate that an error occurred (false in this case)
-/// * *code*: The HTTP status code
+/// - *error*: Boolean flag to indicate that an error occurred (false in this case)
+/// - *code*: The HTTP status code
 ///
 /// If the JSON representation is malformed or mandatory data is missing from the request,
 /// the server will respond with HTTP 400. If the specified user does not exist,
@@ -326,10 +341,10 @@ function put_api_user (req, res) {
 /// The body of the response will contain a JSON object with additional error details.
 /// The object has the following attributes:
 ///
-/// * *error*: Boolean flag to indicate that an error occurred (true in this case)
-/// * *code*: The HTTP status code
-/// * *errorNum*: The server error number
-/// * *errorMessage*: A descriptive error message
+/// - *error*: Boolean flag to indicate that an error occurred (true in this case)
+/// - *code*: The HTTP status code
+/// - *errorNum*: The server error number
+/// - *errorMessage*: A descriptive error message
 ///
 /// @RESTRETURNCODES
 ///
@@ -383,6 +398,11 @@ function patch_api_user (req, res) {
 ///
 /// @RESTHEADER{DELETE /_api/user/{user}, Remove User}
 ///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{user,string,optional}
+/// The name of the user
+///
 /// @RESTDESCRIPTION
 ///
 /// Removes an existing user, identified by user.
@@ -390,18 +410,18 @@ function patch_api_user (req, res) {
 /// If the user can be removed, the server will respond with HTTP 202.
 /// In case of success, the returned JSON object has the following properties:
 ///
-/// * *error*: Boolean flag to indicate that an error occurred (false in this case)
-/// * *code*: The HTTP status code
+/// - *error*: Boolean flag to indicate that an error occurred (false in this case)
+/// - *code*: The HTTP status code
 ///
 /// If the specified user does not exist, the server will respond with HTTP 404.
 ///
 /// The body of the response will contain a JSON object with additional error details.
 /// The object has the following attributes:
 ///
-/// * *error*: Boolean flag to indicate that an error occurred (true in this case)
-/// * *code*: The HTTP status code
-/// * *errorNum*: The server error number
-/// * *errorMessage*: A descriptive error message
+/// - *error*: Boolean flag to indicate that an error occurred (true in this case)
+/// - *code*: The HTTP status code
+/// - *errorNum*: The server error number
+/// - *errorMessage*: A descriptive error message
 ///
 /// @RESTRETURNCODES
 ///

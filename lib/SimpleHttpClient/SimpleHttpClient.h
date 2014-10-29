@@ -99,15 +99,15 @@ namespace triagens {
       }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief make a http request
+/// @brief make a http request, creating a new HttpResult object
 /// the caller has to delete the result object
 ////////////////////////////////////////////////////////////////////////////////
 
       SimpleHttpResult* request (rest::HttpRequest::HttpRequestType,
-                                 const string&,
-                                 const char*,
+                                 std::string const&,
+                                 char const*,
                                  size_t,
-                                 const map<string, string>&);
+                                 std::map<std::string, std::string> const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets username and password
@@ -117,9 +117,9 @@ namespace triagens {
 /// @param password                       password
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setUserNamePassword (const string& prefix,
-                                const string& username,
-                                const string& password);
+      void setUserNamePassword (const std::string& prefix,
+                                const std::string& username,
+                                const std::string& password);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief allows rewriting locations
@@ -143,7 +143,7 @@ namespace triagens {
 /// @brief returns the current error message
 ////////////////////////////////////////////////////////////////////////////////
 
-      const string& getErrorMessage () const {
+      const std::string& getErrorMessage () const {
         return _errorMessage;
       }
 
@@ -151,7 +151,7 @@ namespace triagens {
 /// @brief register and dump an error message
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setErrorMessage (const string& message,
+      void setErrorMessage (const std::string& message,
                             bool forceWarn = false) {
         _errorMessage = message;
 
@@ -164,9 +164,9 @@ namespace triagens {
 /// @brief register an error message
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setErrorMessage (const string& message,
+      void setErrorMessage (const std::string& message,
                             int error) {
-        if (error != 0) {
+        if (error != TRI_ERROR_NO_ERROR) {
           _errorMessage = message + ": " + strerror(error);
         }
         else {
@@ -214,8 +214,8 @@ namespace triagens {
 /// @brief rewrite a location URL
 ////////////////////////////////////////////////////////////////////////////////
 
-      string rewriteLocation (const string& location) {
-        if (_locationRewriter.func != 0) {
+      std::string rewriteLocation (std::string const& location) {
+        if (_locationRewriter.func != nullptr) {
           return _locationRewriter.func(_locationRewriter.data, location);
         }
 
@@ -240,10 +240,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       void setRequest (rest::HttpRequest::HttpRequestType method,
-                       const string& location,
-                       const char* body,
+                       std::string const& location,
+                       char const* body,
                        size_t bodyLength,
-                       const map<string, string>& headerFields);
+                       std::map<std::string, std::string> const& headerFields);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read the http header
@@ -295,6 +295,8 @@ namespace triagens {
 
       triagens::basics::StringBuffer _readBuffer;
 
+      size_t _readBufferOffset;
+
       double _requestTimeout;
 
       bool _warn;
@@ -303,7 +305,7 @@ namespace triagens {
 
       size_t _written;
 
-      string _errorMessage;
+      std::string _errorMessage;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief struct for rewriting location URLs

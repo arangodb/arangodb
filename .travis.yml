@@ -1,5 +1,5 @@
 language: cpp
-compiler: clang
+compiler: g++
 
 before_install:
 # g++4.8.1
@@ -19,8 +19,12 @@ install:
 - if [ "$CXX" == "clang++" ]; then sudo apt-get install --allow-unauthenticated -qq clang-3.4; fi
 - if [ "$CXX" == "clang++" ]; then export CXX="clang++-3.4"; fi
 
+# gdb
+- sudo apt-get -y install gdb
+
 before_script: "bash -c Installation/travisCI/before_script.sh"
 script: "bash -c Installation/travisCI/script.sh"
+after_failure: "bash -c Installation/travisCI/after_failure.sh"
 branches:
   only:
     - master
@@ -31,4 +35,6 @@ branches:
     - 1.4
     - 2.0
     - 2.1
+    - 2.2
     - devel
+

@@ -43,11 +43,6 @@ var ArangoError = arangodb.ArangoError;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the _aqlfunctions collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -144,18 +139,9 @@ var stringifyFunction = function (code, name) {
   throw err;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_aqlfunctions_unregister
@@ -264,6 +250,9 @@ var unregisterFunctionsGroup = function (group) {
 /// and are the same for repeated calls with the same input values). It is not
 /// used at the moment but may be used for optimizations later.
 ///
+/// The registered function is stored in the selected database's system 
+/// collection *_aqlfunctions*.
+///
 /// @EXAMPLES
 ///
 /// ```js
@@ -284,7 +273,9 @@ var registerFunction = function (name, code, isDeterministic) {
   var testCode = "(function() { var callback = " + code + "; return callback; })()";
 
   try {
-    internal.executeScript(testCode, undefined, "(user function " + name + ")");
+    if (internal && internal.hasOwnProperty("executeScript")) {
+      internal.executeScript(testCode, undefined, "(user function " + name + ")");
+    }
   }
   catch (err1) {
     var err = new ArangoError();
@@ -382,27 +373,14 @@ var toArrayFunctions = function (group) {
   return result;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    module exports
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Ahuacatl
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 exports.unregister      = unregisterFunction;
 exports.unregisterGroup = unregisterFunctionsGroup;
 exports.register        = registerFunction;
 exports.toArray         = toArrayFunctions;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

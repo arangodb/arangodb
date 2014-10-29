@@ -151,13 +151,13 @@ namespace triagens {
 /// @brief PBKDF2
 //////////////////////////////////////////////////////////////////////////
 
-      string sslPBKDF2 (char const* salt, size_t saltLength, char const* pass, size_t passLength, int iter, int keyLength);
+      std::string sslPBKDF2 (char const* salt, size_t saltLength, char const* pass, size_t passLength, int iter, int keyLength);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief HMAC
 //////////////////////////////////////////////////////////////////////////
 
-      string sslHMAC (char const* key, size_t keyLength, char const* message, size_t messageLen, Algorithm algorithm);
+      std::string sslHMAC (char const* key, size_t keyLength, char const* message, size_t messageLen, Algorithm algorithm);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief HMAC

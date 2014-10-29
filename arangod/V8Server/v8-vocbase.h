@@ -40,7 +40,12 @@ struct TRI_server_s;
 struct TRI_vocbase_s;
 
 namespace triagens {
+  namespace aql {
+    class QueryRegistry;
+  }
+
   namespace arango {
+    class ApplicationV8;
     class CollectionNameResolver;
     class JSLoader;
   }
@@ -53,9 +58,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse vertex handle from a v8 value (string | object)
 ////////////////////////////////////////////////////////////////////////////////
+
 int TRI_ParseVertex (triagens::arango::CollectionNameResolver const*,
                      TRI_voc_cid_t&,
-                     TRI_voc_key_t&,
+                     std::unique_ptr<char[]>&,
                      v8::Handle<v8::Value> const);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -90,11 +96,13 @@ void TRI_V8ReloadRouting (v8::Handle<v8::Context>);
 /// @brief creates a TRI_vocbase_t global context
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8VocBridge (v8::Handle<v8::Context>,
+void TRI_InitV8VocBridge (triagens::arango::ApplicationV8*,
+                          v8::Handle<v8::Context>,
+                          triagens::aql::QueryRegistry*,
                           struct TRI_server_s*,
                           struct TRI_vocbase_s*,
                           triagens::arango::JSLoader*,
-                          const size_t);
+                          size_t);
 
 #endif
 

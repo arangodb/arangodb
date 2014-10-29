@@ -47,6 +47,10 @@ struct TRI_server_s;
 struct TRI_vocbase_s;
 
 namespace triagens {
+  namespace aql {
+    class QueryRegistry;
+  }
+
   namespace basics {
     class Thread;
   }
@@ -159,7 +163,7 @@ namespace triagens {
 /// @brief name
 ////////////////////////////////////////////////////////////////////////////////
 
-          string _name;
+          std::string _name;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief identifier
@@ -191,7 +195,7 @@ namespace triagens {
 /// Caller must hold the _contextCondition.
 ////////////////////////////////////////////////////////////////////////////////
 
-          bool addGlobalContextMethod (string const&);
+          bool addGlobalContextMethod (std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes all global methods
@@ -205,7 +209,7 @@ namespace triagens {
 /// @brief executes the cancelation cleanup
 ////////////////////////////////////////////////////////////////////////////////
 
-            void handleCancelationCleanup ();
+          void handleCancelationCleanup ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief mutex to protect _globalMethods
@@ -249,6 +253,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ApplicationV8 (struct TRI_server_s*,
+                       triagens::aql::QueryRegistry*,
                        rest::ApplicationScheduler*,
                        rest::ApplicationDispatcher*);
 
@@ -309,7 +314,7 @@ namespace triagens {
 /// @brief adds a global context functions to be executed asap
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool addGlobalContextMethod (string const&);
+        bool addGlobalContextMethod (std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief runs the garbage collection
@@ -341,7 +346,7 @@ namespace triagens {
 /// @brief defines a double constant
 ////////////////////////////////////////////////////////////////////////////////
 
-        void defineDouble (const string& name, double value) {
+        void defineDouble (const std::string& name, double value) {
           _definedDoubles[name] = value;
         }
 
@@ -367,9 +372,9 @@ namespace triagens {
 /// @brief prepares named contexts
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool prepareNamedContexts (const string& name,
+        bool prepareNamedContexts (const std::string& name,
                                    size_t concurrency,
-                                   const string& worker);
+                                   const std::string& worker);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        ApplicationFeature methods
@@ -381,7 +386,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setupOptions (map<string, basics::ProgramOptionsDescription>&);
+        void setupOptions (std::map<std::string, basics::ProgramOptionsDescription>&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -429,29 +434,37 @@ namespace triagens {
 /// @brief prepares a V8 instance
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool prepareV8Instance (const string& name, size_t i, bool useActions);
+        bool prepareV8Instance (const std::string& name, size_t i, bool useActions);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prepares the V8 server
 ////////////////////////////////////////////////////////////////////////////////
 
-        void prepareV8Server (const string& name, size_t i, const string& startupFile);
+        void prepareV8Server (const std::string& name, size_t i, const std::string& startupFile);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shut downs a V8 instances
+/// @brief shuts down a V8 instance
 ////////////////////////////////////////////////////////////////////////////////
 
-        void shutdownV8Instance (const string& name, size_t i);
+        void shutdownV8Instance (const std::string& name, size_t i);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
+
+      private:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief server object
 ////////////////////////////////////////////////////////////////////////////////
 
         struct TRI_server_s* _server;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief query registry object
+////////////////////////////////////////////////////////////////////////////////
+
+        triagens::aql::QueryRegistry* _queryRegistry;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief path to the directory containing the startup scripts
@@ -462,7 +475,7 @@ namespace triagens {
 /// bootstraping.
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _startupPath;
+        std::string _startupPath;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief semicolon separated list of application directories
@@ -472,7 +485,7 @@ namespace triagens {
 /// Multiple paths can be specified separated with commas.
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _appPath;
+        std::string _appPath;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief semicolon separated list of application directories
@@ -483,7 +496,7 @@ namespace triagens {
 /// this option for production.
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _devAppPath;
+        std::string _devAppPath;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief use actions
@@ -561,7 +574,7 @@ namespace triagens {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _v8Options;
+        std::string _v8Options;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief V8 startup loader
@@ -579,13 +592,13 @@ namespace triagens {
 /// @brief number of instances to create
 ////////////////////////////////////////////////////////////////////////////////
 
-        map<std::string, size_t> _nrInstances;
+        std::map<std::string, size_t> _nrInstances;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief V8 contexts
 ////////////////////////////////////////////////////////////////////////////////
 
-        map<std::string, V8Context**> _contexts;
+        std::map<std::string, V8Context**> _contexts;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief V8 contexts queue lock
@@ -597,19 +610,19 @@ namespace triagens {
 /// @brief V8 free contexts
 ////////////////////////////////////////////////////////////////////////////////
 
-        map<std::string, std::vector<V8Context*>> _freeContexts;
+        std::map<std::string, std::vector<V8Context*>> _freeContexts;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief V8 free contexts
 ////////////////////////////////////////////////////////////////////////////////
 
-        map<std::string, std::vector<V8Context*>> _dirtyContexts;
+        std::map<std::string, std::vector<V8Context*>> _dirtyContexts;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief V8 busy contexts
 ////////////////////////////////////////////////////////////////////////////////
 
-        map<std::string, std::set<V8Context*>> _busyContexts;
+        std::map<std::string, std::set<V8Context*>> _busyContexts;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown in progress

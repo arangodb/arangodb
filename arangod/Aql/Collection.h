@@ -31,6 +31,7 @@
 #define ARANGODB_AQL_COLLECTION_H 1
 
 #include "Basics/Common.h"
+#include "Aql/Index.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
@@ -52,24 +53,31 @@ namespace triagens {
       Collection (Collection const&) = delete;
       Collection () = delete;
       
-      Collection (std::string const& name,
-                  struct TRI_vocbase_s* vocbase,
-                  TRI_transaction_type_e accessType) 
-        : name(name),
-          vocbase(vocbase),
-          collection(nullptr),
-          accessType(accessType) {
-          
-        TRI_ASSERT(! name.empty());
-        TRI_ASSERT(vocbase != nullptr);
-      }
+      Collection (std::string const&,
+                  struct TRI_vocbase_s*,
+                  TRI_transaction_type_e);
       
-      ~Collection () {
-      }
+      ~Collection ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the current shard 
+////////////////////////////////////////////////////////////////////////////////
+
+      inline void setCurrentShard (std::string const& shard) {
+        currentShard = shard;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove the current shard
+////////////////////////////////////////////////////////////////////////////////
+      
+      inline void resetCurrentShard () {
+        currentShard = "";
+      }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the collection id
@@ -78,6 +86,21 @@ namespace triagens {
       inline TRI_voc_cid_t cid () const {
         TRI_ASSERT(collection != nullptr);
         return collection->_cid;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the name of the collection, translated for the sharding
+/// case. this will return currentShard if it is set, and name otherwise
+////////////////////////////////////////////////////////////////////////////////
+
+      std::string getName () const {
+        if (! currentShard.empty()) {
+          // sharding case: return the current shard name instead of the collection name
+          return currentShard;
+        }
+
+        // non-sharding case: simply return the name
+        return name;
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -111,30 +134,80 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief count the LOCAL number of documents in the collection
-/// TODO: must be adjusted for clusters
 ////////////////////////////////////////////////////////////////////////////////
 
-      size_t count () {
-        if (numDocuments == UNINITIALIZED) {
-          auto document = documentCollection();
-          // cache the result
-          numDocuments = static_cast<int64_t>(document->size(document));
-        }
+      size_t count () const;
 
-        return static_cast<size_t>(numDocuments);
-      }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the collection's plan id
+////////////////////////////////////////////////////////////////////////////////
+
+      TRI_voc_cid_t getPlanId() const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the shard ids of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+      std::vector<std::string> shardIds () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the shard keys of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+      std::vector<std::string> shardKeys () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the indexes of the collection
+////////////////////////////////////////////////////////////////////////////////
+
+      std::vector<Index*> getIndexes (); 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return an index by its id
+////////////////////////////////////////////////////////////////////////////////
+  
+      Index* getIndex (TRI_idx_iid_t) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return an index by its id
+////////////////////////////////////////////////////////////////////////////////
+  
+      Index* getIndex (std::string const&) const;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+    private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fills the index list for the collection
+////////////////////////////////////////////////////////////////////////////////
+
+      void fillIndexes () const;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+    
+    private:
+
+      std::string                  currentShard;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables
 // -----------------------------------------------------------------------------
 
-      std::string const       name;
-      TRI_vocbase_t*          vocbase;
-      TRI_vocbase_col_t*      collection;
-      TRI_transaction_type_e  accessType;
-      int64_t                 numDocuments = UNINITIALIZED;
+    public:
 
-      static int64_t const    UNINITIALIZED = -1;
+      std::string const            name;
+      TRI_vocbase_t*               vocbase;
+      TRI_vocbase_col_t*           collection;
+      TRI_transaction_type_e       accessType;
+      std::vector<Index*> mutable  indexes;
+      int64_t mutable              numDocuments = UNINITIALIZED;
+
+      static int64_t const         UNINITIALIZED = -1;
     };
 
   }

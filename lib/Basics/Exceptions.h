@@ -143,8 +143,8 @@ namespace triagens {
 
     class TriagensError : public virtual std::exception {
       public:
-        TriagensError (string const& type,
-                       string const& details,
+        TriagensError (std::string const& type,
+                       std::string const& details,
                        char const* file,
                        int line);
 
@@ -154,10 +154,10 @@ namespace triagens {
         char const * what () const throw();
 
       protected:
-        string _message;
-        string _type;
-        string _details;
-        string _file;
+        std::string _message;
+        std::string _type;
+        std::string _details;
+        std::string _file;
         int _line;
     };
 
@@ -167,7 +167,7 @@ namespace triagens {
 
     class InternalError : public TriagensError {
       public:
-        InternalError (string const& details, char const* file, int line);
+        InternalError (std::string const& details, char const* file, int line);
         InternalError (std::exception const& ex, char const* file, int line);
     };
 
@@ -186,10 +186,10 @@ namespace triagens {
 
     class FileError : public TriagensError {
       public:
-        FileError (string const& func,
-                   string const& details,
-                   string const& filename,
-                   string const& mode,
+        FileError (std::string const& func,
+                   std::string const& details,
+                   std::string const& filename,
+                   std::string const& mode,
                    int error,
                    char const* file,
                    int line);
@@ -197,12 +197,12 @@ namespace triagens {
         ~FileError () throw ();
 
       public:
-        void setFilename (string const&);
+        void setFilename (std::string const&);
 
       protected:
-        string _func;
-        string _filename;
-        string _mode;
+        std::string _func;
+        std::string _filename;
+        std::string _mode;
         int _error;
     };
 
@@ -212,7 +212,7 @@ namespace triagens {
 
     struct ParseError : public TriagensError {
       public:
-        ParseError (string const& details,
+        ParseError (std::string const& details,
                     int lineNumber,
                     char const* file,
                     int line);
@@ -230,17 +230,17 @@ namespace triagens {
 
     struct ParameterError : public TriagensError {
       public:
-        ParameterError (string const& parameter,
-                        string const& details,
-                        string const& func,
+        ParameterError (std::string const& parameter,
+                        std::string const& details,
+                        std::string const& func,
                         char const* file,
                         int line);
 
         ~ParameterError () throw ();
 
       protected:
-        string _parameter;
-        string _func;
+        std::string _parameter;
+        std::string _func;
     };
   }
 }

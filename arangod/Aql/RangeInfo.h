@@ -213,8 +213,7 @@ namespace triagens {
           parameters.add(_bound.copy());
           size_t nr = parameters.size();
 
-          return TRI_CreateIndexOperator(op, nullptr, nullptr, parameters.steal(),
-              shaper, nullptr, nr, nullptr);
+          return TRI_CreateIndexOperator(op, nullptr, nullptr, parameters.steal(), shaper, nr);
         } 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -311,7 +310,7 @@ namespace triagens {
 /// the pointer here.
 ////////////////////////////////////////////////////////////////////////////////
 
-        mutable AstNode const* _expressionAst;
+        AstNode mutable const* _expressionAst;
     };
 
 ////////////////////////////////////////////////////////////////////////////////

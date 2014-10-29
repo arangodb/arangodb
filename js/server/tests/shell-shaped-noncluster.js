@@ -29,6 +29,7 @@ var jsunity = require("jsunity");
 
 var arangodb = require("org/arangodb");
 var db = arangodb.db;
+var internal = require("internal");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        ShapedJson
@@ -57,7 +58,7 @@ function DocumentShapedJsonSuite () {
       }
 
       // wait until the documents are actually shaped json
-      require("internal").wal.flush(true, true);
+      internal.wal.flush(true, true);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -66,6 +67,46 @@ function DocumentShapedJsonSuite () {
 
     tearDown : function () {
       db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief save a date object
+////////////////////////////////////////////////////////////////////////////////
+
+    testDate : function () {
+      var dt = new Date();
+      c.save({ _key: "date", value: dt });
+      var doc = c.document("date");
+      assertTrue(doc.hasOwnProperty("value"));
+      assertEqual(dt.toJSON(), doc.value);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief save a regexp object
+////////////////////////////////////////////////////////////////////////////////
+
+    testRegexp : function () {
+      try {
+        c.save({ _key: "date", regexp : /foobar/ });
+        fail();
+      }
+      catch (err) {
+        assertEqual(internal.errors.ERROR_ARANGO_SHAPER_FAILED.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief save a function object
+////////////////////////////////////////////////////////////////////////////////
+
+    testFunction : function () {
+      try {
+        c.save({ _key: "date", func : function () { } });
+        fail();
+      }
+      catch (err) {
+        assertEqual(internal.errors.ERROR_ARANGO_SHAPER_FAILED.code, err.errorNum);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -492,6 +533,53 @@ function DocumentShapedJsonSuite () {
         assertTrue(doc.hasOwnProperty("one"));
         assertTrue(doc.one.hasOwnProperty("two"));
       }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check access after deletion of documents
+////////////////////////////////////////////////////////////////////////////////
+
+    testAccessAfterDeletion : function () {
+      var docs = [ ];
+      for (var i = 0; i < 100; ++i) {
+        docs[i] = c.document("test" + i);
+      }
+
+      c.truncate();
+      c.rotate();
+
+      internal.wait(5);
+        
+      for (var i = 0; i < 100; ++i) {
+        assertEqual(cn + "/test" + i, docs[i]._id);
+        assertEqual("test" + i, docs[i]._key);
+        assertEqual("Test" + i, docs[i].text);
+        assertEqual([ i ], docs[i].values);
+        assertEqual({ two: { three: [ 1 ] } }, docs[i].one);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check access after dropping collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testAccessAfterDropping : function () {
+      var docs = [ ];
+      for (var i = 0; i < 100; ++i) {
+        docs[i] = c.document("test" + i);
+      }
+
+      c.drop();
+
+      internal.wait(5);
+        
+      for (var i = 0; i < 100; ++i) {
+        assertEqual(cn + "/test" + i, docs[i]._id);
+        assertEqual("test" + i, docs[i]._key);
+        assertEqual("Test" + i, docs[i].text);
+        assertEqual([ i ], docs[i].values);
+        assertEqual({ two: { three: [ 1 ] } }, docs[i].one);
+      }
     }
 
   };
@@ -520,7 +608,7 @@ function EdgeShapedJsonSuite () {
       }
 
       // wait until the documents are actually shaped json
-      require("internal").wal.flush(true, true);
+      internal.wal.flush(true, true);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -671,7 +759,7 @@ function GeoShapedJsonSuite () {
 
 
       // wait until the documents are actually shaped json
-      require("internal").wal.flush(true, true);
+      internal.wal.flush(true, true);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

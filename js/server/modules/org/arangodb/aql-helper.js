@@ -515,7 +515,7 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
     plans[i + 1] = {'plan': allPlans.plans[i]};
   }
   // Now execute each of these variations.
-  for (i=0; i < plans.length; i++) {
+  for (i = 0; i < plans.length; i++) {
     if (debug) {
       require("internal").print("Executing Plan No: " + i + "\n");
     }
@@ -531,6 +531,9 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
     }
 
     results[i] = AQL_EXECUTEJSON(plans[i].plan, paramNone);
+    // ignore these statistics for comparisons
+    delete results[i].stats.scannedFull;
+    delete results[i].stats.scannedIndex;
 
     if (debug) {
       require("internal").print("\n" + i + " DONE\n");
@@ -541,6 +544,18 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
     require("internal").print("done\n");
   }
   return {'plans': plans, 'results': results};
+}
+
+function removeAlwaysOnClusterRules (rules) {
+  var pos;
+  var copy = [];
+  for (pos = 0; pos < rules.length; pos++) {
+    if (rules[pos] !== "scatter-in-cluster" &&
+        rules[pos] !== "distribute-in-cluster") {
+      copy.push(rules[pos]);
+    }
+  }
+  return copy;
 }
 
 // -----------------------------------------------------------------------------
@@ -564,6 +579,8 @@ exports.getCompactPlan                     = getCompactPlan;
 exports.findExecutionNodes                 = findExecutionNodes;
 exports.findReferencedNodes                = findReferencedNodes;
 exports.getQueryMultiplePlansAndExecutions = getQueryMultiplePlansAndExecutions;
+exports.removeAlwaysOnClusterRules         = removeAlwaysOnClusterRules;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

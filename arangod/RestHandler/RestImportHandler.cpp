@@ -181,7 +181,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
     char const* from = extractJsonStringValue(json, TRI_VOC_ATTRIBUTE_FROM);
     char const* to   = extractJsonStringValue(json, TRI_VOC_ATTRIBUTE_TO);
 
-    if (from == 0 || to == 0) {
+    if (from == nullptr || to == nullptr) {
       errorMsg = positionise(i) + "missing '_from' or '_to' attribute";
 
       return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
@@ -206,10 +206,10 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
       res = (res1 != TRI_ERROR_NO_ERROR ? res1 : res2);
     }
 
-    if (edge._fromKey != 0) {
+    if (edge._fromKey != nullptr) {
       TRI_Free(TRI_CORE_MEM_ZONE, edge._fromKey);
     }
-    if (edge._toKey != 0) {
+    if (edge._toKey != nullptr) {
       TRI_Free(TRI_CORE_MEM_ZONE, edge._toKey);
     }
   }
@@ -617,9 +617,8 @@ bool RestImportHandler::createFromJson (string const& type) {
     return false;
   }
 
-
   // find and load collection given by name or identifier
-  RestImportTransaction trx(_vocbase, collection);
+  RestImportTransaction trx(new StandaloneTransactionContext(), _vocbase, collection);
 
   // .............................................................................
   // inside write transaction
@@ -646,35 +645,54 @@ bool RestImportHandler::createFromJson (string const& type) {
     // each line is a separate JSON document
     char const* ptr = _request->body();
     char const* end = ptr + _request->bodySize();
-    string line;
     size_t i = 0;
+    string errorMsg;
 
     while (ptr < end) {
       // read line until done
       i++;
+        
+      TRI_ASSERT(ptr != nullptr);
+
+      // trim whitespace at start of line
+      while (ptr < end && 
+             (*ptr == ' ' || *ptr == '\t' || *ptr == '\r')) {
+        ++ptr;
+      }
+
+      if (ptr == end || *ptr == '\0') {
+        break;
+      }
+
+      // now find end of line
       char const* pos = strchr(ptr, '\n');
 
-      if (pos == 0) {
-        line.assign(ptr, (size_t) (end - ptr));
-        ptr = end;
-      }
-      else {
-        line.assign(ptr, (size_t) (pos - ptr));
-        ptr = pos + 1;
-      }
+      TRI_json_t* json = nullptr;
 
-      StringUtils::trimInPlace(line, "\r\n\t ");
-      if (line.length() == 0) {
+      if (pos == ptr) {
+        // line starting with \n, i.e. empty line
+        ptr = pos + 1;
         ++result._numEmpty;
         continue;
       }
+      else if (pos != nullptr) {
+        // non-empty line
+        *(const_cast<char*>(pos)) = '\0';
+        TRI_ASSERT(ptr != nullptr);
+        json = parseJsonLine(ptr);
+        ptr = pos + 1;
+      }
+      else {
+        // last-line, non-empty
+        TRI_ASSERT(pos == nullptr);
+        TRI_ASSERT(ptr != nullptr);
+        json = parseJsonLine(ptr);
+        ptr = end;
+      }
 
-      TRI_json_t* json = parseJsonLine(line);
-
-      string errorMsg;
       res = handleSingleDocument(trx, json, errorMsg, isEdgeCollection, waitForSync, i);
 
-      if (json != 0) {
+      if (json != nullptr) {
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       }
 
@@ -696,10 +714,10 @@ bool RestImportHandler::createFromJson (string const& type) {
 
   else {
     // the entire request body is one JSON document
-    TRI_json_t* documents = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, _request->body(), 0);
+    TRI_json_t* documents = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, _request->body(), nullptr);
 
     if (! TRI_IsListJson(documents)) {
-      if (documents != 0) {
+      if (documents != nullptr) {
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, documents);
       }
 
@@ -709,12 +727,12 @@ bool RestImportHandler::createFromJson (string const& type) {
       return false;
     }
 
+    string errorMsg;
     size_t const n = documents->_value._objects._length;
 
     for (size_t i = 0; i < n; ++i) {
-      TRI_json_t const* json = (TRI_json_t const*) TRI_AtVector(&documents->_value._objects, i);
+      TRI_json_t const* json = static_cast<TRI_json_t const*>(TRI_AtVector(&documents->_value._objects, i));
 
-      string errorMsg;
       res = handleSingleDocument(trx, json, errorMsg, isEdgeCollection, waitForSync, i + 1);
 
       if (res == TRI_ERROR_NO_ERROR) {
@@ -1034,26 +1052,35 @@ bool RestImportHandler::createFromKeyValueList () {
     lineNumber = StringUtils::int64(lineNumValue);
   }
 
-  size_t start = 0;
-  string body(_request->body(), _request->bodySize());
-  size_t next = body.find('\n', start);
+  char const* current = _request->body();
+  char const* bodyEnd = current + _request->bodySize();
 
-  if (next == string::npos) {
+  // process header
+  char const* next = strchr(current, '\n');
+
+  if (next == nullptr) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "no JSON list found in second line");
     return false;
   }
-
-  string line = body.substr(start, next);
-  StringUtils::trimInPlace(line, "\r\n\t ");
-
-  // get first line
-  TRI_json_t* keys = 0;
-
-  if (line != "") {
-    keys = parseJsonLine(line);
+  
+  char const* lineStart = current;
+  char const* lineEnd   = next;
+    
+  // trim line
+  while (lineStart < bodyEnd &&
+         (*lineStart == ' ' || *lineStart == '\t' || *lineStart == '\r' || *lineStart == '\n')) {
+    ++lineStart;
   }
+    
+  while (lineEnd > lineStart &&
+         (*(lineEnd - 1) == ' ' || *(lineEnd - 1) == '\t' || *(lineEnd - 1) == '\r' || *(lineEnd - 1) == '\n')) {
+    --lineEnd;
+  }
+
+  *(const_cast<char*>(lineEnd)) = '\0';
+  TRI_json_t* keys = parseJsonLine(lineStart, lineEnd);
 
   if (! checkKeys(keys)) {
     LOG_WARNING("no JSON string list in first line found");
@@ -1061,17 +1088,17 @@ bool RestImportHandler::createFromKeyValueList () {
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "no JSON string list in first line found");
 
-    if (keys != 0) {
+    if (keys != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
     }
     return false;
   }
 
-  start = next + 1;
+  current = next + 1;
 
 
   // find and load collection given by name or identifier
-  RestImportTransaction trx(_vocbase, collection);
+  RestImportTransaction trx(new StandaloneTransactionContext(), _vocbase, collection);
 
   // .............................................................................
   // inside write transaction
@@ -1097,35 +1124,51 @@ bool RestImportHandler::createFromKeyValueList () {
 
   size_t i = (size_t) lineNumber;
 
-  while (next != string::npos && start < body.length()) {
+  while (current != nullptr && current < bodyEnd) {
     i++;
 
-    next = body.find('\n', start);
+    next = static_cast<char const*>(memchr(current, '\n', bodyEnd - current));
 
-    if (next == string::npos) {
-      line = body.substr(start);
+    char const* lineStart = current;
+    char const* lineEnd   = next;
+
+    if (next == nullptr) {
+      // reached the end
+      lineEnd = bodyEnd;
+      current = nullptr;
     }
     else {
-      line = body.substr(start, next - start);
-      start = next + 1;
+      // got more to read
+      current = next + 1;
+      *(const_cast<char*>(lineEnd)) = '\0';
     }
 
-    StringUtils::trimInPlace(line, "\r\n\t ");
-    if (line.length() == 0) {
+    // trim line
+    while (lineStart < bodyEnd &&
+           (*lineStart == ' ' || *lineStart == '\t' || *lineStart == '\r' || *lineStart == '\n')) {
+      ++lineStart;
+    }
+    
+    while (lineEnd > lineStart &&
+           (*(lineEnd - 1) == ' ' || *(lineEnd - 1) == '\t' || *(lineEnd - 1) == '\r' || *(lineEnd - 1) == '\n')) {
+      --lineEnd;
+    }
+
+    if (lineStart == lineEnd) {
       ++result._numEmpty;
       continue;
     }
 
-    TRI_json_t* values = parseJsonLine(line);
+    TRI_json_t* values = parseJsonLine(lineStart, lineEnd);
 
-    if (values != 0) {
+    if (values != nullptr) {
       // build the json object from the list
       string errorMsg;
 
-      TRI_json_t* json = createJsonObject(keys, values, errorMsg, line, i);
+      TRI_json_t* json = createJsonObject(keys, values, errorMsg, i);
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, values);
 
-      if (json != 0) {
+      if (json != nullptr) {
         res = handleSingleDocument(trx, json, errorMsg, isEdgeCollection, waitForSync, i);
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       }
@@ -1214,10 +1257,19 @@ void RestImportHandler::generateDocumentsCreated (RestImportResult const& result
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* RestImportHandler::parseJsonLine (string const& line) {
-  char* errmsg = 0;
-  TRI_json_t* json = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, line.c_str(), &errmsg);
+  return parseJsonLine(line.c_str(), line.c_str() + line.size());
+}
 
-  if (errmsg != 0) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parse a single document line
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* RestImportHandler::parseJsonLine (char const* start,
+                                              char const* end) {
+  char* errmsg = nullptr;
+  TRI_json_t* json = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, start, &errmsg);
+
+  if (errmsg != nullptr) {
     // must free this error message, otherwise we'll have a memleak
     TRI_FreeString(TRI_CORE_MEM_ZONE, errmsg);
   }
@@ -1231,26 +1283,25 @@ TRI_json_t* RestImportHandler::parseJsonLine (string const& line) {
 TRI_json_t* RestImportHandler::createJsonObject (TRI_json_t const* keys,
                                                  TRI_json_t const* values,
                                                  string& errorMsg,
-                                                 string const& line,
                                                  size_t lineNumber) {
 
   if (values->_type != TRI_JSON_LIST) {
     errorMsg = positionise(lineNumber) + "no valid JSON list data";
-    return 0;
+    return nullptr;
   }
 
   size_t const n = keys->_value._objects._length;
 
   if (n !=  values->_value._objects._length) {
     errorMsg = positionise(lineNumber) + "wrong number of JSON values";
-    return 0;
+    return nullptr;
   }
 
   TRI_json_t* result = TRI_CreateArray2Json(TRI_UNKNOWN_MEM_ZONE, n);
 
-  if (result == 0) {
+  if (result == nullptr) {
     LOG_ERROR("out of memory");
-    return 0;
+    return nullptr;
   }
 
   for (size_t i = 0;  i < n;  ++i) {
@@ -1270,7 +1321,7 @@ TRI_json_t* RestImportHandler::createJsonObject (TRI_json_t const* keys,
 /// @brief validate keys
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestImportHandler::checkKeys (TRI_json_t const* keys) {
+bool RestImportHandler::checkKeys (TRI_json_t const* keys) const {
   if (! TRI_IsListJson(keys)) {
     return false;
   }
@@ -1282,7 +1333,7 @@ bool RestImportHandler::checkKeys (TRI_json_t const* keys) {
   }
 
   for (size_t i = 0;  i < n;  ++i) {
-    TRI_json_t* key = (TRI_json_t*) TRI_AtVector(&keys->_value._objects, i);
+    TRI_json_t const* key = static_cast<TRI_json_t* const>(TRI_AtVector(&keys->_value._objects, i));
 
     if (! JsonHelper::isString(key)) {
       return false;

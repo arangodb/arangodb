@@ -34,8 +34,6 @@
 
 #include <v8.h>
 
-#include "Basics/ReadWriteLock.h"
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
@@ -44,6 +42,7 @@ struct TRI_vocbase_s;
 
 namespace triagens {
   namespace arango {
+    class ApplicationV8;
     class JSLoader;
   }
 }
@@ -701,6 +700,12 @@ typedef struct TRI_v8_global_s {
   v8::Persistent<v8::String> ValueKey;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief "version" key
+////////////////////////////////////////////////////////////////////////////////
+
+  v8::Persistent<v8::String> VersionKey;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief "waitForSync" key name
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -765,16 +770,16 @@ typedef struct TRI_v8_global_s {
   v8::Handle<v8::Value> _currentResponse;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief currently running transaction
+/// @brief information about the currently running transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-  void* _currentTransaction;
+  void* _transactionContext;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief resolver of currently running transaction
+/// @brief query registry
 ////////////////////////////////////////////////////////////////////////////////
 
-  void* _resolver;
+  void* _queryRegistry;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief pointer to the server (TRI_server_t*)
@@ -806,6 +811,12 @@ typedef struct TRI_v8_global_s {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief pointer to the context dealer (ApplicationV8*)
+////////////////////////////////////////////////////////////////////////////////
+
+  triagens::arango::ApplicationV8* _applicationV8;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief pointer to the startup loader (JSLoader*)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -830,14 +841,20 @@ TRI_v8_global_t;
 TRI_v8_global_t* TRI_CreateV8Globals(v8::Isolate*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the global context
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_v8_global_t* TRI_GetV8Globals(v8::Isolate*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a method to the prototype of an object
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename TARGET>
 void TRI_V8_AddProtoMethod (TARGET tpl,
-                            const char* const name,
+                            char const* name,
                             v8::InvocationCallback callback,
-                            const bool isHidden = false) {
+                            bool isHidden = false) {
   // hidden method
   if (isHidden) {
     tpl->PrototypeTemplate()->Set(TRI_V8_SYMBOL(name),
@@ -858,9 +875,9 @@ void TRI_V8_AddProtoMethod (TARGET tpl,
 
 template <typename TARGET>
 inline void TRI_V8_AddMethod (TARGET tpl,
-                              const char* const name,
+                              char const* name,
                               v8::Handle<v8::FunctionTemplate> callback,
-                              const bool isHidden = false) {
+                              bool isHidden = false) {
   // hidden method
   if (isHidden) {
     tpl->Set(TRI_V8_SYMBOL(name),
@@ -877,9 +894,9 @@ inline void TRI_V8_AddMethod (TARGET tpl,
 
 template <typename TARGET>
 inline void TRI_V8_AddMethod (TARGET tpl,
-                              const char* const name,
+                              char const* name,
                               v8::InvocationCallback callback,
-                              const bool isHidden = false) {
+                              bool isHidden = false) {
   // hidden method
   if (isHidden) {
     tpl->Set(TRI_V8_SYMBOL(name),
@@ -898,7 +915,7 @@ template <>
 inline void TRI_V8_AddMethod (v8::Handle<v8::FunctionTemplate> tpl,
                               const char* const name,
                               v8::InvocationCallback callback,
-                              const bool isHidden) {
+                              bool isHidden) {
   TRI_V8_AddMethod(tpl->GetFunction(), name, callback, isHidden);
 }
 
@@ -907,34 +924,34 @@ inline void TRI_V8_AddMethod (v8::Handle<v8::FunctionTemplate> tpl,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AddMethodVocbase (v8::Handle<v8::ObjectTemplate> tpl,
-                           const char* const name,
+                           char const* name,
                            v8::Handle<v8::Value>(*func)(v8::Arguments const&),
-                           const bool isHidden = false);
+                           bool isHidden = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a global function to the given context
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
-                                   const char* const name,
+                                   char const* name,
                                    v8::Handle<v8::Value>(*func)(v8::Arguments const&),
-                                   const bool isHidden = false);
+                                   bool isHidden = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a global function to the given context
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
-                                   const char* const name,
+                                   char const* name,
                                    v8::Handle<v8::Function> func,
-                                   const bool isHidden = false);
+                                   bool isHidden = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a global read-only variable to the given context
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AddGlobalVariableVocbase (v8::Handle<v8::Context> context,
-                                   const char* const name,
+                                   char const* name,
                                    v8::Handle<v8::Value> value);
 
 #endif

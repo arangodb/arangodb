@@ -231,7 +231,7 @@ void LogfileManager::setupOptions (std::map<std::string, triagens::basics::Progr
     ("wal.historic-logfiles", &_historicLogfiles, "maximum number of historic logfiles to keep after collection")
     ("wal.ignore-logfile-errors", &_ignoreLogfileErrors, "ignore logfile errors. this will read recoverable data from corrupted logfiles but ignore any unrecoverable data")
     ("wal.ignore-recovery-errors", &_ignoreRecoveryErrors, "continue recovery even if re-applying operations fails")
-    ("wal.logfile-size", &_filesize, "size of each logfile")
+    ("wal.logfile-size", &_filesize, "size of each logfile (in bytes)")
     ("wal.open-logfiles", &_maxOpenLogfiles, "maximum number of parallel open logfiles")
     ("wal.reserve-logfiles", &_reserveLogfiles, "maximum number of reserve logfiles to maintain")
     ("wal.slots", &_numberOfSlots, "number of logfile slots to use")
@@ -523,8 +523,8 @@ void LogfileManager::stop () {
   // set WAL to read-only mode
   allowWrites(false);
 
-  // TODO: decide whether we want to flush at shutdown
-  // this->flush(true, true, false);
+  // do a final flush at shutdown
+  this->flush(true, true, false);
 
   // stop threads
   LOG_TRACE("stopping remover thread");
@@ -567,7 +567,7 @@ bool LogfileManager::registerTransaction (TRI_voc_tid_t transactionId) {
   {
     WRITE_LOCKER(_logfilesLock);
 
-    _transactions.insert(make_pair(transactionId, make_pair(_lastCollectedId, _lastSealedId)));
+    _transactions.emplace(std::make_pair(transactionId, std::make_pair(_lastCollectedId, _lastSealedId)));
     TRI_ASSERT(_lastCollectedId <= _lastSealedId);
   }
 
@@ -724,14 +724,9 @@ void LogfileManager::signalSync () {
 /// @brief allocate space in a logfile for later writing
 ////////////////////////////////////////////////////////////////////////////////
 
-SlotInfo LogfileManager::allocate (void const* src,
-                                   uint32_t size) {
+SlotInfo LogfileManager::allocate (uint32_t size) {
   if (! _allowWrites) {
     // no writes allowed
-#ifdef TRI_ENABLE_MAINTAINER_MODE    
-    TRI_ASSERT(false);
-#endif
-     
     return SlotInfo(TRI_ERROR_ARANGO_READ_ONLY);
   }
 
@@ -755,8 +750,7 @@ SlotInfo LogfileManager::allocate (void const* src,
 /// convenience function.
 ////////////////////////////////////////////////////////////////////////////////
 
-SlotInfo LogfileManager::allocate (void const* src,
-                                   uint32_t size,
+SlotInfo LogfileManager::allocate (uint32_t size,
                                    TRI_voc_cid_t cid,
                                    TRI_shape_sid_t sid,
                                    uint32_t legendOffset,
@@ -813,7 +807,7 @@ SlotInfoCopy LogfileManager::allocateAndWrite (void* src,
                                                uint32_t legendOffset,
                                                void*& oldLegend) {
 
-  SlotInfo slotInfo = allocate(src, size, cid, sid, legendOffset, oldLegend);
+  SlotInfo slotInfo = allocate(size, cid, sid, legendOffset, oldLegend);
 
   if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
     return SlotInfoCopy(slotInfo.errorCode);
@@ -838,11 +832,16 @@ SlotInfoCopy LogfileManager::allocateAndWrite (void* src,
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write data into the logfile
+/// this is a convenience function that combines allocate, memcpy and finalise
+////////////////////////////////////////////////////////////////////////////////
+
 SlotInfoCopy LogfileManager::allocateAndWrite (void* src,
                                                uint32_t size,
                                                bool waitForSync) {
 
-  SlotInfo slotInfo = allocate(src, size);
+  SlotInfo slotInfo = allocate(size);
 
   if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
     return SlotInfoCopy(slotInfo.errorCode);
@@ -915,16 +914,21 @@ int LogfileManager::flush (bool waitForSync,
   }
 
   if (waitForCollector) {
+    double maxWaitTime = 0.0; // this means wait forever
+    if (_shutdown == 1) {
+      maxWaitTime = 120.0;
+    }
+
     if (res == TRI_ERROR_NO_ERROR) {
       // we need to wait for the collector...
-      this->waitForCollector(lastOpenLogfileId);
+      this->waitForCollector(lastOpenLogfileId, maxWaitTime);
     }
     else if (res == TRI_ERROR_ARANGO_DATAFILE_EMPTY) {
       // current logfile is empty and cannot be collected
       // we need to wait for the collector to collect the previously sealed datafile
 
       if (lastSealedLogfileId > 0) {
-        this->waitForCollector(lastSealedLogfileId);
+        this->waitForCollector(lastSealedLogfileId, maxWaitTime);
       }
     }
   }
@@ -945,7 +949,7 @@ void LogfileManager::relinkLogfile (Logfile* logfile) {
   Logfile::IdType const id = logfile->id();
 
   WRITE_LOCKER(_logfilesLock);
-  _logfiles.insert(make_pair(id, logfile));
+  _logfiles.emplace(std::make_pair(id, logfile));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1183,6 +1187,25 @@ Logfile* LogfileManager::getLogfile (Logfile::IdType id) {
   if (it != _logfiles.end()) {
     return (*it).second;
   }
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a logfile and its status by id
+////////////////////////////////////////////////////////////////////////////////
+
+Logfile* LogfileManager::getLogfile (Logfile::IdType id,
+                                     Logfile::StatusType& status) {
+  READ_LOCKER(_logfilesLock);
+
+  auto it = _logfiles.find(id);
+  if (it != _logfiles.end()) {
+    status = (*it).second->status();
+    return (*it).second;
+  }
+
+  status = Logfile::StatusType::UNKNOWN;
+
   return nullptr;
 }
 
@@ -1438,11 +1461,22 @@ void LogfileManager::removeLogfile (Logfile* logfile,
 /// @brief wait until a specific logfile has been collected
 ////////////////////////////////////////////////////////////////////////////////
 
-void LogfileManager::waitForCollector (Logfile::IdType logfileId) {
+void LogfileManager::waitForCollector (Logfile::IdType logfileId,
+                                       double maxWaitTime) {
+  static const int64_t SingleWaitPeriod = 50 * 1000;
+ 
+  int64_t maxIterations = INT64_MAX; // wait forever
+  if (maxWaitTime > 0.0) {
+    // if specified, wait for a shorter period of time
+    maxIterations = static_cast<int64_t>(maxWaitTime * 1000000.0 / (double) SingleWaitPeriod); 
+    LOG_TRACE("will wait for max. %f seconds for collector to finish", maxWaitTime);
+  }
+
   LOG_TRACE("waiting for collector thread to collect logfile %llu", (unsigned long long) logfileId);
 
   // wait for the collector thread to finish the collection
-  while (true) {
+  int64_t iterations = 0;
+  while (++iterations < maxIterations) {
     {
       READ_LOCKER(_logfilesLock);
 
@@ -1452,7 +1486,7 @@ void LogfileManager::waitForCollector (Logfile::IdType logfileId) {
     }
 
     LOG_TRACE("waiting for collector");
-    usleep(50 * 1000);
+    usleep(SingleWaitPeriod);
   }
 }
 
@@ -1780,7 +1814,7 @@ int LogfileManager::inventory () {
         TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
 
         WRITE_LOCKER(_logfilesLock);
-        _logfiles.insert(make_pair(id, nullptr));
+        _logfiles.emplace(std::make_pair(id, nullptr));
       }
     }
   }
@@ -1911,7 +1945,7 @@ int LogfileManager::createReserveLogfile (uint32_t size) {
   }
 
   WRITE_LOCKER(_logfilesLock);
-  _logfiles.insert(make_pair(id, logfile));
+  _logfiles.emplace(std::make_pair(id, logfile));
 
   return TRI_ERROR_NO_ERROR;
 }

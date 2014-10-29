@@ -731,7 +731,7 @@
       var result;
       if (this.type === 'document') {
         result = this.documentStore.deleteDocument(
-            this.collection.collectionID, this.docid
+          this.collection.collectionID, this.docid
         );
         if (result) {
           //on success
@@ -759,7 +759,7 @@
           $('#documentsTableID').dataTable().fnGetPosition(row)
         );
         $('#documentsTableID').dataTable().fnClearTable();
-          this.collection.getDocuments(this.getDocsCallback.bind(this));
+        this.collection.getDocuments(this.getDocsCallback.bind(this));
         $('#docDeleteModal').modal('hide');
       }
 

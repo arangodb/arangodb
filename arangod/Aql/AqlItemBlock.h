@@ -31,7 +31,8 @@
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
 #include "Aql/AqlValue.h"
-#include "Aql/Types.h"
+#include "Aql/Range.h"
+#include "Aql/types.h"
 #include "VocBase/document-collection.h"
 
 namespace triagens {
@@ -74,11 +75,19 @@ namespace triagens {
         AqlItemBlock (size_t nrItems, 
                       RegisterId nrRegs);
 
+        AqlItemBlock (triagens::basics::Json const& json);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the block
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~AqlItemBlock ();
+        ~AqlItemBlock () {
+          destroy();
+        }
+
+      private:
+
+        void destroy ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -107,7 +116,7 @@ namespace triagens {
         if (! value.isEmpty()) {
           auto it = _valueCount.find(value);
           if (it == _valueCount.end()) {
-            _valueCount.insert(make_pair(value, 1));
+            _valueCount.emplace(std::make_pair(value, 1));
           }
           else {
             it->second++;
@@ -220,7 +229,7 @@ namespace triagens {
 /// @brief getter for _data
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline vector<AqlValue>& getData () {
+        inline std::vector<AqlValue>& getData () {
           return _data;
         }
 
@@ -228,7 +237,7 @@ namespace triagens {
 /// @brief getter for _docColls
 ////////////////////////////////////////////////////////////////////////////////
 
-        vector<TRI_document_collection_t const*>& getDocumentCollections () {
+        std::vector<TRI_document_collection_t const*>& getDocumentCollections () {
           return _docColls;
         }
 
@@ -243,7 +252,7 @@ namespace triagens {
 /// necessary, using the reference count.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void clearRegisters (std::unordered_set<RegisterId>& toClear);
+        void clearRegisters (std::unordered_set<RegisterId> const& toClear);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief slice/clone, this does a deep copy of all entries
@@ -269,7 +278,7 @@ namespace triagens {
 /// to which our AqlValues point will vanish.
 ////////////////////////////////////////////////////////////////////////////////
 
-        AqlItemBlock* steal (vector<size_t>& chosen, size_t from, size_t to);
+        AqlItemBlock* steal (std::vector<size_t>& chosen, size_t from, size_t to);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief concatenate multiple blocks, note that the new block now owns all
@@ -284,8 +293,7 @@ namespace triagens {
 /// be used to recreate the AqlItemBlock via the Json constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        triagens::basics::Json toJson (AQL_TRANSACTION_V8* trx,
-                          TRI_document_collection_t const* document) const;
+        triagens::basics::Json toJson (triagens::arango::AqlTransaction* trx) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

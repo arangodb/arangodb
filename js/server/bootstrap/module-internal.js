@@ -5,7 +5,8 @@
   REPLICATION_LOGGER_STATE, REPLICATION_LOGGER_CONFIGURE, REPLICATION_SERVER_ID,
   REPLICATION_APPLIER_CONFIGURE, REPLICATION_APPLIER_START, REPLICATION_APPLIER_SHUTDOWN,
   REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_STATE, REPLICATION_SYNCHRONISE,
-  ENABLE_STATISTICS, DISPATCHER_THREADS, SYS_CREATE_NAMED_QUEUE, SYS_ADD_JOB */
+  ENABLE_STATISTICS, DISPATCHER_THREADS, SYS_CREATE_NAMED_QUEUE, SYS_ADD_JOB,
+  SYS_RAW_REQUEST_BODY, SYS_REQUEST_PARTS */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -115,7 +116,6 @@
   internal.resetEngine = function () {
     'use strict';
 
-    internal.flushModuleCache();
     require("org/arangodb/actions").reloadRouting();
   };
 
@@ -207,7 +207,6 @@
   }
   else {
     internal.executeGlobalContextFunction = SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION;
-    delete SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -217,13 +216,16 @@
   if (typeof SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION === "undefined") {
     internal.reloadAqlFunctions = function () {
       require("org/arangodb/ahuacatl").reload();
+      require("org/arangodb/aql").reload();
     };
   }
   else {
     internal.reloadAqlFunctions = function () {
       internal.executeGlobalContextFunction("reloadAql");
       require("org/arangodb/ahuacatl").reload();
+      require("org/arangodb/aql").reload();
     };
+    delete SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -331,6 +333,20 @@
   if (typeof SYS_ADD_JOB !== "undefined") {
     internal.addJob = SYS_ADD_JOB;
     delete SYS_ADD_JOB;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief raw request body
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_RAW_REQUEST_BODY !== "undefined") {
+    internal.rawRequestBody = SYS_RAW_REQUEST_BODY;
+    delete SYS_RAW_REQUEST_BODY;
+  }
+
+  if (typeof SYS_REQUEST_PARTS !== "undefined") {
+    internal.requestParts = SYS_REQUEST_PARTS;
+    delete SYS_REQUEST_PARTS;
   }
 
 }());

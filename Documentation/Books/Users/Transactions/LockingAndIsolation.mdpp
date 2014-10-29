@@ -29,7 +29,7 @@ from the collection as usual. However, as the collection ie added lazily, there 
 isolation from other concurrent operations or transactions. Reads from such
 collections are potentially non-repeatable.
 
-@EXAMPLES
+**EXAMPLES**:
 
     db._executeTransaction({
       collections: { 

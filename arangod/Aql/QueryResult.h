@@ -44,16 +44,18 @@ namespace triagens {
       QueryResult& operator= (QueryResult const& other) = delete;
       
       QueryResult (QueryResult&& other) {
-        code = other.code;
-        details = other.details;
-        json = other.json;
-        stats = other.stats;
-        profile = other.profile;
-        zone = other.zone;
+        code              = other.code;
+        details           = other.details;
+        json              = other.json;
+        stats             = other.stats;
+        profile           = other.profile;
+        zone              = other.zone;
+        clusterplan       = other.clusterplan;
 
-        other.json    = nullptr;
-        other.stats   = nullptr;
-        other.profile = nullptr;
+        other.json        = nullptr;
+        other.stats       = nullptr;
+        other.profile     = nullptr;
+        other.clusterplan = nullptr;
       }
 
       QueryResult (int code,
@@ -63,7 +65,8 @@ namespace triagens {
           zone(TRI_UNKNOWN_MEM_ZONE),
           json(nullptr),
           stats(nullptr),
-          profile(nullptr) {
+        profile(nullptr),
+        clusterplan(nullptr) {
       }
       
       explicit QueryResult (int code)
@@ -94,6 +97,7 @@ namespace triagens {
       TRI_json_t*                     json;
       TRI_json_t*                     stats;
       TRI_json_t*                     profile;
+      TRI_json_t*                     clusterplan;
     };
 
   }

@@ -32,17 +32,21 @@
   db._drop("UnitTestsImportJson2");
   db._drop("UnitTestsImportJson3");
   db._drop("UnitTestsImportJson4");
+  db._drop("UnitTestsImportJson5");
   db._drop("UnitTestsImportCsv1");
   db._drop("UnitTestsImportCsv2");
   db._drop("UnitTestsImportCsv3");
   db._drop("UnitTestsImportCsv4");
+  db._drop("UnitTestsImportCsv5");
   db._drop("UnitTestsImportTsv1");
   db._drop("UnitTestsImportTsv2");
   db._drop("UnitTestsImportVertex");
   db._drop("UnitTestsImportEdge");
 })();
 
-return true;
+return {
+  status: true
+}
 
 // Local Variables:
 // mode: outline-minor

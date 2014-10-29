@@ -135,7 +135,13 @@ function importTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testJsonImport3 : function () {
-      var expected = [ { "id": 1, "one": 1, "three": 3, "two": 2 }, { "a": 1234, "b": "the quick fox", "id": 2, "jumped": "over the fox", "null": null }, { "id": 3, "not": "important", "spacing": "is" }, { "  c  ": "h\"'ihi", "a": true, "b": false, "d": "", "id": 4 }, { "id": 5 } ];
+      var expected = [ 
+        { "id": 1, "one": 1, "three": 3, "two": 2 }, 
+        { "a": 1234, "b": "the quick fox", "id": 2, "jumped": "over the fox", "null": null }, 
+        { "id": 3, "not": "important", "spacing": "is" }, 
+        { "  c  ": "h\"'ihi", "a": true, "b": false, "d": "", "id": 4 }, 
+        { "id": 5 } 
+      ];
       var actual = getQueryResults("FOR i IN UnitTestsImportJson3 SORT i.id RETURN i");
       assertEqual(expected, actual);
     },
@@ -154,11 +160,33 @@ function importTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test json import
+////////////////////////////////////////////////////////////////////////////////
+    
+    testJsonImport5 : function () {
+      var expected = [ 
+        { "active": true, "id": 0, "value": "something" },
+        { "id": 1, "value": "foobar" },
+        { "id": 2, "data": 99.5, "true": "a\t\r\nb  c " }
+      ];
+
+      var actual = getQueryResults("FOR i IN UnitTestsImportJson5 SORT i.id RETURN i");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test csv import
 ////////////////////////////////////////////////////////////////////////////////
     
     testCsvImport1 : function () {
-      var expected = [ { "a": "1", "b": 1, "c": "1.3", "d": null, "e": -5, "id": 1 }, { "a": null, "b": "", "c": 3.1, "d": -2.5, "e": "ddd \" ' ffd", "id": 2 } ];
+      var expected = [ 
+        { "a": "1", "b": 1, "c": "1.3", "e": -5, "id": 1 }, 
+        { "b": "", "c": 3.1, "d": -2.5, "e": "ddd \" ' ffd", "id": 2 }, 
+        { "a": "9999999999999999999999999999999999", "b": "test", "c" : -99999999, "d": true, "e": -888.4434, "id": 5 },
+        { "a": 10e4, "b": 20.5, "c": -42, "d": " null ", "e": false, "id": 6 },
+        { "a": -1.05e2, "b": 1.05e-2, "c": true, "d": false, "id": 7 }
+      ];
+
       var actual = getQueryResults("FOR i IN UnitTestsImportCsv1 SORT i.id RETURN i");
       assertEqual(expected, actual);
     },
@@ -198,6 +226,20 @@ function importTestSuite () {
       ];
       
       var actual = getQueryResults("FOR i IN UnitTestsImportCsv4 SORT i.name RETURN i");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test csv import
+////////////////////////////////////////////////////////////////////////////////
+    
+    testCsvImport5 : function () {
+      var expected = [ 
+        { name: "bar", password: "foo" },
+        { name: "foo\t", password: "wow \t   \r\nthis is \t\ra multiline password!" }
+      ];
+
+      var actual = getQueryResults("FOR i IN UnitTestsImportCsv5 SORT i.name RETURN i");
       assertEqual(expected, actual);
     },
 

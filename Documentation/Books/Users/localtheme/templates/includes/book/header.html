@@ -10,50 +10,9 @@
         </a>
         {% include "./font-settings.html" %}
     </div>
-
-    <!-- Actions Right (Disabled dropdown for social links)
-    {% if options.links.sharing.all !== false %}
-    <div class="dropdown pull-right">
-        <a href="#" class="btn toggle-dropdown" aria-label="Toggle share dropdown"><i class="fa fa-share-alt"></i>
-        </a>
-        <div class="dropdown-menu font-settings dropdown-left">
-            <div class="dropdown-caret">
-                <span class="caret-outer"></span>
-                <span class="caret-inner"></span>
-            </div>
-            <div class="buttons">
-                <button type="button" data-sharing="twitter" class="button">Twitter</button>
-                <button type="button" data-sharing="google-plus" class="button">Google</button>
-                <button type="button" data-sharing="facebook" class="button">Facebook</button>
-                <button type="button" data-sharing="weibo" class="button">Weibo</button>
-                <button type="button" data-sharing="instapaper" class="button">Instapaper</button>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-    -->
-    <!-- Disabled social buttons 
-    {% if options.links.sharing.google !== false %}
-    <a href="#" target="_blank" class="btn pull-right google-plus-sharing-link sharing-link" data-sharing="google-plus" aria-label="Share on Google Plus"><i class="fa fa-google-plus"></i></a>
-    {% endif %}
-    {% if options.links.sharing.facebook !== false %}
-    <a href="#" target="_blank" class="btn pull-right facebook-sharing-link sharing-link" data-sharing="facebook" aria-label="Share on Facebook"><i class="fa fa-facebook"></i></a>
-    {% endif %}
-    {% if options.links.sharing.weibo === true %}
-    <a href="#" target="_blank" class="btn pull-right twitter-sharing-link sharing-link" data-sharing="weibo" aria-label="Share on Weibo"><i class="fa fa-weibo"></i></a>
-    {% endif %}
-    -->
-    {% if githubId %}
-    <a href="{{ githubHost }}{{ githubId }}/stargazers" target="_blank" class="btn pull-right count-star hidden-xs"><i class="fa fa-star-o"></i> Star (<span>-</span>)</a>
-    <a href="{{ githubHost }}{{ githubId }}/watchers" target="_blank" class="btn pull-right count-watch hidden-xs"><i class="fa fa-eye"></i> Watch (<span>-</span>)</a>
-    {% endif %}
     {% if options.links.sharing.twitter !== false %}
     <a href="#" target="_blank" class="btn pull-right twitter-sharing-link sharing-link" data-sharing="twitter" aria-label="Share on Twitter"><i class="fa fa-twitter"></i></a>
     {% endif %}
-
     <!-- Title -->
-    <h1>
-        <i class="fa fa-circle-o-notch fa-spin"></i>
-        <a href="https://www.arangodb.org" target="blank" style="margin-left:5px"> <img src="{{ basePath }}/Arangodb_Logo.png" alt="ArangoDB" style="position:relative; border:0px; top:7px; margin-left:-160px; margin-right:15px">2.2.3</a>
-    </h1>
+    <h1><a href="https://www.arangodb.org" target="blank" style="margin-left:5px"> <img src="{{ basePath }}/Arangodb_Logo.png" alt="ArangoDB" style="position:relative; border:0px; top:7px; margin-left: -80px; margin-right:15px">VERSION_NUMBER</a></h1>
 </div>

@@ -127,7 +127,7 @@ static void FreeAuthCacheInfo (TRI_vocbase_auth_cache_t* cached) {
     TRI_Free(TRI_CORE_MEM_ZONE, cached->_hash);
   }
 
-  if (cached->_username == nullptr) {
+  if (cached->_username != nullptr) {
     TRI_Free(TRI_CORE_MEM_ZONE, cached->_username);
   }
 
@@ -406,7 +406,7 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
   }
 
 
-  SingleCollectionReadOnlyTransaction<RestTransactionContext> trx(vocbase, collection->_cid);
+  SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(), vocbase, collection->_cid);
 
   int res = trx.begin();
 

@@ -151,8 +151,8 @@ namespace triagens {
 /// @brief delete a document, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool deleteDocumentCoordinator (string const& collname,
-                                      string const& key,
+      bool deleteDocumentCoordinator (std::string const& collname,
+                                      std::string const& key,
                                       TRI_voc_rid_t const rev,
                                       TRI_doc_update_policy_e policy,
                                       bool waitForSync);
@@ -161,23 +161,23 @@ namespace triagens {
 /// @brief read a single document, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool getDocumentCoordinator (string const& collname,
-                                   string const& key,
+      bool getDocumentCoordinator (std::string const& collname,
+                                   std::string const& key,
                                    bool generateBody);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read all documents, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool getAllDocumentsCoordinator (string const& collname,
-                                       string const& returnType);
+      bool getAllDocumentsCoordinator (std::string const& collname,
+                                       std::string const& returnType);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read a single document, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool modifyDocumentCoordinator (string const& collname,
-                                      string const& key,
+      bool modifyDocumentCoordinator (std::string const& collname,
+                                      std::string const& key,
                                       TRI_voc_rid_t const rev,
                                       TRI_doc_update_policy_e policy,
                                       bool waitForSync,

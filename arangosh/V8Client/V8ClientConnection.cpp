@@ -42,6 +42,7 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "V8/v8-conv.h"
+#include "V8/v8-json.h"
 
 using namespace triagens::basics;
 using namespace triagens::httpclient;
@@ -108,7 +109,7 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
       TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE,
                                         result->getBody().c_str());
 
-      if (json) {
+      if (json != nullptr) {
         // look up "server" value
         const string server = JsonHelper::getStringValue(json, "server", "");
 
@@ -122,11 +123,11 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
       }
     }
     else {
-      // initial request for /_api/version return some non-HTTP 200 response.
+      // initial request for /_api/version returned some non-HTTP 200 response.
       // now set up an error message
       _lastErrorMessage = _client->getErrorMessage();
 
-      if (result) {
+      if (result && result->getHttpReturnCode() > 0) {
         _lastErrorMessage = StringUtils::itoa(result->getHttpReturnCode()) + ": " + result->getHttpReturnMessage();
       }
     }
@@ -174,17 +175,20 @@ string V8ClientConnection::rewriteLocation (void* data,
     return location;
   }
 
-  if (location.substr(0, 5) == "/_db/") {
-    // location already contains /_db/
-    return location;
-  }
-
   if (location[0] == '/') {
+    if (location.size() >= 5 && 
+        location[1] == '_' &&
+        location[2] == 'd' &&
+        location[3] == 'b' &&
+        location[4] == '/') {
+      // location already contains /_db/
+      return location;
+    }
+
     return "/_db/" + c->_databaseName + location;
   }
-  else {
-    return "/_db/" + c->_databaseName + "/" + location;
-  }
+
+  return "/_db/" + c->_databaseName + "/" + location;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -380,7 +384,7 @@ v8::Handle<v8::Value> V8ClientConnection::requestData (HttpRequest::HttpRequestT
   _lastErrorMessage = "";
   _lastHttpReturnCode = 0;
 
-  if (_httpResult) {
+  if (_httpResult != nullptr) {
     delete _httpResult;
   }
 
@@ -400,12 +404,12 @@ v8::Handle<v8::Value> V8ClientConnection::requestData (HttpRequest::HttpRequestT
   _lastErrorMessage = "";
   _lastHttpReturnCode = 0;
 
-  if (_httpResult) {
+  if (_httpResult != nullptr) {
     delete _httpResult;
   }
 
   if (body.empty()) {
-    _httpResult = _client->request(method, location, 0, 0, headerFields);
+    _httpResult = _client->request(method, location, nullptr, 0, headerFields);
   }
   else {
     _httpResult = _client->request(method, location, body.c_str(), body.length(), headerFields);
@@ -419,7 +423,7 @@ v8::Handle<v8::Value> V8ClientConnection::requestData (HttpRequest::HttpRequestT
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Value> V8ClientConnection::handleResult () {
-  if (!_httpResult->isComplete()) {
+  if (! _httpResult->isComplete()) {
     // not complete
     _lastErrorMessage = _client->getErrorMessage();
 
@@ -464,27 +468,16 @@ v8::Handle<v8::Value> V8ClientConnection::handleResult () {
 
     // got a body
     StringBuffer& sb = _httpResult->getBody();
+
     if (sb.length() > 0) {
-      string contentType = _httpResult->getContentType(true);
+      v8::HandleScope scope;
 
-      if (contentType == "application/json") {
-        TRI_json_t* js = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, sb.c_str());
-
-        if (js != NULL) {
-          // return v8 object
-          v8::Handle<v8::Value> result = TRI_ObjectJson(js);
-          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, js);
-
-          return result;
-        }
+      if (_httpResult->isJson()) {
+        return scope.Close(TRI_FromJsonString(sb.c_str(), nullptr));
       }
 
       // return body as string
-      //
-      v8::Handle<v8::String> result = v8::String::New(sb.c_str(),
-                                                      (int) sb.length());
-
-      return result;
+      return scope.Close(v8::String::New(sb.c_str(), (int) sb.length()));
     }
     else {
       // no body

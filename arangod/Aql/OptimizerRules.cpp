@@ -26,9 +26,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/OptimizerRules.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/Indexes.h"
 #include "Aql/Variable.h"
+#include "Aql/types.h"
 
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
@@ -217,7 +218,7 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
     // we can now evaluate it safely
     TRI_ASSERT(! s->expression()->canThrow());
 
-    if (root->toBoolean()) {
+    if (root->isTrue()) {
       // filter is always true
       // remove filter node and merge with following node
       toUnlink.insert(n);
@@ -430,9 +431,7 @@ class triagens::aql::RedundantCalculationsReplacer : public WalkerWorker<Executi
       }
     }
 
-    bool enterSubQuery () { return true; }
-
-    bool before (ExecutionNode* en) {
+    bool before (ExecutionNode* en) override final {
       switch (en->getType()) {
         case EN::ENUMERATE_LIST: {
           replaceInVariable<EnumerateListNode>(en);
@@ -704,7 +703,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       delete _ranges;
     }
 
-    bool before (ExecutionNode* en) {
+    bool before (ExecutionNode* en) override final {
       _canThrow = (_canThrow || en->canThrow()); // can any node walked over throw?
 
       switch (en->getType()) {
@@ -731,6 +730,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         }
         case EN::AGGREGATE:
         case EN::SCATTER:
+        case EN::DISTRIBUTE:
         case EN::GATHER:
         case EN::REMOTE:
           // in these cases we simply ignore the intermediate nodes, note
@@ -842,7 +842,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                 }
               }
               else {
-                std::vector<TRI_index_t*> idxs;
+                std::vector<Index*> idxs;
                 std::vector<size_t> prefixes;
                 // {idxs.at(i)->_fields[0]..idxs.at(i)->_fields[prefixes.at(i)]}
                 // is a subset of <attrs>
@@ -865,7 +865,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                   auto idx = idxs.at(i);
                   TRI_ASSERT(idx != nullptr);
                
-                  if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX) {
+                  if (idx->type == TRI_IDX_TYPE_PRIMARY_INDEX) {
                     bool handled = false;
                     auto range = map->find(std::string(TRI_VOC_ATTRIBUTE_ID));
                 
@@ -892,9 +892,9 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                       }
                     }
                   }
-                  else if (idx->_type == TRI_IDX_TYPE_HASH_INDEX) {
-                    for (size_t j = 0; j < idx->_fields._length; j++) {
-                      auto range = map->find(std::string(idx->_fields._buffer[j]));
+                  else if (idx->type == TRI_IDX_TYPE_HASH_INDEX) {
+                    for (size_t j = 0; j < idx->fields.size(); j++) {
+                      auto range = map->find(idx->fields[j]);
                    
                       if (! range->second.is1ValueRangeInfo()) {
                         rangeInfo.at(0).clear();   // not usable
@@ -903,7 +903,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                       rangeInfo.at(0).push_back(range->second);
                     }
                   }
-                  else if (idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
+                  else if (idx->type == TRI_IDX_TYPE_EDGE_INDEX) {
                     bool handled = false;
                     auto range = map->find(std::string(TRI_VOC_ATTRIBUTE_FROM));
                 
@@ -930,14 +930,14 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                       }
                     }
                   }
-                  else if (idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
+                  else if (idx->type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
                     size_t j = 0;
-                    auto range = map->find(std::string(idx->_fields._buffer[0]));
+                    auto range = map->find(idx->fields[0]);
                     TRI_ASSERT(range != map->end());
                     rangeInfo.at(0).push_back(range->second);
                     bool equality = range->second.is1ValueRangeInfo();
                     while (++j < prefixes.at(i) && equality) {
-                      range = map->find(std::string(idx->_fields._buffer[j]));
+                      range = map->find(idx->fields[j]);
                       rangeInfo.at(0).push_back(range->second);
                       equality = equality && range->second.is1ValueRangeInfo();
                     }
@@ -1365,7 +1365,7 @@ class SortToIndexNode : public WalkerWorker<ExecutionNode> {
                                       node->vocbase(), 
                                       node->collection(),
                                       node->outVariable(),
-                                      idx.index, /// TODO: estimate cost on match quality
+                                      idx.index,
                                       result.second,
                                       (idx.doesMatch && idx.reverse));
         newPlan->registerNode(newNode);
@@ -1389,13 +1389,15 @@ class SortToIndexNode : public WalkerWorker<ExecutionNode> {
     return true;
   }
 
-  bool enterSubQuery () { return false; }
+  bool enterSubquery (ExecutionNode*, ExecutionNode*) override final { 
+    return false; 
+  }
 
-  bool before (ExecutionNode* en) {
+  bool before (ExecutionNode* en) override final {
     switch (en->getType()) {
     case EN::ENUMERATE_LIST:
     case EN::CALCULATION:
-    case EN::SUBQUERY:        /// TODO: find out whether it may throw
+    case EN::SUBQUERY:
     case EN::FILTER:
       return false;                           // skip. we don't care.
 
@@ -1408,6 +1410,7 @@ class SortToIndexNode : public WalkerWorker<ExecutionNode> {
     case EN::RETURN:
     case EN::NORESULTS:
     case EN::SCATTER:
+    case EN::DISTRIBUTE:
     case EN::GATHER:
     case EN::REMOTE:
     case EN::ILLEGAL:
@@ -1436,9 +1439,9 @@ int triagens::aql::useIndexForSort (Optimizer* opt,
   for (auto n : nodes) {
     auto thisSortNode = static_cast<SortNode*>(n);
     SortAnalysis node(thisSortNode);
-    if (node.isAnalyzeable()) {
+    if (node.isAnalyzeable() && ! n->getDependencies().empty()) {
       SortToIndexNode finder(opt, plan, &node, rule->level);
-      thisSortNode->walk(&finder);/// todo auf der dependency anfangen
+      thisSortNode->getDependencies()[0]->walk(&finder);
       if (finder.planModified) {
         planModified = true;
       }
@@ -1604,18 +1607,18 @@ int triagens::aql::interchangeAdjacentEnumerations (Optimizer* opt,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief distribute operations in cluster
+/// @brief scatter operations in cluster
 /// this rule inserts scatter, gather and remote nodes so operations on sharded
 /// collections actually work
 /// it will change plans in place
 ////////////////////////////////////////////////////////////////////////////////
 
-int triagens::aql::distributeInCluster (Optimizer* opt,
-                                        ExecutionPlan* plan,
-                                        Optimizer::Rule const* rule) {
+int triagens::aql::scatterInCluster (Optimizer* opt,
+                                     ExecutionPlan* plan,
+                                     Optimizer::Rule const* rule) {
   bool wasModified = false;
 
-  if (triagens::arango::ServerState::instance()->isCoordinator()) {
+  if (ExecutionEngine::isCoordinator()) {
     // we are a coordinator. now look in the plan for nodes of type
     // EnumerateCollectionNode and IndexRangeNode
     std::vector<ExecutionNode::NodeType> const types = { 
@@ -1635,18 +1638,48 @@ int triagens::aql::distributeInCluster (Optimizer* opt,
       auto parents = node->getParents();
       auto deps = node->getDependencies();
       TRI_ASSERT(deps.size() == 1);
-
-      // unlink the node
       bool const isRootNode = plan->isRoot(node);
+      // don't do this if we are already distributing!
+      if (deps[0]->getType() == ExecutionNode::REMOTE &&
+          deps[0]->getDependencies()[0]->getType() == ExecutionNode::DISTRIBUTE){
+        continue;
+      }
       plan->unlinkNode(node, isRootNode);
 
+      auto const nodeType = node->getType();
+
+      // extract database and collection from plan node
+      TRI_vocbase_t* vocbase = nullptr;
+      Collection const* collection = nullptr;
+
+      if (nodeType == ExecutionNode::ENUMERATE_COLLECTION) {
+        vocbase = static_cast<EnumerateCollectionNode*>(node)->vocbase();
+        collection = static_cast<EnumerateCollectionNode*>(node)->collection();
+      }
+      else if (nodeType == ExecutionNode::INDEX_RANGE) {
+        vocbase = static_cast<IndexRangeNode*>(node)->vocbase();
+        collection = static_cast<IndexRangeNode*>(node)->collection();
+      }
+      else if (nodeType == ExecutionNode::INSERT ||
+               nodeType == ExecutionNode::UPDATE ||
+               nodeType == ExecutionNode::REPLACE ||
+               nodeType == ExecutionNode::REMOVE) {
+        vocbase = static_cast<ModificationNode*>(node)->vocbase();
+        collection = static_cast<ModificationNode*>(node)->collection();
+      }
+      else {
+        TRI_ASSERT(false);
+      }
+
       // insert a scatter node
-      ExecutionNode* scatterNode = new ScatterNode(plan, plan->nextId());
+      ExecutionNode* scatterNode = new ScatterNode(plan, plan->nextId(),
+          vocbase, collection);
       plan->registerNode(scatterNode);
       scatterNode->addDependency(deps[0]);
 
       // insert a remote node
-      ExecutionNode* remoteNode = new RemoteNode(plan, plan->nextId());
+      ExecutionNode* remoteNode = new RemoteNode(plan, plan->nextId(), vocbase,
+          collection, "", "", "");
       plan->registerNode(remoteNode);
       remoteNode->addDependency(scatterNode);
         
@@ -1654,15 +1687,16 @@ int triagens::aql::distributeInCluster (Optimizer* opt,
       node->addDependency(remoteNode);
 
       // insert another remote node
-      remoteNode = new RemoteNode(plan, plan->nextId());
+      remoteNode = new RemoteNode(plan, plan->nextId(), vocbase, collection, "", "", "");
       plan->registerNode(remoteNode);
       remoteNode->addDependency(node);
-     
+      
       // insert a gather node 
-      ExecutionNode* gatherNode = new GatherNode(plan, plan->nextId());
+      ExecutionNode* gatherNode = new GatherNode(plan, plan->nextId(), vocbase,
+          collection);
       plan->registerNode(gatherNode);
       gatherNode->addDependency(remoteNode);
-       
+
       // and now link the gather node with the rest of the plan
       if (parents.size() == 1) {
         parents[0]->replaceDependency(deps[0], gatherNode);
@@ -1677,6 +1711,542 @@ int triagens::aql::distributeInCluster (Optimizer* opt,
   }
    
   opt->addPlan(plan, rule->level, wasModified);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief distribute operations in cluster
+///
+/// this rule inserts distribute, remote nodes so operations on sharded
+/// collections actually work, this differs from scatterInCluster in that every
+/// incoming row is only set to one shard and not all as in scatterInCluster
+///
+/// it will change plans in place
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::distributeInCluster (Optimizer* opt,
+                                        ExecutionPlan* plan,
+                                        Optimizer::Rule const* rule) {
+  bool wasModified = false;
+
+  if (ExecutionEngine::isCoordinator()) {
+    // we are a coordinator, we replace the root if it is a modification node
+    
+    // only replace if it is the last node in the plan
+    auto const& node = plan->root();
+    auto const nodeType = node->getType();
+    
+    if (nodeType != ExecutionNode::INSERT  &&
+        nodeType != ExecutionNode::REMOVE) {
+      opt->addPlan(plan, rule->level, wasModified);
+      return TRI_ERROR_NO_ERROR;
+    }
+    
+    Collection const* collection = static_cast<ModificationNode*>(node)->collection();
+    
+    if (nodeType == ExecutionNode::REMOVE) {
+      // check if collection shard keys are only _key
+      std::vector<std::string> shardKeys = collection->shardKeys();
+      if (shardKeys.size() != 1 || shardKeys[0] != TRI_VOC_ATTRIBUTE_KEY) {
+        opt->addPlan(plan, rule->level, wasModified);
+        return TRI_ERROR_NO_ERROR;
+      }
+    }
+
+    auto deps = node->getDependencies();
+    TRI_ASSERT(deps.size() == 1);
+
+    // unlink the node
+    plan->unlinkNode(node, true);
+
+    // extract database from plan node
+    TRI_vocbase_t* vocbase = static_cast<ModificationNode*>(node)->vocbase();
+
+    // insert a distribute node
+    TRI_ASSERT(node->getVariablesUsedHere().size() == 1);
+    ExecutionNode* distNode = new DistributeNode(plan, plan->nextId(), 
+        vocbase, collection, node->getVariablesUsedHere()[0]->id);
+    plan->registerNode(distNode);
+    distNode->addDependency(deps[0]);
+
+    // insert a remote node
+    ExecutionNode* remoteNode = new RemoteNode(plan, plan->nextId(), vocbase,
+        collection, "", "", "");
+    plan->registerNode(remoteNode);
+    remoteNode->addDependency(distNode);
+      
+    // re-link with the remote node
+    node->addDependency(remoteNode);
+
+    // insert another remote node
+    remoteNode = new RemoteNode(plan, plan->nextId(), vocbase, collection, "", "", "");
+    plan->registerNode(remoteNode);
+    remoteNode->addDependency(node);
+    
+    // insert a gather node 
+    ExecutionNode* gatherNode = new GatherNode(plan, plan->nextId(), vocbase,
+        collection);
+    plan->registerNode(gatherNode);
+    gatherNode->addDependency(remoteNode);
+
+    // we replaced the root node, set a new root node
+    plan->root(gatherNode);
+    wasModified = true;
+  }
+   
+  opt->addPlan(plan, rule->level, wasModified);
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief move filters up into the cluster distribution part of the plan
+/// this rule modifies the plan in place
+/// filters are moved as far up in the plan as possible to make result sets
+/// as small as possible as early as possible
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::distributeFilternCalcToCluster (Optimizer* opt, 
+                                                   ExecutionPlan* plan,
+                                                   Optimizer::Rule const* rule) {
+  bool modified = false;
+
+  std::vector<ExecutionNode*> nodes
+    = plan->findNodesOfType(triagens::aql::ExecutionNode::GATHER, true);
+
+  
+  for (auto n : nodes) {
+    auto remoteNodeList = n->getDependencies();
+    TRI_ASSERT(remoteNodeList.size() > 0);
+    auto rn = remoteNodeList[0];
+    auto parents = n->getParents();
+    if (parents.size() < 1) {
+      continue;
+    }
+    while (1) {
+      bool stopSearching = false;
+
+      auto inspectNode = parents[0];
+
+      switch (inspectNode->getType()) {
+        case EN::ENUMERATE_LIST:
+        case EN::SINGLETON:
+        case EN::AGGREGATE:
+        case EN::INSERT:
+        case EN::REMOVE:
+        case EN::REPLACE:
+        case EN::UPDATE:
+          parents = inspectNode->getParents();
+          continue;
+        case EN::SUBQUERY:
+        case EN::RETURN:
+        case EN::NORESULTS:
+        case EN::SCATTER:
+        case EN::DISTRIBUTE:
+        case EN::GATHER:
+        case EN::ILLEGAL:
+          //do break
+        case EN::REMOTE:
+        case EN::LIMIT:
+        case EN::SORT:
+        case EN::INDEX_RANGE:
+        case EN::ENUMERATE_COLLECTION:
+          stopSearching = true;
+          break;
+        case EN::CALCULATION: {
+          auto calc = static_cast<CalculationNode const*>(inspectNode);
+          // check if the expression can be executed on a DB server safely
+          if (! calc->expression()->canRunOnDBServer()) {
+            stopSearching = true;
+            break;
+          }
+          // intentionally fall through here
+        }
+        case EN::FILTER:
+          // remember our cursor...
+          parents = inspectNode->getParents();
+          // then unlink the filter/calculator from the plan
+          plan->unlinkNode(inspectNode);
+          // and re-insert into plan in front of the remoteNode
+          plan->insertDependency(rn, inspectNode);
+
+          modified = true;
+          //ready to rumble!
+          break;
+      }
+
+      if (stopSearching) {
+        break;
+      }
+    }
+  }
+  
+  if (modified) {
+    plan->findVarUsage();
+  }
+  
+  opt->addPlan(plan, rule->level, modified);
+  
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief move sorts up into the cluster distribution part of the plan
+/// this rule modifies the plan in place
+/// sorts are moved as far up in the plan as possible to make result sets
+/// as small as possible as early as possible
+/// 
+/// filters are not pushed beyond limits
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::distributeSortToCluster (Optimizer* opt, 
+                                            ExecutionPlan* plan,
+                                            Optimizer::Rule const* rule) {
+  bool modified = false;
+
+  std::vector<ExecutionNode*> nodes
+    = plan->findNodesOfType(triagens::aql::ExecutionNode::GATHER, true);
+  
+  for (auto n : nodes) {
+    auto remoteNodeList = n->getDependencies();
+    auto gatherNode = static_cast<GatherNode*>(n);
+    TRI_ASSERT(remoteNodeList.size() > 0);
+    auto rn = remoteNodeList[0];
+    auto parents = n->getParents();
+    if (parents.size() < 1) {
+      continue;
+    }
+    while (1) {
+      bool stopSearching = false;
+
+      auto inspectNode = parents[0];
+
+      switch (inspectNode->getType()) {
+        case EN::ENUMERATE_LIST:
+        case EN::SINGLETON:
+        case EN::AGGREGATE:
+        case EN::INSERT:
+        case EN::REMOVE:
+        case EN::REPLACE:
+        case EN::UPDATE:
+        case EN::CALCULATION:
+        case EN::FILTER:
+        case EN::SUBQUERY:
+        case EN::RETURN:
+        case EN::NORESULTS:
+        case EN::SCATTER:
+        case EN::DISTRIBUTE:
+        case EN::GATHER:
+        case EN::ILLEGAL:
+        case EN::REMOTE:
+        case EN::LIMIT:
+        case EN::INDEX_RANGE:
+        case EN::ENUMERATE_COLLECTION:
+          // For all these, we do not want to pull a SortNode further down
+          // out to the DBservers, note that potential FilterNodes and
+          // CalculationNodes that can be moved to the DBservers have 
+          // already been moved over by the distribute-filtercalc-to-cluster
+          // rule which is done first.
+          stopSearching = true;
+          break;
+        case EN::SORT:
+          auto thisSortNode = static_cast<SortNode*>(inspectNode);
+      
+          // remember our cursor...
+          parents = inspectNode->getParents();
+          // then unlink the filter/calculator from the plan
+          plan->unlinkNode(inspectNode);
+          // and re-insert into plan in front of the remoteNode
+          plan->insertDependency(rn, inspectNode);
+          gatherNode->setElements(thisSortNode->getElements());
+          modified = true;
+          //ready to rumble!
+      }
+
+      if (stopSearching) {
+        break;
+      }
+    }
+  }
+  
+  if (modified) {
+    plan->findVarUsage();
+  }
+  
+  opt->addPlan(plan, rule->level, modified);
+  
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief try to get rid of a RemoteNode->ScatterNode combination which has
+/// only a SingletonNode and possibly some CalculationNodes as dependencies
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::removeUnnecessaryRemoteScatter (Optimizer* opt, 
+                                                   ExecutionPlan* plan, 
+                                                   Optimizer::Rule const* rule) {
+  std::vector<ExecutionNode*> nodes
+    = plan->findNodesOfType(triagens::aql::ExecutionNode::REMOTE, true);
+  std::unordered_set<ExecutionNode*> toUnlink;
+
+  for (auto n : nodes) {
+    // check if the remote node is preceeded by a scatter node and any number of
+    // calculation and singleton nodes. if yes, remove remote and scatter
+
+    auto const& deps = n->getDependencies();
+    if (deps.size() != 1) {
+      continue;
+    }
+
+    if (deps[0]->getType() != EN::SCATTER) {
+      continue;
+    }
+
+    bool canOptimize = true;
+    auto node = deps[0];
+    while (node != nullptr) {
+      auto const& d = node->getDependencies();
+
+      if (d.size() != 1) {
+        break;
+      }
+
+      node = d[0];
+      if (node->getType() != EN::SINGLETON && 
+          node->getType() != EN::CALCULATION) {
+        // found some other node type...
+        // this disqualifies the optimization
+        canOptimize = false;
+        break;
+      }
+
+      if (node->getType() == EN::CALCULATION) {
+        auto calc = static_cast<CalculationNode const*>(node);
+        // check if the expression can be executed on a DB server safely
+        if (! calc->expression()->canRunOnDBServer()) {
+          canOptimize = false;
+          break;
+        }
+      }
+    }
+
+    if (canOptimize) {
+      toUnlink.insert(n);
+      toUnlink.insert(deps[0]);
+    }
+  }
+
+  if (! toUnlink.empty()) {
+    plan->unlinkNodes(toUnlink);
+    plan->findVarUsage();
+  }
+  
+  opt->addPlan(plan, rule->level, ! toUnlink.empty());
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// WalkerWorker for undistributeRemoveAfterEnumColl
+////////////////////////////////////////////////////////////////////////////////
+
+class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
+  ExecutionPlan* _plan;
+  std::unordered_set<ExecutionNode*>& _toUnlink;
+  bool _remove;
+  bool _scatter;
+  bool _gather;
+  EnumerateCollectionNode* _enumColl;
+  ExecutionNode* _setter;
+  const Variable* _variable;
+  ExecutionNode* _lastNode;
+  
+  public: 
+    RemoveToEnumCollFinder (ExecutionPlan* plan,
+                            std::unordered_set<ExecutionNode*>& toUnlink)
+      : _plan(plan),
+        _toUnlink(toUnlink),
+        _remove(false),
+        _scatter(false),
+        _gather(false),
+        _enumColl(nullptr),
+        _setter(nullptr),
+        _variable(nullptr), 
+        _lastNode(nullptr){
+    };
+
+    ~RemoveToEnumCollFinder () {
+    }
+
+    bool before (ExecutionNode* en) override final {
+      switch (en->getType()) {
+        case EN::REMOVE: {
+          TRI_ASSERT(_remove == false);
+            
+          // find the variable we are removing . . .
+          auto rn = static_cast<RemoveNode*>(en);
+          auto varsToRemove = rn->getVariablesUsedHere();
+
+          // remove nodes always have one input variable
+          TRI_ASSERT(varsToRemove.size() == 1);
+          _setter = _plan->getVarSetBy(varsToRemove[0]->id);
+          TRI_ASSERT(_setter != nullptr);
+          auto enumColl = _setter;
+
+          if (_setter->getType() == EN::CALCULATION) {
+            // this should be an attribute access for _key
+            auto cn = static_cast<CalculationNode*>(_setter);
+            if (! cn->expression()->isAttributeAccess()) {
+              break; // abort . . .
+            }
+            // check the variable is the same as the remove variable
+            auto vars = cn->getVariablesSetHere();
+            if (vars.size() != 1 || vars[0]->id != varsToRemove[0]->id) {
+              break; // abort . . . 
+            }
+            // check the remove node's collection is sharded over _key
+            std::vector<std::string> shardKeys = rn->collection()->shardKeys();
+            if (shardKeys.size() != 1 || shardKeys[0] != TRI_VOC_ATTRIBUTE_KEY) {
+              break; // abort . . .
+            }
+
+            // set the varsToRemove to the variable in the expression of this
+            // node and also define enumColl
+            varsToRemove = cn->getVariablesUsedHere();
+            TRI_ASSERT(varsToRemove.size() == 1);
+            enumColl = _plan->getVarSetBy(varsToRemove[0]->id);
+            TRI_ASSERT(_setter != nullptr);
+          } 
+          
+          if (enumColl->getType() != EN::ENUMERATE_COLLECTION) {
+            break; // abort . . .
+          }
+
+          _enumColl = static_cast<EnumerateCollectionNode*>(enumColl);
+
+          if (_enumColl->collection() != rn->collection()) {
+            break; // abort . . . 
+          }
+           
+          _variable = varsToRemove[0];    // the variable we'll remove
+          _remove = true;
+          _lastNode = en;
+          return false; // continue . . .
+        }
+        case EN::REMOTE: {
+          _toUnlink.insert(en);
+          _lastNode = en;
+          return false; // continue . . .
+        }
+        case EN::DISTRIBUTE:
+        case EN::SCATTER: {
+          if (_scatter) { // met more than one scatter node
+            break;        // abort . . . 
+          }
+          _scatter = true;
+          _toUnlink.insert(en);
+          _lastNode = en;
+          return false; // continue . . .
+        }
+        case EN::GATHER: {
+          if (_gather) { // met more than one gather node
+            break;       // abort . . . 
+          }
+          _gather = true;
+          _toUnlink.insert(en);
+          _lastNode = en;
+          return false; // continue . . .
+        }
+        case EN::FILTER: { 
+          _lastNode = en;
+          return false; // continue . . .
+        }
+        case EN::CALCULATION: {
+          TRI_ASSERT(_setter != nullptr);
+          if (_setter->getType() == EN::CALCULATION && _setter->id() == en->id()) {
+            _lastNode = en;
+            return false; // continue . . .
+          }
+          if (_lastNode == nullptr || _lastNode->getType() != EN::FILTER) { 
+            // doesn't match the last filter node
+            break; // abort . . .
+          }
+          auto cn = static_cast<CalculationNode*>(en);
+          auto fn = static_cast<FilterNode*>(_lastNode);
+          
+          // check these are a Calc-Filter pair
+          if (cn->getVariablesSetHere()[0]->id != fn->getVariablesUsedHere()[0]->id) {
+            break; // abort . . .
+          }
+
+          // check that we are filtering/calculating something with the variable
+          // we are to remove
+          auto varsUsedHere = cn->getVariablesUsedHere();
+         
+          if (varsUsedHere.size() != 1) {
+            break; //abort . . .
+          }
+          if (varsUsedHere[0]->id != _variable->id) {
+            break;
+          }
+          _lastNode = en;
+          return false; // continue . . .
+        }
+        case EN::ENUMERATE_COLLECTION: {
+          // check that we are enumerating the variable we are to remove
+          // and that we have already seen a remove node
+          TRI_ASSERT(_enumColl != nullptr);
+          if (en->id() != _enumColl->id()) {
+            break;
+          }
+          return true; // reached the end!
+        }
+        case EN::SINGLETON:
+        case EN::ENUMERATE_LIST:
+        case EN::SUBQUERY:        
+        case EN::AGGREGATE:
+        case EN::INSERT:
+        case EN::REPLACE:
+        case EN::UPDATE:
+        case EN::RETURN:
+        case EN::NORESULTS:
+        case EN::ILLEGAL:
+        case EN::LIMIT:           
+        case EN::SORT:
+        case EN::INDEX_RANGE: {
+          // if we meet any of the above, then we abort . . .
+        }
+    }
+    _toUnlink.clear();
+    return true;
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief recognises that a RemoveNode can be moved to the shards.
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::undistributeRemoveAfterEnumColl (Optimizer* opt, 
+                                                    ExecutionPlan* plan, 
+                                                    Optimizer::Rule const* rule) {
+  std::vector<ExecutionNode*> nodes
+    = plan->findNodesOfType(triagens::aql::ExecutionNode::REMOVE, true);
+  std::unordered_set<ExecutionNode*> toUnlink;
+
+  for (auto n : nodes) {
+    RemoveToEnumCollFinder finder(plan, toUnlink);
+    n->walk(&finder);
+  }
+
+  bool modified = false;
+  if (! toUnlink.empty()) {
+    plan->unlinkNodes(toUnlink);
+    plan->findVarUsage();
+    modified = true;
+  }
+  
+  opt->addPlan(plan, rule->level, modified);
 
   return TRI_ERROR_NO_ERROR;
 }

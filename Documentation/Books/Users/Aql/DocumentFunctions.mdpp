@@ -1,0 +1,134 @@
+!CHAPTER Document functions
+
+AQL supports the following functions to operate on document values:
+
+- *MATCHES(document, examples, return-index)*: Compares the document
+  *document* against each example document provided in the list *examples*. 
+  If *document* matches one of the examples, *true* is returned, and if there is
+  no match *false* will be returned. The default return value type can be changed by
+  passing *true* as the third function parameter *return-index*. Setting this
+  flag will return the index of the example that matched (starting at offset 0), or 
+  *-1* if there was no match.
+
+  The comparisons will be started with the first example. All attributes of the example
+  will be compared against the attributes of *document*. If all attributes match, the 
+  comparison stops and the result is returned. If there is a mismatch, the function will
+  continue the comparison with the next example until there are no more examples left.
+
+  The *examples* must be a list of 1..n example documents, with any number of attributes
+  each. Note: specifying an empty list of examples is not allowed.
+   
+  @EXAMPLES
+
+      RETURN MATCHES(
+        { "test" : 1 }, [ 
+          { "test" : 1, "foo" : "bar" }, 
+          { "foo" : 1 }, 
+          { "test : 1 } 
+        ], true)
+
+  This will return *2*, because the third example matches, and because the 
+  *return-index* flag is set to *true*.
+
+- *MERGE(document1, document2, ... documentn)*: Merges the documents
+  in *document1* to *documentn* into a single document. If document attribute
+  keys are ambiguous, the merged result will contain the values of the documents 
+  contained later in the argument list.
+
+  For example, two documents with distinct attribute names can easily be merged into one: 
+
+      RETURN MERGE(
+        { "user1" : { "name" : "J" } }, 
+        { "user2" : { "name" : "T" } }
+      )
+
+      [ 
+        { "user1" : { "name" : "J" }, 
+  	"user2" : { "name" : "T" } } 
+      ]
+
+  When merging documents with identical attribute names, the attribute values of the
+  latter documents will be used in the end result:
+
+      RETURN MERGE(
+        { "users" : { "name" : "J" } }, 
+        { "users" : { "name" : "T" } }
+      )
+
+      [ 
+        { "users" : { "name" : "T" } } 
+      ]
+
+  Please note that merging will only be done for top-level attributes. If you wish to
+  merge sub-attributes, you should consider using *MERGE_RECURSIVE* instead.
+
+- *MERGE_RECURSIVE(document1, document2, ... documentn)*: Recursively
+  merges the documents in *document1* to *documentn* into a single document. If 
+  document attribute keys are ambiguous, the merged result will contain the values of the 
+  documents contained later in the argument list.
+
+  For example, two documents with distinct attribute names can easily be merged into one: 
+
+      RETURN MERGE_RECURSIVE(
+        { "user-1" : { "name" : "J", "livesIn" : { "city" : "LA" } } }, 
+        { "user-1" : { "age" : 42, "livesIn" : { "state" : "CA" } } }
+      )
+
+      [ 
+        { "user-1" : { "name" : "J", "livesIn" : { "city" : "LA", "state" : "CA" }, "age" : 42 } } 
+      ]
+
+- *TRANSLATE(value, lookup, defaultValue)*: Looks up the value *value* in the *lookup*
+  document. If *value* is a key in *lookup*, then *value* will be replaced with the
+  lookup value found. If *value* is not present in *lookup*, then *defaultValue* will
+  be returned if specified. If no *defaultValue* is specified, *value* will be returned:
+
+      RETURN TRANSLATE("FR", { US: "United States", UK: "United Kingdom", FR: "France" })
+
+      "France"
+
+      RETURN TRANSLATE(42, { foo: "bar", bar: "baz" }, "not found!")
+
+      "not found!"
+
+- *HAS(document, attributename)*: Returns *true* if *document* has an
+  attribute named *attributename*, and *false* otherwise.
+
+- *ATTRIBUTES(document, *removeInternal, sort)*: Returns the attribute
+  names of the document *document as a list. 
+  If *removeInternal* is set to *true*, then all internal attributes (such as *_id*, 
+  *_key* etc.) are removed from the result. If *sort* is set to *true*, then the
+  attribute names in the result will be sorted. Otherwise they will be returned in any order.
+
+- *UNSET(document, attributename, ...)*: Removes the attributes *attributename*
+  (can be one or many) from *document*. All other attributes will be preserved.
+  Multiple attribute names can be specified by either passing multiple individual string argument 
+  names, or by passing a list of attribute names:
+
+      RETURN UNSET(doc, '_id', '_key', [ 'foo', 'bar' ])
+
+- *KEEP(document, attributename, ...)*: Keeps only the attributes *attributename*
+  (can be one or many) from *document*. All other attributes will be removed from the result.
+  Multiple attribute names can be specified by either passing multiple individual string argument 
+  names, or by passing a list of attribute names:
+
+      RETURN KEEP(doc, 'firstname', 'name', 'likes')
+
+- *PARSE_IDENTIFIER(document-handle)*: Parses the [document handle](../Glossary/README.html#document_handle) specified in 
+  *document-handle* and returns a the handle's individual parts a separate attributes.
+  This function can be used to easily determine the [collection name](../Glossary/README.html#collection_name) and key from a given document.
+  The *document-handle* can either be a regular document from a collection, or a document
+  identifier string (e.g. *_users/1234*). Passing either a non-string or a non-document or a
+  document without an *_id* attribute will result in an error.
+
+      RETURN PARSE_IDENTIFIER('_users/my-user')
+
+      [ 
+        { "collection" : "_users", "key" : "my-user" } 
+      ]
+
+      RETURN PARSE_IDENTIFIER({ "_id" : "mycollection/mykey", "value" : "some value" })
+
+      [ 
+        { "collection" : "mycollection", "key" : "mykey" } 
+      ]
