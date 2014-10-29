@@ -320,8 +320,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
                 // in the original plan that needs this engine
   };
 
-  std::vector<std::pair<std::string, TRI_json_t*>> _plans;
-
   Query*                   query;
   QueryRegistry*           queryRegistry;
   ExecutionBlock*          root;
@@ -365,15 +363,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 ////////////////////////////////////////////////////////////////////////////////
 
   ~CoordinatorInstanciator () {
-    resetPlans();
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief resetPlans, clear plans for one Scatter/Gather block
-////////////////////////////////////////////////////////////////////////////////
-
-  void resetPlans() {
-    _plans.clear();
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -410,26 +399,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     plan.root(previous);
     plan.setVarUsageComputed();
     return plan.root()->toJson(TRI_UNKNOWN_MEM_ZONE, verbose);
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generatePlansForDBServers
-////////////////////////////////////////////////////////////////////////////////
-
-  void generatePlansForDBServers (EngineInfo const& info,
-                                  QueryId connectedId,
-                                  bool verbose) {
-    Collection* collection = info.getCollection();
-    
-    // iterate over all shards of the collection
-    for (auto & shardId : collection->shardIds()) {
-      // inject the current shard id into the collection
-      collection->setCurrentShard(shardId);
-      auto jsonPlan = generatePlanForOneShard(info, connectedId, shardId, verbose);
-      _plans.push_back(std::make_pair(shardId, jsonPlan.steal()));  
-    }
-    // fix collection  
-    collection->resetCurrentShard();
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -561,9 +530,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 /// @brief distributePlansToShards, for a single Scatter/Gather block
 ////////////////////////////////////////////////////////////////////////////////
 
-  void distributePlansToShards (
-             EngineInfo const& info,
-             QueryId connectedId) {
+  void distributePlansToShards (EngineInfo const& info,
+                                QueryId connectedId) {
 
     // std::cout << "distributePlansToShards: " << info.id << std::endl;
     Collection* collection = info.getCollection();
@@ -573,11 +541,12 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     TRI_ASSERT(cc != nullptr);
 
     // iterate over all shards of the collection
-    for (auto onePlan: _plans) {
-      collection->setCurrentShard(onePlan.first);
+    for (auto & shardId : collection->shardIds()) {
+      // inject the current shard id into the collection
+      collection->setCurrentShard(shardId);
+      auto jsonPlan = generatePlanForOneShard(info, connectedId, shardId, true);
 
-      distributePlanToShard(coordTransactionID, info, collection, connectedId, onePlan.first, onePlan.second);
-      onePlan.second = nullptr;
+      distributePlanToShard(coordTransactionID, info, collection, connectedId, shardId, jsonPlan.steal());
     }
 
     // fix collection  
@@ -714,9 +683,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       else {
         // create an engine on a remote DB server
         // hand in the previous engine's id
-        generatePlansForDBServers((*it), id, true);
         distributePlansToShards((*it), id);
-        resetPlans();
       }
     }
 
