@@ -82,10 +82,18 @@ namespace triagens {
 // --SECTION--                                                  public variables
 // -----------------------------------------------------------------------------
 
-     v8::Isolate* isolate;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the isolate used when executing and destroying the expression
+////////////////////////////////////////////////////////////////////////////////
 
-     v8::Persistent<v8::Function> func;
-    
+       v8::Isolate* isolate;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the compiled expression as a V8 function
+////////////////////////////////////////////////////////////////////////////////
+
+       v8::Persistent<v8::Function> func;
+
     };
 
   }
