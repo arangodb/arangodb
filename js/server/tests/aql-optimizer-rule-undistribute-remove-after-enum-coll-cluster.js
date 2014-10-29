@@ -41,7 +41,7 @@ function optimizerRuleTestSuite () {
   // various choices to control the optimizer: 
   var rulesNone        = { optimizer: { rules: [ "-all" ] } };
   var rulesAll         = { optimizer: { rules: [ "+all" ] } };
-  var thisRuleEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
+  var thisRuleEnabled  = { optimizer: { rules: [ "-all", "+distribute-filtercalc-to-cluster", "+" + ruleName ] } };
 
   var cn1 = "UnitTestsAqlOptimizerRuleUndist1";
   var cn2 = "UnitTestsAqlOptimizerRuleUndist2";
@@ -80,7 +80,7 @@ function optimizerRuleTestSuite () {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test that rule does not fire when it is not enabled 
+    /// @brief test that rule fires when it is enabled 
     ////////////////////////////////////////////////////////////////////////////////
 
     testThisRuleEnabled : function () {
@@ -132,17 +132,16 @@ function optimizerRuleTestSuite () {
       ];
 
       var expectedRules = [ "distribute-in-cluster",
-                            "scatter-in-cluster", 
-                            "distribute-filtercalc-to-cluster" ];
+                            "scatter-in-cluster" ];
 
       var expectedNodes = [ ["SingletonNode", 
                              "ScatterNode", 
                              "RemoteNode", 
                              "EnumerateCollectionNode", 
-                             "CalculationNode", 
-                             "FilterNode",
                              "RemoteNode", 
                              "GatherNode",
+                             "CalculationNode", 
+                             "FilterNode",
                              "DistributeNode", 
                              "RemoteNode", 
                              "RemoveNode",
@@ -153,11 +152,11 @@ function optimizerRuleTestSuite () {
                               "ScatterNode", 
                               "RemoteNode", 
                               "EnumerateCollectionNode", 
+                              "RemoteNode", 
+                              "GatherNode", 
                               "CalculationNode", 
                               "FilterNode", 
                               "CalculationNode", 
-                              "RemoteNode", 
-                              "GatherNode", 
                               "DistributeNode", 
                               "RemoteNode", 
                               "RemoveNode",
