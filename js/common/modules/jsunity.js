@@ -28,25 +28,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
-var _ = require("underscore");
 var internal = require("internal");
 var print = internal.print;
 var fs = require("fs");
 var console = require("console");
-
-var COMPLETE={
-  "TOTAL": 0,
-  "PASSED": 0,
-  "FAILED": 0,
-  "DURATION": 0,
-  "RESULTS": {}
-};
 
 var TOTAL = 0;
 var PASSED = 0;
 var FAILED = 0;
 var DURATION = 0;
 var RESULTS = {};
+var COMPLETE = {};
 
 var jsUnity = require("./jsunity/jsunity").jsUnity;
 var STARTTEST = 0.0;
@@ -148,11 +140,7 @@ function Run (testsuite) {
   FAILED += result.failed;
   DURATION += result.duration;
 
-  COMPLETE.TOTAL += result.total;
-  COMPLETE.PASSED += result.passed;
-  COMPLETE.FAILED += result.failed;
-  COMPLETE.DURATION += result.duration;
-  _.defaults(COMPLETE.RESULTS, RESULTS);
+  for (var attrname in RESULTS) { COMPLETE[attrname] = RESULTS[attrname]; }
 
   return result;
 }
@@ -168,18 +156,18 @@ function Done (suiteName) {
 
   var ok = FAILED === 0;
 
-  RESULTS.duration = DURATION;
-  RESULTS.status = ok;
-  RESULTS.failed = FAILED;
-  RESULTS.total = TOTAL;
-  RESULTS.suiteName = suiteName;
+  COMPLETE.duration = DURATION;
+  COMPLETE.status = ok;
+  COMPLETE.failed = FAILED;
+  COMPLETE.total = TOTAL;
+  COMPLETE.suiteName = suiteName;
 
   TOTAL = 0;
   PASSED = 0;
   FAILED = 0;
   DURATION = 0;
 
-  return COMPLETE.RESULTS;
+  return COMPLETE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
