@@ -31,6 +31,7 @@
 var db = require("org/arangodb").db;
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
+var removeAlwaysOnClusterRules = helper.removeAlwaysOnClusterRules;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
