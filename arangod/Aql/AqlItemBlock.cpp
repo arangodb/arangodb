@@ -275,7 +275,7 @@ AqlItemBlock* AqlItemBlock::slice (size_t from,
   TRI_ASSERT(from < to && to <= _nrItems);
 
   std::unordered_map<AqlValue, AqlValue> cache;
-  // TODO: should we pre-reserve space for cache to avoid later re-allocations?
+  cache.reserve((to-from)*_nrRegs / 4 + 1);
 
   AqlItemBlock* res = nullptr;
   try {
@@ -327,7 +327,7 @@ AqlItemBlock* AqlItemBlock::slice (std::vector<size_t>& chosen,
   TRI_ASSERT(from < to && to <= chosen.size());
 
   std::unordered_map<AqlValue, AqlValue> cache;
-  // TODO: should we pre-reserve space for cache to avoid later re-allocations?
+  cache.reserve((to-from)*_nrRegs / 4 + 1);
 
   AqlItemBlock* res = nullptr;
   try {

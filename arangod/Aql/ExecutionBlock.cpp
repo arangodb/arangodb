@@ -2924,8 +2924,6 @@ int ModificationBlock::extractKey (AqlValue const& value,
   if (value.isArray()) {
     Json member(value.extractArrayMember(_trx, document, TRI_VOC_ATTRIBUTE_KEY));
 
-    // TODO: allow _id, too
-          
     TRI_json_t const* json = member.json();
     if (TRI_IsStringJson(json)) {
       key = std::string(json->_value._string.data, json->_value._string.length - 1);

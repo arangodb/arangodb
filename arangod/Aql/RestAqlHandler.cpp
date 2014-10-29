@@ -498,7 +498,6 @@ void RestAqlHandler::getInfoQuery (std::string const& operation,
   try {
     int64_t number;
     if (operation == "count") {
-      //TODO shardId.empty()!
       number = query->engine()->count();
       if (number == -1) {
         answerBody("count", Json("unknown"));
