@@ -664,7 +664,7 @@ int deleteDocumentOnCoordinator (
   if (0 == json) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-  TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
                        TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE,
                                  key.c_str(), key.size()));
   bool usesDefaultShardingAttributes;
@@ -855,7 +855,7 @@ int getDocumentOnCoordinator (
   if (0 == json) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-  TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
                        TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE,
                                  key.c_str(), key.size()));
   bool usesDefaultShardingAttributes;
@@ -1244,7 +1244,7 @@ int createEdgeOnCoordinator (
   TRI_json_t* subjson = TRI_LookupArrayJson(json, "_key");
   bool userSpecifiedKey = false;
   string _key;
-  if (0 == subjson) {
+  if (subjson == nullptr) {
     // The user did not specify a key, let's create one:
     uint64_t uid = ci->uniqid();
     _key = triagens::basics::StringUtils::itoa(uid);
