@@ -324,16 +324,13 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   EngineLocation           currentLocation;
   size_t                   currentEngineId;
   std::vector<EngineInfo>  engines;
-  std::vector<size_t>      engineIds; // stack of engine ids, used for subqueries
+  std::vector<size_t>      engineStack;  // stack of engine ids, used for
+                                         // RemoteNodes
   std::unordered_set<std::string> collNamesSeenOnDBServer;  
      // names of sharded collections that we have already seen on a DBserver
      // this is relevant to decide whether or not the engine there is a main
      // query or a dependent one.
 
-  virtual bool enterSubQueryFirst () override final {
-    return true;
-  }
-  
   CoordinatorInstanciator (Query* query,
                            QueryRegistry* queryRegistry)
     : query(query),
@@ -391,33 +388,32 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
                                                   QueryId& connectedId,
                                                   std::string const& shardId,
                                                   bool verbose) {
-      // copy the relevant fragment of the plan for each shard
-      ExecutionPlan plan(query->ast());
+    // copy the relevant fragment of the plan for each shard
+    // Note that in these parts of the query there are no SubqueryNodes,
+    // since they are all on the coordinator!
+    ExecutionPlan plan(query->ast());
 
-      ExecutionNode* previous = nullptr;
-      for (ExecutionNode const* current : info.nodes) {
-        auto clone = current->clone(&plan, false, true);
-        plan.registerNode(clone);
-        
-        if (current->getType() == ExecutionNode::REMOTE) {
-          // update the remote node with the information about the query
-          static_cast<RemoteNode*>(clone)->server("server:" + triagens::arango::ServerState::instance()->getId());
-          static_cast<RemoteNode*>(clone)->ownName(shardId);
-          static_cast<RemoteNode*>(clone)->queryId(connectedId);
-        }
+    ExecutionNode* previous = nullptr;
+    for (ExecutionNode const* current : info.nodes) {
+      auto clone = current->clone(&plan, false, true);
+      // UNNECESSARY, because clone does it: plan.registerNode(clone);
       
-        if (previous == nullptr) {
-          // set the root node
-          plan.root(clone);
-        }
-        else {
-          previous->addDependency(clone);
-        }
-
-        previous = clone;
+      if (current->getType() == ExecutionNode::REMOTE) {
+        // update the remote node with the information about the query
+        static_cast<RemoteNode*>(clone)->server("server:" + triagens::arango::ServerState::instance()->getId());
+        static_cast<RemoteNode*>(clone)->ownName(shardId);
+        static_cast<RemoteNode*>(clone)->queryId(connectedId);
       }
-      plan.setVarUsageComputed();
-      return plan.root()->toJson(TRI_UNKNOWN_MEM_ZONE, verbose);
+    
+      if (previous != nullptr) {
+        clone->addDependency(previous);
+      }
+
+      previous = clone;
+    }
+    plan.root(previous);
+    plan.setVarUsageComputed();
+    return plan.root()->toJson(TRI_UNKNOWN_MEM_ZONE, verbose);
   }
 
   void generatePlansForDBServers (EngineInfo const& info,
@@ -452,7 +448,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         TRI_ASSERT(plan != nullptr);
         TRI_ASSERT(plan->empty());
 
-
         if ((*it).id > 0) {
           generatePlanForCoordinator(plan, (*it).nodes.front());
           // we need to instanciate this engine in the registry
@@ -468,7 +463,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         // create an engine on a remote DB server
         // hand in the previous engine's id
         generatePlansForDBServers((*it), id, true);
-        queryIds = distributePlansToShards((*it), id);
+        distributePlansToShards((*it), id, queryIds);
         resetPlans();
       }
     }
@@ -546,12 +541,14 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     }
   }
 
-  std::unordered_map<std::string, std::string> aggregateQueryIds (triagens::arango::ClusterComm*& cc,
-                                                                  triagens::arango::CoordTransactionID& coordTransactionID,
-                                                                  Collection* collection) {
+  void aggregateQueryIds (
+                     triagens::arango::ClusterComm*& cc,
+                     triagens::arango::CoordTransactionID& coordTransactionID,
+                     Collection* collection,
+                     std::unordered_map<std::string, std::string>& queryIds) {
 
     // pick up the remote query ids
-    std::unordered_map<std::string, std::string> queryIds;
+    queryIds.clear();
     std::vector<std::string> shardIds = collection->shardIds();
 
     std::string error;
@@ -595,12 +592,13 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       // TODO: provide sensible error message with more details
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, error);
     }
-          
-    return queryIds;
   }
 
-  std::unordered_map<std::string, std::string> distributePlansToShards (EngineInfo const& info,
-                                                                        QueryId connectedId) {
+  void distributePlansToShards (
+             EngineInfo const& info,
+             QueryId connectedId,
+             std::unordered_map<std::string, std::string>& queryIds ) {
+
     Collection* collection = info.getCollection();
     // now send the plan to the remote servers
     triagens::arango::CoordTransactionID coordTransactionID = TRI_NewTickServer();
@@ -617,7 +615,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
     // fix collection  
     collection->resetCurrentShard();
-    return aggregateQueryIds (cc, coordTransactionID, collection);
+    aggregateQueryIds(cc, coordTransactionID, collection, queryIds);
   }
 
 
@@ -632,7 +630,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
     RemoteNode* remoteNode = nullptr;
 
-    for (auto en = info.nodes.rbegin(); en != info.nodes.rend(); ++en) {
+    for (auto en = info.nodes.begin(); en != info.nodes.end(); ++en) {
       auto const nodeType = (*en)->getType();
 
       if (nodeType == ExecutionNode::REMOTE) {
@@ -707,8 +705,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       
       // the last block is always the root 
       engine->root(eb);
-      // TODO: handle subqueries
  
+      // put it into our cache:
       cache.emplace(std::make_pair((*en), eb));
     }
 
@@ -717,25 +715,14 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     return engine.release();
   }
 
-  virtual bool enterSubquery (ExecutionNode*, ExecutionNode*) override final {
-    engineIds.push_back(currentEngineId);
-    return true;
-  }
-  
-  virtual void leaveSubquery (ExecutionNode*, ExecutionNode*) override final {
-    currentEngineId = engineIds.back();
-    engineIds.pop_back();
-  }
-  
   virtual bool before (ExecutionNode* en) override final {
-    // assign the current node to the current engine
-    engines[currentEngineId].nodes.push_back(en);
-
     auto const nodeType = en->getType();
 
     if (nodeType == ExecutionNode::REMOTE) {
       // got a remote node
       // this indicates the end of an execution section
+
+      engineStack.push_back(currentEngineId);
 
       // begin a new engine
       // flip current location
@@ -758,6 +745,17 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     return false;
   }
 
+  virtual void after (ExecutionNode* en) override final {
+    auto const nodeType = en->getType();
+
+    if (nodeType == ExecutionNode::REMOTE) {
+      currentEngineId = engineStack.back();
+      engineStack.pop_back();
+    }
+
+    // assign the current node to the current engine
+    engines[currentEngineId].nodes.push_back(en);
+  }
 };
 
 // -----------------------------------------------------------------------------
