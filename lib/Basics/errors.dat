@@ -355,5 +355,5 @@ ERROR_APP_ALREADY_EXISTS,20000,"newest version of app already installed","newest
 
 ERROR_QUEUE_ALREADY_EXISTS,21000,"named queue already exists", "Will be returned if a queue with this name already exists."
 ERROR_DISPATCHER_IS_STOPPING,21001,"dispatcher stopped","Will be returned if a shutdown is in progress."
-ERROR_QUEUE_UNKNOWN,21002,"named queue does not exist", "Will be returned if a queue with this name does not exist."
-ERROR_QUEUE_FULL,21003,"named queue is full", "Will be returned if a queue with this name is full."
+ERROR_QUEUE_UNKNOWN,21002,"named queue does not exist","Will be returned if a queue with this name does not exist."
+ERROR_QUEUE_FULL,21003,"named queue is full","Will be returned if a queue with this name is full."

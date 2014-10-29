@@ -23,7 +23,7 @@ def findStartCode(textFile,full_path):
   match = re.findall(r'@startDocuBlock\s*(\w+)', textFile)
   if match:      
     for find in match:
-      textToReplace=getTextFromSourceFile(find, full_path)
+      getTextFromSourceFile(find, full_path)
 
 def getTextFromSourceFile(searchText, full_path):
   f=open("allComments.txt", 'rU')

@@ -1,9 +1,9 @@
 
-#ifndef TRIAGENS_BASICS_C_VOC_ERRORS_H
-#define TRIAGENS_BASICS_C_VOC_ERRORS_H 1
+#ifndef TRIAGENS_BASICS_VOC_ERRORS_H
+#define TRIAGENS_BASICS_VOC_ERRORS_H 1
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page ArangoErrors Error codes and meanings
+/// Error codes and meanings
 ///
 /// The following errors might be raised when running ArangoDB:
 ///
@@ -582,9 +582,9 @@
 /// - 21001: @LIT{dispatcher stopped}
 ///   Will be returned if a shutdown is in progress.
 /// - 21002: @LIT{named queue does not exist}
-///    "Will be returned if a queue with this name does not exist."
+///   Will be returned if a queue with this name does not exist.
 /// - 21003: @LIT{named queue is full}
-///    "Will be returned if a queue with this name is full."
+///   Will be returned if a queue with this name is full.
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -597,7 +597,7 @@
 /// @brief register all errors for ArangoDB
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitialiseErrorMessages (void);
+void TRI_InitialiseErrorMessages ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 0: ERROR_NO_ERROR
@@ -3080,7 +3080,7 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// named queue does not exist
 ///
-///  "Will be returned if a queue with this name does not exist."
+/// Will be returned if a queue with this name does not exist.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUEUE_UNKNOWN                                           (21002)
@@ -3090,7 +3090,7 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// named queue is full
 ///
-///  "Will be returned if a queue with this name is full."
+/// Will be returned if a queue with this name is full.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUEUE_FULL                                              (21003)
