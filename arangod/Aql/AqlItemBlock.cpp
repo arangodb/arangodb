@@ -126,7 +126,7 @@ AqlItemBlock::AqlItemBlock (Json const& json) {
             Json lowBound(data.at(static_cast<int>(posInData++)));
             Json highBound(data.at(static_cast<int>(posInData++)));
             int64_t low = JsonHelper::getNumericValue<int64_t>(lowBound.json(), 0);
-            int64_t high = JsonHelper::getNumericValue<int64_t>(lowBound.json(), 0);
+            int64_t high = JsonHelper::getNumericValue<int64_t>(highBound.json(), 0);
             AqlValue a(low, high);
             try {
               setValue(i, column, a);

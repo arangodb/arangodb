@@ -1816,7 +1816,7 @@ namespace triagens {
         
         double estimateCost () const override final {
           double depCost = _dependencies.at(0)->getCost();
-          if (depCost <= 2.0) {
+          if (depCost <= 3.0) {
             return depCost;
           }
           return log(depCost) * depCost;
