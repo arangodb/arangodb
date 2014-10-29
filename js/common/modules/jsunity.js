@@ -1,3 +1,5 @@
+/*jshint strict: false */
+/*global require, exports */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JSUnity wrapper
 ///
@@ -25,9 +27,20 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+
+var _ = require("underscore");
 var internal = require("internal");
+var print = internal.print;
 var fs = require("fs");
 var console = require("console");
+
+var COMPLETE={
+  "TOTAL": 0,
+  "PASSED": 0,
+  "FAILED": 0,
+  "DURATION": 0,
+  "RESULTS": {}
+};
 
 var TOTAL = 0;
 var PASSED = 0;
@@ -71,7 +84,10 @@ jsUnity.results.fail = function (index, testName, message) {
 
 jsUnity.results.end = function (passed, failed, duration) {
   print(" " + passed + " test(s) passed");
-  print(" " + ((failed > 0) ? internal.COLORS.COLOR_RED : internal.COLORS.COLOR_RESET) + failed + " test(s) failed" + internal.COLORS.COLOR_RESET);
+  print(" " + ((failed > 0) ? 
+               internal.COLORS.COLOR_RED : 
+               internal.COLORS.COLOR_RESET) +
+        failed + " test(s) failed" + internal.COLORS.COLOR_RESET);
   print(" " + duration + " millisecond(s) elapsed");
   print();
 };
@@ -89,13 +105,13 @@ jsUnity.results.end = function (passed, failed, duration) {
 /// @brief runs a test with context
 ////////////////////////////////////////////////////////////////////////////////
 
-function Run (tests) {
-  var suite = jsUnity.compile(tests);
-  var definition = tests();
+function Run (testsuite) {
+  var suite = jsUnity.compile(testsuite);
+  var definition = testsuite();
 
   var tests = [];
-  var setUp = undefined;
-  var tearDown = undefined;
+  var setUp;
+  var tearDown;
 
   if (definition.hasOwnProperty("setUp")) {
     setUp = definition.setUp;
@@ -110,12 +126,12 @@ function Run (tests) {
   scope.tearDown = tearDown;
 
   for (var key in definition) {
-    if (key.indexOf("test") == 0) {
+    if (key.indexOf("test") === 0) {
       var test = { name : key, fn : definition[key] };
 
       tests.push(test);
     }
-    else if (key != "tearDown" && key != "setUp") {
+    else if (key !== "tearDown" && key !== "setUp") {
       console.error("unknown function: %s", key);
     }
   }
@@ -131,6 +147,13 @@ function Run (tests) {
   PASSED += result.passed;
   FAILED += result.failed;
   DURATION += result.duration;
+
+  COMPLETE.TOTAL += result.total;
+  COMPLETE.PASSED += result.passed;
+  COMPLETE.FAILED += result.failed;
+  COMPLETE.DURATION += result.duration;
+  _.defaults(COMPLETE.RESULTS, RESULTS);
+
   return result;
 }
 
@@ -143,7 +166,7 @@ function Done (suiteName) {
   internal.printf("%d total, %d passed, %d failed, %d ms", TOTAL, PASSED, FAILED, DURATION);
   print();
 
-  var ok = FAILED == 0;
+  var ok = FAILED === 0;
 
   RESULTS.duration = DURATION;
   RESULTS.status = ok;
@@ -156,7 +179,7 @@ function Done (suiteName) {
   FAILED = 0;
   DURATION = 0;
 
-  return RESULTS;
+  return COMPLETE.RESULTS;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -172,7 +195,7 @@ function RunTest (path) {
   content = "(function(){require('jsunity').jsUnity.attachAssertions();" + content + "})";
   f = internal.executeScript(content, undefined, path);
   
-  if (f == undefined) {
+  if (f === undefined) {
     throw "cannot create context function";
   }
 
