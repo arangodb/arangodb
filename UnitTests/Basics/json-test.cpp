@@ -285,6 +285,85 @@ BOOST_AUTO_TEST_CASE (tst_json_string_reference) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test string reference value
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (tst_json_string_reference2) {
+  INIT_BUFFER
+
+  const char* data1 = "The first Brown Fox";
+  const char* data2 = "The second Brown Fox";
+  char copy1[64];
+  char copy2[64];
+  TRI_json_t* json;
+  size_t len1 = strlen(data1);
+  size_t len2 = strlen(data2);
+
+  memset(copy1, 0, sizeof(copy1));
+  memcpy(copy1, data1, len1);
+
+  memset(copy2, 0, sizeof(copy2));
+  memcpy(copy2, data2, len2);
+
+  json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "first",
+                       TRI_CreateStringReferenceJson(TRI_UNKNOWN_MEM_ZONE, copy1));
+
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "second",
+                       TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE, copy2, len2));
+
+  BOOST_CHECK_EQUAL(true, TRI_IsArrayJson(json));
+
+  STRINGIFY
+  BOOST_CHECK_EQUAL("{\"first\":\"The first Brown Fox\",\"second\":\"The second Brown Fox\"}", STRING_VALUE);
+  FREE_BUFFER
+  
+  FREE_JSON
+
+  // freeing JSON should not affect our string  
+  BOOST_CHECK_EQUAL("The first Brown Fox", copy1);
+  BOOST_CHECK_EQUAL("The second Brown Fox", copy2);
+
+  json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "first",
+                       TRI_CreateStringReferenceJson(TRI_UNKNOWN_MEM_ZONE, copy1));
+
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "second",
+                       TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE, copy2, len2));
+
+  BOOST_CHECK_EQUAL(true, TRI_IsArrayJson(json));
+
+  // modify the string we're referring to
+  copy1[0] = '*';
+  copy1[1] = '/';
+  copy1[2] = '+';
+  copy1[len1 - 1] = '!';
+
+  copy2[0] = '*';
+  copy2[1] = '/';
+  copy2[2] = '+';
+  copy2[len2 - 1] = '!';
+
+  BOOST_CHECK_EQUAL("*/+ first Brown Fo!", copy1);
+  BOOST_CHECK_EQUAL("*/+ second Brown Fo!", copy2);
+
+  sb = TRI_CreateStringBuffer(TRI_UNKNOWN_MEM_ZONE);
+  STRINGIFY
+  BOOST_CHECK_EQUAL("{\"first\":\"*/+ first Brown Fo!\",\"second\":\"*/+ second Brown Fo!\"}", STRING_VALUE);
+
+  FREE_BUFFER
+  
+  // freeing JSON should not affect our string  
+  BOOST_CHECK_EQUAL("*/+ first Brown Fo!", copy1);
+  BOOST_CHECK_EQUAL("*/+ second Brown Fo!", copy2);
+
+  FREE_JSON
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test string value (escaped)
 ////////////////////////////////////////////////////////////////////////////////
 
