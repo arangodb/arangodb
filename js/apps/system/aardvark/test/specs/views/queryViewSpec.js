@@ -65,11 +65,8 @@
      };
 
       view = new window.queryView({
-<<<<<<< HEAD
-        collection: queryCollection
-=======
-        collection: collectionDummy
->>>>>>> 626f37ad5b9851274fdeefc4a27f4da5b2623122
+        collection: queryCollection,
+        collection2: collectionDummy
       });
 
       window.modalView = new window.ModalView();
