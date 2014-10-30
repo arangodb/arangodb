@@ -304,9 +304,9 @@ function isEqual (lhs, rhs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function getQueryResults2 (query, bindVars, recursive) {
-  var result = getQueryResults(query, bindVars, recursive);
+//  var result = getQueryResults(query, bindVars, recursive);
   var result2 = getQueryResultsAQL2(query, bindVars, recursive);
-
+/*
   if (! isEqual(result, result2)) { 
     require("internal").print("Old and new AQL return different results!");
     require("internal").print("Old result:\n", result);
@@ -316,8 +316,8 @@ function getQueryResults2 (query, bindVars, recursive) {
 
     throw "Results between AQL and AQL2 differ";
   }
-
-  return result;
+*/
+  return result2;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -360,6 +360,35 @@ function assertQueryError2 (errorCode, query, bindVars) {
     assertTrue(e2.errorNum !== undefined, "unexpected error format while calling [" + query + "]");
     assertEqual(errorCode, e2.errorNum, "unexpected error code (" + e2.errorMessage + "): ");
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief assert a specific warning running a query
+////////////////////////////////////////////////////////////////////////////////
+
+function assertQueryWarning2 (errorCode, query, bindVars) {
+  var result = AQL_EXECUTE(query, bindVars), i, found = { };
+
+  for (i = 0; i < result.warnings.length; ++i) {
+    found[result.warnings[i].code] = true;
+  }
+
+  assertTrue(found[errorCode]);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief assert a specific warning running a query
+////////////////////////////////////////////////////////////////////////////////
+
+function assertQueryWarningAndNull2 (errorCode, query, bindVars) {
+  var result = AQL_EXECUTE(query, bindVars), i, found = { };
+
+  for (i = 0; i < result.warnings.length; ++i) {
+    found[result.warnings[i].code] = true;
+  }
+
+  assertTrue(found[errorCode]);
+  assertEqual([ null ], result.json);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -574,6 +603,8 @@ exports.getQueryResults2                   = getQueryResults2;
 exports.getQueryResultsAQL2                = getQueryResultsAQL2;
 exports.assertQueryError                   = assertQueryError;
 exports.assertQueryError2                  = assertQueryError2;
+exports.assertQueryWarning2                = assertQueryWarning2;
+exports.assertQueryWarningAndNull2         = assertQueryWarningAndNull2;
 exports.getLinearizedPlan                  = getLinearizedPlan;
 exports.getCompactPlan                     = getCompactPlan;
 exports.findExecutionNodes                 = findExecutionNodes;

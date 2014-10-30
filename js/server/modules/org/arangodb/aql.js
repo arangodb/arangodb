@@ -1,5 +1,5 @@
 /*jshint strict: false, unused: false */
-/*global require, exports, COMPARE_STRING */
+/*global require, exports, COMPARE_STRING, AQL_TO_BOOL, AQL_TO_NUMBER, AQL_TO_STRING, AQL_WARNING */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Ahuacatl, internal query functions
@@ -67,20 +67,47 @@ var TYPEWEIGHT_DOCUMENT  = 16;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief raise a warning
+////////////////////////////////////////////////////////////////////////////////
+
+function WARN (func, error, data) {
+  "use strict";
+
+  if (error.code === INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code) {
+    AQL_WARNING(error.code, error.message.replace(/%s/, func)); 
+  }
+  else {
+    var prefix = "in function '" + func + "()': ";
+
+    if (typeof data === "string") {
+      AQL_WARNING(error.code, prefix + error.message.replace(/%s/, data));
+    }
+    else {
+      AQL_WARNING(error.code, prefix + error.message);
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief throw a runtime exception
 ////////////////////////////////////////////////////////////////////////////////
 
-function THROW (error, data) {
+function THROW (func, error, data) {
   "use strict";
+  
+  var prefix = "";
+  if (func !== null && func !== "") {
+    prefix = "in function '" + func + "()': ";
+  }
 
   var err = new ArangoError();
 
   err.errorNum = error.code;
   if (typeof data === "string") {
-    err.errorMessage = error.message.replace(/%s/, data);
+    err.errorMessage = prefix + error.message.replace(/%s/, data);
   }
   else {
-    err.errorMessage = error.message;
+    err.errorMessage = prefix + error.message;
   }
 
   throw err;
@@ -144,7 +171,7 @@ function reloadUserFunctions () {
   });
 
   if (foundError) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_INVALID_CODE);
+    THROW(null, INTERNAL.errors.ERROR_QUERY_FUNCTION_INVALID_CODE);
   }
 }
 
@@ -220,24 +247,6 @@ function INDEX_FULLTEXT (collection, attribute) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Transforms a parameter to a list,
-////////////////////////////////////////////////////////////////////////////////
-
-function TO_LIST (param, isStringHash) {
-
-  if (! param) {
-    param = isStringHash ? [] : [{}];
-  }
-  if (typeof param === "string") {
-    param = isStringHash ? [param] : {_id : param};
-  }
-  if (!Array.isArray(param)) {
-    param = [param];
-  }
-  return param;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief find an index of a certain type for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -267,7 +276,7 @@ function COLLECTION (name) {
   "use strict";
 
   if (typeof name !== 'string') {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "INTERNAL");
+    THROW(null, INTERNAL.errors.ERROR_INTERNAL);
   }
 
   if (name.substring(0, 1) === '_') {
@@ -277,6 +286,24 @@ function COLLECTION (name) {
   }
 
   return INTERNAL.db[name];
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief transforms a parameter into a list
+////////////////////////////////////////////////////////////////////////////////
+
+function TO_LIST (param, isStringHash) {
+
+  if (! param) {
+    param = isStringHash ? [ ] : [ { } ];
+  }
+  if (typeof param === "string") {
+    param = isStringHash ? [ param ] : { _id : param };
+  }
+  if (! Array.isArray(param)) {
+    param = [param];
+  }
+  return param;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -371,7 +398,7 @@ function TYPEWEIGHT (value) {
         return TYPEWEIGHT_BOOL;
       case 'number':
         if (isNaN(value) || ! isFinite(value)) {
-          // not a number => undefined
+          // not a number => null
           return TYPEWEIGHT_NULL;
         }
         return TYPEWEIGHT_NUMBER;
@@ -386,31 +413,17 @@ function TYPEWEIGHT (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief validate function call argument
-////////////////////////////////////////////////////////////////////////////////
-
-function ARG_CHECK (actualValue, expectedType, functionName) {
-  "use strict";
-
-  if (TYPEWEIGHT(actualValue) !== expectedType) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-          NORMALIZE_FNAME(functionName));
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief compile a regex from a string pattern
 ////////////////////////////////////////////////////////////////////////////////
 
 function COMPILE_REGEX (regex, modifiers) {
   "use strict";
 
+  regex = AQL_TO_STRING(regex);
   var i, n = regex.length;
   var escaped = false;
   var pattern = '';
   var specialChar = /^([.*+?\^=!:${}()|\[\]\/\\])$/;
-
-  ARG_CHECK(regex, TYPEWEIGHT_STRING, "LIKE");
 
   for (i = 0; i < n; ++i) {
     var c = regex.charAt(i);
@@ -478,7 +491,7 @@ function FCALL_USER (name, parameters) {
     reloaded = true;
 
     if (! UserFunctions.hasOwnProperty(prefix)) {
-      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, NORMALIZE_FNAME(name));
+      THROW(null, INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, NORMALIZE_FNAME(name));
     }
   }
   
@@ -492,12 +505,12 @@ function FCALL_USER (name, parameters) {
       return FIX_VALUE(result);
     }
     catch (err) {
-      console.warn("AQL user function '%s' returned an exception. result is converted to null", name);
+      WARN(name, INTERNAL.errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR, AQL_TO_STRING(err));
       return null;
     }
   }
 
-  THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, NORMALIZE_FNAME(name));
+  THROW(null, INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, NORMALIZE_FNAME(name));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -548,7 +561,7 @@ function VALUES (value) {
 /// @brief extract key names from an argument list
 ////////////////////////////////////////////////////////////////////////////////
 
-function EXTRACT_KEYS (args, startArgument, functionName) {
+function EXTRACT_KEYS (args, startArgument, func) {
   "use strict";
 
   var keys = { }, i, j, key, key2;
@@ -568,8 +581,8 @@ function EXTRACT_KEYS (args, startArgument, functionName) {
           keys[key2] = true;
         }
         else {
-          THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                NORMALIZE_FNAME(functionName));
+          WARN(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+          return null;
         }
       }
     }
@@ -660,7 +673,7 @@ function GET_INDEX (value, index) {
     }
   }
   else {
-    THROW(INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+    return null;
   }
 
   if (TYPEWEIGHT(result) === TYPEWEIGHT_NULL) {
@@ -721,20 +734,6 @@ function DOCUMENT_MEMBER (value, attributeName) {
   }
 
   return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief assert that a value is a list, fail otherwise
-////////////////////////////////////////////////////////////////////////////////
-
-function LIST (value) {
-  "use strict";
-
-  if (TYPEWEIGHT(value) !== TYPEWEIGHT_LIST) {
-    THROW(INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
-  }
-
-  return value;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -850,36 +849,12 @@ function AQL_COLLECTIONS () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute ternary operator
 ///
-/// the condition operand must be a boolean value, returns either the truepart
+/// the condition should be a boolean value, returns either the truepart
 /// or the falsepart
 ////////////////////////////////////////////////////////////////////////////////
 
 function TERNARY_OPERATOR (condition, truePart, falsePart) {
   "use strict";
-
-  if (TYPEWEIGHT(condition) !== TYPEWEIGHT_BOOL) {
-    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
-  }
-
-  if (condition) {
-    return truePart;
-  }
-  return falsePart;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute ternary operator
-///
-/// the condition operand must be a boolean value, returns either the truepart
-/// or the falsepart
-////////////////////////////////////////////////////////////////////////////////
-
-function TERNARY_OPERATOR_FN (condition, truePart, falsePart) {
-  "use strict";
-
-  if (TYPEWEIGHT(condition) !== TYPEWEIGHT_BOOL) {
-    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
-  }
 
   if (condition) {
     return truePart();
@@ -897,16 +872,13 @@ function TERNARY_OPERATOR_FN (condition, truePart, falsePart) {
 function LOGICAL_AND (lhs, rhs) {
   "use strict";
 
-  if (TYPEWEIGHT(lhs) !== TYPEWEIGHT_BOOL ||
-      TYPEWEIGHT(rhs) !== TYPEWEIGHT_BOOL) {
-    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
+  var l = lhs();
+
+  if (! l) {
+    return l;
   }
 
-  if (! lhs) {
-    return false;
-  }
-
-  return rhs;
+  return rhs();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -919,70 +891,13 @@ function LOGICAL_AND (lhs, rhs) {
 function LOGICAL_OR (lhs, rhs) {
   "use strict";
 
-  if (TYPEWEIGHT(lhs) !== TYPEWEIGHT_BOOL ||
-      TYPEWEIGHT(rhs) !== TYPEWEIGHT_BOOL) {
-    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
-  }
-
-  if (lhs) {
-    return true;
-  }
-
-  return rhs;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform logical and
-///
-/// both operands must be boolean values, returns a boolean, uses short-circuit
-/// evaluation
-////////////////////////////////////////////////////////////////////////////////
-
-function LOGICAL_AND_FN (lhs, rhs) {
-  "use strict";
-
   var l = lhs();
-  if (TYPEWEIGHT(l) !== TYPEWEIGHT_BOOL) {
-    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
-  }
-
-  if (! l) {
-    return false;
-  }
-
-  var r = rhs();
-  if (TYPEWEIGHT(r) !== TYPEWEIGHT_BOOL) {
-    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
-  }
-
-  return r;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief perform logical or
-///
-/// both operands must be boolean values, returns a boolean, uses short-circuit
-/// evaluation
-////////////////////////////////////////////////////////////////////////////////
-
-function LOGICAL_OR_FN (lhs, rhs) {
-  "use strict";
-
-  var l = lhs();
-  if (TYPEWEIGHT(l) !== TYPEWEIGHT_BOOL) {
-    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
-  }
 
   if (l) {
-    return true;
+    return l;
   }
 
-  var r = rhs();
-  if (TYPEWEIGHT(r) !== TYPEWEIGHT_BOOL) {
-    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
-  }
-
-  return r;
+  return rhs();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -994,11 +909,7 @@ function LOGICAL_OR_FN (lhs, rhs) {
 function LOGICAL_NOT (lhs) {
   "use strict";
 
-  if (TYPEWEIGHT(lhs) !== TYPEWEIGHT_BOOL) {
-    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
-  }
-
-  return ! lhs;
+  return ! AQL_TO_BOOL(lhs);
 }
 
 // -----------------------------------------------------------------------------
@@ -1421,7 +1332,8 @@ function RELATIONAL_IN (lhs, rhs) {
   var rightWeight = TYPEWEIGHT(rhs);
 
   if (rightWeight !== TYPEWEIGHT_LIST) {
-    THROW(INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+    WARN(null, INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+    return false;
   }
 
   var numRight = rhs.length, i;
@@ -1452,162 +1364,146 @@ function RELATIONAL_NOT_IN (lhs, rhs) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform unary plus operation
-///
-/// the operand must be numeric or this function will fail
 ////////////////////////////////////////////////////////////////////////////////
 
 function UNARY_PLUS (value) {
   "use strict";
 
-  if (TYPEWEIGHT(value) !== TYPEWEIGHT_NUMBER) {
-    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
-  }
-
-  var result = NUMERIC_VALUE(value);
-  if (TYPEWEIGHT(result) !== TYPEWEIGHT_NUMBER) {
-    THROW(INTERNAL.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
-  }
-
-  return result;
+  value = AQL_TO_NUMBER(value);
+  if (value === null) {
+    return null;
+  } 
+  return AQL_TO_NUMBER(+ value);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform unary minus operation
-///
-/// the operand must be numeric or this function will fail
 ////////////////////////////////////////////////////////////////////////////////
 
 function UNARY_MINUS (value) {
   "use strict";
 
-  if (TYPEWEIGHT(value) !== TYPEWEIGHT_NUMBER) {
-    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+  value = AQL_TO_NUMBER(value);
+  if (value === null) {
+    return null;
   }
 
-  var result = NUMERIC_VALUE(-value);
-  if (TYPEWEIGHT(result) !== TYPEWEIGHT_NUMBER) {
-    THROW(INTERNAL.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
-  }
-
-  return result;
+  return AQL_TO_NUMBER(- value);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief perform artithmetic plus
-///
-/// both operands must be numeric or this function will fail
+/// @brief perform artithmetic plus or string concatenation
 ////////////////////////////////////////////////////////////////////////////////
 
 function ARITHMETIC_PLUS (lhs, rhs) {
   "use strict";
 
-  if (TYPEWEIGHT(lhs) !== TYPEWEIGHT_NUMBER ||
-      TYPEWEIGHT(rhs) !== TYPEWEIGHT_NUMBER) {
-    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+  var lWeight = TYPEWEIGHT(lhs);
+  var rWeight = TYPEWEIGHT(rhs);
+
+  if (lWeight === TYPEWEIGHT_STRING || 
+      lWeight === TYPEWEIGHT_LIST || 
+      lWeight === TYPEWEIGHT_DOCUMENT ||
+      rWeight === TYPEWEIGHT_STRING ||
+      rWeight === TYPEWEIGHT_LIST || 
+      rWeight === TYPEWEIGHT_DOCUMENT) {
+    // string concatenation
+    return AQL_TO_STRING(lhs) + AQL_TO_STRING(rhs);
+  }
+  
+  lhs = AQL_TO_NUMBER(lhs);
+  if (lhs === null) {
+    return null;
   }
 
-  var result = NUMERIC_VALUE(lhs + rhs);
-  if (TYPEWEIGHT(result) !== TYPEWEIGHT_NUMBER) {
-    THROW(INTERNAL.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
+  rhs = AQL_TO_NUMBER(rhs);
+  if (rhs === null) {
+    return null;
   }
 
-  return result;
+  return AQL_TO_NUMBER(lhs + rhs);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform artithmetic minus
-///
-/// both operands must be numeric or this function will fail
 ////////////////////////////////////////////////////////////////////////////////
 
 function ARITHMETIC_MINUS (lhs, rhs) {
   "use strict";
-
-  if (TYPEWEIGHT(lhs) !== TYPEWEIGHT_NUMBER ||
-      TYPEWEIGHT(rhs) !== TYPEWEIGHT_NUMBER) {
-    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+  
+  lhs = AQL_TO_NUMBER(lhs);
+  if (lhs === null) {
+    return null;
   }
 
-  var result = NUMERIC_VALUE(lhs - rhs);
-  if (TYPEWEIGHT(result) !== TYPEWEIGHT_NUMBER) {
-    THROW(INTERNAL.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
+  rhs = AQL_TO_NUMBER(rhs);
+  if (rhs === null) {
+    return null;
   }
 
-  return result;
+  return AQL_TO_NUMBER(lhs - rhs);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform artithmetic multiplication
-///
-/// both operands must be numeric or this function will fail
 ////////////////////////////////////////////////////////////////////////////////
 
 function ARITHMETIC_TIMES (lhs, rhs) {
   "use strict";
-
-  if (TYPEWEIGHT(lhs) !== TYPEWEIGHT_NUMBER ||
-      TYPEWEIGHT(rhs) !== TYPEWEIGHT_NUMBER) {
-    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+  
+  lhs = AQL_TO_NUMBER(lhs);
+  if (lhs === null) {
+    return null;
   }
 
-  var result = NUMERIC_VALUE(lhs * rhs);
-  if (TYPEWEIGHT(result) !== TYPEWEIGHT_NUMBER) {
-    THROW(INTERNAL.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
+  rhs = AQL_TO_NUMBER(rhs);
+  if (rhs === null) {
+    return null;
   }
 
-  return result;
+  return AQL_TO_NUMBER(lhs * rhs);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform artithmetic division
-///
-/// both operands must be numeric or this function will fail
 ////////////////////////////////////////////////////////////////////////////////
 
 function ARITHMETIC_DIVIDE (lhs, rhs) {
   "use strict";
 
-  if (TYPEWEIGHT(lhs) !== TYPEWEIGHT_NUMBER ||
-      TYPEWEIGHT(rhs) !== TYPEWEIGHT_NUMBER) {
-    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+  lhs = AQL_TO_NUMBER(lhs);
+  if (lhs === null) {
+    return null;
   }
 
-  if (rhs === 0) {
-    THROW(INTERNAL.errors.ERROR_QUERY_DIVISION_BY_ZERO);
+  rhs = AQL_TO_NUMBER(rhs);
+  if (rhs === 0 || rhs === null) {
+    WARN(null, INTERNAL.errors.ERROR_QUERY_DIVISION_BY_ZERO);
+    return null;
   }
 
-  var result = NUMERIC_VALUE(lhs / rhs);
-  if (TYPEWEIGHT(result) !== TYPEWEIGHT_NUMBER) {
-    THROW(INTERNAL.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
-  }
-
-  return result;
+  return AQL_TO_NUMBER(lhs / rhs);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform artithmetic modulus
-///
-/// both operands must be numeric or this function will fail
 ////////////////////////////////////////////////////////////////////////////////
 
 function ARITHMETIC_MODULUS (lhs, rhs) {
   "use strict";
 
-  if (TYPEWEIGHT(lhs) !== TYPEWEIGHT_NUMBER ||
-      TYPEWEIGHT(rhs) !== TYPEWEIGHT_NUMBER) {
-    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+  lhs = AQL_TO_NUMBER(lhs);
+  if (lhs === null) {
+    return null;
   }
 
-  if (rhs === 0) {
-    THROW(INTERNAL.errors.ERROR_QUERY_DIVISION_BY_ZERO);
+  rhs = AQL_TO_NUMBER(rhs);
+  if (rhs === 0 || rhs === null) {
+    WARN(null, INTERNAL.errors.ERROR_QUERY_DIVISION_BY_ZERO);
+    return null;
   }
 
-  var result = NUMERIC_VALUE(lhs % rhs);
-  if (TYPEWEIGHT(result) !== TYPEWEIGHT_NUMBER) {
-    THROW(INTERNAL.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE);
-  }
-
-  return result;
+  return AQL_TO_NUMBER(lhs % rhs);
 }
 
 // -----------------------------------------------------------------------------
@@ -1616,8 +1512,6 @@ function ARITHMETIC_MODULUS (lhs, rhs) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform string concatenation
-///
-/// all operands must be strings or this function will fail
 ////////////////////////////////////////////////////////////////////////////////
 
 function AQL_CONCAT () {
@@ -1625,15 +1519,12 @@ function AQL_CONCAT () {
 
   var result = '', i;
 
-  for (i in arguments) {
-    if (arguments.hasOwnProperty(i)) {
-      var element = arguments[i];
-
-      if (TYPEWEIGHT(element) !== TYPEWEIGHT_NULL) {
-        ARG_CHECK(element, TYPEWEIGHT_STRING, "CONCAT");
-        result += element;
-      }
+  for (i = 0; i < arguments.length; ++i) {
+    var element = arguments[i];
+    if (TYPEWEIGHT(element) === TYPEWEIGHT_NULL) {
+      continue;
     }
+    result += AQL_TO_STRING(element);
   }
 
   return result;
@@ -1641,8 +1532,6 @@ function AQL_CONCAT () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform string concatenation using a separator character
-///
-/// all operands must be strings or this function will fail
 ////////////////////////////////////////////////////////////////////////////////
 
 function AQL_CONCAT_SEPARATOR () {
@@ -1650,27 +1539,23 @@ function AQL_CONCAT_SEPARATOR () {
 
   var separator, found = false, result = '', i;
 
-  for (i in arguments) {
-    if (arguments.hasOwnProperty(i)) {
-      var element = arguments[i];
+  for (i = 0; i < arguments.length; ++i) {
+    var element = arguments[i];
 
-      if (i > 0 && TYPEWEIGHT(element) === TYPEWEIGHT_NULL) {
-        continue;
-      }
-
-      ARG_CHECK(element, TYPEWEIGHT_STRING, "CONCAT_SEPARATOR");
-
-      if (i === 0 || i === "0") {
-        separator = element;
-        continue;
-      }
-      else if (found) {
-        result += separator;
-      }
-
-      found = true;
-      result += element;
+    if (i > 0 && TYPEWEIGHT(element) === TYPEWEIGHT_NULL) {
+      continue;
     }
+
+    if (i === 0) {
+      separator = AQL_TO_STRING(element);
+      continue;
+    }
+    else if (found) {
+      result += separator;
+    }
+
+    found = true;
+    result += AQL_TO_STRING(element);
   }
 
   return result;
@@ -1678,91 +1563,66 @@ function AQL_CONCAT_SEPARATOR () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the length of a string in characters (not bytes)
-///
-/// the input operand must be a string or this function will fail
 ////////////////////////////////////////////////////////////////////////////////
 
 function AQL_CHAR_LENGTH (value) {
   "use strict";
 
-  ARG_CHECK(value, TYPEWEIGHT_STRING, "CHAR_LENGTH");
-
-  return value.length;
+  return AQL_TO_STRING(value).length;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a string to lower case
-///
-/// the input operand must be a string or this function will fail
 ////////////////////////////////////////////////////////////////////////////////
 
 function AQL_LOWER (value) {
   "use strict";
 
-  ARG_CHECK(value, TYPEWEIGHT_STRING, "LOWER");
-
-  return value.toLowerCase();
+  return AQL_TO_STRING(value).toLowerCase();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a string to upper case
-///
-/// the input operand must be a string or this function will fail
 ////////////////////////////////////////////////////////////////////////////////
 
 function AQL_UPPER (value) {
   "use strict";
 
-  ARG_CHECK(value, TYPEWEIGHT_STRING, "UPPER");
-
-  return value.toUpperCase();
+  return AQL_TO_STRING(value).toUpperCase();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a substring of the string
-///
-/// the input operand must be a string or this function will fail
 ////////////////////////////////////////////////////////////////////////////////
 
 function AQL_SUBSTRING (value, offset, count) {
   "use strict";
 
-  ARG_CHECK(value, TYPEWEIGHT_STRING, "SUBSTRING");
-  ARG_CHECK(offset, TYPEWEIGHT_NUMBER, "SUBSTRING");
-
   if (count !== undefined) {
-    ARG_CHECK(count, TYPEWEIGHT_NUMBER, "SUBSTRING");
+    count = AQL_TO_NUMBER(count);
   }
 
-  return value.substr(offset, count);
+  return AQL_TO_STRING(value).substr(AQL_TO_NUMBER(offset), count);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief searches a substring in a string
-///
-/// the two input operands must be strings or this function will fail
 ////////////////////////////////////////////////////////////////////////////////
 
 function AQL_CONTAINS (value, search, returnIndex) {
   "use strict";
 
-  ARG_CHECK(value, TYPEWEIGHT_STRING, "CONTAINS");
-  ARG_CHECK(search, TYPEWEIGHT_STRING, "CONTAINS");
-
-  if (returnIndex !== undefined) {
-    ARG_CHECK(returnIndex, TYPEWEIGHT_BOOL, "CONTAINS");
-  }
-
+  search = AQL_TO_STRING(search);
 
   var result;
   if (search.length === 0) {
     result = -1;
   }
   else {
-    result = value.indexOf(search);
+    result = AQL_TO_STRING(value).indexOf(search);
   }
 
-  if (returnIndex) {
+  if (AQL_TO_BOOL(returnIndex)) {
     return result;
   }
 
@@ -1771,29 +1631,28 @@ function AQL_CONTAINS (value, search, returnIndex) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief searches a substring in a string, using a regex
-///
-/// the two input operands must be strings or this function will fail
 ////////////////////////////////////////////////////////////////////////////////
 
 function AQL_LIKE (value, regex, caseInsensitive) {
   "use strict";
-
-  ARG_CHECK(value, TYPEWEIGHT_STRING, "LIKE");
 
   var modifiers = '';
   if (caseInsensitive) {
     modifiers += 'i';
   }
 
+  regex = AQL_TO_STRING(regex);
+
   if (RegexCache[modifiers][regex] === undefined) {
     RegexCache[modifiers][regex] = COMPILE_REGEX(regex, modifiers);
   }
 
   try {
-    return RegexCache[modifiers][regex].test(value);
+    return RegexCache[modifiers][regex].test(AQL_TO_STRING(value));
   }
   catch (err) {
-    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_REGEX, "LIKE");
+    WARN("LIKE", INTERNAL.errors.ERROR_QUERY_INVALID_REGEX);
+    return false;
   }
 }
 
@@ -1804,19 +1663,7 @@ function AQL_LIKE (value, regex, caseInsensitive) {
 function AQL_LEFT (value, length) {
   "use strict";
 
-  ARG_CHECK(value, TYPEWEIGHT_STRING, "LEFT");
-  ARG_CHECK(length, TYPEWEIGHT_NUMBER, "LEFT");
-
-  if (length < 0) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "LEFT");
-    ARG_CHECK(length, TYPEWEIGHT_NUMBER, "LEFT");
-  }
-  length = parseInt(length, 10);
-  if (length === 0) {
-    return "";
-  }
-
-  return value.substr(0, length);
+  return AQL_TO_STRING(value).substr(0, AQL_TO_NUMBER(length));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1826,57 +1673,42 @@ function AQL_LEFT (value, length) {
 function AQL_RIGHT (value, length) {
   "use strict";
 
-  ARG_CHECK(value, TYPEWEIGHT_STRING, "RIGHT");
-  ARG_CHECK(length, TYPEWEIGHT_NUMBER, "RIGHT");
+  value = AQL_TO_STRING(value);
+  length = AQL_TO_NUMBER(length);
 
-  if (length < 0) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "RIGHT");
-    ARG_CHECK(length, TYPEWEIGHT_NUMBER, "RIGHT");
-  }
-  length = parseInt(length, 10);
-  if (length === 0) {
-    return "";
+  var left = value.length - length;
+  if (left < 0) {
+    left = 0;
   }
 
-  var len = value.length;
-  if (length > len) {
-    length = len;
-  }
-  return value.substr(value.length - length, length);
+  return value.substr(left, length);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the rightmost parts of a string
+/// @brief returns a trimmed version of a string
 ////////////////////////////////////////////////////////////////////////////////
 
 function AQL_TRIM (value, type) {
   "use strict";
 
-  ARG_CHECK(value, TYPEWEIGHT_STRING, "TRIM");
+  type = AQL_TO_NUMBER(type);
 
-  if (type !== undefined) {
-    ARG_CHECK(type, TYPEWEIGHT_NUMBER, "TRIM");
-    type = parseInt(type, 10);
-    if (type < 0 || type > 2) {
-      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "TRIM");
-    }
-  }
-  else {
+  if (type < 0 || type > 2) { 
     type = 0;
   }
 
   var result;
-  if (type === 0) {
-    // TRIM(, 0)
-    result = value.replace(/(^\s+)|\s+$/g, '');
-  }
-  else if (type === 1) {
+  if (type === 1) {
     // TRIM(, 1)
-    result = value.replace(/^\s+/g, '');
+    result = AQL_TO_STRING(value).replace(/^\s+/g, '');
   }
   else if (type === 2) {
     // TRIM(, 2)
-    result = value.replace(/\s+$/g, '');
+    result = AQL_TO_STRING(value).replace(/\s+$/g, '');
+  }
+  else {
+    // TRIM(, 0)
+    result = AQL_TO_STRING(value).replace(/(^\s+)|\s+$/g, '');
   }
 
   return result;
@@ -1889,22 +1721,20 @@ function AQL_TRIM (value, type) {
 function AQL_FIND_FIRST (value, search, start, end) {
   "use strict";
 
-  ARG_CHECK(value, TYPEWEIGHT_STRING, "FIND_FIRST");
-  ARG_CHECK(search, TYPEWEIGHT_STRING, "FIND_FIRST");
-
   if (start !== undefined && start !== null) {
-    ARG_CHECK(start, TYPEWEIGHT_NUMBER, "FIND_FIRST");
+    start = AQL_TO_NUMBER(start);
     if (start < 0) {
-      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FIND_FIRST");
+      return -1;
     }
   }
   else {
     start = 0;
   }
+
   if (end !== undefined && end !== null) {
-    ARG_CHECK(end, TYPEWEIGHT_NUMBER, "FIND_FIRST");
+    end = AQL_TO_NUMBER(end);
     if (end < start || end < 0) {
-      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FIND_FIRST");
+      return -1;
     }
   }
   else {
@@ -1912,9 +1742,10 @@ function AQL_FIND_FIRST (value, search, start, end) {
   }
 
   if (end !== undefined) {
-    return value.substr(0, end + 1).indexOf(search, start);
+    return AQL_TO_STRING(value).substr(0, end + 1).indexOf(AQL_TO_STRING(search), start);
   }
-  return value.indexOf(search, start);
+
+  return AQL_TO_STRING(value).indexOf(AQL_TO_STRING(search), start);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1924,19 +1755,16 @@ function AQL_FIND_FIRST (value, search, start, end) {
 function AQL_FIND_LAST (value, search, start, end) {
   "use strict";
 
-  ARG_CHECK(value, TYPEWEIGHT_STRING, "FIND_LAST");
-  ARG_CHECK(search, TYPEWEIGHT_STRING, "FIND_LAST");
-
   if (start !== undefined) {
-    ARG_CHECK(start, TYPEWEIGHT_NUMBER, "FIND_LAST");
+    start = AQL_TO_NUMBER(start);
   }
   else {
     start = 0;
   }
   if (end !== undefined) {
-    ARG_CHECK(end, TYPEWEIGHT_NUMBER, "FIND_LAST");
+    end = AQL_TO_NUMBER(end);
     if (end < start || end < 0) {
-      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FIND_LAST");
+      return -1;
     }
   }
   else {
@@ -1944,9 +1772,10 @@ function AQL_FIND_LAST (value, search, start, end) {
   }
 
   if (end !== undefined && end < search.length) {
-    return value.lastIndexOf(search.substr(0, end + 1), start);
+    return AQL_TO_STRING(value).lastIndexOf(AQL_TO_STRING(search).substr(0, end + 1), start);
   }
-  return value.lastIndexOf(search, start);
+
+  return AQL_TO_STRING(value).lastIndexOf(AQL_TO_STRING(search), start);
 }
 
 // -----------------------------------------------------------------------------
@@ -1972,34 +1801,48 @@ function AQL_TO_BOOL (value) {
     case TYPEWEIGHT_STRING:
       return (value !== '');
     case TYPEWEIGHT_LIST:
-      return (value.length > 0);
     case TYPEWEIGHT_DOCUMENT:
-      return (KEYS(value, false).length > 0);
+      return true;
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cast to a number
 ///
-/// the operand can have any type, always returns a number
+/// the operand can have any type, returns a number or null
 ////////////////////////////////////////////////////////////////////////////////
 
 function AQL_TO_NUMBER (value) {
   "use strict";
 
+  if (value === undefined) {
+    return null;
+  }
+  if (value === null) {
+    return 0;
+  }
+
   switch (TYPEWEIGHT(value)) {
     case TYPEWEIGHT_NULL:
-    case TYPEWEIGHT_LIST:
-    case TYPEWEIGHT_DOCUMENT:
-      return 0.0;
+      // this covers Infinity and NaN
+      return null;
     case TYPEWEIGHT_BOOL:
       return (value ? 1 : 0);
     case TYPEWEIGHT_NUMBER:
       return value;
     case TYPEWEIGHT_STRING:
-      var result = parseFloat(value);
-      return ((TYPEWEIGHT(result) === TYPEWEIGHT_NUMBER) ? result : 0);
+      var result = NUMERIC_VALUE(Number(value));
+      return ((TYPEWEIGHT(result) === TYPEWEIGHT_NUMBER) ? result : null);
+    case TYPEWEIGHT_LIST:
+      if (value.length === 0) {
+        return 0;
+      }
+      if (value.length === 1) {
+        return AQL_TO_NUMBER(value[0]);
+      }
+      // fallthrough intentional
   }
+  return null;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2012,12 +1855,12 @@ function AQL_TO_STRING (value) {
   "use strict";
 
   switch (TYPEWEIGHT(value)) {
-    case TYPEWEIGHT_STRING:
-      return value;
     case TYPEWEIGHT_NULL:
       return 'null';
     case TYPEWEIGHT_BOOL:
       return (value ? 'true' : 'false');
+    case TYPEWEIGHT_STRING:
+      return value;
     case TYPEWEIGHT_NUMBER:
     case TYPEWEIGHT_LIST:
     case TYPEWEIGHT_DOCUMENT:
@@ -2035,14 +1878,14 @@ function AQL_TO_LIST (value) {
   "use strict";
 
   switch (TYPEWEIGHT(value)) {
-    case TYPEWEIGHT_LIST:
-      return value;
     case TYPEWEIGHT_NULL:
       return [ ];
     case TYPEWEIGHT_BOOL:
     case TYPEWEIGHT_NUMBER:
     case TYPEWEIGHT_STRING:
       return [ value ];
+    case TYPEWEIGHT_LIST:
+      return value;
     case TYPEWEIGHT_DOCUMENT:
       return VALUES(value);
   }
@@ -2135,11 +1978,7 @@ function AQL_IS_DOCUMENT (value) {
 function AQL_FLOOR (value) {
   "use strict";
 
-  if (! AQL_IS_NUMBER(value)) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FLOOR");
-  }
-
-  return NUMERIC_VALUE(Math.floor(value));
+  return NUMERIC_VALUE(Math.floor(AQL_TO_NUMBER(value)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2149,11 +1988,7 @@ function AQL_FLOOR (value) {
 function AQL_CEIL (value) {
   "use strict";
 
-  if (! AQL_IS_NUMBER(value)) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "CEIL");
-  }
-
-  return NUMERIC_VALUE(Math.ceil(value));
+  return NUMERIC_VALUE(Math.ceil(AQL_TO_NUMBER(value)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2163,11 +1998,7 @@ function AQL_CEIL (value) {
 function AQL_ROUND (value) {
   "use strict";
 
-  if (! AQL_IS_NUMBER(value)) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "ROUND");
-  }
-
-  return NUMERIC_VALUE(Math.round(value));
+  return NUMERIC_VALUE(Math.round(AQL_TO_NUMBER(value)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2177,11 +2008,7 @@ function AQL_ROUND (value) {
 function AQL_ABS (value) {
   "use strict";
 
-  if (! AQL_IS_NUMBER(value)) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "ABS");
-  }
-
-  return NUMERIC_VALUE(Math.abs(value));
+  return NUMERIC_VALUE(Math.abs(AQL_TO_NUMBER(value)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2201,11 +2028,7 @@ function AQL_RAND () {
 function AQL_SQRT (value) {
   "use strict";
 
-  if (! AQL_IS_NUMBER(value)) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "SQRT");
-  }
-
-  return NUMERIC_VALUE(Math.sqrt(value));
+  return NUMERIC_VALUE(Math.sqrt(AQL_TO_NUMBER(value)));
 }
 
 // -----------------------------------------------------------------------------
@@ -2221,17 +2044,14 @@ function AQL_LENGTH (value) {
 
   var result, typeWeight = TYPEWEIGHT(value);
 
-  if (typeWeight === TYPEWEIGHT_LIST || typeWeight === TYPEWEIGHT_STRING) {
-    result = value.length;
+  if (typeWeight === TYPEWEIGHT_LIST) {
+    return value.length;
   }
   else if (typeWeight === TYPEWEIGHT_DOCUMENT) {
-    result = KEYS(value, false).length;
-  }
-  else {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "LENGTH");
+    return KEYS(value, false).length;
   }
 
-  return result;
+  return AQL_TO_STRING(value).length;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2241,7 +2061,10 @@ function AQL_LENGTH (value) {
 function AQL_FIRST (value) {
   "use strict";
 
-  LIST(value);
+  if (TYPEWEIGHT(value) !== TYPEWEIGHT_LIST) {
+    WARN("FIRST", INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+    return null;
+  }
 
   if (value.length === 0) {
     return null;
@@ -2257,7 +2080,10 @@ function AQL_FIRST (value) {
 function AQL_LAST (value) {
   "use strict";
 
-  LIST(value);
+  if (TYPEWEIGHT(value) !== TYPEWEIGHT_LIST) {
+    WARN("LAST", INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+    return null;
+  }
 
   if (value.length === 0) {
     return null;
@@ -2273,7 +2099,11 @@ function AQL_LAST (value) {
 function AQL_POSITION (value, search, returnIndex) {
   "use strict";
 
-  LIST(value);
+  if (TYPEWEIGHT(value) !== TYPEWEIGHT_LIST) {
+    WARN("POSITION", INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+    return null;
+  }
+
   returnIndex = returnIndex || false;
 
   var i, n = value.length;
@@ -2296,12 +2126,12 @@ function AQL_POSITION (value, search, returnIndex) {
 function AQL_NTH (value, position) {
   "use strict";
 
-  LIST(value);
-  var weight = TYPEWEIGHT(position);
-  if (weight !== TYPEWEIGHT_NUMBER) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NTH");
+  if (TYPEWEIGHT(value) !== TYPEWEIGHT_LIST) {
+    WARN("NTH", INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+    return null;
   }
-  
+
+  position = AQL_TO_NUMBER(position);
   if (position < 0 || position >= value.length) {
     return null;
   }
@@ -2320,9 +2150,12 @@ function AQL_REVERSE (value) {
     return value.split("").reverse().join("");
   }
 
-  LIST(value);
-
-  return CLONE(value).reverse();
+  if (TYPEWEIGHT(value) === TYPEWEIGHT_LIST) {
+    return CLONE(value).reverse();
+  }
+    
+  WARN("REVERSE", INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+  return null;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2332,6 +2165,9 @@ function AQL_REVERSE (value) {
 function AQL_RANGE (from, to, step) {
   "use strict";
 
+  from = AQL_TO_NUMBER(from);
+  to = AQL_TO_NUMBER(to);
+  
   if (step === undefined) {
     if (from <= to) {
       step = 1;
@@ -2340,21 +2176,21 @@ function AQL_RANGE (from, to, step) {
       step = -1;
     }
   }
-
-  // check from, to and step values
-  ARG_CHECK(from, TYPEWEIGHT_NUMBER, "RANGE");
-  ARG_CHECK(to, TYPEWEIGHT_NUMBER, "RANGE");
-  ARG_CHECK(step, TYPEWEIGHT_NUMBER, "RANGE");
+  
+  step = AQL_TO_NUMBER(step);
 
   // check if we would run into an endless loop
   if (step === 0) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "RANGE");
+    WARN("RANGE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
   }
   if (from < to && step < 0) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "RANGE");
+    WARN("RANGE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
   }
   if (from > to && step > 0) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "RANGE");
+    WARN("RANGE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
   }
 
   var result = [ ], i;
@@ -2379,7 +2215,10 @@ function AQL_RANGE (from, to, step) {
 function AQL_UNIQUE (values) {
   "use strict";
 
-  LIST(values);
+  if (TYPEWEIGHT(values) !== TYPEWEIGHT_LIST) {
+    WARN("UNIQUE", INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+    return null;
+  }
 
   var keys = { }, result = [ ];
 
@@ -2413,7 +2252,8 @@ function AQL_UNION () {
       var element = arguments[i];
 
       if (TYPEWEIGHT(element) !== TYPEWEIGHT_LIST) {
-        THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "UNION");
+        WARN("UNION", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        return null;
       }
 
       var n = element.length, j;
@@ -2441,7 +2281,8 @@ function AQL_UNION_DISTINCT () {
       var element = arguments[i];
 
       if (TYPEWEIGHT(element) !== TYPEWEIGHT_LIST) {
-        THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "UNION_DISTINCT");
+        WARN("UNION_DISTINCT", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        return null;
       }
 
       var n = element.length, j;
@@ -2473,18 +2314,15 @@ function AQL_SLICE (value, from, to) {
   "use strict";
 
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_LIST) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "SLICE");
+    WARN("SLICE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
   }
 
-  if (TYPEWEIGHT(from) !== TYPEWEIGHT_NUMBER) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "SLICE");
-  }
+  from = AQL_TO_NUMBER(from);
+  to   = AQL_TO_NUMBER(to);
 
   if (TYPEWEIGHT(to) === TYPEWEIGHT_NULL) {
     to = undefined;
-  }
-  else if (TYPEWEIGHT(to) !== TYPEWEIGHT_NUMBER) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "SLICE");
   }
   else {
     if (to >= 0) {
@@ -2509,7 +2347,8 @@ function AQL_MINUS () {
       var element = arguments[i];
 
       if (TYPEWEIGHT(element) !== TYPEWEIGHT_LIST) {
-        THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "MINUS");
+        WARN("MINUS", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        return null;
       }
 
       var n = element.length, j;
@@ -2560,7 +2399,8 @@ function AQL_INTERSECTION () {
       var element = arguments[i];
 
       if (TYPEWEIGHT(element) !== TYPEWEIGHT_LIST) {
-        THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "INTERSECTION");
+        WARN("INTERSECTION", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        return null;
       }
 
       if (first) {
@@ -2598,13 +2438,14 @@ function AQL_INTERSECTION () {
 function AQL_FLATTEN (values, maxDepth, depth) {
   "use strict";
 
-  LIST(values);
-
-  if (TYPEWEIGHT(maxDepth) === TYPEWEIGHT_NULL) {
-    maxDepth = 1;
+  if (TYPEWEIGHT(values) !== TYPEWEIGHT_LIST) {
+    WARN("FLATTEN", INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+    return null;
   }
-  else if (TYPEWEIGHT(maxDepth) !== TYPEWEIGHT_NUMBER) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FLATTEN");
+
+  maxDepth = AQL_TO_NUMBER(maxDepth);
+  if (TYPEWEIGHT(maxDepth) === TYPEWEIGHT_NULL || maxDepth < 1) {
+    maxDepth = 1;
   }
 
   if (TYPEWEIGHT(depth) === TYPEWEIGHT_NULL) {
@@ -2637,7 +2478,10 @@ function AQL_FLATTEN (values, maxDepth, depth) {
 function AQL_MAX (values) {
   "use strict";
 
-  LIST(values);
+  if (TYPEWEIGHT(values) !== TYPEWEIGHT_LIST) {
+    WARN("MAX", INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+    return null;
+  }
 
   var value, result = null;
   var i, n;
@@ -2661,7 +2505,10 @@ function AQL_MAX (values) {
 function AQL_MIN (values) {
   "use strict";
 
-  LIST(values);
+  if (TYPEWEIGHT(values) !== TYPEWEIGHT_LIST) {
+    WARN("MIN", INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+    return null;
+  }
 
   var value, result = null;
   var i, n;
@@ -2685,7 +2532,10 @@ function AQL_MIN (values) {
 function AQL_SUM (values) {
   "use strict";
 
-  LIST(values);
+  if (TYPEWEIGHT(values) !== TYPEWEIGHT_LIST) {
+    WARN("SUM", INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+    return null;
+  }
 
   var i, n;
   var value, typeWeight, result = 0;
@@ -2696,9 +2546,9 @@ function AQL_SUM (values) {
 
     if (typeWeight !== TYPEWEIGHT_NULL) {
       if (typeWeight !== TYPEWEIGHT_NUMBER) {
-        THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "SUM");
+        WARN("SUM", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        return null;
       }
-
       result += value;
     }
   }
@@ -2713,7 +2563,10 @@ function AQL_SUM (values) {
 function AQL_AVERAGE (values) {
   "use strict";
 
-  LIST(values);
+  if (TYPEWEIGHT(values) !== TYPEWEIGHT_LIST) {
+    WARN("AVERAGE", INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+    return null;
+  }
 
   var current, typeWeight, sum = 0;
   var i, j, n;
@@ -2724,7 +2577,8 @@ function AQL_AVERAGE (values) {
 
     if (typeWeight !== TYPEWEIGHT_NULL) {
       if (typeWeight !== TYPEWEIGHT_NUMBER) {
-        THROW(INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+        WARN("AVERAGE", INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+        return null;
       }
 
       sum += current;
@@ -2746,7 +2600,10 @@ function AQL_AVERAGE (values) {
 function AQL_MEDIAN (values) {
   "use strict";
 
-  LIST(values);
+  if (TYPEWEIGHT(values) !== TYPEWEIGHT_LIST) {
+    WARN("MEDIAN", INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+    return null;
+  }
 
   var copy = [ ], current, typeWeight;
   var i, n;
@@ -2757,7 +2614,8 @@ function AQL_MEDIAN (values) {
 
     if (typeWeight !== TYPEWEIGHT_NULL) {
       if (typeWeight !== TYPEWEIGHT_NUMBER) {
-        THROW(INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+        WARN("MEDIAN", INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+        return null;
       }
 
       copy.push(current);
@@ -2785,7 +2643,10 @@ function AQL_MEDIAN (values) {
 function VARIANCE (values) {
   "use strict";
 
-  LIST(values);
+  if (TYPEWEIGHT(values) !== TYPEWEIGHT_LIST) {
+    WARN("VARIANCE", INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+    return null;
+  }
 
   var mean = 0, m2 = 0, current, typeWeight, delta;
   var i, j, n;
@@ -2796,7 +2657,8 @@ function VARIANCE (values) {
 
     if (typeWeight !== TYPEWEIGHT_NULL) {
       if (typeWeight !== TYPEWEIGHT_NUMBER) {
-        THROW(INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+        WARN("VARIANCE", INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+        return null;
       }
 
       delta = current - mean;
@@ -2819,6 +2681,9 @@ function AQL_VARIANCE_SAMPLE (values) {
   "use strict";
 
   var result = VARIANCE(values);
+  if (result === null || result === undefined) {
+    return null;
+  }
 
   if (result.n < 2) {
     return null;
@@ -2835,6 +2700,9 @@ function AQL_VARIANCE_POPULATION (values) {
   "use strict";
 
   var result = VARIANCE(values);
+  if (result === null || result === undefined) {
+    return null;
+  }
 
   if (result.n < 1) {
     return null;
@@ -2851,6 +2719,9 @@ function AQL_STDDEV_SAMPLE (values) {
   "use strict";
 
   var result = VARIANCE(values);
+  if (result === null || result === undefined) {
+    return null;
+  }
 
   if (result.n < 2) {
     return null;
@@ -2867,6 +2738,9 @@ function AQL_STDDEV_POPULATION (values) {
   "use strict";
 
   var result = VARIANCE(values);
+  if (result === null || result === undefined) {
+    return null;
+  }
 
   if (result.n < 1) {
     return null;
@@ -2890,13 +2764,13 @@ function AQL_NEAR (collection, latitude, longitude, limit, distanceAttribute) {
     // use default value
     limit = 100;
   }
-  else if (TYPEWEIGHT(limit) !== TYPEWEIGHT_NUMBER) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
+  else {
+    limit = AQL_TO_NUMBER(limit);
   }
 
   var weight = TYPEWEIGHT(distanceAttribute);
   if (weight !== TYPEWEIGHT_NULL && weight !== TYPEWEIGHT_STRING) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
+    WARN("NEAR", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   }
 
   if (isCoordinator) {
@@ -2908,7 +2782,7 @@ function AQL_NEAR (collection, latitude, longitude, limit, distanceAttribute) {
   var idx = INDEX(COLLECTION(collection), [ "geo1", "geo2" ]);
 
   if (idx === null) {
-    THROW(INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
+    THROW("NEAR", INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
   }
 
   var result = COLLECTION(collection).NEAR(idx, latitude, longitude, limit);
@@ -2916,6 +2790,8 @@ function AQL_NEAR (collection, latitude, longitude, limit, distanceAttribute) {
   if (distanceAttribute === null || distanceAttribute === undefined) {
     return result.documents;
   }
+
+  distanceAttribute = AQL_TO_STRING(distanceAttribute);
 
   // inject distances
   var documents = result.documents;
@@ -2943,13 +2819,13 @@ function AQL_WITHIN (collection, latitude, longitude, radius, distanceAttribute)
   
   var weight = TYPEWEIGHT(distanceAttribute);
   if (weight !== TYPEWEIGHT_NULL && weight !== TYPEWEIGHT_STRING) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "WITHIN");
+    WARN("WITHIN", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   }
     
   var idx = INDEX(COLLECTION(collection), [ "geo1", "geo2" ]);
 
   if (idx === null) {
-    THROW(INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
+    THROW("WITHIN", INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
   }
 
   var result = COLLECTION(collection).WITHIN(idx, latitude, longitude, radius);
@@ -2983,7 +2859,7 @@ function AQL_FULLTEXT (collection, attribute, query) {
   var idx = INDEX_FULLTEXT(COLLECTION(collection), attribute);
 
   if (idx === null) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING, collection);
+    THROW("FULLTEXT", INTERNAL.errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING, collection);
   }
 
   if (isCoordinator) {
@@ -3099,7 +2975,8 @@ function AQL_PARSE_IDENTIFIER (value) {
     // fall through intentional
   }
 
-  THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "PARSE_IDENTIFIER");
+  WARN("PARSE_IDENTIFIER", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  return null;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3123,13 +3000,13 @@ function AQL_SKIPLIST (collection, condition, skip, limit) {
   var c = COLLECTION(collection);
 
   if (c === null) {
-    THROW(INTERNAL.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND, collection);
+    THROW("SKIPLIST", INTERNAL.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND, collection);
   }
 
   idx = c.lookupSkiplist.apply(c, keys);
 
   if (idx === null) {
-    THROW(INTERNAL.errors.ERROR_ARANGO_NO_INDEX);
+    THROW("SKIPLIST", INTERNAL.errors.ERROR_ARANGO_NO_INDEX);
   }
 
   if (skip === undefined || skip === null) {
@@ -3148,7 +3025,7 @@ function AQL_SKIPLIST (collection, condition, skip, limit) {
     return c.BY_CONDITION_SKIPLIST(idx.id, condition, skip, limit).documents;
   }
   catch (err) {
-    THROW(INTERNAL.errors.ERROR_ARANGO_NO_INDEX);
+    THROW("SKIPLIST", INTERNAL.errors.ERROR_ARANGO_NO_INDEX);
   }
 }
 
@@ -3158,20 +3035,18 @@ function AQL_SKIPLIST (collection, condition, skip, limit) {
 
 function AQL_HAS (element, name) {
   "use strict";
-  
-  if (TYPEWEIGHT(name) !== TYPEWEIGHT_STRING) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "HAS");
-  }
-
-  if (TYPEWEIGHT(element) === TYPEWEIGHT_NULL) {
+ 
+  var weight = TYPEWEIGHT(element);
+  if (weight === TYPEWEIGHT_NULL) {
     return false;
   }
 
-  if (TYPEWEIGHT(element) !== TYPEWEIGHT_DOCUMENT) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "HAS");
+  if (weight !== TYPEWEIGHT_DOCUMENT) {
+    WARN("HAS", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return;
   }
 
-  return element.hasOwnProperty(name);
+  return element.hasOwnProperty(AQL_TO_STRING(name));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3182,7 +3057,8 @@ function AQL_ATTRIBUTES (element, removeInternal, sort) {
   "use strict";
 
   if (TYPEWEIGHT(element) !== TYPEWEIGHT_DOCUMENT) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "ATTRIBUTES");
+    WARN("ATTRIBUTES", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
   }
 
   if (removeInternal) {
@@ -3212,7 +3088,8 @@ function AQL_UNSET (value) {
   "use strict";
 
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_DOCUMENT) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "UNSET");
+    WARN("UNSET", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
   }
 
   var result = { }, keys = EXTRACT_KEYS(arguments, 1, "UNSET");
@@ -3235,7 +3112,8 @@ function AQL_KEEP (value) {
   "use strict";
 
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_DOCUMENT) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "KEEP");
+    WARN("KEEP", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
   }
 
   var result = { }, keys = EXTRACT_KEYS(arguments, 1, "KEEP");
@@ -3270,7 +3148,8 @@ function AQL_MERGE () {
       var element = arguments[i];
 
       if (TYPEWEIGHT(element) !== TYPEWEIGHT_DOCUMENT) {
-        THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "MERGE");
+        WARN("MERGE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        return null;
       }
 
       add(element);
@@ -3310,7 +3189,8 @@ function AQL_MERGE_RECURSIVE () {
       var element = arguments[i];
 
       if (TYPEWEIGHT(element) !== TYPEWEIGHT_DOCUMENT) {
-        THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "MERGE_RECURSIVE");
+        WARN("MERGE_RECURSIVE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        return null;
       }
 
       result = recurse(result, element);
@@ -3327,15 +3207,16 @@ function AQL_MERGE_RECURSIVE () {
 function AQL_TRANSLATE (value, lookup, defaultValue) {
   "use strict";
 
+  if (TYPEWEIGHT(lookup) !== TYPEWEIGHT_DOCUMENT) {
+    WARN("TRANSLATE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
+  }
+  
   if (defaultValue === undefined) {
     defaultValue = value;
   }
 
-  if (TYPEWEIGHT(lookup) !== TYPEWEIGHT_DOCUMENT) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "TRANSLATE");
-  }
-
-  var key = String(value);
+  var key = AQL_TO_STRING(value);
   if (lookup.hasOwnProperty(key)) {
     return lookup[key];
   }
@@ -3360,7 +3241,8 @@ function AQL_MATCHES (element, examples, returnIndex) {
     examples = [ examples ];
   }
   if (examples.length === 0) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "MATCHES");
+    WARN("MATCHES", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return false;
   }
 
   returnIndex = returnIndex || false;
@@ -3369,7 +3251,8 @@ function AQL_MATCHES (element, examples, returnIndex) {
     var example = examples[i];
     var result = true;
     if (TYPEWEIGHT(example) !== TYPEWEIGHT_DOCUMENT) {
-      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "MATCHES");
+      WARN("MATCHES", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      continue;
     }
 
     var keys = KEYS(example), key, j;
@@ -3413,11 +3296,14 @@ function AQL_PASSTHRU (value) {
 function AQL_SLEEP (duration) {
   "use strict";
 
-  if (TYPEWEIGHT(duration) !== TYPEWEIGHT_NUMBER) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "SLEEP");
+  duration = AQL_TO_NUMBER(duration);
+  if (TYPEWEIGHT(duration) !== TYPEWEIGHT_NUMBER || duration < 0) {
+    WARN("SLEEP", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
   }
 
   INTERNAL.sleep(duration);
+  return null;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3429,10 +3315,12 @@ function AQL_SLEEP (duration) {
 function AQL_CURRENT_USER () {
   "use strict";
 
-  var req = INTERNAL.getCurrentRequest();
+  if (INTERNAL.getCurrentRequest) {
+    var req = INTERNAL.getCurrentRequest();
 
-  if (typeof req === 'object') {
-    return req.user;
+    if (typeof req === 'object') {
+      return req.user;
+    }
   }
 
   return null;
@@ -3460,10 +3348,10 @@ function AQL_FAIL (message) {
   "use strict";
 
   if (TYPEWEIGHT(message) === TYPEWEIGHT_STRING) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FAIL_CALLED, message);
+    THROW("FAIL", INTERNAL.errors.ERROR_QUERY_FAIL_CALLED, message);
   }
 
-  THROW(INTERNAL.errors.ERROR_QUERY_FAIL_CALLED, "");
+  THROW("FAIL", INTERNAL.errors.ERROR_QUERY_FAIL_CALLED, "");
 }
 
 // -----------------------------------------------------------------------------
@@ -3486,7 +3374,8 @@ function MAKE_DATE (args, func) {
 
     if (weight !== TYPEWEIGHT_NUMBER) {
       if (weight !== TYPEWEIGHT_STRING) {
-        THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
+        WARN(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        return null;
       }
 
       // argument is a string
@@ -3504,7 +3393,8 @@ function MAKE_DATE (args, func) {
   // called with more than one argument
 
   if (n < 3) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, func);
+    WARN(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, func);
+    return null;
   }
 
   for (i = 0; i < n; ++i) {
@@ -3518,11 +3408,13 @@ function MAKE_DATE (args, func) {
         args[i] = parseInt(args[i], 10);
       }
       else if (weight !== TYPEWEIGHT_NUMBER) {
-        THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
+        WARN(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        return null;
       }
 
       if (args[i] < 0) {
-        THROW(INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE, func);
+        WARN(func, INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE, func);
+        return null;
       }
 
       if (i === 1) {
@@ -3559,7 +3451,8 @@ function AQL_DATE_TIMESTAMP () {
     return MAKE_DATE(arguments, "DATE_TIMESTAMP").getTime();
   }
   catch (err) {
-    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    WARN("DATE_TIMESTAMP", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return null;
   }
 }
 
@@ -3574,7 +3467,8 @@ function AQL_DATE_ISO8601 () {
     return MAKE_DATE(arguments, "DATE_ISO8601").toISOString();
   }
   catch (err) {
-    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    WARN("DATE_ISO8601", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return null;
   }
 }
 
@@ -3589,7 +3483,8 @@ function AQL_DATE_DAYOFWEEK (value) {
     return MAKE_DATE([ value ], "DATE_DAYOFWEEK").getUTCDay();
   }
   catch (err) {
-    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    WARN("DATE_DAYOFWEEK", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return null;
   }
 }
 
@@ -3604,7 +3499,8 @@ function AQL_DATE_YEAR (value) {
     return MAKE_DATE([ value ], "DATE_YEAR").getUTCFullYear();
   }
   catch (err) {
-    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    WARN("DATE_YEAR", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return null;
   }
 }
 
@@ -3619,7 +3515,8 @@ function AQL_DATE_MONTH (value) {
     return MAKE_DATE([ value ], "DATE_MONTH").getUTCMonth() + 1;
   }
   catch (err) {
-    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    WARN("DATE_MONTH", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return null;
   }
 }
 
@@ -3634,7 +3531,8 @@ function AQL_DATE_DAY (value) {
     return MAKE_DATE([ value ], "DATE_DAY").getUTCDate();
   }
   catch (err) {
-    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    WARN("DATE_DAY", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return null;
   }
 }
 
@@ -3649,7 +3547,8 @@ function AQL_DATE_HOUR (value) {
     return MAKE_DATE([ value ], "DATE_HOUR").getUTCHours();
   }
   catch (err) {
-    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    WARN("DATE_HOUR", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return null;
   }
 }
 
@@ -3664,7 +3563,8 @@ function AQL_DATE_MINUTE (value) {
     return MAKE_DATE([ value ], "DATE_MINUTE").getUTCMinutes();
   }
   catch (err) {
-    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    WARN("DATE_MINUTE", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return null;
   }
 }
 
@@ -3679,7 +3579,8 @@ function AQL_DATE_SECOND (value) {
     return MAKE_DATE([ value ], "DATE_SECOND").getUTCSeconds();
   }
   catch (err) {
-    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    WARN("DATE_SECOND", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return null;
   }
 }
 
@@ -3694,7 +3595,8 @@ function AQL_DATE_MILLISECOND (value) {
     return MAKE_DATE([ value ], "DATE_MILLISECOND").getUTCMilliseconds();
   }
   catch (err) {
-    THROW(INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    WARN("DATE_MILLISECOND", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);
+    return null;
   }
 }
 
@@ -3707,7 +3609,7 @@ function AQL_DATE_MILLISECOND (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GET_SUB_EDGES (edgeCollections, direction, vertexId) {
-  if (!Array.isArray(edgeCollections)) {
+  if (! Array.isArray(edgeCollections)) {
     edgeCollections = [edgeCollections];
   }
 
@@ -3820,7 +3722,10 @@ function AQL_PATHS (vertices, edgeCollection, direction, followCycles, minLength
   minLength      = minLength || 0;
   maxLength      = maxLength !== undefined ? maxLength : 10;
 
-  LIST(vertices);
+  if (TYPEWEIGHT(vertices) !== TYPEWEIGHT_LIST) {
+    WARN("PATHS", INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+    return null;
+  }
 
   // validate arguments
   if (direction === "outbound") {
@@ -3833,11 +3738,13 @@ function AQL_PATHS (vertices, edgeCollection, direction, followCycles, minLength
     searchDirection = 3;
   }
   else {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "PATHS");
+    WARN("PATHS", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
   }
 
   if (minLength < 0 || maxLength < 0 || minLength > maxLength) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "PATHS");
+    WARN("PATHS", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
   }
 
   var searchAttributes = {
@@ -3926,7 +3833,7 @@ function AQL_GRAPH_PATHS (graphName, options) {
   // check graph exists and load edgeDefintions
   var graph = DOCUMENT_HANDLE("_graphs/" + graphName);
   if (! graph) {
-    THROW(INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_PATHS");
+    THROW("GRAPH_PATHS", INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_PATHS");
   }
 
   var startCollections = [], edgeCollections = [];
@@ -3963,7 +3870,8 @@ function AQL_GRAPH_PATHS (graphName, options) {
       });
     }
     else {
-      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "GRAPH_PATHS");
+      WARN("GRAPH_PATHS", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      return null;
     }
     if (edgeCollections.indexOf(def.collection) === -1) {
       edgeCollections.push(COLLECTION(def.collection));
@@ -3972,7 +3880,8 @@ function AQL_GRAPH_PATHS (graphName, options) {
   });
 
   if (minLength < 0 || maxLength < 0 || minLength > maxLength) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "GRAPH_PATHS");
+    WARN("GRAPH_PATHS", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
   }
 
   var result = [ ];
@@ -4019,7 +3928,6 @@ function TRAVERSAL_VISITOR (config, result, vertex, path) {
     result.push(CLONE({ vertex: vertex }));
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief visitor callback function for neighbors
@@ -4119,20 +4027,27 @@ function TRAVERSAL_CHECK_EXAMPLES_TYPEWEIGHTS (examples, func) {
 
   if (TYPEWEIGHT(examples) === TYPEWEIGHT_STRING) {
     // a callback function was supplied. this is considered valid
-    return;
+    return true;
   }
 
   if (TYPEWEIGHT(examples) !== TYPEWEIGHT_LIST) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
+    WARN(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return false;
   }
   if (examples.length === 0) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
+    WARN(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return false;
   }
-  examples.forEach(function (example) {
-    if (TYPEWEIGHT(example) !== TYPEWEIGHT_DOCUMENT) {
-      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
+
+  var i;
+  for (i = 0; i < examples.length; ++i) {
+    if (TYPEWEIGHT(examples[i]) !== TYPEWEIGHT_DOCUMENT) {
+      WARN(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      return false;
     }
-  });
+  }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4171,15 +4086,20 @@ function TRAVERSAL_FUNC (func,
 
   // check followEdges property
   if (params.followEdges) {
-    TRAVERSAL_CHECK_EXAMPLES_TYPEWEIGHTS(params.followEdges, func);
+    if (! TRAVERSAL_CHECK_EXAMPLES_TYPEWEIGHTS(params.followEdges, func)) {
+      return null;
+    }
   }
   // check filterVertices property
   if (params.filterVertices) {
-    TRAVERSAL_CHECK_EXAMPLES_TYPEWEIGHTS(params.filterVertices, func);
+    if (! TRAVERSAL_CHECK_EXAMPLES_TYPEWEIGHTS(params.filterVertices, func)) {
+      return null;
+    }
   }
 
   if (typeof params.visitor !== "function") {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
+    WARN(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
   }
 
   if (params.maxDepth === undefined) {
@@ -4371,7 +4291,9 @@ function RESOLVE_GRAPH_TO_COLLECTIONS(graph, options) {
       );
     }
     else {
-      THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "GRAPH_EDGES");
+      WARN("GRAPH_EDGES", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      // TODO: check if we need to return more data here
+      return collections;
     }
   });
   collections.orphanCollections = FILTER_RESTRICTION(
@@ -4383,7 +4305,7 @@ function RESOLVE_GRAPH_TO_COLLECTIONS(graph, options) {
 function RESOLVE_GRAPH_TO_FROM_VERTICES (graphname, options) {
   var graph = DOCUMENT_HANDLE("_graphs/" + graphname), collections ;
   if (! graph) {
-    THROW(INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
+    THROW("GRAPH_EDGES", INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
   }
 
   collections = RESOLVE_GRAPH_TO_COLLECTIONS(graph, options);
@@ -4394,14 +4316,14 @@ function RESOLVE_GRAPH_TO_FROM_VERTICES (graphname, options) {
     collections.fromCollections = collections.fromCollections.concat(collections.orphanCollections);
   }
   return DOCUMENTS_BY_EXAMPLE(
-      collections.fromCollections.filter(removeDuplicates), options.fromVertexExample
+    collections.fromCollections.filter(removeDuplicates), options.fromVertexExample
   );
 }
 
 function RESOLVE_GRAPH_TO_TO_VERTICES (graphname, options) {
   var graph = DOCUMENT_HANDLE("_graphs/" + graphname), collections ;
   if (! graph) {
-    THROW(INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
+    THROW("GRAPH_EDGES", INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
   }
 
   collections = RESOLVE_GRAPH_TO_COLLECTIONS(graph, options);
@@ -4417,7 +4339,7 @@ function RESOLVE_GRAPH_TO_TO_VERTICES (graphname, options) {
 function RESOLVE_GRAPH_TO_EDGES (graphname, options) {
   var graph = DOCUMENT_HANDLE("_graphs/" + graphname), collections ;
   if (! graph) {
-    THROW(INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
+    THROW("GRAPH_EDGES", INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
   }
 
   collections = RESOLVE_GRAPH_TO_COLLECTIONS(graph, options);
@@ -4438,7 +4360,7 @@ function RESOLVE_GRAPH_START_VERTICES (graphName, options) {
   // check graph exists and load edgeDefintions
   var graph = DOCUMENT_HANDLE("_graphs/" + graphName), collections ;
   if (! graph) {
-    THROW(INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
+    THROW("GRAPH_EDGES", INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
   }
 
   collections = RESOLVE_GRAPH_TO_COLLECTIONS(graph, options);
@@ -4459,7 +4381,7 @@ function RESOLVE_GRAPH_TO_DOCUMENTS (graphname, options) {
 
   var graph = DOCUMENT_HANDLE("_graphs/" + graphname), collections ;
   if (! graph) {
-    THROW(INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
+    THROW("GRAPH_EDGES", INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
   }
 
   collections = RESOLVE_GRAPH_TO_COLLECTIONS(graph, options);
@@ -4482,7 +4404,6 @@ function RESOLVE_GRAPH_TO_DOCUMENTS (graphname, options) {
     toCollection : collections.toCollection
   };
 
-  //ResolvedGraphCache[graphname + JSON.stringify(options)] = result;
   return result;
 }
 
@@ -4491,8 +4412,7 @@ function RESOLVE_GRAPH_TO_DOCUMENTS (graphname, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function DETERMINE_WEIGHT (edge, weight, defaultWeight) {
-
-  if (!weight) {
+  if (! weight) {
     return 1;
   }
   if (typeof edge[weight] === "number") {
@@ -4551,7 +4471,7 @@ function TRAVERSAL_DIJSKTRA_VISITOR (config, result, vertex, path) {
         var vertex = to;
 
         var distance = 0;
-        var pathNew  = {vertices : [from], edges : []};
+        var pathNew  = { vertices : [ from ], edges : [ ] };
         while (positionFrom !== positionTo) {
           var edgePosition;
           if (positionFrom > positionTo) {
@@ -4911,12 +4831,12 @@ function CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA (graphName, options) {
 
 function IS_EXAMPLE_SET (example) {
   return (
-      example && (
-        (Array.isArray(example) && example.length > 0) ||
-        (typeof example === "object" && Object.keys(example) > 0) ||
-         typeof example === "string"
-        )
-    );
+    example && (
+      (Array.isArray(example) && example.length > 0) ||
+      (typeof example === "object" && Object.keys(example) > 0) ||
+       typeof example === "string"
+      )
+  );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5025,10 +4945,12 @@ function AQL_GRAPH_SHORTEST_PATH (graphName,
       options.algorithm = "Floyd-Warshall";
     }
   }
+
   if (options.algorithm === "Floyd-Warshall") {
     var graph = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
     return CALCULATE_SHORTEST_PATHES_WITH_FLOYD_WARSHALL(graph, options);
   }
+
   return CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA(graphName, options);
 }
 
@@ -5153,7 +5075,7 @@ function AQL_GRAPH_TRAVERSAL (graphName,
 /// GRAPH_TRAVERSAL_TREE
 ////////////////////////////////////////////////////////////////////////////////
 
-function TRAVERSAL_TREE_PARAMS (params, connectName, funcName) {
+function TRAVERSAL_TREE_PARAMS (params, connectName, func) {
   "use strict";
 
   if (params === undefined) {
@@ -5161,10 +5083,11 @@ function TRAVERSAL_TREE_PARAMS (params, connectName, funcName) {
   }
 
   params.visitor  = TRAVERSAL_TREE_VISITOR;
-  params.connect  = connectName;
+  params.connect  = AQL_TO_STRING(connectName);
 
   if (params.connect === "") {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, funcName);
+    THROW(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
   }
 
   return params;
@@ -5185,6 +5108,9 @@ function AQL_TRAVERSAL_TREE (vertexCollection,
   "use strict";
 
   params = TRAVERSAL_TREE_PARAMS(params, connectName, "TRAVERSAL_TREE");
+  if (params === null) {
+    return null;
+  }
 
   var result = TRAVERSAL_FUNC("TRAVERSAL_TREE",
                               TRAVERSAL.collectionDatasourceFactory(COLLECTION(edgeCollection)),
@@ -5196,6 +5122,7 @@ function AQL_TRAVERSAL_TREE (vertexCollection,
   if (result.length === 0) {
     return [ ];
   }
+
   return [ result[0][params.connect] ];
 }
 
@@ -5323,6 +5250,9 @@ function AQL_GRAPH_TRAVERSAL_TREE (graphName,
 
   var result = [];
   options = TRAVERSAL_TREE_PARAMS(options, connectName, "GRAPH_TRAVERSAL_TREE");
+  if (options === null) {
+    return null;
+  }
   options.fromVertexExample = startVertexExample;
   options.direction =  direction;
 
@@ -5366,7 +5296,8 @@ function AQL_EDGES (edgeCollection,
     result = c.edges(vertex);
   }
   else {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "EDGES");
+    WARN("EDGES", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
   }
 
   return FILTER(result, examples);
@@ -6708,14 +6639,10 @@ exports.FCALL_USER = FCALL_USER;
 exports.KEYS = KEYS;
 exports.GET_INDEX = GET_INDEX;
 exports.DOCUMENT_MEMBER = DOCUMENT_MEMBER;
-exports.LIST = LIST;
 exports.GET_DOCUMENTS = GET_DOCUMENTS;
 exports.TERNARY_OPERATOR = TERNARY_OPERATOR;
-exports.TERNARY_OPERATOR_FN = TERNARY_OPERATOR_FN;
 exports.LOGICAL_AND = LOGICAL_AND;
 exports.LOGICAL_OR = LOGICAL_OR;
-exports.LOGICAL_AND_FN = LOGICAL_AND_FN;
-exports.LOGICAL_OR_FN = LOGICAL_OR_FN;
 exports.LOGICAL_NOT = LOGICAL_NOT;
 exports.RELATIONAL_EQUAL = RELATIONAL_EQUAL;
 exports.RELATIONAL_UNEQUAL = RELATIONAL_UNEQUAL;
