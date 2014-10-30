@@ -55,7 +55,7 @@ namespace triagens {
         cacheMaxAge(options->cacheMaxAge),
         maxAgeHeader("max-age=") {
 
-      string::size_type pos = path.size();
+      std::string::size_type pos = path.size();
 
       while (1 < pos && path[pos - 1] == '/') {
         path.erase(--pos);
@@ -69,14 +69,14 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
     HttpHandler::status_t PathHandler::execute () {
-      static string const allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890. +-_=";
+      static std::string const allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890. +-_=";
 
-      vector<string> names = _request->suffix();
-      string name = path;
-      string last = "";
+      std::vector<std::string> names = _request->suffix();
+      std::string name = path;
+      std::string last = "";
 
       if (names.empty() && ! defaultFile.empty()) {
-        string url = _request->requestPath();
+        std::string url = _request->requestPath();
 
         if (! url.empty() && url[url.size() - 1] != '/') {
           url += '/';
@@ -97,8 +97,8 @@ namespace triagens {
         return status_t(HANDLER_DONE);
       }
 
-      for (vector<string>::const_iterator j = names.begin();  j != names.end();  ++j) {
-        string const& next = *j;
+      for (std::vector<std::string>::const_iterator j = names.begin();  j != names.end();  ++j) {
+        std::string const& next = *j;
 
         if (next == ".") {
           LOG_WARNING("file '%s' contains '.'", name.c_str());
@@ -116,13 +116,13 @@ namespace triagens {
           return status_t(HANDLER_DONE);
         }
 
-        string::size_type sc = next.find_first_not_of(allowed);
+        std::string::size_type sc = next.find_first_not_of(allowed);
 
-        if (sc != string::npos) {
+        if (sc != std::string::npos) {
           LOG_WARNING("file '%s' contains illegal character", name.c_str());
 
           _response = createResponse(HttpResponse::FORBIDDEN);
-          _response->body().appendText("path contains illegal character '" + string(1, next[sc]) + "'");
+          _response->body().appendText("path contains illegal character '" + std::string(1, next[sc]) + "'");
           return status_t(HANDLER_DONE);
         }
 
@@ -176,10 +176,10 @@ namespace triagens {
         _response->setHeader("cache-control", strlen("cache-control"), maxAgeHeader);
       }
 
-      string::size_type d = last.find_last_of('.');
+      std::string::size_type d = last.find_last_of('.');
 
-      if (d != string::npos) {
-        string suffix = last.substr(d + 1);
+      if (d != std::string::npos) {
+        std::string suffix = last.substr(d + 1);
 
         if (suffix.size() > 0) {
           // look up the mimetype

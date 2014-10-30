@@ -126,7 +126,7 @@ AqlItemBlock::AqlItemBlock (Json const& json) {
             Json lowBound(data.at(static_cast<int>(posInData++)));
             Json highBound(data.at(static_cast<int>(posInData++)));
             int64_t low = JsonHelper::getNumericValue<int64_t>(lowBound.json(), 0);
-            int64_t high = JsonHelper::getNumericValue<int64_t>(lowBound.json(), 0);
+            int64_t high = JsonHelper::getNumericValue<int64_t>(highBound.json(), 0);
             AqlValue a(low, high);
             try {
               setValue(i, column, a);
@@ -275,7 +275,7 @@ AqlItemBlock* AqlItemBlock::slice (size_t from,
   TRI_ASSERT(from < to && to <= _nrItems);
 
   std::unordered_map<AqlValue, AqlValue> cache;
-  // TODO: should we pre-reserve space for cache to avoid later re-allocations?
+  cache.reserve((to-from)*_nrRegs / 4 + 1);
 
   AqlItemBlock* res = nullptr;
   try {
@@ -327,7 +327,7 @@ AqlItemBlock* AqlItemBlock::slice (std::vector<size_t>& chosen,
   TRI_ASSERT(from < to && to <= chosen.size());
 
   std::unordered_map<AqlValue, AqlValue> cache;
-  // TODO: should we pre-reserve space for cache to avoid later re-allocations?
+  cache.reserve((to-from)*_nrRegs / 4 + 1);
 
   AqlItemBlock* res = nullptr;
   try {
@@ -549,7 +549,7 @@ Json AqlItemBlock::toJson (triagens::arango::AqlTransaction* trx) const {
           if (it == table.end()) {
             raw(a.toJson(trx, _docColls[column]));
             data(Json(1.0));
-            table.emplace(make_pair(a, pos++));
+            table.emplace(std::make_pair(a, pos++));
           }
           else {
             data(Json(static_cast<double>(it->second)));

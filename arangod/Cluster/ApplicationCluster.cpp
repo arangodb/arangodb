@@ -108,7 +108,7 @@ ApplicationCluster::~ApplicationCluster () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationCluster::setupOptions (map<string, basics::ProgramOptionsDescription>& options) {
+void ApplicationCluster::setupOptions (std::map<std::string, basics::ProgramOptionsDescription>& options) {
   options["Cluster options:help-cluster"]
     ("cluster.agency-endpoint", &_agencyEndpoints, "agency endpoint to connect to")
     ("cluster.agency-prefix", &_agencyPrefix, "agency prefix")
@@ -174,7 +174,7 @@ bool ApplicationCluster::prepare () {
   }
 
   for (size_t i = 0; i < _agencyEndpoints.size(); ++i) {
-    const string unified = triagens::rest::Endpoint::getUnifiedForm(_agencyEndpoints[i]);
+    const std::string unified = triagens::rest::Endpoint::getUnifiedForm(_agencyEndpoints[i]);
 
     if (unified.empty()) {
       LOG_FATAL_AND_EXIT("invalid endpoint '%s' specified for --cluster.agency-endpoint",
@@ -254,7 +254,7 @@ bool ApplicationCluster::start () {
   }
 
   // now we can validate --cluster.my-address
-  const string unified = triagens::rest::Endpoint::getUnifiedForm(_myAddress);
+  const std::string unified = triagens::rest::Endpoint::getUnifiedForm(_myAddress);
 
   if (unified.empty()) {
     LOG_FATAL_AND_EXIT("invalid endpoint '%s' specified for --cluster.my-address",
@@ -311,7 +311,7 @@ bool ApplicationCluster::start () {
     // start heartbeat thread
     _heartbeat = new HeartbeatThread(_server, _dispatcher, _applicationV8, _heartbeatInterval * 1000, 5);
 
-    if (_heartbeat == 0) {
+    if (_heartbeat == nullptr) {
       LOG_FATAL_AND_EXIT("unable to start cluster heartbeat thread");
     }
 
@@ -320,7 +320,7 @@ bool ApplicationCluster::start () {
                          endpoints.c_str());
     }
 
-    while (! _heartbeat->ready()) {
+    while (! _heartbeat->isReady()) {
       // wait until heartbeat is ready
       usleep(10000);
     }
@@ -349,17 +349,17 @@ bool ApplicationCluster::open () {
 
     if (locker.successful()) {
       TRI_json_t* ep = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, _myAddress.c_str(), _myAddress.size());
-      if (ep == 0) {
+      if (ep == nullptr) {
         locker.unlock();
         LOG_FATAL_AND_EXIT("out of memory");
       }
       TRI_json_t* json = TRI_CreateArray2Json(TRI_UNKNOWN_MEM_ZONE, 1);
-      if (json == 0) {
+      if (json == nullptr) {
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, ep);
         locker.unlock();
         LOG_FATAL_AND_EXIT("out of memory");
       }
-      TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "endpoint", ep);
+      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "endpoint", ep);
 
       result = comm.setValue("Current/ServersRegistered/" + _myId, json, 0.0);
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);

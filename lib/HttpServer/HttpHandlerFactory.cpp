@@ -162,17 +162,20 @@ void HttpHandlerFactory::setMaintenance (bool value) {
 /// @brief returns header and body size restrictions
 ////////////////////////////////////////////////////////////////////////////////
 
-pair<size_t, size_t> HttpHandlerFactory::sizeRestrictions () const {
-  // size restrictions:
-  // - header: 1 MB
-  // - body: 512 MB
-  return make_pair(1 * 1024 * 1024,
-                   512 * 1024 * 1024);
+HttpHandlerFactory::size_restriction_t HttpHandlerFactory::sizeRestrictions () const {
+  size_restriction_t restrictions;
+
+  restrictions.maximalHeaderSize = 1 * 1024 * 1024;  // 1 MByte
+  restrictions.maximalBodySize = 512 * 1024 * 1024;  // 512 MByte
+  restrictions.maximalPipelineSize = 2 * restrictions.maximalBodySize;
+
+  return restrictions;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief authenticates a new request, wrapper method that will consider
-/// disabled authentication etc.
+/// @brief authenticates a new request
+///
+/// wrapper method that will consider disabled authentication etc.
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpResponse::HttpResponseCode HttpHandlerFactory::authenticateRequest (HttpRequest* request) {

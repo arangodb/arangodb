@@ -368,6 +368,9 @@ function CompactionSuite () {
       assertEqual(1, fig["datafiles"]["count"]);
       assertEqual(0, fig["compactors"]["count"]);
 
+      c1.properties({ doCompact: false });
+      internal.wait(1, false);
+
       testHelper.rotate(c1);
     
       fig = c1.figures();
@@ -380,6 +383,9 @@ function CompactionSuite () {
       assertEqual(0, fig["journals"]["count"]);
       assertTrue(1 <= fig["datafiles"]["count"]);
       assertEqual(0, fig["compactors"]["count"]);
+      
+      c1.properties({ doCompact: true });
+      internal.wait(1, false);
 
       c1.truncate();
       testHelper.rotate(c1);

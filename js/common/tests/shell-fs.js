@@ -839,6 +839,201 @@ function FileSystemSuite () {
       assertEqual(binary, fs.readBuffer(filename).toString('base64'));
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test zipFile()
+////////////////////////////////////////////////////////////////////////////////
+
+    testZipFile : function () {
+      var tempName = fs.join(tempDir, "out.zip");
+      try {
+        // outfile must not exist
+        fs.remove(tempName);
+      }
+      catch (err1) {
+      }
+
+      fs.write(fs.join(tempDir, "one"), "some input for\r\nfile one");
+      fs.write(fs.join(tempDir, "two"), "some input for\r\nfile two");
+      
+      assertTrue(fs.zipFile(tempName, tempDir, [ "one", "two" ]));
+
+      fs.remove(fs.join(tempDir, "one"));
+      fs.remove(fs.join(tempDir, "two"));
+
+      assertFalse(fs.isFile(fs.join(tempDir, "one")));
+      assertFalse(fs.isFile(fs.join(tempDir, "two")));
+
+      assertTrue(fs.unzipFile(tempName, tempDir, false, false));
+
+      assertTrue(fs.isFile(fs.join(tempDir, "one")));
+      assertTrue(fs.isFile(fs.join(tempDir, "two")));
+
+      assertEqual(fs.read(fs.join(tempDir, "one")), "some input for\r\nfile one");
+      assertEqual(fs.read(fs.join(tempDir, "two")), "some input for\r\nfile two");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test zipFile()
+////////////////////////////////////////////////////////////////////////////////
+
+    testZipFileOverwrite : function () {
+      var tempName = fs.join(tempDir, "out.zip");
+      fs.write(tempName, "something");
+
+      fs.write(fs.join(tempDir, "one"), "some input for\r\nfile one");
+     
+      try { 
+        fs.zipFile(tempName, tempDir, [ "one" ]);
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_CANNOT_OVERWRITE_FILE.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test zipFile()
+////////////////////////////////////////////////////////////////////////////////
+
+    testZipFilePasswordWrong : function () {
+      var tempName = fs.join(tempDir, "out.zip");
+      try {
+        // outfile must not exist
+        fs.remove(tempName);
+      }
+      catch (err1) {
+      }
+
+      fs.write(fs.join(tempDir, "one"), "some input for\r\nfile one");
+      fs.write(fs.join(tempDir, "two"), "some input for\r\nfile two");
+      
+      assertTrue(fs.zipFile(tempName, tempDir, [ "one", "two" ], "SeCR3t"));
+
+      fs.remove(fs.join(tempDir, "one"));
+      fs.remove(fs.join(tempDir, "two"));
+
+      assertFalse(fs.isFile(fs.join(tempDir, "one")));
+      assertFalse(fs.isFile(fs.join(tempDir, "two")));
+      
+      try {
+        // wrong password
+        fs.unzipFile(tempName, tempDir, false, false, "wrong!"); 
+        fail();
+      }
+      catch (err2) {
+        assertEqual(ERRORS.ERROR_CANNOT_WRITE_FILE.code, err2.errorNum);
+      }
+
+      try {
+        fs.remove(fs.join(tempDir, "one"));
+      }
+      catch (e1) {
+      }
+      try {
+        fs.remove(fs.join(tempDir, "two"));
+      }
+      catch (e2) {
+      }
+
+      try {
+        // no password
+        fs.unzipFile(tempName, tempDir, false, false); 
+        fail();
+      }
+      catch (err3) {
+        assertEqual(ERRORS.ERROR_CANNOT_WRITE_FILE.code, err3.errorNum);
+      }
+
+      try {
+        fs.remove(fs.join(tempDir, "one"));
+      }
+      catch (e3) {
+      }
+      try {
+        fs.remove(fs.join(tempDir, "two"));
+      }
+      catch (e4) {
+      }
+
+      // correct password
+      assertTrue(fs.unzipFile(tempName, tempDir, false, false, "SeCR3t")); 
+
+      assertTrue(fs.isFile(fs.join(tempDir, "one")));
+      assertTrue(fs.isFile(fs.join(tempDir, "two")));
+
+      assertEqual(fs.read(fs.join(tempDir, "one")), "some input for\r\nfile one");
+      assertEqual(fs.read(fs.join(tempDir, "two")), "some input for\r\nfile two");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test zipFile()
+////////////////////////////////////////////////////////////////////////////////
+
+    testZipFileSubDirectory : function () {
+      var tempName = fs.join(tempDir, "out.zip");
+      try {
+        // outfile must not exist
+        fs.remove(tempName);
+      }
+      catch (err1) {
+      }
+
+      var subDir = fs.join(tempDir, "files");
+
+      fs.makeDirectory(subDir);
+      fs.write(fs.join(subDir, "one"), "some input for\r\nfile one");
+      fs.write(fs.join(subDir, "two"), "some input for\r\nfile two");
+      
+      assertTrue(fs.zipFile(tempName, tempDir, [ "files/one", "files/two" ]));
+
+      fs.remove(fs.join(subDir, "one"));
+      fs.remove(fs.join(subDir, "two"));
+      fs.removeDirectory(subDir);
+
+      assertTrue(fs.unzipFile(tempName, tempDir, false, false));
+
+      assertTrue(fs.isDirectory(subDir)); 
+      assertTrue(fs.isFile(fs.join(subDir, "one")));
+      assertTrue(fs.isFile(fs.join(subDir, "two")));
+
+      assertEqual(fs.read(fs.join(subDir, "one")), "some input for\r\nfile one");
+      assertEqual(fs.read(fs.join(subDir, "two")), "some input for\r\nfile two");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test zipFile()
+////////////////////////////////////////////////////////////////////////////////
+
+    testZipFileSubDirectorySkipPaths : function () {
+      var tempName = fs.join(tempDir, "out.zip");
+      try {
+        // outfile must not exist
+        fs.remove(tempName);
+      }
+      catch (err1) {
+      }
+
+      var subDir = fs.join(tempDir, "files");
+
+      fs.makeDirectory(subDir);
+      fs.write(fs.join(subDir, "one"), "some input for\r\nfile one");
+      fs.write(fs.join(subDir, "two"), "some input for\r\nfile two");
+      
+      assertTrue(fs.zipFile(tempName, tempDir, [ "files/one", "files/two" ]));
+
+      fs.remove(fs.join(subDir, "one"));
+      fs.remove(fs.join(subDir, "two"));
+      fs.removeDirectory(subDir);
+
+      assertTrue(fs.unzipFile(tempName, tempDir, true, false));
+
+      assertTrue(fs.isFile(fs.join(tempDir, "one")));
+      assertTrue(fs.isFile(fs.join(tempDir, "two")));
+
+      assertEqual(fs.read(fs.join(tempDir, "one")), "some input for\r\nfile one");
+      assertEqual(fs.read(fs.join(tempDir, "two")), "some input for\r\nfile two");
+    }
+
   };
 }
 

@@ -292,16 +292,16 @@ namespace triagens {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 #if HAVE_BACKTRACE
           _msg += std::string("\n\n");
-          _getBacktrace(_msg);
+          TRI_GetBacktrace(_msg);
           _msg += std::string("\n\n");
 #endif
 #endif
         }
-        JsonException (string msg) : _msg(msg) {
+        JsonException (std::string msg) : _msg(msg) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 #if HAVE_BACKTRACE
           _msg += std::string("\n\n");
-          _getBacktrace(_msg);
+          TRI_GetBacktrace(_msg);
           _msg += std::string("\n\n");
 #endif
 #endif
@@ -870,7 +870,7 @@ namespace triagens {
 /// @brief checks whether *this is a Json that is equal to null.
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isNull () throw() {
+        bool isNull () const throw() {
           return _json != nullptr && _json->_type == TRI_JSON_NULL;
         }
 
@@ -878,7 +878,7 @@ namespace triagens {
 /// @brief checks whether *this is a boolean Json.
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isBoolean () throw() {
+        bool isBoolean () const throw() {
           return TRI_IsBooleanJson(_json);
         }
 
@@ -886,7 +886,7 @@ namespace triagens {
 /// @brief checks whether *this is a number Json.
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isNumber () throw() {
+        bool isNumber () const throw() {
           return TRI_IsNumberJson(_json);
         }
 
@@ -894,7 +894,7 @@ namespace triagens {
 /// @brief checks whether *this is a string Json.
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isString () throw() {
+        bool isString () const throw() {
           return TRI_IsStringJson(_json);
         }
 
@@ -902,7 +902,7 @@ namespace triagens {
 /// @brief checks whether *this is an array Json.
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isArray () throw() {
+        bool isArray () const throw() {
           return TRI_IsArrayJson(_json);
         }
 
@@ -910,7 +910,7 @@ namespace triagens {
 /// @brief checks whether *this is a list Json.
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isList () throw() {
+        bool isList () const throw() {
           return TRI_IsListJson(_json);
         }
 

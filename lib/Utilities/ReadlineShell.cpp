@@ -46,8 +46,7 @@ using namespace std;
 using namespace triagens;
 
 namespace {
-
-  Completer * COMPLETER;
+  Completer* COMPLETER;
 
   static char WordBreakCharacters[] = {
     ' ', '\t', '\n', '"', '\\', '\'', '`', '@',
@@ -59,7 +58,7 @@ namespace {
     static size_t currentIndex;
     static vector<string> result;
     // compute the possible completion
-    if(state == 0) {
+    if (state == 0) {
       COMPLETER->getAlternatives(text, result);
       LineEditor::sortAlternatives(result);
     }
@@ -73,7 +72,6 @@ namespace {
       return 0;
     }
   }
-
 
   static char** AttemptedCompletion (char const* text, int start, int end) {
     char** result;
@@ -110,15 +108,16 @@ namespace {
 /// @brief constructs a new editor
 ////////////////////////////////////////////////////////////////////////////////
 
-ReadlineShell::ReadlineShell(std::string const& history, Completer *completer)
+ReadlineShell::ReadlineShell (std::string const& history, 
+                              Completer* completer)
   : ShellImplementation(history, completer) {
 
-    COMPLETER = completer;
+  COMPLETER = completer;
 
-    rl_initialize();
+  rl_initialize();
 
-    rl_attempted_completion_function = AttemptedCompletion;
-    rl_completer_word_break_characters = WordBreakCharacters;
+  rl_attempted_completion_function = AttemptedCompletion;
+  rl_completer_word_break_characters = WordBreakCharacters;
 
 #ifndef __APPLE__
   rl_catch_signals = 0;
@@ -134,9 +133,8 @@ ReadlineShell::ReadlineShell(std::string const& history, Completer *completer)
 /// @brief line editor open
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ReadlineShell::open(bool autoComplete) {
+bool ReadlineShell::open (bool autoComplete) {
   if (autoComplete) {
-
     // issue #289: do not append a space after completion
     rl_completion_append_character = '\0';
 
@@ -168,7 +166,6 @@ bool ReadlineShell::open(bool autoComplete) {
   stifle_history(1000);
 
   _state = STATE_OPENED;
-
   return read_history(historyPath().c_str()) == 0;
 }
 
@@ -176,7 +173,7 @@ bool ReadlineShell::open(bool autoComplete) {
 /// @brief line editor shutdown
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ReadlineShell::close() {
+bool ReadlineShell::close () {
   if (_state != STATE_OPENED) {
     // avoid duplicate saving of history
     return true;
@@ -206,7 +203,7 @@ bool ReadlineShell::close() {
 /// @brief get the history file path
 ////////////////////////////////////////////////////////////////////////////////
 
-string ReadlineShell::historyPath() {
+string ReadlineShell::historyPath () {
   string path;
 
   if (getenv("HOME")) {
@@ -223,7 +220,7 @@ string ReadlineShell::historyPath() {
 /// @brief add to history
 ////////////////////////////////////////////////////////////////////////////////
 
-void ReadlineShell::addHistory(char const* str) {
+void ReadlineShell::addHistory (char const* str) {
   if (*str == '\0') {
     return;
   }
@@ -254,13 +251,14 @@ void ReadlineShell::addHistory(char const* str) {
 /// @brief save history
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ReadlineShell::writeHistory() {
+bool ReadlineShell::writeHistory () {
   return (write_history(historyPath().c_str()) == 0);
 }
 
-char * ReadlineShell::getLine(char const * input) {
+char * ReadlineShell::getLine (char const * input) {
   return readline(input);
 }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

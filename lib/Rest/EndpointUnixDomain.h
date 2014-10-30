@@ -117,7 +117,7 @@ namespace triagens {
 /// @brief get host name
 ////////////////////////////////////////////////////////////////////////////////
 
-        string getHost () const {
+        std::string getHost () const {
           return "localhost";
         }
 
@@ -125,7 +125,7 @@ namespace triagens {
 /// @brief get host string for HTTP requests
 ////////////////////////////////////////////////////////////////////////////////
 
-        string getHostString () const {
+        std::string getHostString () const {
           return "localhost";
         }
 
@@ -139,7 +139,7 @@ namespace triagens {
 /// @brief socket file
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _path;
+        std::string _path;
 
     };
 

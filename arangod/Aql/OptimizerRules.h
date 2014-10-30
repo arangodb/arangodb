@@ -106,10 +106,21 @@ namespace triagens {
     int interchangeAdjacentEnumerations (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief distribute operations in cluster
+/// @brief scatter operations in cluster - send all incoming rows to all remote
+/// clients
 ////////////////////////////////////////////////////////////////////////////////
 
     int scatterInCluster (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief distribute operations in cluster - send each incoming row to every
+/// remote client precisely once. This happens in queries like: 
+///
+///   FOR x IN coll1 [SOME FILTER/CALCULATION STATEMENTS] REMOVE f(x) in coll2
+/// 
+/// where coll2 is sharded by _key, but not if it is sharded by anything else. 
+/// The collections coll1 and coll2 do not have to be distinct for this. 
+////////////////////////////////////////////////////////////////////////////////
     
     int distributeInCluster (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
@@ -125,7 +136,31 @@ namespace triagens {
     int removeUnnecessaryRemoteScatter (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief recognises that a RemoveNode can be moved to the shards.
+/// @brief this rule removes Remote-Gather-Scatter/Distribute-Remote nodes from
+/// plans arising from queries of the form: 
+/// 
+///   FOR x IN coll [SOME FILTER/CALCULATION STATEMENTS] REMOVE x IN coll
+/// 
+/// when coll is any collection sharded by any attributes, and 
+///
+///   FOR x IN coll [SOME FILTER/CALCULATION STATEMENTS] REMOVE x._key IN coll
+///
+/// when the coll is sharded by _key.
+/// 
+/// This rule dues not work for queries like:
+/// 
+///    FOR x IN coll [SOME FILTER/CALCULATION STATEMENTS] REMOVE y IN coll
+///
+/// [different variable names], or 
+///
+///   FOR x IN coll1 [SOME FILTER/CALCULATION STATEMENTS] REMOVE x in coll2
+///  
+///  when coll1 and coll2 are not the same, or 
+///
+///   FOR x IN coll [SOME FILTER/CALCULATION STATEMENTS] REMOVE f(x) in coll
+/// 
+///  where f is some function.
+/// 
 ////////////////////////////////////////////////////////////////////////////////
 
     int undistributeRemoveAfterEnumColl (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);

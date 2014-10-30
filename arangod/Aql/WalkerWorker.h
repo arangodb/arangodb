@@ -54,9 +54,6 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-        virtual bool EnterSubQueryFirst () {
-          return false;
-        }
 
         virtual bool before (T*) {
           return false; // true to abort the whole walking process
@@ -65,9 +62,7 @@ namespace triagens {
         virtual void after (T*) {
         }
 
-        virtual bool enterSubquery (T*, // super 
-                                    T*  // sub
-                                   ) {
+        virtual bool enterSubquery (T*, T*) { // super, sub
           return true;
         }
 

@@ -31,6 +31,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterMethods.h"
 #include "Utils/Exception.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
@@ -74,16 +75,22 @@ Collection::~Collection () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief count the LOCAL number of documents in the collection
+/// @brief count the number of documents in the collection
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t Collection::count () const {
   if (numDocuments == UNINITIALIZED) {
     if (ExecutionEngine::isCoordinator()) {
-      /// TODO: determine the proper number of documents in the coordinator case
-      numDocuments = 1000;
+      // cluster case
+      uint64_t result;
+      int res = triagens::arango::countOnCoordinator(vocbase->_name, name, result); 
+      if (res != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(res, "could not determine number of documents in collection");
+      }
+      numDocuments = static_cast<int64_t>(result);
     }
     else {
+      // local case
       auto document = documentCollection();
       // cache the result
       numDocuments = static_cast<int64_t>(document->size(document));
@@ -91,6 +98,21 @@ size_t Collection::count () const {
   }
 
   return static_cast<size_t>(numDocuments);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the collection's plan id
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_voc_cid_t Collection::getPlanId () const {
+  auto clusterInfo = triagens::arango::ClusterInfo::instance();
+  auto collectionInfo = clusterInfo->getCollection(std::string(vocbase->_name), name);
+
+  if (collectionInfo.get() == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "collection not found");
+  }
+
+  return collectionInfo.get()->id();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -194,6 +216,60 @@ void Collection::fillIndexes () const {
         if (v != nullptr) {
           indexes.emplace_back(new Index(v));
         }
+      }
+    }
+  }
+  else if (ExecutionEngine::isDBServer()) {
+    TRI_ASSERT(collection != nullptr);
+    auto document = documentCollection();
+  
+    // lookup collection in agency by plan id  
+    auto clusterInfo = triagens::arango::ClusterInfo::instance();
+    auto collectionInfo = clusterInfo->getCollection(std::string(vocbase->_name), triagens::basics::StringUtils::itoa(document->_info._planId));
+    if (collectionInfo.get() == nullptr || (*collectionInfo).empty()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "collection not found");
+    }
+
+    TRI_json_t const* json = (*collectionInfo).getIndexes();
+    if (! TRI_IsListJson(json)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected index list format");
+    }
+
+    size_t const n = TRI_LengthListJson(json);
+    indexes.reserve(n);
+      
+    // register indexes
+    for (size_t i = 0; i < n; ++i) {
+      TRI_json_t const* v = TRI_LookupListJson(json, i);
+      if (TRI_IsArrayJson(v)) {
+        // lookup index id
+        TRI_json_t const* id = TRI_LookupArrayJson(v, "id");
+        if (! TRI_IsStringJson(id)) {
+          continue;
+        }
+
+        // use numeric index id
+        uint64_t iid = triagens::basics::StringUtils::uint64(id->_value._string.data, id->_value._string.length - 1);
+        TRI_index_t* data = nullptr;
+
+        // now check if we can find the local index and map it
+        for (size_t j = 0; j < document->_allIndexes._length; ++j) {
+          auto localIndex = static_cast<TRI_index_t*>(document->_allIndexes._buffer[j]);
+          if (localIndex != nullptr && localIndex->_iid == iid) {
+            // found
+            data = localIndex;
+            break;
+          }
+          else if (localIndex->_type == TRI_IDX_TYPE_PRIMARY_INDEX || 
+                   localIndex->_type == TRI_IDX_TYPE_EDGE_INDEX) {
+          }
+        }
+
+        auto idx = new Index(v);
+        // assign the found local index
+        idx->data = data; 
+
+        indexes.push_back(idx);
       }
     }
   }

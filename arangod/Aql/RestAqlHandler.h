@@ -134,13 +134,6 @@ namespace triagens {
         void createQueryFromString ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief DELETE method for /_api/aql/<queryId>
-/// The query specified by <queryId> is deleted.
-////////////////////////////////////////////////////////////////////////////////
-
-        void deleteQuery (std::string const& idString);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief PUT method for /_api/aql/<operation>/<queryId>, this is using 
 /// the part of the cursor API with side effects.
 /// <operation>: can be "getSome" or "skip".

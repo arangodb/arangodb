@@ -120,7 +120,7 @@ std::map<std::string, std::string> getForwardableRequestHeaders (triagens::rest:
         key != "host" &&
         key != "origin" &&
         key.substr(0, 14) != "access-control") {
-      result.insert(make_pair(key, (*it).second));
+      result.emplace(make_pair(key, (*it).second));
     }
     ++it;
   }
@@ -158,19 +158,19 @@ bool shardKeysChanged (std::string const& dbname,
 
     TRI_json_t const* n = TRI_LookupArrayJson(newJson, shardKeys[i].c_str());
 
-    if (n == 0 && isPatch) {
+    if (n == nullptr && isPatch) {
       // attribute not set in patch document. this means no update
       continue;
     }
 
     TRI_json_t const* o = TRI_LookupArrayJson(oldJson, shardKeys[i].c_str());
 
-    if (o == 0) {
+    if (o == nullptr) {
       // if attribute is undefined, use "null" instead
       o = &nullJson;
     }
 
-    if (n == 0) {
+    if (n == nullptr) {
       // if attribute is undefined, use "null" instead
       n = &nullJson;
     }
@@ -374,7 +374,7 @@ int figuresOnCoordinator (string const& dbname,
   // prefill with 0s
   result = (TRI_doc_collection_info_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_doc_collection_info_t), true);
 
-  if (result == 0) {
+  if (result == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -559,13 +559,13 @@ int createDocumentOnCoordinator (
   TRI_json_t* subjson = TRI_LookupArrayJson(json, "_key");
   bool userSpecifiedKey = false;
   string _key;
-  if (0 == subjson) {
+  if (subjson == nullptr) {
     // The user did not specify a key, let's create one:
     uint64_t uid = ci->uniqid();
     _key = triagens::basics::StringUtils::itoa(uid);
-    TRI_InsertArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
-                        TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE,
-                                                     _key.c_str(), _key.size()));
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
+                         TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE,
+                                                        _key.c_str(), _key.size()));
   }
   else {
     userSpecifiedKey = true;
@@ -610,12 +610,8 @@ int createDocumentOnCoordinator (
   }
   if (res->status == CL_COMM_ERROR) {
     // This could be a broken connection or an Http error:
-    if (res->result == 0) {
+    if (res->result == nullptr || ! res->result->isComplete()) {
       // there is not result
-      delete res;
-      return TRI_ERROR_CLUSTER_CONNECTION_LOST;
-    }
-    if (!res->result->isComplete()) {
       delete res;
       return TRI_ERROR_CLUSTER_CONNECTION_LOST;
     }
@@ -665,10 +661,10 @@ int deleteDocumentOnCoordinator (
   // delete the document. All but one will not know it.
   // Now find the responsible shard:
   TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-  if (0 == json) {
+  if (json == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-  TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
                        TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE,
                                  key.c_str(), key.size()));
   bool usesDefaultShardingAttributes;
@@ -710,7 +706,7 @@ int deleteDocumentOnCoordinator (
     }
     if (res->status == CL_COMM_ERROR) {
       // This could be a broken connection or an Http error:
-      if (!res->result->isComplete()) {
+      if (res->result == nullptr || ! res->result->isComplete()) {
         delete res;
         return TRI_ERROR_CLUSTER_CONNECTION_LOST;
       }
@@ -740,7 +736,7 @@ int deleteDocumentOnCoordinator (
                            "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document/" +
                            StringUtils::urlEncode(it->first) + "/" + StringUtils::urlEncode(key) +
                            "?waitForSync=" + (waitForSync ? "true" : "false")+
-                           revstr+policystr, 0, false, headersCopy, NULL, 60.0);
+                           revstr + policystr, 0, false, headersCopy, NULL, 60.0);
     delete res;
   }
   // Now listen to the results:
@@ -753,8 +749,8 @@ int deleteDocumentOnCoordinator (
           (nrok == 0 && count == 1)) {
         nrok++;
         responseCode = res->answer_code;
-        resultBody = string(res->answer->body(), res->answer->bodySize());
         resultHeaders = res->answer->headers();
+        resultBody = string(res->answer->body(), res->answer->bodySize());
       }
     }
     delete res;
@@ -856,10 +852,10 @@ int getDocumentOnCoordinator (
   // delete the document. All but one will not know it.
   // Now find the responsible shard:
   TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-  if (0 == json) {
+  if (json == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-  TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
                        TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE,
                                  key.c_str(), key.size()));
   bool usesDefaultShardingAttributes;
@@ -901,7 +897,7 @@ int getDocumentOnCoordinator (
     }
     if (res->status == CL_COMM_ERROR) {
       // This could be a broken connection or an Http error:
-      if (!res->result || !res->result->isComplete()) {
+      if (! res->result || ! res->result->isComplete()) {
         delete res;
         return TRI_ERROR_CLUSTER_CONNECTION_LOST;
       }
@@ -937,7 +933,7 @@ int getDocumentOnCoordinator (
   int count;
   int nrok = 0;
   for (count = (int) shards.size(); count > 0; count--) {
-    res = cc->wait( "", coordTransactionID, 0, "", 0.0);
+    res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res->status == CL_COMM_RECEIVED) {
       if (res->answer_code != triagens::rest::HttpResponse::NOT_FOUND ||
           (nrok == 0 && count == 1)) {
@@ -949,6 +945,7 @@ int getDocumentOnCoordinator (
     }
     delete res;
   }
+
   // Note that nrok is always at least 1!
   if (nrok > 1) {
     return TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS;
@@ -1150,7 +1147,7 @@ int modifyDocumentOnCoordinator (
     }
     if (res->status == CL_COMM_ERROR) {
       // This could be a broken connection or an Http error:
-      if (!res->result->isComplete()) {
+      if (res->result == nullptr || ! res->result->isComplete()) {
         delete res;
         return TRI_ERROR_CLUSTER_CONNECTION_LOST;
       }
@@ -1191,7 +1188,7 @@ int modifyDocumentOnCoordinator (
   int count;
   int nrok = 0;
   for (count = (int) shards.size(); count > 0; count--) {
-    res = cc->wait( "", coordTransactionID, 0, "", 0.0);
+    res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res->status == CL_COMM_RECEIVED) {
       if (res->answer_code != triagens::rest::HttpResponse::NOT_FOUND ||
           (nrok == 0 && count == 1)) {
@@ -1203,6 +1200,7 @@ int modifyDocumentOnCoordinator (
     }
     delete res;
   }
+
   // Note that nrok is always at least 1!
   if (nrok > 1) {
     return TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS;
@@ -1248,13 +1246,13 @@ int createEdgeOnCoordinator (
   TRI_json_t* subjson = TRI_LookupArrayJson(json, "_key");
   bool userSpecifiedKey = false;
   string _key;
-  if (0 == subjson) {
+  if (subjson == nullptr) {
     // The user did not specify a key, let's create one:
     uint64_t uid = ci->uniqid();
     _key = triagens::basics::StringUtils::itoa(uid);
-    TRI_InsertArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
-                        TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE,
-                                                     _key.c_str(), _key.size()));
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
+                         TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE,
+                                                        _key.c_str(), _key.size()));
   }
   else {
     userSpecifiedKey = true;
@@ -1297,7 +1295,8 @@ int createEdgeOnCoordinator (
   }
   if (res->status == CL_COMM_ERROR) {
     // This could be a broken connection or an Http error:
-    if (!res->result->isComplete()) {
+    if (res->result == nullptr || ! res->result->isComplete()) {
+      // there is not result
       delete res;
       return TRI_ERROR_CLUSTER_CONNECTION_LOST;
     }
@@ -1323,13 +1322,13 @@ TRI_vector_pointer_t* getIndexesCoordinator (string const& databaseName,
   shared_ptr<CollectionInfo> c = ClusterInfo::instance()->getCollection(databaseName, collectionName);
 
   if ((*c).empty()) {
-    return 0;
+    return nullptr;
   }
 
   TRI_vector_pointer_t* result = (TRI_vector_pointer_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_pointer_t), false);
 
-  if (result == 0) {
-    return 0;
+  if (result == nullptr) {
+    return nullptr;
   }
 
   TRI_InitVectorPointer(result, TRI_UNKNOWN_MEM_ZONE);
@@ -1363,7 +1362,7 @@ TRI_vector_pointer_t* getIndexesCoordinator (string const& databaseName,
 
         TRI_index_t* idx = (TRI_index_t*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_index_t), false);
 
-        if (idx == 0) {
+        if (idx == nullptr) {
           continue;
         }
 

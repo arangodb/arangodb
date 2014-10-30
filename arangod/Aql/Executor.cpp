@@ -90,136 +90,136 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   // r = regex (a string with a special format). note: the regex type is mutually exclusive with all other types
 
   // type check functions
-  { "IS_NULL",                     Function("IS_NULL",                     "IS_NULL", ".", true, false, &Functions::IsNull) },
-  { "IS_BOOL",                     Function("IS_BOOL",                     "IS_BOOL", ".", true, false, &Functions::IsBool) },
-  { "IS_NUMBER",                   Function("IS_NUMBER",                   "IS_NUMBER", ".", true, false, &Functions::IsNumber) },
-  { "IS_STRING",                   Function("IS_STRING",                   "IS_STRING", ".", true, false, &Functions::IsString) },
-  { "IS_LIST",                     Function("IS_LIST",                     "IS_LIST", ".", true, false, &Functions::IsList) },
-  { "IS_DOCUMENT",                 Function("IS_DOCUMENT",                 "IS_DOCUMENT", ".", true, false, &Functions::IsDocument) },
+  { "IS_NULL",                     Function("IS_NULL",                     "AQL_IS_NULL", ".", true, false, true, &Functions::IsNull) },
+  { "IS_BOOL",                     Function("IS_BOOL",                     "AQL_IS_BOOL", ".", true, false, true, &Functions::IsBool) },
+  { "IS_NUMBER",                   Function("IS_NUMBER",                   "AQL_IS_NUMBER", ".", true, false, true, &Functions::IsNumber) },
+  { "IS_STRING",                   Function("IS_STRING",                   "AQL_IS_STRING", ".", true, false, true, &Functions::IsString) },
+  { "IS_LIST",                     Function("IS_LIST",                     "AQL_IS_LIST", ".", true, false, true, &Functions::IsList) },
+  { "IS_DOCUMENT",                 Function("IS_DOCUMENT",                 "AQL_IS_DOCUMENT", ".", true, false, true, &Functions::IsDocument) },
   
   // type cast functions
-  { "TO_NUMBER",                   Function("TO_NUMBER",                   "CAST_NUMBER", ".", true, false) },
-  { "TO_STRING",                   Function("TO_STRING",                   "CAST_STRING", ".", true, false) },
-  { "TO_BOOL",                     Function("TO_BOOL",                     "CAST_BOOL", ".", true, false) },
-  { "TO_LIST",                     Function("TO_LIST",                     "CAST_LIST", ".", true, false) },
+  { "TO_NUMBER",                   Function("TO_NUMBER",                   "AQL_TO_NUMBER", ".", true, false, true) },
+  { "TO_STRING",                   Function("TO_STRING",                   "AQL_TO_STRING", ".", true, false, true) },
+  { "TO_BOOL",                     Function("TO_BOOL",                     "AQL_TO_BOOL", ".", true, false, true) },
+  { "TO_LIST",                     Function("TO_LIST",                     "AQL_TO_LIST", ".", true, false, true) },
   
   // string functions
-  { "CONCAT",                      Function("CONCAT",                      "STRING_CONCAT", "sz,sz|+", true, true) },
-  { "CONCAT_SEPARATOR",            Function("CONCAT_SEPARATOR",            "STRING_CONCAT_SEPARATOR", "s,sz,sz|+", true, true) },
-  { "CHAR_LENGTH",                 Function("CHAR_LENGTH",                 "CHAR_LENGTH", "s", true, true) },
-  { "LOWER",                       Function("LOWER",                       "STRING_LOWER", "s", true, true) },
-  { "UPPER",                       Function("UPPER",                       "STRING_UPPER", "s", true, true) },
-  { "SUBSTRING",                   Function("SUBSTRING",                   "STRING_SUBSTRING", "s,n|n", true, true) },
-  { "CONTAINS",                    Function("CONTAINS",                    "STRING_CONTAINS", "s,s|b", true, true) },
-  { "LIKE",                        Function("LIKE",                        "STRING_LIKE", "s,r|b", true, true) },
-  { "LEFT",                        Function("LEFT",                        "STRING_LEFT", "s,n", true, true) },
-  { "RIGHT",                       Function("RIGHT",                       "STRING_RIGHT", "s,n", true, true) },
-  { "TRIM",                        Function("TRIM",                        "STRING_TRIM", "s|n", true, true) },
-  { "FIND_FIRST",                  Function("FIND_FIRST",                  "STRING_FIND_FIRST", "s,s|zn,zn", true, true) },
-  { "FIND_LAST",                   Function("FIND_LAST",                   "STRING_FIND_LAST", "s,s|zn,zn", true, true) },
+  { "CONCAT",                      Function("CONCAT",                      "AQL_CONCAT", "sz,sz|+", true, true, true) },
+  { "CONCAT_SEPARATOR",            Function("CONCAT_SEPARATOR",            "AQL_CONCAT_SEPARATOR", "s,sz,sz|+", true, true, true) },
+  { "CHAR_LENGTH",                 Function("CHAR_LENGTH",                 "AQL_CHAR_LENGTH", "s", true, true, true) },
+  { "LOWER",                       Function("LOWER",                       "AQL_LOWER", "s", true, true, true) },
+  { "UPPER",                       Function("UPPER",                       "AQL_UPPER", "s", true, true, true) },
+  { "SUBSTRING",                   Function("SUBSTRING",                   "AQL_SUBSTRING", "s,n|n", true, true, true) },
+  { "CONTAINS",                    Function("CONTAINS",                    "AQL_CONTAINS", "s,s|b", true, true, true) },
+  { "LIKE",                        Function("LIKE",                        "AQL_LIKE", "s,r|b", true, true, true) },
+  { "LEFT",                        Function("LEFT",                        "AQL_LEFT", "s,n", true, true, true) },
+  { "RIGHT",                       Function("RIGHT",                       "AQL_RIGHT", "s,n", true, true, true) },
+  { "TRIM",                        Function("TRIM",                        "AQL_TRIM", "s|n", true, true, true) },
+  { "FIND_FIRST",                  Function("FIND_FIRST",                  "AQL_FIND_FIRST", "s,s|zn,zn", true, true, true) },
+  { "FIND_LAST",                   Function("FIND_LAST",                   "AQL_FIND_LAST", "s,s|zn,zn", true, true, true) },
 
   // numeric functions
-  { "FLOOR",                       Function("FLOOR",                       "NUMBER_FLOOR", "n", true, true) },
-  { "CEIL",                        Function("CEIL",                        "NUMBER_CEIL", "n", true, true) },
-  { "ROUND",                       Function("ROUND",                       "NUMBER_ROUND", "n", true, true) },
-  { "ABS",                         Function("ABS",                         "NUMBER_ABS", "n", true, true) },
-  { "RAND",                        Function("RAND",                        "NUMBER_RAND", "", false, false) },
-  { "SQRT",                        Function("SQRT",                        "NUMBER_SQRT", "n", true, true) },
+  { "FLOOR",                       Function("FLOOR",                       "AQL_FLOOR", "n", true, true, true) },
+  { "CEIL",                        Function("CEIL",                        "AQL_CEIL", "n", true, true, true) },
+  { "ROUND",                       Function("ROUND",                       "AQL_ROUND", "n", true, true, true) },
+  { "ABS",                         Function("ABS",                         "AQL_ABS", "n", true, true, true) },
+  { "RAND",                        Function("RAND",                        "AQL_RAND", "", false, false, true) },
+  { "SQRT",                        Function("SQRT",                        "AQL_SQRT", "n", true, true, true) },
   
   // list functions
-  { "RANGE",                       Function("RANGE",                       "RANGE", "n,n|n", true, true) },
-  { "UNION",                       Function("UNION",                       "UNION", "l,l|+",true, true) },
-  { "UNION_DISTINCT",              Function("UNION_DISTINCT",              "UNION_DISTINCT", "l,l|+", true, true) },
-  { "MINUS",                       Function("MINUS",                       "MINUS", "l,l|+", true, true) },
-  { "INTERSECTION",                Function("INTERSECTION",                "INTERSECTION", "l,l|+", true, true) },
-  { "FLATTEN",                     Function("FLATTEN",                     "FLATTEN", "l|n", true, true) },
-  { "LENGTH",                      Function("LENGTH",                      "LENGTH", "las", true, true) },
-  { "MIN",                         Function("MIN",                         "MIN", "l", true, true) },
-  { "MAX",                         Function("MAX",                         "MAX", "l", true, true) },
-  { "SUM",                         Function("SUM",                         "SUM", "l", true, true) },
-  { "MEDIAN",                      Function("MEDIAN",                      "MEDIAN", "l", true, true) }, 
-  { "AVERAGE",                     Function("AVERAGE",                     "AVERAGE", "l", true, true) },
-  { "VARIANCE_SAMPLE",             Function("VARIANCE_SAMPLE",             "VARIANCE_SAMPLE", "l", true, true) },
-  { "VARIANCE_POPULATION",         Function("VARIANCE_POPULATION",         "VARIANCE_POPULATION", "l", true, true) },
-  { "STDDEV_SAMPLE",               Function("STDDEV_SAMPLE",               "STDDEV_SAMPLE", "l", true, true) },
-  { "STDDEV_POPULATION",           Function("STDDEV_POPULATION",           "STDDEV_POPULATION", "l", true, true) },
-  { "UNIQUE",                      Function("UNIQUE",                      "UNIQUE", "l", true, true) },
-  { "SLICE",                       Function("SLICE",                       "SLICE", "l,n|n", true, true) },
-  { "REVERSE",                     Function("REVERSE",                     "REVERSE", "ls", true, true) },    // note: REVERSE() can be applied on strings, too
-  { "FIRST",                       Function("FIRST",                       "FIRST", "l", true, true) },
-  { "LAST",                        Function("LAST",                        "LAST", "l", true, true) },
-  { "NTH",                         Function("NTH",                         "NTH", "l,n", true, true) },
-  { "POSITION",                    Function("POSITION",                    "POSITION", "l,.|b", true, true) },
+  { "RANGE",                       Function("RANGE",                       "AQL_RANGE", "n,n|n", true, true, true) },
+  { "UNION",                       Function("UNION",                       "AQL_UNION", "l,l|+",true, true, true) },
+  { "UNION_DISTINCT",              Function("UNION_DISTINCT",              "AQL_UNION_DISTINCT", "l,l|+", true, true, true) },
+  { "MINUS",                       Function("MINUS",                       "AQL_MINUS", "l,l|+", true, true, true) },
+  { "INTERSECTION",                Function("INTERSECTION",                "AQL_INTERSECTION", "l,l|+", true, true, true) },
+  { "FLATTEN",                     Function("FLATTEN",                     "AQL_FLATTEN", "l|n", true, true, true) },
+  { "LENGTH",                      Function("LENGTH",                      "AQL_LENGTH", "las", true, true, true) },
+  { "MIN",                         Function("MIN",                         "AQL_MIN", "l", true, true, true) },
+  { "MAX",                         Function("MAX",                         "AQL_MAX", "l", true, true, true) },
+  { "SUM",                         Function("SUM",                         "AQL_SUM", "l", true, true, true) },
+  { "MEDIAN",                      Function("MEDIAN",                      "AQL_MEDIAN", "l", true, true, true) }, 
+  { "AVERAGE",                     Function("AVERAGE",                     "AQL_AVERAGE", "l", true, true, true) },
+  { "VARIANCE_SAMPLE",             Function("VARIANCE_SAMPLE",             "AQL_VARIANCE_SAMPLE", "l", true, true, true) },
+  { "VARIANCE_POPULATION",         Function("VARIANCE_POPULATION",         "AQL_VARIANCE_POPULATION", "l", true, true, true) },
+  { "STDDEV_SAMPLE",               Function("STDDEV_SAMPLE",               "AQL_STDDEV_SAMPLE", "l", true, true, true) },
+  { "STDDEV_POPULATION",           Function("STDDEV_POPULATION",           "AQL_STDDEV_POPULATION", "l", true, true, true) },
+  { "UNIQUE",                      Function("UNIQUE",                      "AQL_UNIQUE", "l", true, true, true) },
+  { "SLICE",                       Function("SLICE",                       "AQL_SLICE", "l,n|n", true, true, true) },
+  { "REVERSE",                     Function("REVERSE",                     "AQL_REVERSE", "ls", true, true, true) },    // note: REVERSE() can be applied on strings, too
+  { "FIRST",                       Function("FIRST",                       "AQL_FIRST", "l", true, true, true) },
+  { "LAST",                        Function("LAST",                        "AQL_LAST", "l", true, true, true) },
+  { "NTH",                         Function("NTH",                         "AQL_NTH", "l,n", true, true, true) },
+  { "POSITION",                    Function("POSITION",                    "AQL_POSITION", "l,.|b", true, true, true) },
 
   // document functions
-  { "HAS",                         Function("HAS",                         "HAS", "az,s", true, true) },
-  { "ATTRIBUTES",                  Function("ATTRIBUTES",                  "ATTRIBUTES", "a|b,b", true, true) },
-  { "MERGE",                       Function("MERGE",                       "MERGE", "a,a|+", true, true) },
-  { "MERGE_RECURSIVE",             Function("MERGE_RECURSIVE",             "MERGE_RECURSIVE", "a,a|+", true, true) },
-  { "DOCUMENT",                    Function("DOCUMENT",                    "DOCUMENT", "h.|.", false, true) },
-  { "MATCHES",                     Function("MATCHES",                     "MATCHES", ".,l|b", true, true) },
-  { "UNSET",                       Function("UNSET",                       "UNSET", "a,sl|+", true, true) },
-  { "KEEP",                        Function("KEEP",                        "KEEP", "a,sl|+", true, true) },
-  { "TRANSLATE",                   Function("TRANSLATE",                   "TRANSLATE", ".,a|.", true, true) },
+  { "HAS",                         Function("HAS",                         "AQL_HAS", "az,s", true, true, true) },
+  { "ATTRIBUTES",                  Function("ATTRIBUTES",                  "AQL_ATTRIBUTES", "a|b,b", true, true, true) },
+  { "MERGE",                       Function("MERGE",                       "AQL_MERGE", "a,a|+", true, true, true) },
+  { "MERGE_RECURSIVE",             Function("MERGE_RECURSIVE",             "AQL_MERGE_RECURSIVE", "a,a|+", true, true, true) },
+  { "DOCUMENT",                    Function("DOCUMENT",                    "AQL_DOCUMENT", "h.|.", false, true, false) },
+  { "MATCHES",                     Function("MATCHES",                     "AQL_MATCHES", ".,l|b", true, true, true) },
+  { "UNSET",                       Function("UNSET",                       "AQL_UNSET", "a,sl|+", true, true, true) },
+  { "KEEP",                        Function("KEEP",                        "AQL_KEEP", "a,sl|+", true, true, true) },
+  { "TRANSLATE",                   Function("TRANSLATE",                   "AQL_TRANSLATE", ".,a|.", true, true, true) },
 
   // geo functions
-  { "NEAR",                        Function("NEAR",                        "GEO_NEAR", "h,n,n|nz,s", false, true) },
-  { "WITHIN",                      Function("WITHIN",                      "GEO_WITHIN", "h,n,n,n|s", false, true) },
+  { "NEAR",                        Function("NEAR",                        "AQL_NEAR", "h,n,n|nz,s", false, true, false) },
+  { "WITHIN",                      Function("WITHIN",                      "AQL_WITHIN", "h,n,n,n|s", false, true, false) },
 
   // fulltext functions
-  { "FULLTEXT",                    Function("FULLTEXT",                    "FULLTEXT", "h,s,s", false, true) },
+  { "FULLTEXT",                    Function("FULLTEXT",                    "AQL_FULLTEXT", "h,s,s", false, true, false) },
 
   // graph functions
-  { "PATHS",                       Function("PATHS",                       "GRAPH_PATHS", "c,h|s,b", false, true) },
-  { "GRAPH_PATHS",                 Function("GRAPH_PATHS",                 "GENERAL_GRAPH_PATHS", "s|a", false, true) },
-  { "SHORTEST_PATH",               Function("SHORTEST_PATH",               "GRAPH_SHORTEST_PATH", "h,h,s,s,s|a", false, true) },
-  { "GRAPH_SHORTEST_PATH",         Function("GRAPH_SHORTEST_PATH",         "GENERAL_GRAPH_SHORTEST_PATH", "s,als,als|a", false, true) },
-  { "GRAPH_DISTANCE_TO",           Function("GRAPH_DISTANCE_TO",           "GENERAL_GRAPH_DISTANCE_TO", "s,als,als|a", false, true) },
-  { "TRAVERSAL",                   Function("TRAVERSAL",                   "GRAPH_TRAVERSAL", "h,h,s,s|a", false, true) },
-  { "GRAPH_TRAVERSAL",             Function("GRAPH_TRAVERSAL",             "GENERAL_GRAPH_TRAVERSAL", "s,als,s|a", false, true) },
-  { "TRAVERSAL_TREE",              Function("TRAVERSAL_TREE",              "GRAPH_TRAVERSAL_TREE", "h,h,s,s,s|a", false, true) },
-  { "GRAPH_TRAVERSAL_TREE",        Function("GRAPH_TRAVERSAL_TREE",        "GENERAL_GRAPH_TRAVERSAL_TREE", "s,als,s,s|a", false, true) },
-  { "EDGES",                       Function("EDGES",                       "GRAPH_EDGES", "h,s,s|l", false, true) },
-  { "GRAPH_EDGES",                 Function("GRAPH_EDGES",                 "GENERAL_GRAPH_EDGES", "s,als|a", false, true) },
-  { "GRAPH_VERTICES",              Function("GRAPH_VERTICES",              "GENERAL_GRAPH_VERTICES", "s,als|a", false, true) },
-  { "NEIGHBORS",                   Function("NEIGHBORS",                   "GRAPH_NEIGHBORS", "h,h,s,s|l", false, true) },
-  { "GRAPH_NEIGHBORS",             Function("GRAPH_NEIGHBORS",             "GENERAL_GRAPH_NEIGHBORS", "s,als|a", false, true) },
-  { "GRAPH_COMMON_NEIGHBORS",      Function("GRAPH_COMMON_NEIGHBORS",      "GENERAL_GRAPH_COMMON_NEIGHBORS", "s,als,als|a,a", false, true) },
-  { "GRAPH_COMMON_PROPERTIES",     Function("GRAPH_COMMON_PROPERTIES",     "GENERAL_GRAPH_COMMON_PROPERTIES", "s,als,als|a", false, true) },
-  { "GRAPH_ECCENTRICITY",          Function("GRAPH_ECCENTRICITY",          "GENERAL_GRAPH_ECCENTRICITY", "s|a", false, true) },
-  { "GRAPH_BETWEENNESS",           Function("GRAPH_BETWEENNESS",           "GENERAL_GRAPH_BETWEENNESS", "s|a", false, true) },
-  { "GRAPH_CLOSENESS",             Function("GRAPH_CLOSENESS",             "GENERAL_GRAPH_CLOSENESS", "s|a", false, true) },
-  { "GRAPH_ABSOLUTE_ECCENTRICITY", Function("GRAPH_ABSOLUTE_ECCENTRICITY", "GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY", "s,als|a", false, true) },
-  { "GRAPH_ABSOLUTE_BETWEENNESS",  Function("GRAPH_ABSOLUTE_BETWEENNESS",  "GENERAL_GRAPH_ABSOLUTE_BETWEENNESS", "s,als|a", false, true) },
-  { "GRAPH_ABSOLUTE_CLOSENESS",    Function("GRAPH_ABSOLUTE_CLOSENESS",    "GENERAL_GRAPH_ABSOLUTE_CLOSENESS", "s,als|a", false, true) },
-  { "GRAPH_DIAMETER",              Function("GRAPH_DIAMETER",              "GENERAL_GRAPH_DIAMETER", "s|a", false, true) },
-  { "GRAPH_RADIUS",                Function("GRAPH_RADIUS",                "GENERAL_GRAPH_RADIUS", "s|a", false, true) },
+  { "PATHS",                       Function("PATHS",                       "AQL_PATHS", "c,h|s,b", false, true, false) },
+  { "GRAPH_PATHS",                 Function("GRAPH_PATHS",                 "AQL_GRAPH_PATHS", "s|a", false, true, false) },
+  { "SHORTEST_PATH",               Function("SHORTEST_PATH",               "AQL_SHORTEST_PATH", "h,h,s,s,s|a", false, true, false) },
+  { "GRAPH_SHORTEST_PATH",         Function("GRAPH_SHORTEST_PATH",         "AQL_GRAPH_SHORTEST_PATH", "s,als,als|a", false, true, false) },
+  { "GRAPH_DISTANCE_TO",           Function("GRAPH_DISTANCE_TO",           "AQL_GRAPH_DISTANCE_TO", "s,als,als|a", false, true, false) },
+  { "TRAVERSAL",                   Function("TRAVERSAL",                   "AQL_TRAVERSAL", "h,h,s,s|a", false, true, false) },
+  { "GRAPH_TRAVERSAL",             Function("GRAPH_TRAVERSAL",             "AQL_GRAPH_TRAVERSAL", "s,als,s|a", false, true, false) },
+  { "TRAVERSAL_TREE",              Function("TRAVERSAL_TREE",              "AQL_TRAVERSAL_TREE", "h,h,s,s,s|a", false, true, false) },
+  { "GRAPH_TRAVERSAL_TREE",        Function("GRAPH_TRAVERSAL_TREE",        "AQL_GRAPH_TRAVERSAL_TREE", "s,als,s,s|a", false, true, false) },
+  { "EDGES",                       Function("EDGES",                       "AQL_EDGES", "h,s,s|l", false, true, false) },
+  { "GRAPH_EDGES",                 Function("GRAPH_EDGES",                 "AQL_GRAPH_EDGES", "s,als|a", false, true, false) },
+  { "GRAPH_VERTICES",              Function("GRAPH_VERTICES",              "AQL_GRAPH_VERTICES", "s,als|a", false, true, false) },
+  { "NEIGHBORS",                   Function("NEIGHBORS",                   "AQL_NEIGHBORS", "h,h,s,s|l", false, true, false) },
+  { "GRAPH_NEIGHBORS",             Function("GRAPH_NEIGHBORS",             "AQL_GRAPH_NEIGHBORS", "s,als|a", false, true, false) },
+  { "GRAPH_COMMON_NEIGHBORS",      Function("GRAPH_COMMON_NEIGHBORS",      "AQL_GRAPH_COMMON_NEIGHBORS", "s,als,als|a,a", false, true, false) },
+  { "GRAPH_COMMON_PROPERTIES",     Function("GRAPH_COMMON_PROPERTIES",     "AQL_GRAPH_COMMON_PROPERTIES", "s,als,als|a", false, true, false) },
+  { "GRAPH_ECCENTRICITY",          Function("GRAPH_ECCENTRICITY",          "AQL_GRAPH_ECCENTRICITY", "s|a", false, true, false) },
+  { "GRAPH_BETWEENNESS",           Function("GRAPH_BETWEENNESS",           "AQL_GRAPH_BETWEENNESS", "s|a", false, true, false) },
+  { "GRAPH_CLOSENESS",             Function("GRAPH_CLOSENESS",             "AQL_GRAPH_CLOSENESS", "s|a", false, true, false) },
+  { "GRAPH_ABSOLUTE_ECCENTRICITY", Function("GRAPH_ABSOLUTE_ECCENTRICITY", "AQL_GRAPH_ABSOLUTE_ECCENTRICITY", "s,als|a", false, true, false) },
+  { "GRAPH_ABSOLUTE_BETWEENNESS",  Function("GRAPH_ABSOLUTE_BETWEENNESS",  "AQL_GRAPH_ABSOLUTE_BETWEENNESS", "s,als|a", false, true, false) },
+  { "GRAPH_ABSOLUTE_CLOSENESS",    Function("GRAPH_ABSOLUTE_CLOSENESS",    "AQL_GRAPH_ABSOLUTE_CLOSENESS", "s,als|a", false, true, false) },
+  { "GRAPH_DIAMETER",              Function("GRAPH_DIAMETER",              "AQL_GRAPH_DIAMETER", "s|a", false, true, false) },
+  { "GRAPH_RADIUS",                Function("GRAPH_RADIUS",                "AQL_GRAPH_RADIUS", "s|a", false, true, false) },
 
   // date functions
-  { "DATE_NOW",                    Function("DATE_NOW",                    "DATE_NOW", "", false, false) },
-  { "DATE_TIMESTAMP",              Function("DATE_TIMESTAMP",              "DATE_TIMESTAMP", "ns|ns,ns,ns,ns,ns,ns", true, true) },
-  { "DATE_ISO8601",                Function("DATE_ISO8601",                "DATE_ISO8601", "ns|ns,ns,ns,ns,ns,ns", true, true) },
-  { "DATE_DAYOFWEEK",              Function("DATE_DAYOFWEEK",              "DATE_DAYOFWEEK", "ns", true, true) },
-  { "DATE_YEAR",                   Function("DATE_YEAR",                   "DATE_YEAR", "ns", true, true) },
-  { "DATE_MONTH",                  Function("DATE_MONTH",                  "DATE_MONTH", "ns", true, true) },
-  { "DATE_DAY",                    Function("DATE_DAY",                    "DATE_DAY", "ns", true, true) },
-  { "DATE_HOUR",                   Function("DATE_HOUR",                   "DATE_HOUR", "ns", true, true) },
-  { "DATE_MINUTE",                 Function("DATE_MINUTE",                 "DATE_MINUTE", "ns", true, true) },
-  { "DATE_SECOND",                 Function("DATE_SECOND",                 "DATE_SECOND", "ns", true, true) },
-  { "DATE_MILLISECOND",            Function("DATE_MILLISECOND",            "DATE_MILLISECOND", "ns", true, true) },
+  { "DATE_NOW",                    Function("DATE_NOW",                    "AQL_DATE_NOW", "", false, false, true) },
+  { "DATE_TIMESTAMP",              Function("DATE_TIMESTAMP",              "AQL_DATE_TIMESTAMP", "ns|ns,ns,ns,ns,ns,ns", true, true, true) },
+  { "DATE_ISO8601",                Function("DATE_ISO8601",                "AQL_DATE_ISO8601", "ns|ns,ns,ns,ns,ns,ns", true, true, true) },
+  { "DATE_DAYOFWEEK",              Function("DATE_DAYOFWEEK",              "AQL_DATE_DAYOFWEEK", "ns", true, true, true) },
+  { "DATE_YEAR",                   Function("DATE_YEAR",                   "AQL_DATE_YEAR", "ns", true, true, true) },
+  { "DATE_MONTH",                  Function("DATE_MONTH",                  "AQL_DATE_MONTH", "ns", true, true, true) },
+  { "DATE_DAY",                    Function("DATE_DAY",                    "AQL_DATE_DAY", "ns", true, true, true) },
+  { "DATE_HOUR",                   Function("DATE_HOUR",                   "AQL_DATE_HOUR", "ns", true, true, true) },
+  { "DATE_MINUTE",                 Function("DATE_MINUTE",                 "AQL_DATE_MINUTE", "ns", true, true, true) },
+  { "DATE_SECOND",                 Function("DATE_SECOND",                 "AQL_DATE_SECOND", "ns", true, true, true) },
+  { "DATE_MILLISECOND",            Function("DATE_MILLISECOND",            "AQL_DATE_MILLISECOND", "ns", true, true, true) },
 
   // misc functions
-  { "FAIL",                        Function("FAIL",                        "FAIL", "|s", false, true) },
-  { "PASSTHRU",                    Function("PASSTHRU",                    "PASSTHRU", ".", false, true) },
-  { "SLEEP",                       Function("SLEEP",                       "SLEEP", "n", false, false) },
-  { "COLLECTIONS",                 Function("COLLECTIONS",                 "COLLECTIONS", "", false, true) },
-  { "NOT_NULL",                    Function("NOT_NULL",                    "NOT_NULL", ".|+", true, true) },
-  { "FIRST_LIST",                  Function("FIRST_LIST",                  "FIRST_LIST", ".|+", true, false) },
-  { "FIRST_DOCUMENT",              Function("FIRST_DOCUMENT",              "FIRST_DOCUMENT", ".|+", true, false) },
-  { "PARSE_IDENTIFIER",            Function("PARSE_IDENTIFIER",            "PARSE_IDENTIFIER", ".", true, true) },
-  { "SKIPLIST",                    Function("SKIPLIST",                    "SKIPLIST_QUERY", "h,a|n,n", false, true) },
-  { "CURRENT_USER",                Function("CURRENT_USER",                "CURRENT_USER", "", false, false) },
-  { "CURRENT_DATABASE",            Function("CURRENT_DATABASE",            "CURRENT_DATABASE", "", false, false) }
+  { "FAIL",                        Function("FAIL",                        "AQL_FAIL", "|s", false, true, true) },
+  { "PASSTHRU",                    Function("PASSTHRU",                    "AQL_PASSTHRU", ".", false, true, true) },
+  { "SLEEP",                       Function("SLEEP",                       "AQL_SLEEP", "n", false, false, true) },
+  { "COLLECTIONS",                 Function("COLLECTIONS",                 "AQL_COLLECTIONS", "", false, true, false) },
+  { "NOT_NULL",                    Function("NOT_NULL",                    "AQL_NOT_NULL", ".|+", true, true, true) },
+  { "FIRST_LIST",                  Function("FIRST_LIST",                  "AQL_FIRST_LIST", ".|+", true, false, true) },
+  { "FIRST_DOCUMENT",              Function("FIRST_DOCUMENT",              "AQL_FIRST_DOCUMENT", ".|+", true, false, true) },
+  { "PARSE_IDENTIFIER",            Function("PARSE_IDENTIFIER",            "AQL_PARSE_IDENTIFIER", ".", true, true, true) },
+  { "SKIPLIST",                    Function("SKIPLIST",                    "AQL_SKIPLIST", "h,a|n,n", false, true, false) },
+  { "CURRENT_USER",                Function("CURRENT_USER",                "AQL_CURRENT_USER", "", false, false, false) },
+  { "CURRENT_DATABASE",            Function("CURRENT_DATABASE",            "AQL_CURRENT_DATABASE", "", false, false, false) }
 };
 
 // -----------------------------------------------------------------------------
@@ -257,6 +257,7 @@ V8Expression* Executor::generateExpression (AstNode const* node) {
   generateCodeExpression(node);
   
   // std::cout << "Executor::generateExpression: " << _buffer->c_str() << "\n";
+  v8::HandleScope scope;
 
   v8::TryCatch tryCatch;
   // compile the expression
@@ -278,8 +279,7 @@ TRI_json_t* Executor::executeExpression (AstNode const* node) {
 
   // std::cout << "Executor::ExecuteExpression: " << _buffer->c_str() << "\n";
   
-  // note: if this function is called without an already opened handle scope,
-  // it will fail badly
+  v8::HandleScope scope;
 
   v8::TryCatch tryCatch;
   // compile the expression
@@ -527,7 +527,7 @@ void Executor::generateCodeBinaryOperator (AstNode const* node) {
     generateCodeNode(node->getMember(0));
     _buffer->appendText("}, function () { return ");
     generateCodeNode(node->getMember(1));
-   _buffer->appendChar(')');
+   _buffer->appendChar('}');
   }
   else {
     generateCodeNode(node->getMember(0));
@@ -733,7 +733,7 @@ void Executor::generateCodeRange (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
   
-  _buffer->appendText("aql.RANGE(");
+  _buffer->appendText("aql.AQL_RANGE(");
   generateCodeNode(node->getMember(0));
   _buffer->appendChar(',');
   generateCodeNode(node->getMember(1));

@@ -263,6 +263,7 @@ namespace triagens {
               }
 #ifdef TRI_ENABLE_MAINTAINER_MODE
               TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
+              TRI_ASSERT(_numberTrxActive > 0);
               _numberTrxActive--;  // Every transaction gets here at most once
 #endif
               return TRI_ERROR_NO_ERROR;
@@ -272,6 +273,7 @@ namespace triagens {
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
             TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
+            TRI_ASSERT(_numberTrxActive > 0);
             _numberTrxActive--;  // Every transaction gets here at most once
 #endif
 
@@ -295,6 +297,7 @@ namespace triagens {
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
               TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
+              TRI_ASSERT(_numberTrxActive > 0);
               _numberTrxActive--;  // Every transaction gets here at most once
 #endif
               return TRI_ERROR_NO_ERROR;
@@ -304,6 +307,7 @@ namespace triagens {
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
             TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
+            TRI_ASSERT(_numberTrxActive > 0);
             _numberTrxActive--;  // Every transaction gets here at most once
 #endif
 
@@ -616,7 +620,7 @@ namespace triagens {
           int res = this->addCollection(cid, type);
 
           if (res != TRI_ERROR_NO_ERROR) {
-            _errorData = string(name);
+            _errorData = std::string(name);
           }
 
           return res;
@@ -1300,8 +1304,6 @@ namespace triagens {
 
           if (! this->_transactionContext->isEmbeddable()) {
             // we are embedded but this is disallowed...
-            LOG_WARNING("logic error. invalid nesting of transactions");
-
             return TRI_ERROR_TRANSACTION_NESTED;
           }
 

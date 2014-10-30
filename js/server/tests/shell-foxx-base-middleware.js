@@ -1,5 +1,3 @@
-require("internal").flushModuleCache();
-
 var jsunity = require("jsunity");
 
 function BaseMiddlewareSpec () {

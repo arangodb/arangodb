@@ -104,7 +104,7 @@ namespace triagens {
 /// this is a string because the quote might also be empty if not used
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setQuote (string quote) {
+      void setQuote (std::string quote) {
         _quote = quote;
       }
 
@@ -120,7 +120,7 @@ namespace triagens {
 /// @brief sets the separator
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setSeparator (string separator) {
+      void setSeparator (std::string separator) {
         _separator = separator;
       }
 
@@ -194,7 +194,7 @@ namespace triagens {
 /// @return string       get the error message
 ////////////////////////////////////////////////////////////////////////////////
 
-      string getErrorMessage () {
+      std::string getErrorMessage () {
         return _errorMessage;
       }
 

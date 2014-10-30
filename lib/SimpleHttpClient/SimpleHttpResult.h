@@ -110,7 +110,7 @@ namespace triagens {
 /// @brief returns the http return message
 ////////////////////////////////////////////////////////////////////////////////
 
-      string getHttpReturnMessage () const {
+      std::string getHttpReturnMessage () const {
         return _returnMessage;
       }
 
@@ -118,7 +118,7 @@ namespace triagens {
 /// @brief sets the http return message
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setHttpReturnMessage (const string& message) {
+      void setHttpReturnMessage (const std::string& message) {
         this->_returnMessage = message;
       }
 

@@ -1,3 +1,6 @@
+/*jshint strict: false, sub: true, maxlen: 500 */
+/*global require, assertEqual, assertException */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, logical operators
 ///
@@ -25,7 +28,6 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
 var getQueryResults = helper.getQueryResultsAQL2;
@@ -35,8 +37,6 @@ var getQueryResults = helper.getQueryResultsAQL2;
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlLogicalTestSuite () {
-  var errors = internal.errors;
-
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -263,24 +263,6 @@ function ahuacatlLogicalTestSuite () {
     
     testBinaryAndShortCircuit2 : function () {
       assertException(function() { getQueryResults("RETURN true && FAIL('this will fail')"); });
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test binary or, short circuit evaluation
-////////////////////////////////////////////////////////////////////////////////
-    
-    testBinaryOrShortCircuit1 : function () {
-      var expected = [ true ];
-      var actual = getQueryResults("RETURN true || FAIL('this will fail')");
-      assertEqual(expected, actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test binary or, short circuit evaluation
-////////////////////////////////////////////////////////////////////////////////
-    
-    testBinaryOrShortCircuit2 : function () {
-      assertException(function() { getQueryResults("RETURN false || FAIL('this will fail')"); });
     },
 
 ////////////////////////////////////////////////////////////////////////////////

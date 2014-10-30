@@ -50,7 +50,7 @@ requests into an in-memory task queue and return an *HTTP 202* (accepted)
 response to the client instantly. The server will execute the tasks from the 
 queue asynchronously as fast as possible, while clients can continue to work.
 If the server queue is full (i.e. contains as many tasks as specified by the
-option ["--scheduler.maximal-queue-size"](../CommandLineOptions/Communication.md),
+option ["--scheduler.maximal-queue-size"](../ConfigureArango/Communication.md),
 then the request will be rejected instantly with an *HTTP 500* (internal
 server error) response.
 
@@ -94,7 +94,7 @@ Client authentication can be achieved by using the *Authorization* HTTP header i
 client requests. ArangoDB supports HTTP Basic authentication.
 
 Authentication is optional. To enforce authentication for incoming requested,
-the server must be started with the option [--server.disable-authentication](../CommandLineOptions/Arangod.md). 
+the server must be started with the option [--server.disable-authentication](../ConfigureArango/Arangod.md). 
 Please note that requests using the HTTP OPTIONS method will be answered by
 ArangoDB in any case, even if no authentication data is sent by the client or if
 the authentication data is wrong. This is required for handling CORS preflight
@@ -104,7 +104,7 @@ will be generic and not expose any private data.
 Please note that when authentication is turned on in ArangoDB, it will by
 default affect all incoming requests. 
 
-Since ArangoDB 1.4, there is an additional option [-server.authenticate-system-only](../CommandLineOptions/Arangod.md)
+Since ArangoDB 1.4, there is an additional option [-server.authenticate-system-only](../ConfigureArango/Arangod.md)
 "--server.authenticate-system-only" to restrict authentication to requests to the ArangoDB 
 internal APIs and the admin interface. 
 This option can be used to expose a public API built with ArangoDB to the outside

@@ -556,7 +556,7 @@ bool RecoverState::InitialScanMarker (TRI_df_marker_t const* marker,
       // insert this transaction into the list of failed transactions
       // we do this because if we don't find a commit marker for this transaction,
       // we'll have it in the failed list at the end of the scan and can ignore it
-      state->failedTransactions.insert(std::make_pair(m->_transactionId, std::make_pair(m->_databaseId, false)));
+      state->failedTransactions.emplace(std::make_pair(m->_transactionId, std::make_pair(m->_databaseId, false)));
       break;
     }
 
@@ -578,14 +578,14 @@ bool RecoverState::InitialScanMarker (TRI_df_marker_t const* marker,
       }
 
       // and (re-)insert
-      state->failedTransactions.insert(std::make_pair(m->_transactionId, std::make_pair(m->_databaseId, true)));
+      state->failedTransactions.emplace(std::make_pair(m->_transactionId, std::make_pair(m->_databaseId, true)));
       break;
     }
 
     case TRI_WAL_MARKER_BEGIN_REMOTE_TRANSACTION: {
       transaction_remote_begin_marker_t const* m = reinterpret_cast<transaction_remote_begin_marker_t const*>(marker);
       // insert this transaction into the list of remote transactions
-      state->remoteTransactions.insert(std::make_pair(m->_transactionId, std::make_pair(m->_databaseId, m->_externalId)));
+      state->remoteTransactions.emplace(std::make_pair(m->_transactionId, std::make_pair(m->_databaseId, m->_externalId)));
       break;
     }
 
@@ -603,7 +603,7 @@ bool RecoverState::InitialScanMarker (TRI_df_marker_t const* marker,
       auto it = state->failedTransactions.find(m->_transactionId);
       if (it == state->failedTransactions.end()) {
         // insert the transaction into the list of failed transactions
-        state->failedTransactions.insert(std::make_pair(m->_transactionId, std::make_pair(m->_databaseId, false)));
+        state->failedTransactions.emplace(std::make_pair(m->_transactionId, std::make_pair(m->_databaseId, false)));
       }
       
       // remove this transaction from the list of remote transactions
@@ -1010,7 +1010,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         return state->canContinue();
       }
 
-      state->runningRemoteTransactions.insert(std::make_pair(m->_externalId, trx));
+      state->runningRemoteTransactions.emplace(std::make_pair(m->_externalId, trx));
       break;
     }
     
@@ -1316,6 +1316,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
 
       }
       else {
+        // collection will be kept
         collection = TRI_CreateCollectionVocBase(vocbase, &info, collectionId, false);
       }
 
@@ -1523,9 +1524,9 @@ int RecoverState::replayLogfiles () {
   droppedCollections.clear();
   droppedDatabases.clear();
 
-  for (auto it = logfilesToProcess.begin(); it != logfilesToProcess.end(); ++it) {
-    TRI_ASSERT((*it) != nullptr);
-    int res = replayLogfile((*it));
+  for (auto& it : logfilesToProcess) {
+    TRI_ASSERT(it != nullptr);
+    int res = replayLogfile(it);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;

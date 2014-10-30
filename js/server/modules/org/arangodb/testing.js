@@ -73,6 +73,7 @@ var optiondoku = [
   '   - `valgrindargs`: list of commandline parameters to add to valgrind',
   '',
   '   - `extraargs`: list of extra commandline arguments to add to arangod',
+  '   - `portOffset`: move our base port by n ports up',
   ''
 ];
 ////////////////////////////////////////////////////////////////////////////////
@@ -110,7 +111,14 @@ var optionsDefaults = { "cluster": false,
                         "password": "",
                         "test": undefined,
                         "cleanup": true,
-                        "jsonReply": false};
+                        "jsonReply": false,
+                        "portOffset": 0,
+                        "valgrindargs": [],
+                        "valgrindXmlFileBase" : "",
+                        "extraargs": []
+
+
+};
 var allTests =
   [
     "config",
@@ -166,12 +174,12 @@ function printUsage () {
 function filterTestcaseByOptions (testname, options, whichFilter)
 {
   if ((testname.indexOf("-cluster") !== -1) && (options.cluster === false)) {
-    whichFilter.filter = 'cluster';
+    whichFilter.filter = 'noncluster';
     return false;
   }
 
   if (testname.indexOf("-noncluster") !== -1 && (options.cluster === true)) {
-    whichFilter.filter = 'noncluster';
+    whichFilter.filter = 'cluster';
     return false;
   }
 
@@ -242,33 +250,49 @@ function startInstance (protocol, options, addArgs, testname) {
   var topDir = findTopDir();
   var instanceInfo = {};
   instanceInfo.topDir = topDir;
-  var tmpDataDir = '/var/' + fs.getTempFile();
+  var tmpDataDir = fs.getTempFile();
 
   instanceInfo.flatTmpDataDir = tmpDataDir;
 
-  tmpDataDir += '/' + testname + '/';
-  print(tmpDataDir);
+  tmpDataDir = fs.join(tmpDataDir, testname);
   fs.makeDirectoryRecursive(tmpDataDir);
   instanceInfo.tmpDataDir = tmpDataDir;
 
   var endpoint;
   var pos;
+  var valgrindopts = [];
   var dispatcher;
   if (options.cluster) {
+    var extraargs = makeTestingArgs();
+    extraargs = extraargs.concat(options.extraargs);
+    if (addArgs !== undefined) {
+      extraargs = extraargs.concat(addArgs);
+    }
     dispatcher = {"endpoint":"tcp://localhost:",
-                  "arangodExtraArgs":makeTestingArgs(),
+                  "arangodExtraArgs": extraargs,
                   "username": "root",
                   "password": ""};
-    if (addArgs !== undefined) {
-      dispatcher.arangodExtraArgs = addArgs;
-    }
     print("Temporary cluster data and logs are in",tmpDataDir);
-    var p = new Planner({"numberOfDBservers":2,
-                         "numberOfCoordinators":1,
-                         "dispatchers": {"me": dispatcher},
-                         "dataPath": tmpDataDir,
-                         "logPath": tmpDataDir,
-                         "useSSLonCoordinators": protocol === "ssl"});
+
+    var runInValgrind = "";
+    var valgrindXmlFileBase = "";
+    if (typeof(options.valgrind) === 'string') {
+      runInValgrind = options.valgrind;
+      valgrindopts = options.valgrindargs;
+      valgrindXmlFileBase = options.valgrindXmlFileBase;
+    }
+
+    var p = new Planner({"numberOfDBservers"      : 2,
+                         "numberOfCoordinators"   : 1,
+                         "dispatchers"            : {"me": dispatcher},
+                         "dataPath"               : tmpDataDir,
+                         "logPath"                : tmpDataDir,
+                         "useSSLonCoordinators"   : protocol === "ssl",
+                         "valgrind"               : runInValgrind,
+                         "valgrindopts"           : valgrindopts,
+                         "valgrindXmlFileBase"    : valgrindXmlFileBase,
+                         "valgrindTestname"       : testname
+                        });
     instanceInfo.kickstarter = new Kickstarter(p.getPlan());
     instanceInfo.kickstarter.launch();
     var runInfo = instanceInfo.kickstarter.runInfo;
@@ -285,7 +309,7 @@ function startInstance (protocol, options, addArgs, testname) {
     // We use the PortFinder to find a free port for our subinstance,
     // to this end, we have to fake a dummy dispatcher:
     dispatcher = {endpoint: "tcp://localhost:", avoidPorts: {}, id: "me"};
-    var pf = new PortFinder([8529],dispatcher);
+    var pf = new PortFinder([8529 + options.portOffset],dispatcher);
     var port = pf.next();
     instanceInfo.port = port;
     var args = makeTestingArgs();
@@ -301,15 +325,13 @@ function startInstance (protocol, options, addArgs, testname) {
       args.push("--server.keyfile");
       args.push(fs.join("UnitTests","server.pem"));
     }
-    if (typeof(options.extraargs) === 'object') {
-      args = args.concat(options.extraargs);
-    }
+    args = args.concat(options.extraargs);
     if (addArgs !== undefined) {
       args = args.concat(addArgs);
     }
     if (typeof(options.valgrind) === 'string') {
       var run = fs.join("bin","arangod");
-      var valgrindopts = options.valgrindargs.concat(
+      valgrindopts = options.valgrindargs.concat(
         ["--xml-file="+options.valgrindXmlFileBase + '_' + testname + '.%p.xml',
          "--log-file="+options.valgrindXmlFileBase + '_' + testname + '.%p.valgrind.log']);
       var newargs=valgrindopts.concat([run]).concat(args);      
@@ -344,26 +366,53 @@ function copy (src, dst) {
   fs.write(dst, buffer);
 }
 
-function checkInstanceAlive(instanceInfo) {  
-  var res = statusExternal(instanceInfo.pid, false);
-  var ret = res.status === "RUNNING";
-  if (! ret) {
-    print("ArangoD with PID " + instanceInfo.pid.pid + " gone:");
-    instanceInfo.exitStatus = res;
-    print(instanceInfo);
-    if (res.hasOwnProperty('signal') && 
-        (res.signal === 11))
-    {
-      var storeArangodPath = "/var/tmp/arangod_" + instanceInfo.pid.pid;
-      print("Core dump written; copying arangod to " + 
-            storeArangodPath + " for later analysis.");
-      res.gdbHint = "Run debugger with 'gdb " + 
-        storeArangodPath + 
-        " /var/tmp/core*" + instanceInfo.pid.pid + "*'";
-      copy("bin/arangod", storeArangodPath);
+function checkInstanceAlive(instanceInfo, options) {  
+  var storeArangodPath;
+  if (options.cluster === false) {
+    var res = statusExternal(instanceInfo.pid, false);
+    var ret = res.status === "RUNNING";
+    if (! ret) {
+      print("ArangoD with PID " + instanceInfo.pid.pid + " gone:");
+      instanceInfo.exitStatus = res;
+      print(instanceInfo);
+      if (res.hasOwnProperty('signal') && 
+          (res.signal === 11))
+      {
+        storeArangodPath = "/var/tmp/arangod_" + instanceInfo.pid.pid;
+        print("Core dump written; copying arangod to " + 
+              storeArangodPath + " for later analysis.");
+        res.gdbHint = "Run debugger with 'gdb " + 
+          storeArangodPath + 
+          " /var/tmp/core*" + instanceInfo.pid.pid + "*'";
+        copy("bin/arangod", storeArangodPath);
+      }
+    }
+    return ret;
+  }
+  var ClusterFit = true;
+  for (var part in instanceInfo.kickstarter.runInfo) {
+    if (instanceInfo.kickstarter.runInfo[part].hasOwnProperty("pids")) {
+      for (var pid in instanceInfo.kickstarter.runInfo[part].pids) {
+        if (instanceInfo.kickstarter.runInfo[part].pids.hasOwnProperty(pid)) {
+          var checkpid = instanceInfo.kickstarter.runInfo[part].pids[pid];
+          var ress = statusExternal(checkpid, false);
+          if (ress.hasOwnProperty('signal') && 
+              (ress.signal === 11)) {
+            storeArangodPath = "/var/tmp/arangod_" + checkpid.pid;
+            print("Core dump written; copying arangod to " + 
+                  storeArangodPath + " for later analysis.");
+            instanceInfo.exitStatus = ress;
+            ress.gdbHint = "Run debugger with 'gdb " + 
+              storeArangodPath + 
+              " /var/tmp/core*" + checkpid.pid + "*'";
+            copy("bin/arangod", storeArangodPath);
+            ClusterFit = false;
+          }
+        }
+      }
     }
   }
-  return ret;
+  return ClusterFit && instanceInfo.kickstarter.isHealthy();
 }
 
 function shutdownInstance (instanceInfo, options) {
@@ -629,7 +678,7 @@ function performTests(options, testList, testname) {
       if (r !== true && !options.force) {
         break;
       }
-      continueTesting = checkInstanceAlive(instanceInfo);
+      continueTesting = checkInstanceAlive(instanceInfo, options);
     }
     else {
       print("Skipped " + te + " because of " + filtered.filter);
@@ -777,7 +826,7 @@ testFuncs.shell_client = function(options) {
         break;
       }
 
-      continueTesting = checkInstanceAlive(instanceInfo);
+      continueTesting = checkInstanceAlive(instanceInfo, options);
     }
     else {
       print("Skipped " + te + " because of " + filtered.filter);
@@ -885,7 +934,7 @@ function rubyTests (options, ssl) {
           break;
         }
 
-        continueTesting = checkInstanceAlive(instanceInfo);
+        continueTesting = checkInstanceAlive(instanceInfo, options);
 
       }
       else {
@@ -1161,7 +1210,7 @@ testFuncs.arangob = function (options) {
       r = runArangoBenchmark(options, instanceInfo, benchTodo[i]);
       results[i] = r;
 
-      continueTesting = checkInstanceAlive(instanceInfo);
+      continueTesting = checkInstanceAlive(instanceInfo, options);
 
       if (r !== 0 && !options.force) {
         break;
@@ -1235,7 +1284,7 @@ testFuncs.authentication_parameters = function (options) {
       };
       all_ok = false;
     }
-    continueTesting = checkInstanceAlive(instanceInfo);
+    continueTesting = checkInstanceAlive(instanceInfo, options);
   }
   results.auth_full.status = all_ok;
 
@@ -1271,7 +1320,7 @@ testFuncs.authentication_parameters = function (options) {
       };
       all_ok = false;
     }
-    continueTesting = checkInstanceAlive(instanceInfo);
+    continueTesting = checkInstanceAlive(instanceInfo, options);
   }
   results.auth_system.status = all_ok;
 
@@ -1308,7 +1357,7 @@ testFuncs.authentication_parameters = function (options) {
       };
       all_ok = false;
     }
-    continueTesting = checkInstanceAlive(instanceInfo);
+    continueTesting = checkInstanceAlive(instanceInfo, options);
   }
   results.auth_none.status = all_ok;
 
@@ -1412,7 +1461,13 @@ function UnitTest (which, options) {
       results.all_ok = allok;
     }
     results.all_ok = allok;
-    cleanupDBDirectories(options);
+    if (allok) {
+      cleanupDBDirectories(options);
+    }
+    else {
+      print("since some tests weren't successfully, not cleaning up: ");
+      print(cleanupDirectories);
+    }
     if (jsonReply === true ) {
       return results;
     }
@@ -1440,7 +1495,14 @@ function UnitTest (which, options) {
     }
     r.ok = ok;
     results.all_ok = ok;
-    cleanupDBDirectories(options);
+
+    if (allok) {
+      cleanupDBDirectories(options);
+    }
+    else {
+      print("since some tests weren't successfully, not cleaning up: ");
+      print(cleanupDirectories);
+    }
     if (jsonReply === true ) {
       return results;
     }

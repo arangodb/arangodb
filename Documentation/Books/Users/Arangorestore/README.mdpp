@@ -1,6 +1,6 @@
 !CHAPTER Arangorestore
 
-To reload data from a dump previously created with [arangodump](../Arangodum/README.md),
+To reload data from a dump previously created with [arangodump](../Arangodump/README.md),
 ArangoDB provides the _arangorestore_ tool.
 
 !SECTION Reloading Data into an ArangoDB database

@@ -1,5 +1,3 @@
-require("internal").flushModuleCache();
-
 // Stubbing and Mocking
 
 var stub,

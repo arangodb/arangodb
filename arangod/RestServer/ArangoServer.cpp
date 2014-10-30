@@ -889,7 +889,9 @@ int ArangoServer::startupServer () {
 
   // for a cluster coordinator, the users are loaded at a later stage;
   // the kickstarter will trigger a bootstrap process
-  if (ServerState::instance()->getRole() != ServerState::ROLE_COORDINATOR) {
+  const auto role = ServerState::instance()->getRole();
+
+  if (role != ServerState::ROLE_COORDINATOR && role != ServerState::ROLE_PRIMARY && role != ServerState::ROLE_SECONDARY) {
 
     // if the authentication info could not be loaded, but authentication is turned on,
     // then we refuse to start
@@ -1186,8 +1188,11 @@ void ArangoServer::closeDatabases () {
   TRI_ASSERT(_server != nullptr);
 
   TRI_CleanupActions();
+  
+  // stop the replication appliers so all replication transactions can end
+  TRI_StopReplicationAppliersServer(_server);
 
-  // enfore logfile manager shutdown so we are sure no one else will
+  // enforce logfile manager shutdown so we are sure no one else will
   // write to the logs
   wal::LogfileManager::instance()->stop();
 

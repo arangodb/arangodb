@@ -64,7 +64,7 @@ namespace triagens {
 #ifdef TRI_ENABLE_FIGURES
 
         StatisticsAgent ()
-          : _statistics(0) {
+          : _statistics(nullptr) {
         }
 
 #else
@@ -81,7 +81,7 @@ namespace triagens {
 #ifdef TRI_ENABLE_FIGURES
 
         ~StatisticsAgent () {
-          if (_statistics != 0) {
+          if (_statistics != nullptr) {
             FUNC::release(_statistics);
           }
         }
@@ -101,7 +101,7 @@ namespace triagens {
         STAT* acquire () {
 #ifdef TRI_ENABLE_FIGURES
 
-          if (_statistics != 0) {
+          if (_statistics != nullptr) {
             return _statistics;
           }
 
@@ -119,7 +119,7 @@ namespace triagens {
         void release () {
 #ifdef TRI_ENABLE_FIGURES
 
-          if (_statistics != 0) {
+          if (_statistics != nullptr) {
             FUNC::release(_statistics);
             _statistics = 0;
           }
@@ -186,7 +186,7 @@ namespace triagens {
         virtual void replace (STAT* statistics) {
 #ifdef TRI_ENABLE_FIGURES
 
-          if (_statistics != 0) {
+          if (_statistics != nullptr) {
             FUNC::release(_statistics);
           }
 
@@ -236,7 +236,7 @@ namespace triagens {
 #define RequestStatisticsAgentSetRequestType(a,b)                                     \
   do {                                                                                \
     if (TRI_ENABLE_STATISTICS) {                                                      \
-      if ((a)->RequestStatisticsAgent::_statistics != 0) {                            \
+      if ((a)->RequestStatisticsAgent::_statistics != nullptr) {                      \
         (a)->RequestStatisticsAgent::_statistics->_requestType = b;                   \
       }                                                                               \
     }                                                                                 \
@@ -258,7 +258,7 @@ namespace triagens {
 #define RequestStatisticsAgentSetAsync(a)                                             \
   do {                                                                                \
     if (TRI_ENABLE_STATISTICS) {                                                      \
-      if ((a)->RequestStatisticsAgent::_statistics != 0) {                            \
+      if ((a)->RequestStatisticsAgent::_statistics != nullptr) {                      \
         (a)->RequestStatisticsAgent::_statistics->_async = true;                      \
       }                                                                               \
     }                                                                                 \
@@ -280,7 +280,7 @@ namespace triagens {
 #define RequestStatisticsAgentSetReadStart(a)                                        \
   do {                                                                               \
     if (TRI_ENABLE_STATISTICS) {                                                     \
-      if ((a)->RequestStatisticsAgent::_statistics != 0) {                           \
+      if ((a)->RequestStatisticsAgent::_statistics != nullptr) {                     \
         (a)->RequestStatisticsAgent::_statistics->_readStart = TRI_StatisticsTime(); \
       }                                                                              \
     }                                                                                \
@@ -302,7 +302,7 @@ namespace triagens {
 #define RequestStatisticsAgentSetReadEnd(a)                                        \
   do {                                                                             \
     if (TRI_ENABLE_STATISTICS) {                                                   \
-      if ((a)->RequestStatisticsAgent::_statistics != 0) {                         \
+      if ((a)->RequestStatisticsAgent::_statistics != nullptr) {                   \
         (a)->RequestStatisticsAgent::_statistics->_readEnd = TRI_StatisticsTime(); \
       }                                                                            \
     }                                                                              \
@@ -324,7 +324,7 @@ namespace triagens {
 #define RequestStatisticsAgentSetWriteStart(a)                                        \
   do {                                                                                \
     if (TRI_ENABLE_STATISTICS) {                                                      \
-      if ((a)->RequestStatisticsAgent::_statistics != 0) {                            \
+      if ((a)->RequestStatisticsAgent::_statistics != nullptr) {                      \
         (a)->RequestStatisticsAgent::_statistics->_writeStart = TRI_StatisticsTime(); \
       }                                                                               \
     }                                                                                 \
@@ -346,7 +346,7 @@ namespace triagens {
 #define RequestStatisticsAgentSetWriteEnd(a)                                        \
   do {                                                                              \
     if (TRI_ENABLE_STATISTICS) {                                                    \
-      if ((a)->RequestStatisticsAgent::_statistics != 0) {                          \
+      if ((a)->RequestStatisticsAgent::_statistics != nullptr) {                    \
         (a)->RequestStatisticsAgent::_statistics->_writeEnd = TRI_StatisticsTime(); \
       }                                                                             \
     }                                                                               \
@@ -368,7 +368,7 @@ namespace triagens {
 #define RequestStatisticsAgentSetQueueStart(a)                                        \
   do {                                                                                \
     if (TRI_ENABLE_STATISTICS) {                                                      \
-      if ((a)->RequestStatisticsAgent::_statistics != 0) {                            \
+      if ((a)->RequestStatisticsAgent::_statistics != nullptr) {                      \
         (a)->RequestStatisticsAgent::_statistics->_queueStart = TRI_StatisticsTime(); \
       }                                                                               \
     }                                                                                 \
@@ -390,7 +390,7 @@ namespace triagens {
 #define RequestStatisticsAgentSetQueueEnd(a)                                        \
   do {                                                                              \
     if (TRI_ENABLE_STATISTICS) {                                                    \
-      if ((a)->RequestStatisticsAgent::_statistics != 0) {                          \
+      if ((a)->RequestStatisticsAgent::_statistics != nullptr) {                    \
         (a)->RequestStatisticsAgent::_statistics->_queueEnd = TRI_StatisticsTime(); \
       }                                                                             \
     }                                                                               \
@@ -412,7 +412,7 @@ namespace triagens {
 #define RequestStatisticsAgentSetRequestStart(a)                                        \
   do {                                                                                  \
     if (TRI_ENABLE_STATISTICS) {                                                        \
-      if ((a)->RequestStatisticsAgent::_statistics != 0) {                              \
+      if ((a)->RequestStatisticsAgent::_statistics != nullptr) {                        \
         (a)->RequestStatisticsAgent::_statistics->_requestStart = TRI_StatisticsTime(); \
       }                                                                                 \
     }                                                                                   \
@@ -434,7 +434,7 @@ namespace triagens {
 #define RequestStatisticsAgentSetRequestEnd(a)                                        \
   do {                                                                                \
     if (TRI_ENABLE_STATISTICS) {                                                      \
-      if ((a)->RequestStatisticsAgent::_statistics != 0) {                            \
+      if ((a)->RequestStatisticsAgent::_statistics != nullptr) {                      \
         (a)->RequestStatisticsAgent::_statistics->_requestEnd = TRI_StatisticsTime(); \
       }                                                                               \
     }                                                                                 \
@@ -456,7 +456,7 @@ namespace triagens {
 #define RequestStatisticsAgentSetExecuteError(a)                         \
   do {                                                                   \
     if (TRI_ENABLE_STATISTICS) {                                         \
-      if ((a)->RequestStatisticsAgent::_statistics != 0) {               \
+      if ((a)->RequestStatisticsAgent::_statistics != nullptr) {         \
         (a)->RequestStatisticsAgent::_statistics->_executeError = true;  \
       }                                                                  \
     }                                                                    \
@@ -478,7 +478,7 @@ namespace triagens {
 #define RequestStatisticsAgentSetIgnore(a)                               \
   do {                                                                   \
     if (TRI_ENABLE_STATISTICS) {                                         \
-      if ((a)->RequestStatisticsAgent::_statistics != 0) {               \
+      if ((a)->RequestStatisticsAgent::_statistics != nullptr) {         \
         (a)->RequestStatisticsAgent::_statistics->_ignore = true;        \
       }                                                                  \
     }                                                                    \
@@ -500,7 +500,7 @@ namespace triagens {
 #define RequestStatisticsAgentAddReceivedBytes(a,b)                      \
   do {                                                                   \
     if (TRI_ENABLE_STATISTICS) {                                         \
-      if ((a)->RequestStatisticsAgent::_statistics != 0) {               \
+      if ((a)->RequestStatisticsAgent::_statistics != nullptr) {         \
         (a)->RequestStatisticsAgent::_statistics->_receivedBytes += (b); \
       }                                                                  \
     }                                                                    \
@@ -522,7 +522,7 @@ namespace triagens {
 #define RequestStatisticsAgentAddSentBytes(a,b)                      \
   do {                                                               \
     if (TRI_ENABLE_STATISTICS) {                                     \
-      if ((a)->RequestStatisticsAgent::_statistics != 0) {           \
+      if ((a)->RequestStatisticsAgent::_statistics != nullptr) {     \
         (a)->RequestStatisticsAgent::_statistics->_sentBytes += (b); \
       }                                                              \
     }                                                                \
@@ -573,7 +573,7 @@ namespace triagens {
 #define ConnectionStatisticsAgentSetHttp(a)                             \
   do {                                                                  \
     if (TRI_ENABLE_STATISTICS) {                                        \
-      if ((a)->ConnectionStatisticsAgent::_statistics != 0) {           \
+      if ((a)->ConnectionStatisticsAgent::_statistics != nullptr) {     \
         (a)->ConnectionStatisticsAgent::_statistics->_http = true;      \
       }                                                                 \
     }                                                                   \
@@ -595,7 +595,7 @@ namespace triagens {
 #define ConnectionStatisticsAgentSetStart(a)                                            \
   do {                                                                                  \
     if (TRI_ENABLE_STATISTICS) {                                                        \
-      if ((a)->ConnectionStatisticsAgent::_statistics != 0) {                           \
+      if ((a)->ConnectionStatisticsAgent::_statistics != nullptr) {                     \
         (a)->ConnectionStatisticsAgent::_statistics->_connStart = TRI_StatisticsTime(); \
       }                                                                                 \
     }                                                                                   \
@@ -617,7 +617,7 @@ namespace triagens {
 #define ConnectionStatisticsAgentSetEnd(a)                                            \
   do {                                                                                \
     if (TRI_ENABLE_STATISTICS) {                                                      \
-      if ((a)->ConnectionStatisticsAgent::_statistics != 0) {                         \
+      if ((a)->ConnectionStatisticsAgent::_statistics != nullptr) {                   \
         (a)->ConnectionStatisticsAgent::_statistics->_connEnd = TRI_StatisticsTime(); \
       }                                                                               \
     }                                                                                 \

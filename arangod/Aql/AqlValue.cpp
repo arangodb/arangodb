@@ -97,8 +97,9 @@ void AqlValue::destroy () {
       // do nothing here, since data pointers need not be freed
       break;
     }
-    default: {
-      TRI_ASSERT(false);
+    case EMPTY: {
+      // do nothing
+      break;
     }
   }
  
@@ -113,7 +114,7 @@ void AqlValue::destroy () {
 std::string AqlValue::getTypeString () const {
   switch (_type) {
     case JSON: 
-      return "json";
+      return std::string("json (") + std::string(TRI_GetTypeString(_json->json())) + std::string(")");
     case SHAPED: 
       return "shaped";
     case DOCVEC: 
@@ -453,7 +454,7 @@ v8::Handle<v8::Value> AqlValue::toV8 (triagens::arango::AqlTransaction* trx,
     }
 
     case EMPTY: {
-      return v8::Object::New(); // TODO?
+      return v8::Undefined();
     }
   }
       
@@ -494,19 +495,18 @@ Json AqlValue::toJson (triagens::arango::AqlTransaction* trx,
 
       if (TRI_IS_EDGE_MARKER(_marker)) {
         // _from
-        std::string from(trx->resolver()->getCollectionName(TRI_EXTRACT_MARKER_FROM_CID(_marker)));
+        std::string from(trx->resolver()->getCollectionNameCluster(TRI_EXTRACT_MARKER_FROM_CID(_marker)));
         from.push_back('/');
         from.append(TRI_EXTRACT_MARKER_FROM_KEY(_marker));
         json(TRI_VOC_ATTRIBUTE_FROM, Json(from));
         
         // _to
-        std::string to(trx->resolver()->getCollectionName(TRI_EXTRACT_MARKER_TO_CID(_marker)));
+        std::string to(trx->resolver()->getCollectionNameCluster(TRI_EXTRACT_MARKER_TO_CID(_marker)));
         to.push_back('/');
         to.append(TRI_EXTRACT_MARKER_TO_KEY(_marker));
         json(TRI_VOC_ATTRIBUTE_TO, Json(to));
       }
 
-      // TODO: return _from and _to, and fix order of attributes!
       return json;
     }
           
@@ -605,13 +605,13 @@ Json AqlValue::extractArrayMember (triagens::arango::AqlTransaction* trx,
           return Json(TRI_UNKNOWN_MEM_ZONE, JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, rid));
         }
         else if (strcmp(name, TRI_VOC_ATTRIBUTE_FROM) == 0) {
-          std::string from(trx->resolver()->getCollectionName(TRI_EXTRACT_MARKER_FROM_CID(_marker)));
+          std::string from(trx->resolver()->getCollectionNameCluster(TRI_EXTRACT_MARKER_FROM_CID(_marker)));
           from.push_back('/');
           from.append(TRI_EXTRACT_MARKER_FROM_KEY(_marker));
           return Json(TRI_UNKNOWN_MEM_ZONE, from);
         }
         else if (strcmp(name, TRI_VOC_ATTRIBUTE_TO) == 0) {
-          std::string to(trx->resolver()->getCollectionName(TRI_EXTRACT_MARKER_TO_CID(_marker)));
+          std::string to(trx->resolver()->getCollectionNameCluster(TRI_EXTRACT_MARKER_TO_CID(_marker)));
           to.push_back('/');
           to.append(TRI_EXTRACT_MARKER_TO_KEY(_marker));
           return Json(TRI_UNKNOWN_MEM_ZONE, to);
@@ -650,11 +650,15 @@ Json AqlValue::extractArrayMember (triagens::arango::AqlTransaction* trx,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract a value from a list AqlValue 
 /// this will return null if the value is not a list
+/// depending on the last parameter, the return value will either contain a
+/// copy of the original value in the list or a reference to it (which must
+/// not be freed)
 ////////////////////////////////////////////////////////////////////////////////
 
 Json AqlValue::extractListMember (triagens::arango::AqlTransaction* trx,
                                   TRI_document_collection_t const* document,
-                                  int64_t position) const {
+                                  int64_t position,
+                                  bool copy) const {
   switch (_type) {
     case JSON: {
       TRI_ASSERT(_json != nullptr);
@@ -672,7 +676,13 @@ Json AqlValue::extractListMember (triagens::arango::AqlTransaction* trx,
           TRI_json_t const* found = TRI_LookupListJson(json, static_cast<size_t>(position));
 
           if (found != nullptr) {
-            return Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, found));
+            if (copy) {
+              // return a copy of the value
+              return Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, found), triagens::basics::Json::AUTOFREE);
+            }
+
+            // return a pointer to the original value, without asking for its ownership
+            return Json(TRI_UNKNOWN_MEM_ZONE, found, triagens::basics::Json::NOFREE);
           }
         }
       }

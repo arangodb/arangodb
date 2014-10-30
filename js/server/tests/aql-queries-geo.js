@@ -1,3 +1,6 @@
+/*jshint strict: false, maxlen: 500 */
+/*global require, assertEqual */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, geo queries
 ///
@@ -44,12 +47,13 @@ function ahuacatlGeoTestSuite () {
     var result = getQueryResults(query);
 
     result = result.map(function(row) {
+      var r;
       if (row !== null && typeof row === 'object') {
         for (r in row) {
           if (row.hasOwnProperty(r)) {
             var value = row[r];
             if (typeof(value) === "number") {
-              if (value != parseFloat(parseInt(value))) {
+              if (value !== parseFloat(parseInt(value))) {
                 row[r] = Number(value).toFixed(5);
               }
             }
@@ -70,12 +74,13 @@ function ahuacatlGeoTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
+      var lat, lon;
       db._drop("UnitTestsAhuacatlLocations");
       db._drop("UnitTestsAhuacatlLocationsNon");
 
       locations = db._create("UnitTestsAhuacatlLocations");
-      for (var lat = -40; lat <= 40; ++lat) {
-        for (var lon = -40; lon <= 40; ++lon) {
+      for (lat = -40; lat <= 40; ++lat) {
+        for (lon = -40; lon <= 40; ++lon) {
           locations.save({"latitude" : lat, "longitude" : lon });
         }
       }
@@ -84,8 +89,8 @@ function ahuacatlGeoTestSuite () {
 
       locationsNon = db._create("UnitTestsAhuacatlLocationsNon");
 
-      for (var lat = -40; lat <= 40; ++lat) {
-        for (var lon = -40; lon <= 40; ++lon) {
+      for (lat = -40; lat <= 40; ++lat) {
+        for (lon = -40; lon <= 40; ++lon) {
           locationsNon.save({"latitude" : lat, "longitude" : lon });
         }
       }
@@ -239,7 +244,7 @@ function ahuacatlGeoTestSuite () {
       assertQueryError(errors.ERROR_QUERY_BIND_PARAMETER_MISSING.code, "RETURN WITHIN(@name, 0, 0, 10)"); 
     }
 
-  }
+  };
 }
 
 ////////////////////////////////////////////////////////////////////////////////

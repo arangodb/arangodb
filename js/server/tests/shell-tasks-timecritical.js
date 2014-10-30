@@ -495,9 +495,6 @@ function TaskSuite () {
       
       internal.wait(1);
 
-      var t = getTasks();
-      assertEqual(0, t.length);
-
       internal.wait(5);
 
       assertEqual(1, db[cn].count());
@@ -529,17 +526,9 @@ function TaskSuite () {
       assertEqual(5, task.offset);
       assertEqual("_system", task.database);
       
-      var t = getTasks();
-      assertEqual(1, t.length);
-
       internal.wait(15);
 
       assertEqual(1, db[cn].count());
-      // assertEqual(1, db[cn].byExample({ value: 23 }).toArray().length);
-
-      // task should have gone by now
-      // t = getTasks();
-      // assertEqual(0, t.length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -597,7 +586,7 @@ function TaskSuite () {
         command: command, 
         period: 1,
         offset: 0,
-        params: 23 
+        params: 17 
       });
 
       assertEqual("UnitTests1", task.id);
@@ -611,7 +600,7 @@ function TaskSuite () {
       tasks.unregister(task);
 
       assertTrue(db[cn].count() > 0);
-      assertTrue(db[cn].byExample({ value: 23 }).toArray().length > 0);
+      assertTrue(db[cn].byExample({ value: 17 }).toArray().length > 0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -648,7 +637,6 @@ function TaskSuite () {
       tasks.unregister(task);
 
       assertTrue(db[cn].count() > 0);
-      assertTrue(db[cn].byExample({ value: 23 }).toArray().length === 0);
       assertTrue(db[cn].byExample({ value: 42 }).toArray().length > 0);
     }
 

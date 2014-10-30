@@ -143,8 +143,8 @@ SkiplistIndex* SkiplistIndex_new (struct TRI_document_collection_t*,
                                   size_t, bool);
 
 TRI_skiplist_iterator_t* SkiplistIndex_find (SkiplistIndex*, 
-                                             TRI_vector_t*,
-                                             TRI_index_operator_t*,
+                                             TRI_vector_t const*,
+                                             TRI_index_operator_t const*,
                                              bool);
 
 int SkiplistIndex_insert (SkiplistIndex*, TRI_skiplist_index_element_t*);

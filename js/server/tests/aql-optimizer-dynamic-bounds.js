@@ -1,4 +1,6 @@
-/*global _, require, assertTrue, assertEqual, AQL_EXECUTE, AQL_EXECUTEJSON, AQL_EXPLAIN */
+/*jshint strict: false, maxlen: 500 */
+/*global require, assertEqual, assertNotEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE, AQL_EXECUTEJSON */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
 ///
@@ -27,7 +29,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var errors = require("internal").errors;
 var helper = require("org/arangodb/aql-helper");
 var isEqual = helper.isEqual;
 var db = require("org/arangodb").db;
@@ -43,7 +44,6 @@ function singleAttributeTestSuite () {
   var c;
 
   // various choices to control the optimizer: 
-  var paramNone     = { optimizer: { rules: [ "-all" ] } };
   var paramEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
   var paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
 
@@ -142,7 +142,6 @@ function nonIndexedAttributeTestSuite () {
   var c;
 
   // various choices to control the optimizer: 
-  var paramNone     = { optimizer: { rules: [ "-all" ] } };
   var paramEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
   var paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
 
@@ -234,7 +233,6 @@ function nestedAttributeTestSuite () {
   var c;
 
   // various choices to control the optimizer: 
-  var paramNone     = { optimizer: { rules: [ "-all" ] } };
   var paramEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
   var paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
 

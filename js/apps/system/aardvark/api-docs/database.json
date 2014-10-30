@@ -21,10 +21,10 @@
                         }
                     ],
                     "parameters": [],
-                    "notes": "Retrieves the list of all existing databases <br><br> <em>*Note*</em>: retrieving the list of databases is only possible from within the <em>_system</em> database. <br><br>",
+                    "notes": "Retrieves the list of all existing databases <br><br> <em>Note</em>: retrieving the list of databases is only possible from within the <em>_system</em> database. <br><br>",
                     "summary": " List of databases",
                     "httpMethod": "GET",
-                    "examples": "<br><br><br><br><pre><code class=\"json\">shell> curl --data-binary @- --dump - http://localhost:8529/_api/database\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    \"_system\" \n  ], \n  \"error\" : false, \n  \"code\" : 200 \n}\n</code></pre><br>@endDocuBlock",
+                    "examples": "<br><br><br><br><pre><code class=\"json\">shell> curl --data-binary @- --dump - http://localhost:8529/_api/database\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    \"_system\" \n  ], \n  \"error\" : false, \n  \"code\" : 200 \n}\n</code></pre><br><br><br>",
                     "nickname": "ListOfDatabases"
                 }
             ],
@@ -44,10 +44,10 @@
                         }
                     ],
                     "parameters": [],
-                    "notes": "Retrieves the list of all databases the current user can access without  specifying a different username or password. <br><br>",
+                    "notes": "Retrieves the list of all databases the current user can access without specifying a different username or password. <br><br>",
                     "summary": " List of accessible databases ",
                     "httpMethod": "GET",
-                    "examples": "<br><br><br><br><pre><code class=\"json\">shell> curl --data-binary @- --dump - http://localhost:8529/_api/database/user\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    \"_system\" \n  ], \n  \"error\" : false, \n  \"code\" : 200 \n}\n</code></pre><br>@endDocuBlock",
+                    "examples": "<br><br><br><br><pre><code class=\"json\">shell> curl --data-binary @- --dump - http://localhost:8529/_api/database/user\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    \"_system\" \n  ], \n  \"error\" : false, \n  \"code\" : 200 \n}\n</code></pre><br><br><br>",
                     "nickname": "ListOfAccessibleDatabases"
                 }
             ],
@@ -74,7 +74,7 @@
                     "notes": "Retrieves information about the current database <br><br> The response is a JSON object with the following attributes: <br><br>  <ul class=\"swagger-list\"><li><em>name</em>: the name of the current database  <li><em>id</em>: the id of the current database  <li><em>path</em>: the filesystem path of the current database  <li><em>isSystem</em>: whether or not the current database is the <em>_system</em> database",
                     "summary": " Information of the database",
                     "httpMethod": "GET",
-                    "examples": "<br><br><br><br><pre><code class=\"json\">shell> curl --data-binary @- --dump - http://localhost:8529/_api/database/current\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : { \n    \"name\" : \"_system\", \n    \"id\" : \"73222\", \n    \"path\" : \"/tmp/vocdir.92357/databases/database-73222\", \n    \"isSystem\" : true \n  }, \n  \"error\" : false, \n  \"code\" : 200 \n}\n</code></pre><br>@endDocuBlock",
+                    "examples": "<br><br><br><br><pre><code class=\"json\">shell> curl --data-binary @- --dump - http://localhost:8529/_api/database/current\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : { \n    \"name\" : \"_system\", \n    \"id\" : \"130216\", \n    \"path\" : \"/tmp/vocdir.14793/databases/database-130216\", \n    \"isSystem\" : true \n  }, \n  \"error\" : false, \n  \"code\" : 200 \n}\n</code></pre><br><br><br>",
                     "nickname": "InformationOfTheDatabase"
                 }
             ],
@@ -89,7 +89,7 @@
                             "code": "201"
                         },
                         {
-                            "reason": "is returned if the request parameters are invalid or if a database with the  specified name already exists. <br><br>",
+                            "reason": "is returned if the request parameters are invalid or if a database with the specified name already exists. <br><br>",
                             "code": "400"
                         },
                         {
@@ -110,10 +110,10 @@
                             "description": "the body with the name of the database. <br><br>"
                         }
                     ],
-                    "notes": "Creates a new database <br><br> The request body must be a JSON object with the attribute <em>name</em>. <em>name</em> must contain a valid database name. <br><br> The request body can optionally contain an attribute <em>users</em>, which then  must be a list of user objects to initially create for the new database. Each user object can contain the following attributes: <br><br>  <ul class=\"swagger-list\"><li><em>username</em>: the user name as a string. This attribute is mandatory.  <li><em>passwd</em>: the user password as a string. If not specified, then it defaults to the empty string.  <li><em>active</em>: a boolean flag indicating whether the user accout should be actived or not. The default value is <em>true</em>.  <li><em>extra</em>: an optional JSON object with extra user information. The data contained in <em>extra</em> will be stored for the user but not be interpreted further by ArangoDB.  </ul> If <em>users</em> is not specified or does not contain any users, a default user <em>root</em> will be created with an empty string password. This ensures that the new database will be accessible after it is created. <br><br> The response is a JSON object with the attribute <em>result</em> set to <em>true</em>. <br><br> <em>*Note*</em>: creating a new database is only possible from within the <em>_system</em> database. <br><br>",
+                    "notes": "Creates a new database <br><br> The request body must be a JSON object with the attribute <em>name</em>. <em>name</em> must contain a valid database name. <br><br> The request body can optionally contain an attribute <em>users</em>, which then must be a list of user objects to initially create for the new database. Each user object can contain the following attributes: <br><br>  <ul class=\"swagger-list\"><li><em>username</em>: the user name as a string. This attribute is mandatory.  <li><em>passwd</em>: the user password as a string. If not specified, then it defaults to the empty string.  <li><em>active</em>: a boolean flag indicating whether the user accout should be actived or not. The default value is <em>true</em>.  <li><em>extra</em>: an optional JSON object with extra user information. The data contained in <em>extra</em> will be stored for the user but not be interpreted further by ArangoDB.  </ul> If <em>users</em> is not specified or does not contain any users, a default user <em>root</em> will be created with an empty string password. This ensures that the new database will be accessible after it is created. <br><br> The response is a JSON object with the attribute <em>result</em> set to <em>true</em>. <br><br> <em>Note</em>: creating a new database is only possible from within the <em>_system</em> database. <br><br>",
                     "summary": " Create database",
                     "httpMethod": "POST",
-                    "examples": "<br><br> Creating a database named <em>example</em>. <br><br><br><br><pre><code class=\"json\">shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/database\n{\"name\":\"example\"}\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : true, \n  \"error\" : false, \n  \"code\" : 201 \n}\n</code></pre><br><br><br> Creating a database named <em>mydb</em> with two users. <br><br><br><br><pre><code class=\"json\">shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/database\n{\"name\":\"mydb\",\"users\":[{\"username\":\"admin\",\"passwd\":\"secret\",\"active\":true},{\"username\":\"tester\",\"passwd\":\"test001\",\"active\":false}]}\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : true, \n  \"error\" : false, \n  \"code\" : 201 \n}\n</code></pre><br>@endDocuBlock",
+                    "examples": "<br><br> Creating a database named <em>example</em>. <br><br><br><br><pre><code class=\"json\">shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/database\n{\"name\":\"example\"}\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : true, \n  \"error\" : false, \n  \"code\" : 201 \n}\n</code></pre><br><br><br> Creating a database named <em>mydb</em> with two users. <br><br><br><br><pre><code class=\"json\">shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/database\n{\"name\":\"mydb\",\"users\":[{\"username\":\"admin\",\"passwd\":\"secret\",\"active\":true},{\"username\":\"tester\",\"passwd\":\"test001\",\"active\":false}]}\n\nHTTP/1.1 201 Created\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : true, \n  \"error\" : false, \n  \"code\" : 201 \n}\n</code></pre><br><br><br>",
                     "nickname": "CreateDatabase"
                 }
             ],
@@ -149,10 +149,10 @@
                             "description": "The name of the database <br><br>"
                         }
                     ],
-                    "notes": "Deletes the database along with all data stored in it. <br><br> <em>*Note*</em>: dropping a database is only possible from within the <em>_system</em> database. The <em>_system</em> database itself cannot be dropped. <br><br>",
+                    "notes": "Deletes the database along with all data stored in it. <br><br> <em>Note</em>: dropping a database is only possible from within the <em>_system</em> database. The <em>_system</em> database itself cannot be dropped. <br><br>",
                     "summary": " Drop database",
                     "httpMethod": "DELETE",
-                    "examples": "<br><br><br><br><pre><code class=\"json\">shell> curl -X DELETE --data-binary @- --dump - http://localhost:8529/_api/database/example\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : true, \n  \"error\" : false, \n  \"code\" : 200 \n}\n</code></pre><br>@endDocuBlock",
+                    "examples": "<br><br><br><br><pre><code class=\"json\">shell> curl -X DELETE --data-binary @- --dump - http://localhost:8529/_api/database/example\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : true, \n  \"error\" : false, \n  \"code\" : 200 \n}\n</code></pre><br><br><br>",
                     "nickname": "DropDatabase"
                 }
             ],

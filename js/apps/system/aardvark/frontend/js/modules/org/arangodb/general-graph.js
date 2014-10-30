@@ -2160,7 +2160,7 @@ var updateBindCollections = function(graph) {
 /// JSON data of the edge
 ///
 /// @PARAM{options, object, optional}
-/// See [collection documentation](../Edges/EdgeMethods.md)
+/// See [collection documentation](../Edges/README.md)
 ///
 /// @EXAMPLES
 ///

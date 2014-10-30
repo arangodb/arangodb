@@ -71,7 +71,7 @@ static inline TRI_doc_datafile_info_t& createDfi (CollectorCache* cache,
 
   TRI_doc_datafile_info_t dfi;
   memset(&dfi, 0, sizeof(TRI_doc_datafile_info_t));
-  cache->dfi.insert(std::make_pair(fid, dfi));
+  cache->dfi.emplace(std::make_pair(fid, dfi));
 
   return getDfi(cache, fid);
 }
