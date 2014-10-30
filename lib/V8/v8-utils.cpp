@@ -383,7 +383,7 @@ static v8::Handle<v8::Value> JS_Base64Encode (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief parses a Javascript snippet, but do not execute it
+/// @brief parses a Javascript snippet, but does not execute it
 ///
 /// @FUN{internal.parse(@FA{script})}
 ///
@@ -436,6 +436,50 @@ static v8::Handle<v8::Value> JS_Parse (v8::Arguments const& argv) {
     return scope.Close(v8::False());
   }
 
+  return scope.Close(v8::True());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parses a Javascript file, but does not execute it
+///
+/// @FUN{internal.parseFile(@FA{filename})}
+///
+/// Parses the file @FA{filename}, but does not execute it.
+/// Will return *true* if the code does not have a parse error, and throw
+/// an exception otherwise.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ParseFile (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+  
+  // extract arguments
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "parseFile(<filename>)");
+  }
+
+  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, argv[0]);
+
+  if (*name == nullptr) {
+    TRI_V8_TYPE_ERROR(scope, "<filename> must be a UTF-8 string");
+  }
+
+  size_t length;
+  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *name, &length);
+
+  if (content == nullptr) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "cannot read file");
+  }
+  
+  v8::Handle<v8::Value> result;
+  v8::Handle<v8::Script> script = v8::Script::Compile(v8::String::New(content, (int) length), argv[0]);
+  
+  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
+
+  // compilation failed, print errors that happened during compilation
+  if (script.IsEmpty()) {
+    return scope.Close(result);
+  }
+  
   return scope.Close(v8::True());
 }
 
@@ -3882,6 +3926,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SYS_MD5", JS_Md5);
   TRI_AddGlobalFunctionVocbase(context, "SYS_OUTPUT", JS_Output);
   TRI_AddGlobalFunctionVocbase(context, "SYS_PARSE", JS_Parse);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_PARSE_FILE", JS_ParseFile);
   TRI_AddGlobalFunctionVocbase(context, "SYS_PROCESS_STATISTICS", JS_ProcessStatistics);
   TRI_AddGlobalFunctionVocbase(context, "SYS_RAND", JS_Rand);
   TRI_AddGlobalFunctionVocbase(context, "SYS_READ", JS_Read);
