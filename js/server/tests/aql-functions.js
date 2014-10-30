@@ -34,7 +34,6 @@ var helper = require("org/arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults2;
 var getQueryResultsAQL2 = helper.getQueryResultsAQL2;
 var assertQueryError = helper.assertQueryError2;
-var assertQueryWarning = helper.assertQueryWarning2;
 var assertQueryWarningAndNull = helper.assertQueryWarningAndNull2;
 
 ////////////////////////////////////////////////////////////////////////////////
