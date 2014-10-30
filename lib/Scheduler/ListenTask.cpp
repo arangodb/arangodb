@@ -232,7 +232,7 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
                     host, sizeof(host),
                     serv, sizeof(serv), NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
 
-      info.clientAddress = string(host);
+      info.clientAddress = std::string(host);
       info.clientPort = addr.sin_port;
     }
     else {

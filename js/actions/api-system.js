@@ -378,35 +378,6 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief flushes the modules cache
-/// @startDocuBlock JSF_get_admin_modules_flush
-///
-/// @RESTHEADER{POST /_admin/modules/flush, Flushes the modules cache}
-///
-/// @RESTDESCRIPTION
-///
-/// The call flushes the modules cache on the server. See *JSModulesCache*
-/// for details about this cache.
-///
-/// @RESTRETURNCODES
-///
-/// @RESTRETURNCODE{200}
-/// Module cache was flushed successfully.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url : "_admin/modules/flush",
-  prefix : false,
-
-  callback : function (req, res) {
-    internal.executeGlobalContextFunction("flushModuleCache");
-    console.debug("about to flush the modules cache");
-    actions.resultOk(req, res, actions.HTTP_OK);
-  }
-});
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the system time
 /// @startDocuBlock JSF_get_admin_time
 ///

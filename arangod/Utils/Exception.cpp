@@ -47,7 +47,7 @@ Exception::Exception (int code,
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 #if HAVE_BACKTRACE
   _errorMessage += std::string("\n\n");
-  _getBacktrace(_errorMessage);
+  TRI_GetBacktrace(_errorMessage);
   _errorMessage += std::string("\n\n");
 #endif
 #endif
@@ -61,15 +61,28 @@ Exception::Exception (int code,
 Exception::Exception (int code,
                       string const& errorMessage,
                       char const* file,
-                      int line)
-  : _errorMessage(errorMessage),
+                      int line,
+                      bool errnoStringResolved)
+  :
+    _errorMessage(errorMessage),
     _file(file),
     _line(line),
     _code(code) {
+
+  if (code != TRI_ERROR_INTERNAL) {
+    if (!errnoStringResolved) {
+      _errorMessage = std::string("(");
+      _errorMessage += TRI_errno_string(code);
+      _errorMessage += std::string(")      ");
+      _errorMessage += errorMessage;
+    }
+  }
+  else {
+   }
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 #if HAVE_BACKTRACE
   _errorMessage += std::string("\n\n");
-  _getBacktrace(_errorMessage);
+  TRI_GetBacktrace(_errorMessage);
   _errorMessage += std::string("\n\n");
 #endif
 #endif

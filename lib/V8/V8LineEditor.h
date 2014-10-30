@@ -63,7 +63,7 @@ class V8Completer : public Completer {
                            size_t column);
 
   virtual void getAlternatives (char const*, 
-                                std::vector<string>&);
+                                std::vector<std::string>&);
 };
 
 // -----------------------------------------------------------------------------

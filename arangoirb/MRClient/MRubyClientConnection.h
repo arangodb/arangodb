@@ -77,8 +77,8 @@ namespace triagens {
 
         MRubyClientConnection (mrb_state*,
                                triagens::rest::Endpoint*,
-                               const string& username,
-                               const string& passwort,
+                               const std::string& username,
+                               const std::string& passwort,
                                double requestTimeout,
                                double connectionTimeout,
                                size_t numRetries,
@@ -106,7 +106,7 @@ namespace triagens {
 /// @brief returns the version and build number of the arango server
 ////////////////////////////////////////////////////////////////////////////////
 
-        const string& getVersion ();
+        const std::string& getVersion ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the last http return code
@@ -150,7 +150,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         mrb_value getData (std::string const& location,
-                           map<string, string> const& headerFields);
+                           std::map<std::string, std::string> const& headerFields);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief do a "DELETE" request
@@ -162,7 +162,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         mrb_value deleteData (std::string const& location,
-                                          map<string, string> const& headerFields);
+                              std::map<std::string, std::string> const& headerFields);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief do a "HEAD" request
@@ -174,7 +174,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         mrb_value headData (std::string const& location,
-                            map<string, string> const& headerFields);
+                            std::map<std::string, std::string> const& headerFields);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief do a "POST" request
@@ -188,7 +188,7 @@ namespace triagens {
 
         mrb_value postData (std::string const& location,
                             std::string const& body,
-                            map<string, string> const& headerFields);
+                            std::map<std::string, std::string> const& headerFields);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief do a "PUT" request
@@ -202,7 +202,7 @@ namespace triagens {
 
         mrb_value putData (std::string const& location,
                            std::string const& body,
-                           map<string, string> const& headerFields);
+                           std::map<std::string, std::string> const& headerFields);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -217,7 +217,7 @@ namespace triagens {
       mrb_value requestData (rest::HttpRequest::HttpRequestType method,
                              std::string const& location,
                              std::string const& body,
-                             map<string, string> const& headerFields);
+                             std::map<std::string, std::string> const& headerFields);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

@@ -1,3 +1,6 @@
+/*jshint strict: false, maxlen: 500 */
+/*global require, assertEqual, assertException */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, simple non-collection-based queries
 ///
@@ -139,7 +142,7 @@ function ahuacatlQueryNonCollectionTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDeferredEval7 : function () {
-      assertException(function() { getQueryResults("FOR year IN [ 2010, 2011, 2012 ] FILTER year < 2020 LET x = (FOR i IN [ 1, 2 ] RETURN FAIL()) RETURN year") });
+      assertException(function() { getQueryResults("FOR year IN [ 2010, 2011, 2012 ] FILTER year < 2020 LET x = (FOR i IN [ 1, 2 ] RETURN FAIL()) RETURN year"); });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -291,7 +294,7 @@ function ahuacatlQueryNonCollectionTestSuite () {
 /// @brief return values from simple let
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSimpleLet1 : function () {
+    testSimpleLet2 : function () {
       var expected = [ "the fox", "the fox", "the fox" ];
       var actual = getQueryResults("FOR i IN [1,2,3] LET j=\"the fox\" RETURN j");
       assertEqual(expected, actual);

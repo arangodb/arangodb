@@ -134,10 +134,15 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief count the LOCAL number of documents in the collection
-/// TODO: must be adjusted for clusters
 ////////////////////////////////////////////////////////////////////////////////
 
       size_t count () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the collection's plan id
+////////////////////////////////////////////////////////////////////////////////
+
+      TRI_voc_cid_t getPlanId() const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the shard ids of a collection
@@ -199,8 +204,8 @@ namespace triagens {
       TRI_vocbase_t*               vocbase;
       TRI_vocbase_col_t*           collection;
       TRI_transaction_type_e       accessType;
-      mutable std::vector<Index*>  indexes;
-      mutable int64_t              numDocuments = UNINITIALIZED;
+      std::vector<Index*> mutable  indexes;
+      int64_t mutable              numDocuments = UNINITIALIZED;
 
       static int64_t const         UNINITIALIZED = -1;
     };

@@ -705,6 +705,10 @@ function FCALL_USER (name, parameters) {
       THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, NORMALIZE_FNAME(name));
     }
   }
+  
+  if (! UserFunctions[prefix].hasOwnProperty(name)) {
+    reloadUserFunctions();
+  }
 
   if (UserFunctions[prefix].hasOwnProperty(name)) {
     var result = UserFunctions[prefix][name].func.apply(null, parameters);
@@ -4589,7 +4593,6 @@ function TRAVERSAL_VISITOR (config, result, vertex, path) {
 
 function TRAVERSAL_NEIGHBOR_VISITOR (config, result, vertex, path) {
   "use strict";
-
   result.push(CLONE({ vertex: vertex, path: path, startVertex : config.startVertex }));
 }
 
@@ -4653,9 +4656,22 @@ function TRAVERSAL_EDGE_EXAMPLE_FILTER (config, vertex, edge, path) {
 
 function TRAVERSAL_VERTEX_FILTER (config, vertex, path) {
   "use strict";
-
-  if (! MATCHES(vertex, config.filterVertexExamples)) {
+  if (config.filterVertexExamples && !MATCHES(vertex, config.filterVertexExamples)) {
+    if (config.filterVertexCollections
+      && config.vertexFilterMethod.indexOf("exclude") === -1
+      && config.filterVertexCollections.indexOf(vertex._id.split("/")[0]) === -1
+    ) {
+      if (config.vertexFilterMethod.indexOf("prune") === -1) {
+        return ["exclude"];
+      }
+      return ["prune", "exclude"];
+    }
     return config.vertexFilterMethod;
+  }
+  if (config.filterVertexCollections
+    && config.filterVertexCollections.indexOf(vertex._id.split("/")[0]) === -1
+  ){
+    return ["exclude"];
   }
 }
 
@@ -4788,6 +4804,11 @@ function TRAVERSAL_FUNC (func,
       config.filterVertexExamples = params.filterVertices;
       config.vertexFilterMethod = params.vertexFilterMethod || ["prune", "exclude"];
     }
+  }
+  if (params.filterVertexCollections) {
+    config.filter = config.filter || TRAVERSAL_VERTEX_FILTER;
+    config.vertexFilterMethod = config.vertexFilterMethod || ["prune", "exclude"];
+    config.filterVertexCollections = params.filterVertexCollections;
   }
 
   if (params._sort) {
@@ -6020,8 +6041,8 @@ function GRAPH_NEIGHBORS (vertexCollection,
 ///   * *edgeCollectionRestriction*        : One or multiple edge
 ///   collection names. Only edges from these collections will be considered for the path.
 ///   * *vertexCollectionRestriction* : One or multiple vertex
-///   collection names. Only vertices from these collections will be considered as
-///   neighbor.
+///   collection names. Only vertices from these collections will be contained in the
+///   result. This does not effect vertices on the path.
 ///   * *minDepth*                         : Defines the minimal
 ///      depth a path to a neighbor must have to be returned (default is 1).
 ///   * *maxDepth*                         : Defines the maximal
@@ -6064,21 +6085,12 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
   }
 
   options.fromVertexExample = vertexExample;
-  if (! options.direction) {
+  if (! options.hasOwnProperty("direction")) {
     options.direction =  'any';
   }
 
-  if (options.vertexCollectionRestriction) {
-    if (options.direction === "inbound") {
-      options.endVertexCollectionRestriction = options.vertexCollectionRestriction;
-    } else {
-      options.startVertexCollectionRestriction = options.vertexCollectionRestriction;
-    }
-  }
-  if (options.neighborExamples) {
-    if (typeof options.neighborExamples === "string") {
-      options.neighborExamples = {_id : options.neighborExamples};
-    }
+  if (options.hasOwnProperty("neighborExamples") && typeof options.neighborExamples === "string") {
+    options.neighborExamples = {_id : options.neighborExamples};
   }
   var neighbors = [],
     params = TRAVERSAL_PARAMS(),
@@ -6093,6 +6105,9 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
   }
   if (options.edgeCollectionRestriction) {
     params.edgeCollectionRestriction = options.edgeCollectionRestriction;
+  }
+  if (options.vertexCollectionRestriction) {
+    params.filterVertexCollections = options.vertexCollectionRestriction;
   }
   fromVertices.forEach(function (v) {
     var e = TRAVERSAL_FUNC("GRAPH_NEIGHBORS",
@@ -6261,15 +6276,13 @@ function GENERAL_GRAPH_VERTICES (
   if (! options.direction) {
     options.direction =  'any';
   }
-  if (options.direction ===  'any') {
-    options.includeOrphans = true;
-  }
   if (options.vertexCollectionRestriction) {
     if (options.direction === "inbound") {
       options.endVertexCollectionRestriction = options.vertexCollectionRestriction;
     } else if (options.direction === "outbound")  {
       options.startVertexCollectionRestriction = options.vertexCollectionRestriction;
     } else {
+      options.includeOrphans = true;
       options.endVertexCollectionRestriction = options.vertexCollectionRestriction;
       options.startVertexCollectionRestriction = options.vertexCollectionRestriction;
       options.orphanCollectionRestriction = options.vertexCollectionRestriction;

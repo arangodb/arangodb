@@ -600,6 +600,17 @@ ExecutionNode* ExecutionPlan::fromNodeLimit (ExecutionNode* previous,
 
   TRI_ASSERT(offset->type == NODE_TYPE_VALUE);
   TRI_ASSERT(count->type == NODE_TYPE_VALUE);
+    
+  if ((offset->value.type != VALUE_TYPE_INT && 
+       offset->value.type != VALUE_TYPE_DOUBLE) ||
+      offset->getIntValue() < 0) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, "LIMIT value is not a number or out of range");
+  }
+  if ((count->value.type != VALUE_TYPE_INT && 
+       count->value.type != VALUE_TYPE_DOUBLE) ||
+      count->getIntValue() < 0) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, "LIMIT value is not a number or out of range");
+  }
 
   auto en = registerNode(new LimitNode(this, nextId(), static_cast<size_t>(offset->getIntValue()), static_cast<size_t>(count->getIntValue())));
 
@@ -1003,7 +1014,7 @@ struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
     ~VarUsageFinder () {
     }
 
-    bool before (ExecutionNode* en) {
+    bool before (ExecutionNode* en) override final {
       en->invalidateVarUsage();
       en->setVarsUsedLater(_usedLater);
       // Add variables used here to _usedLater:
@@ -1014,7 +1025,7 @@ struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
       return false;
     }
 
-    void after (ExecutionNode* en) {
+    void after (ExecutionNode* en) override final {
       // Add variables set here to _valid:
       auto&& setHere = en->getVariablesSetHere();
       for (auto v : setHere) {
@@ -1025,7 +1036,7 @@ struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
       en->setVarUsageValid();
     }
 
-    bool enterSubquery (ExecutionNode*, ExecutionNode* sub) {
+    bool enterSubquery (ExecutionNode*, ExecutionNode* sub) override final {
       VarUsageFinder subfinder;
       subfinder._valid = _valid;  // need a copy for the subquery!
       sub->walk(&subfinder);
@@ -1277,31 +1288,68 @@ ExecutionNode* ExecutionPlan::fromJson (Json const& json) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns true if a plan is so simple that optimizations would
+/// probably cost more than simply executing the plan
+////////////////////////////////////////////////////////////////////////////////
+
+bool ExecutionPlan::isDeadSimple () const {
+  auto current = _root;
+  while (current != nullptr) {
+    auto deps = current->getDependencies();
+
+    if (deps.size() != 1) {
+      break;
+    }
+
+    auto const nodeType = current->getType();
+
+    if (nodeType == ExecutionNode::SUBQUERY ||
+        nodeType == ExecutionNode::ENUMERATE_COLLECTION ||
+        nodeType == ExecutionNode::ENUMERATE_LIST ||
+        nodeType == ExecutionNode::INDEX_RANGE) {
+      // these node types are not simple
+      return false;
+    }
+
+    current = deps[0];
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief show an overview over the plan
 ////////////////////////////////////////////////////////////////////////////////
 
 struct Shower : public WalkerWorker<ExecutionNode> {
   int indent;
+
   Shower () : indent(0) {
   }
-  ~Shower () {}
 
-  bool enterSubquery (ExecutionNode*, ExecutionNode*) {
+  ~Shower () {
+  }
+
+  bool enterSubquery (ExecutionNode*, ExecutionNode*) override final {
     indent++;
     return true;
   }
 
-  void leaveSubquery (ExecutionNode*, ExecutionNode*) {
+  void leaveSubquery (ExecutionNode*, ExecutionNode*) override final {
     indent--;
   }
 
-  void after (ExecutionNode* en) {
+  void after (ExecutionNode* en) override final {
     for (int i = 0; i < indent; i++) {
       std::cout << ' ';
     }
     std::cout << en->getTypeString() << std::endl;
   }
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief show an overview over the plan
+////////////////////////////////////////////////////////////////////////////////
 
 void ExecutionPlan::show () {
   Shower shower;

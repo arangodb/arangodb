@@ -1,3 +1,6 @@
+/*jshint strict: false, maxlen: 500 */
+/*global require, assertEqual */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, fulltext queries
 ///
@@ -141,7 +144,7 @@ function ahuacatlFulltextTestSuite () {
       assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, "RETURN FULLTEXT(NotExistingFooCollection, 'text', 'foo')"); 
     }
 
-  }
+  };
 }
 
 ////////////////////////////////////////////////////////////////////////////////

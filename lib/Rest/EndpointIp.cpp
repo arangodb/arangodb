@@ -155,9 +155,9 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip,
     if (result != 0) {
       // error
 #ifndef _WIN32
-      LOG_ERROR("bind() failed with %d (%s)", errno, strerror(errno));
+      LOG_ERROR("bind(address '%s', port %d) failed with %d (%s)", host, (int) _port, errno, strerror(errno));
 #else
-      LOG_ERROR("bind() failed with %d", WSAGetLastError());
+      LOG_ERROR("bind(address '%s', port %d) failed with %d", host, (int) _port, WSAGetLastError());
 #endif
       TRI_CLOSE_SOCKET(listenSocket);
 
@@ -238,7 +238,7 @@ TRI_socket_t EndpointIp::connect (double connectTimeout,
   hints.ai_flags = TRI_CONNECT_AI_FLAGS;
   hints.ai_socktype = SOCK_STREAM;
 
-  string portString = StringUtils::itoa(_port);
+  std::string portString = StringUtils::itoa(_port);
 
   error = getaddrinfo(_host.c_str(), portString.c_str(), &hints, &result);
 
@@ -307,7 +307,7 @@ TRI_socket_t EndpointIp::connect (double connectTimeout, double requestTimeout) 
   hints.ai_flags = TRI_CONNECT_AI_FLAGS;
   hints.ai_socktype = SOCK_STREAM;
 
-  string portString = StringUtils::itoa(_port);
+  std::string portString = StringUtils::itoa(_port);
 
   error = getaddrinfo(_host.c_str(), portString.c_str(), &hints, &result);
 

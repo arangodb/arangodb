@@ -1,0 +1,16 @@
+!CHAPTER Numeric functions
+
+AQL offers some numeric functions for calculations. The following functions are
+supported:
+
+- *FLOOR(value)*: Returns the integer closest but not greater to *value*
+
+- *CEIL(value)*: Returns the integer closest but not less than *value*
+
+- *ROUND(value)*: Returns the integer closest to *value*
+
+- *ABS(value)*: Returns the absolute part of *value*
+
+- *SQRT(value)*: Returns the square root of *value*
+
+- *RAND()*: Returns a pseudo-random number between 0 and 1

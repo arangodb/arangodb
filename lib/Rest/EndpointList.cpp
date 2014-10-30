@@ -32,6 +32,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/logging.h"
 
+using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
 

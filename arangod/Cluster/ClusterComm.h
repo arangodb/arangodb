@@ -60,7 +60,7 @@ namespace triagens {
 /// @brief type of a client transaction ID
 ////////////////////////////////////////////////////////////////////////////////
 
-    typedef string ClientTransactionID;
+    typedef std::string ClientTransactionID;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type of a coordinator transaction ID
@@ -118,18 +118,22 @@ namespace triagens {
       rest::HttpResponse::HttpResponseCode answer_code;
 
       ClusterCommResult ()
-        : _deleteOnDestruction(true), dropped(false), result(0), answer(0),
-          answer_code( rest::HttpResponse::OK ) {}
+        : _deleteOnDestruction(true), 
+          dropped(false), 
+          result(nullptr), 
+          answer(nullptr),
+          answer_code(rest::HttpResponse::OK) {
+      }
 
       void doNotDeleteOnDestruction () {
         _deleteOnDestruction = false;
       }
 
       virtual ~ClusterCommResult () {
-        if (_deleteOnDestruction && 0 != result) {
+        if (_deleteOnDestruction && nullptr != result) {
           delete result;
         }
-        if (_deleteOnDestruction && 0 != answer) {
+        if (_deleteOnDestruction && nullptr != answer) {
           delete answer;
         }
       }
@@ -174,22 +178,27 @@ namespace triagens {
 
     struct ClusterCommOperation : public ClusterCommResult {
       rest::HttpRequest::HttpRequestType reqtype;
-      string path;
-      string const* body;
+      std::string path;
+      std::string const* body;
       bool freeBody;
-      map<string, string>* headerFields;
+      std::map<std::string, std::string>* headerFields;
       ClusterCommCallback* callback;
       ClusterCommTimeout endTime;
 
-      ClusterCommOperation () : body(0), headerFields(0), callback(0) {}
+      ClusterCommOperation () 
+        : body(nullptr), 
+          headerFields(nullptr), 
+          callback(nullptr) {
+      }
+
       virtual ~ClusterCommOperation () {
-        if (_deleteOnDestruction && 0 != headerFields) {
+        if (_deleteOnDestruction && nullptr != headerFields) {
           delete headerFields;
         }
-        if (_deleteOnDestruction && 0 != callback) {
+        if (_deleteOnDestruction && nullptr != callback) {
           delete callback;
         }
-        if (_deleteOnDestruction && 0 != body && freeBody) {
+        if (_deleteOnDestruction && nullptr != body && freeBody) {
           delete body;
         }
       }
@@ -200,8 +209,7 @@ namespace triagens {
 /// @brief global callback for asynchronous REST handler
 ////////////////////////////////////////////////////////////////////////////////
 
-void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
-
+void ClusterCommRestCallback (std::string& coordinator, rest::HttpResponse* response);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      ClusterComm
@@ -291,30 +299,30 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
 ////////////////////////////////////////////////////////////////////////////////
 
         ClusterCommResult* asyncRequest (
-                ClientTransactionID const           clientTransactionID,
-                CoordTransactionID const            coordTransactionID,
-                string const&                       destination,
-                rest::HttpRequest::HttpRequestType  reqtype,
-                string const                        path,
-                string const*                       body,
-                bool                                freeBody,
-                map<string, string>*                headerFields,
-                ClusterCommCallback*                callback,
-                ClusterCommTimeout                  timeout);
+                ClientTransactionID const            clientTransactionID,
+                CoordTransactionID const             coordTransactionID,
+                std::string const&                   destination,
+                rest::HttpRequest::HttpRequestType   reqtype,
+                std::string const                    path,
+                std::string const*                   body,
+                bool                                 freeBody,
+                std::map<std::string, std::string>*  headerFields,
+                ClusterCommCallback*                 callback,
+                ClusterCommTimeout                   timeout);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief submit a single HTTP request to a shard synchronously.
 ////////////////////////////////////////////////////////////////////////////////
 
         ClusterCommResult* syncRequest (
-                ClientTransactionID const&         clientTransactionID,
-                CoordTransactionID const           coordTransactionID,
-                string const&                      destination,
-                rest::HttpRequest::HttpRequestType reqtype,
-                string const&                      path,
-                string const&                      body,
-                map<string, string> const&         headerFields,
-                ClusterCommTimeout                 timeout);
+                ClientTransactionID const&           clientTransactionID,
+                CoordTransactionID const             coordTransactionID,
+                std::string const&                   destination,
+                rest::HttpRequest::HttpRequestType   reqtype,
+                std::string const&                   path,
+                std::string const&                   body,
+                std::map<std::string, std::string> const&  headerFields,
+                ClusterCommTimeout                   timeout);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check on the status of an operation
@@ -346,14 +354,14 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
 /// @brief process an answer coming in on the HTTP socket
 ////////////////////////////////////////////////////////////////////////////////
 
-        string processAnswer(string& coordinatorHeader,
-                             rest::HttpRequest* answer);
+        std::string processAnswer (std::string& coordinatorHeader,
+                                   rest::HttpRequest* answer);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief send an answer HTTP request to a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-        void asyncAnswer (string& coordinatorHeader,
+        void asyncAnswer (std::string& coordinatorHeader,
                           rest::HttpResponse* responseToSend);
 
 // -----------------------------------------------------------------------------
@@ -378,8 +386,8 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
 /// @brief send queue with lock and index
 ////////////////////////////////////////////////////////////////////////////////
 
-        list<ClusterCommOperation*> toSend;
-        map<OperationID,list<ClusterCommOperation*>::iterator> toSendByOpID;
+        std::list<ClusterCommOperation*> toSend;
+        std::map<OperationID, std::list<ClusterCommOperation*>::iterator> toSendByOpID;
         triagens::basics::ConditionVariable somethingToSend;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -387,8 +395,8 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
 ////////////////////////////////////////////////////////////////////////////////
 
         // Receiving answers:
-        list<ClusterCommOperation*> received;
-        map<OperationID,list<ClusterCommOperation*>::iterator> receivedByOpID;
+        std::list<ClusterCommOperation*> received;
+        std::map<OperationID, std::list<ClusterCommOperation*>::iterator> receivedByOpID;
         triagens::basics::ConditionVariable somethingReceived;
 
         // Note: If you really have to lock both `somethingToSend`
@@ -400,13 +408,13 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
 /// @brief iterator type which is frequently used
 ////////////////////////////////////////////////////////////////////////////////
 
-        typedef list<ClusterCommOperation*>::iterator QueueIterator;
+        typedef std::list<ClusterCommOperation*>::iterator QueueIterator;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterator type which is frequently used
 ////////////////////////////////////////////////////////////////////////////////
 
-        typedef map<OperationID, QueueIterator>::iterator IndexIterator;
+        typedef std::map<OperationID, QueueIterator>::iterator IndexIterator;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief internal function to match an operation:
@@ -433,7 +441,7 @@ void ClusterCommRestCallback(string& coordinator, rest::HttpResponse* response);
 /// @brief our background communications thread
 ////////////////////////////////////////////////////////////////////////////////
 
-        ClusterCommThread *_backgroundThread;
+        ClusterCommThread* _backgroundThread;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not connection errors should be logged as errors

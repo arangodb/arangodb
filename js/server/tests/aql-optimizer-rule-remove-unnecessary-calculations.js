@@ -1,4 +1,6 @@
-/*global require, assertTrue, assertEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*jshint strict: false, maxlen: 500 */
+/*global require, assertEqual, assertNotEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
 ///
@@ -39,7 +41,7 @@ function optimizerRuleTestSuite () {
 
   // various choices to control the optimizer: 
   var paramNone   = { optimizer: { rules: [ "-all" ] } };
-  var paramEnabled    = { optimizer: { rules: [ "-all", "+" + ruleName, "+" + ruleName + "-2" ] } };
+  var paramEnabled    = { optimizer: { rules: [ "-all", "+" + ruleName, "+" + ruleName + "-2" ] }, inspectSimplePlans: true };
   var paramDisabled  = { optimizer: { rules: [ "+all", "-" + ruleName, "-" + ruleName + "-2" ] } };
 
   return {

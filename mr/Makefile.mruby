@@ -18,19 +18,6 @@ BUILT_SOURCES += $(MRUBY_HEADER)
 endif
 
 ################################################################################
-### @brief sets up the directories
-################################################################################
-
-BUILT_SOURCES += @builddir@/.setup-mr-directories
-
-@builddir@/.setup-mr-directories:
-	@test -d mr/common/bootstrap || mkdir -p mr/common/bootstrap
-	@touch $@
-
-mr/common/bootstrap/mr-%.h: @srcdir@/mr/common/bootstrap/%.rb .setup-mr-directories
-	@top_srcdir@/config/mr2c.sh $< > $@
-
-################################################################################
 ### @brief cleanup
 ################################################################################
 

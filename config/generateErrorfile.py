@@ -60,10 +60,10 @@ def genCFile(errors, filename):
   headerfile = os.path.splitext(filename)[0] + ".h"
 
   impl = prologue\
-         + "#include <Basics/Common.h>\n"\
+         + "#include \"Basics/Common.h\"\n"\
          + "#include \"" + headerfile + "\"\n"\
          + "\n"\
-         + "void TRI_InitialiseErrorMessages (void) {\n"
+         + "void TRI_InitialiseErrorMessages () {\n"
 
   # print individual errors
   for e in errors:
@@ -80,7 +80,7 @@ def genCFile(errors, filename):
 # generate C header file from errors
 def genCHeaderFile(errors):
   wiki = "////////////////////////////////////////////////////////////////////////////////\n"\
-       + "/// @page ArangoErrors Error codes and meanings\n"\
+       + "/// Error codes and meanings\n"\
        + "///\n"\
        + "/// The following errors might be raised when running ArangoDB:\n"\
        + "///\n"
@@ -94,8 +94,8 @@ def genCHeaderFile(errors):
        + "////////////////////////////////////////////////////////////////////////////////\n"
 
   header = "\n"\
-           + "#ifndef TRIAGENS_BASICS_C_VOC_ERRORS_H\n"\
-           + "#define TRIAGENS_BASICS_C_VOC_ERRORS_H 1\n"\
+           + "#ifndef TRIAGENS_BASICS_VOC_ERRORS_H\n"\
+           + "#define TRIAGENS_BASICS_VOC_ERRORS_H 1\n"\
            + "\n"\
            + wiki\
            + "\n"\
@@ -109,7 +109,7 @@ def genCHeaderFile(errors):
            + "/// @brief register all errors for ArangoDB\n"\
            + "////////////////////////////////////////////////////////////////////////////////\n"\
            + "\n"\
-           + "void TRI_InitialiseErrorMessages (void);\n"\
+           + "void TRI_InitialiseErrorMessages ();\n"\
            + "\n"
  
   # print individual errors
@@ -159,7 +159,7 @@ for e in errors:
     continue
 
   if e[0] == "" or e[1] == "" or e[2] == "" or e[3] == "":
-    print >> sys.stderr, "invalid error declaration file: %s (line %i)" % (source, i)
+    print >> sys.stderr, "invalid error declaration file: %s" % (source)
     sys.exit()
 
   errorsList.append(e)

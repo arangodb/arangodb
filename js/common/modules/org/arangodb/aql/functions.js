@@ -273,7 +273,9 @@ var registerFunction = function (name, code, isDeterministic) {
   var testCode = "(function() { var callback = " + code + "; return callback; })()";
 
   try {
-    internal.executeScript(testCode, undefined, "(user function " + name + ")");
+    if (internal && internal.hasOwnProperty("executeScript")) {
+      internal.executeScript(testCode, undefined, "(user function " + name + ")");
+    }
   }
   catch (err1) {
     var err = new ArangoError();

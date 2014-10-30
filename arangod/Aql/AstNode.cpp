@@ -33,8 +33,10 @@
 #include "Aql/Function.h"
 #include "Aql/Scopes.h"
 #include "Aql/types.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/JsonHelper.h"
+#include "Basics/json-utilities.h"
+#include "Basics/StringBuffer.h"
+#include "Basics/utf8-helper.h"
 
 using namespace triagens::aql;
 using JsonHelper = triagens::basics::JsonHelper;
@@ -128,6 +130,106 @@ std::unordered_map<int, std::string const> const AstNode::valueTypeNames{
 };
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                           static helper functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the node type for inter-node comparisons
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_json_type_e GetNodeCompareType (AstNode const* node) {
+  if (node->type == NODE_TYPE_VALUE) {
+    switch (node->value.type) {
+      case VALUE_TYPE_NULL:
+        return TRI_JSON_NULL;
+      case VALUE_TYPE_BOOL:
+        return TRI_JSON_BOOLEAN;
+      case VALUE_TYPE_INT:
+      case VALUE_TYPE_DOUBLE:
+        // numbers are treated the same here
+        return TRI_JSON_NUMBER;
+      case VALUE_TYPE_STRING:
+        return TRI_JSON_STRING;
+    }
+  }
+  else if (node->type == NODE_TYPE_LIST) {
+    return TRI_JSON_LIST;
+  }
+  else if (node->type == NODE_TYPE_ARRAY) {
+    return TRI_JSON_ARRAY;
+  }
+  TRI_ASSERT(false);
+  return TRI_JSON_NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compare two nodes
+////////////////////////////////////////////////////////////////////////////////
+
+static int CompareNodes (AstNode const* lhs, AstNode const* rhs) {
+  auto lType = GetNodeCompareType(lhs);
+  auto rType = GetNodeCompareType(rhs);
+
+  if (lType != rType) {
+    return static_cast<int>(lType) - static_cast<int>(rType);
+  }
+
+  if (lType == TRI_JSON_BOOLEAN) {
+    return static_cast<int>(lhs->getIntValue() - rhs->getIntValue());
+  }
+  else if (lType == TRI_JSON_NUMBER) {
+    double d = lhs->getDoubleValue() - rhs->getDoubleValue();
+    if (d < 0.0) {
+      return -1;
+    } 
+    else if (d > 0.0) {
+      return 1;
+    }
+  }
+  else if (lType == TRI_JSON_STRING) {
+    return TRI_compare_utf8(lhs->getStringValue(), rhs->getStringValue());
+  }
+  else if (lType == TRI_JSON_LIST) {
+    size_t const numLhs = lhs->numMembers();
+    size_t const numRhs = rhs->numMembers();
+    size_t const n = ((numLhs > numRhs) ? numRhs : numLhs);
+ 
+    for (size_t i = 0; i < n; ++i) {
+      int res = CompareNodes(lhs->getMember(i), rhs->getMember(i));
+      if (res != 0) {
+        return res;
+      }    
+    }
+    if (numLhs < numRhs) {
+      return -1;
+    }
+    else if (numLhs > numRhs) {
+      return 1;
+    }
+  }
+  else if (lType == TRI_JSON_ARRAY) {
+    // this is a rather exceptional case, so we can
+    // afford the inefficiency to convert to node to
+    // JSON for comparison
+    // (this saves us from writing our own compare function
+    // for array AstNodes)
+    auto lJson = lhs->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
+    auto rJson = lhs->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
+    int res = TRI_CompareValuesJson(lJson, rJson, true);
+    if (lJson != nullptr) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, lJson);
+    }
+    if (rJson != nullptr) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, rJson);
+    }
+    return res;
+  }
+
+  // all things equal
+  return 0;
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
@@ -136,9 +238,13 @@ std::unordered_map<int, std::string const> const AstNode::valueTypeNames{
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode::AstNode (AstNodeType type)
-  : type(type) {
+  : type(type),
+    flags(0),
+    computedJson(nullptr) {
 
   TRI_InitVectorPointer(&members, TRI_UNKNOWN_MEM_ZONE);
+  TRI_ASSERT(flags == 0);
+  TRI_ASSERT(computedJson == nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -150,7 +256,8 @@ AstNode::AstNode (AstNodeType type,
   : AstNode(type) {
 
   value.type = valueType;
-  TRI_InitVectorPointer(&members, TRI_UNKNOWN_MEM_ZONE);
+  TRI_ASSERT(flags == 0);
+  TRI_ASSERT(computedJson == nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -158,11 +265,11 @@ AstNode::AstNode (AstNodeType type,
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode::AstNode (bool v)
-  : AstNode(NODE_TYPE_VALUE) {
+  : AstNode(NODE_TYPE_VALUE, VALUE_TYPE_BOOL) {
 
-  value.type = VALUE_TYPE_BOOL;
   value.value._bool = v;
-  TRI_InitVectorPointer(&members, TRI_UNKNOWN_MEM_ZONE);
+  TRI_ASSERT(flags == 0);
+  TRI_ASSERT(computedJson == nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -171,10 +278,12 @@ AstNode::AstNode (bool v)
 
 AstNode::AstNode (Ast* ast,
                   triagens::basics::Json const& json) 
-  : type(getNodeTypeFromJson(json)) {
+  : AstNode(getNodeTypeFromJson(json)) {
+
+  TRI_ASSERT(flags == 0);
+  TRI_ASSERT(computedJson == nullptr);
 
   auto query = ast->query();
-  TRI_InitVectorPointer(&members, TRI_UNKNOWN_MEM_ZONE);
 
   switch (type) {
     case NODE_TYPE_COLLECTION:
@@ -182,9 +291,7 @@ AstNode::AstNode (Ast* ast,
     case NODE_TYPE_ATTRIBUTE_ACCESS:
     case NODE_TYPE_FCALL_USER:
       value.type = VALUE_TYPE_STRING;
-      setStringValue(query->registerString(JsonHelper::getStringValue(json.json(),
-                                                                      "name", ""),
-                                           false));
+      setStringValue(query->registerString(JsonHelper::getStringValue(json.json(), "name", ""), false));
       break;
     case NODE_TYPE_VALUE: {
       int vType = JsonHelper::checkAndGetNumericValue<int>(json.json(), "vTypeID");
@@ -230,9 +337,7 @@ AstNode::AstNode (Ast* ast,
       break;
     }
     case NODE_TYPE_ARRAY_ELEMENT: {
-      setStringValue(query->registerString(JsonHelper::getStringValue(json.json(),
-                                                                      "name", ""),
-                                           false));
+      setStringValue(query->registerString(JsonHelper::getStringValue(json.json(), "name", ""), false));
       break;
     }
     case NODE_TYPE_ARRAY:
@@ -298,11 +403,55 @@ AstNode::AstNode (Ast* ast,
 
 AstNode::~AstNode () {
   TRI_DestroyVectorPointer(&members);
+  
+  if (computedJson != nullptr) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, computedJson);
+    computedJson = nullptr;
+  }
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compute the JSON for a constant value node
+/// the JSON is owned by the node and must not be freed by the caller
+/// note that the return value might be NULL in case of OOM
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* AstNode::computeJson () const {
+  TRI_ASSERT(isConstant());
+
+  if (computedJson == nullptr) {
+    // note: the following may fail but we do not need to 
+    // check that here
+    computedJson = toJsonValue(TRI_UNKNOWN_MEM_ZONE);
+  }
+
+  return computedJson;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sort the members of a (list) node
+/// this will also set the FLAG_SORTED flag for the node
+////////////////////////////////////////////////////////////////////////////////
+  
+void AstNode::sort () {
+  TRI_ASSERT(type == NODE_TYPE_LIST);
+  TRI_ASSERT_EXPENSIVE(isConstant());
+
+  auto const ptr = members._buffer;
+  auto const end = ptr + members._length;
+  std::sort(ptr, end, [] (void const* lhs, void const* rhs) {
+    auto const l = static_cast<AstNode const*>(lhs);
+    auto const r = static_cast<AstNode const*>(rhs);
+
+    return (CompareNodes(l, r) < 0);
+  });
+
+  setFlag(FLAG_SORTED);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type name of a node
@@ -359,7 +508,7 @@ void AstNode::validateValueType (int type) {
 AstNodeType AstNode::getNodeTypeFromJson (triagens::basics::Json const& json) {
   int type = JsonHelper::checkAndGetNumericValue<int>(json.json(), "typeID");
   validateType (type);
-  return (AstNodeType) type;
+  return static_cast<AstNodeType>(type);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -430,67 +579,6 @@ TRI_json_t* AstNode::toJsonValue (TRI_memory_zone_t* zone) const {
   return nullptr;
 }
 
-std::string AstNode::toInfoString (TRI_memory_zone_t* zone) const {
-  std::string ret;
-
-  ret += std::string(" of Type '");
-  ret += getTypeString();
-  ret += std::string("' ");
-
-  if (type == NODE_TYPE_COLLECTION ||
-      type == NODE_TYPE_PARAMETER ||
-      type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-      type == NODE_TYPE_ARRAY_ELEMENT ||
-      type == NODE_TYPE_FCALL_USER) {
-    // dump "name" of node
-    ret += std::string(" by Name ");
-    ret += getStringValue();
-  }
-
-  if (type == NODE_TYPE_FCALL) {
-    auto func = static_cast<Function*>(getData());
-    ret += std::string(" by Name '");
-    ret += func->externalName;
-    ret += std::string("' with Parameters");
-  }
-
-  if (type == NODE_TYPE_VALUE) {
-    // dump value of "value" node
-    ret += std::string(" with Value(s) ");
-    /// TODO: auto v = toJsonValue(zone);
-  }
-
-  if (type == NODE_TYPE_VARIABLE ||
-      type == NODE_TYPE_REFERENCE) {
-    auto variable = static_cast<Variable*>(getData());
-    ret += std::string(" by Name(");
-    ret += variable->name;
-    ret += std::string(") ");
-  }
-  
-  // dump sub-nodes 
-  size_t const n = members._length;
-
-  if (n > 0) {
-    ret += std::string("(");
-    try {
-      for (size_t i = 0; i < n; ++i) {
-        auto member = getMember(i);
-        if (member != nullptr && member->type != NODE_TYPE_NOP) {
-          ret += member->toInfoString(zone);
-        }
-      }
-    }
-    catch (...) {
-      ret += std::string("Invalid Subnode!");
-    }
-    
-    ret += std::string(")");
-  }
-
-  return ret;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a JSON representation of the node
 /// the caller is responsible for freeing the JSON later
@@ -505,7 +593,16 @@ TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone,
   }
 
   // dump node type
-  TRI_Insert3ArrayJson(zone, node, "type", TRI_CreateStringCopyJson(zone, getTypeString().c_str()));
+  auto&& typeString = getTypeString();
+  TRI_json_t json;
+  if (TRI_InitString2CopyJson(zone, &json, typeString.c_str(), typeString.size()) != TRI_ERROR_NO_ERROR) {
+    TRI_FreeJson(zone, node);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  TRI_Insert2ArrayJson(zone, node, "type", &json); 
+
+  // add typeId
   if (verbose) {
     TRI_Insert3ArrayJson(zone, node, "typeID", TRI_CreateNumberJson(zone, static_cast<int>(type)));
   }
@@ -516,7 +613,11 @@ TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone,
       type == NODE_TYPE_ARRAY_ELEMENT ||
       type == NODE_TYPE_FCALL_USER) {
     // dump "name" of node
-    TRI_Insert3ArrayJson(zone, node, "name", TRI_CreateStringCopyJson(zone, getStringValue()));
+    if (TRI_InitStringCopyJson(zone, &json, getStringValue()) != TRI_ERROR_NO_ERROR) {
+      TRI_FreeJson(zone, node);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+    TRI_Insert2ArrayJson(zone, node, "name", &json);
   }
 
   if (type == NODE_TYPE_FCALL) {
@@ -535,6 +636,7 @@ TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone,
     }
     
     TRI_Insert3ArrayJson(zone, node, "value", v);
+
     if (verbose) {
       TRI_Insert3ArrayJson(zone, node, "vType", TRI_CreateStringCopyJson(zone, getValueTypeString().c_str()));
       TRI_Insert3ArrayJson(zone, node, "vTypeID", TRI_CreateNumberJson(zone, static_cast<int>(value.type)));
@@ -547,7 +649,6 @@ TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone,
 
     TRI_ASSERT(variable != nullptr);
 
-    /// TODO: use variable.toJson()!!!
     TRI_Insert3ArrayJson(zone, node, "name", TRI_CreateStringCopyJson(zone, variable->name.c_str()));
     TRI_Insert3ArrayJson(zone, node, "id", TRI_CreateNumberJson(zone, static_cast<double>(variable->id)));
   }
@@ -556,7 +657,7 @@ TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone,
   size_t const n = members._length;
 
   if (n > 0) {
-    TRI_json_t* subNodes = TRI_CreateListJson(zone);
+    TRI_json_t* subNodes = TRI_CreateList2Json(zone, n);
 
     if (subNodes == nullptr) {
       TRI_FreeJson(zone, node);
@@ -808,85 +909,79 @@ bool AstNode::isFalse () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AstNode::isSimple () const {
-  if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+  if (hasFlag(FLAG_SIMPLE)) {
+    // fast track exit
+    return true;
+  }
+
+  if (type == NODE_TYPE_REFERENCE ||
+      type == NODE_TYPE_VALUE) {
+    setFlag(FLAG_SIMPLE);
+    return true;
+  }
+
+  if (type == NODE_TYPE_LIST ||
+      type == NODE_TYPE_ARRAY) {
+    size_t const n = numMembers();
+    for (size_t i = 0; i < n; ++i) {
+      auto member = getMember(i);
+      if (! member->isSimple()) {
+        return false;
+      }
+    }
+
+    setFlag(FLAG_SIMPLE);
+    return true;
+  }
+
+  if (type == NODE_TYPE_ARRAY_ELEMENT || 
+      type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+      type == NODE_TYPE_OPERATOR_UNARY_NOT) {
     TRI_ASSERT(numMembers() == 1);
-    return getMember(0)->isSimple();
-  }
 
-  if (type == NODE_TYPE_INDEXED_ACCESS) {
-    TRI_ASSERT(numMembers() == 2);
-    return (getMember(0)->isSimple() && getMember(1)->isSimple());
-  }
-
-  if (type == NODE_TYPE_REFERENCE) {
-    return true;
-  }
-
-  if (type == NODE_TYPE_LIST) {
-    size_t const n = numMembers();
-    for (size_t i = 0; i < n; ++i) {
-      auto member = getMember(i);
-      if (! member->isSimple()) {
-        return false;
-      }
+    if (! getMember(0)->isSimple()) {
+      return false;
     }
+
+    setFlag(FLAG_SIMPLE);
     return true;
   }
 
-  if (type == NODE_TYPE_ARRAY) {
-    size_t const n = numMembers();
-    for (size_t i = 0; i < n; ++i) {
-      auto member = getMember(i);
-      if (! member->isSimple()) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  if (type == NODE_TYPE_ARRAY_ELEMENT) {
-    auto member = getMember(0);
-    return member->isSimple();
-  }
-  
-  if (type == NODE_TYPE_VALUE) {
-    return true;
-  }
-
-  if (type == NODE_TYPE_OPERATOR_BINARY_AND ||
-      type == NODE_TYPE_OPERATOR_BINARY_OR) {
-    // a logical operator is simple if its operands are simple
-    return (getMember(0)->isSimple() && getMember(1)->isSimple()); 
-  }
-  
-  if (type == NODE_TYPE_OPERATOR_UNARY_NOT) {
-    return getMember(0)->isSimple(); 
-  }
-  
   if (type == NODE_TYPE_FCALL) {
     // some functions have C++ handlers
     // check if the called function is one of them
     auto func = static_cast<Function*>(getData());
     TRI_ASSERT(func != nullptr);
 
-    return (func->implementation != nullptr && getMember(0)->isSimple());
+    if (func->implementation == nullptr || ! getMember(0)->isSimple()) {
+      return false;
+    }
+
+    setFlag(FLAG_SIMPLE);
+    return true;
   }
   
-  if (type == NODE_TYPE_RANGE) {
-    // a range is simple if both bounds are simple
-    return (getMember(0)->isSimple() && getMember(1)->isSimple()); 
-  }
-
-  if (type == NODE_TYPE_OPERATOR_BINARY_EQ ||
+  if (type == NODE_TYPE_OPERATOR_BINARY_AND ||
+      type == NODE_TYPE_OPERATOR_BINARY_OR ||
+      type == NODE_TYPE_OPERATOR_BINARY_EQ ||
       type == NODE_TYPE_OPERATOR_BINARY_NE ||
       type == NODE_TYPE_OPERATOR_BINARY_LT ||
       type == NODE_TYPE_OPERATOR_BINARY_LE ||
       type == NODE_TYPE_OPERATOR_BINARY_GT ||
       type == NODE_TYPE_OPERATOR_BINARY_GE ||
       type == NODE_TYPE_OPERATOR_BINARY_IN ||
-      type == NODE_TYPE_OPERATOR_BINARY_NIN) {
+      type == NODE_TYPE_OPERATOR_BINARY_NIN ||
+      type == NODE_TYPE_RANGE ||
+      type == NODE_TYPE_INDEXED_ACCESS) {
+    // a logical operator is simple if its operands are simple
     // a comparison operator is simple if both bounds are simple
-    return (getMember(0)->isSimple() && getMember(1)->isSimple()); 
+    // a range is simple if both bounds are simple
+    if (! getMember(0)->isSimple() || ! getMember(1)->isSimple()) {
+      return false;
+    }
+ 
+    setFlag(FLAG_SIMPLE);
+    return true;
   }
 
   return false;
@@ -897,7 +992,17 @@ bool AstNode::isSimple () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AstNode::isConstant () const {
+  if (hasFlag(FLAG_CONSTANT)) {
+    // fast track exit
+    return true;
+  }
+  if (hasFlag(FLAG_DYNAMIC)) {
+    // fast track exit
+    return false;
+  }
+
   if (type == NODE_TYPE_VALUE) {
+    setFlag(FLAG_CONSTANT);
     return true;
   }
 
@@ -909,11 +1014,13 @@ bool AstNode::isConstant () const {
 
       if (member != nullptr) {
         if (! member->isConstant()) {
+          setFlag(FLAG_DYNAMIC);
           return false;
         }
       }
     }
 
+    setFlag(FLAG_CONSTANT);
     return true;
   }
 
@@ -931,14 +1038,17 @@ bool AstNode::isConstant () const {
         }
 
         if (! value->isConstant()) {
+          setFlag(FLAG_DYNAMIC);
           return false;
         }
       }
     }
 
+    setFlag(FLAG_CONSTANT);
     return true;
   }
 
+  setFlag(FLAG_DYNAMIC);
   return false;
 }
 
@@ -975,16 +1085,6 @@ bool AstNode::canThrow () const {
 
   // no sub-node throws, now check ourselves
 
-  if (type == NODE_TYPE_INDEXED_ACCESS) {
-    // TODO: validate whether this can actually throw
-    return true;
-  }
-
-  if (type == NODE_TYPE_EXPAND) {
-    // TODO: validate whether this can actually throw
-    return true;
-  }
-  
   if (type == NODE_TYPE_FCALL) {
     // built-in functions may or may not throw
     auto func = static_cast<Function*>(getData());
@@ -996,7 +1096,40 @@ bool AstNode::canThrow () const {
     return true;
   }
 
+  // everything else does not throw!
   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a node (and its subnodes) can safely be executed on
+/// a DB server
+////////////////////////////////////////////////////////////////////////////////
+
+bool AstNode::canRunOnDBServer () const {
+  // check sub-nodes first
+  size_t const n = numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    auto member = getMember(i);
+    if (! member->canRunOnDBServer()) {
+      // if any sub-node cannot run on a DB server, we can't either
+      return false;
+    }
+  }
+
+  // now check ourselves
+  if (type == NODE_TYPE_FCALL) {
+    // built-in function
+    auto func = static_cast<Function*>(getData());
+    return func->canRunOnDBServer;
+  }
+  
+  if (type == NODE_TYPE_FCALL_USER) {
+    // user function. we don't know anything about it
+    return false;
+  }
+
+  // everyhing else can run everywhere
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

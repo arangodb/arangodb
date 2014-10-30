@@ -466,6 +466,27 @@ void TRI_InitString2Json (TRI_json_t* result, char* value, size_t length) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief initialises a string object
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_InitStringCopyJson (TRI_memory_zone_t* zone, TRI_json_t* result, char const* value) {
+  return TRI_InitString2CopyJson(zone, result, value, strlen(value));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialises a string object
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_InitString2CopyJson (TRI_memory_zone_t* zone, TRI_json_t* result, char const* value, size_t length) {
+  char* copy = TRI_DuplicateString2Z(zone, value, length);
+  if (copy == nullptr) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+  InitString(result, copy, length);
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a string reference object
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -643,6 +664,32 @@ void TRI_FreeJson (TRI_memory_zone_t* zone, TRI_json_t* object) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a user printeable string
+////////////////////////////////////////////////////////////////////////////////
+
+const char *TRI_GetTypeString(TRI_json_t* object) {
+  switch (object->_type) {
+    case TRI_JSON_UNUSED:
+      return "unused";
+    case TRI_JSON_NULL:
+      return "null";
+    case TRI_JSON_BOOLEAN:
+      return "boolean";
+    case TRI_JSON_NUMBER:
+      return "number";
+    case TRI_JSON_STRING:
+      return "string";
+    case TRI_JSON_STRING_REFERENCE:
+      return "string-reference";
+    case TRI_JSON_ARRAY:
+      return "array";
+    case TRI_JSON_LIST:
+      return "list";
+  }
+  return "unknown";
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determines the length of a list json
@@ -1184,8 +1231,8 @@ int TRI_CopyToJson (TRI_memory_zone_t* zone,
       }
 
       for (i = 0;  i < n;  ++i) {
-        TRI_json_t* v = (TRI_json_t*) TRI_AtVector(&src->_value._objects, i);
-        TRI_json_t* w = (TRI_json_t*) TRI_AtVector(&dst->_value._objects, i);
+        TRI_json_t const* v = static_cast<TRI_json_t const*>(TRI_AtVector(&src->_value._objects, i));
+        TRI_json_t* w = static_cast<TRI_json_t*>(TRI_AtVector(&dst->_value._objects, i));
 
         res = TRI_CopyToJson(zone, w, v);
 

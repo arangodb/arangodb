@@ -111,7 +111,7 @@ void ScriptLoader::defineScript (string const& name, string const& script) {
 /// @brief defines a new named script
 ////////////////////////////////////////////////////////////////////////////////
 
-void ScriptLoader::defineScript (const string& name, const char** script) {
+void ScriptLoader::defineScript (string const& name, const char** script) {
   string scriptString = buildScript(script);
 
   MUTEX_LOCKER(_lock);

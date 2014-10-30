@@ -1919,10 +1919,9 @@ char* TRI_GetTempPath () {
 
   return result;
 #else
-  char* res;
   if (! TRI_TempPathIsSet) {
     // Note that TRI_TempPath has space for /tmp/YYYYYYYYYYXXXXXX
-    if (TRI_ApplicationName != NULL) {
+    if (TRI_ApplicationName != nullptr) {
       strcpy(TRI_TempPath, "/tmp/");
       strncat(TRI_TempPath, TRI_ApplicationName, 13);
       strcat(TRI_TempPath, "_XXXXXX");
@@ -1930,8 +1929,8 @@ char* TRI_GetTempPath () {
     else {
       strcpy(TRI_TempPath, "/tmp/arangodb_XXXXXX");
     }
-    res = mkdtemp(TRI_TempPath);
-    if (res == NULL) {
+    char* res = mkdtemp(TRI_TempPath);
+    if (res == nullptr) {
       strcpy(TRI_TempPath, "/tmp/arangodb");
       return TRI_DuplicateString(TRI_TempPath);
     }

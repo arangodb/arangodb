@@ -10,7 +10,7 @@ ArangoDB is a database that serves documents to clients.
 * Documents are grouped into *collections*. A collection contains zero
   or more documents
 * *Queries* are used to filter documents based on certain criteria.
-  Queries can be as simple as a ["query by example"](../SimpleQueries/Queries.md) or as complex as
+  Queries can be as simple as a "query by example" or as complex as
   ["joins"](../AqlExamples/Join.md) using many collections or graph structures
 * *Cursors* are used to iterate over the result of a query
 * *Indexes* are used to speed up of searches. There are various different

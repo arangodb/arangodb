@@ -431,9 +431,7 @@ class triagens::aql::RedundantCalculationsReplacer : public WalkerWorker<Executi
       }
     }
 
-    bool enterSubQuery () { return true; }
-
-    bool before (ExecutionNode* en) {
+    bool before (ExecutionNode* en) override final {
       switch (en->getType()) {
         case EN::ENUMERATE_LIST: {
           replaceInVariable<EnumerateListNode>(en);
@@ -705,7 +703,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       delete _ranges;
     }
 
-    bool before (ExecutionNode* en) {
+    bool before (ExecutionNode* en) override final {
       _canThrow = (_canThrow || en->canThrow()); // can any node walked over throw?
 
       switch (en->getType()) {
@@ -1303,9 +1301,10 @@ class SortToIndexNode : public WalkerWorker<ExecutionNode> {
           node->getType() == EN::INDEX_RANGE ||
           node->getType() == EN::ENUMERATE_LIST) {
         // we are contained in an outer loop
-        // TODO: potential optimization: check if the outer loop has 0 or 1 
-        // iterations. in this case it is still possible to remove the sort
         return true;
+
+        // future potential optimization: check if the outer loop has 0 or 1 
+        // iterations. in this case it is still possible to remove the sort
       }
     }
 
@@ -1367,7 +1366,7 @@ class SortToIndexNode : public WalkerWorker<ExecutionNode> {
                                       node->vocbase(), 
                                       node->collection(),
                                       node->outVariable(),
-                                      idx.index, /// TODO: estimate cost on match quality
+                                      idx.index,
                                       result.second,
                                       (idx.doesMatch && idx.reverse));
         newPlan->registerNode(newNode);
@@ -1391,13 +1390,15 @@ class SortToIndexNode : public WalkerWorker<ExecutionNode> {
     return true;
   }
 
-  bool enterSubQuery () { return false; }
+  bool enterSubquery (ExecutionNode*, ExecutionNode*) override final { 
+    return false; 
+  }
 
-  bool before (ExecutionNode* en) {
+  bool before (ExecutionNode* en) override final {
     switch (en->getType()) {
     case EN::ENUMERATE_LIST:
     case EN::CALCULATION:
-    case EN::SUBQUERY:        /// TODO: find out whether it may throw
+    case EN::SUBQUERY:
     case EN::FILTER:
       return false;                           // skip. we don't care.
 
@@ -1439,9 +1440,9 @@ int triagens::aql::useIndexForSort (Optimizer* opt,
   for (auto n : nodes) {
     auto thisSortNode = static_cast<SortNode*>(n);
     SortAnalysis node(thisSortNode);
-    if (node.isAnalyzeable()) {
+    if (node.isAnalyzeable() && ! n->getDependencies().empty()) {
       SortToIndexNode finder(opt, plan, &node, rule->level);
-      thisSortNode->walk(&finder);/// todo auf der dependency anfangen
+      thisSortNode->getDependencies()[0]->walk(&finder);
       if (finder.planModified) {
         planModified = true;
       }
@@ -1638,14 +1639,11 @@ int triagens::aql::scatterInCluster (Optimizer* opt,
       auto parents = node->getParents();
       auto deps = node->getDependencies();
       TRI_ASSERT(deps.size() == 1);
-
-      // unlink the node
       bool const isRootNode = plan->isRoot(node);
-      if (isRootNode) {
-        if (deps[0]->getType() == ExecutionNode::REMOTE &&
-            deps[0]->getDependencies()[0]->getType() == ExecutionNode::DISTRIBUTE){
-          continue;
-        }
+      // don't do this if we are already distributing!
+      if (deps[0]->getType() == ExecutionNode::REMOTE &&
+          deps[0]->getDependencies()[0]->getType() == ExecutionNode::DISTRIBUTE){
+        continue;
       }
       plan->unlinkNode(node, isRootNode);
 
@@ -1751,7 +1749,7 @@ int triagens::aql::distributeInCluster (Optimizer* opt,
     if (nodeType == ExecutionNode::REMOVE) {
       // check if collection shard keys are only _key
       std::vector<std::string> shardKeys = collection->shardKeys();
-      if (shardKeys.size() != 1 || shardKeys[0] != "_key") {
+      if (shardKeys.size() != 1 || shardKeys[0] != TRI_VOC_ATTRIBUTE_KEY) {
         opt->addPlan(plan, rule->level, wasModified);
         return TRI_ERROR_NO_ERROR;
       }
@@ -1782,8 +1780,19 @@ int triagens::aql::distributeInCluster (Optimizer* opt,
     // re-link with the remote node
     node->addDependency(remoteNode);
 
-    // make node the root again
-    plan->root(node);
+    // insert another remote node
+    remoteNode = new RemoteNode(plan, plan->nextId(), vocbase, collection, "", "", "");
+    plan->registerNode(remoteNode);
+    remoteNode->addDependency(node);
+    
+    // insert a gather node 
+    ExecutionNode* gatherNode = new GatherNode(plan, plan->nextId(), vocbase,
+        collection);
+    plan->registerNode(gatherNode);
+    gatherNode->addDependency(remoteNode);
+
+    // we replaced the root node, set a new root node
+    plan->root(gatherNode);
     wasModified = true;
   }
    
@@ -1845,7 +1854,15 @@ int triagens::aql::distributeFilternCalcToCluster (Optimizer* opt,
         case EN::ENUMERATE_COLLECTION:
           stopSearching = true;
           break;
-        case EN::CALCULATION:
+        case EN::CALCULATION: {
+          auto calc = static_cast<CalculationNode const*>(inspectNode);
+          // check if the expression can be executed on a DB server safely
+          if (! calc->expression()->canRunOnDBServer()) {
+            stopSearching = true;
+            break;
+          }
+          // intentionally fall through here
+        }
         case EN::FILTER:
           // remember our cursor...
           parents = inspectNode->getParents();
@@ -1915,8 +1932,6 @@ int triagens::aql::distributeSortToCluster (Optimizer* opt,
         case EN::UPDATE:
         case EN::CALCULATION:
         case EN::FILTER:
-          parents = inspectNode->getParents();
-          continue;
         case EN::SUBQUERY:
         case EN::RETURN:
         case EN::NORESULTS:
@@ -1924,11 +1939,15 @@ int triagens::aql::distributeSortToCluster (Optimizer* opt,
         case EN::DISTRIBUTE:
         case EN::GATHER:
         case EN::ILLEGAL:
-          //do break
         case EN::REMOTE:
         case EN::LIMIT:
         case EN::INDEX_RANGE:
         case EN::ENUMERATE_COLLECTION:
+          // For all these, we do not want to pull a SortNode further down
+          // out to the DBservers, note that potential FilterNodes and
+          // CalculationNodes that can be moved to the DBservers have 
+          // already been moved over by the distribute-filtercalc-to-cluster
+          // rule which is done first.
           stopSearching = true;
           break;
         case EN::SORT:
@@ -2002,6 +2021,15 @@ int triagens::aql::removeUnnecessaryRemoteScatter (Optimizer* opt,
         canOptimize = false;
         break;
       }
+
+      if (node->getType() == EN::CALCULATION) {
+        auto calc = static_cast<CalculationNode const*>(node);
+        // check if the expression can be executed on a DB server safely
+        if (! calc->expression()->canRunOnDBServer()) {
+          canOptimize = false;
+          break;
+        }
+      }
     }
 
     if (canOptimize) {
@@ -2052,7 +2080,7 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
     ~RemoveToEnumCollFinder () {
     }
 
-    bool before (ExecutionNode* en) {
+    bool before (ExecutionNode* en) override final {
       switch (en->getType()) {
         case EN::REMOVE: {
           TRI_ASSERT(_remove == false);
@@ -2070,7 +2098,7 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
           if (_setter->getType() == EN::CALCULATION) {
             // this should be an attribute access for _key
             auto cn = static_cast<CalculationNode*>(_setter);
-            if (!(cn->expression()->isAttributeAccess())) {
+            if (! cn->expression()->isAttributeAccess()) {
               break; // abort . . .
             }
             // check the variable is the same as the remove variable
@@ -2078,15 +2106,14 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
             if (vars.size() != 1 || vars[0]->id != varsToRemove[0]->id) {
               break; // abort . . . 
             }
-            // TODO check if we are accessing the _key attribute, maybe this is
-            // not required:
-            // AQL_EXPLAIN("FOR d IN docs FILTER d.Hallo < 5 REMOVE d.blah in docs")
-            // returns a plan but:
-            // AQL_EXECUTE("FOR d IN docs FILTER d.Hallo < 5 REMOVE d.blah in docs")
-            // doesn't work (in the non-cluster, neither work in the cluster)
-            
-            // set the _variable to the variable in the expression of this
-            // node and also define _enumColl
+            // check the remove node's collection is sharded over _key
+            std::vector<std::string> shardKeys = rn->collection()->shardKeys();
+            if (shardKeys.size() != 1 || shardKeys[0] != TRI_VOC_ATTRIBUTE_KEY) {
+              break; // abort . . .
+            }
+
+            // set the varsToRemove to the variable in the expression of this
+            // node and also define enumColl
             varsToRemove = cn->getVariablesUsedHere();
             TRI_ASSERT(varsToRemove.size() == 1);
             enumColl = _plan->getVarSetBy(varsToRemove[0]->id);
@@ -2113,6 +2140,7 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
           _lastNode = en;
           return false; // continue . . .
         }
+        case EN::DISTRIBUTE:
         case EN::SCATTER: {
           if (_scatter) { // met more than one scatter node
             break;        // abort . . . 
@@ -2147,12 +2175,9 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
           }
           auto cn = static_cast<CalculationNode*>(en);
           auto fn = static_cast<FilterNode*>(_lastNode);
-          // FIXME should the following be an assertion? I.e. can it
-          // ever happen?
           
-          // check these as a Calc-Filter pair
-          if (cn->getVariablesSetHere()[0]->id
-              != fn->getVariablesUsedHere()[0]->id) {
+          // check these are a Calc-Filter pair
+          if (cn->getVariablesSetHere()[0]->id != fn->getVariablesUsedHere()[0]->id) {
             break; // abort . . .
           }
 
@@ -2164,7 +2189,7 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
             break; //abort . . .
           }
           if (varsUsedHere[0]->id != _variable->id) {
-            break; // abort . . . FIXME is this the desired behaviour??
+            break;
           }
           _lastNode = en;
           return false; // continue . . .
@@ -2174,7 +2199,7 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
           // and that we have already seen a remove node
           TRI_ASSERT(_enumColl != nullptr);
           if (en->id() != _enumColl->id()) {
-            break; // abort . . . FIXME is this the desired behaviour??
+            break;
           }
           return true; // reached the end!
         }
@@ -2185,7 +2210,6 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
         case EN::INSERT:
         case EN::REPLACE:
         case EN::UPDATE:
-        case EN::DISTRIBUTE:
         case EN::RETURN:
         case EN::NORESULTS:
         case EN::ILLEGAL:
@@ -2217,7 +2241,7 @@ int triagens::aql::undistributeRemoveAfterEnumColl (Optimizer* opt,
   }
 
   bool modified = false;
-  if (!toUnlink.empty()) {
+  if (! toUnlink.empty()) {
     plan->unlinkNodes(toUnlink);
     plan->findVarUsage();
     modified = true;

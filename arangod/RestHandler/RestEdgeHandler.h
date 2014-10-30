@@ -89,7 +89,7 @@ namespace triagens {
 /// @brief creates a document (an edge), coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool createDocumentCoordinator (string const& collname,
+      bool createDocumentCoordinator (std::string const& collname,
                                       bool waitForSync,
                                       TRI_json_t* json,
                                       char const* from,

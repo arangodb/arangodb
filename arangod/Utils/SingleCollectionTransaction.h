@@ -222,7 +222,7 @@ namespace triagens {
 /// @brief read a document within a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline int read (TRI_doc_mptr_copy_t* mptr, const string& key) {
+        inline int read (TRI_doc_mptr_copy_t* mptr, const std::string& key) {
           TRI_ASSERT(mptr != nullptr);
           return this->readSingle(this->trxCollection(), mptr, key);
         }
@@ -249,7 +249,7 @@ namespace triagens {
 /// @brief read documents within a transaction, using skip and limit
 ////////////////////////////////////////////////////////////////////////////////
 
-        int read (vector<TRI_doc_mptr_copy_t>& docs,
+        int read (std::vector<TRI_doc_mptr_copy_t>& docs,
                   TRI_voc_ssize_t skip,
                   TRI_voc_size_t limit,
                   uint32_t* total) {
@@ -261,7 +261,7 @@ namespace triagens {
 /// @brief read all documents within a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        int read (vector<TRI_doc_mptr_t*>& docs) {
+        int read (std::vector<TRI_doc_mptr_t*>& docs) {
           return this->readSlice(this->trxCollection(), docs);
         }
 

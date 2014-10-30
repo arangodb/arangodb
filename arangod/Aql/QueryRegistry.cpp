@@ -45,21 +45,32 @@ using namespace triagens::aql;
 
 QueryRegistry::~QueryRegistry () {
   std::vector<std::pair<std::string, QueryId>> toDelete;
+
   {
     WRITE_LOCKER(_lock);
-    for (auto& x : _queries) {
-      // x.first is a TRI_vocbase_t* and
-      // x.second is a std::unordered_map<QueryId, QueryInfo*>
-      for (auto& y : x.second) {
-        // y.first is a QueryId and
-        // y.second is a QueryInfo*
-        toDelete.emplace_back(x.first, y.first);
+
+    try {
+      for (auto& x : _queries) {
+        // x.first is a TRI_vocbase_t* and
+        // x.second is a std::unordered_map<QueryId, QueryInfo*>
+        for (auto& y : x.second) {
+          // y.first is a QueryId and
+          // y.second is a QueryInfo*
+          toDelete.emplace_back(x.first, y.first);
+        }
       }
     }
+    catch (...) {
+      // the emplace_back() above might fail
+      // prevent throwing exceptions in the destructor
+    }
   }
+
+  // note: destroy() will acquire _lock itself, so it must be called without
+  // holding the lock
   for (auto& p : toDelete) {
     try {  // just in case
-      destroy(p.first, p.second);
+      destroy(p.first, p.second, TRI_ERROR_TRANSACTION_ABORTED);
     }
     catch (...) {
     }
@@ -70,12 +81,13 @@ QueryRegistry::~QueryRegistry () {
 /// @brief insert
 ////////////////////////////////////////////////////////////////////////////////
 
-void QueryRegistry::insert (TRI_vocbase_t* vocbase,
-                            QueryId id,
+void QueryRegistry::insert (QueryId id,
                             Query* query,
                             double ttl) {
 
+  TRI_ASSERT(query != nullptr);
   TRI_ASSERT(query->trx() != nullptr);
+  auto vocbase = query->vocbase();
 
   WRITE_LOCKER(_lock);
 
@@ -94,7 +106,7 @@ void QueryRegistry::insert (TRI_vocbase_t* vocbase,
     p->_isOpen = false;
     p->_timeToLive = ttl;
     p->_expires = TRI_microtime() + ttl;
-    m->second.insert(make_pair(id, p.release()));
+    m->second.emplace(std::make_pair(id, p.release()));
 
     TRI_ASSERT_EXPENSIVE(_queries.find(vocbase->_name)->second.find(id) != _queries.find(vocbase->_name)->second.end());
   
@@ -171,7 +183,9 @@ void QueryRegistry::close (TRI_vocbase_t* vocbase, QueryId id, double ttl) {
 /// @brief destroy
 ////////////////////////////////////////////////////////////////////////////////
 
-void QueryRegistry::destroy (std::string const& vocbase, QueryId id) {
+void QueryRegistry::destroy (std::string const& vocbase, 
+                             QueryId id,
+                             int errorCode) {
   WRITE_LOCKER(_lock);
 
   auto m = _queries.find(vocbase);
@@ -193,6 +207,11 @@ void QueryRegistry::destroy (std::string const& vocbase, QueryId id) {
     triagens::arango::TransactionBase::increaseNumbers(1, 1);
   }
 
+  if (errorCode == TRI_ERROR_NO_ERROR) {
+    // commit the operation
+    qi->_query->trx()->commit();
+  }
+
   // Now we can delete it:
   delete qi->_query;
   delete qi;
@@ -205,8 +224,10 @@ void QueryRegistry::destroy (std::string const& vocbase, QueryId id) {
 /// @brief destroy
 ////////////////////////////////////////////////////////////////////////////////
 
-void QueryRegistry::destroy (TRI_vocbase_t* vocbase, QueryId id) {
-  destroy(vocbase->_name, id);
+void QueryRegistry::destroy (TRI_vocbase_t* vocbase, 
+                             QueryId id,
+                             int errorCode) {
+  destroy(vocbase->_name, id, errorCode);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -232,8 +253,8 @@ void QueryRegistry::expireQueries () {
     }
   }
   for (auto& p : toDelete) {
-    try {  // just in case
-      destroy(p.first, p.second);
+    try { // just in case
+      destroy(p.first, p.second, TRI_ERROR_TRANSACTION_ABORTED);
     }
     catch (...) {
     }

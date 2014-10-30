@@ -407,11 +407,11 @@ AstNode* Ast::createNodeVariable (char const* name,
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::createNodeCollection (char const* name) {
-  if (name == nullptr || *name == '\0') {
+  if (name == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  if (! TRI_IsAllowedNameCollection(true, name)) {
+  if (*name == '\0' || ! TRI_IsAllowedNameCollection(true, name)) {
     _query->registerError(TRI_ERROR_ARANGO_ILLEGAL_NAME, name);
     return nullptr;
   }
@@ -1061,7 +1061,7 @@ AstNode* Ast::createArithmeticResultNode (int64_t value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::createArithmeticResultNode (double value) {
-  if (value != value || 
+  if (value != value || // intentional! 
       value == HUGE_VAL || 
       value == - HUGE_VAL) {
     // IEEE754 NaN values have an interesting property that we can exploit...
@@ -1080,9 +1080,14 @@ AstNode* Ast::createArithmeticResultNode (double value) {
 
 AstNode* Ast::executeConstExpression (AstNode const* node) {
   // must enter v8 before we can execute any expression
-  v8::HandleScope scope; // do not delete this!
   _query->enterContext();
+  
+  v8::HandleScope scope; // do not delete this!
+
   TRI_json_t* result = _query->executor()->executeExpression(node); 
+
+  // context is not left here, but later
+  // this allows re-using the same context for multiple expressions
 
   if (result == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -1144,7 +1149,7 @@ AstNode* Ast::optimizeUnaryOperatorArithmetic (AstNode* node) {
       // double
       double const value = - converted->getDoubleValue();
       
-      if (value != value || 
+      if (value != value ||  // intentional
           value == HUGE_VAL || 
           value == - HUGE_VAL) {
         // IEEE754 NaN values have an interesting property that we can exploit...
@@ -1309,6 +1314,15 @@ AstNode* Ast::optimizeBinaryOperatorRelational (AstNode* node) {
   }
 
   if (! lhsIsConst) {
+    if (rhs->numMembers() >= 10 &&
+        (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
+         node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
+      // if the IN list contains a considerable amount of items, we will sort
+      // it, so we can find elements quicker later using a binary search
+      // note that sorting will also set a flag for the node
+      rhs->sort();
+    }
+
     return node;
   }
 

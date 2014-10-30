@@ -108,6 +108,14 @@ namespace triagens {
                                        bool verbose) const;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check if the plan is empty
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool empty () const {
+          return (_root == nullptr);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief note that an optimizer rule was applied
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -147,7 +155,7 @@ namespace triagens {
 /// @brief get the root node
 ////////////////////////////////////////////////////////////////////////////////
         
-        ExecutionNode* root () const {
+        inline ExecutionNode* root () const {
           TRI_ASSERT(_root != nullptr);
           return _root;
         }
@@ -156,7 +164,7 @@ namespace triagens {
 /// @brief set the root node
 ////////////////////////////////////////////////////////////////////////////////
         
-        void root (ExecutionNode* node) {
+        inline void root (ExecutionNode* node) {
           TRI_ASSERT(_root == nullptr);
           _root = node;
         }
@@ -165,7 +173,7 @@ namespace triagens {
 /// @brief invalidate all cost estimations in the plan
 ////////////////////////////////////////////////////////////////////////////////
 
-        void invalidateCost () {
+        inline void invalidateCost () {
           TRI_ASSERT(_root != nullptr);
           return _root->invalidateCost();
         }
@@ -174,10 +182,17 @@ namespace triagens {
 /// @brief get the estimated cost . . .
 ////////////////////////////////////////////////////////////////////////////////
 
-        double getCost () {
+        inline double getCost () {
           TRI_ASSERT(_root != nullptr);
           return _root->getCost();
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns true if a plan is so simple that optimizations would
+/// probably cost more than simply executing the plan
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isDeadSimple () const;
        
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief show an overview over the plan
