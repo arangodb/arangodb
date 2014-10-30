@@ -46,12 +46,14 @@ namespace triagens {
       QueryResult (QueryResult&& other) {
         code              = other.code;
         details           = other.details;
+        warnings          = other.warnings;
         json              = other.json;
         stats             = other.stats;
         profile           = other.profile;
         zone              = other.zone;
         clusterplan       = other.clusterplan;
 
+        other.warnings    = nullptr;
         other.json        = nullptr;
         other.stats       = nullptr;
         other.profile     = nullptr;
@@ -63,10 +65,11 @@ namespace triagens {
         : code(code),
           details(details),
           zone(TRI_UNKNOWN_MEM_ZONE),
+          warnings(nullptr),
           json(nullptr),
           stats(nullptr),
-        profile(nullptr),
-        clusterplan(nullptr) {
+          profile(nullptr),
+          clusterplan(nullptr) {
       }
       
       explicit QueryResult (int code)
@@ -78,6 +81,9 @@ namespace triagens {
       }
 
       ~QueryResult () {
+        if (warnings != nullptr) {
+          TRI_FreeJson(zone, warnings);
+        }
         if (json != nullptr) {
           TRI_FreeJson(zone, json);
         }
@@ -94,6 +100,7 @@ namespace triagens {
       std::unordered_set<std::string> bindParameters;
       std::vector<std::string>        collectionNames;
       TRI_memory_zone_t*              zone;
+      TRI_json_t*                     warnings;
       TRI_json_t*                     json;
       TRI_json_t*                     stats;
       TRI_json_t*                     profile;

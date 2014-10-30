@@ -852,8 +852,48 @@ static v8::Handle<v8::Value> JS_ParseAql (v8::Arguments const& argv) {
   }
 
   result->Set(TRI_V8_STRING("ast"), TRI_ObjectJson(parseResult.json));
+    
+  if (parseResult.warnings == nullptr) {
+    result->Set(TRI_V8_STRING("warnings"), v8::Array::New());
+  }
+  else {
+    result->Set(TRI_V8_STRING("warnings"), TRI_ObjectJson(parseResult.warnings));
+  }
 
   return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief registers a warning for the currently running AQL query
+/// this function is called from aql.js
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_WarningAql (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 2) {
+    TRI_V8_EXCEPTION_USAGE(scope, "AQL_WARNING(<code>, <message>)");
+  }
+
+  // get the query string
+  if (! argv[1]->IsString()) {
+    TRI_V8_TYPE_ERROR(scope, "expecting string for <message>");
+  }
+  
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+
+  if (v8g->_query != nullptr) {
+    // only register the error if we have a query...
+    // note: we may not have a query if the AQL functions are called without
+    // a query, e.g. during tests
+    int code = static_cast<int>(TRI_ObjectToInt64(argv[0]));
+    std::string const&& message = TRI_ObjectToString(argv[1]);
+
+    auto query = static_cast<triagens::aql::Query*>(v8g->_query);
+    query->registerWarning(code, message.c_str());
+  }
+
+  return scope.Close(v8::Undefined());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -926,6 +966,13 @@ static v8::Handle<v8::Value> JS_ExplainAql (v8::Arguments const& argv) {
     }
     if (queryResult.clusterplan != nullptr) {
       result->Set(TRI_V8_STRING("clusterplans"), TRI_ObjectJson(queryResult.clusterplan));
+    }
+
+    if (queryResult.warnings == nullptr) {
+      result->Set(TRI_V8_STRING("warnings"), v8::Array::New());
+    }
+    else {
+      result->Set(TRI_V8_STRING("warnings"), TRI_ObjectJson(queryResult.warnings));
     }
   }
 
@@ -1022,6 +1069,12 @@ static v8::Handle<v8::Value> JS_ExecuteAqlJson (v8::Arguments const& argv) {
     }
     if (queryResult.profile != nullptr) {
       result->Set(TRI_V8_STRING("profile"), TRI_ObjectJson(queryResult.profile));
+    }
+    if (queryResult.warnings == nullptr) {
+      result->Set(TRI_V8_STRING("warnings"), v8::Array::New());
+    }
+    else {
+      result->Set(TRI_V8_STRING("warnings"), TRI_ObjectJson(queryResult.warnings));
     }
     return scope.Close(result);
   }
@@ -1159,6 +1212,12 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
     }
     if (queryResult.profile != nullptr) {
       result->Set(TRI_V8_STRING("profile"), TRI_ObjectJson(queryResult.profile));
+    }
+    if (queryResult.warnings == nullptr) {
+      result->Set(TRI_V8_STRING("warnings"), v8::Array::New());
+    }
+    else {
+      result->Set(TRI_V8_STRING("warnings"), TRI_ObjectJson(queryResult.warnings));
     }
     return scope.Close(result);
   }
@@ -2578,6 +2637,7 @@ void TRI_InitV8VocBridge (triagens::arango::ApplicationV8* applicationV8,
   TRI_AddGlobalFunctionVocbase(context, "AQL_EXECUTEJSON", JS_ExecuteAqlJson, true);
   TRI_AddGlobalFunctionVocbase(context, "AQL_EXPLAIN", JS_ExplainAql, true);
   TRI_AddGlobalFunctionVocbase(context, "AQL_PARSE", JS_ParseAql, true);
+  TRI_AddGlobalFunctionVocbase(context, "AQL_WARNING", JS_WarningAql, true);
 
   TRI_InitV8replication(context, server, vocbase, loader, threadNumber, v8g);
 

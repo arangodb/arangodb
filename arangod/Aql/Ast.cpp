@@ -1067,7 +1067,7 @@ AstNode* Ast::createArithmeticResultNode (double value) {
     // IEEE754 NaN values have an interesting property that we can exploit...
     // if the architecture does not use IEEE754 values then this shouldn't do
     // any harm either
-    // TODO: log an error: _query->registerError(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE);
+    _query->registerWarning(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE);
     return createNodeValueNull();
   }
 
@@ -1084,7 +1084,7 @@ AstNode* Ast::executeConstExpression (AstNode const* node) {
   
   v8::HandleScope scope; // do not delete this!
 
-  TRI_json_t* result = _query->executor()->executeExpression(node); 
+  TRI_json_t* result = _query->executor()->executeExpression(_query, node); 
 
   // context is not left here, but later
   // this allows re-using the same context for multiple expressions
@@ -1444,7 +1444,7 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic (AstNode* node) {
         auto r = right->getIntValue();
 
         if (r == 0) {
-          // TODO: log an error _query->registerError(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
+          _query->registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
           return createNodeValueNull();
         }
 
@@ -1458,7 +1458,7 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic (AstNode* node) {
       }
 
       if (right->getDoubleValue() == 0.0) {
-        // TODO: log an error _query->registerError(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
+        _query->registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
         return createNodeValueNull();
       }
 
@@ -1474,7 +1474,7 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic (AstNode* node) {
         auto r = right->getIntValue();
 
         if (r == 0) {
-          // TODO: log an error _query->registerError(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
+          _query->registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
           return createNodeValueNull();
         }
 
@@ -1488,7 +1488,7 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic (AstNode* node) {
       }
 
       if (right->getDoubleValue() == 0.0) {
-        // TODO: log an error _query->registerError(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
+        _query->registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
         return createNodeValueNull();
       }
 
