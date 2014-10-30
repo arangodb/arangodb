@@ -77,7 +77,10 @@ function WARN (func, error, data) {
     AQL_WARNING(error.code, error.message.replace(/%s/, func)); 
   }
   else {
-    var prefix = "in function '" + func + "()': ";
+    var prefix = "";
+    if (func !== null) {
+      prefix = "in function '" + func + "()': ";
+    }
 
     if (typeof data === "string") {
       AQL_WARNING(error.code, prefix + error.message.replace(/%s/, data));
