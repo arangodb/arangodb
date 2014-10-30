@@ -64,5 +64,28 @@ var generatePerfReportGrinderCSV = function (reportName, testdata) {
 };
 
 
+var generatePerfReportJTL = function(reportName, testdata) {
+  var testFileName = "out_" + reportName + "_perftest.jtl";
+  var x = '<?xml version="1.0" encoding="UTF-8"?>\n<testResults version="1.2">\n';
+
+  for (var testname in testdata) {
+    if (testdata.hasOwnProperty(testname)) {
+      for (var testCalculation in testdata[testname]) {
+        if (testdata[testname].hasOwnProperty(testCalculation) &&
+            (testCalculation !== 'status'))
+        {
+          var s = testdata[testname][testCalculation].duration;
+          if (!isNaN(s)) {
+            x = x + '<httpSample t="' + Math.floor(s*1000) + '" lt="0" ts="' + (require("internal").time() * 1000) + '" s="true" lb="' + testname + '/' + testCalculation + '" rc="200" rm="OK" tn="Thread Group 1-1" dt=""/>\n'
+          }
+        }
+      }
+    }
+  }
+  x = x + '</testResults>';
+  fs.write(testFileName, x);
+}
+
 exports.reportGeneratorXML = generatePerfReportXML;
 exports.generatePerfReportGrinderCSV = generatePerfReportGrinderCSV;
+exports.generatePerfReportJTL = generatePerfReportJTL;
