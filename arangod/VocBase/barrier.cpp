@@ -383,6 +383,67 @@ void TRI_FreeBarrier (TRI_barrier_t* element) {
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes and frees a barrier element or datafile deletion marker,
+/// this is used for barriers used by transaction or by external to protect
+/// the flags by the lock
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeBarrier (TRI_barrier_t* element, bool fromTransaction) {
+  TRI_barrier_list_t* container;
+
+  TRI_ASSERT(element != nullptr);
+  container = element->_container;
+  TRI_ASSERT(container != nullptr);
+
+  TRI_LockSpin(&container->_lock);
+
+  // First see who might still be using the barrier:
+  if (fromTransaction) {
+    TRI_ASSERT(barrier->_usedByTransaction == true);
+    barrier->_usedByTransaction = false;
+  }
+  else {
+    TRI_ASSERT(barrier->_usedByExternal == true);
+    barrier->_usedByExternal = false;
+  }
+
+  if (barrier->_usedByTransaction == false &&
+      barrier->_usedByExternal == false) {
+    // Really free it:
+
+    // element is at the beginning of the chain
+    if (element->_prev == nullptr) {
+      container->_begin = element->_next;
+    }
+    else {
+      element->_prev->_next = element->_next;
+    }
+
+    // element is at the end of the chain
+    if (element->_next == nullptr) {
+      container->_end = element->_prev;
+    }
+    else {
+      element->_next->_prev = element->_prev;
+    }
+
+    if (element->_type == TRI_BARRIER_ELEMENT) {
+      // decrease counter for barrier elements
+      --container->_numBarrierElements;
+    }
+
+    TRI_UnlockSpin(&container->_lock);
+
+    // free the element
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
+  }
+  else {
+    // Somebody else is still using it, so leave it intact:
+    TRI_UnlockSpin(&container->_lock);
+  }
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

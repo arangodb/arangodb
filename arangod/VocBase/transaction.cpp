@@ -302,12 +302,8 @@ static void FreeBarrier (TRI_transaction_collection_t* trxCollection) {
     // we're done with this barrier
     TRI_barrier_blocker_t* barrier = reinterpret_cast<TRI_barrier_blocker_t*>(trxCollection->_barrier);
 
-    barrier->_usedByTransaction = false;
-
-    if (! barrier->_usedByExternal) {
-      // no one else is using this barrier, so we can free it
-      TRI_FreeBarrier(trxCollection->_barrier);
-    }
+    TRI_FreeBarrier(trxCollection->_barrier, true /* fromTransaction */ );
+    // If some external entity is still using the barrier, it is kept!
 
     trxCollection->_barrier = nullptr;
   }

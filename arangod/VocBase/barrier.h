@@ -252,6 +252,14 @@ TRI_barrier_t* TRI_CreateBarrierDropCollection (TRI_barrier_list_t* container,
 
 void TRI_FreeBarrier (TRI_barrier_t* element);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes and frees a barrier element or datafile deletion marker,
+/// this is used for barriers used by transaction or by external to protect
+/// the flags by the lock
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FreeBarrier (TRI_barrier_t* element, bool fromTransaction);
+
 #endif
 
 // -----------------------------------------------------------------------------
