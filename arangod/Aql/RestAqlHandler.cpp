@@ -841,6 +841,7 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
 
     try {
       res = query->engine()->shutdown(errorCode); // pass errorCode to shutdown
+      answerBody("stats", query->getStats());
       _queryRegistry->destroy(_vocbase, _qId, errorCode);
     }
     catch (...) {
@@ -851,7 +852,6 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
     }
     answerBody("error", res == TRI_ERROR_NO_ERROR ? Json(false) : Json(true))
               ("code", Json(static_cast<double>(res)));
-    answerBody.set("stats", query->getStats());
   }
   else {
     LOG_ERROR("Unknown operation!");
