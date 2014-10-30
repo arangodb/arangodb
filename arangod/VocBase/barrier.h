@@ -258,7 +258,7 @@ void TRI_FreeBarrier (TRI_barrier_t* element);
 /// the flags by the lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeBarrier (TRI_barrier_t* element, bool fromTransaction);
+void TRI_FreeBarrier (TRI_barrier_blocker_t* element, bool fromTransaction);
 
 #endif
 

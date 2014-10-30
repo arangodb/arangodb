@@ -389,46 +389,46 @@ void TRI_FreeBarrier (TRI_barrier_t* element) {
 /// the flags by the lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeBarrier (TRI_barrier_t* element, bool fromTransaction) {
+void TRI_FreeBarrier (TRI_barrier_blocker_t* element, bool fromTransaction) {
   TRI_barrier_list_t* container;
 
   TRI_ASSERT(element != nullptr);
-  container = element->_container;
+  container = element->base._container;
   TRI_ASSERT(container != nullptr);
 
   TRI_LockSpin(&container->_lock);
 
   // First see who might still be using the barrier:
   if (fromTransaction) {
-    TRI_ASSERT(barrier->_usedByTransaction == true);
-    barrier->_usedByTransaction = false;
+    TRI_ASSERT(element->_usedByTransaction == true);
+    element->_usedByTransaction = false;
   }
   else {
-    TRI_ASSERT(barrier->_usedByExternal == true);
-    barrier->_usedByExternal = false;
+    TRI_ASSERT(element->_usedByExternal == true);
+    element->_usedByExternal = false;
   }
 
-  if (barrier->_usedByTransaction == false &&
-      barrier->_usedByExternal == false) {
+  if (element->_usedByTransaction == false &&
+      element->_usedByExternal == false) {
     // Really free it:
 
     // element is at the beginning of the chain
-    if (element->_prev == nullptr) {
-      container->_begin = element->_next;
+    if (element->base._prev == nullptr) {
+      container->_begin = element->base._next;
     }
     else {
-      element->_prev->_next = element->_next;
+      element->base._prev->_next = element->base._next;
     }
 
     // element is at the end of the chain
-    if (element->_next == nullptr) {
-      container->_end = element->_prev;
+    if (element->base._next == nullptr) {
+      container->_end = element->base._prev;
     }
     else {
-      element->_next->_prev = element->_prev;
+      element->base._next->_prev = element->base._prev;
     }
 
-    if (element->_type == TRI_BARRIER_ELEMENT) {
+    if (element->base._type == TRI_BARRIER_ELEMENT) {
       // decrease counter for barrier elements
       --container->_numBarrierElements;
     }
