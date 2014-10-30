@@ -466,7 +466,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
     ExecutionNode* previous = nullptr;
     for (ExecutionNode const* current : info.nodes) {
-      auto clone = current->clone(&plan, false, true);
+      auto clone = current->clone(&plan, false, false);
       // UNNECESSARY, because clone does it: plan.registerNode(clone);
       
       if (current->getType() == ExecutionNode::REMOTE) {
