@@ -9,7 +9,7 @@
 
   describe("The query view", function() {
 
-    var view, div, div2, jQueryDummy;
+    var view, div, div2, jQueryDummy, queryCollection;
 
     beforeEach(function() {
       window.App = {
@@ -26,7 +26,12 @@
       div.id = "content";
       document.body.appendChild(div);
 
+     queryCollection = {
+       fetch: function() {}
+     };
+
       view = new window.queryView({
+        collection: queryCollection
       });
 
       window.modalView = new window.ModalView();
