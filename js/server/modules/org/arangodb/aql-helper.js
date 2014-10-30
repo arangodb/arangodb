@@ -366,20 +366,6 @@ function assertQueryError2 (errorCode, query, bindVars) {
 /// @brief assert a specific warning running a query
 ////////////////////////////////////////////////////////////////////////////////
 
-function assertQueryWarning2 (errorCode, query, bindVars) {
-  var result = AQL_EXECUTE(query, bindVars), i, found = { };
-
-  for (i = 0; i < result.warnings.length; ++i) {
-    found[result.warnings[i].code] = true;
-  }
-
-  assertTrue(found[errorCode]);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief assert a specific warning running a query
-////////////////////////////////////////////////////////////////////////////////
-
 function assertQueryWarningAndNull2 (errorCode, query, bindVars) {
   var result = AQL_EXECUTE(query, bindVars), i, found = { };
 
@@ -603,7 +589,6 @@ exports.getQueryResults2                   = getQueryResults2;
 exports.getQueryResultsAQL2                = getQueryResultsAQL2;
 exports.assertQueryError                   = assertQueryError;
 exports.assertQueryError2                  = assertQueryError2;
-exports.assertQueryWarning2                = assertQueryWarning2;
 exports.assertQueryWarningAndNull2         = assertQueryWarningAndNull2;
 exports.getLinearizedPlan                  = getLinearizedPlan;
 exports.getCompactPlan                     = getCompactPlan;
