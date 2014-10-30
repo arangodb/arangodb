@@ -52,7 +52,7 @@ function AuthSuite () {
       arango.reconnect(arango.getEndpoint(), db._name(), "root", "");
 
       try {
-        users.remove("hackers@arangodb.org");
+        users.remove("hackers@arangodb.com");
       }
       catch (err) {
       }
@@ -64,7 +64,7 @@ function AuthSuite () {
 
     tearDown : function () {
       try {
-        users.remove("hackers@arangodb.org");
+        users.remove("hackers@arangodb.com");
       }
       catch (err) {
       }
@@ -75,24 +75,24 @@ function AuthSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNewUser : function () {
-      users.save("hackers@arangodb.org", "foobar");
+      users.save("hackers@arangodb.com", "foobar");
       users.reload();
 
-      arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.org", "foobar");
+      arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "foobar");
 
       // this will issue a request using the new user
       assertTrue(db._collections().length > 0);
 
       // double check with wrong passwords
       try {
-        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.org", "foobar2");
+        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "foobar2");
         fail();
       }
       catch (err1) {
       }
 
       try {
-        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.org", "");
+        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "");
         fail();
       }
       catch (err2) {
@@ -104,17 +104,17 @@ function AuthSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEmptyPassword : function () {
-      users.save("hackers@arangodb.org", "");
+      users.save("hackers@arangodb.com", "");
       users.reload();
 
-      arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.org", "");
+      arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "");
 
       // this will issue a request using the new user
       assertTrue(db._collections().length > 0);
 
       // double check with wrong password
       try {
-        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.org", "foobar");
+        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "foobar");
         fail();
       }
       catch (err1) {
@@ -126,31 +126,31 @@ function AuthSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testPasswordCase : function () {
-      users.save("hackers@arangodb.org", "FooBar");
+      users.save("hackers@arangodb.com", "FooBar");
       users.reload();
 
-      arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.org", "FooBar");
+      arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "FooBar");
 
       // this will issue a request using the new user
       assertTrue(db._collections().length > 0);
 
       // double check with wrong passwords
       try {
-        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.org", "Foobar");
+        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "Foobar");
         fail();
       }
       catch (err1) {
       }
 
       try {
-        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.org", "foobar");
+        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "foobar");
         fail();
       }
       catch (err2) {
       }
 
       try {
-        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.org", "FOOBAR");
+        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "FOOBAR");
         fail();
       }
       catch (err3) {
@@ -162,31 +162,31 @@ function AuthSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testColon : function () {
-      users.save("hackers@arangodb.org", "fuxx::bar");
+      users.save("hackers@arangodb.com", "fuxx::bar");
       users.reload();
 
-      arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.org", "fuxx::bar");
+      arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "fuxx::bar");
 
       // this will issue a request using the new user
       assertTrue(db._collections().length > 0);
 
       // double check with wrong passwords
       try {
-        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.org", "fuxx");
+        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "fuxx");
         fail();
       }
       catch (err1) {
       }
 
       try {
-        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.org", "bar");
+        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "bar");
         fail();
       }
       catch (err2) {
       }
 
       try {
-        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.org", "");
+        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "");
         fail();
       }
       catch (err3) {
@@ -198,31 +198,31 @@ function AuthSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSpecialChars : function () {
-      users.save("hackers@arangodb.org", ":\\abc'def:foobar@04. x-a");
+      users.save("hackers@arangodb.com", ":\\abc'def:foobar@04. x-a");
       users.reload();
 
-      arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.org", ":\\abc'def:foobar@04. x-a");
+      arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", ":\\abc'def:foobar@04. x-a");
 
       // this will issue a request using the new user
       assertTrue(db._collections().length > 0);
 
       // double check with wrong passwords
       try {
-        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.org", "foobar");
+        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "foobar");
         fail();
       }
       catch (err1) {
       }
 
       try {
-        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.org", "\\abc'def: x-a");
+        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "\\abc'def: x-a");
         fail();
       }
       catch (err2) {
       }
 
       try {
-        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.org", "");
+        arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "");
         fail();
       }
       catch (err3) {

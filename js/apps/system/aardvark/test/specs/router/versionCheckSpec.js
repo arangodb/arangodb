@@ -55,7 +55,7 @@
           async: true,
           crossDomain: true,
           dataType: "jsonp",
-          url: "https://www.arangodb.org/repositories/versions.php" +
+          url: "https://www.arangodb.com/repositories/versions.php" +
           "?jsonp=parseVersions&version=" + encodeURIComponent(current)
         });
         $.ajax.reset();
@@ -119,7 +119,7 @@
             spyOn(window.modalView, "hide");
             $("#modalButton2").click();
             expect(window.open).toHaveBeenCalledWith(
-              "https://www.arangodb.org/download",
+              "https://www.arangodb.com/download",
               "_blank"
             );
             expect(window.modalView.hide).toHaveBeenCalled();

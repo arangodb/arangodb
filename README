@@ -85,7 +85,7 @@ Please note that there will be bugs and we'd really appreciate it if you report
 them:
 https://github.com/triAGENS/ArangoDB/issues
 You can use the Google group for improvements, feature requests, comments
-http://www.arangodb.org/community
+http://www.arangodb.com/community
 
 Citing ArangoDB
 
@@ -93,4 +93,4 @@ Please kindly cite ArangoDB in your publications if it helps your research:
 bibtex @misc{ArangoDB2014, Author = {ArangoDB}, Title = { {ArangoDB 2.2}: An
 Open Source multi-purpose database supporting flexible data models for
 documents, graphs, and key-values.}, Year = {2014}, Howpublished = {\url{http:/
-/arangodb.org/} }
+/arangodb.com/} }
