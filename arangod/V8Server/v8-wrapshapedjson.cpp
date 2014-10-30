@@ -241,15 +241,8 @@ static void WeakBarrierCallback (v8::Isolate* isolate,
   // get the vocbase pointer from the barrier
   TRI_vocbase_t* vocbase = barrier->base._container->_collection->_vocbase;
 
-  // mark that we don't need the barrier anymore
-  barrier->_usedByExternal = false;
-
-  // free the barrier
-  if (! barrier->_usedByTransaction) {
-    // the underlying transaction is over. we are the only user of this barrier
-    // and must destroy it
-    TRI_FreeBarrier(&barrier->base);
-  }
+  TRI_FreeBarrier(&barrier->base, false /* fromTransaction */ );
+  // we don't need the barrier anymore, maybe a transaction is still using it
 
   if (vocbase != nullptr) {
     // decrease the reference-counter for the database
