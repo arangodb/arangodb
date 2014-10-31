@@ -1,3 +1,5 @@
+/*jshint strict: false */
+/*global require, exports */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JSUnity wrapper
 ///
@@ -25,7 +27,9 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+
 var internal = require("internal");
+var print = internal.print;
 var fs = require("fs");
 var console = require("console");
 
@@ -34,6 +38,7 @@ var PASSED = 0;
 var FAILED = 0;
 var DURATION = 0;
 var RESULTS = {};
+var COMPLETE = {};
 
 var jsUnity = require("./jsunity/jsunity").jsUnity;
 var STARTTEST = 0.0;
@@ -71,7 +76,10 @@ jsUnity.results.fail = function (index, testName, message) {
 
 jsUnity.results.end = function (passed, failed, duration) {
   print(" " + passed + " test(s) passed");
-  print(" " + ((failed > 0) ? internal.COLORS.COLOR_RED : internal.COLORS.COLOR_RESET) + failed + " test(s) failed" + internal.COLORS.COLOR_RESET);
+  print(" " + ((failed > 0) ? 
+               internal.COLORS.COLOR_RED : 
+               internal.COLORS.COLOR_RESET) +
+        failed + " test(s) failed" + internal.COLORS.COLOR_RESET);
   print(" " + duration + " millisecond(s) elapsed");
   print();
 };
@@ -81,21 +89,16 @@ jsUnity.results.end = function (passed, failed, duration) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup JSUnity
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief runs a test with context
 ////////////////////////////////////////////////////////////////////////////////
 
-function Run (tests) {
-  var suite = jsUnity.compile(tests);
-  var definition = tests();
+function Run (testsuite) {
+  var suite = jsUnity.compile(testsuite);
+  var definition = testsuite();
 
   var tests = [];
-  var setUp = undefined;
-  var tearDown = undefined;
+  var setUp;
+  var tearDown;
 
   if (definition.hasOwnProperty("setUp")) {
     setUp = definition.setUp;
@@ -110,12 +113,12 @@ function Run (tests) {
   scope.tearDown = tearDown;
 
   for (var key in definition) {
-    if (key.indexOf("test") == 0) {
+    if (key.indexOf("test") === 0) {
       var test = { name : key, fn : definition[key] };
 
       tests.push(test);
     }
-    else if (key != "tearDown" && key != "setUp") {
+    else if (key !== "tearDown" && key !== "setUp") {
       console.error("unknown function: %s", key);
     }
   }
@@ -131,6 +134,13 @@ function Run (tests) {
   PASSED += result.passed;
   FAILED += result.failed;
   DURATION += result.duration;
+
+  for (var attrname in RESULTS) {
+    if (RESULTS.hasOwnProperty(attrname)) { 
+      COMPLETE[attrname] = RESULTS[attrname];
+    } 
+  }
+
   return result;
 }
 
@@ -143,20 +153,22 @@ function Done (suiteName) {
   internal.printf("%d total, %d passed, %d failed, %d ms", TOTAL, PASSED, FAILED, DURATION);
   print();
 
-  var ok = FAILED == 0;
+  var ok = FAILED === 0;
 
-  RESULTS.duration = DURATION;
-  RESULTS.status = ok;
-  RESULTS.failed = FAILED;
-  RESULTS.total = TOTAL;
-  RESULTS.suiteName = suiteName;
+  COMPLETE.duration = DURATION;
+  COMPLETE.status = ok;
+  COMPLETE.failed = FAILED;
+  COMPLETE.total = TOTAL;
+  COMPLETE.suiteName = suiteName;
 
   TOTAL = 0;
   PASSED = 0;
   FAILED = 0;
   DURATION = 0;
 
-  return RESULTS;
+  var ret = COMPLETE;
+  COMPLETE = {};
+  return ret;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -172,34 +184,21 @@ function RunTest (path) {
   content = "(function(){require('jsunity').jsUnity.attachAssertions();" + content + "})";
   f = internal.executeScript(content, undefined, path);
   
-  if (f == undefined) {
+  if (f === undefined) {
     throw "cannot create context function";
   }
 
   return f(path);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    MODULE EXPORTS
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup JSUnity
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 exports.jsUnity = jsUnity;
 exports.run = Run;
 exports.done = Done;
 exports.runTest = RunTest;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor

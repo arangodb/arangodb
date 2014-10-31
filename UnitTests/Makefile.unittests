@@ -439,6 +439,7 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-rename-noncluster.js \
                @top_srcdir@/js/common/tests/shell-simple-query.js \
                @top_srcdir@/js/common/tests/shell-statement.js \
+               @top_srcdir@/js/common/tests/shell-explain-noncluster.js \
                @top_srcdir@/js/common/tests/shell-transactions.js \
                @top_srcdir@/js/common/tests/shell-unload.js \
                @top_srcdir@/js/common/tests/shell-users.js \
@@ -632,11 +633,11 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-queries-fulltext.js \
 			@top_srcdir@/js/server/tests/aql-queries-geo.js \
 			@top_srcdir@/js/server/tests/aql-queries-noncollection.js \
-			@top_srcdir@/js/server/tests/aql-queries-optimiser-in.js \
+			@top_srcdir@/js/server/tests/aql-queries-optimiser-in-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-queries-optimiser.js \
 			@top_srcdir@/js/server/tests/aql-queries-optimiser-limit-noncluster.js \
-			@top_srcdir@/js/server/tests/aql-queries-optimiser-ref.js \
-			@top_srcdir@/js/server/tests/aql-queries-optimiser-sort.js \
+			@top_srcdir@/js/server/tests/aql-queries-optimiser-ref-noncluster.js \
+			@top_srcdir@/js/server/tests/aql-queries-optimiser-sort-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-queries-simple.js \
 			@top_srcdir@/js/server/tests/aql-queries-variables.js \
 			@top_srcdir@/js/server/tests/aql-range.js \

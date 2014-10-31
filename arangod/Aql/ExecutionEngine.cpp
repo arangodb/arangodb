@@ -271,6 +271,92 @@ struct Instanciator : public WalkerWorker<ExecutionNode> {
 // --SECTION--                     walker class for ExecutionNode to instanciate
 // -----------------------------------------------------------------------------
 
+// Here is a description of how the instanciation of an execution plan
+// works in the cluster. See below for a complete example
+//
+// The instanciation of this works as follows:
+// (0) Variable usage and register planning is done in the global plan
+// (1) A walk with subqueries is done on the whole plan
+//     The purpose is to plan how many ExecutionEngines we need, where they
+//     have to be instanciated and which plan nodes belong to each of them.
+//     Such a walk is depth first and visits subqueries after it has visited
+//     the dependencies of the subquery node recursively. Whenever the
+//     walk passes by a RemoteNode it switches location between coordinator
+//     and DBserver and starts a new engine. The nodes of an engine are
+//     collected in the after method.
+//     This walk results in a list of engines and a list of nodes for
+//     each engine. It follows that the order in these lists is as follows:
+//     The first engine is the main one on the coordinator, it has id 0.
+//     The order of the engines is exactly as they are discovered in the
+//     walk. That is, engines closer to the root are earlier and engines
+//     in subqueries are later. The nodes in each engine are always
+//     done in a way such that a dependency D of a node N is earlier in the
+//     list as N, and a subquery node is later in the list than the nodes
+//     of the subquery.
+// (2) buildEngines is called with that data. It proceeds engine by engine,
+//     starting from the back of the list. This means that an engine that
+//     is referred to in a RemoteNode (because its nodes are dependencies
+//     of that node) are always already instanciated before the RemoteNode
+//     is instanciated. The corresponding query ids are collected in a
+//     global hash table, for which the key consists of the id of the 
+//     RemoteNode using the query and the actual query id. For each engine,
+//     the nodes are instanciated along the list of nodes for that engine.
+//     This means that all dependencies of a node N are already instanciated
+//     when N is instanciated. We distintuish the coordinator and the
+//     DBserver case. In the former one we have to clone a part of the
+//     plan and in the latter we have to send a part to a DBserver via HTTP.
+//
+// Here is a fully worked out example:
+//
+// FOR i IN [1,2]
+//   FOR d IN coll
+//     FILTER d.pass == i
+//     LET s = (FOR e IN coll2 FILTER e.name == d.name RETURN e)
+//     RETURN {d:d, s:s}
+//
+// this is optimized to, variable and register planning is done in this plan:
+//
+//    Singleton
+//        ^                       
+//   EnumList [1,2]             Singleton
+//        ^                         ^
+//     Scatter (2)            Enum coll2                 
+//        ^                         ^
+//     Remote              Calc e.name==d.name
+//        ^                         ^
+//    Enum coll                  Filter (3)
+//        ^                         ^
+//  Calc d.pass==i               Remote
+//        ^                         ^
+//     Filter (1)                Gather
+//        ^                         ^
+//     Remote                    Return
+//        ^                         ^
+//     Gather                       |
+//        ^                         |
+//     Subquery  -------------------/
+//        ^
+//  Calc {d:d, s:s}
+//        ^
+//      Return (0)
+//
+// There are 4 engines here, their corresponding root nodes are labelled
+// in the above picture in round brackets with the ids of the engine.
+// Engines 1 and 3 have to be replicated for each shard of coll or coll2
+// respectively, and sent to the right DBserver via HTTP. Engine 0 is the
+// main one on the coordinator and engine 2 is a non-main part on the 
+// coordinator. Recall that the walk goes first to the dependencies before
+// it visits the nodes of the subquery. Thus, the walk builds up the lists
+// in this order:
+//   engine 0: [Remote, Gather, Remote, Gather, Return, Subquery, Calc, Return]
+//   engine 1: [Remote, Enum coll, Calc d.pass==i, Filter]
+//   engine 2: [Singleton, EnumList [1,2], Scatter]
+//   engine 3: [Singleton, Enum coll2, Calc e.name==d.name, Filter]
+// buildEngines will then do engines in the order 3, 2, 1, 0 and for each
+// of them the nodes from left to right in these lists. In the end, we have
+// a proper instanciation of the whole thing.
+
+
 struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   enum EngineLocation {
     COORDINATOR,
@@ -320,8 +406,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
                 // in the original plan that needs this engine
   };
 
-  std::vector<std::pair<std::string, TRI_json_t*>> _plans;
-
   Query*                   query;
   QueryRegistry*           queryRegistry;
   ExecutionBlock*          root;
@@ -335,11 +419,15 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
      // this is relevant to decide whether or not the engine there is a main
      // query or a dependent one.
   std::unordered_map<std::string, std::string> queryIds;
-     // map from itoa(ID of RemoteNode in original plan) + shardId
+     // map from itoa(ID of RemoteNode in original plan) + "_" + shardId
      //     to   queryId on DBserver
      // this is built up when we instanciate the various engines on the
      // DBservers and used when we instanciate the one using them on the
      // coordinator.
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
 
   CoordinatorInstanciator (Query* query,
                            QueryRegistry* queryRegistry)
@@ -356,12 +444,16 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     engines.emplace_back(COORDINATOR, 0, PART_MAIN, 0);
   }
  
-  void resetPlans() {
-    _plans.clear();
-  }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
   ~CoordinatorInstanciator () {
-    resetPlans();
   }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generatePlanForOneShard
+////////////////////////////////////////////////////////////////////////////////
 
   triagens::basics::Json generatePlanForOneShard (EngineInfo const& info,
                                                   QueryId& connectedId,
@@ -374,7 +466,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
     ExecutionNode* previous = nullptr;
     for (ExecutionNode const* current : info.nodes) {
-      auto clone = current->clone(&plan, false, true);
+      auto clone = current->clone(&plan, false, false);
       // UNNECESSARY, because clone does it: plan.registerNode(clone);
       
       if (current->getType() == ExecutionNode::REMOTE) {
@@ -395,59 +487,10 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     return plan.root()->toJson(TRI_UNKNOWN_MEM_ZONE, verbose);
   }
 
-  void generatePlansForDBServers (EngineInfo const& info,
-                                  QueryId connectedId,
-                                  bool verbose) {
-    Collection* collection = info.getCollection();
-    
-    // iterate over all shards of the collection
-    for (auto & shardId : collection->shardIds()) {
-      // inject the current shard id into the collection
-      collection->setCurrentShard(shardId);
-      auto jsonPlan = generatePlanForOneShard(info, connectedId, shardId, verbose);
-      _plans.push_back(std::make_pair(shardId, jsonPlan.steal()));  
-    }
-    // fix collection  
-    collection->resetCurrentShard();
-  }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief distributePlanToShard, send a single plan to one shard
+////////////////////////////////////////////////////////////////////////////////
 
-
-  ExecutionEngine* buildEngines () {
-    ExecutionEngine* engine = nullptr;
-    QueryId id              = 0;
-    
-    for (auto it = engines.rbegin(); it != engines.rend(); ++it) {
-      // std::cout << "Doing engine: " << it->id << " location:" 
-      //          << it->location << std::endl;
-      if ((*it).location == COORDINATOR) {
-        // create a coordinator-based engine
-        engine = buildEngineCoordinator(*it);
-        TRI_ASSERT(engine != nullptr);
-        
-        if ((*it).id > 0) {
-          // create a remote id for the engine that we can pass to
-          // the plans to be created for the DBServers
-          id = TRI_NewTickServer();
-
-          queryRegistry->insert(id, engine->getQuery(), 3600.0);
-        }
-      }
-      else {
-        // create an engine on a remote DB server
-        // hand in the previous engine's id
-        generatePlansForDBServers((*it), id, true);
-        distributePlansToShards((*it), id);
-        resetPlans();
-      }
-    }
-
-    TRI_ASSERT(engine != nullptr);
-
-    // return the last created coordinator-based engine
-    // this is the local engine that we'll use to run the query
-    return engine;
-  }
- 
   void distributePlanToShard (triagens::arango::CoordTransactionID& coordTransactionID,
                               EngineInfo const& info,
                               Collection* collection,
@@ -491,7 +534,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     
     // std::cout << "GENERATED A PLAN FOR THE REMOTE SERVERS: " << *(body.get()) << "\n";
     
-    // TODO: pass connectedId to the shard so it can fetch data using the correct query id
     auto cc = triagens::arango::ClusterComm::instance();
 
     std::string const url("/_db/" + triagens::basics::StringUtils::urlEncode(collection->vocbase->_name) + 
@@ -513,6 +555,10 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       delete res;
     }
   }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief aggregateQueryIds, get answers for all shards in a Scatter/Gather
+////////////////////////////////////////////////////////////////////////////////
 
   void aggregateQueryIds (EngineInfo const& info,
                      triagens::arango::ClusterComm*& cc,
@@ -542,7 +588,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           // std::cout << "DB SERVER ANSWERED WITHOUT ERROR: " << res->answer->body() << ", REMOTENODEID: " << info.idOfRemoteNode << " SHARDID:"  << res->shardID << ", QUERYID: " << queryId << "\n";
           std::string theID
             = triagens::basics::StringUtils::itoa(info.idOfRemoteNode)
-            + res->shardID;
+            + "_" + res->shardID;
           queryIds.emplace(std::make_pair(theID, queryId));
         }
         else {
@@ -562,14 +608,16 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     // std::cout << "GOT ALL RESPONSES FROM DB SERVERS: " << nrok << "\n";
 
     if (nrok != (int) shardIds.size()) {
-      // TODO: provide sensible error message with more details
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, error);
     }
   }
 
-  void distributePlansToShards (
-             EngineInfo const& info,
-             QueryId connectedId) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief distributePlansToShards, for a single Scatter/Gather block
+////////////////////////////////////////////////////////////////////////////////
+
+  void distributePlansToShards (EngineInfo const& info,
+                                QueryId connectedId) {
 
     // std::cout << "distributePlansToShards: " << info.id << std::endl;
     Collection* collection = info.getCollection();
@@ -579,11 +627,12 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     TRI_ASSERT(cc != nullptr);
 
     // iterate over all shards of the collection
-    for (auto onePlan: _plans) {
-      collection->setCurrentShard(onePlan.first);
+    for (auto & shardId : collection->shardIds()) {
+      // inject the current shard id into the collection
+      collection->setCurrentShard(shardId);
+      auto jsonPlan = generatePlanForOneShard(info, connectedId, shardId, true);
 
-      distributePlanToShard(coordTransactionID, info, collection, connectedId, onePlan.first, onePlan.second);
-      onePlan.second = nullptr;
+      distributePlanToShard(coordTransactionID, info, collection, connectedId, shardId, jsonPlan.steal());
     }
 
     // fix collection  
@@ -591,6 +640,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     aggregateQueryIds(info, cc, coordTransactionID, collection);
   }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief buildEngineCoordinator, for a single piece
+////////////////////////////////////////////////////////////////////////////////
 
   ExecutionEngine* buildEngineCoordinator (EngineInfo& info) {
     // need a new query instance on the coordinator
@@ -654,7 +706,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         for (auto const& shardId : shardIds) {
           std::string theId 
             = triagens::basics::StringUtils::itoa(remoteNode->id())
-            + shardId;
+            + "_" + shardId;
           auto it = queryIds.find(theId);
           if (it == queryIds.end()) {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not find query id in list");
@@ -690,6 +742,50 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     return engine.release();
   }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief buildEngines, build engines on DBservers and coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+  ExecutionEngine* buildEngines () {
+    ExecutionEngine* engine = nullptr;
+    QueryId id              = 0;
+    
+    for (auto it = engines.rbegin(); it != engines.rend(); ++it) {
+      // std::cout << "Doing engine: " << it->id << " location:" 
+      //          << it->location << std::endl;
+      if ((*it).location == COORDINATOR) {
+        // create a coordinator-based engine
+        engine = buildEngineCoordinator(*it);
+        TRI_ASSERT(engine != nullptr);
+        
+        if ((*it).id > 0) {
+          // create a remote id for the engine that we can pass to
+          // the plans to be created for the DBServers
+          id = TRI_NewTickServer();
+
+          queryRegistry->insert(id, engine->getQuery(), 3600.0);
+          // TODO: put an entry into queryIds such that we can delete
+          // this one here if things go wrong during instanciation.
+        }
+      }
+      else {
+        // create an engine on a remote DB server
+        // hand in the previous engine's id
+        distributePlansToShards((*it), id);
+      }
+    }
+
+    TRI_ASSERT(engine != nullptr);
+
+    // return the last created coordinator-based engine
+    // this is the local engine that we'll use to run the query
+    return engine;
+  }
+ 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief before method for collection of pieces phase
+////////////////////////////////////////////////////////////////////////////////
+
   virtual bool before (ExecutionNode* en) override final {
     auto const nodeType = en->getType();
 
@@ -720,6 +816,10 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     return false;
   }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief after method for collection of pieces phase
+////////////////////////////////////////////////////////////////////////////////
+
   virtual void after (ExecutionNode* en) override final {
     auto const nodeType = en->getType();
 
@@ -737,16 +837,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add a block to the engine
-////////////////////////////////////////////////////////////////////////////////
-
-void ExecutionEngine::addBlock (ExecutionBlock* block) {
-  TRI_ASSERT(block != nullptr);
-
-  _blocks.push_back(block);
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution engine from a plan
@@ -786,8 +876,35 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
       }
 #endif
 
-      engine = inst.get()->buildEngines(); 
-      root = engine->root();
+      try {
+        engine = inst.get()->buildEngines(); 
+        root = engine->root();
+      }
+      catch (...) {
+        // We need to destroy all queries that we have built and stuffed
+        // into the QueryRegistry as well as those that we have pushed to
+        // the DBservers via HTTP:
+        // TODOTODOTODO
+#if 0
+        for (auto& q : queryIds) {
+          std::string theId = q.first;
+          std::string queryId = q.second;
+          auto pos = theId.find('_');
+          TRI_ASSERT(pos != std::string::npos);
+          size_t engineId = triagens::basics::uint64(theId.substr(0,pos));
+          std::string shardId = theId.substr(pos+1);
+          if (engines[engineId].location == COORDINATOR) {
+            // Remove query from registry:
+
+          } 
+          else {
+            // Remove query from DBserver:
+
+          }
+        }
+#endif
+        throw;
+      }
     }
     else {
       // instanciate the engine on a local server
@@ -801,7 +918,6 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
     engine->_root = root;
     root->initialize();
     root->initializeCursor(nullptr, 0);
-
   
     return engine;
   }
@@ -809,6 +925,16 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
     delete engine;
     throw;
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a block to the engine
+////////////////////////////////////////////////////////////////////////////////
+
+void ExecutionEngine::addBlock (ExecutionBlock* block) {
+  TRI_ASSERT(block != nullptr);
+
+  _blocks.push_back(block);
 }
 
 

@@ -64,9 +64,9 @@ std::unordered_map<int, std::string const> const Executor::InternalFunctionNames
   { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_TIMES), "ARITHMETIC_TIMES" },
   { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_DIV),   "ARITHMETIC_DIVIDE" },
   { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_MOD),   "ARITHMETIC_MODULUS" },
-  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_AND),   "LOGICAL_AND_FN" },
-  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_OR),    "LOGICAL_OR_FN" },
-  { static_cast<int>(NODE_TYPE_OPERATOR_TERNARY),      "TERNARY_OPERATOR_FN" }
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_AND),   "LOGICAL_AND" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_OR),    "LOGICAL_OR" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_TERNARY),      "TERNARY_OPERATOR" }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -274,11 +274,11 @@ V8Expression* Executor::generateExpression (AstNode const* node) {
 /// @brief executes an expression directly
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* Executor::executeExpression (AstNode const* node) {
+TRI_json_t* Executor::executeExpression (Query* query,
+                                         AstNode const* node) {
   generateCodeExpression(node);
 
   // std::cout << "Executor::ExecuteExpression: " << _buffer->c_str() << "\n";
-  
   v8::HandleScope scope;
 
   v8::TryCatch tryCatch;
@@ -288,13 +288,27 @@ TRI_json_t* Executor::executeExpression (AstNode const* node) {
   // exit early if an error occurred
   HandleV8Error(tryCatch, func);
 
+  TRI_ASSERT(query != nullptr);
+
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+  auto old = v8g->_query;
+  v8g->_query = static_cast<void*>(query);
+  TRI_ASSERT(v8g->_query != nullptr);
+ 
   // execute the function
   v8::Handle<v8::Value> args;
   v8::Handle<v8::Value> result = v8::Handle<v8::Function>::Cast(func)->Call(v8::Object::New(), 0, &args);
- 
+  
+  v8g->_query = old;
+  
   // exit if execution raised an error
   HandleV8Error(tryCatch, result);
 
+  if (result->IsUndefined()) {
+    // undefined => null
+    return TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE);
+  }
+  
   return TRI_ObjectToJson(result);
 }
 
@@ -339,6 +353,7 @@ void Executor::HandleV8Error (v8::TryCatch& tryCatch,
     // peek into the exception
     if (tryCatch.Exception()->IsObject()) {
       // cast the exception to an object
+
       v8::Handle<v8::Array> objValue = v8::Handle<v8::Array>::Cast(tryCatch.Exception());
       v8::Handle<v8::String> errorNum = v8::String::New("errorNum");
       v8::Handle<v8::String> errorMessage = v8::String::New("errorMessage");
@@ -349,8 +364,8 @@ void Executor::HandleV8Error (v8::TryCatch& tryCatch,
         v8::Handle<v8::Value> errorMessageValue = objValue->Get(errorMessage);
 
         // found something that looks like an ArangoError
-        if (errorNumValue->IsNumber() && 
-            errorMessageValue->IsString()) {
+        if ((errorNumValue->IsNumber() || errorNumValue->IsNumberObject()) && 
+            (errorMessageValue->IsString() || errorMessageValue->IsStringObject())) {
           int errorCode = static_cast<int>(TRI_ObjectToInt64(errorNumValue));
           std::string const errorMessage(TRI_ObjectToString(errorMessageValue));
     
@@ -406,7 +421,7 @@ void Executor::generateCodeExpression (AstNode const* node) {
   generateCodeNode(node);
 
   // write epilogue
-  _buffer->appendText(";})", 3);
+  _buffer->appendText(";})");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

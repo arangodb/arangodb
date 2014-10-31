@@ -29,6 +29,7 @@
 
 #include "Aql/V8Expression.h"
 #include "Aql/Executor.h"
+#include "Aql/Query.h"
 #include "Aql/Variable.h"
 #include "Basics/json.h"
 #include "V8/v8-conv.h"
@@ -66,7 +67,8 @@ V8Expression::~V8Expression () {
 /// @brief execute the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue V8Expression::execute (triagens::arango::AqlTransaction* trx,
+AqlValue V8Expression::execute (Query* query,
+                                triagens::arango::AqlTransaction* trx,
                                 std::vector<TRI_document_collection_t const*>& docColls,
                                 std::vector<AqlValue>& argv,
                                 size_t startPos,
@@ -86,12 +88,21 @@ AqlValue V8Expression::execute (triagens::arango::AqlTransaction* trx,
     values->Set(v8::String::New(varname.c_str(), (int) varname.size()), argv[startPos + reg].toV8(trx, docColls[reg]));
   }
 
+  TRI_ASSERT(query != nullptr);
+
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+  auto old = v8g->_query;
+  v8g->_query = static_cast<void*>(query);
+  TRI_ASSERT(v8g->_query != nullptr);
+
   // set function arguments
   v8::Handle<v8::Value> args[] = { values };
 
   // execute the function
   v8::TryCatch tryCatch;
   v8::Handle<v8::Value> result = func->Call(func, 1, args);
+
+  v8g->_query = old;
     
   Executor::HandleV8Error(tryCatch, result);
 

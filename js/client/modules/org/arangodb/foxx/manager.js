@@ -1288,7 +1288,7 @@ exports.help = function () {
   arangodb.print();
   arangodb.print("Use foxx-manager --help to show a list of global options\n");
   arangodb.print("There is also an online manual available at:");
-  arangodb.print("https://www.arangodb.org/manuals/current/UserManualFoxxManager.html");
+  arangodb.print("https://www.arangodb.com/manuals/current/UserManualFoxxManager.html");
 
   // additional newline
   arangodb.print();

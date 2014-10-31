@@ -54,12 +54,15 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief different flags for nodes
+/// the flags are used to prevent repeated calculations of node properties
+/// (e.g. is the node value constant, sorted etc.)
 ////////////////////////////////////////////////////////////////////////////////
 
     enum AstNodeFlagType : uint8_t {
       FLAG_SORTED   = 1,   // node is a list and its members are sorted asc.
-      FLAG_CONSTANT = 2,   // node value is constant
-      FLAG_SIMPLE   = 4    // node value is simple (i.e. for use in a simple expression)
+      FLAG_CONSTANT = 2,   // node value is constant (i.e. not dynamic)
+      FLAG_DYNAMIC  = 4,   // node value is dynamic (i.e. not constant)
+      FLAG_SIMPLE   = 8    // node value is simple (i.e. for use in a simple expression)
 
     };
 
@@ -214,6 +217,14 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief compute the JSON for a constant value node
+/// the JSON is owned by the node and must not be freed by the caller
+/// note that the return value might be NULL in case of OOM
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_json_t* computeJson () const;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief sort the members of a (list) node
 /// this will also set the FLAG_SORTED flag for the node
 ////////////////////////////////////////////////////////////////////////////////
@@ -257,12 +268,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_json_t* toJsonValue (TRI_memory_zone_t*) const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a textual representation of the node
-////////////////////////////////////////////////////////////////////////////////
-        
-        std::string toInfoString (TRI_memory_zone_t* zone) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a JSON representation of the node
@@ -318,6 +323,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
   
         inline void setFlag (AstNodeFlagType flag) const {
+          // ensure that CONSTANT and DYNAMIC flag are mutually exclusive
+          TRI_ASSERT(flag != FLAG_DYNAMIC || (flags & static_cast<decltype(flags)>(FLAG_CONSTANT)) == 0);
+          TRI_ASSERT(flag != FLAG_CONSTANT || (flags & static_cast<decltype(flags)>(FLAG_DYNAMIC)) == 0);
+
           flags |= static_cast<decltype(flags)>(flag);
         }
 
@@ -416,7 +425,7 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a node has a constant value
-/// this may also set the FLAG_CONSTANT flag for the node
+/// this may also set the FLAG_CONSTANT or the FLAG_DYNAMIC flags for the node
 ////////////////////////////////////////////////////////////////////////////////
 
         bool isConstant () const;
@@ -668,10 +677,16 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief precomputed JSON value (used when executing expressions)
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_json_t mutable*       computedJson;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief the node's sub nodes
 ////////////////////////////////////////////////////////////////////////////////
       
-        TRI_vector_pointer_t  members;
+        TRI_vector_pointer_t      members;
 
     };
 

@@ -56,11 +56,11 @@ using Json = triagens::basics::Json;
 static std::string StateNames[] = {
   "initializing",           // INITIALIZATION 
   "parsing",                // PARSING
-  "ast optimizing",         // AST_OPTIMIZATION
-  "plan instanciating",     // PLAN_INSTANCIATION
-  "plan optimizing",        // PLAN_OPTIMIZATION
+  "optimizing ast",         // AST_OPTIMIZATION
+  "instanciating plan",     // PLAN_INSTANCIATION
+  "optimizing plan",        // PLAN_OPTIMIZATION
   "executing",              // EXECUTION
-  "finalizating"            // FINALIZATION
+  "finalizing"              // FINALIZATION
 };
 
 // make sure the state strings and the actual states match
@@ -146,6 +146,8 @@ Query::Query (triagens::arango::ApplicationV8* applicationV8,
     _parser(nullptr),
     _trx(nullptr),
     _engine(nullptr),
+    _maxWarningCount(10),
+    _warnings(),
     _part(part),
     _contextOwnedByExterior(contextOwnedByExterior) {
 
@@ -190,6 +192,8 @@ Query::Query (triagens::arango::ApplicationV8* applicationV8,
     _parser(nullptr),
     _trx(nullptr),
     _engine(nullptr),
+    _maxWarningCount(10),
+    _warnings(),
     _part(part),
     _contextOwnedByExterior(contextOwnedByExterior) {
 
@@ -397,6 +401,7 @@ std::string Query::extractRegion (int line,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register an error
+/// this also makes the query abort
 ////////////////////////////////////////////////////////////////////////////////
 
 void Query::registerError (int code,
@@ -407,8 +412,28 @@ void Query::registerError (int code,
   if (details == nullptr) {
     THROW_ARANGO_EXCEPTION(code);
   }
+  
+  THROW_ARANGO_EXCEPTION_PARAMS(code, details);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a warning
+////////////////////////////////////////////////////////////////////////////////
+
+void Query::registerWarning (int code,
+                             char const* details) {
+
+  TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
+
+  if (_warnings.size() > _maxWarningCount) {
+    return;
+  }
+
+  if (details == nullptr) {
+    _warnings.emplace_back(std::make_pair(code, TRI_errno_string(code)));
+  }
   else {
-    THROW_ARANGO_EXCEPTION_PARAMS(code, details);
+    _warnings.emplace_back(std::make_pair(code, details));
   }
 }
 
@@ -585,8 +610,9 @@ QueryResult Query::execute (QueryRegistry* registry) {
     enterState(FINALIZATION); 
 
     QueryResult result(TRI_ERROR_NO_ERROR);
-    result.json  = json.steal();
-    result.stats = stats.steal(); 
+    result.warnings = warningsToJson();
+    result.json     = json.steal();
+    result.stats    = stats.steal(); 
 
     if (_profile != nullptr) {
       result.profile = _profile->toJson(TRI_UNKNOWN_MEM_ZONE);
@@ -703,6 +729,8 @@ QueryResult Query::explain () {
     }
 
     _trx->commit();
+      
+    result.warnings = warningsToJson();
 
     return result;
   }
@@ -1059,6 +1087,34 @@ void Query::setPlan (ExecutionPlan *plan) {
     delete _plan;
   }
   _plan = plan;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert the list of warnings to JSON
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* Query::warningsToJson () const {
+  if (_warnings.empty()) {
+    return nullptr;
+  }
+
+  size_t const n = _warnings.size();
+  TRI_json_t* json = TRI_CreateList2Json(TRI_UNKNOWN_MEM_ZONE, n);
+
+  if (json != nullptr) {
+    for (size_t i = 0; i < n; ++i) {
+      TRI_json_t* error = TRI_CreateArray2Json(TRI_UNKNOWN_MEM_ZONE, 2);
+
+      if (error != nullptr) {
+        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, error, "code", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, static_cast<double>(_warnings[i].first)));
+        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, error, "message", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, _warnings[i].second.c_str(), _warnings[i].second.size()));
+
+        TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, json, error);
+      }
+    }
+  }
+
+  return json;
 }
 
 // -----------------------------------------------------------------------------

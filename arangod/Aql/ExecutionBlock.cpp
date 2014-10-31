@@ -4622,7 +4622,7 @@ int RemoteBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   ENTER_BLOCK
   // For every call we simply forward via HTTP
 
-  Json body(Json::Array, 2);
+  Json body(Json::Array, 4);
   if (items == nullptr) {
     // first call, items is still a nullptr
     body("exhausted", Json(true))
@@ -4630,7 +4630,9 @@ int RemoteBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   }
   else {
     body("pos", Json(static_cast<double>(pos)))
-      ("items", items->toJson(_engine->getQuery()->trx()));
+      ("items", items->toJson(_engine->getQuery()->trx()))
+      ("exhausted", Json(false))
+      ("error", Json(false));
   }
 
   std::string bodyString(body.toString());

@@ -1,9 +1,9 @@
 
-#ifndef TRIAGENS_BASICS_C_VOC_ERRORS_H
-#define TRIAGENS_BASICS_C_VOC_ERRORS_H 1
+#ifndef TRIAGENS_BASICS_VOC_ERRORS_H
+#define TRIAGENS_BASICS_VOC_ERRORS_H 1
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @page ArangoErrors Error codes and meanings
+/// Error codes and meanings
 ///
 /// The following errors might be raised when running ArangoDB:
 ///
@@ -375,10 +375,10 @@
 /// - 1541: @LIT{invalid number of arguments for function '\%s()', expected number of arguments: minimum: \%d, maximum: \%d}
 ///   Will be raised when the number of arguments used in a function call does
 ///   not match the expected number of arguments for the function.
-/// - 1542: @LIT{invalid argument type used in call to function '\%s()'}
+/// - 1542: @LIT{invalid argument type in call to function '\%s()'}
 ///   Will be raised when the type of an argument used in a function call does
 ///   not match the expected argument type.
-/// - 1543: @LIT{invalid regex argument value used in call to function '\%s()'}
+/// - 1543: @LIT{invalid regex value}
 ///   Will be raised when an invalid regex argument value is used in a call to
 ///   a function that expects a regex.
 /// - 1550: @LIT{invalid structure of bind parameters}
@@ -437,6 +437,8 @@
 ///   Will be raised when a user function is registered with invalid code.
 /// - 1582: @LIT{user function '\%s()' not found}
 ///   Will be raised when a user function is accessed but not found.
+/// - 1583: @LIT{user function runtime error: \%s}
+///   Will be raised when a user function throws a runtime exception.
 /// - 1600: @LIT{cursor not found}
 ///   Will be raised when a cursor is requested via its id but a cursor with
 ///   that id cannot be found.
@@ -582,9 +584,9 @@
 /// - 21001: @LIT{dispatcher stopped}
 ///   Will be returned if a shutdown is in progress.
 /// - 21002: @LIT{named queue does not exist}
-///    "Will be returned if a queue with this name does not exist."
+///   Will be returned if a queue with this name does not exist.
 /// - 21003: @LIT{named queue is full}
-///    "Will be returned if a queue with this name is full."
+///   Will be returned if a queue with this name is full.
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -597,7 +599,7 @@
 /// @brief register all errors for ArangoDB
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitialiseErrorMessages (void);
+void TRI_InitialiseErrorMessages ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 0: ERROR_NO_ERROR
@@ -2148,7 +2150,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1542: ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH
 ///
-/// invalid argument type used in call to function '%s()'
+/// invalid argument type in call to function '%s()'
 ///
 /// Will be raised when the type of an argument used in a function call does
 /// not match the expected argument type.
@@ -2159,7 +2161,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1543: ERROR_QUERY_INVALID_REGEX
 ///
-/// invalid regex argument value used in call to function '%s()'
+/// invalid regex value
 ///
 /// Will be raised when an invalid regex argument value is used in a call to a
 /// function that expects a regex.
@@ -2396,6 +2398,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_FUNCTION_NOT_FOUND                                (1582)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1583: ERROR_QUERY_FUNCTION_RUNTIME_ERROR
+///
+/// user function runtime error: %s
+///
+/// Will be raised when a user function throws a runtime exception.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_FUNCTION_RUNTIME_ERROR                            (1583)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1600: ERROR_CURSOR_NOT_FOUND
@@ -3080,7 +3092,7 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// named queue does not exist
 ///
-///  "Will be returned if a queue with this name does not exist."
+/// Will be returned if a queue with this name does not exist.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUEUE_UNKNOWN                                           (21002)
@@ -3090,7 +3102,7 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// named queue is full
 ///
-///  "Will be returned if a queue with this name is full."
+/// Will be returned if a queue with this name is full.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUEUE_FULL                                              (21003)

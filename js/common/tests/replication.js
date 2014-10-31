@@ -1794,7 +1794,7 @@ function ReplicationApplierSuite () {
       assertFalse(state.state.running);
       // configure && start
       replication.applier.properties({
-        endpoint: "tcp://www.arangodb.org:7999", // should not exist
+        endpoint: "tcp://www.arangodb.com:7999", // should not exist
         connectTimeout: 3,
         maxConnectRetries: 1
       });
@@ -2044,7 +2044,7 @@ function ReplicationSyncSuite () {
     testSyncInvalidResponse : function () {
       try {
         replication.sync({
-          endpoint: "tcp://www.arangodb.org:80"
+          endpoint: "tcp://www.arangodb.com:80"
         });
         fail();
       }

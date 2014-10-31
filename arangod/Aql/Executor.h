@@ -45,6 +45,7 @@ namespace triagens {
   namespace aql {
 
     struct AstNode;
+    class Query;
     struct V8Expression;
 
 // -----------------------------------------------------------------------------
@@ -87,7 +88,8 @@ namespace triagens {
 /// @brief executes an expression directly
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_json_t* executeExpression (AstNode const*);
+        struct TRI_json_t* executeExpression (Query*,
+                                              AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a reference to a built-in function

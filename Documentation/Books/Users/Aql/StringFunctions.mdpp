@@ -18,7 +18,8 @@ For string processing, AQL offers the following functions:
 
 - *SUBSTRING(value, offset, length)*: Return a substring of *value*,
   starting at *offset* and with a maximum length of *length* characters. Offsets
-  start at position 0
+  start at position 0. Length is optional and if omitted the substring from *offset*
+  to the end of the string will be returned.
 
 - *LEFT(value, LENGTH)*: Returns the *LENGTH* leftmost characters of
   the string *value*

@@ -49,7 +49,8 @@ bool AqlValue::isTrue () const {
     else if (TRI_IsNumberJson(json) && json->_value._number != 0.0) {
       return true;
     }
-    else if (TRI_IsStringJson(json) && json->_value._string.length != 0) {
+    else if (TRI_IsStringJson(json) && json->_value._string.length != 1) {
+      // the trailing NULL bytes counts, too...
       return true;
     }
     else if (TRI_IsListJson(json) || TRI_IsArrayJson(json)) {

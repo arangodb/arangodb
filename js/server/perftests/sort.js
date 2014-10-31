@@ -399,7 +399,7 @@ var repgen = require("reportgenerator");
 
 var ret = loadTestRunner.loadTestRunner(optimizerRuleTestSuite, testOptions, testMethods);
 //require("internal").print(JSON.stringify(ret));
-repgen.generatePerfReportGrinderCSV("sort", ret);
+repgen.generatePerfReportJTL("sort", ret);
 
 return ret;
 // Local Variables:

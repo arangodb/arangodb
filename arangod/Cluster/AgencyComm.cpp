@@ -69,10 +69,10 @@ AgencyEndpoint::AgencyEndpoint (triagens::rest::Endpoint* endpoint,
 ////////////////////////////////////////////////////////////////////////////////
 
 AgencyEndpoint::~AgencyEndpoint () {
-  if (_connection != 0) {
+  if (_connection != nullptr) {
     delete _connection;
   }
-  if (_endpoint != 0) {
+  if (_endpoint != nullptr) {
     delete _endpoint;
   }
 }
@@ -108,7 +108,7 @@ AgencyCommResult::~AgencyCommResult () {
   std::map<std::string, AgencyCommResultEntry>::iterator it = _values.begin();
 
   while (it != _values.end()) {
-    if ((*it).second._json != 0) {
+    if ((*it).second._json != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, (*it).second._json);
     }
     ++it;
@@ -145,7 +145,7 @@ int AgencyCommResult::errorCode () const {
   TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, _body.c_str());
 
   if (! TRI_IsArrayJson(json)) {
-    if (json != 0) {
+    if (json != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
     return result;
@@ -227,7 +227,7 @@ void AgencyCommResult::clear () {
   std::map<std::string, AgencyCommResultEntry>::iterator it = _values.begin();
 
   while (it != _values.end()) {
-    if ((*it).second._json != 0) {
+    if ((*it).second._json != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, (*it).second._json);
     }
     ++it;
@@ -343,7 +343,7 @@ bool AgencyCommResult::parse (std::string const& stripKeyPrefix,
   TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, _body.c_str());
 
   if (! TRI_IsArrayJson(json)) {
-    if (json != 0) {
+    if (json != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
     return false;
@@ -418,7 +418,7 @@ AgencyCommLocker::AgencyCommLocker (std::string const& key,
                                     double ttl)
   : _key(key),
     _type(type),
-    _json(0),
+    _json(nullptr),
     _version(0),
     _isLocked(false) {
 
@@ -426,7 +426,7 @@ AgencyCommLocker::AgencyCommLocker (std::string const& key,
 
   _json = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, type.c_str(), type.size());
 
-  if (_json == 0) {
+  if (_json == nullptr) {
     return;
   }
 
@@ -443,7 +443,7 @@ AgencyCommLocker::AgencyCommLocker (std::string const& key,
 AgencyCommLocker::~AgencyCommLocker () {
   unlock();
 
-  if (_json != 0) {
+  if (_json != nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _json);
   }
 }
@@ -512,7 +512,7 @@ bool AgencyCommLocker::updateVersion (AgencyComm& comm) {
   if (_version == 0) {
     TRI_json_t* json = triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, 1);
 
-    if (json == 0) {
+    if (json == nullptr) {
       return false;
     }
 
@@ -531,13 +531,13 @@ bool AgencyCommLocker::updateVersion (AgencyComm& comm) {
     // Version key found, now update it
     TRI_json_t* oldJson = triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, _version);
 
-    if (oldJson == 0) {
+    if (oldJson == nullptr) {
       return false;
     }
 
     TRI_json_t* newJson = triagens::basics::JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, _version + 1);
 
-    if (newJson == 0) {
+    if (newJson == nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, oldJson);
       return false;
     }
@@ -597,7 +597,7 @@ void AgencyComm::cleanup () {
     while (it != _globalEndpoints.end()) {
       AgencyEndpoint* agencyEndpoint = (*it);
 
-      TRI_ASSERT(agencyEndpoint != 0);
+      TRI_ASSERT(agencyEndpoint != nullptr);
       delete agencyEndpoint;
 
       ++it;
@@ -624,9 +624,9 @@ bool AgencyComm::tryConnect () {
     while (it != _globalEndpoints.end()) {
       AgencyEndpoint* agencyEndpoint = (*it);
 
-      TRI_ASSERT(agencyEndpoint != 0);
-      TRI_ASSERT(agencyEndpoint->_endpoint != 0);
-      TRI_ASSERT(agencyEndpoint->_connection != 0);
+      TRI_ASSERT(agencyEndpoint != nullptr);
+      TRI_ASSERT(agencyEndpoint->_endpoint != nullptr);
+      TRI_ASSERT(agencyEndpoint->_connection != nullptr);
 
       if (agencyEndpoint->_endpoint->isConnected()) {
         return true;
@@ -659,9 +659,9 @@ void AgencyComm::disconnect () {
   while (it != _globalEndpoints.end()) {
     AgencyEndpoint* agencyEndpoint = (*it);
 
-    TRI_ASSERT(agencyEndpoint != 0);
-    TRI_ASSERT(agencyEndpoint->_connection != 0);
-    TRI_ASSERT(agencyEndpoint->_endpoint != 0);
+    TRI_ASSERT(agencyEndpoint != nullptr);
+    TRI_ASSERT(agencyEndpoint->_connection != nullptr);
+    TRI_ASSERT(agencyEndpoint->_endpoint != nullptr);
 
     agencyEndpoint->_connection->disconnect();
     agencyEndpoint->_endpoint->disconnect();
