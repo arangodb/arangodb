@@ -38,6 +38,7 @@
 namespace triagens {
   namespace aql {
 
+    class Query;
     struct Variable;
 
 // -----------------------------------------------------------------------------
@@ -71,7 +72,8 @@ namespace triagens {
 /// @brief execute the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-      AqlValue execute (triagens::arango::AqlTransaction*,
+      AqlValue execute (Query* query,
+                        triagens::arango::AqlTransaction*,
                         std::vector<TRI_document_collection_t const*>&,
                         std::vector<AqlValue>&,
                         size_t,

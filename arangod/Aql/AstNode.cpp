@@ -239,10 +239,12 @@ static int CompareNodes (AstNode const* lhs, AstNode const* rhs) {
 
 AstNode::AstNode (AstNodeType type)
   : type(type),
-    flags(0) {
+    flags(0),
+    computedJson(nullptr) {
 
   TRI_InitVectorPointer(&members, TRI_UNKNOWN_MEM_ZONE);
   TRI_ASSERT(flags == 0);
+  TRI_ASSERT(computedJson == nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -254,8 +256,8 @@ AstNode::AstNode (AstNodeType type,
   : AstNode(type) {
 
   value.type = valueType;
-  TRI_InitVectorPointer(&members, TRI_UNKNOWN_MEM_ZONE);
   TRI_ASSERT(flags == 0);
+  TRI_ASSERT(computedJson == nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -263,12 +265,11 @@ AstNode::AstNode (AstNodeType type,
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode::AstNode (bool v)
-  : AstNode(NODE_TYPE_VALUE) {
+  : AstNode(NODE_TYPE_VALUE, VALUE_TYPE_BOOL) {
 
-  value.type = VALUE_TYPE_BOOL;
   value.value._bool = v;
-  TRI_InitVectorPointer(&members, TRI_UNKNOWN_MEM_ZONE);
   TRI_ASSERT(flags == 0);
+  TRI_ASSERT(computedJson == nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -277,11 +278,12 @@ AstNode::AstNode (bool v)
 
 AstNode::AstNode (Ast* ast,
                   triagens::basics::Json const& json) 
-  : type(getNodeTypeFromJson(json)),
-    flags(0) {
+  : AstNode(getNodeTypeFromJson(json)) {
+
+  TRI_ASSERT(flags == 0);
+  TRI_ASSERT(computedJson == nullptr);
 
   auto query = ast->query();
-  TRI_InitVectorPointer(&members, TRI_UNKNOWN_MEM_ZONE);
 
   switch (type) {
     case NODE_TYPE_COLLECTION:
@@ -289,9 +291,7 @@ AstNode::AstNode (Ast* ast,
     case NODE_TYPE_ATTRIBUTE_ACCESS:
     case NODE_TYPE_FCALL_USER:
       value.type = VALUE_TYPE_STRING;
-      setStringValue(query->registerString(JsonHelper::getStringValue(json.json(),
-                                                                      "name", ""),
-                                           false));
+      setStringValue(query->registerString(JsonHelper::getStringValue(json.json(), "name", ""), false));
       break;
     case NODE_TYPE_VALUE: {
       int vType = JsonHelper::checkAndGetNumericValue<int>(json.json(), "vTypeID");
@@ -337,9 +337,7 @@ AstNode::AstNode (Ast* ast,
       break;
     }
     case NODE_TYPE_ARRAY_ELEMENT: {
-      setStringValue(query->registerString(JsonHelper::getStringValue(json.json(),
-                                                                      "name", ""),
-                                           false));
+      setStringValue(query->registerString(JsonHelper::getStringValue(json.json(), "name", ""), false));
       break;
     }
     case NODE_TYPE_ARRAY:
@@ -405,11 +403,34 @@ AstNode::AstNode (Ast* ast,
 
 AstNode::~AstNode () {
   TRI_DestroyVectorPointer(&members);
+  
+  if (computedJson != nullptr) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, computedJson);
+    computedJson = nullptr;
+  }
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compute the JSON for a constant value node
+/// the JSON is owned by the node and must not be freed by the caller
+/// note that the return value might be NULL in case of OOM
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* AstNode::computeJson () const {
+  TRI_ASSERT(isConstant());
+
+  if (computedJson == nullptr) {
+    // note: the following may fail but we do not need to 
+    // check that here
+    computedJson = toJsonValue(TRI_UNKNOWN_MEM_ZONE);
+  }
+
+  return computedJson;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sort the members of a (list) node
@@ -556,71 +577,6 @@ TRI_json_t* AstNode::toJsonValue (TRI_memory_zone_t* zone) const {
   }
 
   return nullptr;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a textual representation of the node
-////////////////////////////////////////////////////////////////////////////////
-
-std::string AstNode::toInfoString (TRI_memory_zone_t* zone) const {
-  std::string ret;
-
-  ret += std::string(" of Type '");
-  ret += getTypeString();
-  ret += std::string("' ");
-
-  if (type == NODE_TYPE_COLLECTION ||
-      type == NODE_TYPE_PARAMETER ||
-      type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-      type == NODE_TYPE_ARRAY_ELEMENT ||
-      type == NODE_TYPE_FCALL_USER) {
-    // dump "name" of node
-    ret += std::string(" by Name ");
-    ret += getStringValue();
-  }
-
-  if (type == NODE_TYPE_FCALL) {
-    auto func = static_cast<Function*>(getData());
-    ret += std::string(" by Name '");
-    ret += func->externalName;
-    ret += std::string("' with Parameters");
-  }
-
-  if (type == NODE_TYPE_VALUE) {
-    // dump value of "value" node
-    ret += std::string(" with Value(s) ");
-    /// TODO: auto v = toJsonValue(zone);
-  }
-
-  if (type == NODE_TYPE_VARIABLE ||
-      type == NODE_TYPE_REFERENCE) {
-    auto variable = static_cast<Variable*>(getData());
-    ret += std::string(" by Name(");
-    ret += variable->name;
-    ret += std::string(") ");
-  }
-  
-  // dump sub-nodes 
-  size_t const n = members._length;
-
-  if (n > 0) {
-    ret += std::string("(");
-    try {
-      for (size_t i = 0; i < n; ++i) {
-        auto member = getMember(i);
-        if (member != nullptr && member->type != NODE_TYPE_NOP) {
-          ret += member->toInfoString(zone);
-        }
-      }
-    }
-    catch (...) {
-      ret += std::string("Invalid Subnode!");
-    }
-    
-    ret += std::string(")");
-  }
-
-  return ret;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1040,6 +996,10 @@ bool AstNode::isConstant () const {
     // fast track exit
     return true;
   }
+  if (hasFlag(FLAG_DYNAMIC)) {
+    // fast track exit
+    return false;
+  }
 
   if (type == NODE_TYPE_VALUE) {
     setFlag(FLAG_CONSTANT);
@@ -1054,6 +1014,7 @@ bool AstNode::isConstant () const {
 
       if (member != nullptr) {
         if (! member->isConstant()) {
+          setFlag(FLAG_DYNAMIC);
           return false;
         }
       }
@@ -1077,6 +1038,7 @@ bool AstNode::isConstant () const {
         }
 
         if (! value->isConstant()) {
+          setFlag(FLAG_DYNAMIC);
           return false;
         }
       }
@@ -1086,6 +1048,7 @@ bool AstNode::isConstant () const {
     return true;
   }
 
+  setFlag(FLAG_DYNAMIC);
   return false;
 }
 
@@ -1122,16 +1085,6 @@ bool AstNode::canThrow () const {
 
   // no sub-node throws, now check ourselves
 
-  if (type == NODE_TYPE_INDEXED_ACCESS) {
-    // TODO: validate whether this can actually throw
-    return true;
-  }
-
-  if (type == NODE_TYPE_EXPAND) {
-    // TODO: validate whether this can actually throw
-    return true;
-  }
-  
   if (type == NODE_TYPE_FCALL) {
     // built-in functions may or may not throw
     auto func = static_cast<Function*>(getData());
@@ -1143,6 +1096,7 @@ bool AstNode::canThrow () const {
     return true;
   }
 
+  // everything else does not throw!
   return false;
 }
 

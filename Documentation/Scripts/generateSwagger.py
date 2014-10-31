@@ -602,7 +602,7 @@ def error(cargo):
     global DEBUG, C_FILE
     if DEBUG: print >> sys.stderr, "error"
 
-    sys.stderr.write('Unidentifiable line:\n' + line)
+    sys.stderr.write('Unidentifiable line:\n' + cargo)
 
 ################################################################################
 ### @brief comment

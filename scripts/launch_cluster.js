@@ -1,4 +1,9 @@
+/*jshint unused: false */
+/*global require */
+
 function main (argv) {
+  "use strict";
+
   var options = {};
   var runInfoName = "runInfo.json";
   var print = require("internal").print;
@@ -8,7 +13,7 @@ function main (argv) {
   }
   if (argv.length > 2) {
     runInfoName = argv[2];
-    print("Using runInfo name:",runInfoName);
+    print("Using runInfo name:", runInfoName);
   }
   var Planner = require("org/arangodb/cluster").Planner;
   var Kickstarter = require("org/arangodb/cluster").Kickstarter;

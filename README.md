@@ -1,4 +1,4 @@
-![ArangoDB-Logo](https://www.arangodb.org/wp-content/uploads/2012/10/logo_arangodb_transp.png)
+![ArangoDB-Logo](https://www.arangodb.com/wp-content/uploads/2012/10/logo_arangodb_transp.png)
 
 ArangoDB
 ========
@@ -25,9 +25,9 @@ Key features include:
 
 For more in-depth information
 
-* read more on the [design goals of ArangoDB](http://www.arangodb.org/2012/03/07/avocadodbs-design-objectives)
+* read more on the [design goals of ArangoDB](http://www.arangodb.com/2012/03/07/avocadodbs-design-objectives)
 * [watch the video](http://vimeo.com/36411892) - Martin Schoenert, architect of ArangoDB, gives an introduction of what the ArangoDB project is about.
-* or give it a [try](http://www.arangodb.org/try).
+* or give it a [try](http://www.arangodb.com/try).
 
 
 For the Impatient
@@ -38,7 +38,7 @@ For Mac OSX users: execute
     brew install arangodb
 
 For Windows and Linux users: use the installer script or distribution package
-from our [download page](http://www.arangodb.org/download).
+from our [download page](http://www.arangodb.com/download).
 
 If the package manager has not already started the ArangoDB server, use
 
@@ -64,15 +64,15 @@ More Information
 ----------------
 
 Please check the
-[Installation Manual](http://www.arangodb.org/manuals/current/InstallManual.html)
+[Installation Manual](http://www.arangodb.com/manuals/current/InstallManual.html)
 for installation and compilation instructions.
 
 The
-[User Manual](http://www.arangodb.org/manuals/current/UserManual.html)
+[User Manual](http://www.arangodb.com/manuals/current/UserManual.html)
 has an introductory chapter showing the basic operations of ArangoDB.
 
 Or you can use the 
-[online tutorial](http://www.arangodb.org/try)
+[online tutorial](http://www.arangodb.com/try)
 to play with ArangoDB without installing it locally.
 
 
@@ -86,7 +86,7 @@ you report them:
 
 You can use the Google group for improvements, feature requests, comments 
 
-[http://www.arangodb.org/community](http://www.arangodb.org/community)
+[http://www.arangodb.com/community](http://www.arangodb.com/community)
 
 
 Citing ArangoDB
@@ -98,6 +98,6 @@ Please kindly cite ArangoDB in your publications if it helps your research:
    Author = {ArangoDB},
    Title = { {ArangoDB 2.2}: An Open Source multi-purpose database supporting flexible data models for documents, graphs, and key-values.},
    Year  = {2014},
-   Howpublished = {\url{http://arangodb.org/}
+   Howpublished = {\url{http://arangodb.com/}
 }
 ```

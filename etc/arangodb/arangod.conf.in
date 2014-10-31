@@ -1,7 +1,7 @@
 # ArangoDB configuration file
 # 
 # Documentation: 
-# http://www.arangodb.org/manuals/current/CommandLine.html
+# http://www.arangodb.com/manuals/current/CommandLine.html
 # 
 
 [database]
@@ -22,7 +22,7 @@ directory = @LOCALSTATEDIR@/lib/arangodb
 #   endpoint = tcp://0.0.0.0:8529
 #   endpoint = tcp://127.0.0.1:8529
 #   endpoint = tcp://localhost:8529
-#   endpoint = tcp://myserver.arangodb.org:8529
+#   endpoint = tcp://myserver.arangodb.com:8529
 #   endpoint = tcp://[::]:8529
 #   endpoint = tcp://[fe80::21a:5df1:aede:98cf]:8529
 #

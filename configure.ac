@@ -131,6 +131,16 @@ AC_ARG_ENABLE(internal-go,
 
 AM_CONDITIONAL(ENABLE_INTERNAL_GO, test "x$tr_INTERNAL_GO" = xyes)
 
+if test "x$tr_INTERNAL_GO" = "xno"; then
+  AC_CHECK_PROG(GO, go, go)
+  if test "x$GO" = "x"; then
+    AC_MSG_WARN([no go executable found.])
+    BASIC_INFO="$BASIC_INFO|GO BINARY: not found"
+  else
+    BASIC_INFO="$BASIC_INFO|GO BINARY: $GO"
+  fi
+fi
+
 dnl ============================================================================
 dnl --SECTION--                                                          OPTIONS
 dnl ============================================================================
@@ -152,20 +162,6 @@ if test "x$tr_RELATIVE" != xno;  then
 else
   BASIC_INFO="$BASIC_INFO|RELATIVE PATHS: disabled"
 fi
-
-dnl ----------------------------------------------------------------------------
-dnl execinfo - for backtraces in the Cpp parts
-dnl ----------------------------------------------------------------------------
-AC_ARG_WITH(backtrace, 
-                    [  --with-backtrace        enable backtrace dumps in the syslog],
-                        [ if test "x$withval" != "xno" ; then
-                             CFLAGS="$CFLAGS  -rdynamic "
-                             LDFLAGS="$LDFLAGS  -rdynamic "
-                             SERVER_LDFLAGS="$SERVER_LDFLAGS  -rdynamic "
-                             AC_CHECK_FUNCS(backtrace)
-                          fi
-                        ]
-)
 
 dnl ============================================================================
 dnl --SECTION--                                                    CONFIGURATION
@@ -254,7 +250,7 @@ dnl ============================================================================
 BUILD_H="\$(top_srcdir)/build.h"
 AC_SUBST(BUILD_H)
 
-AC_CONFIG_FILES([Makefile Documentation/arango.template Installation/MacOSX/Bundle/Info.plist])
+AC_CONFIG_FILES([Makefile Installation/MacOSX/Bundle/Info.plist])
 AC_CONFIG_HEADER([config/config.h lib/Basics/local-configuration.h])
 AC_OUTPUT
 

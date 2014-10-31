@@ -1785,34 +1785,36 @@ void TRI_FreeUserStructuresVocBase (TRI_vocbase_t* vocbase) {
 void TRI_InitV8UserStructures (v8::Handle<v8::Context> context) {
   v8::HandleScope scope;
 
-  TRI_AddGlobalFunctionVocbase(context, "KEYSPACE_CREATE", JS_KeyspaceCreate);
-  TRI_AddGlobalFunctionVocbase(context, "KEYSPACE_DROP", JS_KeyspaceDrop);
-  TRI_AddGlobalFunctionVocbase(context, "KEYSPACE_COUNT", JS_KeyspaceCount);
-  TRI_AddGlobalFunctionVocbase(context, "KEYSPACE_EXISTS", JS_KeyspaceExists);
-  TRI_AddGlobalFunctionVocbase(context, "KEYSPACE_KEYS", JS_KeyspaceKeys);
-  TRI_AddGlobalFunctionVocbase(context, "KEYSPACE_REMOVE", JS_KeyspaceRemove);
-  TRI_AddGlobalFunctionVocbase(context, "KEYSPACE_GET", JS_KeyspaceGet);
+  // NOTE: the following functions are all experimental and might 
+  // change without further notice
+  TRI_AddGlobalFunctionVocbase(context, "KEYSPACE_CREATE", JS_KeyspaceCreate, true);
+  TRI_AddGlobalFunctionVocbase(context, "KEYSPACE_DROP", JS_KeyspaceDrop, true);
+  TRI_AddGlobalFunctionVocbase(context, "KEYSPACE_COUNT", JS_KeyspaceCount, true);
+  TRI_AddGlobalFunctionVocbase(context, "KEYSPACE_EXISTS", JS_KeyspaceExists, true);
+  TRI_AddGlobalFunctionVocbase(context, "KEYSPACE_KEYS", JS_KeyspaceKeys, true);
+  TRI_AddGlobalFunctionVocbase(context, "KEYSPACE_REMOVE", JS_KeyspaceRemove, true);
+  TRI_AddGlobalFunctionVocbase(context, "KEYSPACE_GET", JS_KeyspaceGet, true);
 
-  TRI_AddGlobalFunctionVocbase(context, "KEY_SET", JS_KeySet);
-  TRI_AddGlobalFunctionVocbase(context, "KEY_SET_CAS", JS_KeySetCas);
-  TRI_AddGlobalFunctionVocbase(context, "KEY_GET", JS_KeyGet);
-  TRI_AddGlobalFunctionVocbase(context, "KEY_REMOVE", JS_KeyRemove);
-  TRI_AddGlobalFunctionVocbase(context, "KEY_EXISTS", JS_KeyExists);
-  TRI_AddGlobalFunctionVocbase(context, "KEY_TYPE", JS_KeyType);
+  TRI_AddGlobalFunctionVocbase(context, "KEY_SET", JS_KeySet, true);
+  TRI_AddGlobalFunctionVocbase(context, "KEY_SET_CAS", JS_KeySetCas, true);
+  TRI_AddGlobalFunctionVocbase(context, "KEY_GET", JS_KeyGet, true);
+  TRI_AddGlobalFunctionVocbase(context, "KEY_REMOVE", JS_KeyRemove, true);
+  TRI_AddGlobalFunctionVocbase(context, "KEY_EXISTS", JS_KeyExists, true);
+  TRI_AddGlobalFunctionVocbase(context, "KEY_TYPE", JS_KeyType, true);
   
   // numeric functions
-  TRI_AddGlobalFunctionVocbase(context, "KEY_INCR", JS_KeyIncr);
+  TRI_AddGlobalFunctionVocbase(context, "KEY_INCR", JS_KeyIncr, true);
   
   // list / array functions
-  TRI_AddGlobalFunctionVocbase(context, "KEY_UPDATE", JS_KeyUpdate);
-  TRI_AddGlobalFunctionVocbase(context, "KEY_KEYS", JS_KeyKeys);
-  TRI_AddGlobalFunctionVocbase(context, "KEY_VALUES", JS_KeyValues);
-  TRI_AddGlobalFunctionVocbase(context, "KEY_COUNT", JS_KeyCount);
-  TRI_AddGlobalFunctionVocbase(context, "KEY_PUSH", JS_KeyPush);
-  TRI_AddGlobalFunctionVocbase(context, "KEY_POP", JS_KeyPop);
-  TRI_AddGlobalFunctionVocbase(context, "KEY_TRANSFER", JS_KeyTransfer);
-  TRI_AddGlobalFunctionVocbase(context, "KEY_GET_AT", JS_KeyGetAt);
-  TRI_AddGlobalFunctionVocbase(context, "KEY_SET_AT", JS_KeySetAt);
+  TRI_AddGlobalFunctionVocbase(context, "KEY_UPDATE", JS_KeyUpdate, true);
+  TRI_AddGlobalFunctionVocbase(context, "KEY_KEYS", JS_KeyKeys, true);
+  TRI_AddGlobalFunctionVocbase(context, "KEY_VALUES", JS_KeyValues, true);
+  TRI_AddGlobalFunctionVocbase(context, "KEY_COUNT", JS_KeyCount, true);
+  TRI_AddGlobalFunctionVocbase(context, "KEY_PUSH", JS_KeyPush, true);
+  TRI_AddGlobalFunctionVocbase(context, "KEY_POP", JS_KeyPop, true);
+  TRI_AddGlobalFunctionVocbase(context, "KEY_TRANSFER", JS_KeyTransfer, true);
+  TRI_AddGlobalFunctionVocbase(context, "KEY_GET_AT", JS_KeyGetAt, true);
+  TRI_AddGlobalFunctionVocbase(context, "KEY_SET_AT", JS_KeySetAt, true);
 }
 
 // -----------------------------------------------------------------------------

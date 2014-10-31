@@ -447,8 +447,6 @@
    * This has to contain the vertex-collection name.
    */
   controller.post("/:graph/vertex", function(req, res) {
-	  require("console").log("+++++++++++++++++++++++++");
-	  require("console").log(req);
     var name = req.params("graph");
     var body = req.params("collection");
     var g;

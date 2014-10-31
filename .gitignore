@@ -32,13 +32,6 @@ mr-*.h
 3rdParty/libev/ARCH.ia32/
 3rdParty/zlib-1.2.7/
 
-Doxygen/doc/
-Doxygen/manuals/
-Doxygen/man/
-Doxygen/website/
-Doxygen/wiki/
-Doxygen/xml/
-
 Makefile
 Makefile.in
 aclocal.m4
@@ -60,11 +53,6 @@ core
 TAGS
 tags
 
-Doxygen/*.doxy
-Doxygen/html/
-Doxygen/latex/
-Doxygen/js/
-Documentation/arango.template
 Documentation/Examples/*.generated
 UnitTests/HttpInterface/logs/
 UnitTests/basics_suite
@@ -102,12 +90,11 @@ nbproject/
 test.cpp.txt
 
 .sass-cache
+.sass-cache/
 
 js/apps/*
 !js/apps/system
 !js/apps/system/*
-
-.sass-cache/
 
 3rdParty/etcd/src/
 Documentation/Books/allComments.txt

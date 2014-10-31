@@ -1301,9 +1301,10 @@ class SortToIndexNode : public WalkerWorker<ExecutionNode> {
           node->getType() == EN::INDEX_RANGE ||
           node->getType() == EN::ENUMERATE_LIST) {
         // we are contained in an outer loop
-        // TODO: potential optimization: check if the outer loop has 0 or 1 
-        // iterations. in this case it is still possible to remove the sort
         return true;
+
+        // future potential optimization: check if the outer loop has 0 or 1 
+        // iterations. in this case it is still possible to remove the sort
       }
     }
 

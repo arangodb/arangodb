@@ -75,14 +75,15 @@ def genJsFile(types):
 # generate C header file from errors
 def genCHeaderFile(types):
   header = "\n"\
-           + "#ifndef TRIAGENS_BASICS_C_VOC_MIMETYPES_H\n"\
-           + "#define TRIAGENS_BASICS_C_VOC_MIMETYPES_H 1\n"\
+           + "#ifndef TRIAGENS_BASICS_VOC_MIMETYPES_H\n"\
+           + "#define TRIAGENS_BASICS_VOC_MIMETYPES_H 1\n"\
            + "\n"\
            + "////////////////////////////////////////////////////////////////////////////////\n"\
            + "/// @brief initialise mimetypes\n"\
            + "////////////////////////////////////////////////////////////////////////////////\n"\
            + "\n"\
-           + "void TRI_InitialiseEntriesMimetypes (void);\n"\
+           + "void TRI_InitialiseEntriesMimetypes ();\n"\
+           + "\n"\
            + "#endif\n"\
            + "\n"
 
@@ -95,14 +96,14 @@ def genCFile(types, filename):
   headerfile = os.path.splitext(filename)[0] + ".h"
 
   impl = prologue\
-         + "#include <Basics/Common.h>\n"\
+         + "#include \"Basics/Common.h\"\n"\
          + "#include \"" + headerfile + "\"\n"\
          + "\n"\
          + "////////////////////////////////////////////////////////////////////////////////\n"\
          + "/// @brief initialise mimetypes\n"\
          + "////////////////////////////////////////////////////////////////////////////////\n"\
          + "\n"\
-         + "void TRI_InitialiseEntriesMimetypes (void) {\n"
+         + "void TRI_InitialiseEntriesMimetypes () {\n"
 
   # print individual types
   for t in types:
@@ -139,8 +140,9 @@ for t in mimetypes:
   if r1.match(t[0]):
     continue
 
+  t[2] = t[2].strip()
   if t[0] == "" or t[1] == "" or not (t[2] == "true" or t[2] == "false"):
-    print >> sys.stderr, "invalid mimetypes declaration file: %s (line %i)" % (source, i)
+    print >> sys.stderr, "invalid mimetypes declaration file: %s" % (source)
     sys.exit()
 
   types.append(t)

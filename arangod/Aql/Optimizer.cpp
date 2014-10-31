@@ -197,7 +197,7 @@ int Optimizer::createPlans (ExecutionPlan* plan,
         }
       }
 
-      // TODO: abort early here if we found a good-enough plan
+      // future optimization: abort early here if we found a good-enough plan
       // a good-enough plan is probably every plan with costs below some
       // defined threshold. this requires plan costs to be calculated here
     }
@@ -225,7 +225,8 @@ int Optimizer::createPlans (ExecutionPlan* plan,
 
   estimatePlans();
   sortPlans();
-  /*
+#if 0
+  // Only for debugging:
   std::cout << "Optimisation ends with " << _plans.size() << " plans."
             << std::endl;
   for (auto p : _plans.list) {
@@ -233,7 +234,7 @@ int Optimizer::createPlans (ExecutionPlan* plan,
     std::cout << "costing: " << p->getCost() << std::endl;
     std::cout << std::endl;
   }
-  */
+#endif
 
   return TRI_ERROR_NO_ERROR;
 }

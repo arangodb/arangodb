@@ -58,7 +58,7 @@ function UsersSuite () {
     }
 
     try {
-      users.remove("hackers@arangodb.org");
+      users.remove("hackers@arangodb.com");
     }
     catch (e2) {
       // nope
@@ -166,7 +166,7 @@ function UsersSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSaveWithEmailAddressName : function () {
-      var username = "hackers@arangodb.org";
+      var username = "hackers@arangodb.com";
       var passwd = "arangodb-loves-you";
 
       users.save(username, passwd);

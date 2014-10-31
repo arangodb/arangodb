@@ -1,9 +1,10 @@
 #!/bin/bash
 
 echo "$0: checking for core file"
-if [[ -f core ]]; then
+COREFILE=$(find . -maxdepth 1 -name "core*" | head -n 1)
+if [[ -f "$COREFILE" ]]; then 
   echo "$0: found a core file"
-  sudo echo "thread apply all bt full" | gdb -c core bin/arangod
+  gdb -c "$COREFILE" bin/arangod -ex "thread apply all bt" -ex "set pagination 0" -batch; 
 fi
 
 echo "$0: done"
