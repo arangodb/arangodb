@@ -1724,7 +1724,12 @@ function resultCursor (req, res, cursor, code, options) {
       hasCount = ((options && options.countRequested) ? true : false);
       count = cursor.json.length;
       rows = cursor.json;
-      extra = cursor.extra;
+      extra = { };
+      [ "stats", "warnings", "profile" ].forEach(function(d) {
+        if (cursor.hasOwnProperty(d)) {
+          extra[d] = cursor[d];
+        }
+      });
       hasNext = false;
       cursorId = null;
     }
