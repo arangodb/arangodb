@@ -50,12 +50,21 @@ var SimpleQueryWithin;
 /// @brief array query
 ////////////////////////////////////////////////////////////////////////////////
 
-function GeneralArrayCursor (documents, skip, limit, extra) {
+function GeneralArrayCursor (documents, skip, limit, data) {
   this._documents = documents;
   this._countTotal = documents.length;
   this._skip = skip;
   this._limit = limit;
-  this._extra = extra;
+  this._extra = { };
+  
+  var self = this;
+  if (data !== null && data !== undefined && typeof data === 'object') {
+    [ 'stats', 'warnings', 'profile' ].forEach(function(d) {
+      if (data.hasOwnProperty(d)) {
+        self._extra[d] = data[d];
+      }
+    });
+  }
 
   this.execute();
 }

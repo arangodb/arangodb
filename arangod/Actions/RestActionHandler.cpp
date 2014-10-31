@@ -49,15 +49,15 @@ using namespace triagens::arango;
 RestActionHandler::RestActionHandler (HttpRequest* request,
                                       action_options_t* data)
   : RestVocbaseBaseHandler(request),
-    _action(0),
+    _action(nullptr),
     _queue(),
     _dataLock(),
-    _data(0) {
+    _data(nullptr) {
 
   _action = TRI_LookupActionVocBase(request);
 
   // use the queue from options if an action is known
-  if (_action != 0) {
+  if (_action != nullptr) {
     _queue = data->_queue;
   }
 
@@ -76,7 +76,7 @@ RestActionHandler::RestActionHandler (HttpRequest* request,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestActionHandler::isDirect () {
-  return _action == 0;
+  return _action == nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -102,7 +102,7 @@ HttpHandler::status_t RestActionHandler::execute () {
   }
 
   // need an action
-  if (_action == 0) {
+  if (_action == nullptr) {
     generateNotImplemented(_request->requestPath());
   }
 
@@ -185,7 +185,7 @@ TRI_action_result_t RestActionHandler::executeAction () {
     result.isValid = true;
     generateNotImplemented(_action->_url);
   }
-
+  
   return result;
 }
 

@@ -1719,11 +1719,11 @@ function resultCursor (req, res, cursor, code, options) {
         cursor.dispose();
       }
     }
-    else if (cursor.hasOwnProperty('docs')) {
+    else if (cursor.hasOwnProperty('json')) {
       // cursor is a regular JS object (performance optimisation)
       hasCount = ((options && options.countRequested) ? true : false);
-      count = cursor.docs.length;
-      rows = cursor.docs;
+      count = cursor.json.length;
+      rows = cursor.json;
       extra = cursor.extra;
       hasNext = false;
       cursorId = null;
