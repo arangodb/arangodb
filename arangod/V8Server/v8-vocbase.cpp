@@ -1202,7 +1202,7 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
 
   auto queryResult = query.execute(static_cast<triagens::aql::QueryRegistry*>(v8g->_queryRegistry));
   
-/* TODO
+/* TODO: check if we need this here!
   if (tryCatch.HasCaught()) {
     if (tryCatch.CanContinue()) {
       return scope.Close(v8::ThrowException(tryCatch.Exception()));
