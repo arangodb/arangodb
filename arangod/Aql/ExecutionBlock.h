@@ -357,6 +357,13 @@ namespace triagens {
 
     class SingletonBlock : public ExecutionBlock {
 
+      void deleteInputVariables() {
+          if (_inputRegisterValues != nullptr) {
+            delete _inputRegisterValues;
+            _inputRegisterValues = nullptr;
+          }
+      }
+
       public:
 
         SingletonBlock (ExecutionEngine* engine, 
@@ -366,10 +373,7 @@ namespace triagens {
         }
 
         ~SingletonBlock () {
-          if (_inputRegisterValues != nullptr) {
-            delete _inputRegisterValues;
-            _inputRegisterValues = nullptr;
-          }
+          deleteInputVariables();
         }
 
         int initialize () override {
