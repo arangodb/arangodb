@@ -607,7 +607,7 @@ QueryResult Query::execute (QueryRegistry* registry) {
     stats = _engine->_stats.toJson();
 
     _trx->commit();
-   
+    
     cleanupPlanAndEngine(TRI_ERROR_NO_ERROR);
 
     enterState(FINALIZATION); 
@@ -1065,7 +1065,7 @@ void Query::cleanupPlanAndEngine (int errorCode) {
   }
 
   if (_trx != nullptr) {
-    _trx->abort();
+    // If the transaction was not committed, it is automatically aborted
     delete _trx;
     _trx = nullptr;
   }
@@ -1125,7 +1125,7 @@ TRI_json_t* Query::warningsToJson () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 triagens::arango::TransactionContext* Query::createTransactionContext () {
-  if (v8::Isolate::GetCurrent() != nullptr) {
+  if (_contextOwnedByExterior) {
     // we can use v8
     return new triagens::arango::V8TransactionContext(true);
   }

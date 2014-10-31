@@ -234,8 +234,8 @@ namespace triagens {
             }
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-//            TRI_ASSERT(_numberTrxActive == _numberTrxInScope - 1);
-//            _numberTrxActive++;  // Every transaction gets here at most once
+            TRI_ASSERT(_numberTrxActive == _numberTrxInScope - 1);
+            _numberTrxActive++;  // Every transaction gets here at most once
 #endif
 
             if (! _isReal) {
@@ -266,9 +266,9 @@ namespace triagens {
                 _trx->_status = TRI_TRANSACTION_COMMITTED;
               }
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-//              TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
-//              TRI_ASSERT(_numberTrxActive > 0);
-//              _numberTrxActive--;  // Every transaction gets here at most once
+              TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
+              TRI_ASSERT(_numberTrxActive > 0);
+              _numberTrxActive--;  // Every transaction gets here at most once
 #endif
               return TRI_ERROR_NO_ERROR;
             }
@@ -276,9 +276,9 @@ namespace triagens {
             int res = TRI_CommitTransaction(_trx, _nestingLevel);
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-//            TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
-//            TRI_ASSERT(_numberTrxActive > 0);
-//            _numberTrxActive--;  // Every transaction gets here at most once
+            TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
+            TRI_ASSERT(_numberTrxActive > 0);
+            _numberTrxActive--;  // Every transaction gets here at most once
 #endif
 
             return res;
@@ -300,9 +300,9 @@ namespace triagens {
               }
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-//              TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
-//              TRI_ASSERT(_numberTrxActive > 0);
-//              _numberTrxActive--;  // Every transaction gets here at most once
+              TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
+              TRI_ASSERT(_numberTrxActive > 0);
+              _numberTrxActive--;  // Every transaction gets here at most once
 #endif
               return TRI_ERROR_NO_ERROR;
             }
@@ -310,9 +310,13 @@ namespace triagens {
             int res = TRI_AbortTransaction(_trx, _nestingLevel);
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-//            TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
-//            TRI_ASSERT(_numberTrxActive > 0);
-//            _numberTrxActive--;  // Every transaction gets here at most once
+            if (_numberTrxActive != _numberTrxInScope) {
+              std::cout << _numberTrxInScope << ":" << _numberTrxActive
+                        << std::endl;
+            }
+            TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
+            TRI_ASSERT(_numberTrxActive > 0);
+            _numberTrxActive--;  // Every transaction gets here at most once
 #endif
 
             return res;
