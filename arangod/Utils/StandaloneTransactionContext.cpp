@@ -42,6 +42,7 @@ using namespace triagens::arango;
 StandaloneTransactionContext::StandaloneTransactionContext () 
   : TransactionContext(),
     _resolver(nullptr) {
+  // std::cout << TRI_CurrentThreadId() << ", STANDALONETRANSACTIONCONTEXT CTOR\r\n";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -49,6 +50,7 @@ StandaloneTransactionContext::StandaloneTransactionContext ()
 ////////////////////////////////////////////////////////////////////////////////
         
 StandaloneTransactionContext::~StandaloneTransactionContext () {
+  // std::cout << TRI_CurrentThreadId() << ", STANDALONETRANSACTIONCONTEXT DTOR\r\n";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -76,6 +78,7 @@ int StandaloneTransactionContext::registerTransaction (TRI_transaction_t* trx) {
   if (_resolver == nullptr) {
     _resolver = new CollectionNameResolver(trx->_vocbase);
   }
+  // std::cout << TRI_CurrentThreadId() << ", STANDALONETRANSACTIONCONTEXT REGISTER: " << trx << "\r\n";
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -89,6 +92,7 @@ int StandaloneTransactionContext::unregisterTransaction () {
     delete _resolver;
     _resolver = nullptr;
   }
+  // std::cout << TRI_CurrentThreadId() << ", STANDALONETRANSACTIONCONTEXT UNREGISTER\r\n";
 
   return TRI_ERROR_NO_ERROR;
 }

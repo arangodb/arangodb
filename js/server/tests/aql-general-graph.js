@@ -32,7 +32,7 @@ var jsunity = require("jsunity");
 var db = require("org/arangodb").db;
 var graph = require("org/arangodb/general-graph");
 var helper = require("org/arangodb/aql-helper");
-var getQueryResults = helper.getQueryResults2;
+var getQueryResults = helper.getQueryResults;
 var getRawQueryResults = helper.getRawQueryResults;
 
 ////////////////////////////////////////////////////////////////////////////////

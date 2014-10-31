@@ -1,5 +1,5 @@
 /*jshint strict: false, unused: false */
-/*global require, SYS_CLUSTER_TEST, UPGRADE_ARGS: true,
+/*global require, AQL_EXECUTE, SYS_CLUSTER_TEST, UPGRADE_ARGS: true,
   ArangoServerState, ArangoClusterComm, ArangoClusterInfo */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -704,9 +704,9 @@ actions.defineHttp({
     // allow at most ((60 / 10) * 20) * 2 documents to prevent total chaos
     var myQueryVal = "FOR u in _statistics " + filterString + " LIMIT 240 SORT u.time" + returnValue;
 
-    if (!req.parameters.hasOwnProperty("DBserver")) {
+    if (! req.parameters.hasOwnProperty("DBserver")) {
         // query the local statistics collection
-        var cursor = internal.AQL_QUERY(myQueryVal, bind);
+        var cursor = AQL_EXECUTE(myQueryVal, bind);
         res.contentType = "application/json; charset=utf-8";
         if (cursor instanceof Error) {
             res.responseCode = actions.HTTP_BAD;

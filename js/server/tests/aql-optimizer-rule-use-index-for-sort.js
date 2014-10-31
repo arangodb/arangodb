@@ -242,8 +242,8 @@ function optimizerRuleTestSuite() {
                     removeAlwaysOnClusterRules(result.plan.rules), query);
         QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
         QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort).json;
-        
-        assertTrue(isEqual(QResults[0], QResults[1]), "Result " + i + " is Equal?");
+       
+        assertTrue(isEqual(QResults[0], QResults[1]), "result " + i + " is equal?");
 
         allresults = getQueryMultiplePlansAndExecutions(query, {});
         for (j = 1; j < allresults.results.length; j++) {
@@ -910,6 +910,30 @@ function optimizerRuleTestSuite() {
       assertEqual(first.high.bound.value, 10, "proper value was set");
       assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
       */
+    },
+
+    testSortAscEmptyCollection : function () {
+      skiplist.truncate();
+      assertEqual(0, skiplist.count());
+
+      // should not crash
+      var result = AQL_EXECUTE("FOR v IN " + colName + " SORT v.d ASC RETURN v");
+      assertEqual([ ], result.json);
+      
+      var rules = AQL_EXPLAIN("FOR v IN " + colName + " SORT v.d ASC RETURN v").plan.rules;
+      assertNotEqual(-1, rules.indexOf(ruleName));
+    },
+
+    testSortDescEmptyCollection : function () {
+      skiplist.truncate();
+      assertEqual(0, skiplist.count());
+
+      // should not crash
+      var result = AQL_EXECUTE("FOR v IN " + colName + " SORT v.d DESC RETURN v");
+      assertEqual([ ], result.json);
+      
+      var rules = AQL_EXPLAIN("FOR v IN " + colName + " SORT v.d DESC RETURN v").plan.rules;
+      assertNotEqual(-1, rules.indexOf(ruleName));
     }
 
   };
