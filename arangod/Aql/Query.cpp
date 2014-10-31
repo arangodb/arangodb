@@ -151,6 +151,7 @@ Query::Query (triagens::arango::ApplicationV8* applicationV8,
     _part(part),
     _contextOwnedByExterior(contextOwnedByExterior) {
 
+  // std::cout << TRI_CurrentThreadId() << ", QUERY " << this << " CTOR: " << queryString << "\r\n";
   TRI_ASSERT(_vocbase != nullptr);
 
   if (profiling()) {
@@ -215,6 +216,7 @@ Query::Query (triagens::arango::ApplicationV8* applicationV8,
 ////////////////////////////////////////////////////////////////////////////////
 
 Query::~Query () {
+  // std::cout << TRI_CurrentThreadId() << ", QUERY " << this << " DTOR\r\n";
   cleanupPlanAndEngine(TRI_ERROR_INTERNAL); // abort the transaction
 
   if (_profile != nullptr) {
@@ -462,7 +464,8 @@ QueryResult Query::prepare (QueryRegistry* registry) {
       // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser->ast()->toJson(TRI_UNKNOWN_MEM_ZONE, false)) << "\n";
     }
 
-    auto trx = new triagens::arango::AqlTransaction(new triagens::arango::StandaloneTransactionContext(), _vocbase, _collections.collections(), _part == PART_MAIN);
+    // create the transaction object, but do not start it yet
+    auto trx = new triagens::arango::AqlTransaction(createTransactionContext(), _vocbase, _collections.collections(), _part == PART_MAIN);
     _trx = trx;   // Save the transaction in our object
 
     bool planRegisters;
@@ -676,7 +679,7 @@ QueryResult Query::explain () {
     // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE)) << "\n";
 
     // create the transaction object, but do not start it yet
-    auto trx = new triagens::arango::AqlTransaction(new triagens::arango::StandaloneTransactionContext(), _vocbase, _collections.collections(), true);
+    auto trx = new triagens::arango::AqlTransaction(createTransactionContext(), _vocbase, _collections.collections(), true);
     _trx = trx;  // save the pointer in this
 
     // we have an AST
@@ -1115,6 +1118,19 @@ TRI_json_t* Query::warningsToJson () const {
   }
 
   return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a TransactionContext
+////////////////////////////////////////////////////////////////////////////////
+
+triagens::arango::TransactionContext* Query::createTransactionContext () {
+  if (v8::Isolate::GetCurrent() != nullptr) {
+    // we can use v8
+    return new triagens::arango::V8TransactionContext(true);
+  }
+
+  return new triagens::arango::StandaloneTransactionContext();
 }
 
 // -----------------------------------------------------------------------------

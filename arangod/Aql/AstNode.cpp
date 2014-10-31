@@ -1086,9 +1086,16 @@ bool AstNode::canThrow () const {
   // no sub-node throws, now check ourselves
 
   if (type == NODE_TYPE_FCALL) {
-    // built-in functions may or may not throw
     auto func = static_cast<Function*>(getData());
-    return func->canThrow;
+
+    // built-in functions may or may not throw
+    // we are currently reporting non-deterministic functions as
+    // potentially throwing. This is not correct on the one hand, but on
+    // the other hand we must not optimize or move non-deterministic functions
+    // during optimization
+    // TODO: move the check for isDeterministic into a function of its
+    // own and check it from the optimizer rules
+    return func->canThrow || ! func->isDeterministic;
   }
   
   if (type == NODE_TYPE_FCALL_USER) {

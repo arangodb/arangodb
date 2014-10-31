@@ -44,6 +44,10 @@ struct TRI_json_t;
 struct TRI_vocbase_s;
 
 namespace triagens {
+  namespace arango {
+    class TransactionContext;
+  }
+
   namespace aql {
 
     struct AstNode;
@@ -453,6 +457,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_json_t* warningsToJson () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a TransactionContext
+////////////////////////////////////////////////////////////////////////////////
+
+        triagens::arango::TransactionContext* createTransactionContext ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

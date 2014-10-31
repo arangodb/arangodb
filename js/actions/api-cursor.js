@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global require, CURSOR, DELETE_CURSOR */
+/*global require, CURSOR, DELETE_CURSOR, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief query results cursor actions
@@ -344,16 +344,22 @@ function post_api_cursor(req, res) {
   }
 
   var cursor;
+  var options = { 
+    count: json.count || false,
+    batchSize: json.batchSize || 1000,
+    ttl: json.ttl,
+  };
+
+  if (json.options !== null && typeof json.options === 'object') {
+    for (var i in json.options) {
+      if (json.options.hasOwnProperty(i)) {
+        options[i] = json.options[i];
+      }
+    }
+  }
 
   if (json.query !== undefined) {
-    cursor = internal.AQL_QUERY(json.query,
-                                json.bindVars,
-                                {
-                                  count : json.count || false,
-                                  batchSize: json.batchSize || 1000,
-                                  ttl: json.ttl
-                                },
-                                json.options);
+    cursor = AQL_EXECUTE(json.query, json.bindVars, options);
   }
   else {
     actions.resultBad(req, res, arangodb.ERROR_QUERY_EMPTY);

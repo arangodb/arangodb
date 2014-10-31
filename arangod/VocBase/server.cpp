@@ -46,7 +46,6 @@
 #include "Basics/random.h"
 #include "Basics/tri-strings.h"
 #include "Basics/JsonHelper.h"
-#include "Ahuacatl/ahuacatl-statementlist.h"
 #include "Utils/Exception.h"
 #include "VocBase/auth.h"
 #include "VocBase/replication-applier.h"
@@ -1705,7 +1704,6 @@ void TRI_InitServerGlobals () {
   memset(&ServerId, 0, sizeof(TRI_server_id_t));
 
   TRI_InitSpin(&TickLock);
-  TRI_GlobalInitStatementListAql();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1713,7 +1711,6 @@ void TRI_InitServerGlobals () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeServerGlobals () {
-  TRI_GlobalFreeStatementListAql();
   TRI_DestroySpin(&TickLock);
 }
 

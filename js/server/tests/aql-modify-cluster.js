@@ -34,7 +34,7 @@ var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
 var cluster = require("org/arangodb/cluster");
 var getModifyQueryResults = helper.getModifyQueryResults;
-var assertQueryError = helper.assertQueryError2;
+var assertQueryError = helper.assertQueryError;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

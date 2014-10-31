@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global require, exports, module, AQL_PARSE, AQL_EXPLAIN */
+/*global require, exports, module, AQL_PARSE, AQL_EXPLAIN, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoStatement
@@ -32,7 +32,6 @@ module.isSystem = true;
 
 var ArangoStatement = require("org/arangodb/arango-statement-common").ArangoStatement;
 var GeneralArrayCursor = require("org/arangodb/simple-query-common").GeneralArrayCursor;
-var internal = require("internal");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   ArangoStatement
@@ -70,14 +69,13 @@ ArangoStatement.prototype.explain = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype.execute = function () {
-  var result = internal.AQL_QUERY(this._query,
-                                  this._bindVars,
-                                  {
-                                    count: this._doCount
-                                  },
-                                  this._options);
+  var options = this._options || { };
+  if (typeof options === 'object') {
+    options._doCount = this._doCount;
+  }
+  var result = AQL_EXECUTE(this._query, this._bindVars, options);
 
-  return new GeneralArrayCursor(result.docs, 0, null, result.extra);
+  return new GeneralArrayCursor(result.json, 0, null, result.extra);
 };
 
 // -----------------------------------------------------------------------------

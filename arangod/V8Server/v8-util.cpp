@@ -82,25 +82,6 @@ v8::Handle<v8::Value> V8DocumentId (string const& collectionName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create an Ahuacatl error in a javascript object
-////////////////////////////////////////////////////////////////////////////////
-
-v8::Handle<v8::Object> CreateErrorObjectAhuacatl (TRI_aql_error_t* error) {
-  v8::HandleScope scope;
-
-  char* message = TRI_GetErrorMessageAql(error);
-
-  if (message != nullptr) {
-    std::string str(message);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, message);
-
-    return scope.Close(TRI_CreateErrorObject(error->_file, error->_line, TRI_GetErrorCodeAql(error), str));
-  }
-
-  return scope.Close(TRI_CreateErrorObject(error->_file, error->_line, TRI_ERROR_OUT_OF_MEMORY));
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if argument is a document identifier
 ////////////////////////////////////////////////////////////////////////////////
 

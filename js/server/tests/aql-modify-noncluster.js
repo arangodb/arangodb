@@ -33,8 +33,8 @@ var db = require("org/arangodb").db;
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
 var cluster = require("org/arangodb/cluster");
-var getModifyQueryResults = helper.getModifyQueryResults2;
-var assertQueryError = helper.assertQueryError2;
+var getModifyQueryResults = helper.getModifyQueryResults;
+var assertQueryError = helper.assertQueryError;
   
 var sanitizeStats = function (stats) {
   // remove these members from the stats because they don't matter

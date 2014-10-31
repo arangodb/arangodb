@@ -31,7 +31,7 @@
 var internal = require("internal");
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
-var getQueryResults = helper.getQueryResults2;
+var getQueryResults = helper.getQueryResults;
 var getRawQueryResults = helper.getRawQueryResults;
 
 ////////////////////////////////////////////////////////////////////////////////

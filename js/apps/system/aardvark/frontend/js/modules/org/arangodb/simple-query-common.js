@@ -155,11 +155,11 @@ GeneralArrayCursor.prototype.count = function () {
 
 GeneralArrayCursor.prototype.getExtra = function (name) {
   if (name === undefined) {
-    return this._extra || null;
+    return this._extra || { };
   }
 
   if (this._extra === undefined || this._extra === null) {
-    return null;
+    return { };
   }
 
   if (! this._extra.hasOwnProperty(name)) {
