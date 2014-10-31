@@ -2152,9 +2152,16 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
   char* path = TRI_Concatenate2File(server->_databasePath, file);
   TRI_FreeString(TRI_CORE_MEM_ZONE, file);
 
-  LOG_INFO("creating database '%s', directory '%s'",
-           name,
-           path);
+  if (triagens::wal::LogfileManager::instance()->isInRecovery()) {
+    LOG_TRACE("creating database '%s', directory '%s'",
+              name,
+              path);
+  }
+  else {
+    LOG_INFO("creating database '%s', directory '%s'",
+             name,
+             path);
+  }
 
   TRI_vocbase_t* vocbase = TRI_OpenVocBase(server, path, databaseId, name, defaults, false, false);
   TRI_FreeString(TRI_CORE_MEM_ZONE, path);
@@ -2388,9 +2395,16 @@ int TRI_DropDatabaseServer (TRI_server_t* server,
     vocbase->_isOwnAppsDirectory = removeAppsDirectory;
 
     if (TRI_DropVocBase(vocbase)) {
-      LOG_INFO("dropping database '%s', directory '%s'",
-               vocbase->_name,
-               vocbase->_path);
+      if (triagens::wal::LogfileManager::instance()->isInRecovery()) {
+        LOG_TRACE("dropping database '%s', directory '%s'",
+                  vocbase->_name,
+                  vocbase->_path);
+      }
+      else {
+        LOG_INFO("dropping database '%s', directory '%s'",
+                 vocbase->_name,
+                 vocbase->_path);
+      }
 
       res = SaveDatabaseParameters(vocbase->_id,
                                    vocbase->_name,
