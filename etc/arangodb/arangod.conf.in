@@ -1,7 +1,7 @@
 # ArangoDB configuration file
 # 
 # Documentation: 
-# http://www.arangodb.com/manuals/current/CommandLine.html
+# https://docs.arangodb.com/ConfigureArango/README.html
 # 
 
 [database]

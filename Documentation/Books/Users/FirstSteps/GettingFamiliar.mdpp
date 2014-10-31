@@ -3,12 +3,12 @@
 First of all download and install the corresponding RPM or Debian package or use
 homebrew on the MacOS X. See the [installation manual](../Installing/README.md) for more details.
 In case you just want to experiment with ArangoDB you
-can use the [online](http://www.arangodb.org/try) demo without
+can use the [online](https://www.arangodb.com/tryitout) demo without
 installing ArangoDB locally.
 
 !SUBSECTION For Linux
 
-* Visit the official [ArangoDB download page](http://www.arangodb.org/download)
+* Visit the official [ArangoDB install page](https://www.arangodb.com/install)
   and download the correct package for your Linux distribution
 * Install the package using your favorite package manager
 * Start up the database server, normally this is done by
@@ -22,7 +22,7 @@ installing ArangoDB locally.
 
 !SUBSECTION For Microsoft Windows
 
-* Visit the official [ArangoDB download page](http://www.arangodb.org/download)
+* Visit the official [ArangoDB install page](https://www.arangodb.com/install)
   and download the installer for Windows
 * Start up the database server
 
