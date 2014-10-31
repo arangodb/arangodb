@@ -570,12 +570,10 @@ int SingletonBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int SingletonBlock::shutdown (int errorCode) {
+
   int res = ExecutionBlock::shutdown(errorCode);
 
-  if (_inputRegisterValues != nullptr) {
-    delete _inputRegisterValues;
-    _inputRegisterValues = nullptr;
-  }
+  deleteInputVariables();
 
   return res;
 }
