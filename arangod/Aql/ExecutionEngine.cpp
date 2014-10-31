@@ -645,101 +645,118 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 ////////////////////////////////////////////////////////////////////////////////
 
   ExecutionEngine* buildEngineCoordinator (EngineInfo& info) {
-    // need a new query instance on the coordinator
-    auto clone = query->clone(PART_DEPENDENT, false);
-
-    std::unique_ptr<ExecutionEngine> engine(new ExecutionEngine(clone));
-    clone->engine(engine.get());
-
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
-    RemoteNode* remoteNode = nullptr;
-
-    for (auto en = info.nodes.begin(); en != info.nodes.end(); ++en) {
-      auto const nodeType = (*en)->getType();
-
-      if (nodeType == ExecutionNode::REMOTE) {
-        remoteNode = static_cast<RemoteNode*>((*en));
-        continue;
+    Query* localQuery = query;
+    bool needToClone = info.id > 0;   // use the original for the main part
+    if (needToClone) {
+      // need a new query instance on the coordinator
+      localQuery = query->clone(PART_DEPENDENT, false);
+      if (localQuery == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,"cannot clone query");
       }
-
-      // for all node types but REMOTEs, we create blocks
-      ExecutionBlock* eb = createBlock(engine.get(), (*en), cache);
-       
-      if (eb == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "illegal node type");
-      }
-    
-      try {
-        engine.get()->addBlock(eb);
-      }
-      catch (...) {
-        delete eb;
-        throw;
-      }
-      
-      std::vector<ExecutionNode*> deps = (*en)->getDependencies();
-
-      for (auto dep = deps.begin(); dep != deps.end(); ++dep) {
-        auto d = cache.find(*dep);
-
-        if (d != cache.end()) {
-          // add regular dependencies
-          eb->addDependency((*d).second);
-        }
-      }
-
-      if (nodeType == ExecutionNode::GATHER) {
-        // we found a gather node
-        TRI_ASSERT(remoteNode != nullptr);
-
-        // now we'll create a remote node for each shard and add it to the gather node
-        Collection const* collection = nullptr;
-        if (nodeType == ExecutionNode::GATHER) {
-          collection = static_cast<GatherNode const*>((*en))->collection();
-        }
-        else {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-        }
-        
-        auto&& shardIds = collection->shardIds();
-
-        for (auto const& shardId : shardIds) {
-          std::string theId 
-            = triagens::basics::StringUtils::itoa(remoteNode->id())
-            + "_" + shardId;
-          auto it = queryIds.find(theId);
-          if (it == queryIds.end()) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not find query id in list");
-          }
-
-          ExecutionBlock* r = new RemoteBlock(engine.get(), 
-                                              remoteNode, 
-                                              "shard:" + shardId, // server
-                                              "",                 // ownName
-                                              (*it).second);      // queryId
-      
-          try {
-            engine.get()->addBlock(r);
-          }
-          catch (...) {
-            delete r;
-            throw;
-          }
-
-          eb->addDependency(r);
-        }
-      }
-      
-      // the last block is always the root 
-      engine->root(eb);
- 
-      // put it into our cache:
-      cache.emplace(std::make_pair((*en), eb));
     }
 
-    TRI_ASSERT(engine->root() != nullptr);
+    try {
+      std::unique_ptr<ExecutionEngine> engine(new ExecutionEngine(localQuery));
+      localQuery->engine(engine.get());
 
-    return engine.release();
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
+      RemoteNode* remoteNode = nullptr;
+
+      for (auto en = info.nodes.begin(); en != info.nodes.end(); ++en) {
+        auto const nodeType = (*en)->getType();
+
+        if (nodeType == ExecutionNode::REMOTE) {
+          remoteNode = static_cast<RemoteNode*>((*en));
+          continue;
+        }
+
+        // for all node types but REMOTEs, we create blocks
+        ExecutionBlock* eb = createBlock(engine.get(), (*en), cache);
+         
+        if (eb == nullptr) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "illegal node type");
+        }
+      
+        try {
+          engine.get()->addBlock(eb);
+        }
+        catch (...) {
+          delete eb;
+          throw;
+        }
+        
+        std::vector<ExecutionNode*> deps = (*en)->getDependencies();
+
+        for (auto dep = deps.begin(); dep != deps.end(); ++dep) {
+          auto d = cache.find(*dep);
+
+          if (d != cache.end()) {
+            // add regular dependencies
+            eb->addDependency((*d).second);
+          }
+        }
+
+        if (nodeType == ExecutionNode::GATHER) {
+          // we found a gather node
+          TRI_ASSERT(remoteNode != nullptr);
+
+          // now we'll create a remote node for each shard and add it to the gather node
+          Collection const* collection = nullptr;
+          if (nodeType == ExecutionNode::GATHER) {
+            collection = static_cast<GatherNode const*>((*en))->collection();
+          }
+          else {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+          }
+          
+          auto&& shardIds = collection->shardIds();
+
+          for (auto const& shardId : shardIds) {
+            std::string theId 
+              = triagens::basics::StringUtils::itoa(remoteNode->id())
+              + "_" + shardId;
+            auto it = queryIds.find(theId);
+            if (it == queryIds.end()) {
+              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not find query id in list");
+            }
+
+            ExecutionBlock* r = new RemoteBlock(engine.get(), 
+                                                remoteNode, 
+                                                "shard:" + shardId, // server
+                                                "",                 // ownName
+                                                (*it).second);      // queryId
+        
+            try {
+              engine.get()->addBlock(r);
+            }
+            catch (...) {
+              delete r;
+              throw;
+            }
+
+            eb->addDependency(r);
+          }
+        }
+        
+        // the last block is always the root 
+        engine->root(eb);
+   
+        // put it into our cache:
+        cache.emplace(std::make_pair((*en), eb));
+      }
+
+      TRI_ASSERT(engine->root() != nullptr);
+
+      // localQuery is stored in the engine
+      return engine.release();
+    }
+    catch (...) {
+      localQuery->engine(nullptr);  // engine is already destroyed by unique_ptr
+      if (needToClone) {
+        delete localQuery;
+      }
+      throw;
+    }
   }
 
 ////////////////////////////////////////////////////////////////////////////////
