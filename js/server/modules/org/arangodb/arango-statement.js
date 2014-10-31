@@ -75,7 +75,7 @@ ArangoStatement.prototype.execute = function () {
   }
   var result = AQL_EXECUTE(this._query, this._bindVars, options);
 
-  return new GeneralArrayCursor(result.json, 0, null, result.extra);
+  return new GeneralArrayCursor(result.json, 0, null, result);
 };
 
 // -----------------------------------------------------------------------------

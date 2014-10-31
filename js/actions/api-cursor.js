@@ -245,8 +245,8 @@ var internal = require("internal");
 ///     var response = logCurlRequest('POST', url, JSON.stringify(body));
 ///
 ///     assert(response.code === 201);
-///     assert(JSON.parse(response.body).extra.operations.executed === 2);
-///     assert(JSON.parse(response.body).extra.operations.ignored === 0);
+///     assert(JSON.parse(response.body).extra.stats.writesExecuted === 2);
+///     assert(JSON.parse(response.body).extra.stats.writesIgnored === 0);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -268,8 +268,8 @@ var internal = require("internal");
 ///     var response = logCurlRequest('POST', url, JSON.stringify(body));
 ///
 ///     assert(response.code === 201);
-///     assert(JSON.parse(response.body).extra.operations.executed === 0);
-///     assert(JSON.parse(response.body).extra.operations.ignored === 1);
+///     assert(JSON.parse(response.body).extra.stats.writesExecuted === 0);
+///     assert(JSON.parse(response.body).extra.stats.writesIgnored === 1);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN

@@ -752,8 +752,8 @@ function transactionCollectionsSuite () {
           write: [ cn1 ]
         },
         action : function () {
-          var ops = db._query("FOR i IN @@cn1 REMOVE i._key IN @@cn1", { "@cn1" : cn1 }).getExtra().operations;
-          assertEqual(10, ops.executed);
+          var ops = db._query("FOR i IN @@cn1 REMOVE i._key IN @@cn1", { "@cn1" : cn1 }).getExtra().stats;
+          assertEqual(10, ops.writesExecuted);
           assertEqual(0, c1.count());
           return true;
         }
@@ -780,8 +780,8 @@ function transactionCollectionsSuite () {
           write: [ cn2 ]
         },
         action : function () {
-          var ops = db._query("FOR i IN @@cn1 REMOVE i._key IN @@cn2", { "@cn1" : cn1, "@cn2" : cn2 }).getExtra().operations;
-          assertEqual(10, ops.executed);
+          var ops = db._query("FOR i IN @@cn1 REMOVE i._key IN @@cn2", { "@cn1" : cn1, "@cn2" : cn2 }).getExtra().stats;
+          assertEqual(10, ops.writesExecuted);
           return true;
         }
       };
@@ -844,12 +844,12 @@ function transactionCollectionsSuite () {
         },
         action : function () {
           var ops;
-          ops = db._query("FOR i IN @@cn1 REMOVE i._key IN @@cn1", { "@cn1" : cn1 }).getExtra().operations;
-          assertEqual(10, ops.executed);
+          ops = db._query("FOR i IN @@cn1 REMOVE i._key IN @@cn1", { "@cn1" : cn1 }).getExtra().stats;
+          assertEqual(10, ops.writesExecuted);
           assertEqual(0, c1.count());
 
-          ops = db._query("FOR i IN @@cn2 REMOVE i._key IN @@cn2", { "@cn2" : cn2 }).getExtra().operations;
-          assertEqual(10, ops.executed);
+          ops = db._query("FOR i IN @@cn2 REMOVE i._key IN @@cn2", { "@cn2" : cn2 }).getExtra().stats;
+          assertEqual(10, ops.writesExecuted);
           assertEqual(0, c2.count());
           return true;
         }

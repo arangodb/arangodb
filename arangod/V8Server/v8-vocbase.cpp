@@ -46,7 +46,6 @@
 
 #include "HttpServer/ApplicationEndpointServer.h"
 #include "V8/v8-conv.h"
-#include "V8/v8-execution.h"
 #include "V8/v8-utils.h"
 #include "Wal/LogfileManager.h"
 
@@ -1067,21 +1066,22 @@ static v8::Handle<v8::Value> JS_ExecuteAqlJson (v8::Arguments const& argv) {
     return scope.Close(result);
   }
   
-  TRI_json_t* extra = nullptr;
-  if (queryResult.warnings != nullptr && queryResult.stats != nullptr) {
-    extra = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, queryResult.stats, queryResult.warnings, true);
-
-    if (extra == nullptr) {
-      TRI_V8_EXCEPTION_MEMORY(scope);
-    }
+  TRI_json_t* extra = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  if (extra == nullptr) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
   }
-  else if (queryResult.warnings != nullptr) {
-    extra = queryResult.warnings;
+
+  if (queryResult.warnings != nullptr) {
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, extra, "warnings", queryResult.warnings);
     queryResult.warnings = nullptr;
   }
-  else if (queryResult.stats != nullptr) {
-    extra = queryResult.stats;
+  if (queryResult.stats != nullptr) {
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, extra, "stats", queryResult.stats);
     queryResult.stats = nullptr;
+  }
+  if (queryResult.profile != nullptr) {
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, extra, "profile", queryResult.profile);
+    queryResult.profile = nullptr;
   }
 
   TRI_general_cursor_result_t* cursorResult = TRI_CreateResultGeneralCursor(queryResult.json);
@@ -1202,20 +1202,13 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
 
   auto queryResult = query.execute(static_cast<triagens::aql::QueryRegistry*>(v8g->_queryRegistry));
   
-/* TODO: check if we need this here!
-  if (tryCatch.HasCaught()) {
-    if (tryCatch.CanContinue()) {
-      return scope.Close(v8::ThrowException(tryCatch.Exception()));
-    }
-    else {
+  if (queryResult.code != TRI_ERROR_NO_ERROR) {
+    if (queryResult.code == TRI_ERROR_REQUEST_CANCELED) {
       TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
-
       v8g->_canceled = true;
       return scope.Close(TRI_CreateErrorObject(__FILE__, __LINE__, TRI_ERROR_REQUEST_CANCELED));
     }
-  }
-*/
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
+
     TRI_V8_EXCEPTION_FULL(scope, queryResult.code, queryResult.details);
   }
   
@@ -1239,24 +1232,25 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
     }
     return scope.Close(result);
   }
-
-  TRI_json_t* extra = nullptr;
-  if (queryResult.warnings != nullptr && queryResult.stats != nullptr) {
-    extra = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, queryResult.stats, queryResult.warnings, true);
-
-    if (extra == nullptr) {
-      TRI_V8_EXCEPTION_MEMORY(scope);
-    }
+  
+  TRI_json_t* extra = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  if (extra == nullptr) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
   }
-  else if (queryResult.warnings != nullptr) {
-    extra = queryResult.warnings;
+
+  if (queryResult.warnings != nullptr) {
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, extra, "warnings", queryResult.warnings);
     queryResult.warnings = nullptr;
   }
-  else if (queryResult.stats != nullptr) {
-    extra = queryResult.stats;
+  if (queryResult.stats != nullptr) {
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, extra, "stats", queryResult.stats);
     queryResult.stats = nullptr;
   }
-  
+  if (queryResult.profile != nullptr) {
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, extra, "profile", queryResult.profile);
+    queryResult.profile = nullptr;
+  }
+
   TRI_general_cursor_result_t* cursorResult = TRI_CreateResultGeneralCursor(queryResult.json);
   
   if (cursorResult == nullptr) {
