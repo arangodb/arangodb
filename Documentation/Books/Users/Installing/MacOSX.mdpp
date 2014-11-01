@@ -49,7 +49,7 @@ days or weeks until the latest versions are available.
 
 !SECTION Command-Line App
 In case you are not using homebrew, we also provide a command-line app. You can
-download it from [here](http://www.arangodb.org/download).
+download it from [here](https://www.arangodb.com/install).
 
 Choose *Mac OS X* and go to *Grab binary packages directly*. This allows you to
 install the application *ArangoDB-CLI* in your application folder.

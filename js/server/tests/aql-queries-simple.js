@@ -31,8 +31,8 @@
 var jsunity = require("jsunity");
 var errors = require("internal").errors;
 var helper = require("org/arangodb/aql-helper");
-var getQueryResults = helper.getQueryResults2;
-var assertQueryError = helper.assertQueryError2;
+var getQueryResults = helper.getQueryResults;
+var assertQueryError = helper.assertQueryError;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -1019,7 +1019,7 @@ function ahuacatlQuerySimpleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testOverflowCompileInt: function () {
-      assertQueryError(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, "LET l = 4444444444444555555555555555555555555555555555554444333333333333333333333334444444544 RETURN l * l * l * l * l");
+      assertEqual([ 0 ], getQueryResults("LET l = 4444444444444555555555555555555555555555555555554444333333333333333333333334444444544 RETURN l * l * l * l * l"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1027,7 +1027,7 @@ function ahuacatlQuerySimpleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testOverflowCompileDouble: function () {
-      assertQueryError(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, "LET l = 4.0e999 RETURN l * l * l * l * l"); 
+      assertEqual([ 0 ], getQueryResults("LET l = 4.0e999 RETURN l * l * l * l * l")); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1035,7 +1035,7 @@ function ahuacatlQuerySimpleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUnderflowCompileInt: function () {
-      assertQueryError(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, "LET l = -4444444444444555555555555555555555555555555555554444333333333333333333333334444444544 RETURN l * l * l * l * l");
+      assertEqual([ 0 ], getQueryResults("LET l = -4444444444444555555555555555555555555555555555554444333333333333333333333334444444544 RETURN l * l * l * l * l"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1043,7 +1043,7 @@ function ahuacatlQuerySimpleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUnderflowCompileDouble: function () {
-      assertQueryError(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, "LET l = -4.0e999 RETURN l * l * l * l * l"); 
+      assertEqual([ 0 ], getQueryResults("LET l = -4.0e999 RETURN l * l * l * l * l")); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1051,7 +1051,7 @@ function ahuacatlQuerySimpleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testOverflowExecutionInt: function () {
-      assertQueryError(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, "FOR l IN [ 33939359949454345354858882332 ] RETURN l * l * l * l * l * l * l * l * l * l * l"); 
+      assertEqual([ null ], getQueryResults("FOR l IN [ 33939359949454345354858882332 ] RETURN l * l * l * l * l * l * l * l * l * l * l")); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1059,7 +1059,7 @@ function ahuacatlQuerySimpleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testOverflowExecutionDouble: function () {
-      assertQueryError(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, "FOR l IN [ 3.0e300 ] RETURN l * l * l * l * l * l * l * l * l * l * l"); 
+      assertEqual([ 0 ], getQueryResults("FOR l IN [ 3.0e300 ] RETURN l * l * l * l * l * l * l * l * l * l * l")); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1067,7 +1067,7 @@ function ahuacatlQuerySimpleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUnderflowExecutionInt: function () {
-      assertQueryError(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, "FOR l IN [ -33939359949454345354858882332 ] RETURN l * l * l * l * l * l * l * l * l * l * l"); 
+      assertEqual([ null ], getQueryResults("FOR l IN [ -33939359949454345354858882332 ] RETURN l * l * l * l * l * l * l * l * l * l * l")); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1075,7 +1075,7 @@ function ahuacatlQuerySimpleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUnderflowExecutionDouble: function () {
-      assertQueryError(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, "FOR l IN [ -3.0e300 ] RETURN l * l * l * l * l * l * l * l * l * l * l"); 
+      assertEqual([ 0 ], getQueryResults("FOR l IN [ -3.0e300 ] RETURN l * l * l * l * l * l * l * l * l * l * l")); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1083,7 +1083,7 @@ function ahuacatlQuerySimpleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBigIntOverflow: function () {
-      assertQueryError(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, "RETURN 9223372036854775808"); 
+      assertEqual([ 9223372036854776000 ], getQueryResults("RETURN 9223372036854775808")); 
     },
     
 ////////////////////////////////////////////////////////////////////////////////
@@ -1091,7 +1091,7 @@ function ahuacatlQuerySimpleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBigIntUnderflow: function () {
-      assertQueryError(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, "RETURN -9223372036854775809"); 
+      assertEqual([ -9223372036854776000 ], getQueryResults("RETURN -9223372036854775809")); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////

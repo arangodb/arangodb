@@ -198,7 +198,6 @@ add_library(
     V8/V8StringConverter.cpp
     V8/v8-buffer.cpp
     V8/v8-conv.cpp
-    V8/v8-execution.cpp
     V8/v8-globals.cpp
     V8/v8-json.cpp
     V8/v8-shell.cpp

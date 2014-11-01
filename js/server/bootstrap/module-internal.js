@@ -1,7 +1,7 @@
 /*jshint -W051: true */
 /*global require, db, ArangoCollection, ArangoDatabase, ArangoCursor, ShapedJson,
   RELOAD_AUTH, SYS_DEFINE_ACTION, SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION,
-  AHUACATL_RUN, WAL_FLUSH, WAL_PROPERTIES,
+  WAL_FLUSH, WAL_PROPERTIES,
   REPLICATION_LOGGER_STATE, REPLICATION_LOGGER_CONFIGURE, REPLICATION_SERVER_ID,
   REPLICATION_APPLIER_CONFIGURE, REPLICATION_APPLIER_START, REPLICATION_APPLIER_SHUTDOWN,
   REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_STATE, REPLICATION_SYNCHRONISE,
@@ -101,13 +101,6 @@
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes an AQL query
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.AQL_QUERY = AHUACATL_RUN;
-  delete AHUACATL_RUN;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resets engine in development mode
@@ -215,14 +208,12 @@
 
   if (typeof SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION === "undefined") {
     internal.reloadAqlFunctions = function () {
-      require("org/arangodb/ahuacatl").reload();
       require("org/arangodb/aql").reload();
     };
   }
   else {
     internal.reloadAqlFunctions = function () {
       internal.executeGlobalContextFunction("reloadAql");
-      require("org/arangodb/ahuacatl").reload();
       require("org/arangodb/aql").reload();
     };
     delete SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION;

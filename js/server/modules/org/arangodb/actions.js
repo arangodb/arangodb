@@ -1719,12 +1719,17 @@ function resultCursor (req, res, cursor, code, options) {
         cursor.dispose();
       }
     }
-    else if (cursor.hasOwnProperty('docs')) {
+    else if (cursor.hasOwnProperty('json')) {
       // cursor is a regular JS object (performance optimisation)
       hasCount = ((options && options.countRequested) ? true : false);
-      count = cursor.docs.length;
-      rows = cursor.docs;
-      extra = cursor.extra;
+      count = cursor.json.length;
+      rows = cursor.json;
+      extra = { };
+      [ "stats", "warnings", "profile" ].forEach(function(d) {
+        if (cursor.hasOwnProperty(d)) {
+          extra[d] = cursor[d];
+        }
+      });
       hasNext = false;
       cursorId = null;
     }

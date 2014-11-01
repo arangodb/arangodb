@@ -764,7 +764,7 @@ testFuncs.shell_server_only = function (options) {
 
 testFuncs.shell_server_ahuacatl = function(options) {
   findTests();
-  if (!options.skipAhuacatl) {
+  if (! options.skipAhuacatl) {
     if (options.skipRanges) {
       return performTests(options,
                           tests_shell_server_ahuacatl,
@@ -782,7 +782,7 @@ testFuncs.shell_server_ahuacatl = function(options) {
 
 testFuncs.shell_server_aql = function(options) {
   findTests();
-  if (!options.skipAql) {
+  if (! options.skipAql) {
     if (options.skipRanges) {
       return performTests(options,
                           tests_shell_server_aql,

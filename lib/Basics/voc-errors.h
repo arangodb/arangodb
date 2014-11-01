@@ -375,10 +375,10 @@
 /// - 1541: @LIT{invalid number of arguments for function '\%s()', expected number of arguments: minimum: \%d, maximum: \%d}
 ///   Will be raised when the number of arguments used in a function call does
 ///   not match the expected number of arguments for the function.
-/// - 1542: @LIT{invalid argument type used in call to function '\%s()'}
+/// - 1542: @LIT{invalid argument type in call to function '\%s()'}
 ///   Will be raised when the type of an argument used in a function call does
 ///   not match the expected argument type.
-/// - 1543: @LIT{invalid regex argument value used in call to function '\%s()'}
+/// - 1543: @LIT{invalid regex value}
 ///   Will be raised when an invalid regex argument value is used in a call to
 ///   a function that expects a regex.
 /// - 1550: @LIT{invalid structure of bind parameters}
@@ -437,6 +437,8 @@
 ///   Will be raised when a user function is registered with invalid code.
 /// - 1582: @LIT{user function '\%s()' not found}
 ///   Will be raised when a user function is accessed but not found.
+/// - 1583: @LIT{user function runtime error: \%s}
+///   Will be raised when a user function throws a runtime exception.
 /// - 1600: @LIT{cursor not found}
 ///   Will be raised when a cursor is requested via its id but a cursor with
 ///   that id cannot be found.
@@ -2148,7 +2150,7 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1542: ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH
 ///
-/// invalid argument type used in call to function '%s()'
+/// invalid argument type in call to function '%s()'
 ///
 /// Will be raised when the type of an argument used in a function call does
 /// not match the expected argument type.
@@ -2159,7 +2161,7 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1543: ERROR_QUERY_INVALID_REGEX
 ///
-/// invalid regex argument value used in call to function '%s()'
+/// invalid regex value
 ///
 /// Will be raised when an invalid regex argument value is used in a call to a
 /// function that expects a regex.
@@ -2396,6 +2398,16 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_FUNCTION_NOT_FOUND                                (1582)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1583: ERROR_QUERY_FUNCTION_RUNTIME_ERROR
+///
+/// user function runtime error: %s
+///
+/// Will be raised when a user function throws a runtime exception.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_FUNCTION_RUNTIME_ERROR                            (1583)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1600: ERROR_CURSOR_NOT_FOUND

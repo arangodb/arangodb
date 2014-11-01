@@ -347,12 +347,16 @@ static TRI_skiplist_index_element_t* SkiplistPrevIterationCallback (
 
   TRI_ASSERT(jumpSize > 0);
 
-  if (iterator == nullptr) {
+  if (iterator == nullptr) {  
     // In this case the iterator does not even have intervals.
     return nullptr;
   }
 
   TRI_skiplist_iterator_interval_t* interval = GetInterval(iterator);
+
+  if (interval == nullptr) {
+    return nullptr;
+  }
 
   // ...........................................................................
   // use the current cursor and move jumpSize backward
@@ -366,10 +370,12 @@ static TRI_skiplist_index_element_t* SkiplistPrevIterationCallback (
 
       if (result == interval->_leftEndPoint) {
         if (iterator->_currentInterval == 0) {
+          iterator->_cursor = nullptr;  // exhausted
           return nullptr;
         }
         --iterator->_currentInterval;
         interval = GetInterval(iterator);
+        TRI_ASSERT(interval != nullptr);
         iterator->_cursor = interval->_rightEndPoint;
         result = iterator->_index->skiplist->prevNode(iterator->_cursor);
       }
@@ -401,6 +407,10 @@ static TRI_skiplist_index_element_t* SkiplistNextIterationCallback (
   
   TRI_skiplist_iterator_interval_t* interval = GetInterval(iterator);
 
+  if (interval == nullptr) {
+    return nullptr;
+  }
+
   // ...........................................................................
   // use the current cursor and move jumpSize forward
   // ...........................................................................
@@ -418,6 +428,7 @@ static TRI_skiplist_index_element_t* SkiplistNextIterationCallback (
       }
       ++iterator->_currentInterval;
       interval = GetInterval(iterator);
+      TRI_ASSERT(interval != nullptr);
       iterator->_cursor = interval->_leftEndPoint;
     }
   }
@@ -817,7 +828,7 @@ TRI_skiplist_iterator_t* SkiplistIndex_find (
   if (0 < n) {
     if (reverse) {
       // start at last interval, right endpoint
-      results->_currentInterval = n-1;
+      results->_currentInterval = n - 1;
       TRI_skiplist_iterator_interval_t* tmp = static_cast<TRI_skiplist_iterator_interval_t*>(TRI_AtVector(&results->_intervals, n - 1));
       results->_cursor = tmp->_rightEndPoint;
     }

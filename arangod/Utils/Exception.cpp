@@ -63,14 +63,13 @@ Exception::Exception (int code,
                       char const* file,
                       int line,
                       bool errnoStringResolved)
-  :
-    _errorMessage(errorMessage),
+  : _errorMessage(errorMessage),
     _file(file),
     _line(line),
     _code(code) {
 
   if (code != TRI_ERROR_INTERNAL) {
-    if (!errnoStringResolved) {
+    if (! errnoStringResolved) {
       _errorMessage = std::string("(");
       _errorMessage += TRI_errno_string(code);
       _errorMessage += std::string(")      ");
