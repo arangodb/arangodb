@@ -4231,6 +4231,452 @@ function transactionServerFailuresSuite () {
 /// @brief test: rollback in case of a server-side fail
 ////////////////////////////////////////////////////////////////////////////////
 
+    testInsertUniqueHashIndexServerFailures : function () {
+      var failures = [ "InsertPrimaryIndex", "InsertSecondaryIndexes", "InsertHashIndex" ];
+
+      failures.forEach (function (f) {
+        internal.debugClearFailAt();
+        db._drop(cn);
+        c = db._create(cn);
+
+        c.ensureUniqueConstraint("value");
+
+        internal.debugSetFailAt(f);
+
+        try {
+          c.save({ value: 1 });
+          fail();
+        }
+        catch (err) {
+          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+        }
+
+        assertEqual(0, c.count());
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback in case of a server-side fail
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertUniqueHashIndexServerFailuresTrx : function () {
+      var failures = [ "InsertPrimaryIndex", "InsertSecondaryIndexes", "InsertHashIndex" ];
+
+      failures.forEach (function (f) {
+        internal.debugClearFailAt();
+        db._drop(cn);
+        c = db._create(cn);
+
+        c.ensureUniqueConstraint("value");
+
+        db._executeTransaction({ 
+          collections: {
+            write: cn 
+          },
+          action: function () {
+            c.save({ value: 1 });
+
+            internal.debugSetFailAt(f);
+            try {
+              c.save({ value: 2 });
+              fail();
+            }
+            catch (err) {
+              assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+            }
+
+            assertEqual(1, c.count());
+            internal.debugClearFailAt();
+          }
+        });
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback in case of a server-side fail
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertUniqueHashIndexServerFailuresRollback : function () {
+      var failures = [ "InsertPrimaryIndex", "InsertSecondaryIndexes", "InsertHashIndex" ];
+
+      failures.forEach (function (f) {
+        internal.debugClearFailAt();
+        db._drop(cn);
+        c = db._create(cn);
+
+        c.ensureUniqueConstraint("value");
+
+        try {
+          db._executeTransaction({ 
+            collections: {
+              write: cn 
+            },
+            action: function () {
+              c.save({ value: 1 });
+
+              internal.debugSetFailAt(f);
+              c.save({ value: 2 }); 
+            }
+          });
+          fail();
+        }
+        catch (err) {
+          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+        }
+
+        assertEqual(0, c.count());
+        internal.debugClearFailAt();
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback in case of a server-side fail
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertNonUniqueHashIndexServerFailures : function () {
+      var failures = [ "InsertPrimaryIndex", "InsertSecondaryIndexes", "InsertHashIndex" ];
+
+      failures.forEach (function (f) {
+        internal.debugClearFailAt();
+        db._drop(cn);
+        c = db._create(cn);
+
+        c.ensureHashIndex("value");
+
+        internal.debugSetFailAt(f);
+
+        try {
+          c.save({ value: 1 });
+          fail();
+        }
+        catch (err) {
+          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+        }
+
+        assertEqual(0, c.count());
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback in case of a server-side fail
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertNonUniqueHashIndexServerFailuresTrx : function () {
+      var failures = [ "InsertPrimaryIndex", "InsertSecondaryIndexes", "InsertHashIndex" ];
+
+      failures.forEach (function (f) {
+        internal.debugClearFailAt();
+        db._drop(cn);
+        c = db._create(cn);
+
+        c.ensureHashIndex("value");
+
+        db._executeTransaction({ 
+          collections: {
+            write: cn 
+          },
+          action: function () {
+            c.save({ value: 1 });
+
+            internal.debugSetFailAt(f);
+            try {
+              c.save({ value: 2 });
+              fail();
+            }
+            catch (err) {
+              assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+            }
+
+            assertEqual(1, c.count());
+            internal.debugClearFailAt();
+          }
+        });
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback in case of a server-side fail
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertNonUniqueHashIndexServerFailuresRollback : function () {
+      var failures = [ "InsertPrimaryIndex", "InsertSecondaryIndexes", "InsertHashIndex" ];
+
+      failures.forEach (function (f) {
+        internal.debugClearFailAt();
+        db._drop(cn);
+        c = db._create(cn);
+
+        c.ensureHashIndex("value");
+
+        try {
+          db._executeTransaction({ 
+            collections: {
+              write: cn 
+            },
+            action: function () {
+              c.save({ value: 1 });
+
+              internal.debugSetFailAt(f);
+              c.save({ value: 2 }); 
+            }
+          });
+          fail();
+        }
+        catch (err) {
+          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+        }
+
+        assertEqual(0, c.count());
+        internal.debugClearFailAt();
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback in case of a server-side fail
+////////////////////////////////////////////////////////////////////////////////
+
+    testRemoveUniqueHashIndexServerFailures : function () {
+      var failures = [ "DeletePrimaryIndex", "DeleteSecondaryIndexes", "RemoveHashIndex" ];
+
+      failures.forEach (function (f) {
+        internal.debugClearFailAt();
+        db._drop(cn);
+        c = db._create(cn);
+
+        for (var i = 0; i < 1000; ++i) {
+          c.save({ value: i });
+        }
+        c.ensureUniqueConstraint("value");
+
+        internal.debugSetFailAt(f);
+      
+        try {
+          c.truncate();
+          fail();
+        }
+        catch (err) {
+          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+        }
+
+        assertEqual(1000, c.count());
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback in case of a server-side fail
+////////////////////////////////////////////////////////////////////////////////
+
+    testRemoveNonUniqueHashIndexServerFailures : function () {
+      var failures = [ "DeletePrimaryIndex", "DeleteSecondaryIndexes", "RemoveHashIndex" ];
+
+      failures.forEach (function (f) {
+        internal.debugClearFailAt();
+        db._drop(cn);
+        c = db._create(cn);
+
+        for (var i = 0; i < 1000; ++i) {
+          c.save({ value: i % 10 });
+        }
+        c.ensureHashIndex("value");
+
+        internal.debugSetFailAt(f);
+      
+        try {
+          c.truncate();
+          fail();
+        }
+        catch (err) {
+          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+        }
+
+        assertEqual(1000, c.count());
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback in case of a server-side fail
+////////////////////////////////////////////////////////////////////////////////
+
+    testRemoveNonUniqueHashIndexServerFailuresTrx : function () {
+      var failures = [ "DeletePrimaryIndex", "DeleteSecondaryIndexes", "RemoveHashIndex" ];
+
+      failures.forEach (function (f) {
+        internal.debugClearFailAt();
+        db._drop(cn);
+        c = db._create(cn);
+
+        c.ensureHashIndex("value");
+        for (var i = 0; i < 1000; ++i) {
+          c.save({ _key: "test" + i, value: i % 10 });
+        }
+
+        db._executeTransaction({ 
+          collections: {
+            write: cn 
+          },
+          action: function () {
+            for (var j = 0; j < 10; ++j) {
+              c.remove("test" + j);
+            }
+ 
+            internal.debugSetFailAt(f);
+
+            try {
+              c.remove("test10");
+              fail();
+            }
+            catch (err) {
+              assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+            }
+          }
+        });
+
+        assertEqual(990, c.count());
+        internal.debugClearFailAt();
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback in case of a server-side fail
+////////////////////////////////////////////////////////////////////////////////
+
+    testRemoveNonUniqueHashIndexServerFailuresRollback : function () {
+      var failures = [ "DeletePrimaryIndex", "DeleteSecondaryIndexes", "RemoveHashIndex" ];
+
+      failures.forEach (function (f) {
+        internal.debugClearFailAt();
+        db._drop(cn);
+        c = db._create(cn);
+
+        for (var i = 0; i < 1000; ++i) {
+          c.save({ _key: "test" + i, value: i % 10 });
+        }
+
+        c.ensureHashIndex("value");
+
+        try {
+          db._executeTransaction({ 
+            collections: {
+              write: cn 
+            },
+            action: function () {
+              for (var j = 0; j < 10; ++j) {
+                c.remove("test" + j);
+              }  
+
+              internal.debugSetFailAt(f);
+              c.remove("test10");
+            }
+          });
+          fail();
+        }
+        catch (err) {
+          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+        }
+
+        assertEqual(1000, c.count());
+        internal.debugClearFailAt();
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback in case of a server-side fail
+////////////////////////////////////////////////////////////////////////////////
+
+    testRemoveUniqueSkiplistServerFailures : function () {
+      var failures = [ "DeletePrimaryIndex", "DeleteSecondaryIndexes" ];
+
+      failures.forEach (function (f) {
+        internal.debugClearFailAt();
+        db._drop(cn);
+        c = db._create(cn);
+
+        for (var i = 0; i < 1000; ++i) {
+          c.save({ value: i });
+        }
+        c.ensureUniqueSkiplist("value");
+
+        internal.debugSetFailAt(f);
+      
+        try {
+          c.truncate();
+          fail();
+        }
+        catch (err) {
+          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+        }
+
+        assertEqual(1000, c.count());
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback in case of a server-side fail
+////////////////////////////////////////////////////////////////////////////////
+
+    testRemoveNonUniqueSkiplistServerFailures : function () {
+      var failures = [ "DeletePrimaryIndex", "DeleteSecondaryIndexes" ];
+
+      failures.forEach (function (f) {
+        internal.debugClearFailAt();
+        db._drop(cn);
+        c = db._create(cn);
+
+        for (var i = 0; i < 1000; ++i) {
+          c.save({ value: i % 10 });
+        }
+        c.ensureSkiplist("value");
+
+        internal.debugSetFailAt(f);
+      
+        try {
+          c.truncate();
+          fail();
+        }
+        catch (err) {
+          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+        }
+
+        assertEqual(1000, c.count());
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback in case of a server-side fail
+////////////////////////////////////////////////////////////////////////////////
+
+    testRemoveMultipleIndexesServerFailures : function () {
+      var failures = [ "DeletePrimaryIndex", "DeleteSecondaryIndexes", "RemoveHashIndex" ];
+
+      failures.forEach (function (f) {
+        internal.debugClearFailAt();
+        db._drop(cn);
+        c = db._create(cn);
+
+        for (var i = 0; i < 1000; ++i) {
+          c.save({ value: i % 10 });
+        }
+        c.ensureSkiplist("value");
+        c.ensureHashIndex("value");
+
+        internal.debugSetFailAt(f);
+      
+        try {
+          c.truncate();
+          fail();
+        }
+        catch (err) {
+          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+        }
+
+        assertEqual(1000, c.count());
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback in case of a server-side fail
+////////////////////////////////////////////////////////////////////////////////
+
     testReadServerFailures : function () {
       var failures = [ "ReadDocumentNoLock", "ReadDocumentNoLockExcept" ];
 
@@ -5025,7 +5471,7 @@ function transactionServerFailuresSuite () {
 if (internal.debugCanUseFailAt()) {
   jsunity.run(transactionServerFailuresSuite);
 }
-
+/*
 jsunity.run(transactionInvocationSuite);
 jsunity.run(transactionCollectionsSuite);
 jsunity.run(transactionOperationsSuite);
@@ -5035,7 +5481,7 @@ jsunity.run(transactionRollbackSuite);
 jsunity.run(transactionCountSuite);
 jsunity.run(transactionCrossCollectionSuite);
 jsunity.run(transactionConstraintsSuite);
-
+*/
 return jsunity.done();
 
 // -----------------------------------------------------------------------------
@@ -5046,3 +5492,4 @@ return jsunity.done();
 // mode: outline-minor
 // outline-regexp: "\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
 // End:
+
