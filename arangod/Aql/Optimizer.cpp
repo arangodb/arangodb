@@ -463,6 +463,12 @@ void Optimizer::setupRules () {
                useIndexForSort_pass6,
                true);
 
+  // try to replace simple OR conditions with IN
+  registerRule("replace-OR-with-IN",
+               replaceORwithIN,
+               replaceORwithIN_pass6,
+               true);
+
   if (ExecutionEngine::isCoordinator()) {
     // distribute operations in cluster
     registerRule("scatter-in-cluster",
