@@ -35,6 +35,14 @@ using namespace triagens::aql;
 using Json = triagens::basics::Json;
 using EN   = triagens::aql::ExecutionNode;
 
+//#if 0
+#define ENTER_BLOCK try { (void) 0;
+#define LEAVE_BLOCK } catch (...) { std::cout << "caught an exception in " << __FUNCTION__ << ", " << __FILE__ << ":" << __LINE__ << "!\n"; throw; }
+//#else
+//#define ENTER_BLOCK
+//#define LEAVE_BLOCK
+//#endif
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                           rules for the optimizer
 // -----------------------------------------------------------------------------
@@ -48,7 +56,7 @@ using EN   = triagens::aql::ExecutionNode;
 int triagens::aql::removeRedundantSorts (Optimizer* opt, 
                                          ExecutionPlan* plan,
                                          Optimizer::Rule const* rule) { 
-  std::vector<ExecutionNode*> nodes = plan->findNodesOfType(triagens::aql::ExecutionNode::SORT, true);
+  std::vector<ExecutionNode*> nodes = plan->findNodesOfType(EN::SORT, true);
   std::unordered_set<ExecutionNode*> toUnlink;
 
   triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
@@ -77,7 +85,7 @@ int triagens::aql::removeRedundantSorts (Optimizer* opt,
         auto current = stack.back();
         stack.pop_back();
 
-        if (current->getType() == triagens::aql::ExecutionNode::SORT) {
+        if (current->getType() == EN::SORT) {
           // we found another sort. now check if they are compatible!
     
           auto other = static_cast<SortNode*>(current)->getSortInformation(plan, &buffer);
@@ -126,17 +134,17 @@ int triagens::aql::removeRedundantSorts (Optimizer* opt,
             }
           }
         }
-        else if (current->getType() == triagens::aql::ExecutionNode::FILTER) {
+        else if (current->getType() == EN::FILTER) {
           // ok: a filter does not depend on sort order
         }
-        else if (current->getType() == triagens::aql::ExecutionNode::CALCULATION) {
+        else if (current->getType() == EN::CALCULATION) {
           // ok: a filter does not depend on sort order only if it does not throw
           if (current->canThrow()) {
             ++nodesRelyingOnSort;
           }
         }
-        else if (current->getType() == triagens::aql::ExecutionNode::ENUMERATE_LIST ||
-                 current->getType() == triagens::aql::ExecutionNode::ENUMERATE_COLLECTION) {
+        else if (current->getType() == EN::ENUMERATE_LIST ||
+                 current->getType() == EN::ENUMERATE_COLLECTION) {
           // ok, but we cannot remove two different sorts if one of these node types is between them
           // example: in the following query, the one sort will be optimized away:
           //   FOR i IN [ { a: 1 }, { a: 2 } , { a: 3 } ] SORT i.a ASC SORT i.a DESC RETURN i
@@ -188,7 +196,7 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
   bool modified = false;
   std::unordered_set<ExecutionNode*> toUnlink;
   // should we enter subqueries??
-  std::vector<ExecutionNode*> nodes = plan->findNodesOfType(triagens::aql::ExecutionNode::FILTER, true);
+  std::vector<ExecutionNode*> nodes = plan->findNodesOfType(EN::FILTER, true);
   
   for (auto n : nodes) {
     // filter nodes always have one input variable
@@ -200,7 +208,7 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
     auto setter = plan->getVarSetBy(variable->id);
 
     if (setter == nullptr || 
-        setter->getType() != triagens::aql::ExecutionNode::CALCULATION) {
+        setter->getType() != EN::CALCULATION) {
       // filter variable was not introduced by a calculation. 
       continue;
     }
@@ -254,7 +262,7 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
 int triagens::aql::moveCalculationsUpRule (Optimizer* opt, 
                                            ExecutionPlan* plan, 
                                            Optimizer::Rule const* rule) {
-  std::vector<ExecutionNode*> nodes = plan->findNodesOfType(triagens::aql::ExecutionNode::CALCULATION, true);
+  std::vector<ExecutionNode*> nodes = plan->findNodesOfType(EN::CALCULATION, true);
   bool modified = false;
   
   for (auto n : nodes) {
@@ -333,7 +341,7 @@ int triagens::aql::moveCalculationsUpRule (Optimizer* opt,
 int triagens::aql::moveFiltersUpRule (Optimizer* opt, 
                                       ExecutionPlan* plan,
                                       Optimizer::Rule const* rule) {
-  std::vector<ExecutionNode*> nodes = plan->findNodesOfType(triagens::aql::ExecutionNode::FILTER, true);
+  std::vector<ExecutionNode*> nodes = plan->findNodesOfType(EN::FILTER, true);
   bool modified = false;
   
   for (auto n : nodes) {
@@ -349,7 +357,7 @@ int triagens::aql::moveFiltersUpRule (Optimizer* opt,
       auto current = stack.back();
       stack.pop_back();
 
-      if (current->getType() == triagens::aql::ExecutionNode::LIMIT) {
+      if (current->getType() == EN::LIMIT) {
         // cannot push a filter beyond a LIMIT node
         break;
       }
@@ -500,7 +508,7 @@ int triagens::aql::removeRedundantCalculationsRule (Optimizer* opt,
   std::unordered_map<VariableId, Variable const*> replacements;
 
   std::vector<ExecutionNode*> nodes
-    = plan->findNodesOfType(triagens::aql::ExecutionNode::CALCULATION, true);
+    = plan->findNodesOfType(EN::CALCULATION, true);
 
   for (auto n : nodes) {
     auto nn = static_cast<CalculationNode*>(n);
@@ -535,7 +543,7 @@ int triagens::aql::removeRedundantCalculationsRule (Optimizer* opt,
       auto current = stack.back();
       stack.pop_back();
 
-      if (current->getType() == triagens::aql::ExecutionNode::CALCULATION) {
+      if (current->getType() == EN::CALCULATION) {
         try {
           static_cast<CalculationNode*>(current)->expression()->stringify(&buffer);
         }
@@ -584,7 +592,7 @@ int triagens::aql::removeRedundantCalculationsRule (Optimizer* opt,
         }
       }
 
-      if (current->getType() == triagens::aql::ExecutionNode::AGGREGATE) {
+      if (current->getType() == EN::AGGREGATE) {
         if (static_cast<AggregateNode*>(current)->hasOutVariable()) {
           // COLLECT ... INTO is evil (tm): it needs to keep all already defined variables
           // we need to abort optimization here
@@ -632,14 +640,14 @@ int triagens::aql::removeUnnecessaryCalculationsRule (Optimizer* opt,
                                                       ExecutionPlan* plan,
                                                       Optimizer::Rule const* rule) {
   std::vector<ExecutionNode::NodeType> const types = {
-    triagens::aql::ExecutionNode::CALCULATION,
-    triagens::aql::ExecutionNode::SUBQUERY
+    EN::CALCULATION,
+    EN::SUBQUERY
   };
 
   std::vector<ExecutionNode*> nodes = plan->findNodesOfType(types, true);
   std::unordered_set<ExecutionNode*> toUnlink;
   for (auto n : nodes) {
-    if (n->getType() == triagens::aql::ExecutionNode::CALCULATION) {
+    if (n->getType() == EN::CALCULATION) {
       auto nn = static_cast<CalculationNode*>(n);
 
       if (nn->canThrow() ||
@@ -983,7 +991,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         auto x = static_cast<Variable*>(node->getData());
         auto setter = _plan->getVarSetBy(x->id);
         if (setter != nullptr && 
-            setter->getType() == triagens::aql::ExecutionNode::ENUMERATE_COLLECTION) {
+            setter->getType() == EN::ENUMERATE_COLLECTION) {
           enumCollVar = x;
         }
         return;
@@ -1132,7 +1140,7 @@ int triagens::aql::useIndexRange (Optimizer* opt,
                                   Optimizer::Rule const* rule) {
   
   std::vector<ExecutionNode*> nodes
-    = plan->findNodesOfType(triagens::aql::ExecutionNode::FILTER, true);
+    = plan->findNodesOfType(EN::FILTER, true);
   
   for (auto n : nodes) {
     auto nn = static_cast<FilterNode*>(n);
@@ -1441,7 +1449,7 @@ int triagens::aql::useIndexForSort (Optimizer* opt,
                                     Optimizer::Rule const* rule) {
   bool planModified = false;
   std::vector<ExecutionNode*> nodes
-    = plan->findNodesOfType(triagens::aql::ExecutionNode::SORT, true);
+    = plan->findNodesOfType(EN::SORT, true);
   for (auto n : nodes) {
     auto thisSortNode = static_cast<SortNode*>(n);
     SortAnalysis node(thisSortNode);
@@ -1503,7 +1511,7 @@ int triagens::aql::interchangeAdjacentEnumerations (Optimizer* opt,
                                                     ExecutionPlan* plan,
                                                     Optimizer::Rule const* rule) {
   std::vector<ExecutionNode*> nodes
-    = plan->findNodesOfType(triagens::aql::ExecutionNode::ENUMERATE_COLLECTION, 
+    = plan->findNodesOfType(EN::ENUMERATE_COLLECTION, 
                             true);
   std::unordered_set<ExecutionNode*> nodesSet;
   for (auto n : nodes) {
@@ -1532,7 +1540,7 @@ int triagens::aql::interchangeAdjacentEnumerations (Optimizer* opt,
           break;
         }
         if (deps[0]->getType() != 
-            triagens::aql::ExecutionNode::ENUMERATE_COLLECTION) {
+            EN::ENUMERATE_COLLECTION) {
           break;
         }
         nwalker = deps[0];
@@ -1818,7 +1826,7 @@ int triagens::aql::distributeFilternCalcToCluster (Optimizer* opt,
   bool modified = false;
 
   std::vector<ExecutionNode*> nodes
-    = plan->findNodesOfType(triagens::aql::ExecutionNode::GATHER, true);
+    = plan->findNodesOfType(EN::GATHER, true);
 
   
   for (auto n : nodes) {
@@ -1911,7 +1919,7 @@ int triagens::aql::distributeSortToCluster (Optimizer* opt,
   bool modified = false;
 
   std::vector<ExecutionNode*> nodes
-    = plan->findNodesOfType(triagens::aql::ExecutionNode::GATHER, true);
+    = plan->findNodesOfType(EN::GATHER, true);
   
   for (auto n : nodes) {
     auto remoteNodeList = n->getDependencies();
@@ -1993,7 +2001,7 @@ int triagens::aql::removeUnnecessaryRemoteScatter (Optimizer* opt,
                                                    ExecutionPlan* plan, 
                                                    Optimizer::Rule const* rule) {
   std::vector<ExecutionNode*> nodes
-    = plan->findNodesOfType(triagens::aql::ExecutionNode::REMOTE, true);
+    = plan->findNodesOfType(EN::REMOTE, true);
   std::unordered_set<ExecutionNode*> toUnlink;
 
   for (auto n : nodes) {
@@ -2237,7 +2245,7 @@ int triagens::aql::undistributeRemoveAfterEnumColl (Optimizer* opt,
                                                     ExecutionPlan* plan, 
                                                     Optimizer::Rule const* rule) {
   std::vector<ExecutionNode*> nodes
-    = plan->findNodesOfType(triagens::aql::ExecutionNode::REMOVE, true);
+    = plan->findNodesOfType(EN::REMOVE, true);
   std::unordered_set<ExecutionNode*> toUnlink;
 
   for (auto n : nodes) {
@@ -2287,8 +2295,8 @@ bool buildExpression (AstNode const* node,
         expr->addMember(node->clone(plan->getAst()));
         return true;
       } 
-      if (node->getStringValue() 
-          == expr->getMember(0)->getStringValue()) {
+      if (strcmp(node->getStringValue(), 
+                 expr->getMember(0)->getStringValue()) == 0) {
         return true;
       }
     }
@@ -2337,22 +2345,24 @@ bool buildExpression (AstNode const* node,
         return true;
       }
     }
+    std::cout << "OR\n";
   }
   
   return false;
 }
 
 int triagens::aql::replaceORwithIN (Optimizer* opt, 
-                                  ExecutionPlan* plan, 
-                                  Optimizer::Rule const* rule) {
+                                    ExecutionPlan* plan, 
+                                    Optimizer::Rule const* rule) {
+  ENTER_BLOCK;
   std::vector<ExecutionNode*> nodes
-    = plan->findNodesOfType(triagens::aql::ExecutionNode::FILTER, true);
+    = plan->findNodesOfType(EN::FILTER, true);
 
   bool modified = false;
   for (auto n : nodes) {
     auto deps = n->getDependencies();
     TRI_ASSERT(deps.size() == 1);
-    TRI_ASSERT(deps[0]->getType() == triagens::aql::ExecutionNode::CALCULATION);
+    TRI_ASSERT(deps[0]->getType() == EN::CALCULATION);
     auto fn = static_cast<FilterNode*>(n);
     auto cn = static_cast<CalculationNode*>(deps[0]);
 
@@ -2366,17 +2376,12 @@ int triagens::aql::replaceORwithIN (Optimizer* opt,
     AstNode* expr = new AstNode(NODE_TYPE_OPERATOR_BINARY_IN);
     
     if (buildExpression(cn->expression()->node(), expr, plan)) {
-      deps = cn->getDependencies();
-      TRI_ASSERT(deps.size() == 1);
-      
-      plan->unlinkNode(cn);
-      
-      cn = new CalculationNode(plan, plan->nextId(), 
-                               new Expression(plan->getAst(), expr), outVar[0]->clone());
-      plan->registerNode(cn);
-      cn->addDependency(deps[0]);
-      fn->addDependency(cn);
-      modified = false;
+      auto newNode = new CalculationNode(plan, plan->nextId(), 
+                                         new Expression(plan->getAst(), expr), 
+                                                        outVar[0]->clone());
+      plan->registerNode(newNode);
+      plan->replaceNode(cn, newNode);
+      modified = true;
       plan->findVarUsage(); //FIXME appropriate place for this?
     }
   }
@@ -2384,6 +2389,7 @@ int triagens::aql::replaceORwithIN (Optimizer* opt,
   opt->addPlan(plan, rule->level, modified);
 
   return TRI_ERROR_NO_ERROR;
+  LEAVE_BLOCK;
 }
 
 // Local Variables:
