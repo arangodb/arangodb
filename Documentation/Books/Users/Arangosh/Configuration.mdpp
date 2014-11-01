@@ -8,7 +8,7 @@ You can use this to define your own extra variables and functions that you need 
 For example, you could put the following into the *.arangosh.rc* file in your home
 directory:
 
-```
+```js
 // var keyword omitted intentionally,
 // otherwise "timed" would not survive the scope of this script
 timed = function (cb) {
@@ -23,7 +23,7 @@ This will make a function named *timed* available in _arangosh_ in the global sc
 
 You can now start _arangosh_ and invoke the function like this:
 
-```
+```js
 timed(function () { 
   for (var i = 0; i < 1000; ++i) {
     db.test.save({ value: i }); 
