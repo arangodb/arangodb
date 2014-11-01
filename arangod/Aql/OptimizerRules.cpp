@@ -2345,7 +2345,6 @@ bool buildExpression (AstNode const* node,
         return true;
       }
     }
-    std::cout << "OR\n";
   }
   
   return false;
@@ -2373,19 +2372,22 @@ int triagens::aql::replaceORwithIN (Optimizer* opt,
       continue;
     }
     
-    AstNode* expr = new AstNode(NODE_TYPE_OPERATOR_BINARY_IN);
+    AstNode* ast = new AstNode(NODE_TYPE_OPERATOR_BINARY_IN);
     
-    if (buildExpression(cn->expression()->node(), expr, plan)) {
-      auto newNode = new CalculationNode(plan, plan->nextId(), 
-                                         new Expression(plan->getAst(), expr), 
-                                                        outVar[0]->clone());
+    if (buildExpression(cn->expression()->node(), ast, plan)) {
+      auto expr = new Expression(plan->getAst(), const_cast<AstNode*>(ast));
+      auto newNode = new CalculationNode(plan, plan->nextId(), expr, outVar[0]);
+
+      //TODO clone outVar[0]?
       plan->registerNode(newNode);
       plan->replaceNode(cn, newNode);
       modified = true;
-      plan->findVarUsage(); //FIXME appropriate place for this?
     }
   }
-  
+ 
+  if (modified) {
+    plan->findVarUsage();
+  }
   opt->addPlan(plan, rule->level, modified);
 
   return TRI_ERROR_NO_ERROR;
