@@ -321,7 +321,7 @@ namespace triagens {
 
         bool processRead () {
           if (this->_requestPending || this->_readBuffer->c_str() == nullptr) {
-            return true;
+            return false;
           }
 
           bool handleRequest = false;
@@ -373,7 +373,7 @@ namespace triagens {
               this->resetState(true);
               this->handleResponse(&response);
 
-              return true;
+              return false;
             }
 
             // header is complete
@@ -403,7 +403,7 @@ namespace triagens {
                 this->resetState(true);
                 this->handleResponse(&response);
 
-                return true;
+                return false;
               }
 
               TRI_ASSERT(this->_request != nullptr);
@@ -421,7 +421,7 @@ namespace triagens {
                 this->resetState(true);
                 this->handleResponse(&response);
 
-                return true;
+                return false;
               }
 
               // check max URL length
@@ -435,7 +435,7 @@ namespace triagens {
                 this->resetState(true);
                 this->handleResponse(&response);
 
-                return true;
+                return false;
               }
 
               // update the connection information, i. e. client and server addresses and ports
@@ -489,7 +489,7 @@ namespace triagens {
                                                  || this->_requestType == HttpRequest::HTTP_REQUEST_DELETE);
 
                   if (! checkContentLength(expectContentLength)) {
-                    return true;
+                    return false;
                   }
 
                   if (this->_bodyLength == 0) {
@@ -520,7 +520,7 @@ namespace triagens {
                   // force a socket close, response will be ignored!
                   TRI_CLOSE_SOCKET(this->_commSocket);
 
-                  return true;
+                  return false;
                 }
               }
 
@@ -541,7 +541,7 @@ namespace triagens {
                 this->resetState(true);
                 this->handleResponse(&response);
 
-                return true;
+                return false;
               }
 
               // check for a 100-continue
@@ -588,7 +588,7 @@ namespace triagens {
               }
 
               // let client send more
-              return true;
+              return false;
             }
 
             // read "bodyLength" from read buffer and add this body to "httpRequest"
@@ -609,7 +609,7 @@ namespace triagens {
           // .............................................................................
 
           if (! handleRequest) {
-            return true;
+            return false;
           }
 
           RequestStatisticsAgentSetReadEnd(this);
@@ -799,9 +799,6 @@ namespace triagens {
 
           // start output
           this->fillWriteBuffer();
-
-          // and process any remaining input
-          processRead();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
