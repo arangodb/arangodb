@@ -61,10 +61,6 @@
 
 # -*- mode: Makefile; -*-
 
-################################################################################
-### @brief MRuby source code as header
-################################################################################
-
 # -*- mode: Makefile; -*-
 
 ################################################################################
@@ -207,7 +203,6 @@ DIST_COMMON = $(srcdir)/lib/Makefile.files \
 	$(srcdir)/Makefile.am $(top_srcdir)/configure \
 	$(am__configure_deps) $(top_srcdir)/config/config.h.in \
 	$(top_srcdir)/lib/Basics/local-configuration.h.in \
-	$(top_srcdir)/Documentation/arango.template.in \
 	$(top_srcdir)/Installation/MacOSX/Bundle/Info.plist.in \
 	$(top_srcdir)/config/depcomp $(dist_man_MANS) README \
 	config/compile config/config.guess config/config.sub \
@@ -231,8 +226,6 @@ DIST_COMMON = $(srcdir)/lib/Makefile.files \
 @ENABLE_MRUBY_TRUE@	@MRUBY_LIBS@
 
 @ENABLE_MAINTAINER_MODE_TRUE@am__append_11 = \
-@ENABLE_MAINTAINER_MODE_TRUE@	arangod/Ahuacatl/ahuacatl-grammar.h \
-@ENABLE_MAINTAINER_MODE_TRUE@	arangod/Ahuacatl/ahuacatl-grammar.cpp \
 @ENABLE_MAINTAINER_MODE_TRUE@	arangod/Aql/grammar.h \
 @ENABLE_MAINTAINER_MODE_TRUE@	arangod/Aql/grammar.cpp
 
@@ -263,17 +256,6 @@ DIST_COMMON = $(srcdir)/lib/Makefile.files \
 @ENABLE_MAINTAINER_MODE_TRUE@	@top_srcdir@/js/common/modules/org/arangodb/mimetypes.js
 
 ################################################################################
-### @brief sets up the directories
-################################################################################
-@ENABLE_MRUBY_TRUE@am__append_14 = $(MRUBY_HEADER) \
-@ENABLE_MRUBY_TRUE@	@builddir@/.setup-mr-directories
-
-################################################################################
-### @brief cleanup
-################################################################################
-@ENABLE_MRUBY_TRUE@am__append_15 = $(MRUBY_HEADER)
-
-################################################################################
 ### @brief documentation
 ################################################################################
 
@@ -288,7 +270,7 @@ DIST_COMMON = $(srcdir)/lib/Makefile.files \
 ################################################################################
 ### @brief generate readme
 ################################################################################
-@ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@am__append_16 = README
+@ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@am__append_14 = README
 
 ################################################################################
 ### @brief generate all flex files
@@ -297,40 +279,40 @@ DIST_COMMON = $(srcdir)/lib/Makefile.files \
 ################################################################################
 ### @brief generate all bison files
 ################################################################################
-@ENABLE_MAINTAINER_MODE_TRUE@am__append_17 = $(FLEX_FILES) \
+@ENABLE_MAINTAINER_MODE_TRUE@am__append_15 = $(FLEX_FILES) \
 @ENABLE_MAINTAINER_MODE_TRUE@	$(FLEXXX_FILES) $(BISON_FILES) \
 @ENABLE_MAINTAINER_MODE_TRUE@	$(BISONXX_FILES)
-@ENABLE_ALL_IN_ONE_ICU_TRUE@am__append_18 = @ICU_BUILT@
+@ENABLE_ALL_IN_ONE_ICU_TRUE@am__append_16 = @ICU_BUILT@
 
 ################################################################################
 ### @brief additional files to remove
 ################################################################################
-@ENABLE_ALL_IN_ONE_ICU_TRUE@am__append_19 = clean-icu
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@am__append_20 = @LIBEV_LIBS@
+@ENABLE_ALL_IN_ONE_ICU_TRUE@am__append_17 = clean-icu
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@am__append_18 = @LIBEV_LIBS@
 
 ################################################################################
 ### @brief additional files to remove
 ################################################################################
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@am__append_21 = clean-libev
-@ENABLE_MRUBY_TRUE@am__append_22 = @MRUBY_LIBS@
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@am__append_19 = clean-libev
+@ENABLE_MRUBY_TRUE@am__append_20 = @MRUBY_LIBS@
 
 ################################################################################
 ### @brief additional files to remove
 ###
 ### "clean" in mruby is broken
 ################################################################################
-@ENABLE_MRUBY_TRUE@am__append_23 = clean-mruby
-@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_24 = @V8_LIBS@
+@ENABLE_MRUBY_TRUE@am__append_21 = clean-mruby
+@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_22 = @V8_LIBS@
 
 ################################################################################
 ### @brief additional files to remove
 ################################################################################
-@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_25 = clean-v8
+@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_23 = clean-v8
 
 ################################################################################
 ### @brief additional files to remove
 ################################################################################
-@ENABLE_ALL_IN_ONE_ETCD_TRUE@am__append_26 = clean-etcd
+@ENABLE_ALL_IN_ONE_ETCD_TRUE@am__append_24 = clean-etcd
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
@@ -361,8 +343,7 @@ am__CONFIG_DISTCLEAN_FILES = config.status config.cache config.log \
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/config/config.h \
 	$(top_builddir)/lib/Basics/local-configuration.h
-CONFIG_CLEAN_FILES = Documentation/arango.template \
-	Installation/MacOSX/Bundle/Info.plist
+CONFIG_CLEAN_FILES = Installation/MacOSX/Bundle/Info.plist
 CONFIG_CLEAN_VPATH_FILES =
 LIBRARIES = $(noinst_LIBRARIES)
 AR = ar
@@ -377,29 +358,6 @@ am__dirstamp = $(am__leading_dot)dirstamp
 am_arangod_libarangod_a_OBJECTS =  \
 	arangod/Actions/arangod_libarangod_a-actions.$(OBJEXT) \
 	arangod/Actions/arangod_libarangod_a-RestActionHandler.$(OBJEXT) \
-	arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-access-optimiser.$(OBJEXT) \
-	arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-ast-node.$(OBJEXT) \
-	arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-bind-parameter.$(OBJEXT) \
-	arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-codegen.$(OBJEXT) \
-	arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-collections.$(OBJEXT) \
-	arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-context.$(OBJEXT) \
-	arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-conversions.$(OBJEXT) \
-	arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-error.$(OBJEXT) \
-	arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-explain.$(OBJEXT) \
-	arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-functions.$(OBJEXT) \
-	arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-grammar.$(OBJEXT) \
-	arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-index.$(OBJEXT) \
-	arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-node.$(OBJEXT) \
-	arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-optimiser.$(OBJEXT) \
-	arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-parser-functions.$(OBJEXT) \
-	arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-parser.$(OBJEXT) \
-	arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-result.$(OBJEXT) \
-	arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-scope.$(OBJEXT) \
-	arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statement-dump.$(OBJEXT) \
-	arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statement-walker.$(OBJEXT) \
-	arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statementlist.$(OBJEXT) \
-	arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-tokens.$(OBJEXT) \
-	arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-variable.$(OBJEXT) \
 	arangod/Aql/arangod_libarangod_a-AqlItemBlock.$(OBJEXT) \
 	arangod/Aql/arangod_libarangod_a-AqlValue.$(OBJEXT) \
 	arangod/Aql/arangod_libarangod_a-Ast.$(OBJEXT) \
@@ -737,9 +695,9 @@ lib_libarango_v8_a_LIBADD =
 am_lib_libarango_v8_a_OBJECTS = lib/V8/JSLoader.$(OBJEXT) \
 	lib/V8/V8LineEditor.$(OBJEXT) \
 	lib/V8/V8StringConverter.$(OBJEXT) lib/V8/v8-buffer.$(OBJEXT) \
-	lib/V8/v8-conv.$(OBJEXT) lib/V8/v8-execution.$(OBJEXT) \
-	lib/V8/v8-globals.$(OBJEXT) lib/V8/v8-json.$(OBJEXT) \
-	lib/V8/v8-shell.$(OBJEXT) lib/V8/v8-utils.$(OBJEXT) \
+	lib/V8/v8-conv.$(OBJEXT) lib/V8/v8-globals.$(OBJEXT) \
+	lib/V8/v8-json.$(OBJEXT) lib/V8/v8-shell.$(OBJEXT) \
+	lib/V8/v8-utils.$(OBJEXT) \
 	lib/SimpleHttpClient/GeneralClientConnection.$(OBJEXT) \
 	lib/SimpleHttpClient/ClientConnection.$(OBJEXT) \
 	lib/SimpleHttpClient/SslClientConnection.$(OBJEXT) \
@@ -1036,8 +994,6 @@ CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
-DOT_EXEC = @DOT_EXEC@
-DOT_PATH = @DOT_PATH@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
@@ -1047,9 +1003,9 @@ GCOV_CFLAGS = @GCOV_CFLAGS@
 GCOV_CXXFLAGS = @GCOV_CXXFLAGS@
 GCOV_LDFLAGS = @GCOV_LDFLAGS@
 GCOV_LIBS = @GCOV_LIBS@
+GO = @GO@
 GREP = @GREP@
 HAVE_CXX11 = @HAVE_CXX11@
-HAVE_DOT = @HAVE_DOT@
 HTML2TEXT_EXEC = @HTML2TEXT_EXEC@
 ICU_BUILT = @ICU_BUILT@
 ICU_CPPFLAGS = @ICU_CPPFLAGS@
@@ -1200,8 +1156,8 @@ BUILT_SOURCES = build.h etc/arangodb/arango-dfdb$(PROGRAM_SUFFIX).conf \
 	etc/arangodb/foxx-manager$(PROGRAM_SUFFIX).conf \
 	$(am__append_13) $(JAVASCRIPT_BROWSER) \
 	@builddir@/.setup-js-directories $(am__append_14) \
-	$(am__append_16) $(am__append_17) $(am__append_18) \
-	$(am__append_20) $(am__append_22) $(am__append_24) @ZLIB_LIBS@
+	$(am__append_15) $(am__append_16) $(am__append_18) \
+	$(am__append_20) $(am__append_22) @ZLIB_LIBS@
 
 ################################################################################
 ### @brief man pages to install
@@ -1219,7 +1175,7 @@ dist_man_MANS = Documentation/man/man1/arangob.1 \
 ################################################################################
 ### @brief files to cleanup
 ################################################################################
-CLEANUP = $(am__append_6) $(am__append_11) $(am__append_15)
+CLEANUP = $(am__append_6) $(am__append_11)
 
 ################################################################################
 ### @brief targets for cleanup of 3rd party libraries
@@ -1228,8 +1184,8 @@ CLEANUP = $(am__append_6) $(am__append_11) $(am__append_15)
 ################################################################################
 ### @brief additional files to remove
 ################################################################################
-CLEANUP_3RD = $(am__append_19) $(am__append_21) $(am__append_23) \
-	$(am__append_25) clean-zlib $(am__append_26)
+CLEANUP_3RD = $(am__append_17) $(am__append_19) $(am__append_21) \
+	$(am__append_23) clean-zlib $(am__append_24)
 
 ################################################################################
 ### @brief flex files
@@ -1258,7 +1214,7 @@ FLEX_FILES =
 ### @brief flex
 ################################################################################
 FLEXXX_FILES = lib/JsonParser/json-parser.cpp lib/V8/v8-json.cpp \
-	arangod/Ahuacatl/ahuacatl-tokens.cpp arangod/Aql/tokens.cpp
+	arangod/Aql/tokens.cpp
 
 ################################################################################
 ### @brief bison files
@@ -1267,8 +1223,7 @@ FLEXXX_FILES = lib/JsonParser/json-parser.cpp lib/V8/v8-json.cpp \
 ################################################################################
 ### @brief bison
 ################################################################################
-BISON_FILES = arangod/Ahuacatl/ahuacatl-grammar.cpp \
-	arangod/Aql/grammar.cpp
+BISON_FILES = arangod/Aql/grammar.cpp
 
 ################################################################################
 ### @brief bison++ files
@@ -1484,7 +1439,6 @@ lib_libarango_v8_a_SOURCES = \
 	lib/V8/V8StringConverter.cpp \
 	lib/V8/v8-buffer.cpp \
 	lib/V8/v8-conv.cpp \
-	lib/V8/v8-execution.cpp \
 	lib/V8/v8-globals.cpp \
 	lib/V8/v8-json.cpp \
 	lib/V8/v8-shell.cpp \
@@ -1512,29 +1466,6 @@ arangod_libarangod_a_CPPFLAGS = \
 arangod_libarangod_a_SOURCES = \
 	arangod/Actions/actions.cpp \
 	arangod/Actions/RestActionHandler.cpp \
-	arangod/Ahuacatl/ahuacatl-access-optimiser.cpp \
-	arangod/Ahuacatl/ahuacatl-ast-node.cpp \
-	arangod/Ahuacatl/ahuacatl-bind-parameter.cpp \
-	arangod/Ahuacatl/ahuacatl-codegen.cpp \
-	arangod/Ahuacatl/ahuacatl-collections.cpp \
-	arangod/Ahuacatl/ahuacatl-context.cpp \
-	arangod/Ahuacatl/ahuacatl-conversions.cpp \
-	arangod/Ahuacatl/ahuacatl-error.cpp \
-	arangod/Ahuacatl/ahuacatl-explain.cpp \
-	arangod/Ahuacatl/ahuacatl-functions.cpp \
-	arangod/Ahuacatl/ahuacatl-grammar.cpp \
-	arangod/Ahuacatl/ahuacatl-index.cpp \
-	arangod/Ahuacatl/ahuacatl-node.cpp \
-	arangod/Ahuacatl/ahuacatl-optimiser.cpp \
-	arangod/Ahuacatl/ahuacatl-parser-functions.cpp \
-	arangod/Ahuacatl/ahuacatl-parser.cpp \
-	arangod/Ahuacatl/ahuacatl-result.cpp \
-	arangod/Ahuacatl/ahuacatl-scope.cpp \
-	arangod/Ahuacatl/ahuacatl-statement-dump.cpp \
-	arangod/Ahuacatl/ahuacatl-statement-walker.cpp \
-	arangod/Ahuacatl/ahuacatl-statementlist.cpp \
-	arangod/Ahuacatl/ahuacatl-tokens.cpp \
-	arangod/Ahuacatl/ahuacatl-variable.cpp \
 	arangod/Aql/AqlItemBlock.cpp \
 	arangod/Aql/AqlValue.cpp \
 	arangod/Aql/Ast.cpp \
@@ -1909,6 +1840,7 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-rename-noncluster.js \
                @top_srcdir@/js/common/tests/shell-simple-query.js \
                @top_srcdir@/js/common/tests/shell-statement.js \
+               @top_srcdir@/js/common/tests/shell-explain-noncluster.js \
                @top_srcdir@/js/common/tests/shell-transactions.js \
                @top_srcdir@/js/common/tests/shell-unload.js \
                @top_srcdir@/js/common/tests/shell-users.js \
@@ -1952,64 +1884,6 @@ UNITTESTS_SERVER = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER))
 UNITTESTS_SERVER_ONLY = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER_ONLY))
 
 ################################################################################
-### @brief SHELL SERVER TESTS (AHUACATL)
-################################################################################
-SHELL_SERVER_AHUACATL = @top_srcdir@/js/server/tests/ahuacatl-ranges.js \
-			@top_srcdir@/js/server/tests/ahuacatl-queries-optimiser.js \
-			@top_srcdir@/js/server/tests/ahuacatl-queries-optimiser-in.js \
-			@top_srcdir@/js/server/tests/ahuacatl-queries-optimiser-limit.js \
-			@top_srcdir@/js/server/tests/ahuacatl-queries-optimiser-sort.js \
-			@top_srcdir@/js/server/tests/ahuacatl-queries-optimiser-ref.js \
-			@top_srcdir@/js/server/tests/ahuacatl-escaping.js \
-			@top_srcdir@/js/server/tests/ahuacatl-functions.js \
-			@top_srcdir@/js/server/tests/ahuacatl-variables.js \
-			@top_srcdir@/js/server/tests/ahuacatl-bind.js \
-			@top_srcdir@/js/server/tests/ahuacatl-complex.js \
-			@top_srcdir@/js/server/tests/ahuacatl-logical.js \
-			@top_srcdir@/js/server/tests/ahuacatl-arithmetic.js \
-			@top_srcdir@/js/server/tests/ahuacatl-relational.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ternary.js \
-			@top_srcdir@/js/server/tests/ahuacatl-parse.js \
-			@top_srcdir@/js/server/tests/ahuacatl-hash.js \
-			@top_srcdir@/js/server/tests/ahuacatl-skiplist.js \
-			@top_srcdir@/js/server/tests/ahuacatl-cross.js \
-			@top_srcdir@/js/server/tests/ahuacatl-general-graph.js \
-			@top_srcdir@/js/server/tests/ahuacatl-graph.js \
-			@top_srcdir@/js/server/tests/ahuacatl-edges.js \
-			@top_srcdir@/js/server/tests/ahuacatl-modify-noncluster.js \
-			@top_srcdir@/js/server/tests/ahuacatl-refaccess-variable.js \
-			@top_srcdir@/js/server/tests/ahuacatl-refaccess-attribute.js \
-			@top_srcdir@/js/server/tests/ahuacatl-queries-simple.js \
-			@top_srcdir@/js/server/tests/ahuacatl-queries-variables.js \
-			@top_srcdir@/js/server/tests/ahuacatl-queries-geo.js \
-			@top_srcdir@/js/server/tests/ahuacatl-queries-fulltext.js \
-			@top_srcdir@/js/server/tests/ahuacatl-queries-collection.js \
-			@top_srcdir@/js/server/tests/ahuacatl-queries-noncollection.js \
-			@top_srcdir@/js/server/tests/ahuacatl-subquery.js \
-			@top_srcdir@/js/server/tests/ahuacatl-operators.js
-
-SHELL_SERVER_AHUACATL_EXTENDED = \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-01.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-02.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-03.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-04.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-05.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-06.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-07.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-08.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-09.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-10.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-11.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-12.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-13.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-14.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-15.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-16.js
-
-UNITTESTS_SERVER_AHUACATL = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER_AHUACATL))
-UNITTESTS_SERVER_AHUACATL_EXTENDED = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER_AHUACATL_EXTENDED))
-
-################################################################################
 ### @brief SHELL SERVER TESTS (AQL)
 ################################################################################
 SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
@@ -2042,11 +1916,11 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-queries-fulltext.js \
 			@top_srcdir@/js/server/tests/aql-queries-geo.js \
 			@top_srcdir@/js/server/tests/aql-queries-noncollection.js \
-			@top_srcdir@/js/server/tests/aql-queries-optimiser-in.js \
+			@top_srcdir@/js/server/tests/aql-queries-optimiser-in-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-queries-optimiser.js \
 			@top_srcdir@/js/server/tests/aql-queries-optimiser-limit-noncluster.js \
-			@top_srcdir@/js/server/tests/aql-queries-optimiser-ref.js \
-			@top_srcdir@/js/server/tests/aql-queries-optimiser-sort.js \
+			@top_srcdir@/js/server/tests/aql-queries-optimiser-ref-noncluster.js \
+			@top_srcdir@/js/server/tests/aql-queries-optimiser-sort-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-queries-simple.js \
 			@top_srcdir@/js/server/tests/aql-queries-variables.js \
 			@top_srcdir@/js/server/tests/aql-range.js \
@@ -2143,14 +2017,14 @@ JAVASCRIPT_JSLINT = \
 	`find @srcdir@/js/apps/system/aardvark/test/specs -name "*.js"` \
 	`find @srcdir@/js/apps/system/aardvark/test/clusterSpecs -name "*.js"` \
 	\
+	`find @srcdir@/scripts -name "*.js"` \
+	\
+	@srcdir@/js/common/modules/jsunity.js \
 	@srcdir@/js/client/client.js \
 	@srcdir@/js/server/server.js \
 	@srcdir@/js/server/upgrade-database.js \
 	\
 	@srcdir@/js/apps/system/aardvark/frontend/js/shell/browser.js
-
-@ENABLE_MRUBY_TRUE@MRUBY_HEADER = \
-@ENABLE_MRUBY_TRUE@	mr/common/bootstrap/mr-error.h 
 
 @ENABLE_ALL_IN_ONE_ICU_TRUE@ICUDIR = @abs_top_srcdir@/3rdParty/icu/BUILD
 all: $(BUILT_SOURCES)
@@ -2216,8 +2090,6 @@ lib/Basics/stamp-h2: $(top_srcdir)/lib/Basics/local-configuration.h.in $(top_bui
 
 distclean-hdr:
 	-rm -f config/config.h config/stamp-h1 lib/Basics/local-configuration.h lib/Basics/stamp-h2
-Documentation/arango.template: $(top_builddir)/config.status $(top_srcdir)/Documentation/arango.template.in
-	cd $(top_builddir) && $(SHELL) ./config.status $@
 Installation/MacOSX/Bundle/Info.plist: $(top_builddir)/config.status $(top_srcdir)/Installation/MacOSX/Bundle/Info.plist.in
 	cd $(top_builddir) && $(SHELL) ./config.status $@
 
@@ -2235,81 +2107,6 @@ arangod/Actions/arangod_libarangod_a-actions.$(OBJEXT):  \
 arangod/Actions/arangod_libarangod_a-RestActionHandler.$(OBJEXT):  \
 	arangod/Actions/$(am__dirstamp) \
 	arangod/Actions/$(DEPDIR)/$(am__dirstamp)
-arangod/Ahuacatl/$(am__dirstamp):
-	@$(MKDIR_P) arangod/Ahuacatl
-	@: > arangod/Ahuacatl/$(am__dirstamp)
-arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) arangod/Ahuacatl/$(DEPDIR)
-	@: > arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-access-optimiser.$(OBJEXT):  \
-	arangod/Ahuacatl/$(am__dirstamp) \
-	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-ast-node.$(OBJEXT):  \
-	arangod/Ahuacatl/$(am__dirstamp) \
-	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-bind-parameter.$(OBJEXT):  \
-	arangod/Ahuacatl/$(am__dirstamp) \
-	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-codegen.$(OBJEXT):  \
-	arangod/Ahuacatl/$(am__dirstamp) \
-	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-collections.$(OBJEXT):  \
-	arangod/Ahuacatl/$(am__dirstamp) \
-	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-context.$(OBJEXT):  \
-	arangod/Ahuacatl/$(am__dirstamp) \
-	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-conversions.$(OBJEXT):  \
-	arangod/Ahuacatl/$(am__dirstamp) \
-	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-error.$(OBJEXT):  \
-	arangod/Ahuacatl/$(am__dirstamp) \
-	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-explain.$(OBJEXT):  \
-	arangod/Ahuacatl/$(am__dirstamp) \
-	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-functions.$(OBJEXT):  \
-	arangod/Ahuacatl/$(am__dirstamp) \
-	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-grammar.$(OBJEXT):  \
-	arangod/Ahuacatl/$(am__dirstamp) \
-	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-index.$(OBJEXT):  \
-	arangod/Ahuacatl/$(am__dirstamp) \
-	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-node.$(OBJEXT):  \
-	arangod/Ahuacatl/$(am__dirstamp) \
-	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-optimiser.$(OBJEXT):  \
-	arangod/Ahuacatl/$(am__dirstamp) \
-	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-parser-functions.$(OBJEXT):  \
-	arangod/Ahuacatl/$(am__dirstamp) \
-	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-parser.$(OBJEXT):  \
-	arangod/Ahuacatl/$(am__dirstamp) \
-	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-result.$(OBJEXT):  \
-	arangod/Ahuacatl/$(am__dirstamp) \
-	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-scope.$(OBJEXT):  \
-	arangod/Ahuacatl/$(am__dirstamp) \
-	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statement-dump.$(OBJEXT):  \
-	arangod/Ahuacatl/$(am__dirstamp) \
-	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statement-walker.$(OBJEXT):  \
-	arangod/Ahuacatl/$(am__dirstamp) \
-	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statementlist.$(OBJEXT):  \
-	arangod/Ahuacatl/$(am__dirstamp) \
-	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-tokens.$(OBJEXT):  \
-	arangod/Ahuacatl/$(am__dirstamp) \
-	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-variable.$(OBJEXT):  \
-	arangod/Ahuacatl/$(am__dirstamp) \
-	arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
 arangod/Aql/$(am__dirstamp):
 	@$(MKDIR_P) arangod/Aql
 	@: > arangod/Aql/$(am__dirstamp)
@@ -3279,8 +3076,6 @@ lib/V8/v8-buffer.$(OBJEXT): lib/V8/$(am__dirstamp) \
 	lib/V8/$(DEPDIR)/$(am__dirstamp)
 lib/V8/v8-conv.$(OBJEXT): lib/V8/$(am__dirstamp) \
 	lib/V8/$(DEPDIR)/$(am__dirstamp)
-lib/V8/v8-execution.$(OBJEXT): lib/V8/$(am__dirstamp) \
-	lib/V8/$(DEPDIR)/$(am__dirstamp)
 lib/V8/v8-globals.$(OBJEXT): lib/V8/$(am__dirstamp) \
 	lib/V8/$(DEPDIR)/$(am__dirstamp)
 lib/V8/v8-json.$(OBJEXT): lib/V8/$(am__dirstamp) \
@@ -3662,7 +3457,6 @@ mostlyclean-compile:
 	-rm -f UnitTests/Basics/*.$(OBJEXT)
 	-rm -f UnitTests/Geo/*.$(OBJEXT)
 	-rm -f arangod/Actions/*.$(OBJEXT)
-	-rm -f arangod/Ahuacatl/*.$(OBJEXT)
 	-rm -f arangod/Aql/*.$(OBJEXT)
 	-rm -f arangod/CapConstraint/*.$(OBJEXT)
 	-rm -f arangod/Cluster/*.$(OBJEXT)
@@ -3729,29 +3523,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Geo/$(DEPDIR)/UnitTests_geo_suite-georeg.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Actions/$(DEPDIR)/arangod_libarangod_a-RestActionHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Actions/$(DEPDIR)/arangod_libarangod_a-actions.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-access-optimiser.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-ast-node.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-bind-parameter.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-codegen.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-collections.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-context.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-conversions.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-error.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-explain.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-functions.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-grammar.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-index.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-node.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-optimiser.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-parser-functions.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-parser.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-result.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-scope.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-statement-dump.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-statement-walker.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-statementlist.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-tokens.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-variable.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-AqlItemBlock.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-AqlValue.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-Ast.Po@am__quote@
@@ -4031,7 +3802,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/V8/$(DEPDIR)/V8StringConverter.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/V8/$(DEPDIR)/v8-buffer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/V8/$(DEPDIR)/v8-conv.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/V8/$(DEPDIR)/v8-execution.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/V8/$(DEPDIR)/v8-globals.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/V8/$(DEPDIR)/v8-json.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/V8/$(DEPDIR)/v8-shell.Po@am__quote@
@@ -4127,328 +3897,6 @@ arangod/Actions/arangod_libarangod_a-RestActionHandler.obj: arangod/Actions/Rest
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Actions/RestActionHandler.cpp' object='arangod/Actions/arangod_libarangod_a-RestActionHandler.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Actions/arangod_libarangod_a-RestActionHandler.obj `if test -f 'arangod/Actions/RestActionHandler.cpp'; then $(CYGPATH_W) 'arangod/Actions/RestActionHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Actions/RestActionHandler.cpp'; fi`
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-access-optimiser.o: arangod/Ahuacatl/ahuacatl-access-optimiser.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-access-optimiser.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-access-optimiser.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-access-optimiser.o `test -f 'arangod/Ahuacatl/ahuacatl-access-optimiser.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-access-optimiser.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-access-optimiser.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-access-optimiser.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-access-optimiser.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-access-optimiser.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-access-optimiser.o `test -f 'arangod/Ahuacatl/ahuacatl-access-optimiser.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-access-optimiser.cpp
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-access-optimiser.obj: arangod/Ahuacatl/ahuacatl-access-optimiser.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-access-optimiser.obj -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-access-optimiser.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-access-optimiser.obj `if test -f 'arangod/Ahuacatl/ahuacatl-access-optimiser.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-access-optimiser.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-access-optimiser.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-access-optimiser.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-access-optimiser.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-access-optimiser.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-access-optimiser.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-access-optimiser.obj `if test -f 'arangod/Ahuacatl/ahuacatl-access-optimiser.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-access-optimiser.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-access-optimiser.cpp'; fi`
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-ast-node.o: arangod/Ahuacatl/ahuacatl-ast-node.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-ast-node.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-ast-node.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-ast-node.o `test -f 'arangod/Ahuacatl/ahuacatl-ast-node.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-ast-node.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-ast-node.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-ast-node.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-ast-node.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-ast-node.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-ast-node.o `test -f 'arangod/Ahuacatl/ahuacatl-ast-node.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-ast-node.cpp
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-ast-node.obj: arangod/Ahuacatl/ahuacatl-ast-node.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-ast-node.obj -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-ast-node.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-ast-node.obj `if test -f 'arangod/Ahuacatl/ahuacatl-ast-node.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-ast-node.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-ast-node.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-ast-node.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-ast-node.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-ast-node.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-ast-node.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-ast-node.obj `if test -f 'arangod/Ahuacatl/ahuacatl-ast-node.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-ast-node.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-ast-node.cpp'; fi`
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-bind-parameter.o: arangod/Ahuacatl/ahuacatl-bind-parameter.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-bind-parameter.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-bind-parameter.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-bind-parameter.o `test -f 'arangod/Ahuacatl/ahuacatl-bind-parameter.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-bind-parameter.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-bind-parameter.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-bind-parameter.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-bind-parameter.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-bind-parameter.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-bind-parameter.o `test -f 'arangod/Ahuacatl/ahuacatl-bind-parameter.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-bind-parameter.cpp
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-bind-parameter.obj: arangod/Ahuacatl/ahuacatl-bind-parameter.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-bind-parameter.obj -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-bind-parameter.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-bind-parameter.obj `if test -f 'arangod/Ahuacatl/ahuacatl-bind-parameter.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-bind-parameter.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-bind-parameter.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-bind-parameter.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-bind-parameter.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-bind-parameter.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-bind-parameter.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-bind-parameter.obj `if test -f 'arangod/Ahuacatl/ahuacatl-bind-parameter.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-bind-parameter.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-bind-parameter.cpp'; fi`
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-codegen.o: arangod/Ahuacatl/ahuacatl-codegen.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-codegen.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-codegen.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-codegen.o `test -f 'arangod/Ahuacatl/ahuacatl-codegen.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-codegen.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-codegen.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-codegen.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-codegen.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-codegen.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-codegen.o `test -f 'arangod/Ahuacatl/ahuacatl-codegen.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-codegen.cpp
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-codegen.obj: arangod/Ahuacatl/ahuacatl-codegen.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-codegen.obj -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-codegen.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-codegen.obj `if test -f 'arangod/Ahuacatl/ahuacatl-codegen.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-codegen.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-codegen.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-codegen.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-codegen.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-codegen.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-codegen.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-codegen.obj `if test -f 'arangod/Ahuacatl/ahuacatl-codegen.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-codegen.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-codegen.cpp'; fi`
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-collections.o: arangod/Ahuacatl/ahuacatl-collections.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-collections.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-collections.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-collections.o `test -f 'arangod/Ahuacatl/ahuacatl-collections.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-collections.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-collections.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-collections.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-collections.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-collections.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-collections.o `test -f 'arangod/Ahuacatl/ahuacatl-collections.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-collections.cpp
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-collections.obj: arangod/Ahuacatl/ahuacatl-collections.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-collections.obj -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-collections.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-collections.obj `if test -f 'arangod/Ahuacatl/ahuacatl-collections.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-collections.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-collections.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-collections.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-collections.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-collections.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-collections.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-collections.obj `if test -f 'arangod/Ahuacatl/ahuacatl-collections.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-collections.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-collections.cpp'; fi`
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-context.o: arangod/Ahuacatl/ahuacatl-context.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-context.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-context.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-context.o `test -f 'arangod/Ahuacatl/ahuacatl-context.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-context.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-context.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-context.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-context.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-context.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-context.o `test -f 'arangod/Ahuacatl/ahuacatl-context.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-context.cpp
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-context.obj: arangod/Ahuacatl/ahuacatl-context.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-context.obj -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-context.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-context.obj `if test -f 'arangod/Ahuacatl/ahuacatl-context.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-context.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-context.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-context.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-context.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-context.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-context.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-context.obj `if test -f 'arangod/Ahuacatl/ahuacatl-context.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-context.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-context.cpp'; fi`
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-conversions.o: arangod/Ahuacatl/ahuacatl-conversions.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-conversions.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-conversions.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-conversions.o `test -f 'arangod/Ahuacatl/ahuacatl-conversions.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-conversions.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-conversions.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-conversions.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-conversions.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-conversions.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-conversions.o `test -f 'arangod/Ahuacatl/ahuacatl-conversions.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-conversions.cpp
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-conversions.obj: arangod/Ahuacatl/ahuacatl-conversions.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-conversions.obj -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-conversions.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-conversions.obj `if test -f 'arangod/Ahuacatl/ahuacatl-conversions.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-conversions.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-conversions.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-conversions.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-conversions.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-conversions.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-conversions.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-conversions.obj `if test -f 'arangod/Ahuacatl/ahuacatl-conversions.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-conversions.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-conversions.cpp'; fi`
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-error.o: arangod/Ahuacatl/ahuacatl-error.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-error.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-error.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-error.o `test -f 'arangod/Ahuacatl/ahuacatl-error.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-error.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-error.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-error.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-error.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-error.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-error.o `test -f 'arangod/Ahuacatl/ahuacatl-error.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-error.cpp
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-error.obj: arangod/Ahuacatl/ahuacatl-error.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-error.obj -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-error.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-error.obj `if test -f 'arangod/Ahuacatl/ahuacatl-error.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-error.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-error.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-error.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-error.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-error.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-error.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-error.obj `if test -f 'arangod/Ahuacatl/ahuacatl-error.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-error.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-error.cpp'; fi`
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-explain.o: arangod/Ahuacatl/ahuacatl-explain.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-explain.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-explain.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-explain.o `test -f 'arangod/Ahuacatl/ahuacatl-explain.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-explain.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-explain.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-explain.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-explain.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-explain.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-explain.o `test -f 'arangod/Ahuacatl/ahuacatl-explain.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-explain.cpp
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-explain.obj: arangod/Ahuacatl/ahuacatl-explain.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-explain.obj -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-explain.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-explain.obj `if test -f 'arangod/Ahuacatl/ahuacatl-explain.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-explain.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-explain.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-explain.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-explain.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-explain.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-explain.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-explain.obj `if test -f 'arangod/Ahuacatl/ahuacatl-explain.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-explain.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-explain.cpp'; fi`
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-functions.o: arangod/Ahuacatl/ahuacatl-functions.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-functions.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-functions.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-functions.o `test -f 'arangod/Ahuacatl/ahuacatl-functions.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-functions.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-functions.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-functions.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-functions.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-functions.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-functions.o `test -f 'arangod/Ahuacatl/ahuacatl-functions.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-functions.cpp
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-functions.obj: arangod/Ahuacatl/ahuacatl-functions.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-functions.obj -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-functions.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-functions.obj `if test -f 'arangod/Ahuacatl/ahuacatl-functions.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-functions.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-functions.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-functions.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-functions.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-functions.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-functions.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-functions.obj `if test -f 'arangod/Ahuacatl/ahuacatl-functions.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-functions.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-functions.cpp'; fi`
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-grammar.o: arangod/Ahuacatl/ahuacatl-grammar.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-grammar.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-grammar.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-grammar.o `test -f 'arangod/Ahuacatl/ahuacatl-grammar.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-grammar.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-grammar.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-grammar.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-grammar.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-grammar.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-grammar.o `test -f 'arangod/Ahuacatl/ahuacatl-grammar.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-grammar.cpp
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-grammar.obj: arangod/Ahuacatl/ahuacatl-grammar.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-grammar.obj -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-grammar.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-grammar.obj `if test -f 'arangod/Ahuacatl/ahuacatl-grammar.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-grammar.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-grammar.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-grammar.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-grammar.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-grammar.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-grammar.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-grammar.obj `if test -f 'arangod/Ahuacatl/ahuacatl-grammar.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-grammar.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-grammar.cpp'; fi`
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-index.o: arangod/Ahuacatl/ahuacatl-index.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-index.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-index.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-index.o `test -f 'arangod/Ahuacatl/ahuacatl-index.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-index.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-index.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-index.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-index.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-index.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-index.o `test -f 'arangod/Ahuacatl/ahuacatl-index.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-index.cpp
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-index.obj: arangod/Ahuacatl/ahuacatl-index.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-index.obj -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-index.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-index.obj `if test -f 'arangod/Ahuacatl/ahuacatl-index.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-index.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-index.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-index.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-index.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-index.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-index.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-index.obj `if test -f 'arangod/Ahuacatl/ahuacatl-index.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-index.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-index.cpp'; fi`
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-node.o: arangod/Ahuacatl/ahuacatl-node.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-node.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-node.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-node.o `test -f 'arangod/Ahuacatl/ahuacatl-node.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-node.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-node.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-node.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-node.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-node.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-node.o `test -f 'arangod/Ahuacatl/ahuacatl-node.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-node.cpp
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-node.obj: arangod/Ahuacatl/ahuacatl-node.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-node.obj -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-node.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-node.obj `if test -f 'arangod/Ahuacatl/ahuacatl-node.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-node.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-node.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-node.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-node.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-node.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-node.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-node.obj `if test -f 'arangod/Ahuacatl/ahuacatl-node.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-node.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-node.cpp'; fi`
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-optimiser.o: arangod/Ahuacatl/ahuacatl-optimiser.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-optimiser.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-optimiser.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-optimiser.o `test -f 'arangod/Ahuacatl/ahuacatl-optimiser.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-optimiser.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-optimiser.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-optimiser.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-optimiser.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-optimiser.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-optimiser.o `test -f 'arangod/Ahuacatl/ahuacatl-optimiser.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-optimiser.cpp
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-optimiser.obj: arangod/Ahuacatl/ahuacatl-optimiser.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-optimiser.obj -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-optimiser.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-optimiser.obj `if test -f 'arangod/Ahuacatl/ahuacatl-optimiser.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-optimiser.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-optimiser.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-optimiser.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-optimiser.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-optimiser.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-optimiser.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-optimiser.obj `if test -f 'arangod/Ahuacatl/ahuacatl-optimiser.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-optimiser.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-optimiser.cpp'; fi`
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-parser-functions.o: arangod/Ahuacatl/ahuacatl-parser-functions.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-parser-functions.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-parser-functions.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-parser-functions.o `test -f 'arangod/Ahuacatl/ahuacatl-parser-functions.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-parser-functions.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-parser-functions.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-parser-functions.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-parser-functions.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-parser-functions.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-parser-functions.o `test -f 'arangod/Ahuacatl/ahuacatl-parser-functions.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-parser-functions.cpp
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-parser-functions.obj: arangod/Ahuacatl/ahuacatl-parser-functions.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-parser-functions.obj -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-parser-functions.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-parser-functions.obj `if test -f 'arangod/Ahuacatl/ahuacatl-parser-functions.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-parser-functions.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-parser-functions.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-parser-functions.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-parser-functions.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-parser-functions.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-parser-functions.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-parser-functions.obj `if test -f 'arangod/Ahuacatl/ahuacatl-parser-functions.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-parser-functions.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-parser-functions.cpp'; fi`
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-parser.o: arangod/Ahuacatl/ahuacatl-parser.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-parser.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-parser.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-parser.o `test -f 'arangod/Ahuacatl/ahuacatl-parser.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-parser.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-parser.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-parser.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-parser.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-parser.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-parser.o `test -f 'arangod/Ahuacatl/ahuacatl-parser.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-parser.cpp
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-parser.obj: arangod/Ahuacatl/ahuacatl-parser.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-parser.obj -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-parser.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-parser.obj `if test -f 'arangod/Ahuacatl/ahuacatl-parser.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-parser.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-parser.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-parser.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-parser.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-parser.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-parser.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-parser.obj `if test -f 'arangod/Ahuacatl/ahuacatl-parser.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-parser.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-parser.cpp'; fi`
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-result.o: arangod/Ahuacatl/ahuacatl-result.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-result.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-result.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-result.o `test -f 'arangod/Ahuacatl/ahuacatl-result.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-result.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-result.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-result.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-result.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-result.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-result.o `test -f 'arangod/Ahuacatl/ahuacatl-result.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-result.cpp
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-result.obj: arangod/Ahuacatl/ahuacatl-result.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-result.obj -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-result.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-result.obj `if test -f 'arangod/Ahuacatl/ahuacatl-result.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-result.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-result.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-result.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-result.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-result.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-result.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-result.obj `if test -f 'arangod/Ahuacatl/ahuacatl-result.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-result.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-result.cpp'; fi`
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-scope.o: arangod/Ahuacatl/ahuacatl-scope.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-scope.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-scope.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-scope.o `test -f 'arangod/Ahuacatl/ahuacatl-scope.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-scope.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-scope.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-scope.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-scope.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-scope.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-scope.o `test -f 'arangod/Ahuacatl/ahuacatl-scope.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-scope.cpp
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-scope.obj: arangod/Ahuacatl/ahuacatl-scope.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-scope.obj -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-scope.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-scope.obj `if test -f 'arangod/Ahuacatl/ahuacatl-scope.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-scope.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-scope.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-scope.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-scope.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-scope.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-scope.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-scope.obj `if test -f 'arangod/Ahuacatl/ahuacatl-scope.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-scope.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-scope.cpp'; fi`
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statement-dump.o: arangod/Ahuacatl/ahuacatl-statement-dump.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statement-dump.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-statement-dump.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statement-dump.o `test -f 'arangod/Ahuacatl/ahuacatl-statement-dump.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-statement-dump.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-statement-dump.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-statement-dump.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-statement-dump.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statement-dump.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statement-dump.o `test -f 'arangod/Ahuacatl/ahuacatl-statement-dump.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-statement-dump.cpp
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statement-dump.obj: arangod/Ahuacatl/ahuacatl-statement-dump.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statement-dump.obj -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-statement-dump.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statement-dump.obj `if test -f 'arangod/Ahuacatl/ahuacatl-statement-dump.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-statement-dump.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-statement-dump.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-statement-dump.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-statement-dump.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-statement-dump.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statement-dump.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statement-dump.obj `if test -f 'arangod/Ahuacatl/ahuacatl-statement-dump.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-statement-dump.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-statement-dump.cpp'; fi`
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statement-walker.o: arangod/Ahuacatl/ahuacatl-statement-walker.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statement-walker.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-statement-walker.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statement-walker.o `test -f 'arangod/Ahuacatl/ahuacatl-statement-walker.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-statement-walker.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-statement-walker.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-statement-walker.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-statement-walker.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statement-walker.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statement-walker.o `test -f 'arangod/Ahuacatl/ahuacatl-statement-walker.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-statement-walker.cpp
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statement-walker.obj: arangod/Ahuacatl/ahuacatl-statement-walker.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statement-walker.obj -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-statement-walker.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statement-walker.obj `if test -f 'arangod/Ahuacatl/ahuacatl-statement-walker.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-statement-walker.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-statement-walker.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-statement-walker.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-statement-walker.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-statement-walker.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statement-walker.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statement-walker.obj `if test -f 'arangod/Ahuacatl/ahuacatl-statement-walker.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-statement-walker.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-statement-walker.cpp'; fi`
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statementlist.o: arangod/Ahuacatl/ahuacatl-statementlist.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statementlist.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-statementlist.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statementlist.o `test -f 'arangod/Ahuacatl/ahuacatl-statementlist.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-statementlist.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-statementlist.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-statementlist.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-statementlist.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statementlist.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statementlist.o `test -f 'arangod/Ahuacatl/ahuacatl-statementlist.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-statementlist.cpp
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statementlist.obj: arangod/Ahuacatl/ahuacatl-statementlist.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statementlist.obj -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-statementlist.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statementlist.obj `if test -f 'arangod/Ahuacatl/ahuacatl-statementlist.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-statementlist.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-statementlist.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-statementlist.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-statementlist.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-statementlist.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statementlist.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-statementlist.obj `if test -f 'arangod/Ahuacatl/ahuacatl-statementlist.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-statementlist.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-statementlist.cpp'; fi`
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-tokens.o: arangod/Ahuacatl/ahuacatl-tokens.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-tokens.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-tokens.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-tokens.o `test -f 'arangod/Ahuacatl/ahuacatl-tokens.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-tokens.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-tokens.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-tokens.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-tokens.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-tokens.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-tokens.o `test -f 'arangod/Ahuacatl/ahuacatl-tokens.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-tokens.cpp
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-tokens.obj: arangod/Ahuacatl/ahuacatl-tokens.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-tokens.obj -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-tokens.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-tokens.obj `if test -f 'arangod/Ahuacatl/ahuacatl-tokens.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-tokens.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-tokens.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-tokens.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-tokens.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-tokens.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-tokens.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-tokens.obj `if test -f 'arangod/Ahuacatl/ahuacatl-tokens.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-tokens.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-tokens.cpp'; fi`
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-variable.o: arangod/Ahuacatl/ahuacatl-variable.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-variable.o -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-variable.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-variable.o `test -f 'arangod/Ahuacatl/ahuacatl-variable.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-variable.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-variable.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-variable.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-variable.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-variable.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-variable.o `test -f 'arangod/Ahuacatl/ahuacatl-variable.cpp' || echo '$(srcdir)/'`arangod/Ahuacatl/ahuacatl-variable.cpp
-
-arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-variable.obj: arangod/Ahuacatl/ahuacatl-variable.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-variable.obj -MD -MP -MF arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-variable.Tpo -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-variable.obj `if test -f 'arangod/Ahuacatl/ahuacatl-variable.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-variable.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-variable.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-variable.Tpo arangod/Ahuacatl/$(DEPDIR)/arangod_libarangod_a-ahuacatl-variable.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Ahuacatl/ahuacatl-variable.cpp' object='arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-variable.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Ahuacatl/arangod_libarangod_a-ahuacatl-variable.obj `if test -f 'arangod/Ahuacatl/ahuacatl-variable.cpp'; then $(CYGPATH_W) 'arangod/Ahuacatl/ahuacatl-variable.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Ahuacatl/ahuacatl-variable.cpp'; fi`
 
 arangod/Aql/arangod_libarangod_a-AqlItemBlock.o: arangod/Aql/AqlItemBlock.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Aql/arangod_libarangod_a-AqlItemBlock.o -MD -MP -MF arangod/Aql/$(DEPDIR)/arangod_libarangod_a-AqlItemBlock.Tpo -c -o arangod/Aql/arangod_libarangod_a-AqlItemBlock.o `test -f 'arangod/Aql/AqlItemBlock.cpp' || echo '$(srcdir)/'`arangod/Aql/AqlItemBlock.cpp
@@ -8637,8 +8085,6 @@ distclean-generic:
 	-rm -f arangod/$(am__dirstamp)
 	-rm -f arangod/Actions/$(DEPDIR)/$(am__dirstamp)
 	-rm -f arangod/Actions/$(am__dirstamp)
-	-rm -f arangod/Ahuacatl/$(DEPDIR)/$(am__dirstamp)
-	-rm -f arangod/Ahuacatl/$(am__dirstamp)
 	-rm -f arangod/Aql/$(DEPDIR)/$(am__dirstamp)
 	-rm -f arangod/Aql/$(am__dirstamp)
 	-rm -f arangod/CapConstraint/$(DEPDIR)/$(am__dirstamp)
@@ -8724,7 +8170,7 @@ clean-am: clean-binPROGRAMS clean-generic clean-local \
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf 3rdParty/linenoise/$(DEPDIR) UnitTests/Basics/$(DEPDIR) UnitTests/Geo/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/Aql/$(DEPDIR) arangod/CapConstraint/$(DEPDIR) arangod/Cluster/$(DEPDIR) arangod/FulltextIndex/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/Replication/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/Utils/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangod/Wal/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/Benchmark/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/Rest/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Zip/$(DEPDIR)
+	-rm -rf 3rdParty/linenoise/$(DEPDIR) UnitTests/Basics/$(DEPDIR) UnitTests/Geo/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Aql/$(DEPDIR) arangod/CapConstraint/$(DEPDIR) arangod/Cluster/$(DEPDIR) arangod/FulltextIndex/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/Replication/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/Utils/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangod/Wal/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/Benchmark/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/Rest/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Zip/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-local distclean-tags
@@ -8781,7 +8227,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf 3rdParty/linenoise/$(DEPDIR) UnitTests/Basics/$(DEPDIR) UnitTests/Geo/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Ahuacatl/$(DEPDIR) arangod/Aql/$(DEPDIR) arangod/CapConstraint/$(DEPDIR) arangod/Cluster/$(DEPDIR) arangod/FulltextIndex/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/Replication/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/Utils/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangod/Wal/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/Benchmark/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/Rest/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Zip/$(DEPDIR)
+	-rm -rf 3rdParty/linenoise/$(DEPDIR) UnitTests/Basics/$(DEPDIR) UnitTests/Geo/$(DEPDIR) arangod/Actions/$(DEPDIR) arangod/Aql/$(DEPDIR) arangod/CapConstraint/$(DEPDIR) arangod/Cluster/$(DEPDIR) arangod/FulltextIndex/$(DEPDIR) arangod/GeoIndex/$(DEPDIR) arangod/HashIndex/$(DEPDIR) arangod/IndexOperators/$(DEPDIR) arangod/Replication/$(DEPDIR) arangod/RestHandler/$(DEPDIR) arangod/RestServer/$(DEPDIR) arangod/SkipLists/$(DEPDIR) arangod/Utils/$(DEPDIR) arangod/V8Server/$(DEPDIR) arangod/VocBase/$(DEPDIR) arangod/Wal/$(DEPDIR) arangoirb/MRClient/$(DEPDIR) arangosh/ArangoShell/$(DEPDIR) arangosh/Benchmark/$(DEPDIR) arangosh/V8Client/$(DEPDIR) lib/Admin/$(DEPDIR) lib/ApplicationServer/$(DEPDIR) lib/Basics/$(DEPDIR) lib/Dispatcher/$(DEPDIR) lib/HttpServer/$(DEPDIR) lib/JsonParser/$(DEPDIR) lib/MRuby/$(DEPDIR) lib/ProgramOptions/$(DEPDIR) lib/Rest/$(DEPDIR) lib/Scheduler/$(DEPDIR) lib/ShapedJson/$(DEPDIR) lib/SimpleHttpClient/$(DEPDIR) lib/Statistics/$(DEPDIR) lib/Utilities/$(DEPDIR) lib/V8/$(DEPDIR) lib/Zip/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
@@ -8934,7 +8380,6 @@ unittests-brief: \
 	unittests-boost \
 	unittests-shell-client-readonly\
 	unittests-shell-server \
-	unittests-shell-server-ahuacatl \
 	unittests-shell-server-aql \
 	unittests-http-server \
 	unittests-ssl-server \
@@ -9240,20 +8685,7 @@ unittests-shell-server-only:
 .PHONY: unittests-shell-server-ahuacatl
 
 unittests-shell-server-ahuacatl:
-	@echo
-	@echo "================================================================================"
-	@echo "<< SHELL SERVER TESTS (AHUACATL)                                              >>"
-	@echo "================================================================================"
-	@echo
-
-	@rm -rf "$(VOCDIR)"
-	@mkdir -p "$(VOCDIR)/databases"
-
-	@$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true --server.threads 2 $(UNITTESTS_SERVER_AHUACATL) || test "x$(FORCE)" == "x1"
-	@test "x$(SKIP_RANGES)" == "x1" || $(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true $(UNITTESTS_SERVER_AHUACATL_EXTENDED) || test "x$(FORCE)" == "x1"
-
-	@rm -rf "$(VOCDIR)"
-	@echo
+	@echo "I am deprecated!!! Please do not call me anymore!"
 
 .PHONY: unittests-shell-server-aql
 
@@ -9707,7 +9139,7 @@ unittests-authentication-parameters:
 
 cppcheck:
 	@rm -f cppcheck.log cppcheck.log && echo -n "" > cppcheck.tmp
-	for platform in unix32 unix64; do cppcheck -j4 --std=c++11 --enable=style --force --platform=$$platform --suppress="*:arangod/Ahuacatl/ahuacatl-tokens.c" --suppress="*:lib/JsonParser/json-parser.c" --suppress="*:lib/V8/v8-json.cpp" arangod/ lib/ 1> /dev/null 2>> cppcheck.tmp; done
+	for platform in unix32 unix64; do cppcheck -j4 --std=c++11 --enable=style --force --platform=$$platform --suppress="*:lib/JsonParser/json-parser.c" --suppress="*:lib/V8/v8-json.cpp" arangod/ lib/ 1> /dev/null 2>> cppcheck.tmp; done
 	@sort cppcheck.tmp | uniq > cppcheck.log
 	@rm cppcheck.tmp
 	@cat cppcheck.log
@@ -9778,15 +9210,14 @@ update-disclaimer:
 
 .PHONY: man
 
-man: Doxygen/.setup-directories
+man: 
 	for section in 1 8; do \
             for i in `ls Documentation/man$$section`; do \
                 sed -f Documentation/Scripts/man.sed \
                   -e "s/\<SECTION\>/$$section/" \
                   -e "s/\<COMMAND\>/$$i/g" \
                   -e "s/DATE/`date`/g" Documentation/man$$section/$$i \
-                  > Doxygen/man/man$$section/$$i.$$section; \
-                cp "Doxygen/man/man$$section/$$i.$$section" "Documentation/man/man$$section/$$i.$$section"; \
+                  > Documentation/man/man$$section/$$i.$$section; \
             done; \
         done
 
@@ -9888,13 +9319,6 @@ js/apps/system/aardvark/frontend/js/modules/%.js: @srcdir@/js/client/modules/%.j
 
 js/apps/system/aardvark/frontend/js/modules/underscore.js: @srcdir@/js/node/node_modules/underscore/underscore.js
 	(echo "module.define(\"underscore\", function(exports, module) {" && cat $< && echo "});") > $@
-
-@ENABLE_MRUBY_TRUE@@builddir@/.setup-mr-directories:
-@ENABLE_MRUBY_TRUE@	@test -d mr/common/bootstrap || mkdir -p mr/common/bootstrap
-@ENABLE_MRUBY_TRUE@	@touch $@
-
-@ENABLE_MRUBY_TRUE@mr/common/bootstrap/mr-%.h: @srcdir@/mr/common/bootstrap/%.rb .setup-mr-directories
-@ENABLE_MRUBY_TRUE@	@top_srcdir@/config/mr2c.sh $< > $@
 
 @ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@README: README.md
 @ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@	fgrep -v "[Build Status]" $< \

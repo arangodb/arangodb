@@ -35,9 +35,9 @@ setup:
 
 MAINTAINER = \
 	README \
-	arangod/Ahuacatl/ahuacatl-tokens.cpp \
-	arangod/Ahuacatl/ahuacatl-grammar.cpp \
-	arangod/Ahuacatl/ahuacatl-grammar.h \
+	arangod/Aql/tokens.cpp \
+	arangod/Aql/grammar.cpp \
+	arangod/Aql/grammar.h \
 	lib/JsonParser/json-parser.cpp \
 	lib/V8/v8-json.cpp \
 	lib/V8/v8-json.h \
