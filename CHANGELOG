@@ -1,6 +1,16 @@
 v2.3.0 (XXXX-XX-XX)
 -------------------
 
+* added command-line option `--javascript.v8-contexts` to control the number of 
+  V8 contexts created in arangod.
+  
+  Previously, the number of V8 contexts was equal to the number of server threads
+  (as specified by option `--server.threads`). However, it may be sensible to  
+  create different amounts of threads and V8 contexts. If the option is not
+  specified, the number of V8 contexts created will be equal to the number of 
+  server threads. Thus no change in configuration is required to keep the old
+  behavior.
+
 * removed bitarray indexes
 
 * removed internal "_admin/modules/flush" in order to fix requireApp

@@ -1018,20 +1018,25 @@ AstNode* Ast::clone (AstNode const* node) {
   }
   else if (type == NODE_TYPE_VALUE) {
     switch (node->value.type) {
+      case VALUE_TYPE_NULL:
+        copy->value.type = VALUE_TYPE_NULL;
+        break;
       case VALUE_TYPE_BOOL:
+        copy->value.type = VALUE_TYPE_BOOL;
         copy->setBoolValue(node->getBoolValue());
         break;
       case VALUE_TYPE_INT:
+        copy->value.type = VALUE_TYPE_INT;
         copy->setIntValue(node->getIntValue());
         break;
       case VALUE_TYPE_DOUBLE:
+        copy->value.type = VALUE_TYPE_DOUBLE;
         copy->setDoubleValue(node->getDoubleValue());
         break;
       case VALUE_TYPE_STRING:
+        copy->value.type = VALUE_TYPE_STRING;
         copy->setStringValue(node->getStringValue());
         break;
-      default: {
-      }
     }
   }
 

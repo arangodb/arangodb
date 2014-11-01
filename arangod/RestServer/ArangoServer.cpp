@@ -281,6 +281,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _disableAuthenticationUnixSockets(false),
     _dispatcherThreads(8),
     _dispatcherQueueSize(8192),
+    _v8Contexts(8),
     _databasePath(),
     _defaultMaximalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
     _defaultWaitForSync(false),
@@ -560,6 +561,7 @@ void ArangoServer::buildApplicationServer () {
 
   additional["THREAD Options:help-admin"]
     ("server.threads", &_dispatcherThreads, "number of threads for basic operations")
+    ("javascript.v8-contexts", &_v8Contexts, "number of V8 contexts that are created for executing JavaScript actions")
   ;
 
   additional["Server Options:help-extended"]
@@ -795,25 +797,35 @@ int ArangoServer::startupServer () {
 
   TRI_ASSERT(vocbase != nullptr);
 
+
   // initialise V8
-  size_t concurrency = _dispatcherThreads;
+  if (! _applicationServer->programOptions().has("javascript.v8-contexts")) {
+    // the option was added recently so it's not always set
+    // the behavior in older ArangoDB was to create one V8 context per dispatcher thread
+    _v8Contexts = _dispatcherThreads;
+  }
+
+  if (_v8Contexts < 1) {
+    _v8Contexts = 1;
+  }
 
   if (mode == OperationMode::MODE_CONSOLE) {
     // one V8 instance is taken by the console
     if (startServer) {
-      ++concurrency;
+      ++_v8Contexts;
     }
   }
   else if (mode == OperationMode::MODE_UNITTESTS || mode == OperationMode::MODE_SCRIPT) {
-    if (concurrency == 1) {
-      // at least two to allow the test-runner and the scheduler to use a V8
-      concurrency = 2;
+    if (_v8Contexts == 1) {
+      // at least two to allow both the test-runner and the scheduler to use a V8 instance
+      _v8Contexts = 2;
     }
   }
 
   _applicationV8->setVocbase(vocbase);
-  _applicationV8->setConcurrency(concurrency);
+  _applicationV8->setConcurrency(_v8Contexts);
   _applicationV8->defineDouble("DISPATCHER_THREADS", _dispatcherThreads);
+  _applicationV8->defineDouble("V8_CONTEXTS", _v8Contexts);
 
   // .............................................................................
   // prepare everything
