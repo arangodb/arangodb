@@ -2257,6 +2257,135 @@ int triagens::aql::undistributeRemoveAfterEnumColl (Optimizer* opt,
   return TRI_ERROR_NO_ERROR;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief
+////////////////////////////////////////////////////////////////////////////////
+
+// recursively check the expression in the calculation node, to make sure it is
+// an OR of equality comparisons over the same variable and attribute.
+
+bool buildExpression (AstNode const* node,
+                      AstNode*&      expr, 
+                      ExecutionPlan* plan) {
+
+  if (node->type == NODE_TYPE_REFERENCE) {
+    if (expr->numMembers() == 0) {
+      return true;
+    } 
+    auto thisVar     = static_cast<Variable*>(node->getData());
+    auto existingVar =
+      static_cast<Variable*>(expr->getMember(0)->getMember(0)->getData());
+    if (thisVar->id == existingVar->id) {
+      return true;
+    }
+    return false;
+  }
+  
+  if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    if(buildExpression(node->getMember(0), expr, plan)) {
+      if (expr->numMembers() == 0) {
+        expr->addMember(node->clone(plan->getAst()));
+        return true;
+      } 
+      if (node->getStringValue() 
+          == expr->getMember(0)->getStringValue()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
+    auto lhs = node->getMember(0);
+    auto rhs = node->getMember(1);
+
+    if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      if(buildExpression(rhs, expr, plan)){
+        TRI_ASSERT(expr->numMembers() != 0);
+        if (lhs->type == NODE_TYPE_VALUE) {
+          if (expr->numMembers() == 1) {
+            expr->addMember(new AstNode(NODE_TYPE_LIST));
+          }
+          // keep the value in the lhs
+          expr->getMember(1)->addMember(lhs->clone(plan->getAst()));
+          return true;
+        }
+      }
+      return false;
+    }
+
+    if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      if(buildExpression(lhs, expr, plan)){
+        TRI_ASSERT(expr->numMembers() != 0);
+        if (rhs->type == NODE_TYPE_VALUE) {
+          if (expr->numMembers() == 1) {
+            expr->addMember(new AstNode(NODE_TYPE_LIST));
+          }
+          // keep the value in the rhs
+          expr->getMember(1)->addMember(rhs->clone(plan->getAst()));
+          return true;
+        }
+      }
+      return false;
+    }
+    return false;
+  }
+
+  if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
+    if (buildExpression(node->getMember(0), expr, plan)) {
+      if (buildExpression(node->getMember(1), expr, plan)) {
+        return true;
+      }
+    }
+  }
+  
+  return false;
+}
+
+int triagens::aql::replaceORwithIN (Optimizer* opt, 
+                                  ExecutionPlan* plan, 
+                                  Optimizer::Rule const* rule) {
+  std::vector<ExecutionNode*> nodes
+    = plan->findNodesOfType(triagens::aql::ExecutionNode::FILTER, true);
+
+  bool modified = false;
+  for (auto n : nodes) {
+    auto deps = n->getDependencies();
+    TRI_ASSERT(deps.size() == 1);
+    TRI_ASSERT(deps[0]->getType() == triagens::aql::ExecutionNode::CALCULATION);
+    auto fn = static_cast<FilterNode*>(n);
+    auto cn = static_cast<CalculationNode*>(deps[0]);
+
+    auto inVar  = fn->getVariablesUsedHere();
+    auto outVar = cn->getVariablesSetHere();
+
+    if (outVar.size() != 1 || outVar[0]->id != inVar[0]->id) {
+      continue;
+    }
+    
+    AstNode* expr = new AstNode(NODE_TYPE_OPERATOR_BINARY_IN);
+    
+    if (buildExpression(cn->expression()->node(), expr, plan)) {
+      deps = cn->getDependencies();
+      TRI_ASSERT(deps.size() == 1);
+      
+      plan->unlinkNode(cn);
+      
+      cn = new CalculationNode(plan, plan->nextId(), 
+                               new Expression(plan->getAst(), expr), outVar[0]->clone());
+      plan->registerNode(cn);
+      cn->addDependency(deps[0]);
+      fn->addDependency(cn);
+      modified = false;
+      plan->findVarUsage(); //FIXME appropriate place for this?
+    }
+  }
+  
+  opt->addPlan(plan, rule->level, modified);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
