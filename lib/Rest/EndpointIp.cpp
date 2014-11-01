@@ -155,9 +155,9 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip,
     if (result != 0) {
       // error
 #ifndef _WIN32
-      LOG_ERROR("bind() failed with %d (%s)", errno, strerror(errno));
+      LOG_ERROR("bind(address '%s', port %d) failed with %d (%s)", host, (int) _port, errno, strerror(errno));
 #else
-      LOG_ERROR("bind() failed with %d", WSAGetLastError());
+      LOG_ERROR("bind(address '%s', port %d) failed with %d", host, (int) _port, WSAGetLastError());
 #endif
       TRI_CLOSE_SOCKET(listenSocket);
 

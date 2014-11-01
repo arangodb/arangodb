@@ -33,7 +33,6 @@ unittests-brief: \
 	unittests-boost \
 	unittests-shell-client-readonly\
 	unittests-shell-server \
-	unittests-shell-server-ahuacatl \
 	unittests-shell-server-aql \
 	unittests-http-server \
 	unittests-ssl-server \
@@ -439,6 +438,7 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-rename-noncluster.js \
                @top_srcdir@/js/common/tests/shell-simple-query.js \
                @top_srcdir@/js/common/tests/shell-statement.js \
+               @top_srcdir@/js/common/tests/shell-explain-noncluster.js \
                @top_srcdir@/js/common/tests/shell-transactions.js \
                @top_srcdir@/js/common/tests/shell-unload.js \
                @top_srcdir@/js/common/tests/shell-users.js \
@@ -521,82 +521,10 @@ unittests-shell-server-only:
 	@echo
 
 
-################################################################################
-### @brief SHELL SERVER TESTS (AHUACATL)
-################################################################################
-
-SHELL_SERVER_AHUACATL = @top_srcdir@/js/server/tests/ahuacatl-ranges.js \
-			@top_srcdir@/js/server/tests/ahuacatl-queries-optimiser.js \
-			@top_srcdir@/js/server/tests/ahuacatl-queries-optimiser-in.js \
-			@top_srcdir@/js/server/tests/ahuacatl-queries-optimiser-limit.js \
-			@top_srcdir@/js/server/tests/ahuacatl-queries-optimiser-sort.js \
-			@top_srcdir@/js/server/tests/ahuacatl-queries-optimiser-ref.js \
-			@top_srcdir@/js/server/tests/ahuacatl-escaping.js \
-			@top_srcdir@/js/server/tests/ahuacatl-functions.js \
-			@top_srcdir@/js/server/tests/ahuacatl-variables.js \
-			@top_srcdir@/js/server/tests/ahuacatl-bind.js \
-			@top_srcdir@/js/server/tests/ahuacatl-complex.js \
-			@top_srcdir@/js/server/tests/ahuacatl-logical.js \
-			@top_srcdir@/js/server/tests/ahuacatl-arithmetic.js \
-			@top_srcdir@/js/server/tests/ahuacatl-relational.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ternary.js \
-			@top_srcdir@/js/server/tests/ahuacatl-parse.js \
-			@top_srcdir@/js/server/tests/ahuacatl-hash.js \
-			@top_srcdir@/js/server/tests/ahuacatl-skiplist.js \
-			@top_srcdir@/js/server/tests/ahuacatl-cross.js \
-			@top_srcdir@/js/server/tests/ahuacatl-general-graph.js \
-			@top_srcdir@/js/server/tests/ahuacatl-graph.js \
-			@top_srcdir@/js/server/tests/ahuacatl-edges.js \
-			@top_srcdir@/js/server/tests/ahuacatl-modify-noncluster.js \
-			@top_srcdir@/js/server/tests/ahuacatl-refaccess-variable.js \
-			@top_srcdir@/js/server/tests/ahuacatl-refaccess-attribute.js \
-			@top_srcdir@/js/server/tests/ahuacatl-queries-simple.js \
-			@top_srcdir@/js/server/tests/ahuacatl-queries-variables.js \
-			@top_srcdir@/js/server/tests/ahuacatl-queries-geo.js \
-			@top_srcdir@/js/server/tests/ahuacatl-queries-fulltext.js \
-			@top_srcdir@/js/server/tests/ahuacatl-queries-collection.js \
-			@top_srcdir@/js/server/tests/ahuacatl-queries-noncollection.js \
-			@top_srcdir@/js/server/tests/ahuacatl-subquery.js \
-			@top_srcdir@/js/server/tests/ahuacatl-operators.js
-
-SHELL_SERVER_AHUACATL_EXTENDED = \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-01.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-02.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-03.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-04.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-05.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-06.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-07.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-08.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-09.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-10.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-11.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-12.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-13.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-14.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-15.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-16.js
-
 .PHONY: unittests-shell-server-ahuacatl
 
-UNITTESTS_SERVER_AHUACATL = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER_AHUACATL))
-UNITTESTS_SERVER_AHUACATL_EXTENDED = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER_AHUACATL_EXTENDED))
-
 unittests-shell-server-ahuacatl:
-	@echo
-	@echo "================================================================================"
-	@echo "<< SHELL SERVER TESTS (AHUACATL)                                              >>"
-	@echo "================================================================================"
-	@echo
-
-	@rm -rf "$(VOCDIR)"
-	@mkdir -p "$(VOCDIR)/databases"
-
-	@$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true --server.threads 2 $(UNITTESTS_SERVER_AHUACATL) || test "x$(FORCE)" == "x1"
-	@test "x$(SKIP_RANGES)" == "x1" || $(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true $(UNITTESTS_SERVER_AHUACATL_EXTENDED) || test "x$(FORCE)" == "x1"
-
-	@rm -rf "$(VOCDIR)"
-	@echo
+	@echo "I am deprecated!!! Please do not call me anymore!"
 
 ################################################################################
 ### @brief SHELL SERVER TESTS (AQL)
@@ -632,10 +560,10 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-queries-fulltext.js \
 			@top_srcdir@/js/server/tests/aql-queries-geo.js \
 			@top_srcdir@/js/server/tests/aql-queries-noncollection.js \
-			@top_srcdir@/js/server/tests/aql-queries-optimiser-in.js \
+			@top_srcdir@/js/server/tests/aql-queries-optimiser-in-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-queries-optimiser.js \
 			@top_srcdir@/js/server/tests/aql-queries-optimiser-limit-noncluster.js \
-			@top_srcdir@/js/server/tests/aql-queries-optimiser-ref.js \
+			@top_srcdir@/js/server/tests/aql-queries-optimiser-ref-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-queries-optimiser-sort-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-queries-simple.js \
 			@top_srcdir@/js/server/tests/aql-queries-variables.js \
@@ -1126,7 +1054,7 @@ unittests-authentication-parameters:
 
 cppcheck:
 	@rm -f cppcheck.log cppcheck.log && echo -n "" > cppcheck.tmp
-	for platform in unix32 unix64; do cppcheck -j4 --std=c++11 --enable=style --force --platform=$$platform --suppress="*:arangod/Ahuacatl/ahuacatl-tokens.c" --suppress="*:lib/JsonParser/json-parser.c" --suppress="*:lib/V8/v8-json.cpp" arangod/ lib/ 1> /dev/null 2>> cppcheck.tmp; done
+	for platform in unix32 unix64; do cppcheck -j4 --std=c++11 --enable=style --force --platform=$$platform --suppress="*:lib/JsonParser/json-parser.c" --suppress="*:lib/V8/v8-json.cpp" arangod/ lib/ 1> /dev/null 2>> cppcheck.tmp; done
 	@sort cppcheck.tmp | uniq > cppcheck.log
 	@rm cppcheck.tmp
 	@cat cppcheck.log

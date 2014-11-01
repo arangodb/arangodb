@@ -31,9 +31,6 @@
 #include "v8-vocbaseprivate.h"
 #include "v8-wrapshapedjson.h"
 
-#include "Ahuacatl/ahuacatl-collections.h"
-#include "Ahuacatl/ahuacatl-explain.h"
-
 #include "Basics/Utf8Helper.h"
 #include "Basics/conversions.h"
 #include "Basics/json-utilities.h"

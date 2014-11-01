@@ -38,14 +38,12 @@
 #include "Utils/V8TransactionContext.h"
 
 #include "CapConstraint/cap-constraint.h"
-#include "Utils/AhuacatlGuard.h"
 #include "V8/v8-utils.h"
 
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::arango;
 using namespace triagens::rest;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the unique flag from the data
@@ -1016,7 +1014,7 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
     TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, keyOptions, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "traditional"));
     TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, keyOptions, "allowUserKeys", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, allowUserKeys));
 
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "keyOptions", TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, keyOptions));
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "keyOptions", keyOptions);
   }
 
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "shardKeys", JsonHelper::stringList(TRI_UNKNOWN_MEM_ZONE, shardKeys));

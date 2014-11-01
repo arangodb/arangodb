@@ -238,11 +238,11 @@ ArangoQueryCursor.prototype.count = function () {
 
 ArangoQueryCursor.prototype.getExtra = function (name) {
   if (name === undefined) {
-    return this.data.extra || null;
+    return this.data.extra || { };
   }
 
   if (this.data.extra === undefined || this.data.extra === null) {
-    return null;
+    return { };
   }
 
   if (! this.data.extra.hasOwnProperty(name)) {

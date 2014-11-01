@@ -3,15 +3,15 @@ update-rc.d arangodb start 99 2 3 4 5 . stop 00 0 1 6 . >/dev/null
 /etc/init.d/arangodb start
 
 echo "
-ArangoDB 2 (http://www.arangodb.org)
+ArangoDB 2 (http://www.arangodb.com)
   A multi-purpose open-source database with a flexible data model for documents,
   graphs, and key-values.
 
 First Steps with ArangoDB:
-  http:/www.arangodb.org/quickstart
+  http:/www.arangodb.com/quickstart
 
 Upgrading ArangoDB:
-  http://www.arangodb.org/manuals/current/Upgrading.html
+  https://docs.arangodb.com/Installing/Upgrading.html
 
 Upgrading ArangoDB database files:
   > /etc/init.d/arangodb upgrade

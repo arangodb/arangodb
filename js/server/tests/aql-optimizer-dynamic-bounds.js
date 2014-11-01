@@ -79,7 +79,7 @@ function singleAttributeTestSuite () {
 /// @brief test results
 ////////////////////////////////////////////////////////////////////////////////
 
-    testRanges : function () {
+    testRangesSingleAttribute : function () {
       var queries = [ 
         [ "FOR i IN [ 2 ] FOR j IN " + cn + " FILTER j.value2 == i SORT j.value2 RETURN j.value2", [ 2 ], true ],
         [ "FOR i IN [ 2 ] FOR j IN " + cn + " FILTER i == j.value2 SORT j.value2 RETURN j.value2", [ 2 ], true ],
@@ -176,7 +176,7 @@ function nonIndexedAttributeTestSuite () {
 /// @brief test results
 ////////////////////////////////////////////////////////////////////////////////
 
-    testRanges : function () {
+    testRangesNonIndexed : function () {
       var queries = [ 
         [ "FOR i IN [ 2 ] FOR j IN " + cn + " FILTER j.value2 == i SORT j.value2 RETURN j.value2", [ 2 ] ],
         [ "FOR i IN [ 2 ] FOR j IN " + cn + " FILTER i == j.value2 SORT j.value2 RETURN j.value2", [ 2 ] ],
@@ -267,7 +267,7 @@ function nestedAttributeTestSuite () {
 /// @brief test results
 ////////////////////////////////////////////////////////////////////////////////
 
-    testRanges : function () {
+    testRangesNested : function () {
       var queries = [ 
         [ "FOR i IN [ 2 ] FOR j IN " + cn + " FILTER j.value1.value2 == i SORT j.value1.value2 RETURN j.value1.value2", [ 2 ], true ],
         [ "FOR i IN [ 2 ] FOR j IN " + cn + " FILTER i == j.value1.value2 SORT j.value1.value2 RETURN j.value1.value2", [ 2 ], true ],

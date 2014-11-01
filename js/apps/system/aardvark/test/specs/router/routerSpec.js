@@ -205,6 +205,9 @@
         },
         resize: function (a) {
           a();
+        },
+        ajax: function(a, b) {
+          return "Peter";
         }
       };
 
@@ -242,6 +245,7 @@
       spyOn(window, "DashboardView").andReturn(dashboardDummy);
       spyOn(window, "StatisticBarView").andReturn(statisticBarDummy);
       spyOn(window, "UserBarView").andReturn(userBarDummy);
+      spyOn(window, "ArangoQueries");
 
       spyOn(window, "checkVersion");
     });
@@ -249,6 +253,7 @@
     afterEach(function() {
       // Remove all global values the router has created.
       delete window.modalView;
+      delete window.progressView;
     });
 
     describe("initialisation", function () {
@@ -310,8 +315,7 @@
 
       beforeEach(function () {
         r = new window.Router();
-        simpleNavigationCheck =
-        function (url, viewName, navTo, initObject,
+        simpleNavigationCheck = function (url, viewName, navTo, initObject,
           funcList, shouldNotRender, shouldNotCache) {
           var route,
               view = {},
@@ -675,9 +679,10 @@
     });
 
     describe("logsAllowed, checkUser, collections", function () {
-      var r;
+      var r, ajaxFunction;
 
       beforeEach(function () {
+        spyOn(jQueryDummy, "ajax").andCallFake(function() { });
         r = new window.Router();
       });
 

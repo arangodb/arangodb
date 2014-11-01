@@ -807,10 +807,12 @@ numeric_value:
       double value = TRI_DoubleString($1);
 
       if (TRI_errno() != TRI_ERROR_NO_ERROR) {
-        parser->registerParseError(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, TRI_errno_string(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE), yylloc.first_line, yylloc.first_column);
+        parser->registerWarning(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, TRI_errno_string(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE), yylloc.first_line, yylloc.first_column);
+        $$ = parser->ast()->createNodeValueNull();
       }
-     
-      $$ = parser->ast()->createNodeValueDouble(value); 
+      else {
+        $$ = parser->ast()->createNodeValueDouble(value); 
+      }
     };
   
 value_literal: 
@@ -894,11 +896,19 @@ integer_value:
       }
 
       int64_t value = TRI_Int64String($1);
-      if (TRI_errno() != TRI_ERROR_NO_ERROR) {
-        parser->registerParseError(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, TRI_errno_string(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE), yylloc.first_line, yylloc.first_column);
+      if (TRI_errno() == TRI_ERROR_NO_ERROR) {
+        $$ = parser->ast()->createNodeValueInt(value);
       }
-
-      $$ = parser->ast()->createNodeValueInt(value);
+      else {
+        double value2 = TRI_DoubleString($1);
+        if (TRI_errno() == TRI_ERROR_NO_ERROR) {
+          $$ = parser->ast()->createNodeValueDouble(value2);
+        }
+        else {
+          parser->registerWarning(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, TRI_errno_string(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE), yylloc.first_line, yylloc.first_column);
+          $$ = parser->ast()->createNodeValueNull();
+        }
+      }
     }
   ;
 

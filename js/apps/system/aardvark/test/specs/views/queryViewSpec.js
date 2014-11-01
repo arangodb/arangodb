@@ -9,8 +9,8 @@
 
   describe("The query view", function() {
 
-    var view, div, div2, jQueryDummy, collectionDummy,
-        localStorageFake;
+    var view, div, div2, jQueryDummy, queryCollection,
+    collectionDummy, localStorageFake;
 
     beforeEach(function() {
       spyOn($, "ajax");
@@ -60,8 +60,13 @@
       div.id = "content";
       document.body.appendChild(div);
 
+     queryCollection = {
+       fetch: function() {}
+     };
+
       view = new window.queryView({
-        collection: collectionDummy
+        collection: queryCollection,
+        collection2: collectionDummy
       });
 
       window.modalView = new window.ModalView();

@@ -45,7 +45,8 @@ using Json = triagens::basics::Json;
 using JsonHelper = triagens::basics::JsonHelper;
 using StringBuffer = triagens::basics::StringBuffer;
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+// uncomment the following to get some debugging information
+#if 0
 #define ENTER_BLOCK try { (void) 0;
 #define LEAVE_BLOCK } catch (...) { std::cout << "caught an exception in " << __FUNCTION__ << ", " << __FILE__ << ":" << __LINE__ << "!\n"; throw; }
 #else
@@ -570,12 +571,10 @@ int SingletonBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int SingletonBlock::shutdown (int errorCode) {
+
   int res = ExecutionBlock::shutdown(errorCode);
 
-  if (_inputRegisterValues != nullptr) {
-    delete _inputRegisterValues;
-    _inputRegisterValues = nullptr;
-  }
+  deleteInputVariables();
 
   return res;
 }

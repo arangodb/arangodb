@@ -139,7 +139,7 @@ AqlValue Expression::execute (triagens::arango::AqlTransaction* trx,
       try {
         // Dump the expression in question  
         // std::cout << triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, _node->toJson(TRI_UNKNOWN_MEM_ZONE, true)).toString()<< "\n";
-        return _func->execute(trx, docColls, argv, startPos, vars, regs);
+        return _func->execute(_ast->query(), trx, docColls, argv, startPos, vars, regs);
       }
       catch (triagens::arango::Exception& ex) {
         ex.addToMessage(" while evaluating expression ");
