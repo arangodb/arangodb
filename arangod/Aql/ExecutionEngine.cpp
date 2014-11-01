@@ -939,7 +939,9 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
     return engine;
   }
   catch (...) {
-    delete engine;
+    if (! isCoordinator()) {
+      delete engine;
+    }
     throw;
   }
 }
