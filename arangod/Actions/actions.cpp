@@ -142,15 +142,15 @@ TRI_action_t* TRI_DefineActionVocBase (string const& name,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_action_t* TRI_LookupActionVocBase (triagens::rest::HttpRequest* request) {
-  READ_LOCKER(ActionsLock);
-
   // check if we know a callback
   vector<string> suffix = request->suffix();
 
   // find a direct match
   string name = StringUtils::join(suffix, '/');
-  map<string, TRI_action_t*>::iterator i = Actions.find(name);
+  
 
+  READ_LOCKER(ActionsLock);
+  map<string, TRI_action_t*>::iterator i = Actions.find(name);
 
   if (i != Actions.end()) {
     return i->second;
@@ -172,7 +172,7 @@ TRI_action_t* TRI_LookupActionVocBase (triagens::rest::HttpRequest* request) {
     suffix.pop_back();
   }
 
-  return 0;
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
