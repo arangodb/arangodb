@@ -40,18 +40,17 @@ var API = "_api/simple/";
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSA_put_api_simple_by_example_hash
 /// @brief returns all documents of a collection matching a given example,
 /// using a specific hash index
 ///
-/// @RESTHEADER{PUT /_api/simple/by-example-hash, Hash index}
+/// RESTHEADER{PUT /_api/simple/by-example-hash, Hash index}
 ///
 /// **Note**: This is only used internally and should not be accesible by the user.
 ///
-/// @RESTBODYPARAM{query,string,required}
+/// RESTBODYPARAM{query,string,required}
 /// Contains the query specification.
 ///
-/// @RESTDESCRIPTION
+/// RESTDESCRIPTION
 ///
 /// This will find all documents matching a given example, using the specified
 /// hash index.
@@ -72,20 +71,19 @@ var API = "_api/simple/";
 ///
 /// Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
 ///
-/// @RESTRETURNCODES
+/// RESTRETURNCODES
 ///
-/// @RESTRETURNCODE{201}
+/// RESTRETURNCODE{201}
 /// is returned if the query was executed successfully.
 ///
-/// @RESTRETURNCODE{400}
+/// RESTRETURNCODE{400}
 /// is returned if the body does not contain a valid JSON representation of a
 /// query. The response body contains an error document in this case.
 ///
-/// @RESTRETURNCODE{404}
+/// RESTRETURNCODE{404}
 /// is returned if the collection specified by *collection* is unknown.  The
 /// response body contains an error document in this case.
 /// The same error code is also returned if an invalid index id or type is used.
-/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////

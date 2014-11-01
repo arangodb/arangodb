@@ -35,15 +35,6 @@ dispose the server-side cursor afterwards.
 @startDocuBlock JSA_put_api_simple_first_example
 
 <!-- js/actions/api-simple.js -->
-@startDocuBlock JSA_put_api_simple_by_example_hash
-
-<!-- js/actions/api-simple.js -->
-@startDocuBlock JSA_put_api_simple_by_example_skiplist
-
-<!-- js/actions/api-simple.js -->
-@startDocuBlock JSA_put_api_simple_by_condition_skiplist
-
-<!-- js/actions/api-simple.js -->
 @startDocuBlock JSA_put_api_simple_any
 
 <!-- js/actions/api-simple.js -->
