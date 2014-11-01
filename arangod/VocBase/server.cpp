@@ -46,7 +46,6 @@
 #include "Basics/random.h"
 #include "Basics/tri-strings.h"
 #include "Basics/JsonHelper.h"
-#include "Ahuacatl/ahuacatl-statementlist.h"
 #include "Utils/Exception.h"
 #include "VocBase/auth.h"
 #include "VocBase/replication-applier.h"
@@ -478,9 +477,16 @@ static int CreateApplicationDirectory (char const* name,
       res = TRI_CreateDirectory(path);
 
       if (res == TRI_ERROR_NO_ERROR) {
-        LOG_INFO("created application directory '%s' for database '%s'",
-                 path,
-                 name);
+        if (triagens::wal::LogfileManager::instance()->isInRecovery()) {
+          LOG_TRACE("created application directory '%s' for database '%s'",
+                    path,
+                    name);
+        }
+        else {
+          LOG_INFO("created application directory '%s' for database '%s'",
+                   path,
+                   name);
+        }
       }
       else {
         LOG_ERROR("unable to create application directory '%s' for database '%s': %s",
@@ -1705,7 +1711,6 @@ void TRI_InitServerGlobals () {
   memset(&ServerId, 0, sizeof(TRI_server_id_t));
 
   TRI_InitSpin(&TickLock);
-  TRI_GlobalInitStatementListAql();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1713,7 +1718,6 @@ void TRI_InitServerGlobals () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeServerGlobals () {
-  TRI_GlobalFreeStatementListAql();
   TRI_DestroySpin(&TickLock);
 }
 
@@ -2152,9 +2156,16 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
   char* path = TRI_Concatenate2File(server->_databasePath, file);
   TRI_FreeString(TRI_CORE_MEM_ZONE, file);
 
-  LOG_INFO("creating database '%s', directory '%s'",
-           name,
-           path);
+  if (triagens::wal::LogfileManager::instance()->isInRecovery()) {
+    LOG_TRACE("creating database '%s', directory '%s'",
+              name,
+              path);
+  }
+  else {
+    LOG_INFO("creating database '%s', directory '%s'",
+             name,
+             path);
+  }
 
   TRI_vocbase_t* vocbase = TRI_OpenVocBase(server, path, databaseId, name, defaults, false, false);
   TRI_FreeString(TRI_CORE_MEM_ZONE, path);
@@ -2388,9 +2399,16 @@ int TRI_DropDatabaseServer (TRI_server_t* server,
     vocbase->_isOwnAppsDirectory = removeAppsDirectory;
 
     if (TRI_DropVocBase(vocbase)) {
-      LOG_INFO("dropping database '%s', directory '%s'",
-               vocbase->_name,
-               vocbase->_path);
+      if (triagens::wal::LogfileManager::instance()->isInRecovery()) {
+        LOG_TRACE("dropping database '%s', directory '%s'",
+                  vocbase->_name,
+                  vocbase->_path);
+      }
+      else {
+        LOG_INFO("dropping database '%s', directory '%s'",
+                 vocbase->_name,
+                 vocbase->_path);
+      }
 
       res = SaveDatabaseParameters(vocbase->_id,
                                    vocbase->_name,

@@ -34,6 +34,67 @@
 #include "Basics/vector.h"
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                     cursor result
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief free the data held by a cursor
+////////////////////////////////////////////////////////////////////////////////
+
+static void FreeData (TRI_general_cursor_result_t* result) {
+  TRI_json_t* json = (TRI_json_t*) result->_data;
+
+  TRI_ASSERT(json);
+
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the record at position n of the cursor
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_general_cursor_row_t GetAt (TRI_general_cursor_result_t const* result,
+                                       const TRI_general_cursor_length_t n) {
+  TRI_json_t* json = (TRI_json_t*) result->_data;
+
+  TRI_ASSERT(json);
+
+  return (TRI_general_cursor_row_t*) TRI_AtVector(&json->_value._objects, (size_t) n);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the number of rows in the cursor
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_general_cursor_length_t GetLength (TRI_general_cursor_result_t const* result) {
+  TRI_json_t* json = (TRI_json_t*) result->_data;
+
+  TRI_ASSERT(json);
+
+  return (TRI_general_cursor_length_t) json->_value._objects._length;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a result set
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_general_cursor_result_t* TRI_CreateResultGeneralCursor (TRI_json_t* data) {
+  if (data == nullptr || data->_type != TRI_JSON_LIST) {
+    return nullptr;
+  }
+
+  return TRI_CreateCursorResult((void*) data, &FreeData, &GetAt, &GetLength);
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                      cursor store
 // -----------------------------------------------------------------------------
 
@@ -89,7 +150,7 @@ TRI_general_cursor_result_t* TRI_CreateCursorResult (void* data,
 /// @brief destroy a cursor result set but do not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyCursorResult (TRI_general_cursor_result_t* const result) {
+void TRI_DestroyCursorResult (TRI_general_cursor_result_t* result) {
   TRI_ASSERT(result);
 
   if (! result->_freed) {
@@ -102,7 +163,7 @@ void TRI_DestroyCursorResult (TRI_general_cursor_result_t* const result) {
 /// @brief free a cursor result set
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeCursorResult (TRI_general_cursor_result_t* const result) {
+void TRI_FreeCursorResult (TRI_general_cursor_result_t* result) {
   if (result != nullptr) {
     TRI_DestroyCursorResult(result);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, result);

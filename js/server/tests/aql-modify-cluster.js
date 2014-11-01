@@ -34,7 +34,15 @@ var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
 var cluster = require("org/arangodb/cluster");
 var getModifyQueryResults = helper.getModifyQueryResults;
-var assertQueryError = helper.assertQueryError2;
+var assertQueryError = helper.assertQueryError;
+
+var sanitizeStats = function (stats) {
+  // remove these members from the stats because they don't matter
+  // for the comparisons
+  delete stats.scannedFull;
+  delete stats.scannedIndex;
+  return stats;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -203,11 +211,11 @@ function ahuacatlRemoveSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRemoveNothing : function () {
-      var expected = { executed: 0, ignored: 0 };
+      var expected = { writesExecuted: 0, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN " + cn1 + " FILTER d.value1 < 0 REMOVE d IN " + cn1);
     
       assertEqual(100, c1.count());
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -215,11 +223,11 @@ function ahuacatlRemoveSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRemoveNothingBind : function () {
-      var expected = { executed: 0, ignored: 0 };
+      var expected = { writesExecuted: 0, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn FILTER d.value1 < 0 REMOVE d IN @@cn", { "@cn": cn1 });
 
       assertEqual(100, c1.count());
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -268,11 +276,11 @@ function ahuacatlRemoveSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRemoveIgnore1 : function () {
-      var expected = { executed: 0, ignored: 100 };
+      var expected = { writesExecuted: 0, writesIgnored: 100 };
       var actual = getModifyQueryResults("FOR d IN @@cn REMOVE 'foo' IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn1 });
 
       assertEqual(100, c1.count());
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -280,11 +288,11 @@ function ahuacatlRemoveSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRemoveIgnore2 : function () {
-      var expected = { executed: 100, ignored: 1 };
+      var expected = { writesExecuted: 100, writesIgnored: 1 };
       var actual = getModifyQueryResults("FOR i IN 0..100 REMOVE CONCAT('test', TO_STRING(i)) IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn1 });
 
       assertEqual(0, c1.count());
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -292,11 +300,11 @@ function ahuacatlRemoveSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRemoveAll1 : function () {
-      var expected = { executed: 100, ignored: 0 };
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn REMOVE d IN @@cn", { "@cn": cn1 });
 
       assertEqual(0, c1.count());
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -304,11 +312,11 @@ function ahuacatlRemoveSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRemoveAll2 : function () {
-      var expected = { executed: 100, ignored: 0 };
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn REMOVE d._key IN @@cn", { "@cn": cn1 });
 
       assertEqual(0, c1.count());
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -316,11 +324,11 @@ function ahuacatlRemoveSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRemoveAll3 : function () {
-      var expected = { executed: 100, ignored: 0 };
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn REMOVE { _key: d._key } IN @@cn", { "@cn": cn1 });
 
       assertEqual(0, c1.count());
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -328,11 +336,11 @@ function ahuacatlRemoveSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRemoveAll4 : function () {
-      var expected = { executed: 100, ignored: 0 };
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR i IN 0..99 REMOVE { _key: CONCAT('test', TO_STRING(i)) } IN @@cn", { "@cn": cn1 });
 
       assertEqual(0, c1.count());
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -340,24 +348,23 @@ function ahuacatlRemoveSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRemoveAll5 : function () {
-      var expected = { executed: 100, ignored: 0 };
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn REMOVE d INTO @@cn", { "@cn": cn1 });
 
       assertEqual(0, c1.count());
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
     },
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test remove
 ////////////////////////////////////////////////////////////////////////////////
 
     testRemoveHalf : function () {
-      var expected = { executed: 50, ignored: 0 };
+      var expected = { writesExecuted: 50, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR i IN 0..99 FILTER i % 2 == 0 REMOVE { _key: CONCAT('test', TO_STRING(i)) } IN @@cn", { "@cn": cn1 });
 
       assertEqual(50, c1.count());
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -373,11 +380,11 @@ function ahuacatlRemoveSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSingle : function () {
-      var expected = { executed: 1, ignored: 0 };
+      var expected = { writesExecuted: 1, writesIgnored: 0 };
       var actual = getModifyQueryResults("REMOVE 'test0' IN @@cn", { "@cn": cn1 });
 
       assertEqual(99, c1.count());
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -396,12 +403,12 @@ function ahuacatlRemoveSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testTwoCollectionsJoin1 : function () {
-      var expected = { executed: 50, ignored: 0 };
+      var expected = { writesExecuted: 50, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn1 FILTER d.value1 < 50 REMOVE { _key: d._key } IN @@cn2", { "@cn1": cn1, "@cn2": cn2 });
 
       assertEqual(100, c1.count());
       assertEqual(0, c2.count());
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -409,12 +416,12 @@ function ahuacatlRemoveSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testTwoCollectionsJoin2 : function () {
-      var expected = { executed: 48, ignored: 0 };
+      var expected = { writesExecuted: 48, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn1 FILTER d.value1 >= 2 && d.value1 < 50 REMOVE { _key: d._key } IN @@cn2", { "@cn1": cn1, "@cn2": cn2 });
 
       assertEqual(100, c1.count());
       assertEqual(2, c2.count());
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -422,12 +429,12 @@ function ahuacatlRemoveSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testTwoCollectionsIgnoreErrors1 : function () {
-      var expected = { executed: 50, ignored: 50 };
+      var expected = { writesExecuted: 50, writesIgnored: 50 };
       var actual = getModifyQueryResults("FOR d IN @@cn1 REMOVE { _key: d._key } IN @@cn2 OPTIONS { ignoreErrors: true }", { "@cn1": cn1, "@cn2": cn2 });
 
       assertEqual(100, c1.count());
       assertEqual(0, c2.count());
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -435,12 +442,12 @@ function ahuacatlRemoveSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testTwoCollectionsIgnoreErrors2 : function () {
-      var expected = { executed: 0, ignored: 100 };
+      var expected = { writesExecuted: 0, writesIgnored: 100 };
       var actual = getModifyQueryResults("FOR d IN @@cn1 REMOVE { _key: CONCAT('foo', d._key) } IN @@cn2 OPTIONS { ignoreErrors: true }", { "@cn1": cn1, "@cn2": cn2 });
 
       assertEqual(100, c1.count());
       assertEqual(50, c2.count());
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -448,11 +455,11 @@ function ahuacatlRemoveSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRemoveWaitForSync : function () {
-      var expected = { executed: 100, ignored: 0 };
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn REMOVE d IN @@cn OPTIONS { waitForSync: true }", { "@cn": cn1 });
 
       assertEqual(0, c1.count());
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -466,12 +473,12 @@ function ahuacatlRemoveSuite () {
       for (var i = 0; i < 100; ++i) {
         edge.save("UnitTestsAhuacatlRemove1/foo" + i, "UnitTestsAhuacatlRemove2/bar", { what: i, _key: "test" + i });
       }
-      var expected = { executed: 10, ignored: 0 };
+      var expected = { writesExecuted: 10, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR i IN 0..9 REMOVE CONCAT('test', TO_STRING(i)) IN @@cn", { "@cn": edge.name() });
 
       assertEqual(100, c1.count());
       assertEqual(90, edge.count());
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
       db._drop("UnitTestsAhuacatlEdge");
     }
 
@@ -526,11 +533,11 @@ function ahuacatlInsertSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertNothing : function () {
-      var expected = { executed: 0, ignored: 0 };
+      var expected = { writesExecuted: 0, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN " + cn1 + " FILTER d.value1 < 0 INSERT { foxx: true } IN " + cn1);
     
       assertEqual(100, c1.count());
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -538,11 +545,11 @@ function ahuacatlInsertSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertNothingBind : function () {
-      var expected = { executed: 0, ignored: 0 };
+      var expected = { writesExecuted: 0, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn FILTER d.value1 < 0 INSERT { foxx: true } IN @@cn", { "@cn": cn1 });
 
       assertEqual(100, c1.count());
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -606,11 +613,11 @@ function ahuacatlInsertSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertIgnore1 : function () {
-      var expected = { executed: 0, ignored: 100 };
+      var expected = { writesExecuted: 0, writesIgnored: 100 };
       var actual = getModifyQueryResults("FOR d IN @@cn INSERT d IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn1 });
 
       assertEqual(100, c1.count());
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -618,11 +625,11 @@ function ahuacatlInsertSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertIgnore2 : function () {
-      var expected = { executed: 1, ignored: 50 };
+      var expected = { writesExecuted: 1, writesIgnored: 50 };
       var actual = getModifyQueryResults("FOR i IN 50..100 INSERT { _key: CONCAT('test', TO_STRING(i)) } IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn1 });
 
       assertEqual(101, c1.count());
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -630,11 +637,11 @@ function ahuacatlInsertSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertIgnore3 : function () {
-      var expected = { executed: 51, ignored: 50 };
+      var expected = { writesExecuted: 51, writesIgnored: 50 };
       var actual = getModifyQueryResults("FOR i IN 0..100 INSERT { _key: CONCAT('test', TO_STRING(i)) } IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn2 });
 
       assertEqual(101, c2.count());
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -642,11 +649,11 @@ function ahuacatlInsertSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertIgnore4 : function () {
-      var expected = { executed: 0, ignored: 100 };
+      var expected = { writesExecuted: 0, writesIgnored: 100 };
       var actual = getModifyQueryResults("FOR i IN 0..99 INSERT { _key: CONCAT('test', TO_STRING(i)) } IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn1 });
 
       assertEqual(100, c1.count());
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -654,11 +661,11 @@ function ahuacatlInsertSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertIgnore5 : function () {
-      var expected = { executed: 50, ignored: 50 };
+      var expected = { writesExecuted: 50, writesIgnored: 50 };
       var actual = getModifyQueryResults("FOR i IN 0..99 INSERT { _key: CONCAT('test', TO_STRING(i)) } IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn2 });
 
       assertEqual(100, c2.count());
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -666,11 +673,11 @@ function ahuacatlInsertSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertEmpty : function () {
-      var expected = { executed: 100, ignored: 0 };
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn INSERT { } IN @@cn", { "@cn": cn1 });
 
       assertEqual(200, c1.count());
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -678,12 +685,12 @@ function ahuacatlInsertSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertCopy : function () {
-      var expected = { executed: 50, ignored: 0 };
+      var expected = { writesExecuted: 50, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR i IN 50..99 INSERT { _key: CONCAT('test', TO_STRING(i)) } IN @@cn", { "@cn": cn2 });
 
       assertEqual(100, c1.count());
       assertEqual(100, c2.count());
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -691,12 +698,12 @@ function ahuacatlInsertSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSingle : function () {
-      var expected = { executed: 1, ignored: 0 };
+      var expected = { writesExecuted: 1, writesIgnored: 0 };
       var actual = getModifyQueryResults("INSERT { value: 'foobar', _key: 'test' } IN @@cn", { "@cn": cn1 });
 
       assertEqual(101, c1.count());
       assertEqual("foobar", c1.document("test").value);
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -704,11 +711,11 @@ function ahuacatlInsertSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertWaitForSync : function () {
-      var expected = { executed: 50, ignored: 0 };
+      var expected = { writesExecuted: 50, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR i IN 1..50 INSERT { value: i } INTO @@cn OPTIONS { waitForSync: true }", { "@cn": cn2 });
 
       assertEqual(100, c1.count());
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -761,10 +768,10 @@ function ahuacatlInsertSuite () {
       db._drop("UnitTestsAhuacatlEdge");
       var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge"); 
 
-      var expected = { executed: 50, ignored: 0 };
+      var expected = { writesExecuted: 50, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR i IN 1..50 INSERT { _key: CONCAT('test', TO_STRING(i)), _from: CONCAT('UnitTestsAhuacatlInsert1/', TO_STRING(i)), _to: CONCAT('UnitTestsAhuacatlInsert2/', TO_STRING(i)), value: [ i ], sub: { foo: 'bar' } } INTO @@cn", { "@cn": edge.name() });
 
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
       assertEqual(50, edge.count());
 
       for (var i = 1; i <= 50; ++i) {
@@ -828,10 +835,10 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateNothing : function () {
-      var expected = { executed: 0, ignored: 0 };
+      var expected = { writesExecuted: 0, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN " + cn1 + " FILTER d.value1 < 0 UPDATE { foxx: true } IN " + cn1);
     
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -839,10 +846,10 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateNothingBind : function () {
-      var expected = { executed: 0, ignored: 0 };
+      var expected = { writesExecuted: 0, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn FILTER d.value1 < 0 UPDATE { foxx: true } IN @@cn", { "@cn": cn1 });
 
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -893,10 +900,10 @@ function ahuacatlUpdateSuite () {
 
     testUpdateIgnore1 : function () {
       c1.ensureUniqueConstraint("value3");
-      var expected = { executed: 1, ignored: 99 };
+      var expected = { writesExecuted: 1, writesIgnored: 99 };
       var actual = getModifyQueryResults("FOR d IN @@cn UPDATE d WITH { value3: 1 } IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn1 });
 
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -905,10 +912,10 @@ function ahuacatlUpdateSuite () {
 
     testUpdateIgnore2 : function () {
       c1.ensureUniqueConstraint("value1");
-      var expected = { executed: 0, ignored: 51 };
+      var expected = { writesExecuted: 0, writesIgnored: 51 };
       var actual = getModifyQueryResults("FOR i IN 50..100 UPDATE { _key: CONCAT('test', TO_STRING(i)), value1: 1 } IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn1 });
 
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -916,10 +923,10 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateEmpty1 : function () {
-      var expected = { executed: 100, ignored: 0 };
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn UPDATE { _key: d._key } IN @@cn", { "@cn": cn1 });
 
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
       for (var i = 0; i < 100; ++i) {
         var doc = c1.document("test" + i);
         assertEqual(i, doc.value1);
@@ -932,10 +939,10 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateEmpty2 : function () {
-      var expected = { executed: 100, ignored: 0 };
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn UPDATE d IN @@cn", { "@cn": cn1 });
 
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
       for (var i = 0; i < 100; ++i) {
         var doc = c1.document("test" + i);
         assertEqual(i, doc.value1);
@@ -956,11 +963,11 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSingle : function () {
-      var expected = { executed: 1, ignored: 0 };
+      var expected = { writesExecuted: 1, writesIgnored: 0 };
       var actual = getModifyQueryResults("UPDATE { value: 'foobar', _key: 'test17' } IN @@cn", { "@cn": cn1 });
 
       assertEqual("foobar", c1.document("test17").value);
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -968,9 +975,9 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateOldValue : function () {
-      var expected = { executed: 100, ignored: 0 };
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn UPDATE { _key: d._key, value1: d.value2, value2: d.value1, value3: d.value1 + 5 } IN @@cn", { "@cn": cn1 });
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
 
       for (var i = 0; i < 100; ++i) {
         var doc = c1.document("test" + i);
@@ -985,9 +992,9 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateWaitForSync : function () {
-      var expected = { executed: 50, ignored: 0 };
+      var expected = { writesExecuted: 50, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR i IN 1..50 UPDATE { _key: CONCAT('test', TO_STRING(i)) } INTO @@cn OPTIONS { waitForSync: true }", { "@cn": cn1 });
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
 
       for (var i = 0; i < 100; ++i) {
         var doc = c1.document("test" + i);
@@ -1001,9 +1008,9 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateKeepNullDefault : function () {
-      var expected = { executed: 100, ignored: 0 };
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn UPDATE d._key WITH { value1: null, value3: 'foobar', value9: null } INTO @@cn", { "@cn": cn1 });
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
 
       for (var i = 0; i < 100; ++i) {
         var doc = c1.document("test" + i);
@@ -1019,9 +1026,9 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateKeepNullTrue : function () {
-      var expected = { executed: 100, ignored: 0 };
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn UPDATE d._key WITH { value1: null, value3: 'foobar', value9: null } INTO @@cn OPTIONS { keepNull: true }", { "@cn": cn1 });
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
 
       for (var i = 0; i < 100; ++i) {
         var doc = c1.document("test" + i);
@@ -1037,9 +1044,9 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateKeepNullFalse : function () {
-      var expected = { executed: 100, ignored: 0 };
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn UPDATE d._key WITH { value1: null, value3: 'foobar', value9: null } INTO @@cn OPTIONS { keepNull: false }", { "@cn": cn1 });
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
 
       for (var i = 0; i < 100; ++i) {
         var doc = c1.document("test" + i);
@@ -1055,9 +1062,9 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateFilter : function () {
-      var expected = { executed: 50, ignored: 0 };
+      var expected = { writesExecuted: 50, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn FILTER d.value1 % 2 == 0 UPDATE d._key WITH { value2: 100 } INTO @@cn", { "@cn": cn1 });
-      assertEqual(expected, actual.operations);
+      assertEqual(expected, sanitizeStats(actual));
 
       for (var i = 0; i < 100; ++i) {
         var doc = c1.document("test" + i);
@@ -1076,10 +1083,10 @@ function ahuacatlUpdateSuite () {
 
     testUpdateUpdate : function () {
       var i;
-      var expected = { executed: 100, ignored: 0 };
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
       for (i = 0; i < 5; ++i) {
         var actual = getModifyQueryResults("FOR d IN @@cn UPDATE d._key WITH { counter: HAS(d, 'counter') ? d.counter + 1 : 1 } INTO @@cn", { "@cn": cn1 });
-        assertEqual(expected, actual.operations);
+        assertEqual(expected, sanitizeStats(actual));
       }
 
       for (i = 0; i < 100; ++i) {
@@ -1094,10 +1101,10 @@ function ahuacatlUpdateSuite () {
 
     testReplace1 : function () {
       var i;
-      var expected = { executed: 100, ignored: 0 };
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
       for (i = 0; i < 5; ++i) {
         var actual = getModifyQueryResults("FOR d IN @@cn REPLACE d._key WITH { value4: 12 } INTO @@cn", { "@cn": cn1 });
-        assertEqual(expected, actual.operations);
+        assertEqual(expected, sanitizeStats(actual));
       }
 
       for (i = 0; i < 100; ++i) {
@@ -1115,10 +1122,10 @@ function ahuacatlUpdateSuite () {
 
     testReplace2 : function () {
       var i;
-      var expected = { executed: 100, ignored: 0 };
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
       for (i = 0; i < 5; ++i) {
         var actual = getModifyQueryResults("FOR d IN @@cn REPLACE { _key: d._key, value4: 13 } INTO @@cn", { "@cn": cn1 });
-        assertEqual(expected, actual.operations);
+        assertEqual(expected, sanitizeStats(actual));
       }
 
       for (i = 0; i < 100; ++i) {
@@ -1136,10 +1143,10 @@ function ahuacatlUpdateSuite () {
 
     testReplaceReplace : function () {
       var i;
-      var expected = { executed: 100, ignored: 0 };
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
       for (i = 0; i < 5; ++i) {
         var actual = getModifyQueryResults("FOR d IN @@cn REPLACE d._key WITH { value1: d.value1 + 1 } INTO @@cn", { "@cn": cn1 });
-        assertEqual(expected, actual.operations);
+        assertEqual(expected, sanitizeStats(actual));
       }
 
       for (i = 0; i < 100; ++i) {

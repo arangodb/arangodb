@@ -56,9 +56,10 @@ ExecutionPlan::ExecutionPlan (Ast* ast)
   : _ids(),
     _root(nullptr),
     _varUsageComputed(false),
+    _mustSetFullCount(false),
     _nextId(0),
     _ast(ast) {
-  _lastSubqueryNodeId = (size_t)-1;
+  _lastSubqueryNodeId = (size_t) -1;
 
 }
 
@@ -88,6 +89,8 @@ ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast* ast) {
   TRI_ASSERT(root->type == NODE_TYPE_ROOT);
 
   auto plan = new ExecutionPlan(ast);
+
+  plan->_mustSetFullCount = ast->query()->getBooleanOption("fullCount", false);
 
   try {
     plan->_root = plan->fromNode(root);
@@ -613,6 +616,11 @@ ExecutionNode* ExecutionPlan::fromNodeLimit (ExecutionNode* previous,
   }
 
   auto en = registerNode(new LimitNode(this, nextId(), static_cast<size_t>(offset->getIntValue()), static_cast<size_t>(count->getIntValue())));
+
+  if (_mustSetFullCount) {
+    static_cast<LimitNode*>(en)->setFullCount();
+    _mustSetFullCount = false;
+  }
 
   return addDependency(previous, en);
 }

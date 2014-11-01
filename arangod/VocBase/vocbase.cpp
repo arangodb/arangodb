@@ -60,8 +60,6 @@
 #include "V8Server/v8-user-structures.h"
 #include "Wal/LogfileManager.h"
 
-#include "Ahuacatl/ahuacatl-functions.h"
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private defines
 // -----------------------------------------------------------------------------
@@ -1355,22 +1353,9 @@ TRI_vocbase_t* TRI_CreateInitialVocBase (TRI_server_t* server,
   // use the defaults provided
   TRI_ApplyVocBaseDefaults(vocbase, defaults);
 
-  // init AQL functions
-  vocbase->_functions = TRI_CreateFunctionsAql();
-
-  if (vocbase->_functions == nullptr) {
-    TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_name);
-    TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_path);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
-    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-
-    return nullptr;
-  }
-
   vocbase->_cursors = TRI_CreateStoreGeneralCursor();
 
   if (vocbase->_cursors == nullptr) {
-    TRI_FreeFunctionsAql(vocbase->_functions);
     TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_name);
     TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_path);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
@@ -1451,7 +1436,6 @@ void TRI_DestroyInitialVocBase (TRI_vocbase_t* vocbase) {
   TRI_DestroySpin(&vocbase->_usage._lock);
 
   TRI_FreeStoreGeneralCursor(vocbase->_cursors);
-  TRI_FreeFunctionsAql(vocbase->_functions);
 
   // free name and path
   TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_path);

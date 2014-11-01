@@ -31,10 +31,10 @@ var internal = require("internal");
 var errors = internal.errors;
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
-var getQueryResults = helper.getQueryResults2;
-var getQueryResultsAQL2 = helper.getQueryResultsAQL2;
-var assertQueryError = helper.assertQueryError2;
-var assertQueryWarningAndNull = helper.assertQueryWarningAndNull2;
+var getQueryResults = helper.getQueryResults;
+var getQueryResults = helper.getQueryResults;
+var assertQueryError = helper.assertQueryError;
+var assertQueryWarningAndNull = helper.assertQueryWarningAndNull;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -175,13 +175,13 @@ function ahuacatlFunctionsTestSuite () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CONTAINS(\"test\")"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CONTAINS(\"test\", \"test\", \"test\", \"test\")"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CONTAINS()"); 
-      assertEqual([ -1 ], getQueryResultsAQL2("RETURN CONTAINS(\"test\", \"test2\", \"test3\")")); 
-      assertEqual([ true ], getQueryResultsAQL2("RETURN CONTAINS(null, null)")); 
-      assertEqual([ true ], getQueryResultsAQL2("RETURN CONTAINS(4, 4)")); 
-      assertEqual([ true ], getQueryResultsAQL2("RETURN CONTAINS({ }, { })")); 
-      assertEqual([ false ], getQueryResultsAQL2("RETURN CONTAINS([ ], [ ])")); 
-      assertEqual([ false ], getQueryResultsAQL2("RETURN CONTAINS(null, \"yes\")")); 
-      assertEqual([ false ], getQueryResultsAQL2("RETURN CONTAINS(3, null)")); 
+      assertEqual([ -1 ], getQueryResults("RETURN CONTAINS(\"test\", \"test2\", \"test3\")")); 
+      assertEqual([ true ], getQueryResults("RETURN CONTAINS(null, null)")); 
+      assertEqual([ true ], getQueryResults("RETURN CONTAINS(4, 4)")); 
+      assertEqual([ true ], getQueryResults("RETURN CONTAINS({ }, { })")); 
+      assertEqual([ false ], getQueryResults("RETURN CONTAINS([ ], [ ])")); 
+      assertEqual([ false ], getQueryResults("RETURN CONTAINS(null, \"yes\")")); 
+      assertEqual([ false ], getQueryResults("RETURN CONTAINS(3, null)")); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1335,7 +1335,7 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testRand : function () {
-      var actual = getQueryResultsAQL2("FOR r IN [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 ] RETURN RAND()");
+      var actual = getQueryResults("FOR r IN [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 ] RETURN RAND()");
       for (var i in actual) {
         if (actual.hasOwnProperty(i)) {
           var value = actual[i];
@@ -4165,7 +4165,7 @@ function ahuacatlFunctionsTestSuite () {
 
     testSleep : function () {
       var start = require("internal").time();
-      var actual = getQueryResultsAQL2("LET a = SLEEP(2) RETURN 1");
+      var actual = getQueryResults("LET a = SLEEP(2) RETURN 1");
 
       var diff = Math.round(require("internal").time() - start, 1);
 

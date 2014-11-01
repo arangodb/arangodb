@@ -36,7 +36,9 @@
 /// to perform and the second is an options object. For `which` the following
 /// values are allowed:
 ///  Empty will give you a complete list.
-var functionDoku = {
+////////////////////////////////////////////////////////////////////////////////
+
+var functionsDocumentation = {
   'all'               : " do all tests (marked with [x])",
   "shell_server_perf" : "bulk tests intended to get an overview of executiontime needed.",
   "single_client"     : "run one test suite isolated via the arangosh; options required\n" +
@@ -45,7 +47,7 @@ var functionDoku = {
     "            Run without to get more detail"
 };
 
-var optiondoku = [
+var optionsDocumentation = [
   '',
   ' The following properties of `options` are defined:',
   '',
@@ -65,7 +67,7 @@ var optiondoku = [
   '   - `cleanup`: if set to true (the default), the cluster data files',
   '     and logs are removed after termination of the test.',
   '   - `jasmineReportFormat`: this option is passed on to the `format`',
-  '     option of the Jasmin options object, only for Jasmin tests.',
+  '     option of the Jasmine options object, only for Jasmine tests.',
   '',
   '   - `valgrind`: if set to true the arangods are run with the valgrind',
   '     memory checker',
@@ -76,7 +78,6 @@ var optiondoku = [
   '   - `portOffset`: move our base port by n ports up',
   ''
 ];
-////////////////////////////////////////////////////////////////////////////////
 
 var _ = require("underscore");
 var cleanupDirectories = [];
@@ -146,14 +147,14 @@ function printUsage () {
   print('       where "which" is one of:\n');
   var i;
   var checkAll;
-  var oneFunctionDoku;
+  var oneFunctionDocumentation;
   for (i in testFuncs) {
     if (testFuncs.hasOwnProperty(i)) {
-      if (functionDoku.hasOwnProperty(i)) {
-        oneFunctionDoku = ' - ' + functionDoku[i];
+      if (functionsDocumentation.hasOwnProperty(i)) {
+        oneFunctionDocumentation = ' - ' + functionsDocumentation[i];
       }
       else {
-        oneFunctionDoku = '';
+        oneFunctionDocumentation = '';
       }
       if (allTests.indexOf(i) !== -1) {
         checkAll = '[x]';
@@ -161,18 +162,17 @@ function printUsage () {
       else {
         checkAll = '   ';
       }
-      print('    ' + checkAll + ' '+i+' ' + oneFunctionDoku);
+      print('    ' + checkAll + ' '+i+' ' + oneFunctionDocumentation);
     }
   }
-  for (i in optiondoku) {
-    if (optiondoku.hasOwnProperty(i)) {
-      print(optiondoku[i]);
+  for (i in optionsDocumentation) {
+    if (optionsDocumentation.hasOwnProperty(i)) {
+      print(optionsDocumentation[i]);
     }
   }
 }
 
-function filterTestcaseByOptions (testname, options, whichFilter)
-{
+function filterTestcaseByOptions (testname, options, whichFilter) {
   if ((testname.indexOf("-cluster") !== -1) && (options.cluster === false)) {
     whichFilter.filter = 'noncluster';
     return false;
@@ -560,13 +560,13 @@ function runThere (options, instanceInfo, file) {
     var t;
     if (file.indexOf("-spec") === -1) {
       t = 'var runTest = require("jsunity").runTest; '+
-          'return runTest('+JSON.stringify(file)+');';
+          'return runTest(' + JSON.stringify(file) + ');';
     }
     else {
       var jasmineReportFormat = options.jasmineReportFormat || 'progress';
       t = 'var executeTestSuite = require("jasmine").executeTestSuite; '+
-          'return executeTestSuite(['+JSON.stringify(file)+'],{"format": '+
-          JSON.stringify(jasmineReportFormat)+'});';
+          'return executeTestSuite([' + JSON.stringify(file) + '],{"format": '+
+          JSON.stringify(jasmineReportFormat) + '});';
     }
     var o = makeAuthorisationHeaders(options);
     o.method = "POST";
@@ -764,7 +764,7 @@ testFuncs.shell_server_only = function (options) {
 
 testFuncs.shell_server_ahuacatl = function(options) {
   findTests();
-  if (!options.skipAhuacatl) {
+  if (! options.skipAhuacatl) {
     if (options.skipRanges) {
       return performTests(options,
                           tests_shell_server_ahuacatl,
@@ -782,7 +782,7 @@ testFuncs.shell_server_ahuacatl = function(options) {
 
 testFuncs.shell_server_aql = function(options) {
   findTests();
-  if (!options.skipAql) {
+  if (! options.skipAql) {
     if (options.skipRanges) {
       return performTests(options,
                           tests_shell_server_aql,

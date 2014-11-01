@@ -336,7 +336,6 @@ typedef struct TRI_vocbase_s {
   TRI_thread_t               _cleanup;
 
   struct TRI_general_cursor_store_s* _cursors;
-  TRI_associative_pointer_t* _functions;
 
   struct {
     TRI_read_write_lock_t _lock;

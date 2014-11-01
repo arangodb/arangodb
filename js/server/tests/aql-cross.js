@@ -31,7 +31,7 @@
 var jsunity = require("jsunity");
 var db = require("org/arangodb").db;
 var helper = require("org/arangodb/aql-helper");
-var getQueryResults = helper.getQueryResults2;
+var getQueryResults = helper.getQueryResults;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite for cross-collection queries

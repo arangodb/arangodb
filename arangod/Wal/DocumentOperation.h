@@ -118,7 +118,9 @@ namespace triagens {
           header->copy(oldHeader);
         }
         else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-          document->_headersPtr->relink(header, &oldHeader); // PROTECTED by trx in trxCollection
+          if (status != StatusType::CREATED) {
+            document->_headersPtr->relink(header, &oldHeader); // PROTECTED by trx in trxCollection 
+          }
         }
 
         status = StatusType::SWAPPED;

@@ -43,7 +43,6 @@ add_executable(
     Basics/json-test.cpp
     Basics/json-utilities-test.cpp
     Basics/hashes-test.cpp
-    Basics/mersenne-test.cpp
     Basics/associative-pointer-test.cpp
     Basics/associative-synced-test.cpp
     Basics/string-buffer-test.cpp

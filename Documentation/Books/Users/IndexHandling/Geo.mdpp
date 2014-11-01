@@ -4,7 +4,7 @@
 
 This is an introduction to ArangoDB's geo indexes.
 
-ArangoDB uses Hilbert curves to implement geo-spatial indexes. See this [blog](http://www.arangodb.org/2012/03/31/using-hilbert-curves-and-polyhedrons-for-geo-indexing)
+ArangoDB uses Hilbert curves to implement geo-spatial indexes. See this [blog](https://www.arangodb.com/2012/03/31/using-hilbert-curves-and-polyhedrons-for-geo-indexing)
 for details.
 
 A geo-spatial index assumes that the latitude is between -90 and 90 degree and
@@ -226,25 +226,3 @@ To find all documents within a radius of 2000 km use:
 	  { "_id" : "geo/27263744", "_key" : "27263744", "_rev" : "27263744", "distance" : 1568520.6, "name" : "Name/10/10", "loc" : [ 10, 10 ] },
 	  { "_id" : "geo/22283008", "_key" : "22283008", "_rev" : "22283008", "distance" : 1568520.6, "name" : "Name/-10/-10", "loc" : [ -10, -10 ] },
 	  { "_id" : "geo/27132672", "_key" : "27132672", "_rev" : "27132672", "distance" : 1568520.6, "name" : "Name/10/-10", "loc" : [ 10, -10 ] } ]
-
-
-<!--
-@anchor IndexGeoShellEnsureGeoIndex
-@copydetails JSF_ArangoCollection_prototype_ensureGeoIndex
-
-@CLEARPAGE
-@anchor IndexGeoShellEnsureGeoConstraint
-@copydetails JSF_ArangoCollection_prototype_ensureGeoConstraint
-
-@CLEARPAGE
-@anchor IndexGeoShellGeo
-@copydetails JSF_ArangoCollection_prototype_geo
-
-@CLEARPAGE
-@anchor IndexGeoShellNear
-@copydetails JSF_ArangoCollection_prototype_near
-
-@CLEARPAGE
-@anchor IndexGeoShellWithin
-@copydetails JSF_ArangoCollection_prototype_within
--->

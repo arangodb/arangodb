@@ -35,9 +35,6 @@
 
 #include "VocBase/general-cursor.h"
 
-#include "Ahuacatl/ahuacatl-collections.h"
-#include "Ahuacatl/ahuacatl-result.h"
-#include "Ahuacatl/ahuacatl-explain.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/Utf8Helper.h"
@@ -45,13 +42,10 @@
 #include "Basics/conversions.h"
 #include "Basics/json-utilities.h"
 #include "Utils/transactions.h"
-#include "Utils/AhuacatlGuard.h"
-#include "Utils/AhuacatlTransaction.h"
 #include "Utils/V8ResolverGuard.h"
 
 #include "HttpServer/ApplicationEndpointServer.h"
 #include "V8/v8-conv.h"
-#include "V8/v8-execution.h"
 #include "V8/v8-utils.h"
 #include "Wal/LogfileManager.h"
 
@@ -1005,9 +999,6 @@ static v8::Handle<v8::Value> JS_ExecuteAqlJson (v8::Arguments const& argv) {
   // ttl for cursor  
   double ttl = 0.0;
   
-  // extra return values
-  TRI_json_t* extra = nullptr;
-
   if (! argv[0]->IsObject()) {
     TRI_V8_TYPE_ERROR(scope, "expecting object for <queryjson>");
   }
@@ -1042,10 +1033,6 @@ static v8::Handle<v8::Value> JS_ExecuteAqlJson (v8::Arguments const& argv) {
       ttl = (ttl <= 0.0 ? 30.0 : ttl);
     }
       
-    optionName = v8::String::New("extra");
-    if (argValue->Has(optionName)) {
-      extra = TRI_ObjectToJson(argValue->Get(optionName));
-    }
     options = TRI_ObjectToJson(argv[1]);
   }
 
@@ -1078,10 +1065,31 @@ static v8::Handle<v8::Value> JS_ExecuteAqlJson (v8::Arguments const& argv) {
     }
     return scope.Close(result);
   }
+  
+  TRI_json_t* extra = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  if (extra == nullptr) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
 
-  TRI_general_cursor_result_t* cursorResult = TRI_CreateResultAql(queryResult.json);
+  if (queryResult.warnings != nullptr) {
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, extra, "warnings", queryResult.warnings);
+    queryResult.warnings = nullptr;
+  }
+  if (queryResult.stats != nullptr) {
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, extra, "stats", queryResult.stats);
+    queryResult.stats = nullptr;
+  }
+  if (queryResult.profile != nullptr) {
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, extra, "profile", queryResult.profile);
+    queryResult.profile = nullptr;
+  }
+
+  TRI_general_cursor_result_t* cursorResult = TRI_CreateResultGeneralCursor(queryResult.json);
   
   if (cursorResult == nullptr){
+    if (extra != nullptr) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, extra);
+    }
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
   
@@ -1091,7 +1099,10 @@ static v8::Handle<v8::Value> JS_ExecuteAqlJson (v8::Arguments const& argv) {
       static_cast<TRI_general_cursor_length_t>(batchSize), ttl, extra);
 
   if (cursor == nullptr) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursorResult);
+    if (extra != nullptr) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, extra);
+    }
+    TRI_FreeCursorResult(cursorResult);
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
   TRI_ASSERT(cursor != nullptr);
@@ -1111,6 +1122,7 @@ static v8::Handle<v8::Value> JS_ExecuteAqlJson (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
   v8::HandleScope scope;
+  v8::TryCatch tryCatch;
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
@@ -1143,8 +1155,6 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
   
   // options
   TRI_json_t* options = nullptr;
-  // extra return values
-  TRI_json_t* extra = nullptr;
 
   if (argv.Length() > 1) {
     if (! argv[1]->IsUndefined() && ! argv[1]->IsNull() && ! argv[1]->IsObject()) {
@@ -1183,11 +1193,6 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
       ttl = (ttl <= 0.0 ? 30.0 : ttl);
     }
       
-    optionName = v8::String::New("extra");
-    if (argValue->Has(optionName)) {
-      extra = TRI_ObjectToJson(argValue->Get(optionName));
-    }
-
     options = TRI_ObjectToJson(argv[2]);
   }
       
@@ -1198,6 +1203,12 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
   auto queryResult = query.execute(static_cast<triagens::aql::QueryRegistry*>(v8g->_queryRegistry));
   
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
+    if (queryResult.code == TRI_ERROR_REQUEST_CANCELED) {
+      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+      v8g->_canceled = true;
+      return scope.Close(TRI_CreateErrorObject(__FILE__, __LINE__, TRI_ERROR_REQUEST_CANCELED));
+    }
+
     TRI_V8_EXCEPTION_FULL(scope, queryResult.code, queryResult.details);
   }
   
@@ -1221,22 +1232,47 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
     }
     return scope.Close(result);
   }
-
-  TRI_general_cursor_result_t* cursorResult = TRI_CreateResultAql(queryResult.json);
   
-  if (cursorResult == nullptr){
+  TRI_json_t* extra = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  if (extra == nullptr) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+
+  if (queryResult.warnings != nullptr) {
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, extra, "warnings", queryResult.warnings);
+    queryResult.warnings = nullptr;
+  }
+  if (queryResult.stats != nullptr) {
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, extra, "stats", queryResult.stats);
+    queryResult.stats = nullptr;
+  }
+  if (queryResult.profile != nullptr) {
+    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, extra, "profile", queryResult.profile);
+    queryResult.profile = nullptr;
+  }
+
+  TRI_general_cursor_result_t* cursorResult = TRI_CreateResultGeneralCursor(queryResult.json);
+  
+  if (cursorResult == nullptr) {
+    if (extra != nullptr) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, extra);
+    }
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
   
   queryResult.json = nullptr;
-  
+
   TRI_general_cursor_t* cursor = TRI_CreateGeneralCursor(vocbase, cursorResult, doCount,
       static_cast<TRI_general_cursor_length_t>(batchSize), ttl, extra);
 
   if (cursor == nullptr) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursorResult);
+    if (extra != nullptr) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, extra);
+    }
+    TRI_FreeCursorResult(cursorResult);
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
+
   TRI_ASSERT(cursor != nullptr);
   
   v8::Handle<v8::Value> cursorObject = TRI_WrapGeneralCursor(cursor);
@@ -1246,150 +1282,6 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
   }
 
   return scope.Close(cursorObject);
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                          AHUACATL
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates code for an AQL query and runs it
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-  v8::TryCatch tryCatch;
-  const uint32_t argc = argv.Length();
-
-  if (argc < 1 || argc > 4) {
-    TRI_V8_EXCEPTION_USAGE(scope, "AHUACATL_RUN(<querystring>, <bindvalues>, <cursorOptions>, <options>)");
-  }
-
-  TRI_vocbase_t* vocbase = GetContextVocBase();
-
-  if (vocbase == 0) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  // get the query string
-  v8::Handle<v8::Value> queryArg = argv[0];
-
-  if (! queryArg->IsString()) {
-    TRI_V8_TYPE_ERROR(scope, "expecting string for <querystring>");
-  }
-
-  string const&& queryString = TRI_ObjectToString(queryArg);
-
-  // bind parameters
-  TRI_json_t* parameters = nullptr;
-
-  if (argc > 1 && argv[1]->IsObject()) {
-    parameters = TRI_ObjectToJson(argv[1]);
-  }
-
-  // cursor options
-  // -------------------------------------------------
-
-  // return number of total records in cursor?
-  bool doCount = false;
-
-  // maximum number of results to return at once
-  uint32_t batchSize = UINT32_MAX;
-  
-  // ttl for cursor  
-  double ttl = 0.0;
-
-  if (argc > 2 && argv[2]->IsObject()) {
-    // treat the argument as an object from now on
-    v8::Handle<v8::Object> options = v8::Handle<v8::Object>::Cast(argv[2]);
-
-    if (options->Has(TRI_V8_SYMBOL("count"))) {
-      doCount = TRI_ObjectToBoolean(options->Get(TRI_V8_SYMBOL("count")));
-    }
-
-    if (options->Has(TRI_V8_SYMBOL("batchSize"))) {
-      int64_t maxValue = TRI_ObjectToInt64(options->Get(TRI_V8_SYMBOL("batchSize")));
-
-      if (maxValue > 0 && maxValue < (int64_t) UINT32_MAX) {
-        batchSize = (uint32_t) maxValue;
-      }
-    }
-    
-    if (options->Has(TRI_V8_SYMBOL("ttl"))) {
-      ttl = TRI_ObjectToDouble(options->Get(TRI_V8_SYMBOL("ttl")));
-    }
-  }
-    
-  if (ttl <= 0.0) {
-    // default ttl
-    ttl = 30.0;
-  }
-
-  // user options
-  // -------------------------------------------------
-
-  TRI_json_t* userOptions = nullptr;
-  if (argc > 3 && argv[3]->IsObject()) {
-    // treat the argument as an object from now on
-    v8::Handle<v8::Object> options = v8::Handle<v8::Object>::Cast(argv[3]);
-
-    userOptions = TRI_ObjectToJson(options);
-  }
-
-  AhuacatlGuard context(vocbase, queryString, userOptions);
-
-  if (! context.valid()) {
-    if (userOptions != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, userOptions);
-    }
-
-    if (parameters != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
-    }
-
-    TRI_V8_EXCEPTION_MEMORY(scope);
-  }
-
-  v8::Handle<v8::Value> result = ExecuteQueryCursorAhuacatl(vocbase, context.ptr(), parameters, doCount, batchSize, ttl);
-  int res = context.ptr()->_error._code;
-
-  if (res == TRI_ERROR_REQUEST_CANCELED) {
-    result = CreateErrorObjectAhuacatl(&(context.ptr()->_error));
-  }
-
-  context.free();
-
-  if (userOptions != nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, userOptions);
-  }
-
-  if (parameters != nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
-  }
-
-  if (tryCatch.HasCaught()) {
-    if (tryCatch.CanContinue()) {
-      if (tryCatch.Exception()->IsObject() && v8::Handle<v8::Array>::Cast(tryCatch.Exception())->HasOwnProperty(v8::String::New("errorNum"))) {
-        // we already have an ArangoError object
-        return scope.Close(v8::ThrowException(tryCatch.Exception()));
-      }
-
-      // create a new error object
-      v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(
-        __FILE__,
-        __LINE__,
-        TRI_ERROR_QUERY_SCRIPT,
-        TRI_ObjectToString(tryCatch.Exception()).c_str());
-      return scope.Close(v8::ThrowException(errorObject));
-    }
-    else {
-      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
-      v8g->_canceled = true;
-      return scope.Close(result);
-    }
-  }
-
-  return scope.Close(result);
 }
 
 // -----------------------------------------------------------------------------
@@ -2629,10 +2521,7 @@ void TRI_InitV8VocBridge (triagens::arango::ApplicationV8* applicationV8,
   // generate global functions
   // .............................................................................
 
-  // AQL functions. not intended to be used by end users
-  TRI_AddGlobalFunctionVocbase(context, "AHUACATL_RUN", JS_RunAhuacatl, true);
-  
-  // new AQL functions. not intended to be used directly by end users
+  // AQL functions. not intended to be used directly by end users
   TRI_AddGlobalFunctionVocbase(context, "AQL_EXECUTE", JS_ExecuteAql, true);
   TRI_AddGlobalFunctionVocbase(context, "AQL_EXECUTEJSON", JS_ExecuteAqlJson, true);
   TRI_AddGlobalFunctionVocbase(context, "AQL_EXPLAIN", JS_ExplainAql, true);

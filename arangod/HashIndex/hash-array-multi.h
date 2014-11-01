@@ -63,7 +63,7 @@ typedef struct TRI_hash_array_multi_s {
   struct TRI_hash_index_element_multi_s* _table; // the table itself, aligned to a cache line boundary
   struct TRI_hash_index_element_multi_s* _tablePtr; // the table itself
 
-  struct TRI_hash_index_element_overflow_s* _freelist;
+  struct TRI_hash_index_element_multi_s* _freelist;
 
   TRI_vector_pointer_t   _blocks;
 }

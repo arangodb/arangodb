@@ -44,6 +44,10 @@ struct TRI_json_t;
 struct TRI_vocbase_s;
 
 namespace triagens {
+  namespace arango {
+    class TransactionContext;
+  }
+
   namespace aql {
 
     struct AstNode;
@@ -394,16 +398,22 @@ namespace triagens {
 
         triagens::basics::Json getStats();
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fetch a boolean value from the options
 ////////////////////////////////////////////////////////////////////////////////
 
         bool getBooleanOption (char const*, 
                                bool) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert the list of warnings to JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_json_t* warningsToJson () const;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fetch a numeric value from the options
@@ -449,10 +459,10 @@ namespace triagens {
         void cleanupPlanAndEngine (int);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert the list of warnings to JSON
+/// @brief create a TransactionContext
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_json_t* warningsToJson () const;
+        triagens::arango::TransactionContext* createTransactionContext ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
