@@ -1247,7 +1247,8 @@ namespace triagens {
                    size_t limit) 
           : ExecutionNode(plan, id), 
             _offset(offset), 
-            _limit(limit) {
+            _limit(limit),
+            _fullCount(false) {
         }
 
         LimitNode (ExecutionPlan* plan,
@@ -1255,7 +1256,8 @@ namespace triagens {
                    size_t limit) 
           : ExecutionNode(plan, id), 
             _offset(0), 
-            _limit(limit) {
+            _limit(limit),
+            _fullCount(false) {
         }
         
         LimitNode (ExecutionPlan*, triagens::basics::Json const& base);
@@ -1301,13 +1303,32 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief we need to know the offset and limit
+/// @brief tell the node to fully count what it will limit
 ////////////////////////////////////////////////////////////////////////////////
+
+        void setFullCount () {
+          _fullCount = true;
+        }
 
       private:
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the offset
+////////////////////////////////////////////////////////////////////////////////
+
         size_t _offset;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the limit
+////////////////////////////////////////////////////////////////////////////////
+
         size_t _limit;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the node should fully count what it limits
+////////////////////////////////////////////////////////////////////////////////
+
+        bool   _fullCount;
 
     };
 

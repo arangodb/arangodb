@@ -477,9 +477,16 @@ static int CreateApplicationDirectory (char const* name,
       res = TRI_CreateDirectory(path);
 
       if (res == TRI_ERROR_NO_ERROR) {
-        LOG_INFO("created application directory '%s' for database '%s'",
-                 path,
-                 name);
+        if (triagens::wal::LogfileManager::instance()->isInRecovery()) {
+          LOG_TRACE("created application directory '%s' for database '%s'",
+                    path,
+                    name);
+        }
+        else {
+          LOG_INFO("created application directory '%s' for database '%s'",
+                   path,
+                   name);
+        }
       }
       else {
         LOG_ERROR("unable to create application directory '%s' for database '%s': %s",
