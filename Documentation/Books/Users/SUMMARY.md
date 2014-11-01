@@ -138,14 +138,13 @@
   * [Authentication](Sharding/Authentication.md)
   * [Firewall setup](Sharding/FirewallSetup.md)
 <!-- 20 -->
-* [Configure ArangoDB](ConfigureArango/README.md)
+* [Server Configuration](ConfigureArango/README.md)
   * [Arangod options](ConfigureArango/Arangod.md)
   * [Write-ahead log options](ConfigureArango/Wal.md)
   * [Endpoints options](ConfigureArango/Endpoint.md)
   * [Cluster options](ConfigureArango/Cluster.md)
   * [Logging options](ConfigureArango/Logging.md)
   * [Communication options](ConfigureArango/Communication.md)
-  * [Random numbers](ConfigureArango/RandomNumbers.md)
   * [Authentication](ConfigureArango/Authentication.md)
   * [Emergency Console](ConfigureArango/EmergencyConsole.md)
 <!-- 21 -->
