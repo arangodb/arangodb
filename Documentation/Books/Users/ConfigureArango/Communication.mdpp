@@ -1,16 +1,16 @@
 !CHAPTER Command-Line Options for Communication 
 
 !SUBSECTION Scheduler threads
-<!-- lib/Scheduler/ApplicationScheduler.h -->
 @startDocuBlock schedulerThreads
 
+
 !SUBSECTION Scheduler maximal queue size
-<!-- arangod/RestServer/ArangoServer.h -->
-@startDocuBlock serverAuthenticationDisable
+@startDocuBlock schedulerMaximalQueueSize
+
 
 !SUBSECTION Scheduler backend
-<!-- lib/Scheduler/ApplicationScheduler.h -->
 @startDocuBlock schedulerBackend
+
 
 !SUBSECTION Io backends
 `--show-io-backends`
