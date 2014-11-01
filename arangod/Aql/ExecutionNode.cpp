@@ -1452,9 +1452,11 @@ std::vector<Variable const*> IndexRangeNode::getVariablesUsedHere () const {
 
 LimitNode::LimitNode (ExecutionPlan* plan, 
                       triagens::basics::Json const& base)
-  : ExecutionNode(plan, base) {
-  _offset = JsonHelper::checkAndGetNumericValue<decltype(_offset)>(base.json(), "offset");
-  _limit = JsonHelper::checkAndGetNumericValue<decltype(_limit)>(base.json(), "limit");
+  : ExecutionNode(plan, base),
+    _offset(JsonHelper::checkAndGetNumericValue<decltype(_offset)>(base.json(), "offset")),
+    _limit(JsonHelper::checkAndGetNumericValue<decltype(_limit)>(base.json(), "limit")),
+    _fullCount(JsonHelper::checkAndGetBooleanValue(base.json(), "fullCount")) {
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1470,7 +1472,8 @@ void LimitNode::toJsonHelper (triagens::basics::Json& nodes,
   }
   // Now put info about offset and limit in
   json("offset", triagens::basics::Json(static_cast<double>(_offset)))
-      ("limit", triagens::basics::Json(static_cast<double>(_limit)));
+      ("limit", triagens::basics::Json(static_cast<double>(_limit)))
+      ("fullCount", triagens::basics::Json(_fullCount));
 
   // And add it:
   nodes(json);

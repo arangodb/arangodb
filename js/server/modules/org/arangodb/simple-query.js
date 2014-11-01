@@ -820,7 +820,7 @@ function rangedQuery (collection, attribute, left, right, type, skip, limit) {
     });
 
     if (shards.length > 1) {
-      var cmp = require("org/arangodb/ahuacatl").RELATIONAL_CMP;
+      var cmp = require("org/arangodb/aql").RELATIONAL_CMP;
       _documents.sort(function (l, r) {
         return cmp(l[attribute], r[attribute]);
       });

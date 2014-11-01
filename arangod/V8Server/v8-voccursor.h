@@ -33,18 +33,6 @@
 #include "Basics/Common.h"
 #include "VocBase/server.h"
 #include "v8-vocbase.h"
-#include "Ahuacatl/ahuacatl-context.h"
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief function that encapsulates execution of an AQL query
-////////////////////////////////////////////////////////////////////////////////
-
-v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vocbase,
-                                                  TRI_aql_context_t* const context,
-                                                  TRI_json_t const* parameters,
-                                                  bool doCount,
-                                                  uint32_t batchSize,
-                                                  double cursorTtl);
 
 void TRI_InitV8indexArangoDB (v8::Handle<v8::Context> context,
                               TRI_server_t* server,

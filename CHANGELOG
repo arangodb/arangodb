@@ -1,6 +1,8 @@
 v2.3.0-alpha6 (XXXX-XX-XX)
 -------------------
 
+* removed bitarray indexes
+
 * removed internal "_admin/modules/flush" in order to fix requireApp
 
 * added basic support for handling binary data in Foxx
@@ -154,6 +156,8 @@ v2.3.0-alpha6 (XXXX-XX-XX)
 
 v2.2.7 (XXXX-XX-XX)
 -------------------
+
+* fix memory leak in cluster nodes
 
 * fixed registration of AQL user-defined functions in Web UI (JS shell)
 

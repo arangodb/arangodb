@@ -29,6 +29,7 @@
 
 #include "Aql/ExecutionStats.h"
 #include "Utils/Exception.h"
+
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
 using JsonHelper = triagens::basics::JsonHelper;
@@ -48,16 +49,23 @@ Json ExecutionStats::toJson () const {
   json.set("scannedFull",    Json(static_cast<double>(scannedFull)));
   json.set("scannedIndex",   Json(static_cast<double>(scannedIndex)));
 
+  if (fullCount > -1) {
+    // fullCount is exceptional. it has a default value of -1 and is
+    // not reported with this value
+    json.set("fullCount",      Json(static_cast<double>(fullCount)));
+  }
+
   return json;
 }
 
 Json ExecutionStats::toJsonStatic () {
   Json json(Json::Array);
-  json.set("writesExecuted", Json(static_cast<double>(0)));
-  json.set("writesIgnored",  Json(static_cast<double>(0)));
-  json.set("scannedFull",    Json(static_cast<double>(0)));
-  json.set("scannedIndex",   Json(static_cast<double>(0)));
-  json.set("static",   Json(static_cast<double>(0)));
+  json.set("writesExecuted", Json(0.0));
+  json.set("writesIgnored",  Json(0.0));
+  json.set("scannedFull",    Json(0.0));
+  json.set("scannedIndex",   Json(0.0));
+  json.set("fullCount",      Json(-1.0));
+  json.set("static",         Json(0.0));
 
   return json;
 }
@@ -66,18 +74,22 @@ ExecutionStats::ExecutionStats()
   :writesExecuted(0),
    writesIgnored(0),
    scannedFull(0),
-   scannedIndex(0) {
+   scannedIndex(0),
+   fullCount(-1) {
 }
 
 ExecutionStats::ExecutionStats (triagens::basics::Json const& jsonStats) {
-  if (!jsonStats.isArray()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "stats is not an Array");
+  if (! jsonStats.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "stats is not an array");
   }
 
-  writesExecuted = JsonHelper::checkAndGetNumericValue<int>(jsonStats.json(), "writesExecuted");
-  writesIgnored  = JsonHelper::checkAndGetNumericValue<int>(jsonStats.json(), "writesIgnored");
-  scannedFull    = JsonHelper::checkAndGetNumericValue<int>(jsonStats.json(), "scannedFull");
-  scannedIndex   = JsonHelper::checkAndGetNumericValue<int>(jsonStats.json(), "scannedIndex");
+  writesExecuted = JsonHelper::checkAndGetNumericValue<int64_t>(jsonStats.json(), "writesExecuted");
+  writesIgnored  = JsonHelper::checkAndGetNumericValue<int64_t>(jsonStats.json(), "writesIgnored");
+  scannedFull    = JsonHelper::checkAndGetNumericValue<int64_t>(jsonStats.json(), "scannedFull");
+  scannedIndex   = JsonHelper::checkAndGetNumericValue<int64_t>(jsonStats.json(), "scannedIndex");
+
+  // note: fullCount is an optional attribute!
+  fullCount      = JsonHelper::getNumericValue<int64_t>(jsonStats.json(), "fullCount", -1);
 }
 
 // -----------------------------------------------------------------------------
