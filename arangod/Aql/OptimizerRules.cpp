@@ -2371,9 +2371,11 @@ int triagens::aql::replaceORwithIN (Optimizer* opt,
     if (outVar.size() != 1 || outVar[0]->id != inVar[0]->id) {
       continue;
     }
+    if (cn->expression()->node()->type !=  NODE_TYPE_OPERATOR_BINARY_OR) {
+      continue;
+    }
     
     AstNode* ast = new AstNode(NODE_TYPE_OPERATOR_BINARY_IN);
-    
     if (buildExpression(cn->expression()->node(), ast, plan)) {
       auto expr = new Expression(plan->getAst(), const_cast<AstNode*>(ast));
       auto newNode = new CalculationNode(plan, plan->nextId(), expr, outVar[0]);
