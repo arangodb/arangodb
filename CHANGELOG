@@ -1,4 +1,4 @@
-v2.3.0-alpha7 (XXXX-XX-XX)
+v2.3.0-beta1 (2014-11-01)
 -------------------
 
 * added command-line option `--javascript.v8-contexts` to control the number of 
