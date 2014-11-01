@@ -242,12 +242,80 @@ function StatementSuite () {
       var result = st.execute();
 
       assertEqual(2, result.count());
-//      assertEqual(50, result.getExtra().fullCount);
-//      assertEqual(50, result.getExtra("fullCount"));
+      var stats = result.getExtra().stats;
+      assertTrue(stats.hasOwnProperty("scannedFull"));
+      assertTrue(stats.hasOwnProperty("scannedIndex"));
+      assertTrue(stats.hasOwnProperty("writesExecuted"));
+      assertTrue(stats.hasOwnProperty("writesIgnored"));
+      assertTrue(stats.hasOwnProperty("fullCount"));
+      assertEqual(50, stats.fullCount);
       var docs = result.toArray();
       assertEqual(2, docs.length);
 
       assertEqual([ 2, 3 ], docs);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test execute method, return extra
+////////////////////////////////////////////////////////////////////////////////
+
+    testExecuteExtraFullCount : function () {
+      var st = new ArangoStatement(db, { query : "for i in 1..12345 limit 4564, 2123 return i", count: true, options: { fullCount: true } });
+      var result = st.execute();
+
+      assertEqual(2123, result.count());
+      var stats = result.getExtra().stats;
+      assertTrue(stats.hasOwnProperty("scannedFull"));
+      assertTrue(stats.hasOwnProperty("scannedIndex"));
+      assertTrue(stats.hasOwnProperty("writesExecuted"));
+      assertTrue(stats.hasOwnProperty("writesIgnored"));
+      assertTrue(stats.hasOwnProperty("fullCount"));
+      assertEqual(12345, stats.fullCount);
+      var docs = result.toArray();
+      assertEqual(2123, docs.length);
+
+      var c = [ ];
+      for (var i = 4565; i < 4565 + 2123; ++i) {
+        c.push(i);
+      }
+      assertEqual(c, docs);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test execute method, return extra
+////////////////////////////////////////////////////////////////////////////////
+
+    testExecuteExtraFullCountLimit0 : function () {
+      var st = new ArangoStatement(db, { query : "for i in 1..12345 limit 4564, 0 return i", count: true, options: { fullCount: true } });
+      var result = st.execute();
+
+      assertEqual(0, result.count());
+      var stats = result.getExtra().stats;
+      assertTrue(stats.hasOwnProperty("scannedFull"));
+      assertTrue(stats.hasOwnProperty("scannedIndex"));
+      assertTrue(stats.hasOwnProperty("writesExecuted"));
+      assertTrue(stats.hasOwnProperty("writesIgnored"));
+      assertTrue(stats.hasOwnProperty("fullCount"));
+      assertEqual(12345, stats.fullCount);
+      var docs = result.toArray();
+      assertEqual(0, docs.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test execute method, return extra
+////////////////////////////////////////////////////////////////////////////////
+
+    testExecuteExtraNoFullCount : function () {
+      var st = new ArangoStatement(db, { query : "for i in 1..10 return i", count: true, options: { fullCount: false } });
+      var result = st.execute();
+
+      assertEqual(10, result.count());
+      var stats = result.getExtra().stats;
+      assertTrue(stats.hasOwnProperty("scannedFull"));
+      assertTrue(stats.hasOwnProperty("scannedIndex"));
+      assertTrue(stats.hasOwnProperty("writesExecuted"));
+      assertTrue(stats.hasOwnProperty("writesIgnored"));
+      assertFalse(stats.hasOwnProperty("fullCount"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -162,20 +162,8 @@ GeneralArrayCursor.prototype.count = function () {
 /// @brief return an extra value of the cursor
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralArrayCursor.prototype.getExtra = function (name) {
-  if (name === undefined) {
-    return this._extra || { };
-  }
-
-  if (this._extra === undefined || this._extra === null) {
-    return { };
-  }
-
-  if (! this._extra.hasOwnProperty(name)) {
-    return null;
-  }
-
-  return this._extra[name];
+GeneralArrayCursor.prototype.getExtra = function () {
+  return this._extra || { };
 };
 
 ////////////////////////////////////////////////////////////////////////////////

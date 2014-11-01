@@ -1049,11 +1049,12 @@ namespace triagens {
       public:
 
         LimitBlock (ExecutionEngine* engine, 
-                    LimitNode const* ep)
+                    LimitNode const* ep) 
           : ExecutionBlock(engine, ep), 
             _offset(ep->_offset), 
             _limit(ep->_limit),
-            _state(0) {  // start in the beginning
+            _state(0), // start in the beginning
+            _fullCount(ep->_fullCount) { 
         }
 
         ~LimitBlock () {
@@ -1092,6 +1093,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int _state;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the block should count what it limits
+////////////////////////////////////////////////////////////////////////////////
+
+        bool const _fullCount;
     };
 
 // -----------------------------------------------------------------------------
