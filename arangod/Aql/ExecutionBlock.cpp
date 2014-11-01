@@ -4706,12 +4706,29 @@ int RemoteBlock::shutdown (int errorCode) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  // If we get here, then res->result is the response which will be
-  // a serialized AqlItemBlock:
   StringBuffer const& responseBodyBuf(res->result->getBody());
   Json responseBodyJson(TRI_UNKNOWN_MEM_ZONE,
                         TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
                                        responseBodyBuf.begin()));
+
+  // read "warnings" attribute if present and add it our query
+  if (responseBodyJson.isArray()) {
+    auto warnings = responseBodyJson.get("warnings");
+    if (warnings.isList()) {
+      auto query = _engine->getQuery();
+      for (size_t i = 0; i < warnings.size(); ++i) {
+        auto warning = warnings.at(i);
+        if (warning.isArray()) {
+          auto code = warning.get("code");
+          auto message = warning.get("message");
+          if (code.isNumber() && message.isString()) {
+            query->registerWarning(static_cast<int>(code.json()->_value._number),
+                                   message.json()->_value._string.data);
+          }
+        }
+      }
+    }
+  }
 
   return JsonHelper::getNumericValue<int>
               (responseBodyJson.json(), "code", TRI_ERROR_INTERNAL);
