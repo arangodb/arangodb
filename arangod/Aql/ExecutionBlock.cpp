@@ -510,7 +510,7 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
       else {
         // The current block fits into our result and is fresh:
         skipped += cur->size();
-        if(! skipping){
+        if (! skipping) {
           collector.push_back(cur);
         }
         else {
@@ -560,7 +560,7 @@ int SingletonBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
     delete _inputRegisterValues;
   }
   if (items != nullptr) {
-    _inputRegisterValues = items->slice(pos, pos+1);
+    _inputRegisterValues = items->slice(pos, pos + 1);
   }
   _done = false;
   return TRI_ERROR_NO_ERROR;
@@ -2763,33 +2763,69 @@ int LimitBlock::getOrSkipSome (size_t atLeast,
   }
 
   if (_state == 0) {
+    if (_fullCount) {
+      // properly initialize fullcount value, which has a default of -1
+      if (_engine->_stats.fullCount == -1) {
+        _engine->_stats.fullCount = 0;
+      }
+      _engine->_stats.fullCount += static_cast<int64_t>(_offset);
+    }
+
     if (_offset > 0) {
       ExecutionBlock::_dependencies[0]->skip(_offset);
     }
     _state = 1;
     _count = 0;
-    if (_limit == 0) {
+    if (_limit == 0 && ! _fullCount) {
+      // quick exit for limit == 0
       _state = 2;
       return TRI_ERROR_NO_ERROR;
     }
   }
 
   // If we get to here, _state == 1 and _count < _limit
+  if (_limit > 0) {
+    if (atMost > _limit - _count) {
+      atMost = _limit - _count;
+      if (atLeast > atMost) {
+        atLeast = atMost;
+      }
+    }
 
-  if (atMost > _limit - _count) {
-    atMost = _limit - _count;
-    if (atLeast > atMost) {
-      atLeast = atMost;
+    ExecutionBlock::getOrSkipSome(atLeast, atMost, skipping, result, skipped);
+    if (skipped == 0) {
+      return TRI_ERROR_NO_ERROR;
+    }
+
+    _count += skipped; 
+    if (_fullCount) {
+      _engine->_stats.fullCount += static_cast<int64_t>(skipped);
     }
   }
 
-  ExecutionBlock::getOrSkipSome(atLeast, atMost, skipping, result, skipped);
-  if (skipped == 0) {
-    return TRI_ERROR_NO_ERROR;
-  }
-  _count += skipped;
   if (_count >= _limit) {
     _state = 2;
+  
+    if (_fullCount) {
+      // if fullCount is set, we must fetch all elements from the
+      // dependency. we'll use the default batch size for this
+      atLeast = DefaultBatchSize; 
+      atMost = DefaultBatchSize; 
+  
+      // suck out all data from the dependencies
+      while (true) {
+        skipped = 0;
+        AqlItemBlock* ignore = nullptr;
+        ExecutionBlock::getOrSkipSome(atLeast, atMost, skipping, ignore, skipped);
+        if (ignore != nullptr) {
+          _engine->_stats.fullCount += static_cast<int64_t>(ignore->size());
+          delete ignore;
+        }
+        if (skipped == 0) {
+          break;
+        }
+      }
+    }
   }
 
   return TRI_ERROR_NO_ERROR;
