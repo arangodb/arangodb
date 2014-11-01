@@ -5471,7 +5471,7 @@ function transactionServerFailuresSuite () {
 if (internal.debugCanUseFailAt()) {
   jsunity.run(transactionServerFailuresSuite);
 }
-/*
+
 jsunity.run(transactionInvocationSuite);
 jsunity.run(transactionCollectionsSuite);
 jsunity.run(transactionOperationsSuite);
@@ -5481,7 +5481,7 @@ jsunity.run(transactionRollbackSuite);
 jsunity.run(transactionCountSuite);
 jsunity.run(transactionCrossCollectionSuite);
 jsunity.run(transactionConstraintsSuite);
-*/
+
 return jsunity.done();
 
 // -----------------------------------------------------------------------------
