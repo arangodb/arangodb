@@ -29,7 +29,7 @@
       window.modalView.hide();
     }));
     buttons.push(window.modalView.createSuccessButton("Download Page", function() {
-      window.open('https://www.arangodb.org/download','_blank');
+      window.open('https://www.arangodb.com/download','_blank');
       window.modalView.hide();
     }));
     var infos = [];
@@ -75,7 +75,7 @@
           async: true,
           crossDomain: true,
           dataType: "jsonp",
-          url: "https://www.arangodb.org/repositories/versions.php" +
+          url: "https://www.arangodb.com/repositories/versions.php" +
           "?jsonp=parseVersions&version=" + encodeURIComponent(currentVersion.toString())
         });
       }
