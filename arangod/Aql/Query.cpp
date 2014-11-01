@@ -917,6 +917,34 @@ bool Query::getBooleanOption (char const* option, bool defaultValue) const {
   return valueJson->_value._boolean;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert the list of warnings to JSON
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* Query::warningsToJson () const {
+  if (_warnings.empty()) {
+    return nullptr;
+  }
+
+  size_t const n = _warnings.size();
+  TRI_json_t* json = TRI_CreateList2Json(TRI_UNKNOWN_MEM_ZONE, n);
+
+  if (json != nullptr) {
+    for (size_t i = 0; i < n; ++i) {
+      TRI_json_t* error = TRI_CreateArray2Json(TRI_UNKNOWN_MEM_ZONE, 2);
+
+      if (error != nullptr) {
+        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, error, "code", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, static_cast<double>(_warnings[i].first)));
+        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, error, "message", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, _warnings[i].second.c_str(), _warnings[i].second.size()));
+
+        TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, json, error);
+      }
+    }
+  }
+
+  return json;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -1090,34 +1118,6 @@ void Query::setPlan (ExecutionPlan *plan) {
     delete _plan;
   }
   _plan = plan;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert the list of warnings to JSON
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* Query::warningsToJson () const {
-  if (_warnings.empty()) {
-    return nullptr;
-  }
-
-  size_t const n = _warnings.size();
-  TRI_json_t* json = TRI_CreateList2Json(TRI_UNKNOWN_MEM_ZONE, n);
-
-  if (json != nullptr) {
-    for (size_t i = 0; i < n; ++i) {
-      TRI_json_t* error = TRI_CreateArray2Json(TRI_UNKNOWN_MEM_ZONE, 2);
-
-      if (error != nullptr) {
-        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, error, "code", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, static_cast<double>(_warnings[i].first)));
-        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, error, "message", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, _warnings[i].second.c_str(), _warnings[i].second.size()));
-
-        TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, json, error);
-      }
-    }
-  }
-
-  return json;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
