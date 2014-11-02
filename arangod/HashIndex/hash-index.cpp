@@ -242,6 +242,10 @@ static int HashIndexHelperAllocate (TRI_hash_index_t const* hashIndex,
 static int HashIndex_insert (TRI_hash_index_t* hashIndex,
                              TRI_hash_index_element_t* element,
                              bool isRollback) {
+  TRI_IF_FAILURE("InsertHashIndex") {
+    return TRI_ERROR_DEBUG;
+  }
+
   TRI_index_search_value_t key;
   int res = FillIndexSearchValueByHashIndexElement<TRI_hash_index_element_t>(hashIndex, &key, element);
 
@@ -269,6 +273,10 @@ static int HashIndex_insert (TRI_hash_index_t* hashIndex,
 
 static int HashIndex_remove (TRI_hash_index_t* hashIndex,
                              TRI_hash_index_element_t* element) {
+  TRI_IF_FAILURE("RemoveHashIndex") {
+    return TRI_ERROR_DEBUG;
+  }
+
   int res = TRI_RemoveElementHashArray(&hashIndex->_hashArray, element);
 
   // this might happen when rolling back
@@ -331,6 +339,10 @@ static TRI_index_result_t HashIndex_find (TRI_hash_index_t* hashIndex,
 static int MultiHashIndex_insert (TRI_hash_index_t* hashIndex,
                                   TRI_hash_index_element_multi_t* element,
                                   bool isRollback) {
+  TRI_IF_FAILURE("InsertHashIndex") {
+    return TRI_ERROR_DEBUG;
+  }
+
   TRI_index_search_value_t key;
   int res = FillIndexSearchValueByHashIndexElement<TRI_hash_index_element_multi_t>(hashIndex, &key, element);
 
@@ -358,6 +370,10 @@ static int MultiHashIndex_insert (TRI_hash_index_t* hashIndex,
 
 int MultiHashIndex_remove (TRI_hash_index_t* hashIndex,
                            TRI_hash_index_element_multi_t* element) {
+  TRI_IF_FAILURE("RemoveHashIndex") {
+    return TRI_ERROR_DEBUG;
+  }
+
   TRI_index_search_value_t key;
   int res = FillIndexSearchValueByHashIndexElement<TRI_hash_index_element_multi_t>(hashIndex, &key, element);
 
