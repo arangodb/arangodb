@@ -1,6 +1,43 @@
 v2.3.0-beta1 (2014-11-01)
 -------------------
 
+* added dedicated `NOT IN` operator for AQL
+
+  Previously, a `NOT IN` was only achievable by writing a negated `IN` condition:
+   
+      FOR i IN ... FILTER ! (i IN [ 23, 42 ]) ...
+
+  This can now alternatively be expressed more intuitively as follows:
+
+      FOR i IN ... FILTER i NOT IN [ 23, 42 ] ...
+
+* added alternative logical operator syntax for AQL
+
+  Previously, the logical operators in AQL could only be written as:
+  - `&&`: logical and
+  - `||`: logical or
+  - `!`: negation
+
+  ArangoDB 2.3 introduces the alternative variants for these operators:
+  - `AND`: logical and
+  - `OR`: logical or
+  - `NOT`: negation
+
+  The new syntax is just an alternative to the old syntax, allowing easier 
+  migration from SQL. The old syntax is still fully supported and will be.
+
+* improved output of `ArangoStatement.parse()` and POST `/_api/query`
+
+  If an AQL query can be parsed without problems, The return value of 
+  `ArangoStatement.parse()` now contains an attribute `ast` with the abstract
+  syntax tree of the query (before optimizations). Though this is an internal
+  representation of the query and is subject to change, it can be used to inspect
+  how ArangoDB interprets a given query.
+
+* improved `ArangoStatement.explain()` and POST `/_api/explain`
+
+  The commands for explaining AQL queries have been improved.
+
 * added command-line option `--javascript.v8-contexts` to control the number of 
   V8 contexts created in arangod.
   
