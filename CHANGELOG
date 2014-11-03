@@ -1,6 +1,8 @@
 v2.2.7 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #1079: AQL editor: keyword WITH in UPDATE query is not highlighted
+
 * fix memory leak in cluster nodes
 
 * fixed registration of AQL user-defined functions in Web UI (JS shell)
