@@ -226,6 +226,30 @@ function NewAqlReplaceORWithINTestSuite () {
       assertEqual(expected, actual);
     },
     
+    testSelfReference1 : function () {
+      var query = 
+        "FOR v IN " + replace.name() 
+        + " FILTER v.value == v.a.b  || v.value == 10 || v.value == 7 SORT v.value RETURN v.value";
+
+      isRuleUsed(query, {});
+
+      var expected = [ 7, 10 ];
+      var actual = getQueryResults(query, {}); 
+      assertEqual(expected, actual);
+    },
+    
+    testSelfReference2 : function () {
+      var query = 
+        "FOR v IN " + replace.name() 
+        + " FILTER v.a.b == v.value || v.value == 10 || 7 == v.value SORT v.value RETURN v.value";
+
+      isRuleUsed(query, {});
+
+      var expected = [ 7, 10 ];
+      var actual = getQueryResults(query, {}); 
+      assertEqual(expected, actual);
+    },
+    
     testDudDifferentAttributes1 : function () {
       var query = 
         "FOR x IN " + replace.name() + " FILTER x.val1 == 1 || x.val2 == 2 RETURN x";
