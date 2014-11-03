@@ -151,7 +151,9 @@
     },
 
     openAppInNewTab: function() {
-      var url = window.location.origin + "/_db/_system" + this.model.get("mount");
+      var url = window.location.origin + "/_db/" + 
+                encodeURIComponent(arangoHelper.currentDatabase()) + 
+                this.model.get("mount");
       var windowRef = window.open(url, this.model.get("title"));
       windowRef.focus();
     },
