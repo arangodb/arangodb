@@ -2269,86 +2269,73 @@ int triagens::aql::undistributeRemoveAfterEnumColl (Optimizer* opt,
 /// @brief
 ////////////////////////////////////////////////////////////////////////////////
 
-// recursively check the expression in the calculation node, to make sure it is
-// an OR of equality comparisons over the same variable and attribute.
+struct OrToInConverter {
+  AstNode const* variableNode;
+  std::vector<AstNode const*> valueNodes;
+  std::string variableName; 
 
-bool buildExpression (AstNode const* node,
-                      AstNode*&      expr, 
-                      ExecutionPlan* plan) {
+  AstNode* buildInExpression (Ast* ast) {
+    // the list of comparison values
+    auto list = ast->createNodeList();
+    for (auto x : valueNodes) {
+      list->addMember(x);
+    }
 
-  if (node->type == NODE_TYPE_REFERENCE) {
-    if (expr->numMembers() == 0) {
-      return true;
-    } 
-    auto thisVar     = static_cast<Variable*>(node->getData());
-    auto existingVar =
-      static_cast<Variable*>(expr->getMember(0)->getMember(0)->getData());
-    if (thisVar->id == existingVar->id) {
-      return true;
-    }
-    return false;
-  }
-  
-  if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    if(buildExpression(node->getMember(0), expr, plan)) {
-      if (expr->numMembers() == 0) {
-        expr->addMember(node->clone(plan->getAst()));
-        return true;
-      } 
-      if (strcmp(node->getStringValue(), 
-                 expr->getMember(0)->getStringValue()) == 0) {
-        return true;
-      }
-    }
-    return false;
+    // return a new IN operator node
+    return ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_IN,
+                                         variableNode->clone(ast),
+                                         list);
   }
 
-  if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
-    auto lhs = node->getMember(0);
-    auto rhs = node->getMember(1);
-
-    if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      if(buildExpression(rhs, expr, plan)){
-        TRI_ASSERT(expr->numMembers() != 0);
-        if (lhs->type == NODE_TYPE_VALUE) {
-          if (expr->numMembers() == 1) {
-            expr->addMember(new AstNode(NODE_TYPE_LIST));
-          }
-          // keep the value in the lhs
-          expr->getMember(1)->addMember(lhs->clone(plan->getAst()));
-          return true;
-        }
-      }
-      return false;
+  bool canConvertExpression (AstNode const* node) {
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
+      return (canConvertExpression(node->getMember(0)) &&
+              canConvertExpression(node->getMember(1)));
     }
 
-    if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      if(buildExpression(lhs, expr, plan)){
-        TRI_ASSERT(expr->numMembers() != 0);
-        if (rhs->type == NODE_TYPE_VALUE) {
-          if (expr->numMembers() == 1) {
-            expr->addMember(new AstNode(NODE_TYPE_LIST));
-          }
-          // keep the value in the rhs
-          expr->getMember(1)->addMember(rhs->clone(plan->getAst()));
-          return true;
-        }
-      }
-      return false;
-    }
-    return false;
-  }
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
+      auto lhs = node->getMember(0);
+      auto rhs = node->getMember(1);
 
-  if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
-    if (buildExpression(node->getMember(0), expr, plan)) {
-      if (buildExpression(node->getMember(1), expr, plan)) {
+      if (lhs->type == NODE_TYPE_VALUE && canConvertExpression(rhs)) {
+        // value == attr
+        valueNodes.push_back(lhs);
         return true;
       }
+      if (rhs->type == NODE_TYPE_VALUE && canConvertExpression(lhs)) {
+        // attr == value
+        valueNodes.push_back(rhs);
+        return true;
+      }
+
+      // fall-through intentional
     }
+
+    else if (node->type == NODE_TYPE_REFERENCE ||
+             node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      // get a string representation of the node for comparisons 
+      triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
+      node->append(&buffer, false);
+ 
+      if (variableName.empty()) {
+        TRI_ASSERT(valueNodes.empty());
+        // we don't have anything to compare with
+        // now store the node and its stringified version for future comparisons
+        variableNode = node;
+        variableName = std::string(buffer.c_str(), buffer.length());
+        return true;  
+      }
+      else if (std::string(buffer.c_str(), buffer.length()) == variableName) {
+        // already have collected a variable. the other variable is identical
+        return true;
+      }
+
+      // fall-through intentional
+    }
+
+    return false;
   }
-  
-  return false;
-}
+};
 
 int triagens::aql::replaceORwithIN (Optimizer* opt, 
                                     ExecutionPlan* plan, 
@@ -2371,16 +2358,32 @@ int triagens::aql::replaceORwithIN (Optimizer* opt,
     if (outVar.size() != 1 || outVar[0]->id != inVar[0]->id) {
       continue;
     }
-    if (cn->expression()->node()->type !=  NODE_TYPE_OPERATOR_BINARY_OR) {
+    if (cn->expression()->node()->type != NODE_TYPE_OPERATOR_BINARY_OR) {
       continue;
     }
-    
-    AstNode* ast = new AstNode(NODE_TYPE_OPERATOR_BINARY_IN);
-    if (buildExpression(cn->expression()->node(), ast, plan)) {
-      auto expr = new Expression(plan->getAst(), const_cast<AstNode*>(ast));
-      auto newNode = new CalculationNode(plan, plan->nextId(), expr, outVar[0]);
 
-      //TODO clone outVar[0]?
+    OrToInConverter converter;
+    if (converter.canConvertExpression(cn->expression()->node())) {
+      Expression* expr = nullptr;
+      ExecutionNode* newNode = nullptr;
+      auto inNode = converter.buildInExpression(plan->getAst());
+
+      try {
+        expr = new Expression(plan->getAst(), inNode);
+      }
+      catch (...) {
+        delete inNode;
+        throw;
+      }
+
+      try {
+        newNode = new CalculationNode(plan, plan->nextId(), expr, outVar[0]);
+      }
+      catch (...) {
+        delete expr;
+        throw;
+      }
+
       plan->registerNode(newNode);
       plan->replaceNode(cn, newNode);
       modified = true;
