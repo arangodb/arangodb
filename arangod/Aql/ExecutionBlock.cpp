@@ -3748,8 +3748,9 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
 
   // the non-simple case . . .
   size_t available = 0; // nr of available rows
-  size_t index;         // an index of a non-empty buffer
-  
+  size_t index = 0;     // an index of a non-empty buffer
+  TRI_ASSERT(_dependencies.size() != 0); 
+
   // pull more blocks from dependencies . . .
   for (size_t i = 0; i < _dependencies.size(); i++) {
     if (_gatherBlockBuffer.at(i).empty()) {
