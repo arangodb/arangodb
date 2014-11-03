@@ -68,6 +68,13 @@ v2.3.0 (XXXX-XX-XX)
 
 * added basic support for handling binary data in Foxx
 
+  Requests with binary payload can be processed in Foxx applications by
+  using the new method `res.rawBodyBuffer()`. This will return the unparsed request
+  body as a Buffer object.
+
+  There is now also the method `req.requestParts()` available in Foxx to retrieve
+  the individual components of a multipart HTTP request.
+
   Buffer objects can now be used when setting the response body of any Foxx action.
   Additionally, `res.send()` has been added as a convenience method for returning 
   strings, JSON objects or buffers from a Foxx action:
