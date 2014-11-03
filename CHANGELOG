@@ -1,6 +1,16 @@
 v2.3.0 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #1075: Aardvark: user name required even if auth is off #1075 
+
+  The fix for this prefills the username input field with the current user's
+  accout name if any and `root` (the default username) otherwise. Additionally,
+  the tooltip text has been slightly adjusted.
+
+
+v2.3.0-beta (2014-11-01)
+------------------------
+
 * added dedicated `NOT IN` operator for AQL
 
   Previously, a `NOT IN` was only achievable by writing a negated `IN` condition:
