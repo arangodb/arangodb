@@ -30,7 +30,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var actions = require("org/arangodb/actions");
-
 var ERRORS = require("internal").errors;
 
 // -----------------------------------------------------------------------------
@@ -39,69 +38,72 @@ var ERRORS = require("internal").errors;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_post_api_explain
-/// @brief explain a query and return information about it
+/// @brief explain an AQL query and return information about it
 ///
-/// @RESTHEADER{POST /_api/explain, Explain query}
+/// @RESTHEADER{POST /_api/explain, Explain an AQL query}
 ///
 /// @RESTBODYPARAM{body,json,required}
 /// The query string needs to be passed in the attribute *query* of a JSON
 /// object as the body of the POST request. If the query references any bind
-/// variables, these must also be passed in the attribute *bindVars*.
+/// variables, these must also be passed in the attribute *bindVars*. Additional
+/// options for the query can be passed in the *options* attribute.
+///
+/// The currently supported options are:
+/// - *allPlans*: if set to *true*, all possible execution plans will be returned.
+///   The default is *false*, meaning only the optimal plan will be returned.
+/// - *maxPlans*: an optional maximum number of plans that the optimizer is 
+///   allowed to generate. Setting this attribute to a low value allows to put a
+///   cap on the amount of work the optimizer does.
+/// - *optimizer.rules*: a list of to-be-included or to-be-excluded optimizer rules
+///   can be put into this attribute, telling the optimizer to include or exclude
+///   specific rules.
 ///
 /// @RESTDESCRIPTION
 ///
 /// To explain how an AQL query would be executed on the server, the query string
 /// can be sent to the server via an HTTP POST request. The server will then validate
-/// the query and create an execution plan for it, but will not execute it.
+/// the query and create an execution plan for it. The execution plan will be
+/// returned, but the query will not be executed.
 ///
 /// The execution plan that is returned by the server can be used to estimate the
-/// probable performance of an AQL query. Though the actual performance will depend
-/// on many different factors, the execution plan normally can give some good hint
-/// on the amount of work the server needs to do in order to actually run the query.
+/// probable performance of the query. Though the actual performance will depend
+/// on many different factors, the execution plan normally can provide some rough
+/// estimates on the amount of work the server needs to do in order to actually run 
+/// the query.
 ///
-/// The top-level statements will appear in the result in the same order in which
-/// they have been used in the original query. Each result element has at most the
-/// following attributes:
-/// - *id*: the row number of the top-level statement, starting at 1
-/// - *type*: the type of the top-level statement (e.g. *for*, *return* ...)
-/// - *loopLevel*: the nesting level of the top-level statement, starting at 1
-/// Depending on the type of top-level statement, there might be other attributes
-/// providing additional information, for example, if and which indexed will be
-/// used.
-/// Many top-level statements will provide an *expression* attribute that
-/// contains data about the expression they operate on. This is true for *FOR*,
-/// *FILTER*, *SORT*, *COLLECT*, and *RETURN* statements. The
-/// *expression* attribute has the following sub-attributes:
-/// - *type*: the type of the expression. Some possible values are:
-///   - *collection*: an iteration over documents from a collection. The
-///     *value* attribute will then contain the collection name. The *extra*
-///     attribute will contain information about if and which index is used when
-///     accessing the documents from the collection. If no index is used, the
-///     *accessType* sub-attribute of the *extra* attribute will have the
-///     value *all*, otherwise it will be *index*.
-///   - *list*: a list of dynamic values. The *value* attribute will contain the
-///     list elements.
-///   - *const list*: a list of constant values. The *value* attribute will contain the
-///     list elements.
-///   - *reference*: a reference to another variable. The *value* attribute
-///     will contain the name of the variable that is referenced.
+/// By default, the explain operation will return the optimal plan as chosen by
+/// the query optimizer. The optimal plan is the plan with the lowest total estimated
+/// cost. The plan will be returned in the attribute *plan* of the response object.
+/// If the option *allPlans* is specified in the request, the result will contain 
+/// all plans created by the optimizer. The plans will then be returned in the 
+/// attribute *plans*.
+/// 
+/// Each plan is a JSON object with the following attributes:
+/// - *nodes*: the list of execution nodes of the plan
+/// - *estimatedCost*: the total estimated cost for the plan. If there are multiple
+///   plans, the optimizer will choose the plan with the lowest total cost.
+/// - *collections*: a list of collections used in the query
+/// - *rules*: a list of rules the optimizer applied. The list of rules can be 
+///   found [here](../Aql/Optimizer.html)
+/// - *variables*: list of variables used in the query (note: this may contain
+///   internal variables created by the optimizer)
 ///
-/// Please note that the structure of the explain result data might change in future
-/// versions of ArangoDB without further notice and without maintaining backwards
-/// compatibility.
+/// The result will also contain an attribute *warnings*, which is a list of 
+/// warnings that occurred during plan creation.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
 /// If the query is valid, the server will respond with *HTTP 200* and
-/// return a list of the individual query execution steps in the *"plan"*
-/// attribute of the response.
+/// return the optimal execution plan in the *plan* attribute of the response.
+/// If option *allPlans* was set in the request, a list of plans will be returned
+/// in the *allPlans* attribute instead.
 ///
 /// @RESTRETURNCODE{400}
 /// The server will respond with *HTTP 400* in case of a malformed request,
 /// or if the query contains a parse error. The body of the response will
 /// contain the error details embedded in a JSON object.
-/// Omitting bind variables if the query references any will result also result
+/// Omitting bind variables if the query references any will also result
 /// in an *HTTP 400* error.
 ///
 /// @RESTRETURNCODE{404}
@@ -116,27 +118,86 @@ var ERRORS = require("internal").errors;
 ///     var url = "/_api/explain";
 ///     var cn = "products";
 ///     db._drop(cn);
-///     db._create(cn, { waitForSync: true });
-///     body = '{ ' +
-///       '"query" : "FOR p IN products FILTER p.id == @id LIMIT 2 RETURN p.name", ' +
-///       '"bindVars": { "id" : 3 } ' +
-///     '}';
+///     db._create(cn);
+///     for (var i = 0; i < 10; ++i) { db.products.save({ id: i }); }
+///     body = { 
+///       query : "FOR p IN products RETURN p"
+///     };
 ///
-///     var response = logCurlRequest('POST', url, body);
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
 ///
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Invalid query:
+/// A plan with some optimizer rules applied:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestExplainOptimizerRules}
+///     var url = "/_api/explain";
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+///     db.products.ensureSkiplist("id");
+///     for (var i = 0; i < 10; ++i) { db.products.save({ id: i }); }
+///     body = { 
+///       query : "FOR p IN products LET a = p.id FILTER a == 4 LET name = p.name SORT p.id LIMIT 1 RETURN name",
+///     };
+///
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Returning all plans:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestExplainAllPlans}
+///     var url = "/_api/explain";
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+///     db.products.ensureHashIndex("id");
+///     body = { 
+///       query : "FOR p IN products FILTER p.id == 25 RETURN p",
+///       options: {
+///         allPlans: true 
+///       }
+///     };
+///
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// A query that produces a warning:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestExplainWarning}
+///     var url = "/_api/explain";
+///     body = { 
+///       query : "FOR i IN 1..10 RETURN 1 / 0"
+///     };
+///
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Invalid query (missing bind parameter):
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestExplainInvalid}
 ///     var url = "/_api/explain";
 ///     var cn = "products";
 ///     db._drop(cn);
-///     db._create(cn, { waitForSync: true });
-///     body = '{ "query" : "FOR p IN products FILTER p.id == @id LIMIT 2 RETURN p.n" }';
+///     db._create(cn);
+///     body = { 
+///       query : "FOR p IN products FILTER p.id == @id LIMIT 2 RETURN p.n"
+///     };
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///
@@ -184,14 +245,25 @@ function post_api_explain (req, res) {
     return;
   }
 
-  var result = AQL_EXPLAIN(json.query, json.bindVars);
+  var result = AQL_EXPLAIN(json.query, json.bindVars, json.options || { });
 
   if (result instanceof Error) {
     actions.resultException(req, res, result, undefined, false);
     return;
   }
 
-  result = { "plan" : result };
+  if (result.plans) {
+    result = { 
+      plans: result.plans,
+      warnings: result.warnings
+    };
+  }
+  else {
+    result = {
+      plan: result.plan,
+      warnings: result.warnings
+    };
+  }
   actions.resultOk(req, res, actions.HTTP_OK, result);
 }
 
