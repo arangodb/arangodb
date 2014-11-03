@@ -5,11 +5,11 @@ v2.3.0 (XXXX-XX-XX)
 
   Previously, a `NOT IN` was only achievable by writing a negated `IN` condition:
    
-     FOR i IN ... FILTER ! (i IN [ 23, 23 ]) ...
+      FOR i IN ... FILTER ! (i IN [ 23, 42 ]) ...
 
   This can now alternatively be expressed more intuitively as follows:
 
-     FOR i IN ... FILTER i NOT IN [ 23, 23 ] ...
+      FOR i IN ... FILTER i NOT IN [ 23, 42 ] ...
 
 * added alternative logical operator syntax for AQL
 
