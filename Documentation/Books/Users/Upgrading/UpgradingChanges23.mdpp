@@ -112,14 +112,35 @@ an optional `extra` attribute that was filled only for data-modification queries
 some other cases as follows:
 
 ```
-{"result":[],"hasMore":false,"extra":{"operations":{"executed":2600,"ignored":0}}
+{
+  "result" : [ ],
+  "hasMore" : false,
+  "extra" : {
+    "operations" : {
+      "executed" : 2600,
+      "ignored" : 0
+    }
+  }
+}
 ```
 
 With the changed result structure in ArangoDB 2.3, the `extra` attribute in the result
 will look like this:
 
 ```
-{"result":[],"hasMore":false,"extra":{"stats":{"writesExecuted":2600,"writesIgnored":0,"scannedFull":0,"scannedIndex":0},"warnings":[]}
+{ 
+  "result" : [],
+  "hasMore" : false,
+  "extra" : {
+    "stats" : {
+      "writesExecuted" : 2600,
+      "writesIgnored" : 0,
+      "scannedFull" : 0,
+      "scannedIndex" : 0
+    },
+    "warnings" : [ ]
+  }
+}
 ```
 
 The result in ArangoDB 2.3 will also contain a `warnings` attribute with the list of 
@@ -142,6 +163,25 @@ The return value of `ArangoStatement.parse()` has been extended in ArangoDB 2.3.
 In addition to the existing attributes, ArangoDB 2.3 will also return an `ast` attribute
 containing the abstract syntax tree of the statement. This extra attribute can
 safely be ignored by client programs.
+
+
+!SUBSECTION Variables not updatable in queries
+
+Previous versions of ArangoDB allowed the modification of variables inside AQL 
+queries, e.g.
+
+```
+LET counter = 0
+FOR i IN 1..10 
+  LET counter = counter + 1
+  RETURN counter
+```
+
+While this is admittedly a convenient feature, the new query optimizer design did not
+allow to keep it. Additionally, updating variables inside a query would prevent a lot
+of optimizations to queries that we would like the optimizer to make. Additionally,
+updating variables in queries that run on different nodes in a cluster would like cause
+non-deterministic behavior because queries are not executed linearly.
 
 
 !SUBSECTION New AQL keywords
