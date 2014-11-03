@@ -235,6 +235,10 @@ v2.3.0-beta (2014-11-01)
 v2.2.7 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #998: Incorrect application URL for non-system Foxx apps
+
+* fixed issue #1079: AQL editor: keyword WITH in UPDATE query is not highlighted
+
 * fix memory leak in cluster nodes
 
 * fixed registration of AQL user-defined functions in Web UI (JS shell)
