@@ -103,6 +103,7 @@ namespace triagens {
         // move filters up the dependency chain (to make result sets as small
         // as possible as early as possible)
         moveFiltersUpRule_pass4                   = 620,
+        
 
 //////////////////////////////////////////////////////////////////////////////
 /// "Pass 5": try to remove redundant or unnecessary nodes (second try)
@@ -125,14 +126,15 @@ namespace triagens {
 //////////////////////////////////////////////////////////////////////////////
 
         pass6                                     = 800,
-        // try to find a filter after an enumerate collection and find an index . . . 
-        useIndexRange_pass6                       = 810,
-
-        // try to find sort blocks which are superseeded by indexes
-        useIndexForSort_pass6                     = 820,
         
         // replace simple OR conditions with IN
-        replaceORwithIN_pass6                     = 830,
+        replaceORwithIN_pass6                     = 810,
+        
+        // try to find a filter after an enumerate collection and find an index . . . 
+        useIndexRange_pass6                       = 820,
+
+        // try to find sort blocks which are superseeded by indexes
+        useIndexForSort_pass6                     = 830,
   
 //////////////////////////////////////////////////////////////////////////////
 /// "Pass 10": final transformations for the cluster

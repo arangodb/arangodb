@@ -420,7 +420,7 @@ void Optimizer::setupRules () {
                moveFiltersUpRule,
                moveFiltersUpRule_pass4,
                true);
-
+  
   //////////////////////////////////////////////////////////////////////////////
   /// "Pass 5": try to remove redundant or unnecessary nodes (second try)
   ///           use levels between 601 and 699 for this
@@ -450,6 +450,12 @@ void Optimizer::setupRules () {
   /// "Pass 6": use indexes if possible for FILTER and/or SORT nodes
   ///           use levels between 701 and 799 for this
   //////////////////////////////////////////////////////////////////////////////
+  
+  // try to replace simple OR conditions with IN
+  registerRule("replace-OR-with-IN",
+               replaceORwithIN,
+               replaceORwithIN_pass6,
+               true);
 
   // try to find a filter after an enumerate collection and find an index . . . 
   registerRule("use-index-range",
@@ -461,12 +467,6 @@ void Optimizer::setupRules () {
   registerRule("use-index-for-sort",
                useIndexForSort,
                useIndexForSort_pass6,
-               true);
-
-  // try to replace simple OR conditions with IN
-  registerRule("replace-OR-with-IN",
-               replaceORwithIN,
-               replaceORwithIN_pass6,
                true);
 
   if (ExecutionEngine::isCoordinator()) {
