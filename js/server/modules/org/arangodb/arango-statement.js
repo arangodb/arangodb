@@ -50,7 +50,8 @@ ArangoStatement.prototype.parse = function () {
 
   return {
     bindVars : result.parameters,
-    collections : result.collections
+    collections : result.collections,
+    ast: result.ast
   };
 };
 
@@ -58,8 +59,8 @@ ArangoStatement.prototype.parse = function () {
 /// @brief explain a query and return the results
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoStatement.prototype.explain = function () {
-  return AQL_EXPLAIN(this._query, this._bindVars);
+ArangoStatement.prototype.explain = function (options) {
+  return AQL_EXPLAIN(this._query, this._bindVars, options || { });
 };
 
 ////////////////////////////////////////////////////////////////////////////////
