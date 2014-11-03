@@ -2307,14 +2307,27 @@ struct OrToInConverter {
         valueNodes.push_back(rhs);
         return true;
       }
-      if ((lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS || lhs->type == NODE_TYPE_INDEXED_ACCESS) 
-          && canConvertExpression(rhs)) {
-        // value == attr
+      if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+        if (lhs->getMember(0)->isArray() && canConvertExpression(rhs)) {
+          // value == attr
+          valueNodes.push_back(lhs);
+          return true;
+        }
+      }
+      if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+        if (rhs->getMember(0)->isArray() && canConvertExpression(lhs)) {
+          // value == attr
+          valueNodes.push_back(rhs);
+          return true;
+        }
+      }
+
+      if (lhs->type == NODE_TYPE_INDEXED_ACCESS && canConvertExpression(rhs)) {
+        // attr == value
         valueNodes.push_back(lhs);
         return true;
       }
-      if ((rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS || rhs->type == NODE_TYPE_INDEXED_ACCESS) 
-          && canConvertExpression(lhs)) {
+      if (rhs->type == NODE_TYPE_INDEXED_ACCESS && canConvertExpression(lhs)) {
         // attr == value
         valueNodes.push_back(rhs);
         return true;
