@@ -2274,6 +2274,33 @@ struct OrToInConverter {
   std::vector<AstNode const*> valueNodes;
   std::string variableName; 
 
+  // node should be an attribute access 
+  AstNode* getValueFromArray (AstNode const* node) {
+    TRI_ASSERT(node->type == NODE_TYPE_ATTRIBUTE_ACCESS);
+    AstNode* array = node->getMember(0);
+
+    if (array->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      array = getValueFromArray(array);
+    }
+    TRI_ASSERT(array->type == NODE_TYPE_ARRAY);
+    
+    char const* key = node->getStringValue();
+
+    for (auto i = 0; i < array->numMembers(); i++) {
+      AstNode* arrayElement = array->getMember(i);
+      TRI_ASSERT(arrayElement->type == NODE_TYPE_ARRAY_ELEMENT);
+      if (strcmp(key, arrayElement->getStringValue()) == 0){
+        TRI_ASSERT(arrayElement->getMember(0)->type == NODE_TYPE_VALUE);
+        return arrayElement->getMember(0);
+      }
+    }
+    return nullptr;
+  }
+
+  /*AstNode* getValueFromList (AstNode const* node) {
+    return node; //TODO implement
+  }*/
+  
   AstNode* buildInExpression (Ast* ast) {
     // the list of comparison values
     auto list = ast->createNodeList();
@@ -2307,7 +2334,21 @@ struct OrToInConverter {
         valueNodes.push_back(rhs);
         return true;
       }
-
+      if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && canConvertExpression(rhs)) {
+        // value == attr
+        valueNodes.push_back(lhs);
+        return true;
+      }
+      if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && canConvertExpression(lhs)) {
+        // attr == value
+        valueNodes.push_back(rhs);
+        return true;
+      }
+      /*if (lhs->type == NODE_TYPE_INDEXED_ACCESS && canConvertExpression(rhs)) {
+        // value == attr
+        if (lhs->getMember(0)->type == NODE_TYPE_LIST) {
+        }
+      }*/
       // fall-through intentional
     }
 
