@@ -225,7 +225,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool handleRead (bool& closed)  {
-          bool res;
+          bool res = true;
 
           if (! this->_closeRequested) {
             res = fillReadBuffer(closed);
