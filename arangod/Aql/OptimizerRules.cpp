@@ -2272,6 +2272,8 @@ int triagens::aql::undistributeRemoveAfterEnumColl (Optimizer* opt,
 struct OrToInConverter {
   AstNode const* variableNode;
   std::vector<AstNode const*> valueNodes;
+  std::vector<std::string> possibleNames;
+  std::vector<AstNode const*> possibleNodes;
   std::string variableName; 
 
   AstNode* buildInExpression (Ast* ast) {
@@ -2307,19 +2309,63 @@ struct OrToInConverter {
         valueNodes.push_back(rhs);
         return true;
       }
-      if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        if (lhs->getMember(0)->isArray() && canConvertExpression(rhs)) {
-          // value == attr
-          valueNodes.push_back(lhs);
-          return true;
-        }
+      if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS 
+          && lhs->getMember(0)->isArray() && canConvertExpression(rhs)) {
+        // value == attr
+        valueNodes.push_back(lhs);
+        return true;
       }
-      if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        if (rhs->getMember(0)->isArray() && canConvertExpression(lhs)) {
-          // value == attr
-          valueNodes.push_back(rhs);
-          return true;
-        }
+      if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS 
+          && rhs->getMember(0)->isArray() && canConvertExpression(lhs)) {
+        // value == attr
+        valueNodes.push_back(rhs);
+        return true;
+      }
+      // for things like "FOR a IN docs a.x == a.y || a.z == 1 RETURN a"
+      if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS 
+          && lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+        if (variableName.empty()) {
+          triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
+          lhs->append(&buffer, false);
+          auto lhsName = std::string(buffer.c_str(), buffer.length());
+          
+          triagens::basics::StringBuffer buffer1(TRI_UNKNOWN_MEM_ZONE);
+          rhs->append(&buffer1, false);
+          auto rhsName = std::string(buffer1.c_str(), buffer1.length());
+          
+          if (! possibleNames.empty()) {
+            if (lhsName == possibleNames[0] || rhsName == possibleNames[0]) {
+              variableName = possibleNames[0];
+              variableNode = possibleNodes[0];
+            }
+            else if (lhsName == possibleNames[1] || rhsName == possibleNames[1]) {
+              variableName = possibleNames[1];
+              variableNode = possibleNodes[1];
+            }
+            else {
+              return false;
+            }
+            possibleNames.clear();
+            possibleNodes.clear();
+          } 
+          else {
+            possibleNames.push_back(lhsName);
+            possibleNames.push_back(rhsName);
+            possibleNodes.push_back(lhs);
+            possibleNodes.push_back(rhs);
+            return true;
+          }
+        } 
+        if (! variableName.empty()) {
+          if (canConvertExpression(rhs)) {
+            valueNodes.push_back(lhs);
+            return true;
+          }
+          if (canConvertExpression(lhs)) {
+            valueNodes.push_back(rhs);
+            return true;
+          }
+        } 
       }
 
       if (lhs->type == NODE_TYPE_INDEXED_ACCESS && canConvertExpression(rhs)) {
