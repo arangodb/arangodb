@@ -204,6 +204,8 @@ v2.3.0-beta1 (2014-11-01)
 v2.2.7 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #998: Incorrect application URL for non-system Foxx apps
+
 * fix memory leak in cluster nodes
 
 * fixed registration of AQL user-defined functions in Web UI (JS shell)
