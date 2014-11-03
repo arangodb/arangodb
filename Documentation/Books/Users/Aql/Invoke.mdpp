@@ -1,7 +1,7 @@
 !CHAPTER How to invoke AQL 
 
 You can run AQL queries from your application via the HTTP REST API. The full
-API description is available at [Http Interface for AQL Query Cursor](../HttpAqlQueryCursor/README.md). 
+API description is available at [Http Interface for AQL Query Cursors](../HttpAqlQueryCursor/README.md). 
 
 You can also run AQL queries from arangosh. To do so, you can use the *_query* method 
 of the *db* object. This will run the specified query in the context of the currently
@@ -24,10 +24,13 @@ return an empty list. To retrieve statistics for a data-modification query, use 
 
     arangosh> db._query("FOR i IN 1..100 INSERT { _key: CONCAT('test', TO_STRING(i)) } INTO mycollection").getExtra();
     { 
-      "operations" : {
-        "executed" : 100,
-        "ignored" : 0
-      }
+      "stats" : { 
+        "writesExecuted" : 100, 
+        "writesIgnored" : 0, 
+        "scannedFull" : 0, 
+        "scannedIndex" : 0 
+      }, 
+      "warnings" : [ ] 
     }
 
 The *_query* method is a shorthand for creating an ArangoStatement object,
