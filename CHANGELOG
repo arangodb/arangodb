@@ -1,6 +1,43 @@
 v2.3.0 (XXXX-XX-XX)
 -------------------
 
+* added dedicated `NOT IN` operator for AQL
+
+  Previously, a `NOT IN` was only achievable by writing a negated `IN` condition:
+   
+     FOR i IN ... FILTER ! (i IN [ 23, 23 ]) ...
+
+  This can now alternatively be expressed more intuitively as follows:
+
+     FOR i IN ... FILTER i NOT IN [ 23, 23 ] ...
+
+* added alternative logical operator syntax for AQL
+
+  Previously, the logical operators in AQL could only be written as:
+  - `&&`: logical and
+  - `||`: logical or
+  - `!`: negation
+
+  ArangoDB 2.3 introduces the alternative variants for these operators:
+  - `AND`: logical and
+  - `OR`: logical or
+  - `NOT`: negation
+
+  The new syntax is just an alternative to the old syntax, allowing easier 
+  migration from SQL. The old syntax is still fully supported and will be.
+
+* improved output of `ArangoStatement.parse()` and POST `/_api/query`
+
+  If an AQL query can be parsed without problems, The return value of 
+  `ArangoStatement.parse()` now contains an attribute `ast` with the abstract
+  syntax tree of the query (before optimizations). Though this is an internal
+  representation of the query and is subject to change, it can be used to inspect
+  how ArangoDB interprets a given query.
+
+* improved `ArangoStatement.explain()` and POST `/_api/explain`
+
+  The commands for explaining AQL queries have been improved.
+
 * added command-line option `--javascript.v8-contexts` to control the number of 
   V8 contexts created in arangod.
   
@@ -11,7 +48,21 @@ v2.3.0 (XXXX-XX-XX)
   server threads. Thus no change in configuration is required to keep the old
   behavior.
 
-* removed bitarray indexes
+* removed index type "bitarray"
+
+  Bitarray indexes were only half-way documented and integrated in previous versions 
+  of ArangoDB so their benefit was limited. The support for bitarray indexes has
+  thus been removed in ArangoDB 2.3. It is not possible to create indexes of type
+  "bitarray" with ArangoDB 2.3.
+
+  When a collection is openend that contains a bitarray index definition created 
+  with a previous version of ArangoDB, ArangoDB will ignore it and log the following
+  warning:
+
+      index type 'bitarray' is not supported in this version of ArangoDB and is ignored 
+
+  Future versions of ArangoDB may automatically remove such index definitions so the
+  warnings will eventually disappear.
 
 * removed internal "_admin/modules/flush" in order to fix requireApp
 
@@ -37,7 +88,7 @@ v2.3.0 (XXXX-XX-XX)
 
   `fs.readBuffer` can be used to return the contents of a file in a Buffer object.
 
-* improved insert performance of non-unique hash index inserts significantly in case
+* improved performance of insertion into non-unique hash indexes significantly in case
   many duplicate keys are used in the index
 
 * issue #1042: set time zone in log output

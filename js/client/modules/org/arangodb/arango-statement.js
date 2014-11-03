@@ -104,7 +104,11 @@ ArangoStatement.prototype.parse = function () {
 
   arangosh.checkRequestResult(requestResult);
 
-  var result = { bindVars: requestResult.bindVars, collections: requestResult.collections };
+  var result = { 
+    bindVars: requestResult.bindVars, 
+    collections: requestResult.collections,
+    ast: requestResult.ast 
+  };
   return result;
 };
 
@@ -112,10 +116,11 @@ ArangoStatement.prototype.parse = function () {
 /// @brief explain a query and return the results
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoStatement.prototype.explain = function () {
+ArangoStatement.prototype.explain = function (options) {
   var body = {
     query: this._query,
-    bindVars: this._bindVars
+    bindVars: this._bindVars,
+    options: options || { }
   };
 
   var requestResult = this._database._connection.POST(
@@ -124,7 +129,18 @@ ArangoStatement.prototype.explain = function () {
 
   arangosh.checkRequestResult(requestResult);
 
-  return requestResult.plan;
+  if (options && options.allPlans) {
+    return {
+      plans: requestResult.plans,
+      warnings: requestResult.warnings
+    };
+  }
+  else {
+    return {
+      plan: requestResult.plan,
+      warnings: requestResult.warnings
+    };
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
