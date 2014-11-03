@@ -1,5 +1,5 @@
 v2.3.0-beta1 (2014-11-01)
--------------------
+-------------------------
 
 * added dedicated `NOT IN` operator for AQL
 
