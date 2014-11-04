@@ -2270,8 +2270,8 @@ int triagens::aql::undistributeRemoveAfterEnumColl (Optimizer* opt,
 ////////////////////////////////////////////////////////////////////////////////
 
 struct OrToInConverter {
-  AstNode const* variableNode = nullptr;
-  //const char* variableName; 
+  AstNode const* variableNode;
+  std::string variableName; 
   std::vector<AstNode const*> valueNodes;
   std::vector<AstNode const*> possibleNodes;
   std::vector<AstNode const*> orConditions;
@@ -2280,23 +2280,6 @@ struct OrToInConverter {
     triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
     node->append(&buffer, false);
     return std::string(buffer.c_str(), buffer.length());
-  }
-
-  bool compareNodes (AstNode const* lhs, AstNode const* rhs) {
-    if (lhs->numMembers() == rhs->numMembers()) {
-      if (lhs->numMembers() < 2) {
-        return (getString(lhs) == getString(rhs));
-      }
-      else {
-        for (size_t i = 0; i < lhs->numMembers(); i++) {
-          if (! compareNodes(lhs->getMember(i), rhs->getMember(i))) {
-            return false;
-          }
-        }
-        return true;
-      }
-    }
-    return false;
   }
 
   AstNode* buildInExpression (Ast* ast) {
@@ -2338,11 +2321,6 @@ struct OrToInConverter {
       auto lhs = n->getMember(0);
       auto rhs = n->getMember(1);
       
-      if (variableNode != nullptr) {
-        return (compareNodes(lhs, variableNode) 
-          || compareNodes(rhs, variableNode));
-      }
-
       if (lhs->isConstant()) {
         variableNode = rhs;
         return true;
@@ -2357,8 +2335,9 @@ struct OrToInConverter {
           lhs->type == NODE_TYPE_INDEXED_ACCESS) {
         if (possibleNodes.size() == 2) {
           for (size_t i = 0; i < 2; i++) {
-            if (compareNodes(lhs, possibleNodes[i])) {
+            if (getString(lhs) == getString(possibleNodes[i])) {
               variableNode = possibleNodes[i];
+              variableName = getString(variableNode);
               return true;
             }
           }
@@ -2371,8 +2350,9 @@ struct OrToInConverter {
           rhs->type == NODE_TYPE_INDEXED_ACCESS) {
         if (possibleNodes.size() == 2) {
           for (size_t i = 0; i < 2; i++) {
-            if (compareNodes(rhs, possibleNodes[i])) {
+            if (getString(rhs) == getString(possibleNodes[i])) {
               variableNode = possibleNodes[i];
+              variableName = getString(variableNode);
               return true;
             }
           }
@@ -2405,6 +2385,8 @@ struct OrToInConverter {
         valueNodes.push_back(rhs);
         return true;
       } 
+      // if canConvertExpression(lhs) and canConvertExpression(rhs), then one of
+      // the equalities in the OR statement is of the form x == x
       // fall-through intentional
     }
     else if (node->type == NODE_TYPE_REFERENCE ||
