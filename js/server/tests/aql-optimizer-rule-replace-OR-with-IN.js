@@ -323,6 +323,47 @@ function NewAqlReplaceORWithINTestSuite () {
       assertEqual(executeWithRule(query, {}), executeWithoutRule(query, {}));
       assertEqual(expected, executeWithoutRule(query, {}));
     },
+    
+    testFiresNonsense1: function () {
+      var query =
+        "FOR v in " + replace.name() 
+        + " FILTER 1 == 2 || v.value == 2 || v.value == 3 SORT v.value RETURN v.value" ;
+     
+      isRuleUsed(query, {});
+
+      var expected = [ 2, 3 ];
+      var actual = getQueryResults(query, {}); 
+      assertEqual(expected, actual);
+      assertEqual(executeWithRule(query, {}), executeWithoutRule(query, {}));
+      assertEqual(expected, executeWithoutRule(query, {}));
+    },
+    
+    testFiresNonsense2: function () {
+      var query = "FOR v in " + replace.name() + 
+        " FILTER 1 == 2 || 2 == v.value || v.value == 3 SORT v.value RETURN v.value";
+     
+      isRuleUsed(query, {});
+
+      var expected = [ 2, 3 ];
+      var actual = getQueryResults(query, {}); 
+      assertEqual(expected, actual);
+      assertEqual(executeWithRule(query, {}), executeWithoutRule(query, {}));
+      assertEqual(expected, executeWithoutRule(query, {}));
+    },
+    
+    testFiresNonsense3: function () {
+      var query = 
+      "FOR v in " + replace.name() 
+      + " FILTER v.value == 2 || 3 == v.value || 1 == 2 SORT v.value RETURN v.value";
+     
+      isRuleUsed(query, {});
+
+      var expected = [ 2, 3 ];
+      var actual = getQueryResults(query, {}); 
+      assertEqual(expected, actual);
+      assertEqual(executeWithRule(query, {}), executeWithoutRule(query, {}));
+      assertEqual(expected, executeWithoutRule(query, {}));
+    },
 
     testDudDifferentAttributes1 : function () {
       var query = 
