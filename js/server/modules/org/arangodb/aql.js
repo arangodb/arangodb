@@ -1,4 +1,4 @@
-/*jshint strict: false, unused: false */
+/*jshint strict: false, unused: false, bitwise: false */
 /*global require, exports, COMPARE_STRING, AQL_TO_BOOL, AQL_TO_NUMBER, AQL_TO_STRING, AQL_WARNING */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -263,7 +263,7 @@ function INDEX (collection, indexTypes) {
 
     for (j = 0; j < indexTypes.length; ++j) {
       if (index.type === indexTypes[j]) {
-        return index.id;
+        return index;
       }
     }
   }
@@ -2788,7 +2788,7 @@ function AQL_NEAR (collection, latitude, longitude, limit, distanceAttribute) {
     THROW("NEAR", INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
   }
 
-  var result = COLLECTION(collection).NEAR(idx, latitude, longitude, limit);
+  var result = COLLECTION(collection).NEAR(idx.id, latitude, longitude, limit);
 
   if (distanceAttribute === null || distanceAttribute === undefined) {
     return result.documents;
@@ -2831,7 +2831,7 @@ function AQL_WITHIN (collection, latitude, longitude, radius, distanceAttribute)
     THROW("WITHIN", INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
   }
 
-  var result = COLLECTION(collection).WITHIN(idx, latitude, longitude, radius);
+  var result = COLLECTION(collection).WITHIN(idx.id, latitude, longitude, radius);
 
   if (distanceAttribute === null || distanceAttribute === undefined) {
     return result.documents;
@@ -2846,6 +2846,176 @@ function AQL_WITHIN (collection, latitude, longitude, radius, distanceAttribute)
   }
 
   return documents;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return documents within a bounding rectangle 
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_WITHIN_RECTANGLE (collection, latitude1, longitude1, latitude2, longitude2) {
+  "use strict";
+
+  if (TYPEWEIGHT(latitude1) !== TYPEWEIGHT_NUMBER ||
+      TYPEWEIGHT(longitude1) !== TYPEWEIGHT_NUMBER ||
+      TYPEWEIGHT(latitude2) !== TYPEWEIGHT_NUMBER ||
+      TYPEWEIGHT(longitude2) !== TYPEWEIGHT_NUMBER) {
+    WARN("WITHIN_RECTANGLE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
+  }
+
+  var distanceMeters = function (lat1, lon1, lat2, lon2) {  
+    var deltaLat = (lat2 - lat1) * Math.PI / 180;
+    var deltaLon = (lon2 - lon1) * Math.PI / 180;
+    var a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
+    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return 6378.137 /* radius of earth in kilometers */  
+           * c 
+           * 1000; // kilometers to meters;
+  };
+
+  var midpoint = [ 
+    latitude1 + (latitude2 - latitude1) * 0.5, 
+    longitude1 + (longitude2 - longitude1) * 0.5 
+  ];
+
+  var idx = INDEX(COLLECTION(collection), [ "geo1", "geo2" ]); 
+
+  if (idx === null) {
+    THROW(INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
+  }
+
+  var diameter = distanceMeters(latitude1, longitude1, latitude2, longitude2);
+  var latLower, latUpper, lonLower, lonUpper;
+
+  if (latitude1 < latitude2) {
+    latLower = latitude1;
+    latUpper = latitude2;
+  }
+  else {
+    latLower = latitude2;
+    latUpper = latitude1;
+  }
+
+  if (longitude1 < longitude2) {
+    lonLower = longitude1;
+    lonUpper = longitude2;
+  }
+  else {
+    lonLower = longitude2;
+    lonUpper = longitude1;
+  }
+
+  var result = COLLECTION(collection).WITHIN(idx.id, midpoint[0], midpoint[1], diameter);
+
+  var documents = [ ];
+  if (idx.type === 'geo1') {
+    // geo1, we have both coordinates in a list
+    var attribute = idx.fields[0];
+    if (idx.geoJson) {
+      result.documents.forEach(function(doc) {
+        // check if within bounding rectangle
+        // first list value is longitude, then latitude
+        if (doc[attribute][1] >= latLower && doc[attribute][1] <= latUpper &&
+            doc[attribute][0] >= lonLower && doc[attribute][0] <= lonUpper) {
+          documents.push(doc);
+        }
+      });
+    }
+    else {
+      result.documents.forEach(function(doc) {
+        // check if within bounding rectangle
+        // first list value is latitude, then longitude
+        if (doc[attribute][0] >= latLower && doc[attribute][0] <= latUpper &&
+            doc[attribute][1] >= lonLower && doc[attribute][1] <= lonUpper) {
+          documents.push(doc);
+        }
+      });
+    }
+  }
+  else {
+    // geo2, we have dedicated latitude and longitude attributes
+    var latAtt = idx.fields[0], lonAtt = idx.fields[1];
+    result.documents.forEach(function(doc) {
+      // check if within bounding rectangle
+      if (doc[latAtt] >= latLower && doc[latAtt] <= latUpper &&
+          doc[lonAtt] >= lonLower && doc[lonAtt] <= lonUpper) {
+        documents.push(doc);
+      }
+    });
+  }
+
+  return documents;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return true if a point is contained inside a polygon
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_IS_IN_POLYGON (points, latitude, longitude) {
+  "use strict";
+  
+  if (TYPEWEIGHT(points) !== TYPEWEIGHT_LIST) {
+    WARN("POINT_IN_POLYGON", INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+    return false;
+  }
+
+  var searchLat, searchLon, pointLat, pointLon, geoJson = false;
+  if (TYPEWEIGHT(latitude) === TYPEWEIGHT_LIST) {
+    geoJson = AQL_TO_BOOL(longitude);
+    if (geoJson) {
+      // first list value is longitude, then latitude
+      searchLat = latitude[1];
+      searchLon = latitude[0];
+      pointLat = 1;
+      pointLon = 0;
+    }
+    else {
+      // first list value is latitude, then longitude
+      searchLat = latitude[0];
+      searchLon = latitude[1];
+      pointLat = 0;
+      pointLon = 1;
+    }
+  }
+  else if (TYPEWEIGHT(latitude) === TYPEWEIGHT_NUMBER &&
+           TYPEWEIGHT(longitude) === TYPEWEIGHT_NUMBER) {
+    searchLat = latitude;
+    searchLon = longitude;
+    pointLat = 0;
+    pointLon = 1;
+  }
+  else {
+    WARN("POINT_IN_POLYGON", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return false;
+  }
+  
+  var i, j = points.length - 1;
+  var oddNodes = false;
+
+  for (i = 0; i < points.length; ++i) {
+    if (TYPEWEIGHT(points[i]) !== TYPEWEIGHT_LIST) {
+      continue;
+    }
+
+    if (((points[i][pointLat] < searchLat && points[j][pointLat] >= searchLat) || 
+         (points[j][pointLat] < searchLat && points[i][pointLat] >= searchLat)) &&
+        (points[i][pointLon] <= searchLon || points[j][pointLon] <= searchLon)) {
+      oddNodes ^= ((points[i][pointLon] + (searchLat - points[i][pointLat]) / 
+                   (points[j][pointLat] - points[i][pointLat]) * 
+                    (points[j][pointLon] - points[i][pointLon])) < searchLon);
+    }
+
+    j = i;
+  }
+
+  if (oddNodes) {
+    return true;
+  }
+
+  return false;
 }
 
 // -----------------------------------------------------------------------------
@@ -6720,6 +6890,8 @@ exports.AQL_STDDEV_SAMPLE = AQL_STDDEV_SAMPLE;
 exports.AQL_STDDEV_POPULATION = AQL_STDDEV_POPULATION;
 exports.AQL_NEAR = AQL_NEAR;
 exports.AQL_WITHIN = AQL_WITHIN;
+exports.AQL_WITHIN_RECTANGLE = AQL_WITHIN_RECTANGLE;
+exports.AQL_IS_IN_POLYGON = AQL_IS_IN_POLYGON;
 exports.AQL_FULLTEXT = AQL_FULLTEXT;
 exports.AQL_PATHS = AQL_PATHS;
 exports.AQL_SHORTEST_PATH = AQL_SHORTEST_PATH;
