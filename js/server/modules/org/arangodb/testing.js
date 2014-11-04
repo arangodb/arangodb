@@ -134,7 +134,6 @@ var allTests =
     "arangob",
     "importing",
     "upgrade",
-    "foxx_manager",
     "authentication",
     "authentication_parameters"
   ];
