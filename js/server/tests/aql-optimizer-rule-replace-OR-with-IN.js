@@ -53,6 +53,14 @@ function NewAqlReplaceORWithINTestSuite () {
    assertTrue(result.plan.rules.indexOf(ruleName) === -1, query);
   };
 
+  var executeWithRule = function (query, params) {
+    return AQL_EXECUTE(query, params, { optimizer: { rules: [ "-all", "+" + ruleName ] } }).json;
+  }
+
+  var executeWithoutRule = function (query, params) {
+    return AQL_EXECUTE(query, params, { optimizer: { rules: [ "-all" ] } }).json;
+  }
+
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -64,8 +72,10 @@ function NewAqlReplaceORWithINTestSuite () {
       replace = internal.db._create("UnitTestsNewAqlReplaceORWithINTestSuite");
 
       for (var i = 1; i <= 10; ++i) {
-        replace.save({ "value" : i});
+        replace.save({ "value" : i, x: [i]});
         replace.save({"a" : {"b" : i}});
+        replace.save({"value": i + 10, "bb": i, "cc": 10 - i });
+
       }
 
     },
@@ -226,7 +236,7 @@ function NewAqlReplaceORWithINTestSuite () {
       assertEqual(expected, actual);
     },
     
-    testSelfReference1 : function () {
+    testFiresSelfReference1 : function () {
       var query = 
         "FOR v IN " + replace.name() 
         + " FILTER v.value == v.a.b  || v.value == 10 || v.value == 7 SORT v.value RETURN v.value";
@@ -238,7 +248,7 @@ function NewAqlReplaceORWithINTestSuite () {
       assertEqual(expected, actual);
     },
     
-    testSelfReference2 : function () {
+    testFiresSelfReference2 : function () {
       var query = 
         "FOR v IN " + replace.name() 
         + " FILTER v.a.b == v.value || v.value == 10 || 7 == v.value SORT v.value RETURN v.value";
@@ -249,7 +259,71 @@ function NewAqlReplaceORWithINTestSuite () {
       var actual = getQueryResults(query, {}); 
       assertEqual(expected, actual);
     },
+
+    testFiresAttributeIsList1 : function () {
+      var query = 
+       "LET x = {a:1,b:2} FOR v IN " + replace.name() 
+       + " FILTER v.x[0] == x.a || v.x[0] == 3 SORT v.value RETURN v.value";
+
+      isRuleUsed(query, {});
+
+      var expected = [ 1, 3 ];
+      var actual = getQueryResults(query, {}); 
+      assertEqual(expected, actual);
+    },
     
+    testFiresAttributeIsList2 : function () {
+      var query = 
+       "LET x = {a:1,b:2} FOR v IN " + replace.name() 
+       + " FILTER x.a == v.x[0] || v.x[0] == 3 SORT v.value RETURN v.value";
+
+      isRuleUsed(query, {});
+
+      var expected = [ 1, 3 ];
+      var actual = getQueryResults(query, {}); 
+      assertEqual(expected, actual);
+    },
+
+    testFiresAttributeIsList3 : function () {
+      var query = 
+       "LET x = {a:1,b:2} FOR v IN " + replace.name() 
+       + " FILTER x.a == v.x[0] || 3 == v.x[0] SORT v.value RETURN v.value";
+
+      isRuleUsed(query, {});
+
+      var expected = [ 1, 3 ];
+      var actual = getQueryResults(query, {}); 
+      assertEqual(expected, actual);
+    },
+    
+    testFiresAttributeIsList4 : function () {
+      var query = 
+       "LET x = {a:1,b:2} FOR v IN " + replace.name() 
+       + " FILTER v.x[0] == x.a || 3 == v.x[0] SORT v.value RETURN v.value";
+
+      isRuleUsed(query, {});
+
+      var expected = [ 1, 3 ];
+      var actual = getQueryResults(query, {}); 
+      assertEqual(expected, actual);
+    },
+    
+    testFires2Loops: function () {
+      var query = 
+       "FOR x IN " + replace.name() 
+       + " FOR y IN "  + replace.name() 
+       + " FILTER x.value == y.bb || x.value == y.cc" 
+       + " FILTER x.value != null SORT x.value RETURN x.value";
+     
+      isRuleUsed(query, {});
+
+      var expected = [ 1, 1, 2, 2, 3, 3, 4, 4, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10  ]; 
+      var actual = getQueryResults(query, {}); 
+      assertEqual(expected, actual);
+      assertEqual(executeWithRule(query, {}), executeWithoutRule(query, {}));
+      assertEqual(expected, executeWithoutRule(query, {}));
+    },
+
     testDudDifferentAttributes1 : function () {
       var query = 
         "FOR x IN " + replace.name() + " FILTER x.val1 == 1 || x.val2 == 2 RETURN x";
@@ -302,6 +376,13 @@ function NewAqlReplaceORWithINTestSuite () {
 
       ruleIsNotUsed(query, {});
     },
+
+    testDudAttributeIsList: function () {
+      var query = 
+        "LET x = {a:1,b:2} FOR v IN " + replace.name() 
+        + " FILTER v.x[0] == x.a || v.x[1] == 3 SORT v.value RETURN v.value";
+      ruleIsNotUsed(query, {});
+    }
   };
 }
 
