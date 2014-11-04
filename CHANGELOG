@@ -1,6 +1,65 @@
 v2.3.0 (XXXX-XX-XX)
 -------------------
 
+* fixed non-working query results download in AQL editor of web interface
+
+* removed debug print message in AQL query export routine
+
+* fixed issue #1075: Aardvark: user name required even if auth is off #1075 
+
+  The fix for this prefills the username input field with the current user's
+  accout name if any and `root` (the default username) otherwise. Additionally,
+  the tooltip text has been slightly adjusted.
+
+* fixed issue #1069: Add 'raw' link to swagger ui so that the raw swagger 
+  json can easily be retrieved
+
+  This adds a link to the Swagger API docs to an application's detail view in
+  the **Applications** tab of the web interface. The link produces the Swagger
+  JSON directly. If authentication is turned on, the link requires authentication,
+  too.
+
+
+v2.3.0-beta1 (2014-11-01)
+-------------------------
+
+* added dedicated `NOT IN` operator for AQL
+
+  Previously, a `NOT IN` was only achievable by writing a negated `IN` condition:
+   
+      FOR i IN ... FILTER ! (i IN [ 23, 42 ]) ...
+
+  This can now alternatively be expressed more intuitively as follows:
+
+      FOR i IN ... FILTER i NOT IN [ 23, 42 ] ...
+
+* added alternative logical operator syntax for AQL
+
+  Previously, the logical operators in AQL could only be written as:
+  - `&&`: logical and
+  - `||`: logical or
+  - `!`: negation
+
+  ArangoDB 2.3 introduces the alternative variants for these operators:
+  - `AND`: logical and
+  - `OR`: logical or
+  - `NOT`: negation
+
+  The new syntax is just an alternative to the old syntax, allowing easier 
+  migration from SQL. The old syntax is still fully supported and will be.
+
+* improved output of `ArangoStatement.parse()` and POST `/_api/query`
+
+  If an AQL query can be parsed without problems, The return value of 
+  `ArangoStatement.parse()` now contains an attribute `ast` with the abstract
+  syntax tree of the query (before optimizations). Though this is an internal
+  representation of the query and is subject to change, it can be used to inspect
+  how ArangoDB interprets a given query.
+
+* improved `ArangoStatement.explain()` and POST `/_api/explain`
+
+  The commands for explaining AQL queries have been improved.
+
 * added command-line option `--javascript.v8-contexts` to control the number of 
   V8 contexts created in arangod.
   
@@ -11,11 +70,32 @@ v2.3.0 (XXXX-XX-XX)
   server threads. Thus no change in configuration is required to keep the old
   behavior.
 
-* removed bitarray indexes
+* removed index type "bitarray"
+
+  Bitarray indexes were only half-way documented and integrated in previous versions 
+  of ArangoDB so their benefit was limited. The support for bitarray indexes has
+  thus been removed in ArangoDB 2.3. It is not possible to create indexes of type
+  "bitarray" with ArangoDB 2.3.
+
+  When a collection is openend that contains a bitarray index definition created 
+  with a previous version of ArangoDB, ArangoDB will ignore it and log the following
+  warning:
+
+      index type 'bitarray' is not supported in this version of ArangoDB and is ignored 
+
+  Future versions of ArangoDB may automatically remove such index definitions so the
+  warnings will eventually disappear.
 
 * removed internal "_admin/modules/flush" in order to fix requireApp
 
 * added basic support for handling binary data in Foxx
+
+  Requests with binary payload can be processed in Foxx applications by
+  using the new method `res.rawBodyBuffer()`. This will return the unparsed request
+  body as a Buffer object.
+
+  There is now also the method `req.requestParts()` available in Foxx to retrieve
+  the individual components of a multipart HTTP request.
 
   Buffer objects can now be used when setting the response body of any Foxx action.
   Additionally, `res.send()` has been added as a convenience method for returning 
@@ -37,7 +117,7 @@ v2.3.0 (XXXX-XX-XX)
 
   `fs.readBuffer` can be used to return the contents of a file in a Buffer object.
 
-* improved insert performance of non-unique hash index inserts significantly in case
+* improved performance of insertion into non-unique hash indexes significantly in case
   many duplicate keys are used in the index
 
 * issue #1042: set time zone in log output
@@ -166,6 +246,10 @@ v2.3.0 (XXXX-XX-XX)
 
 v2.2.7 (XXXX-XX-XX)
 -------------------
+
+* fixed issue #998: Incorrect application URL for non-system Foxx apps
+
+* fixed issue #1079: AQL editor: keyword WITH in UPDATE query is not highlighted
 
 * fix memory leak in cluster nodes
 
