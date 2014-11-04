@@ -1,6 +1,10 @@
 v2.3.0 (XXXX-XX-XX)
 -------------------
 
+* fixed non-working query results download in AQL editor of web interface
+
+* removed debug print message in AQL query export routine
+
 * fixed issue #1075: Aardvark: user name required even if auth is off #1075 
 
   The fix for this prefills the username input field with the current user's
@@ -16,8 +20,8 @@ v2.3.0 (XXXX-XX-XX)
   too.
 
 
-v2.3.0-beta (2014-11-01)
-------------------------
+v2.3.0-beta1 (2014-11-01)
+-------------------------
 
 * added dedicated `NOT IN` operator for AQL
 
