@@ -2414,7 +2414,10 @@ int triagens::aql::replaceORwithIN (Optimizer* opt,
   for (auto n : nodes) {
     auto deps = n->getDependencies();
     TRI_ASSERT(deps.size() == 1);
-    TRI_ASSERT(deps[0]->getType() == EN::CALCULATION);
+    if (deps[0]->getType() != EN::CALCULATION) {
+      continue;
+    }
+
     auto fn = static_cast<FilterNode*>(n);
     auto cn = static_cast<CalculationNode*>(deps[0]);
 
