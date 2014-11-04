@@ -40,22 +40,28 @@ For Mac OSX users: execute
 For Windows and Linux users: use the installer script or distribution package
 from our [download page](http://www.arangodb.com/download).
 
-If the package manager has not already started the ArangoDB server, use
+If the package manager has not already started the ArangoDB server, use the 
+following command to start it.
 
     unix> /path/to/sbin/arangod
     2012-03-30T12:54:19Z [11794] INFO ArangoDB (version 2.x.y) is ready for business
     2012-03-30T12:54:19Z [11794] INFO Have Fun!
 
-`/path/to/sbin` is OS dependent. It will normally by either `/usr/sbin` or `/user/local/sbin`. Point your browser to
+`/path/to/sbin` is OS dependent. It will normally be either `/usr/sbin` or `/user/local/sbin`. 
+
+To access ArangoDB in your browser, open the following URL
 
     http://localhost:8529/
 
-and select `Tools / JS Shell`. You can now use the Arango shell from within your browser. Alternative, it is available as command-line tool _arangosh_.
+and select `Tools / JS Shell`. You can now use the Arango shell from within your browser. 
+
+Alternatively, a scriptable shell is available as a command-line tool _arangosh_.
 
     arangosh> db._create("hello");
     arangosh> db.hello.save({ world: "earth" });
 
-Congratulations! You have created your first collection called `hello` and your first document. To verify your achievements, type:
+Congratulations! You have created your first collection named `hello` and your first document. 
+To verify your achievements, type:
 
     arangosh> db.hello.toArray();
 
@@ -64,15 +70,15 @@ More Information
 ----------------
 
 Please check the
-[Installation Manual](http://www.arangodb.com/manuals/current/InstallManual.html)
+[Installation Manual](https://www.arangodb.com/Installing/README.html)
 for installation and compilation instructions.
 
 The
-[User Manual](http://www.arangodb.com/manuals/current/UserManual.html)
+[User Manual](https://www.arangodb.com/FirstSteps/README.html)
 has an introductory chapter showing the basic operations of ArangoDB.
 
 Or you can use the 
-[online tutorial](http://www.arangodb.com/try)
+[online tutorial](https://www.arangodb.com/tryitout)
 to play with ArangoDB without installing it locally.
 
 
@@ -86,7 +92,7 @@ you report them:
 
 You can use the Google group for improvements, feature requests, comments 
 
-[http://www.arangodb.com/community](http://www.arangodb.com/community)
+[http://www.arangodb.com/community](https://www.arangodb.com/community)
 
 
 Citing ArangoDB
@@ -96,7 +102,7 @@ Please kindly cite ArangoDB in your publications if it helps your research:
 ```bibtex
 @misc{ArangoDB2014,
    Author = {ArangoDB},
-   Title = { {ArangoDB 2.2}: An Open Source multi-purpose database supporting flexible data models for documents, graphs, and key-values.},
+   Title = { {ArangoDB 2.3}: An Open source, multi-purpose database supporting flexible data models for documents, graphs, and key-values.},
    Year  = {2014},
    Howpublished = {\url{http://arangodb.com/}
 }

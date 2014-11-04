@@ -18,8 +18,10 @@ The minimum length of words that are indexed can be specified with the minWordLe
 
 In case that the index was successfully created, the index identifier is returned.
 
-	arangod> db.emails.ensureFulltextIndex("body");
-	{ "id" : "emails/42725508", "unique" : false, "type" : "fulltext", "fields" : ["body"], "isNewlyCreated" : true }
+```
+arangosh> db.emails.ensureFulltextIndex("body");
+{ "id" : "emails/42725508", "unique" : false, "type" : "fulltext", "fields" : ["body"], "isNewlyCreated" : true }
+```
 
 <!--
 @anchor IndexFulltextShellEnsureFulltextIndex

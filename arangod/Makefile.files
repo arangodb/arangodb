@@ -15,29 +15,6 @@ arangod_libarangod_a_CPPFLAGS = \
 arangod_libarangod_a_SOURCES = \
 	arangod/Actions/actions.cpp \
 	arangod/Actions/RestActionHandler.cpp \
-	arangod/Ahuacatl/ahuacatl-access-optimiser.cpp \
-	arangod/Ahuacatl/ahuacatl-ast-node.cpp \
-	arangod/Ahuacatl/ahuacatl-bind-parameter.cpp \
-	arangod/Ahuacatl/ahuacatl-codegen.cpp \
-	arangod/Ahuacatl/ahuacatl-collections.cpp \
-	arangod/Ahuacatl/ahuacatl-context.cpp \
-	arangod/Ahuacatl/ahuacatl-conversions.cpp \
-	arangod/Ahuacatl/ahuacatl-error.cpp \
-	arangod/Ahuacatl/ahuacatl-explain.cpp \
-	arangod/Ahuacatl/ahuacatl-functions.cpp \
-	arangod/Ahuacatl/ahuacatl-grammar.cpp \
-	arangod/Ahuacatl/ahuacatl-index.cpp \
-	arangod/Ahuacatl/ahuacatl-node.cpp \
-	arangod/Ahuacatl/ahuacatl-optimiser.cpp \
-	arangod/Ahuacatl/ahuacatl-parser-functions.cpp \
-	arangod/Ahuacatl/ahuacatl-parser.cpp \
-	arangod/Ahuacatl/ahuacatl-result.cpp \
-	arangod/Ahuacatl/ahuacatl-scope.cpp \
-	arangod/Ahuacatl/ahuacatl-statement-dump.cpp \
-	arangod/Ahuacatl/ahuacatl-statement-walker.cpp \
-	arangod/Ahuacatl/ahuacatl-statementlist.cpp \
-	arangod/Ahuacatl/ahuacatl-tokens.cpp \
-	arangod/Ahuacatl/ahuacatl-variable.cpp \
 	arangod/Aql/AqlItemBlock.cpp \
 	arangod/Aql/AqlValue.cpp \
 	arangod/Aql/Ast.cpp \
@@ -205,7 +182,6 @@ endif
 ################################################################################
 
 FLEXXX_FILES += \
-	arangod/Ahuacatl/ahuacatl-tokens.cpp \
 	arangod/Aql/tokens.cpp
 
 ################################################################################
@@ -213,14 +189,11 @@ FLEXXX_FILES += \
 ################################################################################
 
 BISON_FILES += \
-	arangod/Ahuacatl/ahuacatl-grammar.cpp \
 	arangod/Aql/grammar.cpp
 
 if ENABLE_MAINTAINER_MODE
 
 CLEANUP += \
-	arangod/Ahuacatl/ahuacatl-grammar.h \
-	arangod/Ahuacatl/ahuacatl-grammar.cpp \
 	arangod/Aql/grammar.h \
 	arangod/Aql/grammar.cpp
 

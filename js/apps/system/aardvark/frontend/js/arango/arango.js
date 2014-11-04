@@ -171,7 +171,7 @@
       $.ajax({
         type: "GET",
         cache: false,
-        url: "/_db/"+encodeURIComponent(currentDB)+"/_api/database/",
+        url: "/_db/"+ encodeURIComponent(currentDB) + "/_api/database/",
         contentType: "application/json",
         processData: false,
         async: false,

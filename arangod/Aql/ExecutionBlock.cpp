@@ -45,7 +45,8 @@ using Json = triagens::basics::Json;
 using JsonHelper = triagens::basics::JsonHelper;
 using StringBuffer = triagens::basics::StringBuffer;
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+// uncomment the following to get some debugging information
+#if 0
 #define ENTER_BLOCK try { (void) 0;
 #define LEAVE_BLOCK } catch (...) { std::cout << "caught an exception in " << __FUNCTION__ << ", " << __FILE__ << ":" << __LINE__ << "!\n"; throw; }
 #else
@@ -509,7 +510,7 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
       else {
         // The current block fits into our result and is fresh:
         skipped += cur->size();
-        if(! skipping){
+        if (! skipping) {
           collector.push_back(cur);
         }
         else {
@@ -559,7 +560,7 @@ int SingletonBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
     delete _inputRegisterValues;
   }
   if (items != nullptr) {
-    _inputRegisterValues = items->slice(pos, pos+1);
+    _inputRegisterValues = items->slice(pos, pos + 1);
   }
   _done = false;
   return TRI_ERROR_NO_ERROR;
@@ -2762,33 +2763,69 @@ int LimitBlock::getOrSkipSome (size_t atLeast,
   }
 
   if (_state == 0) {
+    if (_fullCount) {
+      // properly initialize fullcount value, which has a default of -1
+      if (_engine->_stats.fullCount == -1) {
+        _engine->_stats.fullCount = 0;
+      }
+      _engine->_stats.fullCount += static_cast<int64_t>(_offset);
+    }
+
     if (_offset > 0) {
       ExecutionBlock::_dependencies[0]->skip(_offset);
     }
     _state = 1;
     _count = 0;
-    if (_limit == 0) {
+    if (_limit == 0 && ! _fullCount) {
+      // quick exit for limit == 0
       _state = 2;
       return TRI_ERROR_NO_ERROR;
     }
   }
 
   // If we get to here, _state == 1 and _count < _limit
+  if (_limit > 0) {
+    if (atMost > _limit - _count) {
+      atMost = _limit - _count;
+      if (atLeast > atMost) {
+        atLeast = atMost;
+      }
+    }
 
-  if (atMost > _limit - _count) {
-    atMost = _limit - _count;
-    if (atLeast > atMost) {
-      atLeast = atMost;
+    ExecutionBlock::getOrSkipSome(atLeast, atMost, skipping, result, skipped);
+    if (skipped == 0) {
+      return TRI_ERROR_NO_ERROR;
+    }
+
+    _count += skipped; 
+    if (_fullCount) {
+      _engine->_stats.fullCount += static_cast<int64_t>(skipped);
     }
   }
 
-  ExecutionBlock::getOrSkipSome(atLeast, atMost, skipping, result, skipped);
-  if (skipped == 0) {
-    return TRI_ERROR_NO_ERROR;
-  }
-  _count += skipped;
   if (_count >= _limit) {
     _state = 2;
+  
+    if (_fullCount) {
+      // if fullCount is set, we must fetch all elements from the
+      // dependency. we'll use the default batch size for this
+      atLeast = DefaultBatchSize; 
+      atMost = DefaultBatchSize; 
+  
+      // suck out all data from the dependencies
+      while (true) {
+        skipped = 0;
+        AqlItemBlock* ignore = nullptr;
+        ExecutionBlock::getOrSkipSome(atLeast, atMost, skipping, ignore, skipped);
+        if (ignore != nullptr) {
+          _engine->_stats.fullCount += static_cast<int64_t>(ignore->size());
+          delete ignore;
+        }
+        if (skipped == 0) {
+          break;
+        }
+      }
+    }
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -3711,8 +3748,9 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
 
   // the non-simple case . . .
   size_t available = 0; // nr of available rows
-  size_t index;         // an index of a non-empty buffer
-  
+  size_t index = 0;     // an index of a non-empty buffer
+  TRI_ASSERT(_dependencies.size() != 0); 
+
   // pull more blocks from dependencies . . .
   for (size_t i = 0; i < _dependencies.size(); i++) {
     if (_gatherBlockBuffer.at(i).empty()) {
@@ -4669,12 +4707,29 @@ int RemoteBlock::shutdown (int errorCode) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  // If we get here, then res->result is the response which will be
-  // a serialized AqlItemBlock:
   StringBuffer const& responseBodyBuf(res->result->getBody());
   Json responseBodyJson(TRI_UNKNOWN_MEM_ZONE,
                         TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
                                        responseBodyBuf.begin()));
+
+  // read "warnings" attribute if present and add it our query
+  if (responseBodyJson.isArray()) {
+    auto warnings = responseBodyJson.get("warnings");
+    if (warnings.isList()) {
+      auto query = _engine->getQuery();
+      for (size_t i = 0; i < warnings.size(); ++i) {
+        auto warning = warnings.at(i);
+        if (warning.isArray()) {
+          auto code = warning.get("code");
+          auto message = warning.get("message");
+          if (code.isNumber() && message.isString()) {
+            query->registerWarning(static_cast<int>(code.json()->_value._number),
+                                   message.json()->_value._string.data);
+          }
+        }
+      }
+    }
+  }
 
   return JsonHelper::getNumericValue<int>
               (responseBodyJson.json(), "code", TRI_ERROR_INTERNAL);

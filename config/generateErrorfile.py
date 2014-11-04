@@ -41,7 +41,7 @@ def genJsFile(errors):
     i = i + 1 
 
     if i < len(errors):
-      out = out + ", \n"
+      out = out + ",\n"
     else:
       out = out + "\n"
 

@@ -98,6 +98,7 @@ namespace triagens {
             TRI_ASSERT(_vocbase != nullptr);
             TRI_ASSERT(_transactionContext != nullptr);
 
+// std::cout << TRI_CurrentThreadId() << ", TRANSACTION " << this << " CTOR\r\n";
             if (ServerState::instance()->isCoordinator()) {
               _isReal = false;
             }
@@ -111,13 +112,16 @@ namespace triagens {
 
           virtual ~Transaction () {
             if (_trx == nullptr) {
+// std::cout << TRI_CurrentThreadId() << ", TRANSACTION " << this << " DTOR: NO TRX\r\n";
               return;
             }
 
             if (isEmbeddedTransaction()) {
+// std::cout << TRI_CurrentThreadId() << ", TRANSACTION " << this << " DTOR EMBEDDED\r\n";
               _trx->_nestingLevel--;
             }
             else {
+// std::cout << TRI_CurrentThreadId() << ", TRANSACTION " << this << " DTOR STANDALONE\r\n";
               if (getStatus() == TRI_TRANSACTION_RUNNING) {
                 // auto abort a running transaction
                 this->abort();
@@ -306,6 +310,10 @@ namespace triagens {
             int res = TRI_AbortTransaction(_trx, _nestingLevel);
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
+            if (_numberTrxActive != _numberTrxInScope) {
+              std::cout << _numberTrxInScope << ":" << _numberTrxActive
+                        << std::endl;
+            }
             TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
             TRI_ASSERT(_numberTrxActive > 0);
             _numberTrxActive--;  // Every transaction gets here at most once
@@ -1282,10 +1290,12 @@ namespace triagens {
 
           if (_trx != nullptr) {
             // yes, we are embedded
+// std::cout << TRI_CurrentThreadId() << ", TRANSACTION " << this << " SETUP EMBEDDED\r\n";
             _setupState = setupEmbedded();
           }
           else {
             // non-embedded
+// std::cout << TRI_CurrentThreadId() << ", TRANSACTION " << this << " SETUP TOPLEVEL\r\n";
             _setupState = setupToplevel();
           }
 

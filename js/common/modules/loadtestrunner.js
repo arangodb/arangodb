@@ -52,7 +52,7 @@ var loadTestRunner = function (tests, options, testMethods) {
     var timedExecution = function (testMethodName, testMethodsOptions) { 
       var ret = {};
       var start = time();
-      ret = test.func(test.params, testMethodName, testMethodsOptions); 
+      ret = test.func(test.params, testMethodName, testMethodsOptions, options); 
       ret.time = time() - start;
       return ret;
     }; 

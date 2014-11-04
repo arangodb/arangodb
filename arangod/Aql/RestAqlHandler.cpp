@@ -841,7 +841,17 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
 
     try {
       res = query->engine()->shutdown(errorCode); // pass errorCode to shutdown
+ 
+      // return statistics
       answerBody("stats", query->getStats());
+
+      // return warnings if present
+      auto warnings = query->warningsToJson();
+      if (warnings != nullptr) {
+        answerBody("warnings", Json(TRI_UNKNOWN_MEM_ZONE, warnings));
+      }
+
+      // delete the query from the registry
       _queryRegistry->destroy(_vocbase, _qId, errorCode);
     }
     catch (...) {

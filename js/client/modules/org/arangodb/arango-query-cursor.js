@@ -235,20 +235,8 @@ ArangoQueryCursor.prototype.count = function () {
 /// @brief return extra data stored for the cursor (if any)
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoQueryCursor.prototype.getExtra = function (name) {
-  if (name === undefined) {
-    return this.data.extra || null;
-  }
-
-  if (this.data.extra === undefined || this.data.extra === null) {
-    return null;
-  }
-
-  if (! this.data.extra.hasOwnProperty(name)) {
-    return null;
-  }
-
-  return this.data.extra[name];
+ArangoQueryCursor.prototype.getExtra = function () {
+  return this.data.extra || { };
 };
 
 ////////////////////////////////////////////////////////////////////////////////

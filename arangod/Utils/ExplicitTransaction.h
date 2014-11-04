@@ -65,6 +65,7 @@ namespace triagens {
                              bool waitForSync)
           : Transaction(new V8TransactionContext(false), vocbase, 0) {
 
+          // std::cout << TRI_CurrentThreadId() << ", EXPLICITTRANSACTION " << this << " CTOR\r\n";
           this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
 
           if (lockTimeout >= 0.0) {
@@ -89,6 +90,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ~ExplicitTransaction () {
+          // std::cout << TRI_CurrentThreadId() << ", EXPLICITTRANSACTION " << this << " DTOR\r\n";
         }
 
     };

@@ -1,7 +1,7 @@
 !CHAPTER Linux
 
 You can find binary packages for various Linux distributions
-[here](http://www.arangodb.org/download/).
+[here](http://www.arangodb.com/install/).
 
 We provide packages for:
 
@@ -18,7 +18,7 @@ We provide packages for:
 
 !SECTION Using a Package Manager to install ArangoDB
 
-Follow the instructions on the [downloads](http://www.arangodb.org/download)
+Follow the instructions on the [install](https://www.arangodb.com/install)
 page to use your favorite package manager for the major distributions. After
 setting up the ArangoDB repository you can easily install ArangoDB using yum,
 aptitude, urpmi or zypper.
@@ -44,12 +44,12 @@ Other versions of ArangoDB or other architectures should work similarly.
 Download and import GPG-PublicKey:
 
 
-    wget -O RPM-GPG-KEY-www.arangodb.org http://www.arangodb.org/repositories/PublicKey
+    wget -O RPM-GPG-KEY-www.arangodb.org http://www.arangodb.com/repositories/PublicKey
     apt-key add RPM-GPG-KEY-www.arangodb.org
 
 Add the corresponding repository in file  `/etc/apt/sources.list`:
 
-    deb http://www.arangodb.org/repositories LinuxMint-13 main
+    deb http://www.arangodb.com/repositories LinuxMint-13 main
 
 Update the repository data:
 

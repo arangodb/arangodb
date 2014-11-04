@@ -354,6 +354,11 @@ int triagens::aql::moveFiltersUpRule (Optimizer* opt,
         break;
       }
 
+      if (current->canThrow()) {
+        // must not move a filter beyond a node that can throw
+        break;
+      }
+
       bool found = false;
 
       auto&& varsSet = current->getVariablesSetHere();

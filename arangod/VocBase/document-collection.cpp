@@ -259,6 +259,10 @@ static inline void SetRevision (TRI_document_collection_t* document,
 static int InsertPrimaryIndex (TRI_document_collection_t* document,
                                TRI_doc_mptr_t const* header,
                                bool isRollback) {
+  TRI_IF_FAILURE("InsertPrimaryIndex") {
+    return TRI_ERROR_DEBUG;
+  }
+
   TRI_doc_mptr_t* found;
 
   TRI_ASSERT(document != nullptr);
@@ -294,6 +298,10 @@ static int InsertPrimaryIndex (TRI_document_collection_t* document,
 static int InsertSecondaryIndexes (TRI_document_collection_t* document,
                                    TRI_doc_mptr_t const* header,
                                    bool isRollback) {
+  TRI_IF_FAILURE("InsertSecondaryIndexes") {
+    return TRI_ERROR_DEBUG;
+  }
+
   if (! document->useSecondaryIndexes()) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -329,9 +337,9 @@ static int InsertSecondaryIndexes (TRI_document_collection_t* document,
 static int DeletePrimaryIndex (TRI_document_collection_t* document,
                                TRI_doc_mptr_t const* header,
                                bool isRollback) {
-  // .............................................................................
-  // remove from main index
-  // .............................................................................
+  TRI_IF_FAILURE("DeletePrimaryIndex") {
+    return TRI_ERROR_DEBUG;
+  }
 
   TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_RemoveKeyPrimaryIndex(&document->_primaryIndex, TRI_EXTRACT_MARKER_KEY(header))); // ONLY IN INDEX, PROTECTED by RUNTIME
 
@@ -351,6 +359,10 @@ static int DeleteSecondaryIndexes (TRI_document_collection_t* document,
                                    bool isRollback) {
   if (! document->useSecondaryIndexes()) {
     return TRI_ERROR_NO_ERROR;
+  }
+
+  TRI_IF_FAILURE("DeleteSecondaryIndexes") {
+    return TRI_ERROR_DEBUG;
   }
 
   int result = TRI_ERROR_NO_ERROR;

@@ -38,14 +38,12 @@
 #include "Utils/V8TransactionContext.h"
 
 #include "CapConstraint/cap-constraint.h"
-#include "Utils/AhuacatlGuard.h"
 #include "V8/v8-utils.h"
 
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::arango;
 using namespace triagens::rest;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the unique flag from the data
