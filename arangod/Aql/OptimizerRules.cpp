@@ -2396,36 +2396,15 @@ struct OrToInConverter {
       auto lhs = node->getMember(0);
       auto rhs = node->getMember(1);
 
-      if (lhs->type == NODE_TYPE_VALUE && canConvertExpression(rhs)) {
-        // value == attr
+      if (canConvertExpression(rhs) && ! canConvertExpression(lhs)) {
         valueNodes.push_back(lhs);
         return true;
-      }
-      if (rhs->type == NODE_TYPE_VALUE && canConvertExpression(lhs)) {
-        // attr == value
+      } 
+      
+      if (canConvertExpression(lhs) && ! canConvertExpression(rhs)) {
         valueNodes.push_back(rhs);
         return true;
-      }
-      if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && canConvertExpression(rhs)) {
-        // value == attr
-        valueNodes.push_back(lhs);
-        return true;
-      }
-      if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && canConvertExpression(lhs)) {
-        // value == attr
-        valueNodes.push_back(rhs);
-        return true;
-      }
-      if (lhs->type == NODE_TYPE_INDEXED_ACCESS && canConvertExpression(rhs)) {
-        // attr == value
-        valueNodes.push_back(lhs);
-        return true;
-      }
-      if (rhs->type == NODE_TYPE_INDEXED_ACCESS && canConvertExpression(lhs)) {
-        // attr == value
-        valueNodes.push_back(rhs);
-        return true;
-      }
+      } 
       // fall-through intentional
     }
     else if (node->type == NODE_TYPE_REFERENCE ||
