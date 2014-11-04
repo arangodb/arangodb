@@ -58,6 +58,10 @@ arangosh> stmt.explain().plan.nodes.map(function (node) { return node.type; });
 ]
 ```
 
+*Note that the list of nodes might slightly change in future versions of ArangoDB if 
+new execution node types get added or the optimizer will create somewhat more 
+optimized plans).*
+
 When a plan is executed, the query execution engine will start with the node at
 the bottom of the list (i.e. the *ReturnNode*).
 
@@ -110,6 +114,9 @@ arangosh> stmt.explain().plan.rules;
   "use-index-range", 
   "use-index-for-sort" 
 ]
+
+*Note that the list of optimizer rules might change if new rules are added to the
+optimizer or the existing rules get modified.*
 
 Here's what the rules mean in context of this query:
 * `move-calculations-up`: moves a *CalculationNode* as far up in the processing pipeline
