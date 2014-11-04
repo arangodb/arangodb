@@ -1,5 +1,7 @@
 !CHAPTER How to invoke AQL 
 
+!SECTION Executing queries
+
 You can run AQL queries from your application via the HTTP REST API. The full
 API description is available at [Http Interface for AQL Query Cursors](../HttpAqlQueryCursor/README.md). 
 
@@ -130,3 +132,192 @@ specifying or omitting the *count* attribute currently does not have any impact 
 This may change in the future. Future versions of ArangoDB may create result sets incrementally 
 on the server-side and may be able to apply optimizations if a result set is not fully fetched by 
 a client.
+
+
+!SECTION Explaining queries
+
+If it is unclear how a given query will perform, clients can retrieve a query's execution from
+the AQL query optimizer. This can be achieved by calling the [HTTP REST API](../HttpAqlQuery/README.md) 
+for this. Getting the execution plan from the optimizer is called `explain`.
+
+A query can also be explained from the ArangoShell using `ArangoStatement`s `explain` method. 
+`explain` will throw an error if the given query is syntactically invalid. Otherwise, it will
+return the execution plan and some information about what optimizations could be applied to
+the query. The query will not be executed.
+
+By default, the query optimizer will return what it considers to be the *optimal plan*. The
+optimal plan will be returned in the `plan` attribute of the result. If `explain` is
+called with option `allPlans` set to `true`, all plans will be returned in the `plans`
+attribute instead. The result object will also contain an attribute *warnings*, which 
+is a list of warnings that occurred during optimization or execution plan creation.
+
+Each plan in the result is an object with the following attributes:
+- *nodes*: the list of execution nodes of the plan. The list of available node types
+   can be found [here](.../Aql/Optimizer.html)
+- *estimatedCost*: the total estimated cost for the plan. If there are multiple
+  plans, the optimizer will choose the plan with the lowest total cost.
+- *collections*: a list of collections used in the query
+- *rules*: a list of rules the optimizer applied. The list of rules can be 
+  found [here](../Aql/Optimizer.html)
+- *variables*: list of variables used in the query (note: this may contain
+  internal variables created by the optimizer)
+
+Here is an example for retrieving the execution plan of a simple query:
+
+```
+arangosh> var stmt = db._createStatement("FOR user IN _users RETURN user");
+arangosh> stmt.explain();
+{ 
+  "plan" : { 
+    "nodes" : [ 
+      { 
+        "type" : "SingletonNode", 
+        "dependencies" : [ ], 
+        "id" : 1, 
+        "estimatedCost" : 1 
+      }, 
+      { 
+        "type" : "EnumerateCollectionNode", 
+        "dependencies" : [ 
+          1 
+        ], 
+        "id" : 2, 
+        "estimatedCost" : 1, 
+        "database" : "_system", 
+        "collection" : "_users", 
+        "outVariable" : { 
+          "id" : 0, 
+          "name" : "user" 
+        } 
+      }, 
+      { 
+        "type" : "ReturnNode", 
+        "dependencies" : [ 
+          2 
+        ], 
+        "id" : 3, 
+        "estimatedCost" : 1, 
+        "inVariable" : { 
+          "id" : 0, 
+          "name" : "user" 
+        } 
+      } 
+    ], 
+    "rules" : [ ], 
+    "collections" : [ 
+      { 
+        "name" : "_users", 
+        "type" : "read" 
+      } 
+    ], 
+    "variables" : [ 
+      { 
+        "id" : 0, 
+        "name" : "user" 
+      } 
+    ], 
+    "estimatedCost" : 1 
+  }, 
+  "warnings" : [ ] 
+}
+```
+
+As the output of `explain` is very detailed, it is recommended to use some
+scripting to make the output less verbose:
+
+```
+arangosh> formatPlan = function (plan) { return { estimatedCost: plan.estimatedCost, nodes: plan.nodes.map(function(node) { return node.type; }) }; };
+arangosh> var stmt = db._createStatement("FOR user IN _users RETURN user");
+arangosh> formatPlan(stmt.explain().plan);
+{ 
+  "cost" : 1, 
+  "nodes" : [ 
+    "SingletonNode", 
+    "EnumerateCollectionNode", 
+    "ReturnNode" 
+  ] 
+}
+```
+
+If a query contains bind parameters, they must be added to the statement **before**
+`explain` is called:
+
+```
+arangosh> var stmt = db._createStatement("FOR doc IN @@collection FILTER doc.user == @user RETURN doc");
+arangosh> stmt.bind({ "@collection" : "_users", "user" : "root" });
+arangosh> stmt.explain();
+{
+  ...
+}
+```
+
+In some cases the AQL optimizer creates multiple plans for a single query. By default
+only the plan with the lowest total estimated cost is kept, and the other plans are
+discarded. To retrieve all plans the optimizer has generated, `explain` can be called
+with the option `allPlans` set to `true`.
+
+In the following example, the optimizer has created two plans:
+
+```
+arangosh> var stmt = db._createStatement("FOR user IN _users FILTER user.user == 'root' RETURN user");
+arangosh> stmt.explain({ allPlans: true }).plans.length;
+2
+```
+
+To see the minified version of the plan:
+
+```
+arangosh> stmt.explain({ allPlans: true }).plans.map(function(plan) { return formatPlan(plan); });
+[ 
+  { 
+    "cost" : 0.21, 
+    "nodes" : [ 
+      "SingletonNode", 
+      "IndexRangeNode", 
+      "CalculationNode", 
+      "FilterNode", 
+      "ReturnNode" 
+    ] 
+  }, 
+  { 
+    "cost" : 0.21, 
+    "nodes" : [ 
+      "SingletonNode", 
+      "EnumerateCollectionNode", 
+      "CalculationNode", 
+      "FilterNode", 
+      "ReturnNode" 
+    ] 
+  } 
+]
+```
+
+!SECTION Parsing queries
+    
+Clients can use ArangoDB to check if a given AQL query is syntactically valid. ArangoDB provides
+an [HTTP REST API](../HttpAqlQuery/README.md) for this. 
+
+A query can also be parsed from the ArangoShell using `ArangoStatement`s `parse` method. The
+`parse` method will throw an exception if the query is syntactically invalid. Otherwise, it will
+return the some information about the query.
+
+The return value is an object with the collection names used in the query listed in the
+`collections` attribute, and all bind parameters listed in the `bindVars` attribute.
+Addtionally, the internal representation of the query, the query's abstract syntax tree, will
+be returned in the `ast` attribute of the result. Please note that the abstract syntax tree 
+will be returned without any optimizations applied to it.
+
+```
+arangosh> var stmt = db._createStatement("FOR doc IN @@collection FILTER doc.foo == @bar RETURN doc");
+arangosh> stmt.parse();
+{ 
+  "bindVars" : [ 
+    "bar", 
+    "@collection" 
+  ], 
+  "collections" : [ ], 
+  "ast" : [ 
+    ...
+  ]
+}
+```
