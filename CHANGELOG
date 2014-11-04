@@ -7,6 +7,14 @@ v2.3.0 (XXXX-XX-XX)
   accout name if any and `root` (the default username) otherwise. Additionally,
   the tooltip text has been slightly adjusted.
 
+* fixed issue #1069: Add 'raw' link to swagger ui so that the raw swagger 
+  json can easily be retrieved
+
+  This adds a link to the Swagger API docs to an application's detail view in
+  the **Applications** tab of the web interface. The link produces the Swagger
+  JSON directly. If authentication is turned on, the link requires authentication,
+  too.
+
 
 v2.3.0-beta (2014-11-01)
 ------------------------

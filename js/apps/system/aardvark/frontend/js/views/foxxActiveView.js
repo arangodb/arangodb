@@ -100,6 +100,14 @@
       list.push(modView.createReadOnlyEntry(
         "id_name", "Name", name
       ));
+      var link = window.location.origin + 
+                 "/_db/" + encodeURIComponent(arangoHelper.currentDatabase()) + 
+                 "/_admin/aardvark/swagger/" + encodeURIComponent(encodeURIComponent(this.model.get("mount")));
+      list.push(modView.createReadOnlyEntry(
+        "id_documentationJsonUrl", 
+        "API docs", 
+        "<a href=\"" + link + "\">Link to JSON</a>"
+      ));
       if (editable) {
         list.push(modView.createTextEntry(
           "change-mount-point", "Mount", this.model.get("mount"),
