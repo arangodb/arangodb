@@ -43,14 +43,15 @@ Note that this does not imply any restriction of the number of revisions of docu
 
 Restrict the number of document to at most 10 documents:
 
-	arango> db.examples.ensureCapConstraint(10);
-	{ "id" : "examples/934311", "type" : "cap", "size" : 10, "byteSize" : 0, "isNewlyCreated" : true }
-	
-	arango> for (var i = 0;  i < 20;  ++i) { var d = db.examples.save( { n : i } ); }
-	
-	arango> db.examples.count();
-	10
+```
+arangosh> db.examples.ensureCapConstraint(10);
+{ "id" : "examples/934311", "type" : "cap", "size" : 10, "byteSize" : 0, "isNewlyCreated" : true }
 
+arangosh> for (var i = 0;  i < 20;  ++i) { var d = db.examples.save( { n : i } ); }
+
+arangosh> db.examples.count();
+10
+```
 
 <!--
 @anchor IndexCapShellEnsureCapConstraint
