@@ -34,29 +34,6 @@ add_executable(
     ${BIN_ARANGOD}
     Actions/actions.cpp
     Actions/RestActionHandler.cpp
-    Ahuacatl/ahuacatl-access-optimiser.cpp
-    Ahuacatl/ahuacatl-ast-node.cpp
-    Ahuacatl/ahuacatl-bind-parameter.cpp
-    Ahuacatl/ahuacatl-codegen.cpp
-    Ahuacatl/ahuacatl-collections.cpp
-    Ahuacatl/ahuacatl-context.cpp
-    Ahuacatl/ahuacatl-conversions.cpp
-    Ahuacatl/ahuacatl-error.cpp
-    Ahuacatl/ahuacatl-explain.cpp
-    Ahuacatl/ahuacatl-functions.cpp
-    Ahuacatl/ahuacatl-grammar.cpp
-    Ahuacatl/ahuacatl-index.cpp
-    Ahuacatl/ahuacatl-node.cpp
-    Ahuacatl/ahuacatl-optimiser.cpp
-    Ahuacatl/ahuacatl-parser-functions.cpp
-    Ahuacatl/ahuacatl-parser.cpp
-    Ahuacatl/ahuacatl-result.cpp
-    Ahuacatl/ahuacatl-scope.cpp
-    Ahuacatl/ahuacatl-statement-dump.cpp
-    Ahuacatl/ahuacatl-statement-walker.cpp
-    Ahuacatl/ahuacatl-statementlist.cpp
-    Ahuacatl/ahuacatl-tokens.cpp
-    Ahuacatl/ahuacatl-variable.cpp
     Aql/AqlItemBlock.cpp
     Aql/AqlValue.cpp
     Aql/Ast.cpp

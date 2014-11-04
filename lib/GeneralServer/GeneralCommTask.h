@@ -225,10 +225,18 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool handleRead (bool& closed)  {
-          bool res = fillReadBuffer(closed);
+          bool res = true;
 
-          // process as much data as we got
-          processRead();
+          if (! this->_closeRequested) {
+            res = fillReadBuffer(closed);
+
+            // process as much data as we got
+            while (processRead()) {
+              if (this->_closeRequested) {
+                break;
+              }
+            }
+          }
 
           if (closed) {
             res = false;

@@ -5,9 +5,12 @@
   * [Mac OS X](Installing/MacOSX.md)
   * [Windows](Installing/Windows.md)
   * [Compiling](Installing/Compiling.md)
-  * [Upgrading in general](Installing/Upgrading.md)
-  * [Upgrading to new version](Upgrading/UpgradingNewVersion.md)
-  * [Set up Cluster](Installing/Cluster.md)
+  * [Upgrading](Installing/Upgrading.md)
+    * [Incompatible changes](Upgrading/UpgradingChanges23.md)
+    * [Upgrading to 2.3](Upgrading/Upgrading23.md)
+    * [Upgrading to 2.2](Upgrading/Upgrading22.md)
+    * [Upgrading in general](Installing/Upgrading.md)
+  * [Cluster setup](Installing/Cluster.md)
 <!-- 2 -->
 * [First Steps](FirstSteps/README.md)
   * [Getting Familiar](FirstSteps/GettingFamiliar.md)
@@ -20,20 +23,20 @@
 <!-- 3 -->
 * [ArangoDB Web Interface](WebInterface/README.md)
 <!-- 4 -->
-* [Handling Databases](Databases/README.md)
+* [Creating and Dropping Databases](Databases/README.md)
   * [Working with Databases](Databases/WorkingWith.md)
   * [Notes about Databases](Databases/Notes.md)
 <!-- 5 -->
-* [Handling Collections](Collections/README.md)
+* [Creating and Dropping Collections](Collections/README.md)
   * [Collection Methods](Collections/CollectionMethods.md)
   * [Database Methods](Collections/DatabaseMethods.md)
 <!-- 6 -->
-* [Handling Documents](Documents/README.md)
+* [Working with Documents](Documents/README.md)
   * [Address and ETag](Documents/DocumentAddress.md)
   * [Collection Methods](Documents/DocumentMethods.md)
   * [Database Methods](Documents/DatabaseMethods.md)
 <!-- 7 -->
-* [Handling Edges](Edges/README.md)
+* [Working with Edges](Edges/README.md)
 <!-- 8 -->
 * [Simple Queries](SimpleQueries/README.md)
   * [Geo Queries](SimpleQueries/GeoQueries.md)
@@ -54,6 +57,7 @@
 * [AQL](Aql/README.md)
   * [How to invoke AQL](Aql/Invoke.md)
   * [Data modification queries](Aql/DataModification.md)
+  * [The AQL query optimizer](Aql/Optimizer.md)
   * [Language Basics](Aql/Basics.md)
   * [Functions](Aql/Functions.md)
     * [Type cast](Aql/TypeCastFunctions.md)
@@ -138,14 +142,13 @@
   * [Authentication](Sharding/Authentication.md)
   * [Firewall setup](Sharding/FirewallSetup.md)
 <!-- 20 -->
-* [Configure ArangoDB](ConfigureArango/README.md)
+* [Server Configuration](ConfigureArango/README.md)
   * [Arangod options](ConfigureArango/Arangod.md)
   * [Write-ahead log options](ConfigureArango/Wal.md)
   * [Endpoints options](ConfigureArango/Endpoint.md)
   * [Cluster options](ConfigureArango/Cluster.md)
   * [Logging options](ConfigureArango/Logging.md)
   * [Communication options](ConfigureArango/Communication.md)
-  * [Random numbers](ConfigureArango/RandomNumbers.md)
   * [Authentication](ConfigureArango/Authentication.md)
   * [Emergency Console](ConfigureArango/EmergencyConsole.md)
 <!-- 21 -->
@@ -224,12 +227,14 @@
 <!-- 26 -->
 * [Administrating ArangoDB](AdministratingArango/README.md)
 <!-- 27 -->
-* [Handling Indexes](IndexHandling/README.md)
-  * [Cap Constraint](IndexHandling/Cap.md)
-  * [Geo Indexes](IndexHandling/Geo.md)
-  * [Fulltext Indexes](IndexHandling/Fulltext.md)
-  * [Hash Indexes](IndexHandling/Hash.md)
-  * [Skip-Lists](IndexHandling/Skiplist.md)
+* [Indexing](IndexHandling/README.md)
+  * [Index Basics](IndexHandling/IndexBasics.md)
+  * [Working with Indexes](IndexHandling/WorkingWithIndexes.md)
+    * [Hash Indexes](IndexHandling/Hash.md)
+    * [Skiplists](IndexHandling/Skiplist.md)
+    * [Fulltext Indexes](IndexHandling/Fulltext.md)
+    * [Geo Indexes](IndexHandling/Geo.md)
+    * [Cap Constraint](IndexHandling/Cap.md)
 <!-- 28 -->
 * [Datafile Debugger](DatafileDebugger/README.md)
 <!-- 29 -->

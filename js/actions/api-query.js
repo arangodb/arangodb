@@ -39,15 +39,15 @@ var ArangoError = arangodb.ArangoError;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_post_api_query
-/// @brief parse a query and return information about it
+/// @brief parse an AQL query and return information about it
 ///
-/// @RESTHEADER{POST /_api/query, Parse query}
+/// @RESTHEADER{POST /_api/query, Parse an AQL query}
 ///
 /// @RESTBODYPARAM{query,json,required}
 /// To validate a query string without executing it, the query string can be
 /// passed to the server via an HTTP POST request.
 ///
-/// These query string needs to be passed in the attribute *query* of a JSON
+/// The query string needs to be passed in the attribute *query* of a JSON
 /// object as the body of the POST request.
 ///
 /// @RESTRETURNCODES
@@ -55,7 +55,14 @@ var ArangoError = arangodb.ArangoError;
 /// @RESTRETURNCODE{200}
 /// If the query is valid, the server will respond with *HTTP 200* and
 /// return the names of the bind parameters it found in the query (if any) in
-/// the *"bindVars"* attribute of the response.
+/// the *bindVars* attribute of the response. It will also return a list
+/// of the collections used in the query in the *collections* attribute. 
+/// If a query can be parsed successfully, the *ast* attribute of the returned
+/// JSON will contain the abstract syntax tree representation of the query.
+/// The format of the *ast* is subject to change in future versions of 
+/// ArangoDB, but it can be used to inspect how ArangoDB interprets a given
+/// query. Note that the abstract syntax tree will be returned without any
+/// optimizations applied to it.
 ///
 /// @RESTRETURNCODE{400}
 /// The server will respond with *HTTP 400* in case of a malformed request,
@@ -114,7 +121,11 @@ function post_api_query (req, res) {
     return;
   }
 
-  result = { bindVars: result.parameters, collections: result.collections };
+  result = { 
+    bindVars: result.parameters, 
+    collections: result.collections,
+    ast: result.ast
+  };
 
   actions.resultOk(req, res, actions.HTTP_OK, result);
 }

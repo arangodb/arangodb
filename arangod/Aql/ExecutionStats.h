@@ -67,6 +67,7 @@ namespace triagens {
         writesIgnored  += summand.writesIgnored;
         scannedFull    += summand.scannedFull;
         scannedIndex   += summand.scannedIndex;
+        fullCount      += summand.fullCount;
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -78,6 +79,7 @@ namespace triagens {
         writesIgnored  += newStats.writesIgnored  - lastStats.writesIgnored;
         scannedFull    += newStats.scannedFull    - lastStats.scannedFull;
         scannedIndex   += newStats.scannedIndex   - lastStats.scannedIndex;
+        fullCount      += newStats.fullCount      - lastStats.fullCount;
       }
 
 
@@ -104,6 +106,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       int64_t scannedIndex; 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief total number of results, before applying last limit
+////////////////////////////////////////////////////////////////////////////////
+
+      int64_t fullCount; 
 
     };
 

@@ -88,7 +88,7 @@ var TextHighlightRules = require("./text_highlight_rules").TextHighlightRules;
 var AqlHighlightRules = function() {
 
     var keywords = (
-        "for|return|filter|sort|limit|let|collect|asc|desc|in|into|insert|update|remove|replace|options|with"
+        "for|return|filter|sort|limit|let|collect|asc|desc|in|into|insert|update|remove|replace|options|with|and|or|not"
     );
 
     var builtinFunctions = (

@@ -36,6 +36,10 @@
 @startDocuBlock serverAllowMethod
 
 
+!SUBSECTION Server threads
+@startDocuBlock serverThreads
+
+
 !SUBSECTION Keyfile
 @startDocuBlock serverKeyfile
 
@@ -64,12 +68,12 @@
 @startDocuBlock serverBacklog
 
 
-!SUBSECTION Disable statics 
+!SUBSECTION Disable statistics 
 
 `--disable-statistics value`
 
 If this option is *value* is *true*, then ArangoDB's statistics gathering
-is turned off. Statistics gathering causes constant CPU activity so using this
+is turned off. Statistics gathering causes regular CPU activity so using this
 option to turn it off might relieve heavy-loaded instances.
 Note: this option is only available when ArangoDB has not been compiled with
 the option *--disable-figures*.
@@ -88,6 +92,10 @@ the option *--disable-figures*.
 
 !SUBSECTION Force syncing of properties
 @startDocuBlock databaseForceSyncProperties
+
+
+!SUBSECTION V8 Contexts
+@startDocuBlock v8Contexts
 
 
 !SUBSECTION Frequency

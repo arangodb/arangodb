@@ -317,12 +317,12 @@ namespace triagens {
         bool _disableAuthenticationUnixSockets;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief number of dispatcher threads for non-database worker
+/// @brief number of dispatcher threads
 /// @startDocuBlock serverThreads
 /// `--server.threads number`
 ///
-/// Specifies the *number* of threads that are spawned to handle action
-/// requests using Rest, JavaScript, or Ruby.
+/// Specifies the *number* of threads that are spawned to handle HTTP REST
+/// requests.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -330,7 +330,7 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum size of the dispatcher queue for asynchronous requests
-/// @startDocuBlock serverAuthenticationDisable
+/// @startDocuBlock schedulerMaximalQueueSize
 /// `--scheduler.maximal-queue-size size`
 ///
 /// Specifies the maximum *size* of the dispatcher queue for asynchronous
@@ -342,6 +342,21 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int _dispatcherQueueSize;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief number of V8 contexts for executing JavaScript actions
+/// @startDocuBlock v8Contexts
+/// `--server.v8-contexts number`
+///
+/// Specifies the *number* of V8 contexts that are created for executing 
+/// JavaScript code. More contexts allow execute more JavaScript actions in 
+/// parallel, provided that there are also enough threads available. Please
+/// note that each V8 context will use a substantial amount of memory and 
+/// requires periodic CPU processing time for garbage collection. 
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+        int _v8Contexts;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief path to the database

@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global require */
+/*global require, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief graph api
@@ -32,7 +32,6 @@
 
 var actions = require("org/arangodb/actions");
 var graph = require("org/arangodb/graph-blueprint");
-var internal = require("internal");
 var arangodb = require("org/arangodb");
 
 // -----------------------------------------------------------------------------
@@ -1160,14 +1159,13 @@ function post_graph_all_vertices (req, res, g) {
 
     // build aql query
     var query = "FOR v IN @@vertexColl" + data.filter + limit + " RETURN v";
+                                        
+    var options = {
+      count: json.count,
+      batchSize: json.batchSize || 1000
+    };
 
-    var cursor = internal.AQL_QUERY(query,
-                                    data.bindVars,
-                                    {
-                                      count: json.count,
-                                      batchSize: json.batchSize || 1000
-                                    });
-
+    var cursor = AQL_EXECUTE(query, data.bindVars, options);
     // error occurred
     if (cursor instanceof Error) {
       actions.resultBad(req, res, cursor);
@@ -1327,12 +1325,11 @@ function post_graph_vertex_vertices (req, res, g) {
     var query = 'FOR n IN NEIGHBORS( @@vertexColl, @@edgeColl, @id, "' + direction + '") ' +
             data.filter + limit + " RETURN n.vertex ";
 
-    var cursor = internal.AQL_QUERY(query,
-                                    data.bindVars,
-                                    {
-                                      count: json.count,
-                                      batchSize: json.batchSize || 1000
-                                    });
+    var options = {
+      count: json.count,
+      batchSize: json.batchSize || 1000
+    };
+    var cursor = AQL_EXECUTE(query, data.bindVars, options);
 
     // error occurred
     if (cursor instanceof Error) {
@@ -1983,12 +1980,11 @@ function post_graph_all_edges (req, res, g) {
 
     var query = "FOR e IN @@edgeColl" + data.filter + limit + " RETURN e";
 
-    var cursor = internal.AQL_QUERY(query,
-                                    data.bindVars,
-                                    {
-                                      count: json.count,
-                                      batchSize: json.batchSize || 1000
-                                    });
+    var options = {
+      count: json.count,
+      batchSize: json.batchSize || 1000
+    };
+    var cursor = AQL_EXECUTE(query, data.bindVars, options);
 
     // error occurred
     if (cursor instanceof Error) {
@@ -2124,12 +2120,12 @@ function post_graph_vertex_edges (req, res, g) {
     var query = 'FOR e in EDGES( @@edgeColl , @id , "' + direction + '") '
             + data.filter + limit + " RETURN e";
 
-    var cursor = internal.AQL_QUERY(query,
-                                    data.bindVars,
-                                    {
-                                      count: json.count,
-                                      batchSize: json.batchSize || 1000
-                                    });
+    var options = {
+      count: json.count,
+      batchSize: json.batchSize || 1000
+    };
+
+    var cursor = AQL_EXECUTE(query, data.bindVars, options);
 
     // error occurred
     if (cursor instanceof Error) {

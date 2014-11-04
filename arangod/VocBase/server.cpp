@@ -46,7 +46,6 @@
 #include "Basics/random.h"
 #include "Basics/tri-strings.h"
 #include "Basics/JsonHelper.h"
-#include "Ahuacatl/ahuacatl-statementlist.h"
 #include "Utils/Exception.h"
 #include "VocBase/auth.h"
 #include "VocBase/replication-applier.h"
@@ -478,9 +477,16 @@ static int CreateApplicationDirectory (char const* name,
       res = TRI_CreateDirectory(path);
 
       if (res == TRI_ERROR_NO_ERROR) {
-        LOG_INFO("created application directory '%s' for database '%s'",
-                 path,
-                 name);
+        if (triagens::wal::LogfileManager::instance()->isInRecovery()) {
+          LOG_TRACE("created application directory '%s' for database '%s'",
+                    path,
+                    name);
+        }
+        else {
+          LOG_INFO("created application directory '%s' for database '%s'",
+                   path,
+                   name);
+        }
       }
       else {
         LOG_ERROR("unable to create application directory '%s' for database '%s': %s",
@@ -1705,7 +1711,6 @@ void TRI_InitServerGlobals () {
   memset(&ServerId, 0, sizeof(TRI_server_id_t));
 
   TRI_InitSpin(&TickLock);
-  TRI_GlobalInitStatementListAql();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1713,7 +1718,6 @@ void TRI_InitServerGlobals () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeServerGlobals () {
-  TRI_GlobalFreeStatementListAql();
   TRI_DestroySpin(&TickLock);
 }
 

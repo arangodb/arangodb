@@ -139,19 +139,19 @@ static inline size_t TableEntrySize () {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline size_t OverflowEntrySize () {
-  return sizeof(TRI_hash_index_element_overflow_t);
+  return sizeof(TRI_hash_index_element_multi_t);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a storage location from the freelist
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_hash_index_element_overflow_t* GetFromFreelist (TRI_hash_array_multi_t* array) {
+static TRI_hash_index_element_multi_t* GetFromFreelist (TRI_hash_array_multi_t* array) {
   if (array->_freelist == nullptr) {
     size_t blockSize = GetBlockSize(array->_blocks._length);
     TRI_ASSERT(blockSize > 0);
 
-    auto begin = static_cast<TRI_hash_index_element_overflow_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, blockSize * OverflowEntrySize(), true));
+    auto begin = static_cast<TRI_hash_index_element_multi_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, blockSize * OverflowEntrySize(), true));
 
     if (begin == nullptr) {
       return nullptr;
@@ -184,10 +184,13 @@ static TRI_hash_index_element_overflow_t* GetFromFreelist (TRI_hash_array_multi_
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ReturnToFreelist (TRI_hash_array_multi_t* array,
-                              TRI_hash_index_element_overflow_t* element) {
-  element->_document = nullptr;
-  element->_next     = array->_freelist;
-  array->_freelist   = element;
+                              TRI_hash_index_element_multi_t* element) {
+  TRI_ASSERT(element->_subObjects == nullptr);
+
+  element->_document   = nullptr;
+  element->_subObjects = nullptr;
+  element->_next       = array->_freelist;
+  array->_freelist     = element;
   array->_nrOverflowUsed--;
 }
 
@@ -200,21 +203,11 @@ static void DestroyElement (TRI_hash_array_multi_t* array,
   TRI_ASSERT_EXPENSIVE(element != nullptr);
   TRI_ASSERT_EXPENSIVE(element->_document != nullptr);
 
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, element->_subObjects);
+  if (element->_subObjects != nullptr) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, element->_subObjects);
+  }
   element->_document = nullptr;
-  element->_next = nullptr;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an element, removing any allocated memory
-////////////////////////////////////////////////////////////////////////////////
-
-static void DestroyElement (TRI_hash_array_multi_t* array,
-                            TRI_hash_index_element_overflow_t* element) {
-  TRI_ASSERT_EXPENSIVE(element != nullptr);
-  TRI_ASSERT_EXPENSIVE(element->_document != nullptr);
-
-  element->_document = nullptr;
+  element->_subObjects = nullptr;
   element->_next = nullptr;
 }
 
@@ -552,11 +545,13 @@ int TRI_InsertElementHashArrayMulti (TRI_hash_array_multi_t* array,
     }
 
     // link our element at the list head
-    ptr->_document = element->_document;
-    ptr->_next     = arrayElement->_next;
+    ptr->_document   = element->_document;
+    ptr->_subObjects = element->_subObjects;
+    ptr->_next       = arrayElement->_next;
     arrayElement->_next = ptr;
           
     // it is ok to destroy the element here, because we have copied its internal before!
+    element->_subObjects = nullptr;
     DestroyElement(array, element);
 
     return TRI_ERROR_NO_ERROR;
@@ -600,7 +595,7 @@ int TRI_RemoveElementHashArrayMulti (TRI_hash_array_multi_t* array,
   if (! found) {
     return TRI_RESULT_ELEMENT_NOT_FOUND;
   }
-
+    
   if (arrayElement->_document != element->_document) {
     // look in the overflow list for the sought document
     auto next = &(arrayElement->_next);
@@ -620,15 +615,22 @@ int TRI_RemoveElementHashArrayMulti (TRI_hash_array_multi_t* array,
   }
 
   // the element itself is the document to remove
-
+  TRI_ASSERT(arrayElement->_document == element->_document);
+  
   if (arrayElement->_next != nullptr) {
     auto next = arrayElement->_next;
 
+    // destroy our own data first, otherwise we'll leak
+    TRI_ASSERT(arrayElement->_subObjects != nullptr);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, arrayElement->_subObjects);
+
     // copy data from first overflow element into ourselves
-    arrayElement->_document = next->_document;
-    arrayElement->_next     = next->_next;
+    arrayElement->_document   = next->_document;
+    arrayElement->_subObjects = next->_subObjects;
+    arrayElement->_next       = next->_next;
  
     // and remove the first overflow element
+    next->_subObjects = nullptr;
     DestroyElement(array, next);
     ReturnToFreelist(array, next);
         
