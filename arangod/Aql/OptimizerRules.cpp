@@ -2270,11 +2270,34 @@ int triagens::aql::undistributeRemoveAfterEnumColl (Optimizer* opt,
 ////////////////////////////////////////////////////////////////////////////////
 
 struct OrToInConverter {
-  AstNode const* variableNode;
+  AstNode const* variableNode = nullptr;
+  //const char* variableName; 
   std::vector<AstNode const*> valueNodes;
-  std::vector<std::string> possibleNames;
   std::vector<AstNode const*> possibleNodes;
-  std::string variableName; 
+  std::vector<AstNode const*> orConditions;
+
+  std::string getString (AstNode const* node) {
+    triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
+    node->append(&buffer, false);
+    return std::string(buffer.c_str(), buffer.length());
+  }
+
+  bool compareNodes (AstNode const* lhs, AstNode const* rhs) {
+    if (lhs->numMembers() == rhs->numMembers()) {
+      if (lhs->numMembers() == 1) {
+        return (getString(lhs) == getString(rhs));
+      }
+      else {
+        for (size_t i = 0; i < lhs->numMembers(); i++) {
+          if (! compareNodes(lhs->getMember(i), rhs->getMember(i))) {
+            return false;
+          }
+        }
+        return true;
+      }
+    }
+    return false;
+  }
 
   AstNode* buildInExpression (Ast* ast) {
     // the list of comparison values
@@ -2287,6 +2310,100 @@ struct OrToInConverter {
     return ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_IN,
                                          variableNode->clone(ast),
                                          list);
+  }
+
+  bool flattenOr (AstNode const* node) {
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
+      return (flattenOr(node->getMember(0)) && flattenOr(node->getMember(1)));
+    }
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
+      orConditions.push_back(node);
+      return true;
+    }
+    return false;
+  }
+
+  bool findNameAndNode (AstNode const* node) {
+    
+    if (! flattenOr(node)) {
+      return false;
+    }
+    TRI_ASSERT(orConditions.size() > 1);
+
+    for (AstNode const* n: orConditions) {
+      
+      auto lhs = n->getMember(0);
+      auto rhs = n->getMember(1);
+      
+      if (variableNode != nullptr) {
+        return (compareNodes(lhs, variableNode) 
+          || compareNodes(rhs, variableNode));
+      }
+
+      if (lhs->type == NODE_TYPE_VALUE 
+          && (rhs->type == NODE_TYPE_REFERENCE 
+              || rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS 
+              || rhs->type == NODE_TYPE_INDEXED_ACCESS)) {
+        variableNode = rhs;
+        //variableName = getString(rhs);
+        return true;
+      }
+
+      if (rhs->type == NODE_TYPE_VALUE 
+          && (lhs->type == NODE_TYPE_REFERENCE 
+              || lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS 
+              || lhs->type == NODE_TYPE_INDEXED_ACCESS)) {
+        variableNode = lhs;
+        //variableName = getString(lhs);
+        return true;
+      }
+      
+      if (lhs->type == NODE_TYPE_REFERENCE) {
+        variableNode = lhs;
+        //variableName = getString(lhs);
+        return true;
+      }
+      if (rhs->type == NODE_TYPE_REFERENCE) {
+        variableNode = rhs;
+        //variableName = getString(rhs);
+        return true;
+      }
+
+      if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+          lhs->type == NODE_TYPE_INDEXED_ACCESS) {
+        if (possibleNodes.size() == 2) {
+          for (size_t i = 0; i < 2; i++) {
+            if (compareNodes(lhs, possibleNodes[i])) {
+              variableNode = possibleNodes[i];
+              //variableName = getString(possibleNodes[i]);
+              return true;
+            }
+          }
+          return false;
+        } 
+        else {
+          possibleNodes.push_back(lhs);
+        }
+      }
+      if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+          rhs->type == NODE_TYPE_INDEXED_ACCESS) {
+        if (possibleNodes.size() == 2) {
+          for (size_t i = 0; i < 2; i++) {
+            if (compareNodes(rhs, possibleNodes[i])) {
+              variableNode = possibleNodes[i];
+              //variableName = getString(possibleNodes[i]);
+              return true;
+            }
+          }
+          return false;
+        } 
+        else {
+          possibleNodes.push_back(rhs);
+          //continue;
+        }
+      }
+    }
+    return false;
   }
 
   bool canConvertExpression (AstNode const* node) {
@@ -2309,65 +2426,16 @@ struct OrToInConverter {
         valueNodes.push_back(rhs);
         return true;
       }
-      if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS 
-          && lhs->getMember(0)->isArray() && canConvertExpression(rhs)) {
+      if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && canConvertExpression(rhs)) {
         // value == attr
         valueNodes.push_back(lhs);
         return true;
       }
-      if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS 
-          && rhs->getMember(0)->isArray() && canConvertExpression(lhs)) {
+      if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && canConvertExpression(lhs)) {
         // value == attr
         valueNodes.push_back(rhs);
         return true;
       }
-      // for things like "FOR a IN docs a.x == a.y || a.z == 1 RETURN a"
-      if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS 
-          && lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        if (variableName.empty()) {
-          triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
-          lhs->append(&buffer, false);
-          auto lhsName = std::string(buffer.c_str(), buffer.length());
-          
-          triagens::basics::StringBuffer buffer1(TRI_UNKNOWN_MEM_ZONE);
-          rhs->append(&buffer1, false);
-          auto rhsName = std::string(buffer1.c_str(), buffer1.length());
-          
-          if (! possibleNames.empty()) {
-            if (lhsName == possibleNames[0] || rhsName == possibleNames[0]) {
-              variableName = possibleNames[0];
-              variableNode = possibleNodes[0];
-            }
-            else if (lhsName == possibleNames[1] || rhsName == possibleNames[1]) {
-              variableName = possibleNames[1];
-              variableNode = possibleNodes[1];
-            }
-            else {
-              return false;
-            }
-            possibleNames.clear();
-            possibleNodes.clear();
-          } 
-          else {
-            possibleNames.push_back(lhsName);
-            possibleNames.push_back(rhsName);
-            possibleNodes.push_back(lhs);
-            possibleNodes.push_back(rhs);
-            return true;
-          }
-        } 
-        if (! variableName.empty()) {
-          if (canConvertExpression(rhs)) {
-            valueNodes.push_back(lhs);
-            return true;
-          }
-          if (canConvertExpression(lhs)) {
-            valueNodes.push_back(rhs);
-            return true;
-          }
-        } 
-      }
-
       if (lhs->type == NODE_TYPE_INDEXED_ACCESS && canConvertExpression(rhs)) {
         // attr == value
         valueNodes.push_back(lhs);
@@ -2380,29 +2448,13 @@ struct OrToInConverter {
       }
       // fall-through intentional
     }
-
     else if (node->type == NODE_TYPE_REFERENCE ||
-             node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+             node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+             node->type == NODE_TYPE_INDEXED_ACCESS) {
       // get a string representation of the node for comparisons 
-      triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
-      node->append(&buffer, false);
- 
-      if (variableName.empty()) {
-        TRI_ASSERT(valueNodes.empty());
-        // we don't have anything to compare with
-        // now store the node and its stringified version for future comparisons
-        variableNode = node;
-        variableName = std::string(buffer.c_str(), buffer.length());
-        return true;  
-      }
-      else if (std::string(buffer.c_str(), buffer.length()) == variableName) {
-        // already have collected a variable. the other variable is identical
-        return true;
-      }
-
-      // fall-through intentional
+      std::string nodeString = getString(node);
+      return nodeString == getString(variableNode);
     }
-
     return false;
   }
 };
@@ -2433,7 +2485,8 @@ int triagens::aql::replaceORwithIN (Optimizer* opt,
     }
 
     OrToInConverter converter;
-    if (converter.canConvertExpression(cn->expression()->node())) {
+    if (converter.findNameAndNode(cn->expression()->node())
+        && converter.canConvertExpression(cn->expression()->node())) {
       Expression* expr = nullptr;
       ExecutionNode* newNode = nullptr;
       auto inNode = converter.buildInExpression(plan->getAst());
