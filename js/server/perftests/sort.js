@@ -268,7 +268,7 @@ var testRangeSuperseedsSort2 = function (testParams, testMethodStr, testMethod) 
 //   and thus the sort is removed; multi-dimensional indexes are utilized.
 ////////////////////////////////////////////////////////////////////////////////
 var testJoinIndexed = function (testParams, testMethodStr, testMethod) {
-  var query = "FOR v IN " + colName + " FOR w in " + colNameOther + " FILTER v.a == w.a RETURN [v, w]";
+  var query = "FOR v IN " + colName + " FOR w in " + colNameOther + " FILTER v.a == w.f RETURN [v.a]";
 
   return testMethod.executeQuery(query, {}, {});
 };
@@ -278,7 +278,7 @@ var testJoinIndexed = function (testParams, testMethodStr, testMethod) {
 //   and thus the sort is removed; multi-dimensional indexes are utilized.
 ////////////////////////////////////////////////////////////////////////////////
 var testJoinNonIndexed = function (testParams, testMethodStr, testMethod) {
-  var query = "FOR v IN " + colName + " FOR w in " + colNameOther + " FILTER v.joinme == w.joinme RETURN [v, w]";
+  var query = "FOR v IN " + colName + " FOR w in " + colNameOther + " FILTER v.joinme == w.joinme RETURN [v.joinme]";
 
   return testMethod.executeQuery(query, {}, {});
 };
