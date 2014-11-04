@@ -2320,10 +2320,13 @@ struct OrToInConverter {
       orConditions.push_back(node);
       return true;
     }
+    if (node->type == NODE_TYPE_VALUE) {
+      return true;
+    }
     return false;
   }
 
-  bool findNameAndNode (AstNode const* node) {
+  bool findCommonNode (AstNode const* node) {
     
     if (! flattenOr(node)) {
       return false;
@@ -2340,32 +2343,13 @@ struct OrToInConverter {
           || compareNodes(rhs, variableNode));
       }
 
-      if (lhs->type == NODE_TYPE_VALUE 
-          && (rhs->type == NODE_TYPE_REFERENCE 
-              || rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS 
-              || rhs->type == NODE_TYPE_INDEXED_ACCESS)) {
+      if (lhs->isConstant()) {
         variableNode = rhs;
-        //variableName = getString(rhs);
         return true;
       }
 
-      if (rhs->type == NODE_TYPE_VALUE 
-          && (lhs->type == NODE_TYPE_REFERENCE 
-              || lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS 
-              || lhs->type == NODE_TYPE_INDEXED_ACCESS)) {
+      if (rhs->isConstant()) {
         variableNode = lhs;
-        //variableName = getString(lhs);
-        return true;
-      }
-      
-      if (lhs->type == NODE_TYPE_REFERENCE) {
-        variableNode = lhs;
-        //variableName = getString(lhs);
-        return true;
-      }
-      if (rhs->type == NODE_TYPE_REFERENCE) {
-        variableNode = rhs;
-        //variableName = getString(rhs);
         return true;
       }
 
@@ -2375,7 +2359,6 @@ struct OrToInConverter {
           for (size_t i = 0; i < 2; i++) {
             if (compareNodes(lhs, possibleNodes[i])) {
               variableNode = possibleNodes[i];
-              //variableName = getString(possibleNodes[i]);
               return true;
             }
           }
@@ -2390,7 +2373,6 @@ struct OrToInConverter {
           for (size_t i = 0; i < 2; i++) {
             if (compareNodes(rhs, possibleNodes[i])) {
               variableNode = possibleNodes[i];
-              //variableName = getString(possibleNodes[i]);
               return true;
             }
           }
@@ -2398,7 +2380,6 @@ struct OrToInConverter {
         } 
         else {
           possibleNodes.push_back(rhs);
-          //continue;
         }
       }
     }
@@ -2453,7 +2434,10 @@ struct OrToInConverter {
       // get a string representation of the node for comparisons 
       std::string nodeString = getString(node);
       return nodeString == getString(variableNode);
+    } else if (node->isBoolValue()) {
+      return true;
     }
+
     return false;
   }
 };
@@ -2484,7 +2468,7 @@ int triagens::aql::replaceORwithIN (Optimizer* opt,
     }
 
     OrToInConverter converter;
-    if (converter.findNameAndNode(cn->expression()->node())
+    if (converter.findCommonNode(cn->expression()->node())
         && converter.canConvertExpression(cn->expression()->node())) {
       Expression* expr = nullptr;
       ExecutionNode* newNode = nullptr;
