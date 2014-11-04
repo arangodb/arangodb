@@ -2284,7 +2284,7 @@ struct OrToInConverter {
 
   bool compareNodes (AstNode const* lhs, AstNode const* rhs) {
     if (lhs->numMembers() == rhs->numMembers()) {
-      if (lhs->numMembers() == 1) {
+      if (lhs->numMembers() < 2) {
         return (getString(lhs) == getString(rhs));
       }
       else {
@@ -2379,7 +2379,6 @@ struct OrToInConverter {
               return true;
             }
           }
-          return false;
         } 
         else {
           possibleNodes.push_back(lhs);
