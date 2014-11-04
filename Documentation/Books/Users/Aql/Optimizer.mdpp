@@ -41,11 +41,11 @@ let's take a closer look at the results step by step.
 
 !SUBSUBSECTION Execution nodes
 
-In general, an execution plan can be considered to be a pipeline as processing steps.
+In general, an execution plan can be considered to be a pipeline of processing steps.
 Each processing step is carried out by a so-called *execution node*
 
-The `nodes` attribute of the `explain` result contains a these execution nodes in 
-the execution plan. The output is still very verbose, so here's a shorted form of it:
+The `nodes` attribute of the `explain` result contains these *execution nodes* in 
+the *execution plan*. The output is still very verbose, so here's a shorted form of it:
 ```
 arangosh> stmt.explain().plan.nodes.map(function (node) { return node.type; });
 [ 
@@ -66,28 +66,30 @@ When a plan is executed, the query execution engine will start with the node at
 the bottom of the list (i.e. the *ReturnNode*).
 
 The *ReturnNode*'s purpose is to return data to the caller. It does not produce
-data itself, so it will ask the node above itself, that is the *CalculationNode*.
+data itself, so it will ask the node above itself, this is the *CalculationNode*
+in our example.
 *CalculationNode*s are responsible for evaluating arbitrary expressions. In our
 example query, the *CalculationNode* will evaluate the value of `i.value`, which
 is needed by the *ReturnNode*. The calculation will be applied for all data the
-*CalculationNode* gets from the node above it, i.e. the *FilterNode*.
+*CalculationNode* gets from the node above it, in our example the *FilterNode*.
 
 *FilterNode*s will only let certain documents pass. Normally, filters are based on
-evaluationg an expression, and so it is in the example case. The filter expression
-result is calculated in the *CalculationNode* above the *FilterNode*. 
+the evaluation of an expression. The filters expression result (`i.value > 97`)
+is calculated in the *CalculationNode* above the *FilterNode*.
 
 Finally, all of this needs to be done for documents of collection `test`. This is
-where the *IndexRangeNode* comes into play. It will use an index (thus the name)
-to find certain documents in the collection and ship it down the pipeline. The
-*IndexRangeNode* itself has a *SingletonNode* as its input. The sole purpose of a
-*SingletonNode* node is to provide a single empty document as input for other
-processing steps. It is always the end of the pipeline.
+where the *IndexRangeNode* enters the game. It will use an index (thus its name)
+to find certain documents in the collection and ship it down the pipeline in the
+order required by `SORT i.value`. The *IndexRangeNode* itself has a *SingletonNode*
+as its input. The sole purpose of a *SingletonNode* node is to provide a single empty
+document as input for other processing steps. It is always the end of the pipeline.
 
 Here's a summary:
 * SingletonNode: produces empty document as input for other processing steps.
 * IndexRangeNode: iterates over the index on attribute `value` in collection `test`
-* CalculationNode: calculates condition value `i.value > 97`
-* FilterNode: only lets documents pass that satisfy condition `i.value > 97`
+  in the order required by  `SORT i.value`.
+* CalculationNode: evaluates the result of the calculation `i.value > 97` to `true` or `false`
+* FilterNode: only lets documents pass where above calculation returned `true`
 * CalculationNode: calculates return value `i.value`
 * ReturnNode: returns data to the caller
 
@@ -97,10 +99,10 @@ Here's a summary:
 Note that in the example, the optimizer has optimized the `SORT` statement away.
 It can do it safely because there is a sorted index on `i.value`, which it has
 picked in the *IndexRangeNode*. As the index values are iterated in sorted order
-anyway, the extra `SORT` would be redundant and was removed.
+anyway, the extra *SortNode* would be redundant and was removed.
 
 Additionally, the optimizer has done more work to generate an execution plan that
-avoid as much expensive operations as possible. Here is a list of optimizer rules
+avoids as much expensive operations as possible. Here is the list of optimizer rules
 that were applied to the plan:
 
 arangosh> stmt.explain().plan.rules;
@@ -115,10 +117,7 @@ arangosh> stmt.explain().plan.rules;
   "use-index-for-sort" 
 ]
 
-*Note that the list of optimizer rules might change if new rules are added to the
-optimizer or the existing rules get modified.*
-
-Here's what the rules mean in context of this query:
+Here is the meaning of these rules in context of this query:
 * `move-calculations-up`: moves a *CalculationNode* as far up in the processing pipeline
   as possible
 * `move-filters-up`: moves a *FilterNode* as far up in the processing pipeline as 
@@ -128,7 +127,7 @@ Here's what the rules mean in context of this query:
   is calculated multiple times, but each calculation inside a loop iteration would
   produce the same value. Therefore, the expression result is shared by several nodes.
 * `remove-unnecessary-calculations`: removes *CalculationNode*s whose result values are
-  not used in the query. In the example this is due to the `remove-redundant-calculations`
+  not used in the query. In the example this happenes due to the `remove-redundant-calculations`
   rule having made some calculations unnecessary.
 * `use-index-range`: use an index to iterate over a collection instead of performing a
   full collection scan. In the example case this makes sense, as the index can be
@@ -169,7 +168,7 @@ can be ignored by end users in most cases.
 
 !SUBSUBSECTION Cost of a query
 
-For each plan the optimizer generates, it will calculate a total cost. The plan 
+For each plan the optimizer generates, it will calculate the total cost. The plan 
 with the lowest total cost is considered to be the optimal plan. Costs are 
 estimates only, as the actual execution costs are unknown to the optimizer. 
 Costs are calculated based on heuristics that are hard-coded into execution nodes.
@@ -196,10 +195,31 @@ arangosh> stmt.explain({ allPlans: true });
 }
 ```
 
+!SUBSECTION Retrieving the plan as it was generated by the parser / lexer
+
+To retrieve the plan which closely matches your query, you may turn off most
+optimization rules (i.e. cluster rules cannot be disabled if you're running
+the explain on a cluster coordinator) set the option `rules` to `-all`:
+
+This will return an unoptimized plan in the `plan`:
+
+```
+arangosh> stmt.explain({ rules: [ '-all'] });
+{ 
+  "plan" : {
+    ...
+  },
+  ...
+}
+```
+Note that some optimisations are already done at parse time (i.e. evaluate simple constant
+calculation as 1 + 1)
+
+
 
 !SUBSECTION Warnings
 
-For some queries, the optimizer might produce warnings. These will be returned in
+For some queries, the optimizer may produce warnings. These will be returned in
 the `warnings` attribute of the `explain` result:
 
 ```
@@ -213,7 +233,7 @@ arangosh> stmt.explain().warnings;
 ]
 ```
 
-There is an upper bound on the number of variables a query might produce. If that
+There is an upper bound on the number of warning a query may produce. If that
 bound is reached, no further warnings will be returned.
 
 
@@ -229,7 +249,7 @@ The following execution node types will appear in the output of `explain`:
 * *IndexRangeNode*: enumeration over a specific index (given in its *index* attribute)
   of a collection. The index range is specified in the *ranges* attribute of the node.
 * *EnumerateListNode*: enumeration over a list of (non-collection) values.
-* *FilterNode*: only lets values pass that satisfy a fill condition. Will appear once
+* *FilterNode*: only lets values pass that satisfy a filter condition. Will appear once
   per *FILTER* statement.
 * *LimitNode*: limits the number of results passed to other processing steps. Will
   appear once per *LIMIT* statement.
@@ -265,6 +285,7 @@ For queries in the cluster, the following nodes may appear in execution plans:
   communicate with other servers to fetch the actual data from the shards. It 
   will do so via *RemoteNode*s. The data servers themselves might again pull
   further data from the coordinator, and thus might also employ *RemoteNode*s.
+  So, all of the above cluster relevant nodes will be accompanied by a *RemoteNode*.
   
 
 !SUBSECTION List of optimizer rules
@@ -282,7 +303,7 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
   removed from the plan, whereas *FilterNode* that will never let any results pass
   will be replaced with a *NoResultsNode*.
 * `remove-redundant-calculations`: will appear if redundant calculations (expressions
-  with the exact same result) are found in the query. The optimizer rule will then
+  with the exact same result) were found in the query. The optimizer rule will then
   replace references to the redundant expressions with a single reference, allowing
   other optimizer rules to remove the then-unneeded *CalculationNode*s.
 * `remove-unnecessary-calculations`: will appear if *CalculationNode*s were removed
@@ -292,13 +313,13 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
 * `remove-redundant-sorts`: will appear if multiple *SORT* statements can be merged
   into fewer sorts.
 * `interchange-adjacent-enumerations`: will appear if a query contains multiple 
-  *FOR* statements whose order was permuted. Permutation of *FOR* statements is
+  *FOR* statements whose order were permuted. Permutation of *FOR* statements is
   performed because it may enable further optimizations by other rules.
 * `use-index-range`: will appear if an index can be used to iterate over a collection.
-  As a consequence, an *EnumerateCollectionNode* will have been replaced with an 
+  As a consequence, an *EnumerateCollectionNode* was replaced with an 
   *IndexRangeNode* in the plan.
 * `use-index-for-sort`: will appear if an index can be used to avoid a *SORT* 
-  operation. If the rule was applied, a *SortNode* will have been removed from the
+  operation. If the rule was applied, a *SortNode* has been removed from the
   plan.
 
 The following optimizer rules may appear in the `rules` attribute of cluster plans:
