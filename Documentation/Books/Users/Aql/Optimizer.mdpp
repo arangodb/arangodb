@@ -204,7 +204,7 @@ the explain on a cluster coordinator) set the option `rules` to `-all`:
 This will return an unoptimized plan in the `plan`:
 
 ```
-arangosh> stmt.explain({ rules: [ '-all'] });
+arangosh> stmt.explain({ optimizer: { rules: [ '-all'] } });
 { 
   "plan" : {
     ...
