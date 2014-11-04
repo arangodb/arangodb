@@ -51,4 +51,4 @@ with an error.
       RETURN IS_IN_POLYGON([ [ 0, 0 ], [ 0, 10 ], [ 10, 10 ], [ 10, 0 ] ], [ 4, 7 ])
       
       /* will check if the point (lat 4, lon 7) is contained inside the polygon */
-      RETURN IS_IN_POLYGON([ [ 0, 0 ], [ 0, 10 ], [ 10, 10 ], [ 10, 0 ] ], [ 7, 4 ], true)
+      RETURN IS_IN_POLYGON([ [ 0, 0 ], [ 10, 0 ], [ 10, 10 ], [ 0, 10 ] ], [ 7, 4 ], true)

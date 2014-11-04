@@ -1,6 +1,8 @@
 v2.3.0 (XXXX-XX-XX)
 -------------------
 
+* added AQL geo functions `WITHIN_RECTANGLE` and `IS_IN_POLYGON`
+
 * fixed non-working query results download in AQL editor of web interface
 
 * removed debug print message in AQL query export routine
