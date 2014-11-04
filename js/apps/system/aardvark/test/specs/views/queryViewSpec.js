@@ -60,8 +60,12 @@
       div.id = "content";
       document.body.appendChild(div);
 
-     queryCollection = {
-       fetch: function() {}
+      queryCollection = {
+       __content: [],
+       fetch: function() {},
+       each: function() {},
+       add: function() {},
+       saveCollectionQueries: function() {}
      };
 
       view = new window.queryView({
