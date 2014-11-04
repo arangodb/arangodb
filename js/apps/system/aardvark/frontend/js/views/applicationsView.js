@@ -69,7 +69,7 @@ window.ApplicationsView = Backbone.View.extend({
         'github-version',
         'Version (optional)',
         '',
-        'Example: v1.1.2 for Version 1.1.2 - if no version is commited, master is used',
+        'Example: v1.1.2 for version 1.1.2 - if no version is commited, master is used',
         'master',
         false,
         /[<>&'"]/

@@ -282,16 +282,17 @@ controller.get('/docus', function (req, res) {
        + " foxxes and supplies the paths for the swagger documentation");
 /** Get Documentation for one Foxx
  *
- * Get the complete documentation availabloe for one Foxx
+ * Get the complete documentation available for one Foxx
  *
  */
 
 controller.get("/docu/:key",function (req, res) {
   var subPath = req.path.substr(0, req.path.lastIndexOf("[") - 1),
     key = req.params("key"),
-    path = req.protocol + "://" + req.headers.host + "/_db/" + req.database + subPath + "/" + key + "/";
+    path = req.protocol + "://" + req.headers.host + 
+           "/_db/" + encodeURIComponent(req.database) + subPath + "/" + encodeURIComponent(key) + "/";
   res.json(docus.listOne(path, key));
-}).summary("List documentation of all foxxes.")
+}).summary("List documentation of one foxxes.")
   .notes("This function simply returns one specific"
        + " foxx and supplies the paths for the swagger documentation");
 
@@ -308,6 +309,27 @@ controller.get('/docu/:key/*', function(req, res) {
   res.json(docus.show(mountPoint));
 }).summary("List the API for one foxx")
   .notes("This function lists the API of the foxx"
+       + " running under the given mount point");
+ 
+/** Subroutes for API Documentation
+  *
+  * Get the Elements of the API Documentation subroutes
+  *
+  */
+controller.get('/swagger/:mount', function(req, res) {
+  var subPath = req.path.substr(0, req.path.lastIndexOf("[") - 1),
+    mount = decodeURIComponent(req.params("mount")),
+    path = req.protocol + "://" + req.headers.host + 
+           "/_db/" + encodeURIComponent(req.database) + subPath + "/" + encodeURIComponent(mount) + "/",
+    candidate = db._aal.firstExample({ mount: mount });
+
+  if (candidate === null) {
+    throw "no entry found for mount";
+  }
+  res.json(docus.show(mount));
+//  res.json(docus.listOneForMount(path, mount));
+}).summary("Returns the generated Swagger JSON description for one foxx")
+  .notes("This function returns the Swagger JSON API description of the foxx"
        + " running under the given mount point");
 
 /** Move Foxx to other Mount
@@ -402,7 +424,6 @@ controller.get("/query/result/download/:query", function(req, res) {
 
   var internal = require("internal");
   query = internal.base64Decode(query);
-internal.print(query);
   try {
     parsedQuery = JSON.parse(query);
   }
