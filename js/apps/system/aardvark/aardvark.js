@@ -424,7 +424,6 @@ controller.get("/query/result/download/:query", function(req, res) {
 
   var internal = require("internal");
   query = internal.base64Decode(query);
-internal.print(query);
   try {
     parsedQuery = JSON.parse(query);
   }
