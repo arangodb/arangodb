@@ -102,6 +102,7 @@ function NewAqlReplaceORWithINTestSuite () {
       var expected = [ 1, 2 ];
       var actual = getQueryResults(query); 
       assertEqual(expected, actual);
+      assertEqual(executeWithRule(query, {}), executeWithoutRule(query, {}));
     },
     
     testFires2Values2 : function () {
@@ -113,6 +114,7 @@ function NewAqlReplaceORWithINTestSuite () {
       var expected = [ 1, 2 ];
       var actual = getQueryResults(query); 
       assertEqual(expected, actual);
+      assertEqual(executeWithRule(query, {}), executeWithoutRule(query, {}));
     },
     
     testFires4Values1 : function () {
@@ -124,6 +126,7 @@ function NewAqlReplaceORWithINTestSuite () {
       var expected = [ 1, 2, 3, 4];
       var actual = getQueryResults(query); 
       assertEqual(expected, actual);
+      assertEqual(executeWithRule(query, {}), executeWithoutRule(query, {}));
     },
     
     testFiresNoAttributeAccess : function () {
@@ -135,6 +138,7 @@ function NewAqlReplaceORWithINTestSuite () {
       var expected = [ ];
       var actual = getQueryResults(query); 
       assertEqual(expected, actual);
+      assertEqual(executeWithRule(query, {}), executeWithoutRule(query, {}));
     },
 
     testFiresNoCollection : function () {
@@ -146,7 +150,7 @@ function NewAqlReplaceORWithINTestSuite () {
       var expected = [ 1, 2 ];
       var actual = getQueryResults(query); 
       assertEqual(expected, actual);
-
+      assertEqual(executeWithRule(query, {}), executeWithoutRule(query, {}));
     },
     
     testFiresBind : function () {
@@ -160,7 +164,7 @@ function NewAqlReplaceORWithINTestSuite () {
       var expected = [ 1, 2 ];
       var actual = getQueryResults(query, params); 
       assertEqual(expected, actual);
-
+      assertEqual(executeWithRule(query, params), executeWithoutRule(query, params));
     },
   
     testFiresVariables : function () {
@@ -173,6 +177,7 @@ function NewAqlReplaceORWithINTestSuite () {
       var expected = [ 1, 2 ];
       var actual = getQueryResults(query, {}); 
       assertEqual(expected, actual);
+      assertEqual(executeWithRule(query, {}), executeWithoutRule(query, {}));
     },
     
     testFires2AttributeAccesses1 : function () {
@@ -185,6 +190,7 @@ function NewAqlReplaceORWithINTestSuite () {
       var expected = [ 1, 2 ];
       var actual = getQueryResults(query, {}); 
       assertEqual(expected, actual);
+      assertEqual(executeWithRule(query, {}), executeWithoutRule(query, {}));
     },
     
     testFires2AttributeAccesses2 : function () {
@@ -197,6 +203,7 @@ function NewAqlReplaceORWithINTestSuite () {
       var expected = [ 1, 2 ];
       var actual = getQueryResults(query, {}); 
       assertEqual(expected, actual);
+      assertEqual(executeWithRule(query, {}), executeWithoutRule(query, {}));
     },
     
     testFires2AttributeAccesses3 : function () {
@@ -209,6 +216,7 @@ function NewAqlReplaceORWithINTestSuite () {
       var expected = [ 1, 2 ];
       var actual = getQueryResults(query, {}); 
       assertEqual(expected, actual);
+      assertEqual(executeWithRule(query, {}), executeWithoutRule(query, {}));
     },
 
     
@@ -222,6 +230,7 @@ function NewAqlReplaceORWithINTestSuite () {
       var expected = [ 1, 2 ];
       var actual = getQueryResults(query, {}); 
       assertEqual(expected, actual);
+      assertEqual(executeWithRule(query, {}), executeWithoutRule(query, {}));
     },
     
     testFiresMixed2 : function () {
@@ -234,6 +243,7 @@ function NewAqlReplaceORWithINTestSuite () {
       var expected = [ 1, 2 ];
       var actual = getQueryResults(query, {}); 
       assertEqual(expected, actual);
+      assertEqual(executeWithRule(query, {}), executeWithoutRule(query, {}));
     },
     
     testFiresSelfReference1 : function () {
@@ -246,6 +256,7 @@ function NewAqlReplaceORWithINTestSuite () {
       var expected = [ 7, 10 ];
       var actual = getQueryResults(query, {}); 
       assertEqual(expected, actual);
+      assertEqual(executeWithRule(query, {}), executeWithoutRule(query, {}));
     },
     
     testFiresSelfReference2 : function () {
@@ -258,6 +269,7 @@ function NewAqlReplaceORWithINTestSuite () {
       var expected = [ 7, 10 ];
       var actual = getQueryResults(query, {}); 
       assertEqual(expected, actual);
+      assertEqual(executeWithRule(query, {}), executeWithoutRule(query, {}));
     },
 
     testFiresAttributeIsList1 : function () {
@@ -270,6 +282,7 @@ function NewAqlReplaceORWithINTestSuite () {
       var expected = [ 1, 3 ];
       var actual = getQueryResults(query, {}); 
       assertEqual(expected, actual);
+      assertEqual(executeWithRule(query, {}), executeWithoutRule(query, {}));
     },
     
     testFiresAttributeIsList2 : function () {
@@ -282,6 +295,7 @@ function NewAqlReplaceORWithINTestSuite () {
       var expected = [ 1, 3 ];
       var actual = getQueryResults(query, {}); 
       assertEqual(expected, actual);
+      assertEqual(executeWithRule(query, {}), executeWithoutRule(query, {}));
     },
 
     testFiresAttributeIsList3 : function () {
@@ -294,6 +308,7 @@ function NewAqlReplaceORWithINTestSuite () {
       var expected = [ 1, 3 ];
       var actual = getQueryResults(query, {}); 
       assertEqual(expected, actual);
+      assertEqual(executeWithRule(query, {}), executeWithoutRule(query, {}));
     },
     
     testFiresAttributeIsList4 : function () {
@@ -306,6 +321,7 @@ function NewAqlReplaceORWithINTestSuite () {
       var expected = [ 1, 3 ];
       var actual = getQueryResults(query, {}); 
       assertEqual(expected, actual);
+      assertEqual(executeWithRule(query, {}), executeWithoutRule(query, {}));
     },
     
     testFires2Loops: function () {
@@ -363,6 +379,16 @@ function NewAqlReplaceORWithINTestSuite () {
       assertEqual(expected, actual);
       assertEqual(executeWithRule(query, {}), executeWithoutRule(query, {}));
       assertEqual(expected, executeWithoutRule(query, {}));
+    },
+    
+    testDudAlwaysTrue: function () {
+      var query = 
+      "FOR x IN " + replace.name() 
+      + " FILTER x.value == x.value || x.value == 2 || x.value == 3 SORT x.value RETURN x.value";
+     
+      ruleIsNotUsed(query, {});
+      assertEqual(executeWithRule(query, {}), executeWithoutRule(query, {}));
+
     },
 
     testDudDifferentAttributes1 : function () {
