@@ -227,12 +227,14 @@
 <!-- 26 -->
 * [Administrating ArangoDB](AdministratingArango/README.md)
 <!-- 27 -->
-* [Handling Indexes](IndexHandling/README.md)
-  * [Cap Constraint](IndexHandling/Cap.md)
-  * [Geo Indexes](IndexHandling/Geo.md)
-  * [Fulltext Indexes](IndexHandling/Fulltext.md)
-  * [Hash Indexes](IndexHandling/Hash.md)
-  * [Skip-Lists](IndexHandling/Skiplist.md)
+* [Indexing](IndexHandling/README.md)
+  * [Index Basics](IndexHandling/IndexBasics.md)
+  * [Working with Indexes](IndexHandling/WorkingWithIndexes.md)
+    * [Hash Indexes](IndexHandling/Hash.md)
+    * [Skiplists](IndexHandling/Skiplist.md)
+    * [Fulltext Indexes](IndexHandling/Fulltext.md)
+    * [Geo Indexes](IndexHandling/Geo.md)
+    * [Cap Constraint](IndexHandling/Cap.md)
 <!-- 28 -->
 * [Datafile Debugger](DatafileDebugger/README.md)
 <!-- 29 -->

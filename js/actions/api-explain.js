@@ -72,14 +72,18 @@ var ERRORS = require("internal").errors;
 /// the query.
 ///
 /// By default, the explain operation will return the optimal plan as chosen by
-/// the query optimizer. The optimal plan is the plan with the lowest total estimated
+/// the query optimizer The optimal plan is the plan with the lowest total estimated
 /// cost. The plan will be returned in the attribute *plan* of the response object.
 /// If the option *allPlans* is specified in the request, the result will contain 
 /// all plans created by the optimizer. The plans will then be returned in the 
 /// attribute *plans*.
+///
+/// The result will also contain an attribute *warnings*, which is a list of 
+/// warnings that occurred during optimization or execution plan creation.
 /// 
-/// Each plan is a JSON object with the following attributes:
-/// - *nodes*: the list of execution nodes of the plan
+/// Each plan in the result is a JSON object with the following attributes:
+/// - *nodes*: the list of execution nodes of the plan. The list of available node types
+///   can be found [here](.../Aql/Optimizer.html)
 /// - *estimatedCost*: the total estimated cost for the plan. If there are multiple
 ///   plans, the optimizer will choose the plan with the lowest total cost.
 /// - *collections*: a list of collections used in the query
@@ -87,9 +91,6 @@ var ERRORS = require("internal").errors;
 ///   found [here](../Aql/Optimizer.html)
 /// - *variables*: list of variables used in the query (note: this may contain
 ///   internal variables created by the optimizer)
-///
-/// The result will also contain an attribute *warnings*, which is a list of 
-/// warnings that occurred during plan creation.
 ///
 /// @RESTRETURNCODES
 ///

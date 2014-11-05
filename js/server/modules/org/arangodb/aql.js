@@ -2884,7 +2884,7 @@ function AQL_WITHIN_RECTANGLE (collection, latitude1, longitude1, latitude2, lon
   var idx = INDEX(COLLECTION(collection), [ "geo1", "geo2" ]); 
 
   if (idx === null) {
-    THROW(INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
+    THROW("WITHIN_RECTANGLE", INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
   }
 
   var diameter = distanceMeters(latitude1, longitude1, latitude2, longitude2);
