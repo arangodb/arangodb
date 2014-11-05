@@ -665,12 +665,12 @@
       this.isUpdating = false;
     },
 
-    startUpdating: function () {
-      var self = this;
-      if (self.timer) {
-        return;
-      }
-      self.timer = window.setInterval(function () {
+  startUpdating: function () {
+    var self = this;
+    if (self.timer) {
+      return;
+    }
+    self.timer = window.setInterval(function () {
         self.getStatistics();
       },
       self.interval
