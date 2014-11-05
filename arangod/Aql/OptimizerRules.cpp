@@ -2331,12 +2331,16 @@ struct OrToInConverter {
         return true;
       }
 
-      if (rhs->type == NODE_TYPE_FCALL || rhs->type == NODE_TYPE_FCALL_USER) {
+      if (rhs->type == NODE_TYPE_FCALL || 
+          rhs->type == NODE_TYPE_FCALL_USER ||
+          rhs->type == NODE_TYPE_REFERENCE) {
         variableNode = lhs;
         return true;
       }
       
-      if (lhs->type == NODE_TYPE_FCALL || lhs->type == NODE_TYPE_FCALL_USER) {
+      if (lhs->type == NODE_TYPE_FCALL || 
+          lhs->type == NODE_TYPE_FCALL_USER ||
+          lhs->type == NODE_TYPE_REFERENCE) {
         variableNode = rhs;
         return true;
       }
