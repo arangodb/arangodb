@@ -44,26 +44,31 @@
 
 
             spyOn(view.template, "render").andReturn(1);
+            spyOn(view, "replaceSVG");
             spyOn($.fn, "html");
             spyOn($.fn, "find").andCallThrough();
             spyOn($.fn, "attr").andCallThrough();
             spyOn($.fn, "each").andCallFake(function (a) {
-                a();
+              a();
             });
             spyOn($, "get").andCallFake(function (a, b, c) {
-                b();
+              b();
             });
 
             view.render();
 
             expect($.fn.html).toHaveBeenCalledWith(1);
-            expect($.fn.find).toHaveBeenCalledWith('svg');
+            expect($.fn.find).toHaveBeenCalledWith('img.svg');
+            expect(view.replaceSVG).toHaveBeenCalled();
+            /*
             expect($.fn.attr).toHaveBeenCalledWith('id');
             expect($.fn.attr).toHaveBeenCalledWith('class');
             expect($.fn.attr).toHaveBeenCalledWith('src');
+            */
             expect(view.template.render).toHaveBeenCalledWith({
                 isSystem: true
             });
+            
         });
 
         it("should navigateBySelect", function () {
