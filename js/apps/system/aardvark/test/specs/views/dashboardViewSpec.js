@@ -694,11 +694,13 @@
         target: "xyz"
       };
       spyOn(view, "mergeHistory");
+      spyOn(view, "updateTendencies");
+      spyOn(view, "updateLineChart");
       spyOn($, "ajax").andCallFake(function (url, opt) {
         expect(url).toEqual(
           "abcde/_admin/aardvark/statistics/cluster?start=10000&type=short&DBserver=xyz"
         );
-        expect(opt.async).toEqual(false);
+        expect(opt.async).toEqual(true);
         return {
           done: function (y) {
             y({
@@ -712,8 +714,11 @@
       expect(view.mergeHistory).toHaveBeenCalledWith({
         times: [1, 2, 3]
       });
+      expect(view.updateTendencies).toHaveBeenCalled();
       expect(view.isUpdating).toEqual(true);
-
+      Object.keys(view.graphs).forEach(function (f) {
+        expect(view.updateLineChart).toHaveBeenCalledWith(f, false);
+      });
     });
 
     it("prepare D3Charts", function () {
@@ -1166,7 +1171,6 @@
 
     it("startUpdating with no timer and statistics updates", function () {
       spyOn(view, "getStatistics");
-      spyOn(view, "updateCharts");
       view.isUpdating = true;
       spyOn(window, "setInterval").andCallFake(
         function (a) {
@@ -1176,7 +1180,6 @@
       view.startUpdating();
       expect(window.setInterval).toHaveBeenCalled();
       expect(view.getStatistics).toHaveBeenCalled();
-      expect(view.updateCharts).toHaveBeenCalled();
     });
 
 
@@ -1282,7 +1285,9 @@
         }
       };
       spyOn(view, "startUpdating");
-      spyOn(view, "getStatistics");
+      spyOn(view, "getStatistics").andCallFake(function(cb) {
+        cb();
+      });
       spyOn(view, "prepareDygraphs");
 
       spyOn(view, "prepareD3Charts");
@@ -1317,7 +1322,9 @@
         }
       };
       spyOn(view, "startUpdating");
-      spyOn(view, "getStatistics");
+      spyOn(view, "getStatistics").andCallFake(function(cb) {
+        cb();
+      });
       spyOn(view, "prepareDygraphs");
 
       spyOn(view, "prepareD3Charts");
