@@ -80,7 +80,7 @@ namespace triagens {
         : QueryResult(TRI_ERROR_NO_ERROR) {
       }
 
-      ~QueryResult () {
+      virtual ~QueryResult () {
         if (warnings != nullptr) {
           TRI_FreeJson(zone, warnings);
         }
