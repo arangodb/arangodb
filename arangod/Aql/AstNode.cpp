@@ -1073,12 +1073,18 @@ bool AstNode::isComparisonOperator () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AstNode::canThrow () const {
+  if (hasFlag(FLAG_THROWS)) {
+    // fast track exit
+    return true;
+  }
+  
   // check sub-nodes first
   size_t const n = numMembers();
   for (size_t i = 0; i < n; ++i) {
     auto member = getMember(i);
     if (member->canThrow()) {
       // if any sub-node may throw, the whole branch may throw
+      setFlag(FLAG_THROWS);
       return true;
     }
   }
@@ -1093,13 +1099,16 @@ bool AstNode::canThrow () const {
     // potentially throwing. This is not correct on the one hand, but on
     // the other hand we must not optimize or move non-deterministic functions
     // during optimization
-    // TODO: move the check for isDeterministic into a function of its
-    // own and check it from the optimizer rules
-    return func->canThrow || ! func->isDeterministic;
+    if (func->canThrow) {
+      setFlag(FLAG_THROWS);
+      return true;
+    }
+    return false;
   }
   
   if (type == NODE_TYPE_FCALL_USER) {
     // user functions can always throw
+    setFlag(FLAG_THROWS);
     return true;
   }
 
@@ -1144,12 +1153,18 @@ bool AstNode::canRunOnDBServer () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AstNode::isDeterministic () const {
+  if (hasFlag(FLAG_NONDETERMINISTIC)) {
+    // fast track exit
+    return false;
+  }
+
   // check sub-nodes first
   size_t const n = numMembers();
   for (size_t i = 0; i < n; ++i) {
     auto member = getMember(i);
     if (! member->isDeterministic()) {
       // if any sub-node is non-deterministic, we are neither
+      setFlag(FLAG_NONDETERMINISTIC);
       return false;
     }
   }
@@ -1157,11 +1172,16 @@ bool AstNode::isDeterministic () const {
   if (type == NODE_TYPE_FCALL) {
     // built-in functions may or may not be deterministic
     auto func = static_cast<Function*>(getData());
-    return func->isDeterministic;
+    if (! func->isDeterministic) {
+      setFlag(FLAG_NONDETERMINISTIC);
+      return false;
+    }
+    return true;
   }
   
   if (type == NODE_TYPE_FCALL_USER) {
     // user functions are always non-deterministic
+    setFlag(FLAG_NONDETERMINISTIC);
     return false;
   }
 

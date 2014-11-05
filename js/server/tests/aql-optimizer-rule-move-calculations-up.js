@@ -104,13 +104,16 @@ function optimizerRuleTestSuite () {
         "FOR i IN 1..10 LET a = 1 FILTER i == 1 RETURN a",
         "FOR i IN 1..10 FILTER i == 1 LET a = 1 RETURN i",
         "FOR i IN 1..10 LET a = 25 + 7 RETURN i",
+        "FOR i IN 1..10 LET a = MIN([ i, 1 ]) LET b = i + 1 RETURN [ a, b ]",
+        "FOR i IN 1..10 LET a = RAND() LET b = 25 + i RETURN i",
+        "FOR i IN 1..10 LET a = SLEEP(0.1) LET b = i + 1 RETURN b",
         "FOR i IN 1..10 FOR j IN 1..10 LET a = i + 2 RETURN i",
         "FOR i IN 1..10 FILTER i == 7 LET a = i COLLECT x = i RETURN x"
       ];
 
       queries.forEach(function(query) {
         var result = AQL_EXPLAIN(query, { }, paramEnabled);
-        assertEqual([ ruleName ], result.plan.rules);
+        assertEqual([ ruleName ], result.plan.rules, query);
       });
     },
 

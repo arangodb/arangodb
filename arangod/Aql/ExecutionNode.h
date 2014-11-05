@@ -1718,9 +1718,10 @@ namespace triagens {
       };
 
       std::vector<std::tuple<ExecutionNode const*, std::string, bool>> criteria;
-      bool isValid   = true;
-      bool isComplex = false;
-      bool canThrow  = false;
+      bool isValid         = true;
+      bool isDeterministic = true;
+      bool isComplex       = false;
+      bool canThrow        = false;
           
       Match isCoveredBy (SortInformation const& other) {
         if (! isValid || ! other.isValid) {

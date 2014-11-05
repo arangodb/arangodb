@@ -59,11 +59,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     enum AstNodeFlagType : uint8_t {
-      FLAG_SORTED   = 1,   // node is a list and its members are sorted asc.
-      FLAG_CONSTANT = 2,   // node value is constant (i.e. not dynamic)
-      FLAG_DYNAMIC  = 4,   // node value is dynamic (i.e. not constant)
-      FLAG_SIMPLE   = 8    // node value is simple (i.e. for use in a simple expression)
-
+      FLAG_SORTED           = 1,   // node is a list and its members are sorted asc.
+      FLAG_CONSTANT         = 2,   // node value is constant (i.e. not dynamic)
+      FLAG_DYNAMIC          = 4,   // node value is dynamic (i.e. not constant)
+      FLAG_SIMPLE           = 8,   // node value is simple (i.e. for use in a simple expression)
+      FLAG_THROWS           = 16,  // node can throws an exception
+      FLAG_NONDETERMINISTIC = 32   // node produces non-deterministic result (e.g. function call nodes)
     };
 
 ////////////////////////////////////////////////////////////////////////////////
