@@ -19,8 +19,7 @@ The following comparison operators are supported:
 - *IN* test if a value is contained in a list
 - *NOT IN* test if a value is not contained in a list
 
-The *IN* and *NOT IN* operators expect the second operand to be of type list. 
-All other operators accept any data types for the first and second operands.
+These operators accept any data types for the first and second operands.
 
 Each of the comparison operators returns a boolean value if the comparison can
 be evaluated and returns *true* if the comparison evaluates to true, and *false*
@@ -29,49 +28,131 @@ otherwise.
 Some examples for comparison operations in AQL:
 
 ```
-1 > 0
-true != null
-45 <= "yikes!"
-65 != "65"
-65 == 65
-1.23 < 1.32
-1.5 IN [ 2, 3, 1.5 ]
-42 NOT IN [ 17, 40, 50 ]
+1 > 0                     // true
+true != null              // true
+45 <= "yikes!"            // true
+65 != "65"                // true
+65 == 65                  // true
+1.23 > 1.32               // false
+1.5 IN [ 2, 3, 1.5 ]      // true
+"foo" IN null             // false
+42 NOT IN [ 17, 40, 50 ]  // true
 ```
 
 !SUBSUBSECTION Logical operators
 
-Logical operators combine two boolean operands in a logical operation and return
-a boolean result value.
-
-The following logical operators are supported:
+The following logical operators are supported in AQL:
 
 - *&&* logical and operator
 - *||* logical or operator
 - *!* logical not/negation operator
 
-Some examples for logical operations in AQL:
-
-    u.age > 15 && u.address.city != ""
-    true || false
-    !u.isInvalid
-
-The *&&*, *||*, and *!* operators expect their input operands to be boolean
-values each. If a non-boolean operand is used, the operation will fail with an
-error. In case all operands are valid, the result of each logical operator is a
-boolean value.
-
-Both the *&&* and *||* operators use short-circuit evaluation and only evaluate
-the second operand if the result of the operation cannot be determined by
-checking the first operand alone.
-
-ArangoDB also supports the following alternative forms for the logical operators:
+AQL also supports the following alternative forms for the logical operators:
 
 - *AND* logical and operator
 - *OR* logical or operator
 - *NOT* logical not/negation operator
 
-The alternative forms are functionally equivalent to the regular operators.
+The alternative forms are aliases and functionally equivalent to the regular 
+operators.
+
+The two-operand logical operators in AQL will be executed with short-circuit 
+evaluation. The result of the logical operators in AQL is defined as follows:
+
+- `lhs && rhs` will return `lhs` if it is `false` or would be `false` when converted
+  into a boolean. If `lhs` is `true` or would be `true` when converted to a boolean,
+  `rhs` will be returned.
+- `lhs || rhs` will return `lhs` if it is `true` or would be `true` when converted
+  into a boolean. If `lhs` is `false` or would be `false` when converted to a boolean,
+  `rhs` will be returned.
+- `! value` will return the negated value of `value` converted into a boolean
+
+Some examples for logical operations in AQL:
+
+    u.age > 15 && u.address.city != ""
+    true || false
+    ! u.isInvalid
+    1 || ! 0
+
+Older versions of ArangoDB required the operands of all logical operators to
+be boolean values and failed when non-boolean values were passed into the 
+operators. Additionally, the result of any logical operation always was a
+boolean value.
+
+This behavior has changed in ArangoDB 2.3. Passing non-boolean values to a
+logical operator is now allowed. Any-non boolean operands will be casted
+to boolean implicity by the operator, without making the query abort. The
+result of logical and and logical or operations can now have any data type and
+it not necessarily a boolean value.
+
+For example, the following logical operations will return a boolean values:
+
+    25 > 1 && 42 != 7                          // true
+    22 IN [ 23, 42 ] || 23 NOT IN [ 22, 7 ]    // true
+    25 != 25                                   // false
+
+whereas the following logical operations will not return boolean values:
+
+    1 || 7                                     // 1
+    null || "foo"                              // "foo"
+    null && true                               // null
+    true && 23                                 // 23
+   
+
+!SUBSUBSECTION Type conversion
+
+In some cases, an operator needs to perform an implicit type conversion of 
+its operand. For example, the logical negation operator (`!`) will cast its
+operand to a boolean if it is not already a boolean.
+
+The arithmetic operators will also cast their operands to numbers before
+performing the arithmetic operation.
+
+The *conversion to a boolean value* works as follows:
+- `null` will be converted to `false`
+- boolean values remain unchanged
+- all numbers unequal to zero are `true`, zero is `false`
+- the empty string is `false`, all other strings are `true`
+- lists (`[ ]`) and documents (`{ }`) are `true`, regardless of their contents
+
+The *conversion to a numeric value* works as follows:
+- `null` will be converted to `0`
+- `false` will be converted to `0`, true will be converted to `1`
+- a numeric value remains unchanged - NaN and Infinity are converted to `null`
+- string values are converted to a number if they contain a valid string representation
+  of a number. Any whitespace at the start or the end of the string is ignored. Strings
+  with any other contents are converted to `null`
+- an empty list is converted to `0`, a list with one member is converted to the numeric
+  representation of this one list member, and lists with more members are converted 
+  to `null`
+- documents are converted to `null`
+
+The *conversion to a string value* works as follows:
+- `null` will be converted to the string `"null"`
+- `false` and `true` will be converted to the strings `"false"` and `"true"` resp.
+- numbers will be converted into strings. Scientific notation may be used
+- a string value remains unchanged
+- an empty list will be converted into the empty string, a list with a single member
+  will be converted into the string representation of this one list member. A list
+  with more than one member will be converted into a comma-separated list of the
+  string representations of the list's members
+- documents will be converted to the string literal `"[object Object]"`
+
+The *conversion to a list* works as follows:
+- `null` will be converted to the empty list (`[ ]`)
+- a boolean value will be converted to a single-member list with the boolean value
+- a numeric value will be converted to a single-member list with the number value
+- a string value will be converted to a single-member list with the string value
+- a list value remains unchanged
+- a numeric value will be conve
+- `false` and `true` will be converted to the strings `"false"` and `"true"` resp.
+- numbers will be converted into strings. Scientific notation may be used.
+- strings will keep their value
+- an empty list will be converted into the empty string, a list with a single member
+  will be converted into the string representation of this one list member. A list
+  with more than one member will be converted into a comma-separated list of the
+  string representations of the list's members.
+- documents will be converted to the string literal `"[object Object]"`
 
 !SUBSUBSECTION Arithmetic operators
 
