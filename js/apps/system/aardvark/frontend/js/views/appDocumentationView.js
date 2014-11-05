@@ -13,7 +13,8 @@
 
     initialize: function() {
       var internal = require("internal");
-      var url = internal.arango.databasePrefix("/_admin/aardvark/docu/" + encodeURIComponent(this.options.mount));
+      var url = internal.arango.databasePrefix("/_admin/aardvark/docu/" + this.options.key);
+      console.log(this.options.key);
       this.swaggerUi = new SwaggerUi({
           discoveryUrl: url,
           apiKey: false,
