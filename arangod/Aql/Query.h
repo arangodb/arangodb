@@ -34,7 +34,7 @@
 #include "Basics/JsonHelper.h"
 #include "Aql/BindParameters.h"
 #include "Aql/Collections.h"
-#include "Aql/QueryResult.h"
+#include "Aql/QueryResultV8.h"
 #include "Aql/types.h"
 #include "Utils/AqlTransaction.h"
 #include "Utils/V8TransactionContext.h"
@@ -298,6 +298,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         QueryResult execute (QueryRegistry*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute an AQL query 
+/// may only be called with an active V8 handle scope
+////////////////////////////////////////////////////////////////////////////////
+
+        QueryResultV8 executeV8 (QueryRegistry*);
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse an AQL query

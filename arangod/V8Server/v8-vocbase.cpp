@@ -1200,7 +1200,7 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
   triagens::aql::Query query(v8g->_applicationV8, true, vocbase, queryString.c_str(), queryString.size(), parameters, options, triagens::aql::PART_MAIN);
 
-  auto queryResult = query.execute(static_cast<triagens::aql::QueryRegistry*>(v8g->_queryRegistry));
+  auto queryResult = query.executeV8(static_cast<triagens::aql::QueryRegistry*>(v8g->_queryRegistry));
   
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED) {
@@ -1212,12 +1212,12 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_FULL(scope, queryResult.code, queryResult.details);
   }
   
-  if (TRI_LengthListJson(queryResult.json) <= batchSize) {
+  if (queryResult.result->Length() <= batchSize) {
     // return the array value as it is. this is a performance optimisation
     v8::Handle<v8::Object> result = v8::Object::New();
-    if (queryResult.json != nullptr) {
-      result->Set(TRI_V8_STRING("json"), TRI_ObjectJson(queryResult.json));
-    }
+
+    result->Set(TRI_V8_STRING("json"), queryResult.result);
+
     if (queryResult.stats != nullptr) {
       result->Set(TRI_V8_STRING("stats"), TRI_ObjectJson(queryResult.stats));
     }
@@ -1251,7 +1251,7 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
     queryResult.profile = nullptr;
   }
 
-  TRI_general_cursor_result_t* cursorResult = TRI_CreateResultGeneralCursor(queryResult.json);
+  TRI_general_cursor_result_t* cursorResult = TRI_CreateResultGeneralCursor(queryResult.result);
   
   if (cursorResult == nullptr) {
     if (extra != nullptr) {
@@ -1260,8 +1260,6 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
   
-  queryResult.json = nullptr;
-
   TRI_general_cursor_t* cursor = TRI_CreateGeneralCursor(vocbase, cursorResult, doCount,
       static_cast<TRI_general_cursor_length_t>(batchSize), ttl, extra);
 
