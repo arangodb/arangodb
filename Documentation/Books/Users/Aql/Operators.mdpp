@@ -23,11 +23,13 @@ These operators accept any data types for the first and second operands.
 
 Each of the comparison operators returns a boolean value if the comparison can
 be evaluated and returns *true* if the comparison evaluates to true, and *false*
-otherwise.
+otherwise. Please note that the comparsion operators will not perform any
+implicit type casts if the compared operands have different types.
 
 Some examples for comparison operations in AQL:
 
 ```
+0 == null                 // false
 1 > 0                     // true
 true != null              // true
 45 <= "yikes!"            // true

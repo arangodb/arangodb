@@ -1,11 +1,14 @@
 v2.3.0 (XXXX-XX-XX)
 -------------------
 
+* performance improvements for AQL queries that use JavaScript-based expressions
+  internally
+
 * added AQL geo functions `WITHIN_RECTANGLE` and `IS_IN_POLYGON`
 
 * fixed non-working query results download in AQL editor of web interface
 
-* removed debug print message in AQL query export routine
+* removed debug print message in AQL editor query export routine
 
 * fixed issue #1075: Aardvark: user name required even if auth is off #1075 
 

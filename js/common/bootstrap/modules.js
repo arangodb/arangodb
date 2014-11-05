@@ -357,7 +357,8 @@ function require (path) {
         id: id,
         path: normalizeModuleName(path + "/.."),
         origin: path2FileUri(filename),
-        type: type };
+        type: type 
+      };
     }
 
     // try to append ".js"
@@ -379,7 +380,8 @@ function require (path) {
         id: path,
         path: normalizeModuleName(path + "/.."),
         origin: path2FileUri(agumented),
-        type: "json" };
+        type: "json" 
+      };
     }
 
     // try to append ".coffee"
@@ -390,7 +392,8 @@ function require (path) {
         id: path,
         path: normalizeModuleName(path + "/.."),
         origin: path2FileUri(agumented),
-        type: "coffee" };
+        type: "coffee" 
+      };
     }
 
     // maybe this is a directory with an index file
@@ -402,7 +405,8 @@ function require (path) {
           id: fs.join(path, "index"),
           path: path,
           origin: path2FileUri(agumented),
-          type: "js" };
+          type: "js" 
+        };
       }
     }
 
