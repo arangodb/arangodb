@@ -119,24 +119,18 @@
 
       //check for invalid query names, if present change the box-shadow to red
       // and disable the save functionality
-      var boolTemp = false;
-      this.customQueries.some(function(query){
-        if( query.name === saveName ){
-          $('#modalButton1').removeClass('button-success');
-          $('#modalButton1').addClass('button-warning');
-          $('#modalButton1').text('Update');
-            boolTemp = true;
-        } 
-        else {
-          $('#modalButton1').removeClass('button-warning');
-          $('#modalButton1').addClass('button-success');
-          $('#modalButton1').text('Save');
-        }
-
-        if (boolTemp) {
-          return true;
-        }
+      var found = this.customQueries.some(function(query){
+        return query.name === saveName;
       });
+      if(found){
+        $('#modalButton1').removeClass('button-success');
+        $('#modalButton1').addClass('button-warning');
+        $('#modalButton1').text('Update');
+      } else {
+        $('#modalButton1').removeClass('button-warning');
+        $('#modalButton1').addClass('button-success');
+        $('#modalButton1').text('Save');
+      }
     },
 
     clearOutput: function () {
@@ -372,9 +366,9 @@
       });
 
       //old storage method
-      if (localStorage.getItem("customQueries")) {
-
-        var queries = JSON.parse(localStorage.getItem("customQueries"));
+      var item = localStorage.getItem("customQueries");
+      if (item) {
+        var queries = JSON.parse(item);
         //save queries in user collections extra attribute
         _.each(queries, function(oldQuery) {
           self.collection.add({
