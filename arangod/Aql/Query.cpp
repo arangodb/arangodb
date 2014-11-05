@@ -583,7 +583,7 @@ QueryResult Query::execute (QueryRegistry* registry) {
       return res;
     }
 
-    triagens::basics::Json json(triagens::basics::Json::List, 16);
+    triagens::basics::Json jsonResult(triagens::basics::Json::List, 16);
     triagens::basics::Json stats;
 
     AqlItemBlock* value;
@@ -592,13 +592,13 @@ QueryResult Query::execute (QueryRegistry* registry) {
       auto doc = value->getDocumentCollection(0);
       size_t const n = value->size();
       // reserve space for n additional results at once
-      json.reserve(n);
+      jsonResult.reserve(n);
 
       for (size_t i = 0; i < n; ++i) {
         AqlValue val = value->getValue(i, 0);
 
         if (! val.isEmpty()) {
-          json.add(val.toJson(_trx, doc)); 
+          jsonResult.add(val.toJson(_trx, doc)); 
         }
       }
       delete value;
@@ -614,7 +614,7 @@ QueryResult Query::execute (QueryRegistry* registry) {
 
     QueryResult result(TRI_ERROR_NO_ERROR);
     result.warnings = warningsToJson();
-    result.json     = json.steal();
+    result.json     = jsonResult.steal();
     result.stats    = stats.steal(); 
 
     if (_profile != nullptr) {
@@ -640,6 +640,79 @@ QueryResult Query::execute (QueryRegistry* registry) {
     return QueryResult(TRI_ERROR_INTERNAL, getStateString() + TRI_errno_string(TRI_ERROR_INTERNAL));
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute an AQL query 
+/// may only be called with an active V8 handle scope
+////////////////////////////////////////////////////////////////////////////////
+
+QueryResultV8 Query::executeV8 (QueryRegistry* registry) {
+
+  // Now start the execution:
+  try {
+    QueryResultV8 res = prepare(registry);
+    if (res.code != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+
+    uint32_t j = 0;
+    QueryResultV8 result(TRI_ERROR_NO_ERROR);
+    result.result  = v8::Array::New();
+    triagens::basics::Json stats;
+
+    AqlItemBlock* value;
+
+    while (nullptr != (value = _engine->getSome(1, ExecutionBlock::DefaultBatchSize))) {
+      auto doc = value->getDocumentCollection(0);
+      size_t const n = value->size();
+      // reserve space for n additional results at once
+      /// json.reserve(n);
+      
+      for (size_t i = 0; i < n; ++i) {
+        AqlValue val = value->getValue(i, 0);
+
+        if (! val.isEmpty()) {
+          result.result->Set(j++, val.toV8(_trx, doc)); 
+        }
+      }
+      delete value;
+    }
+
+    stats = _engine->_stats.toJson();
+
+    _trx->commit();
+    
+    cleanupPlanAndEngine(TRI_ERROR_NO_ERROR);
+
+    enterState(FINALIZATION); 
+
+    result.warnings = warningsToJson();
+    result.stats    = stats.steal(); 
+
+    if (_profile != nullptr) {
+      result.profile = _profile->toJson(TRI_UNKNOWN_MEM_ZONE);
+    }
+
+    return result;
+  }
+  catch (triagens::arango::Exception const& ex) {
+    cleanupPlanAndEngine(ex.code());
+    return QueryResultV8(ex.code(), getStateString() + ex.message());
+  }
+  catch (std::bad_alloc const&) {
+    cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY);
+    return QueryResultV8(TRI_ERROR_OUT_OF_MEMORY, getStateString() + TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+  }
+  catch (std::exception const& ex) {
+    cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
+    return QueryResultV8(TRI_ERROR_INTERNAL, getStateString() + ex.what());
+  }
+  catch (...) {
+    cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
+    return QueryResult(TRI_ERROR_INTERNAL, getStateString() + TRI_errno_string(TRI_ERROR_INTERNAL));
+  }
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse an AQL query
