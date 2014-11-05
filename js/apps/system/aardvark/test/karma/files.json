@@ -32,6 +32,7 @@
   "frontend/js/lib/swagger-ui.js",
   "frontend/js/lib/highlight.7.3.pack.js",
   "frontend/js/lib/joi.browser.js",
+  "frontend/js/lib/md5.js",
   "test/mocks/disableEJS.js",
   "frontend/js/arango/arango.js",
   "frontend/js/shell/browser.js",
@@ -193,19 +194,6 @@
   "test/specs/views/statisticBarViewSpec.js",
   "test/specs/views/shellViewSpec.js",
   "test/specs/views/queryViewSpec.js",
-  "test/specs/views/userManagementViewSpec.js",
-
-  "test/clusterSpecs/views/clusterDownViewSpec.js",
-  "test/clusterSpecs/views/dbServerDashboardViewSpec.js",
-  "test/clusterSpecs/views/loginModalViewSpec.js",
-  "test/clusterSpecs/views/planScenarioSelectorViewSpec.js",
-  "test/clusterSpecs/views/planSymmetricViewSpec.js",
-  "test/clusterSpecs/views/planTestViewSpec.js",
-  "test/clusterSpecs/views/showClusterViewSpec.js",
-  "test/clusterSpecs/views/shutdownButtonViewSpec.js",
-
-  "test/specs/router/routerSpec.js",
-  "test/specs/router/clusterRouterSpec.js",
 
   "test/specs/router/versionCheckSpec.js"
 ]
