@@ -208,7 +208,7 @@
     showDocu: function(event) {
       event.stopPropagation();
       window.App.navigate(
-        "application/documentation/" + encodeURIComponent(this.model.get("mount").substr(1)),
+        "application/documentation/" + encodeURIComponent(this.model.get("_key")),
         {
           trigger: true
         }
