@@ -1251,7 +1251,7 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
     queryResult.profile = nullptr;
   }
 
-  TRI_general_cursor_result_t* cursorResult = TRI_CreateResultGeneralCursor(queryResult.json);
+  TRI_general_cursor_result_t* cursorResult = TRI_CreateResultGeneralCursor(queryResult.result);
   
   if (cursorResult == nullptr) {
     if (extra != nullptr) {
@@ -1260,8 +1260,6 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
   
-  queryResult.json = nullptr;
-
   TRI_general_cursor_t* cursor = TRI_CreateGeneralCursor(vocbase, cursorResult, doCount,
       static_cast<TRI_general_cursor_length_t>(batchSize), ttl, extra);
 
