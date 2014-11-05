@@ -43,19 +43,17 @@ var colName = "perf_" + ruleName.replace(/-/g, "_");
 var theCollection;
 
 var dbdApi = function (query, plan, bindVars) {
-  db._query(query, bindVars);
+  db._query(query, bindVars).toArray();
   return {};
 };
 
 
 var setUp = function (options) {
   var loopto = options.dbcols;
-  var contentmultipy = options.contentmultiply;
+  var contentmultiply = options.contentmultiply;
 
-  var Content = [];
-  for (j = 0; j < contentmultipy; j ++ ) {
-    Content = Content.concat(['abcdefghijklmnopqrstuvwxyz']);
-  }
+  var Content = Array(contentmultiply).join('abcdefghijklmnopqrstuvwxyz')
+
   internal.db._drop(colName);
   theCollection = internal.db._create(colName);
   var i, j;
@@ -75,6 +73,7 @@ var setUp = function (options) {
 
 var tearDown = function () {
   internal.db._drop(colName);
+  require("internal").wait(0);
   theCollection = null;
 };
 
@@ -104,6 +103,15 @@ var testNonIndexedPartialRead = function (testParams, testMethodStr, testMethod,
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Testcase: dump 10% of a table without using an index
+////////////////////////////////////////////////////////////////////////////////
+var testNonIndexedPartialReadCalcJS = function (testParams, testMethodStr, testMethod, runOptions) {
+  var tenPercent = (runOptions.dbcols / 10) * 9;
+  var query = "FOR i IN " + colName + " FILTER i.Key + 1 > " + tenPercent + " RETURN i"; 
+  return testMethod.executeQuery(query, {}, {});
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Testcase: dump a full table sorted by an unindexed key.
 ////////////////////////////////////////////////////////////////////////////////
 var testNonIndexedFullSort = function (testParams, testMethodStr, testMethod) {
@@ -119,6 +127,33 @@ var testIndexedFullSort = function (testParams, testMethodStr, testMethod) {
   return testMethod.executeQuery(query, {}, {});
 };
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Testcase: dump a full table sorted by an indexed key.
+////////////////////////////////////////////////////////////////////////////////
+var testIndexedFullSortReverse = function (testParams, testMethodStr, testMethod) {
+  var query = "FOR i IN " + colName + " SORT  i.indexedKey DESC RETURN i"; 
+  return testMethod.executeQuery(query, {}, {});
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Testcase: dump a full table sorted by an indexed key - use filter
+/// so the old also has 
+////////////////////////////////////////////////////////////////////////////////
+var testIndexedFullSortFilter = function (testParams, testMethodStr, testMethod) {
+  var query = "FOR i IN " + colName + " FILTER i.indexedKey > 0 SORT  i.indexedKey RETURN i"; 
+  return testMethod.executeQuery(query, {}, {});
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Testcase: dump a full table sorted by an indexed key - use filter
+/// so the old also has 
+////////////////////////////////////////////////////////////////////////////////
+var testIndexedFullSortReverseFilter = function (testParams, testMethodStr, testMethod) {
+  var query = "FOR i IN " + colName + " FILTER i.indexedKey > 0 SORT  i.indexedKey DESC RETURN i"; 
+  return testMethod.executeQuery(query, {}, {});
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Simple join testsuite
 ////////////////////////////////////////////////////////////////////////////////
@@ -126,11 +161,19 @@ var testIndexedFullSort = function (testParams, testMethodStr, testMethod) {
 var testSuite = [
   { name: "setup",    setUp: setUp, teardown: null, params: null, func: null},
 
-
   { name: "testFullRead", func: testFullRead},
+
   { name: "testNonIndexedPartialRead", func: testNonIndexedPartialRead},
+
+  { name: "testNonIndexedPartialReadCalcJS", func: testNonIndexedPartialReadCalcJS},
+
   { name: "testNonIndexedFullSort", func: testNonIndexedFullSort},
   { name: "testIndexedFullSort", func: testIndexedFullSort},
+
+  { name: "testIndexedFullSortReverse", func: testIndexedFullSortReverse},
+
+  { name: "testIndexedFullSortFilter", func: testIndexedFullSortFilter},
+  { name: "testIndexedFullSortReverseFilter", func: testIndexedFullSortReverseFilter},
 
   { name: "teardown",    setUp: null, teardown: tearDown, params: null, func: null}
 ];
@@ -141,8 +184,8 @@ var testSuite = [
 ////////////////////////////////////////////////////////////////////////////////
 
 var k, l;
-for (k = 4; k < 10; k++) {
-  for (l = 4; l < 10; l++) {
+for (k = 1; k < 22; k+=5) {
+  for (l = 1; l < 22; l+=5) {
     var testOptions = {
       enableIndex: true,
       dbcols: 10000 * k,
