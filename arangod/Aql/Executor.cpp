@@ -418,7 +418,8 @@ void Executor::generateCodeExpression (AstNode const* node) {
   TRI_ASSERT(_buffer != nullptr);
 
   // write prologue
-  _buffer->appendText("(function (vars) { var aql = require(\"org/arangodb/aql\"); return ");
+  // this checks if global variable _AQL is set and populates if it not
+  _buffer->appendText("(function (vars) { if (_AQL === undefined) { _AQL = require(\"org/arangodb/aql\"); } return ");
 
   generateCodeNode(node);
 
@@ -509,7 +510,7 @@ void Executor::generateCodeUnaryOperator (AstNode const* node) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "function not found");
   }
 
-  _buffer->appendText("aql.", 4);
+  _buffer->appendText("_AQL.", 5);
   _buffer->appendText((*it).second);
   _buffer->appendChar('(');
 
@@ -535,7 +536,7 @@ void Executor::generateCodeBinaryOperator (AstNode const* node) {
   bool wrap = (node->type == NODE_TYPE_OPERATOR_BINARY_AND ||
                node->type == NODE_TYPE_OPERATOR_BINARY_OR);
 
-  _buffer->appendText("aql.", 4);
+  _buffer->appendText("_AQL.", 5);
   _buffer->appendText((*it).second);
   _buffer->appendChar('(');
 
@@ -570,7 +571,7 @@ void Executor::generateCodeTernaryOperator (AstNode const* node) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "function not found");
   }
 
-  _buffer->appendText("aql.", 4);
+  _buffer->appendText("_AQL.", 5);
   _buffer->appendText((*it).second);
   _buffer->appendChar('(');
 
@@ -622,7 +623,7 @@ void Executor::generateCodeCollection (AstNode const* node) {
   
   char const* name = node->getStringValue();
 
-  _buffer->appendText("aql.GET_DOCUMENTS(");
+  _buffer->appendText("_AQL.GET_DOCUMENTS(");
   generateCodeString(name);
   _buffer->appendChar(')');
 }
@@ -641,7 +642,7 @@ void Executor::generateCodeFunctionCall (AstNode const* node) {
   TRI_ASSERT(args != nullptr);
   TRI_ASSERT(args->type == NODE_TYPE_LIST);
 
-  _buffer->appendText("aql.", 4);
+  _buffer->appendText("_AQL.", 5);
   _buffer->appendText(func->internalName);
   _buffer->appendChar('(');
 
@@ -693,7 +694,7 @@ void Executor::generateCodeUserFunctionCall (AstNode const* node) {
   TRI_ASSERT(args != nullptr);
   TRI_ASSERT(args->type == NODE_TYPE_LIST);
 
-  _buffer->appendText("aql.FCALL_USER(");
+  _buffer->appendText("_AQL.FCALL_USER(");
   generateCodeString(name);
   _buffer->appendText(",[", 2);
 
@@ -750,7 +751,7 @@ void Executor::generateCodeRange (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
   
-  _buffer->appendText("aql.AQL_RANGE(");
+  _buffer->appendText("_AQL.AQL_RANGE(");
   generateCodeNode(node->getMember(0));
   _buffer->appendChar(',');
   generateCodeNode(node->getMember(1));
@@ -765,7 +766,7 @@ void Executor::generateCodeNamedAccess (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 1);
 
-  _buffer->appendText("aql.DOCUMENT_MEMBER(");
+  _buffer->appendText("_AQL.DOCUMENT_MEMBER(");
   generateCodeNode(node->getMember(0));
   _buffer->appendChar(',');
   generateCodeString(node->getStringValue());
@@ -780,7 +781,7 @@ void Executor::generateCodeBoundAccess (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
 
-  _buffer->appendText("aql.DOCUMENT_MEMBER(");
+  _buffer->appendText("_AQL.DOCUMENT_MEMBER(");
   generateCodeNode(node->getMember(0));
   _buffer->appendChar(',');
   generateCodeNode(node->getMember(1));
@@ -795,7 +796,7 @@ void Executor::generateCodeIndexedAccess (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
 
-  _buffer->appendText("aql.GET_INDEX(");
+  _buffer->appendText("_AQL.GET_INDEX(");
   generateCodeNode(node->getMember(0));
   _buffer->appendChar(',');
   generateCodeNode(node->getMember(1));

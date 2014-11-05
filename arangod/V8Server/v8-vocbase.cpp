@@ -2561,6 +2561,10 @@ void TRI_InitV8VocBridge (triagens::arango::ApplicationV8* applicationV8,
   
   // whether or not statistics are enabled
   context->Global()->Set(TRI_V8_SYMBOL("ENABLE_STATISTICS"), v8::Boolean::New(TRI_ENABLE_STATISTICS), v8::ReadOnly);
+  
+  // a thread-global variable that will is supposed to contain the AQL module
+  // do not remove this, otherwise AQL queries will break
+  context->Global()->Set(TRI_V8_SYMBOL("_AQL"), v8::Undefined(), v8::DontEnum);
 }
 
 // -----------------------------------------------------------------------------
