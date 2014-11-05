@@ -1147,6 +1147,38 @@ function ahuacatlSkiplistTestSuite () {
       assertEqual(expected, actual);
         
       assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test reverse iteration
+////////////////////////////////////////////////////////////////////////////////
+
+    testReverseIteration : function () {
+      var expectedOne = [ ], expectedTwo = [ ];
+      for (var i = 5; i >= 1; --i) {
+        for (var j = 5; j >= 1; --j) {
+          expectedOne.push(i);
+          expectedTwo.push([ i, j ]);
+        }
+      }
+
+      var query = "FOR a IN " + skiplist.name() + " SORT a.a DESC RETURN a.a";
+      var actual = getQueryResults(query);
+      assertEqual(expectedOne, actual);
+      
+      // produces an empty range
+      query = "FOR a IN " + skiplist.name() + " FILTER a.a >= 100 SORT a.a DESC RETURN a.a";
+      actual = getQueryResults(query);
+      assertEqual([ ], actual);
+      
+      query = "FOR a IN " + skiplist.name() + " SORT a.a DESC, a.b DESC RETURN [ a.a, a.b ]";
+      actual = getQueryResults(query);
+      assertEqual(expectedTwo, actual);
+      
+      // produces an empty range
+      query = "FOR a IN " + skiplist.name() + " FILTER a.a >= 100 SORT a.a DESC, a.b DESC RETURN [ a.a, a.b ]";
+      actual = getQueryResults(query);
+      assertEqual([ ], actual);
     }
 
   };
