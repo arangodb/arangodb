@@ -1,5 +1,5 @@
 /*jshint strict: false, maxlen: 500 */
-/*global require, assertEqual, assertTrue, AQL_EXPLAIN */
+/*global require, assertEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for Ahuacatl, skiplist index queries
@@ -44,7 +44,7 @@ function NewAqlReplaceORWithINTestSuite () {
   var isRuleUsed = function (query, params) {
    var result = AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+" + ruleName ] } });
    assertTrue(result.plan.rules.indexOf(ruleName) !== -1, query);
-   var result = AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all" ] } });
+   result = AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all" ] } });
    assertTrue(result.plan.rules.indexOf(ruleName) === -1, query);
   };
   
@@ -55,11 +55,11 @@ function NewAqlReplaceORWithINTestSuite () {
 
   var executeWithRule = function (query, params) {
     return AQL_EXECUTE(query, params, { optimizer: { rules: [ "-all", "+" + ruleName ] } }).json;
-  }
+  };
 
   var executeWithoutRule = function (query, params) {
     return AQL_EXECUTE(query, params, { optimizer: { rules: [ "-all" ] } }).json;
-  }
+  };
 
   return {
 
@@ -183,7 +183,7 @@ function NewAqlReplaceORWithINTestSuite () {
     testFires2AttributeAccesses1 : function () {
       var query = 
         "LET x = {a:1,b:2} FOR v IN " + replace.name() 
-        + " FILTER v.value == x.a || v.value == x.b SORT v.value RETURN v.value"
+        + " FILTER v.value == x.a || v.value == x.b SORT v.value RETURN v.value";
 
       isRuleUsed(query, {});
 
@@ -196,7 +196,7 @@ function NewAqlReplaceORWithINTestSuite () {
     testFires2AttributeAccesses2 : function () {
       var query = 
         "LET x = {a:1,b:2} FOR v IN " + replace.name() 
-        + " FILTER x.a == v.value || v.value == x.b SORT v.value RETURN v.value"
+        + " FILTER x.a == v.value || v.value == x.b SORT v.value RETURN v.value";
 
       isRuleUsed(query, {});
 
