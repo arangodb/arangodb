@@ -1824,6 +1824,10 @@ SortInformation SortNode::getSortInformation (ExecutionPlan* plan,
       // variable introduced by a calculation
       auto expression = static_cast<CalculationNode*>(setter)->expression();
 
+      if (! expression->isDeterministic()) {
+        result.isDeterministic = false;
+      }
+
       if (! expression->isAttributeAccess() &&
           ! expression->isReference()) {
         result.isComplex = true;

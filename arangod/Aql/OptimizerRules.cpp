@@ -96,8 +96,8 @@ int triagens::aql::removeRedundantSorts (Optimizer* opt,
               if (nodesRelyingOnSort == 0) {
                 // a sort directly followed by another sort: now remove one of them
 
-                if (other.canThrow) {
-                  // if the sort can throw, we must not remove it
+                if (other.canThrow || ! other.isDeterministic) {
+                  // if the sort can throw or is non-deterministic, we must not remove it
                   break;
                 }
 
@@ -267,8 +267,9 @@ int triagens::aql::moveCalculationsUpRule (Optimizer* opt,
   
   for (auto n : nodes) {
     auto nn = static_cast<CalculationNode*>(n);
-    if (nn->expression()->canThrow()) {
-      // we will only move expressions up that cannot throw
+    if (nn->expression()->canThrow() || 
+        ! nn->expression()->isDeterministic()) {
+      // we will only move expressions up that cannot throw and that are deterministic
       continue;
     }
 
@@ -365,6 +366,14 @@ int triagens::aql::moveFiltersUpRule (Optimizer* opt,
       if (current->canThrow()) {
         // must not move a filter beyond a node that can throw
         break;
+      }
+
+      if (current->getType() == EN::CALCULATION) {
+        // must not move a filter beyond a node with a non-deterministic result
+        auto calculation = static_cast<CalculationNode const*>(current);
+        if (! calculation->expression()->isDeterministic()) {
+          break;
+        }
       }
 
       bool found = false;
@@ -650,9 +659,8 @@ int triagens::aql::removeUnnecessaryCalculationsRule (Optimizer* opt,
     if (n->getType() == EN::CALCULATION) {
       auto nn = static_cast<CalculationNode*>(n);
 
-      if (nn->canThrow() ||
-          ! nn->expression()->isDeterministic()) {
-        // If this node can throw or is non-deterministic, we must not optimize it away!
+      if (nn->canThrow()) {
+        // If this node can throw, we must not optimize it away!
         continue;
       }
     }
