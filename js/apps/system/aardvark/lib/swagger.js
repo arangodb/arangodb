@@ -47,42 +47,35 @@ exports.Swagger = function () {
     result.swaggerVersion = "1.1";
     result.basePath = basePath;
     result.apis = apis;
+    var m;
     while (res.hasNext()) {
-      var m = res.next().mount;
-      if (m === "/aardvark") {
-
-      } else {
+      m = res.next().mount;
+      if (m !== "/aardvark") {
         apis.push({
           path: m
         });
       }
     }
     return result;
-  },
+  };
 
-  this.listOne = function(basePath, key) {
-    var result = {},
-      res;
-
-    if (key.substr(0, 4) === "dev:") {
-      res = "/dev/" + key.split(":")[2];
-    }
-    else {
-      res = _aal.document(key).mount;
-    }
+  this.listOne = function(basePath, mount) {
+    var result = {};
 
     result.swaggerVersion = "1.1";
     result.basePath = basePath;
 
     result.apis = [
-      {path: res}
+      {path: decodeURIComponent(mount)}
     ];
+    require("console").log(result);
 
     return result;
-  },
+  };
 
   // Get details of one specific installed foxx.
   this.show = function(mount) {
+    require("console").log(mount);
       var result = {},
       apis = [],
       pathes,
@@ -109,18 +102,20 @@ exports.Swagger = function () {
       pathes = app.routes;
 
       for (i in pathes) {
-        if (pathes[i].url.methods !== undefined) {
-          url = pathes[i].url.match;
-          api = {};
-          ops = [];
-          url = url.replace(regex, "{$2}");
-          api.path = url;
-          ops.push(pathes[i].docs);
-          api.operations = ops;
-          apis.push(api);
+        if(pathes.hasOwnProperty(i)){
+          if (pathes[i].url.methods !== undefined) {
+            url = pathes[i].url.match;
+            api = {};
+            ops = [];
+            url = url.replace(regex, "{$2}");
+            api.path = url;
+            ops.push(pathes[i].docs);
+            api.operations = ops;
+            apis.push(api);
+          }
         }
       }
 
       return result;
-    }
+    };
 };
