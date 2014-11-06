@@ -147,7 +147,8 @@
     },
 
     getDocuments: function (callback) {
-      window.progressView.show("Fetching documents...");
+//      window.progressView.show("Fetching documents...");
+      window.progressView.showWithDelay(3000, "Fetching documents...");
       var self = this,
           query,
           bindVars,
@@ -201,6 +202,7 @@
         data: JSON.stringify(queryObj),
         contentType: "application/json",
         success: function(data) {
+          window.progressView.toShow = false;
           self.clearDocuments();
           if (data.extra && data.extra.fullCount !== undefined) {
             self.setTotal(data.extra.fullCount);
@@ -254,7 +256,7 @@
       return queryObj;
     },
 
-    updloadDocuments : function (file) {
+    uploadDocuments : function (file) {
       var result;
       $.ajax({
         type: "POST",

@@ -170,6 +170,20 @@ a.headerButton {
   }
 }
 
+#exportCollection {
+  i {
+    margin-left: -3px !important;
+  }
+}
+
+#importCollection {
+  i {
+    margin-left: -3px !important;
+    position: relative;
+    top: -1px;
+  }
+}
+
 //Graph Viewer
 
 div.toolbox {
