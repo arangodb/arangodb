@@ -338,7 +338,10 @@ namespace triagens {
                    RangeInfoBound low, 
                    RangeInfoBound high,
                    bool equality)
-          : _var(var), _attr(attr), _valid(true), _defined(true),
+          : _var(var), 
+            _attr(attr), 
+            _valid(true), 
+            _defined(true),
             _equality(equality) {
 
           if (low.isConstant()) {
@@ -347,6 +350,7 @@ namespace triagens {
           else {
             _lows.emplace_back(low);
           }
+
           if (high.isConstant()) {
             _highConst.assign(high);
           }
@@ -373,13 +377,19 @@ namespace triagens {
           }
         }
 
-        RangeInfo ( std::string var,
-                    std::string attr)
-          : _var(var), _attr(attr), _valid(true), _defined(true),
+        RangeInfo (std::string const& var,
+                   std::string const& attr)
+          : _var(var), 
+            _attr(attr), 
+            _valid(true), 
+            _defined(true),
             _equality(false) {
         }
 
-        RangeInfo () : _valid(false), _defined(false), _equality(false) {
+        RangeInfo () 
+          : _valid(false), 
+            _defined(false), 
+            _equality(false) {
         }
         
         RangeInfo (basics::Json const& json);
