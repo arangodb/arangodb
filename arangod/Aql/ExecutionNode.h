@@ -1298,7 +1298,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost () const override final {
-          return 1.005 * (std::min)(static_cast<double>(_limit), _dependencies.at(0)->getCost());
+//          return 1.005 * (std::min)(static_cast<double>(_limit), _dependencies.at(0)->getCost());
+          return 1.005 * static_cast<double>(_limit) + _dependencies.at(0)->getCost();
+
           //FIXME improve this estimate . . .
         }
 

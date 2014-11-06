@@ -566,7 +566,7 @@ namespace triagens {
 /// @brief continue fetching of documents
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool readIndex ();
+        bool readIndex (size_t atMost);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read using the primary index
@@ -584,13 +584,13 @@ namespace triagens {
 /// @brief read using a skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
-        void readSkiplistIndex (IndexOrCondition const&);
+        void readSkiplistIndex (IndexOrCondition const&, size_t atMost);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read using a hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-        void readHashIndex (IndexOrCondition const&);
+        void readHashIndex (IndexOrCondition const&, size_t atMost);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
