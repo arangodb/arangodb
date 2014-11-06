@@ -473,7 +473,8 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
           return TRI_ERROR_NO_ERROR;
         }
         else {
-          if (! getBlock(atLeast - skipped, atMost - skipped)) {
+          if (! getBlock(atLeast - skipped,
+                         (std::max)(atMost - skipped, DefaultBatchSize))) {
             _done = true;
             break; // must still put things in the result from the collector . . .
           }
@@ -1109,7 +1110,7 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t atLeast,
     // try again!
 
     if (_buffer.empty()) {
-      if (! ExecutionBlock::getBlock(atLeast, atMost)) {
+      if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
         _done = true;
         return nullptr;
       }
@@ -1208,7 +1209,7 @@ size_t IndexRangeBlock::skipSome (size_t atLeast,
 
   while (skipped < atLeast ){
     if (_buffer.empty()) {
-      if (! ExecutionBlock::getBlock(atLeast, atMost)) {
+      if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
         _done = true;
         return skipped;
       }
