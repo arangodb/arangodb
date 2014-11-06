@@ -473,8 +473,7 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
           return TRI_ERROR_NO_ERROR;
         }
         else {
-          if (! getBlock(atLeast - skipped,
-                         (std::max)(atMost - skipped, DefaultBatchSize))) {
+          if (! getBlock(atLeast - skipped, atMost - skipped)) {
             _done = true;
             break; // must still put things in the result from the collector . . .
           }
@@ -1977,7 +1976,7 @@ AqlItemBlock* CalculationBlock::getSome (size_t atLeast,
                                          size_t atMost) {
 
   unique_ptr<AqlItemBlock> res(ExecutionBlock::getSomeWithoutRegisterClearout(
-                                                     atLeast, atMost));
+                                                     DefaultBatchSize, DefaultBatchSize));
 
   if (res.get() == nullptr) {
     return nullptr;
