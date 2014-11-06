@@ -40,9 +40,6 @@ var FoxxController = require("org/arangodb/foxx").Controller,
   foxxInstallKey = joi.string().required().description(
     "The _key attribute, where the information of this Foxx-Install is stored."
   ),
-  foxxMountPoint = joi.string().required().description(
-    "The mount point, where this Foxx is installed."
-  ),
   appname = joi.string().required();
 
 var foxxes = new (require("lib/foxxes").Foxxes)();
@@ -289,17 +286,13 @@ controller.get('/docus', function (req, res) {
  *
  */
 
-controller.get("/docu/:mount", function (req, res) {
-  require("console").log("Paul");
+controller.get("/docu/:key",function (req, res) {
   var subPath = req.path.substr(0, req.path.lastIndexOf("[") - 1),
-    mount = req.params("mount"),
-    path = req.protocol + "://" + req.headers.host + "/_db/" + encodeURIComponent(req.database) + subPath + "/" + encodeURIComponent(mount) + "/";
-  require("console").log(docus.listOne(path, mount));
-  res.json(docus.listOne(path, mount));
-}).pathParam("mount", {
-  type: foxxMountPoint,
-  allowMultiple: false
-}).summary("List documentation of all foxxes.")
+    key = req.params("key"),
+    path = req.protocol + "://" + req.headers.host + 
+           "/_db/" + encodeURIComponent(req.database) + subPath + "/" + encodeURIComponent(key) + "/";
+  res.json(docus.listOne(path, key));
+}).summary("List documentation of one foxxes.")
   .notes("This function simply returns one specific"
        + " foxx and supplies the paths for the swagger documentation");
 
@@ -308,18 +301,12 @@ controller.get("/docu/:mount", function (req, res) {
   * Get the Elements of the API Documentation subroutes
   *
   */
-controller.get('/docu/:mount/:mountPoint', function(req, res) {
-  require("console").log("Blub");
-  require("console").log(req.params("mount"));
-  var mountPoint = decodeURIComponent(req.params("mountPoint"));
-  require("console").log(mountPoint);
+controller.get('/docu/:key/*', function(req, res) {
+  var mountPoint = "";
+    underscore.each(req.suffix, function(part) {
+      mountPoint += "/" + part;
+    });
   res.json(docus.show(mountPoint));
-}).pathParam("mount", {
-  type: foxxMountPoint,
-  allowMultiple: false
-}).pathParam("mountPoint", {
-  type: foxxMountPoint,
-  allowMultiple: false
 }).summary("List the API for one foxx")
   .notes("This function lists the API of the foxx"
        + " running under the given mount point");
@@ -437,6 +424,7 @@ controller.get("/query/result/download/:query", function(req, res) {
 
   var internal = require("internal");
   query = internal.base64Decode(query);
+internal.print(query);
   try {
     parsedQuery = JSON.parse(query);
   }

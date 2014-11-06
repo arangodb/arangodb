@@ -106,7 +106,7 @@
       list.push(modView.createReadOnlyEntry(
         "id_documentationJsonUrl", 
         "API docs", 
-        "<a href=\"" + link + "\">Link to JSON</a>"
+        "<a href=\"" + link + "\" target=\"_blank\">JSON-file for Swagger</a>"
       ));
       if (editable) {
         list.push(modView.createTextEntry(
@@ -208,7 +208,7 @@
     showDocu: function(event) {
       event.stopPropagation();
       window.App.navigate(
-        "application/documentation/" + encodeURIComponent(this.model.get("mount").substr(1)),
+        "application/documentation/" + encodeURIComponent(this.model.get("_key")),
         {
           trigger: true
         }
