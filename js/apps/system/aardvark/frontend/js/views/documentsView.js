@@ -81,7 +81,7 @@
       "keyup #createEdge"          : "listenKey",
       "click .key"                 : "nop",
       "keyup"                      : "returnPressedHandler",
-      "keydown .filterValue"       : "filterValueKeydown",
+      "keydown .queryline input"   : "filterValueKeydown",
       "click #importModal"         : "showImportModal",
       "click #resetView"           : "resetView",
       "click #confirmDocImport"    : "startUpload",
@@ -184,7 +184,7 @@
       var result;
       if (this.allowUpload === true) {
           this.showSpinner();
-        result = this.collection.updloadDocuments(this.file);
+        result = this.collection.uploadDocuments(this.file);
         if (result !== true) {
             this.hideSpinner();
             if (result.substr(0, 5 ) === "Error") {
