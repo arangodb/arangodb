@@ -931,13 +931,13 @@ int IndexRangeBlock::initialize () {
       throw;
     }
   }
-  else {   // _allBoundsConstant
-    readIndex();
-  }
+  //else {   // _allBoundsConstant
+  //  readIndex();
+  //}
   return res;
 }
 
-bool IndexRangeBlock::readIndex () {
+bool IndexRangeBlock::readIndex (size_t atMost) {
   // This is either called from initialize if all bounds are constant,
   // in this case it is never called again. If there is at least one
   // variable bound, then readIndex is called once for every item coming
@@ -948,11 +948,11 @@ bool IndexRangeBlock::readIndex () {
   // _pos to evaluate the variable bounds.
   
   if (_documents.empty()) {
-    _documents.reserve(DefaultBatchSize);
+    _documents.reserve(atMost);
   }
-  else {
-    _documents.clear();
-  }
+  //else {
+  //  _documents.clear();
+  //}
 
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
   IndexOrCondition const* condition = &en->_ranges;
@@ -1055,15 +1055,17 @@ bool IndexRangeBlock::readIndex () {
   }
   
   if (en->_index->type == TRI_IDX_TYPE_PRIMARY_INDEX) {
+    // atMost not passed since only equality is supported
     readPrimaryIndex(*condition);
   }
   else if (en->_index->type == TRI_IDX_TYPE_HASH_INDEX) {
-    readHashIndex(*condition);
+    readHashIndex(*condition, atMost);
   }
   else if (en->_index->type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
-    readSkiplistIndex(*condition);
+    readSkiplistIndex(*condition, atMost);
   }
   else if (en->_index->type == TRI_IDX_TYPE_EDGE_INDEX) {
+    // atMost not passed since only equality is supported
     readEdgeIndex(*condition);
   }
   else {
@@ -1081,9 +1083,9 @@ int IndexRangeBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   _pos = 0;
   _posInDocs = 0;
   
-  if (_allBoundsConstant && _documents.size() == 0) {
+  /*if (_allBoundsConstant && _documents.size() == 0) {
     _done = true;
-  }
+  }*/
 
   return TRI_ERROR_NO_ERROR; 
 }
@@ -1114,9 +1116,9 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t, // atLeast
       _pos = 0;           // this is in the first block
 
       // This is a new item, so let's read the index if bounds are variable:
-      if (! _allBoundsConstant) {
-        readIndex();
-      }
+      //if (! _allBoundsConstant) {
+        readIndex(atMost);
+      //}
 
       _posInDocs = 0;     // position in _documents . . .
     }
@@ -1175,7 +1177,7 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t, // atLeast
 
       // let's read the index if bounds are variable:
       if (! _buffer.empty() && ! _allBoundsConstant) {
-        readIndex();
+        readIndex(atMost); // TODO: add atMost?
       }
       // If _buffer is empty, then we will fetch a new block in the next call
       // and then read the index.
@@ -1211,9 +1213,9 @@ size_t IndexRangeBlock::skipSome (size_t atLeast,
       _pos = 0;           // this is in the first block
       
       // This is a new item, so let's read the index if bounds are variable:
-      if (! _allBoundsConstant) {
-        readIndex();
-      }
+      //if (! _allBoundsConstant) {
+        readIndex(atMost); // TODO: add atMost?
+      //}
 
       _posInDocs = 0;     // position in _documents . . .
     }
@@ -1239,7 +1241,7 @@ size_t IndexRangeBlock::skipSome (size_t atLeast,
 
       // let's read the index if bounds are variable:
       if (! _buffer.empty() && ! _allBoundsConstant) {
-        readIndex();
+        readIndex(atMost); // TODO: add atMost?
       }
       _posInDocs = 0;
       
@@ -1319,7 +1321,7 @@ void IndexRangeBlock::readPrimaryIndex (IndexOrCondition const& ranges) {
 /// @brief read documents using a hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
+void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges, size_t atMost) {
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
   TRI_index_t* idx = en->_index->data;
   TRI_ASSERT(idx != nullptr);
@@ -1341,7 +1343,7 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
   };
 
   auto setupSearchValue = [&]() {
-    size_t const n = hashIndex->_paths._length;
+    size_t const n = std::min(hashIndex->_paths._length, atMost);
     searchValue._length = 0;
     searchValue._values = static_cast<TRI_shaped_json_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, 
           n * sizeof(TRI_shaped_json_t), true));
@@ -1479,7 +1481,7 @@ void IndexRangeBlock::readEdgeIndex (IndexOrCondition const& ranges) {
 // (i.e. the 1 in x.c >= 1) cannot be lists or arrays.
 //
 
-void IndexRangeBlock::readSkiplistIndex (IndexOrCondition const& ranges) {
+void IndexRangeBlock::readSkiplistIndex (IndexOrCondition const& ranges, size_t atMost) {
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
   TRI_index_t* idx = en->_index->data;
   TRI_ASSERT(idx != nullptr);
@@ -1557,13 +1559,15 @@ void IndexRangeBlock::readSkiplistIndex (IndexOrCondition const& ranges) {
   }
 
   try {
+    size_t nrSent = 0;
     while (true) { 
       TRI_skiplist_index_element_t* indexElement = skiplistIterator->next(skiplistIterator);
 
-      if (indexElement == nullptr) {
+      if (indexElement == nullptr || nrSent == atMost) {
         break;
       }
       _documents.push_back(*(indexElement->_document));
+      ++nrSent;
       ++_engine->_stats.scannedIndex;
     }
     TRI_FreeSkiplistIterator(skiplistIterator);
