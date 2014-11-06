@@ -114,7 +114,7 @@ typedef struct TRI_PO_item_s {
   bool _used;
   TRI_PO_desc_t * _desc;
 
-  void (*parse) (char const * arg, void * value);
+  int (*parse) (char const * arg, void * value);
 } TRI_PO_item_t;
 
 ////////////////////////////////////////////////////////////////////////////////
