@@ -19,7 +19,7 @@
       "api": "api",
       "databases": "databases",
       "applications": "applications",
-      "application/documentation/:mount": "appDocumentation",
+      "application/documentation/:key": "appDocumentation",
       "graph": "graphManagement",
       "userManagement": "userManagement",
       "userProfile": "userProfile",
@@ -242,8 +242,8 @@
         this.naviView.selectMenuItem('applications-menu');
       },
 
-      appDocumentation: function (mount) {
-        var docuView = new window.AppDocumentationView({mount: mount});
+      appDocumentation: function (key) {
+        var docuView = new window.AppDocumentationView({key: key});
         docuView.render();
         this.naviView.selectMenuItem('applications-menu');
       },
