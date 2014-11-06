@@ -380,7 +380,27 @@ function NewAqlReplaceORWithINTestSuite () {
       assertEqual(executeWithRule(query, {}), executeWithoutRule(query, {}));
       assertEqual(expected, executeWithoutRule(query, {}));
     },
+   
+    testFiresRand: function () {
+      var query = "LET a = RAND(), b = RAND() FOR i IN [1,2,3,4,5] "  
+        + "FILTER i.a.b == a || i.a.b == b RETURN i";
+
+      isRuleUsed(query, {});
+
+    },
     
+    testFiresCommonConstant: function () {
+      var query = "LET x = {a:@a} FOR v IN " + replace.name() 
+        + " FILTER x.a == v.value || x.a == v._key RETURN v._key";
+
+      var key = replace.any()._key;
+      isRuleUsed(query, {a: key});
+
+      var actual = getQueryResults(query, {a: key}); 
+      assertEqual(key, actual.toString());
+
+    },
+
     testDudAlwaysTrue: function () {
       var query = 
       "FOR x IN " + replace.name() 
