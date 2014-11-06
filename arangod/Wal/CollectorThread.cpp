@@ -1174,6 +1174,7 @@ int CollectorThread::updateDatafileStatistics (TRI_document_collection_t* docume
   for (auto it = cache->dfi.begin(); it != cache->dfi.end(); ++it) {
     TRI_voc_fid_t fid = (*it).first;
 
+    TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
     TRI_doc_datafile_info_t* dst = TRI_FindDatafileInfoDocumentCollection(document, fid, true);
 
     if (dst != nullptr) {
@@ -1195,6 +1196,8 @@ int CollectorThread::updateDatafileStatistics (TRI_document_collection_t* docume
       // with the same values
       memset(&dfi, 0, sizeof(TRI_doc_datafile_info_t));
     }
+  
+    TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
   }
 
   return TRI_ERROR_NO_ERROR;
