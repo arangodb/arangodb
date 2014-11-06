@@ -473,8 +473,7 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
           return TRI_ERROR_NO_ERROR;
         }
         else {
-          if (! getBlock(atLeast - skipped,
-                         (std::max)(atMost - skipped, DefaultBatchSize))) {
+          if (! getBlock(atLeast - skipped, atMost - skipped)) {
             _done = true;
             break; // must still put things in the result from the collector . . .
           }
@@ -950,9 +949,9 @@ bool IndexRangeBlock::readIndex (size_t atMost) {
   if (_documents.empty()) {
     _documents.reserve(atMost);
   }
-  //else {
-  //  _documents.clear();
-  //}
+  else { //FIXME does this trash some stuff unnecessarily?
+    _documents.clear();
+  }
 
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
   IndexOrCondition const* condition = &en->_ranges;
@@ -1094,12 +1093,13 @@ int IndexRangeBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 /// @brief getSome
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlItemBlock* IndexRangeBlock::getSome (size_t, // atLeast
+AqlItemBlock* IndexRangeBlock::getSome (size_t atLeast,
                                         size_t atMost) {
   if (_done) {
     return nullptr;
   }
 
+  //std::cout << "atMost = " << atMost << "\n"; 
   unique_ptr<AqlItemBlock> res(nullptr);
 
   do {
@@ -1109,7 +1109,7 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t, // atLeast
     // try again!
 
     if (_buffer.empty()) {
-      if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
+      if (! ExecutionBlock::getBlock(atLeast, atMost)) {
         _done = true;
         return nullptr;
       }
@@ -1132,7 +1132,8 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t, // atLeast
 
     if (toSend > 0) {
 
-      res.reset(new AqlItemBlock(toSend, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+      res.reset(new AqlItemBlock(toSend,
+            getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
       // automatically freed should we throw
       TRI_ASSERT(curRegs <= res->getNrRegs());
@@ -1141,7 +1142,8 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t, // atLeast
       inheritRegisters(cur, res.get(), _pos);
 
       // set our collection for our output register
-      res->setDocumentCollection(static_cast<triagens::aql::RegisterId>(curRegs), _trx->documentCollection(_collection->cid()));
+      res->setDocumentCollection(static_cast<triagens::aql::RegisterId>(curRegs),
+          _trx->documentCollection(_collection->cid()));
 
       for (size_t j = 0; j < toSend; j++) {
         if (j > 0) {
@@ -1176,8 +1178,8 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t, // atLeast
       }
 
       // let's read the index if bounds are variable:
-      if (! _buffer.empty() && ! _allBoundsConstant) {
-        readIndex(atMost); // TODO: add atMost?
+      if (! _buffer.empty()) {
+        readIndex(atMost); 
       }
       // If _buffer is empty, then we will fetch a new block in the next call
       // and then read the index.
@@ -1206,7 +1208,7 @@ size_t IndexRangeBlock::skipSome (size_t atLeast,
 
   while (skipped < atLeast ){
     if (_buffer.empty()) {
-      if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
+      if (! ExecutionBlock::getBlock(atLeast, atMost)) {
         _done = true;
         return skipped;
       }
@@ -1214,7 +1216,7 @@ size_t IndexRangeBlock::skipSome (size_t atLeast,
       
       // This is a new item, so let's read the index if bounds are variable:
       //if (! _allBoundsConstant) {
-        readIndex(atMost); // TODO: add atMost?
+        readIndex(atMost); 
       //}
 
       _posInDocs = 0;     // position in _documents . . .
@@ -1240,7 +1242,7 @@ size_t IndexRangeBlock::skipSome (size_t atLeast,
       }
 
       // let's read the index if bounds are variable:
-      if (! _buffer.empty() && ! _allBoundsConstant) {
+      if (! _buffer.empty()) {
         readIndex(atMost); // TODO: add atMost?
       }
       _posInDocs = 0;
