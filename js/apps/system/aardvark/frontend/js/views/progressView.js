@@ -35,11 +35,7 @@
 
       setTimeout(function(delay) {
         if (self.toShow === true) {
-          console.log("show with delay");
           self.show(msg, action, button);
-        }
-        else {
-          console.log("dont have to show");
         }
       }, delay);
     },
