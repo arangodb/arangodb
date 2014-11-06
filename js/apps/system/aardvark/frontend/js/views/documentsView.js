@@ -300,7 +300,7 @@
       $('#importCollection').removeClass('activated');
       $('#filterHeader').removeClass('activated');
       $('#markDocuments').removeClass('activated'); this.changeEditMode(false);
-      $('#exportCollection').addClass('activated');
+      $('#exportCollection').toggleClass('activated');
       this.markFilterToggle();
       $('#exportHeader').slideToggle(200);
       $('#importHeader').hide();
