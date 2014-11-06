@@ -1,6 +1,8 @@
 v2.3.0 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #1086: arangoimp: Odd errors if arguments are not given properly
+
 * performance improvements for AQL queries that use JavaScript-based expressions
   internally
 
