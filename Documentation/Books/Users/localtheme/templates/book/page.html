@@ -1,10 +1,7 @@
-{% extends "layout.html" %}
+{% extends "../layout.html" %}
 
 {% block head %}
     {% parent %}
-    {% if githubAuthor %}
-    <meta name="author" content="{{ githubAuthor }}">
-    {% endif %}
     {% if progress.current.next and progress.current.next.path %}
     <link rel="next" href="{{ basePath }}/{{ progress.current.next.path|mdLink }}" />
     {% endif %}
@@ -17,11 +14,11 @@
 {% block description %}{% if progress.current.level == "0" %}{{ description }}{% endif %}{% endblock %}
 
 {% block content %}
-    <div class="book" {% if githubId %}data-github="{{ githubId }}"{% endif %} data-level="{{ progress.current.level }}" data-basepath="{{ basePath }}" data-revision="{{ revision }}">
-    {% include "includes/book/summary.html" %}
+    <div class="book" data-level="{{ progress.current.level }}" data-basepath="{{ basePath }}" data-revision="{{ revision }}">
+    {% include "includes/summary.html" %}
     <div class="book-body">
         <div class="body-inner">
-            {% include "includes/book/header.html" %}
+            {% include "includes/header.html" %}
             <div class="page-wrapper" tabindex="-1">
                 <div class="page-inner">
                 {% block page_inner %}
@@ -30,9 +27,9 @@
                     {% if section.type == "normal" %}
                         {% autoescape false %}{{ section.content }}{% endautoescape %}
                     {% elif section.type == "exercise" %}
-                        {% include "./includes/book/exercise.html" with {section: section} %}
+                        {% include "./includes/exercise.html" with {section: section} %}
                     {% elif section.type == "quiz" %}
-                        {% include "./includes/book/quiz.html" with {section: section} %}
+                        {% include "./includes/quiz.html" with {section: section} %}
                     {% endif %}
                     </section>
                 {% endfor %}
