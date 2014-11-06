@@ -38,7 +38,7 @@ collections is establish via the documents' keys:
 
     FOR u IN users
       FILTER u.status == 'deleted'
-      REMOVE u._key IN backup
+      REMOVE u IN backup
 
 
 !SUBSECTION Restrictions
