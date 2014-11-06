@@ -264,10 +264,40 @@ AstNode::AstNode (AstNodeType type,
 /// @brief create a boolean node, with defining a value
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode::AstNode (bool v)
-  : AstNode(NODE_TYPE_VALUE, VALUE_TYPE_BOOL) {
+AstNode::AstNode (bool v, 
+                  AstNodeValueType valueType)
+  : AstNode(NODE_TYPE_VALUE, valueType) {
 
+  TRI_ASSERT(valueType == VALUE_TYPE_BOOL);
   value.value._bool = v;
+  TRI_ASSERT(flags == 0);
+  TRI_ASSERT(computedJson == nullptr);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an int node, with defining a value
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode::AstNode (int64_t v, 
+                  AstNodeValueType valueType)
+  : AstNode(NODE_TYPE_VALUE, valueType) {
+
+  TRI_ASSERT(valueType == VALUE_TYPE_INT);
+  value.value._int = v;
+  TRI_ASSERT(flags == 0);
+  TRI_ASSERT(computedJson == nullptr);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a string node, with defining a value
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode::AstNode (char const* v, 
+                  AstNodeValueType valueType)
+  : AstNode(NODE_TYPE_VALUE, valueType) {
+
+  TRI_ASSERT(valueType == VALUE_TYPE_STRING);
+  value.value._string = v;
   TRI_ASSERT(flags == 0);
   TRI_ASSERT(computedJson == nullptr);
 }
