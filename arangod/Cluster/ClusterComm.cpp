@@ -211,6 +211,17 @@ ClusterCommResult* ClusterComm::asyncRequest (
                               basics::StringUtils::itoa(coordTransactionID);
   (*headerFields)["Authorization"] = ServerState::instance()->getAuthentication();
 
+#ifdef DEBUG_CLUSTER_COMM
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+#if HAVE_BACKTRACE
+  std::string bt;
+  TRI_GetBacktrace(bt);
+  std::replace( bt.begin(), bt.end(), '\n', ';'); // replace all '\n' to ';'
+  (*headerFields)["X-Arango-BT-A-SYNC"] = bt;
+#endif
+#endif
+#endif
+
   op->status               = CL_COMM_SUBMITTED;
   op->reqtype              = reqtype;
   op->path                 = path;
@@ -336,7 +347,16 @@ ClusterCommResult* ClusterComm::syncRequest (
 
       map<string, string> headersCopy(headerFields);
       headersCopy.emplace(make_pair(string("Authorization"), ServerState::instance()->getAuthentication()));
-
+#ifdef DEBUG_CLUSTER_COMM
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+#if HAVE_BACKTRACE
+      std::string bt;
+      TRI_GetBacktrace(bt);
+      std::replace( bt.begin(), bt.end(), '\n', ';'); // replace all '\n' to ';'
+      headersCopy["X-Arango-BT-SYNC"] = bt;
+#endif
+#endif
+#endif
       res->result = client->request(reqtype, path, body.c_str(), body.size(),
                                     headersCopy);
 
