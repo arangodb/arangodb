@@ -885,7 +885,8 @@ actions.defineHttp({
 ///
 /// - *attribute*: The attribute that contains the texts.
 ///
-/// - *query*: The fulltext query.
+/// - *query*: The fulltext query. Please refer to [Fulltext queries](../SimpleQueries/FulltextQueries.html)
+///   for details.
 ///
 /// - *skip*: The number of documents to skip in the query (optional).
 ///
