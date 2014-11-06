@@ -2110,7 +2110,7 @@ static v8::Handle<v8::Value> FulltextQuery (SingleCollectionReadOnlyTransaction&
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief queries the fulltext index
 /// @startDocuBlock collectionFulltext
-/// `collection.FULLTEXT(index-handle, query)`
+/// `collection.fulltext(index-handle, query)`
 ///
 /// The *FULLTEXT* operator performs a fulltext search using the specified
 /// index and the specified *query*.
@@ -2127,7 +2127,12 @@ static v8::Handle<v8::Value> FulltextQuery (SingleCollectionReadOnlyTransaction&
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionFulltext}
-///   db.emails.FULLTEXT("emails/1632537", "word");
+/// ~ db._drop("emails");
+/// ~ db._create("emails");
+///   var idx = db.emails.ensureFulltextIndex("content").id;
+///   db.emails.save({ content: "Hello Alice, how are you doing? Regards, Bob" });
+///   db.emails.fulltext(idx.id, "alice,bob").toArray();
+/// ~ db._drop("emails");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
