@@ -254,7 +254,7 @@
       return queryObj;
     },
 
-    updloadDocuments : function (file) {
+    uploadDocuments : function (file) {
       var result;
       $.ajax({
         type: "POST",
