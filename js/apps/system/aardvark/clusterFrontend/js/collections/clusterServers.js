@@ -76,6 +76,7 @@
 
     getList: function(callback) {
       throw "Do not use";
+      /*
       var self = this;
       this.fetch({
         beforeSend: window.App.addAuth.bind(window.App),
@@ -93,6 +94,7 @@
         });
         callback(res);
       });
+      */
     },
 
     getOverview: function() {

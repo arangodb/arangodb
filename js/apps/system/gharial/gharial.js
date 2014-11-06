@@ -751,7 +751,7 @@
   /** Delete an edge definition.
    *
    * Removes an existing edge definition from this graph.
-   * All data stored in the edge collection is dropped as well as long
+   * All data stored in the edge collection are dropped as well as long
    * as it is not used in other graphs.
    */
   controller.del("/:graph/edge/:definition", function(req, res) {

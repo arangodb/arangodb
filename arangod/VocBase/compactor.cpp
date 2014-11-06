@@ -1029,9 +1029,11 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
 
     TRI_ASSERT(df != nullptr);
 
-    dfi = TRI_FindDatafileInfoDocumentCollection(document, df->_fid, true);
+    dfi = TRI_FindDatafileInfoDocumentCollection(document, df->_fid, false);
 
     if (dfi == nullptr) {
+      // datafile info not found. this shouldn't happen
+      LOG_WARNING("datafile info not found for datafile %llu", (unsigned long long) df->_fid);
       continue;
     }
 
