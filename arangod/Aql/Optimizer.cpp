@@ -453,8 +453,8 @@ void Optimizer::setupRules () {
   
   // try to replace simple OR conditions with IN
   registerRule("replace-OR-with-IN",
-               replaceORwithIN,
-               replaceORwithIN_pass6,
+               replaceOrWithIn,
+               replaceOrWithIn_pass6,
                true);
 
   // try to find a filter after an enumerate collection and find an index . . . 
@@ -468,6 +468,15 @@ void Optimizer::setupRules () {
                useIndexForSort,
                useIndexForSort_pass6,
                true);
+  
+#if 0
+  // try to remove filters which are covered by index ranges  
+  // rule seems to work, but tests are still missing
+  registerRule("remove-filter-covered-by-index",
+               removeFiltersCoveredByIndex,
+               removeFiltersCoveredByIndex_pass6,
+               true);
+#endif
 
   if (ExecutionEngine::isCoordinator()) {
     // distribute operations in cluster

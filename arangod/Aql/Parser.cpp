@@ -41,7 +41,7 @@ using namespace triagens::aql;
 /// @brief create the parser
 ////////////////////////////////////////////////////////////////////////////////
 
-Parser::Parser (Query* query)
+Parser::Parser (Query* query) 
   : _query(query),
     _ast(query->ast()),
     _scanner(nullptr),
@@ -190,22 +190,26 @@ void Parser::registerParseError (int errorCode,
     << std::string("' at position ")
     << line
     << std::string(":")
-    << (column + 1)
-    << std::endl
-    << _query->queryString()
-    << std::endl;
+    << (column + 1);
+  
+  if (_query->verboseErrors()) {
+    errorMessage 
+      << std::endl
+      << _query->queryString()
+      << std::endl;
 
-  // create a neat pointer to the location of the error.
-  size_t i;
-  for (i = 0; i + 1 < (size_t) column; i++) {
-    errorMessage << ' ';
+    // create a neat pointer to the location of the error.
+    size_t i;
+    for (i = 0; i + 1 < (size_t) column; i++) {
+      errorMessage << ' ';
+    }
+    if (i > 0) {
+      errorMessage << '^';
+    }
+    errorMessage << '^'
+                 << '^'
+                 << std::endl;
   }
-  if (i > 0) {
-    errorMessage << '^';
-  }
-  errorMessage << '^'
-               << '^'
-               << std::endl;
 
   registerError(errorCode, errorMessage.str().c_str());
 }
