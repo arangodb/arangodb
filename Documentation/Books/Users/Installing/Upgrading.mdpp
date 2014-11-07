@@ -4,7 +4,7 @@
 
 To upgrade an existing ArangoDB database to a newer version of ArangoDB (e.g. 1.2 to 1.3, or 2.0 to 2.1), the following method is recommended:
 
-* Check the *CHANGELOG* for API or other changes in the new version of ArangoDB and make sure your applications can deal with them
+* Check the *CHANGELOG* and the [list of incompatible changes](../Upgrading/UpgradingChanges23.html) for API or other changes in the new version of ArangoDB and make sure your applications can deal with them
 * Stop the "old" arangod service or binary
 * Copy the entire "old" data directory to a safe place (that is, a backup)
 * Install the new version of ArangoDB and start the server with the *--upgrade* option once. This might write to the logfile of ArangoDB, so you may want to check the logs for any issues before going on.
@@ -16,4 +16,4 @@ If anything goes wrong during or shortly after the upgrade:
 * Revert to the "old" arangod binary and restore the "old" data directory
 * Start the "old" version again
 
-It is not supported to use datafiles created or modified by a newer version of ArangoDB with an older ArangoDB version. For example, it is unsupported and is likely to cause problems when using 1.4 datafiles with an ArangoDB 1.3 instance.
+It is not supported to use datafiles created or modified by a newer version of ArangoDB with an older ArangoDB version. For example, it is unsupported and is likely to cause problems when using 2.3 datafiles with an ArangoDB 2.2 instance.
