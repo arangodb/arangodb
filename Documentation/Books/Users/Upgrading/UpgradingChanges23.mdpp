@@ -143,13 +143,20 @@ will look like this:
 }
 ```
 
+If the query option `fullCount` is requested, the `fullCount` result value will also
+be returned inside the `stats` attribute of the `extra` attribute, and not directly
+as an attribute inside the `extra` attribute as in 2.2. Note that a `fullCount` will
+only be present in `extra`.`stats` if it was requested as an option for the query.
+
 The result in ArangoDB 2.3 will also contain a `warnings` attribute with the list of 
 warnings that happened during query execution.
 
 
 !SUBSECTION Changed return values in ArangoStatement.explain()
 
-The return value of `ArangoStatement.explain()` has been changed in ArangoDB 2.3.
+The return value of `ArangoStatement.explain()` has changed significantly in 
+ArangoDB 2.3. The new return value structure is not compatible with the structure
+returned by 2.2.
 
 In ArangoDB 2.3, the full execution plan for an AQL query is returned alongside all 
 applied optimizer rules, optimization warnings etc. It is also possible to have the 
