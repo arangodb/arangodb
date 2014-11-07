@@ -264,7 +264,7 @@ arangosh> stmt.explain({ allPlans: true }).plans.length;
 2
 ```
 
-To see the minified version of the plan:
+To see a slightly more compact version of the plan, the following transformation can be applied:
 
 ```
 arangosh> stmt.explain({ allPlans: true }).plans.map(function(plan) { return formatPlan(plan); });
@@ -290,6 +290,19 @@ arangosh> stmt.explain({ allPlans: true }).plans.map(function(plan) { return for
     ] 
   } 
 ]
+```
+
+`explain` will also accept the following additional options:
+- *maxPlans*: limits the maximum number of plans that are created by the AQL query optimizer
+- *optimizer.rules*: a list of to-be-included or to-be-excluded optimizer rules
+  can be put into this attribute, telling the optimizer to include or exclude
+  specific rules. To disable a rule, prefix its name with a `-`, to enable a rule, prefix it
+  with a `+`. There is also a pseudo-rule `all`, which will match all optimizer rules.
+
+The following example disables all optimizer rules but `remove-redundant-calculations`:
+
+```
+arangosh> stmt.explain({ optimizer: { rules: [ "-all", "+remove-redundant-calculations" ] } });
 ```
 
 !SECTION Parsing queries

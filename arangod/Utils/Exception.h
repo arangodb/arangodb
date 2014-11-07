@@ -52,7 +52,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define THROW_ARANGO_EXCEPTION_PARAMS(code, ...)                               \
-  throw triagens::arango::Exception(code, triagens::arango::Exception::FillExceptionString(code, __VA_ARGS__), __FILE__, __LINE__, true)        
+  throw triagens::arango::Exception(code, triagens::arango::Exception::FillExceptionString(code, __VA_ARGS__), __FILE__, __LINE__)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief throws an arango exception with an error code and an already-built
@@ -60,7 +60,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define THROW_ARANGO_EXCEPTION_MESSAGE(code, message)                          \
-  throw triagens::arango::Exception(code, message, __FILE__, __LINE__, false)
+  throw triagens::arango::Exception(code, message, __FILE__, __LINE__)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -84,8 +84,7 @@ namespace triagens {
         Exception (int code,
                    std::string const& errorMessage,
                    char const* file,
-                   int line,
-                   bool errnoStringResolved);
+                   int line);
 
         ~Exception () throw ();
 
@@ -106,6 +105,12 @@ namespace triagens {
         }
 
         static std::string FillExceptionString (int, ...);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief controls whether a backtrace is created for each exception
+////////////////////////////////////////////////////////////////////////////////
+
+        static void SetVerbose (bool);
 
       protected:
         std::string       _errorMessage;

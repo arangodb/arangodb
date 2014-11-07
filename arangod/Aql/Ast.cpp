@@ -57,13 +57,25 @@ AstNode const Ast::NullNode{ NODE_TYPE_VALUE, VALUE_TYPE_NULL };
 /// @brief initialise a singleton false node instance
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode const Ast::FalseNode{ false }; 
+AstNode const Ast::FalseNode{ false, VALUE_TYPE_BOOL }; 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise a singleton true node instance
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode const Ast::TrueNode{ true }; 
+AstNode const Ast::TrueNode{ true, VALUE_TYPE_BOOL }; 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise a singleton zero node instance
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode const Ast::ZeroNode{ static_cast<int64_t>(0), VALUE_TYPE_INT }; 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise a singleton empty string node instance
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode const Ast::EmptyStringNode{ "", VALUE_TYPE_STRING }; 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inverse comparison operators
@@ -606,6 +618,7 @@ AstNode* Ast::createNodeIterator (char const* variableName,
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::createNodeValueNull () {
+  // performance optimization:
   // return a pointer to the singleton null node
   // note: this node is never registered nor freed
   return const_cast<AstNode*>(&NullNode);
@@ -616,11 +629,13 @@ AstNode* Ast::createNodeValueNull () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::createNodeValueBool (bool value) {
+  // performance optimization:
   // return a pointer to the singleton bool nodes
   // note: these nodes are never registered nor freed
   if (value) {
     return const_cast<AstNode*>(&TrueNode);
   }
+
   return const_cast<AstNode*>(&FalseNode);
 }
 
@@ -629,6 +644,13 @@ AstNode* Ast::createNodeValueBool (bool value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::createNodeValueInt (int64_t value) {
+  if (value == 0) {
+    // performance optimization:
+    // return a pointer to the singleton zero node
+    // note: these nodes are never registered nor freed
+    return const_cast<AstNode*>(&ZeroNode);
+  }
+
   AstNode* node = createNode(NODE_TYPE_VALUE);
   node->setValueType(VALUE_TYPE_INT);
   node->setIntValue(value);
@@ -655,6 +677,13 @@ AstNode* Ast::createNodeValueDouble (double value) {
 AstNode* Ast::createNodeValueString (char const* value) {
   if (value == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  if (*value == '\0') {
+    // performance optimization:
+    // return a pointer to the singleton empty string node
+    // note: these nodes are never registered nor freed
+    return const_cast<AstNode*>(&EmptyStringNode);
   }
 
   AstNode* node = createNode(NODE_TYPE_VALUE);
@@ -951,6 +980,11 @@ void Ast::optimize () {
     // LET
     if (node->type == NODE_TYPE_LET) {
       return optimizeLet(node);
+    }
+    
+    // FOR
+    if (node->type == NODE_TYPE_FOR) {
+      return optimizeFor(node);
     }
 
     return node;
@@ -1611,6 +1645,34 @@ AstNode* Ast::optimizeLet (AstNode* node) {
     v->constValue(static_cast<void*>(expression));
   }  
 
+  return node; 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimizes the FOR statement 
+/// no real optimizations are done here, but we do an early check if the
+/// FOR loop operand is actually a list 
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::optimizeFor (AstNode* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->type == NODE_TYPE_FOR);
+  TRI_ASSERT(node->numMembers() == 2);
+
+  AstNode* expression = node->getMember(1);
+
+  if (expression == nullptr) {
+    return node;
+  }
+
+  if (expression->isConstant() && 
+      expression->type != NODE_TYPE_LIST) {
+    // right-hand operand to FOR statement is no list
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_LIST_EXPECTED,
+                                   TRI_errno_string(TRI_ERROR_QUERY_LIST_EXPECTED) + std::string(" in FOR loop"));
+  }
+  
+  // no real optimizations will be done here  
   return node; 
 }
 

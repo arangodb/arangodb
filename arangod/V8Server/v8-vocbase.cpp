@@ -534,6 +534,22 @@ static v8::Handle<v8::Value> JS_normalize_string (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief enables or disables native backtrace
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_EnableNativeBacktraces (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "ENABLE_NATIVE_BACKTRACES(<value>)");
+  }
+
+  triagens::arango::Exception::SetVerbose(TRI_ObjectToBoolean(argv[0]));
+
+  return scope.Close(v8::Undefined());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two UTF 16 strings
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2542,6 +2558,8 @@ void TRI_InitV8VocBridge (triagens::arango::ApplicationV8* applicationV8,
   TRI_AddGlobalFunctionVocbase(context, "TRANSACTION", JS_Transaction, true);
   TRI_AddGlobalFunctionVocbase(context, "WAL_FLUSH", JS_FlushWal, true);
   TRI_AddGlobalFunctionVocbase(context, "WAL_PROPERTIES", JS_PropertiesWal, true);
+  
+  TRI_AddGlobalFunctionVocbase(context, "ENABLE_NATIVE_BACKTRACES", JS_EnableNativeBacktraces, true);
 
   // .............................................................................
   // create global variables

@@ -51,12 +51,15 @@ var ERRORS = require("internal").errors;
 /// The currently supported options are:
 /// - *allPlans*: if set to *true*, all possible execution plans will be returned.
 ///   The default is *false*, meaning only the optimal plan will be returned.
+///
 /// - *maxPlans*: an optional maximum number of plans that the optimizer is 
 ///   allowed to generate. Setting this attribute to a low value allows to put a
 ///   cap on the amount of work the optimizer does.
+///
 /// - *optimizer.rules*: a list of to-be-included or to-be-excluded optimizer rules
 ///   can be put into this attribute, telling the optimizer to include or exclude
-///   specific rules.
+///   specific rules. To disable a rule, prefix its name with a `-`, to enable a rule, prefix it
+///   with a `+`. There is also a pseudo-rule `all`, which will match all optimizer rules.
 ///
 /// @RESTDESCRIPTION
 ///
@@ -84,11 +87,15 @@ var ERRORS = require("internal").errors;
 /// Each plan in the result is a JSON object with the following attributes:
 /// - *nodes*: the list of execution nodes of the plan. The list of available node types
 ///   can be found [here](.../Aql/Optimizer.html)
+///
 /// - *estimatedCost*: the total estimated cost for the plan. If there are multiple
 ///   plans, the optimizer will choose the plan with the lowest total cost.
+///
 /// - *collections*: a list of collections used in the query
+///
 /// - *rules*: a list of rules the optimizer applied. The list of rules can be 
 ///   found [here](../Aql/Optimizer.html)
+///
 /// - *variables*: list of variables used in the query (note: this may contain
 ///   internal variables created by the optimizer)
 ///
@@ -143,6 +150,33 @@ var ERRORS = require("internal").errors;
 ///     for (var i = 0; i < 10; ++i) { db.products.save({ id: i }); }
 ///     body = { 
 ///       query : "FOR p IN products LET a = p.id FILTER a == 4 LET name = p.name SORT p.id LIMIT 1 RETURN name",
+///     };
+///
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Using some options:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestExplainOptions}
+///     var url = "/_api/explain";
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+///     db.products.ensureSkiplist("id");
+///     for (var i = 0; i < 10; ++i) { db.products.save({ id: i }); }
+///     body = { 
+///       query : "FOR p IN products LET a = p.id FILTER a == 4 LET name = p.name SORT p.id LIMIT 1 RETURN name",
+///       options : {
+///         maxPlans : 2,
+///         allPlans : true,
+///         optimizer : {
+///           rules: [ "-all", "+use-index-for-sort", "+use-index-range" ]
+///         }
+///       }
 ///     };
 ///
 ///     var response = logCurlRequest('POST', url, JSON.stringify(body));

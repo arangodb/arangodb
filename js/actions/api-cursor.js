@@ -92,6 +92,14 @@ var internal = require("internal");
 ///   be present in the result if the query has a LIMIT clause and the LIMIT clause is
 ///   actually used in the query.
 ///
+/// - *maxPlans*: limits the maximum number of plans that are created by the AQL
+///   query optimizer.
+///
+/// - *optimizer.rules*: a list of to-be-included or to-be-excluded optimizer rules
+///   can be put into this attribute, telling the optimizer to include or exclude
+///   specific rules. To disable a rule, prefix its name with a `-`, to enable a rule, prefix it
+///   with a `+`. There is also a pseudo-rule `all`, which will match all optimizer rules.
+///
 /// If the result set can be created by the server, the server will respond with
 /// *HTTP 201*. The body of the response will contain a JSON object with the
 /// result set.
@@ -207,7 +215,7 @@ var internal = require("internal");
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Using a query option:
+/// Using query option "fullCount":
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorCreateCursorOption}
 ///     var url = "/_api/cursor";
@@ -216,6 +224,28 @@ var internal = require("internal");
 ///       count: true,
 ///       options: {
 ///         fullCount: true
+///       }
+///     };
+///
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+///
+///     assert(response.code === 201);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Enabling and disabling optimizer rules:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestCursorOptimizerRules}
+///     var url = "/_api/cursor";
+///     var body = {
+///       query: "FOR i IN 1..10 LET a = 1 LET b = 2 FILTER a + b == 3 RETURN i",
+///       count: true,
+///       options: {
+///         maxPlans: 1,
+///         optimizer: {
+///           rules: [ "-all", "+remove-unnecessary-filters" ]
+///         }
 ///       }
 ///     };
 ///
