@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief dispatcher thread
+/// @brief debug helper handler
 ///
 /// @file
 ///
@@ -23,42 +23,30 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Martin Schoenert
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_DISPATCHER_DISPATCHER_THREAD_H
-#define ARANGODB_DISPATCHER_DISPATCHER_THREAD_H 1
+#ifndef ARANGODB_ADMIN_REST_DEBUG_HELPER_HANDLER_H
+#define ARANGODB_ADMIN_REST_DEBUG_HELPER_HANDLER_H 1
 
-#include "Basics/Thread.h"
+#include "Basics/Common.h"
 
-#include "Dispatcher/Job.h"
+#include "Admin/RestBaseHandler.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
+#include "Rest/HttpResponse.h"
 
 namespace triagens {
-  namespace rest {
-    class DispatcherQueue;
-    class Scheduler;
+  namespace admin {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  class Dispatcher
+// --SECTION--                                          class RestVersionHandler
 // -----------------------------------------------------------------------------
 
-/////////////////////////////////////////////////////////////////////////////
-/// @brief job dispatcher thread
-/////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief version request handler
+////////////////////////////////////////////////////////////////////////////////
 
-    class DispatcherThread : public basics::Thread {
-      friend class Dispatcher;
-      friend class DispatcherQueue;
-
-      private:
-        DispatcherThread (DispatcherThread const&);
-        DispatcherThread& operator= (DispatcherThread const&);
+    class RestDebugHelperHandler : public RestBaseHandler {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -67,58 +55,34 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a dispatcher thread
+/// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        DispatcherThread (DispatcherQueue*);
+        RestDebugHelperHandler (rest::HttpRequest*);
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    Thread methods
-// -----------------------------------------------------------------------------
-
-      protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        void run ();
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
+// --SECTION--                                                   Handler methods
 // -----------------------------------------------------------------------------
 
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief indicates that thread is doing a blocking operation
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        void blockThread ();
+        bool isDirect ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief indicates that thread has resumed work
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        void unblockThread ();
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
-
-      protected:
+        std::string const& queue () const;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief report status
+/// @brief returns the server version number
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void reportStatus ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief called after job finished
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual void tick (bool idle);
+        status_t execute ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -127,16 +91,11 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the dispatcher
+/// @brief name of the queue
 ////////////////////////////////////////////////////////////////////////////////
 
-        DispatcherQueue* _queue;
+        static const std::string QUEUE_NAME;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief current job type
-////////////////////////////////////////////////////////////////////////////////
-
-        Job::JobType _jobType;
     };
   }
 }

@@ -156,6 +156,7 @@ add_library(
     Admin/RestAdminBaseHandler.cpp
     Admin/RestAdminLogHandler.cpp
     Admin/RestBaseHandler.cpp
+    Admin/RestDebugHelperHandler.cpp
     Admin/RestJobHandler.cpp
     Admin/RestShutdownHandler.cpp
     Admin/RestVersionHandler.cpp
