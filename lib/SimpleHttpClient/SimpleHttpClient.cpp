@@ -66,14 +66,19 @@ namespace triagens {
       _maxPacketSize(128 * 1024 * 1024),
       _keepAlive(true) {
 
+      TRI_ASSERT(connection != nullptr);
+
       if (_connection->isConnected()) {
         _state = FINISHED;
       }
     }
 
     SimpleHttpClient::~SimpleHttpClient () {
-      if (! _keepConnectionOnDestruction || ! _connection->isConnected()) {
-        _connection->disconnect();
+      // connection may have been invalidated by other objects
+      if (_connection != nullptr) {
+        if (! _keepConnectionOnDestruction || ! _connection->isConnected()) {
+          _connection->disconnect();
+        }
       }
     }
 
@@ -86,6 +91,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     bool SimpleHttpClient::close () {
+      // ensure connection has not yet been invalidated
+      TRI_ASSERT(_connection != nullptr);
+
       _connection->disconnect();
       _state = IN_CONNECT;
 
@@ -103,6 +111,9 @@ namespace triagens {
             char const* body,
             size_t bodyLength,
             std::map<std::string, std::string> const& headerFields) {
+      
+      // ensure connection has not yet been invalidated
+      TRI_ASSERT(_connection != nullptr);
 
       TRI_ASSERT(_result == nullptr);
 
@@ -213,6 +224,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       void SimpleHttpClient::handleConnect () {
+        // ensure connection has not yet been invalidated
+        TRI_ASSERT(_connection != nullptr);
+
         if (! _connection->connect()) {
           setErrorMessage("Could not connect to '" +  _connection->getEndpoint()->getSpecification() + "'", errno);
           _state = DEAD;
