@@ -166,7 +166,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "NEAR",                        Function("NEAR",                        "AQL_NEAR", "h,n,n|nz,s", false, true, false) },
   { "WITHIN",                      Function("WITHIN",                      "AQL_WITHIN", "h,n,n,n|s", false, true, false) },
   { "WITHIN_RECTANGLE",            Function("WITHIN_RECTANGLE",            "AQL_WITHIN_RECTANGLE", "h,d,d,d,d", false, true, false) },
-  { "IS_IN_POLYGON",               Function("IS_IN_POLYGON",               "AQL_IS_IN_POLYGON", "d,d,l", true, false, true) },
+  { "IS_IN_POLYGON",               Function("IS_IN_POLYGON",               "AQL_IS_IN_POLYGON", "l,ln|nb", true, false, true) },
 
   // fulltext functions
   { "FULLTEXT",                    Function("FULLTEXT",                    "AQL_FULLTEXT", "h,s,s", false, true, false) },
