@@ -424,12 +424,14 @@ void RestAqlHandler::useQuery (std::string const& operation,
 
   try {
     handleUseQuery(operation, query, queryJson);
-    try {
-      _queryRegistry->close(_vocbase, _qId);
-    }
-    catch (...) {
-      // ignore errors on unregistering
-      // an error might occur if "shutdown" is called
+    if (_qId != 0) { 
+      try {
+        _queryRegistry->close(_vocbase, _qId);
+      }
+      catch (...) {
+        // ignore errors on unregistering
+        // an error might occur if "shutdown" is called
+      }
     }
   }
   catch (triagens::arango::Exception const& ex) {
@@ -853,6 +855,7 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
 
       // delete the query from the registry
       _queryRegistry->destroy(_vocbase, _qId, errorCode);
+      _qId = 0;
     }
     catch (...) {
       LOG_ERROR("shutdown lead to an exception");
