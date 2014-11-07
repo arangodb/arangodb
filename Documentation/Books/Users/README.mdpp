@@ -2,33 +2,30 @@
 
 Welcome to the ArangoDB documentation!
 
-The documentation introduces ArangoDB for you as an user, developer and administrator and describes all of his functions in detail. 
+The documentation introduces ArangoDB for you as an user, developer and administrator and describes all of its functions in detail. 
 
-ArangoDB is a multi-purpose open-source database with a flexible data
-model for documents, graphs and key-values. You can easily build high
-performance applications using a convenient 
-[SQL-like query language](../Aql/README.md) or [JavaScript](../Foxx/README.md) extensions.
+ArangoDB is a multi-purpose, open-source database with flexible data models for documents, graphs, and key-values. Build high performance applications using a convenient SQL-like query language or JavaScript extensions. Use ACID transactions if you require them. Scale horizontally and vertically with a few mouse clicks.
 
-The database server [_arangod_](../FirstSteps/Arangod.md) stores all documents and serves them
-using a REST interface. There are [drivers](https://www.arangodb.com/drivers) for all major languages like
-Ruby, Python, PHP, JavaScript, and Perl. In the following sections we
-will use the JavaScript shell to communicate with the database and
-demonstrate some of ArangoDB's features using JavaScript.
+Key features include:
 
-Some of the features and programs of ArangoDB are:
-
-- A powerful query language
-- Open Source
-- A database daemon
-- An ArangoDB shell
-- Flexible data modeling
-- And many more!
+* **Schema-free schemata** let you combine the space efficiency of MySQL with the performance power of NoSQL
+* Use ArangoDB as an **application server** and fuse your application and database together for maximal throughput
+* JavaScript for all: **no language zoo**, you can use one language from your browser to your back-end
+* ArangoDB is **multi-threaded** - exploit the power of all your cores
+* **Flexible data modelling**: model your data as combination of key-value pairs, documents or graphs - perfect for social relations
+* Free **index choice**: use the correct index for your problem, be it a skip list or a fulltext search
+* Configurable **durability**: let the application decide if it needs more durability or more performance
+* No-nonsense storage: ArangoDB uses all of the power of **modern storage hardware**, like SSD and large caches
+* **Powerful query language** (AQL) to retrieve and modify data 
+* **Transactions**: run queries on multiple documents or collections with optional transactional consistency and isolation
+* **Replication** and **Sharding**: set up the database in a master-slave configuration or spread bigger datasets across multiple servers
+* It is **open source** (Apache Licence 2.0)
 
 In this documentation you can inform yourself about all the functions, features and programs ArangoDB provides for you. 
 
-If you want to test the shell go [here](https://www.arangodb.com/shtutorial).
+If you want to test the shell go [here](https://www.arangodb.com/shtutorial/).
 
-If you want to play with our query language, go to our [AQL Tutorial](https://www.arangodb.com/shtutorial).
+If you want to play with our query language, go to our [AQL Tutorial](https://www.arangodb.com/aqltutorial/).
 
 !SUBSECTION Community
 

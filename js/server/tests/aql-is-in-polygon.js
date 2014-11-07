@@ -1,0 +1,97 @@
+/*jshint strict: false, maxlen: 500 */
+/*global require, AQL_EXECUTE, assertTrue */
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tests for optimizer rules
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2010-2014 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Florian Bartels
+/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+var jsunity = require("jsunity");
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite
+////////////////////////////////////////////////////////////////////////////////
+
+function isInPolygonSuite () {
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+
+
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test WITHIN_RECTANGLE as result
+////////////////////////////////////////////////////////////////////////////////
+
+    testIsInPolygonSuiteAsResult : function () {
+      assertTrue(AQL_EXECUTE("RETURN IS_IN_POLYGON ([[ 0, 0 ], [ 0, 10 ], [ 10, 10 ], [ 10, 0 ] ], 10, 9)").json[0]);
+    }
+    /*
+    testIsNotInPolygonSuiteAsResult : function () {
+      assertFalse(AQL_EXECUTE("RETURN IS_IN_POLYGON ([[ 0, 0 ], [ 0, 10 ], [ 10, 10 ], [ 10, 0 ] ], 10, 11)").json[0]);
+    },
+
+    testIsInPolygonSuiteWithListParameter : function () {
+      assertTrue(AQL_EXECUTE("RETURN IS_IN_POLYGON ([[ 0, 0 ], [ 0, 10 ], [ 10, 10 ], [ 11, 0 ] ], [ 11, 0 ])").json[0]);
+    },
+
+    testIsInPolygonSuiteWithListParameterWithReverseParameterOrder : function () {
+      assertFalse(AQL_EXECUTE("RETURN IS_IN_POLYGON ([[ 0, 0 ], [ 0, 10 ], [ 10, 10 ], [ 11, 0 ] ], [ 0, 11 ], false)").json[0]);
+    },
+
+    testIsInPolygonSuiteWithSinglePointPolygon : function () {
+      assertTrue(AQL_EXECUTE("RETURN IS_IN_POLYGON ([[ 0, 0 ]], [ 0, 0 ])").json[0]);
+    }*/
+
+
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes the test suite
+////////////////////////////////////////////////////////////////////////////////
+
+jsunity.run(isInPolygonSuite);
+
+return jsunity.done();
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// End:
