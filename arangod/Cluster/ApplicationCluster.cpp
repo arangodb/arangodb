@@ -200,7 +200,7 @@ bool ApplicationCluster::prepare () {
   ClusterInfo::initialise();
 
   // initialise ClusterComm library
-  ClusterComm::initialise();
+  ClusterComm::initialise(_dispatcher);
 
   // disable error logging for a while
   ClusterComm::instance()->enableConnectionErrorLogging(false);
