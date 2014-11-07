@@ -119,24 +119,18 @@
 
       //check for invalid query names, if present change the box-shadow to red
       // and disable the save functionality
-      var boolTemp = false;
-      this.customQueries.some(function(query){
-        if( query.name === saveName ){
-          $('#modalButton1').removeClass('button-success');
-          $('#modalButton1').addClass('button-warning');
-          $('#modalButton1').text('Update');
-            boolTemp = true;
-        } 
-        else {
-          $('#modalButton1').removeClass('button-warning');
-          $('#modalButton1').addClass('button-success');
-          $('#modalButton1').text('Save');
-        }
-
-        if (boolTemp) {
-          return true;
-        }
+      var found = this.customQueries.some(function(query){
+        return query.name === saveName;
       });
+      if(found){
+        $('#modalButton1').removeClass('button-success');
+        $('#modalButton1').addClass('button-warning');
+        $('#modalButton1').text('Update');
+      } else {
+        $('#modalButton1').removeClass('button-warning');
+        $('#modalButton1').addClass('button-success');
+        $('#modalButton1').text('Save');
+      }
     },
 
     clearOutput: function () {
@@ -304,7 +298,7 @@
       var inputEditor = ace.edit("aqlEditor");
       var query = inputEditor.getValue();
       if (query !== '' || query !== undefined || query !== null) {
-        window.open(encodeURI("query/result/download/" + btoa(JSON.stringify({ query: query }))));
+        window.open("query/result/download/" + encodeURIComponent(btoa(JSON.stringify({ query: query }))));
       }
       else {
         arangoHelper.arangoError("Query error", "could not query result.");
@@ -332,7 +326,7 @@
 
       });
 
-      window.open(encodeURI("query/download/" + name));
+      window.open("query/download/" + encodeURIComponent(name));
     },
 
     deselect: function (editor) {
@@ -372,9 +366,9 @@
       });
 
       //old storage method
-      if (localStorage.getItem("customQueries")) {
-
-        var queries = JSON.parse(localStorage.getItem("customQueries"));
+      var item = localStorage.getItem("customQueries");
+      if (item) {
+        var queries = JSON.parse(item);
         //save queries in user collections extra attribute
         _.each(queries, function(oldQuery) {
           self.collection.add({
@@ -586,11 +580,15 @@
       // clear result
       outputEditor.setValue('');
 
-      window.progressView.show(
+      /*window.progressView.show(
         "Query is operating...",
         self.abortQuery("id"),
         '<button class="button-danger">Abort Query</button>'
+      );*/
+      window.progressView.show(
+        "Query is operating..."
       );
+
 
       $.ajax({
         type: "POST",
@@ -603,9 +601,11 @@
           self.switchTab("result-switch");
           window.progressView.hide();
           self.deselect(outputEditor);
+          $('#downloadQueryResult').show();
         },
         error: function (data) {
           self.switchTab("result-switch");
+          $('#downloadQueryResult').hide();
           try {
             var temp = JSON.parse(data.responseText);
             outputEditor.setValue('[' + temp.errorNum + '] ' + temp.errorMessage);

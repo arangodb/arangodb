@@ -1649,45 +1649,42 @@ AqlItemBlock* EnumerateListBlock::getSome (size_t, size_t atMost) {
     // get the size of the thing we are looping over
     _collection = nullptr;
     switch (inVarReg._type) {
-    case AqlValue::JSON: {
-      if(! inVarReg._json->isList()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "EnumerateListBlock: JSON is not a list");
-      }
-      sizeInVar = inVarReg._json->size();
-      break;
-    }
-
-    case AqlValue::RANGE: {
-      sizeInVar = inVarReg._range->size();
-      break;
-    }
-
-    case AqlValue::DOCVEC: {
-      if( _index == 0) { // this is a (maybe) new DOCVEC
-        _DOCVECsize = 0;
-        //we require the total number of items
-
-        for (size_t i = 0; i < inVarReg._vector->size(); i++) {
-          _DOCVECsize += inVarReg._vector->at(i)->size();
+      case AqlValue::JSON: {
+        if (! inVarReg._json->isList()) {
+          throwListExpectedException();
         }
+        sizeInVar = inVarReg._json->size();
+        break;
       }
-      sizeInVar = _DOCVECsize;
-      if (sizeInVar > 0) {
-        _collection = inVarReg._vector->at(0)->getDocumentCollection(0);
+
+      case AqlValue::RANGE: {
+        sizeInVar = inVarReg._range->size();
+        break;
       }
-      break;
-    }
 
-    case AqlValue::SHAPED: {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "EnumerateListBlock: cannot iterate over shaped value");
-    }
+      case AqlValue::DOCVEC: {
+        if (_index == 0) { // this is a (maybe) new DOCVEC
+          _DOCVECsize = 0;
+          // we require the total number of items
 
-    case AqlValue::EMPTY: {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "EnumerateListBlock: cannot iterate over empty value");
-    }
+          for (size_t i = 0; i < inVarReg._vector->size(); i++) {
+            _DOCVECsize += inVarReg._vector->at(i)->size();
+          }
+        }
+        sizeInVar = _DOCVECsize;
+        if (sizeInVar > 0) {
+          _collection = inVarReg._vector->at(0)->getDocumentCollection(0);
+        }
+        break;
+      }
+
+      case AqlValue::SHAPED: {
+        throwListExpectedException();
+      }
+
+      case AqlValue::EMPTY: {
+        throwListExpectedException();
+      }
     }
 
     if (sizeInVar == 0) {
@@ -1773,17 +1770,18 @@ size_t EnumerateListBlock::skipSome (size_t atLeast, size_t atMost) {
     // get the size of the thing we are looping over
     switch (inVarReg._type) {
       case AqlValue::JSON: {
-        if(! inVarReg._json->isList()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                         "EnumerateListBlock: JSON is not a list");
+        if (! inVarReg._json->isList()) {
+          throwListExpectedException();
         }
         sizeInVar = inVarReg._json->size();
         break;
       }
+
       case AqlValue::RANGE: {
         sizeInVar = inVarReg._range->size();
         break;
       }
+
       case AqlValue::DOCVEC: {
         if( _index == 0) { // this is a (maybe) new DOCVEC
           _DOCVECsize = 0;
@@ -1795,9 +1793,10 @@ size_t EnumerateListBlock::skipSome (size_t atLeast, size_t atMost) {
         sizeInVar = _DOCVECsize;
         break;
       }
-      default: {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "EnumerateListBlock: unexpected type in register");
+
+      case AqlValue::SHAPED: 
+      case AqlValue::EMPTY: {
+        throwListExpectedException();
       }
     }
 
@@ -1852,7 +1851,17 @@ AqlValue EnumerateListBlock::getAqlValue (AqlValue inVarReg) {
     }
   }
 
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected value in variable to iterate over");
+  throwListExpectedException();
+  TRI_ASSERT(false);
+
+  // cannot be reached. function call above will always throw an exception
+  return AqlValue();
+}
+          
+void EnumerateListBlock::throwListExpectedException () {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_LIST_EXPECTED, 
+                                 TRI_errno_string(TRI_ERROR_QUERY_LIST_EXPECTED) +
+                                 std::string("in FOR loop: "));
 }
 
 // -----------------------------------------------------------------------------
@@ -3748,8 +3757,9 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
 
   // the non-simple case . . .
   size_t available = 0; // nr of available rows
-  size_t index;         // an index of a non-empty buffer
-  
+  size_t index = 0;     // an index of a non-empty buffer
+  TRI_ASSERT(_dependencies.size() != 0); 
+
   // pull more blocks from dependencies . . .
   for (size_t i = 0; i < _dependencies.size(); i++) {
     if (_gatherBlockBuffer.at(i).empty()) {

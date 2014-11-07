@@ -3,14 +3,14 @@
 
 !SECTION Introduction to Skiplist Indexes
 
-This is an introduction to ArangoDB's skip-lists.
+This is an introduction to ArangoDB's skiplists.
 
 It is possible to define a skip-list index on one or more attributes (or paths)
 of a documents. This skip-list is then used in queries to locate documents
 within a given range. If the skip-list is unique, then no two documents are
 allowed to have the same set of attribute values.
 
-!SECTION Accessing Skip-List Indexes from the Shell
+!SECTION Accessing Skiplist Indexes from the Shell
 
 `ensureUniqueSkiplist(field1, field2, ..., fieldn)`
 
@@ -18,40 +18,41 @@ Creates a skiplist index on all documents using attributes as paths to the field
 
 In case that the index was successfully created, the index identifier is returned.
 
-	arangod> db.ids.ensureUniqueSkiplist("myId");
-	{ "id" : "ids/42612360", "unique" : true, "type" : "skiplist", "fields" : ["myId"], "isNewlyCreated" : true }
+```
+arangosh> db.ids.ensureUniqueSkiplist("myId");
+{ "id" : "ids/42612360", "unique" : true, "type" : "skiplist", "fields" : ["myId"], "isNewlyCreated" : true }
+
+arangosh> db.ids.save({ "myId": 123 });
+{ "_id" : "ids/42743432", "_key" : "42743432", "_rev" : "42743432" }
+arangosh> db.ids.save({ "myId": 456 });
+{ "_id" : "ids/42808968", "_key" : "42808968", "_rev" : "42808968" }
+arangosh> db.ids.save({ "myId": 789 });
+{ "_id" : "ids/42874504", "_key" : "42874504", "_rev" : "42874504" } 
+
+arangosh> db.ids.save({ "myId": 123 });
+JavaScript exception in file '(arango)' at 1,8: [ArangoError 1210: cannot save document: unique constraint violated]
+!db.ids.save({ "myId": 123 });
+!       ^
+stacktrace: [ArangoError 1210: cannot save document: unique constraint violated]
+at (arango):1:8
+
+arangosh> db.ids.ensureUniqueSkiplist("name.first", "name.last");
+{ "id" : "ids/43362549", "unique" : true, "type" : "skiplist", "fields" : ["name.first", "name.last"], "isNewlyCreated" : true }
+
+arangosh> db.ids.save({ "name" : { "first" : "hans", "last": "hansen" }});
+{ "_id" : "ids/43755765", "_rev" : "43755765", "_key" : "43755765" }
+arangosh> db.ids.save({ "name" : { "first" : "jens", "last": "jensen" }});
+{ "_id" : "ids/43821301", "_rev" : "43821301", "_key" : "43821301" }
+arangod> db.ids.save({ "name" : { "first" : "hans", "last": "jensen" }});
+{ "_id" : "ids/43886837", "_rev" : "43886837", "_key" : "43886837" }
 	
-	arangod> db.ids.save({ "myId": 123 });
-	{ "_id" : "ids/42743432", "_key" : "42743432", "_rev" : "42743432" }
-	arangod> db.ids.save({ "myId": 456 });
-	{ "_id" : "ids/42808968", "_key" : "42808968", "_rev" : "42808968" }
-	arangod> db.ids.save({ "myId": 789 });
-	{ "_id" : "ids/42874504", "_key" : "42874504", "_rev" : "42874504" } 
-	
-	arangod> db.ids.save({ "myId": 123 });
-	JavaScript exception in file '(arango)' at 1,8: [ArangoError 1210: cannot save document: unique constraint violated]
-	!db.ids.save({ "myId": 123 });
-	!       ^
-	stacktrace: [ArangoError 1210: cannot save document: unique constraint violated]
-    at (arango):1:8
-	
-	
-	arangod> db.ids.ensureUniqueSkiplist("name.first", "name.last");
-	{ "id" : "ids/43362549", "unique" : true, "type" : "skiplist", "fields" : ["name.first", "name.last"], "isNewlyCreated" : true }
-	
-	arangod> db.ids.save({ "name" : { "first" : "hans", "last": "hansen" }});
-	{ "_id" : "ids/43755765", "_rev" : "43755765", "_key" : "43755765" }
-	arangod> db.ids.save({ "name" : { "first" : "jens", "last": "jensen" }});
-	{ "_id" : "ids/43821301", "_rev" : "43821301", "_key" : "43821301" }
-	arangod> db.ids.save({ "name" : { "first" : "hans", "last": "jensen" }});
-	{ "_id" : "ids/43886837", "_rev" : "43886837", "_key" : "43886837" }
-	
-	arangod> db.ids.save({ "name" : { "first" : "hans", "last": "hansen" }});
-	JavaScript exception in file '(arango)' at 1,8: [ArangoError 1210: cannot save document: unique constraint violated]
-	!db.ids.save({"name" : {"first" : "hans", "last": "hansen" }});
-	!       ^
-	stacktrace: [ArangoError 1210: cannot save document: unique constraint violated]
-    at (arango):1:8
+arangosh> db.ids.save({ "name" : { "first" : "hans", "last": "hansen" }});
+JavaScript exception in file '(arango)' at 1,8: [ArangoError 1210: cannot save document: unique constraint violated]
+!db.ids.save({"name" : {"first" : "hans", "last": "hansen" }});
+!       ^
+stacktrace: [ArangoError 1210: cannot save document: unique constraint violated]
+at (arango):1:8
+```
 
 `ensureSkiplist(field1, field2, ..., fieldn)`
 
@@ -59,20 +60,21 @@ Creates a multi skiplist index on all documents using attributes as paths to the
 
 In case that the index was successfully created, the index identifier is returned.
 
-	arangod> db.names.ensureSkiplist("first");
-	{ "id" : "names/42725508", "unique" : false, "type" : "skiplist", "fields" : ["first"], "isNewlyCreated" : true }
-	
-	arangod> db.names.save({ "first" : "Tim" });
-	{ "_id" : "names/42856580", "_key" : "42856580", "_rev" : "42856580" }
-	arangod> db.names.save({ "first" : "Tom" });
-	{ "_id" : "names/42922116", "_key" : "42922116", "_rev" : "42922116" }
-	arangod> db.names.save({ "first" : "John" });
-	{ "_id" : "names/42987652", "_key" : "42987652", "_rev" : "42987652" }
-	arangod> db.names.save({ "first" : "Tim" });
-	{ "_id" : "names/43053188", "_key" : "43053188", "_rev" : "43053188" }
-	arangod> db.names.save({ "first" : "Tom" });
-	{ "_id" : "names/43118724", "_key" : "43118724", "_rev" : "43118724" }
+```
+arangosh> db.names.ensureSkiplist("first");
+{ "id" : "names/42725508", "unique" : false, "type" : "skiplist", "fields" : ["first"], "isNewlyCreated" : true }
 
+arangosh> db.names.save({ "first" : "Tim" });
+{ "_id" : "names/42856580", "_key" : "42856580", "_rev" : "42856580" }
+arangosh> db.names.save({ "first" : "Tom" });
+{ "_id" : "names/42922116", "_key" : "42922116", "_rev" : "42922116" }
+arangosh> db.names.save({ "first" : "John" });
+{ "_id" : "names/42987652", "_key" : "42987652", "_rev" : "42987652" }
+arangosh> db.names.save({ "first" : "Tim" });
+{ "_id" : "names/43053188", "_key" : "43053188", "_rev" : "43053188" }
+arangosh> db.names.save({ "first" : "Tom" });
+{ "_id" : "names/43118724", "_key" : "43118724", "_rev" : "43118724" }
+```
 
 <!--
 @anchor IndexSkiplistShellEnsureUniqueSkiplist

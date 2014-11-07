@@ -23,6 +23,32 @@ AQL offers the following functions to filter data based on [geo indexes](../Glos
   the *distancename* argument. The result documents will contain the distance value in
   an attribute of that name.
 
+* *WITHIN_RECTANGLE(collection, latitude1, longitude1, latitude2, longitude2)*:
+  Returns all documents from collection *collection* that are positioned inside the bounding
+  rectangle with the points (*latitude1*, *longitude1*) and (*latitude2*, *longitude2*).
+
 Note: these functions require the collection *collection* to have at least
 one geo index.  If no geo index can be found, calling this function will fail
 with an error.
+
+- *IS_IN_POLYGON(polygon, latitude, longitude)*:
+  Returns `true` if the point (*latitude*, *longitude*) is inside the polygon specified in the
+  *polygon* parameter. *latitude* can also be specified as a list with two values. By default,
+  the first list element will be interpreted as the latitude value and the second list element
+  as the longitude value. This can be changed by setting the 3rd parameter to `true`.
+  *polygon* needs to be a list of points, with each point being a list with two values. The
+  first value of each point is considered to be the latitude value and the second to be the
+  longitude value, unless the 3rd parameter has a value of `true`. That means latitude and
+  longitude need to be specified in the same order in the *points* parameter as they are in
+  the search coordinate.
+
+  Examples:
+
+      /* will check if the point (lat 4, lon 7) is contained inside the polygon */
+      RETURN IS_IN_POLYGON([ [ 0, 0 ], [ 0, 10 ], [ 10, 10 ], [ 10, 0 ] ], 4, 7)
+
+      /* will check if the point (lat 4, lon 7) is contained inside the polygon */
+      RETURN IS_IN_POLYGON([ [ 0, 0 ], [ 0, 10 ], [ 10, 10 ], [ 10, 0 ] ], [ 4, 7 ])
+      
+      /* will check if the point (lat 4, lon 7) is contained inside the polygon */
+      RETURN IS_IN_POLYGON([ [ 0, 0 ], [ 10, 0 ], [ 10, 10 ], [ 0, 10 ] ], [ 7, 4 ], true)

@@ -407,7 +407,8 @@ controller.get("/query/download/:user", function(req, res) {
 
   res.set("Content-Type", "application/json");
   res.set("Content-Disposition", "attachment; filename=queries.json");
-  res.json(result.extra.queries);
+
+  res.json(result.userData.queries);
 
 }).summary("Download all user queries")
   .notes("This function downloads all user queries from the given user");

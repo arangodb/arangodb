@@ -74,6 +74,12 @@
       window.modalView.hide();
     },
 
+    truncateCollection: function () {
+      this.model.truncateCollection();
+      this.render();
+      window.modalView.hide();
+    },
+
     deleteCollection: function () {
       this.model.destroy(
         {
@@ -249,6 +255,18 @@
           "change-collection-status", "Status", this.model.get('status'), ""
         )
       );
+      buttons.push(
+        window.modalView.createDeleteButton(
+          "Delete",
+          this.deleteCollection.bind(this)
+        )
+      );
+      buttons.push(
+        window.modalView.createDeleteButton(
+          "Truncate",
+          this.truncateCollection.bind(this)
+        )
+      );
       if(collectionIsLoaded) {
         buttons.push(
           window.modalView.createNotificationButton(
@@ -265,12 +283,6 @@
         );
       }
 
-      buttons.push(
-        window.modalView.createDeleteButton(
-          "Delete",
-          this.deleteCollection.bind(this)
-        )
-      );
       buttons.push(
         window.modalView.createSuccessButton(
           "Save",

@@ -64,10 +64,12 @@ var oldApi = function (query, plan, bindVars) {
   db._query(query, bindVars);
   return {};
 };
+/*
 var newApi = function (query, plan, bindVars) {
   var ret = AQL_EXECUTE(query, bindVars, paramProfile);
   return ret.profile;
 };
+*/
 /*
 var newApiUnoptimized = function (query, plan, bindVars) {
   AQL_EXECUTE(query, bindVars, paramNone);
@@ -261,6 +263,26 @@ var testRangeSuperseedsSort2 = function (testParams, testMethodStr, testMethod) 
 };
 
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test in detail that an index range fullfills everything the sort does, 
+//   and thus the sort is removed; multi-dimensional indexes are utilized.
+////////////////////////////////////////////////////////////////////////////////
+var testJoinIndexed = function (testParams, testMethodStr, testMethod) {
+  var query = "FOR v IN " + colName + " FOR w in " + colNameOther + " FILTER v.a == w.f RETURN [v.a]";
+
+  return testMethod.executeQuery(query, {}, {});
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test in detail that an index range fullfills everything the sort does, 
+//   and thus the sort is removed; multi-dimensional indexes are utilized.
+////////////////////////////////////////////////////////////////////////////////
+var testJoinNonIndexed = function (testParams, testMethodStr, testMethod) {
+  var query = "FOR v IN " + colName + " FOR w in " + colNameOther + " FILTER v.joinme == w.joinme RETURN [v.joinme]";
+
+  return testMethod.executeQuery(query, {}, {});
+};
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      toIndexRange
@@ -346,9 +368,9 @@ var testOptions = {
 };
 
 var testMethods = {
-  ahuacatl : {executeQuery: oldApi},
-  aql2Optimized : {executeQuery: newApi}
+  ahuacatl : {executeQuery: oldApi}
 /*
+  aql2Optimized : {executeQuery: newApi}
   aql2UnOptimized : {executeQuery: newApiUnoptimized},
   aql2Explain : {executeQuery: newApiUnoptimized, forceRuns: 1}
   
@@ -387,8 +409,11 @@ var optimizerRuleTestSuite = [
 
   { name: "MultiRangeBandpass",          func: testMultiRangeBandpass},
 
+
   { name: "teardown",    setUp: null, teardown: tearDown, params: null, func: null}
 ];
+
+
 
 var loadTestRunner = require("loadtestrunner");
 var repgen = require("reportgenerator");
@@ -396,10 +421,33 @@ var repgen = require("reportgenerator");
 //skiplist  = db[colName].load();
 //skiplist2 = db[colNameOther].load();
 
-
+/*
 var ret = loadTestRunner.loadTestRunner(optimizerRuleTestSuite, testOptions, testMethods);
 //require("internal").print(JSON.stringify(ret));
 repgen.generatePerfReportJTL("sort", ret);
+*/
+
+var testJoinOptions = {
+  dbcols: 50,
+  runs: 5,   // number of runs for each test Has to be at least 3, else calculations will fail.
+  strip: 1,   // how many min/max extreme values to ignore
+  digits: 4   // result display digits
+};
+
+var joinTestSuite = [
+  { name: "setup",    setUp: setUp, teardown: null, params: null, func: null},
+
+  { name: "testJoinIndexed",             func: testJoinIndexed},
+  { name: "testJoinNonIndexed",          func: testJoinNonIndexed},
+
+  { name: "teardown",    setUp: null, teardown: tearDown, params: null, func: null}
+];
+
+
+ret = loadTestRunner.loadTestRunner(joinTestSuite, testJoinOptions, testMethods);
+//require("internal").print(JSON.stringify(ret));
+repgen.generatePerfReportJTL("join", ret);
+
 
 return ret;
 // Local Variables:

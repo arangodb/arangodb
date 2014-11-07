@@ -1,0 +1,25 @@
+!CHAPTER Working with Indexes
+
+!SECTION Collection Methods
+
+!SUBSECTION Listing all indexes of a collection
+<!-- arangod/V8Server/v8-vocbase.cpp -->
+@startDocuBlock collectionGetIndexes
+
+!SUBSECTION Creating an index
+<!-- arangod/V8Server/v8-vocbase.cpp -->
+@startDocuBlock collectionEnsureIndex
+
+!SUBSECTION Dropping an index
+<!-- arangod/V8Server/v8-vocbase.cpp -->
+@startDocuBlock col_dropIndex
+
+!SECTION Database Methods
+
+!SUBSECTION Fetching an index by handle
+<!-- js/server/modules/org/arangodb/arango-database.js -->
+@startDocuBlock IndexHandle
+
+!SUBSECTION Dropping an index
+<!-- js/server/modules/org/arangodb/arango-database.js -->
+@startDocuBlock dropIndex

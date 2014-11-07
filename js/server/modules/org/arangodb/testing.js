@@ -134,7 +134,6 @@ var allTests =
     "arangob",
     "importing",
     "upgrade",
-    "foxx_manager",
     "authentication",
     "authentication_parameters"
   ];
@@ -224,7 +223,8 @@ function makeTestingArgs () {
            "--javascript.app-path",            fs.join(topDir, "js", "apps"),
            "--javascript.startup-directory",   fs.join(topDir, "js"),
            "--ruby.modules-path", fs.join(topDir,"mr", "common", "modules"),
-           "--server.threads",                 "4",
+           "--server.threads",                 "20",
+           "--javascript.v8-contexts",         "5",
            "--server.disable-authentication",  "true",
            "--server.allow-use-database",      "true" ];
 }

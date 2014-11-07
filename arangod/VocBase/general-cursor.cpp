@@ -32,6 +32,7 @@
 #include "Basics/json.h"
 #include "Basics/logging.h"
 #include "Basics/vector.h"
+#include "V8/v8-conv.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     cursor result
@@ -48,7 +49,7 @@
 static void FreeData (TRI_general_cursor_result_t* result) {
   TRI_json_t* json = (TRI_json_t*) result->_data;
 
-  TRI_ASSERT(json);
+  TRI_ASSERT(json != nullptr);
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 }
@@ -92,6 +93,20 @@ TRI_general_cursor_result_t* TRI_CreateResultGeneralCursor (TRI_json_t* data) {
   }
 
   return TRI_CreateCursorResult((void*) data, &FreeData, &GetAt, &GetLength);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a result set
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_general_cursor_result_t* TRI_CreateResultGeneralCursor (v8::Handle<v8::Array> const data) {
+  TRI_json_t* json = TRI_ObjectToJson(data);
+
+  if (! TRI_IsListJson(json)) {
+    return nullptr;
+  }
+
+  return TRI_CreateCursorResult((void*) json, &FreeData, &GetAt, &GetLength);
 }
 
 // -----------------------------------------------------------------------------

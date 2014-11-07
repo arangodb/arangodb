@@ -187,8 +187,9 @@
 
     databases: function () {
       if (arangoHelper.databaseAllowed() === true) {
-        if (!this.databaseView) {
+        if (! this.databaseView) {
           this.databaseView = new window.databaseView({
+            users: this.userCollection,
             collection: new window.ArangoDatabase(
               [],
               {
