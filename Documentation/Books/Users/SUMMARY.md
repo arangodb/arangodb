@@ -23,20 +23,20 @@
 <!-- 3 -->
 * [ArangoDB Web Interface](WebInterface/README.md)
 <!-- 4 -->
-* [Handling Databases](Databases/README.md)
+* [Creating and Dropping Databases](Databases/README.md)
   * [Working with Databases](Databases/WorkingWith.md)
   * [Notes about Databases](Databases/Notes.md)
 <!-- 5 -->
-* [Handling Collections](Collections/README.md)
+* [Creating and Dropping Collections](Collections/README.md)
   * [Collection Methods](Collections/CollectionMethods.md)
   * [Database Methods](Collections/DatabaseMethods.md)
 <!-- 6 -->
-* [Handling Documents](Documents/README.md)
+* [Working with Documents](Documents/README.md)
   * [Address and ETag](Documents/DocumentAddress.md)
   * [Collection Methods](Documents/DocumentMethods.md)
   * [Database Methods](Documents/DatabaseMethods.md)
 <!-- 7 -->
-* [Handling Edges](Edges/README.md)
+* [Working with Edges](Edges/README.md)
 <!-- 8 -->
 * [Simple Queries](SimpleQueries/README.md)
   * [Geo Queries](SimpleQueries/GeoQueries.md)
@@ -57,6 +57,7 @@
 * [AQL](Aql/README.md)
   * [How to invoke AQL](Aql/Invoke.md)
   * [Data modification queries](Aql/DataModification.md)
+  * [The AQL query optimizer](Aql/Optimizer.md)
   * [Language Basics](Aql/Basics.md)
   * [Functions](Aql/Functions.md)
     * [Type cast](Aql/TypeCastFunctions.md)
@@ -226,12 +227,14 @@
 <!-- 26 -->
 * [Administrating ArangoDB](AdministratingArango/README.md)
 <!-- 27 -->
-* [Handling Indexes](IndexHandling/README.md)
-  * [Cap Constraint](IndexHandling/Cap.md)
-  * [Geo Indexes](IndexHandling/Geo.md)
-  * [Fulltext Indexes](IndexHandling/Fulltext.md)
-  * [Hash Indexes](IndexHandling/Hash.md)
-  * [Skip-Lists](IndexHandling/Skiplist.md)
+* [Indexing](IndexHandling/README.md)
+  * [Index Basics](IndexHandling/IndexBasics.md)
+  * [Working with Indexes](IndexHandling/WorkingWithIndexes.md)
+    * [Hash Indexes](IndexHandling/Hash.md)
+    * [Skiplists](IndexHandling/Skiplist.md)
+    * [Fulltext Indexes](IndexHandling/Fulltext.md)
+    * [Geo Indexes](IndexHandling/Geo.md)
+    * [Cap Constraint](IndexHandling/Cap.md)
 <!-- 28 -->
 * [Datafile Debugger](DatafileDebugger/README.md)
 <!-- 29 -->

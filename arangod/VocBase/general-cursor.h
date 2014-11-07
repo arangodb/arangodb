@@ -36,6 +36,8 @@
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
+#include <v8.h>
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
@@ -89,6 +91,12 @@ TRI_general_cursor_result_t* TRI_CreateCursorResult (void*,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_general_cursor_result_t* TRI_CreateResultGeneralCursor (TRI_json_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a result set
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_general_cursor_result_t* TRI_CreateResultGeneralCursor (v8::Handle<v8::Array> const);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      cursor store

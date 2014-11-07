@@ -80,7 +80,12 @@ static inline uint64_t MinSyncInterval () {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline uint32_t MinFileSize () {
+#ifdef TRI_ENABLE_MAINTAINER_MODE  
+  // this allows testing with smaller logfile-sizes
+  return 1 * 1024 * 1024;
+#else
   return 8 * 1024 * 1024;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

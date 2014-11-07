@@ -59,11 +59,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     enum AstNodeFlagType : uint8_t {
-      FLAG_SORTED   = 1,   // node is a list and its members are sorted asc.
-      FLAG_CONSTANT = 2,   // node value is constant (i.e. not dynamic)
-      FLAG_DYNAMIC  = 4,   // node value is dynamic (i.e. not constant)
-      FLAG_SIMPLE   = 8    // node value is simple (i.e. for use in a simple expression)
-
+      FLAG_SORTED           = 1,   // node is a list and its members are sorted asc.
+      FLAG_CONSTANT         = 2,   // node value is constant (i.e. not dynamic)
+      FLAG_DYNAMIC          = 4,   // node value is dynamic (i.e. not constant)
+      FLAG_SIMPLE           = 8,   // node value is simple (i.e. for use in a simple expression)
+      FLAG_THROWS           = 16,  // node can throws an exception
+      FLAG_NONDETERMINISTIC = 32   // node produces non-deterministic result (e.g. function call nodes)
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -192,10 +193,22 @@ namespace triagens {
       explicit AstNode (AstNodeType, AstNodeValueType); 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a boolean, with defining a value type
+/// @brief create a boolean node, with defining a value type
 ////////////////////////////////////////////////////////////////////////////////
 
-      explicit AstNode (bool); 
+      explicit AstNode (bool, AstNodeValueType); 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a boolean node, with defining a value type
+////////////////////////////////////////////////////////////////////////////////
+
+      explicit AstNode (int64_t, AstNodeValueType); 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a string node, with defining a value type
+////////////////////////////////////////////////////////////////////////////////
+
+      explicit AstNode (char const*, AstNodeValueType); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the node from JSON
@@ -633,8 +646,8 @@ namespace triagens {
 /// @brief append a JavaScript representation of the node into a string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-        void append (triagens::basics::StringBuffer*,
-                     bool) const;
+        void stringify (triagens::basics::StringBuffer*,
+                        bool) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -642,6 +655,8 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stringify the value of a node into a string buffer
+/// this method is used when generated JavaScript code for the node!
+/// this creates an equivalent to what JSON.stringify() would do
 ////////////////////////////////////////////////////////////////////////////////
 
         void appendValue (triagens::basics::StringBuffer*) const;

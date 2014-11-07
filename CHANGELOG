@@ -1,9 +1,33 @@
-v2.3.0 (XXXX-XX-XX)
+v2.3.0-beta2 (2014-11-01)
 -------------------
+
+* front-end: new icons for uploading and downloading JSON documents into a collection
+
+* front-end: fixed documents pagination css display error
+
+* front-end: fixed flickering of the progress view
+
+* front-end: fixed missing event for documents filter function
+
+* front-end: jsoneditor: added CMD+Return (Mac) CTRL+Return (Linux/Win) shortkey for 
+  saving a document
+
+* front-end: added information tooltip for uploading json documents.
+
+* front-end: added database management view to the collapsed navigation menu
+
+* front-end: added collection truncation feature
+
+* fixed issue #1086: arangoimp: Odd errors if arguments are not given properly
+
+* performance improvements for AQL queries that use JavaScript-based expressions
+  internally
+
+* added AQL geo functions `WITHIN_RECTANGLE` and `IS_IN_POLYGON`
 
 * fixed non-working query results download in AQL editor of web interface
 
-* removed debug print message in AQL query export routine
+* removed debug print message in AQL editor query export routine
 
 * fixed issue #1075: Aardvark: user name required even if auth is off #1075 
 
@@ -19,9 +43,7 @@ v2.3.0 (XXXX-XX-XX)
   JSON directly. If authentication is turned on, the link requires authentication,
   too.
 
-
-v2.3.0-beta1 (2014-11-01)
--------------------------
+* documentation updates
 
 * added dedicated `NOT IN` operator for AQL
 
@@ -69,12 +91,43 @@ v2.3.0-beta1 (2014-11-01)
   specified, the number of V8 contexts created will be equal to the number of 
   server threads. Thus no change in configuration is required to keep the old
   behavior.
+  
+  However, the default configuration files shipped with ArangoDB have been changed. 
+  The number of server threads has been increased in the configuration files, and
+  the number of V8 contexts is now explicitly set in the configuration files (to
+  the same value as the number of server threads was set to in 2.2).
 
-* removed bitarray indexes
+  If you are using the default config files or merge them with your local config files, 
+  please review if the higher default number of server threads is okay in your
+  environment. Additionally you should verify that the number of V8 contexts
+  created (as specified in option `--javascript.v8-contexts`) is okay.
+
+* removed index type "bitarray"
+
+  Bitarray indexes were only half-way documented and integrated in previous versions 
+  of ArangoDB so their benefit was limited. The support for bitarray indexes has
+  thus been removed in ArangoDB 2.3. It is not possible to create indexes of type
+  "bitarray" with ArangoDB 2.3.
+
+  When a collection is openend that contains a bitarray index definition created 
+  with a previous version of ArangoDB, ArangoDB will ignore it and log the following
+  warning:
+
+      index type 'bitarray' is not supported in this version of ArangoDB and is ignored 
+
+  Future versions of ArangoDB may automatically remove such index definitions so the
+  warnings will eventually disappear.
 
 * removed internal "_admin/modules/flush" in order to fix requireApp
 
 * added basic support for handling binary data in Foxx
+
+  Requests with binary payload can be processed in Foxx applications by
+  using the new method `res.rawBodyBuffer()`. This will return the unparsed request
+  body as a Buffer object.
+
+  There is now also the method `req.requestParts()` available in Foxx to retrieve
+  the individual components of a multipart HTTP request.
 
   Buffer objects can now be used when setting the response body of any Foxx action.
   Additionally, `res.send()` has been added as a convenience method for returning 
@@ -96,7 +149,7 @@ v2.3.0-beta1 (2014-11-01)
 
   `fs.readBuffer` can be used to return the contents of a file in a Buffer object.
 
-* improved insert performance of non-unique hash index inserts significantly in case
+* improved performance of insertion into non-unique hash indexes significantly in case
   many duplicate keys are used in the index
 
 * issue #1042: set time zone in log output
@@ -227,6 +280,8 @@ v2.2.7 (XXXX-XX-XX)
 -------------------
 
 * fixed issue #998: Incorrect application URL for non-system Foxx apps
+
+* fixed issue #1079: AQL editor: keyword WITH in UPDATE query is not highlighted
 
 * fix memory leak in cluster nodes
 

@@ -60,9 +60,47 @@
       div.id = "content";
       document.body.appendChild(div);
 
-     queryCollection = {
-       fetch: function() {}
-     };
+      queryCollection = {
+        __content: [],
+        fetch: function() {},
+        findWhere: function(ex) {
+          var i, k, found;
+          for (i = 0; i < this.__content.length; ++i) {
+            found = true;
+            for (k in ex) {
+              if (!ex.hasOwnProperty(k) || !this.__content[i].hasOwnProperty(k) || ex[k] !== this.__content[i][k]) {
+                found = false;
+              }
+            }
+            if (found) {
+              return this.__content[i];
+            }
+          }
+        },
+        each: function(func) {
+          return this.__content.forEach(func);
+        },
+        some: function(func) {
+          var res = false, i;
+          for (i = 0; i < this.__content.length; ++i) {
+            res = res || func(this.__content[i]);
+          }
+          return res;
+        },
+        remove: function(obj) {
+          var i;
+          for (i = 0; i < this.__content.length; ++i) {
+            if(this.__content[i] === obj) {
+              this.__content.splice(i, 1);
+              return;
+            }
+          }
+        },
+        add: function(item) {
+          this.__content.push(new DummyModel(item));
+        },
+        saveCollectionQueries: function() {}
+      };
 
       view = new window.queryView({
         collection: queryCollection,
@@ -334,12 +372,8 @@
 
       spyOn(view, "renderSelectboxes");
       spyOn(view, "updateTable");
-      spyOn(localStorage, "setItem");
 
       view.deleteAQL(e);
-      expect(localStorage.setItem).toHaveBeenCalledWith(
-        "customQueries", JSON.stringify(view.customQueries)
-      );
       expect(view.renderSelectboxes).toHaveBeenCalled();
       expect(view.updateTable).toHaveBeenCalled();
     });
@@ -362,13 +396,13 @@
 
       spyOn(e, "stopPropagation");
       spyOn(window.modalView, "hide");
-      spyOn(localStorage, "setItem");
       spyOn(view, "renderSelectboxes");
+      spyOn(queryCollection, "add");
 
       view.saveAQL(e);
 
       expect(e.stopPropagation).toHaveBeenCalled();
-      expect(localStorage.setItem).toHaveBeenCalled();
+      expect(queryCollection.add).toHaveBeenCalled();
       expect(view.renderSelectboxes).toHaveBeenCalled();
       expect(window.modalView.hide).toHaveBeenCalled();
       document.body.removeChild(div2);
@@ -416,7 +450,7 @@
           throw "Should be a spy";
         }
       };
-      localStorageFake = JSON.stringify(customQueries);
+      localStorageFake.value = JSON.stringify(customQueries);
       view.initialize();
 
       div2 = document.createElement("div");
@@ -448,7 +482,7 @@
           throw "Should be a spy";
         }
       };
-      localStorageFake = JSON.stringify(customQueries);
+      localStorageFake.value = JSON.stringify(customQueries);
       view.initialize();
 
       div2 = document.createElement("div");
@@ -458,13 +492,13 @@
 
       spyOn(e, "stopPropagation");
       spyOn(window.modalView, "hide");
-      spyOn(localStorage, "setItem");
       spyOn(view, "renderSelectboxes");
+      spyOn(queryCollection, "add");
 
       view.saveAQL(e);
 
       expect(e.stopPropagation).toHaveBeenCalled();
-      expect(localStorage.setItem).not.toHaveBeenCalled();
+      expect(queryCollection.add).not.toHaveBeenCalled();
       expect(view.renderSelectboxes).not.toHaveBeenCalled();
       expect(window.modalView.hide).toHaveBeenCalled();
       document.body.removeChild(div2);
@@ -476,7 +510,7 @@
         value: "for var yx do something"
       }],
       returnValue;
-      localStorageFake = JSON.stringify(customQueries);
+      localStorageFake.value = JSON.stringify(customQueries);
       view.initialize();
 
       returnValue = view.getCustomQueryValueByName("hallotest");
@@ -488,31 +522,26 @@
       div2.id = "test123";
       document.body.appendChild(div2);
 
-      localStorageFake = 5000;
+      localStorageFake.value = 5000;
 
       view.initialize();
-      spyOn(localStorage, "getItem");
       view.render();
-      expect(localStorage.getItem).toHaveBeenCalledWith("querySize");
+      expect(localStorage.getItem).toHaveBeenCalledWith("customQueries");
       document.body.removeChild(div2);
-    });
-
-    it("should change the query size", function() {
-      var e = {
-        currentTarget: {
-          id: "test123"
-        }
-      };
-      spyOn(localStorage, "setItem");
-      view.changeSize(e);
-      expect(localStorage.setItem).toHaveBeenCalled();
     });
 
     it("submit a query and fail without a msg from server", function() {
       // not finished yet
       spyOn(view, "deselect");
+      var old = window.progressView;
+      window.progressView = {
+        show: function() {}
+      };
+      spyOn(window.progressView, "show");
       view.submitQuery();
       expect(view.deselect).toHaveBeenCalled();
+      expect(window.progressView.show).toHaveBeenCalled();
+      window.progressView = old;
     });
 
     it("should just run basic functionality of ace editor", function() {
@@ -535,7 +564,7 @@
         }
       };
       $('#findme').val('findme');
-      localStorageFake = JSON.stringify(customQueries);
+      localStorageFake.value = JSON.stringify(customQueries);
       view.initialize();
 
       view.importSelected(e);
@@ -586,14 +615,14 @@
       view.customQueries = customQueries;
 
       spyOn(view, "sortQueries");
-      spyOn(arangoHelper, "escapeHtml");
+      spyOn(_, "escape");
 
       view.renderSelectboxes();
 
       expect(view.sortQueries).toHaveBeenCalled();
       expect(jQueryDummy.empty).toHaveBeenCalled();
       expect(jQueryDummy.append).toHaveBeenCalled();
-      expect(arangoHelper.escapeHtml).toHaveBeenCalled();
+      expect(_.escape).toHaveBeenCalled();
     });
 
 

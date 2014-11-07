@@ -34,8 +34,8 @@ endpoint = tcp://0.0.0.0:8529
 # disable authentication for the admin frontend
 disable-authentication = yes
 
-# number of worker threads for V8
-threads = 5
+# number of server threads
+threads = 10
 
 # the user and group are normally set in the start script
 # uid = arangodb
@@ -48,6 +48,9 @@ threads = 3
 startup-directory = @PKGDATADIR@/js
 app-path = @LOCALSTATEDIR@/lib/arangodb-apps
 # app-path = @HOMEDRIVE@/@HOMEPATH@/arangodb/apps
+
+# number of worker threads for V8
+v8-contexts = 5
 
 [log]
 level = info

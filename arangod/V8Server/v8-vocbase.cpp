@@ -534,6 +534,22 @@ static v8::Handle<v8::Value> JS_normalize_string (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief enables or disables native backtrace
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_EnableNativeBacktraces (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "ENABLE_NATIVE_BACKTRACES(<value>)");
+  }
+
+  triagens::arango::Exception::SetVerbose(TRI_ObjectToBoolean(argv[0]));
+
+  return scope.Close(v8::Undefined());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two UTF 16 strings
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1200,7 +1216,7 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
   triagens::aql::Query query(v8g->_applicationV8, true, vocbase, queryString.c_str(), queryString.size(), parameters, options, triagens::aql::PART_MAIN);
 
-  auto queryResult = query.execute(static_cast<triagens::aql::QueryRegistry*>(v8g->_queryRegistry));
+  auto queryResult = query.executeV8(static_cast<triagens::aql::QueryRegistry*>(v8g->_queryRegistry));
   
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED) {
@@ -1212,12 +1228,12 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_FULL(scope, queryResult.code, queryResult.details);
   }
   
-  if (TRI_LengthListJson(queryResult.json) <= batchSize) {
+  if (queryResult.result->Length() <= batchSize) {
     // return the array value as it is. this is a performance optimisation
     v8::Handle<v8::Object> result = v8::Object::New();
-    if (queryResult.json != nullptr) {
-      result->Set(TRI_V8_STRING("json"), TRI_ObjectJson(queryResult.json));
-    }
+
+    result->Set(TRI_V8_STRING("json"), queryResult.result);
+
     if (queryResult.stats != nullptr) {
       result->Set(TRI_V8_STRING("stats"), TRI_ObjectJson(queryResult.stats));
     }
@@ -1251,7 +1267,7 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
     queryResult.profile = nullptr;
   }
 
-  TRI_general_cursor_result_t* cursorResult = TRI_CreateResultGeneralCursor(queryResult.json);
+  TRI_general_cursor_result_t* cursorResult = TRI_CreateResultGeneralCursor(queryResult.result);
   
   if (cursorResult == nullptr) {
     if (extra != nullptr) {
@@ -1260,8 +1276,6 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
   
-  queryResult.json = nullptr;
-
   TRI_general_cursor_t* cursor = TRI_CreateGeneralCursor(vocbase, cursorResult, doCount,
       static_cast<TRI_general_cursor_length_t>(batchSize), ttl, extra);
 
@@ -2544,6 +2558,8 @@ void TRI_InitV8VocBridge (triagens::arango::ApplicationV8* applicationV8,
   TRI_AddGlobalFunctionVocbase(context, "TRANSACTION", JS_Transaction, true);
   TRI_AddGlobalFunctionVocbase(context, "WAL_FLUSH", JS_FlushWal, true);
   TRI_AddGlobalFunctionVocbase(context, "WAL_PROPERTIES", JS_PropertiesWal, true);
+  
+  TRI_AddGlobalFunctionVocbase(context, "ENABLE_NATIVE_BACKTRACES", JS_EnableNativeBacktraces, true);
 
   // .............................................................................
   // create global variables
@@ -2563,6 +2579,10 @@ void TRI_InitV8VocBridge (triagens::arango::ApplicationV8* applicationV8,
   
   // whether or not statistics are enabled
   context->Global()->Set(TRI_V8_SYMBOL("ENABLE_STATISTICS"), v8::Boolean::New(TRI_ENABLE_STATISTICS), v8::ReadOnly);
+  
+  // a thread-global variable that will is supposed to contain the AQL module
+  // do not remove this, otherwise AQL queries will break
+  context->Global()->Set(TRI_V8_SYMBOL("_AQL"), v8::Undefined(), v8::DontEnum);
 }
 
 // -----------------------------------------------------------------------------

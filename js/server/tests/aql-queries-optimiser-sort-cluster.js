@@ -1,5 +1,5 @@
-/*jshint strict: false, maxlen: 500 */
-/*global require, assertEqual, AQL_EXPLAIN */
+/*jshint strict: false, maxlen: 5000 */
+/*global require, assertEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, sort optimisations
@@ -31,6 +31,8 @@
 var jsunity = require("jsunity");
 var internal = require("internal");
 var helper = require("org/arangodb/aql-helper");
+var isEqual = helper.isEqual;
+var findExecutionNodes = helper.findExecutionNodes;
 var getQueryResults = helper.getQueryResults;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -65,7 +67,7 @@ function ahuacatlQueryOptimiserSortTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-      internal.db._drop(cn);
+//      internal.db._drop(cn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -618,12 +620,120 @@ function ahuacatlQueryOptimiserSortTestSuite () {
   };
 }
 
+
+function sortTestsuite () {
+  var testStrings = "Die Luftangriffe auf Singapur zwischen November 1944 und März 1945 waren eine militärische Kampagne der Luftstreitkräfte der Alliierten gegen Ende des Zweiten Weltkrieges. Insgesamt elf Angriffe wurden durch Langstreckenbomber der United States Army Air Force (USAAF) geflogen. Die meisten dieser Angriffe zielten auf den dortigen, von den Streitkräften des Gegners Japan besetzten Marinestützpunkt und die Dockanlagen auf der Insel. Vereinzelt warfen die Bomber auch Seeminen in die Singapur umgebenden Gewässer ab. Nach der Verlegung der amerikanischen Bomber, welche für andere Operationen abgezogen wurden, setzte die britische Royal Air Force die Minenlegeoperationen noch bis Ende Mai 1945 fort.".split(" ");
+  var testStringsSorted;
+  var cn = "UnitTestsAqlOptimiserSortAlphabetic";
+  var collection = null;
+
+  var explain = function (query, params) {
+    return helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-index-for-sort", "+use-index-range", "+remove-redundant-sorts" ] } })).map(function(node) { return node.type; });
+  };
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      internal.db._drop(cn);
+      collection = internal.db._create(cn, { numberOfShards : 9 });
+
+      for (var i = 0; i < testStrings.length; i++) {
+        collection.save({ "value" : i, "testString" : testStrings[i] });
+      }
+
+      testStringsSorted=AQL_EXECUTE("FOR t IN @bla SORT t RETURN t", {"bla": testStrings}).json;
+
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      internal.db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check sort results
+////////////////////////////////////////////////////////////////////////////////
+  
+    testSortOrderAsc : function () {
+      var Query = "FOR i in " + cn + " SORT i.testString ASC RETURN i.testString";
+      var result = getQueryResults(Query);
+      var length = result.length;
+      
+      // Verify results...
+      assertEqual(length, testStringsSorted.length);
+      for (var i = 0; i < length; i++) {
+        assertEqual(result[i],
+                    testStringsSorted[i]);
+      }
+
+      // inspect plan
+      assertEqual(explain(Query), 
+                  ["SingletonNode",
+                   "ScatterNode",
+                   "RemoteNode",
+                   "EnumerateCollectionNode",
+                   "RemoteNode",
+                   "GatherNode",
+                   "CalculationNode",
+                   "SortNode",
+                   "CalculationNode",
+                   "ReturnNode"]);
+
+      var plan = AQL_EXPLAIN(Query);
+      var sortNode = findExecutionNodes(plan, "SortNode")[0];
+      var gatherNode = findExecutionNodes(plan, "SortNode")[0];
+      assertTrue(isEqual(sortNode.elements, gatherNode.elements), "elements match");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check sort results for reverse sort
+////////////////////////////////////////////////////////////////////////////////
+    testSortOrderDesc : function () {
+      var Query = "FOR i in " + cn + " SORT i.testString DESC RETURN i.testString";
+      var result = getQueryResults(Query);
+      var length = result.length;
+
+      // Verify results...
+      assertEqual(length, testStringsSorted.length);
+      for (var i = 0; i < length; i++) {
+
+        assertEqual(result[length - i - 1],
+                    testStringsSorted[i]);
+      }
+
+      // inspect plan
+      assertEqual(explain(Query), 
+                  ["SingletonNode",
+                   "ScatterNode",
+                   "RemoteNode",
+                   "EnumerateCollectionNode",
+                   "RemoteNode",
+                   "GatherNode",
+                   "CalculationNode",
+                   "SortNode",
+                   "CalculationNode",
+                   "ReturnNode"]);
+
+      var plan = AQL_EXPLAIN(Query);
+      var sortNode = findExecutionNodes(plan, "SortNode")[0];
+      var gatherNode = findExecutionNodes(plan, "SortNode")[0];
+      assertTrue(isEqual(sortNode.elements, gatherNode.elements), "elements match");
+    }
+  };
+}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ahuacatlQueryOptimiserSortTestSuite);
-
+jsunity.run(sortTestsuite);
 return jsunity.done();
 
 // Local Variables:

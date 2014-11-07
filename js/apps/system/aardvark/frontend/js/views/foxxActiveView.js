@@ -106,7 +106,7 @@
       list.push(modView.createReadOnlyEntry(
         "id_documentationJsonUrl", 
         "API docs", 
-        "<a href=\"" + link + "\">Link to JSON</a>"
+        "<a href=\"" + link + "\" target=\"_blank\">JSON-file for Swagger</a>"
       ));
       if (editable) {
         list.push(modView.createTextEntry(

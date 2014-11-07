@@ -211,6 +211,17 @@ ClusterCommResult* ClusterComm::asyncRequest (
                               basics::StringUtils::itoa(coordTransactionID);
   (*headerFields)["Authorization"] = ServerState::instance()->getAuthentication();
 
+#ifdef DEBUG_CLUSTER_COMM
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+#if HAVE_BACKTRACE
+  std::string bt;
+  TRI_GetBacktrace(bt);
+  std::replace( bt.begin(), bt.end(), '\n', ';'); // replace all '\n' to ';'
+  (*headerFields)["X-Arango-BT-A-SYNC"] = bt;
+#endif
+#endif
+#endif
+
   op->status               = CL_COMM_SUBMITTED;
   op->reqtype              = reqtype;
   op->path                 = path;
@@ -336,18 +347,28 @@ ClusterCommResult* ClusterComm::syncRequest (
 
       map<string, string> headersCopy(headerFields);
       headersCopy.emplace(make_pair(string("Authorization"), ServerState::instance()->getAuthentication()));
-
+#ifdef DEBUG_CLUSTER_COMM
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+#if HAVE_BACKTRACE
+      std::string bt;
+      TRI_GetBacktrace(bt);
+      std::replace( bt.begin(), bt.end(), '\n', ';'); // replace all '\n' to ';'
+      headersCopy["X-Arango-BT-SYNC"] = bt;
+#endif
+#endif
+#endif
       res->result = client->request(reqtype, path, body.c_str(), body.size(),
                                     headersCopy);
 
       if (res->result == nullptr || ! res->result->isComplete()) {
-        cm->brokenConnection(connection);
         if (client->getErrorMessage() == "Request timeout reached") {
           res->status = CL_COMM_TIMEOUT;
         }
         else {
           res->status = CL_COMM_ERROR;
         }
+        cm->brokenConnection(connection);
+        client->invalidateConnection();
       }
       else {
         cm->returnConnection(connection);
@@ -727,6 +748,7 @@ void ClusterComm::asyncAnswer (string& coordinatorHeader,
                                  "/_api/shard-comm", body, len, headers);
   if (result == nullptr || ! result->isComplete()) {
     cm->brokenConnection(connection);
+    client->invalidateConnection();
   }
   else {
     cm->returnConnection(connection);
@@ -1024,13 +1046,14 @@ void ClusterCommThread::run () {
               }
 
               if (op->result == nullptr || ! op->result->isComplete()) {
-                cm->brokenConnection(connection);
                 if (client->getErrorMessage() == "Request timeout reached") {
                   op->status = CL_COMM_TIMEOUT;
                 }
                 else {
                   op->status = CL_COMM_ERROR;
                 }
+                cm->brokenConnection(connection);
+                client->invalidateConnection();
               }
               else {
                 cm->returnConnection(connection);

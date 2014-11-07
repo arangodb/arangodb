@@ -260,26 +260,26 @@ Endpoint* Endpoint::factory (const Endpoint::EndpointType type,
     if (found != string::npos && found > 2 && found + 2 < copy.size()) {
       // hostname and port (e.g. [address]:port)
       uint16_t port = (uint16_t) StringUtils::uint32(copy.substr(found + 2));
-
+      std::string portStr = copy.substr(1, found - 1);
       return new EndpointIpV6(type,
                               encryption,
                               specification,
                               listenBacklog,
                               reuseAddress,
-                              copy.substr(1, found - 1),
+                              portStr,
                               port);
     }
 
     found = copy.find("]", 1);
     if (found != string::npos && found > 2 && found + 1 == copy.size()) {
       // hostname only (e.g. [address])
-
+      std::string portStr = copy.substr(1, found - 1);
       return new EndpointIpV6(type,
                               encryption,
                               specification,
                               listenBacklog,
                               reuseAddress,
-                              copy.substr(1, found - 1),
+                              portStr,
                               EndpointIp::_defaultPort);
     }
 
@@ -293,13 +293,13 @@ Endpoint* Endpoint::factory (const Endpoint::EndpointType type,
   if (found != string::npos && found + 1 < copy.size()) {
     // hostname and port
     uint16_t port = (uint16_t) StringUtils::uint32(copy.substr(found + 1));
-
+    std::string portStr = copy.substr(0, found);
     return new EndpointIpV4(type,
                             encryption,
                             specification,
                             listenBacklog,
                             reuseAddress,
-                            copy.substr(0, found),
+                            portStr,
                             port);
   }
 

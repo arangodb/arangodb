@@ -100,6 +100,12 @@ namespace triagens {
     int useIndexForSort (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief try to remove filters which are covered by indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    int removeFiltersCoveredByIndex (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief interchange adjacent EnumerateCollectionNodes in all possible ways
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -164,6 +170,17 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     int undistributeRemoveAfterEnumColl (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief this rule replaces expressions of the type: 
+///   x.val == 1 || x.val == 2 || x.val == 3
+//  with
+//    x.val IN [1,2,3]
+//  when the OR conditions are present in the same FILTER node, and refer to the
+//  same (single) attribute.
+////////////////////////////////////////////////////////////////////////////////
+
+    int replaceOrWithIn (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
     
   }  // namespace aql
 }  // namespace triagens

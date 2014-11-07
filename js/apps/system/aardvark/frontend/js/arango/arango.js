@@ -114,6 +114,9 @@
           label: "Insert",
           letter: "Ctrl + Insert"
         },{
+          label: "Save",
+          letter: "Ctrl + Return, CMD + Return"
+        },{
           label: "Append",
           letter: "Ctrl + Shift + Insert"
         },{
@@ -171,7 +174,7 @@
       $.ajax({
         type: "GET",
         cache: false,
-        url: "/_db/"+encodeURIComponent(currentDB)+"/_api/database/",
+        url: "/_db/"+ encodeURIComponent(currentDB) + "/_api/database/",
         contentType: "application/json",
         processData: false,
         async: false,

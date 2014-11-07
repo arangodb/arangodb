@@ -88,7 +88,7 @@ function optimizerRuleTestSuite () {
         "FOR i IN 1..10 LET a = i LET b = i FILTER a == b RETURN i",
         "FOR i IN 1..10 FOR j IN 1..10 FILTER i > j RETURN i",
         "FOR i IN 1..10 LET a = 2 * i FILTER a == 1 RETURN i",
-        "FOR i IN 1..10 LIMIT 1 FILTER i == 1 RETURN i"
+        "FOR i IN 1..10 LET a = SLEEP(1) FILTER i == 1 RETURN i" // SLEEP is non-deterministic
       ];
 
       queries.forEach(function(query) {
@@ -106,7 +106,8 @@ function optimizerRuleTestSuite () {
         "FOR i IN 1..10 FOR j IN 1..10 FILTER i > 1 RETURN i",
         "FOR i IN 1..10 LET x = (FOR j IN [i] RETURN j) FILTER i > 1 RETURN i",
         "FOR i IN 1..10 FOR l IN 1..10 LET a = 2 * i FILTER i == 1 RETURN a",
-        "FOR i IN 1..10 FOR l IN 1..10 LET a = 2 * i FILTER i == 1 LIMIT 1 RETURN a"
+        "FOR i IN 1..10 FOR l IN 1..10 LET a = 2 * i FILTER i == 1 LIMIT 1 RETURN a",
+        "FOR i IN 1..10 FOR l IN 1..10 LET a = MIN([1, l]) FILTER i == 1 LIMIT 1 RETURN a",
       ];
 
       queries.forEach(function(query) {

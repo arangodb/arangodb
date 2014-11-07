@@ -1,4 +1,4 @@
-/*global require, assertEqual, assertTrue */
+/*global require, assertEqual, assertTrue, assertFalse, assertUndefined, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the statement class
@@ -30,7 +30,6 @@
 var jsunity = require("jsunity");
 
 var arangodb = require("org/arangodb");
-var ArangoStatement = require("org/arangodb/arango-statement").ArangoStatement;
 var db = arangodb.db;
 var ERRORS = arangodb.errors;
 
@@ -72,7 +71,7 @@ function StatementSuite () {
 
     testConstructNoQuery : function () {
       try {
-        new ArangoStatement(db);
+        db._createStatement();
         fail();
       }
       catch (e) {
@@ -85,7 +84,7 @@ function StatementSuite () {
 
     testConstructQueryOnly : function () {
       var query = "for u in users return u";
-      var st = new ArangoStatement(db, { query: query });
+      var st = db._createStatement({ query: query });
 
       assertEqual(query, st.getQuery());
       assertEqual([ ], st.getBindVariables());
@@ -100,7 +99,7 @@ function StatementSuite () {
     testConstructWithBind : function () {
       var query = "for v in @values return v";
       var bind = { values: [ 1, 2, 3 ] };
-      var st = new ArangoStatement(db, { query: query, bindVars: bind });
+      var st = db._createStatement({ query: query, bindVars: bind });
 
       assertEqual(query, st.getQuery());
       assertEqual(bind, st.getBindVariables());
@@ -115,7 +114,7 @@ function StatementSuite () {
     testConstructWithBindExecute : function () {
       var query = "for v in @values return v";
       var bind = { values: [ 1, 2, 3 ] };
-      var st = new ArangoStatement(db, { query: query, bindVars: bind, count: true });
+      var st = db._createStatement({ query: query, bindVars: bind, count: true });
 
       var result = st.execute().toArray();
       assertEqual(3, result.length);
@@ -126,10 +125,11 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testParseError : function () {
-      var st = new ArangoStatement(db, { query : "for u in" });
+      var st = db._createStatement({ query : "for u in" });
 
       try {
         st.parse();
+        fail();
       }
       catch (e) {
         assertEqual(ERRORS.ERROR_QUERY_PARSE.code, e.errorNum);
@@ -141,11 +141,12 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testParseOk1 : function () {
-      var st = new ArangoStatement(db, { query : "for u in users return u" });
+      var st = db._createStatement({ query : "for u in users return u" });
       var result = st.parse();
 
       assertEqual([ "users" ], result.collections);
       assertEqual([ ], result.bindVars);
+      assertTrue(result.hasOwnProperty("ast"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -153,11 +154,12 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testParseOk2 : function () {
-      var st = new ArangoStatement(db, { query : "for u in users for f in friends return u" });
+      var st = db._createStatement({ query : "for u in users for f in friends return u" });
       var result = st.parse();
 
       assertEqual([ "friends", "users" ], result.collections.sort());
       assertEqual([ ], result.bindVars);
+      assertTrue(result.hasOwnProperty("ast"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -165,11 +167,12 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testParseBind1 : function () {
-      var st = new ArangoStatement(db, { query : "for u in @@users filter u.name == @name return u" });
+      var st = db._createStatement({ query : "for u in @@users filter u.name == @name return u" });
       var result = st.parse();
 
       assertEqual([ ], result.collections);
       assertEqual([ "@users", "name" ], result.bindVars.sort());
+      assertTrue(result.hasOwnProperty("ast"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -177,11 +180,168 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testParseBind2 : function () {
-      var st = new ArangoStatement(db, { query : "for u in @@users for f in friends filter u.name == @name && f.friendId == u._id return u" });
+      var st = db._createStatement({ query : "for u in @@users for f in friends filter u.name == @name && f.friendId == u._id return u" });
       var result = st.parse();
 
       assertEqual([ "friends" ], result.collections);
       assertEqual([ "@users", "name" ], result.bindVars.sort());
+      assertTrue(result.hasOwnProperty("ast"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test explain method
+////////////////////////////////////////////////////////////////////////////////
+
+    testExplainError : function () {
+      var st = db._createStatement({ query : "for u in" });
+
+      try {
+        st.explain();
+        fail();
+      }
+      catch (e) {
+        assertEqual(ERRORS.ERROR_QUERY_PARSE.code, e.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test explain method
+////////////////////////////////////////////////////////////////////////////////
+
+    testExplainOk : function () {
+      var st = db._createStatement({ query : "FOR i IN 1..10 RETURN i" });
+      var result = st.explain();
+
+      assertEqual([ ], result.warnings);
+      assertTrue(result.hasOwnProperty("plan"));
+      assertFalse(result.hasOwnProperty("plans"));
+
+      var plan = result.plan;
+      assertTrue(plan.hasOwnProperty("estimatedCost"));
+      assertTrue(plan.hasOwnProperty("rules"));
+      assertEqual([ ], plan.rules);
+      assertTrue(plan.hasOwnProperty("nodes"));
+      assertTrue(plan.hasOwnProperty("collections"));
+      assertEqual([ ], plan.collections);
+      assertTrue(plan.hasOwnProperty("variables"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test explain method
+////////////////////////////////////////////////////////////////////////////////
+
+    testExplainAllPlans : function () {
+      var st = db._createStatement({ query : "FOR i IN 1..10 RETURN i" });
+      var result = st.explain({ allPlans: true });
+
+      assertEqual([ ], result.warnings);
+      assertFalse(result.hasOwnProperty("plan"));
+      assertTrue(result.hasOwnProperty("plans"));
+
+      assertEqual(1, result.plans.length);
+      var plan = result.plans[0];
+      assertTrue(plan.hasOwnProperty("estimatedCost"));
+      assertTrue(plan.hasOwnProperty("rules"));
+      assertEqual([ ], plan.rules);
+      assertTrue(plan.hasOwnProperty("nodes"));
+      assertTrue(plan.hasOwnProperty("collections"));
+      assertEqual([ ], plan.collections);
+      assertTrue(plan.hasOwnProperty("variables"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test explain method, bind variables
+////////////////////////////////////////////////////////////////////////////////
+
+    testExplainBindMissing : function () {
+      var st = db._createStatement({ query : "FOR i IN @@list FILTER i == @value RETURN i" });
+      try {
+        st.explain();
+      }
+      catch (e) {
+        assertEqual(ERRORS.ERROR_QUERY_BIND_PARAMETER_MISSING.code, e.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test explain method, bind variables
+////////////////////////////////////////////////////////////////////////////////
+
+    testExplainBindInvalidType : function () {
+      var st = db._createStatement({ query : "FOR i IN @@list RETURN i" });
+      st.bind("@list", [ 1, 2, 3 ]);
+
+      try {
+        st.explain();
+      }
+      catch (e) {
+        assertEqual(ERRORS.ERROR_QUERY_BIND_PARAMETER_TYPE.code, e.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test explain method, bind variables
+////////////////////////////////////////////////////////////////////////////////
+
+    testExplainBindInvalid : function () {
+      var st = db._createStatement({ query : "FOR i IN @list FILTER i == @value RETURN i" });
+      st.bind("list", [ 1, 2, 3 ]);
+      st.bind("value", 3);
+      st.bind("foo", "bar");
+
+      try {
+        st.explain();
+      }
+      catch (e) {
+        assertEqual(ERRORS.ERROR_QUERY_BIND_PARAMETER_UNDECLARED.code, e.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bind method, bind variables
+////////////////////////////////////////////////////////////////////////////////
+
+    testExplainBind : function () {
+      var st = db._createStatement({ query : "FOR i IN @list FILTER i == @value RETURN i" });
+      st.bind("list", [ 1, 2, 3 ]);
+      st.bind("value", 3);
+      var result = st.explain();
+
+      assertEqual([ ], result.warnings);
+      assertTrue(result.hasOwnProperty("plan"));
+      assertFalse(result.hasOwnProperty("plans"));
+
+      var plan = result.plan;
+      assertTrue(plan.hasOwnProperty("estimatedCost"));
+      assertTrue(plan.hasOwnProperty("rules"));
+      assertEqual([ ], plan.rules);
+      assertTrue(plan.hasOwnProperty("nodes"));
+      assertTrue(plan.hasOwnProperty("collections"));
+      assertEqual([ ], plan.collections);
+      assertTrue(plan.hasOwnProperty("variables"));
+    },
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bind method, bind variables
+////////////////////////////////////////////////////////////////////////////////
+
+    testExplainBindWarnings : function () {
+      var st = db._createStatement({ query : "FOR i IN 1..10 RETURN 1 / 0" });
+      var result = st.explain();
+
+      assertEqual(1, result.warnings.length);
+      assertEqual(ERRORS.ERROR_QUERY_DIVISION_BY_ZERO.code, result.warnings[0].code);
+      assertTrue(result.hasOwnProperty("plan"));
+      assertFalse(result.hasOwnProperty("plans"));
+
+      var plan = result.plan;
+      assertTrue(plan.hasOwnProperty("estimatedCost"));
+      assertTrue(plan.hasOwnProperty("rules"));
+      assertTrue(plan.hasOwnProperty("nodes"));
+      assertTrue(plan.hasOwnProperty("collections"));
+      assertEqual([ ], plan.collections);
+      assertTrue(plan.hasOwnProperty("variables"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -189,9 +349,11 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExecuteError : function () {
-      var st = new ArangoStatement(db, { query : "for u in" });
+      var st = db._createStatement({ query : "for u in" });
       try {
-        result = st.execute();
+        var result = st.execute();
+        result;
+        fail();
       }
       catch (e) {
         assertEqual(ERRORS.ERROR_QUERY_PARSE.code, e.errorNum);
@@ -203,7 +365,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExecuteOk1 : function () {
-      var st = new ArangoStatement(db, { query : "for u in [ 1, 2, 3 ] return u" });
+      var st = db._createStatement({ query : "for u in [ 1, 2, 3 ] return u" });
       var result = st.execute();
 
       var docs = [ ];
@@ -219,7 +381,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExecuteOk2 : function () {
-      var st = new ArangoStatement(db, { query : "return 1" });
+      var st = db._createStatement({ query : "return 1" });
       st.setCount(true);
       st.setBatchSize(1);
       st.setQuery("for u in [ 1, 2, 3 ] return u");
@@ -238,7 +400,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExecuteExtra : function () {
-      var st = new ArangoStatement(db, { query : "for i in 1..50 limit 1,2 return i", count: true, options: { fullCount: true } });
+      var st = db._createStatement({ query : "for i in 1..50 limit 1,2 return i", count: true, options: { fullCount: true } });
       var result = st.execute();
 
       assertEqual(2, result.count());
@@ -260,7 +422,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExecuteExtraFullCount : function () {
-      var st = new ArangoStatement(db, { query : "for i in 1..12345 limit 4564, 2123 return i", count: true, options: { fullCount: true } });
+      var st = db._createStatement({ query : "for i in 1..12345 limit 4564, 2123 return i", count: true, options: { fullCount: true } });
       var result = st.execute();
 
       assertEqual(2123, result.count());
@@ -286,7 +448,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExecuteExtraFullCountLimit0 : function () {
-      var st = new ArangoStatement(db, { query : "for i in 1..12345 limit 4564, 0 return i", count: true, options: { fullCount: true } });
+      var st = db._createStatement({ query : "for i in 1..12345 limit 4564, 0 return i", count: true, options: { fullCount: true } });
       var result = st.execute();
 
       assertEqual(0, result.count());
@@ -306,7 +468,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExecuteExtraNoFullCount : function () {
-      var st = new ArangoStatement(db, { query : "for i in 1..10 return i", count: true, options: { fullCount: false } });
+      var st = db._createStatement({ query : "for i in 1..10 return i", count: true, options: { fullCount: false } });
       var result = st.execute();
 
       assertEqual(10, result.count());
@@ -323,7 +485,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBind : function () {
-      var st = new ArangoStatement(db, { query : "for u in @list return @value" });
+      var st = db._createStatement({ query : "for u in @list return @value" });
       st.bind("list", [ 1, 2, 3 ]);
       st.bind("value", 25);
       var result = st.execute();
@@ -341,7 +503,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindVariables1 : function () {
-      var st = new ArangoStatement(db, { query : "for u in @list return @value + @something" });
+      var st = db._createStatement({ query : "for u in @list return @value + @something" });
       var result = st.getBindVariables();
 
       assertEqual({ }, result);
@@ -352,7 +514,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindVariables2 : function () {
-      var st = new ArangoStatement(db, { query : "for u in @list return @value + @something" });
+      var st = db._createStatement({ query : "for u in @list return @value + @something" });
       st.bind("list", [ 1, 2 ]);
       st.bind("value", "something");
       st.bind("something", "something else");
@@ -367,7 +529,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindInvalid : function () {
-      var st = new ArangoStatement(db, { query : "for u in [ 1 ] return @value" });
+      var st = db._createStatement({ query : "for u in [ 1 ] return @value" });
       st.bind("list", [ 1, 2, 3 ]);
       try {
         st.execute();
@@ -383,7 +545,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindRedeclare : function () {
-      var st = new ArangoStatement(db, { query : "for u in [ 1 ] return @value" });
+      var st = db._createStatement({ query : "for u in [ 1 ] return @value" });
       st.bind("value", 1);
       try {
         st.bind("value", 1);
@@ -398,7 +560,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testQuery : function () {
-      var st = new ArangoStatement(db, { query : "for u in [ 1 ] return 1" });
+      var st = db._createStatement({ query : "for u in [ 1 ] return 1" });
 
       assertEqual("for u in [ 1 ] return 1", st.getQuery());
 
@@ -411,7 +573,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCount : function () {
-      var st = new ArangoStatement(db, { query : "for u in [ 1 ] return 1" });
+      var st = db._createStatement({ query : "for u in [ 1 ] return 1" });
 
       assertEqual(false, st.getCount());
 
@@ -427,7 +589,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBatchSize: function () {
-      var st = new ArangoStatement(db, { query : "for u in [ 1 ] return 1" });
+      var st = db._createStatement({ query : "for u in [ 1 ] return 1" });
 
       assertEqual(null, st.getBatchSize());
 
@@ -446,7 +608,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testOptions : function () {
-      var st = new ArangoStatement(db, { query : "for u in [ 1 ] return 1", options : { foo: 1, bar: 2 } });
+      var st = db._createStatement({ query : "for u in [ 1 ] return 1", options : { foo: 1, bar: 2 } });
 
       assertEqual({ foo: 1, bar: 2 }, st.getOptions());
 
@@ -462,7 +624,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIncremental : function () {
-      var st = new ArangoStatement(db, { query : "for i in 1..10 return i", batchSize : 1 });
+      var st = db._createStatement({ query : "for i in 1..10 return i", batchSize : 1 });
 
       var c = st.execute();
 
@@ -479,7 +641,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDispose1 : function () {
-      var st = new ArangoStatement(db, { query : "for i in 1..10 return i", batchSize : 1 });
+      var st = db._createStatement({ query : "for i in 1..10 return i", batchSize : 1 });
 
       var c = st.execute();
 
@@ -500,7 +662,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDispose2 : function () {
-      var st = new ArangoStatement(db, { query : "for i in 1..10 return i", batchSize : 1 });
+      var st = db._createStatement({ query : "for i in 1..10 return i", batchSize : 1 });
 
       var c = st.execute();
 
@@ -525,7 +687,7 @@ function StatementSuite () {
     testDatabaseChange : function () {
       assertEqual("_system", db._name());
 
-      var st = new ArangoStatement(db, { query : "for i in 1..10 return i", batchSize : 1 });
+      var st = db._createStatement({ query : "for i in 1..10 return i", batchSize : 1 });
 
       var c = st.execute();
       var result = [ ];
