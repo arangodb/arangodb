@@ -942,6 +942,7 @@
       this.uploadSetup();
 
       $("[data-toggle=tooltip]").tooltip();
+      $('.upload-info').tooltip();
 
       arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "top");
       this.drawTable();
