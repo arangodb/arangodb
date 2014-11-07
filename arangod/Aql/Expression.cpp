@@ -142,11 +142,13 @@ AqlValue Expression::execute (triagens::arango::AqlTransaction* trx,
         return _func->execute(_ast->query(), trx, docColls, argv, startPos, vars, regs);
       }
       catch (triagens::arango::Exception& ex) {
-        ex.addToMessage(" while evaluating expression ");
-        auto json = _node->toJson(TRI_UNKNOWN_MEM_ZONE, false);
-        if (json != nullptr) {
-          ex.addToMessage(triagens::basics::JsonHelper::toString(json));
-          TRI_Free(TRI_UNKNOWN_MEM_ZONE, json);
+        if (_ast->query()->verboseErrors()) {
+          ex.addToMessage(" while evaluating expression ");
+          auto json = _node->toJson(TRI_UNKNOWN_MEM_ZONE, false);
+          if (json != nullptr) {
+            ex.addToMessage(triagens::basics::JsonHelper::toString(json));
+            TRI_Free(TRI_UNKNOWN_MEM_ZONE, json);
+          }
         }
         throw;
       }
