@@ -580,11 +580,15 @@
       // clear result
       outputEditor.setValue('');
 
-      window.progressView.show(
+      /*window.progressView.show(
         "Query is operating...",
         self.abortQuery("id"),
         '<button class="button-danger">Abort Query</button>'
+      );*/
+      window.progressView.show(
+        "Query is operating..."
       );
+
 
       $.ajax({
         type: "POST",
@@ -597,9 +601,11 @@
           self.switchTab("result-switch");
           window.progressView.hide();
           self.deselect(outputEditor);
+          $('#downloadQueryResult').show();
         },
         error: function (data) {
           self.switchTab("result-switch");
+          $('#downloadQueryResult').hide();
           try {
             var temp = JSON.parse(data.responseText);
             outputEditor.setValue('[' + temp.errorNum + '] ' + temp.errorMessage);
