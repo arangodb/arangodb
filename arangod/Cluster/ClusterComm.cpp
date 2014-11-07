@@ -62,6 +62,7 @@ void triagens::arango::ClusterCommRestCallback(string& coordinator,
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterComm::ClusterComm () :
+  _dispatcher(nullptr),
   _backgroundThread(0),
   _logConnectionErrors(false) {
 }
@@ -94,8 +95,9 @@ ClusterComm* ClusterComm::instance () {
 /// @brief initialise the cluster comm singleton object
 ////////////////////////////////////////////////////////////////////////////////
 
-void ClusterComm::initialise () {
+void ClusterComm::initialise (triagens::rest::ApplicationDispatcher* dispatcher) {
   auto* i = instance();
+  i->_dispatcher = dispatcher;
   i->startBackgroundThread();
 }
 
@@ -539,7 +541,9 @@ ClusterCommResult* ClusterComm::wait (
       // Here it could either be in the receive or the send queue, let's wait
       timeleft = endtime - TRI_microtime();
       if (timeleft <= 0) break;
+      // tell Dispatcher that we are waiting
       somethingReceived.wait(uint64_t(timeleft * 1000000.0));
+      // tell Dispatcher that we are back in business
     }
     // This place is only reached on timeout
   }
@@ -590,7 +594,9 @@ ClusterCommResult* ClusterComm::wait (
       // Here it could either be in the receive or the send queue, let's wait
       timeleft = endtime - TRI_microtime();
       if (timeleft <= 0) break;
+      // tell Dispatcher that we are waiting
       somethingReceived.wait(uint64_t(timeleft * 1000000.0));
+      // tell Dispatcher that we are back in business
     }
     // This place is only reached on timeout
   }
