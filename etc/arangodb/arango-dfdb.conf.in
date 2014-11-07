@@ -15,6 +15,7 @@ threads = 1
 startup-directory = @PKGDATADIR@/js
 app-path = @LOCALSTATEDIR@/lib/arangodb-apps
 script = @PKGDATADIR@/js/server/arango-dfdb.js
+v8-contexts = 1
 
 [log]
 level = info

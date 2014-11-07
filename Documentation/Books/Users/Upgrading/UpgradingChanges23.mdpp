@@ -4,6 +4,37 @@ It is recommended to check the following list of incompatible changes **before**
 upgrading to ArangoDB 2.3, and adjust any client programs if necessary.
 
 
+!SECTION Default configuration file changes
+
+With ArangoDB 2.3, the number of server threads can be configured independently of 
+the number of V8 contexts. The configuration option `--javascript.v8-contexts` was 
+added to arangod to provide better control over the number of V8 contexts created 
+in arangod.
+  
+Previously, the number of V8 contexts arangod created at startup was equal 
+to the number of server threads (as specified by option `--server.threads`). 
+
+In some situations it may be more sensible to create different amounts of threads 
+and V8 contexts. This is because each V8 contexts created will consume memory
+and requires CPU resources for periodic garbage collection. Contrary, server
+threads do not have such high memory or CPU footprint. 
+
+If the option `--javascript.v8-contexts` is not specified, the number of V8 
+contexts created at startup will remain equal to the number of server threads. 
+Thus no change in configuration is required to keep the same behavior as in 
+previous ArangoDB versions.
+
+However, the default configuration files shipped with ArangoDB have been changed. 
+The number of server threads has been increased in the configuration files, and
+the number of V8 contexts is now explicitly set in the configuration files (to
+the same value as the number of server threads was set to in 2.2).
+
+If you are using the default config files or merge them with your local config files, 
+please review if the higher default number of server threads is okay in your
+environment. Additionally you should verify that the number of V8 contexts
+created (as specified in option `--javascript.v8-contexts`) is okay.
+
+
 !SECTION AQL
 
 !SUBSECTION AQL queries throw less exceptions
