@@ -1,6 +1,23 @@
 v2.3.0 (XXXX-XX-XX)
 -------------------
 
+* front-end: new icons for uploading and downloading JSON documents into a collection
+
+* front-end: fixed documents pagination css display error
+
+* front-end: fixed flickering of the progress view
+
+* front-end: fixed missing event for documents filter function
+
+* front-end: jsoneditor: added CMD+Return (Mac) CTRL+Return (Linux/Win) shortkey for 
+  saving a document
+
+* front-end: added information tooltip for uploading json documents.
+
+* front-end: added database management view to the collapsed navigation menu
+
+* front-end: added collection truncation feature
+
 * fixed issue #1086: arangoimp: Odd errors if arguments are not given properly
 
 * performance improvements for AQL queries that use JavaScript-based expressions
