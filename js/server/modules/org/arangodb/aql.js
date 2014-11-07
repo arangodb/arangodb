@@ -2962,28 +2962,25 @@ function AQL_IS_IN_POLYGON (points, latitude, longitude) {
     return false;
   }
 
-  var searchLat, searchLon, pointLat, pointLon, geoJson = false;
+  var search, pointLat, pointLon, geoJson = false;
   if (TYPEWEIGHT(latitude) === TYPEWEIGHT_LIST) {
     geoJson = AQL_TO_BOOL(longitude);
     if (geoJson) {
       // first list value is longitude, then latitude
-      searchLat = latitude[1];
-      searchLon = latitude[0];
+      search = latitude; 
       pointLat = 1;
       pointLon = 0;
     }
     else {
       // first list value is latitude, then longitude
-      searchLat = latitude[0];
-      searchLon = latitude[1];
+      search = latitude;
       pointLat = 0;
       pointLon = 1;
     }
   }
   else if (TYPEWEIGHT(latitude) === TYPEWEIGHT_NUMBER &&
            TYPEWEIGHT(longitude) === TYPEWEIGHT_NUMBER) {
-    searchLat = latitude;
-    searchLon = longitude;
+    search = [ latitude, longitude ];
     pointLat = 0;
     pointLon = 1;
   }
@@ -2992,30 +2989,37 @@ function AQL_IS_IN_POLYGON (points, latitude, longitude) {
     return false;
   }
   
-  var i, j = points.length - 1;
-  var oddNodes = false;
-
-  for (i = 0; i < points.length; ++i) {
-    if (TYPEWEIGHT(points[i]) !== TYPEWEIGHT_LIST) {
-      continue;
-    }
-
-    if (((points[i][pointLat] < searchLat && points[j][pointLat] >= searchLat) || 
-         (points[j][pointLat] < searchLat && points[i][pointLat] >= searchLat)) &&
-        (points[i][pointLon] <= searchLon || points[j][pointLon] <= searchLon)) {
-      oddNodes ^= ((points[i][pointLon] + (searchLat - points[i][pointLat]) / 
-                   (points[j][pointLat] - points[i][pointLat]) * 
-                    (points[j][pointLon] - points[i][pointLon])) < searchLon);
-    }
-
-    j = i;
+  if (points.length === 0) {
+    return false;
   }
+ 
+  var i, n = points.length; 
+  var wn = 0;
+  points.push(points[0]);
 
-  if (oddNodes) {
-    return true;
+  var isLeft = function (p0, p1, p2) {
+    return ((p1[pointLon] - p0[pointLon]) * (p2[pointLat] - p0[pointLat]) - 
+            (p2[pointLon] - p0[pointLon]) * (p1[pointLat] - p0[pointLat]));
+  };
+ 
+  for (i = 0; i < n; ++i) {
+    if (points[i][pointLat] <= search[pointLat]) {
+      if (points[i + 1][pointLat] >= search[pointLat]) { 
+        if (isLeft(points[i], points[i + 1], search) >= 0) { 
+          ++wn;
+        }
+      }
+    }
+    else {
+      if (points[i + 1][pointLat] <= search[pointLat]) {  
+        if (isLeft(points[i], points[i + 1], search) <= 0) { 
+          --wn;
+        }
+      }
+    }
   }
-
-  return false;
+ 
+  return (wn !== 0);
 }
 
 // -----------------------------------------------------------------------------
