@@ -298,7 +298,7 @@
       var inputEditor = ace.edit("aqlEditor");
       var query = inputEditor.getValue();
       if (query !== '' || query !== undefined || query !== null) {
-        window.open(encodeURI("query/result/download/" + btoa(JSON.stringify({ query: query }))));
+        window.open("query/result/download/" + encodeURIComponent(btoa(JSON.stringify({ query: query }))));
       }
       else {
         arangoHelper.arangoError("Query error", "could not query result.");
@@ -326,7 +326,7 @@
 
       });
 
-      window.open(encodeURI("query/download/" + name));
+      window.open("query/download/" + encodeURIComponent(name));
     },
 
     deselect: function (editor) {
