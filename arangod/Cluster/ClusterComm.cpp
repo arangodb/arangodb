@@ -361,13 +361,14 @@ ClusterCommResult* ClusterComm::syncRequest (
                                     headersCopy);
 
       if (res->result == nullptr || ! res->result->isComplete()) {
-        cm->brokenConnection(connection);
         if (client->getErrorMessage() == "Request timeout reached") {
           res->status = CL_COMM_TIMEOUT;
         }
         else {
           res->status = CL_COMM_ERROR;
         }
+        cm->brokenConnection(connection);
+        client->invalidateConnection();
       }
       else {
         cm->returnConnection(connection);
@@ -747,6 +748,7 @@ void ClusterComm::asyncAnswer (string& coordinatorHeader,
                                  "/_api/shard-comm", body, len, headers);
   if (result == nullptr || ! result->isComplete()) {
     cm->brokenConnection(connection);
+    client->invalidateConnection();
   }
   else {
     cm->returnConnection(connection);
@@ -1044,13 +1046,14 @@ void ClusterCommThread::run () {
               }
 
               if (op->result == nullptr || ! op->result->isComplete()) {
-                cm->brokenConnection(connection);
                 if (client->getErrorMessage() == "Request timeout reached") {
                   op->status = CL_COMM_TIMEOUT;
                 }
                 else {
                   op->status = CL_COMM_ERROR;
                 }
+                cm->brokenConnection(connection);
+                client->invalidateConnection();
               }
               else {
                 cm->returnConnection(connection);
