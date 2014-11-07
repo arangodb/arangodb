@@ -129,10 +129,25 @@
           return returnval;
       },
 
+    truncateCollection: function () {
+      $.ajax({
+        async: false,
+        cache: false,
+        type: 'PUT',
+        url: "/_api/collection/" + this.get("id") + "/truncate",
+        success: function () {
+          arangoHelper.arangoNotification('Collection truncated');
+        },
+        error: function () {
+          arangoHelper.arangoError('Collection error');
+        }
+      });
+    },
+
     loadCollection: function () {
       var self = this;
       $.ajax({
-        async:false,
+        async: false,
         cache: false,
         type: 'PUT',
         url: "/_api/collection/" + this.get("id") + "/load",
