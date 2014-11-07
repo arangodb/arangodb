@@ -555,19 +555,19 @@ QueryResult Query::prepare (QueryRegistry* registry) {
   }
   catch (triagens::arango::Exception const& ex) {
     cleanupPlanAndEngine(ex.code());
-    return QueryResult(ex.code(), getStateString() + ex.message());
+    return QueryResult(ex.code(), ex.message() + getStateString());
   }
   catch (std::bad_alloc const&) {
     cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY);
-    return QueryResult(TRI_ERROR_OUT_OF_MEMORY, getStateString() + TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+    return QueryResult(TRI_ERROR_OUT_OF_MEMORY, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) + getStateString());
   }
   catch (std::exception const& ex) {
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
-    return QueryResult(TRI_ERROR_INTERNAL, getStateString() + ex.what());
+    return QueryResult(TRI_ERROR_INTERNAL, ex.what() + getStateString());
   }
   catch (...) {
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
-    return QueryResult(TRI_ERROR_INTERNAL, getStateString() + TRI_errno_string(TRI_ERROR_INTERNAL));
+    return QueryResult(TRI_ERROR_INTERNAL, TRI_errno_string(TRI_ERROR_INTERNAL) + getStateString());
   }
 }
 
@@ -625,19 +625,19 @@ QueryResult Query::execute (QueryRegistry* registry) {
   }
   catch (triagens::arango::Exception const& ex) {
     cleanupPlanAndEngine(ex.code());
-    return QueryResult(ex.code(), getStateString() + ex.message());
+    return QueryResult(ex.code(), ex.message() + getStateString());
   }
   catch (std::bad_alloc const&) {
     cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY);
-    return QueryResult(TRI_ERROR_OUT_OF_MEMORY, getStateString() + TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+    return QueryResult(TRI_ERROR_OUT_OF_MEMORY, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) + getStateString());
   }
   catch (std::exception const& ex) {
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
-    return QueryResult(TRI_ERROR_INTERNAL, getStateString() + ex.what());
+    return QueryResult(TRI_ERROR_INTERNAL, ex.what() + getStateString());
   }
   catch (...) {
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
-    return QueryResult(TRI_ERROR_INTERNAL, getStateString() + TRI_errno_string(TRI_ERROR_INTERNAL));
+    return QueryResult(TRI_ERROR_INTERNAL, TRI_errno_string(TRI_ERROR_INTERNAL) + getStateString());
   }
 }
 
@@ -697,19 +697,19 @@ QueryResultV8 Query::executeV8 (QueryRegistry* registry) {
   }
   catch (triagens::arango::Exception const& ex) {
     cleanupPlanAndEngine(ex.code());
-    return QueryResultV8(ex.code(), getStateString() + ex.message());
+    return QueryResultV8(ex.code(), ex.message() + getStateString());
   }
   catch (std::bad_alloc const&) {
     cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY);
-    return QueryResultV8(TRI_ERROR_OUT_OF_MEMORY, getStateString() + TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+    return QueryResultV8(TRI_ERROR_OUT_OF_MEMORY, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) + getStateString());
   }
   catch (std::exception const& ex) {
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
-    return QueryResultV8(TRI_ERROR_INTERNAL, getStateString() + ex.what());
+    return QueryResultV8(TRI_ERROR_INTERNAL, ex.what() + getStateString());
   }
   catch (...) {
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
-    return QueryResult(TRI_ERROR_INTERNAL, getStateString() + TRI_errno_string(TRI_ERROR_INTERNAL));
+    return QueryResult(TRI_ERROR_INTERNAL, TRI_errno_string(TRI_ERROR_INTERNAL) + getStateString());
   }
 }
 
@@ -811,16 +811,16 @@ QueryResult Query::explain () {
     return result;
   }
   catch (triagens::arango::Exception const& ex) {
-    return QueryResult(ex.code(), getStateString() + ex.message());
+    return QueryResult(ex.code(), ex.message() + getStateString());
   }
   catch (std::bad_alloc const&) {
-    return QueryResult(TRI_ERROR_OUT_OF_MEMORY, getStateString() + TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+    return QueryResult(TRI_ERROR_OUT_OF_MEMORY, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) + getStateString());
   }
   catch (std::exception const& ex) {
-    return QueryResult(TRI_ERROR_INTERNAL, getStateString() + ex.what());
+    return QueryResult(TRI_ERROR_INTERNAL, ex.what() + getStateString());
   }
   catch (...) {
-    return QueryResult(TRI_ERROR_INTERNAL, getStateString() + TRI_errno_string(TRI_ERROR_INTERNAL));
+    return QueryResult(TRI_ERROR_INTERNAL, TRI_errno_string(TRI_ERROR_INTERNAL) + getStateString());
   }
 }
 
@@ -1051,7 +1051,7 @@ QueryResult Query::transactionError (int errorCode) const {
     err += std::string(" (") + detail + std::string(")");
   }
 
-  if (_queryString != nullptr) {
+  if (_queryString != nullptr && verboseErrors()) {
     err += std::string("\nwhile executing:\n") + _queryString + std::string("\n");
   }
 
@@ -1145,7 +1145,7 @@ void Query::enterState (ExecutionState state) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string Query::getStateString () const {
-  return "while " + StateNames[_state] + ": ";
+  return std::string(" (while " + StateNames[_state] + ")");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

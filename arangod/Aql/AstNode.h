@@ -646,8 +646,8 @@ namespace triagens {
 /// @brief append a JavaScript representation of the node into a string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-        void append (triagens::basics::StringBuffer*,
-                     bool) const;
+        void stringify (triagens::basics::StringBuffer*,
+                        bool) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -655,6 +655,8 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stringify the value of a node into a string buffer
+/// this method is used when generated JavaScript code for the node!
+/// this creates an equivalent to what JSON.stringify() would do
 ////////////////////////////////////////////////////////////////////////////////
 
         void appendValue (triagens::basics::StringBuffer*) const;

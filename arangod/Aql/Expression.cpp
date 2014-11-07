@@ -744,7 +744,7 @@ std::pair<std::string, std::string> Expression::getMultipleAttributes() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Expression::stringify (triagens::basics::StringBuffer* buffer) const {
-  _node->append(buffer, true);
+  _node->stringify(buffer, true);
 }
 
 // -----------------------------------------------------------------------------
