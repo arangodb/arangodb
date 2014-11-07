@@ -122,6 +122,12 @@
   width: 115px;
 }
 
+.queryline {
+  .fa-info-circle:hover {
+    cursor: pointer;
+  }
+}
+
 .ace_error {
   background: none !important;
 }
