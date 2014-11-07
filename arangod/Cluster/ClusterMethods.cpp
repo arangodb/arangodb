@@ -543,6 +543,7 @@ int createDocumentOnCoordinator (
   shared_ptr<CollectionInfo> collinfo = ci->getCollection(dbname, collname);
 
   if (collinfo->empty()) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
