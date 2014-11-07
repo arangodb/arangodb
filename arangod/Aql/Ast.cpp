@@ -981,6 +981,11 @@ void Ast::optimize () {
     if (node->type == NODE_TYPE_LET) {
       return optimizeLet(node);
     }
+    
+    // FOR
+    if (node->type == NODE_TYPE_FOR) {
+      return optimizeFor(node);
+    }
 
     return node;
   };
@@ -1640,6 +1645,34 @@ AstNode* Ast::optimizeLet (AstNode* node) {
     v->constValue(static_cast<void*>(expression));
   }  
 
+  return node; 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimizes the FOR statement 
+/// no real optimizations are done here, but we do an early check if the
+/// FOR loop operand is actually a list 
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::optimizeFor (AstNode* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->type == NODE_TYPE_FOR);
+  TRI_ASSERT(node->numMembers() == 2);
+
+  AstNode* expression = node->getMember(1);
+
+  if (expression == nullptr) {
+    return node;
+  }
+
+  if (expression->isConstant() && 
+      expression->type != NODE_TYPE_LIST) {
+    // right-hand operand to FOR statement is no list
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_LIST_EXPECTED,
+                                   TRI_errno_string(TRI_ERROR_QUERY_LIST_EXPECTED) + std::string(" in FOR loop"));
+  }
+  
+  // no real optimizations will be done here  
   return node; 
 }
 

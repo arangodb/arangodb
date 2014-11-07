@@ -724,7 +724,7 @@ void Executor::generateCodeExpand (AstNode const* node) {
   auto variable = static_cast<Variable*>(iterator->getMember(0)->getData());
   _buffer->appendText("vars[\"");
   _buffer->appendText(variable->name);
-  _buffer->appendText("\"] = v; ");
+  _buffer->appendText("\"]=v; ");
 
   _buffer->appendText("r.push(");
   generateCodeNode(node->getMember(1));
@@ -812,7 +812,7 @@ void Executor::generateCodeNode (AstNode const* node) {
 
   switch (node->type) {
     case NODE_TYPE_VALUE:
-      node->append(_buffer, true);
+      node->appendValue(_buffer);
       break;
 
     case NODE_TYPE_LIST:

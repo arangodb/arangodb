@@ -2528,7 +2528,7 @@ struct OrToInConverter {
 
   std::string getString (AstNode const* node) {
     triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
-    node->append(&buffer, false);
+    node->stringify(&buffer, false);
     return std::string(buffer.c_str(), buffer.length());
   }
 
