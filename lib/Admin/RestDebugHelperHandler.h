@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abstract class for handlers
+/// @brief debug helper handler
 ///
 /// @file
 ///
@@ -24,69 +24,83 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Handler.h"
+#ifndef ARANGODB_ADMIN_REST_DEBUG_HELPER_HANDLER_H
+#define ARANGODB_ADMIN_REST_DEBUG_HELPER_HANDLER_H 1
 
-using namespace triagens::rest;
-using namespace std;
+#include "Basics/Common.h"
+
+#include "Admin/RestBaseHandler.h"
+
+#include "Rest/HttpResponse.h"
+
+namespace triagens {
+  namespace admin {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                          class RestVersionHandler
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief version request handler
+////////////////////////////////////////////////////////////////////////////////
+
+    class RestDebugHelperHandler : public RestBaseHandler {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
+      public:
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-Handler::Handler () 
-  : _dispatcherThread(0) {
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructs a handler
-////////////////////////////////////////////////////////////////////////////////
-
-Handler::~Handler () {
-}
+        RestDebugHelperHandler (rest::HttpRequest*);
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
+// --SECTION--                                                   Handler methods
 // -----------------------------------------------------------------------------
 
+      public:
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the job type
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-Job::JobType Handler::type () {
-  return Job::READ_JOB;
+        bool isDirect ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string const& queue () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the server version number
+////////////////////////////////////////////////////////////////////////////////
+
+        status_t execute ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief name of the queue
+////////////////////////////////////////////////////////////////////////////////
+
+        static const std::string QUEUE_NAME;
+
+    };
+  }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the queue name
-////////////////////////////////////////////////////////////////////////////////
-
-string const& Handler::queue () const {
-  static string const standard = "STANDARD";
-  return standard;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the thread which currently dealing with the job
-////////////////////////////////////////////////////////////////////////////////
-
-void Handler::setDispatcherThread (DispatcherThread* dispatcherThread) {
-  _dispatcherThread = dispatcherThread;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tries to cancel an execution
-////////////////////////////////////////////////////////////////////////////////
-
-bool Handler::cancel (bool) {
-  return false;
-}
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

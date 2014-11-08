@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abstract class for handlers
+/// @brief debug helper handler
 ///
 /// @file
 ///
@@ -24,13 +24,27 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Handler.h"
+#include "RestDebugHelperHandler.h"
 
+#include "Basics/conversions.h"
+#include "Basics/json.h"
+#include "Basics/tri-strings.h"
+#include "Dispatcher/DispatcherThread.h"
+#include "Rest/HttpRequest.h"
+#include "Rest/Version.h"
+
+using namespace triagens::basics;
 using namespace triagens::rest;
+using namespace triagens::admin;
 using namespace std;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief name of the queue
+////////////////////////////////////////////////////////////////////////////////
+
+const string RestDebugHelperHandler::QUEUE_NAME = "STANDARD";
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -40,52 +54,83 @@ using namespace std;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-Handler::Handler () 
-  : _dispatcherThread(0) {
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructs a handler
-////////////////////////////////////////////////////////////////////////////////
-
-Handler::~Handler () {
+RestDebugHelperHandler::RestDebugHelperHandler (HttpRequest* request)
+  : RestBaseHandler(request) {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
+// --SECTION--                                                   Handler methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the job type
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-Job::JobType Handler::type () {
-  return Job::READ_JOB;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the queue name
-////////////////////////////////////////////////////////////////////////////////
-
-string const& Handler::queue () const {
-  static string const standard = "STANDARD";
-  return standard;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the thread which currently dealing with the job
-////////////////////////////////////////////////////////////////////////////////
-
-void Handler::setDispatcherThread (DispatcherThread* dispatcherThread) {
-  _dispatcherThread = dispatcherThread;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tries to cancel an execution
-////////////////////////////////////////////////////////////////////////////////
-
-bool Handler::cancel (bool) {
+bool RestDebugHelperHandler::isDirect () {
   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+string const& RestDebugHelperHandler::queue () const {
+  return QUEUE_NAME;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the server version number
+///
+/// Parameters:
+/// - sleep: sleep for X seconds
+////////////////////////////////////////////////////////////////////////////////
+
+HttpHandler::status_t RestDebugHelperHandler::execute () {
+  TRI_json_t result;
+
+  RequestStatisticsAgentSetIgnore(this);
+
+  TRI_InitArray2Json(TRI_CORE_MEM_ZONE, &result, 3);
+
+  TRI_json_t server;
+  TRI_InitStringJson(&server, TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, "arango"));
+  TRI_Insert2ArrayJson(TRI_CORE_MEM_ZONE, &result, "server", &server);
+
+  TRI_json_t version;
+  TRI_InitStringJson(&version, TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, TRI_VERSION));
+  TRI_Insert2ArrayJson(TRI_CORE_MEM_ZONE, &result, "version", &version);
+
+  bool found;
+  char const* sleepStr = _request->value("sleep", found);
+  uint64_t s = StringUtils::doubleDecimal(sleepStr) * 1000.0 * 1000.0;
+
+  char const* blockStr = _request->value("block", found);
+  bool block = (found && StringUtils::boolean(blockStr));
+
+  if (block && _dispatcherThread != nullptr) {
+    _dispatcherThread->blockThread();
+  }
+
+  if (0 < s) {
+    usleep(s);
+  }
+
+  if (block && _dispatcherThread != nullptr) {
+    _dispatcherThread->unblockThread();
+  }
+
+  TRI_json_t sleepNumber;
+  TRI_InitNumberJson(&sleepNumber, s / 1000000.0);
+  TRI_Insert2ArrayJson(TRI_CORE_MEM_ZONE, &result, "sleep", &sleepNumber);
+
+  TRI_json_t blockFlag;
+  TRI_InitBooleanJson(&blockFlag, block);
+  TRI_Insert2ArrayJson(TRI_CORE_MEM_ZONE, &result, "block", &blockFlag);
+
+  generateResult(&result);
+  TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
+
+  return status_t(HANDLER_DONE);
 }
 
 // -----------------------------------------------------------------------------

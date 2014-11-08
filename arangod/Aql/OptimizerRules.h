@@ -100,6 +100,12 @@ namespace triagens {
     int useIndexForSort (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief try to remove filters which are covered by indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    int removeFiltersCoveredByIndex (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief interchange adjacent EnumerateCollectionNodes in all possible ways
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -174,7 +180,7 @@ namespace triagens {
 //  same (single) attribute.
 ////////////////////////////////////////////////////////////////////////////////
 
-    int replaceORwithIN (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+    int replaceOrWithIn (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
     
   }  // namespace aql
 }  // namespace triagens
