@@ -63,7 +63,6 @@ void triagens::arango::ClusterCommRestCallback(string& coordinator,
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterComm::ClusterComm () :
-  _dispatcher(nullptr),
   _backgroundThread(0),
   _logConnectionErrors(false) {
 }
@@ -96,9 +95,8 @@ ClusterComm* ClusterComm::instance () {
 /// @brief initialise the cluster comm singleton object
 ////////////////////////////////////////////////////////////////////////////////
 
-void ClusterComm::initialise (triagens::rest::ApplicationDispatcher* dispatcher) {
+void ClusterComm::initialise () {
   auto* i = instance();
-  i->_dispatcher = dispatcher;
   i->startBackgroundThread();
 }
 

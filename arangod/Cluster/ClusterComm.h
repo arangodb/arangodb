@@ -42,7 +42,6 @@
 #include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Dispatcher/ApplicationDispatcher.h"
 
 namespace triagens {
   namespace arango {
@@ -261,7 +260,7 @@ void ClusterCommRestCallback (std::string& coordinator, rest::HttpResponse* resp
 /// @brief initialise function to call once when still single-threaded
 ////////////////////////////////////////////////////////////////////////////////
 
-        static void initialise (triagens::rest::ApplicationDispatcher* dispatcher);
+        static void initialise ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleanup function to call once when shutting down
@@ -376,12 +375,6 @@ void ClusterCommRestCallback (std::string& coordinator, rest::HttpResponse* resp
 ////////////////////////////////////////////////////////////////////////////////
 
         static ClusterComm* _theinstance;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief The Dispatcher:
-////////////////////////////////////////////////////////////////////////////////
-
-        triagens::rest::ApplicationDispatcher* _dispatcher;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief produces an operation ID which is unique in this process
