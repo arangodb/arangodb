@@ -2521,9 +2521,10 @@ int triagens::aql::undistributeRemoveAfterEnumColl (Optimizer* opt,
 
 struct CommonNodeFinder {
   std::vector<AstNode const*> possibleNodes;
+  int                         isEqual = 0; // -1 equals, 0 not set, 1 one of >, <, >=, <=
   
   bool find (AstNode const*  node, 
-             AstNodeType     condition, 
+             AstNodeType     condition,
              AstNode const*& commonNode,
              std::string&    commonName ) {
   
@@ -2536,27 +2537,23 @@ struct CommonNodeFinder {
       possibleNodes.clear();
       return true;
     }
+    
+    if (isEqual == 0) {// not set
+      isEqual = (node->type == NODE_TYPE_OPERATOR_BINARY_EQ?-1:1);
+    }
 
-    if (node->type == condition) {
+    if (node->type == condition 
+        || (condition != NODE_TYPE_OPERATOR_BINARY_EQ 
+            && ( node->type == NODE_TYPE_OPERATOR_BINARY_LE 
+              || node->type == NODE_TYPE_OPERATOR_BINARY_LT
+              || node->type == NODE_TYPE_OPERATOR_BINARY_GE 
+              || node->type == NODE_TYPE_OPERATOR_BINARY_GT ))) {
 
       auto lhs = node->getMember(0);
       auto rhs = node->getMember(1);
 
-      if (lhs->isConstant()) {
-        commonNode = rhs;
-        commonName = commonNode->toString();
-        possibleNodes.clear();
-        return true;
-      }
-
-      if (rhs->isConstant()) {
-        commonNode = lhs;
-        commonName = commonNode->toString();
-        possibleNodes.clear();
-        return true;
-      }
-
-      if (rhs->type == NODE_TYPE_FCALL || 
+      if (rhs->isConstant() ||
+          rhs->type == NODE_TYPE_FCALL || 
           rhs->type == NODE_TYPE_FCALL_USER ||
           rhs->type == NODE_TYPE_REFERENCE) {
         commonNode = lhs;
@@ -2565,7 +2562,8 @@ struct CommonNodeFinder {
         return true;
       }
 
-      if (lhs->type == NODE_TYPE_FCALL || 
+      if (lhs->isConstant() ||
+          lhs->type == NODE_TYPE_FCALL || 
           lhs->type == NODE_TYPE_FCALL_USER ||
           lhs->type == NODE_TYPE_REFERENCE) {
         commonNode = rhs;
@@ -2585,7 +2583,7 @@ struct CommonNodeFinder {
               return true;
             }
           }
-          // don't return must consider the other side of the condition
+          // don't return, must consider the other side of the condition
         } 
         else {
           possibleNodes.push_back(lhs);
@@ -2760,106 +2758,139 @@ struct RemoveRedundantOR {
 
   AstNode const*    bestValue = nullptr;
   AstNodeType       comparison;
+  bool              inclusive;
+  bool              isComparisonSet = false;
   CommonNodeFinder  finder;
   AstNode const*    commonNode = nullptr;
   std::string       commonName;
-  int               side = 0;
 
   AstNode* createReplacementNode (Ast* ast) {
     TRI_ASSERT(commonNode != nullptr);
     TRI_ASSERT(bestValue != nullptr);
-    TRI_ASSERT(side != 0);
-    if (side == 1) {
-      return ast->createNodeBinaryOperator(comparison, bestValue,
-          commonNode->clone(ast));
-    } 
+    TRI_ASSERT(isComparisonSet == true);
     return ast->createNodeBinaryOperator(comparison, commonNode->clone(ast),
         bestValue);
   }
 
+  bool isInclusiveBound (AstNodeType type) {
+    return (type == NODE_TYPE_OPERATOR_BINARY_GE || type == NODE_TYPE_OPERATOR_BINARY_LE);
+  }
+
+  int isCompatibleBound (AstNodeType type, AstNode const* value, bool reverse) {
+    
+    if (reverse) {
+      if ((comparison == NODE_TYPE_OPERATOR_BINARY_LE 
+            || comparison == NODE_TYPE_OPERATOR_BINARY_LT) &&
+          (type == NODE_TYPE_OPERATOR_BINARY_GE
+           || type == NODE_TYPE_OPERATOR_BINARY_GT)) {
+        return -1; //high bound
+      } else if ((comparison == NODE_TYPE_OPERATOR_BINARY_GE
+            || comparison == NODE_TYPE_OPERATOR_BINARY_GT) &&
+          (type == NODE_TYPE_OPERATOR_BINARY_LE 
+           || type == NODE_TYPE_OPERATOR_BINARY_LT)) {
+        return 1; //low bound
+      }
+    } else {
+      if ((comparison == NODE_TYPE_OPERATOR_BINARY_LE
+            || comparison == NODE_TYPE_OPERATOR_BINARY_LT) &&
+          (type == NODE_TYPE_OPERATOR_BINARY_LE
+           || type == NODE_TYPE_OPERATOR_BINARY_LT)) {
+        return -1; //high bound
+      } else if ((comparison == NODE_TYPE_OPERATOR_BINARY_GE
+            || comparison == NODE_TYPE_OPERATOR_BINARY_GT) &&
+          (type == NODE_TYPE_OPERATOR_BINARY_GE 
+           || type == NODE_TYPE_OPERATOR_BINARY_GT)) {
+        return 1; //low bound
+      }
+    }
+    return 0; //incompatible bounds
+  }
+
+  // returns false if the existing value is better and true if the input value is
+  // better
+  bool compareBounds(AstNodeType type, AstNode const* value, int lowhigh) { 
+
+    int cmp = CompareAstNodes(bestValue, value);
+
+    if (cmp == 0 && (isInclusiveBound(comparison) != isInclusiveBound(type))) {
+      return (isInclusiveBound(type) ? true : false);
+    }
+    return (cmp * lowhigh == 1);
+  };
+
   bool hasRedundantCondition (AstNode const* node) {
     if(finder.find(node, NODE_TYPE_OPERATOR_BINARY_LT, commonNode, commonName)){
-      comparison = NODE_TYPE_OPERATOR_BINARY_LT;
-      return hasRedundantConditionWalker(node, NODE_TYPE_OPERATOR_BINARY_LT);
-    }
-    if(finder.find(node, NODE_TYPE_OPERATOR_BINARY_LE, commonNode, commonName)){
-      comparison = NODE_TYPE_OPERATOR_BINARY_LE;
-      return hasRedundantConditionWalker(node, NODE_TYPE_OPERATOR_BINARY_LE);
-    }
-    if(finder.find(node, NODE_TYPE_OPERATOR_BINARY_GT, commonNode, commonName)){
-      comparison = NODE_TYPE_OPERATOR_BINARY_GT;
-      return hasRedundantConditionWalker(node, NODE_TYPE_OPERATOR_BINARY_GT);
-    }
-    if(finder.find(node, NODE_TYPE_OPERATOR_BINARY_GE, commonNode, commonName)){
-      comparison = NODE_TYPE_OPERATOR_BINARY_GE;
-      return hasRedundantConditionWalker(node, NODE_TYPE_OPERATOR_BINARY_GE);
+      return hasRedundantConditionWalker(node);
     }
     return false;
   }
 
-  bool hasRedundantConditionWalker (AstNode const* node, AstNodeType condition) {
-    if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
-      return (hasRedundantConditionWalker(node->getMember(0), condition) &&
-              hasRedundantConditionWalker(node->getMember(1), condition));
-    }
+  bool hasRedundantConditionWalker (AstNode const* node) {
+    AstNodeType type = node->type;
 
-    if (node->type == condition) {
+    if (type == NODE_TYPE_OPERATOR_BINARY_OR) {
+      return (hasRedundantConditionWalker(node->getMember(0)) &&
+              hasRedundantConditionWalker(node->getMember(1)));
+    }
+    
+    if( type == NODE_TYPE_OPERATOR_BINARY_LE 
+     || type == NODE_TYPE_OPERATOR_BINARY_LT
+     || type == NODE_TYPE_OPERATOR_BINARY_GE 
+     || type == NODE_TYPE_OPERATOR_BINARY_GT ) {
+
       auto lhs = node->getMember(0);
       auto rhs = node->getMember(1);
       
-      if (hasRedundantConditionWalker(rhs, condition) 
-          && ! hasRedundantConditionWalker(lhs, condition)
+      if (hasRedundantConditionWalker(rhs) 
+          && ! hasRedundantConditionWalker(lhs)
           && lhs->isConstant()) {
-        // lhs = value (<, >, <=, >=) commonNode = rhs
-        TRI_ASSERT(side == 0 || side == 1);
-        side = 1; // 1 = on the right hand side
+        
+        if (!isComparisonSet) {
+          comparison = type;
+          bestValue = lhs;
+          isComparisonSet = true;
+          return true;
+        }
 
-        if (bestValue == nullptr) {
+        int lowhigh = isCompatibleBound(type, lhs, true);
+        if (lowhigh == 0) {
+          return false;
+        }
+
+        if (compareBounds(type, lhs, lowhigh)) {
+          comparison = type;
           bestValue = lhs;
         }
-        else {
-          int cmp = CompareAstNodes(lhs, bestValue);
-          if ((condition == NODE_TYPE_OPERATOR_BINARY_LT || condition ==
-                NODE_TYPE_OPERATOR_BINARY_LE) && cmp == 1) {
-            bestValue = lhs;
-          }
-          else if ((condition == NODE_TYPE_OPERATOR_BINARY_GT || condition ==
-                NODE_TYPE_OPERATOR_BINARY_GE) && cmp == -1) {
-            bestValue = lhs;
-          }
-        }
         return true;
-      } 
-      if (hasRedundantConditionWalker(lhs, condition) 
-          && ! hasRedundantConditionWalker(rhs, condition) 
+      }
+      if (hasRedundantConditionWalker(lhs) 
+          && ! hasRedundantConditionWalker(rhs)
           && rhs->isConstant()) {
-        TRI_ASSERT(side == 0 || side == -1);
-        side = -1; // 1 = on the right hand side
-        // lhs = commonNode (<, >, <=, >=) value = rhs
-        if (bestValue == nullptr) {
+        if (!isComparisonSet) {
+          comparison = type;
           bestValue = rhs;
+          isComparisonSet = true;
+          return true;
         }
-        else {
-          int cmp = CompareAstNodes(bestValue, rhs);
-          if ((condition == NODE_TYPE_OPERATOR_BINARY_LT || condition ==
-                NODE_TYPE_OPERATOR_BINARY_LE) && cmp == -1) {
+
+        int lowhigh = isCompatibleBound(type, rhs, false);
+        if (lowhigh == 0) {
+          return false;
+        }
+
+        if (compareBounds(type, rhs, lowhigh)) {
+            comparison = type;
             bestValue = rhs;
-          }
-          else if ((condition == NODE_TYPE_OPERATOR_BINARY_GT || condition ==
-                NODE_TYPE_OPERATOR_BINARY_GE) && cmp == 1) {
-            bestValue = rhs;
-          }
         }
         return true;
-      } 
-      
+      }
       // if hasRedundantConditionWalker(lhs) and
       // hasRedundantConditionWalker(rhs), then one of the conditions in the OR
       // statement is of the form x == x fall-through intentional
     }
-    else if (node->type == NODE_TYPE_REFERENCE ||
-             node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-             node->type == NODE_TYPE_INDEXED_ACCESS) {
+    else if (type == NODE_TYPE_REFERENCE ||
+             type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+             type == NODE_TYPE_INDEXED_ACCESS) {
       // get a string representation of the node for comparisons 
       return (node->toString() == commonName);
     } else if (node->isBoolValue()) {
