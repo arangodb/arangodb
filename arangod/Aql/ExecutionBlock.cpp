@@ -1345,7 +1345,7 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges, size_t atMo
   };
 
   auto setupSearchValue = [&]() {
-    size_t const n = std::min(hashIndex->_paths._length, atMost);
+    size_t const n = hashIndex->_paths._length;
     searchValue._length = 0;
     searchValue._values = static_cast<TRI_shaped_json_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, 
           n * sizeof(TRI_shaped_json_t), true));
