@@ -27,6 +27,7 @@
 /// @author 
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
+// TODO add some test which don't use number values!
 
 var internal = require("internal");
 var jsunity = require("jsunity");
