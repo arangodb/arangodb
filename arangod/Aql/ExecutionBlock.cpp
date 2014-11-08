@@ -1071,7 +1071,7 @@ bool IndexRangeBlock::readIndex (size_t atMost) {
     TRI_ASSERT(false);
   }
 
-  return (!_documents.empty());
+  return (! _documents.empty());
 }
 
 int IndexRangeBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
@@ -1314,7 +1314,7 @@ void IndexRangeBlock::readPrimaryIndex (IndexOrCondition const& ranges) {
 
     auto found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyPrimaryIndex(primaryIndex, key.c_str()));
     if (found != nullptr) {
-      _documents.push_back(*found);
+      _documents.emplace_back(*found);
     }
   }
 }
@@ -1382,7 +1382,7 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges, size_t atMo
   size_t const n = list._length;
   try {
     for (size_t i = 0; i < n; ++i) {
-      _documents.push_back(*(list._documents[i]));
+      _documents.emplace_back(*(list._documents[i]));
     }
   
     _engine->_stats.scannedIndex += static_cast<int64_t>(n);
@@ -1439,7 +1439,7 @@ void IndexRangeBlock::readEdgeIndex (IndexOrCondition const& ranges) {
       // silently ignore all errors due to wrong _from / _to specifications
       auto&& result = TRI_LookupEdgesDocumentCollection(document, direction, documentCid, (TRI_voc_key_t) documentKey.c_str());
       for (auto it : result) {
-        _documents.push_back((it));
+        _documents.emplace_back(it);
       }
   
       _engine->_stats.scannedIndex += static_cast<int64_t>(result.size());
@@ -1568,7 +1568,7 @@ void IndexRangeBlock::readSkiplistIndex (IndexOrCondition const& ranges, size_t 
       if (indexElement == nullptr || nrSent == atMost) {
         break;
       }
-      _documents.push_back(*(indexElement->_document));
+      _documents.emplace_back(*(indexElement->_document));
       ++nrSent;
       ++_engine->_stats.scannedIndex;
     }
