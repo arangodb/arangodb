@@ -2521,7 +2521,6 @@ int triagens::aql::undistributeRemoveAfterEnumColl (Optimizer* opt,
 
 struct CommonNodeFinder {
   std::vector<AstNode const*> possibleNodes;
-  int                         isEqual = 0; // -1 equals, 0 not set, 1 one of >, <, >=, <=
   
   bool find (AstNode const*  node, 
              AstNodeType     condition,
@@ -2538,10 +2537,6 @@ struct CommonNodeFinder {
       return true;
     }
     
-    if (isEqual == 0) {// not set
-      isEqual = (node->type == NODE_TYPE_OPERATOR_BINARY_EQ?-1:1);
-    }
-
     if (node->type == condition 
         || (condition != NODE_TYPE_OPERATOR_BINARY_EQ 
             && ( node->type == NODE_TYPE_OPERATOR_BINARY_LE 
@@ -2552,8 +2547,21 @@ struct CommonNodeFinder {
       auto lhs = node->getMember(0);
       auto rhs = node->getMember(1);
 
-      if (rhs->isConstant() ||
-          rhs->type == NODE_TYPE_FCALL || 
+      if (lhs->isConstant()) {
+        commonNode = rhs;
+        commonName = commonNode->toString();
+        possibleNodes.clear();
+        return true;
+      }
+
+      if (rhs->isConstant()) {
+        commonNode = lhs;
+        commonName = commonNode->toString();
+        possibleNodes.clear();
+        return true;
+      }
+
+      if (rhs->type == NODE_TYPE_FCALL || 
           rhs->type == NODE_TYPE_FCALL_USER ||
           rhs->type == NODE_TYPE_REFERENCE) {
         commonNode = lhs;
@@ -2562,8 +2570,7 @@ struct CommonNodeFinder {
         return true;
       }
 
-      if (lhs->isConstant() ||
-          lhs->type == NODE_TYPE_FCALL || 
+      if (lhs->type == NODE_TYPE_FCALL || 
           lhs->type == NODE_TYPE_FCALL_USER ||
           lhs->type == NODE_TYPE_REFERENCE) {
         commonNode = rhs;
@@ -2846,7 +2853,19 @@ struct RemoveRedundantOR {
           && lhs->isConstant()) {
         
         if (!isComparisonSet) {
-          comparison = type;
+          if (type ==  NODE_TYPE_OPERATOR_BINARY_LE) {
+            comparison = NODE_TYPE_OPERATOR_BINARY_GE;
+          }
+          else if (type ==  NODE_TYPE_OPERATOR_BINARY_LT) {
+            comparison = NODE_TYPE_OPERATOR_BINARY_GT;
+          }
+          else if (type ==  NODE_TYPE_OPERATOR_BINARY_GT) {
+            comparison = NODE_TYPE_OPERATOR_BINARY_LT;
+          }
+          else if (type ==  NODE_TYPE_OPERATOR_BINARY_GE) {
+            comparison = NODE_TYPE_OPERATOR_BINARY_LE;
+          }
+
           bestValue = lhs;
           isComparisonSet = true;
           return true;
@@ -2858,7 +2877,18 @@ struct RemoveRedundantOR {
         }
 
         if (compareBounds(type, lhs, lowhigh)) {
-          comparison = type;
+          if (type ==  NODE_TYPE_OPERATOR_BINARY_LE) {
+            comparison = NODE_TYPE_OPERATOR_BINARY_GE;
+          }
+          else if (type ==  NODE_TYPE_OPERATOR_BINARY_LT) {
+            comparison = NODE_TYPE_OPERATOR_BINARY_GT;
+          }
+          else if (type ==  NODE_TYPE_OPERATOR_BINARY_GT) {
+            comparison = NODE_TYPE_OPERATOR_BINARY_LT;
+          }
+          else if (type ==  NODE_TYPE_OPERATOR_BINARY_GE) {
+            comparison = NODE_TYPE_OPERATOR_BINARY_LE;
+          }
           bestValue = lhs;
         }
         return true;
