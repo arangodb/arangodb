@@ -102,6 +102,13 @@ namespace triagens {
 
         void unblockThread ();
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a global, but thread-local place to hold the current dispatcher
+/// thread. If we are not in a dispatcher thread this is set to nullptr.
+////////////////////////////////////////////////////////////////////////////////
+
+        static thread_local DispatcherThread* currentDispatcherThread;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------

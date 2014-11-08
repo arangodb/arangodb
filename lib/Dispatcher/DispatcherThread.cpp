@@ -71,6 +71,9 @@ DispatcherThread::DispatcherThread (DispatcherQueue* queue)
 ////////////////////////////////////////////////////////////////////////////////
 
 void DispatcherThread::run () {
+
+  currentDispatcherThread = this;
+
   _queue->_accessQueue.lock();
 
   _queue->_nrStarted--;
@@ -330,6 +333,13 @@ void DispatcherThread::reportStatus () {
 
 void DispatcherThread::tick (bool) {
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a global, but thread-local place to hold the current dispatcher
+/// thread. If we are not in a dispatcher thread this is set to nullptr.
+////////////////////////////////////////////////////////////////////////////////
+
+thread_local DispatcherThread* DispatcherThread::currentDispatcherThread = nullptr;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
