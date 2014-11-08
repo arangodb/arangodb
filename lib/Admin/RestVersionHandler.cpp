@@ -44,7 +44,7 @@ using namespace std;
 /// @brief name of the queue
 ////////////////////////////////////////////////////////////////////////////////
 
-const string RestVersionHandler::QUEUE_NAME           = "STANDARD";
+const string RestVersionHandler::QUEUE_NAME = "STANDARD";
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors

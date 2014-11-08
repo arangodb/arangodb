@@ -4,6 +4,37 @@ It is recommended to check the following list of incompatible changes **before**
 upgrading to ArangoDB 2.3, and adjust any client programs if necessary.
 
 
+!SECTION Default configuration file changes
+
+With ArangoDB 2.3, the number of server threads can be configured independently of 
+the number of V8 contexts. The configuration option `--javascript.v8-contexts` was 
+added to arangod to provide better control over the number of V8 contexts created 
+in arangod.
+  
+Previously, the number of V8 contexts arangod created at startup was equal 
+to the number of server threads (as specified by option `--server.threads`). 
+
+In some situations it may be more sensible to create different amounts of threads 
+and V8 contexts. This is because each V8 contexts created will consume memory
+and requires CPU resources for periodic garbage collection. Contrary, server
+threads do not have such high memory or CPU footprint. 
+
+If the option `--javascript.v8-contexts` is not specified, the number of V8 
+contexts created at startup will remain equal to the number of server threads. 
+Thus no change in configuration is required to keep the same behavior as in 
+previous ArangoDB versions.
+
+However, the default configuration files shipped with ArangoDB have been changed. 
+The number of server threads has been increased in the configuration files, and
+the number of V8 contexts is now explicitly set in the configuration files (to
+the same value as the number of server threads was set to in 2.2).
+
+If you are using the default config files or merge them with your local config files, 
+please review if the higher default number of server threads is okay in your
+environment. Additionally you should verify that the number of V8 contexts
+created (as specified in option `--javascript.v8-contexts`) is okay.
+
+
 !SECTION AQL
 
 !SUBSECTION AQL queries throw less exceptions
@@ -143,13 +174,20 @@ will look like this:
 }
 ```
 
+If the query option `fullCount` is requested, the `fullCount` result value will also
+be returned inside the `stats` attribute of the `extra` attribute, and not directly
+as an attribute inside the `extra` attribute as in 2.2. Note that a `fullCount` will
+only be present in `extra`.`stats` if it was requested as an option for the query.
+
 The result in ArangoDB 2.3 will also contain a `warnings` attribute with the list of 
 warnings that happened during query execution.
 
 
 !SUBSECTION Changed return values in ArangoStatement.explain()
 
-The return value of `ArangoStatement.explain()` has been changed in ArangoDB 2.3.
+The return value of `ArangoStatement.explain()` has changed significantly in 
+ArangoDB 2.3. The new return value structure is not compatible with the structure
+returned by 2.2.
 
 In ArangoDB 2.3, the full execution plan for an AQL query is returned alongside all 
 applied optimizer rules, optimization warnings etc. It is also possible to have the 

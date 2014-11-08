@@ -22,12 +22,12 @@
     </li>
     <li class="enabled">
       <a id="importCollection" class="headerButton">
-        <span class="icon_arangodb_import" title="Upload documents from JSON file"></span>
+        <span title="Upload documents from JSON file"><i class="fa fa-upload"></i></span>
       </a>
     </li>
     <li class="enabled">
       <a id="exportCollection" class="headerButton">
-        <span class="icon_arangodb_export" title="Download documents as JSON file"></span>
+        <span title="Download documents as JSON file"><i class="fa fa-download"></i></span>
       </a>
     </li>
     <li class="enabled">
@@ -70,6 +70,7 @@
       <button id="confirmDocImport" class="button-success btn-old-padding" style="float:right">
         <img id="uploadIndicator" class="upload-indicator" src="img/ajax-loader.gif"/>Import JSON
       </button>
+      <div title='Example input data:</br></br> I. Line-wise: </br> { "_key": "key1", ... } { "_key": "key2", ... } or </br></br> II. JSON documents embedded into a list: </br> [ </br> { "_key": "key1", ... }, </br> { "_key": "key2", ... }, </br> ... </br> ]' class="upload-info" style="float:left; margin-top:7px; margin-right: 10px;"><i style="font-size: 13pt;" class="fa fa-info-circle"></i></div>
     </div>
   </div>
 
