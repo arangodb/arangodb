@@ -183,7 +183,9 @@ static void FreeOperations (TRI_transaction_t* trx) {
         }
       }
 
-      // now update the stats in one go
+      // now update the stats for all datafiles of the collection in one go
+      TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
+      
       for (auto it = stats.begin(); it != stats.end(); ++it) {
         TRI_voc_fid_t fid = (*it).first;
 
@@ -197,6 +199,8 @@ static void FreeOperations (TRI_transaction_t* trx) {
           dfi->_sizeAlive -= (*it).second.second;
         }
       }
+      
+      TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
     }
 
     for (auto it = trxCollection->_operations->rbegin(); it != trxCollection->_operations->rend(); ++it) {
@@ -1176,6 +1180,8 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
         operation.type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
       // update datafile statistics for the old header
       TRI_ASSERT(operation.oldHeader._fid > 0);
+       
+      TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 
       TRI_doc_datafile_info_t* dfi = TRI_FindDatafileInfoDocumentCollection(document, operation.oldHeader._fid, false);
       // the old header might point to the WAL. in this case, there'll be no stats update
@@ -1187,6 +1193,8 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
         dfi->_numberAlive -= 1;
         dfi->_sizeAlive -= TRI_DF_ALIGN_BLOCK(marker->_size);
       }
+      
+      TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
     }
   }
   else {

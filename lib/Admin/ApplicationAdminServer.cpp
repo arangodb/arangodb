@@ -30,13 +30,15 @@
 #include "ApplicationAdminServer.h"
 
 #include "Admin/RestAdminLogHandler.h"
-#include "Admin/RestJobHandler.h"
 #include "Admin/RestHandlerCreator.h"
+#include "Admin/RestJobHandler.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/logging.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/PathHandler.h"
 #include "Rest/HttpResponse.h"
+#include "Admin/RestVersionHandler.h"
+#include "Admin/RestDebugHelperHandler.h"
 
 using namespace std;
 using namespace triagens;
@@ -108,6 +110,7 @@ void ApplicationAdminServer::addBasicHandlers (HttpHandlerFactory* factory,
                                                Dispatcher* dispatcher,
                                                AsyncJobManager* jobManager) {
   factory->addHandler(prefix + "/version", RestHandlerCreator<RestVersionHandler>::createNoData, 0);
+  factory->addHandler(prefix + "/debug-helper", RestHandlerCreator<RestDebugHelperHandler>::createNoData, 0);
 
   if (_jobPayload == 0) {
     _jobPayload = new pair<Dispatcher*, AsyncJobManager*>(dispatcher, jobManager);

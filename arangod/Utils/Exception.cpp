@@ -34,6 +34,12 @@ using namespace std;
 using namespace triagens::arango;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief controls if backtraces are printed with exceptions
+////////////////////////////////////////////////////////////////////////////////
+
+static bool WithBackTrace = false;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor, without format string
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -46,9 +52,11 @@ Exception::Exception (int code,
     _code(code) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 #if HAVE_BACKTRACE
-  _errorMessage += std::string("\n\n");
-  TRI_GetBacktrace(_errorMessage);
-  _errorMessage += std::string("\n\n");
+  if (WithBackTrace) {
+    _errorMessage += std::string("\n\n");
+    TRI_GetBacktrace(_errorMessage);
+    _errorMessage += std::string("\n\n");
+  }
 #endif
 #endif
 }
@@ -61,28 +69,19 @@ Exception::Exception (int code,
 Exception::Exception (int code,
                       string const& errorMessage,
                       char const* file,
-                      int line,
-                      bool errnoStringResolved)
+                      int line)
   : _errorMessage(errorMessage),
     _file(file),
     _line(line),
     _code(code) {
 
-  if (code != TRI_ERROR_INTERNAL) {
-    if (! errnoStringResolved) {
-      _errorMessage = std::string("(");
-      _errorMessage += TRI_errno_string(code);
-      _errorMessage += std::string(")      ");
-      _errorMessage += errorMessage;
-    }
-  }
-  else {
-   }
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 #if HAVE_BACKTRACE
-  _errorMessage += std::string("\n\n");
-  TRI_GetBacktrace(_errorMessage);
-  _errorMessage += std::string("\n\n");
+  if (WithBackTrace) {
+    _errorMessage += std::string("\n\n");
+    TRI_GetBacktrace(_errorMessage);
+    _errorMessage += std::string("\n\n");
+  }
 #endif
 #endif
 }
@@ -135,6 +134,14 @@ std::string Exception::FillExceptionString (int code,
   buffer[sizeof(buffer) - 1] = '\0'; // Windows
 
   return std::string(buffer);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief controls whether a backtrace is created for each exception
+////////////////////////////////////////////////////////////////////////////////
+
+void Exception::SetVerbose (bool verbose) {
+  WithBackTrace = verbose;
 }
 
 // -----------------------------------------------------------------------------

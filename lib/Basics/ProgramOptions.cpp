@@ -549,9 +549,7 @@ bool ProgramOptions::extractValues (ProgramOptionsDescription const& description
   TRI_vector_string_t* wtr;
 
   for (i = 0;  i < options->_items._length;  ++i) {
-    TRI_PO_item_t * item;
-
-    item = (TRI_PO_item_t*) TRI_AtVector(&options->_items, i);
+    TRI_PO_item_t * item = static_cast<TRI_PO_item_t*>(TRI_AtVector(&options->_items, i));
 
     if (item->_used) {
       string name = item->_desc->_name;

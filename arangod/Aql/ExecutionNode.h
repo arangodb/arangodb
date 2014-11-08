@@ -761,7 +761,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        NodeType getType () const override {
+        NodeType getType () const override final {
           return SINGLETON;
         }
 
@@ -837,7 +837,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        NodeType getType () const override {
+        NodeType getType () const override final {
           return ENUMERATE_COLLECTION;
         }
 
@@ -990,7 +990,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        NodeType getType () const override {
+        NodeType getType () const override final {
           return ENUMERATE_LIST;
         }
 
@@ -1107,7 +1107,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        NodeType getType () const override {
+        NodeType getType () const override final {
           return INDEX_RANGE;
         }
 
@@ -1125,6 +1125,22 @@ namespace triagens {
 
         Collection const* collection () const {
           return _collection;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return out variable
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* outVariable () const {
+          return _outVariable;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the ranges
+////////////////////////////////////////////////////////////////////////////////
+        
+        std::vector<std::vector<RangeInfo>> const& ranges () const { 
+          return _ranges;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1166,7 +1182,7 @@ namespace triagens {
         double estimateCost () const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether the pattern matches this nodes index
+/// @brief check whether the pattern matches this node's index
 ////////////////////////////////////////////////////////////////////////////////
 
         IndexMatch MatchesIndex (IndexMatchVec const& pattern) const;
@@ -1266,7 +1282,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        NodeType getType () const override {
+        NodeType getType () const override final {
           return LIMIT;
         }
 
@@ -1298,10 +1314,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost () const override final {
-//          return 1.005 * (std::min)(static_cast<double>(_limit), _dependencies.at(0)->getCost());
           return 1.005 * static_cast<double>(_limit) + _dependencies.at(0)->getCost();
-
-          //FIXME improve this estimate . . .
+          // FIXME: improve this estimate . . .
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1383,7 +1397,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        NodeType getType () const override {
+        NodeType getType () const override final {
           return CALCULATION;
         }
 
@@ -1519,7 +1533,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        NodeType getType () const override {
+        NodeType getType () const override final {
           return SUBQUERY;
         }
 
@@ -1652,7 +1666,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        NodeType getType () const override {
+        NodeType getType () const override final {
           return FILTER;
         }
 
@@ -1677,9 +1691,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost () const override final {
-          return _dependencies.at(0)->getCost() * 0.105;
-          //FIXME! 0.105 is the cost of doing the filter node under the
-          //assumption that it returns 10% of the results of its dependency
+          return _dependencies.at(0)->getCost() * 1.105;
+          // FIXME! 1.105 is the cost of doing the filter node under the
+          // assumption that it returns 10% of the results of its dependency
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1800,7 +1814,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        NodeType getType () const override {
+        NodeType getType () const override final {
           return SORT;
         }
 
@@ -1939,7 +1953,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        NodeType getType () const override {
+        NodeType getType () const override final {
           return AGGREGATE;
         }
 
@@ -2059,7 +2073,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        NodeType getType () const override {
+        NodeType getType () const override final {
           return RETURN;
         }
 
@@ -2246,7 +2260,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        NodeType getType () const override {
+        NodeType getType () const override final {
           return REMOVE;
         }
 
@@ -2359,7 +2373,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        NodeType getType () const override {
+        NodeType getType () const override final {
           return INSERT;
         }
 
@@ -2474,7 +2488,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        NodeType getType () const override {
+        NodeType getType () const override final {
           return UPDATE;
         }
 
@@ -2599,7 +2613,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        NodeType getType () const override {
+        NodeType getType () const override final {
           return REPLACE;
         }
 
@@ -2711,7 +2725,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        NodeType getType () const override {
+        NodeType getType () const override final {
           return NORESULTS;
         }
 
@@ -2788,7 +2802,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        NodeType getType () const override {
+        NodeType getType () const override final {
           return REMOTE;
         }
 
@@ -2971,7 +2985,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        NodeType getType () const override {
+        NodeType getType () const override final {
           return SCATTER;
         }
 
@@ -3074,7 +3088,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        NodeType getType () const override {
+        NodeType getType () const override final {
           return DISTRIBUTE;
         }
 
@@ -3182,7 +3196,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        NodeType getType () const override {
+        NodeType getType () const override final {
           return GATHER;
         }
 

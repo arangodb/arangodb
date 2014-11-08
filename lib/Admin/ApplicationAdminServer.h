@@ -33,7 +33,6 @@
 #include "Basics/Common.h"
 
 #include "ApplicationServer/ApplicationFeature.h"
-#include "Admin/RestVersionHandler.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -43,6 +42,7 @@ namespace triagens {
   namespace rest {
     class ApplicationServer;
     class AsyncJobManager;
+    class Dispatcher;
     class HttpHandlerFactory;
     class HttpResponse;
     class HttpRequest;
