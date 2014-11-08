@@ -217,8 +217,10 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
     auto s = static_cast<CalculationNode*>(setter);
     auto root = s->expression()->node();
 
-    if (! root->isConstant()) {
-      // filter expression can only be evaluated at runtime
+    TRI_ASSERT(root != nullptr);
+
+    if (root->canThrow() || ! root->isDeterministic()) {
+      // we better not tamper with this filter
       continue;
     }
 
@@ -232,7 +234,7 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
       toUnlink.insert(n);
       modified = true;
     }
-    else {
+    else if (root->isFalse()) {
       // filter is always false
       // now insert a NoResults node below it
       auto noResults = new NoResultsNode(plan, plan->nextId());

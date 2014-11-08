@@ -993,7 +993,12 @@ void Ast::optimize () {
     if (node->type == NODE_TYPE_LET) {
       return optimizeLet(node);
     }
-    
+
+    // FILTER
+    if (node->type == NODE_TYPE_FILTER) {
+      return optimizeFilter(node);
+    }
+ 
     // FOR
     if (node->type == NODE_TYPE_FOR) {
       return optimizeFor(node);
@@ -1669,6 +1674,34 @@ AstNode* Ast::optimizeLet (AstNode* node) {
     // LET a = 1 LET b = a + 1, c = b + a can be optimized to LET a = 1 LET b = 2 LET c = 4
     v->constValue(static_cast<void*>(expression));
   }  
+
+  return node; 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimizes the FILTER statement 
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::optimizeFilter (AstNode* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->type == NODE_TYPE_FILTER);
+  TRI_ASSERT(node->numMembers() == 1);
+
+  AstNode* expression = node->getMember(0);
+
+  if (expression == nullptr || ! expression->isDeterministic()) {
+    return node;
+  }
+
+  if (expression->isTrue()) {
+    // optimize away the filter if it is always true
+    return createNodeFilter(createNodeValueBool(true));
+  }
+
+  if (expression->isFalse()) {
+    // optimize away the filter if it is always false
+    return createNodeFilter(createNodeValueBool(false));
+  }
 
   return node; 
 }
