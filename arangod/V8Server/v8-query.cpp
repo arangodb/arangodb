@@ -2110,24 +2110,24 @@ static v8::Handle<v8::Value> FulltextQuery (SingleCollectionReadOnlyTransaction&
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief queries the fulltext index
 /// @startDocuBlock collectionFulltext
-/// `collection.FULLTEXT(index-handle, query)`
+/// `collection.fulltext(attribute, query)`
 ///
-/// The *FULLTEXT* operator performs a fulltext search using the specified
-/// index and the specified *query*.
+/// The *FULLTEXT* operator performs a fulltext search on the specified
+/// *attribute* and the specified *query*.
 ///
-/// *query* must contain a comma-separated list of words to look for.
-/// Each word can optionally be prefixed with one of the following command
-/// literals:
-/// - *prefix*: perform a prefix-search for the word following
-/// - *substring*: perform substring-matching for the word following. This
-///   option is only supported for fulltext indexes that have been created with
-///   the *indexSubstrings* option
-/// - *complete*: only match the complete following word (this is the default)
+/// Details about the fulltext query syntax can be found below.
 ///
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionFulltext}
-///   db.emails.FULLTEXT("emails/1632537", "word");
+/// ~ db._drop("emails");
+/// ~ db._create("emails");
+///   db.emails.ensureFulltextIndex("content").id;
+///   db.emails.save({ content: "Hello Alice, how are you doing? Regards, Bob" });
+///   db.emails.save({ content: "Hello Charlie, do Alice and Bob know about it?" });
+///   db.emails.save({ content: "I think they don't know. Regards, Eve" });
+///   db.emails.fulltext("content", "charlie,|eve").toArray();
+/// ~ db._drop("emails");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////

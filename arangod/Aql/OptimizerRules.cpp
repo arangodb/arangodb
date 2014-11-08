@@ -1477,6 +1477,248 @@ int triagens::aql::useIndexForSort (Optimizer* opt,
   return TRI_ERROR_NO_ERROR;
 }
 
+#if 0
+// TODO: finish rule and test it
+
+struct FilterCondition {
+  std::string variableName;
+  std::string attributeName;
+  AstNode const* lowNode  = nullptr;
+  AstNode const* highNode = nullptr;
+  bool lowInclusive       = false;
+  bool highInclusive      = false;
+  
+  FilterCondition () {
+  }
+
+  bool isFullyCoveredBy (RangeInfo const& other) {
+    if (! other.isConstant()) {
+      return false;
+    }
+
+    if (other._var != variableName ||
+        other._attr != attributeName) {
+      return false;
+    }
+
+    bool const lowDefined = (lowNode != nullptr);
+    bool const highDefined = (highNode != nullptr);
+
+    if (lowDefined != other._lowConst.isDefined()) {
+      return false;
+    }
+
+    if (highDefined != other._highConst.isDefined()) {
+      return false;
+    }
+
+    if (lowDefined) {
+      if (other._lowConst.inclusive() != lowInclusive) {
+        return false;
+      }
+
+      Json json(TRI_UNKNOWN_MEM_ZONE, lowNode->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
+
+      if (TRI_CompareValuesJson(other._lowConst.bound().json(), json.json()) != 0) {
+        return false;
+      } 
+    }
+
+    if (highDefined) {
+      if (other._highConst.inclusive() != highInclusive) {
+        return false;
+      }
+
+      Json json(TRI_UNKNOWN_MEM_ZONE, highNode->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
+
+      if (TRI_CompareValuesJson(other._highConst.bound().json(), json.json()) != 0) {
+        return false;
+      } 
+    }
+
+    return true;
+  }
+
+  bool analyze (AstNode const* node) {
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ ||
+        node->type == NODE_TYPE_OPERATOR_BINARY_LT ||
+        node->type == NODE_TYPE_OPERATOR_BINARY_LE ||
+        node->type == NODE_TYPE_OPERATOR_BINARY_GT ||
+        node->type == NODE_TYPE_OPERATOR_BINARY_GE) {
+      auto lhs = node->getMember(0);
+      auto rhs = node->getMember(1);
+      AstNodeType op = node->type;
+      bool found = false;
+
+      if (lhs->isConstant() && 
+         rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+        found = true;
+      }
+      else if (rhs->isConstant() &&
+               lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+        found = true;
+        // reverse the nodes
+        lhs = node->getMember(1);
+        rhs = node->getMember(0);
+
+        auto it = Ast::ReverseOperators.find(static_cast<int>(node->type));
+        TRI_ASSERT(it != Ast::ReverseOperators.end());
+
+        op = (*it).second;
+      }
+
+      if (found) {
+        TRI_ASSERT(lhs->type == NODE_TYPE_VALUE);
+        TRI_ASSERT(rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS);
+
+        std::function<void(AstNode const*)> buildName = [&] (AstNode const* node) -> void {
+          if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+            buildName(node->getMember(0));
+
+            if (! attributeName.empty()) {
+              attributeName.push_back('.');
+            } 
+
+            attributeName.append(node->getStringValue()); 
+          }
+          else if (node->type == NODE_TYPE_REFERENCE) { 
+            auto variable = static_cast<Variable const*>(node->getData());
+            variableName = variable->name;
+          }
+        }; 
+
+        if (attributeName.empty()) {
+          buildName(rhs);
+          if (op == NODE_TYPE_OPERATOR_BINARY_EQ ||
+              op == NODE_TYPE_OPERATOR_BINARY_NE) {
+            lowInclusive  = true;
+            lowNode       = lhs;
+            highInclusive = true;
+            highNode      = lhs;
+          }
+          else if (op == NODE_TYPE_OPERATOR_BINARY_LT) {
+            lowInclusive  = false;
+            lowNode       = lhs;
+          }
+          else if (op == NODE_TYPE_OPERATOR_BINARY_LE) {
+            lowInclusive  = true;
+            lowNode       = lhs;
+          } 
+          else if (op == NODE_TYPE_OPERATOR_BINARY_GT) {
+            highInclusive = false;
+            highNode      = lhs;
+          }
+          else if (op == NODE_TYPE_OPERATOR_BINARY_GE) {
+            highInclusive = true;
+            highNode      = lhs;
+          }
+
+          return true;
+        }
+   //     else if (attributeName == std::string(buffer.c_str(), buffer.length())) {
+          // same attribute
+          // TODO
+     //   }
+
+        // fall-through 
+      }
+
+      return false;
+    }
+
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
+      auto lhs = node->getMember(0);
+      auto rhs = node->getMember(1);
+
+      return (analyze(lhs) && analyze(rhs));
+    } 
+
+    return false;
+  }
+
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief try to remove filters which are covered by indexes
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::removeFiltersCoveredByIndex (Optimizer* opt,
+                                                ExecutionPlan* plan,
+                                                Optimizer::Rule const* rule) {
+  std::unordered_set<ExecutionNode*> toUnlink;
+  std::vector<ExecutionNode*>&& nodes= plan->findNodesOfType(EN::FILTER, true); 
+  
+  for (auto n : nodes) {
+    auto fn = static_cast<FilterNode*>(n);
+    // find the node with the filter expression
+    auto inVar = fn->getVariablesUsedHere();
+    TRI_ASSERT(inVar.size() == 1);
+    // auto outVar = cn->getVariablesSetHere();
+          
+    auto setter = plan->getVarSetBy(inVar[0]->id);
+    TRI_ASSERT(setter != nullptr);
+
+    if (setter->getType() != EN::CALCULATION) {
+      continue;
+    }
+   
+    // check the filter condition 
+    FilterCondition condition;
+    if (! condition.analyze(static_cast<CalculationNode const*>(setter)->expression()->node())) {
+      continue;
+    }
+
+    bool handled = false;
+    auto current = n;
+    while (current != nullptr) {
+      if (current->getType() == EN::INDEX_RANGE) {
+        // found an index range, now check if the expression is covered by the index
+        auto variable = static_cast<IndexRangeNode const*>(current)->outVariable();
+        TRI_ASSERT(variable != nullptr);
+        
+        auto const& ranges = static_cast<IndexRangeNode const*>(current)->ranges();
+
+        // TODO: this is not prepared for OR conditions
+        for (auto it : ranges) {
+          for (auto it2 : it) {
+            if (condition.isFullyCoveredBy(it2)) {
+              toUnlink.insert(setter);
+              toUnlink.insert(n);
+              break;
+            }
+          } 
+
+          if (handled) {
+            break;
+          }
+        }
+      }
+
+      if (handled) {
+        break;
+      }
+
+      auto deps = current->getDependencies();
+      if (deps.size() != 1) {
+        break;
+      }
+
+      current = deps[0];
+    }
+  }
+
+  if (! toUnlink.empty()) {
+    plan->unlinkNodes(toUnlink);
+    plan->findVarUsage();
+  }
+  
+  opt->addPlan(plan, rule->level, ! toUnlink.empty());
+
+  return TRI_ERROR_NO_ERROR;
+}
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper to compute lots of permutation tuples
 /// a permutation tuple is represented as a single vector together with
@@ -1518,8 +1760,8 @@ static bool nextPermutationTuple (std::vector<size_t>& data,
 int triagens::aql::interchangeAdjacentEnumerations (Optimizer* opt,
                                                     ExecutionPlan* plan,
                                                     Optimizer::Rule const* rule) {
-  std::vector<ExecutionNode*> nodes
-    = plan->findNodesOfType(EN::ENUMERATE_COLLECTION, 
+  std::vector<ExecutionNode*>&& nodes
+   = plan->findNodesOfType(EN::ENUMERATE_COLLECTION, 
                             true);
   std::unordered_set<ExecutionNode*> nodesSet;
   for (auto n : nodes) {
@@ -2274,7 +2516,7 @@ int triagens::aql::undistributeRemoveAfterEnumColl (Optimizer* opt,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief
+/// @brief auxilliary struct for the OR-to-IN conversion
 ////////////////////////////////////////////////////////////////////////////////
 
 struct OrToInConverter {
@@ -2286,7 +2528,7 @@ struct OrToInConverter {
 
   std::string getString (AstNode const* node) {
     triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
-    node->append(&buffer, false);
+    node->stringify(&buffer, false);
     return std::string(buffer.c_str(), buffer.length());
   }
 
@@ -2425,7 +2667,16 @@ struct OrToInConverter {
   }
 };
 
-int triagens::aql::replaceORwithIN (Optimizer* opt, 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief this rule replaces expressions of the type: 
+///   x.val == 1 || x.val == 2 || x.val == 3
+//  with
+//    x.val IN [1,2,3]
+//  when the OR conditions are present in the same FILTER node, and refer to the
+//  same (single) attribute.
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::replaceOrWithIn (Optimizer* opt, 
                                     ExecutionPlan* plan, 
                                     Optimizer::Rule const* rule) {
   ENTER_BLOCK;

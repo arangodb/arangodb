@@ -576,6 +576,14 @@ namespace triagens {
         AstNode* optimizeLet (AstNode*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief optimizes the FOR statement
+/// no real optimizations are done here, but we do an early check if the
+/// FOR loop operand is actually a list 
+////////////////////////////////////////////////////////////////////////////////
+
+        AstNode* optimizeFor (AstNode*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST node from JSON
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -608,6 +616,19 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AstNode* createNode (AstNodeType);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public variables
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief inverse comparison operators
+////////////////////////////////////////////////////////////////////////////////
+
+        static std::unordered_map<int, AstNodeType> const ReverseOperators;
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -682,10 +703,16 @@ namespace triagens {
         static AstNode const TrueNode;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief inverse comparison operators
+/// @brief a singleton zero node instance
 ////////////////////////////////////////////////////////////////////////////////
 
-        static std::unordered_map<int, AstNodeType> const ReverseOperators;
+        static AstNode const ZeroNode;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a singleton empty string node instance
+////////////////////////////////////////////////////////////////////////////////
+
+        static AstNode const EmptyStringNode;
 
     };
 

@@ -33,7 +33,8 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/StringUtils.h"
-#include "lib/SimpleHttpClient/ConnectionManager.h"
+#include "SimpleHttpClient/ConnectionManager.h"
+#include "Dispatcher/DispatcherThread.h"
 
 #include "VocBase/server.h"
 
@@ -211,6 +212,17 @@ ClusterCommResult* ClusterComm::asyncRequest (
                               basics::StringUtils::itoa(coordTransactionID);
   (*headerFields)["Authorization"] = ServerState::instance()->getAuthentication();
 
+#ifdef DEBUG_CLUSTER_COMM
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+#if HAVE_BACKTRACE
+  std::string bt;
+  TRI_GetBacktrace(bt);
+  std::replace( bt.begin(), bt.end(), '\n', ';'); // replace all '\n' to ';'
+  (*headerFields)["X-Arango-BT-A-SYNC"] = bt;
+#endif
+#endif
+#endif
+
   op->status               = CL_COMM_SUBMITTED;
   op->reqtype              = reqtype;
   op->path                 = path;
@@ -336,18 +348,28 @@ ClusterCommResult* ClusterComm::syncRequest (
 
       map<string, string> headersCopy(headerFields);
       headersCopy.emplace(make_pair(string("Authorization"), ServerState::instance()->getAuthentication()));
-
+#ifdef DEBUG_CLUSTER_COMM
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+#if HAVE_BACKTRACE
+      std::string bt;
+      TRI_GetBacktrace(bt);
+      std::replace( bt.begin(), bt.end(), '\n', ';'); // replace all '\n' to ';'
+      headersCopy["X-Arango-BT-SYNC"] = bt;
+#endif
+#endif
+#endif
       res->result = client->request(reqtype, path, body.c_str(), body.size(),
                                     headersCopy);
 
       if (res->result == nullptr || ! res->result->isComplete()) {
-        cm->brokenConnection(connection);
         if (client->getErrorMessage() == "Request timeout reached") {
           res->status = CL_COMM_TIMEOUT;
         }
         else {
           res->status = CL_COMM_ERROR;
         }
+        cm->brokenConnection(connection);
+        client->invalidateConnection();
       }
       else {
         cm->returnConnection(connection);
@@ -485,6 +507,11 @@ ClusterCommResult* ClusterComm::wait (
     endtime = TRI_microtime() + timeout;
   }
 
+  // tell Dispatcher that we are waiting:
+  if (triagens::rest::DispatcherThread::currentDispatcherThread != nullptr) {
+    triagens::rest::DispatcherThread::currentDispatcherThread->blockThread();
+  }
+
   if (0 != operationID) {
     // In this case we only have to look into at most one operation.
     basics::ConditionLocker locker(&somethingReceived);
@@ -499,6 +526,10 @@ ClusterCommResult* ClusterComm::wait (
           res = new ClusterCommResult();
           res->operationID = operationID;
           res->status = CL_COMM_DROPPED;
+          // tell Dispatcher that we are back in business
+          if (triagens::rest::DispatcherThread::currentDispatcherThread != nullptr) {
+            triagens::rest::DispatcherThread::currentDispatcherThread->unblockThread();
+          }
           return res;
         }
       }
@@ -511,6 +542,10 @@ ClusterCommResult* ClusterComm::wait (
           receivedByOpID.erase(i);
           received.erase(q);
           res = static_cast<ClusterCommResult*>(op);
+          // tell Dispatcher that we are back in business
+          if (triagens::rest::DispatcherThread::currentDispatcherThread != nullptr) {
+            triagens::rest::DispatcherThread::currentDispatcherThread->unblockThread();
+          }
           return res;
         }
         // It is in the receive queue but still waiting, now wait actually
@@ -541,6 +576,10 @@ ClusterCommResult* ClusterComm::wait (
             receivedByOpID.erase(i);
             received.erase(q);
             res = static_cast<ClusterCommResult*>(op);
+            // tell Dispatcher that we are back in business
+            if (triagens::rest::DispatcherThread::currentDispatcherThread != nullptr) {
+              triagens::rest::DispatcherThread::currentDispatcherThread->unblockThread();
+            }
             return res;
           }
         }
@@ -564,6 +603,10 @@ ClusterCommResult* ClusterComm::wait (
         res->operationID = operationID;
         res->shardID = shardID;
         res->status = CL_COMM_DROPPED;
+        // tell Dispatcher that we are back in business
+        if (triagens::rest::DispatcherThread::currentDispatcherThread != nullptr) {
+          triagens::rest::DispatcherThread::currentDispatcherThread->unblockThread();
+        }
         return res;
       }
       // Here it could either be in the receive or the send queue, let's wait
@@ -580,6 +623,10 @@ ClusterCommResult* ClusterComm::wait (
   res->operationID = operationID;
   res->shardID = shardID;
   res->status = CL_COMM_TIMEOUT;
+  // tell Dispatcher that we are back in business
+  if (triagens::rest::DispatcherThread::currentDispatcherThread != nullptr) {
+    triagens::rest::DispatcherThread::currentDispatcherThread->unblockThread();
+  }
   return res;
 }
 
@@ -727,6 +774,7 @@ void ClusterComm::asyncAnswer (string& coordinatorHeader,
                                  "/_api/shard-comm", body, len, headers);
   if (result == nullptr || ! result->isComplete()) {
     cm->brokenConnection(connection);
+    client->invalidateConnection();
   }
   else {
     cm->returnConnection(connection);
@@ -1024,13 +1072,14 @@ void ClusterCommThread::run () {
               }
 
               if (op->result == nullptr || ! op->result->isComplete()) {
-                cm->brokenConnection(connection);
                 if (client->getErrorMessage() == "Request timeout reached") {
                   op->status = CL_COMM_TIMEOUT;
                 }
                 else {
                   op->status = CL_COMM_ERROR;
                 }
+                cm->brokenConnection(connection);
+                client->invalidateConnection();
               }
               else {
                 cm->returnConnection(connection);

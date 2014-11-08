@@ -114,6 +114,9 @@
           label: "Insert",
           letter: "Ctrl + Insert"
         },{
+          label: "Save",
+          letter: "Ctrl + Return, CMD + Return"
+        },{
           label: "Append",
           letter: "Ctrl + Shift + Insert"
         },{

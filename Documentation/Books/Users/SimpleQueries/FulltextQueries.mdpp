@@ -58,7 +58,7 @@ as defined at server startup (*--server.default-language* startup
 option). Generally, the word boundary analysis will filter out punctuation but
 will not do much more.
 
-Especially no Word normalization, stemming, or similarity analysis will be
+Especially no word normalization, stemming, or similarity analysis will be
 performed when indexing or searching. If any of these features is required, it
 is suggested that the user does the text normalization on the client side, and
 provides for each document an extra attribute containing just a comma-separated

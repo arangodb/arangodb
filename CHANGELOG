@@ -1,6 +1,25 @@
 v2.3.0 (XXXX-XX-XX)
 -------------------
 
+* front-end: new icons for uploading and downloading JSON documents into a collection
+
+* front-end: fixed documents pagination css display error
+
+* front-end: fixed flickering of the progress view
+
+* front-end: fixed missing event for documents filter function
+
+* front-end: jsoneditor: added CMD+Return (Mac) CTRL+Return (Linux/Win) shortkey for 
+  saving a document
+
+* front-end: added information tooltip for uploading json documents.
+
+* front-end: added database management view to the collapsed navigation menu
+
+* front-end: added collection truncation feature
+
+* fixed issue #1086: arangoimp: Odd errors if arguments are not given properly
+
 * performance improvements for AQL queries that use JavaScript-based expressions
   internally
 
@@ -76,6 +95,16 @@ v2.3.0-beta1 (2014-11-01)
   specified, the number of V8 contexts created will be equal to the number of 
   server threads. Thus no change in configuration is required to keep the old
   behavior.
+  
+  However, the default configuration files shipped with ArangoDB have been changed. 
+  The number of server threads has been increased in the configuration files, and
+  the number of V8 contexts is now explicitly set in the configuration files (to
+  the same value as the number of server threads was set to in 2.2).
+
+  If you are using the default config files or merge them with your local config files, 
+  please review if the higher default number of server threads is okay in your
+  environment. Additionally you should verify that the number of V8 contexts
+  created (as specified in option `--javascript.v8-contexts`) is okay.
 
 * removed index type "bitarray"
 
