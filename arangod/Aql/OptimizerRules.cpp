@@ -2820,11 +2820,11 @@ struct RemoveRedundantOR {
         else {
           int cmp = CompareAstNodes(lhs, bestValue);
           if ((condition == NODE_TYPE_OPERATOR_BINARY_LT || condition ==
-                NODE_TYPE_OPERATOR_BINARY_LE) && cmp == -1) {
+                NODE_TYPE_OPERATOR_BINARY_LE) && cmp == 1) {
             bestValue = lhs;
           }
           else if ((condition == NODE_TYPE_OPERATOR_BINARY_GT || condition ==
-                NODE_TYPE_OPERATOR_BINARY_GE) && cmp == 1) {
+                NODE_TYPE_OPERATOR_BINARY_GE) && cmp == -1) {
             bestValue = lhs;
           }
         }
@@ -2842,11 +2842,11 @@ struct RemoveRedundantOR {
         else {
           int cmp = CompareAstNodes(bestValue, rhs);
           if ((condition == NODE_TYPE_OPERATOR_BINARY_LT || condition ==
-                NODE_TYPE_OPERATOR_BINARY_LE) && cmp == 1) {
+                NODE_TYPE_OPERATOR_BINARY_LE) && cmp == -1) {
             bestValue = rhs;
           }
           else if ((condition == NODE_TYPE_OPERATOR_BINARY_GT || condition ==
-                NODE_TYPE_OPERATOR_BINARY_GE) && cmp == -1) {
+                NODE_TYPE_OPERATOR_BINARY_GE) && cmp == 1) {
             bestValue = rhs;
           }
         }
