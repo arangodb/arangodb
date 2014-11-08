@@ -2519,18 +2519,96 @@ int triagens::aql::undistributeRemoveAfterEnumColl (Optimizer* opt,
 /// @brief auxilliary struct for the OR-to-IN conversion
 ////////////////////////////////////////////////////////////////////////////////
 
-struct OrToInConverter {
-  AstNode const* variableNode;
-  std::string variableName; 
-  std::vector<AstNode const*> valueNodes;
+struct CommonNodeFinder {
   std::vector<AstNode const*> possibleNodes;
-  std::vector<AstNode const*> orConditions;
+  
+  bool find (AstNode const*  node, 
+             AstNodeType     condition, 
+             AstNode const*& commonNode,
+             std::string&    commonName ) {
+  
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
+      return (find(node->getMember(0), condition, commonNode, commonName) 
+           && find(node->getMember(1), condition, commonNode, commonName));
+    }
 
-  std::string getString (AstNode const* node) {
-    triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
-    node->stringify(&buffer, false);
-    return std::string(buffer.c_str(), buffer.length());
+    if (node->type == NODE_TYPE_VALUE) {
+      return true;
+    }
+
+    if (node->type == condition) {
+
+      auto lhs = node->getMember(0);
+      auto rhs = node->getMember(1);
+
+      if (lhs->isConstant()) {
+        commonNode = rhs;
+        return true;
+      }
+
+      if (rhs->isConstant()) {
+        commonNode = lhs;
+        return true;
+      }
+
+      if (rhs->type == NODE_TYPE_FCALL || 
+          rhs->type == NODE_TYPE_FCALL_USER ||
+          rhs->type == NODE_TYPE_REFERENCE) {
+        commonNode = lhs;
+        return true;
+      }
+
+      if (lhs->type == NODE_TYPE_FCALL || 
+          lhs->type == NODE_TYPE_FCALL_USER ||
+          lhs->type == NODE_TYPE_REFERENCE) {
+        commonNode = rhs;
+        return true;
+      }
+
+      if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+          lhs->type == NODE_TYPE_INDEXED_ACCESS) {
+        if (possibleNodes.size() == 2) {
+          for (size_t i = 0; i < 2; i++) {
+            if (lhs->toString() == possibleNodes[i]->toString()) {
+              commonNode = possibleNodes[i];
+              commonName = commonNode->toString();
+              return true;
+            }
+          }
+          // don't return must consider the other side of the condition
+        } 
+        else {
+          possibleNodes.push_back(lhs);
+        }
+      }
+      if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+          rhs->type == NODE_TYPE_INDEXED_ACCESS) {
+        if (possibleNodes.size() == 2) {
+          for (size_t i = 0; i < 2; i++) {
+            if (rhs->toString() == possibleNodes[i]->toString()) {
+              commonNode = possibleNodes[i];
+              commonName = commonNode->toString();
+              return true;
+            }
+          }
+          return false;
+        } 
+        else {
+          possibleNodes.push_back(rhs);
+          return true;
+        }
+      }
+    }
+    return (! commonName.empty());
   }
+};
+
+struct OrToInConverter {
+
+  std::vector<AstNode const*> valueNodes;
+  CommonNodeFinder            finder;
+  AstNode const*              commonNode = nullptr;
+  std::string                 commonName;
 
   AstNode* buildInExpression (Ast* ast) {
     // the list of comparison values
@@ -2541,115 +2619,37 @@ struct OrToInConverter {
 
     // return a new IN operator node
     return ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_IN,
-                                         variableNode->clone(ast),
+                                         commonNode->clone(ast),
                                          list);
   }
 
-  bool flattenOr (AstNode const* node) {
-    if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
-      return (flattenOr(node->getMember(0)) && flattenOr(node->getMember(1)));
-    }
-    if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
-      orConditions.push_back(node);
-      return true;
-    }
-    if (node->type == NODE_TYPE_VALUE) {
-      return true;
-    }
-    return false;
-  }
-
-  bool findCommonNode (AstNode const* node) {
-    
-    if (! flattenOr(node)) {
-      return false;
-    }
-    TRI_ASSERT(orConditions.size() > 1);
-
-    for (AstNode const* n: orConditions) {
-      
-      auto lhs = n->getMember(0);
-      auto rhs = n->getMember(1);
-      
-      if (lhs->isConstant()) {
-        variableNode = rhs;
-        return true;
-      }
-
-      if (rhs->isConstant()) {
-        variableNode = lhs;
-        return true;
-      }
-
-      if (rhs->type == NODE_TYPE_FCALL || 
-          rhs->type == NODE_TYPE_FCALL_USER ||
-          rhs->type == NODE_TYPE_REFERENCE) {
-        variableNode = lhs;
-        return true;
-      }
-      
-      if (lhs->type == NODE_TYPE_FCALL || 
-          lhs->type == NODE_TYPE_FCALL_USER ||
-          lhs->type == NODE_TYPE_REFERENCE) {
-        variableNode = rhs;
-        return true;
-      }
-
-      if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-          lhs->type == NODE_TYPE_INDEXED_ACCESS) {
-        if (possibleNodes.size() == 2) {
-          for (size_t i = 0; i < 2; i++) {
-            if (getString(lhs) == getString(possibleNodes[i])) {
-              variableNode = possibleNodes[i];
-              variableName = getString(variableNode);
-              return true;
-            }
-          }
-        } 
-        else {
-          possibleNodes.push_back(lhs);
-        }
-      }
-      if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-          rhs->type == NODE_TYPE_INDEXED_ACCESS) {
-        if (possibleNodes.size() == 2) {
-          for (size_t i = 0; i < 2; i++) {
-            if (getString(rhs) == getString(possibleNodes[i])) {
-              variableNode = possibleNodes[i];
-              variableName = getString(variableNode);
-              return true;
-            }
-          }
-          return false;
-        } 
-        else {
-          possibleNodes.push_back(rhs);
-        }
-      }
-    }
-    return false;
-  }
-
   bool canConvertExpression (AstNode const* node) {
+    if(finder.find(node, NODE_TYPE_OPERATOR_BINARY_EQ, commonNode, commonName)){
+      return canConvertExpressionWalker(node);
+    }
+    return false;
+  }
+
+  bool canConvertExpressionWalker (AstNode const* node) {
     if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
-      return (canConvertExpression(node->getMember(0)) &&
-              canConvertExpression(node->getMember(1)));
+      return (canConvertExpressionWalker(node->getMember(0)) &&
+              canConvertExpressionWalker(node->getMember(1)));
     }
 
     if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
       auto lhs = node->getMember(0);
       auto rhs = node->getMember(1);
 
-      if (canConvertExpression(rhs) && ! canConvertExpression(lhs)) {
+      if (canConvertExpressionWalker(rhs) && ! canConvertExpressionWalker(lhs)) {
         valueNodes.push_back(lhs);
         return true;
       } 
       
-      if (canConvertExpression(lhs) && ! canConvertExpression(rhs)) {
+      if (canConvertExpressionWalker(lhs) && ! canConvertExpressionWalker(rhs)) {
         valueNodes.push_back(rhs);
         return true;
       } 
-      // if canConvertExpression(lhs) and canConvertExpression(rhs), then one of
+      // if canConvertExpressionWalker(lhs) and canConvertExpressionWalker(rhs), then one of
       // the equalities in the OR statement is of the form x == x
       // fall-through intentional
     }
@@ -2657,8 +2657,8 @@ struct OrToInConverter {
              node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
              node->type == NODE_TYPE_INDEXED_ACCESS) {
       // get a string representation of the node for comparisons 
-      std::string nodeString = getString(node);
-      return nodeString == getString(variableNode);
+      std::string nodeString = node->toString();
+      return nodeString == commonName;
     } else if (node->isBoolValue()) {
       return true;
     }
@@ -2705,8 +2705,7 @@ int triagens::aql::replaceOrWithIn (Optimizer* opt,
     }
 
     OrToInConverter converter;
-    if (converter.findCommonNode(cn->expression()->node())
-        && converter.canConvertExpression(cn->expression()->node())) {
+    if (converter.canConvertExpression(cn->expression()->node())) {
       Expression* expr = nullptr;
       ExecutionNode* newNode = nullptr;
       auto inNode = converter.buildInExpression(plan->getAst());

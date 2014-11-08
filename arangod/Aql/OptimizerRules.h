@@ -180,6 +180,7 @@ namespace triagens {
 //  same (single) attribute.
 ////////////////////////////////////////////////////////////////////////////////
 
+
     int replaceOrWithIn (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
     
   }  // namespace aql
