@@ -182,7 +182,7 @@ namespace triagens {
 
     int replaceOrWithIn (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
     
-    int removeRedundantOR (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+    int removeRedundantOr (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
     
   }  // namespace aql
 }  // namespace triagens

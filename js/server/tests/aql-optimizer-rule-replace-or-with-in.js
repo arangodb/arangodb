@@ -39,7 +39,7 @@ var getQueryResults = helper.getQueryResults;
 
 function NewAqlReplaceORWithINTestSuite () {
   var replace;
-  var ruleName = "replace-OR-with-IN";
+  var ruleName = "replace-or-with-in";
   
   var isRuleUsed = function (query, params) {
    var result = AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+" + ruleName ] } });
