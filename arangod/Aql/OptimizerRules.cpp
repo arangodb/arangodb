@@ -2543,11 +2543,13 @@ struct CommonNodeFinder {
 
       if (lhs->isConstant()) {
         commonNode = rhs;
+        commonName = commonNode->toString();
         return true;
       }
 
       if (rhs->isConstant()) {
         commonNode = lhs;
+        commonName = commonNode->toString();
         return true;
       }
 
@@ -2555,6 +2557,7 @@ struct CommonNodeFinder {
           rhs->type == NODE_TYPE_FCALL_USER ||
           rhs->type == NODE_TYPE_REFERENCE) {
         commonNode = lhs;
+        commonName = commonNode->toString();
         return true;
       }
 
@@ -2562,6 +2565,7 @@ struct CommonNodeFinder {
           lhs->type == NODE_TYPE_FCALL_USER ||
           lhs->type == NODE_TYPE_REFERENCE) {
         commonNode = rhs;
+        commonName = commonNode->toString();
         return true;
       }
 
