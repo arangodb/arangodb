@@ -29,7 +29,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 // TODO add some test which don't use number values!
 
-var internal = require("internal");
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
