@@ -1431,6 +1431,12 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
 }
 
+std::string AstNode::toString () const {
+   triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
+   stringify(&buffer, false);
+   return std::string(buffer.c_str(), buffer.length());
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
