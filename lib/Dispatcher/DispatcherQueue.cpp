@@ -109,7 +109,6 @@ bool DispatcherQueue::addJob (Job* job) {
 
   // if all threads are block, we start new threads
   if (0 == _nrWaiting && _nrRunning + _nrStarted <= _nrBlocked) {
-    LOG_ERROR("GOING TO STARTED AN ADDITIONAL THREAD!");
     startQueueThread();
   }
 
@@ -207,7 +206,6 @@ void DispatcherQueue::blockThread (DispatcherThread* thread) {
   CONDITION_LOCKER(guard, _accessQueue);
 
   if (thread->_jobType == Job::READ_JOB || thread->_jobType == Job::WRITE_JOB) {
-    LOG_ERROR("BLOCKED");
     _nrBlocked++;
   }
 }
@@ -224,7 +222,6 @@ void DispatcherQueue::unblockThread (DispatcherThread* thread) {
       LOG_ERROR("unblocking too many threads");
     }
     else {
-      LOG_ERROR("UNBLOCKED");
       _nrBlocked--;
     }
   }
