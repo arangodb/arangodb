@@ -936,9 +936,12 @@ bool AstNode::isTrue () const {
     return getMember(1)->isTrue();
   }
   else if (type == NODE_TYPE_OPERATOR_UNARY_NOT) {
-    return ! getMember(0)->isTrue();
+    if (getMember(0)->isFalse()) {
+      // ! false => true
+      return true;
+    }
   }
-
+  
   return false;
 }
 
@@ -978,7 +981,10 @@ bool AstNode::isFalse () const {
     return getMember(1)->isFalse();
   }
   else if (type == NODE_TYPE_OPERATOR_UNARY_NOT) {
-    return ! getMember(0)->isFalse();
+    if (getMember(0)->isTrue()) {
+      // ! true => false
+      return true;
+    }
   }
 
   return false;
