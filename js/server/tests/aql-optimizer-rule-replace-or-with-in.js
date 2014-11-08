@@ -389,7 +389,7 @@ function NewAqlReplaceORWithINTestSuite () {
 
     },
     
-    testFiresCommonConstant: function () {
+    testFiresCommonConstant1: function () {
       var query = "LET x = {a:@a} FOR v IN " + replace.name() 
         + " FILTER x.a == v.value || x.a == v._key RETURN v._key";
 
@@ -399,6 +399,13 @@ function NewAqlReplaceORWithINTestSuite () {
       var actual = getQueryResults(query, {a: key}); 
       assertEqual(key, actual.toString());
 
+    },
+    
+    testFiresCommonConstant2: function () {
+      var query = "LET x = {a:1} FOR v IN " + replace.name() 
+        + " FILTER x.a == v.value || x.a == v._key RETURN v._key";
+
+      isRuleUsed(query, {});
     },
 
     testDudAlwaysTrue: function () {
