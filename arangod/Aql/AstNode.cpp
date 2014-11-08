@@ -166,7 +166,7 @@ static TRI_json_type_e GetNodeCompareType (AstNode const* node) {
 /// @brief compare two nodes
 ////////////////////////////////////////////////////////////////////////////////
 
-static int CompareNodes (AstNode const* lhs, AstNode const* rhs) {
+int triagens::aql::CompareAstNodes (AstNode const* lhs, AstNode const* rhs) {
   auto lType = GetNodeCompareType(lhs);
   auto rType = GetNodeCompareType(rhs);
 
@@ -195,7 +195,7 @@ static int CompareNodes (AstNode const* lhs, AstNode const* rhs) {
     size_t const n = ((numLhs > numRhs) ? numRhs : numLhs);
  
     for (size_t i = 0; i < n; ++i) {
-      int res = CompareNodes(lhs->getMember(i), rhs->getMember(i));
+      int res = triagens::aql::CompareAstNodes(lhs->getMember(i), rhs->getMember(i));
       if (res != 0) {
         return res;
       }    
@@ -477,7 +477,7 @@ void AstNode::sort () {
     auto const l = static_cast<AstNode const*>(lhs);
     auto const r = static_cast<AstNode const*>(rhs);
 
-    return (CompareNodes(l, r) < 0);
+    return (triagens::aql::CompareAstNodes(l, r) < 0);
   });
 
   setFlag(FLAG_SORTED);

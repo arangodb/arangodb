@@ -651,6 +651,7 @@ namespace triagens {
         
         std::string toString () const;
 
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -707,6 +708,7 @@ namespace triagens {
 
     };
 
+    int CompareAstNodes (AstNode const*, AstNode const*);
   }
 }
 

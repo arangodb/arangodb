@@ -2516,7 +2516,7 @@ int triagens::aql::undistributeRemoveAfterEnumColl (Optimizer* opt,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief auxilliary struct for the OR-to-IN conversion
+/// @brief auxilliary struct for finding common nodes in OR conditions
 ////////////////////////////////////////////////////////////////////////////////
 
 struct CommonNodeFinder {
@@ -2533,6 +2533,7 @@ struct CommonNodeFinder {
     }
 
     if (node->type == NODE_TYPE_VALUE) {
+      possibleNodes.clear();
       return true;
     }
 
@@ -2544,12 +2545,14 @@ struct CommonNodeFinder {
       if (lhs->isConstant()) {
         commonNode = rhs;
         commonName = commonNode->toString();
+        possibleNodes.clear();
         return true;
       }
 
       if (rhs->isConstant()) {
         commonNode = lhs;
         commonName = commonNode->toString();
+        possibleNodes.clear();
         return true;
       }
 
@@ -2558,6 +2561,7 @@ struct CommonNodeFinder {
           rhs->type == NODE_TYPE_REFERENCE) {
         commonNode = lhs;
         commonName = commonNode->toString();
+        possibleNodes.clear();
         return true;
       }
 
@@ -2566,6 +2570,7 @@ struct CommonNodeFinder {
           lhs->type == NODE_TYPE_REFERENCE) {
         commonNode = rhs;
         commonName = commonNode->toString();
+        possibleNodes.clear();
         return true;
       }
 
@@ -2576,6 +2581,7 @@ struct CommonNodeFinder {
             if (lhs->toString() == possibleNodes[i]->toString()) {
               commonNode = possibleNodes[i];
               commonName = commonNode->toString();
+              possibleNodes.clear();
               return true;
             }
           }
@@ -2592,6 +2598,7 @@ struct CommonNodeFinder {
             if (rhs->toString() == possibleNodes[i]->toString()) {
               commonNode = possibleNodes[i];
               commonName = commonNode->toString();
+              possibleNodes.clear();
               return true;
             }
           }
@@ -2603,9 +2610,14 @@ struct CommonNodeFinder {
         }
       }
     }
+    possibleNodes.clear();
     return (! commonName.empty());
   }
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief auxilliary struct for the OR-to-IN conversion
+////////////////////////////////////////////////////////////////////////////////
 
 struct OrToInConverter {
 
@@ -2661,8 +2673,7 @@ struct OrToInConverter {
              node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
              node->type == NODE_TYPE_INDEXED_ACCESS) {
       // get a string representation of the node for comparisons 
-      std::string nodeString = node->toString();
-      return nodeString == commonName;
+      return (node->toString() == commonName);
     } else if (node->isBoolValue()) {
       return true;
     }
@@ -2719,6 +2730,185 @@ int triagens::aql::replaceOrWithIn (Optimizer* opt,
       }
       catch (...) {
         delete inNode;
+        throw;
+      }
+
+      try {
+        newNode = new CalculationNode(plan, plan->nextId(), expr, outVar[0]);
+      }
+      catch (...) {
+        delete expr;
+        throw;
+      }
+
+      plan->registerNode(newNode);
+      plan->replaceNode(cn, newNode);
+      modified = true;
+    }
+  }
+ 
+  if (modified) {
+    plan->findVarUsage();
+  }
+  opt->addPlan(plan, rule->level, modified);
+
+  return TRI_ERROR_NO_ERROR;
+  LEAVE_BLOCK;
+}
+
+struct RemoveRedundantOR {
+
+  AstNode const*    bestValue = nullptr;
+  AstNodeType       comparison;
+  CommonNodeFinder  finder;
+  AstNode const*    commonNode = nullptr;
+  std::string       commonName;
+  int               side = 0;
+
+  AstNode* createReplacementNode (Ast* ast) {
+    TRI_ASSERT(commonNode != nullptr);
+    TRI_ASSERT(bestValue != nullptr);
+    TRI_ASSERT(side != 0);
+    if (side == 1) {
+      return ast->createNodeBinaryOperator(comparison, bestValue,
+          commonNode->clone(ast));
+    } 
+    return ast->createNodeBinaryOperator(comparison, commonNode->clone(ast),
+        bestValue);
+  }
+
+  bool hasRedundantCondition (AstNode const* node) {
+    if(finder.find(node, NODE_TYPE_OPERATOR_BINARY_LT, commonNode, commonName)){
+      comparison = NODE_TYPE_OPERATOR_BINARY_LT;
+      return hasRedundantConditionWalker(node, NODE_TYPE_OPERATOR_BINARY_LT);
+    }
+    if(finder.find(node, NODE_TYPE_OPERATOR_BINARY_LE, commonNode, commonName)){
+      comparison = NODE_TYPE_OPERATOR_BINARY_LE;
+      return hasRedundantConditionWalker(node, NODE_TYPE_OPERATOR_BINARY_LE);
+    }
+    if(finder.find(node, NODE_TYPE_OPERATOR_BINARY_GT, commonNode, commonName)){
+      comparison = NODE_TYPE_OPERATOR_BINARY_GT;
+      return hasRedundantConditionWalker(node, NODE_TYPE_OPERATOR_BINARY_GT);
+    }
+    if(finder.find(node, NODE_TYPE_OPERATOR_BINARY_GE, commonNode, commonName)){
+      comparison = NODE_TYPE_OPERATOR_BINARY_GE;
+      return hasRedundantConditionWalker(node, NODE_TYPE_OPERATOR_BINARY_GE);
+    }
+    return false;
+  }
+
+  bool hasRedundantConditionWalker (AstNode const* node, AstNodeType condition) {
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
+      return (hasRedundantConditionWalker(node->getMember(0), condition) &&
+              hasRedundantConditionWalker(node->getMember(1), condition));
+    }
+
+    if (node->type == condition) {
+      auto lhs = node->getMember(0);
+      auto rhs = node->getMember(1);
+      
+      if (hasRedundantConditionWalker(rhs, condition) 
+          && ! hasRedundantConditionWalker(lhs, condition)
+          && lhs->isConstant()) {
+        // lhs = value (<, >, <=, >=) commonNode = rhs
+        TRI_ASSERT(side == 0 || side == 1);
+        side = 1; // 1 = on the right hand side
+
+        if (bestValue == nullptr) {
+          bestValue = lhs;
+        }
+        else {
+          int cmp = CompareAstNodes(lhs, bestValue);
+          if ((condition == NODE_TYPE_OPERATOR_BINARY_LT || condition ==
+                NODE_TYPE_OPERATOR_BINARY_LE) && cmp == -1) {
+            bestValue = lhs;
+          }
+          else if ((condition == NODE_TYPE_OPERATOR_BINARY_GT || condition ==
+                NODE_TYPE_OPERATOR_BINARY_GE) && cmp == 1) {
+            bestValue = lhs;
+          }
+        }
+        return true;
+      } 
+      if (hasRedundantConditionWalker(lhs, condition) 
+          && ! hasRedundantConditionWalker(rhs, condition) 
+          && rhs->isConstant()) {
+        TRI_ASSERT(side == 0 || side == -1);
+        side = -1; // 1 = on the right hand side
+        // lhs = commonNode (<, >, <=, >=) value = rhs
+        if (bestValue == nullptr) {
+          bestValue = rhs;
+        }
+        else {
+          int cmp = CompareAstNodes(bestValue, rhs);
+          if ((condition == NODE_TYPE_OPERATOR_BINARY_LT || condition ==
+                NODE_TYPE_OPERATOR_BINARY_LE) && cmp == 1) {
+            bestValue = rhs;
+          }
+          else if ((condition == NODE_TYPE_OPERATOR_BINARY_GT || condition ==
+                NODE_TYPE_OPERATOR_BINARY_GE) && cmp == -1) {
+            bestValue = rhs;
+          }
+        }
+        return true;
+      } 
+      
+      // if hasRedundantConditionWalker(lhs) and
+      // hasRedundantConditionWalker(rhs), then one of the conditions in the OR
+      // statement is of the form x == x fall-through intentional
+    }
+    else if (node->type == NODE_TYPE_REFERENCE ||
+             node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+             node->type == NODE_TYPE_INDEXED_ACCESS) {
+      // get a string representation of the node for comparisons 
+      return (node->toString() == commonName);
+    } else if (node->isBoolValue()) {
+      return true;
+    }
+
+    return false;
+  }
+};
+
+int triagens::aql::removeRedundantOR (Optimizer* opt, 
+                                      ExecutionPlan* plan, 
+                                      Optimizer::Rule const* rule) {
+  ENTER_BLOCK;
+  std::vector<ExecutionNode*> nodes
+    = plan->findNodesOfType(EN::FILTER, true);
+
+  bool modified = false;
+  for (auto n : nodes) {
+    auto deps = n->getDependencies();
+    TRI_ASSERT(deps.size() == 1);
+    if (deps[0]->getType() != EN::CALCULATION) {
+      continue;
+    }
+
+    auto fn = static_cast<FilterNode*>(n);
+    auto cn = static_cast<CalculationNode*>(deps[0]);
+
+    auto inVar  = fn->getVariablesUsedHere();
+    auto outVar = cn->getVariablesSetHere();
+
+    if (outVar.size() != 1 || outVar[0]->id != inVar[0]->id) {
+      continue;
+    }
+    if (cn->expression()->node()->type != NODE_TYPE_OPERATOR_BINARY_OR) {
+      continue;
+    }
+
+    RemoveRedundantOR remover;
+    if(remover.hasRedundantCondition(cn->expression()->node())){
+      Expression* expr = nullptr;
+      ExecutionNode* newNode = nullptr;
+      auto astNode = remover.createReplacementNode(plan->getAst());
+
+      try {
+        expr = new Expression(plan->getAst(), astNode);
+      }
+      catch (...) {
+        delete astNode;
         throw;
       }
 

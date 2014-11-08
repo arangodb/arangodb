@@ -457,6 +457,12 @@ void Optimizer::setupRules () {
                replaceOrWithIn_pass6,
                true);
 
+  // try to remove redundant OR 
+  registerRule("remove-redundant-OR",
+               removeRedundantOR,
+               removeRedundantOR_pass6,
+               true);
+
   // try to find a filter after an enumerate collection and find an index . . . 
   registerRule("use-index-range",
                useIndexRange,

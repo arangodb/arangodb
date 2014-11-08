@@ -130,14 +130,17 @@ namespace triagens {
         // replace simple OR conditions with IN
         replaceOrWithIn_pass6                     = 810,
         
+        // remove redundant OR conditions
+        removeRedundantOR_pass6                   = 820,
+        
         // try to find a filter after an enumerate collection and find an index . . . 
-        useIndexRange_pass6                       = 820,
+        useIndexRange_pass6                       = 830,
 
         // try to find sort blocks which are superseeded by indexes
-        useIndexForSort_pass6                     = 830,
+        useIndexForSort_pass6                     = 840,
 
         // try to remove filters covered by index ranges
-        removeFiltersCoveredByIndex_pass6         = 840,
+        removeFiltersCoveredByIndex_pass6         = 850,
   
 //////////////////////////////////////////////////////////////////////////////
 /// "Pass 10": final transformations for the cluster
