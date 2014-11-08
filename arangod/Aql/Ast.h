@@ -489,6 +489,12 @@ namespace triagens {
 
         AstNode* clone (AstNode const*);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the reversed operator for a comparison operator
+////////////////////////////////////////////////////////////////////////////////
+
+        static AstNodeType ReverseOperator (AstNodeType);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -624,11 +630,16 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief inverse comparison operators
+/// @brief negated comparison operators
 ////////////////////////////////////////////////////////////////////////////////
 
-        static std::unordered_map<int, AstNodeType> const ReverseOperators;
+        static std::unordered_map<int, AstNodeType> const NegatedOperators;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reverse comparison operators
+////////////////////////////////////////////////////////////////////////////////
+
+        static std::unordered_map<int, AstNodeType> const ReversedOperators;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

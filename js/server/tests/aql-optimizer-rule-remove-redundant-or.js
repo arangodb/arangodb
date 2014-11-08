@@ -38,7 +38,7 @@ var getQueryResults = helper.getQueryResults;
 ////////////////////////////////////////////////////////////////////////////////
 
 function NewAqlRemoveRedundantORTestSuite () {
-  var ruleName = "remove-redundant-OR";
+  var ruleName = "remove-redundant-or";
   
   var isRuleUsed = function (query, params) {
    var result = AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+" + ruleName ] } });

@@ -131,7 +131,7 @@ namespace triagens {
         replaceOrWithIn_pass6                     = 810,
         
         // remove redundant OR conditions
-        removeRedundantOR_pass6                   = 820,
+        removeRedundantOr_pass6                   = 820,
         
         // try to find a filter after an enumerate collection and find an index . . . 
         useIndexRange_pass6                       = 830,
