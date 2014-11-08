@@ -2825,6 +2825,21 @@ struct RemoveRedundantOR {
     return (cmp * lowhigh == 1);
   };
 
+  AstNodeType reverseComparison (AstNodeType type) {
+    if (type ==  NODE_TYPE_OPERATOR_BINARY_LE) {
+      return NODE_TYPE_OPERATOR_BINARY_GE;
+    }
+    else if (type ==  NODE_TYPE_OPERATOR_BINARY_LT) {
+      return NODE_TYPE_OPERATOR_BINARY_GT;
+    }
+    else if (type ==  NODE_TYPE_OPERATOR_BINARY_GT) {
+      return NODE_TYPE_OPERATOR_BINARY_LT;
+    }
+    else {
+      return NODE_TYPE_OPERATOR_BINARY_LE;
+    }
+  }
+
   bool hasRedundantCondition (AstNode const* node) {
     if(finder.find(node, NODE_TYPE_OPERATOR_BINARY_LT, commonNode, commonName)){
       return hasRedundantConditionWalker(node);
@@ -2853,19 +2868,7 @@ struct RemoveRedundantOR {
           && lhs->isConstant()) {
         
         if (!isComparisonSet) {
-          if (type ==  NODE_TYPE_OPERATOR_BINARY_LE) {
-            comparison = NODE_TYPE_OPERATOR_BINARY_GE;
-          }
-          else if (type ==  NODE_TYPE_OPERATOR_BINARY_LT) {
-            comparison = NODE_TYPE_OPERATOR_BINARY_GT;
-          }
-          else if (type ==  NODE_TYPE_OPERATOR_BINARY_GT) {
-            comparison = NODE_TYPE_OPERATOR_BINARY_LT;
-          }
-          else if (type ==  NODE_TYPE_OPERATOR_BINARY_GE) {
-            comparison = NODE_TYPE_OPERATOR_BINARY_LE;
-          }
-
+          comparison = reverseComparison(type);
           bestValue = lhs;
           isComparisonSet = true;
           return true;
@@ -2877,18 +2880,7 @@ struct RemoveRedundantOR {
         }
 
         if (compareBounds(type, lhs, lowhigh)) {
-          if (type ==  NODE_TYPE_OPERATOR_BINARY_LE) {
-            comparison = NODE_TYPE_OPERATOR_BINARY_GE;
-          }
-          else if (type ==  NODE_TYPE_OPERATOR_BINARY_LT) {
-            comparison = NODE_TYPE_OPERATOR_BINARY_GT;
-          }
-          else if (type ==  NODE_TYPE_OPERATOR_BINARY_GT) {
-            comparison = NODE_TYPE_OPERATOR_BINARY_LT;
-          }
-          else if (type ==  NODE_TYPE_OPERATOR_BINARY_GE) {
-            comparison = NODE_TYPE_OPERATOR_BINARY_LE;
-          }
+          comparison = reverseComparison(type);
           bestValue = lhs;
         }
         return true;
