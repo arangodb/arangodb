@@ -41,6 +41,9 @@ Then remove the LaunchAgent:
 
     rm ~/Library/LaunchAgents/homebrew.mxcl.arangodb.plist
 
+**Note**: If the latest ArangoDB Version is not shown in homebrew, you also need to update homebrew:
+
+    brew update 
 
 !SECTION Apple's App Store
 
