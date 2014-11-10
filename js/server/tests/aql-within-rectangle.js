@@ -46,6 +46,8 @@ function withinRectangleSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
+      db._drop("geo");
+      db._drop("geo2");
 
       var i, j ;
       db._create("geo");

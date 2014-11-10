@@ -542,6 +542,7 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-general-graph.js \
 			@top_srcdir@/js/server/tests/aql-graph.js \
 			@top_srcdir@/js/server/tests/aql-hash-noncluster.js \
+			@top_srcdir@/js/server/tests/aql-is-in-polygon.js \
 			@top_srcdir@/js/server/tests/aql-logical.js \
 			@top_srcdir@/js/server/tests/aql-modify-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-modify-noncluster-serializetest.js \
@@ -577,7 +578,8 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-skiplist-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-subquery.js \
 			@top_srcdir@/js/server/tests/aql-ternary.js \
-			@top_srcdir@/js/server/tests/aql-variables.js 
+			@top_srcdir@/js/server/tests/aql-variables.js \
+			@top_srcdir@/js/server/tests/aql-within-rectangle.js 
 
 .PHONY: unittests-shell-server-aql
 
