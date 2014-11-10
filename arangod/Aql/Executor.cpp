@@ -138,6 +138,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "MAX",                         Function("MAX",                         "AQL_MAX", "l", true, false, true) },
   { "SUM",                         Function("SUM",                         "AQL_SUM", "l", true, false, true) },
   { "MEDIAN",                      Function("MEDIAN",                      "AQL_MEDIAN", "l", true, false, true) }, 
+  { "PERCENTILE",                  Function("PERCENTILE",                  "AQL_PERCENTILE", "l,n|s", true, false, true) }, 
   { "AVERAGE",                     Function("AVERAGE",                     "AQL_AVERAGE", "l", true, false, true) },
   { "VARIANCE_SAMPLE",             Function("VARIANCE_SAMPLE",             "AQL_VARIANCE_SAMPLE", "l", true, false, true) },
   { "VARIANCE_POPULATION",         Function("VARIANCE_POPULATION",         "AQL_VARIANCE_POPULATION", "l", true, false, true) },
