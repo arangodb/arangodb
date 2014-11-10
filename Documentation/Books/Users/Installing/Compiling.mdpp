@@ -15,7 +15,7 @@ There are the following possibilities:
  as a version of V8, libev, and ICU.
 
 * devel: this version contains the development version of the ArangoDB.
-  Use this branch, if you want to make changes to ArangoDB 
+  Use this branch if you want to make changes to the ArangoDB 
   source.
 
 The devel version requires a complete development environment, while the
@@ -172,7 +172,7 @@ Verify that your system contains
 * the GNU scanner generator FLEX, at least version 2.3.35
 * the GNU parser generator BISON, at least version 2.4
 * Python, version 2 or 3
-* Go, version 1.2 or higher
+* Go, version 1.2.2
 
 In addition you will need the following libraries
 
@@ -349,3 +349,28 @@ version of go into the ArangoDB source directory and build it:
       --enable-all-in-one-libev \
       --enable-internal-go
 
+
+!SUBSECTION Re-building ArangoDB after an update
+
+To stay up-to-date with changes made in the main ArangoDB repository, you will
+need to pull the changes from it and re-run `make`.
+
+Normally, this will be as simple as follows:
+
+    git pull
+    make
+
+From time to time there will be bigger structural changes in ArangoDB, which may
+render the old Makefiles invalid. Should this be the case and `make` complains
+about missing files etc., the following commands should fix it:
+
+    make superclean
+    make setup
+    ./configure <your configure options go here>
+    make
+
+If you forgot your previous configure options, you can look them up with
+
+    head config.log
+    
+ 
