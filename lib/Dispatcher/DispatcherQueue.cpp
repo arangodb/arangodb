@@ -74,6 +74,8 @@ DispatcherQueue::DispatcherQueue (Scheduler* scheduler,
     _nrSpecial(0),
     _nrBlocked(0),
     _nrThreads(nrThreads),
+    _lastChanged(0.0),
+    _gracePeriod(5.0),
     _scheduler(scheduler),
     _dispatcher(dispatcher),
     createDispatcherThread(creator) {
@@ -370,6 +372,7 @@ bool DispatcherQueue::startQueueThread () {
   }
   else {
     _nrStarted++;
+    _lastChanged = TRI_microtime();
   }
 
   return ok;
