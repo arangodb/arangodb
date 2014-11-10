@@ -343,8 +343,15 @@ void Optimizer::setupRules () {
 
   //////////////////////////////////////////////////////////////////////////////
   // "Pass 1": moving nodes "up" (potentially outside loops):
-  //           please use levels between 1 and 99 here
   //////////////////////////////////////////////////////////////////////////////
+
+#if 0
+  // rule not yet tested
+  registerRule("split-filters",
+               splitFiltersRule,
+               splitFiltersRule_pass1, 
+               true);
+#endif
 
   // move calculations up the dependency chain (to pull them out of
   // inner loops etc.)

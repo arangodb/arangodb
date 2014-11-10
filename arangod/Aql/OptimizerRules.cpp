@@ -334,6 +334,83 @@ int triagens::aql::moveCalculationsUpRule (Optimizer* opt,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief split and-combined filters and break them into smaller parts
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::splitFiltersRule (Optimizer* opt, 
+                                     ExecutionPlan* plan,
+                                     Optimizer::Rule const* rule) {
+  std::vector<ExecutionNode*> nodes = plan->findNodesOfType(EN::FILTER, true);
+  bool modified = false;
+  
+  for (auto n : nodes) {
+    auto const&& inVar = n->getVariablesUsedHere();
+    TRI_ASSERT(inVar.size() == 1);
+    auto setter = plan->getVarSetBy(inVar[0]->id);
+
+    if (setter == nullptr || setter->getType() != EN::CALCULATION) {
+      continue;
+    }
+
+    auto cn = static_cast<CalculationNode*>(setter);
+    auto const expression = cn->expression();
+
+    if (expression->canThrow() || 
+        ! expression->isDeterministic() ||
+        expression->node()->type != NODE_TYPE_OPERATOR_BINARY_AND) {  
+      continue;
+    }
+
+    std::vector<AstNode const*> stack;
+    stack.push_back(expression->node());
+
+    while (! stack.empty()) {
+      auto current = stack.back();
+      stack.pop_back();
+    
+      if (current->type == NODE_TYPE_OPERATOR_BINARY_AND) {
+        stack.push_back(current->getMember(0));
+        stack.push_back(current->getMember(1));
+      }
+      else {
+        modified = true;
+  
+        ExecutionNode* calculationNode = nullptr;
+        auto outVar = plan->getAst()->variables()->createTemporaryVariable();
+        auto expression = new Expression(plan->getAst(), current);
+        try {
+          calculationNode = new CalculationNode(plan, plan->nextId(), expression, outVar);
+        }
+        catch (...) {
+          delete expression;
+          throw;
+        }
+        plan->registerNode(calculationNode);
+
+        plan->insertDependency(n, calculationNode);
+
+        auto filterNode = new FilterNode(plan, plan->nextId(), outVar);
+        plan->registerNode(filterNode);
+
+        plan->insertDependency(n, filterNode);
+      }
+    }
+
+    if (modified) {
+      plan->unlinkNode(n, false);
+    }
+  }
+  
+  if (modified) {
+    plan->findVarUsage();
+  }
+  
+  opt->addPlan(plan, rule->level, modified);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief move filters up in the plan
 /// this rule modifies the plan in place
 /// filters are moved as far up in the plan as possible to make result sets
