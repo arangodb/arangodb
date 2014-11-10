@@ -1401,19 +1401,6 @@ function UNARY_MINUS (value) {
 function ARITHMETIC_PLUS (lhs, rhs) {
   "use strict";
 
-  var lWeight = TYPEWEIGHT(lhs);
-  var rWeight = TYPEWEIGHT(rhs);
-
-  if (lWeight === TYPEWEIGHT_STRING || 
-      lWeight === TYPEWEIGHT_LIST || 
-      lWeight === TYPEWEIGHT_DOCUMENT ||
-      rWeight === TYPEWEIGHT_STRING ||
-      rWeight === TYPEWEIGHT_LIST || 
-      rWeight === TYPEWEIGHT_DOCUMENT) {
-    // string concatenation
-    return AQL_TO_STRING(lhs) + AQL_TO_STRING(rhs);
-  }
-  
   lhs = AQL_TO_NUMBER(lhs);
   if (lhs === null) {
     return null;
@@ -5427,13 +5414,13 @@ function AQL_GRAPH_TRAVERSAL_TREE (graphName,
     return null;
   }
   options.fromVertexExample = startVertexExample;
-  options.direction =  direction;
+  options.direction = direction;
 
   var startVertices = RESOLVE_GRAPH_START_VERTICES(graphName, options);
-  var factory = TRAVERSAL.generalGraphDatasourceFactory(graphName), r;
+  var factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
 
   startVertices.forEach(function (f) {
-    r = TRAVERSAL_FUNC("GRAPH_TRAVERSAL_TREE",
+    var r = TRAVERSAL_FUNC("GRAPH_TRAVERSAL_TREE",
       factory,
       TO_ID(f),
       undefined,

@@ -1391,33 +1391,19 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic (AstNode* node) {
   if (lhs->isConstant() && rhs->isConstant()) {
     // now calculate the expression result
     if (node->type == NODE_TYPE_OPERATOR_BINARY_PLUS) {
-      if (lhs->isStringValue() || lhs->isList() || lhs->isArray() ||
-          rhs->isStringValue() || rhs->isList() || rhs->isArray()) {
-        // + means string concatenation if one of the operands is a string, a list or an array
-        auto left  = lhs->castToString(this);
-        auto right = rhs->castToString(this);
-
-        TRI_ASSERT(left->type == NODE_TYPE_VALUE && left->value.type == VALUE_TYPE_STRING);
-        TRI_ASSERT(right->type == NODE_TYPE_VALUE && right->value.type == VALUE_TYPE_STRING);
-
-        if (*left->value.value._string == '\0') {
-          // left side is empty
-          return right;
-        }
-        else if (*right->value.value._string == '\0') {
-          // right side is empty
-          return left;
-        }
-
-        // must concat
-        char* concatenated = _query->registerStringConcat(left->value.value._string, right->value.value._string);
-        TRI_ASSERT(concatenated != nullptr);
-        return createNodeValueString(concatenated);
-      }
-
       // arithmetic +
       auto left  = lhs->castToNumber(this);
       auto right = rhs->castToNumber(this);
+
+      if (left->isNullValue() && ! lhs->isNullValue()) {
+        // conversion of lhs failed
+        return createNodeValueNull();
+      }
+      
+      if (right->isNullValue() && ! rhs->isNullValue()) {
+        // conversion of rhs failed
+        return createNodeValueNull();
+      }
 
       bool useDoublePrecision = (left->isDoubleValue() || right->isDoubleValue());
 
@@ -1439,6 +1425,16 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic (AstNode* node) {
     else if (node->type == NODE_TYPE_OPERATOR_BINARY_MINUS) {
       auto left  = lhs->castToNumber(this);
       auto right = rhs->castToNumber(this);
+      
+      if (left->isNullValue() && ! lhs->isNullValue()) {
+        // conversion of lhs failed
+        return createNodeValueNull();
+      }
+      
+      if (right->isNullValue() && ! rhs->isNullValue()) {
+        // conversion of rhs failed
+        return createNodeValueNull();
+      }
 
       bool useDoublePrecision = (left->isDoubleValue() || right->isDoubleValue());
 
@@ -1460,6 +1456,16 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic (AstNode* node) {
     else if (node->type == NODE_TYPE_OPERATOR_BINARY_TIMES) {
       auto left  = lhs->castToNumber(this);
       auto right = rhs->castToNumber(this);
+      
+      if (left->isNullValue() && ! lhs->isNullValue()) {
+        // conversion of lhs failed
+        return createNodeValueNull();
+      }
+      
+      if (right->isNullValue() && ! rhs->isNullValue()) {
+        // conversion of rhs failed
+        return createNodeValueNull();
+      }
 
       bool useDoublePrecision = (left->isDoubleValue() || right->isDoubleValue());
       
@@ -1481,6 +1487,16 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic (AstNode* node) {
     else if (node->type == NODE_TYPE_OPERATOR_BINARY_DIV) {
       auto left  = lhs->castToNumber(this);
       auto right = rhs->castToNumber(this);
+      
+      if (left->isNullValue() && ! lhs->isNullValue()) {
+        // conversion of lhs failed
+        return createNodeValueNull();
+      }
+      
+      if (right->isNullValue() && ! rhs->isNullValue()) {
+        // conversion of rhs failed
+        return createNodeValueNull();
+      }
 
       bool useDoublePrecision = (left->isDoubleValue() || right->isDoubleValue());
       if (! useDoublePrecision) {
@@ -1511,6 +1527,16 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic (AstNode* node) {
     else if (node->type == NODE_TYPE_OPERATOR_BINARY_MOD) {
       auto left  = lhs->castToNumber(this);
       auto right = rhs->castToNumber(this);
+      
+      if (left->isNullValue() && ! lhs->isNullValue()) {
+        // conversion of lhs failed
+        return createNodeValueNull();
+      }
+      
+      if (right->isNullValue() && ! rhs->isNullValue()) {
+        // conversion of rhs failed
+        return createNodeValueNull();
+      }
 
       bool useDoublePrecision = (left->isDoubleValue() || right->isDoubleValue());
       if (! useDoublePrecision) {

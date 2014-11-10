@@ -19,27 +19,39 @@ will return a number value):
   - *null* is converted to *false*.
   - Numbers are converted to *true* if they are unequal to 0, and to *false* otherwise. 
   - Strings are converted to *true* if they are non-empty, and to *false* otherwise. 
-  - Lists are converted to *true* if they are non-empty, and to *false* otherwise.
-  - Documents are converted to *true* if they are non-empty, and to *false* otherwise.
+  - Lists are always converted to *true*.
+  - Documents are always converted to *true*.
 
 - *TO_NUMBER(value)*: Takes an input *value* of any type and converts it 
   into a numeric value as follows:
-  - *null*, *false*, lists, and documents are converted to the value *0*.
+  - *null* and *false* are converted to the value *0*.
   - *true* is converted to *1*.
-  - Strings are converted to their numeric equivalent if the full string content is
-    is a valid number, and to *0* otherwise.
+  - Numbers keep their original value.
+  - Strings are converted to their numeric equivalent if the string contains a
+    valid representation of a number. Whitespace at the start and end of the string
+    is allowed. String values that do not contain any valid representation of a number
+    will be converted to *null*.
+  - An empty list is converted to *0*, a list with one member is converted into the
+    result of `TO_NUMBER()` for its sole member. A list with two or more members is
+    converted to *null*.
+  - A document is converted to *null*.
 
 - *TO_STRING(value)*: Takes an input *value* of any type and converts it 
   into a string value as follows:
   - *null* is converted to the string *"null"*
   - *false* is converted to the string *"false"*, *true* to the string *"true"*
-  - Numbers, lists and documents are converted to their string equivalents. 
+  - Numbers are converted to their string representations.
+  - An empty list is converted to the empty string. A list with one member is converted
+    to the result of `TO_STRING()` for its sole member. A list with two or more members
+    is converted to a comma-separated list with the string representation of its members.
+  - A document is converted to the string *[object Object]*.
 
 - *TO_LIST(value)*: Takes an input *value* of any type and converts it 
   into a list value as follows:
-  - *null* is converted to an empty list
+  - *null* is converted to an empty list.
   - Boolean values, numbers and strings are converted to a list containing the original
-    value as its single element
+    value as its single element.
+  - Lists keep their original value.
   - Documents are converted to a list containing their attribute values as list elements
 
 !SECTION Type check functions

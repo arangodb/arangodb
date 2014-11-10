@@ -132,7 +132,7 @@ std::unordered_map<int, std::string const> const AstNode::valueTypeNames{
 // -----------------------------------------------------------------------------
 // --SECTION--                                           static helper functions
 // -----------------------------------------------------------------------------
-
+          
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the node type for inter-node comparisons
 ////////////////////////////////////////////////////////////////////////////////
@@ -227,6 +227,21 @@ static int CompareNodes (AstNode const* lhs, AstNode const* rhs) {
 
   // all things equal
   return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns whether or not the string is empty
+////////////////////////////////////////////////////////////////////////////////
+
+static bool IsEmptyString (char const* p) {
+  while (*p != '\0') {
+    if (*p != ' ' && *p != '\t' && *p != '\r' && *p != '\n' && *p != '\f' && *p != '\b') {
+      return false;
+    }
+    ++p;
+  }
+
+  return true;
 }
 
 // -----------------------------------------------------------------------------
@@ -784,6 +799,10 @@ AstNode* AstNode::castToNumber (Ast* ast) {
           return ast->createNodeValueDouble(v);
         }
         catch (...) {
+          if (IsEmptyString(value.value._string)) {
+            // empty string => 0
+            return ast->createNodeValueInt(0);
+          }
           // conversion failed
         }
         // fall-through intentional
