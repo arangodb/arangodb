@@ -2627,6 +2627,87 @@ function AQL_MEDIAN (values) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the pth percentile of all values
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_PERCENTILE (values, p, method) {
+  "use strict";
+
+  if (TYPEWEIGHT(values) !== TYPEWEIGHT_LIST) {
+    WARN("PERCENTILE", INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+    return null;
+  }
+
+  if (TYPEWEIGHT(p) !== TYPEWEIGHT_NUMBER) {
+    WARN("PERCENTILE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
+  }
+
+  if (p <= 0 || p > 100) {
+    WARN("PERCENTILE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
+  }
+ 
+  if (method === null || method === undefined) {
+    method = "rank";
+  }
+   
+  if (method !== "interpolation" && method !== "rank") {
+    WARN("PERCENTILE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
+  }
+
+  var copy = [ ], current, typeWeight;
+  var i, n;
+
+  for (i = 0, n = values.length; i < n; ++i) {
+    current = values[i];
+    typeWeight = TYPEWEIGHT(current);
+
+    if (typeWeight !== TYPEWEIGHT_NULL) {
+      if (typeWeight !== TYPEWEIGHT_NUMBER) {
+        WARN("PERCENTILE", INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+        return null;
+      }
+
+      copy.push(current);
+    }
+  }
+
+  if (copy.length === 0) {
+    return null;
+  }
+  else if (copy.length === 1) {
+    return copy[0];
+  }
+
+  copy.sort(RELATIONAL_CMP);
+
+  var idx, pos;
+  if (method === "interpolation") {
+    // interpolation method
+    idx = p * (copy.length + 1) / 100;
+    pos = Math.floor(idx);
+    var delta = idx - pos;
+
+    if (pos >= copy.length) {
+      return NUMERIC_VALUE(copy[copy.length - 1]);
+    }
+    return NUMERIC_VALUE(delta * (copy[pos] - copy[pos - 1]) + copy[pos - 1]);
+  }
+  else {
+    // rank method
+    idx = p * (copy.length) / 100;
+    pos = Math.ceil(idx);
+
+    if (pos >= copy.length) {
+      return NUMERIC_VALUE(copy[copy.length - 1]);
+    }
+    return NUMERIC_VALUE(copy[pos - 1]);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief variance of all values
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -6871,6 +6952,7 @@ exports.AQL_MIN = AQL_MIN;
 exports.AQL_SUM = AQL_SUM;
 exports.AQL_AVERAGE = AQL_AVERAGE;
 exports.AQL_MEDIAN = AQL_MEDIAN;
+exports.AQL_PERCENTILE = AQL_PERCENTILE;
 exports.AQL_VARIANCE_SAMPLE = AQL_VARIANCE_SAMPLE;
 exports.AQL_VARIANCE_POPULATION = AQL_VARIANCE_POPULATION;
 exports.AQL_STDDEV_SAMPLE = AQL_STDDEV_SAMPLE;

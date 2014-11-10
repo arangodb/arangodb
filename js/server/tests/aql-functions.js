@@ -2975,6 +2975,40 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test percentile function
+////////////////////////////////////////////////////////////////////////////////
+ 
+    testPercentile : function () {
+      var data = [
+        [ null, [ 1, 2, 3, 4, 5 ], 0, "rank" ],
+        [ null, [ 15, 20, 35, 40, 50 ], 0, "rank" ],
+        [ 50, [ 15, 20, 35, 40, 50 ], 100, "rank" ],
+        [ 20, [ 15, 20, 35, 40, 50 ], 30, "rank" ],
+        [ 20, [ 15, 20, 35, 40, 50 ], 40, "rank" ],
+        [ 35, [ 15, 20, 35, 40, 50 ], 50, "rank" ],
+        [ 50, [ 15, 20, 35, 40, 50 ], 100, "rank" ],
+        [ 15, [ 3, 5, 7, 8, 9, 11, 13, 15 ], 100, "rank" ],
+        [ null, [ 3, 5, 7, 8, 9, 11, 13, 15 ], 0, "interpolation" ],
+        [ 5.5, [ 3, 5, 7, 8, 9, 11, 13, 15 ], 25, "interpolation" ],
+        [ 5, [ 4, 4, 5, 5, 5, 5, 6, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 10 ], 25, "interpolation" ],
+        [ 9.85, [ 4, 4, 5, 5, 5, 5, 6, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 10 ], 85, "interpolation" ],
+        [ 4, [ 2, 3, 5, 9 ], 50, "interpolation" ],
+        [ 5, [ 2, 3, 5, 9, 11 ], 50, "interpolation" ],
+        [ 11, [ 2, 3, 5, 9, 11 ], 100, "interpolation" ]
+      ];
+
+      data.forEach(function (value) {
+        var actual = getQueryResults("RETURN PERCENTILE(" + JSON.stringify(value[1]) + ", " + JSON.stringify(value[2]) + ", " + JSON.stringify(value[3]) + ")");
+        if (actual[0] === null) {
+          assertNull(value[0]);
+        }
+        else {
+          assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
+        }
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test has function
 ////////////////////////////////////////////////////////////////////////////////
     
