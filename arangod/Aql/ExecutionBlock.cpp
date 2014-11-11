@@ -409,7 +409,7 @@ size_t ExecutionBlock::skipSome (size_t atLeast, size_t atMost) {
 bool ExecutionBlock::skip (size_t number) {
   size_t skipped = skipSome(number, number);
   size_t nr = skipped;
-  while ( nr != 0 && skipped < number ){
+  while (nr != 0 && skipped < number) {
     nr = skipSome(number - skipped, number - skipped);
     skipped += nr;
   }
@@ -485,7 +485,7 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
 
       if (cur->size() - _pos > atMost - skipped) {
         // The current block is too large for atMost:
-        if (! skipping){
+        if (! skipping) { 
           unique_ptr<AqlItemBlock> more(cur->slice(_pos, _pos + (atMost - skipped)));
           collector.push_back(more.get());
           more.release(); // do not delete it!
@@ -496,7 +496,7 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
       else if (_pos > 0) {
         // The current block fits into our result, but it is already
         // half-eaten:
-        if(! skipping){
+        if (! skipping) {
           unique_ptr<AqlItemBlock> more(cur->slice(_pos, cur->size()));
           collector.push_back(more.get());
           more.release();
@@ -590,7 +590,7 @@ int SingletonBlock::getOrSkipSome (size_t,   // atLeast,
     return TRI_ERROR_NO_ERROR;
   }
 
-  if(! skipping){
+  if (! skipping) {
     result = new AqlItemBlock(1, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]);
     try {
       if (_inputRegisterValues != nullptr) {
@@ -1071,7 +1071,7 @@ bool IndexRangeBlock::readIndex (size_t atMost) {
     TRI_ASSERT(false);
   }
 
-  return (!_documents.empty());
+  return (! _documents.empty());
 }
 
 int IndexRangeBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
@@ -1206,7 +1206,7 @@ size_t IndexRangeBlock::skipSome (size_t atLeast,
 
   size_t skipped = 0;
 
-  while (skipped < atLeast ){
+  while (skipped < atLeast) {
     if (_buffer.empty()) {
       if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
         _done = true;
@@ -1314,7 +1314,7 @@ void IndexRangeBlock::readPrimaryIndex (IndexOrCondition const& ranges) {
 
     auto found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyPrimaryIndex(primaryIndex, key.c_str()));
     if (found != nullptr) {
-      _documents.push_back(*found);
+      _documents.emplace_back(*found);
     }
   }
 }
@@ -1345,7 +1345,7 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges, size_t atMo
   };
 
   auto setupSearchValue = [&]() {
-    size_t const n = std::min(hashIndex->_paths._length, atMost);
+    size_t const n = hashIndex->_paths._length;
     searchValue._length = 0;
     searchValue._values = static_cast<TRI_shaped_json_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, 
           n * sizeof(TRI_shaped_json_t), true));
@@ -1382,7 +1382,7 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges, size_t atMo
   size_t const n = list._length;
   try {
     for (size_t i = 0; i < n; ++i) {
-      _documents.push_back(*(list._documents[i]));
+      _documents.emplace_back(*(list._documents[i]));
     }
   
     _engine->_stats.scannedIndex += static_cast<int64_t>(n);
@@ -1439,7 +1439,7 @@ void IndexRangeBlock::readEdgeIndex (IndexOrCondition const& ranges) {
       // silently ignore all errors due to wrong _from / _to specifications
       auto&& result = TRI_LookupEdgesDocumentCollection(document, direction, documentCid, (TRI_voc_key_t) documentKey.c_str());
       for (auto it : result) {
-        _documents.push_back((it));
+        _documents.emplace_back(it);
       }
   
       _engine->_stats.scannedIndex += static_cast<int64_t>(result.size());
@@ -1568,7 +1568,7 @@ void IndexRangeBlock::readSkiplistIndex (IndexOrCondition const& ranges, size_t 
       if (indexElement == nullptr || nrSent == atMost) {
         break;
       }
-      _documents.push_back(*(indexElement->_document));
+      _documents.emplace_back(*(indexElement->_document));
       ++nrSent;
       ++_engine->_stats.scannedIndex;
     }
@@ -1590,7 +1590,7 @@ EnumerateListBlock::EnumerateListBlock (ExecutionEngine* engine,
     _inVarRegId(ExecutionNode::MaxRegisterId) {
 
   auto it = en->getRegisterPlan()->varInfo.find(en->_inVariable->id);
-  if (it == en->getRegisterPlan()->varInfo.end()){
+  if (it == en->getRegisterPlan()->varInfo.end()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "variable not found");
   }
   _inVarRegId = (*it).second.registerId;
@@ -1735,7 +1735,7 @@ AqlItemBlock* EnumerateListBlock::getSome (size_t, size_t atMost) {
       _thisblock = 0;
       _seen = 0;
       // advance read position in the current block . . .
-      if (++_pos == cur->size() ) {
+      if (++_pos == cur->size()) {
         delete cur;
         _buffer.pop_front();  // does not throw
         _pos = 0;
@@ -1757,7 +1757,7 @@ size_t EnumerateListBlock::skipSome (size_t atLeast, size_t atMost) {
 
   size_t skipped = 0;
 
-  while ( skipped < atLeast ) {
+  while (skipped < atLeast) {
     if (_buffer.empty()) {
       if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
         _done = true;
@@ -1789,7 +1789,7 @@ size_t EnumerateListBlock::skipSome (size_t atLeast, size_t atMost) {
       }
 
       case AqlValue::DOCVEC: {
-        if( _index == 0) { // this is a (maybe) new DOCVEC
+        if (_index == 0) { // this is a (maybe) new DOCVEC
           _DOCVECsize = 0;
           //we require the total number of items 
           for (size_t i = 0; i < inVarReg._vector->size(); i++) {
@@ -1843,7 +1843,7 @@ AqlValue EnumerateListBlock::getAqlValue (AqlValue inVarReg) {
     case AqlValue::DOCVEC: { // incoming doc vec has a single column
       AqlValue out = inVarReg._vector->at(_thisblock)->getValue(_index -
                                                                 _seen, 0).clone();
-      if(++_index == (inVarReg._vector->at(_thisblock)->size() + _seen)){
+      if (++_index == (inVarReg._vector->at(_thisblock)->size() + _seen)) {
         _seen += inVarReg._vector->at(_thisblock)->size();
         _thisblock++;
       }
@@ -2233,7 +2233,7 @@ int FilterBlock::getOrSkipSome (size_t atLeast,
       try {
         result = AqlItemBlock::concatenate(collector);
       }
-      catch (...){
+      catch (...) {
         for (auto x : collector) {
           delete x;
         }
@@ -2402,7 +2402,7 @@ int AggregateBlock::getOrSkipSome (size_t atLeast,
 
     if (newGroup) {
       if (! _currentGroup.groupValues[0].isEmpty()) {
-        if(! skipping){
+        if (! skipping) {
           // need to emit the current group first
           emitGroup(cur, res.get(), skipped);
         }
@@ -2449,7 +2449,7 @@ int AggregateBlock::getOrSkipSome (size_t atLeast,
         // no more input. we're done
         try {
           // emit last buffered group
-          if(! skipping){
+          if (! skipping) {
             emitGroup(cur, res.get(), skipped);
             ++skipped;
             TRI_ASSERT(skipped > 0);
@@ -2480,7 +2480,7 @@ int AggregateBlock::getOrSkipSome (size_t atLeast,
     }
   }
 
-  if(! skipping){
+  if (! skipping) {
     TRI_ASSERT(skipped > 0);
     res->shrink(skipped);
   }
@@ -3523,7 +3523,7 @@ int GatherBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
     return res;
   }
  
-  if (!_isSimple) {
+  if (! _isSimple) {
     for (std::deque<AqlItemBlock*>& x : _gatherBlockBuffer) {
       for (AqlItemBlock* y: x) {
         delete y;
@@ -3595,13 +3595,13 @@ bool GatherBlock::hasMore () {
 
   if (_isSimple) {
     for (size_t i = 0; i < _dependencies.size(); i++) {
-      if(_dependencies.at(i)->hasMore()) {
+      if (_dependencies.at(i)->hasMore()) {
         return true;
       }
     }
   }
   else {
-    for (size_t i = 0; i < _gatherBlockBuffer.size(); i++){
+    for (size_t i = 0; i < _gatherBlockBuffer.size(); i++) { 
       if (! _gatherBlockBuffer.at(i).empty()) {
         return true;
       } 
@@ -3899,7 +3899,7 @@ BlockWithClients::BlockWithClients (ExecutionEngine* engine,
   : ExecutionBlock(engine, ep), 
     _nrClients(shardIds.size()),
     _ignoreInitCursor(false),
-    _ignoreShutdown(false){
+    _ignoreShutdown(false) {
 
   _shardIdMap.reserve(_nrClients);
   for (size_t i = 0; i < _nrClients; i++) {
@@ -4176,7 +4176,7 @@ int ScatterBlock::getOrSkipSomeForShard (size_t atLeast,
   
   skipped = (std::min)(available, atMost); //nr rows in outgoing block
   
-  if (! skipping){ 
+  if (! skipping) { 
     result = _buffer.at(pos.first)->slice(pos.second, pos.second + skipped);
   }
 
@@ -4349,7 +4349,7 @@ int DistributeBlock::getOrSkipSomeForShard (size_t atLeast,
     skipped = (std::min)(buf.size(), atMost);
 
     if (skipping) {
-      for (size_t i = 0; i < skipped; i++){
+      for (size_t i = 0; i < skipped; i++) {
         buf.pop_front();
       }
       freeCollector();

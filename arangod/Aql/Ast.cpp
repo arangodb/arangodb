@@ -81,7 +81,7 @@ AstNode const Ast::EmptyStringNode{ "", VALUE_TYPE_STRING };
 /// @brief inverse comparison operators
 ////////////////////////////////////////////////////////////////////////////////
 
-std::unordered_map<int, AstNodeType> const Ast::ReverseOperators{ 
+std::unordered_map<int, AstNodeType> const Ast::NegatedOperators{ 
   { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_EQ), NODE_TYPE_OPERATOR_BINARY_NE },
   { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NE), NODE_TYPE_OPERATOR_BINARY_EQ },
   { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GT), NODE_TYPE_OPERATOR_BINARY_LE },
@@ -90,6 +90,18 @@ std::unordered_map<int, AstNodeType> const Ast::ReverseOperators{
   { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LE), NODE_TYPE_OPERATOR_BINARY_GT },
   { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_IN), NODE_TYPE_OPERATOR_BINARY_NIN },
   { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NIN), NODE_TYPE_OPERATOR_BINARY_IN }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reverse comparison operators
+////////////////////////////////////////////////////////////////////////////////
+
+std::unordered_map<int, AstNodeType> const Ast::ReversedOperators{ 
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_EQ), NODE_TYPE_OPERATOR_BINARY_EQ },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GT), NODE_TYPE_OPERATOR_BINARY_LT },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GE), NODE_TYPE_OPERATOR_BINARY_LE },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LT), NODE_TYPE_OPERATOR_BINARY_GT },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LE), NODE_TYPE_OPERATOR_BINARY_GE }
 };
 
 // -----------------------------------------------------------------------------
@@ -1088,6 +1100,19 @@ AstNode* Ast::clone (AstNode const* node) {
   return copy;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the reversed operator for a comparison operator
+////////////////////////////////////////////////////////////////////////////////
+
+AstNodeType Ast::ReverseOperator (AstNodeType type) {
+  auto it = ReversedOperators.find(static_cast<int>(type));
+  if (it == ReversedOperators.end()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid node type for inversed operator");
+  }
+  
+  return (*it).second;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -1227,8 +1252,8 @@ AstNode* Ast::optimizeNotExpression (AstNode* node) {
     auto lhs = operand->getMember(0);
     auto rhs = operand->getMember(1);
 
-    auto it = ReverseOperators.find(static_cast<int>(operand->type));
-    TRI_ASSERT(it != ReverseOperators.end());
+    auto it = NegatedOperators.find(static_cast<int>(operand->type));
+    TRI_ASSERT(it != NegatedOperators.end());
 
     return createNodeBinaryOperator((*it).second, lhs, rhs); 
   }
