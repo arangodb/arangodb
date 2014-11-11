@@ -30,6 +30,7 @@ For string processing, AQL offers the following functions:
 - *TRIM(value, type)*: Returns the string *value* with whitespace stripped 
   from the start and/or end. The optional *type* parameter specifies from which parts
   of the string the whitespace is stripped:
+
   - *type* 0 will strip whitespace from the start and end of the string
   - *type* 1 will strip whitespace from the start of the string only
   - *type* 2 will strip whitespace from the end of the string only
@@ -45,6 +46,14 @@ For string processing, AQL offers the following functions:
 - *RTRIM(value, chars)*: Returns the string *value* with whitespace stripped 
   from the end only. The optional *chars* parameter can be used to override the
   characters that should be removed from the string. It defaults to `\r\n\t `.
+
+- *SPLIT(value, separator, limit)*: Splits the given string *value* into a list of
+  strings, using the *separator*. The *separator* can either be a string or a
+  list of strings. If the *separator* is the empty string, *value* will be split
+  into a list of characters. If no *separator* is specified, *value* will be
+  returned inside a list.
+  The optional parameter *limit* can be used to limit the number of split values in
+  the result. If no *limit* is given, the number of splits returned is not bounded. 
 
 - *REVERSE(value)*: Returns the reverse of the string *value*
 

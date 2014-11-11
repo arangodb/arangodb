@@ -781,6 +781,85 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test split function
+////////////////////////////////////////////////////////////////////////////////
+      
+    testSplit : function () {
+      var values = [
+        [ [ "" ], "", "\n" ],
+        [ [ "" ], "", "foobar" ],
+        [ [ ], "", "" ],
+        [ [ ], "", [ "" ] ],
+        [ [ "" ], "", [ "a", "b", "c" ] ],
+        [ [ "this\nis\na\nt", "st" ], "this\nis\na\ntest", "e" ],
+        [ [ "th", "s\n", "s\na\nt", "st" ], "this\nis\na\ntest", [ "e", "i" ] ],
+        [ [ "th", "\n", "\na\ntest" ], "this\nis\na\ntest", "is" ],
+        [ [ "this", "is", "a", "test" ], "this\nis\na\ntest", "\n" ],
+        [ [ "this", "is", "a", "test" ], "this\nis\na\ntest", [ "\n" ] ],
+        [ [ "this", "is", "a", "test" ], "this\nis\na\ntest", [ "\n", "\r" ] ],
+        [ [ "this", "is", "a", "test" ], "this\ris\ra\rtest", [ "\n", "\r" ] ],
+        [ [ "this", "is", "a", "test" ], "this\tis\ta\ttest", [ "\t" ] ],
+        [ [ "this", "is", "a", "test" ], "this\tis\ta\ttest", "\t" ],
+        [ [ "this", "is", "a", "test" ], "this\nis\ra\ttest", [ "\n", "\r", "\t" ] ],
+        [ [ "this", "is", "a", "test" ], "this is a test", [ " " ] ],
+        [ [ "this", "is", "a", "test" ], "this is a test", " " ],
+        [ [ "this", "is", "a", "test" ], "this/SEP/is/SEP/a/SEP/test", "/SEP/" ],
+        [ [ "this", "is", "a", "test" ], "this/SEP/is/SEP/a/SEP/test", [ "/SEP/" ] ],
+        [ [ "this", "is", "a", "test" ], "this/SEP1/is/SEP2/a/SEP3/test", [ "/SEP1/", "/SEP2/", "/SEP3/" ] ],
+        [ [ "the", "quick", "brown", "foxx" ], "the quick brown foxx", " " ],
+        [ [ "the quick ", " foxx" ], "the quick brown foxx", "brown" ],
+        [ [ "t", "h", "e", " ", "q", "u", "i", "c", "k", " ", "b", "r", "o", "w", "n", " ", "f", "o", "x", "x" ], "the quick brown foxx", "" ]
+      ];
+
+      values.forEach(function(value) {
+        var expected = value[0], text = value[1], separator = value[2];
+        assertEqual([ expected ], getQueryResults("RETURN SPLIT(" + JSON.stringify(text) + ", " + JSON.stringify(separator) + ")"), value);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test split function
+////////////////////////////////////////////////////////////////////////////////
+      
+    testSplitMaxLength : function () {
+      var values = [
+        [ null, "foobar", "", -1 ],
+        [ null, "foobar", "", -10 ],
+        [ [ ], "foobar", "", 0 ],
+        [ [ "f" ], "foobar", "", 1 ],
+        [ [ ], "this\nis\na\ntest", "\n", 0 ],
+        [ [ "this" ], "this\nis\na\ntest", "\n", 1 ],
+        [ [ "this", "is", "a" ], "this\nis\na\ntest", "\n", 3 ],
+        [ [ "this", "is", "a", "test" ], "this\nis\na\ntest", "\n", 5 ],
+        [ [ "this", "is", "a", "test" ], "this\nis\na\ntest", "\n", 500 ],
+        [ [ "t", "h", "i", "s", " " ], "this is a test", "", 5 ]
+      ];
+
+      values.forEach(function(value) {
+        var expected = value[0], text = value[1], separator = value[2], splitMax= value[3];
+        assertEqual([ expected ], getQueryResults("RETURN SPLIT(" + JSON.stringify(text) + ", " + JSON.stringify(separator) + ", " + JSON.stringify(splitMax) + ")"));
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test split function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testSplitEmpty : function () {
+      assertEqual([ [ "the foxx" ] ], getQueryResults("RETURN SPLIT('the foxx')")); 
+      assertEqual([ [ "" ] ], getQueryResults("RETURN SPLIT('')")); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test split function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testSplitInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SPLIT()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SPLIT('foo', '', 10, '')"); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test trim function
 ////////////////////////////////////////////////////////////////////////////////
 
