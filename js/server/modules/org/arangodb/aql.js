@@ -1770,6 +1770,42 @@ function AQL_RTRIM (value, chars) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief split a string using a separator
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_SPLIT (value, separator, maxSplits) {
+  "use strict";
+
+  if (separator === null || separator === undefined) {
+    return [ AQL_TO_STRING(value) ];
+  }
+
+  if (maxSplits === null || maxSplits === undefined) {
+    maxSplits = undefined;
+  }
+  else {
+    maxSplits = AQL_TO_NUMBER(maxSplits);
+  }
+
+  if (maxSplits < 0) {
+    WARN("SPLIT", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
+  }
+
+  if (TYPEWEIGHT(separator) === TYPEWEIGHT_LIST) {
+    var patterns = [];
+    separator.forEach(function(s) {
+      patterns.push(CREATE_REGEX_PATTERN(AQL_TO_STRING(s)));
+    });
+
+    return AQL_TO_STRING(value).split(new RegExp(patterns.join("|"), "g"), maxSplits);
+  }
+  else {
+    return AQL_TO_STRING(value).split(AQL_TO_STRING(separator), maxSplits);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief finds search in value
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -6982,6 +7018,7 @@ exports.AQL_RIGHT = AQL_RIGHT;
 exports.AQL_TRIM = AQL_TRIM;
 exports.AQL_LTRIM = AQL_LTRIM;
 exports.AQL_RTRIM = AQL_RTRIM;
+exports.AQL_SPLIT = AQL_SPLIT;
 exports.AQL_FIND_FIRST = AQL_FIND_FIRST;
 exports.AQL_FIND_LAST = AQL_FIND_LAST;
 exports.AQL_TO_BOOL = AQL_TO_BOOL;
