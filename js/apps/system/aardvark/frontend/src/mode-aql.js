@@ -95,7 +95,7 @@ var AqlHighlightRules = function() {
         "(to_bool|to_number|to_string|to_list|is_null|is_bool|is_number|is_string|is_list|is_document|" +
         "concat|concat_separator|char_length|lower|upper|substring|left|right|trim|reverse|contains|" +
         "like|floor|ceil|round|abs|sqrt|rand|length|min|max|average|sum|median|variance_population|" +
-        "variance_sample|first|last|unique|matches|merge|merge_recursive|has|attributes|unset|keep|" +
+        "variance_sample|first|last|unique|matches|merge|merge_recursive|has|attributes|values|unset|keep|" +
         "near|within|fulltext|paths|traversal|traversal_tree|edges|not_null|first_list|first_document|" +
         "flatten|length|min|max|sum|median|average|variance_sample|variance_population|"+
         "stddev_sample|stddev_population|unique|slice|reverse|first|last|nth|position|"+
@@ -108,7 +108,8 @@ var AqlHighlightRules = function() {
         "date_timestamp|date_iso8601|date_dayofweek|date_year|date_month|date_day|date_hour|"+
         "date_minute|date_second|date_millisecond|fail|passthru|sleep|collections|not_null|"+
         "first_list|first_document|parse_identifier|skiplist|current_user|current_database|"+
-        "collections|document|stddev_population|stddev_sample|neighbors|union|union_distinct|intersection)"
+        "collections|document|stddev_population|stddev_sample|neighbors|union|union_distinct|intersection|"+
+        "ltrim|rtrim|find_first|find_last|split|substitute|assemble|AQL_LAST_ENTRY)"
     );
 
     var keywordMapper = this.createKeywordMapper({
