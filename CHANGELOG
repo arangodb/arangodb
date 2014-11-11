@@ -1,5 +1,11 @@
-v2.3.0 (XXXX-XX-XX)
--------------------
+v2.3.0 (XXX-XX-XX)
+------------------
+
+* added AQL functions `LTRIM`, `RTRIM`, `FIND_FIRST`, `FIND_LAST`, `SPLIT`
+
+
+v2.3.0-beta2 (2014-11-08)
+-------------------------
 
 * front-end: new icons for uploading and downloading JSON documents into a collection
 
