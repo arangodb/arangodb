@@ -418,6 +418,46 @@ function TYPEWEIGHT (value) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compile a regex from a string pattern
 ////////////////////////////////////////////////////////////////////////////////
+  
+function CREATE_REGEX_PATTERN (chars) {
+  "use strict";
+
+  chars = AQL_TO_STRING(chars);
+  var i, n = chars.length, pattern = '';
+  var specialChar = /^([.*+?\^=!:${}()|\[\]\/\\])$/;
+
+  for (i = 0; i < n; ++i) {
+    var c = chars.charAt(i);
+    if (c.match(specialChar)) {
+      // character with special meaning in a regex
+      pattern += '\\' + c;
+    }
+    else if (c === '\t') {
+      pattern += '\\t';
+    }
+    else if (c === '\r') {
+      pattern += '\\r';
+    }
+    else if (c === '\n') {
+      pattern += '\\n';
+    }
+    else if (c === '\b') {
+      pattern += '\\b';
+    }
+    else if (c === '\f') {
+      pattern += '\\f';
+    }
+    else {
+      pattern += c;
+    }
+  }
+
+  return pattern;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compile a regex from a string pattern
+////////////////////////////////////////////////////////////////////////////////
 
 function COMPILE_REGEX (regex, modifiers) {
   "use strict";
@@ -1678,30 +1718,55 @@ function AQL_RIGHT (value, length) {
 /// @brief returns a trimmed version of a string
 ////////////////////////////////////////////////////////////////////////////////
 
-function AQL_TRIM (value, type) {
+function AQL_TRIM (value, chars) {
   "use strict";
 
-  type = AQL_TO_NUMBER(type);
-
-  if (type < 0 || type > 2) { 
-    type = 0;
+  if (chars === 1) {
+    return AQL_LTRIM(value);
+  }
+  else if (chars === 2) {
+    return AQL_RTRIM(value);
+  }
+  else if (chars === null || chars === undefined || chars === 0) {
+    return AQL_TO_STRING(value).replace(new RegExp("(^\\s+|\\s+$)", 'g'), '');
   }
 
-  var result;
-  if (type === 1) {
-    // TRIM(, 1)
-    result = AQL_TO_STRING(value).replace(/^\s+/g, '');
-  }
-  else if (type === 2) {
-    // TRIM(, 2)
-    result = AQL_TO_STRING(value).replace(/\s+$/g, '');
+  var pattern = CREATE_REGEX_PATTERN(chars);
+  return AQL_TO_STRING(value).replace(new RegExp("(^[" + pattern + "]+|[" + pattern + "]+$)", 'g'), '');
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief trim a value from the left
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_LTRIM (value, chars) {
+  "use strict";
+
+  if (chars === null || chars === undefined) {
+    chars = "^\\s+";
   }
   else {
-    // TRIM(, 0)
-    result = AQL_TO_STRING(value).replace(/(^\s+)|\s+$/g, '');
+    chars = "^[" + CREATE_REGEX_PATTERN(chars) + "]+";
   }
 
-  return result;
+  return AQL_TO_STRING(value).replace(new RegExp(chars, 'g'), '');
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief trim a value from the right
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_RTRIM (value, chars) {
+  "use strict";
+
+  if (chars === null || chars === undefined) {
+    chars = "\\s+$";
+  }
+  else {
+    chars = "[" + CREATE_REGEX_PATTERN(chars) + "]+$";
+  }
+
+  return AQL_TO_STRING(value).replace(new RegExp(chars, 'g'), '');
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6915,6 +6980,8 @@ exports.AQL_LIKE = AQL_LIKE;
 exports.AQL_LEFT = AQL_LEFT;
 exports.AQL_RIGHT = AQL_RIGHT;
 exports.AQL_TRIM = AQL_TRIM;
+exports.AQL_LTRIM = AQL_LTRIM;
+exports.AQL_RTRIM = AQL_RTRIM;
 exports.AQL_FIND_FIRST = AQL_FIND_FIRST;
 exports.AQL_FIND_LAST = AQL_FIND_LAST;
 exports.AQL_TO_BOOL = AQL_TO_BOOL;

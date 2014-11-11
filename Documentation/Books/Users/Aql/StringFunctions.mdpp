@@ -34,6 +34,18 @@ For string processing, AQL offers the following functions:
   - *type* 1 will strip whitespace from the start of the string only
   - *type* 2 will strip whitespace from the end of the string only
 
+- *TRIM(value, chars)*: Returns the string *value* with whitespace stripped 
+  from the start and end. The optional *chars* parameter can be used to override the
+  characters that should be removed from the string. It defaults to `\r\n\t `.
+
+- *LTRIM(value, chars)*: Returns the string *value* with whitespace stripped 
+  from the start only. The optional *chars* parameter can be used to override the
+  characters that should be removed from the string. It defaults to `\r\n\t `.
+
+- *RTRIM(value, chars)*: Returns the string *value* with whitespace stripped 
+  from the end only. The optional *chars* parameter can be used to override the
+  characters that should be removed from the string. It defaults to `\r\n\t `.
+
 - *REVERSE(value)*: Returns the reverse of the string *value*
 
 - *CONTAINS(text, search, return-index)*: Checks whether the string
