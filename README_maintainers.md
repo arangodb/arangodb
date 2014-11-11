@@ -1,8 +1,89 @@
+
+ArangoDB Maintainers manual
+---------------------------
+---------------------------
+---------------------------
+This file contains documentation about the build process, documentation generation means, unittests - put short - if you want to hack parts of arangod this could be interesting for you.
+
+Configure
+---------
+---------
+--enable-relative
+--enable-maintainer-mode
+--enable-all-in-one-icu
+--with-backtrace
+
+CFLAGS
+------
+ -DDEBUG_CLUSTER_COMM - Add backtraces to cluster requests so you can easily track their origin
+
+V8 Special flags:
+-DENABLE_GDB_JIT_INTERFACE
+(enable (broken) GDB intergation of JIT)
+At runtime arangod needs to be started with these options:
+--javascript.v8-options="--gdbjit_dump"
+--javascript.v8-options="--gdbjit_full"
+
+
+Runtime
+-------
+ * start arangod with --console to get a debug console
+ * Cheapen startup for valgrind: --no-server --javascript.gc-frequency 1000000 --javascript.gc-interval 65536 --scheduler.threads=1 --javascript.v8-contexts=1
+ * to have backtraces output set this on the prompt: ENABLE_NATIVE_BACKTRACES(true)
+
+Documentation
+-------------
+-------------
+Dependencies:
+ * swagger
+ * gitbook (https://github.com/GitbookIO/gitbook)
+ * markdown-pp (https://github.com/triAGENS/markdown-pp)
+ * cURL if you want to cut'n'paste execute the examples
+
+Where...
+--------
+ - js/action/api/* - markdown comments in source with execution section
+ - Documentation/Books/Users/SUMMARY.md - index of all sub documentations
+ - Documentation/Scripts/generateSwaggerApi.py - list of all sections to be adjusted if
+
+generate
+--------
+ - make swagger - on toplevel to generate the documentation interactively with the server
+ - cd Documentation/Books; make - to generate the HTML documentation
+
+read / use the documentation
+----------------------------
+ - file:///Documentation/Books/books/Users/index.html contains the generated documentation
+ - JS-Console - Tools/API - Interactive documentation which you can play with.
+
+
+JSLint
+------
+------
+(we switched to jshint a while back - this is still named jslint for historical reasons)
+
+Make target
+-----------
+use
+make jslint
+to find out whether all of your files comply to jslint. This is required to make contineous integration work smoothly.
+
+if you want to add new / new patterns, edit js/Makefile.files
+
+Use standalone for your js file
+-------------------------------
+If you want to search errors in your js file, jslint is very handy - like a compiler is for C/C++.
+You can invoke it like this:
+
+bin/arangosh --jslint js/server/modules/org/arangodb/testing.js
+
+
 ArangoDB Unittesting Framework
 ------------------------------
 ------------------------------
-------------------------------
-
+Dependencies
+------------
+ * Ruby, rspec
 
 
 Filename conventions
