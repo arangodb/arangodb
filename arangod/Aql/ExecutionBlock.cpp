@@ -1133,20 +1133,16 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t atLeast,
     // try again!
 
     if (_buffer.empty()) {
-      if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
+      if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize) 
+          || (! initIndex())) {
         _done = true;
         return nullptr;
       }
       _pos = 0;           // this is in the first block
 
-      // This is a new item, so let's init and read the index
-      if(initIndex()) { //successfully initted the index
-        readIndex(atMost);
-      }
-      else { //failed to init the index, nothing to pass on
-        _done = true;
-        return nullptr;
-      }
+      // This is a new item, so let's read the index (it is already
+      // initialised).
+      readIndex(atMost);
       _posInDocs = 0;     // position in _documents . . .
     }
 
@@ -1205,7 +1201,7 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t atLeast,
           _pos = 0;
         }
         if (! _buffer.empty()) {
-          initIndex(); //TODO if this returns false, what to do?
+          initIndex(); 
           readIndex(atMost);
         }
         // If _buffer is empty, then we will fetch a new block in the next call
