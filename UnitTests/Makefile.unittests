@@ -440,6 +440,7 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-statement.js \
                @top_srcdir@/js/common/tests/shell-statement-noncluster.js \
                @top_srcdir@/js/common/tests/shell-explain-noncluster.js \
+               @top_srcdir@/js/common/tests/shell-tasks-timecritical.js \
                @top_srcdir@/js/common/tests/shell-transactions.js \
                @top_srcdir@/js/common/tests/shell-unload.js \
                @top_srcdir@/js/common/tests/shell-users.js \
@@ -461,7 +462,6 @@ SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/shell-sharding-helpers.js \
                @top_srcdir@/js/server/tests/shell-compaction-noncluster-timecritical.js \
                @top_srcdir@/js/server/tests/shell-shaped-noncluster.js \
-               @top_srcdir@/js/server/tests/shell-tasks-timecritical.js \
                @top_srcdir@/js/server/tests/shell-transactions-noncluster.js \
                @top_srcdir@/js/server/tests/shell-routing.js \
                @top_srcdir@/js/server/tests/shell-any-noncluster.js \
