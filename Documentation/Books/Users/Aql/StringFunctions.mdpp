@@ -16,6 +16,36 @@ For string processing, AQL offers the following functions:
 
 - *UPPER(value)*: Upper-case *value*
 
+- *SUBSTITUTE(value, search, replace, limit)*: Replaces search values in the string
+  *value*. If *search* is a string, all occurrences of *search* will be replaced in
+  *value*. If *search* is a list, each occurrence of a value contained in *search*
+  will be replaced by the corresponding list item in *replace*. If *replace* has less
+  list items than *search*, occurrences of unmapped *search* items will be replaced
+  by the empty string. The number of replacements can optionally be limited using the
+  *limit* parameter. If the *limit* is reached, no further occurrences of the search
+  values will be replaced.
+
+      /* "the lazy brown foxx" */ 
+      RETURN SUBSTITUTE("the quick brown foxx", "quick", "lazy")
+
+      /* "the slow brown dog" */ 
+      RETURN SUBSTITUTE("the quick brown foxx", [ "quick", "foxx" ], [ "slow", "dog" ])       
+
+      /* "A VOID! brown " */ 
+      RETURN SUBSTITUTE("the quick brown foxx", [ "the", "quick", "foxx" ], [ "A", "VOID!" ])
+
+      /* "the xx brown xx" */
+      RETURN SUBSTITUTE("the quick brown foxx", [ "quick", "foxx" ], "xx" )                   
+
+  Alternatively, *search* and *replace* can be specified in a combined value:
+
+      /* "the small slow ant" */ 
+      RETURN SUBSTITUTE("the quick brown foxx", { 
+        "quick" : "small", 
+        "brown" : "slow", 
+        "foxx" : "ant" 
+      }) 
+
 - *SUBSTRING(value, offset, length)*: Return a substring of *value*,
   starting at *offset* and with a maximum length of *length* characters. Offsets
   start at position 0. Length is optional and if omitted the substring from *offset*

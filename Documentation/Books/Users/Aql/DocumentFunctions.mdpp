@@ -94,11 +94,25 @@ AQL supports the following functions to operate on document values:
 - *HAS(document, attributename)*: Returns *true* if *document* has an
   attribute named *attributename*, and *false* otherwise.
 
-- *ATTRIBUTES(document, *removeInternal, sort)*: Returns the attribute
-  names of the document *document as a list. 
+- *ATTRIBUTES(document, removeInternal, sort)*: Returns the attribute
+  names of the *document* as a list. 
   If *removeInternal* is set to *true*, then all internal attributes (such as *_id*, 
   *_key* etc.) are removed from the result. If *sort* is set to *true*, then the
   attribute names in the result will be sorted. Otherwise they will be returned in any order.
+
+- *VALUES(document, removeInternal)*: Returns the attribute values of the *document*
+  as a list. If *removeInternal* is set to *true*, then all internal attributes (such 
+  as *_id*, *_key* etc.) are removed from the result. 
+
+- *ASSEMBLE(attributes, values)*: Returns a document object assembled from the
+  separate parameters *attributes* and *values*. *attributes* and *values* must be
+  lists and must have the same length. The items in *attributes* will be used for
+  naming the attributes in the result. The items in *values* will be used as the
+  actual values of the result.
+
+      /* { "name" : "some user", "active" : true, "hobbies" : [ "swimming", "riding" ] } */
+      RETURN ASSEMBLE([ 'name', 'active', 'hobbies' ], 
+                      [ 'some user', true, [ 'swimming', 'riding' ] ])
 
 - *UNSET(document, attributename, ...)*: Removes the attributes *attributename*
   (can be one or many) from *document*. All other attributes will be preserved.
@@ -106,6 +120,7 @@ AQL supports the following functions to operate on document values:
   names, or by passing a list of attribute names:
 
       RETURN UNSET(doc, '_id', '_key', [ 'foo', 'bar' ])
+      RETURN UNSET(doc, [ '_id', '_key', 'foo', 'bar' ])
 
 - *KEEP(document, attributename, ...)*: Keeps only the attributes *attributename*
   (can be one or many) from *document*. All other attributes will be removed from the result.
@@ -113,6 +128,7 @@ AQL supports the following functions to operate on document values:
   names, or by passing a list of attribute names:
 
       RETURN KEEP(doc, 'firstname', 'name', 'likes')
+      RETURN KEEP(doc, [ 'firstname', 'name', 'likes' ])
 
 - *PARSE_IDENTIFIER(document-handle)*: Parses the [document handle](../Glossary/README.html#document_handle) specified in 
   *document-handle* and returns a the handle's individual parts a separate attributes.
@@ -121,14 +137,9 @@ AQL supports the following functions to operate on document values:
   identifier string (e.g. *_users/1234*). Passing either a non-string or a non-document or a
   document without an *_id* attribute will result in an error.
 
+      /* { "collection" : "_users", "key" : "my-user" } */ 
       RETURN PARSE_IDENTIFIER('_users/my-user')
 
-      [ 
-        { "collection" : "_users", "key" : "my-user" } 
-      ]
-
+      /* { "collection" : "mycollection", "key" : "mykey" } */ 
       RETURN PARSE_IDENTIFIER({ "_id" : "mycollection/mykey", "value" : "some value" })
 
-      [ 
-        { "collection" : "mycollection", "key" : "mykey" } 
-      ]
