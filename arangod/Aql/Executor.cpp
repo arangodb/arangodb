@@ -114,7 +114,9 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "LIKE",                        Function("LIKE",                        "AQL_LIKE", "s,r|b", true, false, true) },
   { "LEFT",                        Function("LEFT",                        "AQL_LEFT", "s,n", true, false, true) },
   { "RIGHT",                       Function("RIGHT",                       "AQL_RIGHT", "s,n", true, false, true) },
-  { "TRIM",                        Function("TRIM",                        "AQL_TRIM", "s|n", true, false, true) },
+  { "TRIM",                        Function("TRIM",                        "AQL_TRIM", "s|ns", true, false, true) },
+  { "LTRIM",                       Function("LTRIM",                       "AQL_LTRIM", "s|s", true, false, true) },
+  { "RTRIM",                       Function("RTRIM",                       "AQL_RTRIM", "s|s", true, false, true) },
   { "FIND_FIRST",                  Function("FIND_FIRST",                  "AQL_FIND_FIRST", "s,s|zn,zn", true, false, true) },
   { "FIND_LAST",                   Function("FIND_LAST",                   "AQL_FIND_LAST", "s,s|zn,zn", true, false, true) },
 

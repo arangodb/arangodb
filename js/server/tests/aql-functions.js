@@ -794,9 +794,24 @@ function ahuacatlFunctionsTestSuite () {
 /// @brief test trim function
 ////////////////////////////////////////////////////////////////////////////////
 
+    testTrimSpecial : function () {
+      var expected = [ 'foo', '  foo  ', '', 'abc', '\t\r\nabc\n\r\t', '\r\nabc\t\r',  'a\rb\n', '\rb\n', '\ta\rb' ];
+      var actual = getQueryResults("FOR t IN [ [ '  foo  ', '\r\n\t ' ], [ '  foo  ', '\r\n\t' ], [ '', '\r\n\t' ], [ '\t\r\nabc\n\r\t', '\r\n\t ' ], [ '\t\r\nabc\n\r\t', '\r\n ' ], [ '\t\r\nabc\t\r\n', '\t\n' ], [ '\ta\rb\nc', '\tc' ], [ '\ta\rb\nc', '\tac' ], [ '\ta\rb\nc', '\nc' ] ] RETURN TRIM(t[0], t[1])");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test trim function
+////////////////////////////////////////////////////////////////////////////////
+
     testTrimInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN TRIM()"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN TRIM('foo', 2, 2)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN LTRIM('foo', 2, 2)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN LTRIM()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN RTRIM('foo', 2, 2)"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN RTRIM()"); 
+
       assertEqual([ "null" ], getQueryResults("RETURN TRIM(null)")); 
       assertEqual([ "true" ], getQueryResults("RETURN TRIM(true)")); 
       assertEqual([ "4" ], getQueryResults("RETURN TRIM(4)")); 
@@ -806,10 +821,70 @@ function ahuacatlFunctionsTestSuite () {
       assertEqual([ "foo" ], getQueryResults("RETURN TRIM('foo', true)")); 
       assertEqual([ "foo" ], getQueryResults("RETURN TRIM('foo', 'bar')")); 
       assertEqual([ "foo" ], getQueryResults("RETURN TRIM('foo', [ ])")); 
-      assertEqual([ "foo" ], getQueryResults("RETURN TRIM('foo', { })")); 
+      assertEqual([ "f" ], getQueryResults("RETURN TRIM('foo', { })")); // { } = "[object Object]" 
       assertEqual([ "foo" ], getQueryResults("RETURN TRIM('foo', -1)")); 
       assertEqual([ "foo" ], getQueryResults("RETURN TRIM('foo', -1.5)")); 
       assertEqual([ "foo" ], getQueryResults("RETURN TRIM('foo', 3)")); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test ltrim function
+////////////////////////////////////////////////////////////////////////////////
+
+    testLtrim : function () {
+      var expected = [ 'foo  ', 'abc\n\r\t', 'a\rb\nc ', 'This\nis\r\na\ttest\r\n' ];
+      var actual = getQueryResults("FOR t IN [ '  foo  ', '\t\r\nabc\n\r\t', '\ta\rb\nc ', '\r\nThis\nis\r\na\ttest\r\n' ] RETURN LTRIM(t)");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test ltrim function
+////////////////////////////////////////////////////////////////////////////////
+
+    testLtrimSpecial1 : function () {
+      var expected = [ 'foo  ', '\t\r\nabc\n\r\t', '\ta\rb\nc ', 'This\nis\r\na\ttest\r\n' ];
+      var actual = getQueryResults("FOR t IN [ '  foo  ', '\t\r\nabc\n\r\t', '\ta\rb\nc ', '\r\nThis\nis\r\na\ttest\r\n' ] RETURN LTRIM(t, '\r \n')");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test ltrim function
+////////////////////////////////////////////////////////////////////////////////
+
+    testLtrimSpecial2 : function () {
+      var expected = [ '  foo  ', 'a,b,c,d,,e,f,,', 'foo,bar,baz\r\n' ];
+      var actual = getQueryResults("FOR t IN [ '  foo  ', ',,,a,b,c,d,,e,f,,', 'foo,bar,baz\r\n' ] RETURN LTRIM(t, ',\n')");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test rtrim function
+////////////////////////////////////////////////////////////////////////////////
+
+    testRtrim : function () {
+      var expected = [ '  foo', '\t\r\nabc', '\ta\rb\nc', '\r\nThis\nis\r\na\ttest' ];
+      var actual = getQueryResults("FOR t IN [ '  foo  ', '\t\r\nabc\n\r\t', '\ta\rb\nc ', '\r\nThis\nis\r\na\ttest\r\n' ] RETURN RTRIM(t)");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test ltrim function
+////////////////////////////////////////////////////////////////////////////////
+
+    testRtrimSpecial1 : function () {
+      var expected = [ '  foo', '\t\r\nabc\n\r\t', '\ta\rb\nc', '\r\nThis\nis\r\na\ttest' ];
+      var actual = getQueryResults("FOR t IN [ '  foo  ', '\t\r\nabc\n\r\t', '\ta\rb\nc ', '\r\nThis\nis\r\na\ttest\r\n' ] RETURN RTRIM(t, '\r \n')");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test ltrim function
+////////////////////////////////////////////////////////////////////////////////
+
+    testRtrimSpecial2 : function () {
+      var expected = [ '  foo  ', ',,,a,b,c,d,,e,f', 'foo,bar,baz\r' ];
+      var actual = getQueryResults("FOR t IN [ '  foo  ', ',,,a,b,c,d,,e,f,,', 'foo,bar,baz\r\n' ] RETURN RTRIM(t, ',\n')");
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5106,7 +5181,7 @@ function ahuacatlFunctionsTestSuite () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN BAR()"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN PENG(true)"); 
     }
-
+  
   };
 }
 
