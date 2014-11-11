@@ -776,10 +776,19 @@ function ahuacatlStringFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test concat function
 ////////////////////////////////////////////////////////////////////////////////
+    
+    testConcatList : function () {
+      var expected = [ "theQuickBrownアボカドJumps名称について" ];
+      var actual = getQueryResults("FOR r IN [ 1 ] return CONCAT([ 'the', 'Quick', '', null, 'Brown', null, 'アボカド', 'Jumps', '名称について' ])");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test concat function
+////////////////////////////////////////////////////////////////////////////////
 
     testConcatInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CONCAT()"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CONCAT(\"yes\")"); 
       assertEqual([ "yestrue" ], getQueryResults("RETURN CONCAT(\"yes\", true)")); 
       assertEqual([ "yes4" ], getQueryResults("RETURN CONCAT(\"yes\", 4)")); 
       assertEqual([ "yes" ], getQueryResults("RETURN CONCAT(\"yes\", [ ])")); 
@@ -791,7 +800,7 @@ function ahuacatlStringFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test concatseparator function
+/// @brief test concat_separator function
 ////////////////////////////////////////////////////////////////////////////////
     
     testConcatSeparator1 : function () {
@@ -801,7 +810,7 @@ function ahuacatlStringFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test concatseparator function
+/// @brief test concat_separator function
 ////////////////////////////////////////////////////////////////////////////////
     
     testConcatSeparator2 : function () {
@@ -811,13 +820,32 @@ function ahuacatlStringFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test concatseparator function
+/// @brief test concat_separator function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testConcatSeparatorList1 : function () {
+      var expected = [ "the,Quick,Brown,Fox,Jumps,higher,than,you" ];
+      var actual = getQueryResults("FOR r IN [ 1 ] return CONCAT_SEPARATOR(',', [ 'the', 'Quick', null, 'Brown', null, 'Fox', 'Jumps' ], 'higher', [ 'than', 'you' ])");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test concat_separator function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testConcatSeparatorList2 : function () {
+      var expected = [ "the*/*/Quick*/*/Brown*/*/*/*/Fox*/*/Jumps*/*/higher*/*/than*/*/you" ];
+      var actual = getQueryResults("FOR r IN [ 1 ] return CONCAT_SEPARATOR('*/*/', [ 'the', 'Quick', null, 'Brown', '', 'Fox', 'Jumps' ], [ ], 'higher', [ 'than', 'you' ])");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test concat_separator function
 ////////////////////////////////////////////////////////////////////////////////
 
     testConcatSeparatorInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CONCAT_SEPARATOR()"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CONCAT_SEPARATOR(\"yes\")"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CONCAT_SEPARATOR(\"yes\", \"yes\")"); 
       assertEqual([ "yesnullyes" ], getQueryResults("RETURN CONCAT_SEPARATOR(null, \"yes\", \"yes\")"));
       assertEqual([ "yestrueyes" ], getQueryResults("RETURN CONCAT_SEPARATOR(true, \"yes\", \"yes\")"));
       assertEqual([ "yes4yes" ], getQueryResults("RETURN CONCAT_SEPARATOR(4, \"yes\", \"yes\")"));
@@ -825,7 +853,7 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ "yes[object Object]yes" ], getQueryResults("RETURN CONCAT_SEPARATOR({ }, \"yes\", \"yes\")"));
       assertEqual([ "trueyesyes" ], getQueryResults("RETURN CONCAT_SEPARATOR(\"yes\", true, \"yes\")"));
       assertEqual([ "4yesyes" ], getQueryResults("RETURN CONCAT_SEPARATOR(\"yes\", 4, \"yes\")"));
-      assertEqual([ "yesyes" ], getQueryResults("RETURN CONCAT_SEPARATOR(\"yes\", [ ], \"yes\")"));
+      assertEqual([ "yes" ], getQueryResults("RETURN CONCAT_SEPARATOR(\"yes\", [ ], \"yes\")"));
       assertEqual([ "[object Object]yesyes" ], getQueryResults("RETURN CONCAT_SEPARATOR(\"yes\", { }, \"yes\")"));
       assertEqual([ "yesyestrue" ], getQueryResults("RETURN CONCAT_SEPARATOR(\"yes\", \"yes\", true)"));
       assertEqual([ "yesyes4" ], getQueryResults("RETURN CONCAT_SEPARATOR(\"yes\", \"yes\", 4)"));

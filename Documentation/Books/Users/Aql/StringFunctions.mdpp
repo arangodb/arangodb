@@ -3,11 +3,19 @@
 For string processing, AQL offers the following functions:
 
 - *CONCAT(value1, value2, ... valuen)*: Concatenate the strings 
-  passed as in *value1* to *valuen*. *null* values are ignored
+  passed as in *value1* to *valuen*. *null* values are ignored. List value arguments
+  are expanded automatically, and their individual members will be concatenated.
+
+      /* "foobarbaz" */
+      RETURN CONCAT('foo', 'bar', 'baz')
+
+      /* "foobarbaz" */
+      RETURN CONCAT([ 'foo', 'bar', 'baz' ])
 
 - *CONCAT_SEPARATOR(separator, value1, value2, ... valuen)*: 
   Concatenate the strings passed as arguments *value1* to *valuen* using the 
-  *separator* string. *null* values are ignored
+  *separator* string. *null* values are ignored. List value arguments
+  are expanded automatically, and their individual members will be concatenated.
 
 - *CHAR_LENGTH(value)*: Return the number of characters in *value*. This is
   a synonym for *LENGTH(value)*
