@@ -340,7 +340,6 @@ function ahuacatlStringFunctionsTestSuite () {
         for (i = 1; i < n; ++i) {
           args.push(JSON.stringify(value[i]));
         }
-require("internal").print(args.join(", "));
         assertEqual([ expected ], getQueryResults("RETURN SUBSTITUTE(" + args.join(", ") + ")"));
       });
     },
