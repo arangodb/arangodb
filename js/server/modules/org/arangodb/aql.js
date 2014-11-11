@@ -3492,7 +3492,7 @@ function AQL_ATTRIBUTES (element, removeInternal, sort) {
     var result = [ ];
 
     Object.keys(element).forEach(function(k) {
-      if (k.substring(0, 1) !== '_') {
+      if (k[0] !== '_') {
         result.push(k);
       }
     });
@@ -3505,6 +3505,54 @@ function AQL_ATTRIBUTES (element, removeInternal, sort) {
   }
 
   return KEYS(element, sort);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the attribute values of a document as a list
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_VALUES (element, removeInternal) {
+  "use strict";
+
+  if (TYPEWEIGHT(element) !== TYPEWEIGHT_DOCUMENT) {
+    WARN("VALUES", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
+  }
+
+  var result = [ ], a;
+
+  for (a in element) {
+    if (element.hasOwnProperty(a)) {
+      if (a[0] !== '_' || ! removeInternal) {
+        result.push(element[a]);
+      } 
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief assemble a document from two lists
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_ASSEMBLE (keys, values) {
+  "use strict";
+
+  if (TYPEWEIGHT(keys) !== TYPEWEIGHT_LIST ||
+      TYPEWEIGHT(values) !== TYPEWEIGHT_LIST ||
+      keys.length !== values.length) {
+    WARN("ASSEMBLE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
+  }
+
+  var result = { }, i, n = keys.length;
+
+  for (i = 0; i < n; ++i) {
+    result[AQL_TO_STRING(keys[i])] = values[i];
+  }
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7183,6 +7231,8 @@ exports.AQL_PARSE_IDENTIFIER = AQL_PARSE_IDENTIFIER;
 exports.AQL_SKIPLIST = AQL_SKIPLIST;
 exports.AQL_HAS = AQL_HAS;
 exports.AQL_ATTRIBUTES = AQL_ATTRIBUTES;
+exports.AQL_VALUES = AQL_VALUES;
+exports.AQL_ASSEMBLE = AQL_ASSEMBLE;
 exports.AQL_UNSET = AQL_UNSET;
 exports.AQL_KEEP = AQL_KEEP;
 exports.AQL_MERGE = AQL_MERGE;

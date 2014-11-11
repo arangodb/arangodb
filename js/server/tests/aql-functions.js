@@ -1929,6 +1929,87 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test values function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testValues1 : function () {
+      var expected = [ [ "bar", "baz", true, "123/456" ], [ "bar" ] ];
+      var actual = getQueryResults("FOR u IN [ { foo: \"bar\", bar: \"baz\", meow: true, _id: \"123/456\" }, { foo: \"bar\" } ] RETURN VALUES(u)");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test values function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testValues2 : function () {
+      var expected = [ [ "bar", "baz", true ], [ "bar" ] ];
+      var actual = getQueryResults("FOR u IN [ { foo: \"bar\", bar: \"baz\", meow: true, _id: \"123/456\" }, { foo: \"bar\" } ] RETURN VALUES(u, true)");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test values function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testValues3 : function () {
+      var expected = [ [ "test/1123", "test/abc", "1234", "test", "", [ 1, 2, 3, 4, [ true ] ], null, { d: 42, e: null, f: [ "test!" ] } ] ];
+      var actual = getQueryResults("RETURN VALUES({ _from: \"test/1123\", _to: \"test/abc\", _rev: \"1234\", _key: \"test\", void: \"\", a: [ 1, 2, 3, 4, [ true ] ], b : null, c: { d: 42, e: null, f: [ \"test!\" ] } })");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test assemble function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testAssemble : function () {
+      var values = [
+        [ { }, [ ], [ ] ], 
+        [ { "" : true }, [ "" ], [ true ] ], 
+        [ { " " : null }, [ " " ], [ null ] ], 
+        [ { "MÖTÖR" : { } }, [ "MÖTÖR" ], [ { } ] ], 
+        [ { "just-a-single-attribute!" : " with a senseless value " }, [ "just-a-single-attribute!" ], [ " with a senseless value " ] ], 
+        [ { a: 1, b: 2, c: 3 }, [ "a", "b", "c" ], [ 1, 2, 3 ] ], 
+        [ { foo: "baz", bar: "foo", baz: "bar" }, [ "foo", "bar", "baz" ], [ "baz", "foo", "bar" ] ],
+        [ { a: null, b: false, c: true, d: 42, e: 2.5, f: "test", g: [], h: [ "test1", "test2" ], i : { something: "else", more: "less" } }, [ "a", "b", "c", "d", "e", "f", "g", "h", "i" ], [ null, false, true, 42, 2.5, "test", [ ], [ "test1", "test2" ], { something: "else", more: "less" } ] ],
+      ];
+
+      values.forEach(function (value) {
+        var actual = getQueryResults("RETURN ASSEMBLE(" + JSON.stringify(value[1]) + ", " + JSON.stringify(value[2]) + ")");
+        assertEqual(value[0], actual[0], value);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test assemble function
+////////////////////////////////////////////////////////////////////////////////
+
+    testAssembleInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN ASSEMBLE()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN ASSEMBLE([ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN ASSEMBLE([ ], [ ], [ ])");
+      
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ASSEMBLE([ ], null)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ASSEMBLE([ ], false)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ASSEMBLE([ ], true)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ASSEMBLE([ ], 0)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ASSEMBLE([ ], 1)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ASSEMBLE([ ], \"\")");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ASSEMBLE([ ], { })");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ASSEMBLE(null, [ ])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ASSEMBLE(false, [ ])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ASSEMBLE(true, [ ])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ASSEMBLE(0, [ ])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ASSEMBLE(1, [ ])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ASSEMBLE(\"\", [ ])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ASSEMBLE({ }, [ ])");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ASSEMBLE([ 1 ], [ ])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ASSEMBLE([ 1 ], [ 1, 2 ])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ASSEMBLE([ ], [ 1, 2 ])");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test matches
 ////////////////////////////////////////////////////////////////////////////////
     

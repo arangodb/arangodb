@@ -159,6 +159,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   // document functions
   { "HAS",                         Function("HAS",                         "AQL_HAS", "az,s", true, false, true) },
   { "ATTRIBUTES",                  Function("ATTRIBUTES",                  "AQL_ATTRIBUTES", "a|b,b", true, false, true) },
+  { "VALUES",                      Function("VALUES",                      "AQL_VALUES", "a|b", true, false, true) },
   { "MERGE",                       Function("MERGE",                       "AQL_MERGE", "a,a|+", true, false, true) },
   { "MERGE_RECURSIVE",             Function("MERGE_RECURSIVE",             "AQL_MERGE_RECURSIVE", "a,a|+", true, false, true) },
   { "DOCUMENT",                    Function("DOCUMENT",                    "AQL_DOCUMENT", "h.|.", false, true, false) },
@@ -166,6 +167,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "UNSET",                       Function("UNSET",                       "AQL_UNSET", "a,sl|+", true, false, true) },
   { "KEEP",                        Function("KEEP",                        "AQL_KEEP", "a,sl|+", true, false, true) },
   { "TRANSLATE",                   Function("TRANSLATE",                   "AQL_TRANSLATE", ".,a|.", true, false, true) },
+  { "ASSEMBLE",                    Function("ASSEMBLE",                    "AQL_ASSEMBLE", "l,l", true, false, true) },
 
   // geo functions
   { "NEAR",                        Function("NEAR",                        "AQL_NEAR", "h,n,n|nz,s", false, true, false) },
