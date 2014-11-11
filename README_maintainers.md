@@ -36,8 +36,8 @@ Documentation
 -------------
 Dependencies:
  * swagger
- * gitbook
- * markdown-pp
+ * gitbook (https://github.com/GitbookIO/gitbook)
+ * markdown-pp (https://github.com/triAGENS/markdown-pp)
  * cURL if you want to cut'n'paste execute the examples
 
 Where...
