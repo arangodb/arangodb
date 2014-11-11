@@ -621,6 +621,23 @@ TRI_json_t* AstNode::toJsonValue (TRI_memory_zone_t* zone) const {
     return array;
   }
 
+  if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    TRI_json_t* j = getMember(0)->toJsonValue(zone);
+
+    if (j != nullptr) {
+      if (TRI_IsArrayJson(j)) {
+        TRI_json_t* v = TRI_LookupArrayJson(j, getStringValue());
+        if (v != nullptr) {
+          TRI_json_t* copy = TRI_CopyJson(zone, v);
+          TRI_FreeJson(zone, j);
+          return copy;
+        }
+      }
+      TRI_FreeJson(zone, j);
+      return TRI_CreateNullJson(zone);
+    }
+  }
+
   return nullptr;
 }
 
@@ -1099,10 +1116,12 @@ bool AstNode::isSimple () const {
 
 bool AstNode::isConstant () const {
   if (hasFlag(FLAG_CONSTANT)) {
+    TRI_ASSERT(! hasFlag(FLAG_DYNAMIC));
     // fast track exit
     return true;
   }
   if (hasFlag(FLAG_DYNAMIC)) {
+    TRI_ASSERT(! hasFlag(FLAG_CONSTANT));
     // fast track exit
     return false;
   }
@@ -1152,6 +1171,13 @@ bool AstNode::isConstant () const {
 
     setFlag(FLAG_CONSTANT);
     return true;
+  }
+
+  if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    if (getMember(0)->isConstant()) {
+      setFlag(FLAG_CONSTANT);
+      return true;
+    }
   }
 
   setFlag(FLAG_DYNAMIC);
