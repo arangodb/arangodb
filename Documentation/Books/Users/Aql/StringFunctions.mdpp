@@ -66,6 +66,16 @@ For string processing, AQL offers the following functions:
 
   The string matching performed by *CONTAINS* is case-sensitive.
 
+* *FIND_FIRST(text, search, start, end)*: Returns the position of the first
+  occurrence of the string *search* inside the string *text*. Positions start at 
+  zero. If *search* is not contained in *text*, -1 is returned. The search can 
+  optionally be limited to a subset of *text* using the *start* and *end* arguments.
+
+* *FIND_LAST(text, search, start, end)*: Returns the position of the last
+  occurrence of the string *search* inside the string *text*. Positions start at 
+  zero. If *search* is not contained in *text*, -1 is returned. The search can 
+  optionally be limited to a subset of *text* using the *start* and *end* arguments.
+
 - *LIKE(text, search, case-insensitive)*: Checks whether the pattern
   *search* is contained in the string *text*, using wildcard matching. 
   Returns *true* if the pattern is contained in *text*, and *false* otherwise. 

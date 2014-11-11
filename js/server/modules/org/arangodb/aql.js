@@ -1846,13 +1846,14 @@ function AQL_FIND_FIRST (value, search, start, end) {
 function AQL_FIND_LAST (value, search, start, end) {
   "use strict";
 
-  if (start !== undefined) {
+  if (start !== undefined && start !== null) {
     start = AQL_TO_NUMBER(start);
   }
   else {
-    start = 0;
+    start = undefined;
   }
-  if (end !== undefined) {
+
+  if (end !== undefined && end !== null) {
     end = AQL_TO_NUMBER(end);
     if (end < start || end < 0) {
       return -1;
@@ -1862,11 +1863,22 @@ function AQL_FIND_LAST (value, search, start, end) {
     end = undefined;
   }
 
-  if (end !== undefined && end < search.length) {
-    return AQL_TO_STRING(value).lastIndexOf(AQL_TO_STRING(search).substr(0, end + 1), start);
+  var result;
+  if (start > 0 || end !== undefined) {
+    if (end === undefined) {
+      result = AQL_TO_STRING(value).substr(start).lastIndexOf(AQL_TO_STRING(search));
+    }
+    else {
+      result = AQL_TO_STRING(value).substr(start, end - start + 1).lastIndexOf(AQL_TO_STRING(search));
+    }
+    if (result !== -1) {
+      result += start;
+    }
   }
-
-  return AQL_TO_STRING(value).lastIndexOf(AQL_TO_STRING(search), start);
+  else {
+    result = AQL_TO_STRING(value).lastIndexOf(AQL_TO_STRING(search));
+  }
+  return result;
 }
 
 // -----------------------------------------------------------------------------
