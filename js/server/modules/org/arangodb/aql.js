@@ -1773,21 +1773,21 @@ function AQL_RTRIM (value, chars) {
 /// @brief split a string using a separator
 ////////////////////////////////////////////////////////////////////////////////
 
-function AQL_SPLIT (value, separator, maxSplits) {
+function AQL_SPLIT (value, separator, limit) {
   "use strict";
 
   if (separator === null || separator === undefined) {
     return [ AQL_TO_STRING(value) ];
   }
 
-  if (maxSplits === null || maxSplits === undefined) {
-    maxSplits = undefined;
+  if (limit === null || limit === undefined) {
+    limit = undefined;
   }
   else {
-    maxSplits = AQL_TO_NUMBER(maxSplits);
+    limit = AQL_TO_NUMBER(limit);
   }
 
-  if (maxSplits < 0) {
+  if (limit < 0) {
     WARN("SPLIT", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
@@ -1798,11 +1798,84 @@ function AQL_SPLIT (value, separator, maxSplits) {
       patterns.push(CREATE_REGEX_PATTERN(AQL_TO_STRING(s)));
     });
 
-    return AQL_TO_STRING(value).split(new RegExp(patterns.join("|"), "g"), maxSplits);
+    return AQL_TO_STRING(value).split(new RegExp(patterns.join("|"), "g"), limit);
+  }
+
+  return AQL_TO_STRING(value).split(AQL_TO_STRING(separator), limit);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replace a search value inside a string
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_SUBSTITUTE (value, search, replace, limit) {
+  "use strict";
+
+  var pattern, patterns, replacements = { }, sWeight = TYPEWEIGHT(search);
+  value = AQL_TO_STRING(value);
+
+  if (sWeight === TYPEWEIGHT_DOCUMENT) {
+    patterns = [ ];
+    KEYS(search, false).forEach(function(k) {
+      patterns.push(CREATE_REGEX_PATTERN(k));
+      replacements[k] = AQL_TO_STRING(search[k]);
+    });
+    pattern = patterns.join('|');
+    limit = replace;
+  }
+  else if (sWeight === TYPEWEIGHT_STRING) {
+    pattern = CREATE_REGEX_PATTERN(search);
+    replacements[search] = AQL_TO_STRING(replace);
+  }
+  else if (sWeight === TYPEWEIGHT_LIST) {
+    patterns = [ ];
+    if (TYPEWEIGHT(replace) === TYPEWEIGHT_LIST) {
+      // replace each occurrence with a member from the second list
+      search.forEach(function(k, i) {
+        k = AQL_TO_STRING(k);
+        patterns.push(CREATE_REGEX_PATTERN(k));
+        if (i < replace.length) {
+          replacements[k] = AQL_TO_STRING(replace[i]);
+        }
+        else {
+          replacements[k] = "";
+        }
+      });
+    }
+    else {
+      // replace all occurrences with a constant string
+      replace = AQL_TO_STRING(replace);
+      search.forEach(function(k, i) {
+        k = AQL_TO_STRING(k);
+        patterns.push(CREATE_REGEX_PATTERN(k));
+        replacements[k] = replace;
+      });
+    }
+    pattern = patterns.join('|');
+  }
+
+  if (limit === null || limit === undefined) {
+    limit = undefined;
   }
   else {
-    return AQL_TO_STRING(value).split(AQL_TO_STRING(separator), maxSplits);
+    limit = AQL_TO_NUMBER(limit);
   }
+
+  if (limit < 0) {
+    WARN("SUBSTITUTE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
+  }
+
+  return AQL_TO_STRING(value).replace(new RegExp(pattern, 'g'), function(match) {
+    if (limit === undefined) {
+      return replacements[match];
+    } 
+    if (limit > 0) {
+      --limit;
+      return replacements[match];
+    }
+    return match;
+  });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7031,6 +7104,7 @@ exports.AQL_TRIM = AQL_TRIM;
 exports.AQL_LTRIM = AQL_LTRIM;
 exports.AQL_RTRIM = AQL_RTRIM;
 exports.AQL_SPLIT = AQL_SPLIT;
+exports.AQL_SUBSTITUTE = AQL_SUBSTITUTE;
 exports.AQL_FIND_FIRST = AQL_FIND_FIRST;
 exports.AQL_FIND_LAST = AQL_FIND_LAST;
 exports.AQL_TO_BOOL = AQL_TO_BOOL;
