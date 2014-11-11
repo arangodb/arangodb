@@ -504,6 +504,7 @@
           "databaseView",
           "databases-menu",
           {
+            users: sessionDummy,
             collection: databaseDummy
           }
         );

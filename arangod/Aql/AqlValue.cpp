@@ -587,8 +587,6 @@ Json AqlValue::extractArrayMember (triagens::arango::AqlTransaction* trx,
       TRI_ASSERT(document != nullptr);
       TRI_ASSERT(_marker != nullptr);
 
-      auto shaper = document->getShaper();
-
       // look for the attribute name in the shape
       if (*name == '_') {
         if (strcmp(name, TRI_VOC_ATTRIBUTE_KEY) == 0) {
@@ -605,19 +603,25 @@ Json AqlValue::extractArrayMember (triagens::arango::AqlTransaction* trx,
           TRI_voc_rid_t rid = TRI_EXTRACT_MARKER_RID(_marker);
           return Json(TRI_UNKNOWN_MEM_ZONE, JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, rid));
         }
-        else if (strcmp(name, TRI_VOC_ATTRIBUTE_FROM) == 0) {
+        else if (strcmp(name, TRI_VOC_ATTRIBUTE_FROM) == 0 &&
+                 (_marker->_type == TRI_DOC_MARKER_KEY_EDGE ||
+                  _marker->_type == TRI_WAL_MARKER_EDGE)) {
           std::string from(trx->resolver()->getCollectionNameCluster(TRI_EXTRACT_MARKER_FROM_CID(_marker)));
           from.push_back('/');
           from.append(TRI_EXTRACT_MARKER_FROM_KEY(_marker));
           return Json(TRI_UNKNOWN_MEM_ZONE, from);
         }
-        else if (strcmp(name, TRI_VOC_ATTRIBUTE_TO) == 0) {
+        else if (strcmp(name, TRI_VOC_ATTRIBUTE_TO) == 0 &&
+                 (_marker->_type == TRI_DOC_MARKER_KEY_EDGE ||
+                  _marker->_type == TRI_WAL_MARKER_EDGE)) {
           std::string to(trx->resolver()->getCollectionNameCluster(TRI_EXTRACT_MARKER_TO_CID(_marker)));
           to.push_back('/');
           to.append(TRI_EXTRACT_MARKER_TO_KEY(_marker));
           return Json(TRI_UNKNOWN_MEM_ZONE, to);
         }
       }
+
+      auto shaper = document->getShaper();
 
       TRI_shape_pid_t pid = shaper->lookupAttributePathByName(shaper, name);
       if (pid != 0) {

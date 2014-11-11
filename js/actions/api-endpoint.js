@@ -226,8 +226,8 @@ var internal = require("internal");
 /// database only. Calling this action in any other database will make the server
 /// return an error.
 ///
-/// Futhermore, the last remaining endpoint cannot be deleted as this would make
-/// the server kaputt.
+/// Futhermore, the last remaining endpoint cannot be deleted as this would
+/// render the server's HTTP interface useless.
 ///
 /// @RESTRETURNCODES
 ///

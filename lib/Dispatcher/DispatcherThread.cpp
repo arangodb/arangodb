@@ -266,6 +266,16 @@ void DispatcherThread::run () {
       tick(true);
       _queue->_accessQueue.lock();
 
+      // there is a chance, that we created more threads than necessary
+      if (_queue->_nrThreads + _queue->_nrBlocked < _queue->_nrRunning + _queue->_nrStarted + _queue->_nrWaiting) {
+        double n = TRI_microtime();
+
+        if (_queue->_lastChanged + _queue->_gracePeriod < n) {
+          _queue->_lastChanged = n;
+          break;
+        }
+      }
+
       // wait, if there are no jobs
       if (_queue->_readyJobs.empty()) {
         _queue->_nrRunning--;

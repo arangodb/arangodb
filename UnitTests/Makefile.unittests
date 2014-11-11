@@ -542,6 +542,7 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-general-graph.js \
 			@top_srcdir@/js/server/tests/aql-graph.js \
 			@top_srcdir@/js/server/tests/aql-hash-noncluster.js \
+			@top_srcdir@/js/server/tests/aql-is-in-polygon.js \
 			@top_srcdir@/js/server/tests/aql-logical.js \
 			@top_srcdir@/js/server/tests/aql-modify-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-modify-noncluster-serializetest.js \
@@ -577,11 +578,31 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-skiplist-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-subquery.js \
 			@top_srcdir@/js/server/tests/aql-ternary.js \
-			@top_srcdir@/js/server/tests/aql-variables.js 
+			@top_srcdir@/js/server/tests/aql-variables.js \
+			@top_srcdir@/js/server/tests/aql-within-rectangle.js 
+
+SHELL_SERVER_AQL_RANGES = \
+			@top_srcdir@/js/server/tests/aql-ranges-combined-01.js \
+			@top_srcdir@/js/server/tests/aql-ranges-combined-02.js \
+			@top_srcdir@/js/server/tests/aql-ranges-combined-03.js \
+			@top_srcdir@/js/server/tests/aql-ranges-combined-04.js \
+			@top_srcdir@/js/server/tests/aql-ranges-combined-05.js \
+			@top_srcdir@/js/server/tests/aql-ranges-combined-06.js \
+			@top_srcdir@/js/server/tests/aql-ranges-combined-07.js \
+			@top_srcdir@/js/server/tests/aql-ranges-combined-08.js \
+			@top_srcdir@/js/server/tests/aql-ranges-combined-09.js \
+			@top_srcdir@/js/server/tests/aql-ranges-combined-10.js \
+			@top_srcdir@/js/server/tests/aql-ranges-combined-11.js \
+			@top_srcdir@/js/server/tests/aql-ranges-combined-12.js \
+			@top_srcdir@/js/server/tests/aql-ranges-combined-13.js \
+			@top_srcdir@/js/server/tests/aql-ranges-combined-14.js \
+			@top_srcdir@/js/server/tests/aql-ranges-combined-15.js \
+			@top_srcdir@/js/server/tests/aql-ranges-combined-16.js 
 
 .PHONY: unittests-shell-server-aql
 
 UNITTESTS_SERVER_AQL = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER_AQL))
+UNITTESTS_SERVER_AQL_RANGES = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER_AQL_RANGES))
 
 unittests-shell-server-aql:
 	@echo
@@ -594,6 +615,7 @@ unittests-shell-server-aql:
 	@mkdir -p "$(VOCDIR)/databases"
 
 	@$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true --server.threads 2 $(UNITTESTS_SERVER_AQL) || test "x$(FORCE)" == "x1"
+	@test "x$(SKIP_RANGES)" == "x1" || $(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true --server.threads 2 $(UNITTESTS_SERVER_AQL_RANGES) || test "x$(FORCE)" == "x1"
 
 	@rm -rf "$(VOCDIR)"
 	@echo

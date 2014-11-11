@@ -132,7 +132,7 @@ std::unordered_map<int, std::string const> const AstNode::valueTypeNames{
 // -----------------------------------------------------------------------------
 // --SECTION--                                           static helper functions
 // -----------------------------------------------------------------------------
-
+          
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the node type for inter-node comparisons
 ////////////////////////////////////////////////////////////////////////////////
@@ -227,6 +227,21 @@ int triagens::aql::CompareAstNodes (AstNode const* lhs, AstNode const* rhs) {
 
   // all things equal
   return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns whether or not the string is empty
+////////////////////////////////////////////////////////////////////////////////
+
+static bool IsEmptyString (char const* p) {
+  while (*p != '\0') {
+    if (*p != ' ' && *p != '\t' && *p != '\r' && *p != '\n' && *p != '\f' && *p != '\b') {
+      return false;
+    }
+    ++p;
+  }
+
+  return true;
 }
 
 // -----------------------------------------------------------------------------
@@ -784,6 +799,10 @@ AstNode* AstNode::castToNumber (Ast* ast) {
           return ast->createNodeValueDouble(v);
         }
         catch (...) {
+          if (IsEmptyString(value.value._string)) {
+            // empty string => 0
+            return ast->createNodeValueInt(0);
+          }
           // conversion failed
         }
         // fall-through intentional
@@ -923,7 +942,25 @@ bool AstNode::isTrue () const {
            type == NODE_TYPE_ARRAY) {
     return true;
   }
-
+  else if (type == NODE_TYPE_OPERATOR_BINARY_OR) {
+    if (getMember(0)->isTrue()) {
+      return true;
+    }
+    return getMember(1)->isTrue();
+  }
+  else if (type == NODE_TYPE_OPERATOR_BINARY_AND) {
+    if (! getMember(0)->isTrue()) {
+      return false;
+    }
+    return getMember(1)->isTrue();
+  }
+  else if (type == NODE_TYPE_OPERATOR_UNARY_NOT) {
+    if (getMember(0)->isFalse()) {
+      // ! false => true
+      return true;
+    }
+  }
+  
   return false;
 }
 
@@ -932,7 +969,44 @@ bool AstNode::isTrue () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AstNode::isFalse () const {
-  return ! isTrue();
+  if (type == NODE_TYPE_VALUE) {
+    switch (value.type) {
+      case VALUE_TYPE_NULL: 
+        return true;
+      case VALUE_TYPE_BOOL: 
+        return ! value.value._bool;
+      case VALUE_TYPE_INT: 
+        return (value.value._int == 0);
+      case VALUE_TYPE_DOUBLE: 
+        return value.value._double == 0.0;
+      case VALUE_TYPE_STRING: 
+        return (*value.value._string == '\0');
+    }
+  }
+  else if (type == NODE_TYPE_LIST ||
+           type == NODE_TYPE_ARRAY) {
+    return false;
+  }
+  else if (type == NODE_TYPE_OPERATOR_BINARY_OR) {
+    if (! getMember(0)->isFalse()) {
+      return false;
+    }
+    return getMember(1)->isFalse();
+  }
+  else if (type == NODE_TYPE_OPERATOR_BINARY_AND) {
+    if (getMember(0)->isFalse()) {
+      return true;
+    }
+    return getMember(1)->isFalse();
+  }
+  else if (type == NODE_TYPE_OPERATOR_UNARY_NOT) {
+    if (getMember(0)->isTrue()) {
+      // ! true => false
+      return true;
+    }
+  }
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
