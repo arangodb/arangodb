@@ -539,6 +539,11 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-escaping.js \
 			@top_srcdir@/js/server/tests/aql-explain-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-functions.js \
+			@top_srcdir@/js/server/tests/aql-functions-date.js \
+			@top_srcdir@/js/server/tests/aql-functions-misc.js \
+			@top_srcdir@/js/server/tests/aql-functions-numeric.js \
+			@top_srcdir@/js/server/tests/aql-functions-string.js \
+			@top_srcdir@/js/server/tests/aql-functions-types.js \
 			@top_srcdir@/js/server/tests/aql-general-graph.js \
 			@top_srcdir@/js/server/tests/aql-graph.js \
 			@top_srcdir@/js/server/tests/aql-hash-noncluster.js \
