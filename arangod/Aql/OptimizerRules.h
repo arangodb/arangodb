@@ -66,6 +66,12 @@ namespace triagens {
     int moveCalculationsUpRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief split and-combined filters and break them into smaller parts
+////////////////////////////////////////////////////////////////////////////////
+
+    int splitFiltersRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief move filters up in the plan
 /// this rule modifies the plan in place
 /// filters are moved as far up in the plan as possible to make result sets

@@ -39,6 +39,10 @@
             expect(view.colid).toEqual(0);
             expect(view.events).toEqual({
                 "click #saveDocumentButton": "saveDocument",
+                "click #deleteDocumentButton" : "deleteDocumentModal",
+                "click #confirmDeleteDocument" : "deleteDocument",
+                "click #document-from" : "navigateToDocument",
+                "click #document-to" : "navigateToDocument",
                 "dblclick #documentEditor tr" : "addProperty"
             });
         });

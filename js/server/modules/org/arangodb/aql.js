@@ -1401,19 +1401,6 @@ function UNARY_MINUS (value) {
 function ARITHMETIC_PLUS (lhs, rhs) {
   "use strict";
 
-  var lWeight = TYPEWEIGHT(lhs);
-  var rWeight = TYPEWEIGHT(rhs);
-
-  if (lWeight === TYPEWEIGHT_STRING || 
-      lWeight === TYPEWEIGHT_LIST || 
-      lWeight === TYPEWEIGHT_DOCUMENT ||
-      rWeight === TYPEWEIGHT_STRING ||
-      rWeight === TYPEWEIGHT_LIST || 
-      rWeight === TYPEWEIGHT_DOCUMENT) {
-    // string concatenation
-    return AQL_TO_STRING(lhs) + AQL_TO_STRING(rhs);
-  }
-  
   lhs = AQL_TO_NUMBER(lhs);
   if (lhs === null) {
     return null;
@@ -2640,6 +2627,87 @@ function AQL_MEDIAN (values) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the pth percentile of all values
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_PERCENTILE (values, p, method) {
+  "use strict";
+
+  if (TYPEWEIGHT(values) !== TYPEWEIGHT_LIST) {
+    WARN("PERCENTILE", INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+    return null;
+  }
+
+  if (TYPEWEIGHT(p) !== TYPEWEIGHT_NUMBER) {
+    WARN("PERCENTILE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
+  }
+
+  if (p <= 0 || p > 100) {
+    WARN("PERCENTILE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
+  }
+ 
+  if (method === null || method === undefined) {
+    method = "rank";
+  }
+   
+  if (method !== "interpolation" && method !== "rank") {
+    WARN("PERCENTILE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
+  }
+
+  var copy = [ ], current, typeWeight;
+  var i, n;
+
+  for (i = 0, n = values.length; i < n; ++i) {
+    current = values[i];
+    typeWeight = TYPEWEIGHT(current);
+
+    if (typeWeight !== TYPEWEIGHT_NULL) {
+      if (typeWeight !== TYPEWEIGHT_NUMBER) {
+        WARN("PERCENTILE", INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+        return null;
+      }
+
+      copy.push(current);
+    }
+  }
+
+  if (copy.length === 0) {
+    return null;
+  }
+  else if (copy.length === 1) {
+    return copy[0];
+  }
+
+  copy.sort(RELATIONAL_CMP);
+
+  var idx, pos;
+  if (method === "interpolation") {
+    // interpolation method
+    idx = p * (copy.length + 1) / 100;
+    pos = Math.floor(idx);
+    var delta = idx - pos;
+
+    if (pos >= copy.length) {
+      return NUMERIC_VALUE(copy[copy.length - 1]);
+    }
+    return NUMERIC_VALUE(delta * (copy[pos] - copy[pos - 1]) + copy[pos - 1]);
+  }
+  else {
+    // rank method
+    idx = p * (copy.length) / 100;
+    pos = Math.ceil(idx);
+
+    if (pos >= copy.length) {
+      return NUMERIC_VALUE(copy[copy.length - 1]);
+    }
+    return NUMERIC_VALUE(copy[pos - 1]);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief variance of all values
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2962,25 +3030,28 @@ function AQL_IS_IN_POLYGON (points, latitude, longitude) {
     return false;
   }
 
-  var search, pointLat, pointLon, geoJson = false;
+  var searchLat, searchLon, pointLat, pointLon, geoJson = false;
   if (TYPEWEIGHT(latitude) === TYPEWEIGHT_LIST) {
     geoJson = AQL_TO_BOOL(longitude);
     if (geoJson) {
       // first list value is longitude, then latitude
-      search = latitude; 
+      searchLat = latitude[1];
+      searchLon = latitude[0];
       pointLat = 1;
       pointLon = 0;
     }
     else {
       // first list value is latitude, then longitude
-      search = latitude;
+      searchLat = latitude[0];
+      searchLon = latitude[1];
       pointLat = 0;
       pointLon = 1;
     }
   }
   else if (TYPEWEIGHT(latitude) === TYPEWEIGHT_NUMBER &&
            TYPEWEIGHT(longitude) === TYPEWEIGHT_NUMBER) {
-    search = [ latitude, longitude ];
+    searchLat = latitude;
+    searchLon = longitude;
     pointLat = 0;
     pointLon = 1;
   }
@@ -2989,37 +3060,30 @@ function AQL_IS_IN_POLYGON (points, latitude, longitude) {
     return false;
   }
   
-  if (points.length === 0) {
-    return false;
-  }
- 
-  var i, n = points.length; 
-  var wn = 0;
-  points.push(points[0]);
+  var i, j = points.length - 1;
+  var oddNodes = false;
 
-  var isLeft = function (p0, p1, p2) {
-    return ((p1[pointLon] - p0[pointLon]) * (p2[pointLat] - p0[pointLat]) - 
-            (p2[pointLon] - p0[pointLon]) * (p1[pointLat] - p0[pointLat]));
-  };
- 
-  for (i = 0; i < n; ++i) {
-    if (points[i][pointLat] <= search[pointLat]) {
-      if (points[i + 1][pointLat] >= search[pointLat]) { 
-        if (isLeft(points[i], points[i + 1], search) >= 0) { 
-          ++wn;
-        }
-      }
+  for (i = 0; i < points.length; ++i) {
+    if (TYPEWEIGHT(points[i]) !== TYPEWEIGHT_LIST) {
+      continue;
     }
-    else {
-      if (points[i + 1][pointLat] <= search[pointLat]) {  
-        if (isLeft(points[i], points[i + 1], search) <= 0) { 
-          --wn;
-        }
-      }
+
+    if (((points[i][pointLat] < searchLat && points[j][pointLat] >= searchLat) || 
+         (points[j][pointLat] < searchLat && points[i][pointLat] >= searchLat)) &&
+        (points[i][pointLon] <= searchLon || points[j][pointLon] <= searchLon)) {
+      oddNodes ^= ((points[i][pointLon] + (searchLat - points[i][pointLat]) / 
+                   (points[j][pointLat] - points[i][pointLat]) * 
+                    (points[j][pointLon] - points[i][pointLon])) < searchLon);
     }
+
+    j = i;
   }
- 
-  return (wn !== 0);
+
+  if (oddNodes) {
+    return true;
+  }
+
+  return false;
 }
 
 // -----------------------------------------------------------------------------
@@ -5431,13 +5495,13 @@ function AQL_GRAPH_TRAVERSAL_TREE (graphName,
     return null;
   }
   options.fromVertexExample = startVertexExample;
-  options.direction =  direction;
+  options.direction = direction;
 
   var startVertices = RESOLVE_GRAPH_START_VERTICES(graphName, options);
-  var factory = TRAVERSAL.generalGraphDatasourceFactory(graphName), r;
+  var factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
 
   startVertices.forEach(function (f) {
-    r = TRAVERSAL_FUNC("GRAPH_TRAVERSAL_TREE",
+    var r = TRAVERSAL_FUNC("GRAPH_TRAVERSAL_TREE",
       factory,
       TO_ID(f),
       undefined,
@@ -6888,6 +6952,7 @@ exports.AQL_MIN = AQL_MIN;
 exports.AQL_SUM = AQL_SUM;
 exports.AQL_AVERAGE = AQL_AVERAGE;
 exports.AQL_MEDIAN = AQL_MEDIAN;
+exports.AQL_PERCENTILE = AQL_PERCENTILE;
 exports.AQL_VARIANCE_SAMPLE = AQL_VARIANCE_SAMPLE;
 exports.AQL_VARIANCE_POPULATION = AQL_VARIANCE_POPULATION;
 exports.AQL_STDDEV_SAMPLE = AQL_STDDEV_SAMPLE;

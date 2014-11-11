@@ -69,7 +69,9 @@
           "click #userManagementSearchSubmit"   : "search",
           "click #callEditUserPassword"         : "editUserPassword",
           "click #submitEditUserPassword"       : "submitEditUserPassword",
-          "click #submitEditCurrentUserProfile" : "submitEditCurrentUserProfile"
+          "click #submitEditCurrentUserProfile" : "submitEditCurrentUserProfile",
+          "click .css-label"                    : "checkBoxes",
+          "change #userSortDesc"                : "sorting"
         };
         expect(myEvents).toEqual(myView.events);
       });

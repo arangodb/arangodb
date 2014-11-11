@@ -981,7 +981,12 @@ void Ast::optimize () {
     if (node->type == NODE_TYPE_LET) {
       return optimizeLet(node);
     }
-    
+
+    // FILTER
+    if (node->type == NODE_TYPE_FILTER) {
+      return optimizeFilter(node);
+    }
+ 
     // FOR
     if (node->type == NODE_TYPE_FOR) {
       return optimizeFor(node);
@@ -1386,33 +1391,19 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic (AstNode* node) {
   if (lhs->isConstant() && rhs->isConstant()) {
     // now calculate the expression result
     if (node->type == NODE_TYPE_OPERATOR_BINARY_PLUS) {
-      if (lhs->isStringValue() || lhs->isList() || lhs->isArray() ||
-          rhs->isStringValue() || rhs->isList() || rhs->isArray()) {
-        // + means string concatenation if one of the operands is a string, a list or an array
-        auto left  = lhs->castToString(this);
-        auto right = rhs->castToString(this);
-
-        TRI_ASSERT(left->type == NODE_TYPE_VALUE && left->value.type == VALUE_TYPE_STRING);
-        TRI_ASSERT(right->type == NODE_TYPE_VALUE && right->value.type == VALUE_TYPE_STRING);
-
-        if (*left->value.value._string == '\0') {
-          // left side is empty
-          return right;
-        }
-        else if (*right->value.value._string == '\0') {
-          // right side is empty
-          return left;
-        }
-
-        // must concat
-        char* concatenated = _query->registerStringConcat(left->value.value._string, right->value.value._string);
-        TRI_ASSERT(concatenated != nullptr);
-        return createNodeValueString(concatenated);
-      }
-
       // arithmetic +
       auto left  = lhs->castToNumber(this);
       auto right = rhs->castToNumber(this);
+
+      if (left->isNullValue() && ! lhs->isNullValue()) {
+        // conversion of lhs failed
+        return createNodeValueNull();
+      }
+      
+      if (right->isNullValue() && ! rhs->isNullValue()) {
+        // conversion of rhs failed
+        return createNodeValueNull();
+      }
 
       bool useDoublePrecision = (left->isDoubleValue() || right->isDoubleValue());
 
@@ -1434,6 +1425,16 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic (AstNode* node) {
     else if (node->type == NODE_TYPE_OPERATOR_BINARY_MINUS) {
       auto left  = lhs->castToNumber(this);
       auto right = rhs->castToNumber(this);
+      
+      if (left->isNullValue() && ! lhs->isNullValue()) {
+        // conversion of lhs failed
+        return createNodeValueNull();
+      }
+      
+      if (right->isNullValue() && ! rhs->isNullValue()) {
+        // conversion of rhs failed
+        return createNodeValueNull();
+      }
 
       bool useDoublePrecision = (left->isDoubleValue() || right->isDoubleValue());
 
@@ -1455,6 +1456,16 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic (AstNode* node) {
     else if (node->type == NODE_TYPE_OPERATOR_BINARY_TIMES) {
       auto left  = lhs->castToNumber(this);
       auto right = rhs->castToNumber(this);
+      
+      if (left->isNullValue() && ! lhs->isNullValue()) {
+        // conversion of lhs failed
+        return createNodeValueNull();
+      }
+      
+      if (right->isNullValue() && ! rhs->isNullValue()) {
+        // conversion of rhs failed
+        return createNodeValueNull();
+      }
 
       bool useDoublePrecision = (left->isDoubleValue() || right->isDoubleValue());
       
@@ -1476,6 +1487,16 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic (AstNode* node) {
     else if (node->type == NODE_TYPE_OPERATOR_BINARY_DIV) {
       auto left  = lhs->castToNumber(this);
       auto right = rhs->castToNumber(this);
+      
+      if (left->isNullValue() && ! lhs->isNullValue()) {
+        // conversion of lhs failed
+        return createNodeValueNull();
+      }
+      
+      if (right->isNullValue() && ! rhs->isNullValue()) {
+        // conversion of rhs failed
+        return createNodeValueNull();
+      }
 
       bool useDoublePrecision = (left->isDoubleValue() || right->isDoubleValue());
       if (! useDoublePrecision) {
@@ -1506,6 +1527,16 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic (AstNode* node) {
     else if (node->type == NODE_TYPE_OPERATOR_BINARY_MOD) {
       auto left  = lhs->castToNumber(this);
       auto right = rhs->castToNumber(this);
+      
+      if (left->isNullValue() && ! lhs->isNullValue()) {
+        // conversion of lhs failed
+        return createNodeValueNull();
+      }
+      
+      if (right->isNullValue() && ! rhs->isNullValue()) {
+        // conversion of rhs failed
+        return createNodeValueNull();
+      }
 
       bool useDoublePrecision = (left->isDoubleValue() || right->isDoubleValue());
       if (! useDoublePrecision) {
@@ -1644,6 +1675,34 @@ AstNode* Ast::optimizeLet (AstNode* node) {
     // LET a = 1 LET b = a + 1, c = b + a can be optimized to LET a = 1 LET b = 2 LET c = 4
     v->constValue(static_cast<void*>(expression));
   }  
+
+  return node; 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimizes the FILTER statement 
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::optimizeFilter (AstNode* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->type == NODE_TYPE_FILTER);
+  TRI_ASSERT(node->numMembers() == 1);
+
+  AstNode* expression = node->getMember(0);
+
+  if (expression == nullptr || ! expression->isDeterministic()) {
+    return node;
+  }
+
+  if (expression->isTrue()) {
+    // optimize away the filter if it is always true
+    return createNodeFilter(createNodeValueBool(true));
+  }
+
+  if (expression->isFalse()) {
+    // optimize away the filter if it is always false
+    return createNodeFilter(createNodeValueBool(false));
+  }
 
   return node; 
 }
