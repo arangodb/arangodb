@@ -1002,6 +1002,7 @@ function ahuacatlFunctionsTestSuite () {
         [ 3, 'Foobar', 'bar' ],
         [ -1, 'foobar', 'Bar' ],
         [ 16, 'the quick brown bar jumped over the lazy dog', 'bar' ],
+        [ 16, 'the quick brown bar jumped over the lazy dog bar', 'bar' ],
         [ 3, 'FOOBAR', 'BAR' ],
         [ -1, 'FOOBAR', 'bar' ],
         [ -1, 'the quick brown foxx', 'the foxx' ],
@@ -1009,7 +1010,9 @@ function ahuacatlFunctionsTestSuite () {
         [ -1, 'the quick brown foxx', 'the quick brown foxx j' ],
         [ 4, 'the quick brown foxx', 'quick brown' ],
         [ 35, 'the quick brown foxx jumped over a\nnewline', 'newline' ],
-        [ 14, 'some linebreak\r\ngoes here', '\r\n' ]
+        [ 14, 'some linebreak\r\ngoes here', '\r\n' ],
+        [ 12, 'foo BAR foo bar', 'bar' ],
+        [ 4, 'foo bar foo bar', 'bar' ]
       ].forEach(function(v) {
         var actual = getQueryResults("RETURN FIND_FIRST(" + JSON.stringify(v[1]) + ", " + JSON.stringify(v[2]) + ")");
         assertEqual([ v[0] ], actual);
@@ -1028,11 +1031,16 @@ function ahuacatlFunctionsTestSuite () {
         [ 3, 'foobar', 'bar', 1, 5 ],
         [ -1, 'foobar', 'bar', 4, 5 ],
         [ -1, 'foobar', 'bar', 1, 4 ],
+        [ 3, 'foobar', 'bar', 3 ],
         [ -1, 'foobar', 'bar', 0, 4 ],
         [ 3, 'foobar', 'bar', 0, 5 ],
         [ 3, 'foobar', 'bar', 0, 999 ],
         [ 0, 'the quick brown bar jumped over the lazy dog', 'the', 0 ],
-        [ 32, 'the quick brown bar jumped over the lazy dog', 'the', 1 ]
+        [ 32, 'the quick brown bar jumped over the lazy dog', 'the', 1 ],
+        [ 4, 'the quick brown bar jumped over the lazy dog', 'q', 1 ],
+        [ 4, 'the quick brown bar jumped over the lazy dog', 'q', 3 ],
+        [ 4, 'the quick brown bar jumped over the lazy dog', 'q', 4 ],
+        [ -1, 'the quick brown bar jumped over the lazy dog', 'q', 5 ]
       ].forEach(function(v) {
         var actual = getQueryResults("RETURN FIND_FIRST(" + JSON.stringify(v[1]) + ", " + JSON.stringify(v[2]) + ", " + v[3] + ", " + (v[4] === undefined ? null : v[4]) + ")");
         assertEqual([ v[0] ], actual);
@@ -1064,6 +1072,112 @@ function ahuacatlFunctionsTestSuite () {
       assertEqual([ -1 ], getQueryResults("RETURN FIND_FIRST('foo', 'bar', -1)")); 
       assertEqual([ -1 ], getQueryResults("RETURN FIND_FIRST('foo', 'bar', 1, -1)")); 
       assertEqual([ -1 ], getQueryResults("RETURN FIND_FIRST('foo', 'bar', 1, 0)")); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test find_last function
+////////////////////////////////////////////////////////////////////////////////
+
+    testFindLastEmpty1 : function () {
+      [ 'foo', 'bar', 'baz', 'FOO', 'BAR', 'true', ' ' ].forEach(function(v) {
+        var actual = getQueryResults("RETURN FIND_LAST('', " + JSON.stringify(v) + ")");
+        assertEqual([ -1 ], actual);
+      });
+
+      var actual = getQueryResults("RETURN FIND_LAST('', '')");
+      assertEqual([ 0 ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test find_last function
+////////////////////////////////////////////////////////////////////////////////
+
+    testFindLastEmpty2 : function () {
+      [ 'foo', 'bar', 'baz', 'FOO', 'BAR', 'true', ' ', '' ].forEach(function(v) {
+        var actual = getQueryResults("RETURN FIND_LAST(" + JSON.stringify(v) + ", '')");
+        assertEqual([ v.length ], actual);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test find_last function
+////////////////////////////////////////////////////////////////////////////////
+
+    testFindLast : function () {
+      [ 
+        [ -1, 'foo', 'bar' ],
+        [ 3, 'foobar', 'bar' ],
+        [ 3, 'Foobar', 'bar' ],
+        [ -1, 'foobar', 'Bar' ],
+        [ 16, 'the quick brown bar jumped over the lazy dog', 'bar' ],
+        [ 3, 'FOOBAR', 'BAR' ],
+        [ -1, 'FOOBAR', 'bar' ],
+        [ -1, 'the quick brown foxx', 'the foxx' ],
+        [ 0, 'the quick brown foxx', 'the quick' ],
+        [ -1, 'the quick brown foxx', 'the quick brown foxx j' ],
+        [ 4, 'the quick brown foxx', 'quick brown' ],
+        [ 35, 'the quick brown foxx jumped over a\nnewline', 'newline' ],
+        [ 14, 'some linebreak\r\ngoes here', '\r\n' ]
+      ].forEach(function(v) {
+        var actual = getQueryResults("RETURN FIND_LAST(" + JSON.stringify(v[1]) + ", " + JSON.stringify(v[2]) + ")");
+        assertEqual([ v[0] ], actual);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test find_last function
+////////////////////////////////////////////////////////////////////////////////
+
+    testFindLastStartEnd : function () {
+      [ 
+        [ 3, 'foobar', 'bar', 0 ],
+        [ 3, 'foobar', 'bar', 1 ],
+        [ 3, 'foobar', 'bar', 2 ],
+        [ 3, 'foobar', 'bar', 3 ],
+        [ -1, 'foobar', 'bar', 4 ],
+        [ 3, 'foobar', 'bar', 1, 5 ],
+        [ 3, 'foobar', 'bar', 2, 5 ],
+        [ 3, 'foobar', 'bar', 3, 5 ],
+        [ -1, 'foobar', 'bar', 4, 6 ],
+        [ -1, 'foobar', 'bar', 4, 5 ],
+        [ -1, 'foobar', 'bar', 1, 4 ],
+        [ -1, 'foobar', 'bar', 0, 4 ],
+        [ 3, 'foobar', 'bar', 0, 5 ],
+        [ 3, 'foobar', 'bar', 0, 999 ],
+        [ 32, 'the quick brown bar jumped over the lazy dog', 'the', 0 ],
+        [ 32, 'the quick brown bar jumped over the lazy dog', 'the', 10 ],
+        [ 32, 'the quick brown bar jumped over the lazy dog', 'the', 1 ]
+      ].forEach(function(v) {
+        var actual = getQueryResults("RETURN FIND_LAST(" + JSON.stringify(v[1]) + ", " + JSON.stringify(v[2]) + ", " + v[3] + ", " + (v[4] === undefined ? null : v[4]) + ")");
+        assertEqual([ v[0] ], actual);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test find_last function
+////////////////////////////////////////////////////////////////////////////////
+
+    testFindLastInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN FIND_LAST()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN FIND_LAST('foo')"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN FIND_LAST('foo', 'bar', 2, 2, 2)"); 
+      assertEqual([ -1 ], getQueryResults("RETURN FIND_LAST(null, 'foo')")); 
+      assertEqual([ -1 ], getQueryResults("RETURN FIND_LAST(true, 'foo')")); 
+      assertEqual([ -1 ], getQueryResults("RETURN FIND_LAST(4, 'foo')")); 
+      assertEqual([ -1 ], getQueryResults("RETURN FIND_LAST([ ], 'foo')")); 
+      assertEqual([ -1 ], getQueryResults("RETURN FIND_LAST({ }, 'foo')")); 
+      assertEqual([ -1 ], getQueryResults("RETURN FIND_LAST('foo', null)")); 
+      assertEqual([ -1 ], getQueryResults("RETURN FIND_LAST('foo', true)")); 
+      assertEqual([ 3 ], getQueryResults("RETURN FIND_LAST('foo', [ ])")); 
+      assertEqual([ -1 ], getQueryResults("RETURN FIND_LAST('foo', { })")); 
+      assertEqual([ -1 ], getQueryResults("RETURN FIND_LAST('foo', -1)")); 
+      assertEqual([ -1 ], getQueryResults("RETURN FIND_LAST('foo', -1.5)")); 
+      assertEqual([ -1 ], getQueryResults("RETURN FIND_LAST('foo', 3)")); 
+      assertEqual([ -1 ], getQueryResults("RETURN FIND_LAST('foo', 'bar', 'baz')")); 
+      assertEqual([ -1 ], getQueryResults("RETURN FIND_LAST('foo', 'bar', 1, 'bar')")); 
+      assertEqual([ -1 ], getQueryResults("RETURN FIND_LAST('foo', 'bar', -1)")); 
+      assertEqual([ -1 ], getQueryResults("RETURN FIND_LAST('foo', 'bar', 1, -1)")); 
+      assertEqual([ -1 ], getQueryResults("RETURN FIND_LAST('foo', 'bar', 1, 0)")); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
