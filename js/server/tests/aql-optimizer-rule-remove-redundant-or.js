@@ -29,7 +29,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 // TODO add some test which don't use number values!
 
-var internal = require("internal");
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
@@ -39,7 +38,7 @@ var getQueryResults = helper.getQueryResults;
 ////////////////////////////////////////////////////////////////////////////////
 
 function NewAqlRemoveRedundantORTestSuite () {
-  var ruleName = "remove-redundant-OR";
+  var ruleName = "remove-redundant-or";
   
   var isRuleUsed = function (query, params) {
    var result = AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+" + ruleName ] } });

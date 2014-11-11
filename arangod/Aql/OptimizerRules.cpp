@@ -1556,9 +1556,7 @@ int triagens::aql::useIndexForSort (Optimizer* opt,
   return TRI_ERROR_NO_ERROR;
 }
 
-#if 0
 // TODO: finish rule and test it
-
 struct FilterCondition {
   std::string variableName;
   std::string attributeName;
@@ -1640,19 +1638,17 @@ struct FilterCondition {
         lhs = node->getMember(1);
         rhs = node->getMember(0);
 
-        auto it = Ast::ReverseOperators.find(static_cast<int>(node->type));
-        TRI_ASSERT(it != Ast::ReverseOperators.end());
-
-        op = (*it).second;
+        op = Ast::ReverseOperator(node->type);
       }
 
       if (found) {
         TRI_ASSERT(lhs->type == NODE_TYPE_VALUE);
         TRI_ASSERT(rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS);
 
-        std::function<void(AstNode const*)> buildName = [&] (AstNode const* node) -> void {
+        std::function<void(AstNode const*, std::string&, std::string&)> buildName = 
+          [&] (AstNode const* node, std::string& variableName, std::string& attributeName) -> void {
           if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-            buildName(node->getMember(0));
+            buildName(node->getMember(0), variableName, attributeName);
 
             if (! attributeName.empty()) {
               attributeName.push_back('.');
@@ -1667,7 +1663,9 @@ struct FilterCondition {
         }; 
 
         if (attributeName.empty()) {
-          buildName(rhs);
+          TRI_ASSERT(! variableName.empty());
+
+          buildName(rhs, variableName, attributeName);
           if (op == NODE_TYPE_OPERATOR_BINARY_EQ ||
               op == NODE_TYPE_OPERATOR_BINARY_NE) {
             lowInclusive  = true;
@@ -1694,10 +1692,19 @@ struct FilterCondition {
 
           return true;
         }
-   //     else if (attributeName == std::string(buffer.c_str(), buffer.length())) {
-          // same attribute
-          // TODO
-     //   }
+        else {
+          // already have collected something, now check if the next condition
+          // is for the same variable / attribute
+          std::string compareVariableName;
+          std::string compareAttributeName;
+          buildName(rhs, compareVariableName, compareAttributeName);
+
+          if (variableName == compareVariableName && 
+              attributeName == compareAttributeName) {
+            // same attribute
+            // TODO
+          }
+        }
 
         // fall-through 
       }
@@ -1717,7 +1724,6 @@ struct FilterCondition {
 
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief try to remove filters which are covered by indexes
 ////////////////////////////////////////////////////////////////////////////////
@@ -1736,7 +1742,9 @@ int triagens::aql::removeFiltersCoveredByIndex (Optimizer* opt,
     // auto outVar = cn->getVariablesSetHere();
           
     auto setter = plan->getVarSetBy(inVar[0]->id);
-    TRI_ASSERT(setter != nullptr);
+    if (setter == nullptr) {
+      continue;
+    }
 
     if (setter->getType() != EN::CALCULATION) {
       continue;
@@ -1796,7 +1804,6 @@ int triagens::aql::removeFiltersCoveredByIndex (Optimizer* opt,
 
   return TRI_ERROR_NO_ERROR;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper to compute lots of permutation tuples
@@ -2840,8 +2847,7 @@ int triagens::aql::replaceOrWithIn (Optimizer* opt,
   LEAVE_BLOCK;
 }
 
-struct RemoveRedundantOR {
-
+struct RemoveRedundantOr {
   AstNode const*    bestValue = nullptr;
   AstNodeType       comparison;
   bool              inclusive;
@@ -2870,19 +2876,22 @@ struct RemoveRedundantOR {
           (type == NODE_TYPE_OPERATOR_BINARY_GE
            || type == NODE_TYPE_OPERATOR_BINARY_GT)) {
         return -1; //high bound
-      } else if ((comparison == NODE_TYPE_OPERATOR_BINARY_GE
+      } 
+      else if ((comparison == NODE_TYPE_OPERATOR_BINARY_GE
             || comparison == NODE_TYPE_OPERATOR_BINARY_GT) &&
           (type == NODE_TYPE_OPERATOR_BINARY_LE 
            || type == NODE_TYPE_OPERATOR_BINARY_LT)) {
         return 1; //low bound
       }
-    } else {
+    } 
+    else {
       if ((comparison == NODE_TYPE_OPERATOR_BINARY_LE
             || comparison == NODE_TYPE_OPERATOR_BINARY_LT) &&
           (type == NODE_TYPE_OPERATOR_BINARY_LE
            || type == NODE_TYPE_OPERATOR_BINARY_LT)) {
         return -1; //high bound
-      } else if ((comparison == NODE_TYPE_OPERATOR_BINARY_GE
+      } 
+      else if ((comparison == NODE_TYPE_OPERATOR_BINARY_GE
             || comparison == NODE_TYPE_OPERATOR_BINARY_GT) &&
           (type == NODE_TYPE_OPERATOR_BINARY_GE 
            || type == NODE_TYPE_OPERATOR_BINARY_GT)) {
@@ -2902,25 +2911,10 @@ struct RemoveRedundantOR {
       return (isInclusiveBound(type) ? true : false);
     }
     return (cmp * lowhigh == 1);
-  };
-
-  AstNodeType reverseComparison (AstNodeType type) {
-    if (type ==  NODE_TYPE_OPERATOR_BINARY_LE) {
-      return NODE_TYPE_OPERATOR_BINARY_GE;
-    }
-    else if (type ==  NODE_TYPE_OPERATOR_BINARY_LT) {
-      return NODE_TYPE_OPERATOR_BINARY_GT;
-    }
-    else if (type ==  NODE_TYPE_OPERATOR_BINARY_GT) {
-      return NODE_TYPE_OPERATOR_BINARY_LT;
-    }
-    else {
-      return NODE_TYPE_OPERATOR_BINARY_LE;
-    }
   }
 
   bool hasRedundantCondition (AstNode const* node) {
-    if(finder.find(node, NODE_TYPE_OPERATOR_BINARY_LT, commonNode, commonName)){
+    if (finder.find(node, NODE_TYPE_OPERATOR_BINARY_LT, commonNode, commonName)) {
       return hasRedundantConditionWalker(node);
     }
     return false;
@@ -2934,10 +2928,10 @@ struct RemoveRedundantOR {
               hasRedundantConditionWalker(node->getMember(1)));
     }
     
-    if( type == NODE_TYPE_OPERATOR_BINARY_LE 
+    if (type == NODE_TYPE_OPERATOR_BINARY_LE 
      || type == NODE_TYPE_OPERATOR_BINARY_LT
      || type == NODE_TYPE_OPERATOR_BINARY_GE 
-     || type == NODE_TYPE_OPERATOR_BINARY_GT ) {
+     || type == NODE_TYPE_OPERATOR_BINARY_GT) {
 
       auto lhs = node->getMember(0);
       auto rhs = node->getMember(1);
@@ -2946,8 +2940,8 @@ struct RemoveRedundantOR {
           && ! hasRedundantConditionWalker(lhs)
           && lhs->isConstant()) {
         
-        if (!isComparisonSet) {
-          comparison = reverseComparison(type);
+        if (! isComparisonSet) {
+          comparison = Ast::ReverseOperator(type);
           bestValue = lhs;
           isComparisonSet = true;
           return true;
@@ -2959,7 +2953,7 @@ struct RemoveRedundantOR {
         }
 
         if (compareBounds(type, lhs, lowhigh)) {
-          comparison = reverseComparison(type);
+          comparison = Ast::ReverseOperator(type);
           bestValue = lhs;
         }
         return true;
@@ -2967,7 +2961,7 @@ struct RemoveRedundantOR {
       if (hasRedundantConditionWalker(lhs) 
           && ! hasRedundantConditionWalker(rhs)
           && rhs->isConstant()) {
-        if (!isComparisonSet) {
+        if (! isComparisonSet) {
           comparison = type;
           bestValue = rhs;
           isComparisonSet = true;
@@ -2994,7 +2988,8 @@ struct RemoveRedundantOR {
              type == NODE_TYPE_INDEXED_ACCESS) {
       // get a string representation of the node for comparisons 
       return (node->toString() == commonName);
-    } else if (node->isBoolValue()) {
+    } 
+    else if (node->isBoolValue()) {
       return true;
     }
 
@@ -3002,7 +2997,7 @@ struct RemoveRedundantOR {
   }
 };
 
-int triagens::aql::removeRedundantOR (Optimizer* opt, 
+int triagens::aql::removeRedundantOr (Optimizer* opt, 
                                       ExecutionPlan* plan, 
                                       Optimizer::Rule const* rule) {
   ENTER_BLOCK;
@@ -3030,19 +3025,13 @@ int triagens::aql::removeRedundantOR (Optimizer* opt,
       continue;
     }
 
-    RemoveRedundantOR remover;
-    if(remover.hasRedundantCondition(cn->expression()->node())){
+    RemoveRedundantOr remover;
+    if (remover.hasRedundantCondition(cn->expression()->node())) {
       Expression* expr = nullptr;
       ExecutionNode* newNode = nullptr;
       auto astNode = remover.createReplacementNode(plan->getAst());
 
-      try {
-        expr = new Expression(plan->getAst(), astNode);
-      }
-      catch (...) {
-        delete astNode;
-        throw;
-      }
+      expr = new Expression(plan->getAst(), astNode);
 
       try {
         newNode = new CalculationNode(plan, plan->nextId(), expr, outVar[0]);
