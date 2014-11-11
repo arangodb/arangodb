@@ -1043,14 +1043,23 @@ bool IndexRangeBlock::initIndex () {
     condition = newCondition.get();
   }
    
+  /*if (en->_index->type == TRI_IDX_TYPE_PRIMARY_INDEX) {
+    initPrimaryIndex(*condition); 
+  }
+  else */
+  if (en->_index->type == TRI_IDX_TYPE_HASH_INDEX) {
+    return true; //no initialization here!
+  }
   if (en->_index->type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
     initSkiplistIndex(*condition);
     return (_skiplistIterator != nullptr);
-  }//TODO the other cases!!
+  }/*
+  else if (en->_index->type == TRI_IDX_TYPE_EDGE_INDEX) {
+    initEdgeIndex(*condition); /
+  }*/
   else {
     TRI_ASSERT(false);
   }
-  return false; //FIXME remove this
 }
 
 // this is called every time everything in _documents has been passed on
@@ -1078,17 +1087,17 @@ bool IndexRangeBlock::readIndex (size_t atMost) {
   
   if (en->_index->type == TRI_IDX_TYPE_PRIMARY_INDEX) {
     // atMost not passed since only equality is supported
-    readPrimaryIndex(*condition); //TODO correct
+    //readPrimaryIndex(*condition); //TODO correct
   }
   else if (en->_index->type == TRI_IDX_TYPE_HASH_INDEX) {
-    readHashIndex(*condition, atMost); //TODO correct
+    readHashIndex(*condition, atMost);
   }
   else if (en->_index->type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
     readSkiplistIndex(atMost);
   }
   else if (en->_index->type == TRI_IDX_TYPE_EDGE_INDEX) {
     // atMost not passed since only equality is supported
-    readEdgeIndex(*condition); //TODO correct
+    //readEdgeIndex(*condition); //TODO correct
   }
   else {
     TRI_ASSERT(false);
@@ -1347,10 +1356,15 @@ void IndexRangeBlock::readPrimaryIndex (IndexOrCondition const& ranges) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges, size_t atMost) {
+
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
   TRI_index_t* idx = en->_index->data;
   TRI_ASSERT(idx != nullptr);
   TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
+
+  if (_posInHashIndex >= hashIndex->_paths._length){
+    return; //do nothing
+  }
              
   TRI_shaper_t* shaper = _collection->documentCollection()->getShaper(); 
   TRI_ASSERT(shaper != nullptr);
@@ -1368,7 +1382,7 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges, size_t atMo
   };
 
   auto setupSearchValue = [&]() {
-    size_t const n = (std::min)(hashIndex->_paths._length, atMost);
+    size_t const n = (std::min)(hashIndex->_paths._length - _posInHashIndex, atMost);
     searchValue._length = 0;
     searchValue._values = static_cast<TRI_shaped_json_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, 
           n * sizeof(TRI_shaped_json_t), true));
@@ -1379,7 +1393,7 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges, size_t atMo
     
     searchValue._length = n;
 
-    for (size_t i = 0;  i < n;  ++i) {
+    for (size_t i = _posInHashIndex; i < n + _posInHashIndex; ++i) {
       TRI_shape_pid_t pid = *(static_cast<TRI_shape_pid_t*>(TRI_AtVector(&hashIndex->_paths, i)));
       TRI_ASSERT(pid != 0);
    
@@ -1391,18 +1405,19 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges, size_t atMo
           // here x->_low->_bound = x->_high->_bound 
           searchValue._values[i] = *shaped;
           TRI_Free(shaper->_memoryZone, shaped);
+          //TODO add break here!
         }
       }
-
     }
   };
  
   setupSearchValue();  
   TRI_index_result_t list = TRI_LookupHashIndex(idx, &searchValue);
-
   destroySearchValue();
+
   
   size_t const n = list._length;
+  _posInHashIndex += n;
   try {
     for (size_t i = 0; i < n; ++i) {
       _documents.emplace_back(*(list._documents[i]));

@@ -573,12 +573,14 @@ namespace triagens {
 /// @brief read using the primary index
 ////////////////////////////////////////////////////////////////////////////////
 
+        //void readPrimaryIndex (size_t atMost);
         void readPrimaryIndex (IndexOrCondition const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read using the edges index
 ////////////////////////////////////////////////////////////////////////////////
         
+        //void readEdgeIndex (size_t atMost);
         void readEdgeIndex (IndexOrCondition const&);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -647,6 +649,7 @@ namespace triagens {
         std::vector<std::vector<RegisterId>> _inRegs;
 
         TRI_skiplist_iterator_t* _skiplistIterator;
+        size_t _posInHashIndex;
 
     };
 
