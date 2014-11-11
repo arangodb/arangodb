@@ -1547,14 +1547,24 @@ function ARITHMETIC_MODULUS (lhs, rhs) {
 function AQL_CONCAT () {
   "use strict";
 
-  var result = '', i;
+  var result = '', i, j;
 
   for (i = 0; i < arguments.length; ++i) {
     var element = arguments[i];
-    if (TYPEWEIGHT(element) === TYPEWEIGHT_NULL) {
+    var weight = TYPEWEIGHT(element);
+    if (weight === TYPEWEIGHT_NULL) {
       continue;
     }
-    result += AQL_TO_STRING(element);
+    else if (weight === TYPEWEIGHT_LIST) {
+      for (j = 0; j < element.length; ++j) {
+        if (TYPEWEIGHT(element[j]) !== TYPEWEIGHT_NULL) {
+          result += AQL_TO_STRING(element[j]);
+        }
+      } 
+    }
+    else {
+      result += AQL_TO_STRING(element);
+    }
   }
 
   return result;
@@ -1567,12 +1577,13 @@ function AQL_CONCAT () {
 function AQL_CONCAT_SEPARATOR () {
   "use strict";
 
-  var separator, found = false, result = '', i;
+  var separator, found = false, result = '', i, j;
 
   for (i = 0; i < arguments.length; ++i) {
     var element = arguments[i];
-
-    if (i > 0 && TYPEWEIGHT(element) === TYPEWEIGHT_NULL) {
+    var weight = TYPEWEIGHT(element);
+ 
+    if (i > 0 && weight === TYPEWEIGHT_NULL) {
       continue;
     }
 
@@ -1584,8 +1595,22 @@ function AQL_CONCAT_SEPARATOR () {
       result += separator;
     }
 
-    found = true;
-    result += AQL_TO_STRING(element);
+    if (weight === TYPEWEIGHT_LIST) {
+      found = false;
+      for (j = 0; j < element.length; ++j) {
+        if (TYPEWEIGHT(element[j]) !== TYPEWEIGHT_NULL) {
+          if (found) {
+            result += separator;
+          }
+          result += AQL_TO_STRING(element[j]);
+          found = true;
+        }
+      } 
+    }
+    else {
+      result += AQL_TO_STRING(element);
+      found = true;
+    }
   }
 
   return result;

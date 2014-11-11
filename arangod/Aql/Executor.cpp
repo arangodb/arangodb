@@ -104,8 +104,8 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "TO_LIST",                     Function("TO_LIST",                     "AQL_TO_LIST", ".", true, false, true) },
   
   // string functions
-  { "CONCAT",                      Function("CONCAT",                      "AQL_CONCAT", "sz,sz|+", true, false, true) },
-  { "CONCAT_SEPARATOR",            Function("CONCAT_SEPARATOR",            "AQL_CONCAT_SEPARATOR", "s,sz,sz|+", true, false, true) },
+  { "CONCAT",                      Function("CONCAT",                      "AQL_CONCAT", "szl|+", true, false, true) },
+  { "CONCAT_SEPARATOR",            Function("CONCAT_SEPARATOR",            "AQL_CONCAT_SEPARATOR", "s,szl|+", true, false, true) },
   { "CHAR_LENGTH",                 Function("CHAR_LENGTH",                 "AQL_CHAR_LENGTH", "s", true, false, true) },
   { "LOWER",                       Function("LOWER",                       "AQL_LOWER", "s", true, false, true) },
   { "UPPER",                       Function("UPPER",                       "AQL_UPPER", "s", true, false, true) },

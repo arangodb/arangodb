@@ -6,6 +6,8 @@ v2.3.0 (XXX-XX-XX)
 
 * added AQL functions `ASSEMBLE` and `VALUES`
 
+* made AQL functions `CONCAT` and `CONCAT_SEPARATOR` work with list arguments
+
 
 v2.3.0-beta2 (2014-11-08)
 -------------------------
