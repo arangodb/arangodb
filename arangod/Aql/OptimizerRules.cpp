@@ -2868,35 +2868,19 @@ struct RemoveRedundantOr {
     return (type == NODE_TYPE_OPERATOR_BINARY_GE || type == NODE_TYPE_OPERATOR_BINARY_LE);
   }
 
-  int isCompatibleBound (AstNodeType type, AstNode const* value, bool reverse) {
+  int isCompatibleBound (AstNodeType type, AstNode const* value) {
     
-    if (reverse) {
-      if ((comparison == NODE_TYPE_OPERATOR_BINARY_LE 
-            || comparison == NODE_TYPE_OPERATOR_BINARY_LT) &&
-          (type == NODE_TYPE_OPERATOR_BINARY_GE
-           || type == NODE_TYPE_OPERATOR_BINARY_GT)) {
-        return -1; //high bound
-      } 
-      else if ((comparison == NODE_TYPE_OPERATOR_BINARY_GE
-            || comparison == NODE_TYPE_OPERATOR_BINARY_GT) &&
-          (type == NODE_TYPE_OPERATOR_BINARY_LE 
-           || type == NODE_TYPE_OPERATOR_BINARY_LT)) {
-        return 1; //low bound
-      }
+    if ((comparison == NODE_TYPE_OPERATOR_BINARY_LE
+          || comparison == NODE_TYPE_OPERATOR_BINARY_LT) &&
+        (type == NODE_TYPE_OPERATOR_BINARY_LE
+         || type == NODE_TYPE_OPERATOR_BINARY_LT)) {
+      return -1; //high bound
     } 
-    else {
-      if ((comparison == NODE_TYPE_OPERATOR_BINARY_LE
-            || comparison == NODE_TYPE_OPERATOR_BINARY_LT) &&
-          (type == NODE_TYPE_OPERATOR_BINARY_LE
-           || type == NODE_TYPE_OPERATOR_BINARY_LT)) {
-        return -1; //high bound
-      } 
-      else if ((comparison == NODE_TYPE_OPERATOR_BINARY_GE
-            || comparison == NODE_TYPE_OPERATOR_BINARY_GT) &&
-          (type == NODE_TYPE_OPERATOR_BINARY_GE 
-           || type == NODE_TYPE_OPERATOR_BINARY_GT)) {
-        return 1; //low bound
-      }
+    else if ((comparison == NODE_TYPE_OPERATOR_BINARY_GE
+          || comparison == NODE_TYPE_OPERATOR_BINARY_GT) &&
+        (type == NODE_TYPE_OPERATOR_BINARY_GE 
+         || type == NODE_TYPE_OPERATOR_BINARY_GT)) {
+      return 1; //low bound
     }
     return 0; //incompatible bounds
   }
@@ -2947,7 +2931,7 @@ struct RemoveRedundantOr {
           return true;
         }
 
-        int lowhigh = isCompatibleBound(type, lhs, true);
+        int lowhigh = isCompatibleBound(Ast::ReverseOperator(type), lhs);
         if (lowhigh == 0) {
           return false;
         }
@@ -2968,7 +2952,7 @@ struct RemoveRedundantOr {
           return true;
         }
 
-        int lowhigh = isCompatibleBound(type, rhs, false);
+        int lowhigh = isCompatibleBound(type, rhs);
         if (lowhigh == 0) {
           return false;
         }
