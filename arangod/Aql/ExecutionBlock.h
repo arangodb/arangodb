@@ -567,6 +567,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool readIndex (size_t atMost);
+        bool initIndex ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read using the primary index
@@ -584,7 +585,8 @@ namespace triagens {
 /// @brief read using a skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
-        void readSkiplistIndex (IndexOrCondition const&, size_t atMost);
+        void readSkiplistIndex (size_t atMost);
+        void initSkiplistIndex (IndexOrCondition const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read using a hash index
@@ -643,6 +645,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         std::vector<std::vector<RegisterId>> _inRegs;
+
+        TRI_skiplist_iterator_t* _skiplistIterator;
 
     };
 
