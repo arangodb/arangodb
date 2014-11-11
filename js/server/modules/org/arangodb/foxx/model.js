@@ -32,6 +32,8 @@ var Model,
   joi = require("joi"),
   is = require("org/arangodb/is"),
   extend = require('org/arangodb/extend').extend,
+  EventEmitter2 = require('eventemitter2').EventEmitter2,
+  util = require('util'),
   excludeExtraAttributes,
   metadataSchema = {
     _id: joi.string().optional(),
@@ -142,7 +144,10 @@ Model = function (attributes) {
   } else if (attributes) {
     instance.attributes = _.clone(attributes);
   }
+  EventEmitter2.call(instance);
 };
+
+util.inherits(Model, EventEmitter2);
 
 Model.fromClient = function (attributes) {
   'use strict';
