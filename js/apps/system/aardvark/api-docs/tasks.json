@@ -1,0 +1,117 @@
+{
+    "basePath": "/",
+    "swaggerVersion": "1.1",
+    "apiVersion": "0.1",
+    "apis": [
+        {
+            "operations": [
+                {
+                    "errorResponses": [],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": "false",
+                            "name": "id",
+                            "description": "The id of the task to fetch. <br><br>"
+                        }
+                    ],
+                    "notes": "fetches all existing tasks on the server; optionally just the one specified by <em>id</em> <br><br>",
+                    "summary": " Fetch all tasks or one task with id",
+                    "httpMethod": "GET",
+                    "examples": "<br><br> Getting all tasks:<br><br><pre><code class=\"json\">shell> curl --data-binary @- --dump - http://localhost:8529/_api/tasks\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n[ \n  { \n    \"id\" : \"statistics-gc\", \n    \"name\" : \"statistics-gc\", \n    \"type\" : \"periodic\", \n    \"period\" : 450, \n    \"created\" : 1415787826.491651, \n    \"command\" : \"require('org/arangodb/statistics').garbageCollector();\", \n    \"database\" : \"_system\" \n  }, \n  { \n    \"id\" : \"statistics-average-collector\", \n    \"name\" : \"statistics-average-collector\", \n    \"type\" : \"periodic\", \n    \"period\" : 900, \n    \"created\" : 1415787826.491583, \n    \"command\" : \"require('org/arangodb/statistics').historianAverage();\", \n    \"database\" : \"_system\" \n  }, \n  { \n    \"id\" : \"statistics-collector\", \n    \"name\" : \"statistics-collector\", \n    \"type\" : \"periodic\", \n    \"period\" : 10, \n    \"created\" : 1415787826.491523, \n    \"command\" : \"require('org/arangodb/statistics').historian();\", \n    \"database\" : \"_system\" \n  }, \n  { \n    \"id\" : \"48820646\", \n    \"name\" : \"user-defined task\", \n    \"type\" : \"periodic\", \n    \"period\" : 1, \n    \"created\" : 1415787827.442563, \n    \"command\" : \"(function () {\\n      require('org/arangodb/foxx/queues/manager').manage();\\n    })(params)\", \n    \"database\" : \"_system\" \n  } \n]\n</code></pre><br><br><br> Getting a single task by id:<br><br><pre><code class=\"json\">shell> curl --data-binary @- --dump - http://localhost:8529/_api/tasks/statistics-average-collector\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"id\" : \"statistics-average-collector\", \n  \"name\" : \"statistics-average-collector\", \n  \"type\" : \"periodic\", \n  \"period\" : 900, \n  \"created\" : 1415787826.491583, \n  \"command\" : \"require('org/arangodb/statistics').historianAverage();\", \n  \"database\" : \"_system\", \n  \"error\" : false, \n  \"code\" : 200 \n}\n</code></pre><br><br><br> Fetching a non-existing task:<br><br><pre><code class=\"json\">shell> curl --data-binary @- --dump - http://localhost:8529/_api/tasks/non-existing-task\n\nHTTP/1.1 404 Not Found\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : true, \n  \"code\" : 404, \n  \"errorNum\" : 1852, \n  \"errorMessage\" : \"task not found\" \n}\n</code></pre><br><br><br>",
+                    "nickname": "FetchAllTasksOrOneTaskWithId"
+                }
+            ],
+            "path": "/_api/tasks/{id}"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "If the post body is not accurate, a <em>HTTP 400</em> is returned. <br><br>",
+                            "code": "400"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "Json",
+                            "paramType": "body",
+                            "required": "true",
+                            "name": "body",
+                            "description": "the body with the new task:  <ul class=\"swagger-list\"><li><em>name</em>: name of the task <li><em>command</em>: javascript code to be executed <li><em>params</em>: parameters to be passed into command <li><em>period</em>: n seconds between the executions <li><em>offset</em>: n seconds delay"
+                        }
+                    ],
+                    "notes": "creates a new task under a generated id <br><br>",
+                    "summary": " creates a task",
+                    "httpMethod": "POST",
+                    "examples": "<br><br><br><br><pre><code class=\"json\">shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/tasks/\n{\"name\":\"SampleTask\",\"command\":\"(function(params) { require('internal').print(params); })(params)\",\"params\":{\"foo\":\"bar\",\"bar\":\"foo\"},\"period\":2}\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"id\" : \"971764134\", \n  \"name\" : \"SampleTask\", \n  \"type\" : \"periodic\", \n  \"period\" : 2, \n  \"created\" : 1415787862.41007, \n  \"command\" : \"(function(params) { require('internal').print(params); })(params)\", \n  \"database\" : \"_system\", \n  \"error\" : false, \n  \"code\" : 200 \n}\nshell> curl -X DELETE --data-binary @- --dump - http://localhost:8529/_api/tasks/971764134\n\n</code></pre><br><br><br>",
+                    "nickname": "createsATask"
+                }
+            ],
+            "path": "/_api/tasks"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "If the task <em>id</em> already exists or the rest body is not accurate, <em>HTTP 400</em> is returned. <br><br>",
+                            "code": "400"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": "true",
+                            "name": "id",
+                            "description": "The id of the task to fetch. <br><br>"
+                        },
+                        {
+                            "dataType": "Json",
+                            "paramType": "body",
+                            "required": "true",
+                            "name": "body",
+                            "description": "the body with the new task:  <ul class=\"swagger-list\"><li><em>name</em>: name of the task <li><em>command</em>: javascript code to be executed <li><em>params</em>: parameters to be passed into command <li><em>period</em>: n seconds between the executions <li><em>offset</em>: n seconds delay"
+                        }
+                    ],
+                    "notes": "registers a new task under id <br><br>",
+                    "summary": " creates a task with id",
+                    "httpMethod": "PUT",
+                    "examples": "<br><br><br><br><pre><code class=\"json\">shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/tasks/sampleTask\n{\"id\":\"SampleTask\",\"name\":\"SampleTask\",\"command\":\"(function(params) { require('internal').print(params); })(params)\",\"params\":{\"foo\":\"bar\",\"bar\":\"foo\"},\"period\":2}\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"id\" : \"sampleTask\", \n  \"name\" : \"SampleTask\", \n  \"type\" : \"periodic\", \n  \"period\" : 2, \n  \"created\" : 1415787862.425813, \n  \"command\" : \"(function(params) { require('internal').print(params); })(params)\", \n  \"database\" : \"_system\", \n  \"error\" : false, \n  \"code\" : 200 \n}\n</code></pre><br><br><br>",
+                    "nickname": "createsATaskWithId"
+                }
+            ],
+            "path": "/_api/tasks/{id}"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "If the task <em>id</em> is unknown, then an <em>HTTP 404</em> is returned. <br><br>",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": "true",
+                            "name": "id",
+                            "description": "The id of the task to delete. <br><br>"
+                        }
+                    ],
+                    "notes": "Deletes the task identified by <em>id</em> on the server.  <br><br>",
+                    "summary": " deletes the task with id",
+                    "httpMethod": "DELETE",
+                    "examples": "<br><br><br><br><pre><code class=\"json\">shell> curl -X DELETE --data-binary @- --dump - http://localhost:8529/_api/tasks/NoTaskWithThatName\n\nHTTP/1.1 404 Not Found\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : true, \n  \"code\" : 404, \n  \"errorNum\" : 1852, \n  \"errorMessage\" : \"task not found\" \n}\n</code></pre><br><br><br><br><br><pre><code class=\"json\">shell> curl -X DELETE --data-binary @- --dump - http://localhost:8529/_api/tasks/SampleTask\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\ntrue\n</code></pre><br><br><br>",
+                    "nickname": "deletesTheTaskWithId"
+                }
+            ],
+            "path": "/_api/tasks/{id}"
+        }
+    ]
+}
