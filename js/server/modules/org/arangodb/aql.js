@@ -1850,10 +1850,22 @@ function AQL_SUBSTITUTE (value, search, replace, limit) {
   }
   else if (sWeight === TYPEWEIGHT_STRING) {
     pattern = CREATE_REGEX_PATTERN(search);
-    replacements[search] = AQL_TO_STRING(replace);
+    if (TYPEWEIGHT(replace) === TYPEWEIGHT_NULL) {
+      replacements[search] = "";
+    }
+    else {
+      replacements[search] = AQL_TO_STRING(replace);
+    }
   }
   else if (sWeight === TYPEWEIGHT_LIST) {
+    if (search.length === 0) {
+      // empty list
+      WARN("SUBSTITUTE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      return value;
+    }
+
     patterns = [ ];
+
     if (TYPEWEIGHT(replace) === TYPEWEIGHT_LIST) {
       // replace each occurrence with a member from the second list
       search.forEach(function(k, i) {
@@ -1869,7 +1881,12 @@ function AQL_SUBSTITUTE (value, search, replace, limit) {
     }
     else {
       // replace all occurrences with a constant string
-      replace = AQL_TO_STRING(replace);
+      if (TYPEWEIGHT(replace) === TYPEWEIGHT_NULL) {
+        replace = "";
+      }
+      else {
+        replace = AQL_TO_STRING(replace);
+      }
       search.forEach(function(k, i) {
         k = AQL_TO_STRING(k);
         patterns.push(CREATE_REGEX_PATTERN(k));
