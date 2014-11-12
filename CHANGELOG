@@ -1,4 +1,4 @@
-v2.3.0-beta2 (2014-11-01)
+2.3.0-beta2 (2014-11-01)
 -------------------
 
 * front-end: new icons for uploading and downloading JSON documents into a collection
@@ -86,21 +86,22 @@ v2.3.0-beta2 (2014-11-01)
   V8 contexts created in arangod.
   
   Previously, the number of V8 contexts was equal to the number of server threads
-  (as specified by option `--server.threads`). However, it may be sensible to  
-  create different amounts of threads and V8 contexts. If the option is not
-  specified, the number of V8 contexts created will be equal to the number of 
-  server threads. Thus no change in configuration is required to keep the old
-  behavior.
-  
-  However, the default configuration files shipped with ArangoDB have been changed. 
-  The number of server threads has been increased in the configuration files, and
-  the number of V8 contexts is now explicitly set in the configuration files (to
-  the same value as the number of server threads was set to in 2.2).
+  (as specified by option `--server.threads`). 
 
-  If you are using the default config files or merge them with your local config files, 
-  please review if the higher default number of server threads is okay in your
+  However, it may be sensible to create different amounts of threads and V8
+  contexts. If the option is not specified, the number of V8 contexts created
+  will be equal to the number of server threads. Thus no change in configuration
+  is required to keep the old behavior.
+  
+  If you are using the default config files or merge them with your local config
+  files, please review if the default number of server threads is okay in your
   environment. Additionally you should verify that the number of V8 contexts
   created (as specified in option `--javascript.v8-contexts`) is okay.
+
+* the number of server.threads specified is now the minimum of threads
+  started. There are situation in which threads are waiting for results of
+  distributed database servers. In this case the number of threads is
+  dynamically increased.
 
 * removed index type "bitarray"
 
