@@ -1,6 +1,15 @@
 v2.3.0 (XXX-XX-XX)
 ------------------
 
+* allow passing character lists as optional parameter to AQL functions `TRIM`,
+  `LTRIM` and `RTRIM`
+
+  These functions now support trimming using custom character lists. If no character
+  lists are specified, all whitespace characters will be removed as previously:
+
+      TRIM("  foobar\t \r\n ")         // "foobar"
+      TRIM(";foo;bar;baz, ", "; ")     // "foo;bar;baz"
+
 * added AQL string functions `LTRIM`, `RTRIM`, `FIND_FIRST`, `FIND_LAST`, `SPLIT`, 
   `SUBSTITUTE`
 
