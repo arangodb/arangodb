@@ -1,5 +1,7 @@
-v2.3.0 (XXX-XX-XX)
-------------------
+v2.3.0 (XXXX-XX-XX)
+-------------------
+
+* added HTTP REST API for managing tasks (`/_api/tasks`)
 
 * allow passing character lists as optional parameter to AQL functions `TRIM`,
   `LTRIM` and `RTRIM`
