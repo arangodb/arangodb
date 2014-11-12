@@ -130,8 +130,12 @@ _.extend(Repository.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   save: function (model) {
     'use strict';
+    model.emit('beforeCreate');
+    model.emit('beforeSave');
     var id_and_rev = this.collection.save(model.forDB());
     model.set(id_and_rev);
+    model.emit('afterSave');
+    model.emit('afterCreate');
     return model;
   },
 
