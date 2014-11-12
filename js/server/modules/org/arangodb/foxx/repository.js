@@ -402,10 +402,14 @@ _.extend(Repository.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   update: function (model, data) {
     'use strict';
+    model.emit('beforeUpdate', data);
+    model.emit('beforeSave', data);
     var id = model.get("_id") || model.get("_key"),
       id_and_rev = this.collection.update(id, data);
     model.set(data);
     model.set(id_and_rev);
+    model.emit('afterSave', data);
+    model.emit('afterUpdate', data);
     return model;
   },
 
