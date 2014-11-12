@@ -597,7 +597,17 @@
         contentType: "application/json",
         processData: false,
         success: function (data) {
-          outputEditor.setValue(JSON.stringify(data.result, undefined, 2));
+          var warnings = "";
+          if (data.extra.warnings.length > 0) {
+            warnings += "Warnings:" + "\r\n\r\n";
+            data.extra.warnings.forEach(function(w) {
+              warnings += "[" + w.code + "], '" + w.message + "'\r\n";
+            });
+          }
+          if (warnings !== "") {
+            warnings += "\r\n" + "Result:" + "\r\n\r\n";
+          }
+          outputEditor.setValue(warnings + JSON.stringify(data.result, undefined, 2));
           self.switchTab("result-switch");
           window.progressView.hide();
           self.deselect(outputEditor);
