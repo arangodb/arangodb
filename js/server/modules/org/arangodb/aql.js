@@ -858,6 +858,8 @@ function GET_DOCUMENTS (collection, offset, limit) {
   if (limit === undefined) {
     limit = null;
   }
+      
+  WARN(null, INTERNAL.errors.ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION, AQL_TO_STRING(collection));
 
   if (isCoordinator) {
     return COLLECTION(collection).all().skip(offset).limit(limit).toArray();

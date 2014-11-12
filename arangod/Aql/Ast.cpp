@@ -1728,7 +1728,7 @@ AstNode* Ast::optimizeFor (AstNode* node) {
       expression->type != NODE_TYPE_LIST) {
     // right-hand operand to FOR statement is no list
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_LIST_EXPECTED,
-                                   TRI_errno_string(TRI_ERROR_QUERY_LIST_EXPECTED) + std::string(" in FOR loop"));
+                                   TRI_errno_string(TRI_ERROR_QUERY_LIST_EXPECTED) + std::string(" as operand to FOR loop"));
   }
   
   // no real optimizations will be done here  
