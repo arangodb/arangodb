@@ -424,8 +424,9 @@
 /// - 1576: @LIT{query options expected}
 ///    "Will be raised when an AQL data-modification query contains an invalid
 ///   options specification."
-/// - 1577: @LIT{collection '\%s' used in expression}
-///    "Will be raised when a collection is used in an AQL expression."
+/// - 1577: @LIT{collection '\%s' used as expression operand}
+///    "Will be raised when a collection is used as an operand in an AQL
+///   expression."
 /// - 1580: @LIT{invalid user function name}
 ///   Will be raised when a user function with an invalid name is registered.
 /// - 1581: @LIT{invalid user function code}
@@ -2343,9 +2344,10 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1577: ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION
 ///
-/// collection '%s' used in expression
+/// collection '%s' used as expression operand
 ///
-///  "Will be raised when a collection is used in an AQL expression."
+///  "Will be raised when a collection is used as an operand in an AQL
+/// expression."
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION                     (1577)
