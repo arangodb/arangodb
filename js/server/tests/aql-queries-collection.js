@@ -542,7 +542,7 @@ function ahuacatlQueryCollectionTestSuite () {
 /// @brief test querying _from and _to of non-edges
 ////////////////////////////////////////////////////////////////////////////////
     
-    testRelations4 : function () {
+    testFromToOfNonEdge : function () {
       var expected = [ 
         {
           "from" : null,
