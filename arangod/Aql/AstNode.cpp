@@ -166,7 +166,7 @@ static TRI_json_type_e GetNodeCompareType (AstNode const* node) {
 /// @brief compare two nodes
 ////////////////////////////////////////////////////////////////////////////////
 
-static int CompareNodes (AstNode const* lhs, AstNode const* rhs) {
+int triagens::aql::CompareAstNodes (AstNode const* lhs, AstNode const* rhs) {
   auto lType = GetNodeCompareType(lhs);
   auto rType = GetNodeCompareType(rhs);
 
@@ -195,7 +195,7 @@ static int CompareNodes (AstNode const* lhs, AstNode const* rhs) {
     size_t const n = ((numLhs > numRhs) ? numRhs : numLhs);
  
     for (size_t i = 0; i < n; ++i) {
-      int res = CompareNodes(lhs->getMember(i), rhs->getMember(i));
+      int res = triagens::aql::CompareAstNodes(lhs->getMember(i), rhs->getMember(i));
       if (res != 0) {
         return res;
       }    
@@ -492,7 +492,7 @@ void AstNode::sort () {
     auto const l = static_cast<AstNode const*>(lhs);
     auto const r = static_cast<AstNode const*>(rhs);
 
-    return (CompareNodes(l, r) < 0);
+    return (triagens::aql::CompareAstNodes(l, r) < 0);
   });
 
   setFlag(FLAG_SORTED);
@@ -619,6 +619,23 @@ TRI_json_t* AstNode::toJsonValue (TRI_memory_zone_t* zone) const {
     }
 
     return array;
+  }
+
+  if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    TRI_json_t* j = getMember(0)->toJsonValue(zone);
+
+    if (j != nullptr) {
+      if (TRI_IsArrayJson(j)) {
+        TRI_json_t* v = TRI_LookupArrayJson(j, getStringValue());
+        if (v != nullptr) {
+          TRI_json_t* copy = TRI_CopyJson(zone, v);
+          TRI_FreeJson(zone, j);
+          return copy;
+        }
+      }
+      TRI_FreeJson(zone, j);
+      return TRI_CreateNullJson(zone);
+    }
   }
 
   return nullptr;
@@ -1099,10 +1116,12 @@ bool AstNode::isSimple () const {
 
 bool AstNode::isConstant () const {
   if (hasFlag(FLAG_CONSTANT)) {
+    TRI_ASSERT(! hasFlag(FLAG_DYNAMIC));
     // fast track exit
     return true;
   }
   if (hasFlag(FLAG_DYNAMIC)) {
+    TRI_ASSERT(! hasFlag(FLAG_CONSTANT));
     // fast track exit
     return false;
   }
@@ -1152,6 +1171,13 @@ bool AstNode::isConstant () const {
 
     setFlag(FLAG_CONSTANT);
     return true;
+  }
+
+  if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    if (getMember(0)->isConstant()) {
+      setFlag(FLAG_CONSTANT);
+      return true;
+    }
   }
 
   setFlag(FLAG_DYNAMIC);
@@ -1503,6 +1529,12 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
   message.append(getTypeString());
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
+}
+
+std::string AstNode::toString () const {
+   triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
+   stringify(&buffer, false);
+   return std::string(buffer.c_str(), buffer.length());
 }
 
 // -----------------------------------------------------------------------------
