@@ -850,9 +850,10 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
     _collection(en->collection()),
     _posInDocs(0),
     _allBoundsConstant(true),
-    _skiplistIterator(nullptr){
+    _skiplistIterator(nullptr),
+    _condition(&en->_ranges) {
    
-  std::vector<std::vector<RangeInfo>> const& orRanges = en->_ranges;
+  std::vector<std::vector<RangeInfo>> const& orRanges = en->_ranges;//TODO replace this with _condition
   TRI_ASSERT(en->_index != nullptr);
 
   TRI_ASSERT(orRanges.size() == 1);  // OR expressions not yet implemented
@@ -944,7 +945,7 @@ int IndexRangeBlock::initialize () {
 bool IndexRangeBlock::initIndex () {
   
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
-  IndexOrCondition const* condition = &en->_ranges;
+  //IndexOrCondition const* _condition = &en->_ranges;
   
   TRI_ASSERT(en->_index != nullptr);
    
@@ -1040,7 +1041,7 @@ bool IndexRangeBlock::initIndex () {
       newCondition.get()->at(0).push_back(actualRange);
     }
     
-    condition = newCondition.get();
+    _condition = newCondition.get();
   }
    
   /*if (en->_index->type == TRI_IDX_TYPE_PRIMARY_INDEX) {
@@ -1051,7 +1052,7 @@ bool IndexRangeBlock::initIndex () {
     return true; //no initialization here!
   }
   if (en->_index->type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
-    initSkiplistIndex(*condition);
+    initSkiplistIndex(*_condition);
     return (_skiplistIterator != nullptr);
   }/*
   else if (en->_index->type == TRI_IDX_TYPE_EDGE_INDEX) {
@@ -1083,14 +1084,13 @@ bool IndexRangeBlock::readIndex (size_t atMost) {
   }
   
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
-  IndexOrCondition const* condition = &en->_ranges; //TODO remove this line
   
   if (en->_index->type == TRI_IDX_TYPE_PRIMARY_INDEX) {
     // atMost not passed since only equality is supported
     //readPrimaryIndex(*condition); //TODO correct
   }
   else if (en->_index->type == TRI_IDX_TYPE_HASH_INDEX) {
-    readHashIndex(*condition, atMost);
+    readHashIndex(*_condition, atMost);
   }
   else if (en->_index->type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
     readSkiplistIndex(atMost);
@@ -1210,7 +1210,10 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t atLeast,
           _pos = 0;
         }
         if (! _buffer.empty()) {
-          initIndex(); 
+          if(! initIndex()) {//FIXME is this right?
+            _done = true;
+            return nullptr;
+          }
           readIndex(atMost);
         }
         // If _buffer is empty, then we will fetch a new block in the next call
@@ -1414,7 +1417,6 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges, size_t atMo
   setupSearchValue();  
   TRI_index_result_t list = TRI_LookupHashIndex(idx, &searchValue);
   destroySearchValue();
-
   
   size_t const n = list._length;
   _posInHashIndex += n;
