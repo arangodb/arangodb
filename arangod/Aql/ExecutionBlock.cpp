@@ -1163,6 +1163,33 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t atLeast,
       // initialised).
       readIndex(atMost);
       _posInDocs = 0;     // position in _documents . . .
+    } 
+    else if (_posInDocs >= _documents.size()) {
+      // we have exhausted our local documents buffer,
+
+      _posInDocs = 0;
+      AqlItemBlock* cur = _buffer.front();
+
+      if (! readIndex(atMost)) { //no more output from this version of the index
+        if (++_pos >= cur->size()) {
+          _buffer.pop_front();  // does not throw
+          delete cur;
+          _pos = 0;
+        }
+        if (_buffer.empty()) {
+          if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize) ) {
+            _done = true;
+            return nullptr;
+          }
+          _pos = 0;           // this is in the first block
+        }
+        
+        if(! initIndex()) {
+          _done = true;
+          return nullptr;
+        }
+        readIndex(atMost);
+      }
     }
 
     // If we get here, we do have _buffer.front() and _pos points into it
@@ -1207,29 +1234,6 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t atLeast,
       }
     }
 
-    // Advance read position:
-    if (_posInDocs >= _documents.size()) {
-      // we have exhausted our local documents buffer,
-
-      _posInDocs = 0;
-
-      if (! readIndex(atMost)) { //no more output from this version of the index
-        if (++_pos >= cur->size()) {
-          _buffer.pop_front();  // does not throw
-          delete cur;
-          _pos = 0;
-        }
-        if (! _buffer.empty()) {
-          if(! initIndex()) {
-            _done = true;
-            return nullptr;
-          }
-          readIndex(atMost);
-        }
-        // If _buffer is empty, then we will fetch a new block in the next call
-        // and then init/read the index.
-      }
-    }
   }
   while (res.get() == nullptr);
 
