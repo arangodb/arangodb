@@ -129,7 +129,7 @@ void AggregatorGroup::addValues (AqlItemBlock const* src,
 /// @brief batch size value
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t const ExecutionBlock::DefaultBatchSize = 11;
+size_t const ExecutionBlock::DefaultBatchSize = 1000;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
