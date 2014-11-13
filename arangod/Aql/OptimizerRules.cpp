@@ -1761,9 +1761,6 @@ int triagens::aql::removeFiltersCoveredByIndex (Optimizer* opt,
     while (current != nullptr) {
       if (current->getType() == EN::INDEX_RANGE) {
         // found an index range, now check if the expression is covered by the index
-        auto variable = static_cast<IndexRangeNode const*>(current)->outVariable();
-        TRI_ASSERT(variable != nullptr);
-        
         auto const& ranges = static_cast<IndexRangeNode const*>(current)->ranges();
 
         // TODO: this is not prepared for OR conditions
