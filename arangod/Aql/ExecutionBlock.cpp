@@ -129,7 +129,7 @@ void AggregatorGroup::addValues (AqlItemBlock const* src,
 /// @brief batch size value
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t const ExecutionBlock::DefaultBatchSize = 1000;
+size_t const ExecutionBlock::DefaultBatchSize = 11;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -1254,7 +1254,8 @@ size_t IndexRangeBlock::skipSome (size_t atLeast,
 
   while (skipped < atLeast) {
     if (_buffer.empty()) {
-      if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
+      if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize) 
+          || (! initIndex())) {
         _done = true;
         return skipped;
       }
@@ -1286,14 +1287,17 @@ size_t IndexRangeBlock::skipSome (size_t atLeast,
 
       // let's read the index if bounds are variable:
       if (! _buffer.empty()) {
-        readIndex(atMost); // TODO: add atMost?
+          if(! initIndex()) {
+            _done = true;
+            return skipped;
+          }
+          readIndex(atMost);
       }
       _posInDocs = 0;
       
       // If _buffer is empty, then we will fetch a new block in the next round
       // and then read the index.
     }
-
   }
 
   return skipped; 
