@@ -1066,9 +1066,8 @@ bool IndexRangeBlock::initIndex () {
   else if (en->_index->type == TRI_IDX_TYPE_EDGE_INDEX) {
     return true; //no initialization here!
   }
-  else {
-    TRI_ASSERT(false);
-  }
+          
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected index type"); 
   LEAVE_BLOCK;
 }
 
