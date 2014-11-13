@@ -266,8 +266,11 @@ _.extend(Repository.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   remove: function (model) {
     'use strict';
-    var id = model.get('_id');
-    return this.collection.remove(id);
+    model.emit('beforeRemove');
+    var id = model.get('_id'),
+      result = this.collection.remove(id);
+    model.emit('afterRemove');
+    return result;
   },
 
 ////////////////////////////////////////////////////////////////////////////////
