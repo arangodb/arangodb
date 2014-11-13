@@ -1541,7 +1541,7 @@ void IndexRangeBlock::readEdgeIndex (IndexOrCondition const& ranges) {
 
 void IndexRangeBlock::initSkiplistIndex (IndexOrCondition const& ranges) {
   ENTER_BLOCK;
-  TRI_ASSERT(_skiplistIterator == nullptr)
+  TRI_ASSERT(_skiplistIterator == nullptr);
   
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
   TRI_index_t* idx = en->_index->data;
