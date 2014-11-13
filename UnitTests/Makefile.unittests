@@ -440,6 +440,7 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-statement.js \
                @top_srcdir@/js/common/tests/shell-statement-noncluster.js \
                @top_srcdir@/js/common/tests/shell-explain-noncluster.js \
+               @top_srcdir@/js/common/tests/shell-tasks-timecritical.js \
                @top_srcdir@/js/common/tests/shell-transactions.js \
                @top_srcdir@/js/common/tests/shell-unload.js \
                @top_srcdir@/js/common/tests/shell-users.js \
@@ -461,7 +462,6 @@ SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/shell-sharding-helpers.js \
                @top_srcdir@/js/server/tests/shell-compaction-noncluster-timecritical.js \
                @top_srcdir@/js/server/tests/shell-shaped-noncluster.js \
-               @top_srcdir@/js/server/tests/shell-tasks-timecritical.js \
                @top_srcdir@/js/server/tests/shell-transactions-noncluster.js \
                @top_srcdir@/js/server/tests/shell-routing.js \
                @top_srcdir@/js/server/tests/shell-any-noncluster.js \
@@ -539,6 +539,11 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-escaping.js \
 			@top_srcdir@/js/server/tests/aql-explain-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-functions.js \
+			@top_srcdir@/js/server/tests/aql-functions-date.js \
+			@top_srcdir@/js/server/tests/aql-functions-misc.js \
+			@top_srcdir@/js/server/tests/aql-functions-numeric.js \
+			@top_srcdir@/js/server/tests/aql-functions-string.js \
+			@top_srcdir@/js/server/tests/aql-functions-types.js \
 			@top_srcdir@/js/server/tests/aql-general-graph.js \
 			@top_srcdir@/js/server/tests/aql-graph.js \
 			@top_srcdir@/js/server/tests/aql-hash-noncluster.js \

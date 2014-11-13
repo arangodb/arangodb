@@ -70,11 +70,11 @@ More Information
 ----------------
 
 Please check the
-[Installation Manual](https://www.arangodb.com/Installing/README.html)
+[Installation Manual](https://docs.arangodb.com/Installing/README.html)
 for installation and compilation instructions.
 
 The
-[User Manual](https://www.arangodb.com/FirstSteps/README.html)
+[User Manual](https://docs.arangodb.com/FirstSteps/README.html)
 has an introductory chapter showing the basic operations of ArangoDB.
 
 Or you can use the 

@@ -62,6 +62,7 @@ files = {
   "js/actions/api-simple.js" : "simple",
   "js/actions/api-structure.js" : "structure",
   "js/actions/api-system.js" : "system",
+  "js/actions/api-tasks.js" : "tasks",
   "js/actions/api-transaction.js" : "transaction",
   "js/actions/api-traversal.js" : "traversal",
   "js/actions/api-user.js" : "user",
