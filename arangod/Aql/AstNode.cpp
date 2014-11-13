@@ -132,12 +132,74 @@ std::unordered_map<int, std::string const> const AstNode::valueTypeNames{
 // -----------------------------------------------------------------------------
 // --SECTION--                                           static helper functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief resolve an attribute access
+////////////////////////////////////////////////////////////////////////////////
+
+static AstNode const* ResolveAttribute (AstNode const* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->type == NODE_TYPE_ATTRIBUTE_ACCESS);
+
+  std::vector<std::string> attributeNames;
+
+  while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    char const* attributeName = node->getStringValue();
+
+    TRI_ASSERT(attributeName != nullptr);
+    attributeNames.push_back(attributeName);
+    node = node->getMember(0);
+  }
+
+  while (true) {
+    TRI_ASSERT(! attributeNames.empty());
+
+    TRI_ASSERT(node->type == NODE_TYPE_VALUE ||
+               node->type == NODE_TYPE_LIST ||
+               node->type == NODE_TYPE_ARRAY);
+
+    bool found = false;
+
+    if (node->type == NODE_TYPE_ARRAY) {
+      char const* attributeName = attributeNames.back().c_str();
+      attributeNames.pop_back();
+
+      size_t const n = node->numMembers();
+      for (size_t i = 0; i < n; ++i) {
+        auto member = node->getMember(i);
+
+        if (member != nullptr && strcmp(member->getStringValue(), attributeName) == 0) {
+          // found the attribute
+          node = member->getMember(0);
+          if (attributeNames.empty()) {
+            // we found what we looked for
+            return node;
+          }
+          else {
+            // we found the correct attribute but there is now an attribute access on the result
+            found = true;
+            break;
+          }
+        }
+      }
+    }
+      
+    if (! found) {
+      break;
+    }
+  } 
+    
+  // attribute not found or non-array
+  return Ast::createNodeValueNull();
+}
           
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the node type for inter-node comparisons
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_json_type_e GetNodeCompareType (AstNode const* node) {
+  TRI_ASSERT(node != nullptr);
+
   if (node->type == NODE_TYPE_VALUE) {
     switch (node->value.type) {
       case VALUE_TYPE_NULL:
@@ -158,7 +220,11 @@ static TRI_json_type_e GetNodeCompareType (AstNode const* node) {
   else if (node->type == NODE_TYPE_ARRAY) {
     return TRI_JSON_ARRAY;
   }
+
+  // we should never get here
   TRI_ASSERT(false);
+
+  // return null in case assertions are turned off
   return TRI_JSON_NULL;
 }
 
@@ -166,7 +232,15 @@ static TRI_json_type_e GetNodeCompareType (AstNode const* node) {
 /// @brief compare two nodes
 ////////////////////////////////////////////////////////////////////////////////
 
-int triagens::aql::CompareAstNodes (AstNode const* lhs, AstNode const* rhs) {
+int triagens::aql::CompareAstNodes (AstNode const* lhs, 
+                                    AstNode const* rhs) {
+  if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    lhs = ResolveAttribute(lhs);
+  }
+  if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    rhs = ResolveAttribute(rhs);
+  }
+
   auto lType = GetNodeCompareType(lhs);
   auto rType = GetNodeCompareType(rhs);
 
