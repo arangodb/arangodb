@@ -932,14 +932,24 @@ int IndexRangeBlock::initialize () {
       throw;
     }
   }
-  //else {   // _allBoundsConstant
-  //  readIndex();
-  //}
   return res;
 }
 
 // init the index for reading, this should be called once per new incoming
 // block!
+//
+// This is either called every time we get a new incoming block. 
+// If all the bounds are constant, then in the case of hash, primary or edges
+// indexes it does nothing. In the case of a skiplist index, it creates a
+// skiplistIterator which is used by readIndex. If at least one bound is
+// variable, then this this also evaluates the IndexOrCondition required to
+// determine the values of the bounds. 
+//
+// It is guaranteed that
+//   _buffer   is not empty, in particular _buffer.front() is defined
+//   _pos      points to a position in _buffer.front()
+// Therefore, we can use the register values in _buffer.front() in row
+// _pos to evaluate the variable bounds.
 
 bool IndexRangeBlock::initIndex () {
   ENTER_BLOCK
@@ -948,7 +958,6 @@ bool IndexRangeBlock::initIndex () {
   _condition = &en->_ranges;
   
   TRI_ASSERT(en->_index != nullptr);
-   
 
   // Find out about the actual values for the bounds in the variable bound case:
   if (! _allBoundsConstant) {
@@ -1067,15 +1076,13 @@ bool IndexRangeBlock::initIndex () {
 
 bool IndexRangeBlock::readIndex (size_t atMost) {
   ENTER_BLOCK;
-  // TODO: update this comment, which is now out of date!!
-  // This is either called from initialize if all bounds are constant,
-  // in this case it is never called again. If there is at least one
-  // variable bound, then readIndex is called once for every item coming
-  // in from our dependency. In that case, it is guaranteed that
-  //   _buffer   is not empty, in particular _buffer.front() is defined
-  //   _pos      points to a position in _buffer.front()
-  // Therefore, we can use the register values in _buffer.front() in row
-  // _pos to evaluate the variable bounds.
+  // this is called every time we want more in _documents. 
+  // For non-skiplist indexes (currently hash, primary, edge), this 
+  // only reads the index once, and never again (although there might be
+  // multiple calls to this function). For skiplists indexes, initIndex creates
+  // a skiplistIterator and readIndex just reads from the iterator until it is
+  // done. Then initIndex is read again and so on. This is to avoid reading the
+  // entire index when we only want a small number of documents. 
   
   if (_documents.empty()) {
     _documents.reserve(atMost);
@@ -1121,10 +1128,6 @@ int IndexRangeBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   _pos = 0;
   _posInDocs = 0;
   
-  /*if (_allBoundsConstant && _documents.size() == 0) {
-    _done = true;
-  }*/
-
   return TRI_ERROR_NO_ERROR; 
   LEAVE_BLOCK;
 }
@@ -1217,7 +1220,7 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t atLeast,
           _pos = 0;
         }
         if (! _buffer.empty()) {
-          if(! initIndex()) {//FIXME is this right?
+          if(! initIndex()) {
             _done = true;
             return nullptr;
           }
@@ -1258,10 +1261,7 @@ size_t IndexRangeBlock::skipSome (size_t atLeast,
       _pos = 0;           // this is in the first block
       
       // This is a new item, so let's read the index if bounds are variable:
-      //if (! _allBoundsConstant) {
-        readIndex(atMost); 
-      //}
-
+      readIndex(atMost); 
       _posInDocs = 0;     // position in _documents . . .
     }
 
@@ -1414,7 +1414,7 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
           // here x->_low->_bound = x->_high->_bound 
           searchValue._values[i] = *shaped;
           TRI_Free(shaper->_memoryZone, shaped);
-          //TODO add break here!
+          break; 
         }
       }
     }
