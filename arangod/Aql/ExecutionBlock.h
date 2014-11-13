@@ -637,7 +637,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _inVars, a vector containing for each expression above
 /// a vector of Variable*, used to execute the expression
-////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
         
         std::vector<std::vector<Variable*>> _inVars;
 
@@ -649,7 +649,11 @@ namespace triagens {
         std::vector<std::vector<RegisterId>> _inRegs;
 
         TRI_skiplist_iterator_t* _skiplistIterator;
+
         size_t _posInHashIndex;
+
+        // condition for current incoming block
+        IndexOrCondition const* _condition;
 
     };
 
