@@ -648,6 +648,9 @@ namespace triagens {
 
         void stringify (triagens::basics::StringBuffer*,
                         bool) const;
+        
+        std::string toString () const;
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -705,6 +708,7 @@ namespace triagens {
 
     };
 
+    int CompareAstNodes (AstNode const*, AstNode const*);
   }
 }
 
