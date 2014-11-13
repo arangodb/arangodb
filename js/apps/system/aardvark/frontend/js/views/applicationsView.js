@@ -10,7 +10,7 @@ window.ApplicationsView = Backbone.View.extend({
   events: {
     "click #checkDevel"         : "toggleDevel",
     "click #checkActive"        : "toggleActive",
-    "click #checkInactive"      : "toggleInactive",
+    "click #checkSystem"        : "toggleSystem",
     "click #foxxToggle"         : "slideToggle",
     "click #importFoxxToggle"   : "slideToggleImport",
     "change #importFoxx"        : "uploadSetup",
@@ -188,12 +188,14 @@ window.ApplicationsView = Backbone.View.extend({
     });
   },
 
-  toggleInactive: function() {
+  toggleSystem: function() {
+    this._showSystem = !this._showSystem;
     var self = this;
-    this._showInactive = !this._showInactive;
     _.each(this._installedSubViews, function(v) {
-      v.toggle("inactive", self._showInactive);
+      v.toggle("system", self._showSystem);
     });
+    this.createSubViews();
+    this.renderSubViews();
   },
 
   hideImportModal: function() {
@@ -232,28 +234,36 @@ window.ApplicationsView = Backbone.View.extend({
       v.undelegateEvents();
     });
 
+    this.collection.fetch({
+      success: function() {
+        self.createSubViews();
+        self.render();
+      }
+    });
+  },
+
+  createSubViews: function() {
+    var self = this;
     this._installedSubViews = { };
     this._availableSubViews = { };
 
-    this.collection.fetch({
-      success: function() {
-        self.collection.each(function (foxx) {
-          var subView;
-          if (foxx.get("type") === "app") {
-            subView = new window.FoxxInstalledView({
-              model: foxx,
-              appsView: self
-            });
-            self._availableSubViews[foxx.get('_id')] = subView;
-          } else if (foxx.get("type") === "mount") {
-            subView = new window.FoxxActiveView({
-              model: foxx,
-              appsView: self
-            });
-            self._installedSubViews[foxx.get('_id')] = subView;
-          }
+    self.collection.each(function (foxx) {
+      if (foxx.get('isSystem') && ! self._showSystem) {
+        return;
+      }
+      var subView;
+      if (foxx.get("type") === "app") {
+        subView = new window.FoxxInstalledView({
+          model: foxx,
+          appsView: self
         });
-        self.render();
+        self._availableSubViews[foxx.get('_id')] = subView;
+      } else if (foxx.get("type") === "mount") {
+        subView = new window.FoxxActiveView({
+          model: foxx,
+          appsView: self
+        });
+        self._installedSubViews[foxx.get('_id')] = subView;
       }
     });
   },
@@ -263,23 +273,41 @@ window.ApplicationsView = Backbone.View.extend({
     this._availableSubViews = {};
     this._showDevel = true;
     this._showActive = true;
-    this._showInactive = true;
+    this._showSystem = false;
     this.reload();
   },
 
   render: function() {
-
     this.collection.sort();
 
     $(this.el).html(this.template.render({}));
-    var self = this, name;
-    var versions = {};
+    this.renderSubViews();
+    this.delegateEvents();
+    $('#checkActive').attr('checked', this._showActive);
+    $('#checkDevel').attr('checked', this._showDevel);
+    $('#checkSystem').attr('checked', this._showSystem);
+    
+    var self = this;
+    _.each(this._installedSubViews, function(v) {
+      v.toggle("devel", self._showDevel);
+      v.toggle("active", self._showActive);
+      v.toggle("system", self._showSystem);
+    });
 
+    arangoHelper.fixTooltips("icon_arangodb", "left");
+    return this;
+  },
+
+  renderSubViews: function () {
+    $("#availableList").empty();
+    $("#installedList").empty();
     _.each(this._installedSubViews, function (v) {
       $("#installedList").append(v.render());
     });
+
+    var versions = { };
     _.each(this._availableSubViews, function (v) {
-      name = v.model.get("name");
+      var name = v.model.get("name");
 
       //look which installed apps have multiple versions
       if (versions[name]) {
@@ -293,6 +321,7 @@ window.ApplicationsView = Backbone.View.extend({
         };
       }
     });
+
     _.each(this._availableSubViews, function (v) {
       var name = v.model.get("name"),
       version = v.model.get("version");
@@ -324,17 +353,5 @@ window.ApplicationsView = Backbone.View.extend({
         $("#availableList").append(v.render());
       }
     });
-    this.delegateEvents();
-    $('#checkActive').attr('checked', this._showActive);
-    $('#checkInactive').attr('checked', this._showInactive);
-    $('#checkDevel').attr('checked', this._showDevel);
-    _.each(this._installedSubViews, function(v) {
-      v.toggle("devel", self._showDevel);
-      v.toggle("active", self._showActive);
-      v.toggle("inactive", self._showInactive);
-    });
-
-    arangoHelper.fixTooltips("icon_arangodb", "left");
-    return this;
   }
 });
