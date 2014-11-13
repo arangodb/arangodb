@@ -850,7 +850,8 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
     _posInDocs(0),
     _allBoundsConstant(true),
     _skiplistIterator(nullptr),
-    _condition(&en->_ranges) {
+    _condition(&en->_ranges),
+    _freeCondition(false) {
    
   std::vector<std::vector<RangeInfo>> const& orRanges = en->_ranges;//TODO replace this with _condition
   TRI_ASSERT(en->_index != nullptr);
@@ -869,6 +870,10 @@ IndexRangeBlock::~IndexRangeBlock () {
     delete e;
   }
   _allVariableBoundExpressions.clear();
+
+  if (_freeCondition && _condition != nullptr) {
+    delete _condition;
+  }
 }
 
 int IndexRangeBlock::initialize () {
@@ -955,7 +960,9 @@ bool IndexRangeBlock::initIndex () {
   ENTER_BLOCK
   _flag = true; 
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
+  freeCondition();
   _condition = &en->_ranges;
+  _freeCondition = false;
   
   TRI_ASSERT(en->_index != nullptr);
 
@@ -1049,8 +1056,10 @@ bool IndexRangeBlock::initIndex () {
 
       newCondition.get()->at(0).push_back(actualRange);
     }
-    
+   
+    freeCondition(); 
     _condition = newCondition.release();
+    _freeCondition = true;
   }
    
   if (en->_index->type == TRI_IDX_TYPE_PRIMARY_INDEX) {
@@ -1069,6 +1078,14 @@ bool IndexRangeBlock::initIndex () {
           
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected index type"); 
   LEAVE_BLOCK;
+}
+
+void IndexRangeBlock::freeCondition () {
+  if (_condition != nullptr && _freeCondition) {
+    delete _condition;
+    _condition = nullptr;
+    _freeCondition = false;
+  }
 }
 
 // this is called every time everything in _documents has been passed on
