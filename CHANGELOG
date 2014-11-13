@@ -1,6 +1,11 @@
 v2.3.0 (XXXX-XX-XX)
 -------------------
 
+* hide system applications in **Applications** tab by default
+
+  Display of system applications can be toggled by using the *system applications* 
+  toggle in the UI.
+
 * added HTTP REST API for managing tasks (`/_api/tasks`)
 
 * allow passing character lists as optional parameter to AQL functions `TRIM`,
