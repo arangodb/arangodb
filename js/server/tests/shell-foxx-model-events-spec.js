@@ -11,7 +11,8 @@ describe('Model Events', function () {
   beforeEach(function () {
     collection = createSpyObj('collection', [
       'update',
-      'save'
+      'save',
+      'remove'
     ]);
     instance = new Model({ random: '', beforeCalled: false, afterCalled: false });
     repository = new FoxxRepository(collection, {model: Model});
@@ -52,6 +53,13 @@ describe('Model Events', function () {
     expect(instance.get('afterCalled')).toBe(true);
   });
 
+  it('should emit beforeRemove and afterRemove events when removing the model', function () {
+    addHooks(instance, 'Remove');
+    repository.remove(instance);
+    expect(instance.get('beforeCalled')).toBe(true);
+    expect(instance.get('afterCalled')).toBe(true);
+  });
+
 });
 
 function addHooks(model, ev, dataToReceive) {
@@ -61,17 +69,13 @@ function addHooks(model, ev, dataToReceive) {
 
   model.on('before' + ev, function (data) {
     expect(this).toEqual(model);
-    if (dataToReceive) {
-      expect(data).toEqual(dataToReceive);
-    }
+    expect(data).toEqual(dataToReceive);
     this.set('random', random);
     this.set('beforeCalled', true);
   });
   model.on('after' + ev, function (data) {
     expect(this).toEqual(model);
-    if (dataToReceive) {
-      expect(data).toEqual(dataToReceive);
-    }
+    expect(data).toEqual(dataToReceive);
     this.set('afterCalled', true);
     expect(this.get('beforeCalled')).toBe(true);
     expect(this.get('random')).toEqual(random);
