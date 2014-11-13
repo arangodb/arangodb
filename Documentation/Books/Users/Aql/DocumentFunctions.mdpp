@@ -20,7 +20,7 @@ AQL supports the following functions to operate on document values:
    
   @EXAMPLES
 
-      RETURN MATCHES(
+      MATCHES(
         { "test" : 1 }, [ 
           { "test" : 1, "foo" : "bar" }, 
           { "foo" : 1 }, 
@@ -37,27 +37,21 @@ AQL supports the following functions to operate on document values:
 
   For example, two documents with distinct attribute names can easily be merged into one: 
 
-      RETURN MERGE(
+      /* { "user1" : { "name" : "J" }, "user2" : { "name" : "T" } } */
+      MERGE(
         { "user1" : { "name" : "J" } }, 
         { "user2" : { "name" : "T" } }
       )
 
-      [ 
-        { "user1" : { "name" : "J" }, 
-  	"user2" : { "name" : "T" } } 
-      ]
-
   When merging documents with identical attribute names, the attribute values of the
   latter documents will be used in the end result:
 
-      RETURN MERGE(
+      /* { "users" : { "name" : "T" } } */
+      MERGE(
         { "users" : { "name" : "J" } }, 
         { "users" : { "name" : "T" } }
       )
 
-      [ 
-        { "users" : { "name" : "T" } } 
-      ]
 
   Please note that merging will only be done for top-level attributes. If you wish to
   merge sub-attributes, you should consider using *MERGE_RECURSIVE* instead.
@@ -68,51 +62,63 @@ AQL supports the following functions to operate on document values:
   documents contained later in the argument list.
 
   For example, two documents with distinct attribute names can easily be merged into one: 
-
-      RETURN MERGE_RECURSIVE(
+      
+      /* { "user-1" : { "name" : "J", "livesIn" : { "city" : "LA", "state" : "CA" }, "age" : 42 } } */
+      MERGE_RECURSIVE(
         { "user-1" : { "name" : "J", "livesIn" : { "city" : "LA" } } }, 
         { "user-1" : { "age" : 42, "livesIn" : { "state" : "CA" } } }
       )
 
-      [ 
-        { "user-1" : { "name" : "J", "livesIn" : { "city" : "LA", "state" : "CA" }, "age" : 42 } } 
-      ]
 
 - *TRANSLATE(value, lookup, defaultValue)*: Looks up the value *value* in the *lookup*
   document. If *value* is a key in *lookup*, then *value* will be replaced with the
   lookup value found. If *value* is not present in *lookup*, then *defaultValue* will
   be returned if specified. If no *defaultValue* is specified, *value* will be returned:
 
-      RETURN TRANSLATE("FR", { US: "United States", UK: "United Kingdom", FR: "France" })
+      /* "France" */
+      TRANSLATE("FR", { US: "United States", UK: "United Kingdom", FR: "France" })
 
-      "France"
-
-      RETURN TRANSLATE(42, { foo: "bar", bar: "baz" }, "not found!")
-
-      "not found!"
+      /* "not found!" */
+      TRANSLATE(42, { foo: "bar", bar: "baz" }, "not found!")
 
 - *HAS(document, attributename)*: Returns *true* if *document* has an
   attribute named *attributename*, and *false* otherwise.
 
-- *ATTRIBUTES(document, *removeInternal, sort)*: Returns the attribute
-  names of the document *document as a list. 
+- *ATTRIBUTES(document, removeInternal, sort)*: Returns the attribute
+  names of the *document* as a list. 
   If *removeInternal* is set to *true*, then all internal attributes (such as *_id*, 
   *_key* etc.) are removed from the result. If *sort* is set to *true*, then the
   attribute names in the result will be sorted. Otherwise they will be returned in any order.
+
+- *VALUES(document, removeInternal)*: Returns the attribute values of the *document*
+  as a list. If *removeInternal* is set to *true*, then all internal attributes (such 
+  as *_id*, *_key* etc.) are removed from the result. 
+
+- *ASSEMBLE(attributes, values)*: Returns a document object assembled from the
+  separate parameters *attributes* and *values*. *attributes* and *values* must be
+  lists and must have the same length. The items in *attributes* will be used for
+  naming the attributes in the result. The items in *values* will be used as the
+  actual values of the result.
+
+      /* { "name" : "some user", "active" : true, "hobbies" : [ "swimming", "riding" ] } */
+      ASSEMBLE([ 'name', 'active', 'hobbies' ], 
+               [ 'some user', true, [ 'swimming', 'riding' ] ])
 
 - *UNSET(document, attributename, ...)*: Removes the attributes *attributename*
   (can be one or many) from *document*. All other attributes will be preserved.
   Multiple attribute names can be specified by either passing multiple individual string argument 
   names, or by passing a list of attribute names:
 
-      RETURN UNSET(doc, '_id', '_key', [ 'foo', 'bar' ])
+      UNSET(doc, '_id', '_key', [ 'foo', 'bar' ])
+      UNSET(doc, [ '_id', '_key', 'foo', 'bar' ])
 
 - *KEEP(document, attributename, ...)*: Keeps only the attributes *attributename*
   (can be one or many) from *document*. All other attributes will be removed from the result.
   Multiple attribute names can be specified by either passing multiple individual string argument 
   names, or by passing a list of attribute names:
 
-      RETURN KEEP(doc, 'firstname', 'name', 'likes')
+      KEEP(doc, 'firstname', 'name', 'likes')
+      KEEP(doc, [ 'firstname', 'name', 'likes' ])
 
 - *PARSE_IDENTIFIER(document-handle)*: Parses the [document handle](../Glossary/README.html#document_handle) specified in 
   *document-handle* and returns a the handle's individual parts a separate attributes.
@@ -121,14 +127,9 @@ AQL supports the following functions to operate on document values:
   identifier string (e.g. *_users/1234*). Passing either a non-string or a non-document or a
   document without an *_id* attribute will result in an error.
 
-      RETURN PARSE_IDENTIFIER('_users/my-user')
+      /* { "collection" : "_users", "key" : "my-user" } */ 
+      PARSE_IDENTIFIER('_users/my-user')
 
-      [ 
-        { "collection" : "_users", "key" : "my-user" } 
-      ]
+      /* { "collection" : "mycollection", "key" : "mykey" } */ 
+      PARSE_IDENTIFIER({ "_id" : "mycollection/mykey", "value" : "some value" })
 
-      RETURN PARSE_IDENTIFIER({ "_id" : "mycollection/mykey", "value" : "some value" })
-
-      [ 
-        { "collection" : "mycollection", "key" : "mykey" } 
-      ]

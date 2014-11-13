@@ -536,6 +536,118 @@ function ahuacatlQueryCollectionTestSuite () {
 
       var actual = getQueryResults("FOR u in " + users.name() + " FILTER u.active == true LET f = ((FOR r IN " + relations.name() + " FILTER r.from == u.id && r.type == \"friend\" FOR u2 IN " + users.name() + " FILTER r.to == u2.id SORT u2.name RETURN u2)) SORT LENGTH(f) DESC, u.name LIMIT 0,4 FILTER LENGTH(f) > 0 RETURN { \"name\" : u.name, \"friendNames\" : f[*].name, \"friendIds\" : f[*].id }");
       assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test querying _from and _to of non-edges
+////////////////////////////////////////////////////////////////////////////////
+    
+    testFromToOfNonEdge : function () {
+      var expected = [ 
+        {
+          "from" : null,
+          "name" : "Abigail",
+          "to" : null
+        },
+        {
+          "from" : null,
+          "name" : "Alexander",
+          "to" : null
+        },
+        {
+          "from" : null,
+          "name" : "Anthony",
+          "to" : null
+        },
+        {
+          "from" : null,
+          "name" : "Chloe",
+          "to" : null
+        },
+        {
+          "from" : null,
+          "name" : "Daniel",
+          "to" : null
+        },
+        {
+          "from" : null,
+          "name" : "Diego",
+          "to" : null
+        },
+        {
+          "from" : null,
+          "name" : "Emma",
+          "to" : null
+        },
+        {
+          "from" : null,
+          "name" : "Ethan",
+          "to" : null
+        },
+        {
+          "from" : null,
+          "name" : "Eva",
+          "to" : null
+        },
+        {
+          "from" : null,
+          "name" : "Fred",
+          "to" : null
+        },
+        {
+          "from" : null,
+          "name" : "Isabella",
+          "to" : null
+        },
+        {
+          "from" : null,
+          "name" : "Jacob",
+          "to" : null
+        },
+        {
+          "from" : null,
+          "name" : "Jim",
+          "to" : null
+        },
+        {
+          "from" : null,
+          "name" : "John",
+          "to" : null
+        },
+        {
+          "from" : null,
+          "name" : "Madison",
+          "to" : null
+        },
+        {
+          "from" : null,
+          "name" : "Mariah",
+          "to" : null
+        },
+        {
+          "from" : null,
+          "name" : "Mary",
+          "to" : null
+        },
+        {
+          "from" : null,
+          "name" : "Michael",
+          "to" : null
+        },
+        {
+          "from" : null,
+          "name" : "Olivia",
+          "to" : null
+        },
+        {
+          "from" : null,
+          "name" : "Sophia",
+          "to" : null
+        }
+      ];
+
+      var actual = getQueryResults("FOR u in " + users.name() + " SORT u.name RETURN { name : u.name, from: u._from, to: u._to }");
+      assertEqual(expected, actual);
     }
 
   };

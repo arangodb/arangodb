@@ -66,6 +66,38 @@ the more intuitive variant:
     FOR i IN ... FILTER i NOT IN [ 23, 42 ] ...
 
 
+!SUBSUBSECTION Improvements of builtin functions
+
+The following AQL string functions have been added:
+
+- `LTRIM(value, characters)`: left-trims a string value
+- `RTRIM(value, characters)`: right-trims a string value
+- `FIND_FIRST(value, search, start, end)`: finds the first occurrence 
+   of a search string
+- `FIND_LAST(value, search, start, end)`: finds the last occurence of a 
+   search string
+- `SPLIT(value, separator, limit) `: splits a string into a list, 
+   using a separator
+- `SUBSTITUTE(value, search, replace, limit)`: replaces characters 
+   or strings inside another
+
+The following other AQL functions have been added:
+
+- `VALUES(document)`: returns the values of a document as a list (this is 
+   the counterpart to the already existing `ATTRIBUTES` function)
+- `ASSEMBLE(attributes, values)`: returns a document constructed from attributes
+   and values passed in separate parameters
+
+The already existing functions `CONCAT` and `CONCAT_SEPARATOR` now support
+list arguments, e.g.:
+
+   /* "foobarbaz" */
+   CONCAT([ 'foo', 'bar', 'baz'])
+
+   /* "foo,bar,baz" */
+   CONCAT_SEPARATOR(", ", [ 'foo', 'bar', 'baz'])
+
+
 !SUBSUBSECTION AQL queries throw less exceptions
 
 In previous versions of ArangoDB, AQL queries aborted with an exception in many

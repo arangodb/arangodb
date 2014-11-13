@@ -172,13 +172,14 @@ void TRI_InitialiseErrorMessages () {
   REG_ERROR(ERROR_QUERY_MODIFY_IN_SUBQUERY, "modify operation in subquery");
   REG_ERROR(ERROR_QUERY_COMPILE_TIME_OPTIONS, "query options must be readable at query compile time");
   REG_ERROR(ERROR_QUERY_EXCEPTION_OPTIONS, "query options expected");
-  REG_ERROR(ERROR_QUERY_BAD_JSON_PLAN, "JSON describing execution plan was bad");
-  REG_ERROR(ERROR_QUERY_NOT_FOUND, "query ID not found");
-  REG_ERROR(ERROR_QUERY_IN_USE, "query with this ID is in use");
+  REG_ERROR(ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION, "collection '%s' used as expression operand");
   REG_ERROR(ERROR_QUERY_FUNCTION_INVALID_NAME, "invalid user function name");
   REG_ERROR(ERROR_QUERY_FUNCTION_INVALID_CODE, "invalid user function code");
   REG_ERROR(ERROR_QUERY_FUNCTION_NOT_FOUND, "user function '%s()' not found");
   REG_ERROR(ERROR_QUERY_FUNCTION_RUNTIME_ERROR, "user function runtime error: %s");
+  REG_ERROR(ERROR_QUERY_BAD_JSON_PLAN, "bad execution plan JSON");
+  REG_ERROR(ERROR_QUERY_NOT_FOUND, "query ID not found");
+  REG_ERROR(ERROR_QUERY_IN_USE, "query with this ID is in use");
   REG_ERROR(ERROR_CURSOR_NOT_FOUND, "cursor not found");
   REG_ERROR(ERROR_TRANSACTION_INTERNAL, "internal transaction error");
   REG_ERROR(ERROR_TRANSACTION_NESTED, "nested transactions detected");

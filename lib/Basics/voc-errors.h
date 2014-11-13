@@ -424,13 +424,9 @@
 /// - 1576: @LIT{query options expected}
 ///    "Will be raised when an AQL data-modification query contains an invalid
 ///   options specification."
-/// - 1577: @LIT{JSON describing execution plan was bad}
-///    "Will be raised when an HTTP API for a query got an invalid JSON object."
-/// - 1578: @LIT{query ID not found}
-///    "Will be raised when an Id of a query is not found by the HTTP API."
-/// - 1579: @LIT{query with this ID is in use}
-///    "Will be raised when an Id of a query is found by the HTTP API but the
-///   query is in use."
+/// - 1577: @LIT{collection '\%s' used as expression operand}
+///    "Will be raised when a collection is used as an operand in an AQL
+///   expression."
 /// - 1580: @LIT{invalid user function name}
 ///   Will be raised when a user function with an invalid name is registered.
 /// - 1581: @LIT{invalid user function code}
@@ -439,6 +435,13 @@
 ///   Will be raised when a user function is accessed but not found.
 /// - 1583: @LIT{user function runtime error: \%s}
 ///   Will be raised when a user function throws a runtime exception.
+/// - 1590: @LIT{bad execution plan JSON}
+///    "Will be raised when an HTTP API for a query got an invalid JSON object."
+/// - 1591: @LIT{query ID not found}
+///    "Will be raised when an Id of a query is not found by the HTTP API."
+/// - 1592: @LIT{query with this ID is in use}
+///    "Will be raised when an Id of a query is found by the HTTP API but the
+///   query is in use."
 /// - 1600: @LIT{cursor not found}
 ///   Will be raised when a cursor is requested via its id but a cursor with
 ///   that id cannot be found.
@@ -2339,35 +2342,15 @@ void TRI_InitialiseErrorMessages ();
 #define TRI_ERROR_QUERY_EXCEPTION_OPTIONS                                 (1576)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1577: ERROR_QUERY_BAD_JSON_PLAN
+/// @brief 1577: ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION
 ///
-/// JSON describing execution plan was bad
+/// collection '%s' used as expression operand
 ///
-///  "Will be raised when an HTTP API for a query got an invalid JSON object."
+///  "Will be raised when a collection is used as an operand in an AQL
+/// expression."
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_BAD_JSON_PLAN                                     (1577)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1578: ERROR_QUERY_NOT_FOUND
-///
-/// query ID not found
-///
-///  "Will be raised when an Id of a query is not found by the HTTP API."
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_QUERY_NOT_FOUND                                         (1578)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1579: ERROR_QUERY_IN_USE
-///
-/// query with this ID is in use
-///
-///  "Will be raised when an Id of a query is found by the HTTP API but the
-/// query is in use."
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_QUERY_IN_USE                                            (1579)
+#define TRI_ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION                     (1577)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1580: ERROR_QUERY_FUNCTION_INVALID_NAME
@@ -2408,6 +2391,37 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_FUNCTION_RUNTIME_ERROR                            (1583)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1590: ERROR_QUERY_BAD_JSON_PLAN
+///
+/// bad execution plan JSON
+///
+///  "Will be raised when an HTTP API for a query got an invalid JSON object."
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_BAD_JSON_PLAN                                     (1590)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1591: ERROR_QUERY_NOT_FOUND
+///
+/// query ID not found
+///
+///  "Will be raised when an Id of a query is not found by the HTTP API."
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_NOT_FOUND                                         (1591)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1592: ERROR_QUERY_IN_USE
+///
+/// query with this ID is in use
+///
+///  "Will be raised when an Id of a query is found by the HTTP API but the
+/// query is in use."
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_IN_USE                                            (1592)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1600: ERROR_CURSOR_NOT_FOUND

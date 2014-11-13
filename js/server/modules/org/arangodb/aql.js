@@ -418,6 +418,46 @@ function TYPEWEIGHT (value) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compile a regex from a string pattern
 ////////////////////////////////////////////////////////////////////////////////
+  
+function CREATE_REGEX_PATTERN (chars) {
+  "use strict";
+
+  chars = AQL_TO_STRING(chars);
+  var i, n = chars.length, pattern = '';
+  var specialChar = /^([.*+?\^=!:${}()|\[\]\/\\])$/;
+
+  for (i = 0; i < n; ++i) {
+    var c = chars.charAt(i);
+    if (c.match(specialChar)) {
+      // character with special meaning in a regex
+      pattern += '\\' + c;
+    }
+    else if (c === '\t') {
+      pattern += '\\t';
+    }
+    else if (c === '\r') {
+      pattern += '\\r';
+    }
+    else if (c === '\n') {
+      pattern += '\\n';
+    }
+    else if (c === '\b') {
+      pattern += '\\b';
+    }
+    else if (c === '\f') {
+      pattern += '\\f';
+    }
+    else {
+      pattern += c;
+    }
+  }
+
+  return pattern;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compile a regex from a string pattern
+////////////////////////////////////////////////////////////////////////////////
 
 function COMPILE_REGEX (regex, modifiers) {
   "use strict";
@@ -818,6 +858,8 @@ function GET_DOCUMENTS (collection, offset, limit) {
   if (limit === undefined) {
     limit = null;
   }
+      
+  WARN(null, INTERNAL.errors.ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION, AQL_TO_STRING(collection));
 
   if (isCoordinator) {
     return COLLECTION(collection).all().skip(offset).limit(limit).toArray();
@@ -1507,14 +1549,24 @@ function ARITHMETIC_MODULUS (lhs, rhs) {
 function AQL_CONCAT () {
   "use strict";
 
-  var result = '', i;
+  var result = '', i, j;
 
   for (i = 0; i < arguments.length; ++i) {
     var element = arguments[i];
-    if (TYPEWEIGHT(element) === TYPEWEIGHT_NULL) {
+    var weight = TYPEWEIGHT(element);
+    if (weight === TYPEWEIGHT_NULL) {
       continue;
     }
-    result += AQL_TO_STRING(element);
+    else if (weight === TYPEWEIGHT_LIST) {
+      for (j = 0; j < element.length; ++j) {
+        if (TYPEWEIGHT(element[j]) !== TYPEWEIGHT_NULL) {
+          result += AQL_TO_STRING(element[j]);
+        }
+      } 
+    }
+    else {
+      result += AQL_TO_STRING(element);
+    }
   }
 
   return result;
@@ -1527,12 +1579,13 @@ function AQL_CONCAT () {
 function AQL_CONCAT_SEPARATOR () {
   "use strict";
 
-  var separator, found = false, result = '', i;
+  var separator, found = false, result = '', i, j;
 
   for (i = 0; i < arguments.length; ++i) {
     var element = arguments[i];
-
-    if (i > 0 && TYPEWEIGHT(element) === TYPEWEIGHT_NULL) {
+    var weight = TYPEWEIGHT(element);
+ 
+    if (i > 0 && weight === TYPEWEIGHT_NULL) {
       continue;
     }
 
@@ -1544,8 +1597,22 @@ function AQL_CONCAT_SEPARATOR () {
       result += separator;
     }
 
-    found = true;
-    result += AQL_TO_STRING(element);
+    if (weight === TYPEWEIGHT_LIST) {
+      found = false;
+      for (j = 0; j < element.length; ++j) {
+        if (TYPEWEIGHT(element[j]) !== TYPEWEIGHT_NULL) {
+          if (found) {
+            result += separator;
+          }
+          result += AQL_TO_STRING(element[j]);
+          found = true;
+        }
+      } 
+    }
+    else {
+      result += AQL_TO_STRING(element);
+      found = true;
+    }
   }
 
   return result;
@@ -1678,30 +1745,181 @@ function AQL_RIGHT (value, length) {
 /// @brief returns a trimmed version of a string
 ////////////////////////////////////////////////////////////////////////////////
 
-function AQL_TRIM (value, type) {
+function AQL_TRIM (value, chars) {
   "use strict";
 
-  type = AQL_TO_NUMBER(type);
-
-  if (type < 0 || type > 2) { 
-    type = 0;
+  if (chars === 1) {
+    return AQL_LTRIM(value);
+  }
+  else if (chars === 2) {
+    return AQL_RTRIM(value);
+  }
+  else if (chars === null || chars === undefined || chars === 0) {
+    return AQL_TO_STRING(value).replace(new RegExp("(^\\s+|\\s+$)", 'g'), '');
   }
 
-  var result;
-  if (type === 1) {
-    // TRIM(, 1)
-    result = AQL_TO_STRING(value).replace(/^\s+/g, '');
-  }
-  else if (type === 2) {
-    // TRIM(, 2)
-    result = AQL_TO_STRING(value).replace(/\s+$/g, '');
+  var pattern = CREATE_REGEX_PATTERN(chars);
+  return AQL_TO_STRING(value).replace(new RegExp("(^[" + pattern + "]+|[" + pattern + "]+$)", 'g'), '');
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief trim a value from the left
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_LTRIM (value, chars) {
+  "use strict";
+
+  if (chars === null || chars === undefined) {
+    chars = "^\\s+";
   }
   else {
-    // TRIM(, 0)
-    result = AQL_TO_STRING(value).replace(/(^\s+)|\s+$/g, '');
+    chars = "^[" + CREATE_REGEX_PATTERN(chars) + "]+";
   }
 
-  return result;
+  return AQL_TO_STRING(value).replace(new RegExp(chars, 'g'), '');
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief trim a value from the right
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_RTRIM (value, chars) {
+  "use strict";
+
+  if (chars === null || chars === undefined) {
+    chars = "\\s+$";
+  }
+  else {
+    chars = "[" + CREATE_REGEX_PATTERN(chars) + "]+$";
+  }
+
+  return AQL_TO_STRING(value).replace(new RegExp(chars, 'g'), '');
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief split a string using a separator
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_SPLIT (value, separator, limit) {
+  "use strict";
+
+  if (separator === null || separator === undefined) {
+    return [ AQL_TO_STRING(value) ];
+  }
+
+  if (limit === null || limit === undefined) {
+    limit = undefined;
+  }
+  else {
+    limit = AQL_TO_NUMBER(limit);
+  }
+
+  if (limit < 0) {
+    WARN("SPLIT", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
+  }
+
+  if (TYPEWEIGHT(separator) === TYPEWEIGHT_LIST) {
+    var patterns = [];
+    separator.forEach(function(s) {
+      patterns.push(CREATE_REGEX_PATTERN(AQL_TO_STRING(s)));
+    });
+
+    return AQL_TO_STRING(value).split(new RegExp(patterns.join("|"), "g"), limit);
+  }
+
+  return AQL_TO_STRING(value).split(AQL_TO_STRING(separator), limit);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replace a search value inside a string
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_SUBSTITUTE (value, search, replace, limit) {
+  "use strict";
+
+  var pattern, patterns, replacements = { }, sWeight = TYPEWEIGHT(search);
+  value = AQL_TO_STRING(value);
+
+  if (sWeight === TYPEWEIGHT_DOCUMENT) {
+    patterns = [ ];
+    KEYS(search, false).forEach(function(k) {
+      patterns.push(CREATE_REGEX_PATTERN(k));
+      replacements[k] = AQL_TO_STRING(search[k]);
+    });
+    pattern = patterns.join('|');
+    limit = replace;
+  }
+  else if (sWeight === TYPEWEIGHT_STRING) {
+    pattern = CREATE_REGEX_PATTERN(search);
+    if (TYPEWEIGHT(replace) === TYPEWEIGHT_NULL) {
+      replacements[search] = "";
+    }
+    else {
+      replacements[search] = AQL_TO_STRING(replace);
+    }
+  }
+  else if (sWeight === TYPEWEIGHT_LIST) {
+    if (search.length === 0) {
+      // empty list
+      WARN("SUBSTITUTE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      return value;
+    }
+
+    patterns = [ ];
+
+    if (TYPEWEIGHT(replace) === TYPEWEIGHT_LIST) {
+      // replace each occurrence with a member from the second list
+      search.forEach(function(k, i) {
+        k = AQL_TO_STRING(k);
+        patterns.push(CREATE_REGEX_PATTERN(k));
+        if (i < replace.length) {
+          replacements[k] = AQL_TO_STRING(replace[i]);
+        }
+        else {
+          replacements[k] = "";
+        }
+      });
+    }
+    else {
+      // replace all occurrences with a constant string
+      if (TYPEWEIGHT(replace) === TYPEWEIGHT_NULL) {
+        replace = "";
+      }
+      else {
+        replace = AQL_TO_STRING(replace);
+      }
+      search.forEach(function(k, i) {
+        k = AQL_TO_STRING(k);
+        patterns.push(CREATE_REGEX_PATTERN(k));
+        replacements[k] = replace;
+      });
+    }
+    pattern = patterns.join('|');
+  }
+
+  if (limit === null || limit === undefined) {
+    limit = undefined;
+  }
+  else {
+    limit = AQL_TO_NUMBER(limit);
+  }
+
+  if (limit < 0) {
+    WARN("SUBSTITUTE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
+  }
+
+  return AQL_TO_STRING(value).replace(new RegExp(pattern, 'g'), function(match) {
+    if (limit === undefined) {
+      return replacements[match];
+    } 
+    if (limit > 0) {
+      --limit;
+      return replacements[match];
+    }
+    return match;
+  });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1745,13 +1963,14 @@ function AQL_FIND_FIRST (value, search, start, end) {
 function AQL_FIND_LAST (value, search, start, end) {
   "use strict";
 
-  if (start !== undefined) {
+  if (start !== undefined && start !== null) {
     start = AQL_TO_NUMBER(start);
   }
   else {
-    start = 0;
+    start = undefined;
   }
-  if (end !== undefined) {
+
+  if (end !== undefined && end !== null) {
     end = AQL_TO_NUMBER(end);
     if (end < start || end < 0) {
       return -1;
@@ -1761,11 +1980,22 @@ function AQL_FIND_LAST (value, search, start, end) {
     end = undefined;
   }
 
-  if (end !== undefined && end < search.length) {
-    return AQL_TO_STRING(value).lastIndexOf(AQL_TO_STRING(search).substr(0, end + 1), start);
+  var result;
+  if (start > 0 || end !== undefined) {
+    if (end === undefined) {
+      result = AQL_TO_STRING(value).substr(start).lastIndexOf(AQL_TO_STRING(search));
+    }
+    else {
+      result = AQL_TO_STRING(value).substr(start, end - start + 1).lastIndexOf(AQL_TO_STRING(search));
+    }
+    if (result !== -1) {
+      result += start;
+    }
   }
-
-  return AQL_TO_STRING(value).lastIndexOf(AQL_TO_STRING(search), start);
+  else {
+    result = AQL_TO_STRING(value).lastIndexOf(AQL_TO_STRING(search));
+  }
+  return result;
 }
 
 // -----------------------------------------------------------------------------
@@ -3306,7 +3536,7 @@ function AQL_ATTRIBUTES (element, removeInternal, sort) {
     var result = [ ];
 
     Object.keys(element).forEach(function(k) {
-      if (k.substring(0, 1) !== '_') {
+      if (k[0] !== '_') {
         result.push(k);
       }
     });
@@ -3319,6 +3549,54 @@ function AQL_ATTRIBUTES (element, removeInternal, sort) {
   }
 
   return KEYS(element, sort);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the attribute values of a document as a list
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_VALUES (element, removeInternal) {
+  "use strict";
+
+  if (TYPEWEIGHT(element) !== TYPEWEIGHT_DOCUMENT) {
+    WARN("VALUES", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
+  }
+
+  var result = [ ], a;
+
+  for (a in element) {
+    if (element.hasOwnProperty(a)) {
+      if (a[0] !== '_' || ! removeInternal) {
+        result.push(element[a]);
+      } 
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief assemble a document from two lists
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_ASSEMBLE (keys, values) {
+  "use strict";
+
+  if (TYPEWEIGHT(keys) !== TYPEWEIGHT_LIST ||
+      TYPEWEIGHT(values) !== TYPEWEIGHT_LIST ||
+      keys.length !== values.length) {
+    WARN("ASSEMBLE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
+  }
+
+  var result = { }, i, n = keys.length;
+
+  for (i = 0; i < n; ++i) {
+    result[AQL_TO_STRING(keys[i])] = values[i];
+  }
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6915,6 +7193,10 @@ exports.AQL_LIKE = AQL_LIKE;
 exports.AQL_LEFT = AQL_LEFT;
 exports.AQL_RIGHT = AQL_RIGHT;
 exports.AQL_TRIM = AQL_TRIM;
+exports.AQL_LTRIM = AQL_LTRIM;
+exports.AQL_RTRIM = AQL_RTRIM;
+exports.AQL_SPLIT = AQL_SPLIT;
+exports.AQL_SUBSTITUTE = AQL_SUBSTITUTE;
 exports.AQL_FIND_FIRST = AQL_FIND_FIRST;
 exports.AQL_FIND_LAST = AQL_FIND_LAST;
 exports.AQL_TO_BOOL = AQL_TO_BOOL;
@@ -6993,6 +7275,8 @@ exports.AQL_PARSE_IDENTIFIER = AQL_PARSE_IDENTIFIER;
 exports.AQL_SKIPLIST = AQL_SKIPLIST;
 exports.AQL_HAS = AQL_HAS;
 exports.AQL_ATTRIBUTES = AQL_ATTRIBUTES;
+exports.AQL_VALUES = AQL_VALUES;
+exports.AQL_ASSEMBLE = AQL_ASSEMBLE;
 exports.AQL_UNSET = AQL_UNSET;
 exports.AQL_KEEP = AQL_KEEP;
 exports.AQL_MERGE = AQL_MERGE;
