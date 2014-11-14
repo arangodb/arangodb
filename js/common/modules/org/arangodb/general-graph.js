@@ -1835,8 +1835,8 @@ var bindEdgeCollections = function(self, edgeCollections) {
           to.indexOf('/') === -1) {
         // invalid from or to value
         var err = new ArangoError();
-        err.errorNum = arangodb.errors.ERROR_DOCUMENT_HANDLE_BAD.code;
-        err.errorMessage = arangodb.errors.ERROR_DOCUMENT_HANDLE_BAD.message;
+        err.errorNum = arangodb.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;
+        err.errorMessage = arangodb.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.message;
         throw err;
       }
 
@@ -2713,8 +2713,8 @@ Graph.prototype._fromVertex = function(edgeId) {
   if (typeof edgeId !== 'string' ||
       edgeId.indexOf('/') === -1) {
     var err = new ArangoError();
-    err.errorNum = arangodb.errors.ERROR_DOCUMENT_HANDLE_BAD.code;
-    err.errorMessage = arangodb.errors.ERROR_DOCUMENT_HANDLE_BAD.message;
+    err.errorNum = arangodb.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;
+    err.errorMessage = arangodb.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.message;
     throw err;
   }
   var edgeCollection = this._getEdgeCollectionByName(edgeId.split("/")[0]);
@@ -2755,8 +2755,8 @@ Graph.prototype._toVertex = function(edgeId) {
   if (typeof edgeId !== 'string' ||
       edgeId.indexOf('/') === -1) {
     var err = new ArangoError();
-    err.errorNum = arangodb.errors.ERROR_DOCUMENT_HANDLE_BAD.code;
-    err.errorMessage = arangodb.errors.ERROR_DOCUMENT_HANDLE_BAD.message;
+    err.errorNum = arangodb.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code;
+    err.errorMessage = arangodb.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.message;
     throw err;
   }
   var edgeCollection = this._getEdgeCollectionByName(edgeId.split("/")[0]);
