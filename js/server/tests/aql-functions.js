@@ -1822,19 +1822,27 @@ function ahuacatlFunctionsTestSuite () {
       var data = [
         [ null, [ 1, 2, 3, 4, 5 ], 0, "rank" ],
         [ null, [ 15, 20, 35, 40, 50 ], 0, "rank" ],
+        [ 50, [ 50, 40, 35, 20, 15 ], 100, "rank" ],
         [ 50, [ 15, 20, 35, 40, 50 ], 100, "rank" ],
         [ 20, [ 15, 20, 35, 40, 50 ], 30, "rank" ],
         [ 20, [ 15, 20, 35, 40, 50 ], 40, "rank" ],
         [ 35, [ 15, 20, 35, 40, 50 ], 50, "rank" ],
         [ 50, [ 15, 20, 35, 40, 50 ], 100, "rank" ],
         [ 15, [ 3, 5, 7, 8, 9, 11, 13, 15 ], 100, "rank" ],
+        [ 3, [ 1, 3, 3, 4, 5, 6, 6, 7, 8, 8 ], 25, "interpolation" ],
+        [ 5.5, [ 1, 3, 3, 4, 5, 6, 6, 7, 8, 8 ], 50, "interpolation" ],
+        [ 7.25, [ 1, 3, 3, 4, 5, 6, 6, 7, 8, 8 ], 75, "interpolation" ],
+        [ 84, [ 50, 65, 70, 72, 72, 78, 80, 82, 84, 84, 85, 86, 88, 88, 90, 94, 96, 98, 98, 99 ], 45, "rank" ],
+        [ 86, [ 50, 65, 70, 72, 72, 78, 80, 82, 84, 84, 85, 86, 88, 88, 90, 94, 96, 98, 98, 99 ], 58, "rank" ],
         [ null, [ 3, 5, 7, 8, 9, 11, 13, 15 ], 0, "interpolation" ],
         [ 5.5, [ 3, 5, 7, 8, 9, 11, 13, 15 ], 25, "interpolation" ],
+        [ 5.5, [ null, 3, 5, null, 7, 8, 9, 11, 13, 15, null ], 25, "interpolation" ],
         [ 5, [ 4, 4, 5, 5, 5, 5, 6, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 10 ], 25, "interpolation" ],
         [ 9.85, [ 4, 4, 5, 5, 5, 5, 6, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 10, 10, 10 ], 85, "interpolation" ],
         [ 4, [ 2, 3, 5, 9 ], 50, "interpolation" ],
         [ 5, [ 2, 3, 5, 9, 11 ], 50, "interpolation" ],
-        [ 11, [ 2, 3, 5, 9, 11 ], 100, "interpolation" ]
+        [ 11, [ 2, 3, 5, 9, 11 ], 100, "interpolation" ],
+        [ 5, [ 2, 3, null, 5, 9, 11, null ], 50, "interpolation" ]
       ];
 
       data.forEach(function (value) {
@@ -1843,7 +1851,7 @@ function ahuacatlFunctionsTestSuite () {
           assertNull(value[0]);
         }
         else {
-          assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
+          assertEqual(value[0].toFixed(4), actual[0].toFixed(4), value);
         }
       });
     },
@@ -1959,10 +1967,10 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test assemble function
+/// @brief test zip function
 ////////////////////////////////////////////////////////////////////////////////
     
-    testAssemble : function () {
+    testZip : function () {
       var values = [
         [ { }, [ ], [ ] ], 
         [ { "" : true }, [ "" ], [ true ] ], 
@@ -1975,38 +1983,38 @@ function ahuacatlFunctionsTestSuite () {
       ];
 
       values.forEach(function (value) {
-        var actual = getQueryResults("RETURN ASSEMBLE(" + JSON.stringify(value[1]) + ", " + JSON.stringify(value[2]) + ")");
+        var actual = getQueryResults("RETURN ZIP(" + JSON.stringify(value[1]) + ", " + JSON.stringify(value[2]) + ")");
         assertEqual(value[0], actual[0], value);
       });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test assemble function
+/// @brief test zip function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testAssembleInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN ASSEMBLE()"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN ASSEMBLE([ ])"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN ASSEMBLE([ ], [ ], [ ])");
+    testZipInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN ZIP()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN ZIP([ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN ZIP([ ], [ ], [ ])");
       
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ASSEMBLE([ ], null)");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ASSEMBLE([ ], false)");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ASSEMBLE([ ], true)");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ASSEMBLE([ ], 0)");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ASSEMBLE([ ], 1)");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ASSEMBLE([ ], \"\")");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ASSEMBLE([ ], { })");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ASSEMBLE(null, [ ])");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ASSEMBLE(false, [ ])");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ASSEMBLE(true, [ ])");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ASSEMBLE(0, [ ])");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ASSEMBLE(1, [ ])");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ASSEMBLE(\"\", [ ])");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ASSEMBLE({ }, [ ])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP([ ], null)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP([ ], false)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP([ ], true)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP([ ], 0)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP([ ], 1)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP([ ], \"\")");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP([ ], { })");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP(null, [ ])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP(false, [ ])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP(true, [ ])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP(0, [ ])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP(1, [ ])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP(\"\", [ ])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP({ }, [ ])");
 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ASSEMBLE([ 1 ], [ ])");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ASSEMBLE([ 1 ], [ 1, 2 ])");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ASSEMBLE([ ], [ 1, 2 ])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP([ 1 ], [ ])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP([ 1 ], [ 1, 2 ])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ZIP([ ], [ 1, 2 ])");
     },
 
 ////////////////////////////////////////////////////////////////////////////////

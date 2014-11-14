@@ -858,6 +858,8 @@ function GET_DOCUMENTS (collection, offset, limit) {
   if (limit === undefined) {
     limit = null;
   }
+      
+  WARN(null, INTERNAL.errors.ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION, AQL_TO_STRING(collection));
 
   if (isCoordinator) {
     return COLLECTION(collection).all().skip(offset).limit(limit).toArray();
@@ -1850,10 +1852,22 @@ function AQL_SUBSTITUTE (value, search, replace, limit) {
   }
   else if (sWeight === TYPEWEIGHT_STRING) {
     pattern = CREATE_REGEX_PATTERN(search);
-    replacements[search] = AQL_TO_STRING(replace);
+    if (TYPEWEIGHT(replace) === TYPEWEIGHT_NULL) {
+      replacements[search] = "";
+    }
+    else {
+      replacements[search] = AQL_TO_STRING(replace);
+    }
   }
   else if (sWeight === TYPEWEIGHT_LIST) {
+    if (search.length === 0) {
+      // empty list
+      WARN("SUBSTITUTE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      return value;
+    }
+
     patterns = [ ];
+
     if (TYPEWEIGHT(replace) === TYPEWEIGHT_LIST) {
       // replace each occurrence with a member from the second list
       search.forEach(function(k, i) {
@@ -1869,7 +1883,12 @@ function AQL_SUBSTITUTE (value, search, replace, limit) {
     }
     else {
       // replace all occurrences with a constant string
-      replace = AQL_TO_STRING(replace);
+      if (TYPEWEIGHT(replace) === TYPEWEIGHT_NULL) {
+        replace = "";
+      }
+      else {
+        replace = AQL_TO_STRING(replace);
+      }
       search.forEach(function(k, i) {
         k = AQL_TO_STRING(k);
         patterns.push(CREATE_REGEX_PATTERN(k));
@@ -3561,13 +3580,13 @@ function AQL_VALUES (element, removeInternal) {
 /// @brief assemble a document from two lists
 ////////////////////////////////////////////////////////////////////////////////
 
-function AQL_ASSEMBLE (keys, values) {
+function AQL_ZIP (keys, values) {
   "use strict";
 
   if (TYPEWEIGHT(keys) !== TYPEWEIGHT_LIST ||
       TYPEWEIGHT(values) !== TYPEWEIGHT_LIST ||
       keys.length !== values.length) {
-    WARN("ASSEMBLE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN("ZIP", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
 
@@ -4627,7 +4646,6 @@ function TRAVERSAL_FUNC (func,
     weight : params.weight,
     defaultWeight : params.defaultWeight,
     prefill : params.prefill
-
   };
 
   if (params.followEdges) {
@@ -7257,7 +7275,7 @@ exports.AQL_SKIPLIST = AQL_SKIPLIST;
 exports.AQL_HAS = AQL_HAS;
 exports.AQL_ATTRIBUTES = AQL_ATTRIBUTES;
 exports.AQL_VALUES = AQL_VALUES;
-exports.AQL_ASSEMBLE = AQL_ASSEMBLE;
+exports.AQL_ZIP = AQL_ZIP;
 exports.AQL_UNSET = AQL_UNSET;
 exports.AQL_KEEP = AQL_KEEP;
 exports.AQL_MERGE = AQL_MERGE;

@@ -39,7 +39,7 @@ var getQueryResults = helper.getQueryResults;
 
 function NewAqlReplaceORWithINTestSuite () {
   var replace;
-  var ruleName = "replace-OR-with-IN";
+  var ruleName = "replace-or-with-in";
   
   var isRuleUsed = function (query, params) {
    var result = AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+" + ruleName ] } });
@@ -389,16 +389,19 @@ function NewAqlReplaceORWithINTestSuite () {
 
     },
     
-    testFiresCommonConstant: function () {
+    testDudCommonConstant1: function () {
       var query = "LET x = {a:@a} FOR v IN " + replace.name() 
         + " FILTER x.a == v.value || x.a == v._key RETURN v._key";
 
       var key = replace.any()._key;
-      isRuleUsed(query, {a: key});
+      ruleIsNotUsed(query, {a: key});
+    },
+    
+    testDudCommonConstant2: function () {
+      var query = "LET x = {a:1} FOR v IN " + replace.name() 
+        + " FILTER x.a == v.value || x.a == v._key RETURN v._key";
 
-      var actual = getQueryResults(query, {a: key}); 
-      assertEqual(key, actual.toString());
-
+      ruleIsNotUsed(query, {});
     },
 
     testDudAlwaysTrue: function () {

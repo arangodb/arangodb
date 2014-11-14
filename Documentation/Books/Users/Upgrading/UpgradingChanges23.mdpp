@@ -77,7 +77,7 @@ Here is a summary of changes:
   receive invalid arguments will then return `null`.
 
 
-!SUBSECTION Changed return values in ArangoQueryCursor.getExtra()
+!SUBSECTION Changed return values of ArangoQueryCursor.getExtra()
 
 The return value of `ArangoQueryCursor.getExtra()` has been changed in ArangoDB 2.3.
 It now contains a `stats` attribute with statistics about the query previously executed.
@@ -220,6 +220,21 @@ allow to keep it. Additionally, updating variables inside a query would prevent 
 of optimizations to queries that we would like the optimizer to make. Additionally,
 updating variables in queries that run on different nodes in a cluster would like cause
 non-deterministic behavior because queries are not executed linearly.
+
+
+!SUBSECTION Changed return value of `TO_BOOL`
+
+The AQL function `TO_BOOL` now always returns *true* if its argument is a list or a document.
+In previous versions of ArangoDB, the function returned *false* for empty lists or for
+documents without attributes.
+
+
+!SUBSECTION Changed return value of `TO_NUMBER`
+
+The AQL function `TO_NUMBER` now returns *null* if its argument is a document or a 
+list with more than one member. In previous version of ArangoDB, the return
+value in these cases was 0. `TO_NUMBER` will return 0 for empty lists, and the numeric
+equivalent of the list member's value for lists with a single member.
 
 
 !SUBSECTION New AQL keywords

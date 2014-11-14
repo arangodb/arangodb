@@ -49,6 +49,7 @@ var API = "_api/tasks";
 ///
 /// @EXAMPLES
 ///
+/// Getting all tasks:
 /// @EXAMPLE_ARANGOSH_RUN{RestTasksListAll}
 ///     var url = "/_api/tasks";
 ///
@@ -60,6 +61,7 @@ var API = "_api/tasks";
 ///
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
+/// Getting a single task by id:
 /// @EXAMPLE_ARANGOSH_RUN{RestTasksListOne}
 ///     var url = "/_api/tasks/statistics-average-collector";
 ///
@@ -69,26 +71,38 @@ var API = "_api/tasks";
 ///     logJsonResponse(response);
 ///
 /// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Fetching a non-existing task:
+/// @EXAMPLE_ARANGOSH_RUN{RestTasksListNonExisting}
+///     var url = "/_api/tasks/non-existing-task";
+///
+///     var response = logCurlRequest('GET', url);
+///
+///     assert(response.code === 404);
+///     logJsonResponse(response);
+///
+/// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-
 function get_api_tasks (req, res) {
-
   if (req.suffix.length === 1) {
     var matchId = decodeURIComponent(req.suffix[0]);
-    var oneTask = tasks.get().filter(function (task) {
-      return task.id.match(matchId);
-    }) [0];
+    var allTasks = tasks.get().filter(function (task) {
+      return (task.id === matchId);
+    });
 
-    actions.resultOk(req, res, actions.HTTP_OK, oneTask);
+    if (allTasks.length === 0) {
+      actions.resultNotFound(req, res, arangodb.ERROR_TASK_NOT_FOUND);
+    }
+    else {
+      actions.resultOk(req, res, actions.HTTP_OK, allTasks[0]);
+    }
   }
   else {
     actions.resultOk(req, res, actions.HTTP_OK, tasks.get());
   }
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_post_api_new_tasks
@@ -170,11 +184,11 @@ function get_api_tasks (req, res) {
 ///
 ///     // Note: prints stuff if server is running in non-daemon mode.
 ///     var sampleTask = {
-///       id:"SampleTask",
-///       name:"SampleTask",
+///       id: "SampleTask",
+///       name: "SampleTask",
 ///       command: "(function(params) { require('internal').print(params); })(params)",
 ///       params: { "foo": "bar", "bar": "foo"},
-///       period:2
+///       period: 2
 ///     }
 ///     var response = logCurlRequest('PUT', url + 'sampleTask',
 ///                                   JSON.stringify(sampleTask));
@@ -184,10 +198,10 @@ function get_api_tasks (req, res) {
 ///
 ///     // Cleanup:
 ///     curlRequest('DELETE', url + 'sampleTask');
-///
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
+
 function post_api_task_register (req, res, byId) {
   var body = actions.getJsonBody(req, res);
   if (byId) {
@@ -225,17 +239,17 @@ function post_api_task_register (req, res, byId) {
 ///
 /// @RESTRETURNCODES
 ///
-/// @RESTRETURNCODE{400}
-/// If the task *id* is unknown, then a *HTTP 400* is returned.
+/// @RESTRETURNCODE{404}
+/// If the task *id* is unknown, then an *HTTP 404* is returned.
 ///
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTasksDeleteFail}
-///     var url = "/_api/tasks/NoTaskByThatName";
+///     var url = "/_api/tasks/NoTaskWithThatName";
 ///
 ///     var response = logCurlRequest('DELETE', url);
 ///
-///     assert(response.code === 400);
+///     assert(response.code === 404);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -244,12 +258,12 @@ function post_api_task_register (req, res, byId) {
 ///     var url = "/_api/tasks/";
 ///
 ///     var sampleTask = {
-///       id:"SampleTask",
-///       name:"SampleTask",
-///       command:"2+2;",
-///       period:2
+///       id: "SampleTask",
+///       name: "SampleTask",
+///       command: "2+2;",
+///       period: 2
 ///     }
-///     // Enshure its realy not there:
+///     // Ensure it's really not there:
 ///     curlRequest('DELETE', url + sampleTask.id);
 ///     // put in something we may delete:
 ///     curlRequest('PUT', url + sampleTask.id,
@@ -263,6 +277,7 @@ function post_api_task_register (req, res, byId) {
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
+
 function delete_api_task (req, res) {
   if (req.suffix.length !== 1) {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,

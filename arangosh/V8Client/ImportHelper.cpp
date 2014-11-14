@@ -408,15 +408,28 @@ namespace triagens {
     void ImportHelper::reportProgress (int64_t totalLength,
                                        int64_t totalRead,
                                        double& nextProgress) {
-      if (! _progress || totalLength == 0) {
+      if (! _progress) {
         return;
       }
 
-      double pct = 100.0 * ((double) totalRead / (double) totalLength);
+      if (totalLength == 0) {
+        // length of input is unknown
+        // in this case we cannot report the progress as a percentage
+        // instead, report every 10 MB processed
+        static int64_t nextProcessed = 10 * 1000 * 1000; 
 
-      if (pct >= nextProgress && totalLength >= 1024) {
-        LOG_INFO("processed %lld bytes (%0.1f%%) of input file", (long long) totalRead, nextProgress);
-        nextProgress = (double) ((int) (pct + ProgressStep));
+        if (totalRead >= nextProcessed) {
+          LOG_INFO("processed %lld bytes of input file", (long long) totalRead);
+          nextProcessed += 10 * 1000 * 1000;
+        }
+      }
+      else {
+        double pct = 100.0 * ((double) totalRead / (double) totalLength);
+
+        if (pct >= nextProgress && totalLength >= 1024) {
+          LOG_INFO("processed %lld bytes (%0.1f%%) of input file", (long long) totalRead, nextProgress);
+          nextProgress = (double) ((int) (pct + ProgressStep));
+        }
       }
     }
 

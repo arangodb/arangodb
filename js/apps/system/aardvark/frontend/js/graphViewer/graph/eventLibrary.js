@@ -55,7 +55,7 @@ function EventLibrary() {
 
   this.checkExpandConfig = function(config) {
     if (config.startCallback === undefined) {
-      throw "A callback to the Start-method has to be defined";
+      throw "A callback to the start-method has to be defined";
     }
     if (config.adapter === undefined || config.adapter.explore === undefined) {
       throw "An adapter to load data has to be defined";
@@ -99,7 +99,7 @@ function EventLibrary() {
       throw "An adapter has to be defined";
     }
     if (config.shaper === undefined) {
-      throw "A Node Shaper has to be defined";
+      throw "A node shaper has to be defined";
     }
     return true;
   };
@@ -109,7 +109,7 @@ function EventLibrary() {
       throw "An adapter has to be defined";
     }
     if (config.shaper === undefined) {
-      throw "An Edge Shaper has to be defined";
+      throw "An edge Shaper has to be defined";
     }
     return true;
   };

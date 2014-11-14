@@ -332,7 +332,9 @@ function ahuacatlStringFunctionsTestSuite () {
         [ "xxaabbbbccc", "aaaabbbbccc", [ "a", "b", "c" ], [ "x", "y", "z" ], 2 ],
         [ "xxxxyybbccc", "aaaabbbbccc", [ "a", "b", "c" ], [ "x", "y", "z" ], 6 ],
         [ "aaaayyybccc", "aaaabbbbccc", [ "A", "b", "c" ], [ "x", "y", "z" ], 3 ],
-
+        [ "the quick  foxx", "the quick brown foxx", "brown" ],
+        [ "the quick brown foxx", "the quick brown foxx", [ ] ],
+        [ "the quick  foxx", "the quick brown foxx", [ "brown" ], [ ] ]
       ];
 
       values.forEach(function(value) {
@@ -340,7 +342,7 @@ function ahuacatlStringFunctionsTestSuite () {
         for (i = 1; i < n; ++i) {
           args.push(JSON.stringify(value[i]));
         }
-        assertEqual([ expected ], getQueryResults("RETURN SUBSTITUTE(" + args.join(", ") + ")"));
+        assertEqual([ expected ], getQueryResults("RETURN SUBSTITUTE(" + args.join(", ") + ")"), value);
       });
     },
 
