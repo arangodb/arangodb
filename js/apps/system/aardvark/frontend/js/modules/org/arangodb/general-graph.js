@@ -110,6 +110,17 @@ var findOrCreateCollectionsByEdgeDefinitions = function (edgeDefinitions, noCrea
   var vertexCollections = {},
   edgeCollections = {};
   edgeDefinitions.forEach(function (e) {
+    if (! e.hasOwnProperty('collection') || 
+        ! e.hasOwnProperty('from') ||
+        ! e.hasOwnProperty('to') ||
+        ! Array.isArray(e.from) ||
+        ! Array.isArray(e.to)) {
+      var err = new ArangoError();
+      err.errorNum = arangodb.errors.ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION.code;
+      err.errorMessage = arangodb.errors.ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION.message;
+      throw err;
+    }
+
     e.from.concat(e.to).forEach(function (v) {
       findOrCreateCollectionByName(v, ArangoCollection.TYPE_DOCUMENT, noCreate);
       vertexCollections[v] = db[v];
@@ -1819,6 +1830,17 @@ var bindEdgeCollections = function(self, edgeCollections) {
     // save
     var old_save = wrap.save;
     wrap.save = function(from, to, data) {
+      if (typeof from !== 'string' || 
+          from.indexOf('/') === -1 ||
+          typeof to !== 'string' ||
+          to.indexOf('/') === -1) {
+        // invalid from or to value
+        var err = new ArangoError();
+        err.errorNum = arangodb.errors.ERROR_DOCUMENT_HANDLE_BAD.code;
+        err.errorMessage = arangodb.errors.ERROR_DOCUMENT_HANDLE_BAD.message;
+        throw err;
+      }
+
       //check, if edge is allowed
       self.__edgeDefinitions.forEach(
         function(edgeDefinition) {
@@ -2689,6 +2711,13 @@ Graph.prototype._vertices = function(example) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._fromVertex = function(edgeId) {
+  if (typeof edgeId !== 'string' ||
+      edgeId.indexOf('/') === -1) {
+    var err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_DOCUMENT_HANDLE_BAD.code;
+    err.errorMessage = arangodb.errors.ERROR_DOCUMENT_HANDLE_BAD.message;
+    throw err;
+  }
   var edgeCollection = this._getEdgeCollectionByName(edgeId.split("/")[0]);
   var document = edgeCollection.document(edgeId);
   if (document) {
@@ -2724,6 +2753,13 @@ Graph.prototype._fromVertex = function(edgeId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._toVertex = function(edgeId) {
+  if (typeof edgeId !== 'string' ||
+      edgeId.indexOf('/') === -1) {
+    var err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_DOCUMENT_HANDLE_BAD.code;
+    err.errorMessage = arangodb.errors.ERROR_DOCUMENT_HANDLE_BAD.message;
+    throw err;
+  }
   var edgeCollection = this._getEdgeCollectionByName(edgeId.split("/")[0]);
   var document = edgeCollection.document(edgeId);
   if (document) {
@@ -2761,7 +2797,6 @@ Graph.prototype._getVertexCollectionByName = function(name) {
   err.errorMessage = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message + ": " + name;
   throw err;
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_neighbors
@@ -2812,6 +2847,7 @@ Graph.prototype._getVertexCollectionByName = function(name) {
 /// @endDocuBlock
 //
 ////////////////////////////////////////////////////////////////////////////////
+
 Graph.prototype._neighbors = function(vertexExample, options) {
   var AQLStmt = new AQLGenerator(this);
   // If no direction is specified all edges are duplicated.
