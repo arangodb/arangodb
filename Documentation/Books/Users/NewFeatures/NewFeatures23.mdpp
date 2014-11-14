@@ -87,6 +87,8 @@ The following other AQL functions have been added:
    the counterpart to the already existing `ATTRIBUTES` function)
 - `ZIP(attributes, values)`: returns a document constructed from attributes
    and values passed in separate parameters
+- `PERCENTILE(values, n, method)`: returns the nths percentile of the
+   values provided, using rank or interpolation method
 
 The already existing functions `CONCAT` and `CONCAT_SEPARATOR` now support
 list arguments, e.g.:
