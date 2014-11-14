@@ -183,7 +183,9 @@ triagens::basics::Json ExecutionPlan::toJson (Ast* ast,
 
   result.set("collections", jsonCollectionList);
   result.set("variables", ast->variables()->toJson(TRI_UNKNOWN_MEM_ZONE));
-  result.set("estimatedCost", triagens::basics::Json(_root->getCost()));
+  size_t nrItems = 0;
+  result.set("estimatedCost", triagens::basics::Json(_root->getCost(nrItems)));
+  result.set("estimatedNrItems", triagens::basics::Json(static_cast<double>(nrItems)));
 
   return result;
 }
