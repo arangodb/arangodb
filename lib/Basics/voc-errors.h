@@ -527,7 +527,7 @@
 ///    is already used by another graph in a different edge definition.
 /// - 1922: @LIT{missing graph name}
 ///   a graph name is required to create a graph.
-/// - 1923: @LIT{malformed edge def}
+/// - 1923: @LIT{malformed edge definition}
 ///   the edge definition is malformed. It has to be an array of objects.
 /// - 1924: @LIT{graph not found}
 ///   a graph with this name could not be found.
@@ -2813,7 +2813,7 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1923: ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION
 ///
-/// malformed edge def
+/// malformed edge definition
 ///
 /// the edge definition is malformed. It has to be an array of objects.
 ////////////////////////////////////////////////////////////////////////////////
