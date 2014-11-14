@@ -184,7 +184,8 @@ namespace triagens {
 
         inline double getCost () {
           TRI_ASSERT(_root != nullptr);
-          return _root->getCost();
+          size_t nrItems;
+          return _root->getCost(nrItems);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
