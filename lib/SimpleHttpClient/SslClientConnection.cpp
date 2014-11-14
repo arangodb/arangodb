@@ -262,10 +262,12 @@ bool SslClientConnection::writeClientConnection (void* buffer, size_t length, si
 /// @brief read data from the connection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SslClientConnection::readClientConnection (StringBuffer& stringBuffer) {
+bool SslClientConnection::readClientConnection (StringBuffer& stringBuffer, bool& progress) {
   if (_ssl == nullptr || ! _isConnected) {
     return false;
   }
+
+  progress = false;
 
   do {
 
@@ -281,6 +283,7 @@ again:
 
     switch (SSL_get_error(_ssl, lenRead)) {
       case SSL_ERROR_NONE:
+        progress = true;
         stringBuffer.increaseLength(lenRead);
         break;
 
