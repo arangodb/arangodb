@@ -85,7 +85,7 @@ The following other AQL functions have been added:
 
 - `VALUES(document)`: returns the values of a document as a list (this is 
    the counterpart to the already existing `ATTRIBUTES` function)
-- `ASSEMBLE(attributes, values)`: returns a document constructed from attributes
+- `ZIP(attributes, values)`: returns a document constructed from attributes
    and values passed in separate parameters
 
 The already existing functions `CONCAT` and `CONCAT_SEPARATOR` now support
