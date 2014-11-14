@@ -144,9 +144,11 @@ bool GeneralClientConnection::handleWrite (const double timeout, void* buffer, s
 /// @brief read data from endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-bool GeneralClientConnection::handleRead (double timeout, StringBuffer& buffer) {
+bool GeneralClientConnection::handleRead (double timeout, StringBuffer& buffer, bool& progress) {
+  progress = false;
+
   if (prepare(timeout, false)) {
-    return this->readClientConnection(buffer);
+    return this->readClientConnection(buffer, progress);
   }
 
   return false;

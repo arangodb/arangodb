@@ -118,6 +118,7 @@ bool ClientConnection::connectSocket () {
   if (_endpoint->isConnected()) {
     _endpoint->disconnect();
   }
+
   _socket = _endpoint->connect(_connectTimeout, _requestTimeout);
 
   if (! TRI_isvalidsocket(_socket)) {
@@ -139,6 +140,7 @@ void ClientConnection::disconnectSocket () {
   if (_endpoint) {
     _endpoint->disconnect();
   }
+
   TRI_invalidatesocket(&_socket);
 }
 
@@ -229,14 +231,17 @@ bool ClientConnection::writeClientConnection (void* buffer, size_t length, size_
 /// @brief read data from the connection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ClientConnection::readClientConnection (StringBuffer& stringBuffer) {
+bool ClientConnection::readClientConnection (StringBuffer& stringBuffer, bool& progress) {
   if (! checkSocket()) {
     return false;
   }
 
   TRI_ASSERT(TRI_isvalidsocket(_socket));
 
+  progress = false;
+
   do {
+
     // reserve some memory for reading
     if (stringBuffer.reserve(READBUFFER_SIZE) == TRI_ERROR_OUT_OF_MEMORY) {
       // out of memory
@@ -252,14 +257,11 @@ bool ClientConnection::readClientConnection (StringBuffer& stringBuffer) {
     }
 
     if (lenRead == 0) {
-      // nothing more to read
-      // since we come from a call to select which indicated that there
-      // is something to read and we are reading from a socket, this is
-      // an error condition. Therefore we return false
       disconnect();
-      return false;
+      return true;
     }
 
+    progress = true;
     stringBuffer.increaseLength(lenRead);
   }
   while (readable());
