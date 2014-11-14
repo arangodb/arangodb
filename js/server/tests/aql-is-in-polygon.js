@@ -1,5 +1,5 @@
 /*jshint strict: false, maxlen: 500 */
-/*global require, AQL_EXECUTE, assertTrue */
+/*global require, AQL_EXECUTE, assertTrue, assertFalse */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -60,26 +60,21 @@ function isInPolygonSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIsInPolygonSuiteAsResult : function () {
-      assertTrue(AQL_EXECUTE("RETURN IS_IN_POLYGON ([[ 0, 0 ], [ 0, 10 ], [ 10, 10 ], [ 10, 0 ] ], 10, 9)").json[0]);
-    }
-    /*
+      assertTrue(AQL_EXECUTE("RETURN IS_IN_POLYGON ([[ 0, 0 ], [ 0, 10 ], [ 10, 10 ], [ 10, 0 ] ], 9, 9)").json[0]);
+    },
+
     testIsNotInPolygonSuiteAsResult : function () {
-      assertFalse(AQL_EXECUTE("RETURN IS_IN_POLYGON ([[ 0, 0 ], [ 0, 10 ], [ 10, 10 ], [ 10, 0 ] ], 10, 11)").json[0]);
+      assertFalse(AQL_EXECUTE("RETURN IS_IN_POLYGON ([[ 0, 0 ], [ 0, 10 ], [ 10, 10 ], [ 10, 0 ] ], 11, 11)").json[0]);
     },
 
     testIsInPolygonSuiteWithListParameter : function () {
-      assertTrue(AQL_EXECUTE("RETURN IS_IN_POLYGON ([[ 0, 0 ], [ 0, 10 ], [ 10, 10 ], [ 11, 0 ] ], [ 11, 0 ])").json[0]);
+      assertTrue(AQL_EXECUTE("RETURN IS_IN_POLYGON ([[ 0, 0 ], [ 0, 10 ], [ 10, 10 ], [ 11, 0 ] ], [ 9, 1 ])").json[0]);
     },
 
     testIsInPolygonSuiteWithListParameterWithReverseParameterOrder : function () {
-      assertFalse(AQL_EXECUTE("RETURN IS_IN_POLYGON ([[ 0, 0 ], [ 0, 10 ], [ 10, 10 ], [ 11, 0 ] ], [ 0, 11 ], false)").json[0]);
-    },
-
-    testIsInPolygonSuiteWithSinglePointPolygon : function () {
-      assertTrue(AQL_EXECUTE("RETURN IS_IN_POLYGON ([[ 0, 0 ]], [ 0, 0 ])").json[0]);
-    }*/
-
-
+      assertFalse(AQL_EXECUTE("RETURN IS_IN_POLYGON ([[ 0, 0 ], [ 0, 10 ], [ 10, 10 ], [ 11, 0 ] ], [ 1, 11 ], false)").json[0]);
+    }
+    
   };
 }
 

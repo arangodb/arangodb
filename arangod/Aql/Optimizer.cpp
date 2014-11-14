@@ -343,8 +343,15 @@ void Optimizer::setupRules () {
 
   //////////////////////////////////////////////////////////////////////////////
   // "Pass 1": moving nodes "up" (potentially outside loops):
-  //           please use levels between 1 and 99 here
   //////////////////////////////////////////////////////////////////////////////
+
+#if 0
+  // rule not yet tested
+  registerRule("split-filters",
+               splitFiltersRule,
+               splitFiltersRule_pass1, 
+               true);
+#endif
 
   // move calculations up the dependency chain (to pull them out of
   // inner loops etc.)
@@ -452,9 +459,15 @@ void Optimizer::setupRules () {
   //////////////////////////////////////////////////////////////////////////////
   
   // try to replace simple OR conditions with IN
-  registerRule("replace-OR-with-IN",
+  registerRule("replace-or-with-in",
                replaceOrWithIn,
                replaceOrWithIn_pass6,
+               true);
+
+  // try to remove redundant OR conditions
+  registerRule("remove-redundant-or",
+               removeRedundantOr,
+               removeRedundantOr_pass6,
                true);
 
   // try to find a filter after an enumerate collection and find an index . . . 
@@ -468,10 +481,10 @@ void Optimizer::setupRules () {
                useIndexForSort,
                useIndexForSort_pass6,
                true);
-  
-#if 0
+
+#if 0 
   // try to remove filters which are covered by index ranges  
-  // rule seems to work, but tests are still missing
+  // TODO: rule seems to work, but tests are still missing
   registerRule("remove-filter-covered-by-index",
                removeFiltersCoveredByIndex,
                removeFiltersCoveredByIndex_pass6,

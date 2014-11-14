@@ -430,7 +430,18 @@
           name = "",
           edgeDefinitions = [{collection : "", from : "", to :""}],
           orphanCollections = "",
-          title;
+          title,
+          sorter = function(l, r) {
+            l = l.toLowerCase();
+            r = r.toLowerCase();
+            if (l < r) {
+              return -1;
+            }
+            if (l > r) {
+              return 1;
+            }
+            return 0;
+          };
 
       this.eCollList = [];
       this.removedECollList = [];
@@ -504,13 +515,13 @@
                 "newEdgeDefinitions" + self.counter,
                 "Edge definitions",
                 edgeDefinition.collection,
-                "An Edge Definition defines a relations of the graph",
+                "An edge definition defines a relation of the graph",
                 "Edge definitions",
                 true,
                 false,
                 true,
                 1,
-                self.eCollList
+                self.eCollList.sort(sorter)
               )
             );
           } else {
@@ -519,13 +530,13 @@
                 "newEdgeDefinitions" + self.counter,
                 "Edge definitions",
                 edgeDefinition.collection,
-                "An Edge Definition defines a relations of the graph",
+                "An edge definition defines a relation of the graph",
                 "Edge definitions",
                 false,
                 true,
                 false,
                 1,
-                self.eCollList
+                self.eCollList.sort(sorter)
               )
             );
           }
@@ -534,13 +545,13 @@
               "fromCollections" + self.counter,
               "fromCollections",
               edgeDefinition.from,
-              "The collection that contain the start vertices of the relation.",
+              "The collections that contain the start vertices of the relation.",
               "fromCollections",
               true,
               false,
               false,
               10,
-              collList
+              collList.sort(sorter)
             )
           );
           tableContent.push(
@@ -548,13 +559,13 @@
               "toCollections" + self.counter,
               "toCollections",
               edgeDefinition.to,
-              "The collection that contain the end vertices of the relation.",
+              "The collections that contain the end vertices of the relation.",
               "toCollections",
               true,
               false,
               false,
               10,
-              collList
+              collList.sort(sorter)
             )
           );
           self.counter++;
@@ -566,13 +577,13 @@
           "newVertexCollections",
           "Vertex collections",
           orphanCollections,
-          "Collections, that are part of a graph, but not used in an edge definition",
+          "Collections that are part of a graph but not used in an edge definition",
           "Vertex Collections",
           false,
           false,
           false,
           10,
-          collList
+          collList.sort(sorter)
         )
       );
 

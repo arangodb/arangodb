@@ -33,7 +33,10 @@ with an error.
 
 - *IS_IN_POLYGON(polygon, latitude, longitude)*:
   Returns `true` if the point (*latitude*, *longitude*) is inside the polygon specified in the
-  *polygon* parameter. *latitude* can also be specified as a list with two values. By default,
+  *polygon* parameter. The result is undefined (may be `true` or `false`) if the specified point
+  is exactly on a boundary of the polygon.
+
+  *latitude* can alternatively be specified as a list with two values. By default,
   the first list element will be interpreted as the latitude value and the second list element
   as the longitude value. This can be changed by setting the 3rd parameter to `true`.
   *polygon* needs to be a list of points, with each point being a list with two values. The

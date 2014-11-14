@@ -54,17 +54,21 @@ namespace triagens {
 // "Pass 1": moving nodes "up" (potentially outside loops):
 //////////////////////////////////////////////////////////////////////////////
 
+        pass1                                     = 100,
+
+        // split and-combined filters into multiple smaller filters
+        splitFiltersRule_pass1                    = 110,
+
         // move calculations up the dependency chain (to pull them out of
         // inner loops etc.)
-        pass1                                     = 100,
-        moveCalculationsUpRule_pass1              = 110,
+        moveCalculationsUpRule_pass1              = 120,
 
         // move filters up the dependency chain (to make result sets as small
         // as possible as early as possible)
-        moveFiltersUpRule_pass1                   = 120,
+        moveFiltersUpRule_pass1                   = 130,
   
         // remove calculations that are repeatedly used in a query
-        removeRedundantCalculationsRule_pass1     = 130,
+        removeRedundantCalculationsRule_pass1     = 140,
 
 //////////////////////////////////////////////////////////////////////////////
 /// "Pass 2": try to remove redundant or unnecessary nodes
@@ -130,14 +134,17 @@ namespace triagens {
         // replace simple OR conditions with IN
         replaceOrWithIn_pass6                     = 810,
         
+        // remove redundant OR conditions
+        removeRedundantOr_pass6                   = 820,
+        
         // try to find a filter after an enumerate collection and find an index . . . 
-        useIndexRange_pass6                       = 820,
+        useIndexRange_pass6                       = 830,
 
         // try to find sort blocks which are superseeded by indexes
-        useIndexForSort_pass6                     = 830,
+        useIndexForSort_pass6                     = 840,
 
         // try to remove filters covered by index ranges
-        removeFiltersCoveredByIndex_pass6         = 840,
+        removeFiltersCoveredByIndex_pass6         = 850,
   
 //////////////////////////////////////////////////////////////////////////////
 /// "Pass 10": final transformations for the cluster

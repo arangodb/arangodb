@@ -37,9 +37,19 @@ This will transfer the data to the server, import the records, and print a
 status summary. To show the intermediate progress during the import process, the
 option *--progress* can be added. This option will show the percentage of the
 input file that has been sent to the server. This will only be useful for big
-import files.
+import files. 
 
-    unix> arangoimp --file "data.json" --type json --collection "users" --progress true
+    unix> arangoimp --file "data.json" --type json --collection users --progress true
+
+It is also possible to use the output of another command as an input for arangoimp.
+For example, the following shell command can be used to pipe data from the `cat`
+process to arangoimp:
+
+    unix> cat data.json | arangoimp --file - --type json --collection users
+
+Note that you have to use `--file -` if you want to use another command as input 
+for arangoimp. No progress can be reported for such imports as the size of the input
+will be unknown to arangoimp.
 
 By default, the endpoint *tcp://127.0.0.1:8529* will be used.  If you want to
 specify a different endpoint, you can use the *--server.endpoint* option. You

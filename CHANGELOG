@@ -1,6 +1,35 @@
 v2.3.0-beta2 (2014-11-08)
 -------------------------
 
+* hide system applications in **Applications** tab by default
+
+  Display of system applications can be toggled by using the *system applications* 
+  toggle in the UI.
+
+* added HTTP REST API for managing tasks (`/_api/tasks`)
+
+* allow passing character lists as optional parameter to AQL functions `TRIM`,
+  `LTRIM` and `RTRIM`
+
+  These functions now support trimming using custom character lists. If no character
+  lists are specified, all whitespace characters will be removed as previously:
+
+      TRIM("  foobar\t \r\n ")         // "foobar"
+      TRIM(";foo;bar;baz, ", "; ")     // "foo;bar;baz"
+
+* added AQL string functions `LTRIM`, `RTRIM`, `FIND_FIRST`, `FIND_LAST`, `SPLIT`, 
+  `SUBSTITUTE`
+
+* added AQL functions `ZIP`, `VALUES` and `PERCENTILE`
+
+* made AQL functions `CONCAT` and `CONCAT_SEPARATOR` work with list arguments
+
+* dynamically create extra dispatcher threads if required
+
+
+v2.3.0-beta2 (2014-11-08)
+-------------------------
+
 * front-end: new icons for uploading and downloading JSON documents into a collection
 
 * front-end: fixed documents pagination css display error

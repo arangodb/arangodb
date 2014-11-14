@@ -33,7 +33,8 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/StringUtils.h"
-#include "lib/SimpleHttpClient/ConnectionManager.h"
+#include "SimpleHttpClient/ConnectionManager.h"
+#include "Dispatcher/DispatcherThread.h"
 
 #include "VocBase/server.h"
 
@@ -506,6 +507,11 @@ ClusterCommResult* ClusterComm::wait (
     endtime = TRI_microtime() + timeout;
   }
 
+  // tell Dispatcher that we are waiting:
+  if (triagens::rest::DispatcherThread::currentDispatcherThread != nullptr) {
+    triagens::rest::DispatcherThread::currentDispatcherThread->blockThread();
+  }
+
   if (0 != operationID) {
     // In this case we only have to look into at most one operation.
     basics::ConditionLocker locker(&somethingReceived);
@@ -520,6 +526,10 @@ ClusterCommResult* ClusterComm::wait (
           res = new ClusterCommResult();
           res->operationID = operationID;
           res->status = CL_COMM_DROPPED;
+          // tell Dispatcher that we are back in business
+          if (triagens::rest::DispatcherThread::currentDispatcherThread != nullptr) {
+            triagens::rest::DispatcherThread::currentDispatcherThread->unblockThread();
+          }
           return res;
         }
       }
@@ -532,6 +542,10 @@ ClusterCommResult* ClusterComm::wait (
           receivedByOpID.erase(i);
           received.erase(q);
           res = static_cast<ClusterCommResult*>(op);
+          // tell Dispatcher that we are back in business
+          if (triagens::rest::DispatcherThread::currentDispatcherThread != nullptr) {
+            triagens::rest::DispatcherThread::currentDispatcherThread->unblockThread();
+          }
           return res;
         }
         // It is in the receive queue but still waiting, now wait actually
@@ -562,6 +576,10 @@ ClusterCommResult* ClusterComm::wait (
             receivedByOpID.erase(i);
             received.erase(q);
             res = static_cast<ClusterCommResult*>(op);
+            // tell Dispatcher that we are back in business
+            if (triagens::rest::DispatcherThread::currentDispatcherThread != nullptr) {
+              triagens::rest::DispatcherThread::currentDispatcherThread->unblockThread();
+            }
             return res;
           }
         }
@@ -585,6 +603,10 @@ ClusterCommResult* ClusterComm::wait (
         res->operationID = operationID;
         res->shardID = shardID;
         res->status = CL_COMM_DROPPED;
+        // tell Dispatcher that we are back in business
+        if (triagens::rest::DispatcherThread::currentDispatcherThread != nullptr) {
+          triagens::rest::DispatcherThread::currentDispatcherThread->unblockThread();
+        }
         return res;
       }
       // Here it could either be in the receive or the send queue, let's wait
@@ -601,6 +623,10 @@ ClusterCommResult* ClusterComm::wait (
   res->operationID = operationID;
   res->shardID = shardID;
   res->status = CL_COMM_TIMEOUT;
+  // tell Dispatcher that we are back in business
+  if (triagens::rest::DispatcherThread::currentDispatcherThread != nullptr) {
+    triagens::rest::DispatcherThread::currentDispatcherThread->unblockThread();
+  }
   return res;
 }
 

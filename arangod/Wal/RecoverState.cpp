@@ -111,11 +111,16 @@ static int WaitForDeletion (TRI_server_t* server,
         TRI_RemoveDirectory(result.c_str());
       }
     }
-    else if (++iterations >= 30 * 10) {
+    else if (iterations >= 30 * 10) {
       LOG_WARNING("unable to remove database directory '%s'", result.c_str());
       return TRI_ERROR_INTERNAL;
     }
 
+    if (iterations == 5 * 10) {
+      LOG_INFO("waiting for deletion of database directory '%s'", result.c_str());
+    }
+
+    ++iterations;
     usleep(100000);
   }
 
@@ -146,11 +151,16 @@ static int WaitForDeletion (TRI_vocbase_t* vocbase,
         TRI_RemoveDirectory(result.c_str());
       }
     }
-    else if (++iterations >= 30 * 10) {
+    else if (iterations >= 30 * 10) {
       LOG_WARNING("unable to remove collection directory '%s'", result.c_str());
       return TRI_ERROR_INTERNAL;
     }
+    
+    if (iterations == 5 * 10) {
+      LOG_INFO("waiting for deletion of collection directory '%s'", result.c_str());
+    }
 
+    ++iterations;
     usleep(100000);
   }
 
