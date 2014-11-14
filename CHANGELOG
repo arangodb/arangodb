@@ -20,7 +20,7 @@ v2.3.0 (XXXX-XX-XX)
 * added AQL string functions `LTRIM`, `RTRIM`, `FIND_FIRST`, `FIND_LAST`, `SPLIT`, 
   `SUBSTITUTE`
 
-* added AQL functions `ASSEMBLE` and `VALUES`
+* added AQL functions `ZIP` and `VALUES`
 
 * made AQL functions `CONCAT` and `CONCAT_SEPARATOR` work with list arguments
 

@@ -3580,13 +3580,13 @@ function AQL_VALUES (element, removeInternal) {
 /// @brief assemble a document from two lists
 ////////////////////////////////////////////////////////////////////////////////
 
-function AQL_ASSEMBLE (keys, values) {
+function AQL_ZIP (keys, values) {
   "use strict";
 
   if (TYPEWEIGHT(keys) !== TYPEWEIGHT_LIST ||
       TYPEWEIGHT(values) !== TYPEWEIGHT_LIST ||
       keys.length !== values.length) {
-    WARN("ASSEMBLE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN("ZIP", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
 
@@ -4646,7 +4646,6 @@ function TRAVERSAL_FUNC (func,
     weight : params.weight,
     defaultWeight : params.defaultWeight,
     prefill : params.prefill
-
   };
 
   if (params.followEdges) {
@@ -7276,7 +7275,7 @@ exports.AQL_SKIPLIST = AQL_SKIPLIST;
 exports.AQL_HAS = AQL_HAS;
 exports.AQL_ATTRIBUTES = AQL_ATTRIBUTES;
 exports.AQL_VALUES = AQL_VALUES;
-exports.AQL_ASSEMBLE = AQL_ASSEMBLE;
+exports.AQL_ZIP = AQL_ZIP;
 exports.AQL_UNSET = AQL_UNSET;
 exports.AQL_KEEP = AQL_KEEP;
 exports.AQL_MERGE = AQL_MERGE;
