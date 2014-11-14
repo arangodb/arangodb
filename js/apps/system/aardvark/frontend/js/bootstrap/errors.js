@@ -222,7 +222,7 @@
     "ERROR_GRAPH_COLLECTION_MULTI_USE" : { "code" : 1920, "message" : "multi use of edge collection in edge def" },
     "ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS" : { "code" : 1921, "message" : "edge collection already used in edge def" },
     "ERROR_GRAPH_CREATE_MISSING_NAME" : { "code" : 1922, "message" : "missing graph name" },
-    "ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION" : { "code" : 1923, "message" : "malformed edge def" },
+    "ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION" : { "code" : 1923, "message" : "malformed edge definition" },
     "ERROR_GRAPH_NOT_FOUND"        : { "code" : 1924, "message" : "graph not found" },
     "ERROR_GRAPH_DUPLICATE"        : { "code" : 1925, "message" : "graph already exists" },
     "ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST" : { "code" : 1926, "message" : "collection does not exist" },
