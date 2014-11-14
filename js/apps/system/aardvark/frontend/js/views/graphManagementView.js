@@ -430,7 +430,18 @@
           name = "",
           edgeDefinitions = [{collection : "", from : "", to :""}],
           orphanCollections = "",
-          title;
+          title,
+          sorter = function(l, r) {
+            l = l.toLowerCase();
+            r = r.toLowerCase();
+            if (l < r) {
+              return -1;
+            }
+            if (l > r) {
+              return 1;
+            }
+            return 0;
+          };
 
       this.eCollList = [];
       this.removedECollList = [];
@@ -510,7 +521,7 @@
                 false,
                 true,
                 1,
-                self.eCollList
+                self.eCollList.sort(sorter)
               )
             );
           } else {
@@ -525,7 +536,7 @@
                 true,
                 false,
                 1,
-                self.eCollList
+                self.eCollList.sort(sorter)
               )
             );
           }
@@ -540,7 +551,7 @@
               false,
               false,
               10,
-              collList
+              collList.sort(sorter)
             )
           );
           tableContent.push(
@@ -554,7 +565,7 @@
               false,
               false,
               10,
-              collList
+              collList.sort(sorter)
             )
           );
           self.counter++;
@@ -572,7 +583,7 @@
           false,
           false,
           10,
-          collList
+          collList.sort(sorter)
         )
       );
 
