@@ -2535,7 +2535,7 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "OFFSET", JS_OffsetQuery, true);
 
   TRI_AddMethodVocbase(rt, "OUTEDGES", JS_OutEdgesQuery, true);
-  TRI_AddMethodVocbase(rt, "WITHIN", JS_WithinQuery);
+  TRI_AddMethodVocbase(rt, "WITHIN", JS_WithinQuery, true);
 }
 
 // -----------------------------------------------------------------------------
