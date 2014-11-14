@@ -102,7 +102,7 @@ HttpHandler::status_t RestDebugHelperHandler::execute () {
 
   bool found;
   char const* sleepStr = _request->value("sleep", found);
-  uint64_t s = StringUtils::doubleDecimal(sleepStr) * 1000.0 * 1000.0;
+  auto s = static_cast<unsigned long>(StringUtils::doubleDecimal(sleepStr) * 1000.0 * 1000.0);
 
   char const* blockStr = _request->value("block", found);
   bool block = (found && StringUtils::boolean(blockStr));
