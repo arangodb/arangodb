@@ -83,9 +83,17 @@ boolean value.
 
 This behavior has changed in ArangoDB 2.3. Passing non-boolean values to a
 logical operator is now allowed. Any-non boolean operands will be casted
-to boolean implicity by the operator, without making the query abort. The
-result of logical and and logical or operations can now have any data type and
-it not necessarily a boolean value.
+to boolean implicity by the operator, without making the query abort. 
+
+The *conversion to a boolean value* works as follows:
+- `null` will be converted to `false`
+- boolean values remain unchanged
+- all numbers unequal to zero are `true`, zero is `false`
+- the empty string is `false`, all other strings are `true`
+- lists (`[ ]`) and documents (`{ }`) are `true`, regardless of their contents
+
+The result of *logical and* and *logical or* operations can now have any data 
+type and is not necessarily a boolean value.
 
 For example, the following logical operations will return a boolean values:
 
@@ -99,63 +107,8 @@ whereas the following logical operations will not return boolean values:
     null || "foo"                              // "foo"
     null && true                               // null
     true && 23                                 // 23
+
    
-
-!SUBSUBSECTION Type conversion
-
-In some cases, an operator needs to perform an implicit type conversion of 
-its operand. For example, the logical negation operator (`!`) will cast its
-operand to a boolean if it is not already a boolean.
-
-The arithmetic operators will also cast their operands to numbers before
-performing the arithmetic operation.
-
-The *conversion to a boolean value* works as follows:
-- `null` will be converted to `false`
-- boolean values remain unchanged
-- all numbers unequal to zero are `true`, zero is `false`
-- the empty string is `false`, all other strings are `true`
-- lists (`[ ]`) and documents (`{ }`) are `true`, regardless of their contents
-
-The *conversion to a numeric value* works as follows:
-- `null` will be converted to `0`
-- `false` will be converted to `0`, true will be converted to `1`
-- a numeric value remains unchanged - NaN and Infinity are converted to `null`
-- string values are converted to a number if they contain a valid string representation
-  of a number. Any whitespace at the start or the end of the string is ignored. Strings
-  with any other contents are converted to `null`
-- an empty list is converted to `0`, a list with one member is converted to the numeric
-  representation of this one list member, and lists with more members are converted 
-  to `null`
-- documents are converted to `null`
-
-The *conversion to a string value* works as follows:
-- `null` will be converted to the string `"null"`
-- `false` and `true` will be converted to the strings `"false"` and `"true"` resp.
-- numbers will be converted into strings. Scientific notation may be used
-- a string value remains unchanged
-- an empty list will be converted into the empty string, a list with a single member
-  will be converted into the string representation of this one list member. A list
-  with more than one member will be converted into a comma-separated list of the
-  string representations of the list's members
-- documents will be converted to the string literal `"[object Object]"`
-
-The *conversion to a list* works as follows:
-- `null` will be converted to the empty list (`[ ]`)
-- a boolean value will be converted to a single-member list with the boolean value
-- a numeric value will be converted to a single-member list with the number value
-- a string value will be converted to a single-member list with the string value
-- a list value remains unchanged
-- a numeric value will be conve
-- `false` and `true` will be converted to the strings `"false"` and `"true"` resp.
-- numbers will be converted into strings. Scientific notation may be used.
-- strings will keep their value
-- an empty list will be converted into the empty string, a list with a single member
-  will be converted into the string representation of this one list member. A list
-  with more than one member will be converted into a comma-separated list of the
-  string representations of the list's members.
-- documents will be converted to the string literal `"[object Object]"`
-
 !SUBSUBSECTION Arithmetic operators
 
 Arithmetic operators perform an arithmetic operation on two numeric
@@ -170,12 +123,6 @@ AQL supports the following arithmetic operators:
 - */* division
 - *%* modulus
 
-These operators work with numeric operands only. Invoking any of the operators
-with non-numeric operands will result in an error. An error will also be raised
-for some other edge cases as division by zero, numeric over- or underflow etc.
-If both operands are numeric and the computation result is also valid, the
-result will be returned as a numeric value.
-
 The unary plus and unary minus are supported as well.
 
 Some example arithmetic operations:
@@ -187,6 +134,44 @@ Some example arithmetic operations:
     23 % 7
     -15
     +9.99
+
+The arithmetic operators accept operands of any type. This behavior has changed in 
+ArangoDB 2.3. Passing non-numeric values to an arithmetic operator is now allow.
+Any-non numeric operands will be casted to numbers implicity by the operator, 
+without making the query abort. 
+
+The *conversion to a numeric value* works as follows:
+- `null` will be converted to `0`
+- `false` will be converted to `0`, true will be converted to `1`
+- a valid numeric value remains unchanged, but NaN and Infinity will be converted to `null`
+- string values are converted to a number if they contain a valid string representation
+  of a number. Any whitespace at the start or the end of the string is ignored. Strings
+  with any other contents are converted to `null`
+- an empty list is converted to `0`, a list with one member is converted to the numeric
+  representation of its sole member. Lists with more members are converted 
+  to `null`
+- documents are converted to `null`
+
+If the conversion to a number produces a value of `null` for one of the operands,
+the result of the whole arithmetic operation will also be `null`. An arithmetic operation
+that produces an invalid value, such as `1 / 0` will also produce a value of `null`.
+
+Here are a few examples:
+
+    1 + "a"                 // null
+    1 + "99"                // 100
+    1 + null                // 1
+    null + 1                // 1
+    3 + [ ]                 // 3
+    24 + [ 2 ]              // 26
+    24 + [ 2, 4 ]           // null
+    25 - null               // 25
+    17 - true               // 16
+    23 * { }                // null
+    5 * [ 7 ]               // 35
+    24 / "12"               // 2
+    1 / 0                   // null
+
 
 !SUBSUBSECTION Ternary operator
 

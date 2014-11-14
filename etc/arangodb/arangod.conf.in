@@ -35,14 +35,16 @@ endpoint = tcp://0.0.0.0:8529
 disable-authentication = yes
 
 # number of server threads
-threads = 10
+threads = 4
 
 # the user and group are normally set in the start script
 # uid = arangodb
 # gid = arangodb
 
 [scheduler]
-threads = 3
+
+# number of threads used for I/O
+threads = 1
 
 [javascript]
 startup-directory = @PKGDATADIR@/js

@@ -104,8 +104,8 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "TO_LIST",                     Function("TO_LIST",                     "AQL_TO_LIST", ".", true, false, true) },
   
   // string functions
-  { "CONCAT",                      Function("CONCAT",                      "AQL_CONCAT", "sz,sz|+", true, false, true) },
-  { "CONCAT_SEPARATOR",            Function("CONCAT_SEPARATOR",            "AQL_CONCAT_SEPARATOR", "s,sz,sz|+", true, false, true) },
+  { "CONCAT",                      Function("CONCAT",                      "AQL_CONCAT", "szl|+", true, false, true) },
+  { "CONCAT_SEPARATOR",            Function("CONCAT_SEPARATOR",            "AQL_CONCAT_SEPARATOR", "s,szl|+", true, false, true) },
   { "CHAR_LENGTH",                 Function("CHAR_LENGTH",                 "AQL_CHAR_LENGTH", "s", true, false, true) },
   { "LOWER",                       Function("LOWER",                       "AQL_LOWER", "s", true, false, true) },
   { "UPPER",                       Function("UPPER",                       "AQL_UPPER", "s", true, false, true) },
@@ -114,9 +114,13 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "LIKE",                        Function("LIKE",                        "AQL_LIKE", "s,r|b", true, false, true) },
   { "LEFT",                        Function("LEFT",                        "AQL_LEFT", "s,n", true, false, true) },
   { "RIGHT",                       Function("RIGHT",                       "AQL_RIGHT", "s,n", true, false, true) },
-  { "TRIM",                        Function("TRIM",                        "AQL_TRIM", "s|n", true, false, true) },
+  { "TRIM",                        Function("TRIM",                        "AQL_TRIM", "s|ns", true, false, true) },
+  { "LTRIM",                       Function("LTRIM",                       "AQL_LTRIM", "s|s", true, false, true) },
+  { "RTRIM",                       Function("RTRIM",                       "AQL_RTRIM", "s|s", true, false, true) },
   { "FIND_FIRST",                  Function("FIND_FIRST",                  "AQL_FIND_FIRST", "s,s|zn,zn", true, false, true) },
   { "FIND_LAST",                   Function("FIND_LAST",                   "AQL_FIND_LAST", "s,s|zn,zn", true, false, true) },
+  { "SPLIT",                       Function("SPLIT",                       "AQL_SPLIT", "s|sl,n", true, false, true) },
+  { "SUBSTITUTE",                  Function("SUBSTITUTE",                  "AQL_SUBSTITUTE", "s,las|lsn,n", true, false, true) },
 
   // numeric functions
   { "FLOOR",                       Function("FLOOR",                       "AQL_FLOOR", "n", true, false, true) },
@@ -138,6 +142,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "MAX",                         Function("MAX",                         "AQL_MAX", "l", true, false, true) },
   { "SUM",                         Function("SUM",                         "AQL_SUM", "l", true, false, true) },
   { "MEDIAN",                      Function("MEDIAN",                      "AQL_MEDIAN", "l", true, false, true) }, 
+  { "PERCENTILE",                  Function("PERCENTILE",                  "AQL_PERCENTILE", "l,n|s", true, false, true) }, 
   { "AVERAGE",                     Function("AVERAGE",                     "AQL_AVERAGE", "l", true, false, true) },
   { "VARIANCE_SAMPLE",             Function("VARIANCE_SAMPLE",             "AQL_VARIANCE_SAMPLE", "l", true, false, true) },
   { "VARIANCE_POPULATION",         Function("VARIANCE_POPULATION",         "AQL_VARIANCE_POPULATION", "l", true, false, true) },
@@ -154,6 +159,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   // document functions
   { "HAS",                         Function("HAS",                         "AQL_HAS", "az,s", true, false, true) },
   { "ATTRIBUTES",                  Function("ATTRIBUTES",                  "AQL_ATTRIBUTES", "a|b,b", true, false, true) },
+  { "VALUES",                      Function("VALUES",                      "AQL_VALUES", "a|b", true, false, true) },
   { "MERGE",                       Function("MERGE",                       "AQL_MERGE", "a,a|+", true, false, true) },
   { "MERGE_RECURSIVE",             Function("MERGE_RECURSIVE",             "AQL_MERGE_RECURSIVE", "a,a|+", true, false, true) },
   { "DOCUMENT",                    Function("DOCUMENT",                    "AQL_DOCUMENT", "h.|.", false, true, false) },
@@ -161,6 +167,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "UNSET",                       Function("UNSET",                       "AQL_UNSET", "a,sl|+", true, false, true) },
   { "KEEP",                        Function("KEEP",                        "AQL_KEEP", "a,sl|+", true, false, true) },
   { "TRANSLATE",                   Function("TRANSLATE",                   "AQL_TRANSLATE", ".,a|.", true, false, true) },
+  { "ZIP",                         Function("ZIP",                         "AQL_ZIP", "l,l", true, false, true) },
 
   // geo functions
   { "NEAR",                        Function("NEAR",                        "AQL_NEAR", "h,n,n|nz,s", false, true, false) },

@@ -72,7 +72,10 @@ DispatcherQueue::DispatcherQueue (Scheduler* scheduler,
     _nrWaiting(0),
     _nrStopped(0),
     _nrSpecial(0),
+    _nrBlocked(0),
     _nrThreads(nrThreads),
+    _lastChanged(0.0),
+    _gracePeriod(5.0),
     _scheduler(scheduler),
     _dispatcher(dispatcher),
     createDispatcherThread(creator) {
@@ -104,6 +107,11 @@ bool DispatcherQueue::addJob (Job* job) {
   // queue is full
   if (_readyJobs.size() >= _maxSize) {
     return false;
+  }
+
+  // if all threads are block, we start new threads
+  if (0 == _nrWaiting && _nrRunning + _nrStarted <= _nrBlocked) {
+    startQueueThread();
   }
 
   // add the job to the list of ready jobs
@@ -188,6 +196,35 @@ void DispatcherQueue::specializeThread (DispatcherThread* thread) {
 
     if (_monopolizer == thread) {
       _monopolizer = 0;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief indicates that thread is doing a blocking operation
+////////////////////////////////////////////////////////////////////////////////
+
+void DispatcherQueue::blockThread (DispatcherThread* thread) {
+  CONDITION_LOCKER(guard, _accessQueue);
+
+  if (thread->_jobType == Job::READ_JOB || thread->_jobType == Job::WRITE_JOB) {
+    _nrBlocked++;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief indicates that thread has resumed work
+////////////////////////////////////////////////////////////////////////////////
+
+void DispatcherQueue::unblockThread (DispatcherThread* thread) {
+  CONDITION_LOCKER(guard, _accessQueue);
+
+  if (thread->_jobType == Job::READ_JOB || thread->_jobType == Job::WRITE_JOB) {
+    if (_nrBlocked == 0) {
+      LOG_ERROR("unblocking too many threads");
+    }
+    else {
+      _nrBlocked--;
     }
   }
 }
@@ -335,6 +372,7 @@ bool DispatcherQueue::startQueueThread () {
   }
   else {
     _nrStarted++;
+    _lastChanged = TRI_microtime();
   }
 
   return ok;

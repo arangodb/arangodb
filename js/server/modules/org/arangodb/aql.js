@@ -418,6 +418,46 @@ function TYPEWEIGHT (value) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compile a regex from a string pattern
 ////////////////////////////////////////////////////////////////////////////////
+  
+function CREATE_REGEX_PATTERN (chars) {
+  "use strict";
+
+  chars = AQL_TO_STRING(chars);
+  var i, n = chars.length, pattern = '';
+  var specialChar = /^([.*+?\^=!:${}()|\[\]\/\\])$/;
+
+  for (i = 0; i < n; ++i) {
+    var c = chars.charAt(i);
+    if (c.match(specialChar)) {
+      // character with special meaning in a regex
+      pattern += '\\' + c;
+    }
+    else if (c === '\t') {
+      pattern += '\\t';
+    }
+    else if (c === '\r') {
+      pattern += '\\r';
+    }
+    else if (c === '\n') {
+      pattern += '\\n';
+    }
+    else if (c === '\b') {
+      pattern += '\\b';
+    }
+    else if (c === '\f') {
+      pattern += '\\f';
+    }
+    else {
+      pattern += c;
+    }
+  }
+
+  return pattern;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compile a regex from a string pattern
+////////////////////////////////////////////////////////////////////////////////
 
 function COMPILE_REGEX (regex, modifiers) {
   "use strict";
@@ -818,6 +858,8 @@ function GET_DOCUMENTS (collection, offset, limit) {
   if (limit === undefined) {
     limit = null;
   }
+      
+  WARN(null, INTERNAL.errors.ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION, AQL_TO_STRING(collection));
 
   if (isCoordinator) {
     return COLLECTION(collection).all().skip(offset).limit(limit).toArray();
@@ -1401,19 +1443,6 @@ function UNARY_MINUS (value) {
 function ARITHMETIC_PLUS (lhs, rhs) {
   "use strict";
 
-  var lWeight = TYPEWEIGHT(lhs);
-  var rWeight = TYPEWEIGHT(rhs);
-
-  if (lWeight === TYPEWEIGHT_STRING || 
-      lWeight === TYPEWEIGHT_LIST || 
-      lWeight === TYPEWEIGHT_DOCUMENT ||
-      rWeight === TYPEWEIGHT_STRING ||
-      rWeight === TYPEWEIGHT_LIST || 
-      rWeight === TYPEWEIGHT_DOCUMENT) {
-    // string concatenation
-    return AQL_TO_STRING(lhs) + AQL_TO_STRING(rhs);
-  }
-  
   lhs = AQL_TO_NUMBER(lhs);
   if (lhs === null) {
     return null;
@@ -1520,14 +1549,24 @@ function ARITHMETIC_MODULUS (lhs, rhs) {
 function AQL_CONCAT () {
   "use strict";
 
-  var result = '', i;
+  var result = '', i, j;
 
   for (i = 0; i < arguments.length; ++i) {
     var element = arguments[i];
-    if (TYPEWEIGHT(element) === TYPEWEIGHT_NULL) {
+    var weight = TYPEWEIGHT(element);
+    if (weight === TYPEWEIGHT_NULL) {
       continue;
     }
-    result += AQL_TO_STRING(element);
+    else if (weight === TYPEWEIGHT_LIST) {
+      for (j = 0; j < element.length; ++j) {
+        if (TYPEWEIGHT(element[j]) !== TYPEWEIGHT_NULL) {
+          result += AQL_TO_STRING(element[j]);
+        }
+      } 
+    }
+    else {
+      result += AQL_TO_STRING(element);
+    }
   }
 
   return result;
@@ -1540,12 +1579,13 @@ function AQL_CONCAT () {
 function AQL_CONCAT_SEPARATOR () {
   "use strict";
 
-  var separator, found = false, result = '', i;
+  var separator, found = false, result = '', i, j;
 
   for (i = 0; i < arguments.length; ++i) {
     var element = arguments[i];
-
-    if (i > 0 && TYPEWEIGHT(element) === TYPEWEIGHT_NULL) {
+    var weight = TYPEWEIGHT(element);
+ 
+    if (i > 0 && weight === TYPEWEIGHT_NULL) {
       continue;
     }
 
@@ -1557,8 +1597,22 @@ function AQL_CONCAT_SEPARATOR () {
       result += separator;
     }
 
-    found = true;
-    result += AQL_TO_STRING(element);
+    if (weight === TYPEWEIGHT_LIST) {
+      found = false;
+      for (j = 0; j < element.length; ++j) {
+        if (TYPEWEIGHT(element[j]) !== TYPEWEIGHT_NULL) {
+          if (found) {
+            result += separator;
+          }
+          result += AQL_TO_STRING(element[j]);
+          found = true;
+        }
+      } 
+    }
+    else {
+      result += AQL_TO_STRING(element);
+      found = true;
+    }
   }
 
   return result;
@@ -1691,30 +1745,181 @@ function AQL_RIGHT (value, length) {
 /// @brief returns a trimmed version of a string
 ////////////////////////////////////////////////////////////////////////////////
 
-function AQL_TRIM (value, type) {
+function AQL_TRIM (value, chars) {
   "use strict";
 
-  type = AQL_TO_NUMBER(type);
-
-  if (type < 0 || type > 2) { 
-    type = 0;
+  if (chars === 1) {
+    return AQL_LTRIM(value);
+  }
+  else if (chars === 2) {
+    return AQL_RTRIM(value);
+  }
+  else if (chars === null || chars === undefined || chars === 0) {
+    return AQL_TO_STRING(value).replace(new RegExp("(^\\s+|\\s+$)", 'g'), '');
   }
 
-  var result;
-  if (type === 1) {
-    // TRIM(, 1)
-    result = AQL_TO_STRING(value).replace(/^\s+/g, '');
-  }
-  else if (type === 2) {
-    // TRIM(, 2)
-    result = AQL_TO_STRING(value).replace(/\s+$/g, '');
+  var pattern = CREATE_REGEX_PATTERN(chars);
+  return AQL_TO_STRING(value).replace(new RegExp("(^[" + pattern + "]+|[" + pattern + "]+$)", 'g'), '');
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief trim a value from the left
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_LTRIM (value, chars) {
+  "use strict";
+
+  if (chars === null || chars === undefined) {
+    chars = "^\\s+";
   }
   else {
-    // TRIM(, 0)
-    result = AQL_TO_STRING(value).replace(/(^\s+)|\s+$/g, '');
+    chars = "^[" + CREATE_REGEX_PATTERN(chars) + "]+";
   }
 
-  return result;
+  return AQL_TO_STRING(value).replace(new RegExp(chars, 'g'), '');
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief trim a value from the right
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_RTRIM (value, chars) {
+  "use strict";
+
+  if (chars === null || chars === undefined) {
+    chars = "\\s+$";
+  }
+  else {
+    chars = "[" + CREATE_REGEX_PATTERN(chars) + "]+$";
+  }
+
+  return AQL_TO_STRING(value).replace(new RegExp(chars, 'g'), '');
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief split a string using a separator
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_SPLIT (value, separator, limit) {
+  "use strict";
+
+  if (separator === null || separator === undefined) {
+    return [ AQL_TO_STRING(value) ];
+  }
+
+  if (limit === null || limit === undefined) {
+    limit = undefined;
+  }
+  else {
+    limit = AQL_TO_NUMBER(limit);
+  }
+
+  if (limit < 0) {
+    WARN("SPLIT", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
+  }
+
+  if (TYPEWEIGHT(separator) === TYPEWEIGHT_LIST) {
+    var patterns = [];
+    separator.forEach(function(s) {
+      patterns.push(CREATE_REGEX_PATTERN(AQL_TO_STRING(s)));
+    });
+
+    return AQL_TO_STRING(value).split(new RegExp(patterns.join("|"), "g"), limit);
+  }
+
+  return AQL_TO_STRING(value).split(AQL_TO_STRING(separator), limit);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replace a search value inside a string
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_SUBSTITUTE (value, search, replace, limit) {
+  "use strict";
+
+  var pattern, patterns, replacements = { }, sWeight = TYPEWEIGHT(search);
+  value = AQL_TO_STRING(value);
+
+  if (sWeight === TYPEWEIGHT_DOCUMENT) {
+    patterns = [ ];
+    KEYS(search, false).forEach(function(k) {
+      patterns.push(CREATE_REGEX_PATTERN(k));
+      replacements[k] = AQL_TO_STRING(search[k]);
+    });
+    pattern = patterns.join('|');
+    limit = replace;
+  }
+  else if (sWeight === TYPEWEIGHT_STRING) {
+    pattern = CREATE_REGEX_PATTERN(search);
+    if (TYPEWEIGHT(replace) === TYPEWEIGHT_NULL) {
+      replacements[search] = "";
+    }
+    else {
+      replacements[search] = AQL_TO_STRING(replace);
+    }
+  }
+  else if (sWeight === TYPEWEIGHT_LIST) {
+    if (search.length === 0) {
+      // empty list
+      WARN("SUBSTITUTE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      return value;
+    }
+
+    patterns = [ ];
+
+    if (TYPEWEIGHT(replace) === TYPEWEIGHT_LIST) {
+      // replace each occurrence with a member from the second list
+      search.forEach(function(k, i) {
+        k = AQL_TO_STRING(k);
+        patterns.push(CREATE_REGEX_PATTERN(k));
+        if (i < replace.length) {
+          replacements[k] = AQL_TO_STRING(replace[i]);
+        }
+        else {
+          replacements[k] = "";
+        }
+      });
+    }
+    else {
+      // replace all occurrences with a constant string
+      if (TYPEWEIGHT(replace) === TYPEWEIGHT_NULL) {
+        replace = "";
+      }
+      else {
+        replace = AQL_TO_STRING(replace);
+      }
+      search.forEach(function(k, i) {
+        k = AQL_TO_STRING(k);
+        patterns.push(CREATE_REGEX_PATTERN(k));
+        replacements[k] = replace;
+      });
+    }
+    pattern = patterns.join('|');
+  }
+
+  if (limit === null || limit === undefined) {
+    limit = undefined;
+  }
+  else {
+    limit = AQL_TO_NUMBER(limit);
+  }
+
+  if (limit < 0) {
+    WARN("SUBSTITUTE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
+  }
+
+  return AQL_TO_STRING(value).replace(new RegExp(pattern, 'g'), function(match) {
+    if (limit === undefined) {
+      return replacements[match];
+    } 
+    if (limit > 0) {
+      --limit;
+      return replacements[match];
+    }
+    return match;
+  });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1758,13 +1963,14 @@ function AQL_FIND_FIRST (value, search, start, end) {
 function AQL_FIND_LAST (value, search, start, end) {
   "use strict";
 
-  if (start !== undefined) {
+  if (start !== undefined && start !== null) {
     start = AQL_TO_NUMBER(start);
   }
   else {
-    start = 0;
+    start = undefined;
   }
-  if (end !== undefined) {
+
+  if (end !== undefined && end !== null) {
     end = AQL_TO_NUMBER(end);
     if (end < start || end < 0) {
       return -1;
@@ -1774,11 +1980,22 @@ function AQL_FIND_LAST (value, search, start, end) {
     end = undefined;
   }
 
-  if (end !== undefined && end < search.length) {
-    return AQL_TO_STRING(value).lastIndexOf(AQL_TO_STRING(search).substr(0, end + 1), start);
+  var result;
+  if (start > 0 || end !== undefined) {
+    if (end === undefined) {
+      result = AQL_TO_STRING(value).substr(start).lastIndexOf(AQL_TO_STRING(search));
+    }
+    else {
+      result = AQL_TO_STRING(value).substr(start, end - start + 1).lastIndexOf(AQL_TO_STRING(search));
+    }
+    if (result !== -1) {
+      result += start;
+    }
   }
-
-  return AQL_TO_STRING(value).lastIndexOf(AQL_TO_STRING(search), start);
+  else {
+    result = AQL_TO_STRING(value).lastIndexOf(AQL_TO_STRING(search));
+  }
+  return result;
 }
 
 // -----------------------------------------------------------------------------
@@ -2640,6 +2857,87 @@ function AQL_MEDIAN (values) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the pth percentile of all values
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_PERCENTILE (values, p, method) {
+  "use strict";
+
+  if (TYPEWEIGHT(values) !== TYPEWEIGHT_LIST) {
+    WARN("PERCENTILE", INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+    return null;
+  }
+
+  if (TYPEWEIGHT(p) !== TYPEWEIGHT_NUMBER) {
+    WARN("PERCENTILE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
+  }
+
+  if (p <= 0 || p > 100) {
+    WARN("PERCENTILE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
+  }
+ 
+  if (method === null || method === undefined) {
+    method = "rank";
+  }
+   
+  if (method !== "interpolation" && method !== "rank") {
+    WARN("PERCENTILE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
+  }
+
+  var copy = [ ], current, typeWeight;
+  var i, n;
+
+  for (i = 0, n = values.length; i < n; ++i) {
+    current = values[i];
+    typeWeight = TYPEWEIGHT(current);
+
+    if (typeWeight !== TYPEWEIGHT_NULL) {
+      if (typeWeight !== TYPEWEIGHT_NUMBER) {
+        WARN("PERCENTILE", INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+        return null;
+      }
+
+      copy.push(current);
+    }
+  }
+
+  if (copy.length === 0) {
+    return null;
+  }
+  else if (copy.length === 1) {
+    return copy[0];
+  }
+
+  copy.sort(RELATIONAL_CMP);
+
+  var idx, pos;
+  if (method === "interpolation") {
+    // interpolation method
+    idx = p * (copy.length + 1) / 100;
+    pos = Math.floor(idx);
+    var delta = idx - pos;
+
+    if (pos >= copy.length) {
+      return NUMERIC_VALUE(copy[copy.length - 1]);
+    }
+    return NUMERIC_VALUE(delta * (copy[pos] - copy[pos - 1]) + copy[pos - 1]);
+  }
+  else {
+    // rank method
+    idx = p * (copy.length) / 100;
+    pos = Math.ceil(idx);
+
+    if (pos >= copy.length) {
+      return NUMERIC_VALUE(copy[copy.length - 1]);
+    }
+    return NUMERIC_VALUE(copy[pos - 1]);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief variance of all values
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2962,25 +3260,28 @@ function AQL_IS_IN_POLYGON (points, latitude, longitude) {
     return false;
   }
 
-  var search, pointLat, pointLon, geoJson = false;
+  var searchLat, searchLon, pointLat, pointLon, geoJson = false;
   if (TYPEWEIGHT(latitude) === TYPEWEIGHT_LIST) {
     geoJson = AQL_TO_BOOL(longitude);
     if (geoJson) {
       // first list value is longitude, then latitude
-      search = latitude; 
+      searchLat = latitude[1];
+      searchLon = latitude[0];
       pointLat = 1;
       pointLon = 0;
     }
     else {
       // first list value is latitude, then longitude
-      search = latitude;
+      searchLat = latitude[0];
+      searchLon = latitude[1];
       pointLat = 0;
       pointLon = 1;
     }
   }
   else if (TYPEWEIGHT(latitude) === TYPEWEIGHT_NUMBER &&
            TYPEWEIGHT(longitude) === TYPEWEIGHT_NUMBER) {
-    search = [ latitude, longitude ];
+    searchLat = latitude;
+    searchLon = longitude;
     pointLat = 0;
     pointLon = 1;
   }
@@ -2989,37 +3290,30 @@ function AQL_IS_IN_POLYGON (points, latitude, longitude) {
     return false;
   }
   
-  if (points.length === 0) {
-    return false;
-  }
- 
-  var i, n = points.length; 
-  var wn = 0;
-  points.push(points[0]);
+  var i, j = points.length - 1;
+  var oddNodes = false;
 
-  var isLeft = function (p0, p1, p2) {
-    return ((p1[pointLon] - p0[pointLon]) * (p2[pointLat] - p0[pointLat]) - 
-            (p2[pointLon] - p0[pointLon]) * (p1[pointLat] - p0[pointLat]));
-  };
- 
-  for (i = 0; i < n; ++i) {
-    if (points[i][pointLat] <= search[pointLat]) {
-      if (points[i + 1][pointLat] >= search[pointLat]) { 
-        if (isLeft(points[i], points[i + 1], search) >= 0) { 
-          ++wn;
-        }
-      }
+  for (i = 0; i < points.length; ++i) {
+    if (TYPEWEIGHT(points[i]) !== TYPEWEIGHT_LIST) {
+      continue;
     }
-    else {
-      if (points[i + 1][pointLat] <= search[pointLat]) {  
-        if (isLeft(points[i], points[i + 1], search) <= 0) { 
-          --wn;
-        }
-      }
+
+    if (((points[i][pointLat] < searchLat && points[j][pointLat] >= searchLat) || 
+         (points[j][pointLat] < searchLat && points[i][pointLat] >= searchLat)) &&
+        (points[i][pointLon] <= searchLon || points[j][pointLon] <= searchLon)) {
+      oddNodes ^= ((points[i][pointLon] + (searchLat - points[i][pointLat]) / 
+                   (points[j][pointLat] - points[i][pointLat]) * 
+                    (points[j][pointLon] - points[i][pointLon])) < searchLon);
     }
+
+    j = i;
   }
- 
-  return (wn !== 0);
+
+  if (oddNodes) {
+    return true;
+  }
+
+  return false;
 }
 
 // -----------------------------------------------------------------------------
@@ -3242,7 +3536,7 @@ function AQL_ATTRIBUTES (element, removeInternal, sort) {
     var result = [ ];
 
     Object.keys(element).forEach(function(k) {
-      if (k.substring(0, 1) !== '_') {
+      if (k[0] !== '_') {
         result.push(k);
       }
     });
@@ -3255,6 +3549,54 @@ function AQL_ATTRIBUTES (element, removeInternal, sort) {
   }
 
   return KEYS(element, sort);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the attribute values of a document as a list
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_VALUES (element, removeInternal) {
+  "use strict";
+
+  if (TYPEWEIGHT(element) !== TYPEWEIGHT_DOCUMENT) {
+    WARN("VALUES", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
+  }
+
+  var result = [ ], a;
+
+  for (a in element) {
+    if (element.hasOwnProperty(a)) {
+      if (a[0] !== '_' || ! removeInternal) {
+        result.push(element[a]);
+      } 
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief assemble a document from two lists
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_ZIP (keys, values) {
+  "use strict";
+
+  if (TYPEWEIGHT(keys) !== TYPEWEIGHT_LIST ||
+      TYPEWEIGHT(values) !== TYPEWEIGHT_LIST ||
+      keys.length !== values.length) {
+    WARN("ZIP", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return null;
+  }
+
+  var result = { }, i, n = keys.length;
+
+  for (i = 0; i < n; ++i) {
+    result[AQL_TO_STRING(keys[i])] = values[i];
+  }
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4304,7 +4646,6 @@ function TRAVERSAL_FUNC (func,
     weight : params.weight,
     defaultWeight : params.defaultWeight,
     prefill : params.prefill
-
   };
 
   if (params.followEdges) {
@@ -5431,13 +5772,13 @@ function AQL_GRAPH_TRAVERSAL_TREE (graphName,
     return null;
   }
   options.fromVertexExample = startVertexExample;
-  options.direction =  direction;
+  options.direction = direction;
 
   var startVertices = RESOLVE_GRAPH_START_VERTICES(graphName, options);
-  var factory = TRAVERSAL.generalGraphDatasourceFactory(graphName), r;
+  var factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
 
   startVertices.forEach(function (f) {
-    r = TRAVERSAL_FUNC("GRAPH_TRAVERSAL_TREE",
+    var r = TRAVERSAL_FUNC("GRAPH_TRAVERSAL_TREE",
       factory,
       TO_ID(f),
       undefined,
@@ -6851,6 +7192,10 @@ exports.AQL_LIKE = AQL_LIKE;
 exports.AQL_LEFT = AQL_LEFT;
 exports.AQL_RIGHT = AQL_RIGHT;
 exports.AQL_TRIM = AQL_TRIM;
+exports.AQL_LTRIM = AQL_LTRIM;
+exports.AQL_RTRIM = AQL_RTRIM;
+exports.AQL_SPLIT = AQL_SPLIT;
+exports.AQL_SUBSTITUTE = AQL_SUBSTITUTE;
 exports.AQL_FIND_FIRST = AQL_FIND_FIRST;
 exports.AQL_FIND_LAST = AQL_FIND_LAST;
 exports.AQL_TO_BOOL = AQL_TO_BOOL;
@@ -6888,6 +7233,7 @@ exports.AQL_MIN = AQL_MIN;
 exports.AQL_SUM = AQL_SUM;
 exports.AQL_AVERAGE = AQL_AVERAGE;
 exports.AQL_MEDIAN = AQL_MEDIAN;
+exports.AQL_PERCENTILE = AQL_PERCENTILE;
 exports.AQL_VARIANCE_SAMPLE = AQL_VARIANCE_SAMPLE;
 exports.AQL_VARIANCE_POPULATION = AQL_VARIANCE_POPULATION;
 exports.AQL_STDDEV_SAMPLE = AQL_STDDEV_SAMPLE;
@@ -6928,6 +7274,8 @@ exports.AQL_PARSE_IDENTIFIER = AQL_PARSE_IDENTIFIER;
 exports.AQL_SKIPLIST = AQL_SKIPLIST;
 exports.AQL_HAS = AQL_HAS;
 exports.AQL_ATTRIBUTES = AQL_ATTRIBUTES;
+exports.AQL_VALUES = AQL_VALUES;
+exports.AQL_ZIP = AQL_ZIP;
 exports.AQL_UNSET = AQL_UNSET;
 exports.AQL_KEEP = AQL_KEEP;
 exports.AQL_MERGE = AQL_MERGE;

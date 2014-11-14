@@ -71,6 +71,9 @@ DispatcherThread::DispatcherThread (DispatcherQueue* queue)
 ////////////////////////////////////////////////////////////////////////////////
 
 void DispatcherThread::run () {
+
+  currentDispatcherThread = this;
+
   _queue->_accessQueue.lock();
 
   _queue->_nrStarted--;
@@ -263,6 +266,16 @@ void DispatcherThread::run () {
       tick(true);
       _queue->_accessQueue.lock();
 
+      // there is a chance, that we created more threads than necessary
+      if (_queue->_nrThreads + _queue->_nrBlocked < _queue->_nrRunning + _queue->_nrStarted + _queue->_nrWaiting) {
+        double n = TRI_microtime();
+
+        if (_queue->_lastChanged + _queue->_gracePeriod < n) {
+          _queue->_lastChanged = n;
+          break;
+        }
+      }
+
       // wait, if there are no jobs
       if (_queue->_readyJobs.empty()) {
         _queue->_nrRunning--;
@@ -294,6 +307,26 @@ void DispatcherThread::run () {
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief indicates that thread is doing a blocking operation
+////////////////////////////////////////////////////////////////////////////////
+
+void DispatcherThread::blockThread () {
+  _queue->blockThread(this);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief indicates that thread has resumed work
+////////////////////////////////////////////////////////////////////////////////
+
+void DispatcherThread::unblockThread () {
+  _queue->unblockThread(this);
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
 
@@ -310,6 +343,13 @@ void DispatcherThread::reportStatus () {
 
 void DispatcherThread::tick (bool) {
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a global, but thread-local place to hold the current dispatcher
+/// thread. If we are not in a dispatcher thread this is set to nullptr.
+////////////////////////////////////////////////////////////////////////////////
+
+thread_local DispatcherThread* DispatcherThread::currentDispatcherThread = nullptr;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

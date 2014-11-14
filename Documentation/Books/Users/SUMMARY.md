@@ -204,6 +204,7 @@
     * [JSON Documents](HttpBulkImports/ImportingSelfContained.md)
     * [Headers and Values](HttpBulkImports/ImportingHeadersAndValues.md)
   * [Batch Requests](HttpBatchRequest/README.md)
+  * [Tasks](HttpTasks/README.md)
   * [Monitoring](HttpAdministrationAndMonitoring/README.md)
   * [User Management](HttpUserManagement/README.md)
   * [Async Result](HttpAsyncResultsManagement/README.md)
