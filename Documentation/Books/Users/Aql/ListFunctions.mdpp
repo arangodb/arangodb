@@ -48,6 +48,12 @@ AQL supports the following functions to operate on list values:
   list is empty or only *null* values are contained in the list, the function will return 
   *null*.
 
+- *PERCENTILE(list, n, method)*: Returns the *n*th percentile of the values in *list*. 
+  This requires the elements in *list* to be numbers. *null* values are ignored. *n* must
+  be between 0 (excluded) and 100 (included). *method* can be *rank* or *interpolation*.
+  The function will return null if the list is empty or only *null* values are contained 
+  in it or the percentile cannot be calculated.
+
 - *VARIANCE_POPULATION(list)*: Returns the population variance of the values in 
   *list*. This requires the elements in *list* to be numbers. *null* values 
   are ignored. If the list is empty or only *null* values are contained in the list, 

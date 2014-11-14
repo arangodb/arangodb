@@ -217,9 +217,7 @@ ERROR_QUERY_MULTI_MODIFY,1573,"multi-modify query", "Will be raised when an AQL 
 ERROR_QUERY_MODIFY_IN_SUBQUERY,1574,"modify operation in subquery", "Will be raised when an AQL query contains a data-modifying operation inside a subquery."
 ERROR_QUERY_COMPILE_TIME_OPTIONS,1575,"query options must be readable at query compile time", "Will be raised when an AQL data-modification query contains options that cannot be figured out at query compile time."
 ERROR_QUERY_EXCEPTION_OPTIONS,1576,"query options expected", "Will be raised when an AQL data-modification query contains an invalid options specification."
-ERROR_QUERY_BAD_JSON_PLAN,1577,"JSON describing execution plan was bad", "Will be raised when an HTTP API for a query got an invalid JSON object."
-ERROR_QUERY_NOT_FOUND,1578,"query ID not found", "Will be raised when an Id of a query is not found by the HTTP API."
-ERROR_QUERY_IN_USE,1579,"query with this ID is in use", "Will be raised when an Id of a query is found by the HTTP API but the query is in use."
+ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION,1577,"collection '%s' used as expression operand", "Will be raised when a collection is used as an operand in an AQL expression."
 
 ################################################################################
 ## AQL user functions
@@ -229,6 +227,14 @@ ERROR_QUERY_FUNCTION_INVALID_NAME,1580,"invalid user function name","Will be rai
 ERROR_QUERY_FUNCTION_INVALID_CODE,1581,"invalid user function code","Will be raised when a user function is registered with invalid code."
 ERROR_QUERY_FUNCTION_NOT_FOUND,1582,"user function '%s()' not found","Will be raised when a user function is accessed but not found."
 ERROR_QUERY_FUNCTION_RUNTIME_ERROR,1583,"user function runtime error: %s","Will be raised when a user function throws a runtime exception."
+
+################################################################################
+## AQL query registry
+################################################################################
+
+ERROR_QUERY_BAD_JSON_PLAN,1590,"bad execution plan JSON", "Will be raised when an HTTP API for a query got an invalid JSON object."
+ERROR_QUERY_NOT_FOUND,1591,"query ID not found", "Will be raised when an Id of a query is not found by the HTTP API."
+ERROR_QUERY_IN_USE,1592,"query with this ID is in use", "Will be raised when an Id of a query is found by the HTTP API but the query is in use."
 
 ################################################################################
 ## ArangoDB cursor errors
@@ -302,7 +308,7 @@ ERROR_GRAPH_INVALID_FILTER_RESULT,1910,"invalid filter result","Will be raised w
 ERROR_GRAPH_COLLECTION_MULTI_USE,1920,"multi use of edge collection in edge def","an edge collection may only be used once in one edge definition of a graph.",
 ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS,1921,"edge collection already used in edge def"," is already used by another graph in a different edge definition.",
 ERROR_GRAPH_CREATE_MISSING_NAME,1922,"missing graph name","a graph name is required to create a graph.",
-ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION,1923,"malformed edge def","the edge definition is malformed. It has to be an array of objects.",
+ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION,1923,"malformed edge definition","the edge definition is malformed. It has to be an array of objects.",
 ERROR_GRAPH_NOT_FOUND,1924,"graph not found","a graph with this name could not be found.",
 ERROR_GRAPH_DUPLICATE,1925,"graph already exists","a graph with this name already exists.",
 ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST,1926,"collection does not exist"," does not exist.",

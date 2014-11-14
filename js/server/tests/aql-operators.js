@@ -3918,7 +3918,7 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual("-1", aql.AQL_CONCAT(undefined, -1));
       assertEqual("", aql.AQL_CONCAT(undefined, [ ]));
       assertEqual("1", aql.AQL_CONCAT(undefined, [ 1 ]));
-      assertEqual("1,2", aql.AQL_CONCAT(undefined, [ 1, 2 ]));
+      assertEqual("12", aql.AQL_CONCAT(undefined, [ 1, 2 ]));
       assertEqual("[object Object]", aql.AQL_CONCAT(undefined, { }));
       assertEqual("[object Object]", aql.AQL_CONCAT(undefined, { 'a' : 0 }));
       assertEqual("false", aql.AQL_CONCAT(false, undefined));
@@ -3929,7 +3929,7 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual("-1", aql.AQL_CONCAT(-1, undefined));
       assertEqual("", aql.AQL_CONCAT([ ], undefined));
       assertEqual("1", aql.AQL_CONCAT([ 1 ], undefined));
-      assertEqual("1,2", aql.AQL_CONCAT([ 1, 2 ], undefined));
+      assertEqual("12", aql.AQL_CONCAT([ 1, 2 ], undefined));
       assertEqual("[object Object]", aql.AQL_CONCAT({ }, undefined));
       assertEqual("[object Object]", aql.AQL_CONCAT({ 'a' : 0 }, undefined));
       assertEqual("1", aql.AQL_CONCAT(1, NaN));
