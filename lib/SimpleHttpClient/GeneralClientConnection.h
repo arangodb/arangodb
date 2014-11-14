@@ -164,7 +164,7 @@ namespace triagens {
 /// @brief read data from endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool handleRead (double, triagens::basics::StringBuffer&);
+        bool handleRead (double, triagens::basics::StringBuffer&, bool& progress);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         protected virtual methods
@@ -200,7 +200,7 @@ namespace triagens {
 /// @brief read data from the connection
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual bool readClientConnection (triagens::basics::StringBuffer&) = 0;
+        virtual bool readClientConnection (triagens::basics::StringBuffer&, bool& porgress) = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether the connection is readable

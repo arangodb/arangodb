@@ -70,10 +70,10 @@ will behave exactly as described above, working on sharded collections
 in the cluster.
 
 However, as opposed to the single instance situation, this operation 
-does not lock the data in the cluster and can therefore not guarantee
-to dump a consistent snapshot if writing operations happen during the
-dump operation! That is, it is recommended not to perform any data
-modifying operations on the cluster whilst *arangodump* is running.
+does not guarantee to dump a consistent snapshot if write operations 
+happen during the dump operation. It is therefore recommended not to 
+perform any data-modifcation operations on the cluster whilst *arangodump* 
+is running.
 
 As above, the output will be one structure description file and one data
 file per sharded collection. Note that the data in the data file is

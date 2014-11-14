@@ -35,14 +35,13 @@ setup:
 
 MAINTAINER = \
 	README \
-	arangod/Ahuacatl/ahuacatl-tokens.cpp \
-	arangod/Ahuacatl/ahuacatl-grammar.cpp \
-	arangod/Ahuacatl/ahuacatl-grammar.h \
+	arangod/Aql/tokens.cpp \
+	arangod/Aql/grammar.cpp \
+	arangod/Aql/grammar.h \
 	lib/JsonParser/json-parser.cpp \
 	lib/V8/v8-json.cpp \
-	lib/V8/v8-json.h \
-	lib/BasicsC/voc-errors.h \
-	lib/BasicsC/voc-errors.c \
+	lib/Basics/voc-errors.h \
+	lib/Basics/voc-errors.cpp \
 	js/common/bootstrap/errors.js \
 	mr/common/bootstrap/mr-error.h
 

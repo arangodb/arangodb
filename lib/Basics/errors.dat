@@ -308,7 +308,7 @@ ERROR_GRAPH_INVALID_FILTER_RESULT,1910,"invalid filter result","Will be raised w
 ERROR_GRAPH_COLLECTION_MULTI_USE,1920,"multi use of edge collection in edge def","an edge collection may only be used once in one edge definition of a graph.",
 ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS,1921,"edge collection already used in edge def"," is already used by another graph in a different edge definition.",
 ERROR_GRAPH_CREATE_MISSING_NAME,1922,"missing graph name","a graph name is required to create a graph.",
-ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION,1923,"malformed edge def","the edge definition is malformed. It has to be an array of objects.",
+ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION,1923,"malformed edge definition","the edge definition is malformed. It has to be an array of objects.",
 ERROR_GRAPH_NOT_FOUND,1924,"graph not found","a graph with this name could not be found.",
 ERROR_GRAPH_DUPLICATE,1925,"graph already exists","a graph with this name already exists.",
 ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST,1926,"collection does not exist"," does not exist.",
