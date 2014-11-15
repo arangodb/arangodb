@@ -113,7 +113,7 @@
                 {
                     "errorResponses": [
                         {
-                            "reason": "is returned if the job requested via job-id has been executed successfully  and its result is ready to fetch. <br><br>",
+                            "reason": "is returned if the job requested via job-id has been executed  and its result is ready to fetch. <br><br>",
                             "code": "200"
                         },
                         {
