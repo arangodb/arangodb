@@ -306,9 +306,26 @@ namespace triagens {
 
       triagens::basics::StringBuffer _readBuffer;
 
-      size_t _readBufferOffset;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read buffer offset
+///
+/// _state == IN_READ_BODY:
+///     points to the beginning of the body
+///
+/// _state == IN_READ_HEADER:
+///     points to the beginning of the next header line
+///
+/// _state == FINISHED:
+///     points to the beginning of the next request
+///
+/// _state == IN_READ_CHUNKED_HEADER:
+///     points to the beginning of the next size line
+///
+/// _state == IN_READ_CHUNKED_BODY:
+///     points to the beginning of the next body
+////////////////////////////////////////////////////////////////////////////////
 
-      size_t _readBufferBodyStart;
+      size_t _readBufferOffset;
 
       double _requestTimeout;
 
