@@ -175,6 +175,7 @@ namespace triagens {
             bool res = _connection->handleRead(remainingTime, _readBuffer, progress);
 
             if (! res) {
+              this->close();
               _state = DEAD;
               break;
             }
@@ -183,7 +184,13 @@ namespace triagens {
               if (_state == IN_READ_BODY && ! _result->hasContentLength()) {
                 _result->setContentLength(_readBuffer.length() - _readBufferOffset);
                 readBody();
-                TRI_ASSERT(_state == FINISHED);
+
+                if (_state != FINISHED) {
+                  this->close();
+                  _state = DEAD;
+                }
+
+                break;
               }
             }
 
@@ -467,7 +474,6 @@ namespace triagens {
 
           // no content-length header in response
           else if (! _result->hasContentLength()) {
-            _readBufferBodyStart = _readBufferOffset;
             _state = IN_READ_BODY;
             readBody();
             return;
@@ -495,7 +501,6 @@ namespace triagens {
               return;
             }
 
-            _readBufferBodyStart = _readBufferOffset;
             _state = IN_READ_BODY;
             readBody();
             return;
@@ -524,10 +529,9 @@ namespace triagens {
           remain -= (len + 1);
 
           pos = (char*) memchr(ptr, '\n', remain);
+
           if (pos == nullptr) {
-            // reached the end
-            // _readBuffer.move_front((ptr - _readBuffer.c_str()) + 1);
-            _readBufferOffset += ((ptr - (_readBuffer.c_str() + _readBufferOffset)) + 1);
+            _readBufferOffset = ptr - _readBuffer.c_str() + 1;
           } 
         }
       }
@@ -554,13 +558,13 @@ namespace triagens {
       }
 
       // we need to wait for more data
-      if (_readBuffer.length() - _readBufferBodyStart < _result->getContentLength()) {
+      if (_readBuffer.length() - _readBufferOffset < _result->getContentLength()) {
         return;
       }
 
       // body is compressed using deflate. inflate it
       if (_result->isDeflated()) {
-        _readBuffer.inflate(_result->getBody(), 16384, _readBufferBodyStart);
+        _readBuffer.inflate(_result->getBody(), 16384, _readBufferOffset);
       }
 
       // body is not compressed
@@ -568,11 +572,11 @@ namespace triagens {
         size_t len = _result->getContentLength();
 
         // prevent reading across the string-buffer end
-        if (len > _readBuffer.length() - _readBufferBodyStart) {
-          len = _readBuffer.length() - _readBufferBodyStart;
+        if (len > _readBuffer.length() - _readBufferOffset) {
+          len = _readBuffer.length() - _readBufferOffset;
         }
 
-        _result->getBody().appendText(_readBuffer.c_str() + _readBufferBodyStart, len);
+        _result->getBody().appendText(_readBuffer.c_str() + _readBufferOffset, len);
       }
 
       _readBufferOffset += _result->getContentLength();
@@ -590,78 +594,81 @@ namespace triagens {
       char const* ptr = _readBuffer.c_str() + _readBufferOffset;
       char* pos = (char*) memchr(ptr, '\n', remain);
 
+again:
+
       // got a line
-      while (pos) {
-
-        // adjust eol position
-        if (pos > ptr && *(pos - 1) == '\r') {
-          --pos;
-        }
-
-        size_t len = pos - (_readBuffer.c_str() + _readBufferOffset);
-        string line(_readBuffer.c_str() + _readBufferOffset, len);
-        StringUtils::trimInPlace(line);
-
-        _readBufferOffset += (len + 1);
-          
-        // adjust offset if line ended with \r\n
-        if (*pos == '\r') {
-          ++_readBufferOffset;
-          ++len;
-        }
-
-        // ignore empty lines
-        if (line[0] == '\r' || line.empty()) {
-          remain -= (len + 1);
-          ptr += len + 1;
-
-          pos = (char*) memchr(ptr, '\n', remain);
-          continue;
-        }
-
-        uint32_t contentLength;
-
-        try {
-          contentLength = static_cast<uint32_t>(std::stol(line, nullptr, 16)); // C++11
-        }
-        catch (...) {
-          setErrorMessage("found invalid content-length", true);
-          // reset connection
-          this->close();
-          _state = DEAD;
-
-          return;
-        }
-
-        // OK: last content length found
-        if (contentLength == 0) {
-          _result->setResultType(SimpleHttpResult::COMPLETE);
-
-          _state = FINISHED;
-
-          if (! _keepAlive) {
-            _connection->disconnect();
-          }
-
-          return;
-        }
-
-        // failed: too many bytes
-        if (contentLength > _maxPacketSize) {
-
-          setErrorMessage("Content-Length > max packet size found!", true);
-          // reset connection
-          this->close();
-          _state = DEAD;
-
-          return;
-        }
-
-        _state = IN_READ_CHUNKED_BODY;
-        _nextChunkedSize = contentLength;
-
-        readChunkedBody();
+      if (pos == nullptr) {
+        return;
       }
+
+      // adjust eol position
+      if (pos > ptr && *(pos - 1) == '\r') {
+        --pos;
+      }
+
+      size_t len = pos - (_readBuffer.c_str() + _readBufferOffset);
+      string line(_readBuffer.c_str() + _readBufferOffset, len);
+      StringUtils::trimInPlace(line);
+
+      _readBufferOffset += (len + 1);
+          
+      // adjust offset if line ended with \r\n
+      if (*pos == '\r') {
+        ++_readBufferOffset;
+        ++len;
+      }
+
+      // ignore empty lines
+      if (line[0] == '\r' || line.empty()) {
+        remain -= (len + 1);
+        ptr += len + 1;
+
+        pos = (char*) memchr(ptr, '\n', remain);
+        goto again;
+      }
+
+      uint32_t contentLength;
+
+      try {
+        contentLength = static_cast<uint32_t>(std::stol(line, nullptr, 16)); // C++11
+      }
+      catch (...) {
+        setErrorMessage("found invalid content-length", true);
+        // reset connection
+        this->close();
+        _state = DEAD;
+
+        return;
+      }
+
+      // OK: last content length found
+      if (contentLength == 0) {
+        _result->setResultType(SimpleHttpResult::COMPLETE);
+
+        _state = FINISHED;
+
+        if (! _keepAlive) {
+          _connection->disconnect();
+        }
+
+        return;
+      }
+
+      // failed: too many bytes
+      if (contentLength > _maxPacketSize) {
+
+        setErrorMessage("Content-Length > max packet size found!", true);
+        // reset connection
+        this->close();
+        _state = DEAD;
+
+        return;
+      }
+
+      _state = IN_READ_CHUNKED_BODY;
+      _nextChunkedSize = contentLength;
+
+      readChunkedBody();
     }
 
 
