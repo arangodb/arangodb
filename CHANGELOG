@@ -1,3 +1,9 @@
+v2.4.0 (XXXX-XX-XX)
+-------------------
+
+* fixed deflate in SimpleHttpClient
+
+
 v2.3.0 (XXXX-XX-XX)
 -------------------
 

@@ -152,7 +152,9 @@ bool ClientConnection::prepare (const double timeout, const bool isWrite) const 
   struct timeval tv;
   fd_set fdset;
 
-  TRI_ASSERT(TRI_isvalidsocket(_socket));
+  if (! TRI_isvalidsocket(_socket)) {
+    return false;
+  }
 
   tv.tv_sec = (long) timeout;
   tv.tv_usec = (long) ((timeout - (double) tv.tv_sec) * 1000000.0);
