@@ -594,9 +594,7 @@ namespace triagens {
       char const* ptr = _readBuffer.c_str() + _readBufferOffset;
       char* pos = (char*) memchr(ptr, '\n', remain);
 
-again:
-
-      // got a line
+      // not yet finished, newline is missing
       if (pos == nullptr) {
         return;
       }
@@ -618,13 +616,14 @@ again:
         ++len;
       }
 
-      // ignore empty lines
+      // empty lines are an error
       if (line[0] == '\r' || line.empty()) {
-        remain -= (len + 1);
-        ptr += len + 1;
+        setErrorMessage("found invalid content-length", true);
+        // reset connection
+        this->close();
+        _state = DEAD;
 
-        pos = (char*) memchr(ptr, '\n', remain);
-        goto again;
+        return;
       }
 
       uint32_t contentLength;
@@ -637,19 +636,6 @@ again:
         // reset connection
         this->close();
         _state = DEAD;
-
-        return;
-      }
-
-      // OK: last content length found
-      if (contentLength == 0) {
-        _result->setResultType(SimpleHttpResult::COMPLETE);
-
-        _state = FINISHED;
-
-        if (! _keepAlive) {
-          _connection->disconnect();
-        }
 
         return;
       }
@@ -686,11 +672,25 @@ again:
         return;
       }
 
-      if (_readBuffer.length() - _readBufferOffset >= _nextChunkedSize) {
+      if (_readBuffer.length() - _readBufferOffset >= _nextChunkedSize + 2) {
+
+        // last chunk length was 0, therefore we are finished
+        if (_nextChunkedSize == 0) {
+          _result->setResultType(SimpleHttpResult::COMPLETE);
+
+          _state = FINISHED;
+
+          if (! _keepAlive) {
+            _connection->disconnect();
+          }
+
+          return;
+        }
+
         _result->getBody().appendText(_readBuffer.c_str() + _readBufferOffset,
                                       (size_t) _nextChunkedSize);
 
-        _readBufferOffset += (size_t) _nextChunkedSize;
+        _readBufferOffset += (size_t) _nextChunkedSize + 2;
         _state = IN_READ_CHUNKED_HEADER;
         readChunkedHeader();
       }
