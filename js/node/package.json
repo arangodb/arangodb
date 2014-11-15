@@ -6,7 +6,6 @@
     "coffee-script": "1.7.1",
     "decimal": "0.0.2",
     "docco": "0.6.3",
-    "eventemitter2": "^0.4.14",
     "htmlparser2": "3.7.2",
     "iced-coffee-script": "1.7.1-f",
     "joi": "4.6.1",
