@@ -217,7 +217,6 @@ function explainSuite () {
       node = nodes[n++];
       assertEqual("ScatterNode", node.type);
       assertEqual([ prev ], node.dependencies);
-      assertEqual(1, node.estimatedCost);
       prev = node.id;
       
       node = nodes[n++];
@@ -229,7 +228,6 @@ function explainSuite () {
       node = nodes[n++];
       assertEqual("EnumerateCollectionNode", node.type);
       assertEqual([ prev ], node.dependencies);
-      assertEqual(0, node.estimatedCost);
       assertEqual("_system", node.database);
       assertEqual(cn, node.collection);
       assertEqual("i", node.outVariable.name);
