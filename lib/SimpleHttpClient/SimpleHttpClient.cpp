@@ -106,26 +106,32 @@ namespace triagens {
 /// @brief send out a request, creating a new HttpResult object
 ////////////////////////////////////////////////////////////////////////////////
 
-    SimpleHttpResult* SimpleHttpClient::request (rest::HttpRequest::HttpRequestType method,
-            std::string const& location,
-            char const* body,
-            size_t bodyLength,
-            std::map<std::string, std::string> const& headerFields) {
+    SimpleHttpResult* SimpleHttpClient::request (
+      rest::HttpRequest::HttpRequestType method,
+      std::string const& location,
+      char const* body,
+      size_t bodyLength,
+      std::map<std::string, std::string> const& headerFields) {
       
       // ensure connection has not yet been invalidated
       TRI_ASSERT(_connection != nullptr);
 
+      // ensure that result is empty
       TRI_ASSERT(_result == nullptr);
 
+      // create a new result
       _result = new SimpleHttpResult;
 
+      // reset error message
       _errorMessage = "";
 
       // set body
       setRequest(method, rewriteLocation(location), body, bodyLength, headerFields);
 
+      // ensure state
       TRI_ASSERT(_state == IN_CONNECT || _state == IN_WRITE);
 
+      // respect timeout
       double endTime = now() + _requestTimeout;
       double remainingTime = _requestTimeout;
 
@@ -161,6 +167,7 @@ namespace triagens {
                 _state = IN_READ_HEADER;
               }
             }
+
             break;
           }
 
@@ -181,7 +188,13 @@ namespace triagens {
             }
 
             if (! progress) {
-              if (_state == IN_READ_BODY && ! _result->hasContentLength()) {
+              // write might succeed even if the server has closed the connection
+              if (_state == IN_READ_HEADER && 0 == _readBuffer.length()) {
+                this->close();
+                continue;
+              }
+
+              else if (_state == IN_READ_BODY && ! _result->hasContentLength()) {
                 _result->setContentLength(_readBuffer.length() - _readBufferOffset);
                 readBody();
 
@@ -191,6 +204,11 @@ namespace triagens {
                 }
 
                 break;
+              }
+
+              else {
+                this->close();
+                _state = DEAD;
               }
             }
 
@@ -328,9 +346,11 @@ namespace triagens {
                                        char const* body,
                                        size_t bodyLength,
                                        std::map<std::string, std::string> const& headerFields) {
+      // clear read-buffer (no pipeling!)
       _readBufferOffset = 0;
       _readBuffer.reset();
 
+      // set HTTP method
       _method = method;
 
       // now fill the write buffer
@@ -375,8 +395,10 @@ namespace triagens {
         string foundPrefix;
         string foundValue;
         std::vector<std::pair<std::string, std::string>>::iterator i = _pathToBasicAuth.begin();
+
         for (; i != _pathToBasicAuth.end(); ++i) {
           string& f = i->first;
+
           if (l.find(f) == 0) {
             // f is prefix of l
             if (f.length() > foundPrefix.length()) {
@@ -385,6 +407,7 @@ namespace triagens {
             }
           }
         }
+
         if (! foundValue.empty()) {
           _writeBuffer.appendText("Authorization: Basic ");
           _writeBuffer.appendText(foundValue);
@@ -421,24 +444,24 @@ namespace triagens {
       }
 
 
+      // close connection to reset all read and write buffers
       if (_state != FINISHED) {
-        // close connection to reset all read and write buffers
         this->close();
       }
 
+      // we are connected, start with writing
       if (_connection->isConnected()) {
-        // we are connected, start with writing
         _state = IN_WRITE;
         _written = 0;
       }
+
+      // connect to server
       else {
-        // connect to server
         _state = IN_CONNECT;
       }
 
       TRI_ASSERT(_state == IN_CONNECT || _state == IN_WRITE);
     }
-
 
 // -----------------------------------------------------------------------------
 // private methods
