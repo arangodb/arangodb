@@ -649,7 +649,8 @@ namespace triagens {
         RangeInfoMap* clone ();
         RangeInfoMap* cloneExcluding (std::string const&);
         void eraseEmptyOrUndefined (std::string const&);
-        bool isValid ();
+        bool isValid (std::string const&);
+        std::unordered_set<std::string> attributes (std::string const& var);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief private data
@@ -722,8 +723,9 @@ namespace triagens {
 
         std::unordered_map<std::string, RangeInfo>* find (std::string const& var, size_t pos);
 
-        std::vector<size_t> validPositions (); 
+        std::vector<size_t> validPositions (std::string const& var); 
         // in what positions are the RangeInfoMaps in the vector valid
+        std::unordered_set<std::string> attributes (std::string const& var);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief private data
