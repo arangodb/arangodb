@@ -3672,7 +3672,7 @@ function HAS (element, name) {
   }
 
   if (TYPEWEIGHT(element) !== TYPEWEIGHT_DOCUMENT) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "HAS");
+    return false;
   }
 
   return element.hasOwnProperty(name);
