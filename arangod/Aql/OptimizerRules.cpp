@@ -872,7 +872,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             for (auto v : varsSetHere) {
               varsDefined.erase(v);
             }
-            pos = 0;
+            size_t pos = 0;
             do {
               for (auto& x : *map) {
                 auto worker = [&] (std::list<RangeInfoBound>& bounds) -> void {
@@ -935,7 +935,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                   // note: prefixes are only used for skiplist indexes
                   // for all other index types, the prefix value will always be 0
                   node->getIndexesForIndexRangeNode(
-                      _rangeInfoMapVec->attributes(var->name, 0), idxs, prefixes);
+                      _rangeInfoMapVec->attributes(var->name), idxs, prefixes);
                   //TODO remove the 2nd arg from attribute in the line above
 
                   // make one new plan for every index in <idxs> that replaces the
@@ -1083,8 +1083,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           }
           break;
         }
-      }
-      return false;
+        return false;
     }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1146,7 +1145,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                 == varsUsed.end()) {
               // Found a multiple attribute access of a variable and an
               // expression which does not involve that variable:
-              _rangeInfoMapVec->insertAND(enumCollVar->name, 
+              _rangeInfoMapVec->insertAnd(enumCollVar->name, 
                                           attr.substr(0, attr.size() - 1), 
                                           RangeInfoBound(rhs, true),
                                           RangeInfoBound(rhs, true), true);
@@ -1186,7 +1185,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             else {
               low.assign(lhs, include);
             }
-            _rangeInfoMapVec->insertAND(enumCollVar->name, 
+            _rangeInfoMapVec->insertAnd(enumCollVar->name, 
                                         attr.substr(0, attr.size() - 1), 
                                         low, high, false);
           
@@ -1212,7 +1211,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             else {
               high.assign(rhs, include);
             }
-            _rangeInfoMapVec->insertAND(enumCollVar->name, attr.substr(0, attr.size() - 1), 
+            _rangeInfoMapVec->insertAnd(enumCollVar->name, attr.substr(0, attr.size() - 1), 
                             low, high, false);
 
             enumCollVar = nullptr;

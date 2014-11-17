@@ -370,10 +370,10 @@ void RangeInfoMap::eraseEmptyOrUndefined(std::string const& var) {
 
 // FIXME maybe this is unnecessary, it should be that the return value here is
 // independent of pos, i.e that every entry in the vec has the same attributes??
-std::unordered_set<std::string> RangeInfoMapVec::attributes (std::string const& var, size_t pos) {
+std::unordered_set<std::string> RangeInfoMapVec::attributes (std::string const& var) {
   TRI_ASSERT(pos < _rangeInfoMapVec.size());
   
-  return _rangeInfoMapVec[pos].attributes(var);
+  return _rangeInfoMapVec[0].attributes(var);
 }
 
 void RangeInfoMapVec::validPositions(std::string const& var) {
