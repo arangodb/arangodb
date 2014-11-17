@@ -285,6 +285,28 @@ void RangeInfo::fuse (RangeInfo const& that) {
   }
 }
 
+RangeInfoMap* RangeInfoMap::clone () {
+  auto rim = new RangeInfoMap();
+  for (auto x: _ranges) {
+    for (auto y: x.second) {
+      rim->insert(y.second.clone());
+    }
+  }
+  return rim;
+}
+
+RangeInfoMap* RangeInfoMap::cloneExcluding (std::string const& var) {
+  auto rim = new RangeInfoMap();
+  for (auto x: _ranges) {
+    if (x.first.compare(var) != 0) {
+      for (auto y: x.second) {
+        rim->insert(y.second.clone());
+      }
+    }
+  }
+  return rim;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief  insert if there is no range corresponding to variable name <var>,
 /// and attribute <name>, and otherwise intersection with existing range
@@ -308,22 +330,52 @@ void RangeInfoMapVec::insertAnd (std::string const& var,
   insertAnd(RangeInfo(var, name, low, high, equality));
 }
 
+// var.attr > 1 and var.attr < 10
+
 void RangeInfoMapVec::insertAnd (RangeInfo range) {
 
-  for (size_t i = 0; i < _rangeInfoMaps.size(); i++) {
-    _rangeInfoMaps[i]->insert(range);
+  for (size_t i = 0; i < _rangeInfoMapVec.size(); i++) {
+    _rangeInfoMapVec[i]->insert(range);
   }
 
 }
+
+// var.attr = 1 or var.attr = 2, all for the same var and attr
 
 void RangeInfoMapVec::insertOr (std::vector<RangeInfo> ranges) {
   
+  RangeInfoMap* sample;
+  if (! _rangeInfoMapVec.empty()) {
+    sample = _rangeInfoMapVec[0];
+  } else {
+    sample = new RangeInfoMap();
+  }
+
   for (auto x: ranges) {
-    auto rangeInfoMap = new RangeInfoMap();
-    rangeInfoMap->insert(x);
-    _rangeInfoMaps.emplace_back(rangeInfoMap);
+    RangeInfoMap* rim = sample->cloneExcluding(x._var); 
+    rim->insert(x);
+    _rangeInfoMapVec.push_back(rim);
   }
 
 }
 
+// var.attr > 1 and (var.attr = 1 or var.attr = 2) = (var.attr > 1 and var.attr = 1) 
+// or (var.attr > 1 and var.attr = 2)
+
+void RangeInfoMapVec::insertDistributeAndIntoOr (std::vector<RangeInfo> ranges) {
+  
+  RangeInfoMap* sample;
+  if (! _rangeInfoMapVec.empty()) {
+    sample = _rangeInfoMapVec[0];
+  } else {
+    sample = new RangeInfoMap();
+  }
+
+  for (auto x: ranges) {
+    RangeInfoMap* rim = sample->clone(); 
+    rim->insert(x); // here we intersect with any existing values
+    _rangeInfoMapVec.push_back(rim);
+  }
+
+}
 

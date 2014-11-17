@@ -778,7 +778,7 @@ int triagens::aql::removeUnnecessaryCalculationsRule (Optimizer* opt,
 ////////////////////////////////////////////////////////////////////////////////
 
 class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
-  RangeInfoMap* _ranges;
+  RangeInfoMapVec* _rangeInfoMapVec;
   Optimizer* _opt;
   ExecutionPlan* _plan;
   std::unordered_set<VariableId> _varIds;
@@ -795,12 +795,12 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         _plan(plan), 
         _canThrow(false),
         _level(level) {
-      _ranges = new RangeInfoMap();
+      _rangeInfoMapVec = new RangeInfoMap();
       _varIds.insert(var->id);
     };
 
     ~FilterToEnumCollFinder () {
-      delete _ranges;
+      delete _rangeInfoMapVec;
     }
 
     bool before (ExecutionNode* en) override final {
@@ -858,7 +858,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           auto node = static_cast<EnumerateCollectionNode*>(en);
           auto var = node->getVariablesSetHere()[0];  // should only be 1
           std::unordered_map<std::string, RangeInfo>* map
-              = _ranges->find(var->name);        
+              = _rangeInfoMapVec->find(var->name);        
               // check if we have any ranges with this var
 
           if (map != nullptr) {
