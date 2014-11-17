@@ -3513,8 +3513,7 @@ function AQL_HAS (element, name) {
   }
 
   if (weight !== TYPEWEIGHT_DOCUMENT) {
-    WARN("HAS", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return;
+    return false;
   }
 
   return element.hasOwnProperty(AQL_TO_STRING(name));
