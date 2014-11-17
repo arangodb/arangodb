@@ -1928,6 +1928,22 @@ function EdgesAndVerticesSuite() {
       assertTrue(db._collection(vc1) !== null);
       assertTrue(db._collection(ec1) !== null);
     },
+    
+    test_createGraphWithMalformedEdgeDefinitions : function () {
+      var myGraphName = unitTestGraphName + "2";
+      try {
+        graph._create(
+          myGraphName,
+          [ "foo" ]
+        );
+      } catch (e) {
+        assertEqual(
+          e.errorMessage,
+          arangodb.errors.ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION.message
+        );
+      }
+      assertFalse(graph._exists(myGraphName));
+    },
 
     test_createGraphWithCollectionDuplicateNOK1 : function () {
       var myGraphName = unitTestGraphName + "2";
@@ -2252,6 +2268,21 @@ function EdgesAndVerticesSuite() {
       graph._drop(gN2, true);
       graph._drop(gN3, true);
       graph._drop(gN4, true);
+    },
+    
+    test_eC_malformedId : function() {
+      [ null, "foo", [ ] ].forEach(function(v) {
+        try {
+          var x= g[ec2].save(v, v, {});
+          fail();
+        }
+        catch (e) {
+          assertEqual(
+            e.errorMessage,
+            arangodb.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.message
+          );
+        }
+      });
     },
 
     test_getInVertex : function() {
