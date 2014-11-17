@@ -36,6 +36,7 @@ var ArangoError = arangodb.ArangoError;
 var SimpleQueryArray;
 var SimpleQueryNear;
 var SimpleQueryWithin;
+var SimpleQueryWithinRectangle;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              GENERAL ARRAY CURSOR
@@ -989,6 +990,14 @@ SimpleQueryGeo.prototype.within = function (lat, lon, radius) {
   return new SimpleQueryWithin(this._collection, lat, lon, radius, this._index);
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a within-rectangle query for an index
+////////////////////////////////////////////////////////////////////////////////
+
+SimpleQueryGeo.prototype.withinRectangle = function (lat1, lon1, lat2, lon2) {
+  return new SimpleQueryWithinRectangle(this._collection, lat1, lon1, lat2, lon2, this._index);
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 SIMPLE QUERY NEAR
 // -----------------------------------------------------------------------------
@@ -1214,26 +1223,109 @@ SimpleQueryWithin.prototype._PRINT = function (context) {
 };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
+// --SECTION--                                      SIMPLE QUERY WITHINRECTANGLE
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds the distance attribute
+/// @brief within-rectangle query
 ////////////////////////////////////////////////////////////////////////////////
 
-SimpleQueryWithin.prototype.distance = function (attribute) {
-  var clone;
+SimpleQueryWithinRectangle = function (collection, latitude1, longitude1, latitude2, longitude2, iid) {
+  var idx;
+  var i;
 
-  clone = this.clone();
+  this._collection = collection;
+  this._latitude1 = latitude1;
+  this._longitude1 = longitude1;
+  this._latitude2 = latitude2;
+  this._longitude2 = longitude2;
+  this._index = (iid === undefined ? null : iid);
 
-  if (attribute) {
-    clone._distance = attribute;
+  if (iid === undefined) {
+    idx = collection.getIndexes();
+
+    for (i = 0;  i < idx.length;  ++i) {
+      var index = idx[i];
+
+      if (index.type === "geo1" || index.type === "geo2") {
+        if (this._index === null) {
+          this._index = index.id;
+        }
+        else if (index.id < this._index) {
+          this._index = index.id;
+        }
+      }
+    }
   }
-  else {
-    clone._distance = "distance";
+
+  if (this._index === null) {
+    var err = new ArangoError();
+    err.errorNum = arangodb.ERROR_QUERY_GEO_INDEX_MISSING;
+    err.errorMessage = arangodb.errors.ERROR_QUERY_GEO_INDEX_MISSING.message;
+    throw err;
+  }
+};
+
+SimpleQueryWithinRectangle.prototype = new SimpleQuery();
+SimpleQueryWithinRectangle.prototype.constructor = SimpleQueryWithinRectangle;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clones a within-rectangle query
+////////////////////////////////////////////////////////////////////////////////
+
+SimpleQueryWithinRectangle.prototype.clone = function () {
+  var query;
+
+  query = new SimpleQueryWithinRectangle(this._collection,
+                                         this._latitude1,
+                                         this._longitude1,
+                                         this._latitude2,
+                                         this._longitude2,
+                                         this._index);
+  query._skip = this._skip;
+  query._limit = this._limit;
+
+  return query;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints a within-rectangle query
+////////////////////////////////////////////////////////////////////////////////
+
+SimpleQueryWithinRectangle.prototype._PRINT = function (context) {
+  var text;
+
+  text = "SimpleQueryWithinRectangle("
+       + this._collection.name()
+       + ", "
+       + this._latitude1
+       + ", "
+       + this._longitude1
+       + ", "
+       + this._latitude1
+       + ", "
+       + this._longitude2
+       + ", "
+       + this._index
+       + ")";
+
+  if (this._skip !== null && this._skip !== 0) {
+    text += ".skip(" + this._skip + ")";
   }
 
-  return clone;
+  if (this._limit !== null) {
+    text += ".limit(" + this._limit + ")";
+  }
+
+  context.output += text;
 };
 
 // -----------------------------------------------------------------------------
@@ -1341,6 +1433,7 @@ exports.SimpleQueryRange = SimpleQueryRange;
 exports.SimpleQueryGeo = SimpleQueryGeo;
 exports.SimpleQueryNear = SimpleQueryNear;
 exports.SimpleQueryWithin = SimpleQueryWithin;
+exports.SimpleQueryWithinRectangle = SimpleQueryWithinRectangle;
 exports.SimpleQueryFulltext = SimpleQueryFulltext;
 
 // -----------------------------------------------------------------------------
