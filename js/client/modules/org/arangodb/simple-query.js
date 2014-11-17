@@ -44,6 +44,7 @@ var SimpleQueryGeo = sq.SimpleQueryGeo;
 var SimpleQueryNear = sq.SimpleQueryNear;
 var SimpleQueryRange = sq.SimpleQueryRange;
 var SimpleQueryWithin = sq.SimpleQueryWithin;
+var SimpleQueryWithinRectangle = sq.SimpleQueryWithinRectangle;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  SIMPLE QUERY ALL
@@ -382,6 +383,65 @@ SimpleQueryWithin.prototype.execute = function (batchSize) {
 };
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                      SIMPLE QUERY WITHINRECTANGLE
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a withinRectangle query
+////////////////////////////////////////////////////////////////////////////////
+
+SimpleQueryWithinRectangle.prototype.execute = function (batchSize) {
+  if (this._execution === null) {
+    if (batchSize !== undefined && batchSize > 0) {
+      this._batchSize = batchSize;
+    }
+
+    var data = {
+      collection: this._collection.name(),
+      latitude1: this._latitude1,
+      longitude1: this._longitude1,
+      latitude2: this._latitude2,
+      longitude2: this._longitude2
+    };
+
+    if (this._limit !== null) {
+      data.limit = this._limit;
+    }
+
+    if (this._skip !== null) {
+      data.skip = this._skip;
+    }
+
+    if (this._index !== null) {
+      data.geo = this._index;
+    }
+
+    if (this._distance !== null) {
+      data.distance = this._distance;
+    }
+
+    if (this._batchSize !== null) {
+      data.batchSize = this._batchSize;
+    }
+
+    var requestResult = this._collection._database._connection.PUT(
+      "/_api/simple/within-rectangle", JSON.stringify(data));
+
+    arangosh.checkRequestResult(requestResult);
+
+    this._execution = new ArangoQueryCursor(this._collection._database, requestResult);
+
+    if (requestResult.hasOwnProperty("count")) {
+      this._countQuery = requestResult.count;
+    }
+  }
+};
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                             SIMPLE QUERY FULLTEXT
 // -----------------------------------------------------------------------------
 
@@ -448,6 +508,7 @@ exports.SimpleQueryGeo = SimpleQueryGeo;
 exports.SimpleQueryNear = SimpleQueryNear;
 exports.SimpleQueryRange = SimpleQueryRange;
 exports.SimpleQueryWithin = SimpleQueryWithin;
+exports.SimpleQueryWithinRectangle = SimpleQueryWithinRectangle;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

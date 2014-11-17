@@ -45,6 +45,7 @@ var SimpleQueryGeo = sq.SimpleQueryGeo;
 var SimpleQueryNear = sq.SimpleQueryNear;
 var SimpleQueryRange = sq.SimpleQueryRange;
 var SimpleQueryWithin = sq.SimpleQueryWithin;
+var SimpleQueryWithinRectangle = sq.SimpleQueryWithinRectangle;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rewrites an index id by stripping the collection name from it
@@ -1189,6 +1190,190 @@ SimpleQueryWithin.prototype.execute = function () {
 };
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                      SIMPLE QUERY WITHINRECTANGLE
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a within-rectangle query
+////////////////////////////////////////////////////////////////////////////////
+
+SimpleQueryWithinRectangle.prototype.execute = function () {
+  var result;
+  var documents;
+
+  if (this._execution !== null) {
+    return;
+  }
+
+  if (this._skip === null) {
+    this._skip = 0;
+  }
+
+  if (this._skip < 0) {
+    var err = new ArangoError();
+    err.errorNum = internal.errors.ERROR_BAD_PARAMETER;
+    err.errorMessage = "skip must be non-negative";
+    throw err;
+  }
+
+  var cluster = require("org/arangodb/cluster");
+
+  if (cluster.isCoordinator()) {
+    var dbName = require("internal").db._name();
+    var shards = cluster.shardList(dbName, this._collection.name());
+    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
+    var _limit = 0;
+    if (this._limit > 0) {
+      if (this._skip >= 0) {
+        _limit = this._skip + this._limit;
+      }
+    }
+
+    var self = this;
+    shards.forEach(function (shard) {
+      ArangoClusterComm.asyncRequest("put",
+                                     "shard:" + shard,
+                                     dbName,
+                                     "/_api/simple/within-rectangle",
+                                     JSON.stringify({
+                                       collection: shard,
+                                       latitude1: self._latitude1,
+                                       longitude1: self._longitude1,
+                                       latitude2: self._latitude2,
+                                       longitude2: self._longitude2,
+                                       geo: rewriteIndex(self._index),
+                                       skip: 0,
+                                       limit: _limit || undefined,
+                                       batchSize: 100000000
+                                     }),
+                                     { },
+                                     options);
+    });
+
+    var _documents = [ ], total = 0;
+    result = cluster.wait(coord, shards);
+
+    result.forEach(function(part) {
+      var body = JSON.parse(part.body);
+      total += body.total;
+
+      _documents = _documents.concat(body.result);
+    });
+
+    if (this._limit > 0) {
+      _documents = _documents.slice(0, this._skip + this._limit);
+    }
+
+    documents = {
+      documents: _documents,
+      count: _documents.length,
+      total: total
+    };
+  }
+  else {
+    var distanceMeters = function (lat1, lon1, lat2, lon2) {  
+      var deltaLat = (lat2 - lat1) * Math.PI / 180;
+      var deltaLon = (lon2 - lon1) * Math.PI / 180;
+      var a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
+      var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+      return 6378.137 /* radius of earth in kilometers */  
+             * c 
+             * 1000; // kilometers to meters;
+    };
+
+    var diameter = distanceMeters(this._latitude1, this._longitude1, this._latitude2, this._longitude2);
+    var midpoint = [ 
+      this._latitude1 + (this._latitude2 - this._latitude1) * 0.5, 
+      this._longitude1 + (this._longitude2 - this._longitude1) * 0.5 
+    ];
+
+    result = this._collection.WITHIN(this._index, midpoint[0], midpoint[1], diameter);
+
+    var idx = this._collection.index(this._index);
+    var latLower, latUpper, lonLower, lonUpper;
+
+    if (this._latitude1 < this._latitude2) {
+      latLower = this._latitude1;
+      latUpper = this._latitude2;
+    }
+    else {
+      latLower = this._latitude2;
+      latUpper = this._latitude1;
+    }
+
+    if (this._longitude1 < this._longitude2) {
+      lonLower = this._longitude1;
+      lonUpper = this._longitude2;
+    }
+    else {
+      lonLower = this._longitude2;
+      lonUpper = this._longitude1;
+    }
+  
+    documents = [ ];
+    if (idx.type === 'geo1') {
+      // geo1, we have both coordinates in a list
+      var attribute = idx.fields[0];
+      if (idx.geoJson) {
+        result.documents.forEach(function(doc) {
+          // check if within bounding rectangle
+          // first list value is longitude, then latitude
+          if (doc[attribute][1] >= latLower && doc[attribute][1] <= latUpper &&
+              doc[attribute][0] >= lonLower && doc[attribute][0] <= lonUpper) {
+            documents.push(doc);
+          }
+        });
+      }
+      else {
+        result.documents.forEach(function(doc) {
+          // check if within bounding rectangle
+          // first list value is latitude, then longitude
+          if (doc[attribute][0] >= latLower && doc[attribute][0] <= latUpper &&
+              doc[attribute][1] >= lonLower && doc[attribute][1] <= lonUpper) {
+            documents.push(doc);
+          }
+        });
+      }
+    }
+    else {
+      // geo2, we have dedicated latitude and longitude attributes
+      var latAtt = idx.fields[0], lonAtt = idx.fields[1];
+      result.documents.forEach(function(doc) {
+        // check if within bounding rectangle
+        if (doc[latAtt] >= latLower && doc[latAtt] <= latUpper &&
+            doc[lonAtt] >= lonLower && doc[lonAtt] <= lonUpper) {
+          documents.push(doc);
+        }
+      });
+    }
+    
+    documents = {
+      documents: documents,
+      count: result.documents.length,
+      total: result.documents.length
+    };
+    
+    if (this._limit > 0) {
+      documents.documents = documents.documents.slice(0, this._skip + this._limit);
+      documents.count = documents.documents.length;
+    }
+
+  }
+
+  this._execution = new GeneralArrayCursor(documents.documents, this._skip, null);
+  this._countQuery = documents.total - this._skip;
+  this._countTotal = documents.total;
+};
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                             SIMPLE QUERY FULLTEXT
 // -----------------------------------------------------------------------------
 
@@ -1294,6 +1479,7 @@ exports.SimpleQueryGeo = SimpleQueryGeo;
 exports.SimpleQueryNear = SimpleQueryNear;
 exports.SimpleQueryRange = SimpleQueryRange;
 exports.SimpleQueryWithin = SimpleQueryWithin;
+exports.SimpleQueryWithinRectangle = SimpleQueryWithinRectangle;
 exports.byExample = byExample;
 
 // -----------------------------------------------------------------------------
