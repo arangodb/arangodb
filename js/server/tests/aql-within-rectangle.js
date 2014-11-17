@@ -84,17 +84,17 @@ function withinRectangleSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testWithinRectangleAsResult : function () {
-      var actual =AQL_EXECUTE("RETURN WITHIN_RECTANGLE(geo, -1, -1, 1, 1)").json[0];
+      var actual = AQL_EXECUTE("RETURN WITHIN_RECTANGLE(geo, -1, -1, 1, 1)").json[0];
       assertEqual(actual.length , 9);
     },
 
     testWithinRectangleAsResultForSingleDocument : function () {
-      var actual =AQL_EXECUTE("RETURN WITHIN_RECTANGLE(geo, -0.8, -1.2, -1.2, -0.8)").json[0];
+      var actual = AQL_EXECUTE("RETURN WITHIN_RECTANGLE(geo, -0.8, -1.2, -1.2, -0.8)").json[0];
       assertEqual(actual.length , 1);
     },
 
     testWithinRectangleAsResultForMissingDocument : function () {
-      var actual =AQL_EXECUTE("RETURN WITHIN_RECTANGLE(geo, -41, -41, -41, -41)").json[0];
+      var actual = AQL_EXECUTE("RETURN WITHIN_RECTANGLE(geo, -41, -41, -41, -41)").json[0];
       assertEqual(actual.length , 0);
     },
 
