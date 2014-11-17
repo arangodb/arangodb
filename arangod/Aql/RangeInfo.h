@@ -528,6 +528,11 @@ namespace triagens {
           _equality = false;
         }
 
+        RangeInfo clone () {
+          //TODO improve this
+          return RangeInfo(this->toJson());
+        }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _valid, this is set to true iff the range is known to be non-empty
 ////////////////////////////////////////////////////////////////////////////////
@@ -641,6 +646,9 @@ namespace triagens {
           return list;
         }
         
+        RangeInfoMap* clone ();
+        RangeInfoMap* cloneExcluding (std::string const&);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief private data
 ////////////////////////////////////////////////////////////////////////////////
@@ -651,7 +659,7 @@ namespace triagens {
     };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class to keep a vector of RangeInfoMaps associated to variable and
+/// @brief class to keep a vector of rangeInfoMapVec associated to variable and
 /// attribute names, which will be or-combined 
 ////////////////////////////////////////////////////////////////////////////////
     
@@ -666,7 +674,7 @@ namespace triagens {
 /// @brief default constructor
 ////////////////////////////////////////////////////////////////////////////////
     
-        RangeInfoMapVec () : _rangeInfoMaps() {
+        RangeInfoMapVec () : _rangeInfoMapVec() {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -690,8 +698,8 @@ namespace triagens {
     
         triagens::basics::Json toJson() const {
           triagens::basics::Json list(triagens::basics::Json::List);
-          for (size_t i = 0; i < _rangeInfoMaps.size(); i++) {
-            list(_rangeInfoMaps[i]->toJson());
+          for (size_t i = 0; i < _rangeInfoMapVec.size(); i++) {
+            list(_rangeInfoMapVec[i]->toJson());
           }
           return list;
         }
@@ -707,12 +715,14 @@ namespace triagens {
         
         void insertOr (std::vector<RangeInfo> ranges);
 
+        void insertDistributeAndIntoOr (std::vector<RangeInfo> ranges);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief private data
 ////////////////////////////////////////////////////////////////////////////////
     
       private: 
-        std::vector<RangeInfoMap*> _rangeInfoMaps; 
+        std::vector<RangeInfoMap*> _rangeInfoMapVec; 
         
     };
 
