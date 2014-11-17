@@ -778,7 +778,7 @@ int triagens::aql::removeUnnecessaryCalculationsRule (Optimizer* opt,
 ////////////////////////////////////////////////////////////////////////////////
 
 class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
-  RangesInfo* _ranges;
+  RangeInfoMap* _ranges;
   Optimizer* _opt;
   ExecutionPlan* _plan;
   std::unordered_set<VariableId> _varIds;
@@ -795,7 +795,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         _plan(plan), 
         _canThrow(false),
         _level(level) {
-      _ranges = new RangesInfo();
+      _ranges = new RangeInfoMap();
       _varIds.insert(var->id);
     };
 
@@ -1071,6 +1071,8 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       return false;
     }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
     void buildRangeInfo (AstNode const* node, 
                          Variable const*& enumCollVar,
                          std::string& attr) {
@@ -1206,12 +1208,25 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         buildRangeInfo(node->getMember(0), enumCollVar, attr);
         buildRangeInfo(node->getMember(1), enumCollVar, attr);
       }
-      /* TODO: or isn't implemented yet.
-      if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
-        buildRangeInfo(node->getMember(0), enumCollVar, attr);
-        buildRangeInfo(node->getMember(1), enumCollVar, attr);
+      if (node->type == NODE_TYPE_OPERATOR_BINARY_IN) {
+        auto lhs = node->getMember(0); // enumCollVar
+        auto rhs = node->getMember(1); // value
+        
+        buildRangeInfo(lhs, enumCollVar, attr);
+        
+        if (enumCollVar != nullptr) {
+
+          for (size_t i = 0; i < rhs->numMembers(); i++) {
+            RangeInfoBound low(rhs->getMember(i), true);
+            RangeInfoBound high(rhs->getMember(i), true);
+            //FIXME don't assume this is constant
+            _ranges->insert(enumCollVar->name, attr.substr(0, attr.size() - 1), 
+                low, high, true);
+          }
+          enumCollVar = nullptr;
+          attr.clear();
+        }
       }
-      */
       // default case
       attr.clear();
       enumCollVar = nullptr;
