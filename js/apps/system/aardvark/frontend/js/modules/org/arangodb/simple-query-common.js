@@ -1223,6 +1223,25 @@ SimpleQueryWithin.prototype._PRINT = function (context) {
   context.output += text;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds the distance attribute
+////////////////////////////////////////////////////////////////////////////////
+
+SimpleQueryWithin.prototype.distance = function (attribute) {
+  var clone;
+
+  clone = this.clone();
+
+  if (attribute) {
+    clone._distance = attribute;
+  }
+  else {
+    clone._distance = "distance";
+  }
+
+  return clone;
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                      SIMPLE QUERY WITHINRECTANGLE
 // -----------------------------------------------------------------------------
