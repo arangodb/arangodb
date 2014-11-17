@@ -186,7 +186,7 @@ triagens::basics::Json RangeInfo::toJson () const {
 }
         
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class RangesInfo
+/// @brief class RangeInfoMap
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -194,7 +194,7 @@ triagens::basics::Json RangeInfo::toJson () const {
 /// and attribute <name>, and otherwise intersection with existing range
 ////////////////////////////////////////////////////////////////////////////////
 
-void RangesInfo::insert (RangeInfo newRange) { 
+void RangeInfoMap::insert (RangeInfo newRange) { 
   TRI_ASSERT(newRange.isDefined());
 
   std::unordered_map<std::string, RangeInfo>* oldMap = find(newRange._var);
@@ -290,11 +290,40 @@ void RangeInfo::fuse (RangeInfo const& that) {
 /// and attribute <name>, and otherwise intersection with existing range
 ////////////////////////////////////////////////////////////////////////////////
 
-void RangesInfo::insert (std::string const& var, 
-                         std::string const& name, 
-                         RangeInfoBound low, 
-                         RangeInfoBound high,
-                         bool equality) { 
+void RangeInfoMap::insert (std::string const& var, 
+                           std::string const& name, 
+                           RangeInfoBound low, 
+                           RangeInfoBound high,
+                           bool equality) { 
   insert(RangeInfo(var, name, low, high, equality));
 }
+
+////////////////////////////////////////////////////////////////////////////////
+
+void RangeInfoMapVec::insertAnd (std::string const& var, 
+                                 std::string const& name, 
+                                 RangeInfoBound low, 
+                                 RangeInfoBound high,
+                                 bool equality) { 
+  insertAnd(RangeInfo(var, name, low, high, equality));
+}
+
+void RangeInfoMapVec::insertAnd (RangeInfo range) {
+
+  for (size_t i = 0; i < _rangeInfoMaps.size(); i++) {
+    _rangeInfoMaps[i]->insert(range);
+  }
+
+}
+
+void RangeInfoMapVec::insertOr (std::vector<RangeInfo> ranges) {
+  
+  for (auto x: ranges) {
+    auto rangeInfoMap = new RangeInfoMap();
+    rangeInfoMap->insert(x);
+    _rangeInfoMaps.emplace_back(rangeInfoMap);
+  }
+
+}
+
 

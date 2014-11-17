@@ -553,29 +553,29 @@ namespace triagens {
 /// @brief class to keep RangeInfos associated to variable and attribute names. 
 ////////////////////////////////////////////////////////////////////////////////
     
-    class RangesInfo {
+    class RangeInfoMap {
         
       public:
         
-        RangesInfo (const RangesInfo& copy) = delete;
-        RangesInfo& operator= (RangesInfo const& copy) = delete;
+        RangeInfoMap (const RangeInfoMap& copy) = delete;
+        RangeInfoMap& operator= (RangeInfoMap const& copy) = delete;
         
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default constructor
 ////////////////////////////////////////////////////////////////////////////////
     
-        RangesInfo () : _ranges() {
+        RangeInfoMap () : _ranges() {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
     
-        ~RangesInfo() {
+        ~RangeInfoMap() {
         }
         
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief find, find the all the range infos for variable <var>,
+/// @brief find, find all the range infos for variable <var>,
 /// ownership is not transferred
 ////////////////////////////////////////////////////////////////////////////////
     
@@ -647,6 +647,72 @@ namespace triagens {
     
       private: 
         std::unordered_map<std::string, std::unordered_map<std::string, RangeInfo>> _ranges; 
+        
+    };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class to keep a vector of RangeInfoMaps associated to variable and
+/// attribute names, which will be or-combined 
+////////////////////////////////////////////////////////////////////////////////
+    
+    class RangeInfoMapVec {
+        
+      public:
+        
+        RangeInfoMapVec (const RangeInfoMapVec& copy) = delete;
+        RangeInfoMapVec& operator= (RangeInfoMapVec const& copy) = delete;
+        
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default constructor
+////////////////////////////////////////////////////////////////////////////////
+    
+        RangeInfoMapVec () : _rangeInfoMaps() {
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+    
+        ~RangeInfoMapVec() {
+        }
+        
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toString, via Json
+////////////////////////////////////////////////////////////////////////////////
+    
+        std::string toString() const {
+          return this->toJson().toString();
+        }
+        
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson
+////////////////////////////////////////////////////////////////////////////////
+    
+        triagens::basics::Json toJson() const {
+          triagens::basics::Json list(triagens::basics::Json::List);
+          for (size_t i = 0; i < _rangeInfoMaps.size(); i++) {
+            list(_rangeInfoMaps[i]->toJson());
+          }
+          return list;
+        }
+      
+        void insertAnd (std::string const& var, 
+                        std::string const& name, 
+                        RangeInfoBound low, 
+                        RangeInfoBound high,
+                        bool equality);
+
+
+        void insertAnd (RangeInfo range);
+        
+        void insertOr (std::vector<RangeInfo> ranges);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief private data
+////////////////////////////////////////////////////////////////////////////////
+    
+      private: 
+        std::vector<RangeInfoMap*> _rangeInfoMaps; 
         
     };
 
