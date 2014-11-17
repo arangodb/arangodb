@@ -1911,7 +1911,6 @@ var bindEdgeCollections = function(self, edgeCollections) {
 
     // remove
     wrap.remove = function(edgeId, options) {
-      var result;
       //if _key make _id (only on 1st call)
       if (edgeId.indexOf("/") === -1) {
         edgeId = key + "/" + edgeId;
@@ -1923,6 +1922,7 @@ var bindEdgeCollections = function(self, edgeCollections) {
           collections: {
             write: self.__collectionsToLock
           },
+          embed: true,
           action: function (params) {
             var db = require("internal").db;
             params.ids.forEach(
@@ -1940,13 +1940,15 @@ var bindEdgeCollections = function(self, edgeCollections) {
             options: options
           }
         });
-        result = true;
       } catch (e) {
-        result = false;
+        self.__idsToRemove = [];
+        self.__collectionsToLock = [];
+        throw e;
       }
       self.__idsToRemove = [];
       self.__collectionsToLock = [];
-      return result;
+
+      return true;
     };
 
     self[key] = wrap;
@@ -1956,7 +1958,6 @@ var bindEdgeCollections = function(self, edgeCollections) {
 var bindVertexCollections = function(self, vertexCollections) {
   _.each(vertexCollections, function(key) {
     var obj = db._collection(key);
-    var result;
     var wrap = wrapCollection(obj);
     wrap.remove = function(vertexId, options) {
       //delete all edges using the vertex in all graphs
@@ -1998,6 +1999,7 @@ var bindVertexCollections = function(self, vertexCollections) {
           collections: {
             write: self.__collectionsToLock
           },
+          embed: true,
           action: function (params) {
             var db = require("internal").db;
             params.ids.forEach(
@@ -2021,14 +2023,15 @@ var bindVertexCollections = function(self, vertexCollections) {
             vertexId: vertexId
           }
         });
-        result = true;
       } catch (e) {
-        result = false;
+        self.__idsToRemove = [];
+        self.__collectionsToLock = [];
+        throw e;
       }
       self.__idsToRemove = [];
       self.__collectionsToLock = [];
 
-      return result;
+      return true;
     };
     self[key] = wrap;
   });
