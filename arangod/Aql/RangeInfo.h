@@ -648,6 +648,8 @@ namespace triagens {
         
         RangeInfoMap* clone ();
         RangeInfoMap* cloneExcluding (std::string const&);
+        void eraseEmptyOrUndefined (std::string const&);
+        bool isValid ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief private data
@@ -704,6 +706,7 @@ namespace triagens {
           return list;
         }
       
+        void eraseEmptyOrUndefined (std::string const&);
         void insertAnd (std::string const& var, 
                         std::string const& name, 
                         RangeInfoBound low, 
@@ -717,13 +720,17 @@ namespace triagens {
 
         void insertDistributeAndIntoOr (std::vector<RangeInfo> ranges);
 
+        std::unordered_map<std::string, RangeInfo>* find (std::string const& var, size_t pos);
+
+        std::vector<size_t> validPositions (); 
+        // in what positions are the RangeInfoMaps in the vector valid
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief private data
 ////////////////////////////////////////////////////////////////////////////////
     
       private: 
         std::vector<RangeInfoMap*> _rangeInfoMapVec; 
-        
     };
 
 ////////////////////////////////////////////////////////////////////////////////
