@@ -285,6 +285,32 @@ void RangeInfo::fuse (RangeInfo const& that) {
   }
 }
 
+bool RangeInfoMap::isValid (std::string const& var) {
+  // are all the range infos valid?
+
+  std::unordered_map<std::string, RangeInfo>* map = find(var);
+  if (map != nullptr) {
+    for(auto x: *map) {
+      if (! x.second.isValid()) {
+        return false;
+      }
+    }
+    return true;
+  }
+  return false;
+}
+
+std::unordered_set<std::string> RangeInfoMap::attributes (std::string const& var) {
+  std::unordered_set<std::string> attrs;
+  std::unordered_map<std::string, RangeInfo>* map = find(var);
+  if (map != nullptr) {
+    for(auto x: *map) {
+      attrs.insert(x.first);
+    }
+  }
+  return attrs;
+}
+
 RangeInfoMap* RangeInfoMap::clone () {
   auto rim = new RangeInfoMap();
   for (auto x: _ranges) {
@@ -307,6 +333,7 @@ RangeInfoMap* RangeInfoMap::cloneExcluding (std::string const& var) {
   return rim;
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief  insert if there is no range corresponding to variable name <var>,
 /// and attribute <name>, and otherwise intersection with existing range
@@ -320,7 +347,58 @@ void RangeInfoMap::insert (std::string const& var,
   insert(RangeInfo(var, name, low, high, equality));
 }
 
+void RangeInfoMap::eraseEmptyOrUndefined(std::string const& var) {
+  
+  std::unordered_map<std::string, RangeInfo>* map = find(var);
+  if (map != nullptr) {
+    for (auto it = map->begin(); it != map->end(); /* no hoisting */ ) {
+      if (it->second._lows.empty() &&
+          it->second._highs.empty() &&
+          ! it->second._lowConst.isDefined() &&
+          ! it->second._highConst.isDefined()) {
+        it = map->erase(it);
+      }
+      else {
+        it++;
+      }
+    }
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
+
+
+// FIXME maybe this is unnecessary, it should be that the return value here is
+// independent of pos, i.e that every entry in the vec has the same attributes??
+std::unordered_set<std::string> RangeInfoMapVec::attributes (std::string const& var, size_t pos) {
+  TRI_ASSERT(pos < _rangeInfoMapVec.size());
+  
+  return _rangeInfoMapVec[pos].attributes(var);
+}
+
+void RangeInfoMapVec::validPositions(std::string const& var) {
+  std::vector<size_t> valid;
+
+  for (i = 0; i < _rangeInfoMapVec.size(); i++) {
+    if (_rangeInfoMapVec[i].isValid(var)) {
+      valid.push_back(i);
+    }
+  }
+  return valid;
+}
+
+void RangeInfoMapVec::eraseEmptyOrUndefined(std::string const& var) {
+  for (RangeInfoMap x: _rangeInfoMapVec) {
+    x.eraseEmptyOrUndefined(var);
+  }
+}
+
+std::unordered_map<std::string, RangeInfo>* find (std::string const& var, size_t pos) {
+  if (pos >= _rangeInfoMapVec.size()) {
+    return nullptr;
+  }
+  return _rangeInfoMapVec[pos].find(var);
+} 
 
 void RangeInfoMapVec::insertAnd (std::string const& var, 
                                  std::string const& name, 
@@ -333,7 +411,8 @@ void RangeInfoMapVec::insertAnd (std::string const& var,
 // var.attr > 1 and var.attr < 10
 
 void RangeInfoMapVec::insertAnd (RangeInfo range) {
-
+// maybe have to add a new RangeInfoMap if the _rangeInfoMapVec is empty...
+// FIXME
   for (size_t i = 0; i < _rangeInfoMapVec.size(); i++) {
     _rangeInfoMapVec[i]->insert(range);
   }
