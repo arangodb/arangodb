@@ -277,6 +277,11 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
   }
 
+  bool embed = false;  
+  if (object->Has(TRI_V8_SYMBOL("embed"))) {
+    v8::Handle<v8::Value> v = v8::Handle<v8::Object>::Cast(object->Get(TRI_V8_SYMBOL("embed")));
+    embed = TRI_ObjectToBoolean(v);
+  }
 
   v8::Handle<v8::Object> current = v8::Context::GetCurrent()->Global();
 
@@ -306,13 +311,13 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_PARAMETER(scope, actionError);
   }
 
-
   // start actual transaction
   ExplicitTransaction trx(vocbase,
                           readCollections,
                           writeCollections,
                           lockTimeout,
-                          waitForSync);
+                          waitForSync,
+                          embed);
 
   int res = trx.begin();
 
