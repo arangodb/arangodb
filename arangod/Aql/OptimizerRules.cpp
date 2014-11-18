@@ -1002,8 +1002,8 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                     else if (idx->type == TRI_IDX_TYPE_EDGE_INDEX) {
                       for (size_t k = 0; k < validPos.size(); k++) {
                         bool handled = false;
-                        auto range = map->find(std::string(TRI_VOC_ATTRIBUTE_FROM));
                         auto map = _rangeInfoMapVec->find(var->name, validPos[k]);
+                        auto range = map->find(std::string(TRI_VOC_ATTRIBUTE_FROM));
                         if (range != map->end()) { 
                           if (! range->second.is1ValueRangeInfo()) {
                             indexOrCondition.at(k).clear();   // not usable
@@ -1128,8 +1128,6 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                                           attr.substr(0, attr.size() - 1), 
                                           RangeInfoBound(lhs, true), 
                                           RangeInfoBound(lhs, true), true);
-              // FIXME: this is not the right thing in general, how do we know
-              // this is an AND at this point? 
             }
             enumCollVar = nullptr;
             attr.clear();
