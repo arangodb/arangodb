@@ -3,6 +3,11 @@ v2.4.0 (XXXX-XX-XX)
 
 * fixed deflate in SimpleHttpClient
 
+* added AQL list functions `PUSH`, `POP`, `UNSHIFT`, `SHIFT`, `REMOVE_ALL`,
+  `REMOVE_VALUE`, `REMOVE_NTH` and `APPEND`
+
+* added AQL functions `CALL` and `APPLY` to dynamically call other functions
+
 
 v2.3.0 (XXXX-XX-XX)
 -------------------

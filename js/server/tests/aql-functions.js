@@ -32,7 +32,6 @@ var errors = internal.errors;
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
-var getQueryResults = helper.getQueryResults;
 var assertQueryError = helper.assertQueryError;
 var assertQueryWarningAndNull = helper.assertQueryWarningAndNull;
 

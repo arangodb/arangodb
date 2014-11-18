@@ -218,6 +218,7 @@ ERROR_QUERY_MODIFY_IN_SUBQUERY,1574,"modify operation in subquery", "Will be rai
 ERROR_QUERY_COMPILE_TIME_OPTIONS,1575,"query options must be readable at query compile time", "Will be raised when an AQL data-modification query contains options that cannot be figured out at query compile time."
 ERROR_QUERY_EXCEPTION_OPTIONS,1576,"query options expected", "Will be raised when an AQL data-modification query contains an invalid options specification."
 ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION,1577,"collection '%s' used as expression operand", "Will be raised when a collection is used as an operand in an AQL expression."
+ERROR_QUERY_DISALLOWED_DYNAMIC_CALL,1578,"disallowed dynamic call to '%s'", "Will be raised when a dynamic function call is made to a function that cannot be called dynamically."
 
 ################################################################################
 ## AQL user functions
