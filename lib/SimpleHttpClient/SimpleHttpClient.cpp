@@ -90,49 +90,63 @@ namespace triagens {
 /// @brief close connection
 ////////////////////////////////////////////////////////////////////////////////
 
-    bool SimpleHttpClient::close () {
+    void SimpleHttpClient::close () {
       // ensure connection has not yet been invalidated
       TRI_ASSERT(_connection != nullptr);
 
       _connection->disconnect();
       _state = IN_CONNECT;
 
-      reset();
-
-      return true;
+      clearReadBuffer();
     }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief send out a request, creating a new HttpResult object
 ////////////////////////////////////////////////////////////////////////////////
 
-    SimpleHttpResult* SimpleHttpClient::request (rest::HttpRequest::HttpRequestType method,
-            std::string const& location,
-            char const* body,
-            size_t bodyLength,
-            std::map<std::string, std::string> const& headerFields) {
+    SimpleHttpResult* SimpleHttpClient::request (
+      rest::HttpRequest::HttpRequestType method,
+      std::string const& location,
+      char const* body,
+      size_t bodyLength,
+      std::map<std::string, std::string> const& headerFields) {
       
       // ensure connection has not yet been invalidated
       TRI_ASSERT(_connection != nullptr);
 
+      // ensure that result is empty
       TRI_ASSERT(_result == nullptr);
 
+      // create a new result
       _result = new SimpleHttpResult;
 
+      // reset error message
       _errorMessage = "";
 
       // set body
       setRequest(method, rewriteLocation(location), body, bodyLength, headerFields);
 
+      // ensure state
       TRI_ASSERT(_state == IN_CONNECT || _state == IN_WRITE);
 
+      // respect timeout
       double endTime = now() + _requestTimeout;
       double remainingTime = _requestTimeout;
 
-      while (isWorking() && remainingTime > 0.0) {
+      while (_state < FINISHED && remainingTime > 0.0) {
+        // Note that this loop can either be left by timeout or because
+        // a connect did not work (which sets the _state to DEAD). In all
+        // other error conditions we call close() which resets the state
+        // to IN_CONNECT and tries a reconnect. This is important because
+        // it is always possible that we are called with a connection that
+        // has already been closed by the other side. This leads to the
+        // strange effect that the write (if it is small enough) proceeds
+        // but the following read runs into an error. In that case we try
+        // to reconnect one and then give up if this does not work.
         switch (_state) {
           case (IN_CONNECT): {
             handleConnect();
+            // If this goes wrong, _state is set to DEAD
             break;
           }
 
@@ -140,18 +154,28 @@ namespace triagens {
             size_t bytesWritten = 0;
 
             TRI_set_errno(TRI_ERROR_NO_ERROR);
-            if (! _connection->handleWrite(remainingTime, (void*) (_writeBuffer.c_str() + _written), _writeBuffer.length() - _written, &bytesWritten)) {
+
+            bool res = _connection->handleWrite(
+              remainingTime, 
+              (void*) (_writeBuffer.c_str() + _written),
+              _writeBuffer.length() - _written,
+              &bytesWritten);
+
+            if (! res) {
               if (TRI_errno() != TRI_ERROR_NO_ERROR) {
                 setErrorMessage(TRI_last_error(), false);
               }
-              this->close();
+
+              this->close();   // this sets _state to IN_CONNECT for a retry
             }
             else {
               _written += bytesWritten;
+
               if (_written == _writeBuffer.length())  {
                 _state = IN_READ_HEADER;
               }
             }
+
             break;
           }
 
@@ -161,41 +185,74 @@ namespace triagens {
           case (IN_READ_CHUNKED_BODY): {
             TRI_set_errno(TRI_ERROR_NO_ERROR);
 
-            if (_connection->handleRead(remainingTime, _readBuffer)) {
-              switch (_state) {
-                case (IN_READ_HEADER):
-                  readHeader();
-                  break;
-                case (IN_READ_BODY):
-                  readBody();
-                  break;
-                case (IN_READ_CHUNKED_HEADER):
-                  readChunkedHeader();
-                  break;
-                case (IN_READ_CHUNKED_BODY):
-                  readChunkedBody();
-                  break;
-                default:
-                  break;
-              }
+            // we need to read a at least one byte to make progress
+            bool progress;
+            bool res = _connection->handleRead(remainingTime, _readBuffer, progress);
+
+            // If there was an error, then we are doomed:
+            if (! res) {
+              this->close();   // this sets the state to IN_CONNECT for a retry
+              break;
             }
-            else {
-              if (! _result->hasContentLength() &&
-                  ! _connection->isConnected() &&
-                  _state == IN_READ_BODY) {
-                // no content-length header in response, now set the length
+
+            if (! progress) {
+              // write might have succeeded even if the server has closed 
+              // the connection, this will then show up here with us being
+              // in state IN_READ_HEADER but nothing read.
+              if (_state == IN_READ_HEADER && 0 == _readBuffer.length()) {
+                this->close();   // sets _state to IN_CONNECT again for a retry
+                continue;
+              }
+
+              else if (_state == IN_READ_BODY && ! _result->hasContentLength()) {
+                // If we are reading the body and no content length was
+                // found in the header, then we must read until no more
+                // progress is made (but without an error), this then means
+                // that the server has closed the connection and we must
+                // process the body one more time:
                 _result->setContentLength(_readBuffer.length() - _readBufferOffset);
-                readBody();
+                processBody();
+
+                if (_state != FINISHED) {
+                  // If the body was not fully found we give up:
+                  this->close();   // this sets the state to retry
+                }
+
                 break;
               }
 
-              if (TRI_errno() != TRI_ERROR_NO_ERROR) {
-                setErrorMessage(TRI_last_error(), false);
+              else {
+                // In all other cases of no progress, we are doomed:
+                this->close();   // this sets the state to retry
+                break;
               }
-              this->close();
             }
+
+            // we made progress, we process whatever we are in progress to do
+            switch (_state) {
+              case (IN_READ_HEADER):
+                processHeader();
+                break;
+
+              case (IN_READ_BODY):
+                processBody();
+                break;
+
+              case (IN_READ_CHUNKED_HEADER):
+                processChunkedHeader();
+                break;
+
+              case (IN_READ_CHUNKED_BODY):
+                processChunkedBody();
+                break;
+
+              default:
+                break;
+            }
+
             break;
           }
+
           default:
             break;
         }
@@ -203,7 +260,7 @@ namespace triagens {
         remainingTime = endTime - now();
       }
 
-      if (isWorking() && _errorMessage.empty()) {
+      if (_state < FINISHED && _errorMessage.empty()) {
         setErrorMessage("Request timeout reached");
       }
 
@@ -239,10 +296,10 @@ namespace triagens {
       }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reset state
+/// @brief clearReadBuffer, clears the read buffer as well as the result
 ////////////////////////////////////////////////////////////////////////////////
 
-    void SimpleHttpClient::reset () {
+    void SimpleHttpClient::clearReadBuffer () {
       _readBuffer.clear();
       _readBufferOffset = 0;
 
@@ -305,9 +362,11 @@ namespace triagens {
                                        char const* body,
                                        size_t bodyLength,
                                        std::map<std::string, std::string> const& headerFields) {
+      // clear read-buffer (no pipeling!)
       _readBufferOffset = 0;
       _readBuffer.reset();
 
+      // set HTTP method
       _method = method;
 
       // now fill the write buffer
@@ -352,8 +411,10 @@ namespace triagens {
         string foundPrefix;
         string foundValue;
         std::vector<std::pair<std::string, std::string>>::iterator i = _pathToBasicAuth.begin();
+
         for (; i != _pathToBasicAuth.end(); ++i) {
           string& f = i->first;
+
           if (l.find(f) == 0) {
             // f is prefix of l
             if (f.length() > foundPrefix.length()) {
@@ -362,6 +423,7 @@ namespace triagens {
             }
           }
         }
+
         if (! foundValue.empty()) {
           _writeBuffer.appendText("Authorization: Basic ");
           _writeBuffer.appendText(foundValue);
@@ -398,30 +460,30 @@ namespace triagens {
       }
 
 
+      // close connection to reset all read and write buffers
       if (_state != FINISHED) {
-        // close connection to reset all read and write buffers
         this->close();
       }
 
+      // we are connected, start with writing
       if (_connection->isConnected()) {
-        // we are connected, start with writing
         _state = IN_WRITE;
         _written = 0;
       }
+
+      // connect to server
       else {
-        // connect to server
         _state = IN_CONNECT;
       }
 
       TRI_ASSERT(_state == IN_CONNECT || _state == IN_WRITE);
     }
 
-
 // -----------------------------------------------------------------------------
-    // private methods
+// private methods
 // -----------------------------------------------------------------------------
 
-    bool SimpleHttpClient::readHeader () {
+    void SimpleHttpClient::processHeader () {
       size_t remain = _readBuffer.length() - _readBufferOffset;
       char const* ptr = _readBuffer.c_str() + _readBufferOffset;
       char const* pos = (char*) memchr(ptr, '\n', remain);
@@ -432,9 +494,8 @@ namespace triagens {
           --pos;
         }
 
+        // end of header found
         if (*ptr == '\r' || *ptr == '\0') {
-          // end of header found
-
           size_t len = pos - (_readBuffer.c_str() + _readBufferOffset);
           _readBufferOffset += (len + 1);
 
@@ -442,33 +503,23 @@ namespace triagens {
             // adjust offset if line ended with \r\n
             ++_readBufferOffset;
           }
-  //        _readBuffer.move_front(len + 1);
 
+          // handle chunks
           if (_result->isChunked()) {
             _state = IN_READ_CHUNKED_HEADER;
-            return readChunkedHeader();
+            processChunkedHeader();
+            return;
           }
+
+          // no content-length header in response
           else if (! _result->hasContentLength()) {
-            // no content-length header in response
             _state = IN_READ_BODY;
-            return readBody();
+            processBody();
+            return;
           }
-          else if (_result->hasContentLength() && _result->getContentLength() > 0) {
-            // found content-length header in response
-            if (_result->getContentLength() > _maxPacketSize) {
-              setErrorMessage("Content-Length > max packet size found", true);
 
-              // reset connection
-              this->close();
-              _state = DEAD;
-
-              return false;
-            }
-
-            _state = IN_READ_BODY;
-            return readBody();
-          }
-          else {
+          // no body
+          else if (_result->hasContentLength() && _result->getContentLength() == 0) {
             _result->setResultType(SimpleHttpResult::COMPLETE);
             _state = FINISHED;
 
@@ -476,8 +527,31 @@ namespace triagens {
               _connection->disconnect();
             }
           }
+
+          // found content-length header in response
+          else if (_result->hasContentLength() && _result->getContentLength() > 0) {
+            if (_result->getContentLength() > _maxPacketSize) {
+              setErrorMessage("Content-Length > max packet size found", true);
+
+              // reset connection
+              this->close();
+              _state = DEAD;
+
+              return;
+            }
+
+            _state = IN_READ_BODY;
+            processBody();
+            return;
+          }
+          else {
+            TRI_ASSERT(false);
+          }
+
           break;
         }
+
+        // we have found more header fields
         else {
           size_t len = pos - ptr;
           _result->addHeaderField(ptr, len);
@@ -494,163 +568,173 @@ namespace triagens {
           remain -= (len + 1);
 
           pos = (char*) memchr(ptr, '\n', remain);
+
           if (pos == nullptr) {
-            // reached the end
-            // _readBuffer.move_front((ptr - _readBuffer.c_str()) + 1);
-            _readBufferOffset += ((ptr - (_readBuffer.c_str() + _readBufferOffset)) + 1);
+            _readBufferOffset = ptr - _readBuffer.c_str() + 1;
           } 
         }
       }
-
-      return true;
     }
 
 
-    bool SimpleHttpClient::readBody () {
+    void SimpleHttpClient::processBody () {
+
+      // HEAD requests may be responded to without a body...
       if (_method == HttpRequest::HTTP_REQUEST_HEAD) {
-        // HEAD requests may be responded to without a body...
         _result->setResultType(SimpleHttpResult::COMPLETE);
         _state = FINISHED;
+
         if (! _keepAlive) {
           _connection->disconnect();
         }
-        return true;
+
+        return;
       }
 
-      if (_result->hasContentLength() && 
-          _readBuffer.length() - _readBufferOffset >= _result->getContentLength()) {
-
-        if (_result->isDeflated()) {
-          // body is compressed using deflate. inflate it
-          _readBuffer.inflate(_result->getBody());
-        }
-        else {
-          // body is not compressed
-          size_t len = _result->getContentLength();
-          if (len > _readBuffer.length() - _readBufferOffset) {
-            // prevent reading across the string-buffer end
-            len = _readBuffer.length() - _readBufferOffset;
-          }
-
-          _result->getBody().appendText(_readBuffer.c_str() + _readBufferOffset, len);
-        }
-
-        // _readBuffer.move_front(_result->getContentLength());
-        _readBufferOffset += _result->getContentLength();
-        _result->setResultType(SimpleHttpResult::COMPLETE);
-        _state = FINISHED;
-        if (! _keepAlive) {
-          _connection->disconnect();
-        }
+      // we need to wait for a close, if content length is unknown
+      if (! _result->hasContentLength()) {
+        return;
       }
 
-      return true;
+      // we need to wait for more data
+      if (_readBuffer.length() - _readBufferOffset < _result->getContentLength()) {
+        return;
+      }
+
+      // body is compressed using deflate. inflate it
+      if (_result->isDeflated()) {
+        _readBuffer.inflate(_result->getBody(), 16384, _readBufferOffset);
+      }
+
+      // body is not compressed
+      else {
+        size_t len = _result->getContentLength();
+
+        // prevent reading across the string-buffer end
+        if (len > _readBuffer.length() - _readBufferOffset) {
+          len = _readBuffer.length() - _readBufferOffset;
+        }
+
+        _result->getBody().appendText(_readBuffer.c_str() + _readBufferOffset, len);
+      }
+
+      _readBufferOffset += _result->getContentLength();
+      _result->setResultType(SimpleHttpResult::COMPLETE);
+      _state = FINISHED;
+
+      if (! _keepAlive) {
+        _connection->disconnect();
+      }
     }
 
-    bool SimpleHttpClient::readChunkedHeader () {
+
+    void SimpleHttpClient::processChunkedHeader () {
       size_t remain = _readBuffer.length() - _readBufferOffset;
       char const* ptr = _readBuffer.c_str() + _readBufferOffset;
       char* pos = (char*) memchr(ptr, '\n', remain);
 
-      while (pos) {
-        // got a line
-        if (pos > ptr && *(pos - 1) == '\r') {
-          // adjust eol position
-          --pos;
-        }
+      // not yet finished, newline is missing
+      if (pos == nullptr) {
+        return;
+      }
 
-        size_t len = pos - (_readBuffer.c_str() + _readBufferOffset);
-        string line(_readBuffer.c_str() + _readBufferOffset, len);
-        StringUtils::trimInPlace(line);
+      // adjust eol position
+      if (pos > ptr && *(pos - 1) == '\r') {
+        --pos;
+      }
 
-      //  _readBuffer.move_front(len + 1);
-        _readBufferOffset += (len + 1);
+      size_t len = pos - (_readBuffer.c_str() + _readBufferOffset);
+      string line(_readBuffer.c_str() + _readBufferOffset, len);
+      StringUtils::trimInPlace(line);
+
+      _readBufferOffset += (len + 1);
           
-        if (*pos == '\r') {
-          // adjust offset if line ended with \r\n
-          ++_readBufferOffset;
-          ++len;
+      // adjust offset if line ended with \r\n
+      if (*pos == '\r') {
+        ++_readBufferOffset;
+        ++len;
+      }
+
+      // empty lines are an error
+      if (line[0] == '\r' || line.empty()) {
+        setErrorMessage("found invalid content-length", true);
+        // reset connection
+        this->close();
+        _state = DEAD;
+
+        return;
+      }
+
+      uint32_t contentLength;
+
+      try {
+        contentLength = static_cast<uint32_t>(std::stol(line, nullptr, 16)); // C++11
+      }
+      catch (...) {
+        setErrorMessage("found invalid content-length", true);
+        // reset connection
+        this->close();
+        _state = DEAD;
+
+        return;
+      }
+
+      // failed: too many bytes
+      if (contentLength > _maxPacketSize) {
+
+        setErrorMessage("Content-Length > max packet size found!", true);
+        // reset connection
+        this->close();
+        _state = DEAD;
+
+        return;
+      }
+
+      _state = IN_READ_CHUNKED_BODY;
+      _nextChunkedSize = contentLength;
+
+      processChunkedBody();
+    }
+
+
+    void SimpleHttpClient::processChunkedBody () {
+
+      // HEAD requests may be responded to without a body...
+      if (_method == HttpRequest::HTTP_REQUEST_HEAD) {
+        _result->setResultType(SimpleHttpResult::COMPLETE);
+        _state = FINISHED;
+
+        if (! _keepAlive) {
+          _connection->disconnect();
         }
 
-        if (line[0] == '\r' || line.empty()) {
-          // ignore empty lines
-          remain -= (len + 1);
-          ptr += len + 1;
+        return;
+      }
 
-          pos = (char*) memchr(ptr, '\n', remain);
-          continue;
-        }
+      if (_readBuffer.length() - _readBufferOffset >= _nextChunkedSize + 2) {
 
-        uint32_t contentLength;
-        try {
-          contentLength = static_cast<uint32_t>(std::stol(line, nullptr, 16)); // C++11
-        }
-        catch (...) {
-          setErrorMessage("found invalid content-length", true);
-          // reset connection
-          this->close();
-          _state = DEAD;
-
-          return false;
-        }
-
-        if (contentLength == 0) {
-          // OK: last content length found
+        // last chunk length was 0, therefore we are finished
+        if (_nextChunkedSize == 0) {
           _result->setResultType(SimpleHttpResult::COMPLETE);
 
           _state = FINISHED;
+
           if (! _keepAlive) {
             _connection->disconnect();
           }
 
-          return true;
+          return;
         }
 
-        if (contentLength > _maxPacketSize) {
-          // failed: too many bytes
-
-          setErrorMessage("Content-Length > max packet size found!", true);
-          // reset connection
-          this->close();
-          _state = DEAD;
-
-          return false;
-        }
-
-        _state = IN_READ_CHUNKED_BODY;
-        _nextChunkedSize = contentLength;
-
-        return readChunkedBody();
-      }
-
-      return true;
-    }
-
-    bool SimpleHttpClient::readChunkedBody () {
-      if (_method == HttpRequest::HTTP_REQUEST_HEAD) {
-        // HEAD requests may be responded to without a body...
-        _result->setResultType(SimpleHttpResult::COMPLETE);
-        _state = FINISHED;
-        if (! _keepAlive) {
-          _connection->disconnect();
-        }
-        return true;
-      }
-
-      if (_readBuffer.length() - _readBufferOffset >= _nextChunkedSize) {
         _result->getBody().appendText(_readBuffer.c_str() + _readBufferOffset,
                                       (size_t) _nextChunkedSize);
-        // _readBuffer.move_front((size_t) _nextChunkedSize);
-        _readBufferOffset += (size_t) _nextChunkedSize;
+
+        _readBufferOffset += (size_t) _nextChunkedSize + 2;
         _state = IN_READ_CHUNKED_HEADER;
-        return readChunkedHeader();
+        processChunkedHeader();
       }
-
-      return true;
     }
-
   }
-
 }
 
 // -----------------------------------------------------------------------------

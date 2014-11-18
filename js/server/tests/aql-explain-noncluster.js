@@ -210,13 +210,11 @@ function explainSuite () {
       assertEqual("SingletonNode", node.type);
       assertEqual([ ], node.dependencies);
       assertEqual(1, node.id);
-      assertEqual(1, node.estimatedCost);
       
       node = nodes[1];
       assertEqual("EnumerateCollectionNode", node.type);
       assertEqual([ 1 ], node.dependencies);
       assertEqual(2, node.id);
-      assertEqual(0, node.estimatedCost);
       assertEqual("_system", node.database);
       assertEqual(cn, node.collection);
       assertEqual("i", node.outVariable.name);
@@ -233,7 +231,6 @@ function explainSuite () {
       assertEqual("FilterNode", node.type);
       assertEqual([ 3 ], node.dependencies);
       assertEqual(4, node.id);
-      assertEqual(0, node.estimatedCost);
       assertEqual(out, node.inVariable.name);
       
       node = nodes[4];

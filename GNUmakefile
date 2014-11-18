@@ -40,7 +40,6 @@ MAINTAINER = \
 	arangod/Aql/grammar.h \
 	lib/JsonParser/json-parser.cpp \
 	lib/V8/v8-json.cpp \
-	lib/V8/v8-json.h \
 	lib/Basics/voc-errors.h \
 	lib/Basics/voc-errors.cpp \
 	js/common/bootstrap/errors.js \

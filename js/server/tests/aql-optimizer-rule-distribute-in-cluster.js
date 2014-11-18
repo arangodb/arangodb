@@ -520,7 +520,13 @@ function interactionOtherRulesTestSuite () {
 
   // various choices to control the optimizer: 
   var allRules         = { optimizer: { rules: [ "+all" ] } };
+  var allRulesNoInter  = 
+    { optimizer: { rules: [ "+all", "-interchange-adjacent-enumerations" ] } };
   var ruleDisabled   = { optimizer: { rules: [ "+all", "-" + undist ] } };
+  var ruleDisabledNoInter  = 
+    { optimizer: { rules: [ "+all", 
+                            "-interchange-adjacent-enumerations", 
+                            "-" + undist ] } };
 
   var cn1 = "UnitTestsAql1";
   var cn2 = "UnitTestsAql2";
@@ -893,12 +899,12 @@ function interactionOtherRulesTestSuite () {
           ];
 
       queries.forEach(function(query, i) {
-        var result = AQL_EXPLAIN(query, { }, allRules);
+        var result = AQL_EXPLAIN(query, { }, allRulesNoInter);
         assertTrue(result.plan.rules.indexOf(undist) === -1, query);
         assertTrue(result.plan.rules.indexOf(distribute) !== -1, query);
         assertEqual(expectedNodes[i], explain(result), query);
         
-        result = AQL_EXPLAIN(query, { }, ruleDisabled);
+        result = AQL_EXPLAIN(query, { }, ruleDisabledNoInter);
         assertTrue(result.plan.rules.indexOf(undist) === -1, query);
         assertTrue(result.plan.rules.indexOf(distribute) !== -1, query);
         assertEqual(expectedNodes[i], explain(result), query);
@@ -1035,13 +1041,13 @@ function interactionOtherRulesTestSuite () {
           ];
 
       queries.forEach(function(query, i) {
-        var result = AQL_EXPLAIN(query, { }, allRules);
+        var result = AQL_EXPLAIN(query, { }, allRulesNoInter);
         assertTrue(result.plan.rules.indexOf(undist) === -1, query);
         assertTrue(result.plan.rules.indexOf(distribute) === -1, query);
         assertTrue(result.plan.rules.indexOf(scatter) !== -1, query);
         assertEqual(expectedNodes[i], explain(result), query);
         
-        result = AQL_EXPLAIN(query, { }, ruleDisabled);
+        result = AQL_EXPLAIN(query, { }, ruleDisabledNoInter);
         assertTrue(result.plan.rules.indexOf(undist) === -1, query);
         assertTrue(result.plan.rules.indexOf(distribute) === -1, query);
         assertTrue(result.plan.rules.indexOf(scatter) !== -1, query);
