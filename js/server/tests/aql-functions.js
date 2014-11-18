@@ -1879,15 +1879,25 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test has function
 ////////////////////////////////////////////////////////////////////////////////
+    
+    testHas3 : function () {
+      var expected = [ [ "test2", [ "other" ] ] ];
+      var actual = getQueryResults("LET doc = { \"_id\": \"test/76689250173\", \"_rev\": \"76689250173\", \"_key\": \"76689250173\", \"test1\": \"something\", \"test2\": { \"DATA\": [ \"other\" ] } } FOR attr IN ATTRIBUTES(doc) LET prop = doc[attr] FILTER HAS(prop, 'DATA') RETURN [ attr, prop.DATA ]"); 
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test has function
+////////////////////////////////////////////////////////////////////////////////
 
     testHasInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN HAS()"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN HAS({ })"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN HAS({ }, \"fox\", true)"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN HAS(false, \"fox\")"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN HAS(3, \"fox\")"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN HAS(\"yes\", \"fox\")"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN HAS([ ], \"fox\")"); 
+      assertEqual([ false ], getQueryResults("RETURN HAS(false, \"fox\")")); 
+      assertEqual([ false ], getQueryResults("RETURN HAS(3, \"fox\")")); 
+      assertEqual([ false ], getQueryResults("RETURN HAS(\"yes\", \"fox\")")); 
+      assertEqual([ false ], getQueryResults("RETURN HAS([ ], \"fox\")")); 
       assertEqual([ false ], getQueryResults("RETURN HAS({ }, null)")); 
       assertEqual([ false ], getQueryResults("RETURN HAS({ }, false)")); 
       assertEqual([ false ], getQueryResults("RETURN HAS({ }, true)")); 

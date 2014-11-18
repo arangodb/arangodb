@@ -45,6 +45,7 @@ var SimpleQueryRange = simple.SimpleQueryRange;
 var SimpleQueryGeo = simple.SimpleQueryGeo;
 var SimpleQueryNear = simple.SimpleQueryNear;
 var SimpleQueryWithin = simple.SimpleQueryWithin;
+var SimpleQueryWithinRectangle = simple.SimpleQueryWithinRectangle;
 var SimpleQueryFulltext = simple.SimpleQueryFulltext;
 
 // -----------------------------------------------------------------------------
@@ -737,6 +738,10 @@ ArangoCollection.prototype.near = function (lat, lon) {
 
 ArangoCollection.prototype.within = function (lat, lon, radius) {
   return new SimpleQueryWithin(this, lat, lon, radius);
+};
+
+ArangoCollection.prototype.withinRectangle = function (lat1, lon1, lat2, lon2) {
+  return new SimpleQueryWithinRectangle(this, lat1, lon1, lat2, lon2);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
