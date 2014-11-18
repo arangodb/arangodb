@@ -5041,24 +5041,22 @@ function FILTER_RESTRICTION (list, restrictionList) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function DOCUMENTS_BY_EXAMPLE (collectionList, example) {
-  var res = [];
-  if (example === "null") {
-    example = [{}];
-  }
-  if (!example) {
-    example = [{}];
+  var res = [ ];
+  if (example === "null" || example === null || ! example) {
+    example = [ { } ];
   }
   if (typeof example === "string") {
-    example = {_id : example};
+    example = { _id : example };
   }
-  if (!Array.isArray(example)) {
-    example = [example];
+  if (! Array.isArray(example)) {
+    example = [ example ];
   }
-  var tmp = [];
+  var tmp = [ ];
   example.forEach(function (e) {
     if (typeof e === "string") {
-      tmp.push({_id : e});
-    } else {
+      tmp.push({ _id : e });
+    } 
+    else {
       tmp.push(e);
     }
   });
@@ -5605,6 +5603,9 @@ function CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA (graphName, options) {
   params.paths = true;
   if (options.edgeExamples) {
     params.followEdges = options.edgeExamples;
+    if (! Array.isArray(params.followEdges)) {
+      params.followEdges = [ params.followEdges ];
+    }
   }
   if (options.edgeCollectionRestriction) {
     params.edgeCollectionRestriction = options.edgeCollectionRestriction;
@@ -6211,7 +6212,9 @@ function AQL_NEIGHBORS (vertexCollection,
 ///      depth a path to a neighbor must have to be returned (default is 1).
 ///   * *maxDepth*                         : Defines the maximal
 ///      depth a path to a neighbor must have to be returned (default is 1).
-///
+///   * *maxIterations*: the maximum number of iterations that the traversal is
+///      allowed to perform. It is sensible to set this number so unbounded traversals
+/// will terminate at some point.
 /// @EXAMPLES
 ///
 /// A route planner example, all neighbors of locations with a distance of either
@@ -6261,6 +6264,7 @@ function AQL_GRAPH_NEIGHBORS (graphName,
     factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
   params.minDepth = options.minDepth === undefined ? 1 : options.minDepth;
   params.maxDepth = options.maxDepth === undefined ? 1 : options.maxDepth;
+  params.maxIterations = options.maxIterations;
   params.paths = true;
   params.visitor = TRAVERSAL_NEIGHBOR_VISITOR;
   var fromVertices = RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options);
@@ -6332,6 +6336,8 @@ function AQL_GRAPH_NEIGHBORS (graphName,
 ///   * *maxDepth*                         : Defines the maximal length of a path from an edge
 ///  to a vertex (default is 1, which means only the edges directly connected to a vertex would
 ///  be returned).
+///   * *maxIterations*: the maximum number of iterations that the traversal is
+///      allowed to perform. It is sensible to set this number so unbounded traversals
 ///
 /// @EXAMPLES
 ///
