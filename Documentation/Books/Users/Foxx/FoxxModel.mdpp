@@ -71,7 +71,8 @@ Model lifecycle:
 ```js
 var person = new PersonModel();
 person.on('beforeCreate', function() {
-  // Do something fancy with the model
+  var model = this;
+  model.fancyMethod(); // Do something fancy with the model
 });
 var people = new Repository(appContext.collection("people"), { model: PersonModel });
 
