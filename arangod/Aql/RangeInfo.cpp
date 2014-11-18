@@ -407,8 +407,9 @@ void RangeInfoMapVec::insertAnd (std::string const& var,
 // var.attr > 1 and var.attr < 10
 
 void RangeInfoMapVec::insertAnd (RangeInfo range) {
-// maybe have to add a new RangeInfoMap if the _rangeInfoMapVec is empty...
-// FIXME
+  if (_rangeInfoMapVec.empty()) {
+    _rangeInfoMapVec.emplace_back(new RangeInfoMap());
+  }
   for (size_t i = 0; i < _rangeInfoMapVec.size(); i++) {
     _rangeInfoMapVec[i]->insert(range);
   }
