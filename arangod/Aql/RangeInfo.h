@@ -718,6 +718,12 @@ namespace triagens {
         void insertAnd (RangeInfo range);
         
         void insertOr (std::vector<RangeInfo> ranges);
+        
+        void insertOr (std::string const& var, 
+                       std::string const& name, 
+                       RangeInfoBound low, 
+                       RangeInfoBound high,
+                       bool equality);
 
         void insertDistributeAndIntoOr (std::vector<RangeInfo> ranges);
 
