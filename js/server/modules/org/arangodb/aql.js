@@ -3112,17 +3112,17 @@ function AQL_NEAR (collection, latitude, longitude, limit, distanceAttribute) {
 function AQL_WITHIN (collection, latitude, longitude, radius, distanceAttribute) {
   "use strict";
 
+  var weight = TYPEWEIGHT(distanceAttribute);
+  if (weight !== TYPEWEIGHT_NULL && weight !== TYPEWEIGHT_STRING) {
+    WARN("WITHIN", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  }
+  
   if (isCoordinator) {
     var query = COLLECTION(collection).within(latitude, longitude, radius);
     query._distance = distanceAttribute;
     return query.toArray();
   }
   
-  var weight = TYPEWEIGHT(distanceAttribute);
-  if (weight !== TYPEWEIGHT_NULL && weight !== TYPEWEIGHT_STRING) {
-    WARN("WITHIN", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-  }
-    
   var idx = INDEX(COLLECTION(collection), [ "geo1", "geo2" ]);
 
   if (idx === null) {
@@ -3160,92 +3160,8 @@ function AQL_WITHIN_RECTANGLE (collection, latitude1, longitude1, latitude2, lon
     WARN("WITHIN_RECTANGLE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
-
-  var distanceMeters = function (lat1, lon1, lat2, lon2) {  
-    var deltaLat = (lat2 - lat1) * Math.PI / 180;
-    var deltaLon = (lon2 - lon1) * Math.PI / 180;
-    var a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
-    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-    return 6378.137 /* radius of earth in kilometers */  
-           * c 
-           * 1000; // kilometers to meters;
-  };
-
-  var midpoint = [ 
-    latitude1 + (latitude2 - latitude1) * 0.5, 
-    longitude1 + (longitude2 - longitude1) * 0.5 
-  ];
-
-  var idx = INDEX(COLLECTION(collection), [ "geo1", "geo2" ]); 
-
-  if (idx === null) {
-    THROW("WITHIN_RECTANGLE", INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
-  }
-
-  var diameter = distanceMeters(latitude1, longitude1, latitude2, longitude2);
-  var latLower, latUpper, lonLower, lonUpper;
-
-  if (latitude1 < latitude2) {
-    latLower = latitude1;
-    latUpper = latitude2;
-  }
-  else {
-    latLower = latitude2;
-    latUpper = latitude1;
-  }
-
-  if (longitude1 < longitude2) {
-    lonLower = longitude1;
-    lonUpper = longitude2;
-  }
-  else {
-    lonLower = longitude2;
-    lonUpper = longitude1;
-  }
-
-  var result = COLLECTION(collection).WITHIN(idx.id, midpoint[0], midpoint[1], diameter);
-
-  var documents = [ ];
-  if (idx.type === 'geo1') {
-    // geo1, we have both coordinates in a list
-    var attribute = idx.fields[0];
-    if (idx.geoJson) {
-      result.documents.forEach(function(doc) {
-        // check if within bounding rectangle
-        // first list value is longitude, then latitude
-        if (doc[attribute][1] >= latLower && doc[attribute][1] <= latUpper &&
-            doc[attribute][0] >= lonLower && doc[attribute][0] <= lonUpper) {
-          documents.push(doc);
-        }
-      });
-    }
-    else {
-      result.documents.forEach(function(doc) {
-        // check if within bounding rectangle
-        // first list value is latitude, then longitude
-        if (doc[attribute][0] >= latLower && doc[attribute][0] <= latUpper &&
-            doc[attribute][1] >= lonLower && doc[attribute][1] <= lonUpper) {
-          documents.push(doc);
-        }
-      });
-    }
-  }
-  else {
-    // geo2, we have dedicated latitude and longitude attributes
-    var latAtt = idx.fields[0], lonAtt = idx.fields[1];
-    result.documents.forEach(function(doc) {
-      // check if within bounding rectangle
-      if (doc[latAtt] >= latLower && doc[latAtt] <= latUpper &&
-          doc[lonAtt] >= lonLower && doc[lonAtt] <= lonUpper) {
-        documents.push(doc);
-      }
-    });
-  }
-
-  return documents;
+  
+  return COLLECTION(collection).withinRectangle(latitude1, longitude1, latitude2, longitude2).toArray();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3513,8 +3429,7 @@ function AQL_HAS (element, name) {
   }
 
   if (weight !== TYPEWEIGHT_DOCUMENT) {
-    WARN("HAS", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return;
+    return false;
   }
 
   return element.hasOwnProperty(AQL_TO_STRING(name));

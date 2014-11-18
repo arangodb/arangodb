@@ -62,8 +62,9 @@ namespace triagens {
                              std::vector<std::string> const& readCollections,
                              std::vector<std::string> const& writeCollections,
                              double lockTimeout,
-                             bool waitForSync)
-          : Transaction(new V8TransactionContext(false), vocbase, 0) {
+                             bool waitForSync,
+                             bool embed)
+          : Transaction(new V8TransactionContext(embed), vocbase, 0) {
 
           // std::cout << TRI_CurrentThreadId() << ", EXPLICITTRANSACTION " << this << " CTOR\r\n";
           this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
