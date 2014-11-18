@@ -185,16 +185,19 @@ _.extend(Model, {
     } else {
       // deprecated
       _.each(this.attributes, function (attribute, attributeName) {
+        var jsonSchema = {};
         if (typeof attribute === 'string') {
-          properties[attributeName] = {type: attribute};
+           jsonSchema.type = attribute;
         } else if (attribute) {
           if (typeof attribute.type === 'string') {
-            properties[attributeName] = {type: attribute.type};
+            jsonSchema.type = attribute.type;
           }
           if (attribute.required) {
             required.push(attributeName);
+            jsonSchema.required = true;
           }
         }
+        properties[attributeName] = jsonSchema;
       });
     }
 
