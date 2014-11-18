@@ -439,7 +439,8 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
         name: gN,
         example: v1 + "/v1",
         options: {
-          direction : 'any'
+          direction : 'any',
+          maxIterations : 10000
         }
       };
       var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
