@@ -1,6 +1,11 @@
 v2.4.0 (XXXX-XX-XX)
 -------------------
 
+* fixed syslog flags. `--log.syslog` is deprecated and setting it has no effect, 
+  `--log.facility` now works as described. Application name has been changed from
+  `triagens` to `arangod`. It can be changed using `--log.application`. The syslog
+  will only contain the actual log message. The datetime prefix is omiited.
+
 * fixed deflate in SimpleHttpClient
 
 
