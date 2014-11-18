@@ -8,6 +8,14 @@ v2.3.0 (2014-11-18)
 
 * fixed deflate in SimpleHttpClient
 
+* fixed issue #1104: edgeExamples broken or changed 
+
+* fixed issue #1103: Error while importing user queries
+
+* fixed issue #1100: AQL: HAS() fails on doc[attribute_name] 
+
+* fixed issue #1098: runtime error when creating graph vertex
+
 * hide system applications in **Applications** tab by default
 
   Display of system applications can be toggled by using the *system applications* 
