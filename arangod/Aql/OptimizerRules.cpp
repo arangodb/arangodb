@@ -1230,6 +1230,13 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           attr.clear();
         }
       }
+
+      if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
+        buildRangeInfoOR(node->getMember(0), enumCollVar, attr);
+        buildRangeInfoOR(node->getMember(1), enumCollVar, attr);
+        return;
+      }
+
       // default case
       attr.clear();
       enumCollVar = nullptr;
@@ -1379,6 +1386,13 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           attr.clear();
         }
       }
+      
+      if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
+        buildRangeInfoOR(node->getMember(0), enumCollVar, attr);
+        buildRangeInfoOR(node->getMember(1), enumCollVar, attr);
+        return;
+      }
+      
       // default case
       attr.clear();
       enumCollVar = nullptr;
