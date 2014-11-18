@@ -28,6 +28,8 @@ v2.3.0 (2014-11-18)
 
 * dynamically create extra dispatcher threads if required
 
+* fixed issue #1097: schemas in the API docs no longer show required properties as optional
+
 
 v2.3.0-beta2 (2014-11-08)
 -------------------------
