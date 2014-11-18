@@ -289,37 +289,24 @@ static int HashIndex_remove (TRI_hash_index_t* hashIndex,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locates a key within the hash array part
+/// it is the callers responsibility to destroy the result
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_index_result_t HashIndex_find (TRI_hash_index_t* hashIndex,
-                                          TRI_index_search_value_t* key) {
-  TRI_hash_index_element_t* result;
-  TRI_index_result_t results;
+static TRI_vector_pointer_t HashIndex_find (TRI_hash_index_t* hashIndex,
+                                            TRI_index_search_value_t* key) {
+  TRI_vector_pointer_t results;
+  TRI_InitVectorPointer(&results, TRI_UNKNOWN_MEM_ZONE);
 
   // .............................................................................
   // A find request means that a set of values for the "key" was sent. We need
   // to locate the hash array entry by key.
   // .............................................................................
 
-  result = TRI_FindByKeyHashArray(&hashIndex->_hashArray, key);
+  TRI_hash_index_element_t* result = TRI_FindByKeyHashArray(&hashIndex->_hashArray, key);
 
   if (result != nullptr) {
-
     // unique hash index: maximum number is 1
-    results._length    = 1;
-    results._documents = static_cast<TRI_doc_mptr_t**>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, 1 * sizeof(TRI_doc_mptr_t*), false));
-
-    if (results._documents == nullptr) {
-      // no memory. prevent worst case by re-setting results length to 0
-      results._length = 0;
-      return results;
-    }
-
-    results._documents[0] = result->_document;
-  }
-  else {
-    results._length    = 0;
-    results._documents = nullptr;
+    TRI_PushBackVectorPointer(&results, result->_document);
   }
 
   return results;
@@ -393,46 +380,6 @@ int MultiHashIndex_remove (TRI_hash_index_t* hashIndex,
   }
 
   return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief locates a key within the hash array part
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_index_result_t MultiHashIndex_find (TRI_hash_index_t* hashIndex,
-                                               TRI_index_search_value_t* key) {
-  TRI_index_result_t results;
-
-  // .............................................................................
-  // We can only use the LookupByKey method for non-unique hash indexes, since
-  // we want more than one result returned!
-  // .............................................................................
-
-  TRI_vector_pointer_t result = TRI_LookupByKeyHashArrayMulti(&hashIndex->_hashArrayMulti, key);
-
-  if (result._length == 0) {
-    results._length    = 0;
-    results._documents = nullptr;
-  }
-  else {
-    results._length    = result._length;
-    results._documents = static_cast<TRI_doc_mptr_t**>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, result._length * sizeof(TRI_doc_mptr_t*), false));
-
-    if (results._documents == nullptr) {
-      // no memory. prevent worst case by re-setting results length to 0
-      TRI_DestroyVectorPointer(&result);
-      results._length = 0;
-
-      return results;
-    }
-
-    for (size_t j = 0;  j < result._length;  ++j) {
-      results._documents[j] = ((TRI_doc_mptr_t*) result._buffer[j]);
-    }
-  }
-
-  TRI_DestroyVectorPointer(&result);
-  return results;
 }
 
 // -----------------------------------------------------------------------------
@@ -698,18 +645,41 @@ void TRI_FreeHashIndex (TRI_index_t* idx) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locates entries in the hash index given shaped json objects
+/// it is the callers responsibility to destroy the result
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_result_t TRI_LookupHashIndex (TRI_index_t* idx,
-                                        TRI_index_search_value_t* searchValue) {
+TRI_vector_pointer_t TRI_LookupHashIndex (TRI_index_t* idx,
+                                          TRI_index_search_value_t* searchValue) {
   TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
 
   if (hashIndex->base._unique) {
     return HashIndex_find(hashIndex, searchValue);
   }
-  else {
-    return MultiHashIndex_find(hashIndex, searchValue);
+
+  return TRI_LookupByKeyHashArrayMulti(&hashIndex->_hashArrayMulti, searchValue);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief locates entries in the hash index given shaped json objects
+/// this function uses the state passed to it to return a fragment of the
+/// total result - the next call to the function can resume at the state where
+/// it was left off last
+/// note: state is ignored for unique indexes as there will be at most one
+/// item in the result
+/// it is the callers responsibility to destroy the result
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vector_pointer_t TRI_LookupHashIndex (TRI_index_t* idx,
+                                          TRI_index_search_value_t* searchValue,
+                                          TRI_hash_index_element_multi_t*& next,
+                                          size_t batchSize) {
+  TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
+
+  if (hashIndex->base._unique) {
+    return HashIndex_find(hashIndex, searchValue);
   }
+
+  return TRI_LookupByKeyHashArrayMulti(&hashIndex->_hashArrayMulti, searchValue, next, batchSize);
 }
 
 // -----------------------------------------------------------------------------
