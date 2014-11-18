@@ -850,12 +850,12 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
     _posInDocs(0),
     _allBoundsConstant(true),
     _skiplistIterator(nullptr),
-    _condition(&en->_ranges) {
+    _condition(&en->_ranges),
+    _rangesPos(0){
    
-  std::vector<std::vector<RangeInfo>> const& orRanges = en->_ranges;//TODO replace this with _condition
+  std::vector<std::vector<RangeInfo>> const& orRanges = en->_ranges;
+  //TODO replace this with _condition
   TRI_ASSERT(en->_index != nullptr);
-
-  TRI_ASSERT(orRanges.size() == 1);  // OR expressions not yet implemented
 
   // Detect, whether all ranges are constant:
   std::vector<RangeInfo> const& attrRanges = orRanges[0];
@@ -1554,11 +1554,11 @@ void IndexRangeBlock::initSkiplistIndex (IndexOrCondition const& ranges) {
 
   Json parameters(Json::List); 
   size_t i = 0;
-  for (; i < ranges.at(0).size(); i++) {
+  for (; i < ranges.at(_rangesPos).size(); i++) {
     // ranges.at(0) corresponds to a prefix of idx->_fields . . .
     // TODO only doing case with a single OR (i.e. ranges.size()==1 at the
     // moment ...
-    auto range = ranges.at(0).at(i);
+    auto range = ranges.at(_rangesPos).at(i);
     TRI_ASSERT(range.isConstant());
     if (range.is1ValueRangeInfo()) {   // it's an equality . . . 
       parameters(range._lowConst.bound().copy());
@@ -1590,6 +1590,7 @@ void IndexRangeBlock::initSkiplistIndex (IndexOrCondition const& ranges) {
       }
     }
   }
+  _rangesPos++;
 
   if (skiplistOperator == nullptr) {      // only have equalities . . .
     if (parameters.size() == 0) {
@@ -1630,20 +1631,28 @@ void IndexRangeBlock::readSkiplistIndex (size_t atMost) {
   try {
     size_t nrSent = 0;
     TRI_skiplist_index_element_t* indexElement;
-    while (nrSent < atMost) { 
+    while (nrSent < atMost && _skiplistIterator !=nullptr) { 
       indexElement = _skiplistIterator->next(_skiplistIterator);
 
       if (indexElement == nullptr) {
-        break;
+        TRI_FreeSkiplistIterator(_skiplistIterator);
+        _skiplistIterator = nullptr;
+        if (_rangesPos < _condition->size()) {
+          initSkiplistIndex(*_condition);
+        }
+      } else {
+        _documents.emplace_back(*(indexElement->_document));
+        ++nrSent;
+        ++_engine->_stats.scannedIndex;
       }
-      _documents.emplace_back(*(indexElement->_document));
-      ++nrSent;
-      ++_engine->_stats.scannedIndex;
     }
-    if (indexElement == nullptr) {
+    /*if (indexElement == nullptr) {
       TRI_FreeSkiplistIterator(_skiplistIterator);
       _skiplistIterator = nullptr;
-    }
+      if (_rangesPos < _ranges.size()) {
+        initSkiplistIndex();
+      }
+    }*/
   }
   catch (...) {
     TRI_FreeSkiplistIterator(_skiplistIterator);
