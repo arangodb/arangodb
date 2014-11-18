@@ -5,6 +5,11 @@ v2.3.1 (2014-11-28)
 
 * fixed issue #1126
 
+* added AQL list functions `PUSH`, `POP`, `UNSHIFT`, `SHIFT`, `REMOVE_ALL`,
+  `REMOVE_VALUE`, `REMOVE_NTH` and `APPEND`
+
+* added AQL functions `CALL` and `APPLY` to dynamically call other functions
+
 
 v2.3.0 (2014-11-18)
 -------------------

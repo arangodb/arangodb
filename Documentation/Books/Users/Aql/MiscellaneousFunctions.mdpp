@@ -66,3 +66,17 @@ function categories:
   as in the index. 
   If no suitable skiplist index is found, an error will be raised and the query will be aborted.
 
+- *CALL(function, arg1, ..., argn)*: Dynamically calls the function with name *function* 
+  with the arguments specified. Both built-in and user-defined functions can be called. 
+  Arguments are passed as seperate parameters to the called function.
+
+      /* "this" */
+      CALL('SUBSTRING', 'this is a test', 0, 4) 
+
+- *APPLY(function, arguments)*: Dynamically calls the function with name *function* 
+  with the arguments specified. Both built-in and user-defined functions can be called. 
+  Arguments are passed as seperate parameters to the called function.
+
+      /* "this is" */
+      APPLY('SUBSTRING', [ 'this is a test', 0, 7 ]) 
+
