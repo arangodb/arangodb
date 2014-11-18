@@ -1,6 +1,10 @@
 v2.4.0 (XXXX-XX-XX)
 -------------------
 
+
+v2.3.0 (2014-11-18)
+-------------------
+
 * fixed syslog flags. `--log.syslog` is deprecated and setting it has no effect, 
   `--log.facility` now works as described. Application name has been changed from
   `triagens` to `arangod`. It can be changed using `--log.application`. The syslog
@@ -8,9 +12,13 @@ v2.4.0 (XXXX-XX-XX)
 
 * fixed deflate in SimpleHttpClient
 
+* fixed issue #1104: edgeExamples broken or changed 
 
-v2.3.0 (XXXX-XX-XX)
--------------------
+* fixed issue #1103: Error while importing user queries
+
+* fixed issue #1100: AQL: HAS() fails on doc[attribute_name] 
+
+* fixed issue #1098: runtime error when creating graph vertex
 
 * hide system applications in **Applications** tab by default
 
