@@ -1,5 +1,7 @@
-v2.3.0 (2014-11-15)
+v2.3.0 (2014-11-19)
 -------------------
+
+* fixed deflate in SimpleHttpClient
 
 * hide system applications in **Applications** tab by default
 
