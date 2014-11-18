@@ -256,6 +256,27 @@ function transactionInvocationSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test: nesting
+////////////////////////////////////////////////////////////////////////////////
+
+    testNestingEmbedFlag : function () {
+      var obj = {
+        collections : {
+        },
+        action : function () {
+          return 19 + TRANSACTION({
+            collections: {
+            },
+            embed: true,
+            action: "function () { return 23; }"
+          });
+        }
+      };
+
+      assertEqual(42, TRANSACTION(obj));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test: params
 ////////////////////////////////////////////////////////////////////////////////
 
