@@ -14,6 +14,10 @@ v2.3.1 (2014-11-28)
 v2.3.0 (2014-11-18)
 -------------------
 
+
+v2.3.0 (2014-11-18)
+-------------------
+
 * fixed syslog flags. `--log.syslog` is deprecated and setting it has no effect, 
   `--log.facility` now works as described. Application name has been changed from
   `triagens` to `arangod`. It can be changed using `--log.application`. The syslog
