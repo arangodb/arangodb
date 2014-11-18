@@ -1,4 +1,4 @@
-v2.3.0 (2014-11-19)
+v2.3.0 (2014-11-18)
 -------------------
 
 * fixed deflate in SimpleHttpClient
