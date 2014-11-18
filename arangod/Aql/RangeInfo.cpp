@@ -367,20 +367,15 @@ void RangeInfoMap::eraseEmptyOrUndefined(std::string const& var) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-
-// FIXME maybe this is unnecessary, it should be that the return value here is
-// independent of pos, i.e that every entry in the vec has the same attributes??
 std::unordered_set<std::string> RangeInfoMapVec::attributes (std::string const& var) {
-  TRI_ASSERT(pos < _rangeInfoMapVec.size());
-  
-  return _rangeInfoMapVec[0].attributes(var);
+  return _rangeInfoMapVec[0]->attributes(var);
 }
 
-void RangeInfoMapVec::validPositions(std::string const& var) {
+std::vector<size_t> RangeInfoMapVec::validPositions(std::string const& var) {
   std::vector<size_t> valid;
 
-  for (i = 0; i < _rangeInfoMapVec.size(); i++) {
-    if (_rangeInfoMapVec[i].isValid(var)) {
+  for (size_t i = 0; i < _rangeInfoMapVec.size(); i++) {
+    if (_rangeInfoMapVec[i]->isValid(var)) {
       valid.push_back(i);
     }
   }
@@ -388,16 +383,17 @@ void RangeInfoMapVec::validPositions(std::string const& var) {
 }
 
 void RangeInfoMapVec::eraseEmptyOrUndefined(std::string const& var) {
-  for (RangeInfoMap x: _rangeInfoMapVec) {
-    x.eraseEmptyOrUndefined(var);
+  for (RangeInfoMap* x: _rangeInfoMapVec) {
+    x->eraseEmptyOrUndefined(var);
   }
 }
 
-std::unordered_map<std::string, RangeInfo>* find (std::string const& var, size_t pos) {
+std::unordered_map<std::string, RangeInfo>* RangeInfoMapVec::find (
+                                              std::string const& var, size_t pos) {
   if (pos >= _rangeInfoMapVec.size()) {
     return nullptr;
   }
-  return _rangeInfoMapVec[pos].find(var);
+  return _rangeInfoMapVec[pos]->find(var);
 } 
 
 void RangeInfoMapVec::insertAnd (std::string const& var, 
