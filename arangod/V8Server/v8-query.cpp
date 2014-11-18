@@ -1589,11 +1589,11 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (SingleCollectionReadOnlyTr
   }
 
   // find the matches
-  TRI_index_result_t list = TRI_LookupHashIndex(idx, &searchValue);
+  TRI_vector_pointer_t list = TRI_LookupHashIndex(idx, &searchValue);
   DestroySearchValue(shaper->_memoryZone, searchValue);
 
   // convert result
-  size_t total = list._length;
+  size_t total = TRI_LengthVectorPointer(&list);
   size_t count = 0;
   bool error = false;
 
@@ -1605,7 +1605,7 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (SingleCollectionReadOnlyTr
 
     if (s < e) {
       for (size_t i = s;  i < e;  ++i) {
-        v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, collection->_cid, list._documents[i]->getDataPtr());
+        v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, collection->_cid, static_cast<TRI_doc_mptr_t*>(TRI_AtVectorPointer(&list, i))->getDataPtr());
 
         if (doc.IsEmpty()) {
           error = true;
@@ -1619,7 +1619,7 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (SingleCollectionReadOnlyTr
   }
 
   // free data allocated by hash index result
-  TRI_DestroyIndexResult(&list);
+  TRI_DestroyVectorPointer(&list);
 
   result->Set(v8::String::New("total"), v8::Number::New((double) total));
   result->Set(v8::String::New("count"), v8::Number::New((double) count));
