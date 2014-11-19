@@ -5890,6 +5890,9 @@ function AQL_GRAPH_NEIGHBORS (graphName,
   if (options.vertexCollectionRestriction) {
     params.filterVertexCollections = options.vertexCollectionRestriction;
   }
+  if (options.endVertexCollectionRestriction) {
+    params.filterVertexCollections = options.endVertexCollectionRestriction;
+  }
   fromVertices.forEach(function (v) {
     var e = TRAVERSAL_FUNC("GRAPH_NEIGHBORS",
       factory,
