@@ -1894,6 +1894,41 @@ function EdgesAndVerticesSuite() {
       graph._drop(unitTestGraphName, true);
     },
 
+
+    test_connectingEdges : function () {
+      fillCollections();
+      var res = g._getConnectingEdges({first_name: "Tam"}, {first_name: "Tem"}, {});
+      assertTrue(res.length == 3);
+    },
+
+    test_connectingEdgesWithEdgeCollectionRestriction : function () {
+      fillCollections();
+      var res = g._getConnectingEdges({first_name: "Tam"}, null, {});
+      assertTrue(res.length == 13);
+      var res = g._getConnectingEdges({first_name: "Tam"}, null, {edgeCollectionRestriction : "unitTestEdgeCollection2"});
+      assertTrue(res.length == 5);
+    },
+
+    test_connectingEdgesWithVertexCollectionRestriction : function () {
+      fillCollections();
+      var res = g._getConnectingEdges(null, null, {});
+      assertTrue(res.length == 13);
+      var res = g._getConnectingEdges(null, null, {vertex1CollectionRestriction : "unitTestVertexCollection1"});
+      assertTrue(res.length == 13);
+      var res = g._getConnectingEdges(null, null, {
+        vertex1CollectionRestriction : "unitTestVertexCollection1",
+        vertex2CollectionRestriction : "unitTestVertexCollection3"
+      });
+      assertTrue(res.length == 5);
+    },
+
+    test_connectingEdgesWithIds : function () {
+      var ids = fillCollections();
+      var res = g._getConnectingEdges(ids.vId11, ids.vId13, {});
+      assertTrue(res.length == 2);
+    },
+
+
     test_dropGraph1 : function () {
       var myGraphName = unitTestGraphName + "2";
       var myEdgeColName = "unitTestEdgeCollection4711";
