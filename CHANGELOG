@@ -1,4 +1,4 @@
-v2.2.7 (XXXX-XX-XX)
+v2.2.7 (2014-11-19)
 -------------------
 
 * fixed issue #1079: AQL editor: keyword WITH in UPDATE query is not highlighted
