@@ -19,10 +19,6 @@ statistics about executed requests and timings about computation steps.
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 @startDocuBlock logSeverity
 
-!SUBSECTION Syslog
-<!-- lib/ApplicationServer/ApplicationServer.h -->
-@startDocuBlock logSyslog
-
 !SECTION Human Readable Logging
 
 !SUBSECTION Level
@@ -62,7 +58,3 @@ statistics about executed requests and timings about computation steps.
 !SUBSECTION Facility
 <!-- lib/ApplicationServer/ApplicationServer.h -->
 @startDocuBlock logFacility
-
-!SUBSECTION Histname
-<!-- lib/ApplicationServer/ApplicationServer.h -->
-@startDocuBlock logHostname

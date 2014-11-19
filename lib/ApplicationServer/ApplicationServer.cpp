@@ -53,6 +53,8 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace std;
 
+static string DeprecatedParameter;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public constants
 // -----------------------------------------------------------------------------
@@ -118,15 +120,13 @@ ApplicationServer::ApplicationServer (std::string const& name, std::string const
     _gid(),
     _realGid(0),
     _effectiveGid(0),
-    _logApplicationName("triagens"),
-    _logHostName("-"),
-    _logFacility("-"),
+    _logApplicationName("arangod"),
+    _logFacility(""),
     _logLevel("info"),
     _logSeverity("human"),
     _logFile("+"),
     _logRequestsFile(""),
     _logPrefix(),
-    _logSyslog(),
     _logThreadId(false),
     _logLineNumber(false),
     _logLocalTime(false),
@@ -159,15 +159,13 @@ ApplicationServer::ApplicationServer (std::string const& name, std::string const
     _gid(),
     _realGid(0),
     _effectiveGid(0),
-    _logApplicationName("triagens"),
-    _logHostName("-"),
-    _logFacility("-"),
+    _logApplicationName("arangod"),
+    _logFacility(""),
     _logLevel("info"),
     _logSeverity("human"),
     _logFile("+"),
     _logRequestsFile(""),
     _logPrefix(),
-    _logSyslog(),
     _logThreadId(false),
     _logLineNumber(false),
     _logLocalTime(false),
@@ -308,7 +306,7 @@ void ApplicationServer::setupLogging (bool threaded, bool daemon) {
   }
 
 #ifdef TRI_ENABLE_SYSLOG
-  if (_logSyslog != "") {
+  if (! _logFacility.empty()) {
     TRI_CreateLogAppenderSyslog(_logApplicationName.c_str(),
                                 _logFacility.c_str(),
                                 contentFilter,
@@ -818,20 +816,20 @@ void ApplicationServer::setupOptions (map<string, ProgramOptionsDescription>& op
 
   options[OPTIONS_LOGGER + ":help-log"]
     ("log.application", &_logApplicationName, "application name for syslog")
-    ("log.facility", &_logFacility, "facility name for syslog")
+    ("log.facility", &_logFacility, "facility name for syslog (OS dependent)")
     ("log.source-filter", &_logSourceFilter, "only debug and trace messages emitted by specific C source file")
     ("log.content-filter", &_logContentFilter, "only log message containing the specified string (case-sensitive)")
-    ("log.hostname", &_logHostName, "host name for syslog")
     ("log.line-number", "always log file and line number")
     ("log.prefix", &_logPrefix, "prefix log")
     ("log.severity", &_logSeverity, "log severities")
-    ("log.syslog", &_logSyslog, "use syslog facility")
     ("log.thread", "log the thread identifier for severity 'human'")
     ("log.use-local-time", "use local dates and times in log messages")
   ;
 
   options[OPTIONS_HIDDEN]
     ("log", &_logLevel, "log level for severity 'human'")
+    ("log.syslog", &DeprecatedParameter, "use syslog facility (deprecated)")
+    ("log.hostname", &DeprecatedParameter, "host name for syslog")
 #ifdef TRI_HAVE_SETUID
     ("uid", &_uid, "switch to user-id after reading config files")
 #endif

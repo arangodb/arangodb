@@ -4655,24 +4655,22 @@ function FILTER_RESTRICTION (list, restrictionList) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function DOCUMENTS_BY_EXAMPLE (collectionList, example) {
-  var res = [];
-  if (example === "null") {
-    example = [{}];
-  }
-  if (!example) {
-    example = [{}];
+  var res = [ ];
+  if (example === "null" || example === null || ! example) {
+    example = [ { } ];
   }
   if (typeof example === "string") {
-    example = {_id : example};
+    example = { _id : example };
   }
-  if (!Array.isArray(example)) {
-    example = [example];
+  if (! Array.isArray(example)) {
+    example = [ example ];
   }
-  var tmp = [];
+  var tmp = [ ];
   example.forEach(function (e) {
     if (typeof e === "string") {
-      tmp.push({_id : e});
-    } else {
+      tmp.push({ _id : e });
+    } 
+    else {
       tmp.push(e);
     }
   });
@@ -5219,6 +5217,9 @@ function CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA (graphName, options) {
   params.paths = true;
   if (options.edgeExamples) {
     params.followEdges = options.edgeExamples;
+    if (! Array.isArray(params.followEdges)) {
+      params.followEdges = [ params.followEdges ];
+    }
   }
   if (options.edgeCollectionRestriction) {
     params.edgeCollectionRestriction = options.edgeCollectionRestriction;
