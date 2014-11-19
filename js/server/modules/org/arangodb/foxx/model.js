@@ -32,6 +32,8 @@ var Model,
   joi = require("joi"),
   is = require("org/arangodb/is"),
   extend = require('org/arangodb/extend').extend,
+  EventEmitter = require('events').EventEmitter,
+  util = require('util'),
   excludeExtraAttributes,
   metadataSchema = {
     _id: joi.string().optional(),
@@ -142,7 +144,10 @@ Model = function (attributes) {
   } else if (attributes) {
     instance.attributes = _.clone(attributes);
   }
+  EventEmitter.call(instance);
 };
+
+util.inherits(Model, EventEmitter);
 
 Model.fromClient = function (attributes) {
   'use strict';
@@ -161,39 +166,43 @@ _.extend(Model, {
     if (this.prototype.schema) {
       _.each(this.prototype.schema, function (schema, attributeName) {
         var description = schema.describe(),
-          type = description.type,
+          jsonSchema = {type: description.type},
           rules = description.rules,
           flags = description.flags;
 
         if (flags && flags.presence === 'required') {
+          jsonSchema.required = true;
           required.push(attributeName);
         }
 
         if (
-          type === 'number' &&
+          jsonSchema.type === 'number' &&
             _.isArray(rules) &&
             _.some(rules, function (rule) {
               return rule.name === 'integer';
             })
         ) {
-          type = 'integer';
+          jsonSchema.type = 'integer';
         }
 
-        properties[attributeName] = {type: type};
+        properties[attributeName] = jsonSchema;
       });
     } else {
       // deprecated
       _.each(this.attributes, function (attribute, attributeName) {
+        var jsonSchema = {};
         if (typeof attribute === 'string') {
-          properties[attributeName] = {type: attribute};
+           jsonSchema.type = attribute;
         } else if (attribute) {
           if (typeof attribute.type === 'string') {
-            properties[attributeName] = {type: attribute.type};
+            jsonSchema.type = attribute.type;
           }
           if (attribute.required) {
             required.push(attributeName);
+            jsonSchema.required = true;
           }
         }
+        properties[attributeName] = jsonSchema;
       });
     }
 
