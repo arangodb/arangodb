@@ -750,7 +750,8 @@ namespace triagens {
 /// multiple conditions which are implicitly "AND"ed.
 ////////////////////////////////////////////////////////////////////////////////
     
-    typedef std::vector<std::vector<RangeInfo>> IndexOrCondition;
+    typedef std::vector<RangeInfo> IndexAndCondition;
+    typedef std::vector<IndexAndCondition> IndexOrCondition;
   }
 }
 

@@ -573,7 +573,7 @@ namespace triagens {
 /// block.
 ////////////////////////////////////////////////////////////////////////////////
         
-        bool initIndex ();
+        bool initRanges ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read using the primary index
@@ -597,7 +597,7 @@ namespace triagens {
 /// @brief this tries to create a skiplistIterator to read from the index. 
 ////////////////////////////////////////////////////////////////////////////////
 
-        void initSkiplistIndex (IndexOrCondition const&);
+        void getSkiplistIterator (IndexAndCondition const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read using a hash index
@@ -634,7 +634,8 @@ namespace triagens {
 /// are constant
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool _allBoundsConstant;
+        std::vector<bool> _allBoundsConstant;
+        bool _anyBoundVariable;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _allBoundsConstant, this indicates whether all given bounds
@@ -659,15 +660,15 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _skiplistIterator: holds the skiplist iterator found using
-/// initSkiplistIndex (if any) so that it can be read in chunks and not
+/// getSkiplistIterator (if any) so that it can be read in chunks and not
 /// necessarily all at once.
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_skiplist_iterator_t* _skiplistIterator;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _condition: holds the IndexOrCondition for the current incoming block,
-/// this is just the _ranges member of the plan node if _allBoundsConstant
+/// @brief _condition: holds the IndexAndCondition for the current incoming block,
+/// this is just the _ranges[_rangesPos] member of the plan node if _allBoundsConstant
 /// otherwise it is reevaluated every time initIndex is called, i.e. once per
 /// incoming block. 
 ////////////////////////////////////////////////////////////////////////////////
@@ -682,7 +683,7 @@ namespace triagens {
 //////////////////////////////////////////////////////////////////////////////////
 
         bool _flag;
-        size_t _rangesPos;
+        size_t _posInRanges;
 
     };
 

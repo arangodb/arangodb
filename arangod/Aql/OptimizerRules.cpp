@@ -816,7 +816,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             auto node = static_cast<CalculationNode*>(en);
             std::string attr;
             Variable const* enumCollVar = nullptr;
-            buildRangeInfo(node->expression()->node(), enumCollVar, attr, true);
+            buildRangeInfo(node->expression()->node(), enumCollVar, attr, false);
           }
           break;
         }
@@ -1248,24 +1248,30 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       if (node->type == NODE_TYPE_OPERATOR_BINARY_IN) {
         auto lhs = node->getMember(0); // enumCollVar
         auto rhs = node->getMember(1); // value
-        
-        buildRangeInfo(lhs, enumCollVar, attr, true);
-        
-        if (enumCollVar != nullptr) {
-          std::vector<RangeInfo> ranges; 
-          for (size_t i = 0; i < rhs->numMembers(); i++) {
-            ranges.emplace_back(RangeInfo(enumCollVar->name, attr.substr(0, attr.size() - 1), 
-            RangeInfoBound(rhs->getMember(i), true),
-            RangeInfoBound(rhs->getMember(i), true), true));
-            //FIXME don't assume this is constant, or an equality!
+        if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) { 
+          buildRangeInfo(lhs, enumCollVar, attr, true);
+          if (enumCollVar != nullptr) {
+            std::unordered_set<Variable*> varsUsed 
+              = Ast::getReferencedVariables(rhs);
+            if (varsUsed.find(const_cast<Variable*>(enumCollVar)) 
+                == varsUsed.end()) {
+              // Found a multiple attribute access of a variable and an
+              // expression which does not involve that variable:
+              std::vector<RangeInfo> ranges; 
+              for (size_t i = 0; i < rhs->numMembers(); i++) {
+                ranges.emplace_back(RangeInfo(enumCollVar->name, attr.substr(0, attr.size() - 1), 
+                RangeInfoBound(rhs->getMember(i), true),
+                RangeInfoBound(rhs->getMember(i), true), true));
+              }
+              if (! isOrCondition) {
+                _rangeInfoMapVec->insertDistributeAndIntoOr(ranges);
+              } else {
+                _rangeInfoMapVec->insertOr(ranges);
+              }
+              enumCollVar = nullptr;
+              attr.clear();
+            }
           }
-          if (! isOrCondition) {
-            _rangeInfoMapVec->insertDistributeAndIntoOr(ranges);
-          } else {
-            _rangeInfoMapVec->insertOr(ranges);
-          }
-          enumCollVar = nullptr;
-          attr.clear();
         }
         return;
       }
