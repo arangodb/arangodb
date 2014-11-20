@@ -1139,10 +1139,6 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
         auto lhs = node->getMember(0);
         auto rhs = node->getMember(1);
-        if (rhs->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
-          lhs = node->getMember(1);
-          rhs = node->getMember(0);
-        }
         if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
           buildRangeInfo(rhs, enumCollVar, attr, isOrCondition);
           if (enumCollVar != nullptr) {
@@ -1156,6 +1152,26 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                      attr.substr(0, attr.size() - 1), 
                      RangeInfoBound(lhs, true), 
                      RangeInfoBound(lhs, true), 
+                     true, 
+                     isOrCondition);
+              enumCollVar = nullptr;
+              attr.clear();
+            }
+          }
+        }
+        if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+          buildRangeInfo(lhs, enumCollVar, attr, isOrCondition);
+          if (enumCollVar != nullptr) {
+            std::unordered_set<Variable*> varsUsed 
+              = Ast::getReferencedVariables(rhs);
+            if (varsUsed.find(const_cast<Variable*>(enumCollVar)) 
+                == varsUsed.end()) {
+              // Found a multiple attribute access of a variable and an
+              // expression which does not involve that variable:
+              insert(enumCollVar->name, 
+                     attr.substr(0, attr.size() - 1), 
+                     RangeInfoBound(rhs, true), 
+                     RangeInfoBound(rhs, true), 
                      true, 
                      isOrCondition);
               enumCollVar = nullptr;
