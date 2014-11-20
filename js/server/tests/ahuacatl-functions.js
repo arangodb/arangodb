@@ -2857,16 +2857,16 @@ function ahuacatlFunctionsTestSuite () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN HAS()"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN HAS({ })"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN HAS({ }, \"fox\", true)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN HAS(false, \"fox\")"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN HAS(3, \"fox\")"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN HAS(\"yes\", \"fox\")"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN HAS([ ], \"fox\")"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN HAS({ }, null)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN HAS({ }, false)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN HAS({ }, true)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN HAS({ }, 1)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN HAS({ }, [ ])"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN HAS({ }, { })"); 
+      assertEqual([ false ], getQueryResults("RETURN HAS(false, \"fox\")")); 
+      assertEqual([ false ], getQueryResults("RETURN HAS(3, \"fox\")")); 
+      assertEqual([ false ], getQueryResults("RETURN HAS(\"yes\", \"fox\")")); 
+      assertEqual([ false ], getQueryResults("RETURN HAS([ ], \"fox\")")); 
+      assertEqual([ false ], getQueryResults("RETURN HAS({ }, null)")); 
+      assertEqual([ false ], getQueryResults("RETURN HAS({ }, false)")); 
+      assertEqual([ false ], getQueryResults("RETURN HAS({ }, true)")); 
+      assertEqual([ false ], getQueryResults("RETURN HAS({ }, 1)")); 
+      assertEqual([ false ], getQueryResults("RETURN HAS({ }, [ ])")); 
+      assertEqual([ false ], getQueryResults("RETURN HAS({ }, { })")); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
