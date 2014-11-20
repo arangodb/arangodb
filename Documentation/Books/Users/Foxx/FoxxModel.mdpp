@@ -55,6 +55,47 @@ person.attributes // => { name: "Pete", admin: true, active: true }
 person.errors // => {admin: [ValidationError: value is not allowed]}
 ```
 
+The following events are emitted by a model:
+
+- beforeCreate
+- afterCreate
+- beforeSave
+- afterSave
+- beforeUpdate
+- afterUpdate
+- beforeRemove
+- afterRemove
+
+Model lifecycle:
+
+```js
+var person = new PersonModel();
+person.on('beforeCreate', function() {
+  var model = this;
+  model.fancyMethod(); // Do something fancy with the model
+});
+var people = new Repository(appContext.collection("people"), { model: PersonModel });
+
+people.save(person);
+// beforeCreate()
+// beforeSave()
+// The model is created at db
+// afterSave()
+// afterCreate()
+
+people.update(person, data);
+// beforeUpdate(data)
+// beforeSave(data)
+// The model is updated at db
+// afterSave(data)
+// afterUpdate(data)
+
+people.remove(person);
+// beforeRemove()
+// The model is deleted at db
+// afterRemove()
+```
+
 !SUBSECTION Extend
 <!-- js/server/modules/org/arangodb/foxx/model.js -->
 @startDocuBlock JSF_foxx_model_extend

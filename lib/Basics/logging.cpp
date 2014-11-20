@@ -1746,8 +1746,17 @@ static void LogAppenderSyslog_Log (TRI_log_appender_t* appender,
 
   self = (log_appender_syslog_t*) appender;
 
+  char const* ptr = strchr(msg, ']');
+
+  if (ptr == nullptr) {
+    ptr = msg;
+  }
+  else if (ptr[1] != '\0') {
+    ptr += 2;
+  }
+
   TRI_LockMutex(&self->_mutex);
-  syslog(priority, "%s", msg);
+  syslog(priority, "%s", ptr);
   TRI_UnlockMutex(&self->_mutex);
 }
 

@@ -1033,9 +1033,12 @@ AQLGenerator.prototype._getLastRestrictableStatementInfo = function() {
 ////////////////////////////////////////////////////////////////////////////////
 
 AQLGenerator.prototype.restrict = function(restrictions) {
+  var rest = stringToArray(restrictions);
+  if (rest.length === 0) {
+    return this;
+  }
   this._addToPrint("restrict", restrictions);
   this._clearCursor();
-  var rest = stringToArray(restrictions);
   var lastQueryInfo = this._getLastRestrictableStatementInfo();
   var lastQuery = lastQueryInfo.statement;
   var opts = lastQueryInfo.options;
@@ -1186,6 +1189,7 @@ AQLGenerator.prototype.execute = function() {
 
 AQLGenerator.prototype.toArray = function() {
   this._createCursor();
+
   return this.cursor.toArray();
 };
 
@@ -4484,6 +4488,98 @@ Graph.prototype._removeVertexCollection = function(vertexCollectionName, dropCol
     }
   }
   updateBindCollections(this);
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_connectingEdges
+/// @brief Get all connecting edges between 2 groups of vertices defined by the examples
+///
+/// `graph._connectingEdges(vertexExample, vertexExample2, options)`
+///
+/// The function accepts an id, an example, a list of examples or even an empty
+/// example as parameter for vertexExample.
+///
+/// @PARAMS
+///
+/// @PARAM{vertexExample1, object, optional}
+/// See [Definition of examples](#definition_of_examples)
+/// @PARAM{vertexExample2, object, optional}
+/// See [Definition of examples](#definition_of_examples)
+/// @PARAM{options, object, optional}
+/// An object defining further options. Can have the following values:
+///   * *edgeExamples*: Filter the edges, see [Definition of examples](#definition_of_examples)
+///   * *edgeCollectionRestriction* : One or a list of edge-collection names that should be
+///       considered to be on the path.
+///   * *vertex1CollectionRestriction* : One or a list of vertex-collection names that should be
+///       considered on the intermediate vertex steps.
+///   * *vertex2CollectionRestriction* : One or a list of vertex-collection names that should be
+///       considered on the intermediate vertex steps.
+///
+/// @EXAMPLES
+///
+/// A route planner example, all neighbors of capitals.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleNeighbors1}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var graph = examples.loadGraph("routeplanner");
+///   graph._neighbors({isCapital : true});
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, all outbound neighbors of Hamburg.
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleNeighbors2}
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var graph = examples.loadGraph("routeplanner");
+///   graph._neighbors('germanCity/Hamburg', {direction : 'outbound', maxDepth : 2});
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+//
+////////////////////////////////////////////////////////////////////////////////
+
+Graph.prototype._getConnectingEdges = function(vertexExample1, vertexExample2, options) {
+
+  if (!options) {
+    options = {};
+  }
+
+  var opts = {
+  };
+
+  if (options.vertex1CollectionRestriction) {
+    opts.startVertexCollectionRestriction = options.vertex1CollectionRestriction;
+  }
+
+  if (options.vertex2CollectionRestriction) {
+    opts.endVertexCollectionRestriction = options.vertex2CollectionRestriction;
+  }
+
+  if (options.edgeCollectionRestriction) {
+    opts.edgeCollectionRestriction = options.edgeCollectionRestriction;
+  }
+
+  if (options.edgeExamples) {
+    opts.edgeExamples = options.edgeExamples;
+  }
+
+  if (vertexExample2) {
+    opts.neighborExamples = vertexExample2;
+  }
+
+  var query = "RETURN"
+    + " GRAPH_EDGES(@graphName"
+    + ',@vertexExample'
+    + ',@options'
+    + ')';
+  options = options || {};
+  var bindVars = {
+    "graphName": this.__name,
+    "vertexExample": vertexExample1,
+    "options": opts
+  };
+  var result = db._query(query, bindVars).toArray();
+  return result[0];
 };
 
 
