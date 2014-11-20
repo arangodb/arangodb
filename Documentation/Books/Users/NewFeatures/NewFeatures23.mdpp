@@ -40,7 +40,7 @@ in the future.
 
 !SUBSUBSECTION Alternative operator syntax
 
-ArangoDB 2.3 allows to write the use the following alternative forms for the 
+ArangoDB 2.3 allows to use the following alternative forms for the 
 logical operators:
 - `AND`: logical and
 - `OR`: logical or
