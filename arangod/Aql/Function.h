@@ -177,7 +177,7 @@ namespace triagens {
 /// @brief maximum number of function arguments that can be used
 ////////////////////////////////////////////////////////////////////////////////
 
-      static size_t const     MaxArguments = 1024;
+      static size_t const     MaxArguments = 65536;
 
     };
 
