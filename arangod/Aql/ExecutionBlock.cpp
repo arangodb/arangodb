@@ -1445,20 +1445,20 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
   };
  
   setupSearchValue();  
-  TRI_index_result_t list = TRI_LookupHashIndex(idx, &searchValue);
+  TRI_vector_pointer_t list = TRI_LookupHashIndex(idx, &searchValue);
   destroySearchValue();
   
-  size_t const n = list._length;
+  size_t const n = TRI_LengthVectorPointer(&list);
   try {
     for (size_t i = 0; i < n; ++i) {
-      _documents.emplace_back(*(list._documents[i]));
+      _documents.emplace_back(* (static_cast<TRI_doc_mptr_t*>(TRI_AtVectorPointer(&list, i))));
     }
   
     _engine->_stats.scannedIndex += static_cast<int64_t>(n);
-    TRI_DestroyIndexResult(&list);
+    TRI_DestroyVectorPointer(&list);
   }
   catch (...) {
-    TRI_DestroyIndexResult(&list);
+    TRI_DestroyVectorPointer(&list);
     throw;
   }
   LEAVE_BLOCK;

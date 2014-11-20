@@ -105,8 +105,17 @@ static inline bool IsSingleOperationTransaction (TRI_transaction_t const* trx) {
 /// @brief whether or not a marker needs to be written
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline bool NeedWriteMarker (TRI_transaction_t const* trx) {
-  return (trx->_nestingLevel == 0 && ! IsReadOnlyTransaction(trx) && ! IsSingleOperationTransaction(trx));
+static inline bool NeedWriteMarker (TRI_transaction_t const* trx,
+                                    bool isBeginMarker) {
+  if (isBeginMarker) {
+    return (! IsReadOnlyTransaction(trx) && 
+            ! IsSingleOperationTransaction(trx));
+  }
+
+  return (trx->_nestingLevel == 0 &&
+          trx->_beginWritten &&  
+          ! IsReadOnlyTransaction(trx) && 
+          ! IsSingleOperationTransaction(trx));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -581,7 +590,7 @@ static int ReleaseCollections (TRI_transaction_t* trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int WriteBeginMarker (TRI_transaction_t* trx) {
-  if (! NeedWriteMarker(trx)) {
+  if (! NeedWriteMarker(trx, true)) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -592,6 +601,8 @@ static int WriteBeginMarker (TRI_transaction_t* trx) {
   TRI_IF_FAILURE("TransactionWriteBeginMarker") {
     return TRI_ERROR_DEBUG;
   }
+
+  TRI_ASSERT(! trx->_beginWritten);
 
   int res;
 
@@ -605,6 +616,11 @@ static int WriteBeginMarker (TRI_transaction_t* trx) {
       // local trx
       triagens::wal::BeginTransactionMarker marker(trx->_vocbase->_id, trx->_id);
       res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
+    }
+  
+    
+    if (res == TRI_ERROR_NO_ERROR) {
+      trx->_beginWritten = true;
     }
   }
   catch (triagens::arango::Exception const& ex) {
@@ -626,13 +642,15 @@ static int WriteBeginMarker (TRI_transaction_t* trx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int WriteAbortMarker (TRI_transaction_t* trx) {
-  if (! NeedWriteMarker(trx)) {
+  if (! NeedWriteMarker(trx, false)) {
     return TRI_ERROR_NO_ERROR;
   }
 
   if (HasHint(trx, TRI_TRANSACTION_HINT_NO_ABORT_MARKER)) {
     return TRI_ERROR_NO_ERROR;
   }
+
+  TRI_ASSERT(trx->_beginWritten);
 
   TRI_IF_FAILURE("TransactionWriteAbortMarker") {
     return TRI_ERROR_DEBUG;
@@ -671,13 +689,15 @@ static int WriteAbortMarker (TRI_transaction_t* trx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int WriteCommitMarker (TRI_transaction_t* trx) {
-  if (! NeedWriteMarker(trx)) {
+  if (! NeedWriteMarker(trx, false)) {
     return TRI_ERROR_NO_ERROR;
   }
-
+  
   TRI_IF_FAILURE("TransactionWriteCommitMarker") {
     return TRI_ERROR_DEBUG;
   }
+
+  TRI_ASSERT(trx->_beginWritten);
 
   int res;
 
@@ -756,6 +776,7 @@ TRI_transaction_t* TRI_CreateTransaction (TRI_vocbase_t* vocbase,
   trx->_timeout           = TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT;
   trx->_hasOperations     = false;
   trx->_waitForSync       = waitForSync;
+  trx->_beginWritten      = false;
 
   if (timeout > 0.0) {
     trx->_timeout         = (uint64_t) (timeout * 1000000.0);
@@ -1063,6 +1084,14 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
   TRI_IF_FAILURE("TransactionOperationNoSlotExcept") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
+      
+  if (! trx->_beginWritten) {
+    int res = WriteBeginMarker(trx);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+  }
 
   TRI_voc_fid_t fid = 0;
   void const* position = nullptr;
@@ -1262,13 +1291,11 @@ int TRI_BeginTransaction (TRI_transaction_t* trx,
     // all valid
     if (nestingLevel == 0) {
       UpdateTransactionStatus(trx, TRI_TRANSACTION_RUNNING);
-
-      res = WriteBeginMarker(trx);
+      
+      // defer writing of the begin marker until necessary!
     }
   }
-
-
-  if (res != TRI_ERROR_NO_ERROR) {
+  else {
     // something is wrong
     if (nestingLevel == 0) {
       UpdateTransactionStatus(trx, TRI_TRANSACTION_ABORTED);

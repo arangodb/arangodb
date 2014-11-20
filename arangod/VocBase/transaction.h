@@ -152,6 +152,7 @@ typedef struct TRI_transaction_s {
   int                                  _nestingLevel;
   bool                                 _hasOperations;
   bool                                 _waitForSync;       // whether or not the collection had a synchronous op
+  bool                                 _beginWritten;      // whether or not the begin marker was already written
   uint64_t                             _timeout;           // timeout for lock acquisition
 }
 TRI_transaction_t;
