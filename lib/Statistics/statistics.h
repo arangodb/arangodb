@@ -280,7 +280,7 @@ extern triagens::basics::StatisticsDistribution* TRI_BytesReceivedDistributionSt
 extern TRI_server_statistics_t TRI_ServerStatistics;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief physical memeory
+/// @brief physical memory
 ////////////////////////////////////////////////////////////////////////////////
 
 extern uint64_t TRI_PhysicalMemory;
