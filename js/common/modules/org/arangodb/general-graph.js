@@ -1033,7 +1033,7 @@ AQLGenerator.prototype._getLastRestrictableStatementInfo = function() {
 
 AQLGenerator.prototype.restrict = function(restrictions) {
   var rest = stringToArray(restrictions);
-  if (rest.length == 0) {
+  if (rest.length === 0) {
     return this;
   }
   this._addToPrint("restrict", restrictions);
@@ -4538,7 +4538,7 @@ Graph.prototype._removeVertexCollection = function(vertexCollectionName, dropCol
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._getConnectingEdges = function(vertexExample1, vertexExample2, options) {
-  var AQLStmt = new AQLGenerator(this);
+
   if (!options) {
     options = {};
   }
@@ -4546,11 +4546,26 @@ Graph.prototype._getConnectingEdges = function(vertexExample1, vertexExample2, o
   var opts = {
   };
 
-  options.vertex1CollectionRestriction ? opts.startVertexCollectionRestriction =  options.vertex1CollectionRestriction : null ;
-  options.vertex2CollectionRestriction ? opts.endVertexCollectionRestriction =  options.vertex2CollectionRestriction : null ;
-  options.edgeCollectionRestriction ? opts.edgeCollectionRestriction =  options.edgeCollectionRestriction : null ;
-  options.edgeExamples ? opts.edgeExamples =  options.edgeExamples : null ;
-  vertexExample2 ? opts.neighborExamples =  vertexExample2 : null ;
+  if (options.vertex1CollectionRestriction) {
+    opts.startVertexCollectionRestriction = options.vertex1CollectionRestriction;
+  }
+
+  if (options.vertex2CollectionRestriction) {
+    opts.endVertexCollectionRestriction = options.vertex2CollectionRestriction;
+  }
+
+  if (options.edgeCollectionRestriction) {
+    opts.edgeCollectionRestriction = options.edgeCollectionRestriction;
+  }
+
+  if (options.edgeExamples) {
+    opts.edgeExamples = options.edgeExamples;
+  }
+
+  if (vertexExample2) {
+    opts.neighborExamples = vertexExample2;
+  }
+
   var query = "RETURN"
     + " GRAPH_EDGES(@graphName"
     + ',@vertexExample'
