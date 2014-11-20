@@ -185,8 +185,13 @@ AQL supports the following functions to operate on list values:
       APPEND([ 1, 2, 3 ], [ 3, 4, 5, 2, 9 ], true)
 
 - *PUSH(list, value, unique)*: Adds *value* to the list specified by *list*. If
-  *unique* is set to true, then *value* is not added if already present in the list.
+  *unique* is set to true, then *value* is not added if already present in the list. 
   The modified list is returned. The value is added at the end of the list (right side).
+
+  Note: non-unique elements will not be removed from the list if they were already present 
+  before the call to `PUSH`. The *unique* flag will only control if the value will
+  be added again to the list if already present. To make a list unique, use the `UNIQUE` 
+  function.
 
       /* [ 1, 2, 3, 4 ] */
       PUSH([ 1, 2, 3 ], 4)
@@ -197,6 +202,11 @@ AQL supports the following functions to operate on list values:
 - *UNSHIFT(list, value, unique)*: Adds *value* to the list specified by *list*. If
   *unique* is set to true, then *value* is not added if already present in the list.
   The modified list is returned. The value is added at the start of the list (left side).
+  
+  Note: non-unique elements will not be removed from the list if they were already present 
+  before the call to `UNSHIFT`. The *unique* flag will only control if the value will
+  be added again to the list if already present. To make a list unique, use the `UNIQUE` 
+  function.
 
       /* [ 4, 1, 2, 3 ] */
       UNSHIFT([ 1, 2, 3 ], 4)
@@ -226,11 +236,11 @@ AQL supports the following functions to operate on list values:
       /* [ "b", "b", "a", "c" ] */
       REMOVE_VALUE([ "a", "b", "b", "a", "c" ], "a", 1)
 
-- *REMOVE_ALL(list, values)*: Removes all occurrences of any of the values specified
+- *REMOVE_VALUES(list, values)*: Removes all occurrences of any of the values specified
   in list *values* from the list specified by *list*.
  
       /* [ "b", "c", "e", "g" ] */
-      REMOVE_ALL([ "a", "b", "c", "d", "e", "f", "g" ], [ "a", "f", "d" ])
+      REMOVE_VALUES([ "a", "b", "c", "d", "e", "f", "g" ], [ "a", "f", "d" ])
 
 - *REMOVE_NTH(list, position)*: Removes the element at position *position* from the
   list specified by *list*. Positions start at 0. Negative positions are supported, 

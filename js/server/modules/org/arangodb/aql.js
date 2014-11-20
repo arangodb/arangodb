@@ -2659,7 +2659,7 @@ function AQL_APPLY (name, parameters) {
 /// @brief removes elements from a list
 ////////////////////////////////////////////////////////////////////////////////
 
-function AQL_REMOVE_ALL (list, values) {
+function AQL_REMOVE_VALUES (list, values) {
   "use strict";
 
   var type = TYPEWEIGHT(values);
@@ -2667,7 +2667,7 @@ function AQL_REMOVE_ALL (list, values) {
     return list;
   }
   else if (type !== TYPEWEIGHT_LIST) {
-    WARN("REMOVE_ALL", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    WARN("REMOVE_VALUES", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
 
@@ -2686,7 +2686,7 @@ function AQL_REMOVE_ALL (list, values) {
     return copy;
   }
 
-  WARN("REMOVE_ALL", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  WARN("REMOVE_VALUES", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return null;
 }
 
@@ -7537,7 +7537,7 @@ exports.AQL_UNION_DISTINCT = AQL_UNION_DISTINCT;
 exports.AQL_CALL = AQL_CALL;
 exports.AQL_APPLY = AQL_APPLY;
 exports.AQL_REMOVE_VALUE = AQL_REMOVE_VALUE; 
-exports.AQL_REMOVE_ALL = AQL_REMOVE_ALL; 
+exports.AQL_REMOVE_VALUES = AQL_REMOVE_VALUES; 
 exports.AQL_REMOVE_NTH = AQL_REMOVE_NTH; 
 exports.AQL_PUSH = AQL_PUSH;
 exports.AQL_APPEND = AQL_APPEND;
