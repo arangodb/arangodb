@@ -1,7 +1,7 @@
 v2.4.0 (XXXX-XX-XX)
 -------------------
 
-* added AQL list functions `PUSH`, `POP`, `UNSHIFT`, `SHIFT`, `REMOVE_ALL`,
+* added AQL list functions `PUSH`, `POP`, `UNSHIFT`, `SHIFT`, `REMOVE_VALUES`,
   `REMOVE_VALUE`, `REMOVE_NTH` and `APPEND`
 
 * added AQL functions `CALL` and `APPLY` to dynamically call other functions
