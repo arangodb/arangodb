@@ -188,11 +188,9 @@ function parseBodyForCreateCollection (req, res) {
 /// - *doCompact* (optional, default is *true*): whether or not the collection
 ///   will be compacted.
 ///
-/// - *journalSize* (optional, default is a
-///   configuration parameter): The maximal size of
-///   a journal or datafile.
-/// **Note**: This also limits the maximal
-///   size of a single object. Must be at least 1MB.
+/// - *journalSize* (optional, default is a configuration parameter): The 
+///   maximal size of a journal or datafile in bytes. The value 
+///   must be at least `1048576` (1 MB).
 ///
 /// - *isSystem* (optional, default is *false*): If *true*, create a
 ///   system collection. In this case *collection-name* should start with
@@ -476,7 +474,8 @@ function get_api_collections (req, res) {
 ///
 /// - *doCompact*: Whether or not the collection will be compacted.
 ///
-/// - *journalSize*: The maximal size setting for journals / datafiles.
+/// - *journalSize*: The maximal size setting for journals / datafiles
+///   in bytes.
 ///
 /// - *isVolatile*: If *true* then the collection data will be
 ///   kept in memory only and ArangoDB will not write or sync the data
@@ -661,7 +660,7 @@ function get_api_collections (req, res) {
 ///   log for this collection that have not been transferred to journals or
 ///   datafiles.
 ///
-/// - *journalSize*: The maximal size of the journal in bytes.
+/// - *journalSize*: The maximal size of a journal or datafile in bytes.
 ///
 /// **Note**: collection data that are stored in the write-ahead log only are
 /// not reported in the results. When the write-ahead log is collected, documents
@@ -1203,8 +1202,11 @@ function put_api_collection_truncate (req, res, collection) {
 /// - *waitForSync*: If *true* then creating or changing a
 ///   document will wait until the data has been synchronised to disk.
 ///
-/// - *journalSize*: Size (in bytes) for new journal files that are
-///   created for the collection.
+/// - *journalSize*: The maximal size of a journal or datafile in bytes. 
+///   The value must be at least `1048576` (1 MB). Note that when
+///   changing the journalSize value, it will only have an effect for
+///   additional journals or datafiles that are created. Already
+///   existing journals or datafiles will not be affected.
 ///
 /// If returns an object with the attributes
 ///
