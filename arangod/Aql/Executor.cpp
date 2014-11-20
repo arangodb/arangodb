@@ -155,6 +155,17 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "LAST",                        Function("LAST",                        "AQL_LAST", "l", true, false, true) },
   { "NTH",                         Function("NTH",                         "AQL_NTH", "l,n", true, false, true) },
   { "POSITION",                    Function("POSITION",                    "AQL_POSITION", "l,.|b", true, false, true) },
+  { "CALL",                        Function("CALL",                        "AQL_CALL", "s|.+", false, true, false) },
+  { "APPLY",                       Function("APPLY",                       "AQL_APPLY", "s|l", false, true, false) },
+  { "PUSH",                        Function("PUSH",                        "AQL_PUSH", "l,.|b", true, false, false) },
+  { "APPEND",                      Function("APPEND",                      "AQL_APPEND", "l,lz|b", true, false, false) },
+  { "POP",                         Function("POP",                         "AQL_POP", "l", true, false, false) },
+  { "POP",                         Function("POP",                         "AQL_POP", "l", true, false, false) },
+  { "SHIFT",                       Function("SHIFT",                       "AQL_SHIFT", "l", true, false, false) },
+  { "UNSHIFT",                     Function("UNSHIFT",                     "AQL_UNSHIFT", "l,.|b", true, false, false) },
+  { "REMOVE_VALUE",                Function("REMOVE_VALUE",                "AQL_REMOVE_VALUE", "l,.|n", true, false, false) },
+  { "REMOVE_VALUES",               Function("REMOVE_VALUES",               "AQL_REMOVE_VALUES", "l,lz", true, false, false) },
+  { "REMOVE_NTH",                  Function("REMOVE_NTH",                  "AQL_REMOVE_NTH", "l,n", true, false, false) },
 
   // document functions
   { "HAS",                         Function("HAS",                         "AQL_HAS", "az,s", true, false, true) },
