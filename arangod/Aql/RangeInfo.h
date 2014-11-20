@@ -608,6 +608,21 @@ namespace triagens {
           return &((*it).second);
         }
         
+        RangeInfo* find (std::string const& var, std::string const& attr) {
+          auto map = find(var);
+          if (map == nullptr) {
+            return nullptr;
+          }
+          
+          auto it = map->find(attr);
+          if (it == map->end()){
+            return nullptr;
+          }
+
+          return &((*it).second);
+
+        }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief insert, insert if it's not already there and otherwise
 /// intersection with existing range, for variable values we keep them all.
@@ -748,6 +763,8 @@ namespace triagens {
         std::vector<size_t> validPositions (std::string const& var); 
         // in what positions are the RangeInfoMaps in the vector valid
         std::unordered_set<std::string> attributes (std::string const& var);
+        
+        bool isIdenticalToExisting (RangeInfo);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief private data

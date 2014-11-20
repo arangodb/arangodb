@@ -407,6 +407,7 @@ void RangeInfoMapVec::insertAnd (std::string const& var,
 // var.attr > 1 and var.attr < 10
 
 void RangeInfoMapVec::insertAnd (RangeInfo range) {
+  
   if (_rangeInfoMapVec.empty()) {
     _rangeInfoMapVec.emplace_back(new RangeInfoMap());
   }
@@ -426,7 +427,59 @@ void RangeInfoMapVec::insertOr (std::string const& var,
   insertOr(std::vector<RangeInfo> {RangeInfo(var, name, low, high, equality)});
 }
 
+
+static bool isIdenticalRangeInfo (RangeInfo lhs, RangeInfo rhs) {
+  
+  if (CompareRangeInfoBound(lhs._lowConst, rhs._lowConst, -1) != 0) {
+    return false;
+  }
+  if (CompareRangeInfoBound(lhs._highConst, rhs._highConst, 1) != 0) {
+    return false;
+  }
+
+  if (lhs._lows.size() != rhs._lows.size()) {
+    return false;
+  }
+
+  if (lhs._highs.size() != rhs._highs.size()) {
+    return false;
+  }
+  
+  auto lhsIt = lhs._lows.begin();
+  auto rhsIt = rhs._lows.begin();
+  while (lhsIt != lhs._lows.end()) {
+    if (TRI_CompareValuesJson(lhsIt->bound().json(), rhsIt->bound().json()) != 0) {
+      return false;
+    }
+    lhsIt++;
+    rhsIt++;
+  }
+
+  lhsIt = lhs._highs.begin();
+  rhsIt = rhs._highs.begin();
+  while (lhsIt != lhs._highs.end()) {
+    if (TRI_CompareValuesJson(lhsIt->bound().json(), rhsIt->bound().json()) != 0) {
+      return false;
+    }
+    lhsIt++;
+    rhsIt++;
+  }
+  return true;
+}
+
+bool RangeInfoMapVec::isIdenticalToExisting (RangeInfo x) {
+
+  for (auto rim: _rangeInfoMapVec) {
+    RangeInfo* ri = rim->find(x._var, x._attr);
+    if (ri != nullptr || isIdenticalRangeInfo(*ri, x)){
+      return false;
+    }
+  }
+  return true;
+}
+
 void RangeInfoMapVec::insertOr (std::vector<RangeInfo> ranges) {
+  TRI_ASSERT(! ranges.empty());
   
   RangeInfoMap* sample;
   if (! _rangeInfoMapVec.empty()) {
@@ -434,17 +487,20 @@ void RangeInfoMapVec::insertOr (std::vector<RangeInfo> ranges) {
   } else {
     sample = new RangeInfoMap();
   }
-
+  // TODO make sure we don't insert identical bounds
   for (auto x: ranges) {
-    RangeInfoMap* rim = sample->cloneExcluding(x._var); 
-    rim->insert(x);
-    _rangeInfoMapVec.push_back(rim);
+    if (!isIdenticalToExisting(x)) {
+      RangeInfoMap* rim = sample->cloneExcluding(x._var); 
+      rim->insert(x);
+      _rangeInfoMapVec.push_back(rim);
+    }
   }
-
 }
 
 // var.attr > 1 and (var.attr = 1 or var.attr = 2) = (var.attr > 1 and var.attr = 1) 
 // or (var.attr > 1 and var.attr = 2)
+
+//TODO update as insertOr
 
 void RangeInfoMapVec::insertDistributeAndIntoOr (std::vector<RangeInfo> ranges) {
   TRI_ASSERT(! ranges.empty());
@@ -453,19 +509,27 @@ void RangeInfoMapVec::insertDistributeAndIntoOr (std::vector<RangeInfo> ranges) 
   std::string const& attr = ranges[0]._attr;
 
   bool handled = false;
-  size_t nr =  _rangeInfoMapVec.size();
+  size_t nr = _rangeInfoMapVec.size();
 
   for (size_t i = 0; i < nr; i++) {
     auto map = _rangeInfoMapVec[i]->find(var);
-    if (map != nullptr && map->find(attr) != map->end()) {
-      handled = true;
-      RangeInfoMap* sample = _rangeInfoMapVec[i]->clone();
-      _rangeInfoMapVec[i]->insert(ranges[0]);
+    if (map != nullptr) {
+      auto it = map->find(attr);
+      if (it != map->end()) {
+        RangeInfo* ri = &((*it).second);
+        handled = true;
+        RangeInfoMap* sample = _rangeInfoMapVec[i]->clone();
+        if (!isIdenticalRangeInfo(*ri, ranges[0])){ 
+          _rangeInfoMapVec[i]->insert(ranges[0]);
+        }
 
-      for (size_t j = 1; j < ranges.size(); j++) {
-        RangeInfoMap* rim = sample->clone();
-        rim->insert(ranges[j]); // here we intersect with any existing values
-        _rangeInfoMapVec.emplace_back(rim);
+        for (size_t j = 1; j < ranges.size(); j++) {
+          if (!isIdenticalRangeInfo(*ri, ranges[j])){ 
+            RangeInfoMap* rim = sample->clone();
+            rim->insert(ranges[j]); // here we intersect with any existing values
+            _rangeInfoMapVec.emplace_back(rim);
+          }
+        }
       }
     }
   }
