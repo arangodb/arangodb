@@ -465,7 +465,7 @@ void RangeInfoMapVec::insertDistributeAndIntoOr (std::vector<RangeInfo> ranges) 
       for (size_t j = 1; j < ranges.size(); j++) {
         RangeInfoMap* rim = sample->clone();
         rim->insert(ranges[j]); // here we intersect with any existing values
-        _rangeInfoMapVec.push_back(rim);
+        _rangeInfoMapVec.emplace_back(rim);
       }
     }
   }
@@ -474,7 +474,7 @@ void RangeInfoMapVec::insertDistributeAndIntoOr (std::vector<RangeInfo> ranges) 
     for (auto x: ranges) {
       RangeInfoMap* rim = new RangeInfoMap();
       rim->insert(x); 
-      _rangeInfoMapVec.push_back(rim);
+      _rangeInfoMapVec.emplace_back(rim);
     }
   }
 }

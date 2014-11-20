@@ -529,8 +529,24 @@ namespace triagens {
         }
 
         RangeInfo clone () {
-          //TODO improve this
-          return RangeInfo(this->toJson());
+          RangeInfo copy(_var, _attr);
+          
+          copy._lowConst.assign(_lowConst);
+          copy._highConst.assign(_highConst);
+
+          for (auto x: _lows) {
+            copy._lows.emplace_back(x);
+          }
+          for (auto x: _highs) {
+            copy._highs.emplace_back(x);
+          }
+          copy._valid = _valid;
+          copy._defined = _defined;
+          copy._equality = _equality;
+
+          return copy;
+          //FIXME the following should work but doesn't!!
+          //return RangeInfo(this->toJson());
         }
 
 ////////////////////////////////////////////////////////////////////////////////
