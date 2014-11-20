@@ -276,5 +276,28 @@ ArangoDB's built-in HTTP server now supports HTTP pipelining.
 The ArangoShell tutorial from the arangodb.com website is now integrated into
 the ArangoDB shell.
 
+!SECTION Powerful Foxx Enhancements
 
+With the new **job queue** feature you can run async jobs to communicate with external services, **Foxx queries** make writing complex AQL queries much easier and **Foxx sessions** will handle the authentication and session hassle for you.
 
+!SUBSECTION Foxx Queries
+
+Writing long AQL queries in JavaScript can quickly become unwieldy. As of 2.3 ArangoDB bundles the [ArangoDB Query Builder](https://npmjs.org/package/aqb) module that provides a JavaScript API for writing complex AQL queries without string concatenation. All built-in functions that accept AQL strings now support query builder instances directly. Additionally Foxx provides a method `Foxx.createQuery` for creating parametrized queries that can return Foxx models or apply arbitrary transformations to the query results.
+
+!SUBSECTION Foxx Sessions
+
+The session functionality in Foxx has been completely rewritten. The old `activateAuthentication` API is still supported but may be deprecated in the future. The new `activateSessions` API supports cookies or configurable headers, provides optional JSON Web Token and cryptographic signing support and uses the new sessions Foxx app.
+
+ArangoDB 2.3 provides Foxx apps for user management and salted hash-based authentication which can be replaced with or supplemented by alternative implementations. For an example app using both the built-in authentication and OAuth2 see the [Foxx Sessions Example app](https://github.com/arangodb/foxx-sessions-example).
+
+!SUBSECTION Foxx Queues
+
+Foxx now provides async workers via the Foxx Queues API. Jobs enqueued in a job queue will be executed asynchronously outside of the request/response cycle of Foxx controllers and can be used to communicate with external services or perform tasks that take a long time to complete or may require multiple attempts.
+
+Jobs can be scheduled in advance or set to be executed immediately, the number of retry attempts, the retry delay as well as sucess and failure handlers can be defined for each job individually. Job types that integrate various external services for transactional e-mails, logging and user tracking can be found in the Foxx app registry.
+
+!SUBSECTION Misc
+
+The request and response objects in Foxx controllers now provide methods for reading and writing raw cookies and signed cookies.
+
+Mounted Foxx apps will now be loaded when arangod starts rather than at the first database request. This may result in slightly slower start up times (but a faster response for the first request).
