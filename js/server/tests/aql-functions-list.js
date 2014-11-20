@@ -455,10 +455,10 @@ function ahuacatlListTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test remove_all function
+/// @brief test removeValues function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testRemoveAll : function () {
+    testRemoveValues : function () {
       var data = [
         [ [ ], [ [ ], [ ] ] ],
         [ [ ], [ [ ], [ "1", "2" ] ] ],
@@ -485,23 +485,23 @@ function ahuacatlListTestSuite () {
       ];
 
       data.forEach(function (d) {
-        var actual = getQueryResults("RETURN REMOVE_ALL(" + d[1].map(function (v) { return JSON.stringify(v); }).join(", ") + ")");
+        var actual = getQueryResults("RETURN REMOVE_VALUES(" + d[1].map(function (v) { return JSON.stringify(v); }).join(", ") + ")");
         assertEqual(d[0], actual[0], d);
       });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test remove_all function
+/// @brief test removeValues function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testRemoveAllInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REMOVE_ALL()"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REMOVE_ALL([ ])"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REMOVE_ALL([ ], [ ], true)"); 
+    testRemoveValuesInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REMOVE_VALUES()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REMOVE_VALUES([ ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REMOVE_VALUES([ ], [ ], true)"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test remove_value function
+/// @brief test removeValue function
 ////////////////////////////////////////////////////////////////////////////////
 
     testRemoveValue : function () {
@@ -542,7 +542,7 @@ function ahuacatlListTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test remove_value function
+/// @brief test removeValue function
 ////////////////////////////////////////////////////////////////////////////////
 
     testRemoveValueInvalid : function () {
@@ -552,7 +552,7 @@ function ahuacatlListTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test remove_nth function
+/// @brief test removeNth function
 ////////////////////////////////////////////////////////////////////////////////
 
     testRemoveNth : function () {
@@ -591,7 +591,7 @@ function ahuacatlListTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test remove_nth function
+/// @brief test removeNth function
 ////////////////////////////////////////////////////////////////////////////////
 
     testRemoveNthInvalid : function () {
