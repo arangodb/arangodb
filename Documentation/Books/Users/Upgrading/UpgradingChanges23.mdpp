@@ -310,3 +310,17 @@ warnings will eventually disappear.
 
 The HTTP REST API method at `POST /_admin/modules/flush` has been removed. 
 
+
+!SECTION Known issues
+
+In ArangoDB 2.3.0, AQL queries containing filter conditions with an IN expression 
+will not yet use an index:
+
+    FOR doc IN collection FILTER doc.indexedAttribute IN [ ... ] RETURN doc
+  
+    FOR doc IN collection
+      FILTER doc.indexedAttribute IN [ ... ]
+      RETURN doc
+
+We’re currently working on getting the IN optimizations done, and will ship them in 
+a 2.3 maintenance release soon (e.g. 2.3.1 or 2.3.2).
