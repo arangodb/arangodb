@@ -54,6 +54,12 @@ TAGS
 tags
 
 Documentation/Examples/*.generated
+Documentation/Books/Users/book.json
+Documentation/Books/Users/manual.epub
+Documentation/Books/Users/manual.mobi
+Documentation/Books/Users/manual.pdf
+Documentation/Books/Makefile
+Documentation/Examples/*.generated
 UnitTests/HttpInterface/logs/
 UnitTests/basics_suite
 UnitTests/geo_suite
