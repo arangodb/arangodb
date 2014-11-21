@@ -925,7 +925,7 @@ function Kickstarter (clusterPlan, myname) {
 /// Note that all data in the DBservers and all log files and all agency
 /// information in the cluster is deleted by this call. This is because
 /// it is intended to set up a cluster for the first time. See
-/// the [relaunch method](see ../ModulePlanner/README.html#relaunch)
+/// the [relaunch method](../ModulePlanner/README.html#relaunch)
 /// for restarting a cluster without data loss.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -1014,12 +1014,12 @@ Kickstarter.prototype.launch = function () {
 /// itself. We do not go into details here about the data structure,
 /// but the most important information are the process IDs of the
 /// started processes. The corresponding
-/// [shutdown method ](see ../ModulePlanner/README.html#shutdown) needs this information to
+/// [shutdown method ](../ModulePlanner/README.html#shutdown) needs this information to
 /// shut down all processes.
 ///
 /// Note that this methods needs that all data in the DBservers and the
 /// agency information in the cluster are already set up properly. See
-/// the [launch method](see ../ModulePlanner/README.html#launch) for
+/// the [launch method](../ModulePlanner/README.html#launch) for
 /// starting a cluster for the first time.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -1188,7 +1188,7 @@ Kickstarter.prototype.shutdown = function() {
 ///
 /// This cleans up all the data and logs of a previously shut down cluster.
 /// To this end, other dispatchers are contacted as necessary.
-/// [Use shutdown](see ../ModulePlanner/README.html#shutdown) first and
+/// [Use shutdown](../ModulePlanner/README.html#shutdown) first and
 /// use with caution, since potentially a lot of data is being erased with
 /// this call!
 /// @endDocuBlock
@@ -1361,12 +1361,12 @@ Kickstarter.prototype.isHealthy = function() {
 /// itself. We do not go into details here about the data structure,
 /// but the most important information are the process IDs of the
 /// started processes. The corresponding
-/// [shutdown method](see ../ModulePlanner/README.html#shutdown) needs
+/// [shutdown method](../ModulePlanner/README.html#shutdown) needs
 /// this information to shut down all processes.
 ///
 /// Note that this methods needs that all data in the DBservers and the
 /// agency information in the cluster are already set up properly. See
-/// the [launch method](see ../ModulePlanner/README.html#launch) for
+/// the [launch method](../ModulePlanner/README.html#launch) for
 /// starting a cluster for the first time.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
