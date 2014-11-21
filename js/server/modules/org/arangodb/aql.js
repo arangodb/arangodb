@@ -5645,7 +5645,7 @@ function AQL_GRAPH_DISTANCE_TO (graphName,
 /// * *connectName*        : The result attribute which
 ///  contains the connection.
 /// * *options* (optional) : An object containing options, see
-///  [Graph Traversals](../AQL/GraphOperations.html#graph_traversal):
+///  [Graph Traversals](../Aql/GraphOperations.html#graph_traversal):
 ///
 /// @EXAMPLES
 ///
