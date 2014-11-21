@@ -86,7 +86,7 @@ var ERRORS = require("internal").errors;
 /// 
 /// Each plan in the result is a JSON object with the following attributes:
 /// - *nodes*: the list of execution nodes of the plan. The list of available node types
-///   can be found [here](.../Aql/Optimizer.html)
+///   can be found [here](../Aql/Optimizer.html)
 ///
 /// - *estimatedCost*: the total estimated cost for the plan. If there are multiple
 ///   plans, the optimizer will choose the plan with the lowest total cost.

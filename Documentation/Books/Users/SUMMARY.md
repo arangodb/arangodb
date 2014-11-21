@@ -137,7 +137,6 @@
   * [Example Setup](Replication/ExampleSetup.md)
   * [Replication Limitations](Replication/Limitations.md)
   * [Replication Overhead](Replication/Overhead.md)
-  * [Replication Events](Replication/Events.md)
 <!-- 19 -->
 * [Sharding](Sharding/README.md)
   * [How to try it out](Sharding/HowTo.md)
