@@ -919,8 +919,8 @@ function Kickstarter (clusterPlan, myname) {
 /// itself. We do not go into details here about the data structure,
 /// but the most important information are the process IDs of the
 /// started processes. The corresponding
-/// [shutdown method](see ../ModulePlanner/README.html#shutdown) needs this information to
-/// shut down all processes.
+/// [see shutdown method](../ModulePlanner/README.html#shutdown) needs this 
+/// information to shut down all processes.
 ///
 /// Note that all data in the DBservers and all log files and all agency
 /// information in the cluster is deleted by this call. This is because

@@ -1643,7 +1643,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
 ///   a document will only return after the data was synced to disk.
 ///
 /// * *journalSize* (optional, default is a
-///   [configuration parameter](../CommandLineOptions/Arangod.md): The maximal
+///   configuration parameter: The maximal
 ///   size of a journal or datafile.  Note that this also limits the maximal
 ///   size of a single object. Must be at least 1MB.
 ///
