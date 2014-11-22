@@ -1259,15 +1259,13 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                 == varsUsed.end()) {
               // Found a multiple attribute access of a variable and an
               // expression which does not involve that variable:
-              std::vector<RangeInfo> ranges; 
               for (size_t i = 0; i < rhs->numMembers(); i++) {
-                ranges.emplace_back(RangeInfo(enumCollVar->name, 
-                                              attr.substr(0, attr.size() - 1), 
-                                              RangeInfoBound(rhs->getMember(i), true),
-                                              RangeInfoBound(rhs->getMember(i), true), 
-                                              true));
+                rimv->emplace_back(new RangeInfoMap(enumCollVar->name, 
+                                                    attr.substr(0, attr.size() - 1), 
+                                                    RangeInfoBound(rhs->getMember(i), true),
+                                                    RangeInfoBound(rhs->getMember(i), true), 
+                                                    true));
               }
-              rimv->insertOr(ranges);//TODO update this
               enumCollVar = nullptr;
               attr.clear();
             }

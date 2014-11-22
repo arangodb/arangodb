@@ -605,7 +605,7 @@ namespace triagens {
 /// @brief find, find all the range infos for variable <var>,
 /// ownership is not transferred
 ////////////////////////////////////////////////////////////////////////////////
-    
+
         std::unordered_map<std::string, RangeInfo>* find (std::string const& var) {
           auto it = _ranges.find(var);
           if (it == _ranges.end()) {
@@ -694,7 +694,8 @@ namespace triagens {
         std::unordered_set<std::string> attributes (std::string const& var);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief private data//TODO
+/// @brief private data//TODO: make iterators for this i.e. method for begin and
+//end
 ////////////////////////////////////////////////////////////////////////////////
     
         std::unordered_map<std::string, std::unordered_map<std::string, RangeInfo>> _ranges; 
