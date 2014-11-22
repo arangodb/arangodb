@@ -93,11 +93,11 @@ The following other AQL functions have been added:
 The already existing functions `CONCAT` and `CONCAT_SEPARATOR` now support
 list arguments, e.g.:
 
-   /* "foobarbaz" */
-   CONCAT([ 'foo', 'bar', 'baz'])
+    /* "foobarbaz" */
+    CONCAT([ 'foo', 'bar', 'baz'])
 
-   /* "foo,bar,baz" */
-   CONCAT_SEPARATOR(", ", [ 'foo', 'bar', 'baz'])
+    /* "foo,bar,baz" */
+    CONCAT_SEPARATOR(", ", [ 'foo', 'bar', 'baz'])
 
 
 !SUBSUBSECTION AQL queries throw less exceptions

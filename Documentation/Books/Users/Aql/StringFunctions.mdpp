@@ -17,10 +17,10 @@ For string processing, AQL offers the following functions:
   *separator* string. *null* values are ignored. List value arguments
   are expanded automatically, and their individual members will be concatenated.
 
-      /* "foo,bar,baz" */
+      /* "foo, bar, baz" */
       CONCAT_SEPARATOR(', ', 'foo', 'bar', 'baz')
 
-      /* "foo,bar,baz" */
+      /* "foo, bar, baz" */
       CONCAT_SEPARATOR(', ', [ 'foo', 'bar', 'baz' ])
 
 - *CHAR_LENGTH(value)*: Return the number of characters in *value*. This is
@@ -88,7 +88,7 @@ For string processing, AQL offers the following functions:
       TRIM("  foobar\t \r\n ")         
 
       /* "foo;bar;baz" */
-      TRIM(";foo;bar;baz, ", "; ")     
+      TRIM(";foo;bar;baz, ", ",; ")     
 
 - *LTRIM(value, chars)*: Returns the string *value* with whitespace stripped 
   from the start only. The optional *chars* parameter can be used to override the
