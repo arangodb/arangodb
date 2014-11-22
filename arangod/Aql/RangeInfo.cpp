@@ -504,11 +504,12 @@ RangeInfoMap* triagens::aql::andCombineRangeInfoMaps (RangeInfoMap* lhs, RangeIn
 RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs, 
                                                            RangeInfoMapVec* rhs) {
  
-  if (lhs->empty()) {
+  if (lhs == nullptr || lhs->empty()) {
     return rhs; //TODO copy?
   }
 
-  if (rhs->empty()) {
+
+  if (rhs == nullptr || rhs->empty()) {
     return lhs; //TODO copy?
   }
 
@@ -541,7 +542,14 @@ RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs,
 
 RangeInfoMapVec* triagens::aql::andCombineRangeInfoMapVecs (RangeInfoMapVec* lhs, 
                                                             RangeInfoMapVec* rhs) {
-  
+  if (lhs == nullptr || lhs->empty()) { // rhs && impossible to fulfil condition
+    return nullptr;
+  }
+
+  if (rhs == nullptr || rhs->empty()) {
+    return nullptr;
+  }
+
   auto rimv = new RangeInfoMapVec();
 
   for (size_t i = 0; i < lhs->size(); i++) {

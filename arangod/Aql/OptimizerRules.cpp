@@ -795,6 +795,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         _plan(plan), 
         _canThrow(false),
         _level(level) {
+      _rangeInfoMapVec = new RangeInfoMapVec();
       _varIds.insert(var->id);
     };
 
@@ -815,7 +816,9 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             auto node = static_cast<CalculationNode*>(en);
             std::string attr;
             Variable const* enumCollVar = nullptr;
-            _rangeInfoMapVec = buildRangeInfo(node->expression()->node(), enumCollVar, attr);
+            // there is an implicit AND between FILTER statements
+            _rangeInfoMapVec = andCombineRangeInfoMapVecs(_rangeInfoMapVec,
+                buildRangeInfo(node->expression()->node(), enumCollVar, attr));
           }
           break;
         }
