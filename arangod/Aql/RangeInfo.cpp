@@ -337,7 +337,7 @@ static bool isIdenticalRangeInfo (RangeInfo lhs, RangeInfo rhs) {
 }
 
 bool RangeInfoMap::isValid (std::string const& var) {
-  // are all the range infos valid?
+  // are all the range infos valid? FIXME should this be any instead of all?
 
   std::unordered_map<std::string, RangeInfo>* map = find(var);
   if (map != nullptr) {
@@ -406,16 +406,6 @@ void RangeInfoMap::eraseEmptyOrUndefined(std::string const& var) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-/*RangeInfoMapVec::RangeInfoMapVec  (std::string const& var, 
-                                   std::string const& name, 
-                                   RangeInfoBound low, 
-                                   RangeInfoBound high,
-                                   bool equality) : 
-  _rangeInfoMapVec() {
-  
-  _rangeInfoMapVec.emplace_back(new RangeInfoMap(var, name, low, high, equality));
-}*/
-
 RangeInfoMapVec::RangeInfoMapVec  (RangeInfoMap* rim) :
   _rangeInfoMapVec() {
   
@@ -457,26 +447,6 @@ std::unordered_map<std::string, RangeInfo>* RangeInfoMapVec::find (
   return _rangeInfoMapVec[pos]->find(var);
 } 
 
-void RangeInfoMapVec::insertAnd (std::string const& var, 
-                                 std::string const& name, 
-                                 RangeInfoBound low, 
-                                 RangeInfoBound high,
-                                 bool equality) { 
-  insertAnd(RangeInfo(var, name, low, high, equality));
-}
-
-// var.attr > 1 and var.attr < 10
-
-void RangeInfoMapVec::insertAnd (RangeInfo range) {
-  
-  if (_rangeInfoMapVec.empty()) {
-    _rangeInfoMapVec.emplace_back(new RangeInfoMap());
-  }
-  for (size_t i = 0; i < _rangeInfoMapVec.size(); i++) {
-    _rangeInfoMapVec[i]->insert(range);
-  }
-
-}
 
 bool RangeInfoMapVec::isIdenticalToExisting (RangeInfo x) {
 
@@ -505,12 +475,11 @@ RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs,
                                                            RangeInfoMapVec* rhs) {
  
   if (lhs->empty()) {
-    return rhs; //TODO copy?
+    return rhs;
   }
 
-
   if (rhs->empty()) {
-    return lhs; //TODO copy?
+    return lhs;
   }
 
   auto rimv = new RangeInfoMapVec();

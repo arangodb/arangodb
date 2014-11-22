@@ -774,48 +774,71 @@ namespace triagens {
           return list;
         }
       
+////////////////////////////////////////////////////////////////////////////////
+/// @brief operator[]
+////////////////////////////////////////////////////////////////////////////////
+        
         RangeInfoMap* operator[] (size_t pos) {
           return _rangeInfoMapVec[pos];
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief size: the number of RangeInfoMaps in the vector
+////////////////////////////////////////////////////////////////////////////////
         
         size_t size () {
           return _rangeInfoMapVec.size();
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief empty: is the vector of RangeInfoMaps empty
+////////////////////////////////////////////////////////////////////////////////
         
         bool empty () {
           return _rangeInfoMapVec.empty();
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief emplace_back: emplace_back RangeInfoMap in vector
+////////////////////////////////////////////////////////////////////////////////
+
         void emplace_back (RangeInfoMap*);
 
-        void eraseEmptyOrUndefined (std::string const&);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief eraseEmptyOrUndefined remove all empty or undefined RangeInfos for
+/// the variable <var> in every RangeInfoMap in the vector 
+////////////////////////////////////////////////////////////////////////////////
 
-        void insertAnd (std::string const& var, 
-                        std::string const& name, 
-                        RangeInfoBound low, 
-                        RangeInfoBound high,
-                        bool equality);
+        void eraseEmptyOrUndefined (std::string const& var);
 
-
-        void insertAnd (RangeInfo range);
-        
-        void insertOr (std::vector<RangeInfo> ranges);
-        
-        void insertOr (std::string const& var, 
-                       std::string const& name, 
-                       RangeInfoBound low, 
-                       RangeInfoBound high,
-                       bool equality);
-
-        void insertDistributeAndIntoOr (std::vector<RangeInfo> ranges);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find: this is the same as _rangeInfoMapVec[pos]->find(var), i.e. find
+/// the map of RangeInfos for the variable <var>.
+////////////////////////////////////////////////////////////////////////////////
 
         std::unordered_map<std::string, RangeInfo>* find (std::string const& var, size_t pos);
 
-        std::vector<size_t> validPositions (std::string const& var); 
-        // in what positions are the RangeInfoMaps in the vector valid
-        std::unordered_set<std::string> attributes (std::string const& var);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief isIdenticalToExisting: returns true if the input RangeInfo is
+/// identical to an existing RangeInfo at any position in the vector. 
+////////////////////////////////////////////////////////////////////////////////
         
         bool isIdenticalToExisting (RangeInfo);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validPositions: returns a vector of the positions in the RIM vector
+/// that contain valid RangeInfoMap for the variable named var
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<size_t> validPositions (std::string const& var); 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief attributes: returns a vector of the names of the attributes for the
+/// variable var stored in the RIM vector.
+////////////////////////////////////////////////////////////////////////////////
+
+        // in what positions are the RangeInfoMaps in the vector valid
+        std::unordered_set<std::string> attributes (std::string const& var);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief private data
@@ -825,8 +848,31 @@ namespace triagens {
         std::vector<RangeInfoMap*> _rangeInfoMapVec; 
     };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief andCombineRangeInfoMaps: insert every RangeInfo in the right argument
+/// in a new copy of the left argument
+////////////////////////////////////////////////////////////////////////////////
+
     RangeInfoMap*    andCombineRangeInfoMaps (RangeInfoMap*, RangeInfoMap*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief orCombineRangeInfoMapVecs: return a new RangeInfoMapVec appending
+/// those RIMs in the right arg (which are not identical to an existing RIM) in
+/// a copy of the left arg.
+///
+/// The return RIMV is new unless one of the arguments is empty.
+////////////////////////////////////////////////////////////////////////////////
+
     RangeInfoMapVec* orCombineRangeInfoMapVecs (RangeInfoMapVec*, RangeInfoMapVec*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief andCombineRangeInfoMapVecs: return a new RangeInfoMapVec by
+/// distributing the AND into the ORs in a condition like:
+/// (OR condition) AND (OR condition).
+///
+/// The return RIMV is new unless one of the arguments is empty.
+////////////////////////////////////////////////////////////////////////////////
+
     RangeInfoMapVec* andCombineRangeInfoMapVecs (RangeInfoMapVec*, RangeInfoMapVec*);
 
 ////////////////////////////////////////////////////////////////////////////////
