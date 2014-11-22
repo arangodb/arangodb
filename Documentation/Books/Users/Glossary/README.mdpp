@@ -4,9 +4,8 @@
 
 A collection consists of documents. It is uniquely identified by its collection identifier. 
 It also has a unique name that clients should use to identify and access it. 
-Collections can be renamed. is will change the collection name, but not the collection identifier. 
-Collections have a type that is specified by the user when the collection is created. 
-There are currently two types: document and edge. The default type is document.
+Collections can be renamed. It will change the collection name, but not the collection identifier. 
+Collections contain documents of a specific type. There are currently two types: document (default) and edge. The type is specified by the user when the collection is created, and cannot be changed later.
 
 !SUBSECTION Collection Identifier
 
@@ -14,7 +13,6 @@ A collection identifier identifies a collection in a database. It is a string va
 
 ArangoDB currently uses 64bit unsigned integer values to maintain collection ids internally. When returning collection ids to clients, ArangoDB will put them into a string to ensure the collection id is not clipped by clients that do not support big integers. Clients should treat the collection ids returned by ArangoDB as
 opaque strings when they store or use it locally.
-
 
 !SUBSECTION Collection Name
 
@@ -28,7 +26,7 @@ A database contains its own collections (which cannot be accessed from other dat
 
 There will always be at least one database in ArangoDB. This is the default database, named _system. This database cannot be dropped, and provides special operations for creating, dropping, and enumerating databases. Users can create additional databases and give them unique names to access them later. Database management operations cannot be initiated from out of user-defined databases.
 
-When ArangoDB is accessed via its HTTP REST API, the database name is read from the first part of the request URI path (e.g. /_db/_system/...). If the request URI does not contain a database name, the database name is automatically.
+When ArangoDB is accessed via its HTTP REST API, the database name is read from the first part of the request URI path (e.g. /_db/_system/...). If the request URI does not contain a database name, the database name is automatically derived from the endpoint. Please refer to [DatabaseEndpoint](../HttpDatabase/DatabaseEndpoint.html) for more information.
 
 !SUBSECTION Database Name
 
@@ -101,17 +99,17 @@ ArangoDB currently uses 64bit unsigned integer values to maintain document revis
 
 !SUBSECTION Edge
 
-Edges in ArangoDB are special documents. In addition to the internal attributes _key, _id and _rev, they have two attributes _from and _to, which contain document handles, namely the start-point and the end-point of the edge.
+Edges are special documents used for connecting other documents into a graph. An edge describe the connection between two documents using the internal attributes: _from and _to. These contain document handles, namely the start-point and the end-point of the edge.
 
 The values of _from and _to are immutable once saved.
 
 !SUBSECTION Edge Collection
 
-Edge collections are special collection that store edge documents. Edge documents are connection documents that reference other documents. The type of a collection must be specified when a collection is created and cannot be changed afterwards.
+Edge collections are collections that store edges.
 
 !SUBSECTION Index
 
-Indexes are used to allow fast access to documents. For each collection there is always the primary index which is a hash index for the document key (_key attribute). This index cannot be dropped or changed.
+Indexes are used to allow fast access to documents in a collection. All collections have a primary index, which is the document's _key attribute. This index cannot be dropped or changed.
 
 Edge collections will also have an automatically created edges index, which cannot be modified. This index provides quick access to documents via the _from and _to attributes.
 
