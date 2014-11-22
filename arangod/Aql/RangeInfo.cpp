@@ -297,6 +297,45 @@ void RangeInfo::fuse (RangeInfo const& that) {
   }
 }
 
+static bool isIdenticalRangeInfo (RangeInfo lhs, RangeInfo rhs) {
+  
+  if (CompareRangeInfoBound(lhs._lowConst, rhs._lowConst, -1) != 0) {
+    return false;
+  }
+  if (CompareRangeInfoBound(lhs._highConst, rhs._highConst, 1) != 0) {
+    return false;
+  }
+
+  if (lhs._lows.size() != rhs._lows.size()) {
+    return false;
+  }
+
+  if (lhs._highs.size() != rhs._highs.size()) {
+    return false;
+  }
+  
+  auto lhsIt = lhs._lows.begin();
+  auto rhsIt = rhs._lows.begin();
+  while (lhsIt != lhs._lows.end()) {
+    if (TRI_CompareValuesJson(lhsIt->bound().json(), rhsIt->bound().json()) != 0) {
+      return false;
+    }
+    lhsIt++;
+    rhsIt++;
+  }
+
+  lhsIt = lhs._highs.begin();
+  rhsIt = rhs._highs.begin();
+  while (lhsIt != lhs._highs.end()) {
+    if (TRI_CompareValuesJson(lhsIt->bound().json(), rhsIt->bound().json()) != 0) {
+      return false;
+    }
+    lhsIt++;
+    rhsIt++;
+  }
+  return true;
+}
+
 bool RangeInfoMap::isValid (std::string const& var) {
   // are all the range infos valid?
 
@@ -333,19 +372,6 @@ RangeInfoMap* RangeInfoMap::clone () {
   return rim;
 }
 
-RangeInfoMap* RangeInfoMap::cloneExcluding (std::string const& var) {
-  auto rim = new RangeInfoMap();
-  for (auto x: _ranges) {
-    if (x.first.compare(var) != 0) {
-      for (auto y: x.second) {
-        rim->insert(y.second.clone());
-      }
-    }
-  }
-  return rim;
-}
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief  insert if there is no range corresponding to variable name <var>,
 /// and attribute <name>, and otherwise intersection with existing range
@@ -359,17 +385,6 @@ void RangeInfoMap::insert (std::string const& var,
   insert(RangeInfo(var, name, low, high, equality));
 }
 
-RangeInfoMap* triagens::aql::andCombineRangeInfoMaps (RangeInfoMap* lhs, RangeInfoMap* rhs) {
- 
-  RangeInfoMap* rim = lhs->clone();
-
-  for (auto x: rhs->_ranges) {
-    for (auto y: x.second) {
-      rim->insert(y.second.clone());
-    }
-  }
-  return rim;
-}
 
 void RangeInfoMap::eraseEmptyOrUndefined(std::string const& var) {
   
@@ -412,44 +427,6 @@ RangeInfoMapVec::RangeInfoMapVec  (RangeInfoMap* rim) :
 
 void RangeInfoMapVec::emplace_back (RangeInfoMap* rim) {
   _rangeInfoMapVec.emplace_back(rim);
-}
-
-RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs, 
-                                                           RangeInfoMapVec* rhs) {
- 
-  if (lhs->empty()) {
-    return rhs; //TODO copy?
-  }
-
-  if (rhs->empty()) {
-    return lhs; //TODO copy?
-  }
-
-  auto rimv = new RangeInfoMapVec();
-
-  for (size_t i = 0; i < lhs->size(); i++) {
-    rimv->emplace_back((*lhs)[i]->clone());
-  }
-  for (size_t i = 0; i < rhs->size(); i++) {
-    rimv->emplace_back((*rhs)[i]->clone());
-  }
-
-  return rimv;
-}
-
-// distributes AND into OR
-
-RangeInfoMapVec* triagens::aql::andCombineRangeInfoMapVecs (RangeInfoMapVec* lhs, 
-                                                            RangeInfoMapVec* rhs) {
-  
-  auto rimv = new RangeInfoMapVec();
-
-  for (size_t i = 0; i < lhs->size(); i++) {
-    for (size_t j = 0; j < rhs->size(); j++) {
-      rimv->emplace_back(andCombineRangeInfoMaps((*lhs)[i]->clone(), (*rhs)[j]->clone()));
-    }
-  }
-  return rimv;
 }
 
 std::unordered_set<std::string> RangeInfoMapVec::attributes (std::string const& var) {
@@ -502,55 +479,7 @@ void RangeInfoMapVec::insertAnd (RangeInfo range) {
 
 }
 
-// var.attr = 1 or var.attr = 2, all for the same var and attr
 
-void RangeInfoMapVec::insertOr (std::string const& var, 
-                                std::string const& name, 
-                                RangeInfoBound low, 
-                                RangeInfoBound high,
-                                bool equality) {
-  insertOr(std::vector<RangeInfo> {RangeInfo(var, name, low, high, equality)});
-}
-
-
-static bool isIdenticalRangeInfo (RangeInfo lhs, RangeInfo rhs) {
-  
-  if (CompareRangeInfoBound(lhs._lowConst, rhs._lowConst, -1) != 0) {
-    return false;
-  }
-  if (CompareRangeInfoBound(lhs._highConst, rhs._highConst, 1) != 0) {
-    return false;
-  }
-
-  if (lhs._lows.size() != rhs._lows.size()) {
-    return false;
-  }
-
-  if (lhs._highs.size() != rhs._highs.size()) {
-    return false;
-  }
-  
-  auto lhsIt = lhs._lows.begin();
-  auto rhsIt = rhs._lows.begin();
-  while (lhsIt != lhs._lows.end()) {
-    if (TRI_CompareValuesJson(lhsIt->bound().json(), rhsIt->bound().json()) != 0) {
-      return false;
-    }
-    lhsIt++;
-    rhsIt++;
-  }
-
-  lhsIt = lhs._highs.begin();
-  rhsIt = rhs._highs.begin();
-  while (lhsIt != lhs._highs.end()) {
-    if (TRI_CompareValuesJson(lhsIt->bound().json(), rhsIt->bound().json()) != 0) {
-      return false;
-    }
-    lhsIt++;
-    rhsIt++;
-  }
-  return true;
-}
 
 bool RangeInfoMapVec::isIdenticalToExisting (RangeInfo x) {
 
@@ -567,67 +496,66 @@ bool RangeInfoMapVec::isIdenticalToExisting (RangeInfo x) {
   return true;
 }
 
-void RangeInfoMapVec::insertOr (std::vector<RangeInfo> ranges) {
-  TRI_ASSERT(! ranges.empty());
-  
-  RangeInfoMap* sample;
-  if (! empty()) {
-    sample = _rangeInfoMapVec[0];
-  } else {
-    sample = new RangeInfoMap();
-  }
-  for (auto x: ranges) {
-    if (!isIdenticalToExisting(x)) {
-      RangeInfoMap* rim = sample->cloneExcluding(x._var); 
-      rim->insert(x);
-      _rangeInfoMapVec.push_back(rim);
+RangeInfoMap* triagens::aql::andCombineRangeInfoMaps (RangeInfoMap* lhs, RangeInfoMap* rhs) {
+ 
+  RangeInfoMap* rim = lhs->clone();
+
+  for (auto x: rhs->_ranges) {
+    for (auto y: x.second) {
+      rim->insert(y.second.clone());
     }
   }
+  return rim;
 }
 
-// var.attr > 1 and (var.attr = 1 or var.attr = 2) = (var.attr > 1 and var.attr = 1) 
-// or (var.attr > 1 and var.attr = 2)
+RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs, 
+                                                           RangeInfoMapVec* rhs) {
+ 
+  if (lhs->empty()) {
+    return rhs; //TODO copy?
+  }
 
-//TODO update as insertOr
+  if (rhs->empty()) {
+    return lhs; //TODO copy?
+  }
 
-void RangeInfoMapVec::insertDistributeAndIntoOr (std::vector<RangeInfo> ranges) {
-  TRI_ASSERT(! ranges.empty());
+  auto rimv = new RangeInfoMapVec();
 
-  std::string const& var = ranges[0]._var;
-  std::string const& attr = ranges[0]._attr;
+  // this lhs already doesn't contain duplicate conditions
+  for (size_t i = 0; i < lhs->size(); i++) {
+    rimv->emplace_back((*lhs)[i]->clone());
+  }
 
-  bool handled = false;
-  size_t nr = _rangeInfoMapVec.size();
-
-  for (size_t i = 0; i < nr; i++) {
-    auto map = _rangeInfoMapVec[i]->find(var);
-    if (map != nullptr) {
-      auto it = map->find(attr);
-      if (it != map->end()) {
-        RangeInfo* ri = &((*it).second);
-        handled = true;
-        RangeInfoMap* sample = _rangeInfoMapVec[i]->clone();
-        if (!isIdenticalRangeInfo(*ri, ranges[0])){ 
-          _rangeInfoMapVec[i]->insert(ranges[0]);
-        }
-
-        for (size_t j = 1; j < ranges.size(); j++) {
-          if (!isIdenticalRangeInfo(*ri, ranges[j])){ 
-            RangeInfoMap* rim = sample->clone();
-            rim->insert(ranges[j]); // here we intersect with any existing values
-            _rangeInfoMapVec.emplace_back(rim);
-          }
+  //avoid inserting identical conditions
+  for (size_t i = 0; i < rhs->size(); i++) {
+    auto rim = new RangeInfoMap();
+    for (auto x: (*rhs)[i]->_ranges) {
+      for (auto y: x.second) {
+        if (! rimv->isIdenticalToExisting(y.second)) {
+          rim->insert(y.second);
         }
       }
     }
-  }
-
-  if (!handled) {
-    for (auto x: ranges) {
-      RangeInfoMap* rim = new RangeInfoMap();
-      rim->insert(x); 
-      _rangeInfoMapVec.emplace_back(rim);
+    if (! rim->empty()) {
+      rimv->emplace_back(rim);
     }
   }
+
+  return rimv;
+}
+
+// distributes AND into OR
+
+RangeInfoMapVec* triagens::aql::andCombineRangeInfoMapVecs (RangeInfoMapVec* lhs, 
+                                                            RangeInfoMapVec* rhs) {
+  
+  auto rimv = new RangeInfoMapVec();
+
+  for (size_t i = 0; i < lhs->size(); i++) {
+    for (size_t j = 0; j < rhs->size(); j++) {
+      rimv->emplace_back(andCombineRangeInfoMaps((*lhs)[i]->clone(), (*rhs)[j]->clone()));
+    }
+  }
+  return rimv;
 }
 
