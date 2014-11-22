@@ -406,7 +406,7 @@ void RangeInfoMap::eraseEmptyOrUndefined(std::string const& var) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-RangeInfoMapVec::RangeInfoMapVec  (std::string const& var, 
+/*RangeInfoMapVec::RangeInfoMapVec  (std::string const& var, 
                                    std::string const& name, 
                                    RangeInfoBound low, 
                                    RangeInfoBound high,
@@ -414,7 +414,7 @@ RangeInfoMapVec::RangeInfoMapVec  (std::string const& var,
   _rangeInfoMapVec() {
   
   _rangeInfoMapVec.emplace_back(new RangeInfoMap(var, name, low, high, equality));
-}
+}*/
 
 RangeInfoMapVec::RangeInfoMapVec  (RangeInfoMap* rim) :
   _rangeInfoMapVec() {

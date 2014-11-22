@@ -528,6 +528,10 @@ namespace triagens {
           _equality = false;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone
+////////////////////////////////////////////////////////////////////////////////
+
         RangeInfo clone () {
           RangeInfo copy(_var, _attr);
           
@@ -588,6 +592,11 @@ namespace triagens {
         RangeInfoMap () : _ranges() {
         }
         
+////////////////////////////////////////////////////////////////////////////////
+/// @brief construct RangeInfoMap containing single RangeInfo created from the
+/// args
+////////////////////////////////////////////////////////////////////////////////
+        
         RangeInfoMap (std::string const& var, 
                       std::string const& name, 
                       RangeInfoBound low, 
@@ -613,6 +622,11 @@ namespace triagens {
           }
           return &((*it).second);
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find, find all the range info for variable <var> and attribute <attr>
+/// ownership is not transferred
+////////////////////////////////////////////////////////////////////////////////
         
         RangeInfo* find (std::string const& var, std::string const& attr) {
           auto map = find(var);
@@ -626,7 +640,6 @@ namespace triagens {
           }
 
           return &((*it).second);
-
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -656,6 +669,10 @@ namespace triagens {
         size_t size () const {
           return _ranges.size();
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief empty, the number of range infos stored
+////////////////////////////////////////////////////////////////////////////////
         
         bool empty () const {
           return _ranges.empty();
@@ -694,11 +711,13 @@ namespace triagens {
         std::unordered_set<std::string> attributes (std::string const& var);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief private data//TODO: make iterators for this i.e. method for begin and
-//end
+/// @brief private data
+////TODO: make iterators for this i.e. method for begin and end, so that this
+//can be private
 ////////////////////////////////////////////////////////////////////////////////
     
-        std::unordered_map<std::string, std::unordered_map<std::string, RangeInfo>> _ranges; 
+        std::unordered_map<std::string, std::unordered_map<std::string,
+          RangeInfo>> _ranges; 
         
     };
 
@@ -721,15 +740,10 @@ namespace triagens {
         RangeInfoMapVec () : _rangeInfoMapVec() {
         }
        
-
-// construct RangeInfoMapVec containing a single RangeInfoMap containing a
-// single RangeInfo        
-        
-        RangeInfoMapVec  (std::string const& var, 
-                          std::string const& name, 
-                          RangeInfoBound low, 
-                          RangeInfoBound high,
-                          bool equality); 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor: construct RangeInfoMapVec containing a single
+/// RangeInfoMap containing a single RangeInfo.
+////////////////////////////////////////////////////////////////////////////////
         
         RangeInfoMapVec (RangeInfoMap* rim);
 
