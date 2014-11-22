@@ -587,6 +587,12 @@ namespace triagens {
     
         RangeInfoMap () : _ranges() {
         }
+        
+        RangeInfoMap (std::string const& var, 
+                      std::string const& name, 
+                      RangeInfoBound low, 
+                      RangeInfoBound high,
+                      bool equality); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -710,6 +716,18 @@ namespace triagens {
     
         RangeInfoMapVec () : _rangeInfoMapVec() {
         }
+       
+
+// construct RangeInfoMapVec containing a single RangeInfoMap containing a
+// single RangeInfo        
+        
+        RangeInfoMapVec  (std::string const& var, 
+                          std::string const& name, 
+                          RangeInfoBound low, 
+                          RangeInfoBound high,
+                          bool equality); 
+        
+        RangeInfoMapVec (RangeInfoMap rim);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -738,7 +756,16 @@ namespace triagens {
           return list;
         }
       
+        RangeInfoMap* operator[] (size_t pos) {
+          return _rangeInfoMapVec[pos];
+        }
+        
+        size_t size () {
+          return _rangeInfoMapVec.size();
+        }
+
         void eraseEmptyOrUndefined (std::string const&);
+
         void insertAnd (std::string const& var, 
                         std::string const& name, 
                         RangeInfoBound low, 
@@ -773,6 +800,10 @@ namespace triagens {
       private: 
         std::vector<RangeInfoMap*> _rangeInfoMapVec; 
     };
+
+    RangeInfoMap    andCombineRangeInfoMaps (RangeInfoMap, RangeInfoMap);
+    RangeInfoMapVec orCombineRangeInfoMapVecs (RangeInfoMapVec, RangeInfoMapVec);
+    RangeInfoMapVec andCombineRangeInfoMapVecs (RangeInfoMapVec, RangeInfoMapVec);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IndexOrCondition, type for vector of vector of RangeInfo. The meaning
