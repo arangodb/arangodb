@@ -833,7 +833,7 @@ function optimizerRuleTestSuite() {
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test in detail that an index range can be used for an or combined 
-    ///   greater than + less than filter spanning a range. TODO: doesn't work now.
+    ///   greater than + less than filter spanning a range. 
     ////////////////////////////////////////////////////////////////////////////////
     testRangeBandstop: function () {
       var query = "FOR v IN " + colName + " FILTER v.a < 5 || v.a > 10 RETURN [v.a, v.b]";
@@ -849,36 +849,31 @@ function optimizerRuleTestSuite() {
       QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
 
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
-      assertEqual([ ], removeAlwaysOnClusterRules(XPresult.plan.rules));
-
-      // TODO: activate the following once OR is implemented
-      // assertEqual([ secondRuleName ], removeAlwaysOnClusterRules(XPresult.plan.rules));
+      assertEqual([ secondRuleName ], removeAlwaysOnClusterRules(XPresult.plan.rules));
 
       // the sortnode and its calculation node should be there.
-      assertEqual(0, findExecutionNodes(XPresult, "IndexRangeNode").length);
+      assertEqual(1, findExecutionNodes(XPresult, "IndexRangeNode").length);
 
-      /*
-      // TODO: activate the following once OR is implemented
       // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
-      hasIndexRangeNode_WithRanges(XPresult, false);
+      hasIndexRangeNode_WithRanges(XPresult, true);
       var RAs = getRangeAttributes(XPresult);
       var first = getRangeAttribute(RAs[0], "v", "a", 1);
-        
-      assertEqual(first.low.bound.vType, "int", "Type is int");
-      assertEqual(first.low.bound.value, 5, "proper value was set");
+      assertEqual(first.highConst.bound, 5, "proper value was set");
+      assertEqual(first.highConst.include, false, "proper include");
+      var first = getRangeAttribute(RAs[1], "v", "a", 1);
+      assertEqual(first.lowConst.bound, 10, "proper value was set");
+      assertEqual(first.lowConst.include, false, "proper include");
 
       assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
-      */
     },
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test in detail that an index range can be used for an or combined 
-    ///   greater than + less than filter spanning multiple ranges. TODO: doesn't work now.
+    ///   greater than + less than filter spanning multiple ranges. 
     ////////////////////////////////////////////////////////////////////////////////
 
     testMultiRangeBandpass: function () {
-      var query = "FOR v IN " + colName +
-                  " FILTER ((v.a > 3 && v.a < 5) || (v.a > 4 && v.a < 7)) RETURN [v.a, v.b]";
+      var query = "FOR v IN " + colName + " FILTER ((v.a > 3 && v.a < 5) || (v.a > 4 && v.a < 7)) RETURN [v.a, v.b]";
 
       var XPresult;
       var QResults=[];
@@ -891,25 +886,21 @@ function optimizerRuleTestSuite() {
       QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
 
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
-      assertEqual([ ], removeAlwaysOnClusterRules(XPresult.plan.rules));
-      // TODO: activate the following once OR is implemented
+      assertEqual(["use-index-range"], removeAlwaysOnClusterRules(XPresult.plan.rules));
 
       // the sortnode and its calculation node should be there.
-      assertEqual(0, findExecutionNodes(XPresult, "IndexRangeNode").length);
+      assertEqual(1, findExecutionNodes(XPresult, "IndexRangeNode").length);
       hasCalculationNodes(XPresult, 2);
 
-      /*
-      // TODO: activate the following once OR is implemented
       // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
       var RAs = getRangeAttributes(XPresult);
-      var first = getRangeAttribute(RAs[0], "v", "a", 1);
-
-      assertEqual(first.low.bound.vType, "int", "Type is int");
-      assertEqual(first.low.bound.value, 4, "proper value was set");
-      assertEqual(first.high.bound.vType, "int", "Type is int");
-      assertEqual(first.high.bound.value, 10, "proper value was set");
+      // FIXME constant bounds don't have a vType or value 
+      //var first = getRangeAttribute(RAs[0], "v", "a", 1);
+      //assertEqual(first.lowConst.bound.vType, "int", "Type is int");
+      //assertEqual(first.lowConst.bound, 4, "proper value was set");
+      //assertEqual(first.highConst.bound.vType, "int", "Type is int");
+      //assertEqual(first.highConst.bound, 5, "proper value was set");
       assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
-      */
     },
 
     testSortAscEmptyCollection : function () {
