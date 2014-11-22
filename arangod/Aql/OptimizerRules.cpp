@@ -817,8 +817,12 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             std::string attr;
             Variable const* enumCollVar = nullptr;
             // there is an implicit AND between FILTER statements
-            _rangeInfoMapVec = andCombineRangeInfoMapVecs(_rangeInfoMapVec,
-                buildRangeInfo(node->expression()->node(), enumCollVar, attr));
+            if (_rangeInfoMapVec->empty()) {
+              _rangeInfoMapVec = buildRangeInfo(node->expression()->node(), enumCollVar, attr);
+            } else {
+              _rangeInfoMapVec = andCombineRangeInfoMapVecs(_rangeInfoMapVec,
+                  buildRangeInfo(node->expression()->node(), enumCollVar, attr));
+            }
           }
           break;
         }
@@ -1123,7 +1127,6 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
     RangeInfoMapVec* buildRangeInfo (AstNode const* node, 
                                      Variable const*& enumCollVar,
                                      std::string& attr) {
-
       
       if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
         auto lhs = node->getMember(0);
