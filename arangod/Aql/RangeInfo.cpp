@@ -184,51 +184,6 @@ triagens::basics::Json RangeInfo::toJson () const {
   item("equality", triagens::basics::Json(_equality));
   return item;
 }
-        
-////////////////////////////////////////////////////////////////////////////////
-/// @brief class RangeInfoMap
-////////////////////////////////////////////////////////////////////////////////
-        
-RangeInfoMap::RangeInfoMap (std::string const& var, 
-                            std::string const& name, 
-                            RangeInfoBound low, 
-                            RangeInfoBound high,
-                            bool equality)
-  : _ranges() {
-    RangeInfo ri(var, name, low, high, equality);
-    std::unordered_map<std::string, RangeInfo> map;
-    map.emplace(make_pair(name, ri));
-    _ranges.emplace(std::make_pair(var, map));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief  insert if there is no range corresponding to variable name <var>,
-/// and attribute <name>, and otherwise intersection with existing range
-////////////////////////////////////////////////////////////////////////////////
-
-void RangeInfoMap::insert (RangeInfo newRange) { 
-  TRI_ASSERT(newRange.isDefined());
-
-  std::unordered_map<std::string, RangeInfo>* oldMap = find(newRange._var);
-
-  if (oldMap == nullptr) {
-    std::unordered_map<std::string, RangeInfo> newMap;
-    newMap.emplace(make_pair(newRange._attr, newRange));
-    _ranges.emplace(std::make_pair(newRange._var, newMap));
-    return;
-  }
-  
-  auto it = oldMap->find(newRange._attr); 
-  
-  if (it == oldMap->end()) {
-    oldMap->emplace(make_pair(newRange._attr, newRange));
-    return;
-  }
-
-  RangeInfo& oldRange((*it).second);
-
-  oldRange.fuse(newRange);
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 ///// @brief fuse, fuse two ranges, must be for the same variable and attribute
@@ -297,6 +252,10 @@ void RangeInfo::fuse (RangeInfo const& that) {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief isIdenticalRangeInfo: check if lhs and rhs are identical!
+////////////////////////////////////////////////////////////////////////////////
+
 static bool isIdenticalRangeInfo (RangeInfo lhs, RangeInfo rhs) {
   
   if (CompareRangeInfoBound(lhs._lowConst, rhs._lowConst, -1) != 0) {
@@ -336,40 +295,25 @@ static bool isIdenticalRangeInfo (RangeInfo lhs, RangeInfo rhs) {
   return true;
 }
 
-bool RangeInfoMap::isValid (std::string const& var) {
-  // are all the range infos valid? FIXME should this be any instead of all?
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class RangeInfoMap
+////////////////////////////////////////////////////////////////////////////////
+        
+////////////////////////////////////////////////////////////////////////////////
+/// @brief construct RangeInfoMap containing single RangeInfo created from the
+/// args
+////////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_map<std::string, RangeInfo>* map = find(var);
-  if (map != nullptr) {
-    for(auto x: *map) {
-      if (! x.second.isValid()) {
-        return false;
-      }
-    }
-    return true;
-  }
-  return false;
-}
-
-std::unordered_set<std::string> RangeInfoMap::attributes (std::string const& var) {
-  std::unordered_set<std::string> attrs;
-  std::unordered_map<std::string, RangeInfo>* map = find(var);
-  if (map != nullptr) {
-    for(auto x: *map) {
-      attrs.insert(x.first);
-    }
-  }
-  return attrs;
-}
-
-RangeInfoMap* RangeInfoMap::clone () {
-  auto rim = new RangeInfoMap();
-  for (auto x: _ranges) {
-    for (auto y: x.second) {
-      rim->insert(y.second.clone());
-    }
-  }
-  return rim;
+RangeInfoMap::RangeInfoMap (std::string const& var, 
+                            std::string const& name, 
+                            RangeInfoBound low, 
+                            RangeInfoBound high,
+                            bool equality)
+  : _ranges() {
+    RangeInfo ri(var, name, low, high, equality);
+    std::unordered_map<std::string, RangeInfo> map;
+    map.emplace(make_pair(name, ri));
+    _ranges.emplace(std::make_pair(var, map));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -385,6 +329,53 @@ void RangeInfoMap::insert (std::string const& var,
   insert(RangeInfo(var, name, low, high, equality));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief  insert if there is no range corresponding to variable name <var>,
+/// and attribute <name>, and otherwise intersection with existing range
+////////////////////////////////////////////////////////////////////////////////
+
+void RangeInfoMap::insert (RangeInfo newRange) { 
+  TRI_ASSERT(newRange.isDefined());
+
+  std::unordered_map<std::string, RangeInfo>* oldMap = find(newRange._var);
+
+  if (oldMap == nullptr) {
+    std::unordered_map<std::string, RangeInfo> newMap;
+    newMap.emplace(make_pair(newRange._attr, newRange));
+    _ranges.emplace(std::make_pair(newRange._var, newMap));
+    return;
+  }
+  
+  auto it = oldMap->find(newRange._attr); 
+  
+  if (it == oldMap->end()) {
+    oldMap->emplace(make_pair(newRange._attr, newRange));
+    return;
+  }
+
+  RangeInfo& oldRange((*it).second);
+
+  oldRange.fuse(newRange);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone
+////////////////////////////////////////////////////////////////////////////////
+        
+RangeInfoMap* RangeInfoMap::clone () {
+  auto rim = new RangeInfoMap();
+  for (auto x: _ranges) {
+    for (auto y: x.second) {
+      rim->insert(y.second.clone());
+    }
+  }
+  return rim;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief eraseEmptyOrUndefined remove all empty or undefined RangeInfos for
+/// the variable <var> in the RIM
+////////////////////////////////////////////////////////////////////////////////
 
 void RangeInfoMap::eraseEmptyOrUndefined(std::string const& var) {
   
@@ -405,6 +396,48 @@ void RangeInfoMap::eraseEmptyOrUndefined(std::string const& var) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief isValid: are all the range infos for the variable <var> valid?
+/// FIXME should this be any instead of all?
+////////////////////////////////////////////////////////////////////////////////
+
+bool RangeInfoMap::isValid (std::string const& var) {
+
+  std::unordered_map<std::string, RangeInfo>* map = find(var);
+  if (map != nullptr) {
+    for(auto x: *map) {
+      if (! x.second.isValid()) {
+        return false;
+      }
+    }
+    return true;
+  }
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief attributes: returns a vector of the names of the attributes for the
+/// variable var stored in the RIM.
+////////////////////////////////////////////////////////////////////////////////
+
+std::unordered_set<std::string> RangeInfoMap::attributes (std::string const& var) {
+  std::unordered_set<std::string> attrs;
+  std::unordered_map<std::string, RangeInfo>* map = find(var);
+  if (map != nullptr) {
+    for(auto x: *map) {
+      attrs.insert(x.first);
+    }
+  }
+  return attrs;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class RangeInfoMapVec
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor: construct RangeInfoMapVec containing a single
+/// RangeInfoMap containing a single RangeInfo.
+////////////////////////////////////////////////////////////////////////////////
 
 RangeInfoMapVec::RangeInfoMapVec  (RangeInfoMap* rim) :
   _rangeInfoMapVec() {
@@ -414,30 +447,29 @@ RangeInfoMapVec::RangeInfoMapVec  (RangeInfoMap* rim) :
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief emplace_back: emplace_back RangeInfoMap in vector
+////////////////////////////////////////////////////////////////////////////////
+
 void RangeInfoMapVec::emplace_back (RangeInfoMap* rim) {
   _rangeInfoMapVec.emplace_back(rim);
 }
 
-std::unordered_set<std::string> RangeInfoMapVec::attributes (std::string const& var) {
-  return _rangeInfoMapVec[0]->attributes(var);
-}
-
-std::vector<size_t> RangeInfoMapVec::validPositions(std::string const& var) {
-  std::vector<size_t> valid;
-
-  for (size_t i = 0; i < _rangeInfoMapVec.size(); i++) {
-    if (_rangeInfoMapVec[i]->isValid(var)) {
-      valid.push_back(i);
-    }
-  }
-  return valid;
-}
+////////////////////////////////////////////////////////////////////////////////
+/// @brief eraseEmptyOrUndefined remove all empty or undefined RangeInfos for
+/// the variable <var> in every RangeInfoMap in the vector 
+////////////////////////////////////////////////////////////////////////////////
 
 void RangeInfoMapVec::eraseEmptyOrUndefined(std::string const& var) {
   for (RangeInfoMap* x: _rangeInfoMapVec) {
     x->eraseEmptyOrUndefined(var);
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find: this is the same as _rangeInfoMapVec[pos]->find(var), i.e. find
+/// the map of RangeInfos for the variable <var>.
+////////////////////////////////////////////////////////////////////////////////
 
 std::unordered_map<std::string, RangeInfo>* RangeInfoMapVec::find (
                                               std::string const& var, size_t pos) {
@@ -447,6 +479,10 @@ std::unordered_map<std::string, RangeInfo>* RangeInfoMapVec::find (
   return _rangeInfoMapVec[pos]->find(var);
 } 
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief isIdenticalToExisting: returns true if the input RangeInfo is
+/// identical to an existing RangeInfo at any position in the vector. 
+////////////////////////////////////////////////////////////////////////////////
 
 bool RangeInfoMapVec::isIdenticalToExisting (RangeInfo x) {
 
@@ -459,6 +495,36 @@ bool RangeInfoMapVec::isIdenticalToExisting (RangeInfo x) {
   return false;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validPositions: returns a vector of the positions in the RIM vector
+/// that contain valid RangeInfoMap for the variable named var
+////////////////////////////////////////////////////////////////////////////////
+
+std::vector<size_t> RangeInfoMapVec::validPositions(std::string const& var) {
+  std::vector<size_t> valid;
+
+  for (size_t i = 0; i < _rangeInfoMapVec.size(); i++) {
+    if (_rangeInfoMapVec[i]->isValid(var)) {
+      valid.push_back(i);
+    }
+  }
+  return valid;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief attributes: returns a vector of the names of the attributes for the
+/// variable var stored in the RIM vector.
+////////////////////////////////////////////////////////////////////////////////
+
+std::unordered_set<std::string> RangeInfoMapVec::attributes (std::string const& var) {
+  return _rangeInfoMapVec[0]->attributes(var);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief andCombineRangeInfoMaps: insert every RangeInfo in the right argument
+/// in a new copy of the left argument
+////////////////////////////////////////////////////////////////////////////////
+
 RangeInfoMap* triagens::aql::andCombineRangeInfoMaps (RangeInfoMap* lhs, RangeInfoMap* rhs) {
  
   RangeInfoMap* rim = lhs->clone();
@@ -470,6 +536,14 @@ RangeInfoMap* triagens::aql::andCombineRangeInfoMaps (RangeInfoMap* lhs, RangeIn
   }
   return rim;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief orCombineRangeInfoMapVecs: return a new RangeInfoMapVec appending
+/// those RIMs in the right arg (which are not identical to an existing RIM) in
+/// a copy of the left arg.
+///
+/// The return RIMV is new unless one of the arguments is empty.
+////////////////////////////////////////////////////////////////////////////////
 
 RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs, 
                                                            RangeInfoMapVec* rhs) {
@@ -507,7 +581,13 @@ RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs,
   return rimv;
 }
 
-// distributes AND into OR
+////////////////////////////////////////////////////////////////////////////////
+/// @brief andCombineRangeInfoMapVecs: return a new RangeInfoMapVec by
+/// distributing the AND into the ORs in a condition like:
+/// (OR condition) AND (OR condition).
+///
+/// The return RIMV is new unless one of the arguments is empty.
+////////////////////////////////////////////////////////////////////////////////
 
 RangeInfoMapVec* triagens::aql::andCombineRangeInfoMapVecs (RangeInfoMapVec* lhs, 
                                                             RangeInfoMapVec* rhs) {
@@ -528,4 +608,3 @@ RangeInfoMapVec* triagens::aql::andCombineRangeInfoMapVecs (RangeInfoMapVec* lhs
   }
   return rimv;
 }
-
