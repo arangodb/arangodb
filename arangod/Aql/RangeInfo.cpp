@@ -188,6 +188,18 @@ triagens::basics::Json RangeInfo::toJson () const {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class RangeInfoMap
 ////////////////////////////////////////////////////////////////////////////////
+        
+RangeInfoMap::RangeInfoMap (std::string const& var, 
+                            std::string const& name, 
+                            RangeInfoBound low, 
+                            RangeInfoBound high,
+                            bool equality)
+  : _ranges() {
+    RangeInfo ri(var, name, low, high, equality);
+    std::unordered_map<std::string, RangeInfo> map;
+    map.emplace(make_pair(name, ri));
+    _ranges.emplace(std::make_pair(var, map));
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief  insert if there is no range corresponding to variable name <var>,
@@ -347,6 +359,18 @@ void RangeInfoMap::insert (std::string const& var,
   insert(RangeInfo(var, name, low, high, equality));
 }
 
+RangeInfoMap andCombineRangeInfoMaps (RangeInfoMap lhs, RangeInfoMap rhs) {
+ 
+  RangeInfoMap rim = lhs.clone();
+
+  for (auto x: rhs._ranges) {
+    for (auto y: x.second) {
+      rim.insert(y.second.clone());
+    }
+  }
+  return rim;
+}
+
 void RangeInfoMap::eraseEmptyOrUndefined(std::string const& var) {
   
   std::unordered_map<std::string, RangeInfo>* map = find(var);
@@ -366,6 +390,65 @@ void RangeInfoMap::eraseEmptyOrUndefined(std::string const& var) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+
+
+RangeInfoMapVec::RangeInfoMapVec  (std::string const& var, 
+                                   std::string const& name, 
+                                   RangeInfoBound low, 
+                                   RangeInfoBound high,
+                                   bool equality) : 
+  _rangeInfoMapVec() {
+
+  _rangeInfoMapVec.emplace_back(RangeInfoMap rim(var, name, low, high, equality));
+}
+
+RangeInfoMapVec::RangeInfoMapVec  (RangeInfoMap rim) :
+  _rangeInfoMapVec() {
+  
+  if (! rim.empty()){
+    _rangeInfoMapVec.emplace_back(rim);
+  }
+}
+
+RangeInfoMapVec::emplace_back (RangeInfoMap rim) {
+  _rangeInfoMapVec(emplace_back(rim));
+}
+
+RangeInfoMapVec orCombineRangeInfoMapVecs (RangeInfoMapVec lhs, RangeInfoMapVec rhs) {
+ 
+  if (lhs.empty()) {
+    return rhs; //TODO copy?
+  }
+
+  if (rhs.empty()) {
+    return lhs; //TODO copy?
+  }
+
+  RangeInfoMapVec rimv;
+
+  for (size_t i = 0; i <= lhs.size(); i++) {
+    rimv.emplace_back(lhs[i]->clone());
+  }
+  for (size_t i = 0; i <= rhs.size(); i++) {
+    rimv.emplace_back(rhs[i]->clone());
+  }
+
+  return rimv;
+}
+
+// distributes AND into OR
+
+RangeInfoMapVec andCombineRangeInfoMapVecs (RangeInfoMapVec lhs, RangeInfoMapVec rhs) {
+  
+  RangeInfoMapVec rimv;
+
+  for (auto rimLhs: lhs) {
+    for (auto rimRhs: rhs) {
+      rimv.emplace_back(andCombineRangeInfoMaps(rimLhs->clone(), rimRhs->clone));
+    }
+  }
+  return rimv;
+}
 
 std::unordered_set<std::string> RangeInfoMapVec::attributes (std::string const& var) {
   return _rangeInfoMapVec[0]->attributes(var);
@@ -487,7 +570,6 @@ void RangeInfoMapVec::insertOr (std::vector<RangeInfo> ranges) {
   } else {
     sample = new RangeInfoMap();
   }
-  // TODO make sure we don't insert identical bounds
   for (auto x: ranges) {
     if (!isIdenticalToExisting(x)) {
       RangeInfoMap* rim = sample->cloneExcluding(x._var); 
