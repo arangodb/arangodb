@@ -795,7 +795,6 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         _plan(plan), 
         _canThrow(false),
         _level(level) {
-      _rangeInfoMapVec = new RangeInfoMapVec();
       _varIds.insert(var->id);
     };
 
@@ -816,7 +815,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             auto node = static_cast<CalculationNode*>(en);
             std::string attr;
             Variable const* enumCollVar = nullptr;
-            buildRangeInfo(node->expression()->node(), enumCollVar, attr);
+            _rangeInfoMapVec = buildRangeInfo(node->expression()->node(), enumCollVar, attr);
           }
           break;
         }
@@ -1087,29 +1086,6 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void insert(std::string const& var, 
-                std::string const& attr, 
-                RangeInfoBound low, 
-                RangeInfoBound high, 
-                bool isEqual, 
-                bool isOrCondition) {
-      if (isOrCondition){
-        _rangeInfoMapVec->insertOr(var, 
-                                   attr, 
-                                   low, 
-                                   high, 
-                                   isEqual);
-      } else {
-        _rangeInfoMapVec->insertAnd(var, 
-                                    attr, 
-                                    low, 
-                                    high, 
-                                    isEqual);
-      }
-    }
-
-//////////////////////////////////////////////////////////////////////////////////////////////////
-
     void findVarAndAttr (AstNode const* node, 
                          Variable const*& enumCollVar,
                          std::string& attr) {
@@ -1125,7 +1101,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       }
       
       if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        buildRangeInfo(node->getMember(0), enumCollVar, attr);
+        findVarAndAttr(node->getMember(0), enumCollVar, attr);
 
         if (enumCollVar != nullptr) {
           char const* attributeName = node->getStringValue();
@@ -1135,17 +1111,20 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         return;
       }
 
+      attr.clear();
+      enumCollVar = nullptr;
+      return;
     }
 
-    RangeInfoMapVec buildRangeInfo (AstNode const* node, 
-                                    Variable const*& enumCollVar,
-                                    std::string& attr) {
+    RangeInfoMapVec* buildRangeInfo (AstNode const* node, 
+                                     Variable const*& enumCollVar,
+                                     std::string& attr) {
 
       
       if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
         auto lhs = node->getMember(0);
         auto rhs = node->getMember(1);
-        RangeInfoMap rim;
+        RangeInfoMap* rim = new RangeInfoMap();
         if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
           findVarAndAttr(rhs, enumCollVar, attr);
           if (enumCollVar != nullptr) {
@@ -1156,11 +1135,11 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
               // Found a multiple attribute access of a variable and an
               // expression which does not involve that variable:
               
-              rim.insert(enumCollVar->name, 
-                         attr.substr(0, attr.size() - 1), 
-                         RangeInfoBound(lhs, true), 
-                         RangeInfoBound(lhs, true), 
-                         true);
+              rim->insert(enumCollVar->name, 
+                          attr.substr(0, attr.size() - 1), 
+                          RangeInfoBound(lhs, true), 
+                          RangeInfoBound(lhs, true), 
+                          true);
 
               enumCollVar = nullptr;
               attr.clear();
@@ -1168,7 +1147,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           }
         }
         if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-          findVarAndAttr(rhs, enumCollVar, attr);
+          findVarAndAttr(lhs, enumCollVar, attr);
           if (enumCollVar != nullptr) {
             std::unordered_set<Variable*> varsUsed 
               = Ast::getReferencedVariables(rhs);
@@ -1176,18 +1155,17 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                 == varsUsed.end()) {
               // Found a multiple attribute access of a variable and an
               // expression which does not involve that variable:
-              rim.insert(enumCollVar->name, 
-                         attr.substr(0, attr.size() - 1), 
-                         RangeInfoBound(rhs, true), 
-                         RangeInfoBound(rhs, true), 
-                         true, 
-                         isOrCondition);
+              rim->insert(enumCollVar->name, 
+                          attr.substr(0, attr.size() - 1), 
+                          RangeInfoBound(rhs, true), 
+                          RangeInfoBound(rhs, true), 
+                          true);
               enumCollVar = nullptr;
               attr.clear();
             }
           }
         }
-        return RangeInfoMapVec(rim);
+        return new RangeInfoMapVec(rim);
       }
 
       if (node->type == NODE_TYPE_OPERATOR_BINARY_LT || 
@@ -1195,7 +1173,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           node->type == NODE_TYPE_OPERATOR_BINARY_LE ||
           node->type == NODE_TYPE_OPERATOR_BINARY_GE) {
       
-        RangeInfoMap rim;
+        auto rim = new RangeInfoMap();
         bool include = (node->type == NODE_TYPE_OPERATOR_BINARY_LE ||
                         node->type == NODE_TYPE_OPERATOR_BINARY_GE);
         
@@ -1220,11 +1198,11 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
               low.assign(lhs, include);
             }
             
-            rim.insert(enumCollVar->name, 
-                       attr.substr(0, attr.size() - 1), 
-                       low,
-                       high,
-                       false);
+            rim->insert(enumCollVar->name, 
+                        attr.substr(0, attr.size() - 1), 
+                        low,
+                        high,
+                        false);
 
             enumCollVar = nullptr;
             attr.clear();
@@ -1249,17 +1227,17 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
               high.assign(rhs, include);
             }
 
-            rim.insert(enumCollVar->name, 
-                       attr.substr(0, attr.size() - 1), 
-                       low,
-                       high,
-                       false);
+            rim->insert(enumCollVar->name, 
+                        attr.substr(0, attr.size() - 1), 
+                        low,
+                        high,
+                        false);
 
             enumCollVar = nullptr;
             attr.clear();
           }
         }
-        return RangeInfoMapVec(rim);
+        return new RangeInfoMapVec(rim);
       }
       
       if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
@@ -1271,7 +1249,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       if (node->type == NODE_TYPE_OPERATOR_BINARY_IN) {
         auto lhs = node->getMember(0); // enumCollVar
         auto rhs = node->getMember(1); // value
-        RangeInfoMapVec rimv;
+        auto rimv = new RangeInfoMapVec();
         if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) { 
           findVarAndAttr(lhs, enumCollVar, attr);
           if (enumCollVar != nullptr) {
@@ -1289,7 +1267,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                                               RangeInfoBound(rhs->getMember(i), true), 
                                               true));
               }
-              rimv->insertOr(ranges);
+              rimv->insertOr(ranges);//TODO update this
               enumCollVar = nullptr;
               attr.clear();
             }
@@ -1300,13 +1278,13 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
 
       if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
         return orCombineRangeInfoMapVecs(buildRangeInfo(node->getMember(0), enumCollVar, attr),
-          buildRangeInfo(node->getMember(1), enumCollVar, attr, true));
+          buildRangeInfo(node->getMember(1), enumCollVar, attr));
       }
 
       // default case
       attr.clear();
       enumCollVar = nullptr;
-      return RangeInfoMapVec();
+      return nullptr;
     }
 };
 

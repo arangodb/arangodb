@@ -657,6 +657,10 @@ namespace triagens {
           return _ranges.size();
         }
         
+        bool empty () const {
+          return _ranges.empty();
+        }
+        
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toString, via Json
 ////////////////////////////////////////////////////////////////////////////////
@@ -690,10 +694,9 @@ namespace triagens {
         std::unordered_set<std::string> attributes (std::string const& var);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief private data
+/// @brief private data//TODO
 ////////////////////////////////////////////////////////////////////////////////
     
-      private: 
         std::unordered_map<std::string, std::unordered_map<std::string, RangeInfo>> _ranges; 
         
     };
@@ -727,7 +730,7 @@ namespace triagens {
                           RangeInfoBound high,
                           bool equality); 
         
-        RangeInfoMapVec (RangeInfoMap rim);
+        RangeInfoMapVec (RangeInfoMap* rim);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -763,6 +766,12 @@ namespace triagens {
         size_t size () {
           return _rangeInfoMapVec.size();
         }
+        
+        bool empty () {
+          return _rangeInfoMapVec.empty();
+        }
+
+        void emplace_back (RangeInfoMap*);
 
         void eraseEmptyOrUndefined (std::string const&);
 
@@ -801,9 +810,9 @@ namespace triagens {
         std::vector<RangeInfoMap*> _rangeInfoMapVec; 
     };
 
-    RangeInfoMap    andCombineRangeInfoMaps (RangeInfoMap, RangeInfoMap);
-    RangeInfoMapVec orCombineRangeInfoMapVecs (RangeInfoMapVec, RangeInfoMapVec);
-    RangeInfoMapVec andCombineRangeInfoMapVecs (RangeInfoMapVec, RangeInfoMapVec);
+    RangeInfoMap*    andCombineRangeInfoMaps (RangeInfoMap*, RangeInfoMap*);
+    RangeInfoMapVec* orCombineRangeInfoMapVecs (RangeInfoMapVec*, RangeInfoMapVec*);
+    RangeInfoMapVec* andCombineRangeInfoMapVecs (RangeInfoMapVec*, RangeInfoMapVec*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IndexOrCondition, type for vector of vector of RangeInfo. The meaning
