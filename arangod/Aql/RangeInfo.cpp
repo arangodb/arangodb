@@ -406,7 +406,6 @@ void RangeInfoMap::eraseEmptyOrUndefined(std::string const& var) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-
 RangeInfoMapVec::RangeInfoMapVec  (std::string const& var, 
                                    std::string const& name, 
                                    RangeInfoBound low, 
@@ -479,21 +478,15 @@ void RangeInfoMapVec::insertAnd (RangeInfo range) {
 
 }
 
-
-
 bool RangeInfoMapVec::isIdenticalToExisting (RangeInfo x) {
-
-  if (empty()) {
-    return false;
-  }
 
   for (auto rim: _rangeInfoMapVec) {
     RangeInfo* ri = rim->find(x._var, x._attr);
-    if (ri != nullptr || isIdenticalRangeInfo(*ri, x)){
-      return false;
+    if (ri != nullptr && isIdenticalRangeInfo(*ri, x)){
+      return true;
     }
   }
-  return true;
+  return false;
 }
 
 RangeInfoMap* triagens::aql::andCombineRangeInfoMaps (RangeInfoMap* lhs, RangeInfoMap* rhs) {
