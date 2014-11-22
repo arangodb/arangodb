@@ -857,6 +857,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         case EN::INDEX_RANGE:
           break;
         case EN::ENUMERATE_COLLECTION: {
+
           auto node = static_cast<EnumerateCollectionNode*>(en);
           auto var = node->getVariablesSetHere()[0];  // should only be 1
           std::unordered_map<std::string, RangeInfo>* map
@@ -1285,7 +1286,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       // default case
       attr.clear();
       enumCollVar = nullptr;
-      return nullptr;
+      return new RangeInfoMapVec();
     }
 };
 
