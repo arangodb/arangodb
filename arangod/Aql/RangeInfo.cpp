@@ -639,8 +639,11 @@ static int containmentRangeInfos (RangeInfo* lhs, RangeInfo* rhs) {
   // -1 if lhs is tighter than rhs, 1 if rhs tighter than lhs
   int HiHi = CompareRangeInfoBound(lhs->_highConst, rhs->_highConst, 1); 
   // -1 if lhs is tighter than rhs, 1 if rhs tighter than lhs
-
-  return (LoLo == HiHi ? LoLo : 0);
+  // 0 if equal
+  if (LoLo == HiHi) {
+    return (LoLo == 0 ? 1 : LoLo);
+  }
+  return 0;
 }
 
 // returns true if the constant parts of lhs and rhs are disjoint and false
