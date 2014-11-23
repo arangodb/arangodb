@@ -33,6 +33,14 @@ using namespace triagens::basics;
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
 
+//#if 0
+#define ENTER_BLOCK try { (void) 0;
+#define LEAVE_BLOCK } catch (...) { std::cout << "caught an exception in " << __FUNCTION__ << ", " << __FILE__ << ":" << __LINE__ << "!\n"; throw; }
+//#else
+//#define ENTER_BLOCK
+//#define LEAVE_BLOCK
+//#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3-way comparison of the tightness of upper or lower constant
 /// RangeInfoBounds.
@@ -358,6 +366,16 @@ void RangeInfoMap::insert (RangeInfo newRange) {
   oldRange.fuse(newRange);
 }
 
+void RangeInfoMap::erase (RangeInfo* ri) {
+  auto it = find(ri->_var);
+  if (it != nullptr) {
+    auto it2 = it->find(ri->_attr);
+    if (it2 != (*it).end()) {
+      it->erase(it2);
+    }
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone
 ////////////////////////////////////////////////////////////////////////////////
@@ -397,7 +415,6 @@ void RangeInfoMap::eraseEmptyOrUndefined(std::string const& var) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief isValid: are all the range infos for the variable <var> valid?
-/// FIXME should this be any instead of all?
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RangeInfoMap::isValid (std::string const& var) {
@@ -568,8 +585,11 @@ RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs,
     auto rim = new RangeInfoMap();
     for (auto x: (*rhs)[i]->_ranges) {
       for (auto y: x.second) {
-        if (! rimv->isIdenticalToExisting(y.second)) {
-          rim->insert(y.second);
+        // take the difference of 
+        RangeInfo* ri = rimv->differenceRangeInfo(&y.second);
+        if (ri != nullptr) { 
+          // if ri is nullptr, then y.second is contained in an existing ri 
+          rim->insert(*ri);
         }
       }
     }
@@ -607,4 +627,85 @@ RangeInfoMapVec* triagens::aql::andCombineRangeInfoMapVecs (RangeInfoMapVec* lhs
     }
   }
   return rimv;
+}
+
+// check if the constant bounds of a RI are a subset of another.
+// returns -1 if lhs is a (not necessarily proper) subset of rhs, 0 if neither is
+// contained in the other, and, 1 if rhs is contained in lhs. 
+
+static int containmentRangeInfos (RangeInfo* lhs, RangeInfo* rhs) {
+  
+  int LoLo = CompareRangeInfoBound(lhs->_lowConst, rhs->_lowConst, -1); 
+  // -1 if lhs is tighter than rhs, 1 if rhs tighter than lhs
+  int HiHi = CompareRangeInfoBound(lhs->_highConst, rhs->_highConst, 1); 
+  // -1 if lhs is tighter than rhs, 1 if rhs tighter than lhs
+
+  return (LoLo == HiHi ? LoLo : 0);
+}
+
+// returns true if the constant parts of lhs and rhs are disjoint and false
+// otherwise
+
+static bool areDisjointRangeInfos (RangeInfo* lhs, RangeInfo* rhs) {
+ 
+  int HiLo;
+  if (lhs->_highConst.isDefined() && rhs->_lowConst.isDefined()) {
+    HiLo = TRI_CompareValuesJson(lhs->_highConst.bound().json(), 
+        rhs->_lowConst.bound().json());
+    if ((HiLo == -1) ||
+      (HiLo == 0 && (! lhs->_highConst.inclusive() ||! rhs->_lowConst.inclusive()))) {
+      return true;
+    }
+  } 
+  else if (lhs->_highConst.isDefined() || rhs->_lowConst.isDefined()) {
+    return false;
+  }
+  
+  //else compare lhs low > rhs high 
+
+  int LoHi;
+  if (lhs->_lowConst.isDefined() && rhs->_highConst.isDefined()) {
+    LoHi = TRI_CompareValuesJson(lhs->_lowConst.bound().json(), 
+        rhs->_highConst.bound().json());
+    return (LoHi == 1) || 
+      (LoHi == 0 && (! lhs->_lowConst.inclusive() ||! rhs->_highConst.inclusive()));
+  } 
+  return false; 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief differenceRangeInfo: returns the difference of the constant parts of
+/// the given RangeInfo and the union of the RangeInfos (for the same var and
+/// attr) in the vector. Returns the nullptr if it is empty. 
+////////////////////////////////////////////////////////////////////////////////
+
+RangeInfo* RangeInfoMapVec::differenceRangeInfo (RangeInfo* newRi) {
+
+  for (auto rim: _rangeInfoMapVec) {
+    RangeInfo* oldRi = rim->find(newRi->_var, newRi->_attr);
+    if (oldRi != nullptr && ! areDisjointRangeInfos(oldRi, newRi)) {
+      int contained = containmentRangeInfos(oldRi, newRi);
+      if (contained == -1) { 
+        // oldRi is a subset of newRi, erase the old RI 
+        // continuing finding the difference of the new one and existing RIs
+        rim->erase(oldRi);
+      } 
+      else if (contained == 1) {
+        // newRi is a subset of oldRi, disregard new
+        return nullptr; // i.e. do nothing on return of this function
+      } else {
+        // oldRi and newRi have non-empty intersection
+        int LoLo = CompareRangeInfoBound(oldRi->_lowConst, newRi->_lowConst, -1);
+        if (LoLo == 1) { // replace low bound of new with high bound of old
+          newRi->_lowConst.assign(oldRi->_highConst);
+          newRi->_lowConst.setInclude(! oldRi->_highConst.inclusive());
+        } 
+        else { // replace the high bound of the new with the low bound of the old
+          newRi->_highConst.assign(oldRi->_lowConst);
+          newRi->_highConst.setInclude(! oldRi->_lowConst.inclusive());
+        }
+      }
+    }
+  }
+  return newRi;
 }
