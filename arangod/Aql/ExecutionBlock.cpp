@@ -973,8 +973,8 @@ bool IndexRangeBlock::initRanges () {
   // Find out about the actual values for the bounds in the variable bound case:
 
   if (_anyBoundVariable) {
-    auto newCondition = std::unique_ptr<IndexOrCondition>(new IndexOrCondition());
-
+    //auto newCondition = std::unique_ptr<IndexOrCondition>(new IndexOrCondition());
+    auto newCondition = new IndexOrCondition();
     for (size_t i = 0; i < _condition->size(); i++) {
 
       // The following are needed to evaluate expressions with local data from
@@ -1064,9 +1064,10 @@ bool IndexRangeBlock::initRanges () {
 
         newAnd.push_back(actualRange);
       }
-      orCombineIndexOrAndIndexAnd(*(newCondition.get()), newAnd);
+      orCombineIndexOrAndIndexAnd(newCondition, newAnd);
     }
-    _condition = newCondition.release();
+    //_condition = newCondition.release();
+    _condition = newCondition;
   }
    
   if (en->_index->type == TRI_IDX_TYPE_PRIMARY_INDEX) {

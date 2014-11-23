@@ -927,7 +927,7 @@ namespace triagens {
 /// @brief  orCombineIndexOrAndIndexAnd: analogue of orCombineRangeInfoMapVecs
 ////////////////////////////////////////////////////////////////////////////////
     
-    void orCombineIndexOrAndIndexAnd(IndexOrCondition, IndexAndCondition);
+    void orCombineIndexOrAndIndexAnd(IndexOrCondition*, IndexAndCondition);
   }
 }
 
