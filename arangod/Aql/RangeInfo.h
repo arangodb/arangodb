@@ -922,6 +922,12 @@ namespace triagens {
     
     typedef std::vector<RangeInfo> IndexAndCondition;
     typedef std::vector<IndexAndCondition> IndexOrCondition;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief  orCombineIndexOrAndIndexAnd: analogue of orCombineRangeInfoMapVecs
+////////////////////////////////////////////////////////////////////////////////
+    
+    void orCombineIndexOrAndIndexAnd(IndexOrCondition, IndexAndCondition);
   }
 }
 
