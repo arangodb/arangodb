@@ -538,6 +538,53 @@ std::unordered_set<std::string> RangeInfoMapVec::attributes (std::string const& 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief orCombineRangeInfoMapVecs: return a new RangeInfoMapVec appending
+/// those RIMs in the right arg (which are not identical to an existing RIM) in
+/// a copy of the left arg.
+///
+/// The return RIMV is new unless one of the arguments is empty.
+////////////////////////////////////////////////////////////////////////////////
+
+RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs, 
+                                                           RangeInfoMapVec* rhs) {
+ 
+  if (lhs->empty()) {
+    return rhs;
+  }
+
+  if (rhs->empty()) {
+    return lhs;
+  }
+
+  auto rimv = new RangeInfoMapVec();
+
+  // this lhs already doesn't contain duplicate conditions
+  for (size_t i = 0; i < lhs->size(); i++) {
+    rimv->emplace_back((*lhs)[i]->clone());
+  }
+
+  //avoid inserting identical conditions
+  for (size_t i = 0; i < rhs->size(); i++) {
+    auto rim = new RangeInfoMap();
+    for (auto x: (*rhs)[i]->_ranges) {
+      for (auto y: x.second) {
+        // take the difference of 
+        RangeInfo* ri = rimv->differenceRangeInfo(&y.second);
+        if (ri != nullptr) { 
+          // if ri is nullptr, then y.second is contained in an existing ri 
+          rim->insert(*ri);
+        }
+      }
+    }
+    if (! rim->empty()) {
+      rimv->emplace_back(rim);
+    }
+  }
+
+  return rimv;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief andCombineRangeInfoMaps: insert every RangeInfo in the right argument
 /// in a new copy of the left argument
 ////////////////////////////////////////////////////////////////////////////////
@@ -666,52 +713,6 @@ RangeInfo* RangeInfoMapVec::differenceRangeInfo (RangeInfo* newRi) {
   return newRi;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief orCombineRangeInfoMapVecs: return a new RangeInfoMapVec appending
-/// those RIMs in the right arg (which are not identical to an existing RIM) in
-/// a copy of the left arg.
-///
-/// The return RIMV is new unless one of the arguments is empty.
-////////////////////////////////////////////////////////////////////////////////
-
-RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs, 
-                                                           RangeInfoMapVec* rhs) {
- 
-  if (lhs->empty()) {
-    return rhs;
-  }
-
-  if (rhs->empty()) {
-    return lhs;
-  }
-
-  auto rimv = new RangeInfoMapVec();
-
-  // this lhs already doesn't contain duplicate conditions
-  for (size_t i = 0; i < lhs->size(); i++) {
-    rimv->emplace_back((*lhs)[i]->clone());
-  }
-
-  //avoid inserting identical conditions
-  for (size_t i = 0; i < rhs->size(); i++) {
-    auto rim = new RangeInfoMap();
-    for (auto x: (*rhs)[i]->_ranges) {
-      for (auto y: x.second) {
-        // take the difference of 
-        RangeInfo* ri = rimv->differenceRangeInfo(&y.second);
-        if (ri != nullptr) { 
-          // if ri is nullptr, then y.second is contained in an existing ri 
-          rim->insert(*ri);
-        }
-      }
-    }
-    if (! rim->empty()) {
-      rimv->emplace_back(rim);
-    }
-  }
-
-  return rimv;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief  differenceIndexOrAndRangeInfo: analogue of differenceRangeInfo
