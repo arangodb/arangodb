@@ -758,10 +758,10 @@ static RangeInfo* differenceIndexOrAndRangeInfo (
 ////////////////////////////////////////////////////////////////////////////////
 
 void triagens::aql::orCombineIndexOrAndIndexAnd (
-    IndexOrCondition orCond, IndexAndCondition andCond) {
+    IndexOrCondition* orCond, IndexAndCondition andCond) {
  
-  if (orCond.empty()) {
-    orCond.push_back(andCond);
+  if (orCond->empty()) {
+    orCond->push_back(andCond);
     return;
   }
 
@@ -772,7 +772,7 @@ void triagens::aql::orCombineIndexOrAndIndexAnd (
   //avoid inserting overlapping ranges
   IndexAndCondition newAnd;
   for (RangeInfo x: andCond) {
-    RangeInfo* ri = differenceIndexOrAndRangeInfo(orCond, &x);
+    RangeInfo* ri = differenceIndexOrAndRangeInfo(*orCond, &x);
     if (ri != nullptr) { 
       // if ri is nullptr, then y.second is contained in an existing ri 
       newAnd.emplace_back(*ri);
@@ -780,7 +780,7 @@ void triagens::aql::orCombineIndexOrAndIndexAnd (
   }
 
   if (! newAnd.empty()) {
-    orCond.emplace_back(newAnd);
+    orCond->emplace_back(newAnd);
   }
 }
 
