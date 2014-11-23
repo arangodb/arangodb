@@ -854,7 +854,6 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
     _posInRanges(0) {
    
   std::vector<std::vector<RangeInfo>> const& orRanges = en->_ranges;
-  //TODO replace this with _condition
   TRI_ASSERT(en->_index != nullptr);
 
   _allBoundsConstant.clear();
@@ -973,8 +972,6 @@ bool IndexRangeBlock::initRanges () {
 
   // Find out about the actual values for the bounds in the variable bound case:
 
-    //newCondition.get()->push_back(IndexAndCondition());
-
   if (_anyBoundVariable) {
     auto newCondition = std::unique_ptr<IndexOrCondition>(new IndexOrCondition());
 
@@ -1067,7 +1064,7 @@ bool IndexRangeBlock::initRanges () {
 
         newAnd.push_back(actualRange);
       }
-      newCondition.get()->push_back(newAnd);
+      orCombineIndexOrAndIndexAnd(*(newCondition.get()), newAnd);
     }
     _condition = newCondition.release();
   }

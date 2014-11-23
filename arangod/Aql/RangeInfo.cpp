@@ -555,53 +555,6 @@ RangeInfoMap* triagens::aql::andCombineRangeInfoMaps (RangeInfoMap* lhs, RangeIn
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief orCombineRangeInfoMapVecs: return a new RangeInfoMapVec appending
-/// those RIMs in the right arg (which are not identical to an existing RIM) in
-/// a copy of the left arg.
-///
-/// The return RIMV is new unless one of the arguments is empty.
-////////////////////////////////////////////////////////////////////////////////
-
-RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs, 
-                                                           RangeInfoMapVec* rhs) {
- 
-  if (lhs->empty()) {
-    return rhs;
-  }
-
-  if (rhs->empty()) {
-    return lhs;
-  }
-
-  auto rimv = new RangeInfoMapVec();
-
-  // this lhs already doesn't contain duplicate conditions
-  for (size_t i = 0; i < lhs->size(); i++) {
-    rimv->emplace_back((*lhs)[i]->clone());
-  }
-
-  //avoid inserting identical conditions
-  for (size_t i = 0; i < rhs->size(); i++) {
-    auto rim = new RangeInfoMap();
-    for (auto x: (*rhs)[i]->_ranges) {
-      for (auto y: x.second) {
-        // take the difference of 
-        RangeInfo* ri = rimv->differenceRangeInfo(&y.second);
-        if (ri != nullptr) { 
-          // if ri is nullptr, then y.second is contained in an existing ri 
-          rim->insert(*ri);
-        }
-      }
-    }
-    if (! rim->empty()) {
-      rimv->emplace_back(rim);
-    }
-  }
-
-  return rimv;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief andCombineRangeInfoMapVecs: return a new RangeInfoMapVec by
 /// distributing the AND into the ORs in a condition like:
 /// (OR condition) AND (OR condition).
@@ -712,3 +665,122 @@ RangeInfo* RangeInfoMapVec::differenceRangeInfo (RangeInfo* newRi) {
   }
   return newRi;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief orCombineRangeInfoMapVecs: return a new RangeInfoMapVec appending
+/// those RIMs in the right arg (which are not identical to an existing RIM) in
+/// a copy of the left arg.
+///
+/// The return RIMV is new unless one of the arguments is empty.
+////////////////////////////////////////////////////////////////////////////////
+
+RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs, 
+                                                           RangeInfoMapVec* rhs) {
+ 
+  if (lhs->empty()) {
+    return rhs;
+  }
+
+  if (rhs->empty()) {
+    return lhs;
+  }
+
+  auto rimv = new RangeInfoMapVec();
+
+  // this lhs already doesn't contain duplicate conditions
+  for (size_t i = 0; i < lhs->size(); i++) {
+    rimv->emplace_back((*lhs)[i]->clone());
+  }
+
+  //avoid inserting identical conditions
+  for (size_t i = 0; i < rhs->size(); i++) {
+    auto rim = new RangeInfoMap();
+    for (auto x: (*rhs)[i]->_ranges) {
+      for (auto y: x.second) {
+        // take the difference of 
+        RangeInfo* ri = rimv->differenceRangeInfo(&y.second);
+        if (ri != nullptr) { 
+          // if ri is nullptr, then y.second is contained in an existing ri 
+          rim->insert(*ri);
+        }
+      }
+    }
+    if (! rim->empty()) {
+      rimv->emplace_back(rim);
+    }
+  }
+
+  return rimv;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief  differenceIndexOrAndRangeInfo: analogue of differenceRangeInfo
+////////////////////////////////////////////////////////////////////////////////
+
+static RangeInfo* differenceIndexOrAndRangeInfo (
+    IndexOrCondition orCond, RangeInfo* newRi) {
+
+  for (IndexAndCondition andCond: orCond) {
+    for (size_t i = 0; i < andCond.size(); i++) {
+      RangeInfo oldRi = andCond[i];
+      if (! areDisjointRangeInfos(&oldRi, newRi)) {
+        int contained = containmentRangeInfos(&oldRi, newRi);
+        if (contained == -1) { 
+          // oldRi is a subset of newRi, erase the old RI 
+          // continuing finding the difference of the new one and existing RIs
+          oldRi.invalidate();
+          // FIXME want to do andCond.erase(andCond.begin()+i) but can't
+        } 
+        else if (contained == 1) {
+          // newRi is a subset of oldRi, disregard new
+          return nullptr; // i.e. do nothing on return of this function
+        } else {
+          // oldRi and newRi have non-empty intersection
+          int LoLo = CompareRangeInfoBound(oldRi._lowConst, newRi->_lowConst, -1);
+          if (LoLo == 1) { // replace low bound of new with high bound of old
+            newRi->_lowConst.assign(oldRi._highConst);
+            newRi->_lowConst.setInclude(! oldRi._highConst.inclusive());
+          } 
+          else { // replace the high bound of the new with the low bound of the old
+            newRi->_highConst.assign(oldRi._lowConst);
+            newRi->_highConst.setInclude(! oldRi._lowConst.inclusive());
+          }
+        }
+      }
+    }
+  }
+  return newRi;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief  orCombineIndexOrAndIndexAnd: analogue of orCombineRangeInfoMapVecs
+////////////////////////////////////////////////////////////////////////////////
+
+void triagens::aql::orCombineIndexOrAndIndexAnd (
+    IndexOrCondition orCond, IndexAndCondition andCond) {
+ 
+  if (orCond.empty()) {
+    orCond.push_back(andCond);
+    return;
+  }
+
+  if (andCond.empty()) {
+    return;
+  }
+
+  //avoid inserting overlapping ranges
+  IndexAndCondition newAnd;
+  for (RangeInfo x: andCond) {
+    RangeInfo* ri = differenceIndexOrAndRangeInfo(orCond, &x);
+    if (ri != nullptr) { 
+      // if ri is nullptr, then y.second is contained in an existing ri 
+      newAnd.emplace_back(*ri);
+    }
+  }
+
+  if (! newAnd.empty()) {
+    orCond.emplace_back(newAnd);
+  }
+}
+
+
