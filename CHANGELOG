@@ -1,3 +1,9 @@
+v2.2.8 (XXXX-XX-XX)
+-------------------
+
+* fixed replication for `_graphs` collection
+
+
 v2.2.7 (2014-11-19)
 -------------------
 
