@@ -1538,7 +1538,8 @@ void LimitNode::toJsonHelper (triagens::basics::Json& nodes,
 double LimitNode::estimateCost (size_t& nrItems) const {
   size_t incoming = 0;
   double depCost = _dependencies.at(0)->getCost(incoming);
-  nrItems = std::min(_limit, std::max(0, incoming - _offset));
+  nrItems = (std::min)(_limit, (std::max)(static_cast<size_t>(0), 
+                                          incoming - _offset));
   return depCost + nrItems;
 }
 
