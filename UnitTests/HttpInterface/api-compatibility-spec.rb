@@ -16,7 +16,7 @@ describe ArangoDB do
       doc.code.should eq(200)
       compatibility = doc.parsed_response['compatibility']
       compatibility.should be_kind_of(Integer)
-      compatibility.should eq(20300)
+      compatibility.should eq(20400)
     end
     
     it "tests the compatibility value when a broken header is set" do
@@ -28,7 +28,7 @@ describe ArangoDB do
         doc.code.should eq(200)
         compatibility = doc.parsed_response['compatibility']
         compatibility.should be_kind_of(Integer)
-        compatibility.should eq(20300)
+        compatibility.should eq(20400)
       end
     end
     
@@ -124,12 +124,12 @@ describe ArangoDB do
     end
     
     it "tests the compatibility value when a too high version is set" do
-      doc = ArangoDB.get("/_admin/echo", :headers => { "x-arango-version" => "2.4" })
+      doc = ArangoDB.get("/_admin/echo", :headers => { "x-arango-version" => "2.5" })
 
       doc.code.should eq(200)
       compatibility = doc.parsed_response['compatibility']
       compatibility.should be_kind_of(Integer)
-      compatibility.should eq(20400)
+      compatibility.should eq(20500)
     end
 
   end
