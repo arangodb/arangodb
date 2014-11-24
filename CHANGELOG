@@ -6,6 +6,8 @@ v2.4.0 (XXXX-XX-XX)
 
 * added AQL functions `CALL` and `APPLY` to dynamically call other functions
 
+* fixed AQL optimizer cost estimation for LIMIT node
+
 
 v2.3.0 (2014-11-18)
 -------------------
