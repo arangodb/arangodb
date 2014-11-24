@@ -130,7 +130,14 @@ char const* NameFromCid (TRI_replication_dump_t* dump,
 
   if (name != nullptr) {
     // insert into cache
-    dump->_collectionNames.insert(it, std::make_pair(cid, std::string(name)));
+    try {
+      dump->_collectionNames.emplace(std::make_pair(cid, std::string(name)));
+    }
+    catch (...) {
+      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, name);
+      return nullptr;
+    }
+
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, name);
 
     // and look it up again
@@ -267,6 +274,14 @@ static int AppendContext (TRI_replication_dump_t* dump,
   APPEND_UINT64(dump->_buffer, databaseId);
   APPEND_STRING(dump->_buffer, "\",\"cid\":\"");
   APPEND_UINT64(dump->_buffer, collectionId);
+ 
+  // also include collection name 
+  char const* cname = NameFromCid(dump, collectionId);
+  if (cname != nullptr) {
+    APPEND_STRING(dump->_buffer, "\",\"cname\":\"");
+    APPEND_STRING(dump->_buffer, cname);
+  }
+
   APPEND_STRING(dump->_buffer, "\",");
 
   return TRI_ERROR_NO_ERROR;
