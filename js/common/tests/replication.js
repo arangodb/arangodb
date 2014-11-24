@@ -1420,10 +1420,7 @@ function ReplicationLoggerSuite () {
       assertTrue(actual);
 
       var entry = getLogEntries(tick, [ 2200, 2201, 2202 ]);
-      assertEqual(2, entry.length);
-      assertEqual(2200, entry[0].type);
-      assertEqual(2201, entry[1].type);
-      assertEqual(entry[0].tid, entry[1].tid);
+      assertEqual(0, entry.length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1533,6 +1530,7 @@ function ReplicationLoggerSuite () {
           action: function (params) {
             var c2 = require("internal").db._collection(params.cn2);
 
+            // we're using a wrong collection here
             c2.save({ "test" : 2, "_key": "abc" });
           },
           params: {
@@ -1545,12 +1543,7 @@ function ReplicationLoggerSuite () {
       }
 
       var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300 ]);
-      assertEqual(2, entry.length);
-
-      assertEqual(2200, entry[0].type);
-      assertEqual(2202, entry[1].type);
-
-      assertEqual(entry[0].tid, entry[1].tid);
+      assertEqual(0, entry.length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
