@@ -1,6 +1,6 @@
 {
     "swaggerVersion": "1.1", 
-    "apiVersion": "2.3.0-beta2", 
+    "apiVersion": "2.4.0-alpha1", 
     "apis": [
         {
             "path": "api-docs/aqlfunction.{format}", 
@@ -81,6 +81,10 @@
         {
             "path": "api-docs/system.{format}", 
             "description": "system API"
+        }, 
+        {
+            "path": "api-docs/tasks.{format}", 
+            "description": "tasks API"
         }, 
         {
             "path": "api-docs/transaction.{format}", 

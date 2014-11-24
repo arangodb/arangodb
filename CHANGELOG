@@ -1,4 +1,4 @@
-v2.4.0 (XXXX-XX-XX)
+v2.4.0-alpha1 (XXXX-XX-XX)
 -------------------
 
 * fixed replication of `_graphs` collection

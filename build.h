@@ -1,1 +1,1 @@
-#define TRI_VERSION "2.3.0-beta2"
+#define TRI_VERSION "2.4.0-alpha1"
