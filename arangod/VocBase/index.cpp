@@ -106,32 +106,6 @@ void TRI_InitIndex (TRI_index_t* idx,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not an index needs full coverage
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_NeedsFullCoverageIndex (TRI_idx_type_e type) {
-  switch (type) {
-    case TRI_IDX_TYPE_PRIMARY_INDEX:
-    case TRI_IDX_TYPE_EDGE_INDEX:
-    case TRI_IDX_TYPE_HASH_INDEX:
-    case TRI_IDX_TYPE_SKIPLIST_INDEX:
-    case TRI_IDX_TYPE_FULLTEXT_INDEX:
-    case TRI_IDX_TYPE_GEO1_INDEX:
-    case TRI_IDX_TYPE_GEO2_INDEX:
-    case TRI_IDX_TYPE_CAP_CONSTRAINT:
-      return true;
-    case TRI_IDX_TYPE_BITARRAY_INDEX:       // removed
-    case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX: // removed
-    case TRI_IDX_TYPE_UNKNOWN:
-      return false;
-  }
-
-  // unknown type...
-  TRI_ASSERT(false);
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the name of an index type
 ////////////////////////////////////////////////////////////////////////////////
 
