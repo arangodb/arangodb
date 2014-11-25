@@ -386,9 +386,15 @@ function NewAqlReplaceORWithINTestSuite () {
         + "FILTER i.a.b == a || i.a.b == b RETURN i";
 
       isRuleUsed(query, {});
-
     },
-    
+
+    testFiresLongAttributes : function () {
+      var query = 
+        "FOR x IN " + replace.name() + " FILTER x.a.b.c.d == 1 || x.a.b.c.d == 2 || 3 == x.a.b.c.d RETURN x";
+
+      isRuleUsed(query, {});
+    },
+
     testDudCommonConstant1: function () {
       var query = "LET x = {a:@a} FOR v IN " + replace.name() 
         + " FILTER x.a == v.value || x.a == v._key RETURN v._key";
@@ -421,17 +427,52 @@ function NewAqlReplaceORWithINTestSuite () {
       ruleIsNotUsed(query, {});
     },
 
+    testDudDifferentAttributes2: function () {
+      var query = 
+        "FOR x IN " + replace.name() + " FILTER x.val1 == 1 || x == 2 RETURN x";
+
+      ruleIsNotUsed(query, {});
+    },
+
+    testDudDifferentAttributes3: function () {
+      var query = 
+        "FOR x IN " + replace.name() + " FILTER x.val1 == 1 || 2 == x.val2 RETURN x";
+
+      ruleIsNotUsed(query, {});
+    },
+
+    testDudDifferentAttributes4: function () {
+      var query = 
+        "FOR x IN " + replace.name() + " FILTER x.val1 == 1 || 2 == x.val2 || 3 == x.val1 RETURN x";
+
+      ruleIsNotUsed(query, {});
+    },
+
+    testDudDifferentAttributes5: function () {
+      var query = 
+        "FOR x IN " + replace.name() + " FILTER x.val1 == 1 || 2 == x.val1 || 3 == x.val1 || 4 == x.val2 RETURN x";
+
+      ruleIsNotUsed(query, {});
+    },
+
+    testDudDifferentAttributesWithBool1: function () {
+      var query = 
+        "FOR x IN " + replace.name() + " FILTER x.val1 == 1 || x == true RETURN x";
+
+      ruleIsNotUsed(query, {});
+    },
+
+    testDudDifferentAttributesWithBool2: function () {
+      var query = 
+        "FOR x IN " + replace.name() + " FILTER x.val1 == 1 || x.val2 == true RETURN x";
+
+      ruleIsNotUsed(query, {});
+    },
+
     testDudDifferentVariables : function () {
       var query = 
         "FOR y IN " + replace.name() + " FOR x IN " + replace.name() 
         + " FILTER x.val1 == 1 || y.val1 == 2 RETURN x";
-
-      ruleIsNotUsed(query, {});
-    },
-    
-    testDudDifferentAttributes2: function () {
-      var query = 
-        "FOR x IN " + replace.name() + " FILTER x.val1 == 1 || x == 2 RETURN x";
 
       ruleIsNotUsed(query, {});
     },
@@ -469,8 +510,14 @@ function NewAqlReplaceORWithINTestSuite () {
 
     testDudAttributeIsList: function () {
       var query = 
-        "LET x = {a:1,b:2} FOR v IN " + replace.name() 
+        "LET x = {a:1, b:2} FOR v IN " + replace.name() 
         + " FILTER v.x[0] == x.a || v.x[1] == 3 SORT v.value RETURN v.value";
+      ruleIsNotUsed(query, {});
+    },
+
+    testDudNested: function () {
+      var query = 
+        "FOR i IN [ { att1: 'foo', att2: true }, { att1: 'bar', att2: false } ] FILTER i.att1 == 'bar' || i.att2 == true RETURN i";
       ruleIsNotUsed(query, {});
     }
   };
