@@ -660,9 +660,6 @@ static bool areDisjointRangeInfos (RangeInfo* lhs, RangeInfo* rhs) {
       return true;
     }
   } 
-  else if (lhs->_highConst.isDefined() || rhs->_lowConst.isDefined()) {
-    return false;
-  }
   
   //else compare lhs low > rhs high 
 
@@ -673,6 +670,19 @@ static bool areDisjointRangeInfos (RangeInfo* lhs, RangeInfo* rhs) {
     return (LoHi == 1) || 
       (LoHi == 0 && (! lhs->_lowConst.inclusive() ||! rhs->_highConst.inclusive()));
   } 
+  // in this case, either:
+  // a) lhs.hi defined and rhs.lo undefined; or
+  // b) lhs.hi undefined and rhs.lo defined;
+  // 
+  // and either:
+  //
+  // c) lhs.lo defined and rhs.hi undefined
+  // d) lhs.lo undefined and rhs.hi defined.
+  //
+  // a+c) lhs = (x,y) and rhs = (-infty, +infty) -> FALSE
+  // a+d) lhs = (-infty, x) and rhs = (-infty, y) -> FALSE
+  // b+c) lhs = (x, infty) and rhs = (y, infty) -> FALSE
+  // b+d) lhs = (-infty, infty) -> FALSE
   return false; 
 }
 
@@ -712,7 +722,6 @@ RangeInfo* RangeInfoMapVec::differenceRangeInfo (RangeInfo* newRi) {
   }
   return newRi;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief  differenceIndexOrAndRangeInfo: analogue of differenceRangeInfo
