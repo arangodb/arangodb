@@ -5,6 +5,11 @@ v2.3.1 (2014-11-28)
 
 * fixed issue #1126
 
+* added more optimizations of constants values in AQL FILTER conditions
+
+* fixed invalid or-to-in optimization for FILTERs containing comparisons
+  with boolean values
+
 * fixed replication of `_graphs` collection
 
 * added AQL list functions `PUSH`, `POP`, `UNSHIFT`, `SHIFT`, `REMOVE_VALUES`,
