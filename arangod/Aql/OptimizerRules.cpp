@@ -2608,7 +2608,7 @@ struct CommonNodeFinder {
   bool find (AstNode const*  node, 
              AstNodeType     condition,
              AstNode const*& commonNode,
-             std::string&    commonName ) {
+             std::string&    commonName) {
   
     if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
       return (find(node->getMember(0), condition, commonNode, commonName) 
@@ -2728,7 +2728,7 @@ struct OrToInConverter {
   }
 
   bool canConvertExpression (AstNode const* node) {
-    if(finder.find(node, NODE_TYPE_OPERATOR_BINARY_EQ, commonNode, commonName)){
+    if (finder.find(node, NODE_TYPE_OPERATOR_BINARY_EQ, commonNode, commonName)){
       return canConvertExpressionWalker(node);
     }
     return false;
@@ -2762,9 +2762,7 @@ struct OrToInConverter {
              node->type == NODE_TYPE_INDEXED_ACCESS) {
       // get a string representation of the node for comparisons 
       return (node->toString() == commonName);
-    } else if (node->isBoolValue()) {
-      return true;
-    }
+    } 
 
     return false;
   }
