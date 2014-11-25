@@ -969,7 +969,8 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                     
                         if (range != map->end()) { 
                           if (! range->second.is1ValueRangeInfo()) {
-                            indexOrCondition.at(k).clear();   // not usable
+                            indexOrCondition.clear();   // not usable
+                            break;
                           }
                           else {
                             indexOrCondition.at(k).push_back(range->second);
@@ -982,7 +983,8 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
 
                           if (range != map->end()) {
                             if (! range->second.is1ValueRangeInfo()) {
-                              indexOrCondition.at(k).clear();   // not usable
+                              indexOrCondition.clear();   // not usable
+                              break;
                             }
                             else {
                               indexOrCondition.at(k).push_back(range->second);
@@ -992,13 +994,13 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                       }
                     }
                     else if (idx->type == TRI_IDX_TYPE_HASH_INDEX) {
-                      for (size_t k = 0; k < validPos.size(); k++) {
+                      for (size_t k = 0; k < validPos.size() && !indexOrCondition.empty(); k++) {
                         auto map = _rangeInfoMapVec->find(var->name, validPos[k]);
                         for (size_t j = 0; j < idx->fields.size(); j++) {
                           auto range = map->find(idx->fields[j]);
                        
                           if (! range->second.is1ValueRangeInfo()) {
-                            indexOrCondition.at(k).clear();   // not usable
+                            indexOrCondition.clear();   // not usable
                             break;
                           }
                           indexOrCondition.at(k).push_back(range->second);
@@ -1012,7 +1014,8 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                         auto range = map->find(std::string(TRI_VOC_ATTRIBUTE_FROM));
                         if (range != map->end()) { 
                           if (! range->second.is1ValueRangeInfo()) {
-                            indexOrCondition.at(k).clear();   // not usable
+                            indexOrCondition.clear();
+                            break; // not usable
                           }
                           else {
                             indexOrCondition.at(k).push_back(range->second);
@@ -1025,7 +1028,8 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
 
                           if (range != map->end()) {
                             if (! range->second.is1ValueRangeInfo()) {
-                              indexOrCondition.at(k).clear();   // not usable
+                              indexOrCondition.clear();   // not usable
+                              break;
                             }
                             else {
                               indexOrCondition.at(k).push_back(range->second);
@@ -1055,10 +1059,12 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                     // check if there are any non-empty positions in
                     // indexOrCondition 
                     bool isEmpty = true;
-                    for (size_t k = 0; k < validPos.size(); k++) {
-                      if (! indexOrCondition.at(k).empty()) {
-                        isEmpty = false;
-                        break;
+                    if (!indexOrCondition.empty()) {
+                      for (size_t k = 0; k < validPos.size(); k++) {
+                        if (! indexOrCondition.at(k).empty()) {
+                          isEmpty = false;
+                          break;
+                        }
                       }
                     }
 
