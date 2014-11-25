@@ -159,7 +159,6 @@ namespace triagens {
         }
       
         void assign (RangeInfoBound const& copy) {
-          _defined = false;
           _bound = copy._bound.copy(); 
           _include = copy._include;
           _isConstant = copy._isConstant;

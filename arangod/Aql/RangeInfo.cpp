@@ -693,7 +693,7 @@ static bool areDisjointRangeInfos (RangeInfo* lhs, RangeInfo* rhs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 RangeInfo* RangeInfoMapVec::differenceRangeInfo (RangeInfo* newRi) {
-
+  
   for (auto rim: _rangeInfoMapVec) {
     RangeInfo* oldRi = rim->find(newRi->_var, newRi->_attr);
     if (oldRi != nullptr && ! areDisjointRangeInfos(oldRi, newRi)) {
@@ -701,12 +701,30 @@ RangeInfo* RangeInfoMapVec::differenceRangeInfo (RangeInfo* newRi) {
       if (contained == -1) { 
         // oldRi is a subset of newRi, erase the old RI 
         // continuing finding the difference of the new one and existing RIs
-        rim->erase(oldRi);
+        if (oldRi->isConstant()) {
+          rim->erase(oldRi);
+        } 
+        else {
+          // unassign _lowConst and _highConst
+          RangeInfoBound rib;
+          oldRi->_lowConst.assign(rib);
+          oldRi->_highConst.assign(rib);
+        }
       } 
       else if (contained == 1) {
         // newRi is a subset of oldRi, disregard new
-        return nullptr; // i.e. do nothing on return of this function
-      } else {
+        if (newRi->isConstant()) {
+          return nullptr; // i.e. do nothing on return of this function
+        } 
+        else {
+          // unassign _lowConst and _highConst
+          RangeInfoBound rib;
+          newRi->_lowConst.assign(rib);
+          newRi->_highConst.assign(rib);
+          return newRi;
+        }
+      } 
+      else {
         // oldRi and newRi have non-empty intersection
         int LoLo = CompareRangeInfoBound(oldRi->_lowConst, newRi->_lowConst, -1);
         if (LoLo == 1) { // replace low bound of new with high bound of old
@@ -738,13 +756,29 @@ static RangeInfo* differenceIndexOrAndRangeInfo (
         if (contained == -1) { 
           // oldRi is a subset of newRi, erase the old RI 
           // continuing finding the difference of the new one and existing RIs
-          oldRi.invalidate();
-          // FIXME want to do andCond.erase(andCond.begin()+i) but can't
+          if (oldRi.isConstant()) {
+            oldRi.invalidate();
+          } 
+          else {
+            // unassign _lowConst and _highConst
+            RangeInfoBound rib;
+            oldRi._lowConst.assign(rib);
+            oldRi._highConst.assign(rib);
+          }
         } 
         else if (contained == 1) {
           // newRi is a subset of oldRi, disregard new
-          return nullptr; // i.e. do nothing on return of this function
-        } else {
+          if (newRi->isConstant()) {
+            return nullptr; // i.e. do nothing on return of this function
+          } else {
+            // unassign _lowConst and _highConst
+            RangeInfoBound rib;
+            newRi->_lowConst.assign(rib);
+            newRi->_highConst.assign(rib);
+            return newRi;
+          }
+        } 
+        else {
           // oldRi and newRi have non-empty intersection
           int LoLo = CompareRangeInfoBound(oldRi._lowConst, newRi->_lowConst, -1);
           if (LoLo == 1) { // replace low bound of new with high bound of old
