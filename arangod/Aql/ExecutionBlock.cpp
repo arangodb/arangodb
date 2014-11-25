@@ -975,41 +975,43 @@ bool IndexRangeBlock::initRanges () {
   if (_anyBoundVariable) {
     //auto newCondition = std::unique_ptr<IndexOrCondition>(new IndexOrCondition());
     auto newCondition = new IndexOrCondition();
+    
+    size_t posInExpressions = 0;
+      
+    // The following are needed to evaluate expressions with local data from
+    // the current incoming item:
+    AqlItemBlock* cur = _buffer.front();
+    vector<AqlValue>& data(cur->getData());
+    vector<TRI_document_collection_t const*>& docColls(cur->getDocumentCollections());
+    RegisterId nrRegs = cur->getNrRegs();
+    
+
+    // must have a V8 context here to protect Expression::execute()
+    auto engine = _engine;
+    triagens::basics::ScopeGuard guard{
+      [&engine]() -> void { 
+        engine->getQuery()->enterContext(); 
+      },
+      [&]() -> void {
+        
+        // must invalidate the expression now as we might be called from
+        // different threads
+        if (ExecutionEngine::isDBServer() || ExecutionEngine::isCoordinator()) {
+          for (auto e : _allVariableBoundExpressions) {
+            e->invalidate();
+          }
+        }
+         
+        engine->getQuery()->exitContext(); 
+      }
+    };
+
+    v8::HandleScope scope; // do not delete this!
+
     for (size_t i = 0; i < _condition->size(); i++) {
 
-      // The following are needed to evaluate expressions with local data from
-      // the current incoming item:
-      AqlItemBlock* cur = _buffer.front();
-      vector<AqlValue>& data(cur->getData());
-      vector<TRI_document_collection_t const*>& docColls(cur->getDocumentCollections());
-      RegisterId nrRegs = cur->getNrRegs();
-      
       //TODO memleak?
       IndexAndCondition newAnd;
-
-      // must have a V8 context here to protect Expression::execute()
-      auto engine = _engine;
-      triagens::basics::ScopeGuard guard{
-        [&engine]() -> void { 
-          engine->getQuery()->enterContext(); 
-        },
-        [&]() -> void {
-          
-          // must invalidate the expression now as we might be called from
-          // different threads
-          if (ExecutionEngine::isDBServer() || ExecutionEngine::isCoordinator()) {
-            for (auto e : _allVariableBoundExpressions) {
-              e->invalidate();
-            }
-          }
-           
-          engine->getQuery()->exitContext(); 
-        }
-      };
-
-      v8::HandleScope scope; // do not delete this!
-
-      size_t posInExpressions = 0;
       for (auto r : en->_ranges[i]) {
         // First create a new RangeInfo containing only the constant 
         // low and high bound of r:
