@@ -1267,11 +1267,18 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
               // Found a multiple attribute access of a variable and an
               // expression which does not involve that variable:
               for (size_t i = 0; i < rhs->numMembers(); i++) {
-                rimv->emplace_back(new RangeInfoMap(enumCollVar->name, 
-                                                    attr.substr(0, attr.size() - 1), 
-                                                    RangeInfoBound(rhs->getMember(i), true),
-                                                    RangeInfoBound(rhs->getMember(i), true), 
-                                                    true));
+                RangeInfo* ri = new RangeInfo(enumCollVar->name, 
+                                              attr.substr(0, attr.size() - 1), 
+                                              RangeInfoBound(rhs->getMember(i), true),
+                                              RangeInfoBound(rhs->getMember(i), true), 
+                                              true);
+                ri = rimv->differenceRangeInfo(ri);
+                if (ri != nullptr) { // ri == nullptr implies that 
+                                     // the ri is a subset of existing one. 
+                  RangeInfoMap* rim = new RangeInfoMap();
+                  rim->insert(*ri);
+                  rimv->emplace_back(rim);
+                }
               }
               enumCollVar = nullptr;
               attr.clear();
