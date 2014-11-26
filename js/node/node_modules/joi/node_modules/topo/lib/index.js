@@ -86,11 +86,14 @@ internals.Topo.prototype._sort = function () {
 
     // Expand intermediary graph
 
-    Object.keys(graph).forEach(function (node) {
-
+    var graphNodes = Object.keys(graph);
+    for (i = 0, il = graphNodes.length; i < il; ++i) {
+        var node = graphNodes[i];
         var expandedGroups = [];
-        for (var groupIndex in graph[node]) {
-            var group = graph[node][groupIndex];
+
+        var graphNodeItems = Object.keys(graph[node]);
+        for (j = 0, jl = graphNodeItems.length; j < jl; ++j) {
+            var group = graph[node][graphNodeItems[j]];
             groups[group] = groups[group] || [];
             groups[group].forEach(function (d) {
 
@@ -98,29 +101,31 @@ internals.Topo.prototype._sort = function () {
             });
         }
         graph[node] = expandedGroups;
-    });
+    }
 
     // Merge intermediary graph using graphAfters into final graph
 
     var afterNodes = Object.keys(graphAfters);
-    for (var n in afterNodes) {
-        var group = afterNodes[n];
+    for (i = 0, il = afterNodes.length; i < il; ++i) {
+        var group = afterNodes[i];
 
-        for (var itemIndex in groups[group]) {
-            var node = groups[group][itemIndex];
-            graph[node] = graph[node].concat(graphAfters[group]);
+        if (groups[group]) {
+            for (j = 0, jl = groups[group].length; j < jl; ++j) {
+                var node = groups[group][j];
+                graph[node] = graph[node].concat(graphAfters[group]);
+            }
         }
     }
 
     // Compile ancestors
 
     var ancestors = {};
-    var graphNodes = Object.keys(graph);
-    for (var i in graphNodes) {
+    graphNodes = Object.keys(graph);
+    for (i = 0, il = graphNodes.length; i < il; ++i) {
         var node = graphNodes[i];
         var children = graph[node];
 
-        for (var j = 0, jl = children.length; j < jl; ++j) {
+        for (j = 0, jl = children.length; j < jl; ++j) {
             ancestors[children[j]] = (ancestors[children[j]] || []).concat(node);
         }
     }
@@ -130,12 +135,12 @@ internals.Topo.prototype._sort = function () {
     var visited = {};
     var sorted = [];
 
-    for (var i = 0, il = this._items.length; i < il; ++i) {
+    for (i = 0, il = this._items.length; i < il; ++i) {
         var next = i;
 
         if (ancestors[i]) {
             next = null;
-            for (var j = 0, jl = this._items.length; j < jl; ++j) {
+            for (j = 0, jl = this._items.length; j < jl; ++j) {
                 if (visited[j] === true) {
                     continue;
                 }

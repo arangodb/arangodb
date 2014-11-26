@@ -1,4 +1,4 @@
-var expect = require('expect.js');
+var expect = require('chai').expect;
 
 // diagnoses
 var diagnoses = {
@@ -53,7 +53,9 @@ var diagnoses = {
   ISEMAIL_ERR_UNCLOSEDDOMLIT: 147,
   ISEMAIL_ERR_FWS_CRLF_X2: 148,
   ISEMAIL_ERR_FWS_CRLF_END: 149,
-  ISEMAIL_ERR_CR_NO_LF: 150
+  ISEMAIL_ERR_CR_NO_LF: 150,
+  ISEMAIL_ERR_UNKNOWN_TLD: 160,
+  ISEMAIL_ERR_TOOSHORT_TLD: 161
 };
 
 // expectations
@@ -230,8 +232,13 @@ var expectations = [
   ['test@iana(comment)iana.org', diagnoses.ISEMAIL_ERR_ATEXT_AFTER_CFWS],
   ['(comment\r\n comment)test@iana.org', diagnoses.ISEMAIL_CFWS_FWS],
   ['test@org', diagnoses.ISEMAIL_RFC5321_TLD],
-  ['test@test.com', diagnoses.ISEMAIL_DNSWARN_NO_MX_RECORD],
+  ['test@example.com', diagnoses.ISEMAIL_DNSWARN_NO_MX_RECORD],
   ['test@nic.no', diagnoses.ISEMAIL_DNSWARN_NO_RECORD]
+];
+
+var tldExpectations = [
+  ['shouldbe@invalid', diagnoses.ISEMAIL_ERR_UNKNOWN_TLD],
+  ['shouldbe@example.com', diagnoses.ISEMAIL_VALID]
 ];
 
 describe('isEmail', function() {
@@ -245,5 +252,28 @@ describe('isEmail', function() {
         done();
       });
     });
+  });
+
+  tldExpectations.forEach(function(obj, i) {
+    var email = obj[0], result = obj[1];
+    it('should handle tld test ' + (i + 1), function() {
+      var res = isEmail(email, {errorLevel: 0, tldWhitelist: {com: true}});
+      expect(res).to.equal(result);
+
+      res = isEmail(email, {errorLevel: 0, tldWhitelist: ['com']});
+      expect(res).to.equal(result);
+    });
+  });
+
+  it('should handle domain atom test 1', function() {
+    var res = isEmail('shouldbe@invalid', {errorLevel: 0, minDomainAtoms: 2});
+
+    expect(res).to.equal(diagnoses.ISEMAIL_ERR_TOOSHORT_TLD);
+  });
+
+  it('should handle domain atom test 2', function() {
+    var res = isEmail('valid@example.com', {errorLevel: 0, minDomainAtoms: 2});
+
+    expect(res).to.equal(diagnoses.ISEMAIL_VALID);
   });
 });
