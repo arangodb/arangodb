@@ -81,6 +81,75 @@ function optimizerIndexesTestSuite () {
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 
+    testUseIndexJoin : function () {
+      var query = "FOR i IN " + c.name() + " FILTER i.value == 8 FOR j IN " + c.name() + " FILTER i.value == j.value RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var indexes = 0;
+      var nodeTypes = plan.nodes.map(function(node) {
+        if (node.type === "IndexRangeNode") {
+          ++indexes;
+        }
+        return node.type;
+      });
+      assertEqual(2, indexes);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual([ 8 ], results.json, query);
+      assertEqual(0, results.stats.scannedFull);
+      assertTrue(results.stats.scannedIndex > 0);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseIndexJoinJoin : function () {
+      var query = "FOR i IN " + c.name() + " FILTER i.value == 8 FOR j IN " + c.name() + " FILTER i._key == j._key RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var indexes = 0;
+      var nodeTypes = plan.nodes.map(function(node) {
+        if (node.type === "IndexRangeNode") {
+          ++indexes;
+        }
+        return node.type;
+      });
+      assertEqual(2, indexes);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual([ 8 ], results.json, query);
+      assertEqual(0, results.stats.scannedFull);
+      assertTrue(results.stats.scannedIndex > 0);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseIndexJoinJoinJoin : function () {
+      var query = "FOR i IN " + c.name() + " FILTER i.value == 8 FOR j IN " + c.name() + " FILTER i.value == j.value FOR k IN " + c.name() + " FILTER j.value == k.value RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var indexes = 0;
+      var nodeTypes = plan.nodes.map(function(node) {
+        if (node.type === "IndexRangeNode") {
+          ++indexes;
+        }
+        return node.type;
+      });
+      assertEqual(3, indexes);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual([ 8 ], results.json, query);
+      assertEqual(0, results.stats.scannedFull);
+      assertTrue(results.stats.scannedIndex > 0);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
     testUseIndexSubquery : function () {
       var query = "LET results = (FOR i IN " + c.name() + " FILTER i.value >= 10 SORT i.value LIMIT 10 RETURN i.value) RETURN results";
 
