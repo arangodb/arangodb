@@ -916,7 +916,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             
             bool valid = true;     // are all the range infos valid?
 
-            for(auto x: *map) {
+            for (auto x: *map) {
               valid &= x.second.isValid(); 
               if (! valid) {
                 break;
@@ -1074,6 +1074,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
     void buildRangeInfo (AstNode const* node, 
                          Variable const*& enumCollVar,
                          std::string& attr) {
+
       if (node->type == NODE_TYPE_REFERENCE) {
         auto x = static_cast<Variable*>(node->getData());
         auto setter = _plan->getVarSetBy(x->id);
@@ -1098,6 +1099,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
         auto lhs = node->getMember(0);
         auto rhs = node->getMember(1);
+
         if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
           buildRangeInfo(rhs, enumCollVar, attr);
           if (enumCollVar != nullptr) {
