@@ -1,5 +1,7 @@
 !CHAPTER Vertex Methods
 
+**Warning: This Chapter is Deprecated**
+
 `vertex.addInEdge( peer, id)`
 
 Creates a new edge from peer to vertex and returns the edge object. The identifier id must be a unique identifier or null.
