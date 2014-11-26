@@ -1054,7 +1054,10 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                         node->collection(), node->outVariable(), idx, rangeInfo, false);
                       newPlan->registerNode(newNode);
                       newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
-                      _opt->addPlan(newPlan, _level, true);
+                      // re-inject the new plan with the previous rule so it gets passed through
+                      // use-index-range optimization again
+                      // this allows to enable even more indexes
+                      _opt->addPlan(newPlan, Optimizer::previousRule(_level), true);
                     }
                     catch (...) {
                       delete newPlan;
