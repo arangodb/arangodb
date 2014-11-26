@@ -31,7 +31,13 @@
 
 #include "Basics/locks.h"
 
-#ifdef TRI_HAVE_MACOS_MEM_STATS
+#ifndef BSD
+#ifdef __FreeBSD__
+#define BSD
+#endif
+#endif
+
+#if (defined(BSD) || defined(TRI_HAVE_MACOS_MEM_STATS))
 #include <sys/types.h>
 #include <sys/sysctl.h>
 #endif
@@ -342,7 +348,7 @@ static void DestroyStatisticsList (TRI_statistics_list_t* list) {
 /// @brief gets the physical memory
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_HAVE_MACOS_MEM_STATS
+#if (defined(BSD) || defined(TRI_HAVE_MACOS_MEM_STATS))
 
 static uint64_t GetPhysicalMemory () {
   int mib[2];
@@ -351,7 +357,11 @@ static uint64_t GetPhysicalMemory () {
 
   // Get the Physical memory size
   mib[0] = CTL_HW;
+#ifdef TRI_HAVE_MACOS_MEM_STATS
   mib[1] = HW_MEMSIZE;
+#else
+  mib[1] = HW_PHYSMEM; // The bytes of physical memory. (kenel + user space)
+#endif
   length = sizeof(int64_t);
   sysctl(mib, 2, &physicalMemory, &length, nullptr, 0);
 
