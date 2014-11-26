@@ -1019,12 +1019,28 @@ void ExecutionPlan::checkLinkage () {
 struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
     std::unordered_set<Variable const*> _usedLater;
     std::unordered_set<Variable const*> _valid;
-    std::unordered_map<VariableId, ExecutionNode*> _varSetBy;
+    std::unordered_map<VariableId, ExecutionNode*>* _varSetBy;
+    bool const _ownsVarSetBy;
 
-    VarUsageFinder () {
+    VarUsageFinder () 
+      : _varSetBy(new std::unordered_map<VariableId, ExecutionNode*>()),
+        _ownsVarSetBy(true) {
+      
+      TRI_ASSERT(_varSetBy != nullptr);
     }
-
+    
+    explicit VarUsageFinder (std::unordered_map<VariableId, ExecutionNode*>* varSetBy) 
+      : _varSetBy(varSetBy),
+        _ownsVarSetBy(false) {
+        
+      TRI_ASSERT(_varSetBy != nullptr);
+    }
+    
     ~VarUsageFinder () {
+      if (_ownsVarSetBy) {
+        TRI_ASSERT(_varSetBy != nullptr);
+        delete _varSetBy;
+      }
     }
 
     bool before (ExecutionNode* en) override final {
@@ -1043,14 +1059,14 @@ struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
       auto&& setHere = en->getVariablesSetHere();
       for (auto v : setHere) {
         _valid.insert(v);
-        _varSetBy.emplace(std::make_pair(v->id, en));
+        _varSetBy->emplace(std::make_pair(v->id, en));
       }
       en->setVarsValid(_valid);
       en->setVarUsageValid();
     }
 
     bool enterSubquery (ExecutionNode*, ExecutionNode* sub) override final {
-      VarUsageFinder subfinder;
+      VarUsageFinder subfinder(_varSetBy);
       subfinder._valid = _valid;  // need a copy for the subquery!
       sub->walk(&subfinder);
       
@@ -1066,7 +1082,7 @@ struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
 void ExecutionPlan::findVarUsage () {
   ::VarUsageFinder finder;
   root()->walk(&finder);
-  _varSetBy = finder._varSetBy;
+  _varSetBy = *finder._varSetBy;
   _varUsageComputed = true;
 }
 
