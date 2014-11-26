@@ -27,19 +27,19 @@ An example document:
 }
 ```
 
-All documents contain special attributes: the document handle in *_id*, the
-document's unique key in *_key* and and the etag aka [document revision](../Glossary/README.html#document_revision) in
-*_rev*. The value of the *_key* attribute can be specified by the user when
-creating a document.  *_id* and *_key* values are immutable once the document
-has been created. The *_rev* value is maintained by ArangoDB autonomously.
+All documents contain special attributes: the document handle in `_id`, the
+document's unique key in `_key` and and the etag aka [document revision](../Glossary/README.html#document_revision) in
+`_rev`. The value of the `_key` attribute can be specified by the user when
+creating a document. `_id` and `_key` values are immutable once the document
+has been created. The `_rev` value is maintained by ArangoDB autonomously.
 
 !SUBSECTION Document Handle
 
-A document handle uniquely identifies a document in the database. It is a string and consists of the collection's name and the document key (_key attribute) separated by /.
+A document handle uniquely identifies a document in the database. It is a string and consists of the collection's name and the document key (`_key` attribute) separated by `/`.
 
 !SUBSECTION Document Key
 
-A document key uniquely identifies a document in the collection it it stored in. It can and should be used by clients when specific documents are searched. Document keys are stored in the _key attribute of documents. The key values are automatically indexed by ArangoDB in a collection's primary index. Thus looking up a document by its key is regularly a fast operation. The _key value of a document is immutable once the document has been created.
+A document key uniquely identifies a document in the collection it it stored in. It can and should be used by clients when specific documents are searched. Document keys are stored in the `_key` attribute of documents. The key values are automatically indexed by ArangoDB in a collection's primary index. Thus looking up a document by its key is regularly a fast operation. The _key value of a document is immutable once the document has been created.
 By default, ArangoDB will auto-generate a document key if no _key attribute is specified, and use the user-specified _key otherwise.
 
 This behavior can be changed on a per-collection level by creating collections with the keyOptions attribute.
