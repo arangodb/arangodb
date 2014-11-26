@@ -1,6 +1,12 @@
 v2.4.0 (XXXX-XX-XX)
 -------------------
 
+* fixed non-working subquery index optimizations
+
+* do not restrict summary of Foxx applications to 60 characters
+
+* fixed display of "required" path parameters in Foxx application documentation
+
 * added more optimizations of constants values in AQL FILTER conditions
 
 * fixed invalid or-to-in optimization for FILTERs containing comparisons
@@ -14,6 +20,9 @@ v2.4.0 (XXXX-XX-XX)
 * added AQL functions `CALL` and `APPLY` to dynamically call other functions
 
 * fixed AQL optimizer cost estimation for LIMIT node
+
+* prevent Foxx queues from permanently writing to the journal even when
+  server is idle
 
 
 v2.3.0 (2014-11-18)
