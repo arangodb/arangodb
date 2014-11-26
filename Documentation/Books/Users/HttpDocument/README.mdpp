@@ -10,7 +10,7 @@ An example document:
 
 ```js
 {
-  "_id" : "myusers/2345678",
+  "_id" : "myusers/3456789",
   "_key" : "3456789",
   "_rev" : "3456789",
   "firstName" : "Hugo",
