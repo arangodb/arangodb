@@ -589,7 +589,6 @@
         "Query is operating..."
       );
 
-
       $.ajax({
         type: "POST",
         url: "/_api/cursor",
@@ -598,7 +597,7 @@
         processData: false,
         success: function (data) {
           var warnings = "";
-          if (data.extra.warnings.length > 0) {
+          if (data.extra && data.extra.warnings && data.extra.warnings.length > 0) {
             warnings += "Warnings:" + "\r\n\r\n";
             data.extra.warnings.forEach(function(w) {
               warnings += "[" + w.code + "], '" + w.message + "'\r\n";
