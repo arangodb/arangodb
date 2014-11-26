@@ -315,6 +315,10 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
 * `interchange-adjacent-enumerations`: will appear if a query contains multiple 
   *FOR* statements whose order were permuted. Permutation of *FOR* statements is
   performed because it may enable further optimizations by other rules.
+* `replace-or-with-in`: will appear if multiple *OR*-combined equality conditions 
+  on the same variable or attribute were replaced with an *IN* condition.
+* `remove-redundant-or`: will appear if multiple *OR* conditions for the same variable
+  or attribute were combined into a single condition.
 * `use-index-range`: will appear if an index can be used to iterate over a collection.
   As a consequence, an *EnumerateCollectionNode* was replaced with an 
   *IndexRangeNode* in the plan.
