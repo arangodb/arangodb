@@ -1873,7 +1873,7 @@ TRI_log_appender_t* TRI_CreateLogAppenderSyslog (char const* name,
     value = atoi(facility);
   }
   else {
-    CODE * ptr = TRI_facilitynames;
+    CODE * ptr = (CODE *)TRI_facilitynames;
 
     while (ptr->c_name != 0) {
       if (strcmp(ptr->c_name, facility) == 0) {

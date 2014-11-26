@@ -92,7 +92,7 @@ void AggregatorGroup::reset () {
     delete (*it);
   }
   groupBlocks.clear();
-  groupValues[0].erase();
+  groupValues[0].erase();   // FIXMEFIXME warum nur 0???
 }
 
 void AggregatorGroup::addValues (AqlItemBlock const* src,
@@ -2462,7 +2462,7 @@ int AggregateBlock::getOrSkipSome (size_t atLeast,
   }
 
   while (skipped < atMost) {
-    // read the next input tow
+    // read the next input row
 
     bool newGroup = false;
     if (_currentGroup.groupValues[0].isEmpty()) {
