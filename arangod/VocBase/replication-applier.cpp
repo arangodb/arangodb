@@ -331,7 +331,7 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
   value = TRI_LookupArrayJson(json, "ignoreErrors");
 
   if (TRI_IsNumberJson(value)) {
-    config->_ignoreErrors = value->_value._number;
+    config->_ignoreErrors = (uint64_t) value->_value._number;
   }
   else if (TRI_IsBooleanJson(value)) {
     if (value->_value._boolean) {
