@@ -171,11 +171,31 @@ int triagens::aql::CompareAstNodes (AstNode const* lhs, AstNode const* rhs) {
   auto rType = GetNodeCompareType(rhs);
 
   if (lType != rType) {
-    return static_cast<int>(lType) - static_cast<int>(rType);
+    int diff = static_cast<int>(lType) - static_cast<int>(rType);
+    TRI_ASSERT_EXPENSIVE(diff != 0);
+
+    if (diff < 0) {
+      return -1;
+    }
+    else if (diff > 0) {
+      return 1;
+    }
+    TRI_ASSERT(false);
+    return 0;
   }
 
-  if (lType == TRI_JSON_BOOLEAN) {
-    return static_cast<int>(lhs->getIntValue() - rhs->getIntValue());
+  if (lType == TRI_JSON_NULL) {
+    return 0;
+  }
+  else if (lType == TRI_JSON_BOOLEAN) {
+    int diff = static_cast<int>(lhs->getIntValue() - rhs->getIntValue());
+    if (diff != 0) {
+      if (diff < 0) {
+        return -1; 
+      }
+      return 1; 
+    }
+    return 0;
   }
   else if (lType == TRI_JSON_NUMBER) {
     double d = lhs->getDoubleValue() - rhs->getDoubleValue();
