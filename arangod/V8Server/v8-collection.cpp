@@ -3798,8 +3798,8 @@ static v8::Handle<v8::Value> JS_RemoveVocbase (v8::Arguments const& argv) {
 /// @startDocuBlock documentsDocumentName
 /// `db._document(document)`
 ///
-/// This method finds a document given its identifier.  It returns the document
-/// if the document exists. An error is throw if no document with the given
+/// This method finds a document given its identifier. It returns the document
+/// if the document exists. An error is thrown if no document with the given
 /// identifier exists, or if the specified *_rev* value does not match the
 /// current revision of the document.
 ///
