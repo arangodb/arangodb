@@ -178,7 +178,7 @@ Verify that your system contains
 * the GNU readline library (development package)
 * Go, version 1.2.2
 
-Most Linux systems already supply RPMs or DPKGs for these packages. 
+Most Linux systems already supply RPMs or DEPs for these packages. 
 Some distributions, for example Ubuntu 12.04 or Centos 5, provide only very out-dated 
 versions of compilers, FLEX, BISON, and/or the V8 engine. In that case you need to compile 
 newer versions of the programs and/or libraries.
