@@ -1149,7 +1149,7 @@ void ExecutionPlan::replaceNode (ExecutionNode* oldNode,
 
   std::vector<ExecutionNode*> deps = oldNode->getDependencies();
     // Intentional copy
-  
+ 
   for (auto* x : deps) {
     newNode->addDependency(x);
     oldNode->removeDependency(x);
@@ -1157,7 +1157,7 @@ void ExecutionPlan::replaceNode (ExecutionNode* oldNode,
   
   auto oldNodeParents = oldNode->getParents();  // Intentional copy
   for (auto* oldNodeParent : oldNodeParents) {
-    if(! oldNodeParent->replaceDependency(oldNode, newNode)){
+    if (! oldNodeParent->replaceDependency(oldNode, newNode)){
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                   "Could not replace dependencies of an old node.");
     }
