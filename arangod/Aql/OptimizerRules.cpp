@@ -2957,7 +2957,6 @@ struct RemoveRedundantOr {
   }
 
   int isCompatibleBound (AstNodeType type, AstNode const* value) {
-    
     if ((comparison == NODE_TYPE_OPERATOR_BINARY_LE
           || comparison == NODE_TYPE_OPERATOR_BINARY_LT) &&
         (type == NODE_TYPE_OPERATOR_BINARY_LE
@@ -2975,8 +2974,7 @@ struct RemoveRedundantOr {
 
   // returns false if the existing value is better and true if the input value is
   // better
-  bool compareBounds(AstNodeType type, AstNode const* value, int lowhigh) { 
-
+  bool compareBounds (AstNodeType type, AstNode const* value, int lowhigh) { 
     int cmp = CompareAstNodes(bestValue, value);
 
     if (cmp == 0 && (isInclusiveBound(comparison) != isInclusiveBound(type))) {
@@ -3061,9 +3059,6 @@ struct RemoveRedundantOr {
       // get a string representation of the node for comparisons 
       return (node->toString() == commonName);
     } 
-    else if (node->isBoolValue()) {
-      return true;
-    }
 
     return false;
   }
