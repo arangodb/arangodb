@@ -618,7 +618,9 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
   }
 
   json("id", triagens::basics::Json(static_cast<double>(id())));
-  json("estimatedCost", triagens::basics::Json(getCost()));
+  size_t nrItems = 0;
+  json("estimatedCost", triagens::basics::Json(getCost(nrItems)));
+  json("estimatedNrItems", triagens::basics::Json(static_cast<double>(nrItems)));
 
   if (verbose) {
     json("depth", triagens::basics::Json(static_cast<double>(_depth)));
@@ -1000,6 +1002,15 @@ void SingletonNode::toJsonHelper (triagens::basics::Json& nodes,
   nodes(json);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the cost of a singleton is 1, it produces one item only
+////////////////////////////////////////////////////////////////////////////////
+        
+double SingletonNode::estimateCost (size_t& nrItems) const {
+  nrItems = 1;
+  return 1.0;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                methods of EnumerateCollectionNode
 // -----------------------------------------------------------------------------
@@ -1165,6 +1176,20 @@ std::vector<EnumerateCollectionNode::IndexMatch>
   return out;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the cost of an enumerate collection node is a multiple of the cost of
+/// its unique dependency
+////////////////////////////////////////////////////////////////////////////////
+        
+double EnumerateCollectionNode::estimateCost (size_t& nrItems) const { 
+  size_t incoming;
+  double depCost = _dependencies.at(0)->getCost(incoming);
+  size_t count = _collection->count();
+  nrItems = incoming * count;
+  return depCost + count * incoming; 
+  // We do a full collection scan for each incoming item.
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                      methods of EnumerateListNode
 // -----------------------------------------------------------------------------
@@ -1215,6 +1240,25 @@ ExecutionNode* EnumerateListNode::clone (ExecutionPlan* plan,
 
   return static_cast<ExecutionNode*>(c);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the cost of an enumerate list node
+////////////////////////////////////////////////////////////////////////////////
+        
+double EnumerateListNode::estimateCost (size_t& nrItems) const {
+  size_t incoming = 0;
+  double depCost = _dependencies.at(0)->getCost(incoming);
+  nrItems = 100*incoming;
+  return depCost + 100.0 * incoming; 
+  // Well, what can we say? The length of the list can in general
+  // only be determined at runtime... If we were to know that this
+  // list is constant, then we could maybe multiply by the length
+  // here... For the time being, we assume 100
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                         methods of IndexRangeNode
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson, for IndexRangeNode
@@ -1326,27 +1370,31 @@ ExecutionNode::IndexMatch IndexRangeNode::MatchesIndex (IndexMatchVec const& pat
 /// @brief the cost of an index range node is a multiple of the cost of
 /// its unique dependency
 ////////////////////////////////////////////////////////////////////////////////
-        
-double IndexRangeNode::estimateCost () const { 
-  // the cost of the enumerate collection node we are replacing . . .
-  double const dependencyCost = _dependencies.at(0)->getCost();
-  double const oldCost = static_cast<double>(_collection->count()) * dependencyCost; 
+ 
+double IndexRangeNode::estimateCost (size_t& nrItems) const { 
+  size_t incoming = 0;
+  double const dependencyCost = _dependencies.at(0)->getCost(incoming);
+  size_t docCount = _collection->count();
 
   TRI_ASSERT(! _ranges.empty());
   
   if (_index->type == TRI_IDX_TYPE_PRIMARY_INDEX) {
-    return dependencyCost;
+    nrItems = incoming;
+    return dependencyCost + nrItems;
   }
   
   if (_index->type == TRI_IDX_TYPE_EDGE_INDEX) {
-    return oldCost / 1000;
+    nrItems = incoming * docCount / 1000;
+    return dependencyCost + nrItems;
   }
   
   if (_index->type == TRI_IDX_TYPE_HASH_INDEX) {
     if (_index->unique) {
-      return dependencyCost;
+      nrItems = incoming;
+      return dependencyCost + nrItems;
     }
-    return oldCost / 1000;
+    nrItems = incoming * docCount / 1000;
+    return dependencyCost + nrItems;
   }
 
   if (_index->type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
@@ -1354,22 +1402,24 @@ double IndexRangeNode::estimateCost () const {
     
     if (count == 0) {
       // no ranges? so this is unlimited -> has to be more expensive
-      return oldCost;
+      nrItems = incoming * docCount;
+      return dependencyCost + nrItems;
     }
 
     if (_index->unique && 
         count == _index->fields.size()) {
       if (_ranges.at(0).back().is1ValueRangeInfo()) {
         // unique index, all attributes compared using eq (==) operator
-        return dependencyCost;
+        nrItems = incoming;
+        return dependencyCost + nrItems;
       }
     }
 
-    double cost = oldCost;
+    double cost = static_cast<double>(docCount) * incoming;
     for (auto x: _ranges.at(0)) { //only doing the 1-d case so far
       if (x.is1ValueRangeInfo()) {
         // equality lookup
-        cost /= 100;
+        cost /= 100.0;
         continue;
       }
 
@@ -1385,11 +1435,11 @@ double IndexRangeNode::estimateCost () const {
 
       if (hasLowerBound && hasUpperBound) {
         // both lower and upper bounds defined
-        cost /= 10;
+        cost /= 10.0;
       }
       else if (hasLowerBound || hasUpperBound) {
         // either only low or high bound defined
-        cost /= 2;
+        cost /= 2.0;
       }
 
       // each bound (const and dynamic) counts!
@@ -1404,11 +1454,13 @@ double IndexRangeNode::estimateCost () const {
       }
     }
 
-    return cost;
+    nrItems = static_cast<size_t>(cost);
+    return dependencyCost + cost;
   }
 
   // no index
-  return dependencyCost;
+  nrItems = incoming * docCount;
+  return dependencyCost + nrItems;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1479,6 +1531,18 @@ void LimitNode::toJsonHelper (triagens::basics::Json& nodes,
   nodes(json);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief estimateCost
+////////////////////////////////////////////////////////////////////////////////
+        
+double LimitNode::estimateCost (size_t& nrItems) const {
+  size_t incoming = 0;
+  double depCost = _dependencies.at(0)->getCost(incoming);
+  nrItems = (std::min)(_limit, (std::max)(static_cast<size_t>(0), 
+                                          incoming - _offset));
+  return depCost + nrItems;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                        methods of CalculationNode
 // -----------------------------------------------------------------------------
@@ -1525,6 +1589,15 @@ ExecutionNode* CalculationNode::clone (ExecutionPlan* plan,
   CloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief estimateCost
+////////////////////////////////////////////////////////////////////////////////
+        
+double CalculationNode::estimateCost (size_t& nrItems) const {
+  double depCost = _dependencies.at(0)->getCost(nrItems);
+  return depCost + nrItems;
 }
 
 // -----------------------------------------------------------------------------
@@ -1575,6 +1648,17 @@ ExecutionNode* SubqueryNode::clone (ExecutionPlan* plan,
 
 void SubqueryNode::replaceOutVariable(Variable const* var) {
   _outVariable = var;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief estimateCost
+////////////////////////////////////////////////////////////////////////////////
+        
+double SubqueryNode::estimateCost (size_t& nrItems) const {
+  double depCost = _dependencies.at(0)->getCost(nrItems);
+  size_t dummy;
+  double subCost = _subquery->getCost(dummy);
+  return depCost + nrItems * subCost;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1720,6 +1804,24 @@ ExecutionNode* FilterNode::clone (ExecutionPlan* plan,
   return static_cast<ExecutionNode*>(c);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief estimateCost
+////////////////////////////////////////////////////////////////////////////////
+        
+double FilterNode::estimateCost (size_t& nrItems) const {
+  double depCost = _dependencies.at(0)->getCost(nrItems);
+  // We are pessimistic here by not reducing the nrItems. However, in the
+  // worst case the filter does not reduce the items at all. Furthermore,
+  // no optimiser rule introduces FilterNodes, thus it is not important
+  // that they appear to lower the costs. Note that contrary to this,
+  // an IndexRangeNode does lower the costs, it also has a better idea
+  // to what extent the number of items is reduced. On the other hand it
+  // is important that a FilterNode produces additional costs, otherwise
+  // the rule throwing away a FilterNode that is already covered by an
+  // IndexRangeNode cannot reduce the costs.
+  return depCost + nrItems;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                               methods of SortNode
 // -----------------------------------------------------------------------------
@@ -1848,6 +1950,18 @@ SortInformation SortNode::getSortInformation (ExecutionPlan* plan,
   return result;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief estimateCost
+////////////////////////////////////////////////////////////////////////////////
+        
+double SortNode::estimateCost (size_t& nrItems) const {
+  double depCost = _dependencies.at(0)->getCost(nrItems);
+  if (nrItems <= 3.0) {
+    return depCost + nrItems;
+  }
+  return depCost + nrItems * log(nrItems);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                          methods of AggregateNode
 // -----------------------------------------------------------------------------
@@ -1970,6 +2084,21 @@ std::vector<Variable const*> AggregateNode::getVariablesUsedHere () const {
   return vv;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief estimateCost
+////////////////////////////////////////////////////////////////////////////////
+        
+double AggregateNode::estimateCost (size_t& nrItems) const {
+  double depCost = _dependencies.at(0)->getCost(nrItems);
+  // As in the FilterNode case, we are pessimistic here by not reducing the
+  // nrItems, since this is the worst case. We have to look at all incoming
+  // items, and in particular in the COLLECT ... INTO ... case, we have
+  // to actually hand on all data anyway, albeit not as separate items.
+  // Nevertheless, the optimiser does not do much with AggregateNodes
+  // and thus this overestimation does not really matter.
+  return depCost + nrItems;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                             methods of ReturnNode
 // -----------------------------------------------------------------------------
@@ -2019,6 +2148,15 @@ ExecutionNode* ReturnNode::clone (ExecutionPlan* plan,
   return static_cast<ExecutionNode*>(c);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief estimateCost
+////////////////////////////////////////////////////////////////////////////////
+        
+double ReturnNode::estimateCost (size_t& nrItems) const {
+  double depCost = _dependencies.at(0)->getCost(nrItems);
+  return depCost + nrItems;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  ModificationNode
 // -----------------------------------------------------------------------------
@@ -2046,6 +2184,19 @@ void ModificationNode::toJsonHelper (triagens::basics::Json& json,
       ("collection", triagens::basics::Json(_collection->getName()));
 
   _options.toJson(json, zone);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief estimateCost
+/// Note that all the modifying nodes use this estimateCost method which is
+/// why we can make it final here.
+////////////////////////////////////////////////////////////////////////////////
+        
+double ModificationNode::estimateCost (size_t& nrItems) const {
+  size_t incoming = 0;
+  double depCost = _dependencies.at(0)->getCost(incoming);
+  nrItems = 0;
+  return depCost + incoming;
 }
 
 
@@ -2342,6 +2493,15 @@ void NoResultsNode::toJsonHelper (triagens::basics::Json& nodes,
   nodes(json);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief estimateCost, the cost of a NoResults is nearly 0
+////////////////////////////////////////////////////////////////////////////////
+        
+double NoResultsNode::estimateCost (size_t& nrItems) const {
+  nrItems = 0;
+  return 0.5;  // just to make it non-zero
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                             methods of RemoteNode
 // -----------------------------------------------------------------------------
@@ -2382,6 +2542,24 @@ void RemoteNode::toJsonHelper (triagens::basics::Json& nodes,
   nodes(json);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief estimateCost
+////////////////////////////////////////////////////////////////////////////////
+        
+double RemoteNode::estimateCost (size_t& nrItems) const {
+  double depCost;
+  if (_dependencies.size() == 1) {
+    // This will usually be the case, however, in the context of the
+    // instantiation it is possible that there is no dependency...
+    depCost = _dependencies[0]->estimateCost(nrItems);
+    return depCost + nrItems;   // we need to process them all
+  }
+  // We really should not get here, but if so, do something bordering on 
+  // sensible:
+  nrItems = 1;
+  return 1.0;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                            methods of ScatterNode
 // -----------------------------------------------------------------------------
@@ -2416,6 +2594,17 @@ void ScatterNode::toJsonHelper (triagens::basics::Json& nodes,
   nodes(json);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief estimateCost
+////////////////////////////////////////////////////////////////////////////////
+        
+double ScatterNode::estimateCost (size_t& nrItems) const {
+  double depCost = _dependencies[0]->getCost(nrItems);
+  std::vector<std::string> shardIds = _collection->shardIds();
+  size_t nrShards = shardIds.size();
+  return depCost + nrItems * nrShards;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                         methods of DistributeNode
 // -----------------------------------------------------------------------------
@@ -2447,6 +2636,15 @@ void DistributeNode::toJsonHelper (triagens::basics::Json& nodes,
 
   // And add it:
   nodes(json);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief estimateCost
+////////////////////////////////////////////////////////////////////////////////
+        
+double DistributeNode::estimateCost (size_t& nrItems) const {
+  double depCost = _dependencies[0]->getCost(nrItems);
+  return depCost + nrItems;
 }
 
 // -----------------------------------------------------------------------------
@@ -2492,6 +2690,15 @@ void GatherNode::toJsonHelper (triagens::basics::Json& nodes,
 
   // And add it:
   nodes(json);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief estimateCost
+////////////////////////////////////////////////////////////////////////////////
+        
+double GatherNode::estimateCost (size_t& nrItems) const {
+  double depCost = _dependencies[0]->getCost(nrItems);
+  return depCost + nrItems;
 }
 
 // Local Variables:

@@ -648,6 +648,201 @@ function ahuacatlQueryCollectionTestSuite () {
 
       var actual = getQueryResults("FOR u in " + users.name() + " SORT u.name RETURN { name : u.name, from: u._from, to: u._to }");
       assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test querying attributes
+////////////////////////////////////////////////////////////////////////////////
+    
+    testAttributesQuery1 : function () {
+      var expected = [ 
+        [ 
+          "Abigail", 
+          "Abigail" 
+        ], 
+        [ 
+          "Alexander", 
+          "Alexander" 
+        ], 
+        [ 
+          "Anthony", 
+          "Anthony" 
+        ], 
+        [ 
+          "Chloe", 
+          "Chloe" 
+        ], 
+        [ 
+          "Daniel", 
+          "Daniel" 
+        ], 
+        [ 
+          "Diego", 
+          "Diego" 
+        ], 
+        [ 
+          "Emma", 
+          "Emma" 
+        ], 
+        [ 
+          "Ethan", 
+          "Ethan" 
+        ], 
+        [ 
+          "Eva", 
+          "Eva" 
+        ], 
+        [ 
+          "Fred", 
+          "Fred" 
+        ], 
+        [ 
+          "Isabella", 
+          "Isabella" 
+        ], 
+        [ 
+          "Jacob", 
+          "Jacob" 
+        ], 
+        [ 
+          "Jim", 
+          "Jim" 
+        ], 
+        [ 
+          "John", 
+          "John" 
+        ], 
+        [ 
+          "Madison", 
+          "Madison" 
+        ], 
+        [ 
+          "Mariah", 
+          "Mariah" 
+        ], 
+        [ 
+          "Mary", 
+          "Mary" 
+        ], 
+        [ 
+          "Michael", 
+          "Michael" 
+        ], 
+        [ 
+          "Olivia", 
+          "Olivia" 
+        ], 
+        [ 
+          "Sophia", 
+          "Sophia" 
+        ] 
+      ];
+
+      var actual = getQueryResults("FOR u in " + users.name() + " SORT u.name RETURN [ u.name, u['name'] ]");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test querying attributes
+////////////////////////////////////////////////////////////////////////////////
+    
+    testAttributesQuery2 : function () {
+      var expected = [ 
+        [ 
+          "Abigail", 
+          "Abigail" 
+        ], 
+        [ 
+          "Alexander", 
+          "Alexander" 
+        ], 
+        [ 
+          "Anthony", 
+          "Anthony" 
+        ], 
+        [ 
+          "Chloe", 
+          "Chloe" 
+        ], 
+        [ 
+          "Daniel", 
+          "Daniel" 
+        ], 
+        [ 
+          "Diego", 
+          "Diego" 
+        ], 
+        [ 
+          "Emma", 
+          "Emma" 
+        ], 
+        [ 
+          "Ethan", 
+          "Ethan" 
+        ], 
+        [ 
+          "Eva", 
+          "Eva" 
+        ], 
+        [ 
+          "Fred", 
+          "Fred" 
+        ], 
+        [ 
+          "Isabella", 
+          "Isabella" 
+        ], 
+        [ 
+          "Jacob", 
+          "Jacob" 
+        ], 
+        [ 
+          "Jim", 
+          "Jim" 
+        ], 
+        [ 
+          "John", 
+          "John" 
+        ], 
+        [ 
+          "Madison", 
+          "Madison" 
+        ], 
+        [ 
+          "Mariah", 
+          "Mariah" 
+        ], 
+        [ 
+          "Mary", 
+          "Mary" 
+        ], 
+        [ 
+          "Michael", 
+          "Michael" 
+        ], 
+        [ 
+          "Olivia", 
+          "Olivia" 
+        ], 
+        [ 
+          "Sophia", 
+          "Sophia" 
+        ] 
+      ];
+      var actual = getQueryResults("FOR u in " + users.name() + " LET d = 'name' SORT u.name RETURN [ u.name, u[d] ]");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test querying attributes
+////////////////////////////////////////////////////////////////////////////////
+    
+    testAttributesQuery3 : function () {
+      users.save({ "hobbies" : [ "riding", "skating", "swimming" ] });
+
+      var expected = [ [ "riding", "skating", "swimming", null, "swimming" ] ];
+      var actual = getQueryResults("FOR u in " + users.name() + " FILTER HAS(u, 'hobbies') RETURN [ u.hobbies[0], u.hobbies[1], u.hobbies[2], u.hobbies[3], u.hobbies[-1] ]");
+      assertEqual(expected, actual);
     }
 
   };

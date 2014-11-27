@@ -1,6 +1,6 @@
 !CHAPTER Edge
 
-**Warning Deprecated**
+**Warning: This Chapter is Deprecated**
 
 `POST /_api/graph/graph-name/edge-name`*(create edge)*
 

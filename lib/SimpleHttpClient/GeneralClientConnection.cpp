@@ -127,7 +127,18 @@ void GeneralClientConnection::disconnect () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief send data to the endpoint
+/// @brief handleWrite
+/// Write data to endpoint, this uses select to block until some
+/// data can be written. Then it writes as much as it can without further
+/// blocking, not calling select again. What has happened is
+/// indicated by the return value and the bytesWritten variable,
+/// which is always set by this method. The bytesWritten indicates
+/// how many bytes have been written from the buffer
+/// (regardless of whether there was an error or not). The return value
+/// indicates, whether an error has happened. Note that the other side
+/// closing the connection is not considered to be an error! The call to
+/// prepare() does a select and the call to readClientCollection does
+/// what is described here.
 ////////////////////////////////////////////////////////////////////////////////
 
 bool GeneralClientConnection::handleWrite (const double timeout, void* buffer, size_t length, size_t* bytesWritten) {
@@ -141,12 +152,25 @@ bool GeneralClientConnection::handleWrite (const double timeout, void* buffer, s
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read data from endpoint
+/// @brief handleRead
+/// Read data from endpoint, this uses select to block until some
+/// data has arrived. Then it reads as much as it can without further
+/// blocking, using select multiple times. What has happened is
+/// indicated by two flags, the return value and the progress flag,
+/// which is always set by this method. The progress flag indicates
+/// whether or not at least one byte has been appended to the buffer
+/// (regardless of whether there was an error or not). The return value
+/// indicates, whether an error has happened. Note that the other side
+/// closing the connection is not considered to be an error! The call to
+/// prepare() does a select and the call to readClientCollection does
+/// what is described here.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool GeneralClientConnection::handleRead (double timeout, StringBuffer& buffer) {
+bool GeneralClientConnection::handleRead (double timeout, StringBuffer& buffer, bool& progress) {
+  progress = false;
+
   if (prepare(timeout, false)) {
-    return this->readClientConnection(buffer);
+    return this->readClientConnection(buffer, progress);
   }
 
   return false;

@@ -325,7 +325,7 @@ setupIndexQueries();
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleAllSkipLimit}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     var collection = db._create(cn, { waitForSync: true });
+///     var collection = db._create(cn);
 ///     collection.save({"Hello1" : "World1" });
 ///     collection.save({"Hello2" : "World2" });
 ///     collection.save({"Hello3" : "World3" });
@@ -523,7 +523,7 @@ actions.defineHttp({
 ///
 /// In order to use the *near* operator, a geo index must be defined for the
 /// collection. This index also defines which attribute holds the coordinates
-/// for the document.  If you have more then one geo-spatial index, you can use
+/// for the document.  If you have more than one geo-spatial index, you can use
 /// the *geo* field to select a particular index.
 ///
 /// The call expects a JSON object as body with the following attributes:
@@ -566,7 +566,7 @@ actions.defineHttp({
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleNear}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     var products = db._create(cn, { waitForSync: true });
+///     var products = db._create(cn);
 ///     var loc = products.ensureGeoIndex("loc");
 ///     var i;
 ///     for (i = -0.01;  i <= 0.01;  i += 0.002) {
@@ -594,7 +594,7 @@ actions.defineHttp({
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleNearDistance}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     var products = db._create(cn, { waitForSync: true });
+///     var products = db._create(cn);
 ///     var loc = products.ensureGeoIndex("loc");
 ///     var i;
 ///     for (i = -0.01;  i <= 0.01;  i += 0.002) {
@@ -702,7 +702,7 @@ actions.defineHttp({
 ///
 /// In order to use the *within* operator, a geo index must be defined for
 /// the collection. This index also defines which attribute holds the
-/// coordinates for the document.  If you have more then one geo-spatial index,
+/// coordinates for the document.  If you have more than one geo-spatial index,
 /// you can use the *geo* field to select a particular index.
 ///
 /// The call expects a JSON object as body with the following attributes:
@@ -747,7 +747,7 @@ actions.defineHttp({
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleWithin}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     var products = db._create(cn, { waitForSync: true });
+///     var products = db._create(cn);
 ///     var loc = products.ensureGeoIndex("loc");
 ///     var i;
 ///     for (i = -0.01;  i <= 0.01;  i += 0.002) {
@@ -776,7 +776,7 @@ actions.defineHttp({
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleWithinDistance}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     var products = db._create(cn, { waitForSync: true });
+///     var products = db._create(cn);
 ///     var loc = products.ensureGeoIndex("loc");
 ///     var i;
 ///     for (i = -0.01;  i <= 0.01;  i += 0.002) {
@@ -863,6 +863,159 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSA_put_api_simple_within_rectangle
+/// @brief returns all documents of a collection within a rectangle
+///
+/// @RESTHEADER{PUT /_api/simple/within-rectangle, Within rectangle query}
+///
+/// @RESTBODYPARAM{query,string,required}
+/// Contains the query.
+///
+/// @RESTDESCRIPTION
+///
+/// This will find all documents within the specified rectangle (determined by
+/// the given coordinates (*latitude1*, *longitude1*, *latitude2*, *longitude2*). 
+///
+/// In order to use the *within-rectangle* query, a geo index must be defined for
+/// the collection. This index also defines which attribute holds the
+/// coordinates for the document.  If you have more than one geo-spatial index,
+/// you can use the *geo* field to select a particular index.
+///
+/// The call expects a JSON object as body with the following attributes:
+///
+/// - *collection*: The name of the collection to query.
+///
+/// - *latitude1*: The latitude of the first rectangle coordinate.
+///
+/// - *longitude1*: The longitude of the first rectangle coordinate.
+///
+/// - *latitude2*: The latitude of the second rectangle coordinate.
+///
+/// - *longitude2*: The longitude of the second rectangle coordinate.
+///
+/// - *skip*: The number of documents to skip in the query. (optional)
+///
+/// - *limit*: The maximal amount of documents to return. The *skip* is
+///   applied before the *limit* restriction. The default is 100. (optional)
+///
+/// - *geo*: If given, the identifier of the geo-index to use. (optional)
+///
+/// Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{201}
+/// is returned if the query was executed successfully.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the body does not contain a valid JSON representation of a
+/// query. The response body contains an error document in this case.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the collection specified by *collection* is unknown.  The
+/// response body contains an error document in this case.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestSimpleWithinRectangle}
+///     var cn = "products";
+///     db._drop(cn);
+///     var products = db._create(cn);
+///     var loc = products.ensureGeoIndex("loc");
+///     var i;
+///     for (i = -0.01;  i <= 0.01;  i += 0.002) {
+///       products.save({ name : "Name/" + i + "/",loc: [ i, 0 ] });
+///     }
+///     var url = "/_api/simple/within-rectangle";
+///     var body = {
+///       collection: "products", 
+///       latitude1 : 0,
+///       longitude1 : 0,
+///       latitude2 : 0.2,
+///       longitude2 : 0.2,
+///       skip : 1,
+///       limit : 2
+///     };
+///
+///     var response = logCurlRequest('PUT', url, JSON.stringify(body));
+///
+///     assert(response.code === 201);
+///
+///     logJsonResponse(response);
+///     db._drop(cn);
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url: API + "within-rectangle",
+
+  callback : function (req, res) {
+    try {
+      var body = actions.getJsonBody(req, res);
+
+      if (body === undefined) {
+        return;
+      }
+
+      if (req.requestType !== actions.PUT) {
+        actions.resultUnsupported(req, res);
+      }
+      else {
+        var limit = body.limit;
+        var skip = body.skip;
+        var latitude1 = body.latitude1;
+        var longitude1 = body.longitude1;
+        var latitude2 = body.latitude2;
+        var longitude2 = body.longitude2;
+        var geo = body.geo;
+        var name = body.collection;
+        var collection = db._collection(name);
+
+        if (collection === null) {
+          actions.collectionNotFound(req, res, name);
+        }
+        else if (latitude1 === null || latitude1 === undefined) {
+          actions.badParameter(req, res, "latitude1");
+        }
+        else if (longitude1 === null || longitude1 === undefined) {
+          actions.badParameter(req, res, "longitude1");
+        }
+        else if (latitude2 === null || latitude2 === undefined) {
+          actions.badParameter(req, res, "latitude2");
+        }
+        else if (longitude2 === null || longitude2 === undefined) {
+          actions.badParameter(req, res, "longitude2");
+        }
+        else {
+          var result;
+
+          if (geo === null || geo === undefined) {
+            result = collection.withinRectangle(latitude1, longitude1, latitude2, longitude2);
+          }
+          else {
+            result = collection.geo({ id : geo }).withinRectangle(latitude1, longitude1, latitude2, longitude2);
+          }
+
+          if (skip !== null && skip !== undefined) {
+            result = result.skip(skip);
+          }
+
+          if (limit !== null && limit !== undefined) {
+            result = result.limit(limit);
+          }
+
+          createCursorResponse(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize, body.ttl));
+        }
+      }
+    }
+    catch (err) {
+      actions.resultException(req, res, err, undefined, false);
+    }
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSA_put_api_simple_fulltext
 /// @brief returns documents of a collection as a result of a fulltext query
 ///
@@ -915,7 +1068,7 @@ actions.defineHttp({
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleFulltext}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     var products = db._create(cn, { waitForSync: true });
+///     var products = db._create(cn);
 ///     products.save({"text" : "this text contains word" });
 ///     products.save({"text" : "this text also has a word" });
 ///     products.save({"text" : "this is nothing" });
@@ -1032,7 +1185,7 @@ actions.defineHttp({
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleByExample}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     var products = db._create(cn, { waitForSync: true });
+///     var products = db._create(cn);
 ///     products.save({ "a": { "k": 1, "j": 1 }, "i": 1});
 ///     products.save({ "a": { "j": 1 }, "i": 1});
 ///     products.save({ "i": 1});
@@ -1053,7 +1206,7 @@ actions.defineHttp({
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleByExample2}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     var products = db._create(cn, { waitForSync: true });
+///     var products = db._create(cn);
 ///     products.save({ "a": { "k": 1, "j": 1 }, "i": 1});
 ///     products.save({ "a": { "j": 1 }, "i": 1});
 ///     products.save({ "i": 1});
@@ -1074,7 +1227,7 @@ actions.defineHttp({
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleByExample3}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     var products = db._create(cn, { waitForSync: true });
+///     var products = db._create(cn);
 ///     products.save({ "a": { "k": 1, "j": 1 }, "i": 1});
 ///     products.save({ "a": { "j": 1 }, "i": 1});
 ///     products.save({ "i": 1});
@@ -1186,7 +1339,7 @@ actions.defineHttp({
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleFirstExample}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     var products = db._create(cn, { waitForSync: true });
+///     var products = db._create(cn);
 ///     products.save({ "a": { "k": 1, "j": 1 }, "i": 1});
 ///     products.save({ "a": { "j": 1 }, "i": 1});
 ///     products.save({ "i": 1});
@@ -1207,7 +1360,7 @@ actions.defineHttp({
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleFirstExampleNotFound}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     var products = db._create(cn, { waitForSync: true });
+///     var products = db._create(cn);
 ///     products.save({ "a": { "k": 1, "j": 1 }, "i": 1});
 ///     products.save({ "a": { "j": 1 }, "i": 1});
 ///     products.save({ "i": 1});
@@ -1315,7 +1468,7 @@ actions.defineHttp({
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleFirst}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     var products = db._create(cn, { waitForSync: false });
+///     var products = db._create(cn);
 ///     products.save({ "a": { "k": 1, "j": 1 }, "i": 1});
 ///     products.save({ "a": { "j": 1 }, "i": 1});
 ///     products.save({ "i": 1});
@@ -1336,7 +1489,7 @@ actions.defineHttp({
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleFirstSingle}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     var products = db._create(cn, { waitForSync: false });
+///     var products = db._create(cn);
 ///     products.save({ "a": { "k": 1, "j": 1 }, "i": 1});
 ///     products.save({ "a": { "j": 1 }, "i": 1});
 ///     products.save({ "i": 1});
@@ -1434,7 +1587,7 @@ actions.defineHttp({
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleLast}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     var products = db._create(cn, { waitForSync: false });
+///     var products = db._create(cn);
 ///     products.save({ "a": { "k": 1, "j": 1 }, "i": 1});
 ///     products.save({ "a": { "j": 1 }, "i": 1});
 ///     products.save({ "i": 1});
@@ -1455,7 +1608,7 @@ actions.defineHttp({
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleLastSingle}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     var products = db._create(cn, { waitForSync: false });
+///     var products = db._create(cn);
 ///     products.save({ "a": { "k": 1, "j": 1 }, "i": 1});
 ///     products.save({ "a": { "j": 1 }, "i": 1});
 ///     products.save({ "i": 1});
@@ -1557,7 +1710,7 @@ actions.defineHttp({
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleRange}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     var products = db._create(cn, { waitForSync: true });
+///     var products = db._create(cn);
 ///     products.ensureUniqueSkiplist("i");
 ///     products.save({ "i": 1});
 ///     products.save({ "i": 2});
@@ -1689,7 +1842,7 @@ actions.defineHttp({
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleRemoveByExample}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     var products = db._create(cn, { waitForSync: true });
+///     var products = db._create(cn);
 ///     products.save({ "a": { "k": 1, "j": 1 }, "i": 1});
 ///     products.save({ "a": { "j": 1 }, "i": 1});
 ///     products.save({ "i": 1});
@@ -1708,7 +1861,7 @@ actions.defineHttp({
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleRemoveByExample_1}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     var products = db._create(cn, { waitForSync: true });
+///     var products = db._create(cn);
 ///     products.save({ "a": { "k": 1, "j": 1 }, "i": 1});
 ///     products.save({ "a": { "j": 1 }, "i": 1});
 ///     products.save({ "i": 1});
@@ -1728,7 +1881,7 @@ actions.defineHttp({
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleRemoveByExample_2}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     var products = db._create(cn, { waitForSync: true });
+///     var products = db._create(cn);
 ///     products.save({ "a": { "k": 1, "j": 1 }, "i": 1});
 ///     products.save({ "a": { "j": 1 }, "i": 1});
 ///     products.save({ "i": 1});
@@ -1857,7 +2010,7 @@ actions.defineHttp({
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleReplaceByExample}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     var products = db._create(cn, { waitForSync: true });
+///     var products = db._create(cn);
 ///     products.save({ "a": { "k": 1, "j": 1 }, "i": 1});
 ///     products.save({ "a": { "j": 1 }, "i": 1});
 ///     products.save({ "i": 1});
@@ -1881,7 +2034,7 @@ actions.defineHttp({
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleReplaceByExampleWaitForSync}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     var products = db._create(cn, { waitForSync: true });
+///     var products = db._create(cn);
 ///     products.save({ "a": { "k": 1, "j": 1 }, "i": 1});
 ///     products.save({ "a": { "j": 1 }, "i": 1});
 ///     products.save({ "i": 1});
@@ -2020,7 +2173,7 @@ actions.defineHttp({
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleUpdateByExample}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     var products = db._create(cn, { waitForSync: true });
+///     var products = db._create(cn);
 ///     products.save({ "a": { "k": 1, "j": 1 }, "i": 1});
 ///     products.save({ "a": { "j": 1 }, "i": 1});
 ///     products.save({ "i": 1});
@@ -2044,7 +2197,7 @@ actions.defineHttp({
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleUpdateByExample_1}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     var products = db._create(cn, { waitForSync: true });
+///     var products = db._create(cn);
 ///     products.save({ "a": { "k": 1, "j": 1 }, "i": 1});
 ///     products.save({ "a": { "j": 1 }, "i": 1});
 ///     products.save({ "i": 1});

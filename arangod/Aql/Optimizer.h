@@ -151,26 +151,26 @@ namespace triagens {
 //////////////////////////////////////////////////////////////////////////////
 
         // make operations on sharded collections use distribute 
-        distributeInCluster_pass10              = 1000,
+        distributeInCluster_pass10                = 1000,
         
         // make operations on sharded collections use scatter / gather / remote
-        scatterInCluster_pass10                 = 1010,
+        scatterInCluster_pass10                   = 1010,
           
         // move FilterNodes & Calculation nodes inbetween
         // scatter(remote) <-> gather(remote) so they're
         // distributed to the cluster nodes.
-        distributeFilternCalcToCluster_pass10   = 1020,
+        distributeFilternCalcToCluster_pass10     = 1020,
 
         // move SortNodes into the distribution.
         // adjust gathernode to also contain the sort criterions.
-        distributeSortToCluster_pass10          = 1030,
+        distributeSortToCluster_pass10            = 1030,
         
         // try to get rid of a RemoteNode->ScatterNode combination which has
         // only a SingletonNode and possibly some CalculationNodes as dependencies
-        removeUnnecessaryRemoteScatter_pass10  = 1040,
+        removeUnnecessaryRemoteScatter_pass10     = 1040,
 
         //recognise that a RemoveNode can be moved to the shards
-        undistributeRemoveAfterEnumColl_pass10 = 1050
+        undistributeRemoveAfterEnumColl_pass10    = 1050
       };
     
       public:
@@ -196,7 +196,7 @@ namespace triagens {
         struct Rule {
           std::string name;
           RuleFunction func;
-          RuleLevel level;
+          RuleLevel const level;
           bool const canBeDisabled;
 
           Rule () = delete;
@@ -346,12 +346,19 @@ namespace triagens {
 
         };
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
+// -----------------------------------------------------------------------------
+
+      public:
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor, this will initialize the rules database
+/// the .cpp file includes Aql/OptimizerRules.h
+/// and add all methods there to the rules database
 ////////////////////////////////////////////////////////////////////////////////
 
-        Optimizer (size_t);   // the .cpp file includes Aql/OptimizerRules.h
-                              // and add all methods there to the rules database
+        explicit Optimizer (size_t);   
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -359,6 +366,12 @@ namespace triagens {
 
         ~Optimizer () {
         }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief do the optimization, this does the optimization, the resulting
@@ -439,6 +452,21 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static std::vector<std::string> translateRules (std::vector<int> const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the previous rule (sorted by rule levels)
+////////////////////////////////////////////////////////////////////////////////
+
+        static RuleLevel previousRule (RuleLevel level) {
+          auto it = _rules.find(level);
+          if (it == _rules.begin()) {
+            // already at start
+            return level;
+          }
+         
+          --it;
+          return (*it).second.level; 
+        }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods

@@ -439,7 +439,8 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
         name: gN,
         example: v1 + "/v1",
         options: {
-          direction : 'any'
+          direction : 'any',
+          maxIterations : 10000
         }
       };
       var actual = getRawQueryResults(AQL_NEIGHBORS, bindVars);
@@ -957,10 +958,8 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       actual = getQueryResults("FOR e IN GRAPH_NEIGHBORS('bla3', { hugo : true } , {direction : 'outbound', endVertexCollectionRestriction : 'UnitTestsAhuacatlVertex3' }) " +
         "SORT e.vertex._key RETURN e");
 
-      assertEqual(actual[0].vertex._key, "v1");
-      assertEqual(actual[1].vertex._key, "v2");
-      assertEqual(actual[2].vertex._key, "v5");
-      assertEqual(actual[3].vertex._key, "v5");
+      assertEqual(actual[0].vertex._key, "v5");
+      assertEqual(actual[1].vertex._key, "v5");
     }
 
   };

@@ -48,6 +48,12 @@ AQL supports the following functions to operate on list values:
   list is empty or only *null* values are contained in the list, the function will return 
   *null*.
 
+- *PERCENTILE(list, n, method)*: Returns the *n*th percentile of the values in *list*. 
+  This requires the elements in *list* to be numbers. *null* values are ignored. *n* must
+  be between 0 (excluded) and 100 (included). *method* can be *rank* or *interpolation*.
+  The function will return null if the list is empty or only *null* values are contained 
+  in it or the percentile cannot be calculated.
+
 - *VARIANCE_POPULATION(list)*: Returns the population variance of the values in 
   *list*. This requires the elements in *list* to be numbers. *null* values 
   are ignored. If the list is empty or only *null* values are contained in the list, 
@@ -167,6 +173,85 @@ AQL supports the following functions to operate on list values:
   
   Note: Duplicates will be removed.
 
+- *APPEND(list, values, unique)*: Adds all elements from the list *values* to the list
+  specified by *list*. If *unique* is set to true, then only those *values* will be added
+  that are not already contained in *list*.
+  The modified list is returned. All values are added at the end of the list (right side).
+
+      /* [ 1, 2, 3, 5, 6, 9 ] */
+      APPEND([ 1, 2, 3 ], [ 5, 6, 9 ])
+
+      /* [ 1, 2, 3, 4, 5, 9 ] */
+      APPEND([ 1, 2, 3 ], [ 3, 4, 5, 2, 9 ], true)
+
+- *PUSH(list, value, unique)*: Adds *value* to the list specified by *list*. If
+  *unique* is set to true, then *value* is not added if already present in the list. 
+  The modified list is returned. The value is added at the end of the list (right side).
+
+  Note: non-unique elements will not be removed from the list if they were already present 
+  before the call to `PUSH`. The *unique* flag will only control if the value will
+  be added again to the list if already present. To make a list unique, use the `UNIQUE` 
+  function.
+
+      /* [ 1, 2, 3, 4 ] */
+      PUSH([ 1, 2, 3 ], 4)
+
+      /* [ 1, 2, 3 ] */
+      PUSH([ 1, 2, 3 ], 2, true)
+
+- *UNSHIFT(list, value, unique)*: Adds *value* to the list specified by *list*. If
+  *unique* is set to true, then *value* is not added if already present in the list.
+  The modified list is returned. The value is added at the start of the list (left side).
+  
+  Note: non-unique elements will not be removed from the list if they were already present 
+  before the call to `UNSHIFT`. The *unique* flag will only control if the value will
+  be added again to the list if already present. To make a list unique, use the `UNIQUE` 
+  function.
+
+      /* [ 4, 1, 2, 3 ] */
+      UNSHIFT([ 1, 2, 3 ], 4)
+
+      /* [ 1, 2, 3 ] */
+      UNSHIFT([ 1, 2, 3 ], 2, true)
+
+- *POP(list)*: Removes the element at the end (right side) of *list*. The modified list 
+  is returned. If the list is already empty or *null*, an empty list is returned. 
+
+      /* [ 1, 2, 3 ] */
+      POP([ 1, 2, 3, 4 ])
+
+- *SHIFT(list)*: Removes the element at the start (left side) of *list*. The modified list 
+  is returned. If the list is already empty or *null*, an empty list is returned. 
+
+      /* [ 2, 3, 4 ] */
+      SHIFT([ 1, 2, 3, 4 ])
+
+- *REMOVE_VALUE(list, value, limit)*: Removes all occurrences of *value* in the list
+  specified by *list*. If the optional *limit* is specified, only *limit* occurrences
+  will be removed.
+
+      /* [ "b", "b", "c" ] */
+      REMOVE_VALUE([ "a", "b", "b", "a", "c" ], "a")
+
+      /* [ "b", "b", "a", "c" ] */
+      REMOVE_VALUE([ "a", "b", "b", "a", "c" ], "a", 1)
+
+- *REMOVE_VALUES(list, values)*: Removes all occurrences of any of the values specified
+  in list *values* from the list specified by *list*.
+ 
+      /* [ "b", "c", "e", "g" ] */
+      REMOVE_VALUES([ "a", "b", "c", "d", "e", "f", "g" ], [ "a", "f", "d" ])
+
+- *REMOVE_NTH(list, position)*: Removes the element at position *position* from the
+  list specified by *list*. Positions start at 0. Negative positions are supported, 
+  with -1 being the last list element. If *position* is out of bounds, the list is
+  returned unmodified. Otherwise, the modified list is returned.
+ 
+      /* [ "a", "c", "d", "e" ] */
+      REMOVE_NTH([ "a", "b", "c", "d", "e" ], 1)
+
+      /* [ "a", "b", "c", "e" ] */
+      REMOVE_NTH([ "a", "b", "c", "d", "e" ], -2)
 
 Apart from these functions, AQL also offers several language constructs (e.g.
 *FOR*, *SORT*, *LIMIT*, *COLLECT*) to operate on lists.

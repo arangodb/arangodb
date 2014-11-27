@@ -12,6 +12,9 @@
     * [Upgrading in general](Installing/Upgrading.md)
   * [Cluster setup](Installing/Cluster.md)
 <!-- 2 -->
+* [Whats New](NewFeatures/NewFeatures23.md)
+  * [Whats New in 2.2](NewFeatures/NewFeatures22.md)
+  * [Whats New in 2.1](NewFeatures/NewFeatures21.md)
 * [First Steps](FirstSteps/README.md)
   * [Getting Familiar](FirstSteps/GettingFamiliar.md)
   * [The ArangoDB Server](FirstSteps/Arangod.md)
@@ -134,7 +137,6 @@
   * [Example Setup](Replication/ExampleSetup.md)
   * [Replication Limitations](Replication/Limitations.md)
   * [Replication Overhead](Replication/Overhead.md)
-  * [Replication Events](Replication/Events.md)
 <!-- 19 -->
 * [Sharding](Sharding/README.md)
   * [How to try it out](Sharding/HowTo.md)

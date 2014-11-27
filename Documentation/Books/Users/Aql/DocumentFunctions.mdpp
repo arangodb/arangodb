@@ -94,15 +94,14 @@ AQL supports the following functions to operate on document values:
   as a list. If *removeInternal* is set to *true*, then all internal attributes (such 
   as *_id*, *_key* etc.) are removed from the result. 
 
-- *ASSEMBLE(attributes, values)*: Returns a document object assembled from the
+- *ZIP(attributes, values)*: Returns a document object assembled from the
   separate parameters *attributes* and *values*. *attributes* and *values* must be
   lists and must have the same length. The items in *attributes* will be used for
   naming the attributes in the result. The items in *values* will be used as the
   actual values of the result.
 
       /* { "name" : "some user", "active" : true, "hobbies" : [ "swimming", "riding" ] } */
-      ASSEMBLE([ 'name', 'active', 'hobbies' ], 
-               [ 'some user', true, [ 'swimming', 'riding' ] ])
+      ZIP([ 'name', 'active', 'hobbies' ], [ 'some user', true, [ 'swimming', 'riding' ] ])
 
 - *UNSET(document, attributename, ...)*: Removes the attributes *attributename*
   (can be one or many) from *document*. All other attributes will be preserved.

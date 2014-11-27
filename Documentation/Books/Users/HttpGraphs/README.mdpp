@@ -1,6 +1,6 @@
 !CHAPTER HTTP Interface for Graphs
 
-**Warning Deprecated**
+**Warning: This Chapter is Deprecated**
 
 This api is deprecated and will be removed soon.
 Please use [General Graphs](../HttpGharial/README.md) instead.

@@ -1,6 +1,6 @@
 !CHAPTER Vertex Methods
 
-**Warning Deprecated**
+**Warning: This Chapter is Deprecated**
 
 `vertex.addInEdge( peer, id)`
 

@@ -3420,9 +3420,9 @@ static v8::Handle<v8::Value> JS_CheckPointersVocbaseCol (v8::Arguments const& ar
 /// `db._changeMode(<mode>)`
 ///
 /// Sets the server to the given mode.
-/// Possible parameters for mode are:
+/// Possible values for mode are:
 /// - Normal
-/// - ReadOnly
+/// - NoCreate
 ///
 /// `db._changeMode(<mode>)`
 ///

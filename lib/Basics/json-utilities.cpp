@@ -203,9 +203,12 @@ int TRI_CompareValuesJson (TRI_json_t const* lhs,
     return 1;
   }
 
+  TRI_ASSERT(lWeight == rWeight);
+
   // lhs and rhs have equal weights
   if (lhs == nullptr) {
     // both lhs and rhs are NULL, so they are equal
+    TRI_ASSERT(rhs == nullptr);
     return 0;
   }
 

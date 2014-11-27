@@ -523,25 +523,22 @@ namespace triagens {
         std::string _logApplicationName;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief log host name
-/// @startDocuBlock logHostname
-/// `--log.hostname name`
-///
-/// Specifies the *name* of the operating environment (the "hostname") which
-/// should be logged if this item of information is to be logged. Note that
-/// there is no default hostname.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
-
-        std::string _logHostName;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief log facility
 /// @startDocuBlock logFacility
 /// `--log.facility name`
 ///
-/// Specifies the name of the server instance which should be logged if this
-/// item of information is to be logged.
+/// If this option is set, then in addition to output being directed to the
+/// standard output (or to a specified file, in the case that the command line
+/// log.file option was set), log output is also sent to the system logging
+/// facility. The *arg* is the system log facility to use. See syslog for
+/// further details.
+///
+/// The value of *arg* depends on your syslog configuration. In general it
+/// will be *user*. Fatal messages are mapped to *crit*, so if *arg*
+/// is *user*, these messages will be logged as *user.crit*.  Error
+/// messages are mapped to *err*.  Warnings are mapped to *warn*.  Info
+/// messages are mapped to *notice*.  Debug messages are mapped to
+/// *info*.  Trace messages are mapped to *debug*.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -708,28 +705,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::string _logPrefix;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief log level
-/// @startDocuBlock logSyslog
-/// `--log.syslog arg`
-///
-/// If this option is set, then in addition to output being directed to the
-/// standard output (or to a specified file, in the case that the command line
-/// log.file option was set), log output is also sent to the system logging
-/// facility. The *arg* is the system log facility to use. See syslog for
-/// further details.
-///
-/// The value of *arg* depends on your syslog configuration. In general it
-/// will be *user*. Fatal messages are mapped to *crit*, so if *arg*
-/// is *user*, these messages will be logged as *user.crit*.  Error
-/// messages are mapped to *err*.  Warnings are mapped to *warn*.  Info
-/// messages are mapped to *notice*.  Debug messages are mapped to
-/// *info*.  Trace messages are mapped to *debug*.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
-
-        std::string _logSyslog;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log thread identifier

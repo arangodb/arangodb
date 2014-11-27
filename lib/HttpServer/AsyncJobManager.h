@@ -706,7 +706,7 @@ namespace triagens {
 /// @RESTRETURNCODES
 /// 
 /// @RESTRETURNCODE{200}
-/// is returned if the job requested via job-id has been executed successfully 
+/// is returned if the job requested via job-id has been executed 
 /// and its result is ready to fetch.
 ///
 /// @RESTRETURNCODE{204}

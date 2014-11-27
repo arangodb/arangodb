@@ -218,6 +218,7 @@ ERROR_QUERY_MODIFY_IN_SUBQUERY,1574,"modify operation in subquery", "Will be rai
 ERROR_QUERY_COMPILE_TIME_OPTIONS,1575,"query options must be readable at query compile time", "Will be raised when an AQL data-modification query contains options that cannot be figured out at query compile time."
 ERROR_QUERY_EXCEPTION_OPTIONS,1576,"query options expected", "Will be raised when an AQL data-modification query contains an invalid options specification."
 ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION,1577,"collection '%s' used as expression operand", "Will be raised when a collection is used as an operand in an AQL expression."
+ERROR_QUERY_DISALLOWED_DYNAMIC_CALL,1578,"disallowed dynamic call to '%s'", "Will be raised when a dynamic function call is made to a function that cannot be called dynamically."
 
 ################################################################################
 ## AQL user functions
@@ -308,7 +309,7 @@ ERROR_GRAPH_INVALID_FILTER_RESULT,1910,"invalid filter result","Will be raised w
 ERROR_GRAPH_COLLECTION_MULTI_USE,1920,"multi use of edge collection in edge def","an edge collection may only be used once in one edge definition of a graph.",
 ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS,1921,"edge collection already used in edge def"," is already used by another graph in a different edge definition.",
 ERROR_GRAPH_CREATE_MISSING_NAME,1922,"missing graph name","a graph name is required to create a graph.",
-ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION,1923,"malformed edge def","the edge definition is malformed. It has to be an array of objects.",
+ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION,1923,"malformed edge definition","the edge definition is malformed. It has to be an array of objects.",
 ERROR_GRAPH_NOT_FOUND,1924,"graph not found","a graph with this name could not be found.",
 ERROR_GRAPH_DUPLICATE,1925,"graph already exists","a graph with this name already exists.",
 ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST,1926,"collection does not exist"," does not exist.",
