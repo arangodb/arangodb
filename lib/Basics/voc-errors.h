@@ -427,6 +427,9 @@
 /// - 1577: @LIT{collection '\%s' used as expression operand}
 ///    "Will be raised when a collection is used as an operand in an AQL
 ///   expression."
+/// - 1578: @LIT{disallowed dynamic call to '\%s'}
+///    "Will be raised when a dynamic function call is made to a function that
+///   cannot be called dynamically."
 /// - 1580: @LIT{invalid user function name}
 ///   Will be raised when a user function with an invalid name is registered.
 /// - 1581: @LIT{invalid user function code}
@@ -527,7 +530,7 @@
 ///    is already used by another graph in a different edge definition.
 /// - 1922: @LIT{missing graph name}
 ///   a graph name is required to create a graph.
-/// - 1923: @LIT{malformed edge def}
+/// - 1923: @LIT{malformed edge definition}
 ///   the edge definition is malformed. It has to be an array of objects.
 /// - 1924: @LIT{graph not found}
 ///   a graph with this name could not be found.
@@ -2353,6 +2356,17 @@ void TRI_InitialiseErrorMessages ();
 #define TRI_ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION                     (1577)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1578: ERROR_QUERY_DISALLOWED_DYNAMIC_CALL
+///
+/// disallowed dynamic call to '%s'
+///
+///  "Will be raised when a dynamic function call is made to a function that
+/// cannot be called dynamically."
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_DISALLOWED_DYNAMIC_CALL                           (1578)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1580: ERROR_QUERY_FUNCTION_INVALID_NAME
 ///
 /// invalid user function name
@@ -2813,7 +2827,7 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1923: ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION
 ///
-/// malformed edge def
+/// malformed edge definition
 ///
 /// the edge definition is malformed. It has to be an array of objects.
 ////////////////////////////////////////////////////////////////////////////////

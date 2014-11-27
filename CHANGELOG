@@ -1,5 +1,47 @@
-v2.3.0 (XXXX-XX-XX)
+v2.4.0 (XXXX-XX-XX)
 -------------------
+
+* fixed non-working subquery index optimizations
+
+* do not restrict summary of Foxx applications to 60 characters
+
+* fixed display of "required" path parameters in Foxx application documentation
+
+* added more optimizations of constants values in AQL FILTER conditions
+
+* fixed invalid or-to-in optimization for FILTERs containing comparisons
+  with boolean values
+
+* fixed replication of `_graphs` collection
+
+* added AQL list functions `PUSH`, `POP`, `UNSHIFT`, `SHIFT`, `REMOVE_VALUES`,
+  `REMOVE_VALUE`, `REMOVE_NTH` and `APPEND`
+
+* added AQL functions `CALL` and `APPLY` to dynamically call other functions
+
+* fixed AQL optimizer cost estimation for LIMIT node
+
+* prevent Foxx queues from permanently writing to the journal even when
+  server is idle
+
+
+v2.3.0 (2014-11-18)
+-------------------
+
+* fixed syslog flags. `--log.syslog` is deprecated and setting it has no effect, 
+  `--log.facility` now works as described. Application name has been changed from
+  `triagens` to `arangod`. It can be changed using `--log.application`. The syslog
+  will only contain the actual log message. The datetime prefix is omiited.
+
+* fixed deflate in SimpleHttpClient
+
+* fixed issue #1104: edgeExamples broken or changed 
+
+* fixed issue #1103: Error while importing user queries
+
+* fixed issue #1100: AQL: HAS() fails on doc[attribute_name] 
+
+* fixed issue #1098: runtime error when creating graph vertex
 
 * hide system applications in **Applications** tab by default
 
@@ -20,9 +62,13 @@ v2.3.0 (XXXX-XX-XX)
 * added AQL string functions `LTRIM`, `RTRIM`, `FIND_FIRST`, `FIND_LAST`, `SPLIT`, 
   `SUBSTITUTE`
 
-* added AQL functions `ASSEMBLE` and `VALUES`
+* added AQL functions `ZIP`, `VALUES` and `PERCENTILE`
 
 * made AQL functions `CONCAT` and `CONCAT_SEPARATOR` work with list arguments
+
+* dynamically create extra dispatcher threads if required
+
+* fixed issue #1097: schemas in the API docs no longer show required properties as optional
 
 
 v2.3.0-beta2 (2014-11-08)
@@ -117,21 +163,22 @@ v2.3.0-beta1 (2014-11-01)
   V8 contexts created in arangod.
   
   Previously, the number of V8 contexts was equal to the number of server threads
-  (as specified by option `--server.threads`). However, it may be sensible to  
-  create different amounts of threads and V8 contexts. If the option is not
-  specified, the number of V8 contexts created will be equal to the number of 
-  server threads. Thus no change in configuration is required to keep the old
-  behavior.
-  
-  However, the default configuration files shipped with ArangoDB have been changed. 
-  The number of server threads has been increased in the configuration files, and
-  the number of V8 contexts is now explicitly set in the configuration files (to
-  the same value as the number of server threads was set to in 2.2).
+  (as specified by option `--server.threads`). 
 
-  If you are using the default config files or merge them with your local config files, 
-  please review if the higher default number of server threads is okay in your
+  However, it may be sensible to create different amounts of threads and V8
+  contexts. If the option is not specified, the number of V8 contexts created
+  will be equal to the number of server threads. Thus no change in configuration
+  is required to keep the old behavior.
+  
+  If you are using the default config files or merge them with your local config
+  files, please review if the default number of server threads is okay in your
   environment. Additionally you should verify that the number of V8 contexts
   created (as specified in option `--javascript.v8-contexts`) is okay.
+
+* the number of server.threads specified is now the minimum of threads
+  started. There are situation in which threads are waiting for results of
+  distributed database servers. In this case the number of threads is
+  dynamically increased.
 
 * removed index type "bitarray"
 
@@ -307,7 +354,7 @@ v2.3.0-beta1 (2014-11-01)
   storing JavaScript date objects in the database in a sensible manner.
 
 
-v2.2.7 (XXXX-XX-XX)
+v2.2.7 (2014-11-19)
 -------------------
 
 * fixed issue #998: Incorrect application URL for non-system Foxx apps

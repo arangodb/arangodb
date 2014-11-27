@@ -138,9 +138,9 @@ extend(SwaggerDocs.prototype, {
     this.docs.nickname = internal.constructNickname(httpMethod, match);
   },
 
-  addPathParam: function (paramName, description, dataType) {
+  addPathParam: function (paramName, description, dataType, required) {
     'use strict';
-    this.docs.parameters.push(internal.constructPathParamDoc(paramName, description, dataType));
+    this.docs.parameters.push(internal.constructPathParamDoc(paramName, description, dataType, required));
   },
 
   addQueryParam: function (paramName, description, dataType, required, allowMultiple) {
@@ -279,7 +279,7 @@ extend(RequestContext.prototype, {
       } else {
         type = cfg.type;
       }
-      required = Boolean(cfg.flags && cfg.flags.presense === 'required');
+      required = Boolean(cfg.flags && cfg.flags.presence === 'required');
       description = cfg.description;
       if (
         type === 'number' &&
@@ -302,7 +302,7 @@ extend(RequestContext.prototype, {
       throw new Error("Illegal attribute type: " + regexType);
     }
     this.route.url = internal.constructUrlObject(url.match, urlConstraint, url.methods[0]);
-    this.docs.addPathParam(paramName, description, type);
+    this.docs.addPathParam(paramName, description, type, required);
     return this;
   },
 
@@ -435,7 +435,7 @@ extend(RequestContext.prototype, {
 /// return an array of models.
 ///
 /// The behavior of *bodyParam* changes depending on the *rootElement* option
-/// set in the [manifest](../FoxxManifest.md). If it is set to true, it is
+/// set in the [manifest](../Foxx/FoxxManifest.md). If it is set to true, it is
 /// expected that the body is an
 /// object with a key of the same name as the *paramName* argument.
 /// The value of this object is either a single object or in the case of a multi
@@ -490,8 +490,8 @@ extend(RequestContext.prototype, {
 
   summary: function (summary) {
     'use strict';
-    if (summary.length > 60) {
-      throw new Error("Summary can't be longer than 60 characters");
+    if (summary.length > 8192) {
+      throw new Error("Summary can't be longer than 8192 characters");
     }
     this.docs.addSummary(summary);
     return this;

@@ -1081,7 +1081,10 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                           indexOrCondition, false);
                         newPlan->registerNode(newNode);
                         newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
-                        _opt->addPlan(newPlan, _level, true);
+                        // re-inject the new plan with the previous rule so it gets passed through
+                        // use-index-range optimization again
+                        // this allows to enable even more indexes
+                        _opt->addPlan(newPlan, Optimizer::previousRule(_level), true);
                       }
                       catch (...) {
                         delete newPlan;
@@ -1138,6 +1141,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         auto lhs = node->getMember(0);
         auto rhs = node->getMember(1);
         RangeInfoMap* rim = new RangeInfoMap();
+        
         if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
           findVarAndAttr(rhs, enumCollVar, attr);
           if (enumCollVar != nullptr) {
@@ -1849,9 +1853,6 @@ int triagens::aql::removeFiltersCoveredByIndex (Optimizer* opt,
     while (current != nullptr) {
       if (current->getType() == EN::INDEX_RANGE) {
         // found an index range, now check if the expression is covered by the index
-        auto variable = static_cast<IndexRangeNode const*>(current)->outVariable();
-        TRI_ASSERT(variable != nullptr);
-        
         auto const& ranges = static_cast<IndexRangeNode const*>(current)->ranges();
 
         // TODO: this is not prepared for OR conditions
@@ -2699,7 +2700,7 @@ struct CommonNodeFinder {
   bool find (AstNode const*  node, 
              AstNodeType     condition,
              AstNode const*& commonNode,
-             std::string&    commonName ) {
+             std::string&    commonName) {
   
     if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
       return (find(node->getMember(0), condition, commonNode, commonName) 
@@ -2819,7 +2820,7 @@ struct OrToInConverter {
   }
 
   bool canConvertExpression (AstNode const* node) {
-    if(finder.find(node, NODE_TYPE_OPERATOR_BINARY_EQ, commonNode, commonName)){
+    if (finder.find(node, NODE_TYPE_OPERATOR_BINARY_EQ, commonNode, commonName)) {
       return canConvertExpressionWalker(node);
     }
     return false;
@@ -2853,9 +2854,7 @@ struct OrToInConverter {
              node->type == NODE_TYPE_INDEXED_ACCESS) {
       // get a string representation of the node for comparisons 
       return (node->toString() == commonName);
-    } else if (node->isBoolValue()) {
-      return true;
-    }
+    } 
 
     return false;
   }

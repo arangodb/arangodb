@@ -205,7 +205,6 @@ namespace triagens {
 
       std::string toString () const;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a string representation of the AqlValue
 /// this will fail if the value is not a string

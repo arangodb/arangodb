@@ -297,16 +297,16 @@ install-exec-hook:
 ################################################################################
 
 install-data-hook:
-	rm -f $(pkgdataNODEdir)/js/node/node_modules/docco/node_modules/fs-extra/node_modules/ncp/test/fixtures/src/c
-	rm -f $(pkgdataNODEdir)/js/node/node_modules/docco/node_modules/fs-extra/node_modules/ncp/test/fixtures/src/d
-	rm -f $(pkgdataNODEdir)/js/node/node_modules/docco/node_modules/fs-extra/node_modules/ncp/test/fixtures/src/e
-	rm -f $(pkgdataNODEdir)/js/node/node_modules/docco/node_modules/fs-extra/node_modules/ncp/test/fixtures/src/f
-	rm -f $(pkgdataNODEdir)/js/node/node_modules/docco/node_modules/fs-extra/node_modules/ncp/test/fixtures/src/sub/b
-	rm -f $(pkgdataNODEdir)/js/node/node_modules/joi/node_modules/hoek/test/modules/ignore.txt
-	rm -f $(pkgdataNODEdir)/js/node/node_modules/docco/node_modules/fs-extra/node_modules/rimraf/test/setup.sh
-	rm -f $(pkgdataNODEdir)/js/node/node_modules/joi/node_modules/isemail/dns-no-mx.js
-	rm -f $(pkgdataNODEdir)/js/node/node_modules/docco/node_modules/fs-extra/node_modules/rimraf/test/run.sh
-	rm -f $(pkgdataNODEdir)/js/node/node_modules/docco/node_modules/fs-extra/node_modules/rimraf/test/run.sh
+	rm -f $(DESTDIR)$(pkgdataNODEdir)/js/node/node_modules/docco/node_modules/fs-extra/node_modules/ncp/test/fixtures/src/c
+	rm -f $(DESTDIR)$(pkgdataNODEdir)/js/node/node_modules/docco/node_modules/fs-extra/node_modules/ncp/test/fixtures/src/d
+	rm -f $(DESTDIR)$(pkgdataNODEdir)/js/node/node_modules/docco/node_modules/fs-extra/node_modules/ncp/test/fixtures/src/e
+	rm -f $(DESTDIR)$(pkgdataNODEdir)/js/node/node_modules/docco/node_modules/fs-extra/node_modules/ncp/test/fixtures/src/f
+	rm -f $(DESTDIR)$(pkgdataNODEdir)/js/node/node_modules/docco/node_modules/fs-extra/node_modules/ncp/test/fixtures/src/sub/b
+	rm -f $(DESTDIR)$(pkgdataNODEdir)/js/node/node_modules/joi/node_modules/hoek/test/modules/ignore.txt
+	rm -f $(DESTDIR)$(pkgdataNODEdir)/js/node/node_modules/docco/node_modules/fs-extra/node_modules/rimraf/test/setup.sh
+	rm -f $(DESTDIR)$(pkgdataNODEdir)/js/node/node_modules/joi/node_modules/isemail/dns-no-mx.js
+	rm -f $(DESTDIR)$(pkgdataNODEdir)/js/node/node_modules/docco/node_modules/fs-extra/node_modules/rimraf/test/run.sh
+	rm -f $(DESTDIR)$(pkgdataNODEdir)/js/node/node_modules/docco/node_modules/fs-extra/node_modules/rimraf/test/run.sh
 
 
 ## -----------------------------------------------------------------------------

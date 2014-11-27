@@ -209,7 +209,7 @@ var helpArangoCollection = arangosh.createHelpHeadline("ArangoCollection help") 
   '  truncate()                            delete all documents              ' + "\n" +
   '  properties()                          show collection properties        ' + "\n" +
   '  drop()                                delete a collection               ' + "\n" +
-  '  load()                                load a collection into memeory    ' + "\n" +
+  '  load()                                load a collection into memory     ' + "\n" +
   '  unload()                              unload a collection from memory   ' + "\n" +
   '  rename(<new-name>)                    renames a collection              ' + "\n" +
   '  getIndexes()                          return defined indexes            ' + "\n" +

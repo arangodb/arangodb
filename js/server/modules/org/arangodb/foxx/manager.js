@@ -547,6 +547,7 @@ function executeAppScript (app, name, mount, prefix) {
     appContext.options = app._options;
     appContext.configuration = app._options.configuration;
     appContext.basePath = fs.join(root, app._path);
+    appContext.baseUrl = devel ? mount : '/_db/' + encodeURIComponent(arangodb.db._name()) + mount;
 
     appContext.isDevelopment = devel;
     appContext.isProduction = ! devel;
@@ -775,6 +776,7 @@ function routingAalApp (app, mount, options) {
     appContextTempl.configuration = app._options.configuration;
     appContextTempl.collectionPrefix = prefix; // collection prefix
     appContextTempl.basePath = fs.join(root, app._path);
+    appContextTempl.baseUrl = devel ? mount : '/_db/' + encodeURIComponent(arangodb.db._name()) + mount;
 
     appContextTempl.isDevelopment = devel;
     appContextTempl.isProduction = ! devel;

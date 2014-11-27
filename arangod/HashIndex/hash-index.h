@@ -55,19 +55,25 @@ struct TRI_shaped_sub_s;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hash index element
 ///
-/// This structure is used for the elements of an hash index.
+/// This structure is used for the elements of a unique hash index.
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_hash_index_element_s {
-  struct TRI_doc_mptr_t*   _document;
-  struct TRI_shaped_sub_s* _subObjects;
+  struct TRI_doc_mptr_t*                  _document;
+  struct TRI_shaped_sub_s*                _subObjects;
 }
 TRI_hash_index_element_t;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hash index element
+///
+/// This structure is used for the elements of a non-unique hash index.
+////////////////////////////////////////////////////////////////////////////////
+
 typedef struct TRI_hash_index_element_multi_s {
-  struct TRI_doc_mptr_t*   _document;
-  struct TRI_shaped_sub_s* _subObjects;
-  struct TRI_hash_index_element_multi_s* _next;
+  struct TRI_doc_mptr_t*                  _document;
+  struct TRI_shaped_sub_s*                _subObjects;
+  struct TRI_hash_index_element_multi_s*  _next;
 }
 TRI_hash_index_element_multi_t;
 
@@ -79,10 +85,10 @@ typedef struct TRI_hash_index_s {
   TRI_index_t base;
 
   union {
-    TRI_hash_array_t _hashArray;   // the hash array itself, unique values
+    TRI_hash_array_t       _hashArray;   // the hash array itself, unique values
     TRI_hash_array_multi_t _hashArrayMulti;   // the hash array itself, non-unique values
   };
-  TRI_vector_t     _paths;       // a list of shape pid which identifies the fields of the index
+  TRI_vector_t             _paths;       // a list of shape pid which identifies the fields of the index
 }
 TRI_hash_index_t;
 
@@ -118,10 +124,26 @@ void TRI_FreeHashIndex (TRI_index_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locates entries in the hash index given shaped json objects
+/// it is the callers responsibility to destroy the result
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_result_t TRI_LookupHashIndex (TRI_index_t*,
-                                        struct TRI_index_search_value_s*);
+TRI_vector_pointer_t TRI_LookupHashIndex (TRI_index_t*,
+                                          struct TRI_index_search_value_s*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief locates entries in the hash index given shaped json objects
+/// this function uses the state passed to it to return a fragment of the
+/// total result - the next call to the function can resume at the state where
+/// it was left off last
+/// note: state is ignored for unique indexes as there will be at most one
+/// item in the result
+/// it is the callers responsibility to destroy the result
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vector_pointer_t TRI_LookupHashIndex (TRI_index_t*,
+                                          struct TRI_index_search_value_s*,
+                                          struct TRI_hash_index_element_multi_s*&,
+                                          size_t);
 
 #endif
 

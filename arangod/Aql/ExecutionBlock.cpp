@@ -92,7 +92,7 @@ void AggregatorGroup::reset () {
     delete (*it);
   }
   groupBlocks.clear();
-  groupValues[0].erase();
+  groupValues[0].erase();   // FIXMEFIXME warum nur 0???
 }
 
 void AggregatorGroup::addValues (AqlItemBlock const* src,
@@ -851,7 +851,8 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
     _anyBoundVariable(true),
     _skiplistIterator(nullptr),
     _condition(&en->_ranges),
-    _posInRanges(0) {
+    _posInRanges(0),
+    _freeCondition(false) {
    
   std::vector<std::vector<RangeInfo>> const& orRanges = en->_ranges;
   TRI_ASSERT(en->_index != nullptr);
@@ -876,6 +877,10 @@ IndexRangeBlock::~IndexRangeBlock () {
     delete e;
   }
   _allVariableBoundExpressions.clear();
+
+  if (_freeCondition && _condition != nullptr) {
+    delete _condition;
+  }
 }
 
 int IndexRangeBlock::initialize () {
@@ -966,7 +971,9 @@ bool IndexRangeBlock::initRanges () {
   ENTER_BLOCK
   _flag = true; 
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
+  freeCondition();
   _condition = &en->_ranges;
+  _freeCondition = false;
   
   TRI_ASSERT(en->_index != nullptr);
 
@@ -1069,7 +1076,9 @@ bool IndexRangeBlock::initRanges () {
       orCombineIndexOrAndIndexAnd(newCondition, newAnd);
     }
     //_condition = newCondition.release();
+    freeCondition(); 
     _condition = newCondition;
+    _freeCondition = true;
   }
    
   if (en->_index->type == TRI_IDX_TYPE_PRIMARY_INDEX) {
@@ -1086,10 +1095,17 @@ bool IndexRangeBlock::initRanges () {
   else if (en->_index->type == TRI_IDX_TYPE_EDGE_INDEX) {
     return true; //no initialization here!
   }
-  else {
-    TRI_ASSERT(false);
-  }
+          
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected index type"); 
   LEAVE_BLOCK;
+}
+
+void IndexRangeBlock::freeCondition () {
+  if (_condition != nullptr && _freeCondition) {
+    delete _condition;
+    _condition = nullptr;
+    _freeCondition = false;
+  }
 }
 
 // this is called every time everything in _documents has been passed on
@@ -1457,10 +1473,10 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
     TRI_index_result_t list = TRI_LookupHashIndex(idx, &searchValue);
     destroySearchValue();
   
-    size_t const n = list._length;
+    size_t const n = TRI_LengthVectorPointer(&list);
     try {
       for (size_t i = 0; i < n; ++i) {
-        _documents.emplace_back(*(list._documents[i]));
+        _documents.emplace_back(* (static_cast<TRI_doc_mptr_t*>(TRI_AtVectorPointer(&list, i))));
       }
     
       _engine->_stats.scannedIndex += static_cast<int64_t>(n);
@@ -1569,7 +1585,7 @@ void IndexRangeBlock::readEdgeIndex (IndexOrCondition const& ranges) {
 
 void IndexRangeBlock::getSkiplistIterator (IndexAndCondition const& ranges) {
   ENTER_BLOCK;
-  TRI_ASSERT(_skiplistIterator == nullptr)
+  TRI_ASSERT(_skiplistIterator == nullptr);
   
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
   TRI_index_t* idx = en->_index->data;
@@ -2474,7 +2490,7 @@ int AggregateBlock::getOrSkipSome (size_t atLeast,
   }
 
   while (skipped < atMost) {
-    // read the next input tow
+    // read the next input row
 
     bool newGroup = false;
     if (_currentGroup.groupValues[0].isEmpty()) {

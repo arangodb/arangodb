@@ -96,10 +96,11 @@ namespace triagens {
       }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief close connection
+/// @brief close connection, go to state IN_CONNECT and clear the input 
+/// buffer. This is used to organise a retry of the connection.
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool close ();
+      void close ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief leave connection open on destruction
@@ -188,14 +189,6 @@ namespace triagens {
     private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns true if the request is in progress
-////////////////////////////////////////////////////////////////////////////////
-
-      inline bool isWorking () const {
-        return _state < FINISHED;
-      }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise the connection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -216,10 +209,10 @@ namespace triagens {
       }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reset state
+/// @brief clearReadBuffer, clears the read buffer as well as the result
 ////////////////////////////////////////////////////////////////////////////////
 
-      void reset ();
+      void clearReadBuffer ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rewrite a location URL
@@ -257,28 +250,47 @@ namespace triagens {
                        std::map<std::string, std::string> const& headerFields);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read the http header
+/// @brief process (a part of) the http header, the data is
+/// found in _readBuffer starting at _readBufferOffset until
+/// _readBuffer.length().
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool readHeader ();
+      void processHeader ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read the http body by content length
+/// @brief process (a part of) the body, read the http body by content length
+/// Note that when this is called, the content length of the body has always
+/// been set, either by finding a value in the HTTP header or by reading
+/// from the network until nothing more is found. The data is found in
+/// _readBuffer starting at _readBufferOffset until _readBuffer.length().
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool readBody ();
+      void processBody ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read the chunk size
+/// @brief process the chunk size of the next chunk (i.e. the chunk header),
+/// this is called when processing the body of a chunked transfer. The
+/// data is found in _readBuffer at position _readBufferOffset until 
+/// _readBuffer.length().
+/// Note that this method and processChunkedBody() call each other when
+/// they complete, counting on the fact that in a single transfer the
+/// number of chunks found is not so large to run into deep recursion
+/// problems.
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool readChunkedHeader ();
+      void processChunkedHeader ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read the net chunk
+/// @brief process the next chunk (i.e. the chunk body), this is called when
+/// processing the body of a chunked transfer. The data is found in 
+/// _readBuffer at position _readBufferOffset until _readBuffer.length().
+/// Note that this method and processChunkedHeader() call each other when
+/// they complete, counting on the fact that in a single transfer the
+/// number of chunks found is not so large to run into deep recursion
+/// problems.
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool readChunkedBody ();
+      void processChunkedBody ();
 
     private:
 
@@ -305,6 +317,25 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       triagens::basics::StringBuffer _readBuffer;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read buffer offset
+///
+/// _state == IN_READ_BODY:
+///     points to the beginning of the body
+///
+/// _state == IN_READ_HEADER:
+///     points to the beginning of the next header line
+///
+/// _state == FINISHED:
+///     points to the beginning of the next request
+///
+/// _state == IN_READ_CHUNKED_HEADER:
+///     points to the beginning of the next size line
+///
+/// _state == IN_READ_CHUNKED_BODY:
+///     points to the beginning of the next body
+////////////////////////////////////////////////////////////////////////////////
 
       size_t _readBufferOffset;
 

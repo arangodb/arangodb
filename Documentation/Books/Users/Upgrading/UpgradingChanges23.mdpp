@@ -4,12 +4,19 @@ It is recommended to check the following list of incompatible changes **before**
 upgrading to ArangoDB 2.3, and adjust any client programs if necessary.
 
 
-!SECTION Default configuration file changes
+!SECTION Configuration file changes
 
-With ArangoDB 2.3, the number of server threads can be configured independently of 
-the number of V8 contexts. The configuration option `--javascript.v8-contexts` was 
-added to arangod to provide better control over the number of V8 contexts created 
-in arangod.
+!SUBSECTION Threads and contexts
+
+The number of server threads specified is now the minimum of threads
+started. There are situation in which threads are waiting for results of
+distributed database servers. In this case the number of threads is dynamically
+increased.
+
+With ArangoDB 2.3, the number of server threads can be configured independently
+of the number of V8 contexts. The configuration option
+`--javascript.v8-contexts` was added to arangod to provide better control over
+the number of V8 contexts created in arangod.
   
 Previously, the number of V8 contexts arangod created at startup was equal 
 to the number of server threads (as specified by option `--server.threads`). 
@@ -19,20 +26,41 @@ and V8 contexts. This is because each V8 contexts created will consume memory
 and requires CPU resources for periodic garbage collection. Contrary, server
 threads do not have such high memory or CPU footprint. 
 
-If the option `--javascript.v8-contexts` is not specified, the number of V8 
-contexts created at startup will remain equal to the number of server threads. 
-Thus no change in configuration is required to keep the same behavior as in 
+If the option `--javascript.v8-contexts` is not specified, the number of V8
+contexts created at startup will remain equal to the number of server threads.
+Thus no change in configuration is required to keep the same behavior as in
 previous ArangoDB versions.
 
-However, the default configuration files shipped with ArangoDB have been changed. 
-The number of server threads has been increased in the configuration files, and
-the number of V8 contexts is now explicitly set in the configuration files (to
-the same value as the number of server threads was set to in 2.2).
-
-If you are using the default config files or merge them with your local config files, 
-please review if the higher default number of server threads is okay in your
+If you are using the default config files or merge them with your local config
+files, please review if the default number of server threads is okay in your
 environment. Additionally you should verify that the number of V8 contexts
 created (as specified in option `--javascript.v8-contexts`) is okay.
+
+!SUBSECTION Syslog
+
+The command-line option `--log.syslog` was used in previous versions of
+ArangoDB to turn logging to syslog on or off: when setting to a non-empty
+string, syslog logging was turned on, otherwise turned off.
+When syslog logging was turned on, logging was done with the application
+name specified in `--log.application`, which defaulted to `triagens`.
+There was also a command-line option `--log.hostname` which could be set
+but did not have any effect.
+
+This behavior turned out to be unintuitive and was changed in 2.3 as follows:
+
+* the command-line option `--log.syslog` is deprecated and does not have any
+  effect when starting ArangoDB.
+* to turn on syslog logging in 2.3, the option `--log.facility` has to be set
+  to a non-empty string. The value for `facility` is OS-dependent (possible
+  values can be found in `/usr/include/syslog.h` or the like - `user` should
+  be available on many systems).
+* the default value for `--log.application` has been changed from `triagens` to
+  `arangod`. 
+* the command-line option `--log.hostname` is deprecated and does not have any
+  effect when starting ArangoDB. Instead, the host name will be set by syslog
+  automatically.
+* when logging to syslog, ArangoDB now omits the datetime prefix and the process
+  id, because they'll be added by syslog automatically.
 
 
 !SECTION AQL
@@ -77,7 +105,15 @@ Here is a summary of changes:
   receive invalid arguments will then return `null`.
 
 
-!SUBSECTION Changed return values in ArangoQueryCursor.getExtra()
+!SUBSECTION Nested FOR loop execution order
+
+The query optimizer in 2.3 may permute the order of nested `FOR` loops in AQL queries,
+provided that exchanging the loops will not alter a query result. However, a change
+in the order of returned values is allowed because no sort order is guaranteed by AQL
+(and was never) unless an explicit `SORT` statement is used in a query.
+
+
+!SUBSECTION Changed return values of ArangoQueryCursor.getExtra()
 
 The return value of `ArangoQueryCursor.getExtra()` has been changed in ArangoDB 2.3.
 It now contains a `stats` attribute with statistics about the query previously executed.
@@ -222,6 +258,21 @@ updating variables in queries that run on different nodes in a cluster would lik
 non-deterministic behavior because queries are not executed linearly.
 
 
+!SUBSECTION Changed return value of `TO_BOOL`
+
+The AQL function `TO_BOOL` now always returns *true* if its argument is a list or a document.
+In previous versions of ArangoDB, the function returned *false* for empty lists or for
+documents without attributes.
+
+
+!SUBSECTION Changed return value of `TO_NUMBER`
+
+The AQL function `TO_NUMBER` now returns *null* if its argument is a document or a 
+list with more than one member. In previous version of ArangoDB, the return
+value in these cases was 0. `TO_NUMBER` will return 0 for empty lists, and the numeric
+equivalent of the list member's value for lists with a single member.
+
+
 !SUBSECTION New AQL keywords
 
 The following keywords have been added to AQL in ArangoDB 2.3:
@@ -259,3 +310,17 @@ warnings will eventually disappear.
 
 The HTTP REST API method at `POST /_admin/modules/flush` has been removed. 
 
+
+!SECTION Known issues
+
+In ArangoDB 2.3.0, AQL queries containing filter conditions with an IN expression 
+will not yet use an index:
+
+    FOR doc IN collection FILTER doc.indexedAttribute IN [ ... ] RETURN doc
+  
+    FOR doc IN collection
+      FILTER doc.indexedAttribute IN [ ... ]
+      RETURN doc
+
+We’re currently working on getting the IN optimizations done, and will ship them in 
+a 2.3 maintenance release soon (e.g. 2.3.1 or 2.3.2).

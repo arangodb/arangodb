@@ -1894,6 +1894,41 @@ function EdgesAndVerticesSuite() {
       graph._drop(unitTestGraphName, true);
     },
 
+
+    test_connectingEdges : function () {
+      fillCollections();
+      var res = g._getConnectingEdges({first_name: "Tam"}, {first_name: "Tem"}, {});
+      assertTrue(res.length == 3);
+    },
+
+    test_connectingEdgesWithEdgeCollectionRestriction : function () {
+      fillCollections();
+      var res = g._getConnectingEdges({first_name: "Tam"}, null, {});
+      assertTrue(res.length == 13);
+      var res = g._getConnectingEdges({first_name: "Tam"}, null, {edgeCollectionRestriction : "unitTestEdgeCollection2"});
+      assertTrue(res.length == 5);
+    },
+
+    test_connectingEdgesWithVertexCollectionRestriction : function () {
+      fillCollections();
+      var res = g._getConnectingEdges(null, null, {});
+      assertTrue(res.length == 13);
+      var res = g._getConnectingEdges(null, null, {vertex1CollectionRestriction : "unitTestVertexCollection1"});
+      assertTrue(res.length == 13);
+      var res = g._getConnectingEdges(null, null, {
+        vertex1CollectionRestriction : "unitTestVertexCollection1",
+        vertex2CollectionRestriction : "unitTestVertexCollection3"
+      });
+      assertTrue(res.length == 5);
+    },
+
+    test_connectingEdgesWithIds : function () {
+      var ids = fillCollections();
+      var res = g._getConnectingEdges(ids.vId11, ids.vId13, {});
+      assertTrue(res.length == 2);
+    },
+
+
     test_dropGraph1 : function () {
       var myGraphName = unitTestGraphName + "2";
       var myEdgeColName = "unitTestEdgeCollection4711";
@@ -1939,6 +1974,22 @@ function EdgesAndVerticesSuite() {
       assertFalse(graph._exists(myGraphName));
       assertTrue(db._collection(vc1) !== null);
       assertTrue(db._collection(ec1) !== null);
+    },
+    
+    test_createGraphWithMalformedEdgeDefinitions : function () {
+      var myGraphName = unitTestGraphName + "2";
+      try {
+        graph._create(
+          myGraphName,
+          [ "foo" ]
+        );
+      } catch (e) {
+        assertEqual(
+          e.errorMessage,
+          arangodb.errors.ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION.message
+        );
+      }
+      assertFalse(graph._exists(myGraphName));
     },
 
     test_createGraphWithCollectionDuplicateNOK1 : function () {
@@ -2292,6 +2343,21 @@ function EdgesAndVerticesSuite() {
       graph._drop(gN2, true);
       graph._drop(gN3, true);
       graph._drop(gN4, true);
+    },
+    
+    test_eC_malformedId : function() {
+      [ null, "foo", [ ] ].forEach(function(v) {
+        try {
+          var x= g[ec2].save(v, v, {});
+          fail();
+        }
+        catch (e) {
+          assertEqual(
+            e.errorMessage,
+            arangodb.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.message
+          );
+        }
+      });
     },
 
     test_getInVertex : function() {

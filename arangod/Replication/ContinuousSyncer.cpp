@@ -307,6 +307,20 @@ int ContinuousSyncer::processDocument (TRI_replication_operation_e type,
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
+  // extract optional "cname"
+  TRI_json_t const* cnameJson = JsonHelper::getArrayElement(json, "cname");
+
+  if (JsonHelper::isString(cnameJson)) {
+    string const cnameString = JsonHelper::getStringValue(json, "cname", "");
+    if (! cnameString.empty() && cnameString[0] == '_') {
+      // system collection
+      TRI_vocbase_col_t* col = TRI_LookupCollectionByNameVocBase(_vocbase, cnameString.c_str());
+      if (col != nullptr && col->_cid != cid) {
+        // cid change? this may happen for system collections
+        cid = col->_cid;
+      }
+    }
+  }
 
   // extract "key"
   TRI_json_t const* keyJson = JsonHelper::getArrayElement(json, "key");
@@ -724,8 +738,8 @@ int ContinuousSyncer::applyLog (SimpleHttpResult* response,
       }
 
       if (ignoreCount == 0) {
-        if (line.size() > 128) {
-          errorMsg += ", offending marker: " + line.substr(0, 128) + "...";
+        if (line.size() > 256) {
+          errorMsg += ", offending marker: " + line.substr(0, 256) + "...";
         }
         else {
           errorMsg += ", offending marker: " + line;;

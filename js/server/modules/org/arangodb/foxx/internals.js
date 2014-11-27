@@ -133,13 +133,14 @@ constructRoute = function (method, route, callback, controller, constraints) {
   };
 };
 
-constructPathParamDoc = function (paramName, description, dataType) {
+constructPathParamDoc = function (paramName, description, dataType, required) {
   'use strict';
   return {
     paramType: "path",
     name: paramName,
     description: description,
-    dataType: dataType
+    dataType: dataType,
+    required: required
   };
 };
 
