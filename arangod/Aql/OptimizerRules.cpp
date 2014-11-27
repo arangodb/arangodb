@@ -909,30 +909,38 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
               }
               map = _rangeInfoMapVec->find(var->name, ++pos);  
             } while (map !=nullptr);
+            
             // Now remove empty conditions: 
             _rangeInfoMapVec->eraseEmptyOrUndefined(var->name);
-           
-            std::vector<size_t> validPos = _rangeInfoMapVec->validPositions(var->name);
-            // are any of the RangeInfoMaps in the vector valid? 
+            
+            // if var->name is not mapped in every position of _rangeInfoMapVec
+            // then we cannot use the index range node (we would return too few
+            // results), for example
+            // x.a == 1 || y.c == 2 || x.a == 3
+            if (_rangeInfoMapVec->isMapped(var->name)) {
 
-            if (! _canThrow) {
-              if (validPos.empty()) { // ranges are not valid . . . 
-                auto newPlan = _plan->clone();
-                try {
-                  auto parents = newPlan->getNodeById(node->id())->getParents();
-                  for (auto x: parents) {
-                    auto noRes = new NoResultsNode(newPlan, newPlan->nextId());
-                    newPlan->registerNode(noRes);
-                    newPlan->insertDependency(x, noRes);
-                    _opt->addPlan(newPlan, _level, true);
+              std::vector<size_t> validPos = _rangeInfoMapVec->validPositions(var->name);
+
+              // are any of the RangeInfoMaps in the vector valid? 
+
+              if (! _canThrow) {
+                if (validPos.empty()) { // ranges are not valid . . . 
+                  auto newPlan = _plan->clone();
+                  try {
+                    auto parents = newPlan->getNodeById(node->id())->getParents();
+                    for (auto x: parents) {
+                      auto noRes = new NoResultsNode(newPlan, newPlan->nextId());
+                      newPlan->registerNode(noRes);
+                      newPlan->insertDependency(x, noRes);
+                      _opt->addPlan(newPlan, _level, true);
+                    }
+                  }
+                  catch (...) {
+                    delete newPlan;
+                    throw;
                   }
                 }
-                catch (...) {
-                  delete newPlan;
-                  throw;
-                }
-              }
-              else {
+                else {
 
                   std::vector<Index*> idxs;
                   std::vector<size_t> prefixes;
@@ -946,27 +954,27 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
 
                   // make one new plan for every index in <idxs> that replaces the
                   // enumerate collection node with a IndexRangeNode ... 
-                  
+
                   for (size_t i = 0; i < idxs.size(); i++) {
                     IndexOrCondition indexOrCondition;
                     for (size_t k = 0; k < validPos.size(); k++) {
                       indexOrCondition.push_back(std::vector<RangeInfo>());
                     }
-                    
+
                     // ranges must be valid and all comparisons == if hash
                     // index or == followed by a single <, >, >=, or <=
                     // if a skip index in the order of the fields of the
                     // index.
                     auto idx = idxs.at(i);
                     TRI_ASSERT(idx != nullptr);
-                 
+
                     if (idx->type == TRI_IDX_TYPE_PRIMARY_INDEX) {
                       for (size_t k = 0; k < validPos.size(); k++) {
                         bool handled = false;
-                     
+
                         auto map = _rangeInfoMapVec->find(var->name, validPos[k]);
                         auto range = map->find(std::string(TRI_VOC_ATTRIBUTE_ID));
-                    
+
                         if (range != map->end()) { 
                           if (! range->second.is1ValueRangeInfo()) {
                             indexOrCondition.clear();   // not usable
@@ -998,12 +1006,16 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                         auto map = _rangeInfoMapVec->find(var->name, validPos[k]);
                         for (size_t j = 0; j < idx->fields.size(); j++) {
                           auto range = map->find(idx->fields[j]);
-                       
-                          if (! range->second.is1ValueRangeInfo()) {
-                            indexOrCondition.clear();   // not usable
-                            break;
+
+                          if (range != map->end()) { 
+                            if (! range->second.is1ValueRangeInfo()) {
+                              indexOrCondition.clear();   // not usable
+                              break;
+                            } else {
+                              indexOrCondition.at(k).push_back(range->second);
+                              break;
+                            }
                           }
-                          indexOrCondition.at(k).push_back(range->second);
                         }
                       }
                     }
@@ -1056,13 +1068,12 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                     }
 
                     //TODO remove empty positions in indexOrCondition?
-                    // check if there are any non-empty positions in
-                    // indexOrCondition 
-                    bool isEmpty = true;
+                    // check if there are all positions are non-empty
+                    bool isEmpty = false;
                     if (!indexOrCondition.empty()) {
                       for (size_t k = 0; k < validPos.size(); k++) {
-                        if (! indexOrCondition.at(k).empty()) {
-                          isEmpty = false;
+                        if (indexOrCondition.at(k).empty()) {
+                          isEmpty = true;
                           break;
                         }
                       }
@@ -1076,9 +1087,9 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
 
                       try {
                         ExecutionNode* newNode = new IndexRangeNode(newPlan,
-                          newPlan->nextId(), node->vocbase(), 
-                          node->collection(), node->outVariable(), idx,
-                          indexOrCondition, false);
+                            newPlan->nextId(), node->vocbase(), 
+                            node->collection(), node->outVariable(), idx,
+                            indexOrCondition, false);
                         newPlan->registerNode(newNode);
                         newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
                         // re-inject the new plan with the previous rule so it gets passed through
@@ -1094,6 +1105,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                   }
                 }
               }
+            }
             }
           }
           break;
