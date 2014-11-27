@@ -436,15 +436,14 @@ bool RangeInfoMap::isValid (std::string const& var) {
 /// variable var stored in the RIM.
 ////////////////////////////////////////////////////////////////////////////////
 
-std::unordered_set<std::string> RangeInfoMap::attributes (std::string const& var) {
-  std::unordered_set<std::string> attrs;
+void RangeInfoMap::attributes (std::unordered_set<std::string>& set, 
+                               std::string const& var) {
   std::unordered_map<std::string, RangeInfo>* map = find(var);
   if (map != nullptr) {
     for(auto x: *map) {
-      attrs.insert(x.first);
+      set.insert(x.first);
     }
   }
-  return attrs;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -513,6 +512,19 @@ bool RangeInfoMapVec::isIdenticalToExisting (RangeInfo x) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief isMapped: returns true if <var> in every RIM in the vector
+////////////////////////////////////////////////////////////////////////////////
+
+bool RangeInfoMapVec::isMapped(std::string const& var) {
+  for (size_t i = 0; i < _rangeInfoMapVec.size(); i++) {
+    if (_rangeInfoMapVec[i]->find(var) == nullptr) {
+      return false;
+    }
+  }
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief validPositions: returns a vector of the positions in the RIM vector
 /// that contain valid RangeInfoMap for the variable named var
 ////////////////////////////////////////////////////////////////////////////////
@@ -534,7 +546,12 @@ std::vector<size_t> RangeInfoMapVec::validPositions(std::string const& var) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::unordered_set<std::string> RangeInfoMapVec::attributes (std::string const& var) {
-  return _rangeInfoMapVec[0]->attributes(var);
+  std::unordered_set<std::string> set;
+
+  for (size_t i = 0; i < size(); i++) {
+    _rangeInfoMapVec[i]->attributes(set, var);
+  }
+  return set;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
