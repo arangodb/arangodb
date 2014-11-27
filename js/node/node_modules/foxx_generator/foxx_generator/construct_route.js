@@ -32,9 +32,9 @@
     }
 
     route = controller[verb](url, action)
+      .onlyIf(relation.condition)
       .errorResponse(VertexNotFound, 404, 'The vertex could not be found')
       .errorResponse(ConditionNotFulfilled, 403, 'The condition could not be fulfilled')
-      .onlyIf(relation.condition)
       .summary(relation.summary)
       .notes(relation.notes);
 

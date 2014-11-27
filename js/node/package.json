@@ -6,7 +6,7 @@
     "coffee-script": "1.7.1",
     "decimal": "0.0.2",
     "docco": "0.6.3",
-    "foxx_generator": "^0.5.0",
+    "foxx_generator": "0.5.1",
     "htmlparser2": "3.7.2",
     "iced-coffee-script": "1.7.1-f",
     "joi": "4.6.1",
