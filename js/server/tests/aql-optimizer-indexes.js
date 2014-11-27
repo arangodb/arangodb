@@ -86,7 +86,7 @@ function optimizerIndexesTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       var indexes = 0;
-      var nodeTypes = plan.nodes.map(function(node) {
+      plan.nodes.map(function(node) {
         if (node.type === "IndexRangeNode") {
           ++indexes;
         }
@@ -109,7 +109,7 @@ function optimizerIndexesTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       var indexes = 0;
-      var nodeTypes = plan.nodes.map(function(node) {
+      plan.nodes.map(function(node) {
         if (node.type === "IndexRangeNode") {
           ++indexes;
         }
@@ -132,7 +132,7 @@ function optimizerIndexesTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       var indexes = 0;
-      var nodeTypes = plan.nodes.map(function(node) {
+      plan.nodes.map(function(node) {
         if (node.type === "IndexRangeNode") {
           ++indexes;
         }
