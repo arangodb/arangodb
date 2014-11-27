@@ -1470,7 +1470,7 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
   
   for (size_t i = 0; i < ranges.size(); i++) {
     setupSearchValue(i);  
-    TRI_index_result_t list = TRI_LookupHashIndex(idx, &searchValue);
+    TRI_vector_pointer_t list = TRI_LookupHashIndex(idx, &searchValue);
     destroySearchValue();
   
     size_t const n = TRI_LengthVectorPointer(&list);
@@ -1480,10 +1480,10 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
       }
     
       _engine->_stats.scannedIndex += static_cast<int64_t>(n);
-      TRI_DestroyIndexResult(&list);
+      TRI_DestroyVectorPointer(&list);
     }
     catch (...) {
-      TRI_DestroyIndexResult(&list);
+      TRI_DestroyVectorPointer(&list);
       throw;
     }
   }
