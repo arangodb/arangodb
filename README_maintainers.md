@@ -68,7 +68,7 @@ use
 make jslint
 to find out whether all of your files comply to jslint. This is required to make contineous integration work smoothly.
 
-if you want to add new / new patterns, edit js/Makefile.files
+if you want to add new files / patterns to this make target, edit js/Makefile.files
 
 Use standalone for your js file
 -------------------------------
@@ -88,7 +88,7 @@ Dependencies
 
 Filename conventions
 ====================
-Special patterns in filenames are used to select tests to be executed or skipped depending no parameters:
+Special patterns in filenames are used to select tests to be executed or skipped depending on parameters:
 
 -cluster
 --------
@@ -121,9 +121,10 @@ There are several major places where unittests live:
  - UnitTests/HttpInterface
  - UnitTests/Basics
  - UnitTests/Geo
- - js/server/tests
- - js/common/tests
+ - js/server/tests (runneable on the server)
+ - js/common/tests (runneable on the server & via arangosh)
  - js/common/test-data
+ - js/client/tests (runneable via arangosh)
  - /js/apps/system/aardvark/test
 
 
@@ -134,10 +135,14 @@ TODO: which tests are these?
 
 jsUnity on arangod
 ------------------
+you can engage single tests when running arangod with console like this:
+require("jsunity").runTest("js/server/tests/aql-queries-simple.js");
+
 
 jsUnity via arangosh
 --------------------
-
+arangosh is similar, however, you can only run tests which are intended to be ran via arangosh:
+require("jsunity").runTest("js/client/tests/shell-client.js");
 
 
 
@@ -200,6 +205,10 @@ Javascript framework
 Invoked like that:
 scripts/run scripts/unittest.js all
 
+calling it without parameters like this:
+scripts/run scripts/unittest.js
+will give you a extensive usage help which we won't duplicate here.
+
 Choosing facility
 _________________
 
@@ -216,8 +225,11 @@ Passing Options
 _______________
 
 Options are passed in as one json; Please note that formating blanks may cause problems.
+Different facilities may take different options. The above mentioned usage output contains
+the full detail.
 
-so a commandline for running a single test using valgrind could look like this: 
+A commandline for running a single test (-> with the facility 'single_server') using
+valgrind could look like this: 
 
  scripts/run scripts/unittest.js single_server \
     '{"test":"js/server/tests/aql-escaping.js",'\
@@ -230,7 +242,7 @@ so a commandline for running a single test using valgrind could look like this:
 
  - we specify the test to execute
  - we specify some arangod arguments which increase the server performance
- - we specify to run using valgrind
+ - we specify to run using valgrind (this is supported by all facilities
  - we specify some valgrind commandline arguments
 
 Running a single unittestsuite
