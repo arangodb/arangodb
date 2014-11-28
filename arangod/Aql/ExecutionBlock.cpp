@@ -2405,13 +2405,17 @@ AggregateBlock::AggregateBlock (ExecutionEngine* engine,
     }
 
     // iterate over all our variables
-    for (auto it = en->getRegisterPlan()->varInfo.begin(); 
-         it != en->getRegisterPlan()->varInfo.end(); ++it) {
-      // find variable in the global variable map
-      auto itVar = en->_variableMap.find((*it).first);
+    for (auto& vi : en->getRegisterPlan()->varInfo) {
+      if (vi.second.depth > 0 || en->getDepth() == 1) {
+        // Do not keep variables from depth 0, unless we are depth 1 ourselves
+        // (which means no FOR in which we are contained)
+ 
+        // find variable in the global variable map
+        auto itVar = en->_variableMap.find(vi.first);
 
-      if (itVar != en->_variableMap.end()) {
-        _variableNames[(*it).second.registerId] = (*itVar).second;
+        if (itVar != en->_variableMap.end()) {
+          _variableNames[vi.second.registerId] = (*itVar).second;
+        }
       }
     }
   }
