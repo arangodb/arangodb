@@ -311,7 +311,6 @@ function updateFishbowl () {
     }, filename);
 
     if (result.code < 200 || result.code > 299) {
-      require("internal").print("BadBadBad, something bad has happened:\n", JSON.stringify(result));
       throwDownloadError("Github download from '" + url + "' failed with error code " + result.code);
     }
 
