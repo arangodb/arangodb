@@ -758,6 +758,10 @@ ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull, wait
       options.keepNull = true;
     }
     params = "?keepNull=" + options.keepNull;
+    if (! options.hasOwnProperty("mergeArrays")) {
+      options.mergeArrays = true;
+    }
+    params += "&mergeArrays=" + options.mergeArrays;
 
     if (options.hasOwnProperty("overwrite") && options.overwrite) {
       params += "&policy=last";
