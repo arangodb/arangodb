@@ -92,6 +92,7 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     KeyOptionsKey(),
     LengthKey(),
     LifeTimeKey(),
+    MergeArraysKey(),
     NameKey(),
     OperationIDKey(),
     ParametersKey(),
@@ -176,6 +177,7 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
   KeyOptionsKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("keyOptions"));
   LengthKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("length"));
   LifeTimeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("lifeTime"));
+  MergeArraysKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("mergeArrays"));
   NameKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("name"));
   OperationIDKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("operationID"));
   OverwriteKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("overwrite"));
