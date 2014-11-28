@@ -587,7 +587,7 @@ extend(RequestContext.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_RequestContext_onlyIfAuthenticated
 ///
-/// `FoxxController#onlyIf(code, reason)`
+/// `FoxxController#onlyIfAuthenticated(code, reason)`
 ///
 /// Please activate sessions for this app if you want to use this function.
 /// Or activate authentication (deprecated).
