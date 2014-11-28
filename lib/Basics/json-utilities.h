@@ -137,6 +137,7 @@ bool TRI_HasDuplicateKeyJson (TRI_json_t const*);
 TRI_json_t* TRI_MergeJson (TRI_memory_zone_t*,
                            TRI_json_t const*,
                            TRI_json_t const*,
+                           bool,
                            bool);
 
 ////////////////////////////////////////////////////////////////////////////////
