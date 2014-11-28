@@ -1891,6 +1891,7 @@ UNITTESTS_SERVER_ONLY = $(addprefix --javascript.unit-tests ,$(SHELL_SERVER_ONLY
 ################################################################################
 SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-bind.js \
+			@top_srcdir@/js/server/tests/aql-call-apply.js \
 			@top_srcdir@/js/server/tests/aql-complex.js \
 			@top_srcdir@/js/server/tests/aql-cross.js \
 			@top_srcdir@/js/server/tests/aql-edges-noncluster.js \
@@ -1898,6 +1899,7 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-explain-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-functions.js \
 			@top_srcdir@/js/server/tests/aql-functions-date.js \
+			@top_srcdir@/js/server/tests/aql-functions-list.js \
 			@top_srcdir@/js/server/tests/aql-functions-misc.js \
 			@top_srcdir@/js/server/tests/aql-functions-numeric.js \
 			@top_srcdir@/js/server/tests/aql-functions-string.js \
@@ -1911,6 +1913,8 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-modify-noncluster-serializetest.js \
 			@top_srcdir@/js/server/tests/aql-operators.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-dynamic-bounds.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-filters.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-indexes.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-interchange-adjacent-enumerations-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-move-calculations-up.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-move-filters-up.js \
