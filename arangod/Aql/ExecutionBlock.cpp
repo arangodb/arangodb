@@ -94,7 +94,8 @@ void AggregatorGroup::reset () {
     delete (*it);
   }
   groupBlocks.clear();
-  groupValues[0].erase();   // FIXMEFIXME warum nur 0???
+  groupValues[0].erase();   // only need to erase [0], because we have
+                            // only copies of references anyway
 }
 
 void AggregatorGroup::addValues (AqlItemBlock const* src,
