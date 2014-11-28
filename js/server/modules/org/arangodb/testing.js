@@ -454,6 +454,7 @@ function cleanupDBDirectories(options) {
         // print("deleted " + cleanupDirectories[i]);
       }
     }
+    cleanupDirectories = [];
   }
 }
 
