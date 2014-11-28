@@ -1051,6 +1051,7 @@ int modifyDocumentOnCoordinator (
                  bool waitForSync,
                  bool isPatch,
                  bool keepNull,   // only counts for isPatch == true
+                 bool mergeArrays,   // only counts for isPatch == true
                  TRI_json_t* json,
                  map<string, string> const& headers,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
@@ -1114,6 +1115,12 @@ int modifyDocumentOnCoordinator (
     reqType = triagens::rest::HttpRequest::HTTP_REQUEST_PATCH;
     if (! keepNull) {
       revstr += "&keepNull=false";
+    }
+    if (mergeArrays) {
+      revstr += "&mergeArrays=true";
+    }
+    else {
+      revstr += "&mergeArrays=false";
     }
   }
   else {

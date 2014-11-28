@@ -169,6 +169,7 @@ void Aqlerror (YYLTYPE* locp,
 %type <node> list_elements_list;
 %type <node> array;
 %type <node> query_options;
+%type <node> optional_keep;
 %type <node> optional_array_elements;
 %type <node> array_elements_list;
 %type <node> array_element;
@@ -266,7 +267,7 @@ collect_statement:
     T_COLLECT {
       auto node = parser->ast()->createNodeList();
       parser->pushStack(node);
-    } collect_list optional_into {
+    } collect_list optional_into optional_keep {
       auto list = static_cast<AstNode const*>(parser->popStack());
 
       if (list == nullptr) {
@@ -321,6 +322,31 @@ optional_into:
     }
   | T_INTO variable_name {
       $$ = $2;
+    }
+  ;
+
+variable_list: 
+    variable_name {
+      auto name = parser->ast()->createNodeValueString($1); 
+      parser->pushList(name);
+    }
+  | variable_list T_COMMA variable_name {
+    }
+  ;
+
+optional_keep: 
+    /* empty */ {
+      $$ = nullptr;
+    }
+  | T_STRING {
+      if (! TRI_CaseEqualString($1, "KEEP")) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'KEEP'", $1, yylloc.first_line, yylloc.first_column);
+      }
+      auto node = parser->ast()->createNodeList();
+      parser->pushStack(node);
+    } variable_list {
+      auto list = static_cast<AstNode*>(parser->popStack());
+      $$ = list;
     }
   ;
 
