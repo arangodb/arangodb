@@ -1002,19 +1002,18 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                       }
                     }
                     else if (idx->type == TRI_IDX_TYPE_HASH_INDEX) {
+                      //FIXME the behaviour of this is wrong, each valid
+                      //orCondition should match every field of the given index
                       for (size_t k = 0; k < validPos.size() && !indexOrCondition.empty(); k++) {
                         auto map = _rangeInfoMapVec->find(var->name, validPos[k]);
                         for (size_t j = 0; j < idx->fields.size(); j++) {
                           auto range = map->find(idx->fields[j]);
 
-                          if (range != map->end()) { 
-                            if (! range->second.is1ValueRangeInfo()) {
-                              indexOrCondition.clear();   // not usable
-                              break;
-                            } else {
-                              indexOrCondition.at(k).push_back(range->second);
-                              break;
-                            }
+                          if (range == map->end() || ! range->second.is1ValueRangeInfo()) {
+                            indexOrCondition.clear();   // not usable
+                            break;
+                          } else {
+                            indexOrCondition.at(k).push_back(range->second);
                           }
                         }
                       }
@@ -1069,8 +1068,8 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
 
                     //TODO remove empty positions in indexOrCondition?
                     // check if there are all positions are non-empty
-                    bool isEmpty = false;
-                    if (!indexOrCondition.empty()) {
+                    bool isEmpty = indexOrCondition.empty();
+                    if (! isEmpty) {
                       for (size_t k = 0; k < validPos.size(); k++) {
                         if (indexOrCondition.at(k).empty()) {
                           isEmpty = true;
