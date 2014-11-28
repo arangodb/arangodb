@@ -1,5 +1,11 @@
-v2.4.0-alpha1 (XXXX-XX-XX)
--------------------
+v2.4.0-alpha2 (2014-11-28)
+--------------------------
+
+* fixed superstates in FoxxGenerator
+
+
+v2.4.0-alpha1 (2014-11-25)
+--------------------------
 
 * fixed replication of `_graphs` collection
 
