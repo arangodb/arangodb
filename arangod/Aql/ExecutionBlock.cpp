@@ -3369,7 +3369,7 @@ void UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
               TRI_json_t* old = TRI_JsonShapedJson(_collection->documentCollection()->getShaper(), &shapedJson);
 
               if (old != nullptr) {
-                TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json.json(), ep->_options.nullMeansRemove);
+                TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json.json(), ep->_options.nullMeansRemove, ep->_options.mergeArrays);
                 TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, old); 
 
                 if (patchedJson != nullptr) {
