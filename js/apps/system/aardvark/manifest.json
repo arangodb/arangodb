@@ -185,7 +185,6 @@
     "libs.js": {
       "files": [
         "frontend/js/lib/jquery-ui-1.9.2.custom.js",
-        "frontend/js/lib/jquery.dataTables.js",
         "frontend/js/lib/jquery.snippet.js",
         "frontend/js/lib/jquery.slideto.min.js",
         "frontend/js/lib/jquery.wiggle.min.js",
@@ -201,7 +200,6 @@
         "frontend/js/lib/strftime-min.js",
         "frontend/js/lib/dygraph-combined.js",
         "frontend/js/lib/d3.fisheye.js",
-        "frontend/js/lib/ColVis.js",
         "frontend/js/lib/bootstrap-pagination.js",
         "frontend/js/lib/jqconsole.min.js",
         "frontend/js/lib/swagger.js",
