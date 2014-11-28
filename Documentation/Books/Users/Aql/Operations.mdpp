@@ -228,7 +228,18 @@ contains the group value.
 
 The second form does the same as the first form, but additionally introduces a
 variable (specified by *groups*) that contains all elements that fell into the
-group. Specifying the *INTO* clause is optional-
+group. This works as follows: The *groups* variable is a list containing 
+as many elements as there are in the group. Each member of that list is
+a JSON object in which the value of every variable that is defined in the 
+AQL query is bound to the corresponding attribute. Note that this considers
+all variables that are defined before the *COLLECT* statement, but not those on
+the top level (outside of any *FOR*), unless the *COLLECT* statement is itself
+on the top level, in which case all variables are taken. Furthermore note 
+that it is possible that the optimizer moves *LET* statements out of *FOR*
+statements to improve performance. In a future version of ArangoDB we plan
+to allow to configure exactly the values of which variables are copied
+into the *groups* variable, since excessive copying can have a negative
+impact on performance. Specifying the *INTO* clause is optional.
 
 ```
 FOR u IN users
