@@ -51,6 +51,7 @@ function updateGlobals() {
   var userManager = require("org/arangodb/users");
   var clusterManager = require("org/arangodb/cluster");
   var currentVersion = require("org/arangodb/database-version").CURRENT_VERSION;
+  var sprintf = internal.sprintf;
   var db = internal.db;
 
   function upgrade () {
@@ -758,12 +759,12 @@ function updateGlobals() {
         var results = users.all().toArray().map(function (oldDoc) {
           if (!oldDoc.hasOwnProperty('userData')) {
             if (typeof oldDoc.user !== 'string') {
-              logger.error("user with _key " + oldDoc._key + " has no username");
-              return false;
+              oldDoc.user = "user" + oldDoc._rev;
+              logger.error(sprintf("user with _key %s has no username, using %s instead", oldDoc._key, oldDoc.user));
             }
             if (typeof oldDoc.password !== 'string') {
-              logger.error("user with username " + oldDoc.user + " has no password");
-              return false;
+              logger.error(sprintf("user with username %s has no password", oldDoc.user));
+              oldDoc.password = "$1$e3bdbd05$53e9ff46e996096ced8fefeeecf956da550e0d7d357c8ecdde061994d4d52cee";
             }
             var newDoc = {
               user: oldDoc.user,
