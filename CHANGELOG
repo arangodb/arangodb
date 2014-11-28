@@ -24,6 +24,18 @@ v2.4.0 (XXXX-XX-XX)
 * prevent Foxx queues from permanently writing to the journal even when
   server is idle
 
+* fixed AQL COLLECT statement with INTO clause, which copied more variables
+  than v2.2 and thus lead to too much memory consumption. 
+  This deals with #1107.
+
+* fixed AQL COLLECT statement, this concerned every COLLECT statement, 
+  only the first group had access to the values of the variables before 
+  the COLLECT statement. This deals with #1127.
+
+* fixed some AQL internals, where sometimes too many items were
+  fetched from upstream in the presence of a LIMIT clause. This should
+  generally improve performance.
+
 
 v2.3.0 (2014-11-18)
 -------------------

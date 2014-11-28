@@ -786,7 +786,7 @@ class KeySpace {
         TRI_V8_EXCEPTION(scope, TRI_ERROR_OUT_OF_MEMORY);
       }
 
-      TRI_json_t* merged = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, found->json, other, nullMeansRemove); 
+      TRI_json_t* merged = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, found->json, other, nullMeansRemove, false); 
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, other);
 
       if (merged == nullptr) {
