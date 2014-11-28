@@ -304,18 +304,10 @@
 <div id="documentsDiv" class="innerContent">
 
 <div id="uploadMessages"></div>
-<table cellpadding="0" cellspacing="0" border="0" class="display arangoDataTable" id="documentsTableID">
-  <thead>
-    <tr>
-      <th>Content</th>
-      <th>_key</th>
-      <th>
-        <a id="addDocumentButton" class="pull-right addButton"><span class="arangoicon icon_arangodb_roundplus" title="Add a document"></span></a>
-      </th>
-    </tr>
-  </thead>
-</table>
-
+<div id="documentsTableID_wrapper" class="dataTables_wrapper" role="grid">
+  <table cellpadding="0" cellspacing="0" border="0" class="display arangoDataTable dataTable" id="documentsTableID">
+  </table>
+</div>
     <div id="documentsToolbarFL">
       <div id="documentsToolbarF" class="pagination-line">
       </div>
