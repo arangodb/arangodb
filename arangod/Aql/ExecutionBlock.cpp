@@ -78,12 +78,14 @@ AggregatorGroup::~AggregatorGroup () {
 void AggregatorGroup::initialize (size_t capacity) {
   TRI_ASSERT(capacity > 0);
 
+  groupValues.clear();
+  collections.clear();
   groupValues.reserve(capacity);
   collections.reserve(capacity);
 
   for (size_t i = 0; i < capacity; ++i) {
-    groupValues[i] = AqlValue();
-    collections[i] = nullptr;
+    groupValues.emplace_back();
+    collections.push_back(nullptr);
   }
 }
 
