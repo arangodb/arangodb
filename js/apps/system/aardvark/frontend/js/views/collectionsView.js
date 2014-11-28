@@ -63,20 +63,20 @@
     },
 
     events: {
-      "click #createCollection"   : "createCollection",
-      "keydown #searchInput"      : "restrictToSearchPhraseKey",
-      "change #searchInput"       : "restrictToSearchPhrase",
-      "click #searchSubmit"       : "restrictToSearchPhrase",
-      "click #checkSystem"        : "checkSystem",
-      "click #checkLoaded"        : "checkLoaded",
-      "click #checkUnloaded"      : "checkUnloaded",
-      "click #checkDocument"      : "checkDocument",
-      "click #checkEdge"          : "checkEdge",
-      "click #sortName"           : "sortName",
-      "click #sortType"           : "sortType",
-      "click #sortOrder"          : "sortOrder",
-      "click #collectionsToggle"  : "toggleView",
-      "click .css-label"          : "checkBoxes"
+      "click #createCollection"        : "createCollection",
+      "keydown #searchInput"           : "restrictToSearchPhraseKey",
+      "change #searchInput"            : "restrictToSearchPhrase",
+      "click #searchSubmit"            : "restrictToSearchPhrase",
+      "click .checkSystemCollections"  : "checkSystem",
+      "click #checkLoaded"             : "checkLoaded",
+      "click #checkUnloaded"           : "checkUnloaded",
+      "click #checkDocument"           : "checkDocument",
+      "click #checkEdge"               : "checkEdge",
+      "click #sortName"                : "sortName",
+      "click #sortType"                : "sortType",
+      "click #sortOrder"               : "sortOrder",
+      "click #collectionsToggle"       : "toggleView",
+      "click .css-label"               : "checkBoxes"
     },
 
     updateCollectionsView: function() {
@@ -104,7 +104,7 @@
       var searchOptions = this.collection.searchOptions;
       var oldValue = searchOptions.includeSystem;
 
-      searchOptions.includeSystem = ($('#checkSystem').is(":checked") === true);
+      searchOptions.includeSystem = ($('.checkSystemCollections').is(":checked") === true);
 
       if (oldValue !== searchOptions.includeSystem) {
         this.render();
@@ -182,7 +182,7 @@
       var searchOptions = this.collection.searchOptions;
       $('#checkLoaded').attr('checked', searchOptions.includeLoaded);
       $('#checkUnloaded').attr('checked', searchOptions.includeUnloaded);
-      $('#checkSystem').attr('checked', searchOptions.includeSystem);
+      $('.checkSystemCollections').attr('checked', searchOptions.includeSystem);
       $('#checkEdge').attr('checked', searchOptions.includeEdge);
       $('#checkDocument').attr('checked', searchOptions.includeDocument);
       $('#sortName').attr('checked', searchOptions.sortBy !== 'type');
