@@ -2602,6 +2602,15 @@ void AggregateBlock::emitGroup (AqlItemBlock const* cur,
                                 AqlItemBlock* res,
                                 size_t row) {
 
+  if (row > 0) {
+    // re-use already copied aqlvalues
+    for (RegisterId i = 0; i < cur->getNrRegs(); i++) {
+      res->setValue(row, i, res->getValue(0, i));
+      // Note: if this throws, then all values will be deleted
+      // properly since the first one is.
+    }
+  }
+
   size_t i = 0;
   for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
     // FIXME: can throw:
