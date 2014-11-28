@@ -103,9 +103,9 @@ To return a list of users from a controller using a repository, you
 could use it like this: 
 
 ```js
-    var foxx = require("org/arangodb/foxx"); 
+    var Foxx = require("org/arangodb/foxx"); 
     var db = require("org/arangodb").db; 
-    var usersRepo = new foxx.Repository(db._collection("users")); 
+    var usersRepo = new Foxx.Repository(db._collection("users")); 
     app.get("/all", function(req, res) { 
        res.json({ users: usersRepo.collection.toArray() }); 
     }); 
