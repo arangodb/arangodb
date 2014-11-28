@@ -492,7 +492,7 @@ extend(Controller.prototype, {
 ///
 /// `FoxxController#activateAuthentication(opts)`
 ///
-/// To activate authentication for this authentication, first call this function.
+/// To activate authentication for this controller, first call this function.
 /// Provide the following arguments:
 ///
 /// * *type*: Currently we only support *cookie*, but this will change in the future
