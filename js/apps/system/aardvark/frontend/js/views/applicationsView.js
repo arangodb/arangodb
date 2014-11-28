@@ -189,7 +189,6 @@ window.ApplicationsView = Backbone.View.extend({
   },
 
   toggleSystem: function() {
-    console.log("Toggle");
     this._showSystem = !this._showSystem;
     var self = this;
     _.each(this._installedSubViews, function(v) {
