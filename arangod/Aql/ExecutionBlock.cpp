@@ -716,7 +716,8 @@ AqlItemBlock* EnumerateCollectionBlock::getSome (size_t, // atLeast,
   }
 
   if (_buffer.empty()) {
-    if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
+    size_t toFetch = (std::min)(DefaultBatchSize, atMost);
+    if (! ExecutionBlock::getBlock(toFetch, toFetch)) {
       _done = true;
       return nullptr;
     }
@@ -797,7 +798,8 @@ size_t EnumerateCollectionBlock::skipSome (size_t atLeast, size_t atMost) {
 
   while (skipped < atLeast) {
     if (_buffer.empty()) {
-      if (! getBlock(DefaultBatchSize, DefaultBatchSize)) {
+      size_t toFetch = (std::min)(DefaultBatchSize, atMost);
+      if (! getBlock(toFetch, toFetch)) {
         _done = true;
         return skipped;
       }
@@ -1168,7 +1170,8 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t atLeast,
     // try again!
 
     if (_buffer.empty()) {
-      if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize) 
+      size_t toFetch = (std::min)(DefaultBatchSize, atMost);
+      if (! ExecutionBlock::getBlock(toFetch, toFetch) 
           || (! initIndex())) {
         _done = true;
         return nullptr;
@@ -1274,7 +1277,8 @@ size_t IndexRangeBlock::skipSome (size_t atLeast,
 
   while (skipped < atLeast) {
     if (_buffer.empty()) {
-      if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize) 
+      size_t toFetch = (std::min)(DefaultBatchSize, atMost);
+      if (! ExecutionBlock::getBlock(toFetch, toFetch) 
           || (! initIndex())) {
         _done = true;
         return skipped;
@@ -1726,7 +1730,8 @@ AqlItemBlock* EnumerateListBlock::getSome (size_t, size_t atMost) {
     // try again!
 
     if (_buffer.empty()) {
-      if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
+      size_t toFetch = (std::min)(DefaultBatchSize, atMost);
+      if (! ExecutionBlock::getBlock(toFetch, toFetch)) {
         _done = true;
         return nullptr;
       }
@@ -1847,7 +1852,8 @@ size_t EnumerateListBlock::skipSome (size_t atLeast, size_t atMost) {
 
   while (skipped < atLeast) {
     if (_buffer.empty()) {
-      if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
+      size_t toFetch = (std::min)(DefaultBatchSize, atMost);
+      if (! ExecutionBlock::getBlock(toFetch, toFetch)) {
         _done = true;
         return skipped;
       }
@@ -2073,7 +2079,7 @@ AqlItemBlock* CalculationBlock::getSome (size_t atLeast,
                                          size_t atMost) {
 
   unique_ptr<AqlItemBlock> res(ExecutionBlock::getSomeWithoutRegisterClearout(
-                                                     DefaultBatchSize, DefaultBatchSize));
+                               atLeast, atMost));
 
   if (res.get() == nullptr) {
     return nullptr;
@@ -2341,6 +2347,10 @@ bool FilterBlock::hasMore () {
   }
 
   if (_buffer.empty()) {
+    // QUESTION: Is this sensible? Asking whether there is more might
+    // trigger an expensive fetching operation, even if later on only
+    // a single document is needed due to a LIMIT...
+    // However, how should we know this here?
     if (! getBlock(DefaultBatchSize, DefaultBatchSize)) {
       _done = true;
       return false;
