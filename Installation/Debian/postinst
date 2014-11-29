@@ -8,7 +8,7 @@ ArangoDB 2 (http://www.arangodb.com)
   graphs, and key-values.
 
 First Steps with ArangoDB:
-  http:/www.arangodb.com/quickstart
+  https://docs.arangodb.com/FirstSteps/README.html
 
 Upgrading ArangoDB:
   https://docs.arangodb.com/Installing/Upgrading.html
