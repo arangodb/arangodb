@@ -1,3 +1,9 @@
+v2.3.2 (2014-XX-XX)
+-------------------
+
+* fixed issue #1134: Change the default endpoint to localhost
+
+
 v2.3.1 (2014-11-28)
 -------------------
 

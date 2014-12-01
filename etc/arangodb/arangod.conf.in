@@ -26,7 +26,7 @@ directory = @LOCALSTATEDIR@/lib/arangodb
 #   endpoint = tcp://[::]:8529
 #   endpoint = tcp://[fe80::21a:5df1:aede:98cf]:8529
 #
-endpoint = tcp://0.0.0.0:8529
+endpoint = tcp://127.0.0.1:8529
 
 # resuse a port on restart or wait until it is freed by the operating system
 # reuse-address = false
