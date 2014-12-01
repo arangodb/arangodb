@@ -1,7 +1,8 @@
 !CHAPTER Dumping Data from an ArangoDB database
 
 To dump data from an ArangoDB server instance, you will need to invoke _arangodump_.
-It can be invoked by executing the following command:
+Dumps can be re-imported with _arangorestore_. _arangodump_ can be invoked by executing
+the following command:
 
     unix> arangodump --output-directory "dump"
 

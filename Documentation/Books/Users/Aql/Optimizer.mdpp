@@ -1,6 +1,6 @@
 !CHAPTER The AQL query optimizer
 
-AQL queres are sent through an optimizer before execution. The task of the optimizer is
+AQL queries are sent through an optimizer before execution. The task of the optimizer is
 to create an initial execution plan for the query, look for optimization opportunities and
 apply them. As a result, the optimizer might produce multiple execution plans for a
 single query. It will then calculate the costs for all plans and pick the plan with the
