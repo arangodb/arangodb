@@ -783,6 +783,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
   ExecutionPlan* _plan;
   std::unordered_set<VariableId> _varIds;
   bool _canThrow; 
+  bool _modified;
   Optimizer::RuleLevel _level;
   
   public:
@@ -794,6 +795,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       : _opt(opt),
         _plan(plan), 
         _canThrow(false),
+        _modified(false),
         _level(level) {
       _ranges = new RangesInfo();
       _varIds.insert(var->id);
@@ -801,6 +803,10 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
 
     ~FilterToEnumCollFinder () {
       delete _ranges;
+    }
+
+    bool modified () const {
+      return _modified;
     }
 
     bool before (ExecutionNode* en) override final {
@@ -1044,25 +1050,12 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                   }
                   
                   if (! rangeInfo.at(0).empty()) {
-                    auto newPlan = _plan->clone();
-                    if (newPlan == nullptr) {
-                      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-                    }
-
-                    try {
-                      ExecutionNode* newNode = new IndexRangeNode(newPlan, newPlan->nextId(), node->vocbase(), 
-                        node->collection(), node->outVariable(), idx, rangeInfo, false);
-                      newPlan->registerNode(newNode);
-                      newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
-                      // re-inject the new plan with the previous rule so it gets passed through
-                      // use-index-range optimization again
-                      // this allows to enable even more indexes
-                      _opt->addPlan(newPlan, Optimizer::previousRule(_level), true);
-                    }
-                    catch (...) {
-                      delete newPlan;
-                      throw;
-                    }
+                    ExecutionNode* newNode = new IndexRangeNode(_plan, 
+                      _plan->nextId(), node->vocbase(), node->collection(), 
+                      node->outVariable(), idx, rangeInfo, false);
+                    _plan->registerNode(newNode);
+                    _plan->replaceNode(_plan->getNodeById(node->id()), newNode);
+                    _modified = true;
                   }
                 }
               }
@@ -1231,6 +1224,8 @@ int triagens::aql::useIndexRange (Optimizer* opt,
                                   ExecutionPlan* plan, 
                                   Optimizer::Rule const* rule) {
   
+  bool modified = false;
+
   std::vector<ExecutionNode*> nodes
     = plan->findNodesOfType(EN::FILTER, true);
   
@@ -1240,8 +1235,11 @@ int triagens::aql::useIndexRange (Optimizer* opt,
     TRI_ASSERT(invars.size() == 1);
     FilterToEnumCollFinder finder(opt, plan, invars[0], rule->level);
     nn->walk(&finder);
+    if (finder.modified()) {
+      modified = true;
+    }
   }
-  opt->addPlan(plan, rule->level, false);
+  opt->addPlan(plan, rule->level, modified);
 
   return TRI_ERROR_NO_ERROR;
 }
