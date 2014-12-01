@@ -1,6 +1,8 @@
 v2.4.0 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #1134: Change the default endpoint to localhost
+
 * fixed non-working subquery index optimizations
 
 * do not restrict summary of Foxx applications to 60 characters
