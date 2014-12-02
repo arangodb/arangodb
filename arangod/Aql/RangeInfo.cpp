@@ -597,10 +597,11 @@ RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs,
     for (auto x: (*rhs)[i]->_ranges) {
       for (auto y: x.second) {
         // take the difference of 
-        RangeInfo* ri = rimv->differenceRangeInfo(&y.second);
-        if (ri != nullptr) { 
+        RangeInfo ri = y.second.clone();
+        rimv->differenceRangeInfo(ri);//TODO should this be a copy of y.second?
+        if (ri.isValid()) { 
           // if ri is nullptr, then y.second is contained in an existing ri 
-          rim->insert(*ri);
+          rim->insert(ri);
         }
       }
     }
@@ -718,14 +719,16 @@ static bool areDisjointRangeInfos (RangeInfo* lhs, RangeInfo* rhs) {
 /// @brief differenceRangeInfo: returns the difference of the constant parts of
 /// the given RangeInfo and the union of the RangeInfos (for the same var and
 /// attr) in the vector. Returns the nullptr if it is empty. 
+///
+/// Modifies newRi in-place.
 ////////////////////////////////////////////////////////////////////////////////
 
-RangeInfo* RangeInfoMapVec::differenceRangeInfo (RangeInfo* newRi) {
+void RangeInfoMapVec::differenceRangeInfo (RangeInfo& newRi) {
   
   for (auto rim: _rangeInfoMapVec) {
-    RangeInfo* oldRi = rim->find(newRi->_var, newRi->_attr);
-    if (oldRi != nullptr && ! areDisjointRangeInfos(oldRi, newRi)) {
-      int contained = containmentRangeInfos(oldRi, newRi);
+    RangeInfo* oldRi = rim->find(newRi._var, newRi._attr);
+    if (oldRi != nullptr && ! areDisjointRangeInfos(oldRi, &newRi)) {
+      int contained = containmentRangeInfos(oldRi, &newRi);
       if (contained == -1) { 
         // oldRi is a subset of newRi, erase the old RI 
         // continuing finding the difference of the new one and existing RIs
@@ -741,32 +744,33 @@ RangeInfo* RangeInfoMapVec::differenceRangeInfo (RangeInfo* newRi) {
       } 
       else if (contained == 1) {
         // newRi is a subset of oldRi, disregard new
-        if (newRi->isConstant()) {
-          return nullptr; // i.e. do nothing on return of this function
+        if (newRi.isConstant()) {
+          newRi.invalidate();
+          return;
         } 
         else {
           // unassign _lowConst and _highConst
           RangeInfoBound rib;
-          newRi->_lowConst.assign(rib);
-          newRi->_highConst.assign(rib);
-          return newRi;
+          newRi._lowConst.assign(rib);
+          newRi._highConst.assign(rib);
+          return;
         }
       } 
       else {
         // oldRi and newRi have non-empty intersection
-        int LoLo = CompareRangeInfoBound(oldRi->_lowConst, newRi->_lowConst, -1);
+        int LoLo = CompareRangeInfoBound(oldRi->_lowConst, newRi._lowConst, -1);
         if (LoLo == 1) { // replace low bound of new with high bound of old
-          newRi->_lowConst.assign(oldRi->_highConst);
-          newRi->_lowConst.setInclude(! oldRi->_highConst.inclusive());
+          newRi._lowConst.assign(oldRi->_highConst);
+          newRi._lowConst.setInclude(! oldRi->_highConst.inclusive());
         } 
         else { // replace the high bound of the new with the low bound of the old
-          newRi->_highConst.assign(oldRi->_lowConst);
-          newRi->_highConst.setInclude(! oldRi->_lowConst.inclusive());
+          newRi._highConst.assign(oldRi->_lowConst);
+          newRi._highConst.setInclude(! oldRi->_lowConst.inclusive());
         }
       }
     }
   }
-  return newRi;
+  return;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
