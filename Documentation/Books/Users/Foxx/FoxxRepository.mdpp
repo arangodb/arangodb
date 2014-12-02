@@ -44,13 +44,14 @@ It is also possible to supply parameters to the query:
 ```javascript
 // in the repository
 getPendingItemById: Foxx.createQuery(
-    'FOR todo IN my_todos FILTER todo.completed == false FILTER todo._key == @key RETURN todo'
+    'FOR todo IN my_todos FILTER todo.completed == false FILTER todo._key == @id RETURN todo'
 )
 
 // in the controller
 ctrl.get("/:id", function(req, res) {
     var id = req.params("id");
-    res.json(todosRepository.getPendingItemById(id));
+    var rv = todosRepository.getPendingItemById({ id: id });
+    res.json(rv);
 });
 ```
 
@@ -59,7 +60,7 @@ The list of results can also be transformed before returning it from the reposit
 ```javascript
 // in the repository
 getPendingItemById: Foxx.createQuery({
-    query: 'FOR todo IN my_todos FILTER todo.completed == false FILTER todo._key == @key RETURN todo',
+    query: 'FOR todo IN my_todos FILTER todo.completed == false FILTER todo._key == @id RETURN todo',
     transform: function(results, args) {
         for (var i = 0; i < results.length; i++) {
             results[i].extraProperty = args.extra;
@@ -72,8 +73,8 @@ ctrl.get("/:id", function(req, res) {
     var id = req.params("id");
     var extra = req.params("extra");
     var rv = todosRepository.getPendingItemById(
-	{ id: id },
-	{ extra: extra }
+        { id: id },
+        { extra: extra }
     );
     res.json(rv);
 });
