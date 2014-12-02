@@ -316,12 +316,14 @@ RangeInfoMap::RangeInfoMap (std::string const& var,
                             std::string const& name, 
                             RangeInfoBound low, 
                             RangeInfoBound high,
-                            bool equality)
-  : _ranges() {
-    RangeInfo ri(var, name, low, high, equality);
+                            bool equality) {
+    RangeInfoMap(RangeInfo(var, name, low, high, equality));
+}
+
+RangeInfoMap::RangeInfoMap (RangeInfo ri) : _ranges() {
     std::unordered_map<std::string, RangeInfo> map;
-    map.emplace(make_pair(name, ri));
-    _ranges.emplace(std::make_pair(var, map));
+    map.emplace(make_pair(ri._attr, ri));
+    _ranges.emplace(std::make_pair(ri._var, map));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
