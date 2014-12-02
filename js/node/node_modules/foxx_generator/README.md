@@ -99,6 +99,11 @@ generator.addState('ideas', {
 
 Some states take additional information: Entities need to know which repository they are contained in (via `containedIn`) and repositories need to know which entities they contain (via `contains`).
 
+States can also have a superstate. This can be done by providing `superstate` with the name of the state that should be the superstate as a string. The superstate is provided to the service via a third parameter in its action. It is an object that has a key called `superstate` where the value depends on the superstate's type:
+
+* If the superstate is an entity, it has a key `entity` where the value is the entity and a key `repository` which is the Foxx.Repository in which the entity is saved.
+* If the superstate is a repository, it has a key `repository` which contains the Foxx.Repository.
+
 ### Entity
 
 An entity can be `parameterized` (by setting its attribute `parameterized` to `true`) which means that there is not only one state of that type, but there can be an arbitrary amount – each of them is identified by a parameter. This is usually the case with entities that are stored in a repository.

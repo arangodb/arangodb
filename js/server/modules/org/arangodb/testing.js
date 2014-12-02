@@ -668,7 +668,7 @@ function performTests(options, testList, testname) {
         continue;
       }
 
-      print("\nTrying",te,"...");
+      print("\nArangod: Trying",te,"...");
       var r = runThere(options, instanceInfo, te);
       if (r.hasOwnProperty('status')) {
         results[te] = r;
@@ -712,7 +712,7 @@ testFuncs.single_server = function (options) {
   if (options.test !== undefined) {
     var instanceInfo = startInstance("tcp", options, [], "single_server");
     var te = options.test;
-    print("\nTrying",te,"on server...");
+    print("\nArangod: Trying",te,"...");
     result = {};
     result[te] = runThere(options, instanceInfo, makePath(te));
     print("Shutting down...");
@@ -731,7 +731,7 @@ testFuncs.single_client = function (options) {
   if (options.test !== undefined) {
     var instanceInfo = startInstance("tcp", options, [], "single_client");
     var te = options.test;
-    print("\nTrying ",te," on client...");
+    print("\nArangoSH: Trying ",te,"...");
     result[te] = runInArangosh(options, instanceInfo, te);
     print("Shutting down...");
     shutdownInstance(instanceInfo,options);
@@ -819,7 +819,7 @@ testFuncs.shell_client = function(options) {
         continue;
       }
 
-      print("\nTrying",te,"...");
+      print("\nArangoSH: Trying",te,"...");
 
       var r = runInArangosh(options, instanceInfo, te);
       results[te] = r;

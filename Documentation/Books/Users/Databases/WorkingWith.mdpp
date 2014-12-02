@@ -26,7 +26,7 @@ database only.
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 @startDocuBlock databaseUseDatabase
 
-!SUBSECTION Is Database
+!SUBSECTION List Databases
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 @startDocuBlock databaseListDatabase
 
