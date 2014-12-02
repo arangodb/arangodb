@@ -791,11 +791,11 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                             ExecutionPlan* plan,
                             Variable const* var,
                             Optimizer::RuleLevel level) 
-      : _opt(opt),
+      : _rangeInfoMapVec(nullptr),
+        _opt(opt),
         _plan(plan), 
         _canThrow(false),
         _level(level) {
-      _rangeInfoMapVec = new RangeInfoMapVec();
       _varIds.insert(var->id);
     };
 
@@ -817,7 +817,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             std::string attr;
             Variable const* enumCollVar = nullptr;
             // there is an implicit AND between FILTER statements
-            if (_rangeInfoMapVec->empty()) {
+            if (_rangeInfoMapVec == nullptr) {
               _rangeInfoMapVec = buildRangeInfo(node->expression()->node(), enumCollVar, attr);
             } else {
               _rangeInfoMapVec = andCombineRangeInfoMapVecs(_rangeInfoMapVec,

@@ -464,6 +464,17 @@ RangeInfoMapVec::RangeInfoMapVec  (RangeInfoMap* rim) :
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+RangeInfoMapVec::~RangeInfoMapVec () {
+  for (auto x: _rangeInfoMapVec) {
+    delete x;
+  }
+  _rangeInfoMapVec.clear();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief emplace_back: emplace_back RangeInfoMap in vector
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -603,19 +614,17 @@ RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief andCombineRangeInfoMaps: insert every RangeInfo in the right argument
-/// in a new copy of the left argument
+/// in the left argument
 ////////////////////////////////////////////////////////////////////////////////
 
 RangeInfoMap* triagens::aql::andCombineRangeInfoMaps (RangeInfoMap* lhs, RangeInfoMap* rhs) {
- 
-  RangeInfoMap* rim = lhs->clone();
 
   for (auto x: rhs->_ranges) {
     for (auto y: x.second) {
-      rim->insert(y.second.clone());
+      lhs->insert(y.second.clone());
     }
   }
-  return rim;
+  return lhs;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -623,16 +632,16 @@ RangeInfoMap* triagens::aql::andCombineRangeInfoMaps (RangeInfoMap* lhs, RangeIn
 /// distributing the AND into the ORs in a condition like:
 /// (OR condition) AND (OR condition).
 ///
-/// The return RIMV is new unless one of the arguments is empty.
+/// The return RIMV is the lhs, unless the it is empty or the nullptr, in which case it is the rhs. 
 ////////////////////////////////////////////////////////////////////////////////
 
 RangeInfoMapVec* triagens::aql::andCombineRangeInfoMapVecs (RangeInfoMapVec* lhs, 
                                                             RangeInfoMapVec* rhs) {
-  if (lhs->empty()) {
+  if (lhs == nullptr || lhs->empty()) {
     return lhs;
   }
 
-  if (rhs->empty()) {
+  if (rhs == nullptr || rhs->empty()) {
     return rhs;
   }
 
@@ -643,6 +652,8 @@ RangeInfoMapVec* triagens::aql::andCombineRangeInfoMapVecs (RangeInfoMapVec* lhs
       rimv->emplace_back(andCombineRangeInfoMaps((*lhs)[i]->clone(), (*rhs)[j]->clone()));
     }
   }
+  delete lhs;
+  delete rhs;
   return rimv;
 }
 
