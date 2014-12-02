@@ -10,7 +10,7 @@ window.ApplicationsView = Backbone.View.extend({
   events: {
     "click #checkDevel"         : "toggleDevel",
     "click #checkActive"        : "toggleActive",
-    "click #checkSystem"        : "toggleSystem",
+    "click .checkSystem"        : "toggleSystem",
     "click #foxxToggle"         : "slideToggle",
     "click #importFoxxToggle"   : "slideToggleImport",
     "change #importFoxx"        : "uploadSetup",
@@ -285,7 +285,7 @@ window.ApplicationsView = Backbone.View.extend({
     this.delegateEvents();
     $('#checkActive').attr('checked', this._showActive);
     $('#checkDevel').attr('checked', this._showDevel);
-    $('#checkSystem').attr('checked', this._showSystem);
+    $('.checkSystem').attr('checked', this._showSystem);
     
     var self = this;
     _.each(this._installedSubViews, function(v) {

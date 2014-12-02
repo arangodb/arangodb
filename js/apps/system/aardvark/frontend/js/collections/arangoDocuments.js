@@ -147,7 +147,6 @@
     },
 
     getDocuments: function (callback) {
-//      window.progressView.show("Fetching documents...");
       window.progressView.showWithDelay(300, "Fetching documents...");
       var self = this,
           query,

@@ -2043,22 +2043,35 @@ ExecutionNode* AggregateNode::clone (ExecutionPlan* plan,
 ////////////////////////////////////////////////////////////////////////////////
 
 struct UserVarFinder : public WalkerWorker<ExecutionNode> {
-  UserVarFinder () {};
+  UserVarFinder (int mindepth) : mindepth(mindepth), depth(-1) {};
   ~UserVarFinder () {};
   std::vector<Variable const*> userVars;
+  int mindepth;   // minimal depth to consider
+  int depth;
 
   bool enterSubquery (ExecutionNode*, ExecutionNode*) override final {
     return false;
   }
 
-  bool before (ExecutionNode* en) override final {
-    auto vars = en->getVariablesSetHere();
-    for (auto v : vars) {
-      if (v->isUserDefined()) {
-        userVars.push_back(v);
+  void after (ExecutionNode* en) override final {
+    if (en->getType() == ExecutionNode::SINGLETON) {
+      depth = 0;
+    }
+    else if (en->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
+             en->getType() == ExecutionNode::INDEX_RANGE ||
+             en->getType() == ExecutionNode::ENUMERATE_LIST ||
+             en->getType() == ExecutionNode::AGGREGATE) {
+      depth += 1;
+    }
+    // Now depth is set correct for this node.
+    if (depth >= mindepth) {
+      auto vars = en->getVariablesSetHere();
+      for (auto v : vars) {
+        if (v->isUserDefined()) {
+          userVars.push_back(v);
+        }
       }
     }
-    return false;
   }
 };
 
@@ -2069,10 +2082,18 @@ std::vector<Variable const*> AggregateNode::getVariablesUsedHere () const {
   }
   if (_outVariable != nullptr) {
     // Here we have to find all user defined variables in this query
-    // amonst our dependencies:
-    UserVarFinder finder;
+    // amongst our dependencies:
+    UserVarFinder finder(1);
     auto myselfasnonconst = const_cast<AggregateNode*>(this);
     myselfasnonconst->walk(&finder);
+    if (finder.depth == 1) {
+      // we are toplevel, let's run again with mindepth = 0
+      finder.userVars.clear();
+      finder.mindepth = 0;
+      finder.depth = -1;
+      finder.reset();
+      myselfasnonconst->walk(&finder);
+    }
     for (auto x : finder.userVars) {
       v.insert(x);
     }

@@ -62,6 +62,8 @@
         "frontend/js/templates/testView.ejs",
         "frontend/js/templates/userBarView.ejs",
         "frontend/js/templates/userManagementView.ejs",
+        "frontend/js/templates/tableView.ejs",
+        "frontend/js/templates/loadingTableView.ejs",
         "frontend/html/body.html.part",
         "frontend/html/scripts.html.part",
         "frontend/html/end.html.part"
@@ -136,6 +138,7 @@
         "frontend/js/collections/notificationCollection.js",
         "frontend/js/collections/arangoQueries.js",
         "frontend/js/views/_paginationView.js",
+        "frontend/js/views/tableView.js",
         "frontend/js/views/apiView.js",
         "frontend/js/views/appDocumentationView.js",
         "frontend/js/views/applicationsView.js",
@@ -182,7 +185,6 @@
     "libs.js": {
       "files": [
         "frontend/js/lib/jquery-ui-1.9.2.custom.js",
-        "frontend/js/lib/jquery.dataTables.js",
         "frontend/js/lib/jquery.snippet.js",
         "frontend/js/lib/jquery.slideto.min.js",
         "frontend/js/lib/jquery.wiggle.min.js",
@@ -198,7 +200,6 @@
         "frontend/js/lib/strftime-min.js",
         "frontend/js/lib/dygraph-combined.js",
         "frontend/js/lib/d3.fisheye.js",
-        "frontend/js/lib/ColVis.js",
         "frontend/js/lib/bootstrap-pagination.js",
         "frontend/js/lib/jqconsole.min.js",
         "frontend/js/lib/swagger.js",
