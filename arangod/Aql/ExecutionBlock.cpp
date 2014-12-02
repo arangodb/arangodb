@@ -1041,6 +1041,8 @@ bool IndexRangeBlock::initRanges () {
                                   &myCollection);
           posInExpressions++;
           if (a._type == AqlValue::JSON) {
+            //FIXME if <a> is an array or list of values, then this doesn't do
+            //the correct thing
             Json json(Json::Array, 3);
             json("include", Json(l.inclusive()))
                 ("isConstant", Json(true))
@@ -1050,6 +1052,9 @@ bool IndexRangeBlock::initRanges () {
             actualRange._lowConst.andCombineLowerBounds(b);
           }
           else if (a._type == AqlValue::SHAPED) {
+            //FIXME if <a> is an array or list of values, then this doesn't do
+            //the correct thing
+
             Json json(Json::Array, 3);
             json("include", Json(l.inclusive()))
                 ("isConstant", Json(true))
@@ -1423,6 +1428,7 @@ void IndexRangeBlock::readPrimaryIndex (IndexOrCondition const& ranges) {
         if (TRI_IsStringJson(json)) {
           key = std::string(json->_value._string.data, json->_value._string.length - 1);
         }
+
         break;
       }
     }
