@@ -118,7 +118,8 @@ AqlValue Expression::execute (triagens::arango::AqlTransaction* trx,
                               std::vector<AqlValue>& argv,
                               size_t startPos,
                               std::vector<Variable*> const& vars,
-                              std::vector<RegisterId> const& regs) {
+                              std::vector<RegisterId> const& regs,
+                              TRI_document_collection_t const** collection) {
 
   if (! _built) {
     buildExpression();
@@ -155,8 +156,7 @@ AqlValue Expression::execute (triagens::arango::AqlTransaction* trx,
     }
 
     case SIMPLE: {
-      TRI_document_collection_t const* myCollection = nullptr;
-      return executeSimpleExpression(_node, &myCollection, trx, docColls, argv, startPos, vars, regs);
+      return executeSimpleExpression(_node, collection, trx, docColls, argv, startPos, vars, regs);
     }
  
     case UNPROCESSED: {
