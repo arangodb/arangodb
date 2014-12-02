@@ -1293,9 +1293,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                              true);
                 rimv->differenceRangeInfo(ri);
                 if (ri.isValid()) { 
-                  RangeInfoMap* rim = new RangeInfoMap();
-                  rim->insert(ri);
-                  rimv->emplace_back(rim);
+                  rimv->emplace_back(new RangeInfoMap(ri));
                 }
               }
               enumCollVar = nullptr;

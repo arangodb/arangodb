@@ -609,6 +609,8 @@ namespace triagens {
                       RangeInfoBound low, 
                       RangeInfoBound high,
                       bool equality); 
+        
+        RangeInfoMap (RangeInfo);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
