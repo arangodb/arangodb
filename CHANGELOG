@@ -1,9 +1,7 @@
-v2.3.1 (2014-11-28)
+v2.4.0 (XXXX-XX-XX)
 -------------------
 
-* recreate password if missing during upgrade
-
-* fixed issue #1126
+* fixed issue #1134: Change the default endpoint to localhost
 
 * fixed non-working subquery index optimizations
 
