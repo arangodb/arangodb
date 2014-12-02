@@ -23,7 +23,7 @@ You can define custom query methods using Foxx.createQuery and Foxx.Repository.e
 
 Making a simple query in the repository and using it from the controller:
 
-```javascript
+```js
 // in the repository
 var Foxx = require("org/arangodb/foxx");
 
@@ -41,29 +41,31 @@ ctrl.get("/", function(req, res) {
 
 It is also possible to supply parameters to the query:
 
-```javascript
+```js
 // in the repository
-getPendingItemById: Foxx.createQuery(
-    'FOR todo IN my_todos FILTER todo.completed == false FILTER todo._key == @id RETURN todo'
-)
+getPendingItemById: Foxx.createQuery({
+    query: 'FOR todo IN my_todos FILTER todo.completed == false FILTER todo._key == @id RETURN todo',
+    params: ['id']
+})
 
 // in the controller
 ctrl.get("/:id", function(req, res) {
     var id = req.params("id");
-    var rv = todosRepository.getPendingItemById({ id: id });
+    var rv = todosRepository.getPendingItemById(id);
     res.json(rv);
 });
 ```
 
 The list of results can also be transformed before returning it from the repository:
 
-```javascript
+```js
 // in the repository
 getPendingItemById: Foxx.createQuery({
     query: 'FOR todo IN my_todos FILTER todo.completed == false FILTER todo._key == @id RETURN todo',
-    transform: function(results, args) {
+    params: ['id'],
+    transform: function(results, extra) {
         for (var i = 0; i < results.length; i++) {
-            results[i].extraProperty = args.extra;
+            results[i].extraProperty = extra;
         }
     }
 })
@@ -72,10 +74,7 @@ getPendingItemById: Foxx.createQuery({
 ctrl.get("/:id", function(req, res) {
     var id = req.params("id");
     var extra = req.params("extra");
-    var rv = todosRepository.getPendingItemById(
-        { id: id },
-        { extra: extra }
-    );
+    var rv = todosRepository.getPendingItemById(id, extra);
     res.json(rv);
 });
 ```

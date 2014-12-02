@@ -27,12 +27,13 @@ console.log('usernames:', usernames);
 
 Creates a query function that performs the given query and returns the result.
 
-The returned query function optionally takes an object as its argument. If an object is provided, its properties will be used as the query's bind parameters. Note that collection bind parameters need to be prefixed with an at-sign, e.g. `{'@myCollectionVar': 'my_collection_name'}`.
+The returned query function optionally takes an object as its argument. If an object is provided, its properties will be used as the query's bind parameters. Any additional arguments will be passed to the transform function (or dropped if no transform function is defined).
 
 *Parameter*
 
 * *cfg*: an object with the following properties:
     * *query*: an AQL query string or an ArangoDB Query Builder query object.
+    * *params* (optional): an array of parameter names.
     * *context* (optional): an *applicationContext*.
     * *model* (optional): a *Foxx.Model* that will be applied to the query results.
     * *defaults* (optional): default values for the query's bind parameters. These can be overridden by passing a value for the same name to the query function.
@@ -42,7 +43,9 @@ If *cfg* is a string, it will be used as the value of *cfg.query* instead.
 
 If a *context* is specified, the values of all collection bind parameters will be passed through the context's *collectionName* method.
 
-Note that collection bind parameters in AQL need to be referenced with two at-signs instead of one, e.g. `@@myCollectionVar`.
+Note that collection bind parameters in AQL need to be referenced with two at-signs instead of one, e.g. `@@myCollectionVar` and their parameter name needs to be prefixed with an at-sign as well, e.g. `{'@myCollectionVar': 'collection_name'}`.
+
+If *params* is provided, the query function will accept positional arguments instead of an object. If *params* is a string, it will be treated as an array containing that string.
 
 If both *model* and *transform* are provided, the *transform* function will be applied to the result array _after_ the results have been converted into model instances. The *transform* function is always passed the entire result array and its return value will be returned by the query function.
 
@@ -60,6 +63,16 @@ Using bind parameters:
 ```js
 var query = Foxx.createQuery('FOR u IN _users RETURN u[@propName]');
 var usernames = query({propName: 'user'});
+```
+
+Using named bind parameters:
+
+```js
+var query = Foxx.createQuery({
+    query: 'FOR u IN _users RETURN u[@propName]',
+    params: ['propName']
+);
+var usernames = query('user');
 ```
 
 Using models:
@@ -92,4 +105,31 @@ var query = Foxx.createQuery({
     }
 });
 var user = query(); // first user by username
+```
+
+Using a transformation with extra arguments:
+
+```js
+var query = Foxx.createQuery({
+    query: 'FOR u IN _users SORT u.user ASC RETURN u[@propName]',
+    transform: function (results, uppercase) {
+        return uppercase ? results[0].toUpperCase() : results[0].toLowerCase();
+    }
+});
+query({propName: 'user'}, true); // username of first user in uppercase
+query({propName: 'user'}, false); // username of first user in lowercase
+```
+
+Using a transformation with extra arguments (using positional arguments):
+
+```js
+var query = Foxx.createQuery({
+    query: 'FOR u IN _users SORT u.user ASC RETURN u[@propName]',
+    params: ['propName'],
+    transform: function (results, uppercase) {
+        return uppercase ? results[0].toUpperCase() : results[0].toLowerCase();
+    }
+});
+query('user', true); // username of first user in uppercase
+query('user', false); // username of first user in lowercase
 ```
