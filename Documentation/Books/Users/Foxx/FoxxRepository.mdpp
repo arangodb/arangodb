@@ -19,8 +19,6 @@ exports.repository = TodosRepository;
 
 You can define custom query methods using Foxx.createQuery and Foxx.Repository.extend.
 
-For more details see the chapter on Foxx Queries.
-
 *Examples*
 
 ```javascript
