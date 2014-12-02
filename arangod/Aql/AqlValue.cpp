@@ -724,6 +724,7 @@ Json AqlValue::extractListMember (triagens::arango::AqlTransaction* trx,
           auto vecCollection = (*it)->getDocumentCollection(0);
           return (*it)->getValue(p - totalSize, 0).toJson(trx, vecCollection);
         }
+        totalSize += (*it)->size();
       }
       break; // fall-through to returning null
     }
@@ -762,6 +763,8 @@ AqlValue AqlValue::CreateFromBlocks (triagens::arango::AqlTransaction* trx,
       for (RegisterId j = 0; j < n; ++j) {
         if (variableNames[j][0] != '\0') {
           // temporaries don't have a name and won't be included
+          // Variables from depth 0 are excluded, too, unless the
+          // COLLECT statement is on level 0 as well.
           values.set(variableNames[j].c_str(), current->getValue(i, j).toJson(trx, current->getDocumentCollection(j)));
         }
       }

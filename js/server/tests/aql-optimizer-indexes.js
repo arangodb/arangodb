@@ -132,7 +132,11 @@ function optimizerIndexesTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       var indexes = 0;
+<<<<<<< HEAD
       var nodeTypes = plan.nodes.map(function(node) {
+=======
+      plan.nodes.map(function(node) {
+>>>>>>> 9cfc6d5cd50b8f451ebdedd77e2c5257fa72a573
         if (node.type === "IndexRangeNode") {
           ++indexes;
         }
