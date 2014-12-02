@@ -860,10 +860,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief differenceRangeInfo: returns the difference of the constant parts of
 /// the given RangeInfo and the union of the RangeInfos (for the same var and
-/// attr) in the vector. Returns the nullptr if it is empty. 
+/// attr) in the vector. Returns the nullptr if it is empty. //TODO update this
 ////////////////////////////////////////////////////////////////////////////////
         
-        RangeInfo* differenceRangeInfo (RangeInfo*);
+        void differenceRangeInfo (RangeInfo&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief isMapped: is the input variable in every RIM in the vector
