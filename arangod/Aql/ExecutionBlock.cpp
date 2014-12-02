@@ -1033,15 +1033,27 @@ bool IndexRangeBlock::initRanges () {
         // this constant range:
         for (auto l : r._lows) {
           Expression* e = _allVariableBoundExpressions[posInExpressions];
+          TRI_ASSERT(e != nullptr);
+          TRI_document_collection_t const* myCollection = nullptr; 
           AqlValue a = e->execute(_trx, docColls, data, nrRegs * _pos,
                                   _inVars[posInExpressions],
-                                  _inRegs[posInExpressions]);
+                                  _inRegs[posInExpressions],
+                                  &myCollection);
           posInExpressions++;
           if (a._type == AqlValue::JSON) {
             Json json(Json::Array, 3);
             json("include", Json(l.inclusive()))
                 ("isConstant", Json(true))
                 ("bound", *(a._json));
+            a.destroy();  // the TRI_json_t* of a._json has been stolen
+            RangeInfoBound b(json);   // Construct from JSON
+            actualRange._lowConst.andCombineLowerBounds(b);
+          }
+          else if (a._type == AqlValue::SHAPED) {
+            Json json(Json::Array, 3);
+            json("include", Json(l.inclusive()))
+                ("isConstant", Json(true))
+                ("bound", a.toJson(_trx, myCollection));
             a.destroy();  // the TRI_json_t* of a._json has been stolen
             RangeInfoBound b(json);   // Construct from JSON
             actualRange._lowConst.andCombineLowerBounds(b);
@@ -1054,12 +1066,12 @@ bool IndexRangeBlock::initRanges () {
 
         for (auto h : r._highs) {
           Expression* e = _allVariableBoundExpressions[posInExpressions];
-
+          TRI_document_collection_t const* myCollection = nullptr;
           TRI_ASSERT(e != nullptr);
-
           AqlValue a = e->execute(_trx, docColls, data, nrRegs * _pos,
                                   _inVars[posInExpressions],
-                                  _inRegs[posInExpressions]);
+                                  _inRegs[posInExpressions],
+                                  &myCollection);
           posInExpressions++;
           if (a._type == AqlValue::JSON) {
             Json json(Json::Array, 3);
@@ -1069,6 +1081,15 @@ bool IndexRangeBlock::initRanges () {
             a.destroy();  // the TRI_json_t* of a._json has been stolen
             RangeInfoBound b(json);   // Construct from JSON
             actualRange._highConst.andCombineUpperBounds(b);
+          }
+          else if (a._type == AqlValue::SHAPED) {
+            Json json(Json::Array, 3);
+            json("include", Json(h.inclusive()))
+                ("isConstant", Json(true))
+                ("bound", a.toJson(_trx, myCollection));
+            a.destroy();  // the TRI_json_t* of a._json has been stolen
+            RangeInfoBound b(json);   // Construct from JSON
+            actualRange._highConst.andCombineLowerBounds(b);
           }
           else {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
@@ -2094,7 +2115,8 @@ void CalculationBlock::doEvaluation (AqlItemBlock* result) {
 
     for (size_t i = 0; i < n; i++) {
       // need to execute the expression
-      AqlValue a = _expression->execute(_trx, docColls, data, nrRegs * i, _inVars, _inRegs);
+      TRI_document_collection_t const* myCollection = nullptr;
+      AqlValue a = _expression->execute(_trx, docColls, data, nrRegs * i, _inVars, _inRegs, &myCollection);
       try {
         result->setValue(i, _outReg, a);
       }
