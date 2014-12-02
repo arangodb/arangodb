@@ -1002,8 +1002,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                       }
                     }
                     else if (idx->type == TRI_IDX_TYPE_HASH_INDEX) {
-                      //FIXME the behaviour of this is wrong, each valid
-                      //orCondition should match every field of the given index
+                      //each valid orCondition should match every field of the given index
                       for (size_t k = 0; k < validPos.size() && !indexOrCondition.empty(); k++) {
                         auto map = _rangeInfoMapVec->find(var->name, validPos[k]);
                         for (size_t j = 0; j < idx->fields.size(); j++) {
@@ -1066,7 +1065,6 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                       }
                     }
 
-                    //TODO remove empty positions in indexOrCondition?
                     // check if there are all positions are non-empty
                     bool isEmpty = indexOrCondition.empty();
                     if (! isEmpty) {
