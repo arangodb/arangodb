@@ -627,6 +627,7 @@ RangeInfoMap* triagens::aql::andCombineRangeInfoMaps (RangeInfoMap* lhs, RangeIn
       lhs->insert(y.second.clone());
     }
   }
+  delete rhs;
   return lhs;
 }
 
