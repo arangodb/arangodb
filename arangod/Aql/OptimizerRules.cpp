@@ -864,6 +864,9 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
 
           auto node = static_cast<EnumerateCollectionNode*>(en);
           auto var = node->getVariablesSetHere()[0];  // should only be 1
+          if (_rangeInfoMapVec == nullptr) {
+            break;
+          }
           std::unordered_map<std::string, RangeInfo>* map
               = _rangeInfoMapVec->find(var->name, 0);        
               // check if we have any ranges with this var
@@ -1312,7 +1315,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       // default case
       attr.clear();
       enumCollVar = nullptr;
-      return new RangeInfoMapVec();
+      return nullptr;
     }
 };
 

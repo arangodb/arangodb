@@ -578,11 +578,11 @@ std::unordered_set<std::string> RangeInfoMapVec::attributes (std::string const& 
 RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs, 
                                                            RangeInfoMapVec* rhs) {
  
-  if (lhs->empty()) {
+  if (lhs == nullptr || lhs->empty()) {
     return rhs;
   }
 
-  if (rhs->empty()) {
+  if (rhs == nullptr || rhs->empty()) {
     return lhs;
   }
 
