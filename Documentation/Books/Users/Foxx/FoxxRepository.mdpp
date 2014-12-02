@@ -86,9 +86,13 @@ ctrl.get("/:id", function(req, res) {
 
 @startDocuBlock JSF_foxx_repository_collection
 
-!SUBSECTION ModelPrototype
+!SUBSECTION Model
 
-@startDocuBlock JSF_foxx_repository_modelPrototype
+@startDocuBlock JSF_foxx_repository_model
+
+!SUBSECTION Model schema
+
+@startDocuBlock JSF_foxx_repository_modelSchema
 
 !SUBSECTION Prefix
 

@@ -38,6 +38,8 @@ v2.4.0 (XXXX-XX-XX)
   fetched from upstream in the presence of a LIMIT clause. This should
   generally improve performance.
 
+* deprecated `Repository#modelPrototype`. Use `Repository#model` instead.
+
 
 v2.3.0 (2014-11-18)
 -------------------
