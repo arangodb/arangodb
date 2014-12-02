@@ -61,7 +61,7 @@ exports.createQuery = function createQuery (cfg) {
     throw new Error('Expected transform to be a function.');
   }
 
-  return function query(vars) {
+  return function query(vars, trArgs) {
     vars = _.extend({}, defaults, vars);
     if (context) {
       _.each(vars, function (value, key) {
@@ -76,6 +76,7 @@ exports.createQuery = function createQuery (cfg) {
         return new Model(data);
       });
     }
-    return transform ? transform(result) : result;
+
+    return transform ? transform(result, trArgs) : result;
   };
 };
