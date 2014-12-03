@@ -478,6 +478,15 @@ function get_api_collections (req, res) {
 /// - *journalSize*: The maximal size setting for journals / datafiles
 ///   in bytes.
 ///
+/// - *keyOptions*: JSON object which contains key generation options:
+///   - *type*: specifies the type of the key generator. The currently
+///     available generators are *traditional* and *autoincrement*.
+///   - *allowUserKeys*: if set to *true*, then it is allowed to supply
+///     own key values in the *_key* attribute of a document. If set to
+///     *false*, then the key generator is solely responsible for
+///     generating keys and supplying own key values in the *_key* attribute
+///     of documents is considered an error.
+///
 /// - *isVolatile*: If *true* then the collection data will be
 ///   kept in memory only and ArangoDB will not write or sync the data
 ///   to disk.
@@ -487,6 +496,7 @@ function get_api_collections (req, res) {
 ///
 /// - *shardKeys*: contains the names of document attributes that are used to
 ///   determine the target shard for documents.
+///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{400}
