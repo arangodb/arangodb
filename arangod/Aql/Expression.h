@@ -166,7 +166,8 @@ namespace triagens {
                           std::vector<TRI_document_collection_t const*>&,
                           std::vector<AqlValue>&, size_t,
                           std::vector<Variable*> const&,
-                          std::vector<RegisterId> const&);
+                          std::vector<RegisterId> const&,
+                          TRI_document_collection_t const**);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether this is a simple expression
