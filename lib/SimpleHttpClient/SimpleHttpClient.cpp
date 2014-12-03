@@ -71,7 +71,6 @@ namespace triagens {
       if (_connection->isConnected()) {
         _state = FINISHED;
       }
-      // XXX std::cout << "Simple: contructor done, state: " << _state << std::endl;
     }
 
     SimpleHttpClient::~SimpleHttpClient () {
@@ -95,8 +94,6 @@ namespace triagens {
       // ensure connection has not yet been invalidated
       TRI_ASSERT(_connection != nullptr);
 
-      // XXX std::cout << "Simple: close called" << std::endl;
-
       _connection->disconnect();
       _state = IN_CONNECT;
 
@@ -114,7 +111,6 @@ namespace triagens {
       size_t bodyLength,
       std::map<std::string, std::string> const& headerFields) {
       
-      std::cout << "Simple: request, location: " << location << std::endl;
       // ensure connection has not yet been invalidated
       TRI_ASSERT(_connection != nullptr);
 
@@ -147,12 +143,9 @@ namespace triagens {
         // strange effect that the write (if it is small enough) proceeds
         // but the following read runs into an error. In that case we try
         // to reconnect one and then give up if this does not work.
-        std::cout << "Simple: Main loop, state " << _state << " remaining time "
-                  << remainingTime << " code:" << _result->getHttpReturnCode() << std::endl;
         switch (_state) {
           case (IN_CONNECT): {
             handleConnect();
-            // XXX std::cout << "Simple: handleConnect state: " << _state << std::endl;
             // If this goes wrong, _state is set to DEAD
             break;
           }
@@ -194,26 +187,18 @@ namespace triagens {
 
             // we need to notice if the other side has closed the connection:
             bool connectionClosed;
-            std::cout << "ReadBufV:" << (unsigned long) _readBuffer.c_str() << " "
-                                     << _readBuffer.length() << " "
-                                     << _readBufferOffset << std::endl;
 
             bool res = _connection->handleRead(remainingTime, _readBuffer,
                                                connectionClosed);
 
-            std::cout << "ReadBufN:" << (unsigned long) _readBuffer.c_str() << " "
-                                     << _readBuffer.length() << " "
-                                     << _readBufferOffset << std::endl;
 
             // If there was an error, then we are doomed:
             if (! res) {
-              std::cout << "doomed\n";
               this->close(); // this sets the state to IN_CONNECT for a retry
               break;
             }
 
             if (connectionClosed) {
-              std::cout << "connection closed\n";
               // write might have succeeded even if the server has closed 
               // the connection, this will then show up here with us being
               // in state IN_READ_HEADER but nothing read.
@@ -229,7 +214,6 @@ namespace triagens {
                 // that the server has closed the connection and we must
                 // process the body one more time:
                 _result->setContentLength(_readBuffer.length() - _readBufferOffset);
-                std::cout << "SetContentLength: " << _readBuffer.length() - _readBufferOffset << std::endl;
                 processBody();
 
                 if (_state != FINISHED) {
@@ -288,7 +272,6 @@ namespace triagens {
 
       _result = nullptr;
 
-      std::cout << "Simple: request() done, result code: " << result->getHttpReturnCode() << std::endl;
       return result;
     }
 
@@ -323,9 +306,6 @@ namespace triagens {
       _readBuffer.clear();
       _readBufferOffset = 0;
 
-      std::cout << "ReadBufC:" << (unsigned long) _readBuffer.c_str() << " "
-                               << _readBuffer.length() << " "
-                               << _readBufferOffset << std::endl;
       if (_result) {
         _result->clear();
       }
@@ -644,7 +624,6 @@ namespace triagens {
 
       // body is compressed using deflate. inflate it
       if (_result->isDeflated()) {
-        std::cout << "isDeflated: " << _result->isDeflated();
         _readBuffer.inflate(_result->getBody(), 16384, _readBufferOffset);
       }
 
