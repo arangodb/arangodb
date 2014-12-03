@@ -131,7 +131,6 @@ namespace triagens {
         --valueLength;
       }
 
-      std::cout << "Header: " << keyString << ": " << std::string(value, valueLength) << std::endl;
       if (keyString[0] == 'h') {
         if (! _foundHeader &&
             (keyString == "http/1.1" || keyString == "http/1.0")) {
@@ -144,7 +143,6 @@ namespace triagens {
                 (value[2] >= '0' && value[2] <= '9')) {
               // set response code
               setHttpReturnCode(100 * (value[0] - '0') + 10 * (value[1] - '0') + (value[2] - '0'));
-              std::cout << "setHttpReturnCode: " << getHttpReturnCode() << "\n";
             }
          
             if (valueLength >= 4) {
@@ -159,8 +157,6 @@ namespace triagens {
         if (keyString.size() == strlen("content-length") &&
             keyString == "content-length") {
           setContentLength((size_t) StringUtils::int64(value, valueLength));
-          std::cout << "Simple: Content-length found: "
-                    << getContentLength() << std::endl;
         }
         else if (keyString.size() == strlen("content-encoding") &&
                  keyString == "content-encoding") {

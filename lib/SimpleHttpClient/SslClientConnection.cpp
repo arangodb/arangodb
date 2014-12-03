@@ -218,7 +218,6 @@ bool SslClientConnection::prepare (const double timeout, const bool isWrite) con
 
   int sockn = (int) (TRI_get_fd_or_handle_of_socket(_socket) + 1);
   int res = select(sockn, readFds, writeFds, NULL, &tv);
-  std::cout << "selectSSL " << res << " " << errno << std::endl;
   if (res > 0) {
     return true;
   }
@@ -294,7 +293,6 @@ again:
         break;
 
       case SSL_ERROR_ZERO_RETURN:
-        std::cout << "SSL_ERROR_ZERO_RETURN\n";
         connectionClosed = true;
         SSL_shutdown(_ssl);
         _isConnected = false;

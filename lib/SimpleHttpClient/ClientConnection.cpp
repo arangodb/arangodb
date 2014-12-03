@@ -174,7 +174,6 @@ bool ClientConnection::prepare (const double timeout, const bool isWrite) const 
 
   int sockn = (int) (TRI_get_fd_or_handle_of_socket(_socket) + 1);
   int res = select(sockn, readFds, writeFds, NULL, &tv);
-  std::cout << "select: " << res << " " << errno << std::endl;
 
   if (res > 0) {
     return true;
@@ -237,7 +236,6 @@ bool ClientConnection::writeClientConnection (void* buffer, size_t length, size_
 bool ClientConnection::readClientConnection (StringBuffer& stringBuffer, 
                                              bool& connectionClosed) {
   if (! checkSocket()) {
-    std::cout << "checkSocket was false\n";
     connectionClosed = true;
     return false;
   }
@@ -259,13 +257,11 @@ bool ClientConnection::readClientConnection (StringBuffer& stringBuffer,
 
     if (lenRead == -1) {
       // error occurred
-      std::cout << "An error occurred!" << std::endl;
       connectionClosed = true;
       return false;
     }
 
     if (lenRead == 0) {
-      std::cout << "length 0 received!" << std::endl;
       connectionClosed = true;
       disconnect();
       return true;
