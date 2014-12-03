@@ -82,15 +82,16 @@ bool Optimizer::addPlan (ExecutionPlan* plan,
                          RuleLevel level,
                          bool wasModified) {
   TRI_ASSERT(plan != nullptr);
-
+  
   _newPlans.push_back(plan, level);
 
   if (wasModified) {
     // register which rules modified / created the plan
     plan->addAppliedRule(_currentRule);
     plan->invalidateCost();
+    ++_stats.plansCreated;
   }
-
+    
   if (_newPlans.size() >= _maxNumberOfPlans) {
     return false;
   }
@@ -177,6 +178,7 @@ int Optimizer::createPlans (ExecutionPlan* plan,
           level = it->first;
 
           _newPlans.push_back(p, level);  // nothing to do, just keep it
+          ++_stats.rulesSkipped;
           // now try next
           continue;
         }
@@ -186,6 +188,7 @@ int Optimizer::createPlans (ExecutionPlan* plan,
         int res;
         try {
           res = (*it).second.func(this, p, &(it->second));
+          ++_stats.rulesExecuted;
         }
         catch (...) {
           delete p;
