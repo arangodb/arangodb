@@ -148,7 +148,7 @@ namespace triagens {
         // but the following read runs into an error. In that case we try
         // to reconnect one and then give up if this does not work.
         std::cout << "Simple: Main loop, state " << _state << " remaining time "
-                  << remainingTime << std::endl;
+                  << remainingTime << " code:" << _result->getHttpReturnCode() << std::endl;
         switch (_state) {
           case (IN_CONNECT): {
             handleConnect();
@@ -173,7 +173,7 @@ namespace triagens {
                 setErrorMessage(TRI_last_error(), false);
               }
 
-              this->close();   // this sets _state to IN_CONNECT for a retry
+              this->close(); // this sets _state to IN_CONNECT for a retry
             }
             else {
               _written += bytesWritten;
@@ -192,13 +192,14 @@ namespace triagens {
           case (IN_READ_CHUNKED_BODY): {
             TRI_set_errno(TRI_ERROR_NO_ERROR);
 
-            // we need to read a at least one byte to make progress
-            bool progress;
+            // we need to notice if the other side has closed the connection:
+            bool connectionClosed;
             std::cout << "ReadBufV:" << (unsigned long) _readBuffer.c_str() << " "
                                      << _readBuffer.length() << " "
                                      << _readBufferOffset << std::endl;
 
-            bool res = _connection->handleRead(remainingTime, _readBuffer, progress);
+            bool res = _connection->handleRead(remainingTime, _readBuffer,
+                                               connectionClosed);
 
             std::cout << "ReadBufN:" << (unsigned long) _readBuffer.c_str() << " "
                                      << _readBuffer.length() << " "
@@ -207,17 +208,17 @@ namespace triagens {
             // If there was an error, then we are doomed:
             if (! res) {
               std::cout << "doomed\n";
-              this->close();   // this sets the state to IN_CONNECT for a retry
+              this->close(); // this sets the state to IN_CONNECT for a retry
               break;
             }
 
-            if (! progress) {
-              std::cout << "no progress\n";
+            if (connectionClosed) {
+              std::cout << "connection closed\n";
               // write might have succeeded even if the server has closed 
               // the connection, this will then show up here with us being
               // in state IN_READ_HEADER but nothing read.
               if (_state == IN_READ_HEADER && 0 == _readBuffer.length()) {
-                this->close();   // sets _state to IN_CONNECT again for a retry
+                this->close(); // sets _state to IN_CONNECT again for a retry
                 continue;
               }
 
@@ -228,24 +229,25 @@ namespace triagens {
                 // that the server has closed the connection and we must
                 // process the body one more time:
                 _result->setContentLength(_readBuffer.length() - _readBufferOffset);
+                std::cout << "SetContentLength: " << _readBuffer.length() - _readBufferOffset << std::endl;
                 processBody();
 
                 if (_state != FINISHED) {
                   // If the body was not fully found we give up:
-                  this->close();   // this sets the state to retry
+                  this->close(); // this sets the state IN_CONNECT to retry
                 }
 
                 break;
               }
 
               else {
-                // In all other cases of no progress, we are doomed:
-                this->close();   // this sets the state to retry
+                // In all other cases of closed connection, we are doomed:
+                this->close(); // this sets the state to IN_CONNECT retry
                 break;
               }
             }
 
-            // we made progress, we process whatever we are in progress to do
+            // the connection is still alive:
             switch (_state) {
               case (IN_READ_HEADER):
                 processHeader();

@@ -164,7 +164,8 @@ namespace triagens {
 /// @brief read data from endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool handleRead (double, triagens::basics::StringBuffer&, bool& progress);
+        bool handleRead (double, triagens::basics::StringBuffer&, 
+                         bool& connectionClosed);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         protected virtual methods
