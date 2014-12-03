@@ -940,6 +940,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
     
     void orCombineIndexOrAndIndexAnd(IndexOrCondition*, IndexAndCondition);
+    void differenceIndexOrAndRangeInfo(IndexOrCondition*, RangeInfo&);
   }
 }
 

@@ -611,6 +611,15 @@ namespace triagens {
 
         void readHashIndex (IndexOrCondition const&);
 
+        void orCombineIndexOrs(IndexOrCondition*, IndexOrCondition*);
+        IndexOrCondition* 
+          andCombineIndexOrAndRangeInfoVec(IndexOrCondition*, std::vector<RangeInfo>&);
+        
+        void orCombineIndexOrAndRangeInfoBoundLow (IndexOrCondition*, RangeInfoBound&);
+        void orCombineIndexOrAndRangeInfoBoundHigh (IndexOrCondition*, RangeInfoBound&);
+
+        
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -697,6 +706,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _freeCondition;
+
 
     };
 
