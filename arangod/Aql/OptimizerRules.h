@@ -45,7 +45,7 @@ namespace triagens {
 /// - sorts that are covered by earlier sorts will be removed
 ////////////////////////////////////////////////////////////////////////////////
 
-    int removeRedundantSorts (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+    int removeRedundantSortsRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove all unnecessary filters
@@ -55,6 +55,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     int removeUnnecessaryFiltersRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove INTO of a COLLECT if not used
+////////////////////////////////////////////////////////////////////////////////
+    
+    int removeCollectIntoRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief move calculations up in the plan
@@ -97,32 +103,32 @@ namespace triagens {
 /// @brief prefer IndexRange nodes over EnumerateCollection nodes
 ////////////////////////////////////////////////////////////////////////////////
 
-    int useIndexRange (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+    int useIndexRangeRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief try to use the index for sorting
 ////////////////////////////////////////////////////////////////////////////////
 
-    int useIndexForSort (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+    int useIndexForSortRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief try to remove filters which are covered by indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-    int removeFiltersCoveredByIndex (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+    int removeFiltersCoveredByIndexRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief interchange adjacent EnumerateCollectionNodes in all possible ways
 ////////////////////////////////////////////////////////////////////////////////
 
-    int interchangeAdjacentEnumerations (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+    int interchangeAdjacentEnumerationsRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief scatter operations in cluster - send all incoming rows to all remote
 /// clients
 ////////////////////////////////////////////////////////////////////////////////
 
-    int scatterInCluster (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+    int scatterInClusterRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief distribute operations in cluster - send each incoming row to every
@@ -134,18 +140,18 @@ namespace triagens {
 /// The collections coll1 and coll2 do not have to be distinct for this. 
 ////////////////////////////////////////////////////////////////////////////////
     
-    int distributeInCluster (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+    int distributeInClusterRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
-    int distributeFilternCalcToCluster (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+    int distributeFilternCalcToClusterRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
-    int distributeSortToCluster (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+    int distributeSortToClusterRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief try to get rid of a RemoteNode->ScatterNode combination which has
 /// only a SingletonNode and possibly some CalculationNodes as dependencies
 ////////////////////////////////////////////////////////////////////////////////
 
-    int removeUnnecessaryRemoteScatter (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+    int removeUnnecessaryRemoteScatterRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief this rule removes Remote-Gather-Scatter/Distribute-Remote nodes from
@@ -175,7 +181,7 @@ namespace triagens {
 /// 
 ////////////////////////////////////////////////////////////////////////////////
 
-    int undistributeRemoveAfterEnumColl (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+    int undistributeRemoveAfterEnumCollRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief this rule replaces expressions of the type: 
@@ -186,9 +192,9 @@ namespace triagens {
 //  same (single) attribute.
 ////////////////////////////////////////////////////////////////////////////////
 
-    int replaceOrWithIn (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+    int replaceOrWithInRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
     
-    int removeRedundantOr (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+    int removeRedundantOrRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
     
   }  // namespace aql
 }  // namespace triagens
