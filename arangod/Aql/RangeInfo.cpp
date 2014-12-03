@@ -579,10 +579,12 @@ RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs,
                                                            RangeInfoMapVec* rhs) {
  
   if (lhs == nullptr || lhs->empty()) {
+    delete lhs;
     return rhs;
   }
 
   if (rhs == nullptr || rhs->empty()) {
+    delete rhs;
     return lhs;
   }
 
@@ -593,6 +595,8 @@ RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs,
     rimv->emplace_back((*lhs)[i]->clone());
   }
 
+  delete lhs;
+  
   //avoid inserting identical conditions
   for (size_t i = 0; i < rhs->size(); i++) {
     auto rim = new RangeInfoMap();
@@ -600,7 +604,7 @@ RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs,
       for (auto y: x.second) {
         // take the difference of 
         RangeInfo ri = y.second.clone();
-        rimv->differenceRangeInfo(ri);//TODO should this be a copy of y.second?
+        rimv->differenceRangeInfo(ri);
         if (ri.isValid()) { 
           // if ri is nullptr, then y.second is contained in an existing ri 
           rim->insert(ri);
@@ -611,7 +615,7 @@ RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs,
       rimv->emplace_back(rim);
     }
   }
-
+  delete rhs;
   return rimv;
 }
 
@@ -636,16 +640,19 @@ RangeInfoMap* triagens::aql::andCombineRangeInfoMaps (RangeInfoMap* lhs, RangeIn
 /// distributing the AND into the ORs in a condition like:
 /// (OR condition) AND (OR condition).
 ///
-/// The return RIMV is the lhs, unless the it is empty or the nullptr, in which case it is the rhs. 
+/// The returned RIMV is the new, unless either side is empty or the nullptr, 
+/// in which case it is the other side.
 ////////////////////////////////////////////////////////////////////////////////
 
 RangeInfoMapVec* triagens::aql::andCombineRangeInfoMapVecs (RangeInfoMapVec* lhs, 
                                                             RangeInfoMapVec* rhs) {
   if (lhs == nullptr || lhs->empty()) {
+    delete rhs;
     return lhs;
   }
 
   if (rhs == nullptr || rhs->empty()) {
+    delete lhs;
     return rhs;
   }
 
@@ -780,14 +787,13 @@ void RangeInfoMapVec::differenceRangeInfo (RangeInfo& newRi) {
 /// @brief  differenceIndexOrAndRangeInfo: analogue of differenceRangeInfo
 ////////////////////////////////////////////////////////////////////////////////
 
-static RangeInfo* differenceIndexOrAndRangeInfo (
-    IndexOrCondition orCond, RangeInfo* newRi) {
+void differenceIndexOrAndRangeInfo (IndexOrCondition orCond, RangeInfo& newRi) {
 
   for (IndexAndCondition andCond: orCond) {
     for (size_t i = 0; i < andCond.size(); i++) {
       RangeInfo oldRi = andCond[i];
-      if (! areDisjointRangeInfos(&oldRi, newRi)) {
-        int contained = containmentRangeInfos(&oldRi, newRi);
+      if (! areDisjointRangeInfos(&oldRi, &newRi)) {
+        int contained = containmentRangeInfos(&oldRi, &newRi);
         if (contained == -1) { 
           // oldRi is a subset of newRi, erase the old RI 
           // continuing finding the difference of the new one and existing RIs
@@ -803,32 +809,33 @@ static RangeInfo* differenceIndexOrAndRangeInfo (
         } 
         else if (contained == 1) {
           // newRi is a subset of oldRi, disregard new
-          if (newRi->isConstant()) {
-            return nullptr; // i.e. do nothing on return of this function
+          if (newRi.isConstant()) {
+            newRi.invalidate();
+            return; // i.e. do nothing on return of this function
           } else {
             // unassign _lowConst and _highConst
             RangeInfoBound rib;
-            newRi->_lowConst.assign(rib);
-            newRi->_highConst.assign(rib);
-            return newRi;
+            newRi._lowConst.assign(rib);
+            newRi._highConst.assign(rib);
+            return;
           }
         } 
         else {
           // oldRi and newRi have non-empty intersection
-          int LoLo = CompareRangeInfoBound(oldRi._lowConst, newRi->_lowConst, -1);
+          int LoLo = CompareRangeInfoBound(oldRi._lowConst, newRi._lowConst, -1);
           if (LoLo == 1) { // replace low bound of new with high bound of old
-            newRi->_lowConst.assign(oldRi._highConst);
-            newRi->_lowConst.setInclude(! oldRi._highConst.inclusive());
+            newRi._lowConst.assign(oldRi._highConst);
+            newRi._lowConst.setInclude(! oldRi._highConst.inclusive());
           } 
           else { // replace the high bound of the new with the low bound of the old
-            newRi->_highConst.assign(oldRi._lowConst);
-            newRi->_highConst.setInclude(! oldRi._lowConst.inclusive());
+            newRi._highConst.assign(oldRi._lowConst);
+            newRi._highConst.setInclude(! oldRi._lowConst.inclusive());
           }
         }
       }
     }
   }
-  return newRi;
+  return;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -850,10 +857,10 @@ void triagens::aql::orCombineIndexOrAndIndexAnd (
   //avoid inserting overlapping ranges
   IndexAndCondition newAnd;
   for (RangeInfo x: andCond) {
-    RangeInfo* ri = differenceIndexOrAndRangeInfo(*orCond, &x);
-    if (ri != nullptr) { 
-      // if ri is nullptr, then y.second is contained in an existing ri 
-      newAnd.emplace_back(*ri);
+    differenceIndexOrAndRangeInfo(orCond, x);
+    if (x.isValid()) { 
+      // if ri is invalid, then it is contained in an existing ri 
+      newAnd.emplace_back(x);
     }
   }
 

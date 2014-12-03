@@ -985,8 +985,6 @@ bool IndexRangeBlock::initRanges () {
   // Find out about the actual values for the bounds in the variable bound case:
 
   if (_anyBoundVariable) {
-    //auto newCondition = std::unique_ptr<IndexOrCondition>(new IndexOrCondition());
-    auto newCondition = new IndexOrCondition();
     
     size_t posInExpressions = 0;
       
@@ -1019,16 +1017,19 @@ bool IndexRangeBlock::initRanges () {
     };
 
     v8::HandleScope scope; // do not delete this!
+    
+    //auto newCondition = std::unique_ptr<IndexOrCondition>(new IndexOrCondition());
+    auto newCondition = new IndexOrCondition();
 
-    for (size_t i = 0; i < _condition->size(); i++) {
-
-      //TODO memleak?
-      IndexAndCondition newAnd;
+    for (size_t i = 0; i < en->_ranges[i].size(); i++) {
+      
       for (auto r : en->_ranges[i]) {
+        auto newOr = new IndexOrCondition();
+        newOr->push_back(IndexAndCondition());
         // First create a new RangeInfo containing only the constant 
         // low and high bound of r:
-        RangeInfo actualRange(r._var, r._attr, r._lowConst, r._highConst,
-                              r.is1ValueRangeInfo());
+        newOr->at(0).emplace_back(RangeInfo(r._var, r._attr, r._lowConst, r._highConst, r.is1ValueRangeInfo()));
+
         // Now work the actual values of the variable lows and highs into 
         // this constant range:
         for (auto l : r._lows) {
@@ -1040,30 +1041,35 @@ bool IndexRangeBlock::initRanges () {
                                   _inRegs[posInExpressions],
                                   &myCollection);
           posInExpressions++;
-          if (a._type == AqlValue::JSON) {
-            //FIXME if <a> is an array or list of values, then this doesn't do
-            //the correct thing
-            Json json(Json::Array, 3);
-            json("include", Json(l.inclusive()))
-                ("isConstant", Json(true))
-                ("bound", *(a._json));
-            a.destroy();  // the TRI_json_t* of a._json has been stolen
-            RangeInfoBound b(json);   // Construct from JSON
-            actualRange._lowConst.andCombineLowerBounds(b);
-          }
-          else if (a._type == AqlValue::SHAPED) {
-            //FIXME if <a> is an array or list of values, then this doesn't do
-            //the correct thing
 
+          if (a._type == AqlValue::JSON || a._type == AqlValue::SHAPED) {
             Json json(Json::Array, 3);
-            json("include", Json(l.inclusive()))
-                ("isConstant", Json(true))
-                ("bound", a.toJson(_trx, myCollection));
-            a.destroy();  // the TRI_json_t* of a._json has been stolen
-            RangeInfoBound b(json);   // Construct from JSON
-            actualRange._lowConst.andCombineLowerBounds(b);
-          }
-          else {
+            if (a._type == AqlValue::JSON) {
+              json("include", Json(l.inclusive()))
+                  ("isConstant", Json(true))
+                  ("bound", *(a._json));
+              a.destroy();  // the TRI_json_t* of a._json has been stolen
+            } else {
+              json("include", Json(l.inclusive()))
+                  ("isConstant", Json(true))
+                  ("bound", a.toJson(_trx, myCollection));
+              a.destroy();  // the TRI_json_t* of a._json has been stolen
+            }
+            if (json.isList()) { 
+              std::vector<RangeInfo> riv;
+              for (i = 0; i < json.size(); i++) {
+                riv.push_back(RangeInfo(r._var, 
+                                        r._attr, 
+                                        RangeInfoBound(json.at(i)),
+                                        RangeInfoBound(json.at(i)), 
+                                        true));
+              }
+              newOr = andCombineIndexOrAndRangeInfoVec(newOr, riv);
+            } else {
+              auto rib = RangeInfoBound(json);
+              orCombineIndexOrAndRangeInfoBoundLow(newOr, rib);
+            }
+          } else {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
                 "AQL: computed a variable bound and got non-JSON");
           }
@@ -1078,33 +1084,40 @@ bool IndexRangeBlock::initRanges () {
                                   _inRegs[posInExpressions],
                                   &myCollection);
           posInExpressions++;
-          if (a._type == AqlValue::JSON) {
+          if (a._type == AqlValue::JSON || a._type == AqlValue::SHAPED) {
             Json json(Json::Array, 3);
-            json("include", Json(h.inclusive()))
-                ("isConstant", Json(true))
-                ("bound", *(a._json));
-            a.destroy();  // the TRI_json_t* of a._json has been stolen
-            RangeInfoBound b(json);   // Construct from JSON
-            actualRange._highConst.andCombineUpperBounds(b);
-          }
-          else if (a._type == AqlValue::SHAPED) {
-            Json json(Json::Array, 3);
-            json("include", Json(h.inclusive()))
-                ("isConstant", Json(true))
-                ("bound", a.toJson(_trx, myCollection));
-            a.destroy();  // the TRI_json_t* of a._json has been stolen
-            RangeInfoBound b(json);   // Construct from JSON
-            actualRange._highConst.andCombineLowerBounds(b);
-          }
-          else {
+            if (a._type == AqlValue::JSON) {
+              json("include", Json(h.inclusive()))
+                  ("isConstant", Json(true))
+                  ("bound", *(a._json));
+              a.destroy();  // the TRI_json_t* of a._json has been stolen
+            } else {
+              json("include", Json(h.inclusive()))
+                  ("isConstant", Json(true))
+                  ("bound", a.toJson(_trx, myCollection));
+              a.destroy();  // the TRI_json_t* of a._json has been stolen
+            }
+            if (json.isList()) { 
+              std::vector<RangeInfo> riv;
+              for (i = 0; i < json.size(); i++) {
+                auto ri = RangeInfo(r._var, r._attr, RangeInfoBound(json.at(i)), RangeInfoBound(json.at(i)), true);
+                differenceIndexOrAndRangeInfo(newCondition, ri);
+                if (ri.isValid()) {
+                  riv.push_back(ri);
+                }
+              }
+              newOr = andCombineIndexOrAndRangeInfoVec(newOr, riv);
+            } else {
+              auto rib = RangeInfoBound(json);
+              orCombineIndexOrAndRangeInfoBoundHigh(newOr, rib);
+            }
+          } else {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
                 "AQL: computed a variable bound and got non-JSON");
           }
         }
-
-        newAnd.push_back(actualRange);
+        orCombineIndexOrs(newCondition, newOr);
       }
-      orCombineIndexOrAndIndexAnd(newCondition, newAnd);
     }
     //_condition = newCondition.release();
     freeCondition(); 
@@ -1130,6 +1143,63 @@ bool IndexRangeBlock::initRanges () {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected index type"); 
   LEAVE_BLOCK;
 }
+
+void IndexRangeBlock::orCombineIndexOrs (IndexOrCondition* newCondition, IndexOrCondition* newOr) {
+  for (size_t i = 0; i < newOr->size(); i++) {
+    newCondition->emplace_back(newOr->at(i));
+  }
+  delete newOr;
+}
+
+IndexOrCondition* IndexRangeBlock::andCombineIndexOrAndRangeInfoVec (IndexOrCondition* ioc, 
+                                                                     std::vector<RangeInfo>& riv) {
+  // differenceIndexOrAndRangeInfo??
+  auto newIoc = new IndexOrCondition();
+  try {
+    for (size_t i = 0; i < ioc->size(); i++) {
+      for (size_t j = 0; j < riv.size(); j++) {
+        auto copy = riv[j].clone();
+        differenceIndexOrAndRangeInfo(ioc, copy);
+        if (copy.isValid()) {
+          IndexAndCondition iac;
+          for (size_t k = 0; k < ioc[i].size(); k++) {
+            iac.push_back(ioc->at(i).at(k).clone());
+          }
+          newIoc->emplace_back(iac);
+          newIoc->at(i * riv.size() + j).emplace_back(copy);
+        }
+      }
+    }
+  }
+  catch (...) {
+    delete newIoc;
+  }
+  delete ioc;
+  return newIoc;
+}
+
+// insert the input ri into every ri in the IndexOrCondition . . .
+void IndexRangeBlock::orCombineIndexOrAndRangeInfoBoundLow (IndexOrCondition* ioc, RangeInfoBound& rib) {
+  for (size_t i = 0; i < ioc->size(); i++) {
+    if (! ioc[i].empty()) {
+      ioc->at(i).at(0)._lowConst.andCombineLowerBounds(rib);
+    } 
+    else { // FIXME can this occur?
+    }
+  }
+}
+
+void IndexRangeBlock::orCombineIndexOrAndRangeInfoBoundHigh (IndexOrCondition* ioc, RangeInfoBound& rib) {
+  for (size_t i = 0; i < ioc->size(); i++) {
+    if (! ioc[i].empty()) {
+      ioc->at(i).at(0)._highConst.andCombineUpperBounds(rib);
+    } 
+    else { // FIXME can this occur?
+      TRI_ASSERT(false);
+    }
+  }
+}
+
 
 void IndexRangeBlock::freeCondition () {
   if (_condition != nullptr && _freeCondition) {
