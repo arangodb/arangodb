@@ -198,11 +198,13 @@ namespace triagens {
 
             // If there was an error, then we are doomed:
             if (! res) {
+              std::cout << "doomed\n";
               this->close();   // this sets the state to IN_CONNECT for a retry
               break;
             }
 
             if (! progress) {
+              std::cout << "no progress\n";
               // write might have succeeded even if the server has closed 
               // the connection, this will then show up here with us being
               // in state IN_READ_HEADER but nothing read.
@@ -611,19 +613,16 @@ namespace triagens {
 
       // body is compressed using deflate. inflate it
       if (_result->isDeflated()) {
+        std::cout << "isDeflated: " << _result->isDeflated();
         _readBuffer.inflate(_result->getBody(), 16384, _readBufferOffset);
       }
 
       // body is not compressed
       else {
-        size_t len = _result->getContentLength();
-
-        // prevent reading across the string-buffer end
-        if (len > _readBuffer.length() - _readBufferOffset) {
-          len = _readBuffer.length() - _readBufferOffset;
-        }
-
-        _result->getBody().appendText(_readBuffer.c_str() + _readBufferOffset, len);
+        // Note that if we are here, then 
+        // _result->getContentLength() <= _readBuffer.length()-_readBufferOffset
+        _result->getBody().appendText(_readBuffer.c_str() + _readBufferOffset, 
+                                      _result->getContentLength());
       }
 
       _readBufferOffset += _result->getContentLength();
