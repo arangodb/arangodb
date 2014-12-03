@@ -147,7 +147,7 @@ namespace triagens {
         // strange effect that the write (if it is small enough) proceeds
         // but the following read runs into an error. In that case we try
         // to reconnect one and then give up if this does not work.
-        std::cout << "Simple: Main loop, state " << _state << " remaining time"
+        std::cout << "Simple: Main loop, state " << _state << " remaining time "
                   << remainingTime << std::endl;
         switch (_state) {
           case (IN_CONNECT): {
@@ -276,7 +276,7 @@ namespace triagens {
 
       _result = nullptr;
 
-      std::cout << "Simple: request() done, result code: " << _result->getHttpReturnCode() << std::endl;
+      std::cout << "Simple: request() done, result code: " << result->getHttpReturnCode() << std::endl;
       return result;
     }
 
