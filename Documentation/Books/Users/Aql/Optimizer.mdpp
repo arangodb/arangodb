@@ -363,6 +363,8 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
   optimizations).
 * `remove-redundant-sorts`: will appear if multiple *SORT* statements can be merged
   into fewer sorts.
+* `remove-collect-into`: will appear if an *INTO* clause was removed from a *COLLECT*
+  statement because the result of *INTO* is not used.
 * `interchange-adjacent-enumerations`: will appear if a query contains multiple 
   *FOR* statements whose order were permuted. Permutation of *FOR* statements is
   performed because it may enable further optimizations by other rules.
