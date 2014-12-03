@@ -194,7 +194,15 @@ namespace triagens {
 
             // we need to read a at least one byte to make progress
             bool progress;
+            std::cout << "ReadBufV:" << (unsigned long) _readBuffer.c_str() << " "
+                                     << _readBuffer.length() << " "
+                                     << _readBufferOffset << std::endl;
+
             bool res = _connection->handleRead(remainingTime, _readBuffer, progress);
+
+            std::cout << "ReadBufN:" << (unsigned long) _readBuffer.c_str() << " "
+                                     << _readBuffer.length() << " "
+                                     << _readBufferOffset << std::endl;
 
             // If there was an error, then we are doomed:
             if (! res) {
@@ -313,6 +321,9 @@ namespace triagens {
       _readBuffer.clear();
       _readBufferOffset = 0;
 
+      std::cout << "ReadBufC:" << (unsigned long) _readBuffer.c_str() << " "
+                               << _readBuffer.length() << " "
+                               << _readBufferOffset << std::endl;
       if (_result) {
         _result->clear();
       }
@@ -494,11 +505,20 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
     void SimpleHttpClient::processHeader () {
+      TRI_ASSERT(_readBufferOffset <= _readBuffer.length());
       size_t remain = _readBuffer.length() - _readBufferOffset;
       char const* ptr = _readBuffer.c_str() + _readBufferOffset;
       char const* pos = (char*) memchr(ptr, '\n', remain);
 
+      // We enforce the following invariants:
+      //   ptr = _readBuffer.c_str() + _readBufferOffset
+      //   _readBuffer.length() >= _readBufferOffset
+      //   remain = _readBuffer.length() - _readBufferOffset
       while (pos) {
+        TRI_ASSERT(_readBufferOffset <= _readBuffer.length());
+        TRI_ASSERT(ptr == _readBuffer.c_str() + _readBufferOffset);
+        TRI_ASSERT(remain == _readBuffer.length() - _readBufferOffset);
+
         if (pos > ptr && *(pos - 1) == '\r') {
           // adjust eol position
           --pos;
@@ -506,12 +526,16 @@ namespace triagens {
 
         // end of header found
         if (*ptr == '\r' || *ptr == '\0') {
-          size_t len = pos - (_readBuffer.c_str() + _readBufferOffset);
-          _readBufferOffset += (len + 1);
+          size_t len = pos - ptr;
+          _readBufferOffset += len + 1;
+          ptr += len + 1;
+          remain -= len + 1;
 
           if (*pos == '\r') {
             // adjust offset if line ended with \r\n
             ++_readBufferOffset;
+            ptr++;
+            remain--;
           }
 
           // handle chunks
@@ -536,6 +560,7 @@ namespace triagens {
             if (! _keepAlive) {
               _connection->disconnect();
             }
+            return;
           }
 
           // found content-length header in response
@@ -573,14 +598,18 @@ namespace triagens {
           }
         
           ptr += len + 1;
-          
-          TRI_ASSERT(remain >= (len + 1));
+          _readBufferOffset += len + 1;
           remain -= (len + 1);
-
+          
+          TRI_ASSERT(_readBufferOffset <= _readBuffer.length());
+          TRI_ASSERT(ptr == _readBuffer.c_str() + _readBufferOffset);
+          TRI_ASSERT(remain == _readBuffer.length() - _readBufferOffset);
           pos = (char*) memchr(ptr, '\n', remain);
 
           if (pos == nullptr) {
-            _readBufferOffset = ptr - _readBuffer.c_str() + 1;
+            _readBufferOffset++;
+            ptr++;
+            remain--;
           } 
         }
       }
