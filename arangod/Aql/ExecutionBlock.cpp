@@ -1421,9 +1421,10 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
     searchValue._values = nullptr;
   };
 
-  auto setupSearchValue = [&]() {
+  auto setupSearchValue = [&]() -> bool {
     size_t const n = hashIndex->_paths._length;
     searchValue._length = 0;
+    // initialize the whole range of shapes with zeros
     searchValue._values = static_cast<TRI_shaped_json_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, 
           n * sizeof(TRI_shaped_json_t), true));
 
@@ -1432,6 +1433,7 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
     }
     
     searchValue._length = n;
+    bool valid = true;
 
     for (size_t i = 0; i < n; ++i) {
       TRI_shape_pid_t pid = *(static_cast<TRI_shape_pid_t*>(TRI_AtVector(&hashIndex->_paths, i)));
@@ -1442,16 +1444,27 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
       for (auto x : ranges.at(0)) {
         if (x._attr == std::string(name)) {    //found attribute
           auto shaped = TRI_ShapedJsonJson(shaper, x._lowConst.bound().json(), false); 
-          // here x->_low->_bound = x->_high->_bound 
-          searchValue._values[i] = *shaped;
-          TRI_Free(shaper->_memoryZone, shaped);
+
+          if (shaped == nullptr) {
+            valid = false;
+          }
+          else {
+            // here x->_low->_bound = x->_high->_bound 
+            searchValue._values[i] = *shaped;
+            TRI_Free(shaper->_memoryZone, shaped);
+          }
           break; 
         }
       }
     }
+
+    return valid;
   };
  
-  setupSearchValue();  
+  if (! setupSearchValue()) {
+    destroySearchValue();
+    return;
+  }
   TRI_vector_pointer_t list = TRI_LookupHashIndex(idx, &searchValue);
   destroySearchValue();
   
