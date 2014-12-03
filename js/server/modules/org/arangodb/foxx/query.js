@@ -46,12 +46,14 @@ exports.createQuery = function createQuery (cfg) {
     defaults = cfg.defaults,
     transform = cfg.transform;
 
-  if (params && !Array.isArray(params)) {
+  if (params === false) {
+    params = [];
+  } else if (params && !Array.isArray(params)) {
     params = [params];
   }
 
   if (params && !params.each(function (v) {return typeof v === 'string';})) {
-    throw new Error('Argument names must be a string or an array of strings.');
+    throw new Error('Argument names must be a string, an array of strings or false.');
   }
 
   if (!query || (typeof query !== 'string' && typeof query.toAQL !== 'function')) {

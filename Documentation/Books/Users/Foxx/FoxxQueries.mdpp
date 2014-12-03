@@ -139,7 +139,7 @@ Using a transformation with extra arguments (and no query parameters):
 ```js
 var query = Foxx.createQuery({
     query: 'FOR u IN _users SORT u.user ASC RETURN u.user',
-    params: [],
+    params: false, // an empty array would work, too
     transform: function (results, uppercase) {
         return uppercase ? results[0].toUpperCase() : results[0].toLowerCase();
     }
