@@ -445,6 +445,8 @@ function get_api_collections (req, res) {
 ///   - 2: document collection (normal case)
 ///   - 3: edges collection
 ///
+/// - *isSystem*: If *true* then the collection is a system collection.
+///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{404}
