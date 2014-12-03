@@ -94,6 +94,8 @@ namespace triagens {
       // ensure connection has not yet been invalidated
       TRI_ASSERT(_connection != nullptr);
 
+      std::cout << "Simple: close called" << std::endl;
+
       _connection->disconnect();
       _state = IN_CONNECT;
 
@@ -143,9 +145,12 @@ namespace triagens {
         // strange effect that the write (if it is small enough) proceeds
         // but the following read runs into an error. In that case we try
         // to reconnect one and then give up if this does not work.
+        std::cout << "Simple: Main loop, state " << _state << " remaining time"
+                  << remainingTime << std::endl;
         switch (_state) {
           case (IN_CONNECT): {
             handleConnect();
+            std::cout << "Simple: handleConnect went wrong" << std::endl;
             // If this goes wrong, _state is set to DEAD
             break;
           }
