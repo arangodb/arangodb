@@ -71,6 +71,7 @@ namespace triagens {
       if (_connection->isConnected()) {
         _state = FINISHED;
       }
+      std::cout << "Simple: contructor done, state: " << _state << std::endl;
     }
 
     SimpleHttpClient::~SimpleHttpClient () {
@@ -113,6 +114,7 @@ namespace triagens {
       size_t bodyLength,
       std::map<std::string, std::string> const& headerFields) {
       
+      std::cout << "Simple: request, location: " << location << std::endl;
       // ensure connection has not yet been invalidated
       TRI_ASSERT(_connection != nullptr);
 
