@@ -133,3 +133,17 @@ var query = Foxx.createQuery({
 query('user', true); // username of first user in uppercase
 query('user', false); // username of first user in lowercase
 ```
+
+Using a transformation with extra arguments (and no query parameters):
+
+```js
+var query = Foxx.createQuery({
+    query: 'FOR u IN _users SORT u.user ASC RETURN u.user',
+    params: [],
+    transform: function (results, uppercase) {
+        return uppercase ? results[0].toUpperCase() : results[0].toLowerCase();
+    }
+});
+query(true); // username of first user in uppercase
+query(false); // username of first user in lowercase
+```
