@@ -613,7 +613,7 @@ QueryResult Query::execute (QueryRegistry* registry) {
     enterState(FINALIZATION); 
 
     QueryResult result(TRI_ERROR_NO_ERROR);
-    result.warnings = warningsToJson();
+    result.warnings = warningsToJson(TRI_UNKNOWN_MEM_ZONE);
     result.json     = jsonResult.steal();
     result.stats    = stats.steal(); 
 
@@ -686,7 +686,7 @@ QueryResultV8 Query::executeV8 (QueryRegistry* registry) {
 
     enterState(FINALIZATION); 
 
-    result.warnings = warningsToJson();
+    result.warnings = warningsToJson(TRI_UNKNOWN_MEM_ZONE);
     result.stats    = stats.steal(); 
 
     if (_profile != nullptr) {
@@ -805,7 +805,8 @@ QueryResult Query::explain () {
 
     _trx->commit();
       
-    result.warnings = warningsToJson();
+    result.warnings = warningsToJson(TRI_UNKNOWN_MEM_ZONE);
+    result.stats = opt._stats.toJson(TRI_UNKNOWN_MEM_ZONE);
 
     return result;
   }
@@ -970,23 +971,23 @@ bool Query::getBooleanOption (char const* option, bool defaultValue) const {
 /// @brief convert the list of warnings to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* Query::warningsToJson () const {
+TRI_json_t* Query::warningsToJson (TRI_memory_zone_t* zone) const {
   if (_warnings.empty()) {
     return nullptr;
   }
 
   size_t const n = _warnings.size();
-  TRI_json_t* json = TRI_CreateList2Json(TRI_UNKNOWN_MEM_ZONE, n);
+  TRI_json_t* json = TRI_CreateList2Json(zone, n);
 
   if (json != nullptr) {
     for (size_t i = 0; i < n; ++i) {
-      TRI_json_t* error = TRI_CreateArray2Json(TRI_UNKNOWN_MEM_ZONE, 2);
+      TRI_json_t* error = TRI_CreateArray2Json(zone, 2);
 
       if (error != nullptr) {
-        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, error, "code", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, static_cast<double>(_warnings[i].first)));
-        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, error, "message", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, _warnings[i].second.c_str(), _warnings[i].second.size()));
+        TRI_Insert3ArrayJson(zone, error, "code", TRI_CreateNumberJson(zone, static_cast<double>(_warnings[i].first)));
+        TRI_Insert3ArrayJson(zone, error, "message", TRI_CreateString2CopyJson(zone, _warnings[i].second.c_str(), _warnings[i].second.size()));
 
-        TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, json, error);
+        TRI_PushBack3ListJson(zone, json, error);
       }
     }
   }
