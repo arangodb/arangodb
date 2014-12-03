@@ -787,9 +787,9 @@ void RangeInfoMapVec::differenceRangeInfo (RangeInfo& newRi) {
 /// @brief  differenceIndexOrAndRangeInfo: analogue of differenceRangeInfo
 ////////////////////////////////////////////////////////////////////////////////
 
-void differenceIndexOrAndRangeInfo (IndexOrCondition orCond, RangeInfo& newRi) {
+void triagens::aql::differenceIndexOrAndRangeInfo (IndexOrCondition* orCond, RangeInfo& newRi) {
 
-  for (IndexAndCondition andCond: orCond) {
+  for (IndexAndCondition andCond: *orCond) {
     for (size_t i = 0; i < andCond.size(); i++) {
       RangeInfo oldRi = andCond[i];
       if (! areDisjointRangeInfos(&oldRi, &newRi)) {
