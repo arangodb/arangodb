@@ -1,19 +1,19 @@
-/* A Bison parser, made by GNU Bison 3.0.2.  */
+/* A Bison parser, made by GNU Bison 2.7.12-4996.  */
 
 /* Bison implementation for Yacc-like parsers in C
-
-   Copyright (C) 1984, 1989-1990, 2000-2013 Free Software Foundation, Inc.
-
+   
+      Copyright (C) 1984, 1989-1990, 2000-2013 Free Software Foundation, Inc.
+   
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation, either version 3 of the License, or
    (at your option) any later version.
-
+   
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-
+   
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
@@ -26,7 +26,7 @@
    special exception, which will cause the skeleton and the resulting
    Bison output files to be licensed under the GNU General Public
    License without this special exception.
-
+   
    This special exception was added by the Free Software Foundation in
    version 2.2 of Bison.  */
 
@@ -44,7 +44,7 @@
 #define YYBISON 1
 
 /* Bison version.  */
-#define YYBISON_VERSION "3.0.2"
+#define YYBISON_VERSION "2.7.12-4996"
 
 /* Skeleton name.  */
 #define YYSKELETON_NAME "yacc.c"
@@ -63,12 +63,15 @@
 #define yyparse         Aqlparse
 #define yylex           Aqllex
 #define yyerror         Aqlerror
+#define yylval          Aqllval
+#define yychar          Aqlchar
 #define yydebug         Aqldebug
 #define yynerrs         Aqlnerrs
-
+#define yylloc          Aqllloc
 
 /* Copy the first part of user declarations.  */
-#line 10 "arangod/Aql/grammar.y" /* yacc.c:339  */
+/* Line 371 of yacc.c  */
+#line 10 "arangod/Aql/grammar.y"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -80,13 +83,14 @@
 #include "Aql/AstNode.h"
 #include "Aql/Parser.h"
 
-#line 84 "arangod/Aql/grammar.cpp" /* yacc.c:339  */
+/* Line 371 of yacc.c  */
+#line 88 "arangod/Aql/grammar.cpp"
 
-# ifndef YY_NULLPTR
+# ifndef YY_NULL
 #  if defined __cplusplus && 201103L <= __cplusplus
-#   define YY_NULLPTR nullptr
+#   define YY_NULL nullptr
 #  else
-#   define YY_NULLPTR 0
+#   define YY_NULL 0
 #  endif
 # endif
 
@@ -102,7 +106,7 @@
    by #include "grammar.hpp".  */
 #ifndef YY_AQL_ARANGOD_AQL_GRAMMAR_HPP_INCLUDED
 # define YY_AQL_ARANGOD_AQL_GRAMMAR_HPP_INCLUDED
-/* Debug traces.  */
+/* Enabling traces.  */
 #ifndef YYDEBUG
 # define YYDEBUG 0
 #endif
@@ -110,111 +114,126 @@
 extern int Aqldebug;
 #endif
 
-/* Token type.  */
+/* Tokens.  */
 #ifndef YYTOKENTYPE
 # define YYTOKENTYPE
-  enum yytokentype
-  {
-    T_END = 0,
-    T_FOR = 258,
-    T_LET = 259,
-    T_FILTER = 260,
-    T_RETURN = 261,
-    T_COLLECT = 262,
-    T_SORT = 263,
-    T_LIMIT = 264,
-    T_ASC = 265,
-    T_DESC = 266,
-    T_IN = 267,
-    T_WITH = 268,
-    T_INTO = 269,
-    T_REMOVE = 270,
-    T_INSERT = 271,
-    T_UPDATE = 272,
-    T_REPLACE = 273,
-    T_NULL = 274,
-    T_TRUE = 275,
-    T_FALSE = 276,
-    T_STRING = 277,
-    T_QUOTED_STRING = 278,
-    T_INTEGER = 279,
-    T_DOUBLE = 280,
-    T_PARAMETER = 281,
-    T_ASSIGN = 282,
-    T_NOT = 283,
-    T_AND = 284,
-    T_OR = 285,
-    T_EQ = 286,
-    T_NE = 287,
-    T_LT = 288,
-    T_GT = 289,
-    T_LE = 290,
-    T_GE = 291,
-    T_PLUS = 292,
-    T_MINUS = 293,
-    T_TIMES = 294,
-    T_DIV = 295,
-    T_MOD = 296,
-    T_EXPAND = 297,
-    T_QUESTION = 298,
-    T_COLON = 299,
-    T_SCOPE = 300,
-    T_RANGE = 301,
-    T_COMMA = 302,
-    T_OPEN = 303,
-    T_CLOSE = 304,
-    T_DOC_OPEN = 305,
-    T_DOC_CLOSE = 306,
-    T_LIST_OPEN = 307,
-    T_LIST_CLOSE = 308,
-    UMINUS = 309,
-    UPLUS = 310,
-    FUNCCALL = 311,
-    REFERENCE = 312,
-    INDEXED = 313
-  };
+   /* Put the tokens into the symbol table, so that GDB and other debuggers
+      know about them.  */
+   enum yytokentype {
+     T_END = 0,
+     T_FOR = 258,
+     T_LET = 259,
+     T_FILTER = 260,
+     T_RETURN = 261,
+     T_COLLECT = 262,
+     T_SORT = 263,
+     T_LIMIT = 264,
+     T_ASC = 265,
+     T_DESC = 266,
+     T_IN = 267,
+     T_WITH = 268,
+     T_INTO = 269,
+     T_REMOVE = 270,
+     T_INSERT = 271,
+     T_UPDATE = 272,
+     T_REPLACE = 273,
+     T_NULL = 274,
+     T_TRUE = 275,
+     T_FALSE = 276,
+     T_STRING = 277,
+     T_QUOTED_STRING = 278,
+     T_INTEGER = 279,
+     T_DOUBLE = 280,
+     T_PARAMETER = 281,
+     T_ASSIGN = 282,
+     T_NOT = 283,
+     T_AND = 284,
+     T_OR = 285,
+     T_EQ = 286,
+     T_NE = 287,
+     T_LT = 288,
+     T_GT = 289,
+     T_LE = 290,
+     T_GE = 291,
+     T_PLUS = 292,
+     T_MINUS = 293,
+     T_TIMES = 294,
+     T_DIV = 295,
+     T_MOD = 296,
+     T_EXPAND = 297,
+     T_QUESTION = 298,
+     T_COLON = 299,
+     T_SCOPE = 300,
+     T_RANGE = 301,
+     T_COMMA = 302,
+     T_OPEN = 303,
+     T_CLOSE = 304,
+     T_DOC_OPEN = 305,
+     T_DOC_CLOSE = 306,
+     T_LIST_OPEN = 307,
+     T_LIST_CLOSE = 308,
+     UPLUS = 309,
+     UMINUS = 310,
+     FUNCCALL = 311,
+     REFERENCE = 312,
+     INDEXED = 313
+   };
 #endif
 
-/* Value type.  */
+
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
-typedef union YYSTYPE YYSTYPE;
-union YYSTYPE
+typedef union YYSTYPE
 {
-#line 22 "arangod/Aql/grammar.y" /* yacc.c:355  */
+/* Line 387 of yacc.c  */
+#line 22 "arangod/Aql/grammar.y"
 
   triagens::aql::AstNode*  node;
   char*                    strval;
   bool                     boolval;
   int64_t                  intval;
 
-#line 191 "arangod/Aql/grammar.cpp" /* yacc.c:355  */
-};
+
+/* Line 387 of yacc.c  */
+#line 198 "arangod/Aql/grammar.cpp"
+} YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
+# define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1
 #endif
 
-/* Location type.  */
 #if ! defined YYLTYPE && ! defined YYLTYPE_IS_DECLARED
-typedef struct YYLTYPE YYLTYPE;
-struct YYLTYPE
+typedef struct YYLTYPE
 {
   int first_line;
   int first_column;
   int last_line;
   int last_column;
-};
+} YYLTYPE;
+# define yyltype YYLTYPE /* obsolescent; will be withdrawn */
 # define YYLTYPE_IS_DECLARED 1
 # define YYLTYPE_IS_TRIVIAL 1
 #endif
 
 
-
+#ifdef YYPARSE_PARAM
+#if defined __STDC__ || defined __cplusplus
+int Aqlparse (void *YYPARSE_PARAM);
+#else
+int Aqlparse ();
+#endif
+#else /* ! YYPARSE_PARAM */
+#if defined __STDC__ || defined __cplusplus
 int Aqlparse (triagens::aql::Parser* parser);
+#else
+int Aqlparse ();
+#endif
+#endif /* ! YYPARSE_PARAM */
 
 #endif /* !YY_AQL_ARANGOD_AQL_GRAMMAR_HPP_INCLUDED  */
 
 /* Copy the second part of user declarations.  */
-#line 29 "arangod/Aql/grammar.y" /* yacc.c:358  */
+/* Line 390 of yacc.c  */
+#line 29 "arangod/Aql/grammar.y"
 
 
 using namespace triagens::aql;
@@ -248,7 +267,8 @@ void Aqlerror (YYLTYPE* locp,
 #define scanner parser->scanner()
 
 
-#line 252 "arangod/Aql/grammar.cpp" /* yacc.c:358  */
+/* Line 390 of yacc.c  */
+#line 272 "arangod/Aql/grammar.cpp"
 
 #ifdef short
 # undef short
@@ -262,8 +282,11 @@ typedef unsigned char yytype_uint8;
 
 #ifdef YYTYPE_INT8
 typedef YYTYPE_INT8 yytype_int8;
-#else
+#elif (defined __STDC__ || defined __C99__FUNC__ \
+     || defined __cplusplus || defined _MSC_VER)
 typedef signed char yytype_int8;
+#else
+typedef short int yytype_int8;
 #endif
 
 #ifdef YYTYPE_UINT16
@@ -283,7 +306,8 @@ typedef short int yytype_int16;
 #  define YYSIZE_T __SIZE_TYPE__
 # elif defined size_t
 #  define YYSIZE_T size_t
-# elif ! defined YYSIZE_T
+# elif ! defined YYSIZE_T && (defined __STDC__ || defined __C99__FUNC__ \
+     || defined __cplusplus || defined _MSC_VER)
 #  include <stddef.h> /* INFRINGES ON USER NAME SPACE */
 #  define YYSIZE_T size_t
 # else
@@ -305,30 +329,11 @@ typedef short int yytype_int16;
 # endif
 #endif
 
-#ifndef YY_ATTRIBUTE
-# if (defined __GNUC__                                               \
-      && (2 < __GNUC__ || (__GNUC__ == 2 && 96 <= __GNUC_MINOR__)))  \
-     || defined __SUNPRO_C && 0x5110 <= __SUNPRO_C
-#  define YY_ATTRIBUTE(Spec) __attribute__(Spec)
-# else
-#  define YY_ATTRIBUTE(Spec) /* empty */
-# endif
-#endif
-
-#ifndef YY_ATTRIBUTE_PURE
-# define YY_ATTRIBUTE_PURE   YY_ATTRIBUTE ((__pure__))
-#endif
-
-#ifndef YY_ATTRIBUTE_UNUSED
-# define YY_ATTRIBUTE_UNUSED YY_ATTRIBUTE ((__unused__))
-#endif
-
-#if !defined _Noreturn \
-     && (!defined __STDC_VERSION__ || __STDC_VERSION__ < 201112)
-# if defined _MSC_VER && 1200 <= _MSC_VER
-#  define _Noreturn __declspec (noreturn)
-# else
-#  define _Noreturn YY_ATTRIBUTE ((__noreturn__))
+#ifndef __attribute__
+/* This feature is available in gcc versions 2.5 and later.  */
+# if (! defined __GNUC__ || __GNUC__ < 2 \
+      || (__GNUC__ == 2 && __GNUC_MINOR__ < 5))
+#  define __attribute__(Spec) /* empty */
 # endif
 #endif
 
@@ -339,25 +344,24 @@ typedef short int yytype_int16;
 # define YYUSE(E) /* empty */
 #endif
 
-#if defined __GNUC__ && 407 <= __GNUC__ * 100 + __GNUC_MINOR__
-/* Suppress an incorrect diagnostic about yylval being uninitialized.  */
-# define YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN \
-    _Pragma ("GCC diagnostic push") \
-    _Pragma ("GCC diagnostic ignored \"-Wuninitialized\"")\
-    _Pragma ("GCC diagnostic ignored \"-Wmaybe-uninitialized\"")
-# define YY_IGNORE_MAYBE_UNINITIALIZED_END \
-    _Pragma ("GCC diagnostic pop")
-#else
-# define YY_INITIAL_VALUE(Value) Value
-#endif
-#ifndef YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
-# define YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
-# define YY_IGNORE_MAYBE_UNINITIALIZED_END
-#endif
-#ifndef YY_INITIAL_VALUE
-# define YY_INITIAL_VALUE(Value) /* Nothing. */
-#endif
 
+/* Identity function, used to suppress warnings about constant conditions.  */
+#ifndef lint
+# define YYID(N) (N)
+#else
+#if (defined __STDC__ || defined __C99__FUNC__ \
+     || defined __cplusplus || defined _MSC_VER)
+static int
+YYID (int yyi)
+#else
+static int
+YYID (yyi)
+    int yyi;
+#endif
+{
+  return yyi;
+}
+#endif
 
 #if ! defined yyoverflow || YYERROR_VERBOSE
 
@@ -376,7 +380,8 @@ typedef short int yytype_int16;
 #    define alloca _alloca
 #   else
 #    define YYSTACK_ALLOC alloca
-#    if ! defined _ALLOCA_H && ! defined EXIT_SUCCESS
+#    if ! defined _ALLOCA_H && ! defined EXIT_SUCCESS && (defined __STDC__ || defined __C99__FUNC__ \
+     || defined __cplusplus || defined _MSC_VER)
 #     include <stdlib.h> /* INFRINGES ON USER NAME SPACE */
       /* Use EXIT_SUCCESS as a witness for stdlib.h.  */
 #     ifndef EXIT_SUCCESS
@@ -388,8 +393,8 @@ typedef short int yytype_int16;
 # endif
 
 # ifdef YYSTACK_ALLOC
-   /* Pacify GCC's 'empty if-body' warning.  */
-#  define YYSTACK_FREE(Ptr) do { /* empty */; } while (0)
+   /* Pacify GCC's `empty if-body' warning.  */
+#  define YYSTACK_FREE(Ptr) do { /* empty */; } while (YYID (0))
 #  ifndef YYSTACK_ALLOC_MAXIMUM
     /* The OS might guarantee only one guard page at the bottom of the stack,
        and a page size can be as small as 4096 bytes.  So we cannot safely
@@ -405,7 +410,7 @@ typedef short int yytype_int16;
 #  endif
 #  if (defined __cplusplus && ! defined EXIT_SUCCESS \
        && ! ((defined YYMALLOC || defined malloc) \
-             && (defined YYFREE || defined free)))
+	     && (defined YYFREE || defined free)))
 #   include <stdlib.h> /* INFRINGES ON USER NAME SPACE */
 #   ifndef EXIT_SUCCESS
 #    define EXIT_SUCCESS 0
@@ -413,13 +418,15 @@ typedef short int yytype_int16;
 #  endif
 #  ifndef YYMALLOC
 #   define YYMALLOC malloc
-#   if ! defined malloc && ! defined EXIT_SUCCESS
+#   if ! defined malloc && ! defined EXIT_SUCCESS && (defined __STDC__ || defined __C99__FUNC__ \
+     || defined __cplusplus || defined _MSC_VER)
 void *malloc (YYSIZE_T); /* INFRINGES ON USER NAME SPACE */
 #   endif
 #  endif
 #  ifndef YYFREE
 #   define YYFREE free
-#   if ! defined free && ! defined EXIT_SUCCESS
+#   if ! defined free && ! defined EXIT_SUCCESS && (defined __STDC__ || defined __C99__FUNC__ \
+     || defined __cplusplus || defined _MSC_VER)
 void free (void *); /* INFRINGES ON USER NAME SPACE */
 #   endif
 #  endif
@@ -429,8 +436,8 @@ void free (void *); /* INFRINGES ON USER NAME SPACE */
 
 #if (! defined yyoverflow \
      && (! defined __cplusplus \
-         || (defined YYLTYPE_IS_TRIVIAL && YYLTYPE_IS_TRIVIAL \
-             && defined YYSTYPE_IS_TRIVIAL && YYSTYPE_IS_TRIVIAL)))
+	 || (defined YYLTYPE_IS_TRIVIAL && YYLTYPE_IS_TRIVIAL \
+	     && defined YYSTYPE_IS_TRIVIAL && YYSTYPE_IS_TRIVIAL)))
 
 /* A type that is properly aligned for any stack member.  */
 union yyalloc
@@ -456,16 +463,16 @@ union yyalloc
    elements in the stack, and YYPTR gives the new location of the
    stack.  Advance YYPTR to a properly aligned location for the next
    stack.  */
-# define YYSTACK_RELOCATE(Stack_alloc, Stack)                           \
-    do                                                                  \
-      {                                                                 \
-        YYSIZE_T yynewbytes;                                            \
-        YYCOPY (&yyptr->Stack_alloc, Stack, yysize);                    \
-        Stack = &yyptr->Stack_alloc;                                    \
-        yynewbytes = yystacksize * sizeof (*Stack) + YYSTACK_GAP_MAXIMUM; \
-        yyptr += yynewbytes / sizeof (*yyptr);                          \
-      }                                                                 \
-    while (0)
+# define YYSTACK_RELOCATE(Stack_alloc, Stack)				\
+    do									\
+      {									\
+	YYSIZE_T yynewbytes;						\
+	YYCOPY (&yyptr->Stack_alloc, Stack, yysize);			\
+	Stack = &yyptr->Stack_alloc;					\
+	yynewbytes = yystacksize * sizeof (*Stack) + YYSTACK_GAP_MAXIMUM; \
+	yyptr += yynewbytes / sizeof (*yyptr);				\
+      }									\
+    while (YYID (0))
 
 #endif
 
@@ -484,7 +491,7 @@ union yyalloc
           for (yyi = 0; yyi < (Count); yyi++)   \
             (Dst)[yyi] = (Src)[yyi];            \
         }                                       \
-      while (0)
+      while (YYID (0))
 #  endif
 # endif
 #endif /* !YYCOPY_NEEDED */
@@ -500,19 +507,17 @@ union yyalloc
 #define YYNNTS  62
 /* YYNRULES -- Number of rules.  */
 #define YYNRULES  136
-/* YYNSTATES -- Number of states.  */
+/* YYNRULES -- Number of states.  */
 #define YYNSTATES  226
 
-/* YYTRANSLATE[YYX] -- Symbol number corresponding to YYX as returned
-   by yylex, with out-of-bounds checking.  */
+/* YYTRANSLATE(YYLEX) -- Bison symbol number corresponding to YYLEX.  */
 #define YYUNDEFTOK  2
 #define YYMAXUTOK   313
 
-#define YYTRANSLATE(YYX)                                                \
+#define YYTRANSLATE(YYX)						\
   ((unsigned int) (YYX) <= YYMAXUTOK ? yytranslate[YYX] : YYUNDEFTOK)
 
-/* YYTRANSLATE[TOKEN-NUM] -- Symbol number corresponding to TOKEN-NUM
-   as returned by yylex, without out-of-bounds checking.  */
+/* YYTRANSLATE[YYLEX] -- Bison symbol number corresponding to YYLEX.  */
 static const yytype_uint8 yytranslate[] =
 {
        0,     2,     2,     2,     2,     2,     2,     2,     2,     2,
@@ -550,23 +555,89 @@ static const yytype_uint8 yytranslate[] =
 };
 
 #if YYDEBUG
-  /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
+/* YYPRHS[YYN] -- Index of the first RHS symbol of rule number YYN in
+   YYRHS.  */
+static const yytype_uint16 yyprhs[] =
+{
+       0,     0,     3,     6,     9,    12,    15,    18,    19,    22,
+      24,    26,    28,    30,    32,    34,    39,    42,    45,    47,
+      51,    55,    56,    62,    64,    68,    72,    73,    76,    78,
+      82,    83,    84,    88,    89,    93,    95,    99,   102,   103,
+     105,   107,   110,   115,   118,   121,   124,   129,   134,   139,
+     146,   151,   158,   162,   163,   168,   170,   172,   174,   176,
+     178,   180,   184,   186,   190,   191,   197,   200,   203,   206,
+     210,   214,   218,   222,   226,   230,   234,   238,   242,   246,
+     250,   254,   258,   262,   267,   273,   274,   276,   278,   282,
+     284,   286,   287,   292,   293,   295,   297,   301,   302,   305,
+     306,   311,   312,   314,   316,   320,   324,   326,   327,   332,
+     334,   336,   340,   344,   349,   352,   355,   359,   363,   367,
+     372,   374,   376,   378,   380,   382,   384,   386,   388,   390,
+     392,   394,   396,   398,   400,   402,   404
+};
+
+/* YYRHS -- A `-1'-separated list of the rules' RHS.  */
+static const yytype_int8 yyrhs[] =
+{
+      61,     0,    -1,    62,    83,    -1,    62,    85,    -1,    62,
+      86,    -1,    62,    87,    -1,    62,    88,    -1,    -1,    62,
+      63,    -1,    64,    -1,    66,    -1,    65,    -1,    69,    -1,
+      77,    -1,    82,    -1,     3,   120,    12,    89,    -1,     5,
+      89,    -1,     4,    67,    -1,    68,    -1,    67,    47,    68,
+      -1,   120,    27,    89,    -1,    -1,     7,    70,    71,    73,
+      75,    -1,    72,    -1,    71,    47,    72,    -1,   120,    27,
+      89,    -1,    -1,    14,   120,    -1,   120,    -1,    74,    47,
+     120,    -1,    -1,    -1,    22,    76,    74,    -1,    -1,     8,
+      78,    79,    -1,    80,    -1,    79,    47,    80,    -1,    89,
+      81,    -1,    -1,    10,    -1,    11,    -1,     9,   114,    -1,
+       9,   114,    47,   114,    -1,     6,    89,    -1,    12,   117,
+      -1,    14,   117,    -1,    15,    89,    84,   104,    -1,    16,
+      89,    84,   104,    -1,    17,    89,    84,   104,    -1,    17,
+      89,    13,    89,    84,   104,    -1,    18,    89,    84,   104,
+      -1,    18,    89,    13,    89,    84,   104,    -1,    48,    89,
+      49,    -1,    -1,    48,    90,    61,    49,    -1,    94,    -1,
+      95,    -1,    96,    -1,    99,    -1,   114,    -1,   110,    -1,
+      89,    46,    89,    -1,    22,    -1,    91,    45,    22,    -1,
+      -1,    91,    93,    48,    97,    49,    -1,    37,    89,    -1,
+      38,    89,    -1,    28,    89,    -1,    89,    30,    89,    -1,
+      89,    29,    89,    -1,    89,    37,    89,    -1,    89,    38,
+      89,    -1,    89,    39,    89,    -1,    89,    40,    89,    -1,
+      89,    41,    89,    -1,    89,    31,    89,    -1,    89,    32,
+      89,    -1,    89,    33,    89,    -1,    89,    34,    89,    -1,
+      89,    35,    89,    -1,    89,    36,    89,    -1,    89,    12,
+      89,    -1,    89,    28,    12,    89,    -1,    89,    43,    89,
+      44,    89,    -1,    -1,    98,    -1,    89,    -1,    98,    47,
+      89,    -1,   100,    -1,   105,    -1,    -1,    52,   101,   102,
+      53,    -1,    -1,   103,    -1,    89,    -1,   103,    47,    89,
+      -1,    -1,    22,   105,    -1,    -1,    50,   106,   107,    51,
+      -1,    -1,   108,    -1,   109,    -1,   108,    47,   109,    -1,
+     119,    44,    89,    -1,   112,    -1,    -1,   110,   111,    42,
+     113,    -1,    22,    -1,    92,    -1,   112,    59,    22,    -1,
+     112,    59,   118,    -1,   112,    52,    89,    53,    -1,    59,
+      22,    -1,    59,   118,    -1,    52,    89,    53,    -1,   113,
+      59,    22,    -1,   113,    59,   118,    -1,   113,    52,    89,
+      53,    -1,   116,    -1,   118,    -1,   121,    -1,    25,    -1,
+      23,    -1,   115,    -1,    19,    -1,    20,    -1,    21,    -1,
+      22,    -1,    23,    -1,    26,    -1,    26,    -1,    22,    -1,
+      23,    -1,    22,    -1,    24,    -1
+};
+
+/* YYRLINE[YYN] -- source line where rule number YYN was defined.  */
 static const yytype_uint16 yyrline[] =
 {
        0,   196,   196,   198,   200,   202,   204,   209,   211,   216,
      218,   220,   222,   224,   226,   231,   240,   248,   253,   255,
-     260,   267,   267,   306,   308,   313,   320,   323,   329,   333,
-     338,   341,   341,   354,   354,   365,   368,   374,   380,   383,
-     386,   392,   397,   404,   412,   415,   421,   432,   443,   451,
-     462,   470,   481,   484,   484,   497,   500,   503,   506,   509,
-     512,   515,   521,   528,   545,   545,   557,   560,   563,   569,
-     572,   575,   578,   581,   584,   587,   590,   593,   596,   599,
-     602,   605,   608,   611,   617,   623,   625,   630,   633,   639,
-     642,   648,   648,   657,   659,   664,   667,   673,   676,   690,
-     690,   699,   701,   706,   708,   713,   719,   723,   723,   751,
-     764,   771,   775,   779,   786,   791,   796,   801,   805,   809,
-     816,   819,   825,   828,   845,   848,   851,   854,   857,   863,
-     870,   877,   891,   897,   904,   913,   919
+     260,   267,   267,   310,   312,   317,   324,   327,   333,   347,
+     364,   367,   367,   381,   381,   392,   395,   401,   407,   410,
+     413,   419,   424,   431,   439,   442,   448,   459,   470,   478,
+     489,   497,   508,   511,   511,   524,   527,   530,   533,   536,
+     539,   542,   548,   555,   572,   572,   584,   587,   590,   596,
+     599,   602,   605,   608,   611,   614,   617,   620,   623,   626,
+     629,   632,   635,   638,   644,   650,   652,   657,   660,   666,
+     669,   675,   675,   684,   686,   691,   694,   700,   703,   717,
+     717,   726,   728,   733,   735,   740,   746,   750,   750,   778,
+     791,   798,   802,   806,   813,   818,   823,   828,   832,   836,
+     843,   846,   852,   855,   872,   875,   878,   881,   884,   890,
+     897,   904,   918,   924,   931,   940,   946
 };
 #endif
 
@@ -589,7 +660,7 @@ static const char *const yytname[] =
   "\">= operator\"", "\"+ operator\"", "\"- operator\"", "\"* operator\"",
   "\"/ operator\"", "\"% operator\"", "\"[*] operator\"", "\"?\"", "\":\"",
   "\"::\"", "\"..\"", "\",\"", "\"(\"", "\")\"", "\"{\"", "\"}\"", "\"[\"",
-  "\"]\"", "UMINUS", "UPLUS", "FUNCCALL", "REFERENCE", "INDEXED", "'.'",
+  "\"]\"", "UPLUS", "UMINUS", "FUNCCALL", "REFERENCE", "INDEXED", "'.'",
   "$accept", "query", "optional_statement_block_statements",
   "statement_block_statement", "for_statement", "filter_statement",
   "let_statement", "let_list", "let_element", "collect_statement", "$@1",
@@ -606,13 +677,13 @@ static const char *const yytname[] =
   "optional_array_elements", "array_elements_list", "array_element",
   "reference", "$@8", "single_reference", "expansion", "atomic_value",
   "numeric_value", "value_literal", "collection_name", "bind_parameter",
-  "array_element_name", "variable_name", "integer_value", YY_NULLPTR
+  "array_element_name", "variable_name", "integer_value", YY_NULL
 };
 #endif
 
 # ifdef YYPRINT
-/* YYTOKNUM[NUM] -- (External) token number corresponding to the
-   (internal) symbol number NUM (which must be that of a token).  */
+/* YYTOKNUM[YYLEX-NUM] -- Internal token number corresponding to
+   token YYLEX-NUM.  */
 static const yytype_uint16 yytoknum[] =
 {
        0,   256,   257,   258,   259,   260,   261,   262,   263,   264,
@@ -624,48 +695,47 @@ static const yytype_uint16 yytoknum[] =
 };
 # endif
 
-#define YYPACT_NINF -99
-
-#define yypact_value_is_default(Yystate) \
-  (!!((Yystate) == (-99)))
-
-#define YYTABLE_NINF -132
-
-#define yytable_value_is_error(Yytable_value) \
-  0
-
-  /* YYPACT[STATE-NUM] -- Index in YYTABLE of the portion describing
-     STATE-NUM.  */
-static const yytype_int16 yypact[] =
+/* YYR1[YYN] -- Symbol number of symbol that rule YYN derives.  */
+static const yytype_uint8 yyr1[] =
 {
-     -99,    34,   155,   -99,    25,    25,   451,   451,   -99,   -99,
-     192,   451,   451,   451,   451,   -99,   -99,   -99,   -99,   -99,
-     -99,   -99,   -99,   -99,   -99,   -99,   -99,   -99,    37,     9,
-     -99,    30,   -99,   -99,   -99,    10,   -99,   -99,   -99,   -99,
-     451,   451,   451,   451,   -99,   -99,   423,    21,   -99,   -99,
-     -99,   -99,   -99,   -99,   -99,    28,   -36,   -99,   -99,   -99,
-     -99,   -99,   423,    25,   451,    29,   363,   363,   298,   333,
-     451,    25,   451,    40,    40,    40,   223,   -99,    -8,   451,
-     451,    60,   451,   451,   451,   451,   451,   451,   451,   451,
-     451,   451,   451,   451,   451,   451,   451,    51,    45,    52,
-     451,     2,    -1,   -99,    69,    50,   -99,   263,   192,   472,
-      17,    76,    76,   451,    76,   451,    76,   423,   -99,   423,
-     -99,    54,   -99,   -99,    48,    53,   -99,    57,   423,    56,
-      64,   243,   451,   543,   529,   560,   560,    23,    23,    23,
-      23,   -10,   -10,    40,    40,    40,   393,   499,   -99,   451,
-     -27,   100,   -99,   -99,    25,    25,    85,   451,   451,   -99,
-     -99,   -99,   -99,     5,    20,    22,   -99,   -99,   -99,   -99,
-     -99,    63,   -99,   -99,   363,   -99,   363,   -99,   -99,   -99,
-      -8,   451,   -99,   451,   243,   451,   423,    66,    71,   451,
-      19,   -26,   -99,   -99,   -99,   -99,   -99,   423,   -99,   -99,
-      76,    76,   -99,   423,   423,   499,   -99,   451,   157,   -99,
-     -99,   451,    26,    25,   -99,   -99,   423,   -99,   193,   -99,
-     -99,    73,   -99,   -99,    25,   -99
+       0,    60,    61,    61,    61,    61,    61,    62,    62,    63,
+      63,    63,    63,    63,    63,    64,    65,    66,    67,    67,
+      68,    70,    69,    71,    71,    72,    73,    73,    74,    74,
+      75,    76,    75,    78,    77,    79,    79,    80,    81,    81,
+      81,    82,    82,    83,    84,    84,    85,    86,    87,    87,
+      88,    88,    89,    90,    89,    89,    89,    89,    89,    89,
+      89,    89,    91,    91,    93,    92,    94,    94,    94,    95,
+      95,    95,    95,    95,    95,    95,    95,    95,    95,    95,
+      95,    95,    95,    95,    96,    97,    97,    98,    98,    99,
+      99,   101,   100,   102,   102,   103,   103,   104,   104,   106,
+     105,   107,   107,   108,   108,   109,   110,   111,   110,   112,
+     112,   112,   112,   112,   113,   113,   113,   113,   113,   113,
+     114,   114,   115,   115,   116,   116,   116,   116,   116,   117,
+     117,   117,   118,   119,   119,   120,   121
 };
 
-  /* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
-     Performed when YYTABLE does not specify something else to do.  Zero
-     means the default is an error.  */
+/* YYR2[YYN] -- Number of symbols composing right hand side of rule YYN.  */
+static const yytype_uint8 yyr2[] =
+{
+       0,     2,     2,     2,     2,     2,     2,     0,     2,     1,
+       1,     1,     1,     1,     1,     4,     2,     2,     1,     3,
+       3,     0,     5,     1,     3,     3,     0,     2,     1,     3,
+       0,     0,     3,     0,     3,     1,     3,     2,     0,     1,
+       1,     2,     4,     2,     2,     2,     4,     4,     4,     6,
+       4,     6,     3,     0,     4,     1,     1,     1,     1,     1,
+       1,     3,     1,     3,     0,     5,     2,     2,     2,     3,
+       3,     3,     3,     3,     3,     3,     3,     3,     3,     3,
+       3,     3,     3,     4,     5,     0,     1,     1,     3,     1,
+       1,     0,     4,     0,     1,     1,     3,     0,     2,     0,
+       4,     0,     1,     1,     3,     3,     1,     0,     4,     1,
+       1,     3,     3,     4,     2,     2,     3,     3,     3,     4,
+       1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
+       1,     1,     1,     1,     1,     1,     1
+};
+
+/* YYDEFACT[STATE-NAME] -- Default reduction number in state STATE-NUM.
+   Performed when YYTABLE doesn't specify something else to do.  Zero
+   means the default is an error.  */
 static const yytype_uint8 yydefact[] =
 {
        7,     0,     0,     1,     0,     0,     0,     0,    21,    33,
@@ -693,19 +763,7 @@ static const yytype_uint8 yydefact[] =
      118,    32,    28,   119,     0,    29
 };
 
-  /* YYPGOTO[NTERM-NUM].  */
-static const yytype_int8 yypgoto[] =
-{
-     -99,    39,   -99,   -99,   -99,   -99,   -99,   -99,    55,   -99,
-     -99,   -99,   -34,   -99,   -99,   -99,   -99,   -99,   -99,   -99,
-     -35,   -99,   -99,   -99,   -57,   -99,   -99,   -99,   -99,    -5,
-     -99,   -99,   -99,   -99,   -99,   -99,   -99,   -99,   -99,   -99,
-     -99,   -99,   -99,   -99,   -95,   -49,   -99,   -99,   -99,   -56,
-     -99,   -99,   -99,   -99,    -6,   -99,   -99,    15,   -98,   -99,
-      -4,   -99
-};
-
-  /* YYDEFGOTO[NTERM-NUM].  */
+/* YYDEFGOTO[NTERM-NUM].  */
 static const yytype_int16 yydefgoto[] =
 {
       -1,     1,     2,    15,    16,    17,    18,    29,    30,    19,
@@ -717,9 +775,52 @@ static const yytype_int16 yydefgoto[] =
       31,    61
 };
 
-  /* YYTABLE[YYPACT[STATE-NUM]] -- What to do in state STATE-NUM.  If
-     positive, shift that token.  If negative, reduce the rule whose
-     number is the opposite.  If YYTABLE_NINF, syntax error.  */
+/* YYPACT[STATE-NUM] -- Index in YYTABLE of the portion describing
+   STATE-NUM.  */
+#define YYPACT_NINF -99
+static const yytype_int16 yypact[] =
+{
+     -99,    34,   155,   -99,    25,    25,   451,   451,   -99,   -99,
+     192,   451,   451,   451,   451,   -99,   -99,   -99,   -99,   -99,
+     -99,   -99,   -99,   -99,   -99,   -99,   -99,   -99,    37,     9,
+     -99,    30,   -99,   -99,   -99,    10,   -99,   -99,   -99,   -99,
+     451,   451,   451,   451,   -99,   -99,   423,    21,   -99,   -99,
+     -99,   -99,   -99,   -99,   -99,    28,   -36,   -99,   -99,   -99,
+     -99,   -99,   423,    25,   451,    29,   363,   363,   298,   333,
+     451,    25,   451,    40,    40,    40,   223,   -99,    -8,   451,
+     451,    60,   451,   451,   451,   451,   451,   451,   451,   451,
+     451,   451,   451,   451,   451,   451,   451,    51,    45,    52,
+     451,     2,    -1,   -99,    69,    50,   -99,   263,   192,   472,
+      17,    76,    76,   451,    76,   451,    76,   423,   -99,   423,
+     -99,    54,   -99,   -99,    48,    53,   -99,    57,   423,    56,
+      64,   243,   451,   543,   529,   560,   560,    23,    23,    23,
+      23,   -10,   -10,    40,    40,    40,   393,   499,   -99,   451,
+     -27,   100,   -99,   -99,    25,    25,    85,   451,   451,   -99,
+     -99,   -99,   -99,     5,    20,    22,   -99,   -99,   -99,   -99,
+     -99,    63,   -99,   -99,   363,   -99,   363,   -99,   -99,   -99,
+      -8,   451,   -99,   451,   243,   451,   423,    66,    71,   451,
+      19,   -26,   -99,   -99,   -99,   -99,   -99,   423,   -99,   -99,
+      76,    76,   -99,   423,   423,   499,   -99,   451,   157,   -99,
+     -99,   451,    26,    25,   -99,   -99,   423,   -99,   193,   -99,
+     -99,    73,   -99,   -99,    25,   -99
+};
+
+/* YYPGOTO[NTERM-NUM].  */
+static const yytype_int8 yypgoto[] =
+{
+     -99,    39,   -99,   -99,   -99,   -99,   -99,   -99,    55,   -99,
+     -99,   -99,   -34,   -99,   -99,   -99,   -99,   -99,   -99,   -99,
+     -35,   -99,   -99,   -99,   -57,   -99,   -99,   -99,   -99,    -5,
+     -99,   -99,   -99,   -99,   -99,   -99,   -99,   -99,   -99,   -99,
+     -99,   -99,   -99,   -99,   -95,   -49,   -99,   -99,   -99,   -56,
+     -99,   -99,   -99,   -99,    -6,   -99,   -99,    15,   -98,   -99,
+      -4,   -99
+};
+
+/* YYTABLE[YYPACT[STATE-NUM]].  What to do in state STATE-NUM.  If
+   positive, shift that token.  If negative, reduce the rule which
+   number is the opposite.  If YYTABLE_NINF, syntax error.  */
+#define YYTABLE_NINF -132
 static const yytype_int16 yytable[] =
 {
       28,    46,    62,   153,    65,  -129,    66,    67,    68,    69,
@@ -784,6 +885,12 @@ static const yytype_int16 yytable[] =
        0,     0,     0,    86,    87,    88,    89,    90,    91,    92,
       93,    94
 };
+
+#define yypact_value_is_default(Yystate) \
+  (!!((Yystate) == (-99)))
+
+#define yytable_value_is_error(Yytable_value) \
+  YYID (0)
 
 static const yytype_int16 yycheck[] =
 {
@@ -850,8 +957,8 @@ static const yytype_int16 yycheck[] =
       40,    41
 };
 
-  /* YYSTOS[STATE-NUM] -- The (internal number of the) accessing
-     symbol of state STATE-NUM.  */
+/* YYSTOS[STATE-NUM] -- The (internal number of the) accessing
+   symbol of state STATE-NUM.  */
 static const yytype_uint8 yystos[] =
 {
        0,    61,    62,     0,     3,     4,     5,     6,     7,     8,
@@ -879,54 +986,30 @@ static const yytype_uint8 yystos[] =
      118,    74,   120,    53,    47,   120
 };
 
-  /* YYR1[YYN] -- Symbol number of symbol that rule YYN derives.  */
-static const yytype_uint8 yyr1[] =
-{
-       0,    60,    61,    61,    61,    61,    61,    62,    62,    63,
-      63,    63,    63,    63,    63,    64,    65,    66,    67,    67,
-      68,    70,    69,    71,    71,    72,    73,    73,    74,    74,
-      75,    76,    75,    78,    77,    79,    79,    80,    81,    81,
-      81,    82,    82,    83,    84,    84,    85,    86,    87,    87,
-      88,    88,    89,    90,    89,    89,    89,    89,    89,    89,
-      89,    89,    91,    91,    93,    92,    94,    94,    94,    95,
-      95,    95,    95,    95,    95,    95,    95,    95,    95,    95,
-      95,    95,    95,    95,    96,    97,    97,    98,    98,    99,
-      99,   101,   100,   102,   102,   103,   103,   104,   104,   106,
-     105,   107,   107,   108,   108,   109,   110,   111,   110,   112,
-     112,   112,   112,   112,   113,   113,   113,   113,   113,   113,
-     114,   114,   115,   115,   116,   116,   116,   116,   116,   117,
-     117,   117,   118,   119,   119,   120,   121
-};
+#define yyerrok		(yyerrstatus = 0)
+#define yyclearin	(yychar = YYEMPTY)
+#define YYEMPTY		(-2)
+#define YYEOF		0
 
-  /* YYR2[YYN] -- Number of symbols on the right hand side of rule YYN.  */
-static const yytype_uint8 yyr2[] =
-{
-       0,     2,     2,     2,     2,     2,     2,     0,     2,     1,
-       1,     1,     1,     1,     1,     4,     2,     2,     1,     3,
-       3,     0,     5,     1,     3,     3,     0,     2,     1,     3,
-       0,     0,     3,     0,     3,     1,     3,     2,     0,     1,
-       1,     2,     4,     2,     2,     2,     4,     4,     4,     6,
-       4,     6,     3,     0,     4,     1,     1,     1,     1,     1,
-       1,     3,     1,     3,     0,     5,     2,     2,     2,     3,
-       3,     3,     3,     3,     3,     3,     3,     3,     3,     3,
-       3,     3,     3,     4,     5,     0,     1,     1,     3,     1,
-       1,     0,     4,     0,     1,     1,     3,     0,     2,     0,
-       4,     0,     1,     1,     3,     3,     1,     0,     4,     1,
-       1,     3,     3,     4,     2,     2,     3,     3,     3,     4,
-       1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
-       1,     1,     1,     1,     1,     1,     1
-};
+#define YYACCEPT	goto yyacceptlab
+#define YYABORT		goto yyabortlab
+#define YYERROR		goto yyerrorlab
 
 
-#define yyerrok         (yyerrstatus = 0)
-#define yyclearin       (yychar = YYEMPTY)
-#define YYEMPTY         (-2)
-#define YYEOF           0
+/* Like YYERROR except do call yyerror.  This remains here temporarily
+   to ease the transition to the new meaning of YYERROR, for GCC.
+   Once GCC version 2 has supplanted version 1, this can go.  However,
+   YYFAIL appears to be in use.  Nevertheless, it is formally deprecated
+   in Bison 2.4.2's NEWS entry, where a plan to phase it out is
+   discussed.  */
 
-#define YYACCEPT        goto yyacceptlab
-#define YYABORT         goto yyabortlab
-#define YYERROR         goto yyerrorlab
-
+#define YYFAIL		goto yyerrlab
+#if defined YYFAIL
+  /* This is here to suppress warnings from the GCC cpp's
+     -Wunused-macros.  Normally we don't worry about that warning, but
+     some users do, and we want to make it easy for users to remove
+     YYFAIL uses, which will produce warnings from Bison 2.5.  */
+#endif
 
 #define YYRECOVERING()  (!!yyerrstatus)
 
@@ -943,13 +1026,13 @@ do                                                              \
   else                                                          \
     {                                                           \
       yyerror (&yylloc, parser, YY_("syntax error: cannot back up")); \
-      YYERROR;                                                  \
-    }                                                           \
-while (0)
+      YYERROR;							\
+    }								\
+while (YYID (0))
 
 /* Error token number */
-#define YYTERROR        1
-#define YYERRCODE       256
+#define YYTERROR	1
+#define YYERRCODE	256
 
 
 /* YYLLOC_DEFAULT -- Set CURRENT to span from RHS[1] to RHS[N].
@@ -959,7 +1042,7 @@ while (0)
 #ifndef YYLLOC_DEFAULT
 # define YYLLOC_DEFAULT(Current, Rhs, N)                                \
     do                                                                  \
-      if (N)                                                            \
+      if (YYID (N))                                                     \
         {                                                               \
           (Current).first_line   = YYRHSLOC (Rhs, 1).first_line;        \
           (Current).first_column = YYRHSLOC (Rhs, 1).first_column;      \
@@ -973,25 +1056,10 @@ while (0)
           (Current).first_column = (Current).last_column =              \
             YYRHSLOC (Rhs, 0).last_column;                              \
         }                                                               \
-    while (0)
+    while (YYID (0))
 #endif
 
 #define YYRHSLOC(Rhs, K) ((Rhs)[K])
-
-
-/* Enable debugging if requested.  */
-#if YYDEBUG
-
-# ifndef YYFPRINTF
-#  include <stdio.h> /* INFRINGES ON USER NAME SPACE */
-#  define YYFPRINTF fprintf
-# endif
-
-# define YYDPRINTF(Args)                        \
-do {                                            \
-  if (yydebug)                                  \
-    YYFPRINTF Args;                             \
-} while (0)
 
 
 /* YY_LOCATION_PRINT -- Print the location on the stream.
@@ -1003,28 +1071,36 @@ do {                                            \
 
 /* Print *YYLOCP on YYO.  Private, do not rely on its existence. */
 
-YY_ATTRIBUTE_UNUSED
+__attribute__((__unused__))
+#if (defined __STDC__ || defined __C99__FUNC__ \
+     || defined __cplusplus || defined _MSC_VER)
 static unsigned
 yy_location_print_ (FILE *yyo, YYLTYPE const * const yylocp)
+#else
+static unsigned
+yy_location_print_ (yyo, yylocp)
+    FILE *yyo;
+    YYLTYPE const * const yylocp;
+#endif
 {
   unsigned res = 0;
   int end_col = 0 != yylocp->last_column ? yylocp->last_column - 1 : 0;
   if (0 <= yylocp->first_line)
     {
-      res += YYFPRINTF (yyo, "%d", yylocp->first_line);
+      res += fprintf (yyo, "%d", yylocp->first_line);
       if (0 <= yylocp->first_column)
-        res += YYFPRINTF (yyo, ".%d", yylocp->first_column);
+        res += fprintf (yyo, ".%d", yylocp->first_column);
     }
   if (0 <= yylocp->last_line)
     {
       if (yylocp->first_line < yylocp->last_line)
         {
-          res += YYFPRINTF (yyo, "-%d", yylocp->last_line);
+          res += fprintf (yyo, "-%d", yylocp->last_line);
           if (0 <= end_col)
-            res += YYFPRINTF (yyo, ".%d", end_col);
+            res += fprintf (yyo, ".%d", end_col);
         }
       else if (0 <= end_col && yylocp->first_column < end_col)
-        res += YYFPRINTF (yyo, "-%d", end_col);
+        res += fprintf (yyo, "-%d", end_col);
     }
   return res;
  }
@@ -1038,34 +1114,69 @@ yy_location_print_ (FILE *yyo, YYLTYPE const * const yylocp)
 #endif
 
 
-# define YY_SYMBOL_PRINT(Title, Type, Value, Location)                    \
-do {                                                                      \
-  if (yydebug)                                                            \
-    {                                                                     \
-      YYFPRINTF (stderr, "%s ", Title);                                   \
-      yy_symbol_print (stderr,                                            \
-                  Type, Value, Location, parser); \
-      YYFPRINTF (stderr, "\n");                                           \
-    }                                                                     \
-} while (0)
+/* YYLEX -- calling `yylex' with the right arguments.  */
+#ifdef YYLEX_PARAM
+# define YYLEX yylex (&yylval, &yylloc, YYLEX_PARAM)
+#else
+# define YYLEX yylex (&yylval, &yylloc, scanner)
+#endif
+
+/* Enable debugging if requested.  */
+#if YYDEBUG
+
+# ifndef YYFPRINTF
+#  include <stdio.h> /* INFRINGES ON USER NAME SPACE */
+#  define YYFPRINTF fprintf
+# endif
+
+# define YYDPRINTF(Args)			\
+do {						\
+  if (yydebug)					\
+    YYFPRINTF Args;				\
+} while (YYID (0))
+
+# define YY_SYMBOL_PRINT(Title, Type, Value, Location)			  \
+do {									  \
+  if (yydebug)								  \
+    {									  \
+      YYFPRINTF (stderr, "%s ", Title);					  \
+      yy_symbol_print (stderr,						  \
+		  Type, Value, Location, parser); \
+      YYFPRINTF (stderr, "\n");						  \
+    }									  \
+} while (YYID (0))
 
 
-/*----------------------------------------.
-| Print this symbol's value on YYOUTPUT.  |
-`----------------------------------------*/
+/*--------------------------------.
+| Print this symbol on YYOUTPUT.  |
+`--------------------------------*/
 
+/*ARGSUSED*/
+#if (defined __STDC__ || defined __C99__FUNC__ \
+     || defined __cplusplus || defined _MSC_VER)
 static void
 yy_symbol_value_print (FILE *yyoutput, int yytype, YYSTYPE const * const yyvaluep, YYLTYPE const * const yylocationp, triagens::aql::Parser* parser)
+#else
+static void
+yy_symbol_value_print (yyoutput, yytype, yyvaluep, yylocationp, parser)
+    FILE *yyoutput;
+    int yytype;
+    YYSTYPE const * const yyvaluep;
+    YYLTYPE const * const yylocationp;
+    triagens::aql::Parser* parser;
+#endif
 {
   FILE *yyo = yyoutput;
   YYUSE (yyo);
-  YYUSE (yylocationp);
-  YYUSE (parser);
   if (!yyvaluep)
     return;
+  YYUSE (yylocationp);
+  YYUSE (parser);
 # ifdef YYPRINT
   if (yytype < YYNTOKENS)
     YYPRINT (yyoutput, yytoknum[yytype], *yyvaluep);
+# else
+  YYUSE (yyoutput);
 # endif
   YYUSE (yytype);
 }
@@ -1075,11 +1186,24 @@ yy_symbol_value_print (FILE *yyoutput, int yytype, YYSTYPE const * const yyvalue
 | Print this symbol on YYOUTPUT.  |
 `--------------------------------*/
 
+#if (defined __STDC__ || defined __C99__FUNC__ \
+     || defined __cplusplus || defined _MSC_VER)
 static void
 yy_symbol_print (FILE *yyoutput, int yytype, YYSTYPE const * const yyvaluep, YYLTYPE const * const yylocationp, triagens::aql::Parser* parser)
+#else
+static void
+yy_symbol_print (yyoutput, yytype, yyvaluep, yylocationp, parser)
+    FILE *yyoutput;
+    int yytype;
+    YYSTYPE const * const yyvaluep;
+    YYLTYPE const * const yylocationp;
+    triagens::aql::Parser* parser;
+#endif
 {
-  YYFPRINTF (yyoutput, "%s %s (",
-             yytype < YYNTOKENS ? "token" : "nterm", yytname[yytype]);
+  if (yytype < YYNTOKENS)
+    YYFPRINTF (yyoutput, "token %s (", yytname[yytype]);
+  else
+    YYFPRINTF (yyoutput, "nterm %s (", yytname[yytype]);
 
   YY_LOCATION_PRINT (yyoutput, *yylocationp);
   YYFPRINTF (yyoutput, ": ");
@@ -1092,8 +1216,16 @@ yy_symbol_print (FILE *yyoutput, int yytype, YYSTYPE const * const yyvaluep, YYL
 | TOP (included).                                                   |
 `------------------------------------------------------------------*/
 
+#if (defined __STDC__ || defined __C99__FUNC__ \
+     || defined __cplusplus || defined _MSC_VER)
 static void
 yy_stack_print (yytype_int16 *yybottom, yytype_int16 *yytop)
+#else
+static void
+yy_stack_print (yybottom, yytop)
+    yytype_int16 *yybottom;
+    yytype_int16 *yytop;
+#endif
 {
   YYFPRINTF (stderr, "Stack now");
   for (; yybottom <= yytop; yybottom++)
@@ -1104,42 +1236,51 @@ yy_stack_print (yytype_int16 *yybottom, yytype_int16 *yytop)
   YYFPRINTF (stderr, "\n");
 }
 
-# define YY_STACK_PRINT(Bottom, Top)                            \
-do {                                                            \
-  if (yydebug)                                                  \
-    yy_stack_print ((Bottom), (Top));                           \
-} while (0)
+# define YY_STACK_PRINT(Bottom, Top)				\
+do {								\
+  if (yydebug)							\
+    yy_stack_print ((Bottom), (Top));				\
+} while (YYID (0))
 
 
 /*------------------------------------------------.
 | Report that the YYRULE is going to be reduced.  |
 `------------------------------------------------*/
 
+#if (defined __STDC__ || defined __C99__FUNC__ \
+     || defined __cplusplus || defined _MSC_VER)
 static void
-yy_reduce_print (yytype_int16 *yyssp, YYSTYPE *yyvsp, YYLTYPE *yylsp, int yyrule, triagens::aql::Parser* parser)
+yy_reduce_print (YYSTYPE *yyvsp, YYLTYPE *yylsp, int yyrule, triagens::aql::Parser* parser)
+#else
+static void
+yy_reduce_print (yyvsp, yylsp, yyrule, parser)
+    YYSTYPE *yyvsp;
+    YYLTYPE *yylsp;
+    int yyrule;
+    triagens::aql::Parser* parser;
+#endif
 {
-  unsigned long int yylno = yyrline[yyrule];
   int yynrhs = yyr2[yyrule];
   int yyi;
+  unsigned long int yylno = yyrline[yyrule];
   YYFPRINTF (stderr, "Reducing stack by rule %d (line %lu):\n",
-             yyrule - 1, yylno);
+	     yyrule - 1, yylno);
   /* The symbols being reduced.  */
   for (yyi = 0; yyi < yynrhs; yyi++)
     {
       YYFPRINTF (stderr, "   $%d = ", yyi + 1);
-      yy_symbol_print (stderr,
-                       yystos[yyssp[yyi + 1 - yynrhs]],
-                       &(yyvsp[(yyi + 1) - (yynrhs)])
-                       , &(yylsp[(yyi + 1) - (yynrhs)])                       , parser);
+      yy_symbol_print (stderr, yyrhs[yyprhs[yyrule] + yyi],
+		       &(yyvsp[(yyi + 1) - (yynrhs)])
+		       , &(yylsp[(yyi + 1) - (yynrhs)])		       , parser);
       YYFPRINTF (stderr, "\n");
     }
 }
 
-# define YY_REDUCE_PRINT(Rule)          \
-do {                                    \
-  if (yydebug)                          \
-    yy_reduce_print (yyssp, yyvsp, yylsp, Rule, parser); \
-} while (0)
+# define YY_REDUCE_PRINT(Rule)		\
+do {					\
+  if (yydebug)				\
+    yy_reduce_print (yyvsp, yylsp, Rule, parser); \
+} while (YYID (0))
 
 /* Nonzero means print parse trace.  It is left uninitialized so that
    multiple parsers can coexist.  */
@@ -1153,7 +1294,7 @@ int yydebug;
 
 
 /* YYINITDEPTH -- initial size of the parser's stacks.  */
-#ifndef YYINITDEPTH
+#ifndef	YYINITDEPTH
 # define YYINITDEPTH 200
 #endif
 
@@ -1176,8 +1317,15 @@ int yydebug;
 #   define yystrlen strlen
 #  else
 /* Return the length of YYSTR.  */
+#if (defined __STDC__ || defined __C99__FUNC__ \
+     || defined __cplusplus || defined _MSC_VER)
 static YYSIZE_T
 yystrlen (const char *yystr)
+#else
+static YYSIZE_T
+yystrlen (yystr)
+    const char *yystr;
+#endif
 {
   YYSIZE_T yylen;
   for (yylen = 0; yystr[yylen]; yylen++)
@@ -1193,8 +1341,16 @@ yystrlen (const char *yystr)
 #  else
 /* Copy YYSRC to YYDEST, returning the address of the terminating '\0' in
    YYDEST.  */
+#if (defined __STDC__ || defined __C99__FUNC__ \
+     || defined __cplusplus || defined _MSC_VER)
 static char *
 yystpcpy (char *yydest, const char *yysrc)
+#else
+static char *
+yystpcpy (yydest, yysrc)
+    char *yydest;
+    const char *yysrc;
+#endif
 {
   char *yyd = yydest;
   const char *yys = yysrc;
@@ -1224,27 +1380,27 @@ yytnamerr (char *yyres, const char *yystr)
       char const *yyp = yystr;
 
       for (;;)
-        switch (*++yyp)
-          {
-          case '\'':
-          case ',':
-            goto do_not_strip_quotes;
+	switch (*++yyp)
+	  {
+	  case '\'':
+	  case ',':
+	    goto do_not_strip_quotes;
 
-          case '\\':
-            if (*++yyp != '\\')
-              goto do_not_strip_quotes;
-            /* Fall through.  */
-          default:
-            if (yyres)
-              yyres[yyn] = *yyp;
-            yyn++;
-            break;
+	  case '\\':
+	    if (*++yyp != '\\')
+	      goto do_not_strip_quotes;
+	    /* Fall through.  */
+	  default:
+	    if (yyres)
+	      yyres[yyn] = *yyp;
+	    yyn++;
+	    break;
 
-          case '"':
-            if (yyres)
-              yyres[yyn] = '\0';
-            return yyn;
-          }
+	  case '"':
+	    if (yyres)
+	      yyres[yyn] = '\0';
+	    return yyn;
+	  }
     do_not_strip_quotes: ;
     }
 
@@ -1267,11 +1423,11 @@ static int
 yysyntax_error (YYSIZE_T *yymsg_alloc, char **yymsg,
                 yytype_int16 *yyssp, int yytoken)
 {
-  YYSIZE_T yysize0 = yytnamerr (YY_NULLPTR, yytname[yytoken]);
+  YYSIZE_T yysize0 = yytnamerr (YY_NULL, yytname[yytoken]);
   YYSIZE_T yysize = yysize0;
   enum { YYERROR_VERBOSE_ARGS_MAXIMUM = 5 };
   /* Internationalized format string. */
-  const char *yyformat = YY_NULLPTR;
+  const char *yyformat = YY_NULL;
   /* Arguments of yyformat. */
   char const *yyarg[YYERROR_VERBOSE_ARGS_MAXIMUM];
   /* Number of reported tokens (one for the "unexpected", one per
@@ -1279,6 +1435,10 @@ yysyntax_error (YYSIZE_T *yymsg_alloc, char **yymsg,
   int yycount = 0;
 
   /* There are many possibilities here to consider:
+     - Assume YYFAIL is not used.  It's too flawed to consider.  See
+       <http://lists.gnu.org/archive/html/bison-patches/2009-12/msg00024.html>
+       for details.  YYERROR is fine as it does not invoke this
+       function.
      - If this state is a consistent state with a default action, then
        the only way this function was invoked is if the default action
        is an error action.  In that case, don't check for expected
@@ -1328,7 +1488,7 @@ yysyntax_error (YYSIZE_T *yymsg_alloc, char **yymsg,
                   }
                 yyarg[yycount++] = yytname[yyx];
                 {
-                  YYSIZE_T yysize1 = yysize + yytnamerr (YY_NULLPTR, yytname[yyx]);
+                  YYSIZE_T yysize1 = yysize + yytnamerr (YY_NULL, yytname[yyx]);
                   if (! (yysize <= yysize1
                          && yysize1 <= YYSTACK_ALLOC_MAXIMUM))
                     return 2;
@@ -1395,19 +1555,30 @@ yysyntax_error (YYSIZE_T *yymsg_alloc, char **yymsg,
 | Release the memory associated to this symbol.  |
 `-----------------------------------------------*/
 
+/*ARGSUSED*/
+#if (defined __STDC__ || defined __C99__FUNC__ \
+     || defined __cplusplus || defined _MSC_VER)
 static void
 yydestruct (const char *yymsg, int yytype, YYSTYPE *yyvaluep, YYLTYPE *yylocationp, triagens::aql::Parser* parser)
+#else
+static void
+yydestruct (yymsg, yytype, yyvaluep, yylocationp, parser)
+    const char *yymsg;
+    int yytype;
+    YYSTYPE *yyvaluep;
+    YYLTYPE *yylocationp;
+    triagens::aql::Parser* parser;
+#endif
 {
   YYUSE (yyvaluep);
   YYUSE (yylocationp);
   YYUSE (parser);
+
   if (!yymsg)
     yymsg = "Deleting";
   YY_SYMBOL_PRINT (yymsg, yytype, yyvaluep, yylocationp);
 
-  YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
   YYUSE (yytype);
-  YY_IGNORE_MAYBE_UNINITIALIZED_END
 }
 
 
@@ -1417,26 +1588,65 @@ yydestruct (const char *yymsg, int yytype, YYSTYPE *yyvaluep, YYLTYPE *yylocatio
 | yyparse.  |
 `----------*/
 
+#ifdef YYPARSE_PARAM
+#if (defined __STDC__ || defined __C99__FUNC__ \
+     || defined __cplusplus || defined _MSC_VER)
+int
+yyparse (void *YYPARSE_PARAM)
+#else
+int
+yyparse (YYPARSE_PARAM)
+    void *YYPARSE_PARAM;
+#endif
+#else /* ! YYPARSE_PARAM */
+#if (defined __STDC__ || defined __C99__FUNC__ \
+     || defined __cplusplus || defined _MSC_VER)
 int
 yyparse (triagens::aql::Parser* parser)
+#else
+int
+yyparse (parser)
+    triagens::aql::Parser* parser;
+#endif
+#endif
 {
 /* The lookahead symbol.  */
 int yychar;
 
 
-/* The semantic value of the lookahead symbol.  */
+#if defined __GNUC__ && 407 <= __GNUC__ * 100 + __GNUC_MINOR__
+/* Suppress an incorrect diagnostic about yylval being uninitialized.  */
+# define YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN \
+    _Pragma ("GCC diagnostic push") \
+    _Pragma ("GCC diagnostic ignored \"-Wuninitialized\"")\
+    _Pragma ("GCC diagnostic ignored \"-Wmaybe-uninitialized\"")
+# define YY_IGNORE_MAYBE_UNINITIALIZED_END \
+    _Pragma ("GCC diagnostic pop")
+#else
 /* Default value used for initialization, for pacifying older GCCs
    or non-GCC compilers.  */
-YY_INITIAL_VALUE (static YYSTYPE yyval_default;)
-YYSTYPE yylval YY_INITIAL_VALUE (= yyval_default);
-
-/* Location data for the lookahead symbol.  */
+static YYSTYPE yyval_default;
+# define YY_INITIAL_VALUE(Value) = Value
+#endif
 static YYLTYPE yyloc_default
 # if defined YYLTYPE_IS_TRIVIAL && YYLTYPE_IS_TRIVIAL
   = { 1, 1, 1, 1 }
 # endif
 ;
+#ifndef YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
+# define YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
+# define YY_IGNORE_MAYBE_UNINITIALIZED_END
+#endif
+#ifndef YY_INITIAL_VALUE
+# define YY_INITIAL_VALUE(Value) /* Nothing. */
+#endif
+
+/* The semantic value of the lookahead symbol.  */
+YYSTYPE yylval YY_INITIAL_VALUE(yyval_default);
+
+/* Location data for the lookahead symbol.  */
 YYLTYPE yylloc = yyloc_default;
+
 
     /* Number of syntax errors so far.  */
     int yynerrs;
@@ -1446,9 +1656,9 @@ YYLTYPE yylloc = yyloc_default;
     int yyerrstatus;
 
     /* The stacks and their tools:
-       'yyss': related to states.
-       'yyvs': related to semantic values.
-       'yyls': related to locations.
+       `yyss': related to states.
+       `yyvs': related to semantic values.
+       `yyls': related to locations.
 
        Refer to the stacks through separate pointers, to allow yyoverflow
        to reallocate them elsewhere.  */
@@ -1527,26 +1737,26 @@ YYLTYPE yylloc = yyloc_default;
 
 #ifdef yyoverflow
       {
-        /* Give user a chance to reallocate the stack.  Use copies of
-           these so that the &'s don't force the real ones into
-           memory.  */
-        YYSTYPE *yyvs1 = yyvs;
-        yytype_int16 *yyss1 = yyss;
-        YYLTYPE *yyls1 = yyls;
+	/* Give user a chance to reallocate the stack.  Use copies of
+	   these so that the &'s don't force the real ones into
+	   memory.  */
+	YYSTYPE *yyvs1 = yyvs;
+	yytype_int16 *yyss1 = yyss;
+	YYLTYPE *yyls1 = yyls;
 
-        /* Each stack pointer address is followed by the size of the
-           data in use in that stack, in bytes.  This used to be a
-           conditional around just the two extra args, but that might
-           be undefined if yyoverflow is a macro.  */
-        yyoverflow (YY_("memory exhausted"),
-                    &yyss1, yysize * sizeof (*yyssp),
-                    &yyvs1, yysize * sizeof (*yyvsp),
-                    &yyls1, yysize * sizeof (*yylsp),
-                    &yystacksize);
+	/* Each stack pointer address is followed by the size of the
+	   data in use in that stack, in bytes.  This used to be a
+	   conditional around just the two extra args, but that might
+	   be undefined if yyoverflow is a macro.  */
+	yyoverflow (YY_("memory exhausted"),
+		    &yyss1, yysize * sizeof (*yyssp),
+		    &yyvs1, yysize * sizeof (*yyvsp),
+		    &yyls1, yysize * sizeof (*yylsp),
+		    &yystacksize);
 
-        yyls = yyls1;
-        yyss = yyss1;
-        yyvs = yyvs1;
+	yyls = yyls1;
+	yyss = yyss1;
+	yyvs = yyvs1;
       }
 #else /* no yyoverflow */
 # ifndef YYSTACK_RELOCATE
@@ -1554,23 +1764,23 @@ YYLTYPE yylloc = yyloc_default;
 # else
       /* Extend the stack our own way.  */
       if (YYMAXDEPTH <= yystacksize)
-        goto yyexhaustedlab;
+	goto yyexhaustedlab;
       yystacksize *= 2;
       if (YYMAXDEPTH < yystacksize)
-        yystacksize = YYMAXDEPTH;
+	yystacksize = YYMAXDEPTH;
 
       {
-        yytype_int16 *yyss1 = yyss;
-        union yyalloc *yyptr =
-          (union yyalloc *) YYSTACK_ALLOC (YYSTACK_BYTES (yystacksize));
-        if (! yyptr)
-          goto yyexhaustedlab;
-        YYSTACK_RELOCATE (yyss_alloc, yyss);
-        YYSTACK_RELOCATE (yyvs_alloc, yyvs);
-        YYSTACK_RELOCATE (yyls_alloc, yyls);
+	yytype_int16 *yyss1 = yyss;
+	union yyalloc *yyptr =
+	  (union yyalloc *) YYSTACK_ALLOC (YYSTACK_BYTES (yystacksize));
+	if (! yyptr)
+	  goto yyexhaustedlab;
+	YYSTACK_RELOCATE (yyss_alloc, yyss);
+	YYSTACK_RELOCATE (yyvs_alloc, yyvs);
+	YYSTACK_RELOCATE (yyls_alloc, yyls);
 #  undef YYSTACK_RELOCATE
-        if (yyss1 != yyssa)
-          YYSTACK_FREE (yyss1);
+	if (yyss1 != yyssa)
+	  YYSTACK_FREE (yyss1);
       }
 # endif
 #endif /* no yyoverflow */
@@ -1580,10 +1790,10 @@ YYLTYPE yylloc = yyloc_default;
       yylsp = yyls + yysize - 1;
 
       YYDPRINTF ((stderr, "Stack size increased to %lu\n",
-                  (unsigned long int) yystacksize));
+		  (unsigned long int) yystacksize));
 
       if (yyss + yystacksize - 1 <= yyssp)
-        YYABORT;
+	YYABORT;
     }
 
   YYDPRINTF ((stderr, "Entering state %d\n", yystate));
@@ -1612,7 +1822,7 @@ yybackup:
   if (yychar == YYEMPTY)
     {
       YYDPRINTF ((stderr, "Reading a token: "));
-      yychar = yylex (&yylval, &yylloc, scanner);
+      yychar = YYLEX;
     }
 
   if (yychar <= YYEOF)
@@ -1677,7 +1887,7 @@ yyreduce:
   yylen = yyr2[yyn];
 
   /* If YYLEN is nonzero, implement the default value of the action:
-     '$$ = $1'.
+     `$$ = $1'.
 
      Otherwise, the following line sets YYVAL to garbage.
      This behavior is undocumented and Bison
@@ -1692,158 +1902,159 @@ yyreduce:
   switch (yyn)
     {
         case 2:
-#line 196 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 196 "arangod/Aql/grammar.y"
     {
     }
-#line 1699 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 3:
-#line 198 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 198 "arangod/Aql/grammar.y"
     {
     }
-#line 1706 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 4:
-#line 200 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 200 "arangod/Aql/grammar.y"
     {
     }
-#line 1713 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 5:
-#line 202 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 202 "arangod/Aql/grammar.y"
     {
     }
-#line 1720 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 6:
-#line 204 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 204 "arangod/Aql/grammar.y"
     {
     }
-#line 1727 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 7:
-#line 209 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 209 "arangod/Aql/grammar.y"
     {
     }
-#line 1734 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 8:
-#line 211 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 211 "arangod/Aql/grammar.y"
     {
     }
-#line 1741 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 9:
-#line 216 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 216 "arangod/Aql/grammar.y"
     {
     }
-#line 1748 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 10:
-#line 218 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 218 "arangod/Aql/grammar.y"
     {
     }
-#line 1755 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 11:
-#line 220 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 220 "arangod/Aql/grammar.y"
     {
     }
-#line 1762 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 12:
-#line 222 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 222 "arangod/Aql/grammar.y"
     {
     }
-#line 1769 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 13:
-#line 224 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 224 "arangod/Aql/grammar.y"
     {
     }
-#line 1776 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 14:
-#line 226 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 226 "arangod/Aql/grammar.y"
     {
     }
-#line 1783 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 15:
-#line 231 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 231 "arangod/Aql/grammar.y"
     {
       parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_FOR);
      
-      auto node = parser->ast()->createNodeFor((yyvsp[-2].strval), (yyvsp[0].node));
+      auto node = parser->ast()->createNodeFor((yyvsp[(2) - (4)].strval), (yyvsp[(4) - (4)].node));
       parser->ast()->addOperation(node);
     }
-#line 1794 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 16:
-#line 240 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 240 "arangod/Aql/grammar.y"
     {
       // operand is a reference. can use it directly
-      auto node = parser->ast()->createNodeFilter((yyvsp[0].node));
+      auto node = parser->ast()->createNodeFilter((yyvsp[(2) - (2)].node));
       parser->ast()->addOperation(node);
     }
-#line 1804 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 17:
-#line 248 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 248 "arangod/Aql/grammar.y"
     {
     }
-#line 1811 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 18:
-#line 253 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 253 "arangod/Aql/grammar.y"
     {
     }
-#line 1818 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 19:
-#line 255 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 255 "arangod/Aql/grammar.y"
     {
     }
-#line 1825 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 20:
-#line 260 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 260 "arangod/Aql/grammar.y"
     {
-      auto node = parser->ast()->createNodeLet((yyvsp[-2].strval), (yyvsp[0].node), true);
+      auto node = parser->ast()->createNodeLet((yyvsp[(1) - (3)].strval), (yyvsp[(3) - (3)].node), true);
       parser->ast()->addOperation(node);
     }
-#line 1834 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 21:
-#line 267 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 267 "arangod/Aql/grammar.y"
     {
       auto node = parser->ast()->createNodeList();
       parser->pushStack(node);
     }
-#line 1843 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 22:
-#line 270 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 270 "arangod/Aql/grammar.y"
     {
       auto list = static_cast<AstNode const*>(parser->popStack());
 
@@ -1874,305 +2085,332 @@ yyreduce:
         }
       }
 
-      auto node = parser->ast()->createNodeCollect(list, (yyvsp[-1].strval));
+      if ((yyvsp[(4) - (5)].strval) == nullptr && (yyvsp[(5) - (5)].node) != nullptr) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of 'KEEP' without 'INTO'", yylloc.first_line, yylloc.first_column);
+      } 
+
+      auto node = parser->ast()->createNodeCollect(list, (yyvsp[(4) - (5)].strval), (yyvsp[(5) - (5)].node));
       parser->ast()->addOperation(node);
     }
-#line 1881 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 23:
-#line 306 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 310 "arangod/Aql/grammar.y"
     {
     }
-#line 1888 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 24:
-#line 308 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 312 "arangod/Aql/grammar.y"
     {
     }
-#line 1895 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 25:
-#line 313 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 317 "arangod/Aql/grammar.y"
     {
-      auto node = parser->ast()->createNodeAssign((yyvsp[-2].strval), (yyvsp[0].node));
+      auto node = parser->ast()->createNodeAssign((yyvsp[(1) - (3)].strval), (yyvsp[(3) - (3)].node));
       parser->pushList(node);
     }
-#line 1904 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 26:
-#line 320 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 324 "arangod/Aql/grammar.y"
     {
       (yyval.strval) = nullptr;
     }
-#line 1912 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 27:
-#line 323 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 327 "arangod/Aql/grammar.y"
     {
-      (yyval.strval) = (yyvsp[0].strval);
+      (yyval.strval) = (yyvsp[(2) - (2)].strval);
     }
-#line 1920 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 28:
-#line 329 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 333 "arangod/Aql/grammar.y"
     {
-      auto name = parser->ast()->createNodeValueString((yyvsp[0].strval)); 
-      parser->pushList(name);
+      if (! parser->ast()->scopes()->existsVariable((yyvsp[(1) - (1)].strval))) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of unknown variable '%s' for KEEP", (yyvsp[(1) - (1)].strval), yylloc.first_line, yylloc.first_column);
+      }
+        
+      auto node = parser->ast()->createNodeReference((yyvsp[(1) - (1)].strval));
+      if (node == nullptr) {
+        ABORT_OOM
+      }
+
+      // indicate the this node is a reference to the variable name, not the variable value
+      node->setFlag(FLAG_KEEP_VARIABLENAME);
+      parser->pushList(node);
     }
-#line 1929 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 29:
-#line 333 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 347 "arangod/Aql/grammar.y"
     {
+      if (! parser->ast()->scopes()->existsVariable((yyvsp[(3) - (3)].strval))) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of unknown variable '%s' for KEEP", (yyvsp[(3) - (3)].strval), yylloc.first_line, yylloc.first_column);
+      }
+        
+      auto node = parser->ast()->createNodeReference((yyvsp[(3) - (3)].strval));
+      if (node == nullptr) {
+        ABORT_OOM
+      }
+
+      // indicate the this node is a reference to the variable name, not the variable value
+      node->setFlag(FLAG_KEEP_VARIABLENAME);
+      parser->pushList(node);
     }
-#line 1936 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 30:
-#line 338 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 364 "arangod/Aql/grammar.y"
     {
       (yyval.node) = nullptr;
     }
-#line 1944 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 31:
-#line 341 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 367 "arangod/Aql/grammar.y"
     {
-      if (! TRI_CaseEqualString((yyvsp[0].strval), "KEEP")) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'KEEP'", (yyvsp[0].strval), yylloc.first_line, yylloc.first_column);
+      if (! TRI_CaseEqualString((yyvsp[(1) - (1)].strval), "KEEP")) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'KEEP'", (yyvsp[(1) - (1)].strval), yylloc.first_line, yylloc.first_column);
       }
+
       auto node = parser->ast()->createNodeList();
       parser->pushStack(node);
     }
-#line 1956 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 32:
-#line 347 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 374 "arangod/Aql/grammar.y"
     {
       auto list = static_cast<AstNode*>(parser->popStack());
       (yyval.node) = list;
     }
-#line 1965 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 33:
-#line 354 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 381 "arangod/Aql/grammar.y"
     {
       auto node = parser->ast()->createNodeList();
       parser->pushStack(node);
     }
-#line 1974 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 34:
-#line 357 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 384 "arangod/Aql/grammar.y"
     {
       auto list = static_cast<AstNode const*>(parser->popStack());
       auto node = parser->ast()->createNodeSort(list);
       parser->ast()->addOperation(node);
     }
-#line 1984 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 35:
-#line 365 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 392 "arangod/Aql/grammar.y"
     {
-      parser->pushList((yyvsp[0].node));
+      parser->pushList((yyvsp[(1) - (1)].node));
     }
-#line 1992 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 36:
-#line 368 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 395 "arangod/Aql/grammar.y"
     {
-      parser->pushList((yyvsp[0].node));
+      parser->pushList((yyvsp[(3) - (3)].node));
     }
-#line 2000 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 37:
-#line 374 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 401 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = parser->ast()->createNodeSortElement((yyvsp[-1].node), (yyvsp[0].boolval));
+      (yyval.node) = parser->ast()->createNodeSortElement((yyvsp[(1) - (2)].node), (yyvsp[(2) - (2)].boolval));
     }
-#line 2008 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 38:
-#line 380 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 407 "arangod/Aql/grammar.y"
     {
       (yyval.boolval) = true;
     }
-#line 2016 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 39:
-#line 383 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 410 "arangod/Aql/grammar.y"
     {
       (yyval.boolval) = true;
     }
-#line 2024 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 40:
-#line 386 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 413 "arangod/Aql/grammar.y"
     {
       (yyval.boolval) = false;
     }
-#line 2032 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 41:
-#line 392 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 419 "arangod/Aql/grammar.y"
     {
       auto offset = parser->ast()->createNodeValueInt(0);
-      auto node = parser->ast()->createNodeLimit(offset, (yyvsp[0].node));
+      auto node = parser->ast()->createNodeLimit(offset, (yyvsp[(2) - (2)].node));
       parser->ast()->addOperation(node);
     }
-#line 2042 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 42:
-#line 397 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 424 "arangod/Aql/grammar.y"
     {
-      auto node = parser->ast()->createNodeLimit((yyvsp[-2].node), (yyvsp[0].node));
+      auto node = parser->ast()->createNodeLimit((yyvsp[(2) - (4)].node), (yyvsp[(4) - (4)].node));
       parser->ast()->addOperation(node);
     }
-#line 2051 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 43:
-#line 404 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 431 "arangod/Aql/grammar.y"
     {
-      auto node = parser->ast()->createNodeReturn((yyvsp[0].node));
+      auto node = parser->ast()->createNodeReturn((yyvsp[(2) - (2)].node));
       parser->ast()->addOperation(node);
       parser->ast()->scopes()->endNested();
     }
-#line 2061 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 44:
-#line 412 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 439 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = (yyvsp[0].node);
+      (yyval.node) = (yyvsp[(2) - (2)].node);
     }
-#line 2069 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 45:
-#line 415 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 442 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = (yyvsp[0].node);
+      (yyval.node) = (yyvsp[(2) - (2)].node);
     }
-#line 2077 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 46:
-#line 421 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 448 "arangod/Aql/grammar.y"
     {
-      if (! parser->configureWriteQuery(AQL_QUERY_REMOVE, (yyvsp[-1].node), (yyvsp[0].node))) {
+      if (! parser->configureWriteQuery(AQL_QUERY_REMOVE, (yyvsp[(3) - (4)].node), (yyvsp[(4) - (4)].node))) {
         YYABORT;
       }
-      auto node = parser->ast()->createNodeRemove((yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
+      auto node = parser->ast()->createNodeRemove((yyvsp[(2) - (4)].node), (yyvsp[(3) - (4)].node), (yyvsp[(4) - (4)].node));
       parser->ast()->addOperation(node);
       parser->ast()->scopes()->endNested();
     }
-#line 2090 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 47:
-#line 432 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 459 "arangod/Aql/grammar.y"
     {
-      if (! parser->configureWriteQuery(AQL_QUERY_INSERT, (yyvsp[-1].node), (yyvsp[0].node))) {
+      if (! parser->configureWriteQuery(AQL_QUERY_INSERT, (yyvsp[(3) - (4)].node), (yyvsp[(4) - (4)].node))) {
         YYABORT;
       }
-      auto node = parser->ast()->createNodeInsert((yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
+      auto node = parser->ast()->createNodeInsert((yyvsp[(2) - (4)].node), (yyvsp[(3) - (4)].node), (yyvsp[(4) - (4)].node));
       parser->ast()->addOperation(node);
       parser->ast()->scopes()->endNested();
     }
-#line 2103 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 48:
-#line 443 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 470 "arangod/Aql/grammar.y"
     {
-      if (! parser->configureWriteQuery(AQL_QUERY_UPDATE, (yyvsp[-1].node), (yyvsp[0].node))) {
+      if (! parser->configureWriteQuery(AQL_QUERY_UPDATE, (yyvsp[(3) - (4)].node), (yyvsp[(4) - (4)].node))) {
         YYABORT;
       }
-      auto node = parser->ast()->createNodeUpdate(nullptr, (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
+      auto node = parser->ast()->createNodeUpdate(nullptr, (yyvsp[(2) - (4)].node), (yyvsp[(3) - (4)].node), (yyvsp[(4) - (4)].node));
       parser->ast()->addOperation(node);
       parser->ast()->scopes()->endNested();
     }
-#line 2116 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 49:
-#line 451 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 478 "arangod/Aql/grammar.y"
     {
-      if (! parser->configureWriteQuery(AQL_QUERY_UPDATE, (yyvsp[-1].node), (yyvsp[0].node))) {
+      if (! parser->configureWriteQuery(AQL_QUERY_UPDATE, (yyvsp[(5) - (6)].node), (yyvsp[(6) - (6)].node))) {
         YYABORT;
       }
-      auto node = parser->ast()->createNodeUpdate((yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
+      auto node = parser->ast()->createNodeUpdate((yyvsp[(2) - (6)].node), (yyvsp[(4) - (6)].node), (yyvsp[(5) - (6)].node), (yyvsp[(6) - (6)].node));
       parser->ast()->addOperation(node);
       parser->ast()->scopes()->endNested();
     }
-#line 2129 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 50:
-#line 462 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 489 "arangod/Aql/grammar.y"
     {
-      if (! parser->configureWriteQuery(AQL_QUERY_REPLACE, (yyvsp[-1].node), (yyvsp[0].node))) {
+      if (! parser->configureWriteQuery(AQL_QUERY_REPLACE, (yyvsp[(3) - (4)].node), (yyvsp[(4) - (4)].node))) {
         YYABORT;
       }
-      auto node = parser->ast()->createNodeReplace(nullptr, (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
+      auto node = parser->ast()->createNodeReplace(nullptr, (yyvsp[(2) - (4)].node), (yyvsp[(3) - (4)].node), (yyvsp[(4) - (4)].node));
       parser->ast()->addOperation(node);
       parser->ast()->scopes()->endNested();
     }
-#line 2142 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 51:
-#line 470 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 497 "arangod/Aql/grammar.y"
     {
-      if (! parser->configureWriteQuery(AQL_QUERY_REPLACE, (yyvsp[-1].node), (yyvsp[0].node))) {
+      if (! parser->configureWriteQuery(AQL_QUERY_REPLACE, (yyvsp[(5) - (6)].node), (yyvsp[(6) - (6)].node))) {
         YYABORT;
       }
-      auto node = parser->ast()->createNodeReplace((yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[-1].node), (yyvsp[0].node));
+      auto node = parser->ast()->createNodeReplace((yyvsp[(2) - (6)].node), (yyvsp[(4) - (6)].node), (yyvsp[(5) - (6)].node), (yyvsp[(6) - (6)].node));
       parser->ast()->addOperation(node);
       parser->ast()->scopes()->endNested();
     }
-#line 2155 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 52:
-#line 481 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 508 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = (yyvsp[-1].node);
+      (yyval.node) = (yyvsp[(2) - (3)].node);
     }
-#line 2163 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 53:
-#line 484 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 511 "arangod/Aql/grammar.y"
     {
       parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_SUBQUERY);
       parser->ast()->startSubQuery();
     }
-#line 2172 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 54:
-#line 487 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 514 "arangod/Aql/grammar.y"
     {
       AstNode* node = parser->ast()->endSubQuery();
       parser->ast()->scopes()->endCurrent();
@@ -2183,471 +2421,471 @@ yyreduce:
 
       (yyval.node) = parser->ast()->createNodeReference(variableName.c_str());
     }
-#line 2187 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 55:
-#line 497 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 524 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = (yyvsp[0].node);
+      (yyval.node) = (yyvsp[(1) - (1)].node);
     }
-#line 2195 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 56:
-#line 500 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 527 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = (yyvsp[0].node);
+      (yyval.node) = (yyvsp[(1) - (1)].node);
     }
-#line 2203 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 57:
-#line 503 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 530 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = (yyvsp[0].node);
+      (yyval.node) = (yyvsp[(1) - (1)].node);
     }
-#line 2211 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 58:
-#line 506 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 533 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = (yyvsp[0].node);
+      (yyval.node) = (yyvsp[(1) - (1)].node);
     }
-#line 2219 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 59:
-#line 509 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 536 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = (yyvsp[0].node);
+      (yyval.node) = (yyvsp[(1) - (1)].node);
     }
-#line 2227 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 60:
-#line 512 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 539 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = (yyvsp[0].node);
+      (yyval.node) = (yyvsp[(1) - (1)].node);
     }
-#line 2235 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 61:
-#line 515 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 542 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = parser->ast()->createNodeRange((yyvsp[-2].node), (yyvsp[0].node));
+      (yyval.node) = parser->ast()->createNodeRange((yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
     }
-#line 2243 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 62:
-#line 521 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 548 "arangod/Aql/grammar.y"
     {
-      (yyval.strval) = (yyvsp[0].strval);
+      (yyval.strval) = (yyvsp[(1) - (1)].strval);
 
       if ((yyval.strval) == nullptr) {
         ABORT_OOM
       }
     }
-#line 2255 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 63:
-#line 528 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 555 "arangod/Aql/grammar.y"
     {
-      if ((yyvsp[-2].strval) == nullptr || (yyvsp[0].strval) == nullptr) {
+      if ((yyvsp[(1) - (3)].strval) == nullptr || (yyvsp[(3) - (3)].strval) == nullptr) {
         ABORT_OOM
       }
 
-      std::string temp((yyvsp[-2].strval));
+      std::string temp((yyvsp[(1) - (3)].strval));
       temp.append("::");
-      temp.append((yyvsp[0].strval));
+      temp.append((yyvsp[(3) - (3)].strval));
       (yyval.strval) = parser->query()->registerString(temp.c_str(), temp.size(), false);
 
       if ((yyval.strval) == nullptr) {
         ABORT_OOM
       }
     }
-#line 2274 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 64:
-#line 545 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 572 "arangod/Aql/grammar.y"
     {
-      parser->pushStack((yyvsp[0].strval));
+      parser->pushStack((yyvsp[(1) - (1)].strval));
 
       auto node = parser->ast()->createNodeList();
       parser->pushStack(node);
     }
-#line 2285 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 65:
-#line 550 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 577 "arangod/Aql/grammar.y"
     {
       auto list = static_cast<AstNode const*>(parser->popStack());
       (yyval.node) = parser->ast()->createNodeFunctionCall(static_cast<char const*>(parser->popStack()), list);
     }
-#line 2294 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 66:
-#line 557 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 584 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_PLUS, (yyvsp[0].node));
+      (yyval.node) = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_PLUS, (yyvsp[(2) - (2)].node));
     }
-#line 2302 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 67:
-#line 560 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 587 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_MINUS, (yyvsp[0].node));
+      (yyval.node) = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_MINUS, (yyvsp[(2) - (2)].node));
     }
-#line 2310 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 68:
-#line 563 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 590 "arangod/Aql/grammar.y"
     { 
-      (yyval.node) = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, (yyvsp[0].node));
+      (yyval.node) = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, (yyvsp[(2) - (2)].node));
     }
-#line 2318 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 69:
-#line 569 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 596 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_OR, (yyvsp[-2].node), (yyvsp[0].node));
+      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_OR, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
     }
-#line 2326 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 70:
-#line 572 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 599 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND, (yyvsp[-2].node), (yyvsp[0].node));
+      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
     }
-#line 2334 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 71:
-#line 575 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 602 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_PLUS, (yyvsp[-2].node), (yyvsp[0].node));
+      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_PLUS, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
     }
-#line 2342 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 72:
-#line 578 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 605 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_MINUS, (yyvsp[-2].node), (yyvsp[0].node));
+      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_MINUS, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
     }
-#line 2350 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 73:
-#line 581 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 608 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_TIMES, (yyvsp[-2].node), (yyvsp[0].node));
+      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_TIMES, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
     }
-#line 2358 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 74:
-#line 584 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 611 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_DIV, (yyvsp[-2].node), (yyvsp[0].node));
+      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_DIV, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
     }
-#line 2366 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 75:
-#line 587 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 614 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_MOD, (yyvsp[-2].node), (yyvsp[0].node));
+      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_MOD, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
     }
-#line 2374 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 76:
-#line 590 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 617 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, (yyvsp[-2].node), (yyvsp[0].node));
+      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
     }
-#line 2382 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 77:
-#line 593 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 620 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_NE, (yyvsp[-2].node), (yyvsp[0].node));
+      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_NE, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
     }
-#line 2390 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 78:
-#line 596 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 623 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_LT, (yyvsp[-2].node), (yyvsp[0].node));
+      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_LT, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
     }
-#line 2398 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 79:
-#line 599 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 626 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_GT, (yyvsp[-2].node), (yyvsp[0].node));
+      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_GT, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
     }
-#line 2406 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 80:
-#line 602 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 629 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_LE, (yyvsp[-2].node), (yyvsp[0].node));
+      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_LE, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
     }
-#line 2414 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 81:
-#line 605 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 632 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_GE, (yyvsp[-2].node), (yyvsp[0].node));
+      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_GE, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
     }
-#line 2422 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 82:
-#line 608 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 635 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_IN, (yyvsp[-2].node), (yyvsp[0].node));
+      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_IN, (yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
     }
-#line 2430 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 83:
-#line 611 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 638 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_NIN, (yyvsp[-3].node), (yyvsp[0].node));
+      (yyval.node) = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_NIN, (yyvsp[(1) - (4)].node), (yyvsp[(4) - (4)].node));
     }
-#line 2438 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 84:
-#line 617 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 644 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = parser->ast()->createNodeTernaryOperator((yyvsp[-4].node), (yyvsp[-2].node), (yyvsp[0].node));
+      (yyval.node) = parser->ast()->createNodeTernaryOperator((yyvsp[(1) - (5)].node), (yyvsp[(3) - (5)].node), (yyvsp[(5) - (5)].node));
     }
-#line 2446 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 85:
-#line 623 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 650 "arangod/Aql/grammar.y"
     {
     }
-#line 2453 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 86:
-#line 625 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 652 "arangod/Aql/grammar.y"
     {
     }
-#line 2460 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 87:
-#line 630 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 657 "arangod/Aql/grammar.y"
     {
-      parser->pushList((yyvsp[0].node));
+      parser->pushList((yyvsp[(1) - (1)].node));
     }
-#line 2468 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 88:
-#line 633 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 660 "arangod/Aql/grammar.y"
     {
-      parser->pushList((yyvsp[0].node));
+      parser->pushList((yyvsp[(3) - (3)].node));
     }
-#line 2476 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 89:
-#line 639 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 666 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = (yyvsp[0].node);
+      (yyval.node) = (yyvsp[(1) - (1)].node);
     }
-#line 2484 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 90:
-#line 642 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 669 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = (yyvsp[0].node);
+      (yyval.node) = (yyvsp[(1) - (1)].node);
     }
-#line 2492 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 91:
-#line 648 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 675 "arangod/Aql/grammar.y"
     {
       auto node = parser->ast()->createNodeList();
       parser->pushStack(node);
     }
-#line 2501 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 92:
-#line 651 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 678 "arangod/Aql/grammar.y"
     {
       (yyval.node) = static_cast<AstNode*>(parser->popStack());
     }
-#line 2509 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 93:
-#line 657 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 684 "arangod/Aql/grammar.y"
     {
     }
-#line 2516 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 94:
-#line 659 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 686 "arangod/Aql/grammar.y"
     {
     }
-#line 2523 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 95:
-#line 664 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 691 "arangod/Aql/grammar.y"
     {
-      parser->pushList((yyvsp[0].node));
+      parser->pushList((yyvsp[(1) - (1)].node));
     }
-#line 2531 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 96:
-#line 667 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 694 "arangod/Aql/grammar.y"
     {
-      parser->pushList((yyvsp[0].node));
+      parser->pushList((yyvsp[(3) - (3)].node));
     }
-#line 2539 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 97:
-#line 673 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 700 "arangod/Aql/grammar.y"
     {
       (yyval.node) = nullptr;
     }
-#line 2547 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 98:
-#line 676 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 703 "arangod/Aql/grammar.y"
     {
-      if ((yyvsp[-1].strval) == nullptr || (yyvsp[0].node) == nullptr) {
+      if ((yyvsp[(1) - (2)].strval) == nullptr || (yyvsp[(2) - (2)].node) == nullptr) {
         ABORT_OOM
       }
 
-      if (! TRI_CaseEqualString((yyvsp[-1].strval), "OPTIONS")) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'OPTIONS'", (yyvsp[-1].strval), yylloc.first_line, yylloc.first_column);
+      if (! TRI_CaseEqualString((yyvsp[(1) - (2)].strval), "OPTIONS")) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'OPTIONS'", (yyvsp[(1) - (2)].strval), yylloc.first_line, yylloc.first_column);
       }
 
-      (yyval.node) = (yyvsp[0].node);
+      (yyval.node) = (yyvsp[(2) - (2)].node);
     }
-#line 2563 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 99:
-#line 690 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 717 "arangod/Aql/grammar.y"
     {
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     }
-#line 2572 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 100:
-#line 693 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 720 "arangod/Aql/grammar.y"
     {
       (yyval.node) = static_cast<AstNode*>(parser->popStack());
     }
-#line 2580 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 101:
-#line 699 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 726 "arangod/Aql/grammar.y"
     {
     }
-#line 2587 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 102:
-#line 701 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 728 "arangod/Aql/grammar.y"
     {
     }
-#line 2594 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 103:
-#line 706 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 733 "arangod/Aql/grammar.y"
     {
     }
-#line 2601 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 104:
-#line 708 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 735 "arangod/Aql/grammar.y"
     {
     }
-#line 2608 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 105:
-#line 713 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 740 "arangod/Aql/grammar.y"
     {
-      parser->pushArray((yyvsp[-2].strval), (yyvsp[0].node));
+      parser->pushArray((yyvsp[(1) - (3)].strval), (yyvsp[(3) - (3)].node));
     }
-#line 2616 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 106:
-#line 719 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 746 "arangod/Aql/grammar.y"
     {
       // start of reference (collection or variable name)
-      (yyval.node) = (yyvsp[0].node);
+      (yyval.node) = (yyvsp[(1) - (1)].node);
     }
-#line 2625 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 107:
-#line 723 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 750 "arangod/Aql/grammar.y"
     {
       // expanded variable access, e.g. variable[*]
 
       // create a temporary iterator variable
       std::string const nextName = parser->ast()->variables()->nextName() + "_";
       char const* iteratorName = nextName.c_str();
-      auto iterator = parser->ast()->createNodeIterator(iteratorName, (yyvsp[0].node));
+      auto iterator = parser->ast()->createNodeIterator(iteratorName, (yyvsp[(1) - (1)].node));
 
       parser->pushStack(iterator);
       parser->pushStack(parser->ast()->createNodeReference(iteratorName));
     }
-#line 2641 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 108:
-#line 733 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 760 "arangod/Aql/grammar.y"
     {
       // return from the "expansion" subrule
 
       // push the expand node into the statement list
       auto iterator = static_cast<AstNode*>(parser->popStack());
-      auto expand = parser->ast()->createNodeExpand(iterator, (yyvsp[0].node));
+      auto expand = parser->ast()->createNodeExpand(iterator, (yyvsp[(4) - (4)].node));
       
       std::string const nextName = parser->ast()->variables()->nextName();
       char const* variableName = nextName.c_str();
@@ -2657,155 +2895,155 @@ yyreduce:
       // return a reference only
       (yyval.node) = parser->ast()->createNodeReference(variableName);
     }
-#line 2661 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 109:
-#line 751 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 778 "arangod/Aql/grammar.y"
     {
       // variable or collection
       AstNode* node;
       
-      if (parser->ast()->scopes()->existsVariable((yyvsp[0].strval))) {
-        node = parser->ast()->createNodeReference((yyvsp[0].strval));
+      if (parser->ast()->scopes()->existsVariable((yyvsp[(1) - (1)].strval))) {
+        node = parser->ast()->createNodeReference((yyvsp[(1) - (1)].strval));
       }
       else {
-        node = parser->ast()->createNodeCollection((yyvsp[0].strval));
+        node = parser->ast()->createNodeCollection((yyvsp[(1) - (1)].strval));
       }
 
       (yyval.node) = node;
     }
-#line 2679 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 110:
-#line 764 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 791 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = (yyvsp[0].node);
+      (yyval.node) = (yyvsp[(1) - (1)].node);
       
       if ((yyval.node) == nullptr) {
         ABORT_OOM
       }
     }
-#line 2691 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 111:
-#line 771 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 798 "arangod/Aql/grammar.y"
     {
       // named variable access, e.g. variable.reference
-      (yyval.node) = parser->ast()->createNodeAttributeAccess((yyvsp[-2].node), (yyvsp[0].strval));
+      (yyval.node) = parser->ast()->createNodeAttributeAccess((yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].strval));
     }
-#line 2700 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 112:
-#line 775 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 802 "arangod/Aql/grammar.y"
     {
       // named variable access, e.g. variable.@reference
-      (yyval.node) = parser->ast()->createNodeBoundAttributeAccess((yyvsp[-2].node), (yyvsp[0].node));
+      (yyval.node) = parser->ast()->createNodeBoundAttributeAccess((yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
     }
-#line 2709 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 113:
-#line 779 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 806 "arangod/Aql/grammar.y"
     {
       // indexed variable access, e.g. variable[index]
-      (yyval.node) = parser->ast()->createNodeIndexedAccess((yyvsp[-3].node), (yyvsp[-1].node));
+      (yyval.node) = parser->ast()->createNodeIndexedAccess((yyvsp[(1) - (4)].node), (yyvsp[(3) - (4)].node));
     }
-#line 2718 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 114:
-#line 786 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 813 "arangod/Aql/grammar.y"
     {
       // named variable access, continuation from * expansion, e.g. [*].variable.reference
       auto node = static_cast<AstNode*>(parser->popStack());
-      (yyval.node) = parser->ast()->createNodeAttributeAccess(node, (yyvsp[0].strval));
+      (yyval.node) = parser->ast()->createNodeAttributeAccess(node, (yyvsp[(2) - (2)].strval));
     }
-#line 2728 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 115:
-#line 791 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 818 "arangod/Aql/grammar.y"
     {
       // named variable access w/ bind parameter, continuation from * expansion, e.g. [*].variable.@reference
       auto node = static_cast<AstNode*>(parser->popStack());
-      (yyval.node) = parser->ast()->createNodeBoundAttributeAccess(node, (yyvsp[0].node));
+      (yyval.node) = parser->ast()->createNodeBoundAttributeAccess(node, (yyvsp[(2) - (2)].node));
     }
-#line 2738 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 116:
-#line 796 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 823 "arangod/Aql/grammar.y"
     {
       // indexed variable access, continuation from * expansion, e.g. [*].variable[index]
       auto node = static_cast<AstNode*>(parser->popStack());
-      (yyval.node) = parser->ast()->createNodeIndexedAccess(node, (yyvsp[-1].node));
+      (yyval.node) = parser->ast()->createNodeIndexedAccess(node, (yyvsp[(2) - (3)].node));
     }
-#line 2748 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 117:
-#line 801 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 828 "arangod/Aql/grammar.y"
     {
       // named variable access, continuation from * expansion, e.g. [*].variable.xx.reference
-      (yyval.node) = parser->ast()->createNodeAttributeAccess((yyvsp[-2].node), (yyvsp[0].strval));
+      (yyval.node) = parser->ast()->createNodeAttributeAccess((yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].strval));
     }
-#line 2757 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 118:
-#line 805 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 832 "arangod/Aql/grammar.y"
     {
       // named variable access w/ bind parameter, continuation from * expansion, e.g. [*].variable.xx.@reference
-      (yyval.node) = parser->ast()->createNodeBoundAttributeAccess((yyvsp[-2].node), (yyvsp[0].node));
+      (yyval.node) = parser->ast()->createNodeBoundAttributeAccess((yyvsp[(1) - (3)].node), (yyvsp[(3) - (3)].node));
     }
-#line 2766 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 119:
-#line 809 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 836 "arangod/Aql/grammar.y"
     {
       // indexed variable access, continuation from * expansion, e.g. [*].variable.xx.[index]
-      (yyval.node) = parser->ast()->createNodeIndexedAccess((yyvsp[-3].node), (yyvsp[-1].node));
+      (yyval.node) = parser->ast()->createNodeIndexedAccess((yyvsp[(1) - (4)].node), (yyvsp[(3) - (4)].node));
     }
-#line 2775 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 120:
-#line 816 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 843 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = (yyvsp[0].node);
+      (yyval.node) = (yyvsp[(1) - (1)].node);
     }
-#line 2783 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 121:
-#line 819 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 846 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = (yyvsp[0].node);
+      (yyval.node) = (yyvsp[(1) - (1)].node);
     }
-#line 2791 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 122:
-#line 825 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 852 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = (yyvsp[0].node);
+      (yyval.node) = (yyvsp[(1) - (1)].node);
     }
-#line 2799 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 123:
-#line 828 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 855 "arangod/Aql/grammar.y"
     {
-      if ((yyvsp[0].strval) == nullptr) {
+      if ((yyvsp[(1) - (1)].strval) == nullptr) {
         ABORT_OOM
       }
       
-      double value = TRI_DoubleString((yyvsp[0].strval));
+      double value = TRI_DoubleString((yyvsp[(1) - (1)].strval));
 
       if (TRI_errno() != TRI_ERROR_NO_ERROR) {
         parser->registerWarning(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, TRI_errno_string(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE), yylloc.first_line, yylloc.first_column);
@@ -2815,142 +3053,142 @@ yyreduce:
         (yyval.node) = parser->ast()->createNodeValueDouble(value); 
       }
     }
-#line 2819 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 124:
-#line 845 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 872 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = parser->ast()->createNodeValueString((yyvsp[0].strval)); 
+      (yyval.node) = parser->ast()->createNodeValueString((yyvsp[(1) - (1)].strval)); 
     }
-#line 2827 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 125:
-#line 848 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 875 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = (yyvsp[0].node);
+      (yyval.node) = (yyvsp[(1) - (1)].node);
     }
-#line 2835 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 126:
-#line 851 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 878 "arangod/Aql/grammar.y"
     {
       (yyval.node) = parser->ast()->createNodeValueNull();
     }
-#line 2843 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 127:
-#line 854 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 881 "arangod/Aql/grammar.y"
     {
       (yyval.node) = parser->ast()->createNodeValueBool(true);
     }
-#line 2851 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 128:
-#line 857 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 884 "arangod/Aql/grammar.y"
     {
       (yyval.node) = parser->ast()->createNodeValueBool(false);
     }
-#line 2859 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 129:
-#line 863 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 890 "arangod/Aql/grammar.y"
     {
-      if ((yyvsp[0].strval) == nullptr) {
+      if ((yyvsp[(1) - (1)].strval) == nullptr) {
         ABORT_OOM
       }
 
-      (yyval.node) = parser->ast()->createNodeCollection((yyvsp[0].strval));
+      (yyval.node) = parser->ast()->createNodeCollection((yyvsp[(1) - (1)].strval));
     }
-#line 2871 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 130:
-#line 870 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 897 "arangod/Aql/grammar.y"
     {
-      if ((yyvsp[0].strval) == nullptr) {
+      if ((yyvsp[(1) - (1)].strval) == nullptr) {
         ABORT_OOM
       }
 
-      (yyval.node) = parser->ast()->createNodeCollection((yyvsp[0].strval));
+      (yyval.node) = parser->ast()->createNodeCollection((yyvsp[(1) - (1)].strval));
     }
-#line 2883 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 131:
-#line 877 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 904 "arangod/Aql/grammar.y"
     {
-      if ((yyvsp[0].strval) == nullptr) {
+      if ((yyvsp[(1) - (1)].strval) == nullptr) {
         ABORT_OOM
       }
       
-      if (strlen((yyvsp[0].strval)) < 2 || (yyvsp[0].strval)[0] != '@') {
-        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), (yyvsp[0].strval), yylloc.first_line, yylloc.first_column);
+      if (strlen((yyvsp[(1) - (1)].strval)) < 2 || (yyvsp[(1) - (1)].strval)[0] != '@') {
+        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), (yyvsp[(1) - (1)].strval), yylloc.first_line, yylloc.first_column);
       }
 
-      (yyval.node) = parser->ast()->createNodeParameter((yyvsp[0].strval));
+      (yyval.node) = parser->ast()->createNodeParameter((yyvsp[(1) - (1)].strval));
     }
-#line 2899 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 132:
-#line 891 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 918 "arangod/Aql/grammar.y"
     {
-      (yyval.node) = parser->ast()->createNodeParameter((yyvsp[0].strval));
+      (yyval.node) = parser->ast()->createNodeParameter((yyvsp[(1) - (1)].strval));
     }
-#line 2907 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 133:
-#line 897 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 924 "arangod/Aql/grammar.y"
     {
-      if ((yyvsp[0].strval) == nullptr) {
+      if ((yyvsp[(1) - (1)].strval) == nullptr) {
         ABORT_OOM
       }
 
-      (yyval.strval) = (yyvsp[0].strval);
+      (yyval.strval) = (yyvsp[(1) - (1)].strval);
     }
-#line 2919 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 134:
-#line 904 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 931 "arangod/Aql/grammar.y"
     {
-      if ((yyvsp[0].strval) == nullptr) {
+      if ((yyvsp[(1) - (1)].strval) == nullptr) {
         ABORT_OOM
       }
 
-      (yyval.strval) = (yyvsp[0].strval);
+      (yyval.strval) = (yyvsp[(1) - (1)].strval);
     }
-#line 2931 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 135:
-#line 913 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 940 "arangod/Aql/grammar.y"
     {
-      (yyval.strval) = (yyvsp[0].strval);
+      (yyval.strval) = (yyvsp[(1) - (1)].strval);
     }
-#line 2939 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
   case 136:
-#line 919 "arangod/Aql/grammar.y" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 946 "arangod/Aql/grammar.y"
     {
-      if ((yyvsp[0].strval) == nullptr) {
+      if ((yyvsp[(1) - (1)].strval) == nullptr) {
         ABORT_OOM
       }
 
-      int64_t value = TRI_Int64String((yyvsp[0].strval));
+      int64_t value = TRI_Int64String((yyvsp[(1) - (1)].strval));
       if (TRI_errno() == TRI_ERROR_NO_ERROR) {
         (yyval.node) = parser->ast()->createNodeValueInt(value);
       }
       else {
-        double value2 = TRI_DoubleString((yyvsp[0].strval));
+        double value2 = TRI_DoubleString((yyvsp[(1) - (1)].strval));
         if (TRI_errno() == TRI_ERROR_NO_ERROR) {
           (yyval.node) = parser->ast()->createNodeValueDouble(value2);
         }
@@ -2960,11 +3198,11 @@ yyreduce:
         }
       }
     }
-#line 2964 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
 
-#line 2968 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+/* Line 1787 of yacc.c  */
+#line 3206 "arangod/Aql/grammar.cpp"
       default: break;
     }
   /* User semantic actions sometimes alter yychar, and that requires
@@ -2987,7 +3225,7 @@ yyreduce:
   *++yyvsp = yyval;
   *++yylsp = yyloc;
 
-  /* Now 'shift' the result of the reduction.  Determine what state
+  /* Now `shift' the result of the reduction.  Determine what state
      that goes to, based on the state we popped back to and the rule
      number reduced by.  */
 
@@ -3002,9 +3240,9 @@ yyreduce:
   goto yynewstate;
 
 
-/*--------------------------------------.
-| yyerrlab -- here on detecting error.  |
-`--------------------------------------*/
+/*------------------------------------.
+| yyerrlab -- here on detecting error |
+`------------------------------------*/
 yyerrlab:
   /* Make sure we have latest lookahead translation.  See comments at
      user semantic actions for why this is necessary.  */
@@ -3055,20 +3293,20 @@ yyerrlab:
   if (yyerrstatus == 3)
     {
       /* If just tried and failed to reuse lookahead token after an
-         error, discard it.  */
+	 error, discard it.  */
 
       if (yychar <= YYEOF)
-        {
-          /* Return failure if at end of input.  */
-          if (yychar == YYEOF)
-            YYABORT;
-        }
+	{
+	  /* Return failure if at end of input.  */
+	  if (yychar == YYEOF)
+	    YYABORT;
+	}
       else
-        {
-          yydestruct ("Error: discarding",
-                      yytoken, &yylval, &yylloc, parser);
-          yychar = YYEMPTY;
-        }
+	{
+	  yydestruct ("Error: discarding",
+		      yytoken, &yylval, &yylloc, parser);
+	  yychar = YYEMPTY;
+	}
     }
 
   /* Else will try to reuse lookahead token after shifting the error
@@ -3088,7 +3326,7 @@ yyerrorlab:
      goto yyerrorlab;
 
   yyerror_range[1] = yylsp[1-yylen];
-  /* Do not reclaim the symbols of the rule whose action triggered
+  /* Do not reclaim the symbols of the rule which action triggered
      this YYERROR.  */
   YYPOPSTACK (yylen);
   yylen = 0;
@@ -3101,29 +3339,29 @@ yyerrorlab:
 | yyerrlab1 -- common code for both syntax error and YYERROR.  |
 `-------------------------------------------------------------*/
 yyerrlab1:
-  yyerrstatus = 3;      /* Each real token shifted decrements this.  */
+  yyerrstatus = 3;	/* Each real token shifted decrements this.  */
 
   for (;;)
     {
       yyn = yypact[yystate];
       if (!yypact_value_is_default (yyn))
-        {
-          yyn += YYTERROR;
-          if (0 <= yyn && yyn <= YYLAST && yycheck[yyn] == YYTERROR)
-            {
-              yyn = yytable[yyn];
-              if (0 < yyn)
-                break;
-            }
-        }
+	{
+	  yyn += YYTERROR;
+	  if (0 <= yyn && yyn <= YYLAST && yycheck[yyn] == YYTERROR)
+	    {
+	      yyn = yytable[yyn];
+	      if (0 < yyn)
+		break;
+	    }
+	}
 
       /* Pop the current state because it cannot handle the error token.  */
       if (yyssp == yyss)
-        YYABORT;
+	YYABORT;
 
       yyerror_range[1] = *yylsp;
       yydestruct ("Error: popping",
-                  yystos[yystate], yyvsp, yylsp, parser);
+		  yystos[yystate], yyvsp, yylsp, parser);
       YYPOPSTACK (1);
       yystate = *yyssp;
       YY_STACK_PRINT (yyss, yyssp);
@@ -3179,14 +3417,14 @@ yyreturn:
       yydestruct ("Cleanup: discarding lookahead",
                   yytoken, &yylval, &yylloc, parser);
     }
-  /* Do not reclaim the symbols of the rule whose action triggered
+  /* Do not reclaim the symbols of the rule which action triggered
      this YYABORT or YYACCEPT.  */
   YYPOPSTACK (yylen);
   YY_STACK_PRINT (yyss, yyssp);
   while (yyssp != yyss)
     {
       yydestruct ("Cleanup: popping",
-                  yystos[*yyssp], yyvsp, yylsp, parser);
+		  yystos[*yyssp], yyvsp, yylsp, parser);
       YYPOPSTACK (1);
     }
 #ifndef yyoverflow
@@ -3197,5 +3435,8 @@ yyreturn:
   if (yymsg != yymsgbuf)
     YYSTACK_FREE (yymsg);
 #endif
-  return yyresult;
+  /* Make sure YYID is used.  */
+  return YYID (yyresult);
 }
+
+
