@@ -639,7 +639,7 @@
       tableContent.push(
         window.modalView.createReadOnlyEntry(
           undefined,
-          toDelete.length + ' Documents selected',
+          toDelete.length + ' documents selected',
           'Do you want to delete all selected documents?',
           undefined,
           undefined,
