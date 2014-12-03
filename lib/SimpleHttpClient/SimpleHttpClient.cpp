@@ -276,6 +276,7 @@ namespace triagens {
 
       _result = nullptr;
 
+      std::cout << "Simple: request() done, result code: " << _result->getHttpReturnCode() << std::endl;
       return result;
     }
 
