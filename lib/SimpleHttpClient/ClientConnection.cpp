@@ -255,6 +255,7 @@ bool ClientConnection::readClientConnection (StringBuffer& stringBuffer, bool& p
 
     if (lenRead == -1) {
       // error occurred
+      std::cout << "An error occurred!" << std::endl;
       return false;
     }
 
