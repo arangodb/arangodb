@@ -1915,10 +1915,12 @@ namespace triagens {
                        size_t id,
                        std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables,
                        Variable const* outVariable,
+                       std::vector<Variable const*> const& keepVariables,
                        std::unordered_map<VariableId, std::string const> const& variableMap)
           : ExecutionNode(plan, id), 
             _aggregateVariables(aggregateVariables), 
             _outVariable(outVariable),
+            _keepVariables(keepVariables),
             _variableMap(variableMap) {
           // outVariable can be a nullptr
         }
@@ -1926,6 +1928,7 @@ namespace triagens {
         AggregateNode (ExecutionPlan*,
                        triagens::basics::Json const& base,
                        Variable const* outVariable,
+                       std::vector<Variable const*> const& keepVariables,
                        std::unordered_map<VariableId, std::string const> const& variableMap,
                        std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables);
 
@@ -2022,6 +2025,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         Variable const* _outVariable;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief list of variables to keep if INTO is used
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<Variable const*> _keepVariables;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief map of all variable ids and names (needed to construct group data)

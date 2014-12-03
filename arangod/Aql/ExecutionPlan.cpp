@@ -581,15 +581,28 @@ ExecutionNode* ExecutionPlan::fromNodeCollect (ExecutionNode* previous,
 
   // handle out variable
   Variable* outVariable = nullptr;
+  std::vector<Variable const*> keepVariables;
 
-  if (n == 2) {
+  if (n >= 2) {
     // collect with an output variable!
     auto v = node->getMember(1);
     outVariable = static_cast<Variable*>(v->getData());
+
+    if (n >= 3) {
+      auto vars = node->getMember(2);
+      TRI_ASSERT(vars->type == NODE_TYPE_LIST);
+      size_t const keepVarsSize = vars->numMembers();
+      keepVariables.reserve(keepVarsSize);
+      for (size_t i = 0; i < keepVarsSize; ++i) {
+        auto ref = vars->getMember(i);
+        TRI_ASSERT(ref->type == NODE_TYPE_REFERENCE);
+        keepVariables.push_back(static_cast<Variable const*>(ref->getData()));
+      }
+    }
   }
 
   auto en = registerNode(new AggregateNode(this, nextId(), aggregateVariables, 
-                  outVariable, _ast->variables()->variables(false)));
+                  outVariable, keepVariables, _ast->variables()->variables(false)));
 
   return addDependency(previous, en);
 }
