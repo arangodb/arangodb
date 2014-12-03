@@ -44,6 +44,33 @@ namespace triagens {
 
     public:
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief optimizer statistics
+//////////////////////////////////////////////////////////////////////////////
+
+      struct Stats {
+        int64_t rulesExecuted = 0;
+        int64_t rulesSkipped  = 0;
+        int64_t plansCreated  = 1; // 1 for the initial plan
+
+        TRI_json_t* toJson (TRI_memory_zone_t* zone) const {
+          TRI_json_t* stats = TRI_CreateArrayJson(zone);
+          if (stats == nullptr) {
+            return nullptr;
+          }
+
+          TRI_Insert3ArrayJson(zone, stats, "rulesExecuted", TRI_CreateNumberJson(zone, static_cast<double>(rulesExecuted)));
+          TRI_Insert3ArrayJson(zone, stats, "rulesSkipped", TRI_CreateNumberJson(zone, static_cast<double>(rulesSkipped)));
+          TRI_Insert3ArrayJson(zone, stats, "plansCreated", TRI_CreateNumberJson(zone, static_cast<double>(plansCreated)));
+
+          return stats;
+        }
+      };
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief optimizer rules
+//////////////////////////////////////////////////////////////////////////////
+
       enum RuleLevel : int {
         // List all the rules in the system here:
         // lower level values mean earlier rule execution
@@ -519,6 +546,18 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static void setupRules ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public members
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimizer statistics
+////////////////////////////////////////////////////////////////////////////////
+
+        Stats _stats;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private members

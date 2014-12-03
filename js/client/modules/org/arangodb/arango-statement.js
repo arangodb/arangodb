@@ -132,13 +132,15 @@ ArangoStatement.prototype.explain = function (options) {
   if (options && options.allPlans) {
     return {
       plans: requestResult.plans,
-      warnings: requestResult.warnings
+      warnings: requestResult.warnings,
+      stats: requestResult.stats
     };
   }
   else {
     return {
       plan: requestResult.plan,
-      warnings: requestResult.warnings
+      warnings: requestResult.warnings,
+      stats: requestResult.stats
     };
   }
 };

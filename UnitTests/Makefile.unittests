@@ -567,6 +567,7 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-unnecessary-filters.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-replace-or-with-in.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-use-index-for-sort.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-stats-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-parse.js \
 			@top_srcdir@/js/server/tests/aql-primary-index-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-queries-collection.js \

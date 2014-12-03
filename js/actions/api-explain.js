@@ -52,7 +52,7 @@ var ERRORS = require("internal").errors;
 /// - *allPlans*: if set to *true*, all possible execution plans will be returned.
 ///   The default is *false*, meaning only the optimal plan will be returned.
 ///
-/// - *maxPlans*: an optional maximum number of plans that the optimizer is 
+/// - *maxNumberOfPlans*: an optional maximum number of plans that the optimizer is 
 ///   allowed to generate. Setting this attribute to a low value allows to put a
 ///   cap on the amount of work the optimizer does.
 ///
@@ -82,7 +82,8 @@ var ERRORS = require("internal").errors;
 /// attribute *plans*.
 ///
 /// The result will also contain an attribute *warnings*, which is a list of 
-/// warnings that occurred during optimization or execution plan creation.
+/// warnings that occurred during optimization or execution plan creation. Additionally,
+/// a *stats* attribute is contained in the result with some optimizer statistics.
 /// 
 /// Each plan in the result is a JSON object with the following attributes:
 /// - *nodes*: the list of execution nodes of the plan. The list of available node types
@@ -171,7 +172,7 @@ var ERRORS = require("internal").errors;
 ///     body = { 
 ///       query : "FOR p IN products LET a = p.id FILTER a == 4 LET name = p.name SORT p.id LIMIT 1 RETURN name",
 ///       options : {
-///         maxPlans : 2,
+///         maxNumberOfPlans : 2,
 ///         allPlans : true,
 ///         optimizer : {
 ///           rules: [ "-all", "+use-index-for-sort", "+use-index-range" ]
@@ -290,13 +291,15 @@ function post_api_explain (req, res) {
   if (result.plans) {
     result = { 
       plans: result.plans,
-      warnings: result.warnings
+      warnings: result.warnings,
+      stats: result.stats
     };
   }
   else {
     result = {
       plan: result.plan,
-      warnings: result.warnings
+      warnings: result.warnings,
+      stats: result.stats
     };
   }
   actions.resultOk(req, res, actions.HTTP_OK, result);
