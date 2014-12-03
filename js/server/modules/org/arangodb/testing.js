@@ -823,7 +823,7 @@ testFuncs.shell_client = function(options) {
 
       var r = runInArangosh(options, instanceInfo, te);
       results[te] = r;
-      if (r !== 0 && !options.force) {
+      if (r.status !== true && !options.force) {
         break;
       }
 
@@ -1052,14 +1052,14 @@ testFuncs.importing = function (options) {
     var r = runInArangosh(options, instanceInfo,
                           makePath("js/server/tests/import-setup.js"));
     result.setup = r;
-    if (r !== 0) {
+    if (r.status !== true) {
       throw "banana";
     }
     var i;
     for (i = 0; i < impTodo.length; i++) {
       r = runArangoImp(options, instanceInfo, impTodo[i]);
       result[impTodo[i].id] = r;
-      if (r !== 0 && !options.force) {
+      if (r.status !== true && !options.force) {
         throw "banana";
       }
     }
@@ -1124,7 +1124,7 @@ testFuncs.foxx_manager = function (options) {
                                   ["--configuration",
                                    "etc/relative/foxx-manager.conf",
                                    "update"]);
-  if (results.update === 0 || options.force) {
+  if (results.update.status === true || options.force) {
     results.search = runArangoshCmd(options, instanceInfo,
                                     ["--configuration",
                                      "etc/relative/foxx-manager.conf",
@@ -1150,7 +1150,7 @@ testFuncs.dump = function (options) {
   var results = {};
   results.setup = runInArangosh(options, instanceInfo,
        makePath("js/server/tests/dump-setup"+cluster+".js"));
-  if (results.setup === 0) {
+  if (results.setup.status === true) {
     results.dump = runArangoDumpRestore(options, instanceInfo, "dump",
                                         "UnitTestsDumpSrc");
     results.restore = runArangoDumpRestore(options, instanceInfo, "restore",
@@ -1213,7 +1213,7 @@ testFuncs.arangob = function (options) {
 
       continueTesting = checkInstanceAlive(instanceInfo, options);
 
-      if (r !== 0 && !options.force) {
+      if (r.status !== true && !options.force) {
         break;
       }
     }
