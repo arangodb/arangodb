@@ -71,7 +71,7 @@ namespace triagens {
       if (_connection->isConnected()) {
         _state = FINISHED;
       }
-      std::cout << "Simple: contructor done, state: " << _state << std::endl;
+      // XXX std::cout << "Simple: contructor done, state: " << _state << std::endl;
     }
 
     SimpleHttpClient::~SimpleHttpClient () {
@@ -95,7 +95,7 @@ namespace triagens {
       // ensure connection has not yet been invalidated
       TRI_ASSERT(_connection != nullptr);
 
-      std::cout << "Simple: close called" << std::endl;
+      // XXX std::cout << "Simple: close called" << std::endl;
 
       _connection->disconnect();
       _state = IN_CONNECT;
@@ -152,7 +152,7 @@ namespace triagens {
         switch (_state) {
           case (IN_CONNECT): {
             handleConnect();
-            std::cout << "Simple: handleConnect state: " << _state << std::endl;
+            // XXX std::cout << "Simple: handleConnect state: " << _state << std::endl;
             // If this goes wrong, _state is set to DEAD
             break;
           }
