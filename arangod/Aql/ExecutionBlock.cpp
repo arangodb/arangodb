@@ -871,10 +871,7 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
 }
 
 IndexRangeBlock::~IndexRangeBlock () {
-  for (auto e : _allVariableBoundExpressions) {
-    delete e;
-  }
-  _allVariableBoundExpressions.clear();
+  freeDynamicBoundsExpressions();
 
   if (_freeCondition && _condition != nullptr) {
     delete _condition;
@@ -936,9 +933,7 @@ int IndexRangeBlock::initialize () {
       }
     }
     catch (...) {
-      for (auto e : _allVariableBoundExpressions) {
-        delete e;
-      }
+      freeDynamicBoundsExpressions();
       throw;
     }
   }
@@ -1016,46 +1011,67 @@ bool IndexRangeBlock::initIndex () {
       // this constant range:
       for (auto l : r._lows) {
         Expression* e = _allVariableBoundExpressions[posInExpressions];
+        TRI_ASSERT(e != nullptr);
+        TRI_document_collection_t const* myCollection = nullptr; 
         AqlValue a = e->execute(_trx, docColls, data, nrRegs * _pos,
                                 _inVars[posInExpressions],
-                                _inRegs[posInExpressions]);
+                                _inRegs[posInExpressions], 
+                                &myCollection);
         posInExpressions++;
         if (a._type == AqlValue::JSON) {
           Json json(Json::Array, 3);
           json("include", Json(l.inclusive()))
               ("isConstant", Json(true))
-              ("bound", *(a._json));
-          a.destroy();  // the TRI_json_t* of a._json has been stolen
+              ("bound", a._json->copy());
+          a.destroy(); 
+          RangeInfoBound b(json);   // Construct from JSON
+          actualRange._lowConst.andCombineLowerBounds(b);
+        }
+        else if (a._type == AqlValue::SHAPED) {
+          Json json(Json::Array, 3);
+          json("include", Json(l.inclusive()))
+              ("isConstant", Json(true))
+              ("bound", a.toJson(_trx, myCollection));
+          a.destroy(); 
           RangeInfoBound b(json);   // Construct from JSON
           actualRange._lowConst.andCombineLowerBounds(b);
         }
         else {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
-              "AQL: computed a variable bound and got non-JSON");
+              "AQL: computed a variable bound and got unexpected result");
         }
       }
 
       for (auto h : r._highs) {
         Expression* e = _allVariableBoundExpressions[posInExpressions];
-
         TRI_ASSERT(e != nullptr);
-
+        TRI_document_collection_t const* myCollection = nullptr; 
         AqlValue a = e->execute(_trx, docColls, data, nrRegs * _pos,
                                 _inVars[posInExpressions],
-                                _inRegs[posInExpressions]);
+                                _inRegs[posInExpressions],
+                                &myCollection);
         posInExpressions++;
         if (a._type == AqlValue::JSON) {
           Json json(Json::Array, 3);
           json("include", Json(h.inclusive()))
               ("isConstant", Json(true))
-              ("bound", *(a._json));
-          a.destroy();  // the TRI_json_t* of a._json has been stolen
+              ("bound", a._json->copy());
+          a.destroy();  
+          RangeInfoBound b(json);   // Construct from JSON
+          actualRange._highConst.andCombineUpperBounds(b);
+        }
+        else if (a._type == AqlValue::SHAPED) {
+          Json json(Json::Array, 3);
+          json("include", Json(h.inclusive()))
+              ("isConstant", Json(true))
+              ("bound", a.toJson(_trx, myCollection));
+          a.destroy(); 
           RangeInfoBound b(json);   // Construct from JSON
           actualRange._highConst.andCombineUpperBounds(b);
         }
         else {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
-              "AQL: computed a variable bound and got non-JSON");
+              "AQL: computed a variable bound and got unexpected result");
         }
       }
 
@@ -1083,6 +1099,13 @@ bool IndexRangeBlock::initIndex () {
           
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected index type"); 
   LEAVE_BLOCK;
+}
+
+void IndexRangeBlock::freeDynamicBoundsExpressions () {
+  for (auto e : _allVariableBoundExpressions) {
+    delete e;
+  }
+  _allVariableBoundExpressions.clear();
 }
 
 void IndexRangeBlock::freeCondition () {
@@ -1440,9 +1463,11 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
       TRI_ASSERT(pid != 0);
    
       char const* name = TRI_AttributeNameShapePid(shaper, pid);
+      std::string const lookFor = std::string(name);
 
       for (auto x : ranges.at(0)) {
-        if (x._attr == std::string(name)) {    //found attribute
+        if (x._attr == lookFor) {
+          // found attribute
           auto shaped = TRI_ShapedJsonJson(shaper, x._lowConst.bound().json(), false); 
 
           if (shaped == nullptr) {
@@ -2079,7 +2104,8 @@ void CalculationBlock::doEvaluation (AqlItemBlock* result) {
 
     for (size_t i = 0; i < n; i++) {
       // need to execute the expression
-      AqlValue a = _expression->execute(_trx, docColls, data, nrRegs * i, _inVars, _inRegs);
+      TRI_document_collection_t const* myCollection = nullptr;
+      AqlValue a = _expression->execute(_trx, docColls, data, nrRegs * i, _inVars, _inRegs, &myCollection);
       try {
         result->setValue(i, _outReg, a);
       }
