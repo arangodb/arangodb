@@ -40,10 +40,21 @@ exports.createQuery = function createQuery (cfg) {
   }
 
   var query = cfg.query,
+    params = cfg.params,
     context = cfg.context,
     Model = cfg.model,
     defaults = cfg.defaults,
     transform = cfg.transform;
+
+  if (params === false) {
+    params = [];
+  } else if (params && !Array.isArray(params)) {
+    params = [params];
+  }
+
+  if (params && !params.each(function (v) {return typeof v === 'string';})) {
+    throw new Error('Argument names must be a string, an array of strings or false.');
+  }
 
   if (!query || (typeof query !== 'string' && typeof query.toAQL !== 'function')) {
     throw new Error('Expected query to be a string or a QueryBuilder instance.');
@@ -61,7 +72,17 @@ exports.createQuery = function createQuery (cfg) {
     throw new Error('Expected transform to be a function.');
   }
 
-  return function query(vars, trArgs) {
+  return function query() {
+    var args = Array.prototype.slice.call(arguments);
+    var vars;
+    if (params) {
+      vars = {};
+      params.forEach(function (name) {
+        vars[name] = args.shift();
+      });
+    } else {
+      vars = args.shift();
+    }
     vars = _.extend({}, defaults, vars);
     if (context) {
       _.each(vars, function (value, key) {
@@ -76,7 +97,7 @@ exports.createQuery = function createQuery (cfg) {
         return new Model(data);
       });
     }
-
-    return transform ? transform(result, trArgs) : result;
+    args.unshift(result);
+    return transform ? transform.apply(null, args) : result;
   };
 };

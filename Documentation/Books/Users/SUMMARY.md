@@ -108,6 +108,7 @@
   * [FoxxController](Foxx/FoxxController.md)
   * [FoxxModel](Foxx/FoxxModel.md)
   * [FoxxRepository](Foxx/FoxxRepository.md)
+  * [Foxx Queries](Foxx/FoxxQueries.md)
   * [Deploying Applications](Foxx/DeployingAnApplication.md)
   * [Developing Applications](Foxx/DevelopingAnApplication.md)
   * [Dependency Injection](Foxx/FoxxInjection.md)
