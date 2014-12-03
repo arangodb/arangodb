@@ -217,7 +217,9 @@ bool SslClientConnection::prepare (const double timeout, const bool isWrite) con
   }
 
   int sockn = (int) (TRI_get_fd_or_handle_of_socket(_socket) + 1);
-  if (select(sockn, readFds, writeFds, NULL, &tv) > 0) {
+  int res = select(sockn, readFds, writeFds, NULL, &tv);
+  std::cout << "selectSSL " << res << " " << errno << std::endl;
+  if (res > 0) {
     return true;
   }
 
@@ -262,12 +264,17 @@ bool SslClientConnection::writeClientConnection (void* buffer, size_t length, si
 /// @brief read data from the connection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SslClientConnection::readClientConnection (StringBuffer& stringBuffer, bool& progress) {
-  if (_ssl == nullptr || ! _isConnected) {
+bool SslClientConnection::readClientConnection (StringBuffer& stringBuffer, 
+                                                bool& connectionClosed) {
+  connectionClosed = true;
+  if (_ssl == nullptr) {
     return false;
   }
+  if (! _isConnected) {
+    return true;
+  }
 
-  progress = false;
+  connectionClosed = false;
 
   do {
 
@@ -283,11 +290,12 @@ again:
 
     switch (SSL_get_error(_ssl, lenRead)) {
       case SSL_ERROR_NONE:
-        progress = true;
         stringBuffer.increaseLength(lenRead);
         break;
 
       case SSL_ERROR_ZERO_RETURN:
+        std::cout << "SSL_ERROR_ZERO_RETURN\n";
+        connectionClosed = true;
         SSL_shutdown(_ssl);
         _isConnected = false;
         return true;
@@ -300,6 +308,7 @@ again:
       case SSL_ERROR_SYSCALL:
       default:
         /* unexpected */
+        connectionClosed = true;
         return false;
     }
   }
