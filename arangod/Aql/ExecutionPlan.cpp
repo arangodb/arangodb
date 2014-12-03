@@ -251,8 +251,8 @@ ModificationOptions ExecutionPlan::createOptions (AstNode const* node) {
           // nullMeansRemove is the opposite of keepNull
           options.nullMeansRemove = value->isFalse();
         }
-        else if (strcmp(name, "mergeArrays") == 0) {
-          options.mergeArrays = value->isTrue();
+        else if (strcmp(name, "mergeObjects") == 0) {
+          options.mergeObjects = value->isTrue();
         }
       }
     }
