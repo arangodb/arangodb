@@ -154,6 +154,7 @@ void Aqlerror (YYLTYPE* locp,
 %type <boolval> sort_direction;
 %type <node> collect_list;
 %type <node> collect_element;
+%type <node> optional_keep;
 %type <strval> optional_into;
 %type <node> expression;
 %type <node> operator_unary;
@@ -266,7 +267,7 @@ collect_statement:
     T_COLLECT {
       auto node = parser->ast()->createNodeList();
       parser->pushStack(node);
-    } collect_list optional_into {
+    } collect_list optional_into optional_keep {
       auto list = static_cast<AstNode const*>(parser->popStack());
 
       if (list == nullptr) {
@@ -296,7 +297,11 @@ collect_statement:
         }
       }
 
-      auto node = parser->ast()->createNodeCollect(list, $4);
+      if ($4 == nullptr && $5 != nullptr) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of 'KEEP' without 'INTO'", yylloc.first_line, yylloc.first_column);
+      } 
+
+      auto node = parser->ast()->createNodeCollect(list, $4, $5);
       parser->ast()->addOperation(node);
     }
   ;
@@ -321,6 +326,54 @@ optional_into:
     }
   | T_INTO variable_name {
       $$ = $2;
+    }
+  ;
+
+variable_list: 
+    variable_name {
+      if (! parser->ast()->scopes()->existsVariable($1)) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of unknown variable '%s' for KEEP", $1, yylloc.first_line, yylloc.first_column);
+      }
+        
+      auto node = parser->ast()->createNodeReference($1);
+      if (node == nullptr) {
+        ABORT_OOM
+      }
+
+      // indicate the this node is a reference to the variable name, not the variable value
+      node->setFlag(FLAG_KEEP_VARIABLENAME);
+      parser->pushList(node);
+    }
+  | variable_list T_COMMA variable_name {
+      if (! parser->ast()->scopes()->existsVariable($3)) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of unknown variable '%s' for KEEP", $3, yylloc.first_line, yylloc.first_column);
+      }
+        
+      auto node = parser->ast()->createNodeReference($3);
+      if (node == nullptr) {
+        ABORT_OOM
+      }
+
+      // indicate the this node is a reference to the variable name, not the variable value
+      node->setFlag(FLAG_KEEP_VARIABLENAME);
+      parser->pushList(node);
+    }
+  ;
+
+optional_keep: 
+    /* empty */ {
+      $$ = nullptr;
+    }
+  | T_STRING {
+      if (! TRI_CaseEqualString($1, "KEEP")) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'KEEP'", $1, yylloc.first_line, yylloc.first_column);
+      }
+
+      auto node = parser->ast()->createNodeList();
+      parser->pushStack(node);
+    } variable_list {
+      auto list = static_cast<AstNode*>(parser->popStack());
+      $$ = list;
     }
   ;
 

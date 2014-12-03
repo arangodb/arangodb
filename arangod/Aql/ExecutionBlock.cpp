@@ -2408,29 +2408,40 @@ AggregateBlock::AggregateBlock (ExecutionEngine* engine,
   }
 
   if (en->_outVariable != nullptr) {
-    auto it = en->getRegisterPlan()->varInfo.find(en->_outVariable->id);
-    TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
+    auto const& registerPlan = en->getRegisterPlan()->varInfo;
+    auto it = registerPlan.find(en->_outVariable->id);
+    TRI_ASSERT(it != registerPlan.end());
     _groupRegister = (*it).second.registerId;
     TRI_ASSERT(_groupRegister > 0 && _groupRegister < ExecutionNode::MaxRegisterId);
 
     // construct a mapping of all register ids to variable names
     // we need this mapping to generate the grouped output
 
-    for (size_t i = 0; i < en->getRegisterPlan()->varInfo.size(); ++i) {
+    for (size_t i = 0; i < registerPlan.size(); ++i) {
       _variableNames.push_back(""); // initialize with some default value
     }
 
     // iterate over all our variables
-    for (auto& vi : en->getRegisterPlan()->varInfo) {
-      if (vi.second.depth > 0 || en->getDepth() == 1) {
-        // Do not keep variables from depth 0, unless we are depth 1 ourselves
-        // (which means no FOR in which we are contained)
- 
-        // find variable in the global variable map
-        auto itVar = en->_variableMap.find(vi.first);
+    if (en->_keepVariables.empty()) {
+      for (auto const& vi : registerPlan) {
+        if (vi.second.depth > 0 || en->getDepth() == 1) {
+          // Do not keep variables from depth 0, unless we are depth 1 ourselves
+          // (which means no FOR in which we are contained)
 
-        if (itVar != en->_variableMap.end()) {
-          _variableNames[vi.second.registerId] = (*itVar).second;
+          // find variable in the global variable map
+          auto itVar = en->_variableMap.find(vi.first);
+
+          if (itVar != en->_variableMap.end()) {
+            _variableNames[vi.second.registerId] = (*itVar).second;
+          }
+        }
+      }
+    }
+    else {
+      for (auto x : en->_keepVariables) {
+        auto it = registerPlan.find(x->id);
+        if (it != registerPlan.end()) {
+          _variableNames[(*it).second.registerId] = x->name;
         }
       }
     }
