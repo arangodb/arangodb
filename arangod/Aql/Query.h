@@ -417,7 +417,7 @@ namespace triagens {
 /// @brief convert the list of warnings to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_json_t* warningsToJson () const;
+        TRI_json_t* warningsToJson (TRI_memory_zone_t*) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods

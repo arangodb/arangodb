@@ -989,6 +989,12 @@ static v8::Handle<v8::Value> JS_ExplainAql (v8::Arguments const& argv) {
     else {
       result->Set(TRI_V8_STRING("warnings"), TRI_ObjectJson(queryResult.warnings));
     }
+    if (queryResult.stats == nullptr) {
+      result->Set(TRI_V8_STRING("stats"), v8::Object::New());
+    }
+    else {
+      result->Set(TRI_V8_STRING("stats"), TRI_ObjectJson(queryResult.stats));
+    }
   }
 
   return scope.Close(result);
