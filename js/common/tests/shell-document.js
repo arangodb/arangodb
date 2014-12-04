@@ -915,6 +915,7 @@ function CollectionDocumentSuite () {
       assertEqual({"e1": 1, "e3": 3}, doc10.e);
       assertEqual({"one": 1, "three": 3}, doc10.f);
     },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief update a document
 ////////////////////////////////////////////////////////////////////////////////
@@ -1031,6 +1032,37 @@ function CollectionDocumentSuite () {
       assertEqual({"one": -1, "three": 3, "five": 5}, doc10.d);
       assertEqual({"e1": 1, "e3": 3}, doc10.e);
       assertEqual({"one": 1, "three": 3}, doc10.f);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test mergeObjects
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateMergeObjects : function () {
+      var doc1 = collection.save({ name: { first: "foo", last: "bar" }, owns: { evilCellPhone: [ 1 ] } });
+
+      // do not specify mergeObjects. its default value is true
+      collection.update(doc1, { name: { middle: "baz" }, owns: { schabernack: true, pileOfBones: null } }, { });
+
+      var doc = collection.document(doc1._key);
+      assertEqual({ first: "foo", last: "bar", middle: "baz" }, doc.name);
+      assertEqual({ evilCellPhone: [ 1 ], schabernack: true, pileOfBones: null }, doc.owns);
+      
+      // explicitly specifiy mergeObjects
+      var doc2 = collection.save({ name: { first: "foo", last: "bar" }, owns: { evilCellPhone: [ 1 ] } });
+      collection.update(doc2, { name: { middle: "baz" }, owns: { schabernack: true, pileOfBones: null } }, { mergeObjects: true });
+
+      var doc = collection.document(doc2._key);
+      assertEqual({ first: "foo", last: "bar", middle: "baz" }, doc.name);
+      assertEqual({ evilCellPhone: [ 1 ], schabernack: true, pileOfBones: null }, doc.owns);
+      
+      // disable mergeObjects
+      var doc3 = collection.save({ name: { first: "foo", last: "bar" }, owns: { evilCellPhone: [ 1 ] } });
+      collection.update(doc3, { name: { middle: "baz" }, owns: { schabernack: true, pileOfBones: null } }, { mergeObjects: false });
+
+      doc = collection.document(doc3._key);
+      assertEqual({ middle: "baz" }, doc.name);
+      assertEqual({ schabernack: true, pileOfBones: null }, doc.owns);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
