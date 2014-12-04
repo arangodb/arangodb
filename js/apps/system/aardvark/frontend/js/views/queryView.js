@@ -1,15 +1,16 @@
 /*jshint browser: true */
 /*jshint unused: false */
 /*global require, exports, Backbone, EJS, $, setTimeout, localStorage, ace, Storage, window, _ */
-/*global _, arangoHelper, templateEngine, jQuery, Joi*/
+/*global _, arangoHelper, templateEngine, jQuery, Joi, d3*/
 
 (function () {
   "use strict";
   window.queryView = Backbone.View.extend({
     el: '#content',
     id: '#customsDiv',
+    warningTemplate: templateEngine.createTemplate("warningList.ejs"),
     tabArray: [],
-    cachedQuery: "",
+    execPending: false,
 
     initialize: function () {
       this.getAQL();
@@ -21,8 +22,9 @@
       "click #result-switch": "switchTab",
       "click #query-switch": "switchTab",
       'click #customs-switch': "switchTab",
-      'click #submitQueryIcon': 'submitQuery',
+      'click #explain-switch': "switchTab",
       'click #submitQueryButton': 'submitQuery',
+      'click #explainQueryButton': 'explainQuery',
       'click #commentText': 'commentText',
       'click #uncommentText': 'uncommentText',
       'click #undoText': 'undoText',
@@ -77,9 +79,9 @@
     updateTable: function () {
       this.tableDescription.rows = this.customQueries;
 
-      _.each(this.tableDescription.rows, function(k, v) {
+      _.each(this.tableDescription.rows, function(k) {
         k.thirdRow = '<a class="deleteButton"><span class="icon_arangodb_roundminus"' +
-              ' title="Delete query"></span></a>';
+                     ' title="Delete query"></span></a>';
       });
 
       // escape all columns but the third (which contains HTML)
@@ -99,7 +101,7 @@
 
     initTabArray: function() {
       var self = this;
-      $(".arango-tab").children().each( function(index) {
+      $(".arango-tab").children().each( function() {
         self.tabArray.push($(this).children().first().attr("id"));
       });
     },
@@ -340,350 +342,520 @@
 
       $.ajax("whoAmI", {async:false}).done(
         function(data) {
-        name = data.name;
+          name = data.name;
 
-        if (name === null) {
-          name = "root";
+          if (name === null) {
+            name = "root";
+          }
+
+        });
+
+        window.open("query/download/" + encodeURIComponent(name));
+      },
+
+      deselect: function (editor) {
+        var current = editor.getSelection();
+        var currentRow = current.lead.row;
+        var currentColumn = current.lead.column;
+
+        current.setSelectionRange({
+          start: {
+            row: currentRow,
+            column: currentColumn
+          },
+          end: {
+            row: currentRow,
+            column: currentColumn
+          }
+        });
+
+        editor.focus();
+      },
+
+      addAQL: function () {
+        //render options
+        this.createCustomQueryModal();
+        $('#new-query-name').val($('#querySelect').val());
+        setTimeout(function () {
+          $('#new-query-name').focus();
+        }, 500);
+        this.checkSaveName();
+      },
+
+      getAQL: function () {
+        var self = this, result;
+
+        this.collection.fetch({
+          async: false
+        });
+
+        //old storage method
+        var item = localStorage.getItem("customQueries");
+        if (item) {
+          var queries = JSON.parse(item);
+          //save queries in user collections extra attribute
+          _.each(queries, function(oldQuery) {
+            self.collection.add({
+              value: oldQuery.value,
+              name: oldQuery.name
+            });
+          });
+          result = self.collection.saveCollectionQueries();
+
+          if (result === true) {
+            //and delete them from localStorage
+            localStorage.removeItem("customQueries");
+          }
         }
 
-      });
+        this.updateLocalQueries();
+      },
 
-      window.open("query/download/" + encodeURIComponent(name));
-    },
+      deleteAQL: function (e) {
+        var deleteName = $(e.target).parent().parent().parent().children().first().text();
 
-    deselect: function (editor) {
-      var current = editor.getSelection();
-      var currentRow = current.lead.row;
-      var currentColumn = current.lead.column;
+        var toDelete = this.collection.findWhere({name: deleteName});
+        this.collection.remove(toDelete);
+        this.collection.saveCollectionQueries();
 
-      current.setSelectionRange({
-        start: {
-          row: currentRow,
-          column: currentColumn
-        },
-        end: {
-          row: currentRow,
-          column: currentColumn
-        }
-      });
+        this.updateLocalQueries();
+        this.renderSelectboxes();
+        this.updateTable();
+      },
 
-      editor.focus();
-    },
+      updateLocalQueries: function () {
+        var self = this;
+        this.customQueries = [];
 
-    addAQL: function () {
-      //render options
-      this.createCustomQueryModal();
-      $('#new-query-name').val($('#querySelect').val());
-      setTimeout(function () {
-        $('#new-query-name').focus();
-      }, 500);
-      this.checkSaveName();
-    },
-
-    getAQL: function () {
-      var self = this, result;
-
-      this.collection.fetch({
-        async: false
-      });
-
-      //old storage method
-      var item = localStorage.getItem("customQueries");
-      if (item) {
-        var queries = JSON.parse(item);
-        //save queries in user collections extra attribute
-        _.each(queries, function(oldQuery) {
-          self.collection.add({
-            value: oldQuery.value,
-            name: oldQuery.name
+        this.collection.each(function(model) {
+          self.customQueries.push({
+            name: model.get("name"),
+            value: model.get("value")
           });
         });
-        result = self.collection.saveCollectionQueries();
+      },
 
-        if (result === true) {
-          //and delete them from localStorage
-          localStorage.removeItem("customQueries");
-        }
-      }
+      saveAQL: function (e) {
+        e.stopPropagation();
+        var inputEditor = ace.edit("aqlEditor");
+        var saveName = $('#new-query-name').val();
+        var isUpdate = $('#modalButton1').text() === 'Update';
 
-      this.updateLocalQueries();
-    },
-
-    deleteAQL: function (e) {
-      var deleteName = $(e.target).parent().parent().parent().children().first().text();
-
-      var toDelete = this.collection.findWhere({name: deleteName});
-      this.collection.remove(toDelete);
-      this.collection.saveCollectionQueries();
-
-      this.updateLocalQueries();
-      this.renderSelectboxes();
-      this.updateTable();
-    },
-
-    updateLocalQueries: function () {
-      var self = this;
-      this.customQueries = [];
-
-      this.collection.each(function(model) {
-        self.customQueries.push({
-          name: model.get("name"),
-          value: model.get("value")
-        });
-      });
-    },
-
-    saveAQL: function (e) {
-      e.stopPropagation();
-      var inputEditor = ace.edit("aqlEditor");
-      var saveName = $('#new-query-name').val();
-      var isUpdate = $('#modalButton1').text() === 'Update';
-
-      if ($('#new-query-name').hasClass('invalid-input')) {
-        return;
-      }
-
-      //Heiko: Form-Validator - illegal query name
-      if (saveName.trim() === '') {
-        return;
-      }
-
-      var content = inputEditor.getValue();
-      //check for already existing entry
-      var quit = false;
-      $.each(this.customQueries, function (k, v) {
-        if (v.name === saveName) {
-          v.value = content;
-          quit = !isUpdate;
+        if ($('#new-query-name').hasClass('invalid-input')) {
           return;
         }
-      });
 
-      if (quit === true) {
-        //Heiko: Form-Validator - name already taken
-        window.modalView.hide();
-        return;
-      }
+        //Heiko: Form-Validator - illegal query name
+        if (saveName.trim() === '') {
+          return;
+        }
 
-      if (! isUpdate) {
-        //this.customQueries.push({
-         // name: saveName,
-         // value: content
-        //});
-        this.collection.add({
-          name: saveName,
-          value: content
+        var content = inputEditor.getValue();
+        //check for already existing entry
+        var quit = false;
+        $.each(this.customQueries, function (k, v) {
+          if (v.name === saveName) {
+            v.value = content;
+            quit = !isUpdate;
+            return;
+          }
         });
-      }
-      else {
-        var toModifiy = this.collection.findWhere({name: saveName});
-        toModifiy.set("value", content);
-      }
-      this.collection.saveCollectionQueries();
 
-      window.modalView.hide();
-
-      this.updateLocalQueries();
-      this.renderSelectboxes();
-      $('#querySelect').val(saveName);
-    },
-
-    getSystemQueries: function () {
-      var self = this;
-      $.ajax({
-        type: "GET",
-        cache: false,
-        url: "js/arango/aqltemplates.json",
-        contentType: "application/json",
-        processData: false,
-        async: false,
-        success: function (data) {
-          self.queries = data;
-        },
-        error: function (data) {
-          arangoHelper.arangoNotification("Query", "Error while loading system templates");
+        if (quit === true) {
+          //Heiko: Form-Validator - name already taken
+          window.modalView.hide();
+          return;
         }
-      });
-    },
 
-    getCustomQueryValueByName: function (qName) {
-      var returnVal;
-      $.each(this.customQueries, function (k, v) {
-        if (qName === v.name) {
-          returnVal = v.value;
+        if (! isUpdate) {
+          //this.customQueries.push({
+          // name: saveName,
+          // value: content
+          //});
+          this.collection.add({
+            name: saveName,
+            value: content
+          });
         }
-      });
-      return returnVal;
-    },
-
-    importSelected: function (e) {
-      var inputEditor = ace.edit("aqlEditor");
-      $.each(this.queries, function (k, v) {
-        if ($('#' + e.currentTarget.id).val() === v.name) {
-          inputEditor.setValue(v.value);
+        else {
+          var toModifiy = this.collection.findWhere({name: saveName});
+          toModifiy.set("value", content);
         }
-      });
-      $.each(this.customQueries, function (k, v) {
-        if ($('#' + e.currentTarget.id).val() === v.name) {
-          inputEditor.setValue(v.value);
-        }
-      });
+        this.collection.saveCollectionQueries();
 
-      this.deselect(ace.edit("aqlEditor"));
-    },
+        window.modalView.hide();
 
-    renderSelectboxes: function () {
-      this.sortQueries();
-      var selector = '';
-      selector = '#querySelect';
-      $(selector).empty();
+        this.updateLocalQueries();
+        this.renderSelectboxes();
+        $('#querySelect').val(saveName);
+      },
 
-      $(selector).append('<option id="emptyquery">Insert Query</option>');
+      getSystemQueries: function () {
+        var self = this;
+        $.ajax({
+          type: "GET",
+          cache: false,
+          url: "js/arango/aqltemplates.json",
+          contentType: "application/json",
+          processData: false,
+          async: false,
+          success: function (data) {
+            self.queries = data;
+          },
+          error: function (data) {
+            arangoHelper.arangoNotification("Query", "Error while loading system templates");
+          }
+        });
+      },
 
-      $(selector).append('<optgroup label="Example queries">');
-      jQuery.each(this.queries, function (k, v) {
-        $(selector).append('<option id="' + _.escape(v.name) + '">' + _.escape(v.name) + '</option>');
-      });
-      $(selector).append('</optgroup>');
+      getCustomQueryValueByName: function (qName) {
+        var returnVal;
+        $.each(this.customQueries, function (k, v) {
+          if (qName === v.name) {
+            returnVal = v.value;
+          }
+        });
+        return returnVal;
+      },
 
-      if (this.customQueries.length > 0) {
-        $(selector).append('<optgroup label="Custom queries">');
-        jQuery.each(this.customQueries, function (k, v) {
+      importSelected: function (e) {
+        var inputEditor = ace.edit("aqlEditor");
+        $.each(this.queries, function (k, v) {
+          if ($('#' + e.currentTarget.id).val() === v.name) {
+            inputEditor.setValue(v.value);
+          }
+        });
+        $.each(this.customQueries, function (k, v) {
+          if ($('#' + e.currentTarget.id).val() === v.name) {
+            inputEditor.setValue(v.value);
+          }
+        });
+
+        this.deselect(ace.edit("aqlEditor"));
+      },
+
+      renderSelectboxes: function () {
+        this.sortQueries();
+        var selector = '';
+        selector = '#querySelect';
+        $(selector).empty();
+
+        $(selector).append('<option id="emptyquery">Insert Query</option>');
+
+        $(selector).append('<optgroup label="Example queries">');
+        jQuery.each(this.queries, function (k, v) {
           $(selector).append('<option id="' + _.escape(v.name) + '">' + _.escape(v.name) + '</option>');
         });
         $(selector).append('</optgroup>');
-      }
-    },
-    undoText: function () {
-      var inputEditor = ace.edit("aqlEditor");
-      inputEditor.undo();
-    },
-    redoText: function () {
-      var inputEditor = ace.edit("aqlEditor");
-      inputEditor.redo();
-    },
-    commentText: function () {
-      var inputEditor = ace.edit("aqlEditor");
-      inputEditor.toggleCommentLines();
-    },
-    sortQueries: function () {
-      this.queries = _.sortBy(this.queries, 'name');
-      this.customQueries = _.sortBy(this.customQueries, 'name');
-    },
 
-    abortQuery: function () {
-    /*
-      $.ajax({
-        type: "DELETE",
-        url: "/_api/cursor/currentFrontendQuery",
-        contentType: "application/json",
-        processData: false,
-        success: function (data) {
-        },
-        error: function (data) {
+        if (this.customQueries.length > 0) {
+          $(selector).append('<optgroup label="Custom queries">');
+          jQuery.each(this.customQueries, function (k, v) {
+            $(selector).append('<option id="' + _.escape(v.name) + '">' + _.escape(v.name) + '</option>');
+          });
+          $(selector).append('</optgroup>');
         }
+      },
+      undoText: function () {
+        var inputEditor = ace.edit("aqlEditor");
+        inputEditor.undo();
+      },
+      redoText: function () {
+        var inputEditor = ace.edit("aqlEditor");
+        inputEditor.redo();
+      },
+      commentText: function () {
+        var inputEditor = ace.edit("aqlEditor");
+        inputEditor.toggleCommentLines();
+      },
+      sortQueries: function () {
+        this.queries = _.sortBy(this.queries, 'name');
+        this.customQueries = _.sortBy(this.customQueries, 'name');
+      },
+
+      abortQuery: function () {
+        /*
+         $.ajax({
+           type: "DELETE",
+           url: "/_api/cursor/currentFrontendQuery",
+           contentType: "application/json",
+           processData: false,
+           success: function (data) {
+           },
+           error: function (data) {
+           }
+         });
+         */
+      },
+
+      readQueryData: function() {
+        var inputEditor = ace.edit("aqlEditor");
+        var selectedText = inputEditor.session.getTextRange(inputEditor.getSelectionRange());
+        var sizeBox = $('#querySize');
+        var data = {
+          query: selectedText || inputEditor.getValue(),
+          batchSize: parseInt(sizeBox.val(), 10),
+          id: "currentFrontendQuery"
+        };
+        return JSON.stringify(data);
+      },
+
+      followQueryPath: function(root, nodes) {
+        var known = {};
+        known[nodes[0].id] = root;
+        var i, nodeData, j, dep;
+        for (i = 1; i < nodes.length; ++i) {
+          nodeData = this.preparePlanNodeEntry(nodes[i]);
+          known[nodes[i].id] = nodeData;
+          dep = nodes[i].dependencies;
+          for (j = 0; j < dep.length; ++j) {
+            known[dep[j]].children.push(nodeData);
+          }
+        }
+      },
+
+      preparePlanNodeEntry: function(node) {
+        var json = {
+          estimatedCost: node.estimatedCost,
+          estimatedNrItems: node.estimatedNrItems,
+          type: node.type,
+          children: []
+        };
+        switch (node.type) {
+          case "SubqueryNode":
+          this.followQueryPath(json, node.subquery.nodes);
+          break;
+          default:
+
+        }
+        return json;
+      },
+
+      drawTree: function(treeData) {
+        // outputEditor.setValue(JSON.stringify(treeData, undefined, 2));
+
+        var margin = {top: 20, right: 20, bottom: 20, left: 20},
+            width = 960 - margin.right - margin.left,
+            height = 500 - margin.top - margin.bottom;
+
+        var i = 0;
+
+        var tree = d3.layout.tree().size([width, height]);
+
+        var svg = d3.select("svg#explainOutput")
+          .attr("width", width + margin.right + margin.left)
+          .attr("height", height + margin.top + margin.bottom)
+          .append("g")
+          .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        var root = treeData[0];
+
+        // Compute the new tree layout.
+        var nodes = tree.nodes(root).reverse(),
+            links = tree.links(nodes);
+
+        var diagonal = d3.svg.diagonal()
+          .projection(function(d) { return [d.x, d.y]; });
+
+        // Normalize for fixed-depth.
+        nodes.forEach(function(d) { d.y = d.depth * 180 + margin.top; });
+
+        // Declare the nodes¦
+        var node = svg.selectAll("g.node")
+          .data(nodes, function(d) {
+            if (!d.id) {
+              d.id = ++i;
+            }
+            return d.id;
+          });
+
+        // Enter the nodes.
+        var nodeEnter = node.enter().append("g")
+          .attr("class", "node")
+          .attr("transform", function(d) { 
+            return "translate(" + d.x + "," + d.y + ")"; });
+
+        nodeEnter.append("circle")
+          .attr("r", 10)
+          .style("fill", "#fff");
+
+        nodeEnter.append("text")
+          .attr("x", function(d) { 
+            return -20;}) // d.children || d._children ? -13 : 13; })
+          .attr("dy", "-20")
+          .attr("text-anchor", function(d) { 
+            return "start"; }) // d.children || d._children ? "end" : "start"; })
+          .text(function(d) { return d.type.replace("Node",""); })
+          .style("fill-opacity", 1);
+
+        nodeEnter.append("text")
+          .attr("x", function(d) { 
+            return -20;}) // d.children || d._children ? -13 : 13; })
+          .attr("dy", "20")
+          .attr("text-anchor", function(d) { 
+            return "start"; }) // d.children || d._children ? "end" : "start"; })
+          .text(function(d) { return "Cost: " + d.estimatedCost; })
+          .style("fill-opacity", 1);
+
+        // Declare the links¦
+        var link = svg.selectAll("path.link")
+          .data(links, function(d) { return d.target.id; });
+
+        // Enter the links.
+        link.enter().insert("path", "g")
+          .attr("class", "link")
+          .attr("d", diagonal);
+
+      },
+
+      showExplainPlan: function(plan) {
+        $("svg#explainOutput").html();
+        var nodes = plan.nodes;
+        if (nodes.length > 0) {
+          // Handle root element differently
+          var treeData = this.preparePlanNodeEntry(nodes[0]);
+          this.followQueryPath(treeData, nodes);
+          this.drawTree([treeData]);
+        }
+      },
+
+      showExplainWarnings: function(warnings) {
+        $(".explain-warnings").html(this.warningTemplate.render({warnings: warnings}));
+      },
+
+      fillExplain: function(callback) {
+        var self = this;
+        $("svg#explainOutput").html();
+        $.ajax({
+          type: "POST",
+          url: "/_api/explain",
+          data: this.readQueryData(),
+          contentType: "application/json",
+          processData: false,
+          success: function (data) {
+            self.showExplainWarnings(data.warnings);
+            self.showExplainPlan(data.plan);
+            if (typeof callback === "function") {
+              callback();
+            }
+          },
+          error: function (errObj) {
+            var res = errObj.responseJSON;
+            // Display ErrorMessage
+            console.log("Error:", res.errorMessage);
+          }
         });
-    */
-    },
+      },
 
-    submitQuery: function () {
-      var self = this;
-      var inputEditor = ace.edit("aqlEditor");
-      var selectedText = inputEditor.session.getTextRange(inputEditor.getSelectionRange());
-
-      var sizeBox = $('#querySize');
-      var data = {
-        query: selectedText || inputEditor.getValue(),
-        batchSize: parseInt(sizeBox.val(), 10),
-        id: "currentFrontendQuery"
-      };
-      var outputEditor = ace.edit("queryOutput");
-
-      // clear result
-      outputEditor.setValue('');
-
-      /*window.progressView.show(
-        "Query is operating...",
-        self.abortQuery("id"),
-        '<button class="button-danger">Abort Query</button>'
-      );*/
-      window.progressView.show(
-        "Query is operating..."
-      );
-
-      $.ajax({
-        type: "POST",
-        url: "/_api/cursor",
-        data: JSON.stringify(data),
-        contentType: "application/json",
-        processData: false,
-        success: function (data) {
-          var warnings = "";
-          if (data.extra && data.extra.warnings && data.extra.warnings.length > 0) {
-            warnings += "Warnings:" + "\r\n\r\n";
-            data.extra.warnings.forEach(function(w) {
-              warnings += "[" + w.code + "], '" + w.message + "'\r\n";
-            });
+      fillResult: function(callback) {
+        var self = this;
+        var outputEditor = ace.edit("queryOutput");
+        // clear result
+        outputEditor.setValue('');
+        window.progressView.show(
+          "Query is operating..."
+        );
+        this.execPending = false;
+        $.ajax({
+          type: "POST",
+          url: "/_api/cursor",
+          data: this.readQueryData(),
+          contentType: "application/json",
+          processData: false,
+          success: function (data) {
+            var warnings = "";
+            if (data.extra && data.extra.warnings && data.extra.warnings.length > 0) {
+              warnings += "Warnings:" + "\r\n\r\n";
+              data.extra.warnings.forEach(function(w) {
+                warnings += "[" + w.code + "], '" + w.message + "'\r\n";
+              });
+            }
+            if (warnings !== "") {
+              warnings += "\r\n" + "Result:" + "\r\n\r\n";
+            }
+            outputEditor.setValue(warnings + JSON.stringify(data.result, undefined, 2));
+            self.switchTab("result-switch");
+            window.progressView.hide();
+            self.deselect(outputEditor);
+            $('#downloadQueryResult').show();
+            if (typeof callback === "function") {
+              callback();
+            }
+          },
+          error: function (data) {
+            self.switchTab("result-switch");
+            $('#downloadQueryResult').hide();
+            try {
+              var temp = JSON.parse(data.responseText);
+              outputEditor.setValue('[' + temp.errorNum + '] ' + temp.errorMessage);
+              arangoHelper.arangoError("Query error", temp.errorNum);
+            }
+            catch (e) {
+              outputEditor.setValue('ERROR');
+              arangoHelper.arangoError("Query error", "ERROR");
+            }
+            window.progressView.hide();
+            if (typeof callback === "function") {
+              callback();
+            }
           }
-          if (warnings !== "") {
-            warnings += "\r\n" + "Result:" + "\r\n\r\n";
-          }
-          outputEditor.setValue(warnings + JSON.stringify(data.result, undefined, 2));
-          self.switchTab("result-switch");
-          window.progressView.hide();
-          self.deselect(outputEditor);
-          $('#downloadQueryResult').show();
-        },
-        error: function (data) {
-          self.switchTab("result-switch");
-          $('#downloadQueryResult').hide();
-          try {
-            var temp = JSON.parse(data.responseText);
-            outputEditor.setValue('[' + temp.errorNum + '] ' + temp.errorMessage);
-            arangoHelper.arangoError("Query error", temp.errorNum);
-          }
-          catch (e) {
-            outputEditor.setValue('ERROR');
-            arangoHelper.arangoError("Query error", "ERROR");
-          }
-          window.progressView.hide();
-        }
-      });
-      outputEditor.resize();
-      this.deselect(inputEditor);
+        });
+      },
 
-    },
+      submitQuery: function () {
+        var outputEditor = ace.edit("queryOutput");
+        this.fillExplain();
+        this.fillResult(this.switchTab.bind(this, "result-switch"));
+        outputEditor.resize();
+        var inputEditor = ace.edit("aqlEditor");
+        this.deselect(inputEditor);
+      },
 
-    // This function changes the focus onto the tab that has been clicked
-    // it can be given an event-object or the id of the tab to switch to
-    //    e.g. switchTab("result-switch");
-    // note that you need to ommit the #
-    switchTab: function (e) {
-      // defining a callback function for Array.forEach() the tabArray holds the ids of
-      // the tabs a-tags, from which we can create the appropriate content-divs ids.
-      // The convention is #result-switch (a-tag), #result (content-div), and
-      // #tabContentResult (pane-div).
-      // We set the clicked element's tags to active/show and the others to hide.
-      var switchId = typeof e === 'string' ? e : e.target.id;
-      var changeTab = function (element, index, array){
-        var divId = "#" + element.replace("-switch", "");
-        var contentDivId = "#tabContent" + divId.charAt(1).toUpperCase() + divId.substr(2);
-        if (element === switchId) {
-          $("#" + element).parent().addClass("active");
-          $(divId).addClass("active");
-          $(contentDivId).show();
-          if (switchId === 'query-switch') {
-            // issue #1000: set focus to query input
-            $('#aqlEditor .ace_text-input').focus();
-          }
+      explainQuery: function() {
+        this.fillExplain(this.switchTab.bind(this, "explain-switch"));
+        this.execPending = true;
+        var inputEditor = ace.edit("aqlEditor");
+        this.deselect(inputEditor);
+      },
+
+      // This function changes the focus onto the tab that has been clicked
+      // it can be given an event-object or the id of the tab to switch to
+      //    e.g. switchTab("result-switch");
+      // note that you need to ommit the #
+      switchTab: function (e) {
+        // defining a callback function for Array.forEach() the tabArray holds the ids of
+        // the tabs a-tags, from which we can create the appropriate content-divs ids.
+        // The convention is #result-switch (a-tag), #result (content-div), and
+        // #tabContentResult (pane-div).
+        // We set the clicked element's tags to active/show and the others to hide.
+        var switchId;
+        if (typeof e === 'string') {
+          switchId = e;
         } else {
-          $("#" + element).parent().removeClass("active");
-          $(divId).removeClass("active");
-          $(contentDivId).hide();
+          switchId = e.target.id;
         }
-      };
-      this.tabArray.forEach(changeTab);
-      this.updateTable();
-    }
-  });
-}());
+        var self = this;
+        var changeTab = function (element){
+          var divId = "#" + element.replace("-switch", "");
+          var contentDivId = "#tabContent" + divId.charAt(1).toUpperCase() + divId.substr(2);
+          if (element === switchId) {
+            $("#" + element).parent().addClass("active");
+            $(divId).addClass("active");
+            $(contentDivId).show();
+            if (switchId === 'query-switch') {
+              // issue #1000: set focus to query input
+              $('#aqlEditor .ace_text-input').focus();
+            } else if (switchId === 'result-switch' && self.execPending) {
+              self.fillResult();
+            }
+          } else {
+            $("#" + element).parent().removeClass("active");
+            $(divId).removeClass("active");
+            $(contentDivId).hide();
+          }
+        };
+        this.tabArray.forEach(changeTab);
+        this.updateTable();
+      }
+    });
+  }());
