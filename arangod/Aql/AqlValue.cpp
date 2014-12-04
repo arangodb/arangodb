@@ -756,17 +756,21 @@ AqlValue AqlValue::CreateFromBlocks (triagens::arango::AqlTransaction* trx,
   for (auto it = src.begin(); it != src.end(); ++it) {
     auto current = (*it);
     RegisterId const n = current->getNrRegs();
+    
+    std::vector<std::pair<RegisterId, TRI_document_collection_t const*>> registers;
+    for (RegisterId j = 0; j < n; ++j) {
+      // temporaries don't have a name and won't be included
+      if (variableNames[j][0] != '\0') {
+        registers.emplace_back(std::make_pair(j, current->getDocumentCollection(j)));
+      }
+    }
 
     for (size_t i = 0; i < current->size(); ++i) {
-      Json values(Json::Array);
+      Json values(Json::Array, registers.size());
 
-      for (RegisterId j = 0; j < n; ++j) {
-        if (variableNames[j][0] != '\0') {
-          // temporaries don't have a name and won't be included
-          // Variables from depth 0 are excluded, too, unless the
-          // COLLECT statement is on level 0 as well.
-          values.set(variableNames[j].c_str(), current->getValue(i, j).toJson(trx, current->getDocumentCollection(j)));
-        }
+      // only enumerate the registers that are left
+      for (auto const& reg : registers) {
+        values.set(variableNames[reg.first], current->getValueReference(i, reg.first).toJson(trx, reg.second));
       }
 
       json->add(values);

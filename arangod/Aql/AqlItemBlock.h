@@ -103,6 +103,15 @@ namespace triagens {
           TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
           return _data[index * _nrRegs + varNr];
         }
+ 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getValue, get the value of a register by reference
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlValue const& getValueReference (size_t index, RegisterId varNr) const {
+          TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
+          return _data[index * _nrRegs + varNr];
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief setValue, set the current value of a register
