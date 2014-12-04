@@ -614,7 +614,7 @@ namespace triagens {
 /// @brief default value for maximal number of plans to produce
 ////////////////////////////////////////////////////////////////////////////////
 
-        static size_t const DefaultMaxNumberOfPlans = 1000;
+        static size_t const DefaultMaxNumberOfPlans = 256;
 
     };
 

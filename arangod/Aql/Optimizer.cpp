@@ -89,7 +89,6 @@ bool Optimizer::addPlan (ExecutionPlan* plan,
     // register which rules modified / created the plan
     plan->addAppliedRule(_currentRule);
     plan->invalidateCost();
-    ++_stats.plansCreated;
   }
     
   if (_newPlans.size() >= _maxNumberOfPlans) {
@@ -223,6 +222,8 @@ int Optimizer::createPlans (ExecutionPlan* plan,
       runOnlyRequiredRules = true;
     }
   }
+  
+  _stats.plansCreated = _plans.size();
   
   TRI_ASSERT(_plans.size() >= 1);
 
