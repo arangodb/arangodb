@@ -9,8 +9,15 @@ v2.4.0 (XXXX-XX-XX)
 v2.3.2 (XXXX-XX-XX)
 -------------------
 
-* fixed segfault in hash index setup with unknown shapes
+* fixed segfault in AQL query hash index setup with unknown shapes
 
+* fixed memleaks
+
+* fixed issue #1131
+
+  This change provides the `KEEP` clause for `COLLECT ... INTO`. The `KEEP` clause
+  allows controlling which variables will be kept in the variable created by `INTO`.
+  
 
 v2.3.1 (2014-11-28)
 -------------------
