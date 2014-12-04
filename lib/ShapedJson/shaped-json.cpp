@@ -585,6 +585,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
     shape->_sidEntry = s;
     shape->_sizeEntry = l;
 
+    // note: if 'found' is not a nullptr, the shaper will have freed variable 'shape'!
     found = shaper->findShape(shaper, &shape->base, create);
 
     if (found == nullptr) {
@@ -652,6 +653,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
     shape->base._dataSize = TRI_SHAPE_SIZE_VARIABLE;
     shape->_sidEntry = s;
 
+    // note: if 'found' is not a nullptr, the shaper will have freed variable 'shape'!
     found = shaper->findShape(shaper, &shape->base, create);
 
     if (found == nullptr) {
@@ -819,6 +821,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
   for (i = 0;  i < n;  ++i, ++p) {
     TRI_json_t const* key = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, 2 * i));
     TRI_ASSERT(key != nullptr);
+    TRI_ASSERT(key->_type == TRI_JSON_STRING);
 
     char const* k = key->_value._string.data;
 
@@ -959,7 +962,6 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
       }
     }
 
-    TRI_Free(shaper->_memoryZone, dst->_value);
     TRI_Free(shaper->_memoryZone, values);
     TRI_Free(shaper->_memoryZone, a);
 
