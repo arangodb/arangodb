@@ -137,7 +137,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "MINUS",                       Function("MINUS",                       "AQL_MINUS", "l,l|+", true, false, true) },
   { "INTERSECTION",                Function("INTERSECTION",                "AQL_INTERSECTION", "l,l|+", true, false, true) },
   { "FLATTEN",                     Function("FLATTEN",                     "AQL_FLATTEN", "l|n", true, false, true) },
-  { "LENGTH",                      Function("LENGTH",                      "AQL_LENGTH", "las", true, false, true) },
+  { "LENGTH",                      Function("LENGTH",                      "AQL_LENGTH", "las", true, false, true, &Functions::Length) },
   { "MIN",                         Function("MIN",                         "AQL_MIN", "l", true, false, true) },
   { "MAX",                         Function("MAX",                         "AQL_MAX", "l", true, false, true) },
   { "SUM",                         Function("SUM",                         "AQL_SUM", "l", true, false, true) },
