@@ -36,6 +36,8 @@ v2.4.0 (XXXX-XX-XX)
 v2.3.2 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #1163: invalid fullCount value returned from AQL
+
 * fixed range operator precedence 
 
 * limit default maximum number of plans created by AQL optimizer to 256 (from 1024)
