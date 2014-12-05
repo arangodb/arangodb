@@ -8,7 +8,7 @@ MySQL.
 
 *skip* used together with *limit* can be used to implement pagination.
 The *skip* operator skips over the first n documents. So, in order to create
-result pages with 10 result documents per page, you can use *skip(n *
+result pages with 10 result documents per page, you can use *skip(n \*
 10).limit(10)* to access the 10 documents on the n.th page.  This result should
 be sorted, so that the pagination works in a predicable way.
 
