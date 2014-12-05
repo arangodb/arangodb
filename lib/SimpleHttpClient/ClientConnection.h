@@ -118,7 +118,8 @@ namespace triagens {
 /// @brief read data from the connection
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool readClientConnection (triagens::basics::StringBuffer&, bool& progress);
+        bool readClientConnection (triagens::basics::StringBuffer&, 
+                                   bool& connectionClosed);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether the connection is readable

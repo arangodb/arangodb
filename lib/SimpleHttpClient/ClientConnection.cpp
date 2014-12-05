@@ -151,29 +151,32 @@ void ClientConnection::disconnectSocket () {
 bool ClientConnection::prepare (const double timeout, const bool isWrite) const {
   struct timeval tv;
   fd_set fdset;
+  int res;
 
   if (! TRI_isvalidsocket(_socket)) {
     return false;
   }
 
-  tv.tv_sec = (long) timeout;
-  tv.tv_usec = (long) ((timeout - (double) tv.tv_sec) * 1000000.0);
+  do {
+    tv.tv_sec = (long) timeout;
+    tv.tv_usec = (long) ((timeout - (double) tv.tv_sec) * 1000000.0);
 
-  FD_ZERO(&fdset);
-  FD_SET(TRI_get_fd_or_handle_of_socket(_socket), &fdset);
+    FD_ZERO(&fdset);
+    FD_SET(TRI_get_fd_or_handle_of_socket(_socket), &fdset);
 
-  fd_set* readFds = NULL;
-  fd_set* writeFds = NULL;
+    fd_set* readFds = NULL;
+    fd_set* writeFds = NULL;
 
-  if (isWrite) {
-    writeFds = &fdset;
-  }
-  else {
-    readFds = &fdset;
-  }
+    if (isWrite) {
+      writeFds = &fdset;
+    }
+    else {
+      readFds = &fdset;
+    }
 
-  int sockn = (int) (TRI_get_fd_or_handle_of_socket(_socket) + 1);
-  int res = select(sockn, readFds, writeFds, NULL, &tv);
+    int sockn = (int) (TRI_get_fd_or_handle_of_socket(_socket) + 1);
+    res = select(sockn, readFds, writeFds, NULL, &tv);
+  } while (res == -1 && errno == EINTR);
 
   if (res > 0) {
     return true;
@@ -233,14 +236,16 @@ bool ClientConnection::writeClientConnection (void* buffer, size_t length, size_
 /// @brief read data from the connection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ClientConnection::readClientConnection (StringBuffer& stringBuffer, bool& progress) {
+bool ClientConnection::readClientConnection (StringBuffer& stringBuffer, 
+                                             bool& connectionClosed) {
   if (! checkSocket()) {
+    connectionClosed = true;
     return false;
   }
 
   TRI_ASSERT(TRI_isvalidsocket(_socket));
 
-  progress = false;
+  connectionClosed = false;
 
   do {
 
@@ -255,15 +260,16 @@ bool ClientConnection::readClientConnection (StringBuffer& stringBuffer, bool& p
 
     if (lenRead == -1) {
       // error occurred
+      connectionClosed = true;
       return false;
     }
 
     if (lenRead == 0) {
+      connectionClosed = true;
       disconnect();
       return true;
     }
 
-    progress = true;
     stringBuffer.increaseLength(lenRead);
   }
   while (readable());

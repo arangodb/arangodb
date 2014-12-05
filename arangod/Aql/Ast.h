@@ -269,7 +269,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AstNode* createNodeCollect (AstNode const*,
-                                    char const*);
+                                    char const*,
+                                    AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST sort node
