@@ -349,6 +349,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execution Node clone utility to be called by derives
 ////////////////////////////////////////////////////////////////////////////////
+
         void CloneHelper (ExecutionNode *Other,
                           ExecutionPlan* plan,
                           bool withDependencies,
@@ -429,7 +430,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const {
+        virtual std::vector<Variable const*> getVariablesUsedHere () const  {
           return std::vector<Variable const*>();
         }
 
@@ -1025,7 +1026,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const {
+        virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
           std::vector<Variable const*> v;
           v.push_back(_inVariable);
           return v;
@@ -1175,7 +1176,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const;
+        virtual std::vector<Variable const*> getVariablesUsedHere () const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief estimateCost
@@ -1441,11 +1442,13 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const {
+        virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
           std::unordered_set<Variable*> vars = _expression->variables();
           std::vector<Variable const*> v;
+          v.reserve(vars.size());
+
           for (auto vv : vars) {
-            v.push_back(vv);
+            v.emplace_back(vv);
           }
           return v;
         }
@@ -1575,7 +1578,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const;
+        virtual std::vector<Variable const*> getVariablesUsedHere () const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getVariablesSetHere
@@ -1686,7 +1689,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const {
+        virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
           std::vector<Variable const*> v;
           v.push_back(_inVariable);
           return v;
@@ -1844,7 +1847,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const {
+        virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
           std::vector<Variable const*> v;
           for (auto p : _elements) {
             v.push_back(p.first);
@@ -1991,7 +1994,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const;
+        virtual std::vector<Variable const*> getVariablesUsedHere () const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getVariablesSetHere
@@ -2106,7 +2109,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const {
+        virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
           std::vector<Variable const*> v;
           v.push_back(_inVariable);
           return v;
@@ -2293,7 +2296,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const {
+        virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
           std::vector<Variable const*> v;
           v.push_back(_inVariable);
           return v;
@@ -2396,7 +2399,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const {
+        virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
           std::vector<Variable const*> v;
           v.push_back(_inVariable);
           return v;
@@ -2502,7 +2505,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const {
+        virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
           std::vector<Variable const*> v;
           v.push_back(_inDocVariable);
 
@@ -2618,7 +2621,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const {
+        virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
           std::vector<Variable const*> v;
           v.push_back(_inDocVariable);
 
@@ -3189,7 +3192,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const {
+        virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
           std::vector<Variable const*> v;
           for (auto p : _elements) {
             v.push_back(p.first);
