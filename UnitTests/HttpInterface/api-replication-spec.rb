@@ -436,13 +436,48 @@ describe ArangoDB do
         state['lastLogTick'].should match(/^\d+$/)
         state['time'].should match(/^\d+-\d+-\d+T\d+:\d+:\d+Z$/)
       end
+      
+      it "checks the initial inventory for non-system collections" do
+        cmd = api + "/inventory?includeSystem=false"
+        doc = ArangoDB.log_get("#{prefix}-inventory-system", cmd, :body => "")
+
+        doc.code.should eq(200)
+        all = doc.parsed_response
+        all.should have_key('collections')
+        all.should have_key('state')
+        
+        collections = all["collections"]
+        collections.each { |collection|
+          collection["parameters"]["name"].should_not match(/^_/)
+        }
+      end
+      
+      it "checks the initial inventory for system collections" do
+        cmd = api + "/inventory?includeSystem=true"
+        doc = ArangoDB.log_get("#{prefix}-inventory-system", cmd, :body => "")
+
+        doc.code.should eq(200)
+        all = doc.parsed_response
+        all.should have_key('collections')
+        all.should have_key('state')
+        
+        collections = all["collections"]
+        systemCollections = 0
+        collections.each { |collection|
+          if collection["parameters"]["name"].match(/^_/)
+            systemCollections = systemCollections + 1
+          end
+        }
+
+        systemCollections.should_not eq(0)
+      end
      
       it "checks the inventory after creating collections" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false)
         cid2 = ArangoDB.create_collection("UnitTestsReplication2", true, 3)
        
         cmd = api + "/inventory?includeSystem=false"
-        doc = ArangoDB.log_get("#{prefix}-inventory", cmd, :body => "")
+        doc = ArangoDB.log_get("#{prefix}-inventory-create", cmd, :body => "")
         doc.code.should eq(200)
         
         all = doc.parsed_response

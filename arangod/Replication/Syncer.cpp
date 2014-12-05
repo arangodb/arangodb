@@ -416,8 +416,8 @@ int Syncer::createCollection (TRI_json_t const* json,
     if (parameterName != nullptr) {
       int iterations = 0;
 
-      while (TRI_IsDirectory(dirName) && TRI_ExistsFile(parameterName) && iterations++ < 120) {
-        sleep(1);
+      while (TRI_IsDirectory(dirName) && TRI_ExistsFile(parameterName) && iterations++ < 1200) {
+        usleep(1000 * 100);
       }
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, parameterName);

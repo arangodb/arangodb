@@ -372,10 +372,37 @@ function ReplicationLoggerSuite () {
 /// @brief test actions
 ////////////////////////////////////////////////////////////////////////////////
 
-    testLoggerIncludedSystemCollection : function () {
+    testLoggerIncludedSystemCollection1 : function () {
       var state, tick;
 
       c = db._collection("_graphs");
+
+      state = replication.logger.state().state;
+      tick = state.lastLogTick;
+      var doc = c.save({ "test": 1 });
+
+      var entry = getLogEntries(tick, 2300)[0];
+      assertEqual(2300, entry.type);
+      assertEqual(c._id, entry.cid);
+
+      state = replication.logger.state().state;
+      tick = state.lastLogTick;
+      c.remove(doc._key);
+
+      entry = getLogEntries(tick, 2302)[0];
+      assertEqual(2302, entry.type);
+      assertEqual(c._id, entry.cid);
+      assertEqual(doc._key, entry.key);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test actions
+////////////////////////////////////////////////////////////////////////////////
+
+    testLoggerIncludedSystemCollection2 : function () {
+      var state, tick;
+
+      c = db._collection("_users");
 
       state = replication.logger.state().state;
       tick = state.lastLogTick;
@@ -1661,11 +1688,13 @@ function ReplicationLoggerSuite () {
       });
 
       var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300, 2302 ]);
-      assertEqual(3, entry.length);
+      assertEqual(5, entry.length);
 
       assertEqual(2200, entry[0].type);
       assertEqual(2300, entry[1].type);
-      assertEqual(2201, entry[2].type);
+      assertEqual(2300, entry[2].type);
+      assertEqual(2302, entry[3].type);
+      assertEqual(2201, entry[4].type);
 
       assertEqual(entry[0].tid, entry[1].tid);
       assertEqual(entry[1].tid, entry[2].tid);
@@ -1875,6 +1904,9 @@ function ReplicationApplierSuite () {
       assertFalse(properties.autoStart);
       assertTrue(properties.adaptivePolling);
       assertUndefined(properties.endpoint);
+      assertTrue(properties.includeSystem);
+      assertEqual("", properties.restrictType);
+      assertEqual([ ], properties.restrictCollections);
 
       try {
         replication.applier.properties({ });
@@ -1904,7 +1936,10 @@ function ReplicationApplierSuite () {
         requestTimeout: 5,
         connectTimeout: 9,
         maxConnectRetries: 4,
-        chunkSize: 65536
+        chunkSize: 65536,
+        includeSystem: false,
+        restrictType: "include",
+        restrictCollections: [ "_users" ]
       });
 
       properties = replication.applier.properties();
@@ -1915,6 +1950,40 @@ function ReplicationApplierSuite () {
       assertEqual(65536, properties.chunkSize);
       assertTrue(properties.autoStart);
       assertFalse(properties.adaptivePolling);
+      assertFalse(properties.includeSystem);
+      assertEqual("include", properties.restrictType);
+      assertEqual([ "_users" ], properties.restrictCollections);
+      
+      replication.applier.properties({
+        endpoint: "tcp://9.9.9.9:9998",
+        autoStart: false,
+        maxConnectRetries: 10,
+        chunkSize: 128 * 1024,
+        includeSystem: true,
+        restrictType: "exclude",
+        restrictCollections: [ "foo", "bar", "baz" ]
+      });
+      
+      properties = replication.applier.properties();
+      assertEqual(properties.endpoint, "tcp://9.9.9.9:9998");
+      assertEqual(5, properties.requestTimeout);
+      assertEqual(9, properties.connectTimeout);
+      assertEqual(10, properties.maxConnectRetries);
+      assertEqual(128 * 1024, properties.chunkSize);
+      assertFalse(properties.autoStart);
+      assertFalse(properties.adaptivePolling);
+      assertTrue(properties.includeSystem);
+      assertEqual("exclude", properties.restrictType);
+      assertEqual([ "bar", "baz", "foo" ], properties.restrictCollections.sort());
+      
+      replication.applier.properties({
+        restrictType: "",
+        restrictCollections: [ ]
+      });
+      
+      properties = replication.applier.properties();
+      assertEqual("", properties.restrictType);
+      assertEqual([ ], properties.restrictCollections);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

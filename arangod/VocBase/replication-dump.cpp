@@ -699,6 +699,12 @@ static int StringifyWalMarkerCreateCollection (TRI_replication_dump_t* dump,
   APPEND_UINT64(dump->_buffer, m->_collectionId);
   APPEND_STRING(dump->_buffer, "\",\"collection\":");
   APPEND_STRING(dump->_buffer, (char const*) m + sizeof(triagens::wal::collection_create_marker_t)); 
+  char const* cname = NameFromCid(dump, m->_collectionId);
+  if (cname != nullptr) {
+    APPEND_STRING(dump->_buffer, ",\"cname\":\"");
+    APPEND_STRING(dump->_buffer, cname);
+    APPEND_STRING(dump->_buffer, "\"");
+  }
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -715,6 +721,11 @@ static int StringifyWalMarkerDropCollection (TRI_replication_dump_t* dump,
   APPEND_UINT64(dump->_buffer, m->_databaseId);
   APPEND_STRING(dump->_buffer, "\",\"cid\":\"");
   APPEND_UINT64(dump->_buffer, m->_collectionId);
+  char const* cname = NameFromCid(dump, m->_collectionId);
+  if (cname != nullptr) {
+    APPEND_STRING(dump->_buffer, "\",\"cname\":\"");
+    APPEND_STRING(dump->_buffer, cname);
+  }
   APPEND_STRING(dump->_buffer, "\"");
 
   return TRI_ERROR_NO_ERROR;
@@ -732,6 +743,11 @@ static int StringifyWalMarkerRenameCollection (TRI_replication_dump_t* dump,
   APPEND_UINT64(dump->_buffer, m->_databaseId);
   APPEND_STRING(dump->_buffer, "\",\"cid\":\"");
   APPEND_UINT64(dump->_buffer, m->_collectionId);
+  char const* cname = NameFromCid(dump, m->_collectionId);
+  if (cname != nullptr) {
+    APPEND_STRING(dump->_buffer, "\",\"cname\":\"");
+    APPEND_STRING(dump->_buffer, cname);
+  }
   APPEND_STRING(dump->_buffer, "\",\"collection\":{\"name\":\"");
   APPEND_STRING(dump->_buffer, (char const*) m + sizeof(triagens::wal::collection_rename_marker_t));
   APPEND_STRING(dump->_buffer, "\"}");
@@ -751,6 +767,11 @@ static int StringifyWalMarkerChangeCollection (TRI_replication_dump_t* dump,
   APPEND_UINT64(dump->_buffer, m->_databaseId);
   APPEND_STRING(dump->_buffer, "\",\"cid\":\"");
   APPEND_UINT64(dump->_buffer, m->_collectionId);
+  char const* cname = NameFromCid(dump, m->_collectionId);
+  if (cname != nullptr) {
+    APPEND_STRING(dump->_buffer, "\",\"cname\":\"");
+    APPEND_STRING(dump->_buffer, cname);
+  }
   APPEND_STRING(dump->_buffer, "\",\"collection\":");
   APPEND_STRING(dump->_buffer, (char const*) m + sizeof(triagens::wal::collection_change_marker_t)); 
 
@@ -769,6 +790,11 @@ static int StringifyWalMarkerCreateIndex (TRI_replication_dump_t* dump,
   APPEND_UINT64(dump->_buffer, m->_databaseId);
   APPEND_STRING(dump->_buffer, "\",\"cid\":\"");
   APPEND_UINT64(dump->_buffer, m->_collectionId);
+  char const* cname = NameFromCid(dump, m->_collectionId);
+  if (cname != nullptr) {
+    APPEND_STRING(dump->_buffer, "\",\"cname\":\"");
+    APPEND_STRING(dump->_buffer, cname);
+  }
   APPEND_STRING(dump->_buffer, "\",\"id\":\"");
   APPEND_UINT64(dump->_buffer, m->_indexId);
   APPEND_STRING(dump->_buffer, "\",\"index\":");
@@ -789,6 +815,11 @@ static int StringifyWalMarkerDropIndex (TRI_replication_dump_t* dump,
   APPEND_UINT64(dump->_buffer, m->_databaseId);
   APPEND_STRING(dump->_buffer, "\",\"cid\":\"");
   APPEND_UINT64(dump->_buffer, m->_collectionId);
+  char const* cname = NameFromCid(dump, m->_collectionId);
+  if (cname != nullptr) {
+    APPEND_STRING(dump->_buffer, "\",\"cname\":\"");
+    APPEND_STRING(dump->_buffer, cname);
+  }
   APPEND_STRING(dump->_buffer, "\",\"id\":\"");
   APPEND_UINT64(dump->_buffer, m->_indexId);
   APPEND_STRING(dump->_buffer, "\"");
@@ -1055,7 +1086,7 @@ static bool MustReplicateWalMarker (TRI_replication_dump_t* dump,
   if (cid != 0) {
     char const* name = NameFromCid(dump, cid);
 
-    if (name != nullptr && TRI_ExcludeCollectionReplication(name)) {
+    if (name != nullptr && TRI_ExcludeCollectionReplication(name, dump->_includeSystem)) {
       return false;
     }
   }
