@@ -14,6 +14,8 @@ v2.3.2 (XXXX-XX-XX)
 * make AQL optimizer not generate an extra plan if an index can be used, but modify
   existing plans in place
 
+* fixed AQL cursor ttl (time-to-live) issue
+
 * fixed segfault in AQL query hash index setup with unknown shapes
 
 * fixed memleaks
