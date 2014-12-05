@@ -1,6 +1,8 @@
 v2.3.2 (XXXX-XX-XX)
 -------------------
 
+* fixed AQL cursor ttl (time-to-live) issue
+
 * fixed segfault in AQL query hash index setup with unknown shapes
 
 * fixed memleaks
