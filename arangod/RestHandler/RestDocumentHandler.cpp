@@ -445,14 +445,15 @@ bool RestDocumentHandler::readDocument () {
 ///
 /// @RESTHEADERPARAM{If-Match,string,optional}
 /// If the "If-Match" header is given, then it must contain exactly one
-/// etag. The document is returned, if it has the same revision ad the
+/// etag. The document is returned, if it has the same revision as the
 /// given etag. Otherwise a *HTTP 412* is returned. As an alternative
 /// you can supply the etag in an attribute *rev* in the URL.
 ///
 /// @RESTDESCRIPTION
 /// Returns the document identified by *document-handle*. The returned
-/// document contains two special attributes: *_id* containing the document
-/// handle and *_rev* containing the revision.
+/// document contains three special attributes: *_id* containing the document
+/// handle, *_key* containing key which uniquely identifies a document
+/// in a given collection and *_rev* containing the revision.
 ///
 /// @RESTRETURNCODES
 ///
