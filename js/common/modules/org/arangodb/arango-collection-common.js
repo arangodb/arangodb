@@ -504,7 +504,7 @@ ArangoCollection.prototype.closedRange = function (name, left, right) {
 /// @startDocuBlock collectionGeo
 /// `collection.geo(location-attribute)`
 ///
-/// Looks up a geo index defined on attribute *location-attribute*.
+/// Looks up a geo index defined on attribute *location_attribute*.
 ///
 /// Returns a geo index object if an index was found. The *near* or
 /// *within* operators can then be used to execute a geo-spatial query on
@@ -512,17 +512,17 @@ ArangoCollection.prototype.closedRange = function (name, left, right) {
 ///
 /// This is useful for collections with multiple defined geo indexes.
 ///
-/// `collection.geo(location-attribute, true)`
+/// `collection.geo(location_attribute, true)`
 ///
-/// Looks up a geo index on a compound attribute *location-attribute*.
+/// Looks up a geo index on a compound attribute *location_attribute*.
 ///
 /// Returns a geo index object if an index was found. The *near* or
 /// *within* operators can then be used to execute a geo-spatial query on
 /// this particular index.
 ///
-/// `collection.geo(latitude-attribute, longitude-attribute)`
+/// `collection.geo(latitude_attribute, longitude_attribute)`
 ///
-/// Looks up a geo index defined on the two attributes *latitude-attribute*
+/// Looks up a geo index defined on the two attributes *latitude_attribute*
 /// and *longitude-attribute*.
 ///
 /// Returns a geo index object if an index was found. The *near* or
