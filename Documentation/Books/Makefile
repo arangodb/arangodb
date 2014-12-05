@@ -11,6 +11,11 @@ md-files:
 clean-md-files:
 	@for file in $(basename $(MD_FILES)); do rm -v $${file}.md; done
 
+clean-books:
+	@rm -rv books
+
+clean: clean-md-files clean-books
+
 .PHONY: build-books
 
 build-books: build-books-keep-md
