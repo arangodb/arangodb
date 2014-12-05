@@ -1268,6 +1268,7 @@ namespace triagens {
             _offset(offset), 
             _limit(limit),
             _fullCount(false) {
+
         }
 
         LimitNode (ExecutionPlan* plan,
@@ -1277,6 +1278,7 @@ namespace triagens {
             _offset(0), 
             _limit(limit),
             _fullCount(false) {
+
         }
         
         LimitNode (ExecutionPlan*, triagens::basics::Json const& base);
@@ -1303,10 +1305,13 @@ namespace triagens {
 
         virtual ExecutionNode* clone (ExecutionPlan* plan,
                                       bool withDependencies,
-                                      bool withProperties) const {
+                                      bool withProperties) const override final {
           auto c = new LimitNode(plan, _id, _offset, _limit);
+          if (_fullCount) {
+            c->setFullCount();
+          }
 
-          CloneHelper (c, plan, withDependencies, withProperties);
+          CloneHelper(c, plan, withDependencies, withProperties);
 
           return static_cast<ExecutionNode*>(c);
         }
