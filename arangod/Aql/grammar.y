@@ -126,7 +126,7 @@ void Aqlerror (YYLTYPE* locp,
 
 
 /* define operator precedence */
-%left T_COMMA T_RANGE
+%left T_COMMA 
 %right T_QUESTION T_COLON
 %right T_ASSIGN
 %left T_OR 
@@ -134,6 +134,7 @@ void Aqlerror (YYLTYPE* locp,
 %left T_EQ T_NE 
 %left T_IN 
 %left T_LT T_GT T_LE T_GE
+%left T_RANGE
 %left T_PLUS T_MINUS
 %left T_TIMES T_DIV T_MOD
 %right UMINUS UPLUS T_NOT

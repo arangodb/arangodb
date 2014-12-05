@@ -339,8 +339,13 @@ int64_t AqlValue::toInt64 () const {
   switch (_type) {
     case JSON: 
       return TRI_ToInt64Json(_json->json());
-    case RANGE: 
-      return _range->at(0);
+    case RANGE: {
+      size_t rangeSize = _range->size();
+      if (rangeSize == 1) {  
+        return _range->at(0);
+      }
+      return 0;
+    }
     case DOCVEC: 
     case SHAPED: 
     case EMPTY: 
