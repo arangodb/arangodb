@@ -1056,7 +1056,7 @@ static v8::Handle<v8::Value> JS_ExecuteAqlJson (v8::Arguments const& argv) {
       
     optionName = v8::String::New("ttl");
     if (argValue->Has(optionName)) {
-      ttl = TRI_ObjectToBoolean(argValue->Get(optionName));
+      ttl = TRI_ObjectToDouble(argValue->Get(optionName));
       ttl = (ttl <= 0.0 ? 30.0 : ttl);
     }
       
@@ -1216,7 +1216,7 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
       
     optionName = v8::String::New("ttl");
     if (argValue->Has(optionName)) {
-      ttl = TRI_ObjectToBoolean(argValue->Get(optionName));
+      ttl = TRI_ObjectToDouble(argValue->Get(optionName));
       ttl = (ttl <= 0.0 ? 30.0 : ttl);
     }
       
