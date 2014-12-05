@@ -1035,7 +1035,7 @@ void Ast::optimize () {
 
   // run the optimizations
   TraversalContext context;
-  _root = traverse(_root, preVisitor, visitor, postVisitor, &context);
+  this->_root = traverse(this->_root, preVisitor, visitor, postVisitor, &context);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
