@@ -9,6 +9,8 @@ v2.4.0 (XXXX-XX-XX)
 v2.3.2 (XXXX-XX-XX)
 -------------------
 
+* fixed range operator precedence 
+
 * limit default maximum number of plans created by AQL optimizer to 256 (from 1024)
 
 * make AQL optimizer not generate an extra plan if an index can be used, but modify
