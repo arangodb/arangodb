@@ -61,7 +61,8 @@ struct TRI_vocbase_col_s;
 
 struct TRI_replication_dump_t {
   TRI_replication_dump_t (TRI_vocbase_t* vocbase,
-                          size_t chunkSize)
+                          size_t chunkSize,
+                          bool includeSystem)
     : _vocbase(vocbase),
       _buffer(nullptr),
       _chunkSize(chunkSize),
@@ -71,7 +72,8 @@ struct TRI_replication_dump_t {
       _collectionNames(),
       _failed(false),
       _bufferFull(false),
-      _hasMore(false) {
+      _hasMore(false),
+      _includeSystem(includeSystem) {
  
     if (_chunkSize == 0) {
       // default chunk size
@@ -86,8 +88,10 @@ struct TRI_replication_dump_t {
   }
 
   ~TRI_replication_dump_t () {
-    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, _buffer);
-    _buffer = nullptr;
+    if (_buffer != nullptr) {
+      TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, _buffer);
+      _buffer = nullptr;
+    }
   }
 
   TRI_vocbase_t*               _vocbase;
@@ -100,6 +104,7 @@ struct TRI_replication_dump_t {
   bool                         _failed;
   bool                         _bufferFull;
   bool                         _hasMore;
+  bool                         _includeSystem;
 };
 
 // -----------------------------------------------------------------------------

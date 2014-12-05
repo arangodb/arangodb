@@ -262,7 +262,7 @@ void TRI_FreeJson (TRI_memory_zone_t*, TRI_json_t*);
 /// @brief returns a user printeable string
 ////////////////////////////////////////////////////////////////////////////////
 
-const char *TRI_GetTypeString(TRI_json_t* object);
+char const* TRI_GetTypeString(TRI_json_t* object);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determines the length of a list json

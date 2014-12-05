@@ -5,6 +5,33 @@ v2.4.0 (XXXX-XX-XX)
 
 * deprecated `Repository#modelPrototype`. Use `Repository#model` instead.
 
+* IMPORTANT CHANGE: by default, system collections are included in replication and all
+  replication API return values. This will lead to user accounts and credentials
+  data being replicated from master to slave servers. This may overwrite 
+  slave-specific database users.
+
+  If this is undesired, the `_users` collection can be excluded from replication
+  easily by setting the `includeSystem` attribute to `false` in the following commands:
+
+  * replication.sync({ includeSystem: false });
+  * replication.applier.properties({ includeSystem: false });
+
+  This will exclude all system collections (including `_aqlfunctions`, `_graphs` etc.)
+  from the initial synchronisation and the continuous replication.
+
+  If this is also undesired, it is also possible to specify a list of collections to
+  exclude from the initial synchronisation and the continuous replication using the
+  `restrictCollections` attribute, e.g.:
+  
+      replication.applier.properties({ 
+        includeSystem: true,
+        restrictType: "exclude",
+        restrictCollections: [ "_users", "_graphs", "foo" ] 
+      });
+
+  The HTTP API methods for fetching the replication inventory and for dumping collections
+  also support the `includeSystem` control flag via a URL parameter.
+
 
 v2.3.2 (XXXX-XX-XX)
 -------------------
@@ -17,6 +44,8 @@ v2.3.2 (XXXX-XX-XX)
   existing plans in place
 
 * fixed AQL cursor ttl (time-to-live) issue
+
+  Any user-specified cursor ttl value was not honored since 2.3.0.
 
 * fixed segfault in AQL query hash index setup with unknown shapes
 

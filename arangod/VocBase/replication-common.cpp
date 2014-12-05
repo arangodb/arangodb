@@ -61,7 +61,8 @@ void TRI_GetTimeStampReplication (char* dst,
 /// @brief determine whether a collection should be included in replication
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExcludeCollectionReplication (const char* name) {
+bool TRI_ExcludeCollectionReplication (char const* name,
+                                       bool includeSystem) {
   if (name == nullptr) {
     // name invalid
     return true;
@@ -72,20 +73,22 @@ bool TRI_ExcludeCollectionReplication (const char* name) {
     return false;
   }
 
-  if (TRI_EqualString(name, TRI_COL_NAME_REPLICATION) ||
-      TRI_EqualString(name, TRI_COL_NAME_TRANSACTION) ||
-      TRI_EqualString(name, TRI_COL_NAME_USERS) ||
-      TRI_IsPrefixString(name, TRI_COL_NAME_STATISTICS) ||
-      TRI_EqualString(name, "_aal") ||
-      TRI_EqualString(name, "_configuration") ||
-      TRI_EqualString(name, "_cluster_kickstarter_plans") ||
-      TRI_EqualString(name, "_fishbowl") ||
-      TRI_EqualString(name, "_modules") ||
-      TRI_EqualString(name, "_routing")) {
-    // these system collections will be excluded
+  if (! includeSystem) {
+    // do not include any system collections
     return true;
   }
-
+      
+  if (TRI_EqualString(name, TRI_COL_NAME_REPLICATION) ||
+      TRI_EqualString(name, TRI_COL_NAME_TRANSACTION) ||
+      TRI_IsPrefixString(name, TRI_COL_NAME_STATISTICS) ||
+      TRI_EqualString(name, "_configuration") ||
+      TRI_EqualString(name, "_cluster_kickstarter_plans") ||
+      TRI_EqualString(name, "_jobs") ||
+      TRI_EqualString(name, "_queues")) {
+    // these system collections will always be excluded
+    return true;
+  }
+  
   return false;
 }
 
