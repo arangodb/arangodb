@@ -728,7 +728,7 @@ static bool areDisjointRangeInfos (RangeInfo* lhs, RangeInfo* rhs) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief differenceRangeInfo: returns the difference of the constant parts of
 /// the given RangeInfo and the union of the RangeInfos (for the same var and
-/// attr) in the vector. Returns the nullptr if it is empty. 
+/// attr) in the vector. The method invalidates newRi if it is empty.
 ///
 /// Modifies newRi in-place.
 ////////////////////////////////////////////////////////////////////////////////
@@ -780,14 +780,48 @@ void RangeInfoMapVec::differenceRangeInfo (RangeInfo& newRi) {
       }
     }
   }
-  return;
+}
+
+void triagens::aql::differenceRangeInfoVecRangeInfo (std::vector<RangeInfo>& riv, 
+                                                     RangeInfo& newRi) {
+  TRI_ASSERT(newRi.isConstant()); // only apply this to constant range infos!
+  
+  for (auto oldRi: riv) {
+    TRI_ASSERT(oldRi.isConstant());
+    if (! areDisjointRangeInfos(&oldRi, &newRi)) {
+      int contained = containmentRangeInfos(&oldRi, &newRi);
+      if (contained == -1) { 
+        // oldRi is a subset of newRi, erase the old RI 
+        oldRi.invalidate();
+        // continuing finding the difference of the new one and existing RIs
+      } 
+      else if (contained == 1) {
+        // newRi is a subset of oldRi, disregard new
+        newRi.invalidate();
+        return;
+      } 
+      else {
+        // oldRi and newRi have non-empty intersection
+        int LoLo = CompareRangeInfoBound(oldRi._lowConst, newRi._lowConst, -1);
+        if (LoLo == 1) { // replace low bound of new with high bound of old
+          newRi._lowConst.assign(oldRi._highConst);
+          newRi._lowConst.setInclude(! oldRi._highConst.inclusive());
+        } 
+        else { // replace the high bound of the new with the low bound of the old
+          newRi._highConst.assign(oldRi._lowConst);
+          newRi._highConst.setInclude(! oldRi._lowConst.inclusive());
+        }
+      }
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief  differenceIndexOrAndRangeInfo: analogue of differenceRangeInfo
 ////////////////////////////////////////////////////////////////////////////////
 
-void triagens::aql::differenceIndexOrAndRangeInfo (IndexOrCondition* orCond, RangeInfo& newRi) {
+void triagens::aql::differenceIndexOrAndRangeInfo (IndexOrCondition* orCond, 
+                                                   RangeInfo& newRi) {
 
   for (IndexAndCondition andCond: *orCond) {
     for (size_t i = 0; i < andCond.size(); i++) {
