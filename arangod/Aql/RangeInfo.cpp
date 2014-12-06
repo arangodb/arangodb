@@ -570,39 +570,38 @@ std::unordered_set<std::string> RangeInfoMapVec::attributes (std::string const& 
 /// those RIMs in the right arg (which are not identical to an existing RIM) in
 /// a copy of the left arg.
 ///
-/// The return RIMV is new unless one of the arguments is empty.
+/// 
 ////////////////////////////////////////////////////////////////////////////////
 
 RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs, 
                                                            RangeInfoMapVec* rhs) {
  
-  if (lhs == nullptr || lhs->empty()) {
+  if (lhs == nullptr) {
+    return rhs;
+  }
+  
+  if (lhs->empty()) {
     delete lhs;
     return rhs;
   }
 
-  if (rhs == nullptr || rhs->empty()) {
+  if (rhs == nullptr) {
+    return lhs;
+  }
+  
+  if (rhs->empty()) {
     delete rhs;
     return lhs;
   }
-
-  auto rimv = new RangeInfoMapVec();
-
-  // this lhs already doesn't contain duplicate conditions
-  for (size_t i = 0; i < lhs->size(); i++) {
-    rimv->emplace_back((*lhs)[i]->clone());
-  }
-
-  delete lhs;
   
-  //avoid inserting identical conditions
+  //avoid inserting overlapping conditions
   for (size_t i = 0; i < rhs->size(); i++) {
     auto rim = new RangeInfoMap();
     for (auto x: (*rhs)[i]->_ranges) {
       for (auto y: x.second) {
         // take the difference of 
         RangeInfo ri = y.second.clone();
-        rimv->differenceRangeInfo(ri);
+        lhs->differenceRangeInfo(ri);
         if (ri.isValid()) { 
           // if ri is nullptr, then y.second is contained in an existing ri 
           rim->insert(ri);
@@ -610,18 +609,18 @@ RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs,
       }
     }
     if (! rim->empty()) {
-      rimv->emplace_back(rim);
+      lhs->emplace_back(rim);
     } else {
       delete rim;
     }
   }
   delete rhs;
-  return rimv;
+  return lhs;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief andCombineRangeInfoMaps: insert every RangeInfo in the right argument
-/// in the left argument
+/// @brief andCombineRangeInfoMaps: insert every RangeInfo in the <rhs> in the
+/// <lhs> and delete the <rhs>
 ////////////////////////////////////////////////////////////////////////////////
 
 RangeInfoMap* triagens::aql::andCombineRangeInfoMaps (RangeInfoMap* lhs, RangeInfoMap* rhs) {
@@ -647,21 +646,30 @@ RangeInfoMap* triagens::aql::andCombineRangeInfoMaps (RangeInfoMap* lhs, RangeIn
 RangeInfoMapVec* triagens::aql::andCombineRangeInfoMapVecs (RangeInfoMapVec* lhs, 
                                                             RangeInfoMapVec* rhs) {
   if (lhs == nullptr || lhs->empty()) {
-    delete rhs;
+    if (rhs != nullptr) {
+      delete rhs;
+    }
     return lhs;
   }
 
   if (rhs == nullptr || rhs->empty()) {
-    delete lhs;
+    if (lhs != nullptr) {
+      delete lhs;
+    }
     return rhs;
   }
 
-  auto rimv = new RangeInfoMapVec();
-
-  for (size_t i = 0; i < lhs->size(); i++) {
-    for (size_t j = 0; j < rhs->size(); j++) {
-      rimv->emplace_back(andCombineRangeInfoMaps((*lhs)[i]->clone(), (*rhs)[j]->clone()));
+  auto rimv = new RangeInfoMapVec(); // must be a new one!
+  try {
+    for (size_t i = 0; i < lhs->size(); i++) {
+      for (size_t j = 0; j < rhs->size(); j++) {
+        rimv->emplace_back(andCombineRangeInfoMaps((*lhs)[i]->clone(), (*rhs)[j]->clone()));
+      }
     }
+  }
+  catch (...) {
+    delete rimv;
+    throw;
   }
   delete lhs;
   delete rhs;
