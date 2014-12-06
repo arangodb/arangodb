@@ -853,13 +853,6 @@ namespace triagens {
         std::unordered_map<std::string, RangeInfo>* find (std::string const& var, size_t pos);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief isIdenticalToExisting: returns true if the input RangeInfo is
-/// identical to an existing RangeInfo at any position in the vector. 
-////////////////////////////////////////////////////////////////////////////////
-        
-        bool isIdenticalToExisting (RangeInfo);
-        
-////////////////////////////////////////////////////////////////////////////////
 /// @brief differenceRangeInfo: returns the difference of the constant parts of
 /// the given RangeInfo and the union of the RangeInfos (for the same var and
 /// attr) in the vector. Returns the nullptr if it is empty. //TODO update this
