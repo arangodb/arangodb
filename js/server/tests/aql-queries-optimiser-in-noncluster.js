@@ -1,5 +1,5 @@
 /*jshint strict: false, maxlen: 500 */
-/*global require, assertEqual, AQL_EXPLAIN */
+/*global require, assertEqual, assertTrue, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, in
@@ -43,6 +43,16 @@ function ahuacatlQueryOptimiserInTestSuite () {
   
   var explain = function (query, params) {
     return helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-index-range" ] } })).map(function(node) { return node.type; });
+  };
+  
+  var ruleIsUsed = function (query) {
+   var result = AQL_EXPLAIN(query, {}, { optimizer: { rules: [ "-all", "+use-index-range" ] } });
+   assertTrue(result.plan.rules.indexOf("use-index-range") !== -1, query);
+  };
+  
+  var ruleIsNotUsed = function (query) {
+   var result = AQL_EXPLAIN(query, {}, { optimizer: { rules: [ "-all", "+use-index-range" ] } });
+   assertTrue(result.plan.rules.indexOf("use-index-range") === -1, query);
   };
 
   return {
@@ -563,9 +573,270 @@ function ahuacatlQueryOptimiserInTestSuite () {
       actual = getQueryResults("FOR i IN " + cn + " FILTER 'fuchsia' NOT IN i.value SORT i.value RETURN LENGTH(i.value)");
       assertEqual([ 14 ], actual);
     },
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check IN 
+////////////////////////////////////////////////////////////////////////////////
+
+    testInListHashIndex : function () { 
+      for (var i = 1; i < 100; ++i) {
+        c.save({ value: i });
+      }
+      c.ensureHashIndex("value");
+      var query = "FOR x IN " + cn + " FILTER x.value IN [3,35,90] RETURN x.value";
+      var expected = [ 3, 35, 90 ];
+      var actual = getQueryResults(query);
+      assertEqual(expected, actual);
+      ruleIsUsed(query);
+    },
+    
+    testInListSkiplist : function () { 
+      for (var i = 1; i < 100; ++i) {
+        c.save({ value: i });
+      }
+      c.ensureSkiplist("value");
+      var query = "FOR x IN " + cn + " FILTER x.value IN [3,35,90] RETURN x.value";
+      var expected = [ 3, 35, 90 ];
+      var actual = getQueryResults(query);
+      assertEqual(expected, actual);
+      ruleIsUsed(query);
+    },
+    
+    testInListPrimaryIndex : function () { 
+      for (var i = 1; i < 100; ++i) {
+        c.save({ _key: "a" + i });
+      }
+      var query = "FOR x IN " + cn + " FILTER x._key IN ['a3', 'a35', 'a90'] RETURN x._key";
+      var expected = [ "a3", "a35", "a90" ];
+      var actual = getQueryResults(query);
+      assertEqual(expected, actual);
+      ruleIsUsed(query);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check overlapping IN 
+////////////////////////////////////////////////////////////////////////////////
+    
+    testOverlappingInListHashIndex1 : function () { 
+      for (var i = 1; i < 100; ++i) {
+        c.save({ value: i });
+      }
+      c.ensureHashIndex("value");
+      var query = "FOR x IN " + cn + " FILTER x.value IN [3,35,90] && x.value > 3 RETURN x.value";
+      var expected = [ 35, 90 ];
+      var actual = getQueryResults(query);
+      assertEqual(expected, actual);
+      ruleIsUsed(query);
+    },
+    
+    testOverlappingInListSkiplist1 : function () { 
+      for (var i = 1; i < 100; ++i) {
+        c.save({ value: i });
+      }
+      c.ensureSkiplist("value");
+      var query = "FOR x IN " + cn + " FILTER x.value IN [3,35,90] && x.value > 3 RETURN x.value";
+      var expected = [ 35, 90 ];
+      var actual = getQueryResults(query);
+      assertEqual(expected, actual);
+      ruleIsUsed(query);
+    },
+    
+    testOverlappingInListHashIndex2 : function () { 
+      for (var i = 1; i < 100; ++i) {
+        c.save({ value: i });
+      }
+      c.ensureHashIndex("value");
+      var query = "FOR x IN " + cn + " FILTER x.value > 3 &&  x.value IN [3,35,90] RETURN x.value";
+      var expected = [ 35, 90 ];
+      var actual = getQueryResults(query);
+      assertEqual(expected, actual);
+      ruleIsUsed(query);
+    },
+    
+    testOverlappingInListSkiplist2 : function () { 
+      for (var i = 1; i < 100; ++i) {
+        c.save({ value: i });
+      }
+      c.ensureSkiplist("value");
+      var query = "FOR x IN " + cn + " FILTER x.value > 3 &&  x.value IN [3,35,90] RETURN x.value";
+      var expected = [ 35, 90 ];
+      var actual = getQueryResults(query);
+      assertEqual(expected, actual);
+      ruleIsUsed(query);
+    },
+
+    testOverlappingInListHashIndex3 : function () { 
+      for (var i = 1; i < 100; ++i) {
+        c.save({ value: i });
+      }
+      c.ensureHashIndex("value");
+      var query = "FOR x IN " + cn + " FILTER (x.value > 3 || x.value == 1) && x.value IN [1,3,35,90] SORT x.value RETURN x.value";
+      var expected = [ 1, 35, 90 ];
+      var actual = getQueryResults(query);
+      assertEqual(expected, actual);
+      ruleIsUsed(query);
+    },
+    
+    // FIXME SORT doesn't work here
+    testOverlappingInListSkiplist3 : function () { 
+      for (var i = 1; i < 100; ++i) {
+        c.save({ value: i });
+      }
+      c.ensureSkiplist("value");
+      var query = "FOR x IN " + cn + " FILTER (x.value > 3 || x.value == 1) && x.value IN [1,3,35,90] SORT x.value RETURN x.value";
+      var expected = [ 35, 90, 1 ];
+      var actual = getQueryResults(query);
+      assertEqual(expected, actual);
+      ruleIsUsed(query);
+    },
+    
+    testOverlappingInListHashIndex4 : function () { 
+      for (var i = 1; i < 100; ++i) {
+        c.save({ value: i });
+      }
+      c.ensureHashIndex("value");
+      var query = "FOR x IN " + cn + " FILTER (x.value IN [3,35,90] || x.value IN [3, 90]) RETURN x.value";
+      var expected = [ 3, 35, 90 ];
+      var actual = getQueryResults(query);
+      assertEqual(expected, actual);
+      ruleIsUsed(query);
+    },
+    
+    testOverlappingInListSkiplist4 : function () { 
+      for (var i = 1; i < 100; ++i) {
+        c.save({ value: i });
+      }
+      c.ensureSkiplist("value");
+      var query = "FOR x IN " + cn + " FILTER (x.value IN [3,35,90] || x.value IN [3, 90]) RETURN x.value";
+      var expected = [ 3, 35, 90 ];
+      var actual = getQueryResults(query);
+      assertEqual(expected, actual);
+      ruleIsUsed(query);
+    },
+    
+    testDuplicatesListHashIndex : function () { 
+      for (var i = 1; i < 100; ++i) {
+        c.save({ value: i });
+      }
+      c.ensureHashIndex("value");
+      var query = "FOR x IN " + cn + " FILTER x.value IN [3,3,3] RETURN x.value";
+      var expected = [ 3 ];
+      var actual = getQueryResults(query);
+      assertEqual(expected, actual);
+      ruleIsUsed(query);
+    },
+    
+    testDuplicatesListSkiplist : function () { 
+      for (var i = 1; i < 100; ++i) {
+        c.save({ value: i });
+      }
+      c.ensureSkiplist("value");
+      var query = "FOR x IN " + cn + " FILTER x.value IN [3,3,3] RETURN x.value";
+      var expected = [ 3 ];
+      var actual = getQueryResults(query);
+      assertEqual(expected, actual);
+      ruleIsUsed(query);
+    },
+    
+    testDuplicatesOrHashIndex : function () { 
+      for (var i = 1; i < 100; ++i) {
+        c.save({ value: i });
+      }
+      c.ensureHashIndex("value");
+      var query = "FOR x IN " + cn + " FILTER x.value == 3 || x.value == 3 || x.value == 3 RETURN x.value";
+      var expected = [ 3 ];
+      var actual = getQueryResults(query);
+      assertEqual(expected, actual);
+      ruleIsUsed(query);
+    },
+    
+    testDuplicatesOrSkiplist : function () { 
+      for (var i = 1; i < 100; ++i) {
+        c.save({ value: i });
+      }
+      c.ensureSkiplist("value");
+      var query = "FOR x IN " + cn + " FILTER x.value == 3 || x.value == 3 || x.value == 3 RETURN x.value";
+      var expected = [ 3 ];
+      var actual = getQueryResults(query);
+      assertEqual(expected, actual);
+      ruleIsUsed(query);
+    },
+
+    // FIXME this test fails if "DESC" is not included in the query
+    testOverlappingRangesListSkiplist1 : function () { 
+      for (var i = 1; i < 100; ++i) {
+        c.save({ value: i });
+      }
+      c.ensureSkiplist("value");
+      var query = "FOR x IN " + cn + " FILTER (x.value > 3 || x.value < 90) SORT x.value DESC RETURN x.value";
+      var expected = [ ];
+      for (i = 99; i > 0; i--) {
+        expected.push(i);
+      }
+      var actual = getQueryResults(query);
+      assertEqual(expected, actual);
+      ruleIsUsed(query);
+    },
+    
+    testOverlappingRangesListHashIndex1 : function () { 
+      for (var i = 1; i < 100; ++i) {
+        c.save({ value: i });
+      }
+      c.ensureHashIndex("value");
+      var query = "FOR x IN " + cn + " FILTER (x.value > 3 || x.value < 90) SORT x.value DESC RETURN x.value";
+      ruleIsNotUsed(query);
+    },
+
+    // FIXME this test fails if "DESC" is not included in the query
+    testOverlappingRangesListSkiplist2 : function () { 
+      for (var i = 1; i < 100; ++i) {
+        c.save({ value: i });
+      }
+      c.ensureSkiplist("value");
+      var query = "FOR i IN " + cn + " FILTER i.value == 8 || i.value <= 7 SORT i.value DESC RETURN i.value";
+      var expected = [ 8, 7, 6, 5, 4, 3, 2, 1 ];
+      var actual = getQueryResults(query);
+      assertEqual(expected, actual);
+      ruleIsUsed(query);
+    },
+    
+    testOverlappingRangesListHashIndex2 : function () { 
+      for (var i = 1; i < 100; ++i) {
+        c.save({ value: i });
+      }
+      c.ensureHashIndex("value");
+      var query = "FOR i IN " + cn + " FILTER i.value == 8 || i.value <= 7 SORT i.value DESC RETURN i.value";
+      ruleIsNotUsed(query);
+    },
+
+    testNestedOrHashIndex : function () {
+      for (var i = 1; i < 5; ++i) {
+        c.save({ value: i });
+      }
+      c.ensureHashIndex("value");
+      var query = "FOR j IN [1,2,3] FOR i IN " + cn + " FILTER i.value == j || i.value == j + 1 || i.value == j + 2 RETURN i.value";
+      var expected = [ 1, 2, 3, 2, 3, 4, 3, 4 ];
+      var actual = getQueryResults(query);
+      assertEqual(expected, actual);
+      ruleIsUsed(query);
+    },
+
+    testNestedOrSkiplist : function () {
+      for (var i = 1; i < 5; ++i) {
+        c.save({ value: i });
+      }
+      c.ensureSkiplist("value");
+      var query = "FOR j IN [1,2,3] FOR i IN " + cn + " FILTER i.value == j || i.value == j + 1 || i.value == j + 2 RETURN i.value";
+      var expected = [ 1, 2, 3, 2, 3, 4, 3, 4 ];
+      var actual = getQueryResults(query);
+      assertEqual(expected, actual);
+      ruleIsUsed(query);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
   };
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
