@@ -1583,7 +1583,7 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
     searchValue._values = nullptr;
   };
 
-  auto setupSearchValue = [&](size_t pos) {
+  auto setupSearchValue = [&](size_t pos) -> bool {
     size_t const n = hashIndex->_paths._length;
     searchValue._length = 0;
     searchValue._values = static_cast<TRI_shaped_json_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, 
@@ -1605,31 +1605,39 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
         if (x._attr == std::string(name)) {    //found attribute
           auto shaped = TRI_ShapedJsonJson(shaper, x._lowConst.bound().json(), false); 
           // here x->_low->_bound = x->_high->_bound 
+          if (shaped == nullptr) {
+            return false;
+          }
           searchValue._values[i] = *shaped;
           TRI_Free(shaper->_memoryZone, shaped);
           break; 
         }
       }
     }
+    return true;
   };
   
   for (size_t i = 0; i < ranges.size(); i++) {
-    setupSearchValue(i);  
-    TRI_vector_pointer_t list = TRI_LookupHashIndex(idx, &searchValue);
-    destroySearchValue();
-  
-    size_t const n = TRI_LengthVectorPointer(&list);
-    try {
-      for (size_t i = 0; i < n; ++i) {
-        _documents.emplace_back(* (static_cast<TRI_doc_mptr_t*>(TRI_AtVectorPointer(&list, i))));
+    if (setupSearchValue(i)) {
+      TRI_vector_pointer_t list = TRI_LookupHashIndex(idx, &searchValue);
+      destroySearchValue();
+
+      size_t const n = TRI_LengthVectorPointer(&list);
+      try {
+        for (size_t i = 0; i < n; ++i) {
+          _documents.emplace_back(* (static_cast<TRI_doc_mptr_t*>(TRI_AtVectorPointer(&list, i))));
+        }
+
+        _engine->_stats.scannedIndex += static_cast<int64_t>(n);
+        TRI_DestroyVectorPointer(&list);
       }
-    
-      _engine->_stats.scannedIndex += static_cast<int64_t>(n);
-      TRI_DestroyVectorPointer(&list);
+      catch (...) {
+        TRI_DestroyVectorPointer(&list);
+        throw;
+      }
     }
-    catch (...) {
-      TRI_DestroyVectorPointer(&list);
-      throw;
+    else {
+      destroySearchValue();
     }
   }
   LEAVE_BLOCK;
