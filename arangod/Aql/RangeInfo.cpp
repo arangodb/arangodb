@@ -261,49 +261,6 @@ void RangeInfo::fuse (RangeInfo const& that) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief isIdenticalRangeInfo: check if lhs and rhs are identical!
-////////////////////////////////////////////////////////////////////////////////
-
-static bool isIdenticalRangeInfo (RangeInfo lhs, RangeInfo rhs) {
-  
-  if (CompareRangeInfoBound(lhs._lowConst, rhs._lowConst, -1) != 0) {
-    return false;
-  }
-  if (CompareRangeInfoBound(lhs._highConst, rhs._highConst, 1) != 0) {
-    return false;
-  }
-
-  if (lhs._lows.size() != rhs._lows.size()) {
-    return false;
-  }
-
-  if (lhs._highs.size() != rhs._highs.size()) {
-    return false;
-  }
-  
-  auto lhsIt = lhs._lows.begin();
-  auto rhsIt = rhs._lows.begin();
-  while (lhsIt != lhs._lows.end()) {
-    if (TRI_CompareValuesJson(lhsIt->bound().json(), rhsIt->bound().json()) != 0) {
-      return false;
-    }
-    lhsIt++;
-    rhsIt++;
-  }
-
-  lhsIt = lhs._highs.begin();
-  rhsIt = rhs._highs.begin();
-  while (lhsIt != lhs._highs.end()) {
-    if (TRI_CompareValuesJson(lhsIt->bound().json(), rhsIt->bound().json()) != 0) {
-      return false;
-    }
-    lhsIt++;
-    rhsIt++;
-  }
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief class RangeInfoMap
 ////////////////////////////////////////////////////////////////////////////////
         
@@ -505,22 +462,6 @@ std::unordered_map<std::string, RangeInfo>* RangeInfoMapVec::find (
   }
   return _rangeInfoMapVec[pos]->find(var);
 } 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief isIdenticalToExisting: returns true if the input RangeInfo is
-/// identical to an existing RangeInfo at any position in the vector. 
-////////////////////////////////////////////////////////////////////////////////
-
-bool RangeInfoMapVec::isIdenticalToExisting (RangeInfo x) {
-
-  for (auto rim: _rangeInfoMapVec) {
-    RangeInfo* ri = rim->find(x._var, x._attr);
-    if (ri != nullptr && isIdenticalRangeInfo(*ri, x)){
-      return true;
-    }
-  }
-  return false;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief isMapped: returns true if <var> in every RIM in the vector
