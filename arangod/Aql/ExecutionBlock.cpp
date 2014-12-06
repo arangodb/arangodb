@@ -1072,7 +1072,12 @@ bool IndexRangeBlock::initRanges () {
                                   RangeInfoBound(json), 
                                   RangeInfoBound(json), 
                                   true);
-              differenceRangeInfoVecRangeInfo(riv, ri);
+              for (auto oldRi: riv) {
+                differenceRangeInfos(oldRi, ri);
+                if (! ri.isValid()) {
+                  break;
+                }
+              }
               if (ri.isValid()) {
                 riv.push_back(ri);
               }
@@ -1119,11 +1124,16 @@ bool IndexRangeBlock::initRanges () {
                 ("isConstant", Json(true))
                 ("bound", bound.at(static_cast<int>(j)).copy());
               auto ri = RangeInfo(r._var, 
-                  r._attr, 
-                  RangeInfoBound(json), 
-                  RangeInfoBound(json), 
-                  true);
-              differenceRangeInfoVecRangeInfo(riv, ri);
+                                  r._attr, 
+                                  RangeInfoBound(json), 
+                                  RangeInfoBound(json), 
+                                  true);
+              for (auto oldRi: riv) {
+                differenceRangeInfos(oldRi, ri);
+                if (! ri.isValid()) {
+                  break;
+                }
+              }
               if (ri.isValid()) {
                 riv.push_back(ri);
               }

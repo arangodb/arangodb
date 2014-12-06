@@ -341,11 +341,19 @@ void RangeInfoMap::erase (RangeInfo* ri) {
         
 RangeInfoMap* RangeInfoMap::clone () {
   auto rim = new RangeInfoMap();
-  for (auto x: _ranges) {
-    for (auto y: x.second) {
-      rim->insert(y.second.clone());
+  
+  try { 
+    for (auto x: _ranges) {
+      for (auto y: x.second) {
+        rim->insert(y.second.clone());
+      }
     }
   }
+  catch (...) {
+    delete rim;
+    throw;
+  }
+        
   return rim;
 }
 
@@ -464,7 +472,7 @@ std::unordered_map<std::string, RangeInfo>* RangeInfoMapVec::find (
 } 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief isMapped: returns true if <var> in every RIM in the vector
+/// @brief isMapped: returns true if <var> is in every RIM in the vector
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RangeInfoMapVec::isMapped(std::string const& var) {
@@ -493,7 +501,7 @@ std::vector<size_t> RangeInfoMapVec::validPositions(std::string const& var) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief attributes: returns a vector of the names of the attributes for the
+/// @brief attributes: returns the set of names of the attributes for the
 /// variable var stored in the RIM vector.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -538,21 +546,27 @@ RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs,
   //avoid inserting overlapping conditions
   for (size_t i = 0; i < rhs->size(); i++) {
     auto rim = new RangeInfoMap();
-    for (auto x: (*rhs)[i]->_ranges) {
-      for (auto y: x.second) {
-        // take the difference of 
-        RangeInfo ri = y.second.clone();
-        lhs->differenceRangeInfo(ri);
-        if (ri.isValid()) { 
-          // if ri is nullptr, then y.second is contained in an existing ri 
-          rim->insert(ri);
+    try {
+      for (auto x: (*rhs)[i]->_ranges) {
+        for (auto y: x.second) {
+          // take the difference of 
+          RangeInfo ri = y.second.clone();
+          lhs->differenceRangeInfo(ri);
+          if (ri.isValid()) { 
+            // if ri is nullptr, then y.second is contained in an existing ri 
+            rim->insert(ri);
+          }
         }
       }
+      if (! rim->empty()) {
+        lhs->emplace_back(rim);
+      } else {
+        delete rim;
+      }
     }
-    if (! rim->empty()) {
-      lhs->emplace_back(rim);
-    } else {
+    catch (...) {
       delete rim;
+      throw;
     }
   }
   delete rhs;
@@ -621,11 +635,11 @@ RangeInfoMapVec* triagens::aql::andCombineRangeInfoMapVecs (RangeInfoMapVec* lhs
 // returns -1 if lhs is a (not necessarily proper) subset of rhs, 0 if neither is
 // contained in the other, and, 1 if rhs is contained in lhs. 
 
-static int containmentRangeInfos (RangeInfo* lhs, RangeInfo* rhs) {
+static int containmentRangeInfos (RangeInfo const& lhs, RangeInfo const& rhs) {
   
-  int LoLo = CompareRangeInfoBound(lhs->_lowConst, rhs->_lowConst, -1); 
+  int LoLo = CompareRangeInfoBound(lhs._lowConst, rhs._lowConst, -1); 
   // -1 if lhs is tighter than rhs, 1 if rhs tighter than lhs
-  int HiHi = CompareRangeInfoBound(lhs->_highConst, rhs->_highConst, 1); 
+  int HiHi = CompareRangeInfoBound(lhs._highConst, rhs._highConst, 1); 
   // -1 if lhs is tighter than rhs, 1 if rhs tighter than lhs
   // 0 if equal
   if (LoLo == HiHi) {
@@ -637,14 +651,14 @@ static int containmentRangeInfos (RangeInfo* lhs, RangeInfo* rhs) {
 // returns true if the constant parts of lhs and rhs are disjoint and false
 // otherwise
 
-static bool areDisjointRangeInfos (RangeInfo* lhs, RangeInfo* rhs) {
+static bool areDisjointRangeInfos (RangeInfo const& lhs, RangeInfo const& rhs) {
  
   int HiLo;
-  if (lhs->_highConst.isDefined() && rhs->_lowConst.isDefined()) {
-    HiLo = TRI_CompareValuesJson(lhs->_highConst.bound().json(), 
-        rhs->_lowConst.bound().json());
+  if (lhs._highConst.isDefined() && rhs._lowConst.isDefined()) {
+    HiLo = TRI_CompareValuesJson(lhs._highConst.bound().json(), 
+        rhs._lowConst.bound().json());
     if ((HiLo == -1) ||
-      (HiLo == 0 && (! lhs->_highConst.inclusive() ||! rhs->_lowConst.inclusive()))) {
+      (HiLo == 0 && (! lhs._highConst.inclusive() ||! rhs._lowConst.inclusive()))) {
       return true;
     }
   } 
@@ -652,11 +666,11 @@ static bool areDisjointRangeInfos (RangeInfo* lhs, RangeInfo* rhs) {
   //else compare lhs low > rhs high 
 
   int LoHi;
-  if (lhs->_lowConst.isDefined() && rhs->_highConst.isDefined()) {
-    LoHi = TRI_CompareValuesJson(lhs->_lowConst.bound().json(), 
-        rhs->_highConst.bound().json());
+  if (lhs._lowConst.isDefined() && rhs._highConst.isDefined()) {
+    LoHi = TRI_CompareValuesJson(lhs._lowConst.bound().json(), 
+        rhs._highConst.bound().json());
     return (LoHi == 1) || 
-      (LoHi == 0 && (! lhs->_lowConst.inclusive() ||! rhs->_highConst.inclusive()));
+      (LoHi == 0 && (! lhs._lowConst.inclusive() ||! rhs._highConst.inclusive()));
   } 
   // in this case, either:
   // a) lhs.hi defined and rhs.lo undefined; or
@@ -676,180 +690,66 @@ static bool areDisjointRangeInfos (RangeInfo* lhs, RangeInfo* rhs) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief differenceRangeInfo: returns the difference of the constant parts of
-/// the given RangeInfo and the union of the RangeInfos (for the same var and
-/// attr) in the vector. The method invalidates newRi if it is empty.
+/// the given RangeInfos. 
 ///
-/// Modifies newRi in-place.
+/// Modifies either lhs or rhs in place, so that the constant parts of lhs 
+/// and rhs are disjoint, and the union of the modified lhs and rhs equals the
+/// union of the originals.
 ////////////////////////////////////////////////////////////////////////////////
+
+void triagens::aql::differenceRangeInfos (RangeInfo& lhs, RangeInfo& rhs) {
+  TRI_ASSERT(lhs._var == lhs._var);
+  TRI_ASSERT(lhs._attr == rhs._attr);
+  
+  if (! areDisjointRangeInfos(lhs, rhs)) {
+    int contained = containmentRangeInfos(lhs, rhs);
+    if (contained == -1) { 
+      // lhs is a subset of rhs, disregard lhs
+      // unassign _lowConst and _highConst
+      if (lhs.isConstant()) {
+        lhs.invalidate();
+      } else {
+        RangeInfoBound rib;
+        lhs._lowConst.assign(rib);
+        lhs._highConst.assign(rib);
+      }
+    } 
+    else if (contained == 1) {
+      // rhs is a subset of lhs, disregard rhs
+      // unassign _lowConst and _highConst
+      if (rhs.isConstant()) {
+        rhs.invalidate();
+      } else {
+        RangeInfoBound rib;
+        rhs._lowConst.assign(rib);
+        rhs._highConst.assign(rib);
+      }
+    } 
+    else {
+      // lhs and rhs have non-empty intersection
+      int LoLo = CompareRangeInfoBound(lhs._lowConst, rhs._lowConst, -1);
+      if (LoLo == 1) { // replace low bound of new with high bound of old
+        rhs._lowConst.assign(lhs._highConst);
+        rhs._lowConst.setInclude(! lhs._highConst.inclusive());
+      } 
+      else { // replace the high bound of the new with the low bound of the old
+        rhs._highConst.assign(lhs._lowConst);
+        rhs._highConst.setInclude(! lhs._lowConst.inclusive());
+      }
+    }
+  }
+}
 
 void RangeInfoMapVec::differenceRangeInfo (RangeInfo& newRi) {
   
   for (auto rim: _rangeInfoMapVec) {
     RangeInfo* oldRi = rim->find(newRi._var, newRi._attr);
-    if (oldRi != nullptr && ! areDisjointRangeInfos(oldRi, &newRi)) {
-      int contained = containmentRangeInfos(oldRi, &newRi);
-      if (contained == -1) { 
-        // oldRi is a subset of newRi, erase the old RI 
-        // continuing finding the difference of the new one and existing RIs
-        if (oldRi->isConstant()) {
-          rim->erase(oldRi);
-        } 
-        else {
-          // unassign _lowConst and _highConst
-          RangeInfoBound rib;
-          oldRi->_lowConst.assign(rib);
-          oldRi->_highConst.assign(rib);
-        }
-      } 
-      else if (contained == 1) {
-        // newRi is a subset of oldRi, disregard new
-        if (newRi.isConstant()) {
-          newRi.invalidate();
-          return;
-        } 
-        else {
-          // unassign _lowConst and _highConst
-          RangeInfoBound rib;
-          newRi._lowConst.assign(rib);
-          newRi._highConst.assign(rib);
-          return;
-        }
-      } 
-      else {
-        // oldRi and newRi have non-empty intersection
-        int LoLo = CompareRangeInfoBound(oldRi->_lowConst, newRi._lowConst, -1);
-        if (LoLo == 1) { // replace low bound of new with high bound of old
-          newRi._lowConst.assign(oldRi->_highConst);
-          newRi._lowConst.setInclude(! oldRi->_highConst.inclusive());
-        } 
-        else { // replace the high bound of the new with the low bound of the old
-          newRi._highConst.assign(oldRi->_lowConst);
-          newRi._highConst.setInclude(! oldRi->_lowConst.inclusive());
-        }
+    if (oldRi != nullptr) {
+      differenceRangeInfos(*oldRi, newRi);
+      if (! newRi.isValid() || 
+          (newRi._lowConst.bound().isEmpty() && newRi._highConst.bound().isEmpty())){
+        break;
       }
     }
   }
 }
-
-void triagens::aql::differenceRangeInfoVecRangeInfo (std::vector<RangeInfo>& riv, 
-                                                     RangeInfo& newRi) {
-  TRI_ASSERT(newRi.isConstant()); // only apply this to constant range infos!
-  
-  for (auto oldRi: riv) {
-    TRI_ASSERT(oldRi.isConstant());
-    if (! areDisjointRangeInfos(&oldRi, &newRi)) {
-      int contained = containmentRangeInfos(&oldRi, &newRi);
-      if (contained == -1) { 
-        // oldRi is a subset of newRi, erase the old RI 
-        oldRi.invalidate();
-        // continuing finding the difference of the new one and existing RIs
-      } 
-      else if (contained == 1) {
-        // newRi is a subset of oldRi, disregard new
-        newRi.invalidate();
-        return;
-      } 
-      else {
-        // oldRi and newRi have non-empty intersection
-        int LoLo = CompareRangeInfoBound(oldRi._lowConst, newRi._lowConst, -1);
-        if (LoLo == 1) { // replace low bound of new with high bound of old
-          newRi._lowConst.assign(oldRi._highConst);
-          newRi._lowConst.setInclude(! oldRi._highConst.inclusive());
-        } 
-        else { // replace the high bound of the new with the low bound of the old
-          newRi._highConst.assign(oldRi._lowConst);
-          newRi._highConst.setInclude(! oldRi._lowConst.inclusive());
-        }
-      }
-    }
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief  differenceIndexOrAndRangeInfo: analogue of differenceRangeInfo
-////////////////////////////////////////////////////////////////////////////////
-
-void triagens::aql::differenceIndexOrAndRangeInfo (IndexOrCondition* orCond, 
-                                                   RangeInfo& newRi) {
-
-  for (IndexAndCondition andCond: *orCond) {
-    for (size_t i = 0; i < andCond.size(); i++) {
-      RangeInfo oldRi = andCond[i];
-      if (! areDisjointRangeInfos(&oldRi, &newRi)) {
-        int contained = containmentRangeInfos(&oldRi, &newRi);
-        if (contained == -1) { 
-          // oldRi is a subset of newRi, erase the old RI 
-          // continuing finding the difference of the new one and existing RIs
-          if (oldRi.isConstant()) {
-            oldRi.invalidate();
-          } 
-          else {
-            // unassign _lowConst and _highConst
-            RangeInfoBound rib;
-            oldRi._lowConst.assign(rib);
-            oldRi._highConst.assign(rib);
-          }
-        } 
-        else if (contained == 1) {
-          // newRi is a subset of oldRi, disregard new
-          if (newRi.isConstant()) {
-            newRi.invalidate();
-            return; // i.e. do nothing on return of this function
-          } else {
-            // unassign _lowConst and _highConst
-            RangeInfoBound rib;
-            newRi._lowConst.assign(rib);
-            newRi._highConst.assign(rib);
-            return;
-          }
-        } 
-        else {
-          // oldRi and newRi have non-empty intersection
-          int LoLo = CompareRangeInfoBound(oldRi._lowConst, newRi._lowConst, -1);
-          if (LoLo == 1) { // replace low bound of new with high bound of old
-            newRi._lowConst.assign(oldRi._highConst);
-            newRi._lowConst.setInclude(! oldRi._highConst.inclusive());
-          } 
-          else { // replace the high bound of the new with the low bound of the old
-            newRi._highConst.assign(oldRi._lowConst);
-            newRi._highConst.setInclude(! oldRi._lowConst.inclusive());
-          }
-        }
-      }
-    }
-  }
-  return;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief  orCombineIndexOrAndIndexAnd: analogue of orCombineRangeInfoMapVecs
-////////////////////////////////////////////////////////////////////////////////
-
-void triagens::aql::orCombineIndexOrAndIndexAnd (
-    IndexOrCondition* orCond, IndexAndCondition andCond) {
- 
-  if (orCond->empty()) {
-    orCond->push_back(andCond);
-    return;
-  }
-
-  if (andCond.empty()) {
-    return;
-  }
-
-  //avoid inserting overlapping ranges
-  IndexAndCondition newAnd;
-  for (RangeInfo x: andCond) {
-    differenceIndexOrAndRangeInfo(orCond, x);
-    if (x.isValid()) { 
-      // if ri is invalid, then it is contained in an existing ri 
-      newAnd.emplace_back(x);
-    }
-  }
-
-  if (! newAnd.empty()) {
-    orCond->emplace_back(newAnd);
-  }
-}
-
-
