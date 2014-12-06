@@ -1021,7 +1021,7 @@ bool IndexRangeBlock::initRanges () {
     //auto newCondition = std::unique_ptr<IndexOrCondition>(new IndexOrCondition());
     auto newCondition = new IndexOrCondition();
 
-    for (size_t i = 0; i < en->_ranges[i].size(); i++) {
+    for (size_t i = 0; i < en->_ranges.size(); i++) {
       
       for (auto r : en->_ranges[i]) {
         auto newOr = new IndexOrCondition();
@@ -1043,29 +1043,37 @@ bool IndexRangeBlock::initRanges () {
           posInExpressions++;
 
           if (a._type == AqlValue::JSON || a._type == AqlValue::SHAPED) {
-            Json json(Json::Array, 3);
+            Json bound;
             if (a._type == AqlValue::JSON) {
-              json("include", Json(l.inclusive()))
-                  ("isConstant", Json(true))
-                  ("bound", *(a._json));
+              bound = *(a._json);
               a.destroy();  // the TRI_json_t* of a._json has been stolen
             } else {
-              json("include", Json(l.inclusive()))
-                  ("isConstant", Json(true))
-                  ("bound", a.toJson(_trx, myCollection));
+              bound = a.toJson(_trx, myCollection);
               a.destroy();  // the TRI_json_t* of a._json has been stolen
             }
-            if (json.isList()) { 
+            if (bound.isList()) { 
               std::vector<RangeInfo> riv;
-              for (i = 0; i < json.size(); i++) {
-                riv.push_back(RangeInfo(r._var, 
-                                        r._attr, 
-                                        RangeInfoBound(json.at(i)),
-                                        RangeInfoBound(json.at(i)), 
-                                        true));
+              for (size_t j = 0; j < bound.size(); j++) {
+                Json json(Json::Array, 3);
+                json("include", Json(l.inclusive()))
+                    ("isConstant", Json(true))
+                    ("bound", bound.at(static_cast<int>(j)).copy());
+                auto ri = RangeInfo(r._var, 
+                                    r._attr, 
+                                    RangeInfoBound(json), 
+                                    RangeInfoBound(json), 
+                                    true);
+                differenceIndexOrAndRangeInfo(newOr, ri);
+                if (ri.isValid()) {
+                  riv.push_back(ri);
+                }
               }
               newOr = andCombineIndexOrAndRangeInfoVec(newOr, riv);
             } else {
+              Json json(Json::Array, 3);
+              json("include", Json(l.inclusive()))
+                  ("isConstant", Json(true))
+                  ("bound", Json(TRI_UNKNOWN_MEM_ZONE, bound.steal()));
               auto rib = RangeInfoBound(json);
               orCombineIndexOrAndRangeInfoBoundLow(newOr, rib);
             }
@@ -1085,29 +1093,37 @@ bool IndexRangeBlock::initRanges () {
                                   &myCollection);
           posInExpressions++;
           if (a._type == AqlValue::JSON || a._type == AqlValue::SHAPED) {
-            Json json(Json::Array, 3);
+            Json bound;
             if (a._type == AqlValue::JSON) {
-              json("include", Json(h.inclusive()))
-                  ("isConstant", Json(true))
-                  ("bound", *(a._json));
+              bound = *(a._json);
               a.destroy();  // the TRI_json_t* of a._json has been stolen
             } else {
-              json("include", Json(h.inclusive()))
-                  ("isConstant", Json(true))
-                  ("bound", a.toJson(_trx, myCollection));
+              bound = a.toJson(_trx, myCollection);
               a.destroy();  // the TRI_json_t* of a._json has been stolen
             }
-            if (json.isList()) { 
+            if (bound.isList()) { 
               std::vector<RangeInfo> riv;
-              for (i = 0; i < json.size(); i++) {
-                auto ri = RangeInfo(r._var, r._attr, RangeInfoBound(json.at(i)), RangeInfoBound(json.at(i)), true);
-                differenceIndexOrAndRangeInfo(newCondition, ri);
+              for (size_t j = 0; j < bound.size(); j++) {
+                Json json(Json::Array, 3);
+                json("include", Json(h.inclusive()))
+                    ("isConstant", Json(true))
+                    ("bound", bound.at(static_cast<int>(j)).copy());
+                auto ri = RangeInfo(r._var, 
+                                    r._attr, 
+                                    RangeInfoBound(json), 
+                                    RangeInfoBound(json), 
+                                    true);
+                differenceIndexOrAndRangeInfo(newOr, ri);
                 if (ri.isValid()) {
                   riv.push_back(ri);
                 }
               }
               newOr = andCombineIndexOrAndRangeInfoVec(newOr, riv);
             } else {
+              Json json(Json::Array, 3);
+              json("include", Json(h.inclusive()))
+                  ("isConstant", Json(true))
+                  ("bound", bound);
               auto rib = RangeInfoBound(json);
               orCombineIndexOrAndRangeInfoBoundHigh(newOr, rib);
             }
