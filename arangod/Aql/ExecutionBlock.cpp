@@ -1044,44 +1044,43 @@ bool IndexRangeBlock::initRanges () {
                                   &myCollection);
           posInExpressions++;
 
-          if (a._type == AqlValue::JSON || a._type == AqlValue::SHAPED) {
-            Json bound;
-            if (a._type == AqlValue::JSON) {
-              bound = *(a._json);
-              a.destroy();  // the TRI_json_t* of a._json has been stolen
-            } else {
-              bound = a.toJson(_trx, myCollection);
-              a.destroy();  // the TRI_json_t* of a._json has been stolen
-            }
-            if (bound.isList()) {
-              std::vector<RangeInfo> riv; 
-              for (size_t j = 0; j < bound.size(); j++) {
-                Json json(Json::Array, 3);
-                json("include", Json(l.inclusive()))
-                    ("isConstant", Json(true))
-                    ("bound", bound.at(static_cast<int>(j)).copy());
-                auto ri = RangeInfo(r._var, 
-                                    r._attr, 
-                                    RangeInfoBound(json), 
-                                    RangeInfoBound(json), 
-                                    true);
-                differenceRangeInfoVecRangeInfo(riv, ri);
-                if (ri.isValid()) {
-                  riv.push_back(ri);
-                }
-              }
-              rangeInfoOr = andCombineIndexOrRangeInfoVec(rangeInfoOr, riv);
-            } else {
-              Json json(Json::Array, 3);
-              json("include", Json(l.inclusive()))
-                  ("isConstant", Json(true))
-                  ("bound", Json(TRI_UNKNOWN_MEM_ZONE, bound.steal()));
-              auto rib = RangeInfoBound(json);
-              andCombineIndexOrRIBLow(rangeInfoOr, rib);
-            }
+          Json bound;
+          if (a._type == AqlValue::JSON) {
+            bound = *(a._json);
+            a.destroy();  // the TRI_json_t* of a._json has been stolen
+          } 
+          else if (a._type == AqlValue::SHAPED || a._type == AqlValue::DOCVEC) {
+            bound = a.toJson(_trx, myCollection);
+            a.destroy();  // the TRI_json_t* of a._json has been stolen
           } else {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
                 "AQL: computed a variable bound and got non-JSON");
+          }
+          if (bound.isList()) {
+            std::vector<RangeInfo> riv; 
+            for (size_t j = 0; j < bound.size(); j++) {
+              Json json(Json::Array, 3);
+              json("include", Json(l.inclusive()))
+                ("isConstant", Json(true))
+                ("bound", bound.at(static_cast<int>(j)).copy());
+              auto ri = RangeInfo(r._var, 
+                                  r._attr, 
+                                  RangeInfoBound(json), 
+                                  RangeInfoBound(json), 
+                                  true);
+              differenceRangeInfoVecRangeInfo(riv, ri);
+              if (ri.isValid()) {
+                riv.push_back(ri);
+              }
+            }
+            rangeInfoOr = andCombineIndexOrRangeInfoVec(rangeInfoOr, riv);
+          } else {
+            Json json(Json::Array, 3);
+            json("include", Json(l.inclusive()))
+              ("isConstant", Json(true))
+              ("bound", Json(TRI_UNKNOWN_MEM_ZONE, bound.steal()));
+            auto rib = RangeInfoBound(json);
+            andCombineIndexOrRIBLow(rangeInfoOr, rib);
           }
         }
 
@@ -1095,44 +1094,44 @@ bool IndexRangeBlock::initRanges () {
                                   &myCollection);
           posInExpressions++;
 
-          if (a._type == AqlValue::JSON || a._type == AqlValue::SHAPED) {
-            Json bound;
-            if (a._type == AqlValue::JSON) {
-              bound = *(a._json);
-              a.destroy();  // the TRI_json_t* of a._json has been stolen
-            } else {
-              bound = a.toJson(_trx, myCollection);
-              a.destroy();  // the TRI_json_t* of a._json has been stolen
-            }
-            if (bound.isList()) {
-              std::vector<RangeInfo> riv; 
-              for (size_t j = 0; j < bound.size(); j++) {
-                Json json(Json::Array, 3);
-                json("include", Json(h.inclusive()))
-                    ("isConstant", Json(true))
-                    ("bound", bound.at(static_cast<int>(j)).copy());
-                auto ri = RangeInfo(r._var, 
-                                    r._attr, 
-                                    RangeInfoBound(json), 
-                                    RangeInfoBound(json), 
-                                    true);
-                differenceRangeInfoVecRangeInfo(riv, ri);
-                if (ri.isValid()) {
-                  riv.push_back(ri);
-                }
-              }
-              rangeInfoOr = andCombineIndexOrRangeInfoVec(rangeInfoOr, riv);
-            } else {
-              Json json(Json::Array, 3);
-              json("include", Json(h.inclusive()))
-                  ("isConstant", Json(true))
-                  ("bound", Json(TRI_UNKNOWN_MEM_ZONE, bound.steal()));
-              auto rib = RangeInfoBound(json);
-              andCombineIndexOrRIBHigh(rangeInfoOr, rib);
-            }
+          Json bound;
+          if (a._type == AqlValue::JSON) {
+            bound = *(a._json);
+            a.destroy();  // the TRI_json_t* of a._json has been stolen
+          } 
+          else if (a._type == AqlValue::SHAPED || a._type == AqlValue::DOCVEC) {
+            bound = a.toJson(_trx, myCollection);
+            a.destroy();  // the TRI_json_t* of a._json has been stolen
           } else {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
                 "AQL: computed a variable bound and got non-JSON");
+          }
+
+          if (bound.isList()) {
+            std::vector<RangeInfo> riv; 
+            for (size_t j = 0; j < bound.size(); j++) {
+              Json json(Json::Array, 3);
+              json("include", Json(h.inclusive()))
+                ("isConstant", Json(true))
+                ("bound", bound.at(static_cast<int>(j)).copy());
+              auto ri = RangeInfo(r._var, 
+                  r._attr, 
+                  RangeInfoBound(json), 
+                  RangeInfoBound(json), 
+                  true);
+              differenceRangeInfoVecRangeInfo(riv, ri);
+              if (ri.isValid()) {
+                riv.push_back(ri);
+              }
+            }
+            rangeInfoOr = andCombineIndexOrRangeInfoVec(rangeInfoOr, riv);
+          } else {
+            Json json(Json::Array, 3);
+            json("include", Json(h.inclusive()))
+              ("isConstant", Json(true))
+              ("bound", Json(TRI_UNKNOWN_MEM_ZONE, bound.steal()));
+            auto rib = RangeInfoBound(json);
+            andCombineIndexOrRIBHigh(rangeInfoOr, rib);
           }
         }
         if (newCondition != nullptr) {
@@ -1188,14 +1187,15 @@ IndexOrCondition* IndexRangeBlock::andCombineIndexOrRangeInfoVec (
   try {
     for (IndexAndCondition andCond: *ioc) {
       for (RangeInfo ri: riv) {
-        auto copy = ri.clone();
         // copy andCond into iac
         IndexAndCondition iac;
         for (size_t k = 0; k < andCond.size(); k++) {
           iac.push_back(andCond.at(k).clone());
         }
-        iac.push_back(copy);
-        newIoc->emplace_back(iac);
+        iac.at(0).fuse(ri);
+        if (iac.at(0).isValid()) {
+          newIoc->emplace_back(iac);
+        }
       }
     }
   }
@@ -1524,9 +1524,9 @@ void IndexRangeBlock::readPrimaryIndex (IndexOrCondition const& ranges) {
             }
           }
         }
-        if (! x._lows.empty() || ! x._highs.empty() || x._lowConst.isDefined() || x._highConst.isDefined()) {
+        /*if (! x._lows.empty() || ! x._highs.empty() || x._lowConst.isDefined() || x._highConst.isDefined()) {
           break;
-        }
+        }*/
       }
       else if (x._attr == std::string(TRI_VOC_ATTRIBUTE_KEY)) {
         // lookup by _key
@@ -1538,9 +1538,9 @@ void IndexRangeBlock::readPrimaryIndex (IndexOrCondition const& ranges) {
           key = std::string(json->_value._string.data, json->_value._string.length - 1);
         }
 
-        if (! x._lows.empty() || ! x._highs.empty() || x._lowConst.isDefined() || x._highConst.isDefined()) {
+        /*if (! x._lows.empty() || ! x._highs.empty() || x._lowConst.isDefined() || x._highConst.isDefined()) {
           break;
-        }
+        }*/
       }
     }
 

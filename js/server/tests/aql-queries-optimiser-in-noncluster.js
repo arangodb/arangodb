@@ -127,7 +127,7 @@ function ahuacatlQueryOptimiserInTestSuite () {
       var actual = getQueryResults(query);
       assertEqual(expected, actual);
 
-      assertEqual([ "SingletonNode", "SubqueryNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "SubqueryNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -195,7 +195,7 @@ function ahuacatlQueryOptimiserInTestSuite () {
       var actual = getQueryResults(query);
       assertEqual(expected, actual);
       
-      assertEqual([ "SingletonNode", "SubqueryNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "SubqueryNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -265,7 +265,7 @@ function ahuacatlQueryOptimiserInTestSuite () {
       var actual = getQueryResults(query);
       assertEqual(expected, actual);
       
-      assertEqual([ "SingletonNode", "SubqueryNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "SubqueryNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -353,7 +353,7 @@ function ahuacatlQueryOptimiserInTestSuite () {
       var actual = getQueryResults(query);
       assertEqual(expected, actual);
       
-      assertEqual([ "SingletonNode", "SubqueryNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "SubqueryNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
       
       internal.db._drop(en);
     },
