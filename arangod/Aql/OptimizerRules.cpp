@@ -801,8 +801,8 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
 
     ~FilterToEnumCollFinder () {
       if (_rangeInfoMapVec != nullptr) {
-        for (size_t i = 0; i < _rangeInfoMapVec.size(); i++) {
-          delete _rangeInfoMapVec.at(i);
+        for (size_t i = 0; i < _rangeInfoMapVec->size(); i++) {
+          delete (*_rangeInfoMapVec)[i];
         }
         delete _rangeInfoMapVec;
       }
