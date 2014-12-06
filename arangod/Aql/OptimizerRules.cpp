@@ -801,9 +801,6 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
 
     ~FilterToEnumCollFinder () {
       if (_rangeInfoMapVec != nullptr) {
-        for (size_t i = 0; i < _rangeInfoMapVec->size(); i++) {
-          delete (*_rangeInfoMapVec)[i];
-        }
         delete _rangeInfoMapVec;
       }
     }
@@ -1307,10 +1304,10 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                 }
               } else { 
                 RangeInfo ri(enumCollVar->name, 
-                    attr.substr(0, attr.size() - 1), 
-                    RangeInfoBound(rhs, true),
-                    RangeInfoBound(rhs, true), 
-                    true);
+                             attr.substr(0, attr.size() - 1), 
+                             RangeInfoBound(rhs, true),
+                             RangeInfoBound(rhs, true), 
+                             true);
                 rimv->differenceRangeInfo(ri);
                 if (ri.isValid()) { 
                   rimv->emplace_back(new RangeInfoMap(ri));

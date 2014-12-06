@@ -460,9 +460,7 @@ void RangeInfoMap::attributes (std::unordered_set<std::string>& set,
 RangeInfoMapVec::RangeInfoMapVec  (RangeInfoMap* rim) :
   _rangeInfoMapVec() {
   
-  if (! rim->empty()){
-    _rangeInfoMapVec.emplace_back(rim);
-  }
+  _rangeInfoMapVec.emplace_back(rim);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -613,6 +611,8 @@ RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs,
     }
     if (! rim->empty()) {
       rimv->emplace_back(rim);
+    } else {
+      delete rim;
     }
   }
   delete rhs;
