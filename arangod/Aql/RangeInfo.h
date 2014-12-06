@@ -929,12 +929,15 @@ namespace triagens {
     typedef std::vector<IndexAndCondition> IndexOrCondition;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief  orCombineIndexOrAndIndexAnd: analogue of orCombineRangeInfoMapVecs
+/// @brief differenceRangeInfo: returns the difference of the constant parts of
+/// the given RangeInfos. 
+///
+/// Modifies either lhs or rhs in place, so that the constant parts of lhs 
+/// and rhs are disjoint, and the union of the modified lhs and rhs equals the
+/// union of the originals.
 ////////////////////////////////////////////////////////////////////////////////
     
-    void orCombineIndexOrAndIndexAnd(IndexOrCondition*, IndexAndCondition);
-    void differenceIndexOrAndRangeInfo(IndexOrCondition*, RangeInfo&);
-    void differenceRangeInfoVecRangeInfo(std::vector<RangeInfo>&, RangeInfo&);
+    void differenceRangeInfos (RangeInfo&, RangeInfo&);
   }
 }
 
