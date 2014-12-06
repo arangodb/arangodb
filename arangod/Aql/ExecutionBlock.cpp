@@ -886,6 +886,10 @@ IndexRangeBlock::~IndexRangeBlock () {
   if (_freeCondition && _condition != nullptr) {
     delete _condition;
   }
+  
+  if (_skiplistIterator != nullptr) {
+    TRI_FreeSkiplistIterator(_skiplistIterator);
+  }
 }
 
 int IndexRangeBlock::initialize () {
@@ -1798,7 +1802,10 @@ void IndexRangeBlock::getSkiplistIterator (IndexAndCondition const& ranges) {
           nullptr, parameters.steal(), shaper, i);
     }
   }
-
+  
+  if (_skiplistIterator != nullptr) {
+    TRI_FreeSkiplistIterator(_skiplistIterator);
+  }
   _skiplistIterator = TRI_LookupSkiplistIndex(idx, skiplistOperator, en->_reverse);
   if (skiplistOperator != nullptr) {
     TRI_FreeIndexOperator(skiplistOperator);
