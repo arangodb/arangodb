@@ -613,10 +613,10 @@ namespace triagens {
 
         void orCombineIndexOrs(IndexOrCondition*, IndexOrCondition*);
         IndexOrCondition* 
-          andCombineIndexOrAndRangeInfoVec(IndexOrCondition*, std::vector<RangeInfo>&);
+          andCombineIndexOrRangeInfoVec(IndexOrCondition*, std::vector<RangeInfo>&);
         
-        void orCombineIndexOrAndRangeInfoBoundLow (IndexOrCondition*, RangeInfoBound&);
-        void orCombineIndexOrAndRangeInfoBoundHigh (IndexOrCondition*, RangeInfoBound&);
+        void andCombineIndexOrRIBLow (IndexOrCondition*, RangeInfoBound&);
+        void andCombineIndexOrRIBHigh (IndexOrCondition*, RangeInfoBound&);
 
         
 

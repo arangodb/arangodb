@@ -941,6 +941,7 @@ namespace triagens {
     
     void orCombineIndexOrAndIndexAnd(IndexOrCondition*, IndexAndCondition);
     void differenceIndexOrAndRangeInfo(IndexOrCondition*, RangeInfo&);
+    void differenceRangeInfoVecRangeInfo(std::vector<RangeInfo>&, RangeInfo&);
   }
 }
 
