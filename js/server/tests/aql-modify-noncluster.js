@@ -1056,7 +1056,7 @@ function ahuacatlUpdateSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test update mergeObjects
+/// @brief test update mergeArrays
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateMergeObjectsDefault : function () {
@@ -1070,13 +1070,13 @@ function ahuacatlUpdateSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test update mergeObjects
+/// @brief test update mergeArrays
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateMergeObjectsTrue : function () {
       c1.save({ _key: "something", values: { foo: 1, bar: 2, baz: 3 } });
       var expected = { writesExecuted: 1, writesIgnored: 0 };
-      var actual = getModifyQueryResults("FOR d IN @@cn FILTER d._key == 'something' UPDATE d._key WITH { values: { bar: 42, bumm: 23 } } INTO @@cn OPTIONS { mergeObjects: true }", { "@cn": cn1 });
+      var actual = getModifyQueryResults("FOR d IN @@cn FILTER d._key == 'something' UPDATE d._key WITH { values: { bar: 42, bumm: 23 } } INTO @@cn OPTIONS { mergeArrays: true }", { "@cn": cn1 });
       assertEqual(expected, sanitizeStats(actual));
       
       var doc = c1.document("something");
@@ -1084,13 +1084,13 @@ function ahuacatlUpdateSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test update mergeObjects
+/// @brief test update mergeArrays
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateMergeObjectsFalse : function () {
       c1.save({ _key: "something", values: { foo: 1, bar: 2, baz: 3 } });
       var expected = { writesExecuted: 1, writesIgnored: 0 };
-      var actual = getModifyQueryResults("FOR d IN @@cn FILTER d._key == 'something' UPDATE d._key WITH { values: { bar: 42, bumm: 23 } } INTO @@cn OPTIONS { mergeObjects: false }", { "@cn": cn1 });
+      var actual = getModifyQueryResults("FOR d IN @@cn FILTER d._key == 'something' UPDATE d._key WITH { values: { bar: 42, bumm: 23 } } INTO @@cn OPTIONS { mergeArrays: false }", { "@cn": cn1 });
       assertEqual(expected, sanitizeStats(actual));
       
       var doc = c1.document("something");
