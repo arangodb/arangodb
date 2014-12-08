@@ -126,6 +126,7 @@ function repackZipFile (source) {
   var filename = source.filename;
   var path = fs.getTempFile("zip", false);
 
+  fs.makeDirectory(path);
   fs.unzipFile(filename, path, false, true);
 
   // .............................................................................

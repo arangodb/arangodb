@@ -1,6 +1,8 @@
 v2.3.2 (2014-XX-XX)
 -------------------
 
+* fixed missing makeDirectory when fetching a Foxx application from a zip file
+
 * put in warning about default changed: fixed issue #1134: Change the default endpoint to localhost
 
 * fixed issue #1163: invalid fullCount value returned from AQL
