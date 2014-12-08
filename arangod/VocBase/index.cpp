@@ -1161,9 +1161,9 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator,
 ////////////////////////////////////////////////////////////////////////////////
 
 // .............................................................................
-// Note: this function will destroy the passed slOperator before it returns
+// Note: this function will not destroy the passed slOperator before it returns
 // Warning: who ever calls this function is responsible for destroying
-// TRI_skiplist_iterator_t* results
+// the TRI_index_operator_t* and the TRI_skiplist_iterator_t* results
 // .............................................................................
 
 TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t* idx,
