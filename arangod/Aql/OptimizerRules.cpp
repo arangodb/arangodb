@@ -826,16 +826,28 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
   bool _modified;
   std::unordered_set<VariableId> _varIds;
   RangesInfo* _ranges;
+  // The following maps ids of EnumerateCollectionNodes in the original
+  // plan to an index in the (outer vector) of the _changes container.
+  std::unordered_map<size_t, size_t>& _changesPlaces;
+  // The outer vector is for the different ids of EnumerateCollectionNodes
+  // in the original plan that could be replaced. For each one, the pair
+  // contains the id of the node in the original plan and a vector 
+  // that holds the possible replacements.
+  std::vector<std::pair<size_t, std::vector<ExecutionNode*>>>& _changes;
   
   public:
 
     FilterToEnumCollFinder (ExecutionPlan* plan,
-                            Variable const* var) 
+          Variable const* var,
+          std::unordered_map<size_t, size_t>& changesPlaces,
+          std::vector<std::pair<size_t, std::vector<ExecutionNode*>>>& changes) 
       : _plan(plan), 
         _canThrow(false),
         _modified(false),
         _varIds(),
-        _ranges(new RangesInfo()) {
+        _ranges(new RangesInfo()),
+        _changesPlaces(changesPlaces),
+        _changes(changes) {
 
       _varIds.insert(var->id);
     };
@@ -844,7 +856,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       delete _ranges;
     }
 
-    bool modified () const {
+    bool modified () {
       return _modified;
     }
 
@@ -976,8 +988,8 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                   auto noRes = new NoResultsNode(_plan, _plan->nextId());
                   _plan->registerNode(noRes);
                   _plan->insertDependency(x, noRes);
+                  _modified = true;
                 }
-                _modified = true;
               }
               else {
                 std::vector<Index*> idxs;
@@ -1082,12 +1094,21 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                   }
                   
                   if (! rangeInfo.at(0).empty()) {
-                    ExecutionNode* newNode = new IndexRangeNode(_plan, 
-                      _plan->nextId(), node->vocbase(), node->collection(), 
-                      node->outVariable(), idx, rangeInfo, false);
-                    _plan->registerNode(newNode);
-                    _plan->replaceNode(_plan->getNodeById(node->id()), newNode);
-                    _modified = true;
+                    std::unique_ptr<ExecutionNode> newNode
+                      (new IndexRangeNode(_plan, 
+                          _plan->nextId(), node->vocbase(), node->collection(), 
+                          node->outVariable(), idx, rangeInfo, false));
+                    size_t place = node->id();
+                    std::unordered_map<size_t, size_t>::iterator it 
+                         = _changesPlaces.find(place);
+                    if (it == _changesPlaces.end()) {
+                      _changes.push_back(std::make_pair(place, std::vector<ExecutionNode*>()));
+                      it = _changesPlaces.emplace(place, _changes.size()-1).first;
+                    }
+                    std::vector<ExecutionNode*>& vec = _changes[it->second].second;
+                    vec.push_back(newNode.release());
+                    // if all goes well, this node will be used, if an 
+                    // exception happens, the destructor will free it
                   }
                 }
               }
@@ -1246,6 +1267,10 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       attr.clear();
       enumCollVar = nullptr;
     }
+
+    bool enterSubquery (ExecutionNode* super, ExecutionNode* sub) final {
+      return false;
+    }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1256,23 +1281,152 @@ int triagens::aql::useIndexRangeRule (Optimizer* opt,
                                       ExecutionPlan* plan, 
                                       Optimizer::Rule const* rule) {
   
-  bool modified = false;
+  // The following maps ids of EnumerateCollectionNodes in the original
+  // plan to an index in the (outer vector) of the _changes container.
+  std::unordered_map<size_t, size_t> changesPlaces;
+  // The outer vector is for the different ids of EnumerateCollectionNodes
+  // in the original plan that could be replaced. For each one, the pair
+  // contains the id of the node in the original plan and a vector 
+  // that holds the possible replacements.
+  std::vector<std::pair<size_t, std::vector<ExecutionNode*>>> changes;
 
-  std::vector<ExecutionNode*> nodes
-    = plan->findNodesOfType(EN::FILTER, true);
-  
-  for (auto n : nodes) {
-    auto nn = static_cast<FilterNode*>(n);
-    auto invars = nn->getVariablesUsedHere();
-    TRI_ASSERT(invars.size() == 1);
-    FilterToEnumCollFinder finder(plan, invars[0]);
-    nn->walk(&finder);
-    if (finder.modified()) {
-      modified = true;
+  auto cleanupChanges = [&] () -> void {
+    for (auto& v : changes) {
+      for (ExecutionNode* n : v.second) {
+        delete n;
+      }
+    }
+    changes.clear();
+    changesPlaces.clear();
+  };
+
+  // These are all the FILTER nodes where we start:
+  std::vector<ExecutionNode*> nodes = plan->findNodesOfType(EN::FILTER, true);
+
+  bool modified = false;
+  // In the following loop we only collect changes, maybe we introduce some
+  // NoResultsNode, possibly in subqueries.
+  try {
+    for (auto n : nodes) {
+      auto nn = static_cast<FilterNode*>(n);
+      auto invars = nn->getVariablesUsedHere();
+      TRI_ASSERT(invars.size() == 1);
+      FilterToEnumCollFinder finder(plan, invars[0], changesPlaces, changes);
+      nn->walk(&finder);
+      modified |= finder.modified();
     }
   }
+  catch (...) {
+    cleanupChanges();
+    throw;
+  }
 
-  opt->addPlan(plan, rule->level, modified);
+  // First find out how many possibilities for plan changes we actually have:
+  size_t nrPlans = opt->numberOfPlans();
+  size_t possibilities = 1;
+  size_t i = 0;
+  while (i < changes.size() && possibilities * nrPlans <= 32) {
+    possibilities *= changes[i].second.size();
+    i++;
+  }
+  // We will apply the first possible change for changes[i..changes.size()-1]
+  // and all possible changes for changes[0..i-1] and create all these plans.
+  // First make all the changes from i on in the original plan and those
+  // for which there is only one possibility:
+  try {
+    for (size_t j = 0; j < changes.size(); j++) {
+      std::vector<ExecutionNode*>& v = changes[j].second;
+      if (j >= i || v.size() == 1) {
+        size_t id = changes[j].first;
+        // Just in case:
+        if (! v.empty()) {
+          plan->registerNode(v[0]);
+          plan->replaceNode(plan->getNodeById(id), v[0]);
+          modified = true;
+          // Free the other nodes, if they are there:
+          for (size_t k = 1; k < v.size(); k++) {
+            delete v[k];
+          }
+          v.clear();   // take the new node away from changes such that 
+                       // cleanupChanges does not touch it
+        }
+      }
+    }
+  }
+  catch (...) {
+    cleanupChanges();
+    throw;
+  }
+
+  // Now see whether it is actually only one plan we make:
+  if (possibilities == 1) {
+    try {
+      opt->addPlan(plan, rule->level, modified);
+    }
+    catch (...) {
+      cleanupChanges();
+    }
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  // Now we have to create more than one plan, we have to use those from
+  // changes[0..i-1] which have more than one possibility. Note that those
+  // with exactly 1 possibility have already been done above. This amounts
+  // to doing a cartesian product, which we do recursively. The result will
+  // be in the todo variable:
+
+  std::function <void(size_t, size_t, std::vector<size_t>&)> doworkrecursive;
+  std::vector<std::vector<size_t>> todo;
+  std::vector<size_t> work;
+  work.reserve(i);
+  for (size_t l = 0; l < i; l++) {
+    work.push_back(0);
+  }
+
+  doworkrecursive = [&doworkrecursive, &changes, &todo] 
+                    (size_t index, size_t limit, std::vector<size_t>& v) {
+    if (index >= limit) {
+      todo.push_back(v);  // intentionally copy vector
+    }
+    else if (changes[index].second.size() < 2) {
+      doworkrecursive(index+1, limit, v);
+    }
+    else {
+      for (size_t l = 0; l < changes[index].second.size(); l++) {
+        v[index] = l;
+        doworkrecursive(index+1, limit, v);
+      }
+    }
+  };
+
+  try {
+    doworkrecursive(0, i, work);
+  }
+  catch (...) {
+    cleanupChanges();
+    throw;
+  }
+
+  // Now we only have to go through todo and do what needs doing:
+  try {
+    for (auto const& v : todo) {
+      std::unique_ptr<ExecutionPlan> newPlan(plan->clone());
+      for (size_t l = 0; l < i; l++) {
+        if (changes[l].second.size() >= 2) {
+          ExecutionNode* newNode 
+              = changes[l].second[v[l]]->clone(newPlan.get(), true, false);
+          newPlan->registerNode(newNode);
+          newPlan->replaceNode(newPlan->getNodeById(changes[l].first), newNode);
+        }
+      }
+      opt->addPlan(newPlan.release(), rule->level, true);
+    }
+  }
+  catch (...) {
+    cleanupChanges();
+    throw;
+  }
+  cleanupChanges();
 
   return TRI_ERROR_NO_ERROR;
 }
