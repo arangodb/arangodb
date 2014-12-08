@@ -822,24 +822,18 @@ int triagens::aql::removeUnnecessaryCalculationsRule (Optimizer* opt,
 
 class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
   RangeInfoMapVec* _rangeInfoMapVec;
-  Optimizer* _opt;
   ExecutionPlan* _plan;
   std::unordered_set<VariableId> _varIds;
-  Optimizer::RuleLevel _level;
   bool _modified;
   bool _canThrow; 
   
   public:
 
-    FilterToEnumCollFinder (Optimizer* opt,
-                            ExecutionPlan* plan,
-                            Variable const* var,
-                            Optimizer::RuleLevel level) 
+    FilterToEnumCollFinder (ExecutionPlan* plan,
+                            Variable const* var)
       : _rangeInfoMapVec(nullptr),
-        _opt(opt),
         _plan(plan), 
         _varIds(),
-        _level(level),
         _modified(false),
         _canThrow(false) {
   
@@ -1380,7 +1374,7 @@ int triagens::aql::useIndexRangeRule (Optimizer* opt,
     auto nn = static_cast<FilterNode*>(n);
     auto invars = nn->getVariablesUsedHere();
     TRI_ASSERT(invars.size() == 1);
-    FilterToEnumCollFinder finder(opt, plan, invars[0], rule->level);
+    FilterToEnumCollFinder finder(plan, invars[0]);
     nn->walk(&finder);
     if (finder.modified()) {
       modified = true;
