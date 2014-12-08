@@ -152,7 +152,7 @@ void Aqlerror (YYLTYPE* locp,
 %type <strval> T_PARAMETER; 
 %type <node> sort_list;
 %type <node> sort_element;
-%type <boolval> sort_direction;
+%type <node> sort_direction;
 %type <node> collect_list;
 %type <node> collect_element;
 %type <node> optional_keep;
@@ -406,13 +406,16 @@ sort_element:
 
 sort_direction:
     /* empty */ {
-      $$ = true;
+      $$ = parser->ast()->createNodeValueBool(true);
     }
   | T_ASC {
-      $$ = true;
+      $$ = parser->ast()->createNodeValueBool(true);
     } 
   | T_DESC {
-      $$ = false;
+      $$ = parser->ast()->createNodeValueBool(false);
+    }
+  | atomic_value {
+      $$ = $1;
     }
   ;
 
