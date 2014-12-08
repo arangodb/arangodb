@@ -79,8 +79,8 @@ struct LocalCollectionGuard {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct InsertOptions {
-  bool waitForSync = false;
-  bool silent      = false;
+  bool waitForSync  = false;
+  bool silent       = false;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -89,11 +89,11 @@ struct InsertOptions {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct UpdateOptions {
-  bool overwrite   = false;
-  bool keepNull    = true;
+  bool overwrite    = false;
+  bool keepNull     = true;
   bool mergeObjects = true;
-  bool waitForSync = false;
-  bool silent      = false;
+  bool waitForSync  = false;
+  bool silent       = false;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -102,8 +102,8 @@ struct UpdateOptions {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct RemoveOptions {
-  bool overwrite   = false;
-  bool waitForSync = false;
+  bool overwrite    = false;
+  bool waitForSync  = false;
 };
 
 // -----------------------------------------------------------------------------
