@@ -54,7 +54,7 @@ namespace triagens {
         : ignoreErrors(false),
           waitForSync(false),
           nullMeansRemove(false),
-          mergeArrays(false) {
+          mergeArrays(true) {
       }
 
       void toJson (triagens::basics::Json& json, TRI_memory_zone_t* zone) const;

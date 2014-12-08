@@ -36,7 +36,7 @@ ModificationOptions::ModificationOptions (Json const& json) {
   ignoreErrors = JsonHelper::getBooleanValue(array.json(), "ignoreErrors", false);
   waitForSync = JsonHelper::getBooleanValue(array.json(), "waitForSync", false);
   nullMeansRemove = JsonHelper::getBooleanValue(array.json(), "nullMeansRemove", false);
-  mergeArrays = JsonHelper::getBooleanValue(array.json(), "mergeArrays", false);
+  mergeArrays = JsonHelper::getBooleanValue(array.json(), "mergeArrays", true);
 }
 
 void ModificationOptions::toJson (triagens::basics::Json& json,
