@@ -1056,6 +1056,48 @@ function ahuacatlUpdateSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test update mergeObjects
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateMergeObjectsDefault : function () {
+      c1.save({ _key: "something", values: { foo: 1, bar: 2, baz: 3 } });
+      var expected = { writesExecuted: 1, writesIgnored: 0 };
+      var actual = getModifyQueryResults("FOR d IN @@cn FILTER d._key == 'something' UPDATE d._key WITH { values: { bar: 42, bumm: 23 } } INTO @@cn", { "@cn": cn1 });
+      assertEqual(expected, sanitizeStats(actual));
+
+      var doc = c1.document("something");
+      assertEqual({ foo: 1, bar: 42, baz: 3, bumm : 23 }, doc.values);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update mergeObjects
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateMergeObjectsTrue : function () {
+      c1.save({ _key: "something", values: { foo: 1, bar: 2, baz: 3 } });
+      var expected = { writesExecuted: 1, writesIgnored: 0 };
+      var actual = getModifyQueryResults("FOR d IN @@cn FILTER d._key == 'something' UPDATE d._key WITH { values: { bar: 42, bumm: 23 } } INTO @@cn OPTIONS { mergeObjects: true }", { "@cn": cn1 });
+      assertEqual(expected, sanitizeStats(actual));
+      
+      var doc = c1.document("something");
+      assertEqual({ foo: 1, bar: 42, baz: 3, bumm : 23 }, doc.values);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update mergeObjects
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateMergeObjectsFalse : function () {
+      c1.save({ _key: "something", values: { foo: 1, bar: 2, baz: 3 } });
+      var expected = { writesExecuted: 1, writesIgnored: 0 };
+      var actual = getModifyQueryResults("FOR d IN @@cn FILTER d._key == 'something' UPDATE d._key WITH { values: { bar: 42, bumm: 23 } } INTO @@cn OPTIONS { mergeObjects: false }", { "@cn": cn1 });
+      assertEqual(expected, sanitizeStats(actual));
+      
+      var doc = c1.document("something");
+      assertEqual({ bar: 42, bumm: 23 }, doc.values);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test update
 ////////////////////////////////////////////////////////////////////////////////
 
