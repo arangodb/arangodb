@@ -1325,10 +1325,14 @@ int triagens::aql::useIndexRangeRule (Optimizer* opt,
   size_t nrPlans = opt->numberOfPlans();
   size_t possibilities = 1;
   size_t i = 0;
-  while (i < changes.size() && possibilities * nrPlans <= 32) {
+  while (i < changes.size()) {
     possibilities *= changes[i].second.size();
     i++;
+    if (possibilities * nrPlans > 20) {
+      break;
+    }
   }
+
   // We will apply the first possible change for changes[i..changes.size()-1]
   // and all possible changes for changes[0..i-1] and create all these plans.
   // First make all the changes from i on in the original plan and those
@@ -1337,11 +1341,22 @@ int triagens::aql::useIndexRangeRule (Optimizer* opt,
     for (size_t j = 0; j < changes.size(); j++) {
       std::vector<ExecutionNode*>& v = changes[j].second;
       if (j >= i || v.size() == 1) {
+        size_t choice = 0;
+        if (v.size() > 1) {
+          // If in doubt, take a skiplist index:
+          for (size_t k = 0; k < v.size(); k++) {
+            auto n = static_cast<IndexRangeNode*>(v[k]);
+            if (n->getIndex()->type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
+              choice = k;
+              break;
+            }
+          }
+        }
         size_t id = changes[j].first;
         // Just in case:
         if (! v.empty()) {
-          plan->registerNode(v[0]);
-          plan->replaceNode(plan->getNodeById(id), v[0]);
+          plan->registerNode(v[choice]);
+          plan->replaceNode(plan->getNodeById(id), v[choice]);
           modified = true;
           // Free the other nodes, if they are there:
           for (size_t k = 1; k < v.size(); k++) {
