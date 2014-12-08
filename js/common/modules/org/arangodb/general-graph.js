@@ -4517,21 +4517,14 @@ Graph.prototype._removeVertexCollection = function(vertexCollectionName, dropCol
 ///
 /// @EXAMPLES
 ///
-/// A route planner example, all neighbors of capitals.
+/// A route planner example, all connecting edges between capitals.
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleNeighbors1}
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleConnectingEdges1}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
-///   graph._neighbors({isCapital : true});
+///   graph._getConnectingEdges({isCapital : true}, {isCapital : true});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, all outbound neighbors of Hamburg.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleNeighbors2}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
-///   var graph = examples.loadGraph("routeplanner");
-///   graph._neighbors('germanCity/Hamburg', {direction : 'outbound', maxDepth : 2});
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
 //
