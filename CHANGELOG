@@ -32,6 +32,9 @@ v2.4.0 (XXXX-XX-XX)
   The HTTP API methods for fetching the replication inventory and for dumping collections
   also support the `includeSystem` control flag via a URL parameter.
 
+* renamed option `mergeArrays` to `mergeObjects` for AQL data-modification query options
+  and HTTP document modification API
+  
 
 v2.3.2 (XXXX-XX-XX)
 -------------------

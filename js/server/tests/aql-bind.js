@@ -66,6 +66,50 @@ function ahuacatlBindTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test asc / desc variable
+////////////////////////////////////////////////////////////////////////////////
+
+    testBindAscDesc1 : function () {
+      var expected = [ 1, 2, 3, 4, 6, 7, 9 ];
+      var actual = getQueryResults("FOR u IN @list SORT u @order RETURN u", { "list" : [ 9, 4, 3, 7, 2, 1, 6 ], "order" : "asc" });
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test asc / desc variable
+////////////////////////////////////////////////////////////////////////////////
+
+    testBindAscDesc2 : function () {
+      var expected = [ 1, 2, 3, 4, 6, 7, 9 ].reverse();
+      var actual = getQueryResults("FOR u IN @list SORT u @order RETURN u", { "list" : [ 9, 4, 3, 7, 2, 1, 6 ], "order" : "DESC" });
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test asc / desc variable
+////////////////////////////////////////////////////////////////////////////////
+
+    testBindAscDesc3 : function () {
+      var expected = [ 1, 2, 3, 4, 6, 7, 9 ];
+      var actual = getQueryResults("FOR u IN @list SORT u @order RETURN u", { "list" : [ 9, 4, 3, 7, 2, 1, 6 ], "order" : true });
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test asc / desc variable
+////////////////////////////////////////////////////////////////////////////////
+
+    testBindAscDesc4 : function () {
+      var expected = [ 1, 2, 3, 4, 6, 7, 9 ].reverse();
+      var actual = getQueryResults("FOR u IN @list SORT u @order RETURN u", { "list" : [ 9, 4, 3, 7, 2, 1, 6 ], "order" : false });
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test a single bind variable
 ////////////////////////////////////////////////////////////////////////////////
 
