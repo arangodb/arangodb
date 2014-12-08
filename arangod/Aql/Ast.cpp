@@ -368,10 +368,10 @@ AstNode* Ast::createNodeSort (AstNode const* list) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::createNodeSortElement (AstNode const* expression,
-                                     bool ascending) {
+                                     AstNode const* ascending) {
   AstNode* node = createNode(NODE_TYPE_SORT_ELEMENT);
   node->addMember(expression);
-  node->setBoolValue(ascending);
+  node->addMember(ascending);
 
   return node;
 }
@@ -1090,9 +1090,6 @@ AstNode* Ast::clone (AstNode const* node) {
            type == NODE_TYPE_REFERENCE ||
            type == NODE_TYPE_FCALL) {
     copy->setData(node->getData());
-  }
-  else if (type == NODE_TYPE_SORT_ELEMENT) {
-    copy->setBoolValue(node->getBoolValue());
   }
   else if (type == NODE_TYPE_VALUE) {
     switch (node->value.type) {
