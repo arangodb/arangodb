@@ -228,7 +228,7 @@ extend(RequestContext.prototype, {
 /// ```js
 /// app.get("/foxx/:id", function {
 ///   // Do something
-/// }).pathParam("id", type: joi.number().integer().required().description("Id of the Foxx"));
+/// }).pathParam("id", joi.number().integer().required().description("Id of the Foxx"));
 /// ```
 ///
 /// You can also pass in a configuration object instead:
@@ -587,7 +587,7 @@ extend(RequestContext.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_RequestContext_onlyIfAuthenticated
 ///
-/// `FoxxController#onlyIf(code, reason)`
+/// `FoxxController#onlyIfAuthenticated(code, reason)`
 ///
 /// Please activate sessions for this app if you want to use this function.
 /// Or activate authentication (deprecated).

@@ -64,6 +64,7 @@ namespace triagens {
       _returnMessage = "";
       _contentLength = 0;
       _returnCode = 0;
+      _foundHeader = false;
       _hasContentLength = false;
       _chunked = false;
       _deflated = false;

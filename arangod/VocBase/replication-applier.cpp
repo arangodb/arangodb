@@ -188,6 +188,30 @@ static TRI_json_t* JsonConfiguration (TRI_replication_applier_configuration_t co
                        json,
                        "adaptivePolling",
                        TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, config->_adaptivePolling));
+  
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE,
+                       json,
+                       "includeSystem",
+                       TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, config->_includeSystem));
+  
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE,
+                       json,
+                       "restrictType",
+                       TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config->_restrictType.c_str()));
+  
+  TRI_json_t* collections = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
+  if (collections != nullptr) {
+    for (auto it : config->_restrictCollections) {
+      TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE,
+                            collections,
+                            TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, it.first.c_str()));
+    }
+
+    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE,
+                         json,
+                         "restrictCollections",
+                         collections);
+  }
 
   return json;
 }
@@ -328,6 +352,12 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
     config->_adaptivePolling = value->_value._boolean;
   }
   
+  value = TRI_LookupArrayJson(json, "includeSystem");
+
+  if (TRI_IsBooleanJson(value)) {
+    config->_includeSystem = value->_value._boolean;
+  }
+  
   value = TRI_LookupArrayJson(json, "ignoreErrors");
 
   if (TRI_IsNumberJson(value)) {
@@ -339,6 +369,26 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
     }
     else {
       config->_ignoreErrors = 0;
+    }
+  }
+  
+  value = TRI_LookupArrayJson(json, "restrictType");
+
+  if (TRI_IsStringJson(value)) {
+    config->_restrictType = std::string(value->_value._string.data, value->_value._string.length - 1);
+  }
+
+  value = TRI_LookupArrayJson(json, "restrictCollections");
+
+  if (TRI_IsListJson(value)) {
+    config->_restrictCollections.clear();
+    size_t const n = TRI_LengthListJson(value);
+
+    for (size_t i = 0; i < n; ++i) {
+      TRI_json_t* collection = TRI_LookupListJson(value, i);
+      if (TRI_IsStringJson(collection)) {
+        config->_restrictCollections.emplace(std::make_pair(std::string(collection->_value._string.data), true));
+      }
     }
   }
 
@@ -634,6 +684,7 @@ static TRI_json_t* JsonState (TRI_replication_applier_state_t const* state) {
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "totalRequests", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_totalRequests));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "totalFailedConnects", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_totalFailedConnects));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "totalEvents", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_totalEvents));
+  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "totalOperationsExcluded", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_skippedOperations));
 
   // lastError
   error = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
@@ -966,6 +1017,7 @@ int TRI_StateReplicationApplier (TRI_replication_applier_t* applier,
   state->_totalRequests               = applier->_state._totalRequests;
   state->_totalFailedConnects         = applier->_state._totalFailedConnects;
   state->_totalEvents                 = applier->_state._totalEvents;
+  state->_skippedOperations           = applier->_state._skippedOperations;
   memcpy(&state->_lastError._time, &applier->_state._lastError._time, sizeof(state->_lastError._time));
 
   if (applier->_state._progressMsg != nullptr) {
@@ -1271,8 +1323,6 @@ int TRI_LoadStateReplicationApplier (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitConfigurationReplicationApplier (TRI_replication_applier_configuration_t* config) {
-  memset(config, 0, sizeof(TRI_replication_applier_configuration_t));
-
   config->_endpoint          = nullptr;
   config->_database          = nullptr;
   config->_username          = nullptr;
@@ -1280,12 +1330,15 @@ void TRI_InitConfigurationReplicationApplier (TRI_replication_applier_configurat
 
   config->_requestTimeout    = 300.0;
   config->_connectTimeout    = 10.0;
+  config->_ignoreErrors      = 0;
   config->_maxConnectRetries = 100;
+  config->_chunkSize         = 0;
   config->_sslProtocol       = 0;
   config->_autoStart         = false;
-  config->_chunkSize         = 0;
   config->_adaptivePolling   = true;
-  config->_ignoreErrors      = 0;
+  config->_includeSystem     = true;
+  config->_restrictType      = "";
+  config->_restrictCollections.clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1348,14 +1401,17 @@ void TRI_CopyConfigurationReplicationApplier (TRI_replication_applier_configurat
     dst->_password = nullptr;
   }
 
-  dst->_requestTimeout    = src->_requestTimeout;
-  dst->_connectTimeout    = src->_connectTimeout;
-  dst->_ignoreErrors      = src->_ignoreErrors;
-  dst->_maxConnectRetries = src->_maxConnectRetries;
-  dst->_sslProtocol       = src->_sslProtocol;
-  dst->_chunkSize         = src->_chunkSize;
-  dst->_autoStart         = src->_autoStart;
-  dst->_adaptivePolling   = src->_adaptivePolling;
+  dst->_requestTimeout      = src->_requestTimeout;
+  dst->_connectTimeout      = src->_connectTimeout;
+  dst->_ignoreErrors        = src->_ignoreErrors;
+  dst->_maxConnectRetries   = src->_maxConnectRetries;
+  dst->_sslProtocol         = src->_sslProtocol;
+  dst->_chunkSize           = src->_chunkSize;
+  dst->_autoStart           = src->_autoStart;
+  dst->_adaptivePolling     = src->_adaptivePolling;
+  dst->_includeSystem       = src->_includeSystem;
+  dst->_restrictType        = src->_restrictType;
+  dst->_restrictCollections = src->_restrictCollections;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

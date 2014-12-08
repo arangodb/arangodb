@@ -62,11 +62,11 @@
     <option value="" selected="selected">Select</option>
     <option value="#">Dashboard</option>
 
-        <% if(isSystem) { %>
+      <% if(isSystem) { %>
 
-    <option style="display:none" id="databaseNaviSelect" value="#databases">Databases</option>
+        <option value="#databases">Databases</option>
 
-        <% } %>
+      <% } %>
 
     <option value="#collections">Collections</option>
     <option value="#applications">Applications</option>
@@ -74,12 +74,11 @@
     <option value="#query">AQL Editor</option>
     <option value="#shell">JS Shell</option>
 
-        <% if(isSystem) { %>
+      <% if(isSystem) { %>
 
-    <option value="#logs">Logs</option>
-    <option value="#databases">Databases</option>
+        <option value="#logs">Logs</option>
 
-        <% } %>
+      <% } %>
 
     <option value="#api">Api</option>
   </select>

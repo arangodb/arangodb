@@ -317,6 +317,7 @@ void Expression::buildExpression () {
   }
 
   if (_type == JSON) {
+    TRI_ASSERT(_data == nullptr);
     // generate a constant value
     _data = _node->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
 

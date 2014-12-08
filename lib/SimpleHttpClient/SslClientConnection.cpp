@@ -199,25 +199,29 @@ void SslClientConnection::disconnectSocket () {
 bool SslClientConnection::prepare (const double timeout, const bool isWrite) const {
   struct timeval tv;
   fd_set fdset;
+  int res;
 
-  tv.tv_sec = (long) timeout;
-  tv.tv_usec = (long) ((timeout - (double) tv.tv_sec) * 1000000.0);
+  do {
+    tv.tv_sec = (long) timeout;
+    tv.tv_usec = (long) ((timeout - (double) tv.tv_sec) * 1000000.0);
 
-  FD_ZERO(&fdset);
-  FD_SET(TRI_get_fd_or_handle_of_socket(_socket), &fdset);
+    FD_ZERO(&fdset);
+    FD_SET(TRI_get_fd_or_handle_of_socket(_socket), &fdset);
 
-  fd_set* readFds = NULL;
-  fd_set* writeFds = NULL;
+    fd_set* readFds = NULL;
+    fd_set* writeFds = NULL;
 
-  if (isWrite) {
-    writeFds = &fdset;
-  }
-  else {
-    readFds = &fdset;
-  }
+    if (isWrite) {
+      writeFds = &fdset;
+    }
+    else {
+      readFds = &fdset;
+    }
 
-  int sockn = (int) (TRI_get_fd_or_handle_of_socket(_socket) + 1);
-  if (select(sockn, readFds, writeFds, NULL, &tv) > 0) {
+    int sockn = (int) (TRI_get_fd_or_handle_of_socket(_socket) + 1);
+    res = select(sockn, readFds, writeFds, NULL, &tv);
+  } while (res == -1 && errno == EINTR);
+  if (res > 0) {
     return true;
   }
 
@@ -262,12 +266,17 @@ bool SslClientConnection::writeClientConnection (void* buffer, size_t length, si
 /// @brief read data from the connection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SslClientConnection::readClientConnection (StringBuffer& stringBuffer, bool& progress) {
-  if (_ssl == nullptr || ! _isConnected) {
+bool SslClientConnection::readClientConnection (StringBuffer& stringBuffer, 
+                                                bool& connectionClosed) {
+  connectionClosed = true;
+  if (_ssl == nullptr) {
     return false;
   }
+  if (! _isConnected) {
+    return true;
+  }
 
-  progress = false;
+  connectionClosed = false;
 
   do {
 
@@ -283,11 +292,11 @@ again:
 
     switch (SSL_get_error(_ssl, lenRead)) {
       case SSL_ERROR_NONE:
-        progress = true;
         stringBuffer.increaseLength(lenRead);
         break;
 
       case SSL_ERROR_ZERO_RETURN:
+        connectionClosed = true;
         SSL_shutdown(_ssl);
         _isConnected = false;
         return true;
@@ -300,6 +309,7 @@ again:
       case SSL_ERROR_SYSCALL:
       default:
         /* unexpected */
+        connectionClosed = true;
         return false;
     }
   }

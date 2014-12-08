@@ -44,7 +44,7 @@ function optimizerIndexesTestSuite () {
       c = db._create("UnitTestsCollection");
 
       for (var i = 0; i < 2000; ++i) {
-        c.save({ value: i });
+        c.save({ _key: "test" + i, value: i });
       }
 
       c.ensureSkiplist("value");
@@ -198,9 +198,58 @@ function optimizerIndexesTestSuite () {
       assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
 
       var results = AQL_EXECUTE(query);
-      // require("internal").print(results);
       assertTrue(results.stats.scannedFull > 0); // for the outer query
       assertTrue(results.stats.scannedIndex > 0); // for the inner query
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultipleSubqueries : function () {
+      var query = "LET a = (FOR x IN " + c.name() + " FILTER x._key == 'test1' RETURN x._key) " + 
+                  "LET b = (FOR x IN " + c.name() + " FILTER x._key == 'test2' RETURN x._key) " + 
+                  "LET c = (FOR x IN " + c.name() + " FILTER x._key == 'test3' RETURN x._key) " + 
+                  "LET d = (FOR x IN " + c.name() + " FILTER x._key == 'test4' RETURN x._key) " + 
+                  "LET e = (FOR x IN " + c.name() + " FILTER x._key == 'test5' RETURN x._key) " + 
+                  "LET f = (FOR x IN " + c.name() + " FILTER x._key == 'test6' RETURN x._key) " + 
+                  "LET g = (FOR x IN " + c.name() + " FILTER x._key == 'test7' RETURN x._key) " + 
+                  "LET h = (FOR x IN " + c.name() + " FILTER x._key == 'test8' RETURN x._key) " + 
+                  "LET i = (FOR x IN " + c.name() + " FILTER x._key == 'test9' RETURN x._key) " + 
+                  "LET j = (FOR x IN " + c.name() + " FILTER x._key == 'test10' RETURN x._key) " +
+                  "RETURN [ a, b, c, d, e, f, g, h, i, j ]";
+
+
+      var explain = AQL_EXPLAIN(query);
+      var plan = explain.plan;
+
+      var walker = function (nodes, func) {
+        nodes.forEach(function(node) {
+          if (node.type === "SubqueryNode") {
+            walker(node.subquery.nodes, func);
+          }
+          func(node);
+        });
+      };
+
+      var indexNodes = 0, collectionNodes = 0;
+      walker(plan.nodes, function (node) {
+        if (node.type === "IndexRangeNode") {
+          ++indexNodes;
+        }
+        else if (node.type === "EnumerateCollectionNode") {
+          ++collectionNodes;
+        }
+      });
+
+      assertEqual(0, collectionNodes);
+      assertEqual(10, indexNodes);
+      assertEqual(1, explain.stats.plansCreated);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(0, results.stats.scannedFull);
+      assertNotEqual(0, results.stats.scannedIndex); 
+      assertEqual([ [ [ 'test1' ], [ 'test2' ], [ 'test3' ], [ 'test4' ], [ 'test5' ], [ 'test6' ], [ 'test7' ], [ 'test8' ], [ 'test9' ], [ 'test10' ] ] ], results.json);
     }
 
   };

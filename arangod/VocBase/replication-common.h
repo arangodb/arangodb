@@ -140,7 +140,8 @@ void TRI_GetTimeStampReplication (char*,
 /// @brief determine whether a collection should be included in replication
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExcludeCollectionReplication (const char*);
+bool TRI_ExcludeCollectionReplication (char const*,
+                                       bool);
 
 #endif
 
