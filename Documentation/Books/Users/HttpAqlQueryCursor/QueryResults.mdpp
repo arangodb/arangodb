@@ -163,3 +163,36 @@ content-type: application/json
   "code": 404
 }
 ```
+
+!SUBSECTION Modifying documents
+
+The `_api/cursor` endpoint can also be used to execute modifying queries.
+
+The following example inserts a value into the list `listValue` of the document
+with key `test` in the collection `documents`. Normal PATH behaviour is to
+replace the list completely and using an update AQL query with `PUSH` allows to
+append to the list.
+
+```js
+curl --data @- -X POST --dump http://127.0.0.1:8529/_api/cursor
+{ "query": "FOR doc IN documents FILTER doc._key == @myKey UPDATE doc._key WITH { listValue: PUSH(doc.listValue, @value) } IN documents","bindVars": { "myKey": "test", "value": 42 } }
+
+HTTP/1.1 201 Created
+Content-Type: application/json; charset=utf-8
+
+{
+  "result" : [],
+  "hasMore" : false,
+  "extra" : {
+    "stats" : {
+      "writesExecuted" : 1,
+      "writesIgnored" : 0,
+      "scannedFull" : 0,
+      "scannedIndex" : 1
+    },
+    "warnings" : []
+  },
+  "error" : false,
+  "code" : 201
+}
+```

@@ -236,15 +236,12 @@ all variables that are defined before the *COLLECT* statement, but not those on
 the top level (outside of any *FOR*), unless the *COLLECT* statement is itself
 on the top level, in which case all variables are taken. Furthermore note 
 that it is possible that the optimizer moves *LET* statements out of *FOR*
-statements to improve performance. In a future version of ArangoDB we plan
-to allow to configure exactly the values of which variables are copied
-into the *groups* variable, since excessive copying can have a negative
-impact on performance. Specifying the *INTO* clause is optional.
+statements to improve performance. 
 
 ```
 FOR u IN users
-  COLLECT city = u.city INTO g
-  RETURN { "city" : city, "users" : g }
+  COLLECT city = u.city INTO groups
+  RETURN { "city" : city, "users" : groups }
 ```
 
 In the above example, the list of *users* will be grouped by the attribute
@@ -257,13 +254,34 @@ criteria can be separated by commas.
 
 ```
 FOR u IN users
-  COLLECT first = u.firstName, age = u.age INTO g
-  RETURN { "first" : first, "age" : age, "numUsers" : LENGTH(g) }
+  COLLECT first = u.firstName, age = u.age INTO groups
+  RETURN { "first" : first, "age" : age, "numUsers" : LENGTH(groups) }
 ```
 
 In the above example, the list of *users* is grouped by first names and ages
 first, and for each distinct combination of first name and age, the number of
 users found is returned.
+
+*COLLECT* also provides an optional *KEEP* clause that can be used to control
+which variables will be copied into the variable created by `INTO`. If no 
+*KEEP* clause is specified, all variables will be copied into the *groups* 
+variable. This is safe but can have a negative impact on performance if there 
+are many variables in scope or the variables contain massive amounts of data. 
+
+The following example limits the variables that copied into the *groups* variable
+to `age`. The variables `u` and `someCalculation` are also in scope of the
+*COLLECT* statement, but are not copied into *groups*:
+
+```
+FOR u IN users
+  LET age = u.age
+  LET someCalculation = u.value1 + u.value2
+  COLLECT first = u.firstName INTO groups KEEP age 
+  RETURN { "first" : first, "ages" : groups[*].age }
+```
+
+*KEEP* is only valid in combination with *INTO*. Only valid variable names can
+be used in the *KEEP* clause.
 
 Note: The *COLLECT* statement eliminates all local variables in the current
 scope. After *COLLECT* only the variables introduced by *COLLECT* itself are

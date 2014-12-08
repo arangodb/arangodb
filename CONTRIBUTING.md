@@ -21,7 +21,7 @@ Getting started
 * For feature requests: please clearly describe the proposed feature, additional
   configuration options, and side effects.
 
-* Please let us know if you plan to work an a ticket. This way we can make sure
+* Please let us know if you plan to work on a ticket. This way we can make sure
   we avoid redundant work.
 
 * Create a fork of our repository. You can use GitHub to do this.

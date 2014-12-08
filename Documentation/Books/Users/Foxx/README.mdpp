@@ -170,6 +170,8 @@ apps available on Github. You can install them via Foxx manager (covered in the
 chapter on Foxx manager) or simply clone them from [github](https://github.com/arangodb/).
 
 Start with ["hello-foxx"](https://github.com/arangodb/hello-foxx) as it contains
-several basic usage examples. "aye-aye" and "fugu" are more advanced apps showing how
-to use Backbone, Underscore and Jquery together with Foxx. "foxx-authentication" shows 
-how to register users, log in and check permissions.
+several basic usage examples. ["aye-aye"](https://github.com/arangodb/aye-aye)
+and ["fugu"](https://github.com/arangodb/aye-aye) are more advanced apps showing how
+to use Backbone, Underscore and Jquery together with Foxx. ["foxx-authentication"](https://github.com/arangodb/foxx-authentication)
+shows how to register users, log in and check permissions.
+

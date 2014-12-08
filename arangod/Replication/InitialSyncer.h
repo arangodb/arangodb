@@ -89,7 +89,7 @@ namespace triagens {
 
         InitialSyncer (struct TRI_vocbase_s*,
                        struct TRI_replication_applier_configuration_s const*,
-                       std::map<std::string, bool> const&,
+                       std::unordered_map<std::string, bool> const&,
                        std::string const&,
                        bool);
 
@@ -176,7 +176,8 @@ namespace triagens {
 /// @brief incrementally fetch data from a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        int handleCollectionDump (struct TRI_transaction_collection_s*,
+        int handleCollectionDump (std::string const&, 
+                                  struct TRI_transaction_collection_s*,
                                   std::string const&,
                                   TRI_voc_tick_t,
                                   std::string&);
@@ -221,7 +222,7 @@ namespace triagens {
 /// @brief collection restriction
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::map<std::string, bool> _restrictCollections;
+        std::unordered_map<std::string, bool> _restrictCollections;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection restriction type
@@ -254,6 +255,12 @@ namespace triagens {
         int _batchTtl;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief include system collections in the dump?
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _includeSystem;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief chunk size to use
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -265,6 +272,11 @@ namespace triagens {
 
         bool _verbose;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the WAL on the remote server has been flushed by us
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _hasFlushed;
     };
 
   }

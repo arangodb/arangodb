@@ -1,5 +1,5 @@
 /*jshint strict: false, maxlen: 500 */
-/*global require, assertEqual, assertFalse, assertTrue */
+/*global require, assertEqual, assertFalse, assertTrue, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, operators
@@ -4027,6 +4027,19 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual(2, aql.TERNARY_OPERATOR(true, function () { return 2; }, function () { return -1; }));
       assertEqual(-1, aql.TERNARY_OPERATOR(false, function () { return 1; }, function () { return -1; }));
       assertEqual(2, aql.TERNARY_OPERATOR(0, function () { return 1; }, function () { return 2; }));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test ranges
+////////////////////////////////////////////////////////////////////////////////
+
+    testRanges : function () {
+      assertEqual([ [ 1, 2, 3 ] ], AQL_EXECUTE("RETURN 1..3").json);
+      assertEqual([ [ 0, 1, 2, 3 ] ], AQL_EXECUTE("RETURN null..3").json);
+      assertEqual([ [ 1, 2, 3, 4, 5, 6, 7 ] ], AQL_EXECUTE("RETURN 1..3 + 4").json);
+      assertEqual([ [ -4, -3, -2, -1, 0, 1, 2, 3, 4, 5 ] ], AQL_EXECUTE("RETURN -1 - 3..3 + 2").json);
+      assertEqual([ [ 0, 1, 2, 3 ] ], AQL_EXECUTE("RETURN 1..2..3").json);
+      assertEqual([ [ 1, 2, 3, 4 ] ], AQL_EXECUTE("RETURN 1..1..4").json);
     }
 
   };

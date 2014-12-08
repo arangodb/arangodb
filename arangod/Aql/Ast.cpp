@@ -330,13 +330,23 @@ AstNode* Ast::createNodeReplace (AstNode const* keyExpression,
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::createNodeCollect (AstNode const* list,
-                                 char const* name) {
+                                 char const* name,
+                                 AstNode const* keepVariables) {
   AstNode* node = createNode(NODE_TYPE_COLLECT);
   node->addMember(list);
 
+  // INTO
   if (name != nullptr) {
     AstNode* variable = createNodeVariable(name, true);
     node->addMember(variable);
+
+    // KEEP
+    if (keepVariables != nullptr) {
+      node->addMember(keepVariables);
+    }
+  }
+  else {
+    TRI_ASSERT(keepVariables == nullptr);
   }
 
   return node;
@@ -934,15 +944,19 @@ AstNode* Ast::replaceVariables (AstNode* node,
 ////////////////////////////////////////////////////////////////////////////////
 
 void Ast::optimize () {
+  struct TraversalContext {
+    bool isInFilter  = false;
+  };
+
   auto preVisitor = [&](AstNode const* node, void* data) -> void {
     if (node->type == NODE_TYPE_FILTER) {
-      *(static_cast<bool*>(data)) = true;
+      static_cast<TraversalContext*>(data)->isInFilter = true;
     }
   };
 
   auto postVisitor = [&](AstNode const* node, void* data) -> void {
     if (node->type == NODE_TYPE_FILTER) {
-      *(static_cast<bool*>(data)) = false;
+      static_cast<TraversalContext*>(data)->isInFilter = false;
     }
   };
 
@@ -954,17 +968,17 @@ void Ast::optimize () {
     // unary operators
     if (node->type == NODE_TYPE_OPERATOR_UNARY_PLUS ||
         node->type == NODE_TYPE_OPERATOR_UNARY_MINUS) {
-      return optimizeUnaryOperatorArithmetic(node);
+      return this->optimizeUnaryOperatorArithmetic(node);
     }
 
     if (node->type == NODE_TYPE_OPERATOR_UNARY_NOT) {
-      return optimizeUnaryOperatorLogical(node);
+      return this->optimizeUnaryOperatorLogical(node);
     }
 
     // binary operators
     if (node->type == NODE_TYPE_OPERATOR_BINARY_AND ||
         node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
-      return optimizeBinaryOperatorLogical(node, *(static_cast<bool*>(data)));
+      return this->optimizeBinaryOperatorLogical(node, static_cast<TraversalContext*>(data)->isInFilter);
     }
     
     if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ ||
@@ -975,7 +989,7 @@ void Ast::optimize () {
         node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
         node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
         node->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
-      return optimizeBinaryOperatorRelational(node);
+      return this->optimizeBinaryOperatorRelational(node);
     }
     
     if (node->type == NODE_TYPE_OPERATOR_BINARY_PLUS ||
@@ -983,45 +997,45 @@ void Ast::optimize () {
         node->type == NODE_TYPE_OPERATOR_BINARY_TIMES ||
         node->type == NODE_TYPE_OPERATOR_BINARY_DIV ||
         node->type == NODE_TYPE_OPERATOR_BINARY_MOD) {
-      return optimizeBinaryOperatorArithmetic(node);
+      return this->optimizeBinaryOperatorArithmetic(node);
     }
       
     // ternary operator
     if (node->type == NODE_TYPE_OPERATOR_TERNARY) {
-      return optimizeTernaryOperator(node);
+      return this->optimizeTernaryOperator(node);
     }
 
     // call to built-in function
     if (node->type == NODE_TYPE_FCALL) {
-      return optimizeFunctionCall(node);
+      return this->optimizeFunctionCall(node);
     }
     
-    // reference to a variable
+    // reference to a variable, may be able to insert the variable value directly
     if (node->type == NODE_TYPE_REFERENCE) {
-      return optimizeReference(node);
+      return this->optimizeReference(node);
     }
     
     // LET
     if (node->type == NODE_TYPE_LET) {
-      return optimizeLet(node);
+      return this->optimizeLet(node);
     }
 
     // FILTER
     if (node->type == NODE_TYPE_FILTER) {
-      return optimizeFilter(node);
+      return this->optimizeFilter(node);
     }
  
     // FOR
     if (node->type == NODE_TYPE_FOR) {
-      return optimizeFor(node);
+      return this->optimizeFor(node);
     }
 
     return node;
   };
 
   // run the optimizations
-  bool canModifyResultType = false;
-  _root = traverse(_root, preVisitor, visitor, postVisitor, &canModifyResultType);
+  TraversalContext context;
+  this->_root = traverse(this->_root, preVisitor, visitor, postVisitor, &context);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1708,6 +1722,11 @@ AstNode* Ast::optimizeReference (AstNode* node) {
 
   // constant propagation
   if (variable->constValue() == nullptr) {
+    return node;
+  }
+
+  if (node->hasFlag(FLAG_KEEP_VARIABLENAME)) {
+    // this is a reference to a variable name, not a reference to the result
     return node;
   }
 

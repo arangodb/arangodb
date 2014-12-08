@@ -106,7 +106,6 @@
                   $('.logs-menu').css('display', 'inline');
                   // show dbs menues
                   $('#databaseNavi').css('display','inline');
-                  $('#databaseNaviSelect').css('display','inline');
                 }
                 else {
                   // hide "logs" button

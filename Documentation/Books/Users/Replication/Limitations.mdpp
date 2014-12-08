@@ -14,12 +14,13 @@ removed in later versions of ArangoDB:
   operations on a slave. ArangoDB currently does not prevent users from carrying out
   their own write operations on slaves, though this might lead to undefined behavior
   and the replication applier stopping.
-* the replication logger will log write operations for all user-defined collections and
-  only some system collections. Write operations for the following system collections 
-  are excluded intentionally: *_trx*, *_replication*, *_users*, *_aal*, *_configuration*,
-  *_cluster_kickstart_plans*, *_fishbowl*, *_modules*, *_routing* and all statistics
-  collections. Write operations for the following system collections will be logged: 
-  *_aqlfunctions*, *_graphs*.
+* when a replication slave asks a master for log events, the replication master will 
+  return all write operations for user-defined collections, but it will exclude write
+  operations for certain system collections. The following collections are excluded
+  intentionally from replication: *_trx*, *_replication*, *_configuration*,
+  *_cluster_kickstart_plans*, *_jobs*, *_queues* and all statistics collections. 
+  Write operations for the following system collections can be queried from a master: 
+  *_aqlfunctions*, *_graphs*, *users*.
 * Foxx applications consist of database entries and application scripts in the file system.
   The file system parts of Foxx applications are not tracked anywhere and thus not 
   replicated in current versions of ArangoDB. To replicate a Foxx application, it is
