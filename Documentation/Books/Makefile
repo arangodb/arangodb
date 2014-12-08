@@ -9,7 +9,12 @@ md-files:
 	@for file in $(basename $(MDPP_FILES)); do echo "converting $${file}.mdpp"; markdown-pp.py $${file}.mdpp $${file}.md; done
 
 clean-md-files:
-	@for file in $(basename $(MD_FILES)); do echo "remove $${file}.md";rm $${file}.md;done
+	@for file in $(basename $(MD_FILES)); do rm -v $${file}.md; done
+
+clean-books:
+	@rm -rv books
+
+clean: clean-md-files clean-books
 
 .PHONY: build-books
 
