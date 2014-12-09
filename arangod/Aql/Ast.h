@@ -283,7 +283,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AstNode* createNodeSortElement (AstNode const*,
-                                        bool);
+                                        AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST limit node
