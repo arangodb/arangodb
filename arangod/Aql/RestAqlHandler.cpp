@@ -848,7 +848,7 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
       answerBody("stats", query->getStats());
 
       // return warnings if present
-      auto warnings = query->warningsToJson();
+      auto warnings = query->warningsToJson(TRI_UNKNOWN_MEM_ZONE);
       if (warnings != nullptr) {
         answerBody("warnings", Json(TRI_UNKNOWN_MEM_ZONE, warnings));
       }

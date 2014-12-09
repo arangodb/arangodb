@@ -41,7 +41,7 @@ static TRI_json_t* MergeRecursive (TRI_memory_zone_t* zone,
                                    TRI_json_t const* lhs,
                                    TRI_json_t const* rhs,
                                    bool nullMeansRemove,
-                                   bool mergeArrays) {
+                                   bool mergeObjects) {
   TRI_json_t* result = TRI_CopyJson(zone, lhs);
 
   if (result == nullptr) {
@@ -66,7 +66,7 @@ static TRI_json_t* MergeRecursive (TRI_memory_zone_t* zone,
         // existing array does not have the attribute => append new attribute
         if (value->_type == TRI_JSON_ARRAY) {
           TRI_json_t* empty = TRI_CreateArrayJson(zone);
-          TRI_json_t* merged = MergeRecursive(zone, empty, value, nullMeansRemove, mergeArrays);
+          TRI_json_t* merged = MergeRecursive(zone, empty, value, nullMeansRemove, mergeObjects);
           TRI_Insert3ArrayJson(zone, result, key->_value._string.data, merged);
 
           TRI_FreeJson(zone, empty);
@@ -77,8 +77,8 @@ static TRI_json_t* MergeRecursive (TRI_memory_zone_t* zone,
       }
       else {
         // existing array already has the attribute => replace attribute
-        if (lhsValue->_type == TRI_JSON_ARRAY && value->_type == TRI_JSON_ARRAY && mergeArrays) {
-          TRI_json_t* merged = MergeRecursive(zone, lhsValue, value, nullMeansRemove, mergeArrays);
+        if (lhsValue->_type == TRI_JSON_ARRAY && value->_type == TRI_JSON_ARRAY && mergeObjects) {
+          TRI_json_t* merged = MergeRecursive(zone, lhsValue, value, nullMeansRemove, mergeObjects);
           TRI_ReplaceArrayJson(zone, result, key->_value._string.data, merged);
           TRI_FreeJson(zone, merged);
         }
@@ -734,13 +734,13 @@ TRI_json_t* TRI_MergeJson (TRI_memory_zone_t* zone,
                            TRI_json_t const* lhs,
                            TRI_json_t const* rhs,
                            bool nullMeansRemove,
-                           bool mergeArrays) {
+                           bool mergeObjects) {
   TRI_json_t* result;
 
   TRI_ASSERT(lhs->_type == TRI_JSON_ARRAY);
   TRI_ASSERT(rhs->_type == TRI_JSON_ARRAY);
 
-  result = MergeRecursive(zone, lhs, rhs, nullMeansRemove, mergeArrays);
+  result = MergeRecursive(zone, lhs, rhs, nullMeansRemove, mergeObjects);
 
   return result;
 }

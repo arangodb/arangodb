@@ -228,6 +228,40 @@ function ahuacatlQueryOptimiserInTestSuite () {
 /// @brief check a ref access without any indexes
 ////////////////////////////////////////////////////////////////////////////////
 
+    testInHashRef1 : function () {
+      c.save({ _key: "test0" });
+      for (var i = 1; i < 100; ++i) {
+        c.save({ _key: "test" + i, parent: "test" + (i - 1), parents: [ "test" + (i - 1) ] });
+      }
+      c.ensureHashIndex("parent");
+
+      var expected = [ 'test2' ];
+      var query = "LET parents = [ DOCUMENT('" + cn + "/test2').parent ] FOR c IN " + cn + " FILTER c.parent IN parents RETURN c._key";
+      var actual = getQueryResults(query);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check a ref access without any indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testInHashRef2 : function () {
+      c.save({ _key: "test0" });
+      for (var i = 1; i < 100; ++i) {
+        c.save({ _key: "test" + i, parent: "test" + (i - 1), parents: [ "test" + (i - 1) ] });
+      }
+      c.ensureHashIndex("parent");
+
+      var expected = [ 'test2' ];
+      var query = "LET parents = DOCUMENT('" + cn + "/test2').parent FOR c IN " + cn + " FILTER c.parent IN [ parents ] RETURN c._key";
+      var actual = getQueryResults(query);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check a ref access without any indexes
+////////////////////////////////////////////////////////////////////////////////
+
     testInHashRef : function () {
       c.save({ code: "test0" });
       for (var i = 1; i < 100; ++i) {

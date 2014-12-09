@@ -137,7 +137,7 @@ void GeneralClientConnection::disconnect () {
 /// (regardless of whether there was an error or not). The return value
 /// indicates, whether an error has happened. Note that the other side
 /// closing the connection is not considered to be an error! The call to
-/// prepare() does a select and the call to readClientCollection does
+/// prepare() does a select and the call to readClientConnection does
 /// what is described here.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -156,9 +156,9 @@ bool GeneralClientConnection::handleWrite (const double timeout, void* buffer, s
 /// Read data from endpoint, this uses select to block until some
 /// data has arrived. Then it reads as much as it can without further
 /// blocking, using select multiple times. What has happened is
-/// indicated by two flags, the return value and the progress flag,
-/// which is always set by this method. The progress flag indicates
-/// whether or not at least one byte has been appended to the buffer
+/// indicated by two flags, the return value and the connectionClosed flag,
+/// which is always set by this method. The connectionClosed flag indicates
+/// whether or not the connection has been closed by the other side
 /// (regardless of whether there was an error or not). The return value
 /// indicates, whether an error has happened. Note that the other side
 /// closing the connection is not considered to be an error! The call to
@@ -166,13 +166,14 @@ bool GeneralClientConnection::handleWrite (const double timeout, void* buffer, s
 /// what is described here.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool GeneralClientConnection::handleRead (double timeout, StringBuffer& buffer, bool& progress) {
-  progress = false;
+bool GeneralClientConnection::handleRead (double timeout, StringBuffer& buffer, bool& connectionClosed) {
+  connectionClosed = false;
 
   if (prepare(timeout, false)) {
-    return this->readClientConnection(buffer, progress);
+    return this->readClientConnection(buffer, connectionClosed);
   }
 
+  connectionClosed = true;
   return false;
 }
 

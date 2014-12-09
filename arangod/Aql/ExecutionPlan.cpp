@@ -56,11 +56,11 @@ ExecutionPlan::ExecutionPlan (Ast* ast)
   : _ids(),
     _root(nullptr),
     _varUsageComputed(false),
-    _mustSetFullCount(false),
     _nextId(0),
-    _ast(ast) {
-  _lastSubqueryNodeId = (size_t) -1;
+    _ast(ast),
+    _lastLimitNode(nullptr) {
 
+  _lastSubqueryNodeId = (size_t) -1;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -90,10 +90,12 @@ ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast* ast) {
 
   auto plan = new ExecutionPlan(ast);
 
-  plan->_mustSetFullCount = ast->query()->getBooleanOption("fullCount", false);
-
   try {
     plan->_root = plan->fromNode(root);
+    // insert fullCount flag
+    if (plan->_lastLimitNode != nullptr && ast->query()->getBooleanOption("fullCount", false)) {
+      static_cast<LimitNode*>(plan->_lastLimitNode)->setFullCount();
+    }
     plan->findVarUsage();
     return plan;
     // just for debugging
@@ -251,8 +253,8 @@ ModificationOptions ExecutionPlan::createOptions (AstNode const* node) {
           // nullMeansRemove is the opposite of keepNull
           options.nullMeansRemove = value->isFalse();
         }
-        else if (strcmp(name, "mergeArrays") == 0) {
-          options.mergeArrays = value->isTrue();
+        else if (strcmp(name, "mergeObjects") == 0) {
+          options.mergeObjects = value->isTrue();
         }
       }
     }
@@ -581,15 +583,28 @@ ExecutionNode* ExecutionPlan::fromNodeCollect (ExecutionNode* previous,
 
   // handle out variable
   Variable* outVariable = nullptr;
+  std::vector<Variable const*> keepVariables;
 
-  if (n == 2) {
+  if (n >= 2) {
     // collect with an output variable!
     auto v = node->getMember(1);
     outVariable = static_cast<Variable*>(v->getData());
+
+    if (n >= 3) {
+      auto vars = node->getMember(2);
+      TRI_ASSERT(vars->type == NODE_TYPE_LIST);
+      size_t const keepVarsSize = vars->numMembers();
+      keepVariables.reserve(keepVarsSize);
+      for (size_t i = 0; i < keepVarsSize; ++i) {
+        auto ref = vars->getMember(i);
+        TRI_ASSERT(ref->type == NODE_TYPE_REFERENCE);
+        keepVariables.push_back(static_cast<Variable const*>(ref->getData()));
+      }
+    }
   }
 
   auto en = registerNode(new AggregateNode(this, nextId(), aggregateVariables, 
-                  outVariable, _ast->variables()->variables(false)));
+                  outVariable, keepVariables, _ast->variables()->variables(false)));
 
   return addDependency(previous, en);
 }
@@ -622,10 +637,7 @@ ExecutionNode* ExecutionPlan::fromNodeLimit (ExecutionNode* previous,
 
   auto en = registerNode(new LimitNode(this, nextId(), static_cast<size_t>(offset->getIntValue()), static_cast<size_t>(count->getIntValue())));
 
-  if (_mustSetFullCount) {
-    static_cast<LimitNode*>(en)->setFullCount();
-    _mustSetFullCount = false;
-  }
+  _lastLimitNode = en;
 
   return addDependency(previous, en);
 }

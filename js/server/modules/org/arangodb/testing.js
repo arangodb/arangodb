@@ -823,7 +823,7 @@ testFuncs.shell_client = function(options) {
 
       var r = runInArangosh(options, instanceInfo, te);
       results[te] = r;
-      if (r !== 0 && !options.force) {
+      if (r.status !== true && !options.force) {
         break;
       }
 
@@ -1023,6 +1023,8 @@ var impTodo = [
    coll: "UnitTestsImportJson3", type: "json", create: undefined},
   {id: "json4", data: makePath("UnitTests/import-4.json"),
    coll: "UnitTestsImportJson4", type: "json", create: undefined},
+  {id: "json5", data: makePath("UnitTests/import-5.json"),
+   coll: "UnitTestsImportJson5", type: "json", create: undefined},
   {id: "csv1", data: makePath("UnitTests/import-1.csv"),
    coll: "UnitTestsImportCsv1", type: "csv", create: "true"},
   {id: "csv2", data: makePath("UnitTests/import-2.csv"),
@@ -1031,6 +1033,8 @@ var impTodo = [
    coll: "UnitTestsImportCsv3", type: "csv", create: "true"},
   {id: "csv4", data: makePath("UnitTests/import-4.csv"),
    coll: "UnitTestsImportCsv4", type: "csv", create: "true", separator: ";", backslash: true},
+  {id: "csv5", data: makePath("UnitTests/import-5.csv"),
+   coll: "UnitTestsImportCsv5", type: "csv", create: "true", separator: ";", backslash: true},
   {id: "tsv1", data: makePath("UnitTests/import-1.tsv"),
    coll: "UnitTestsImportTsv1", type: "tsv", create: "true"},
   {id: "tsv2", data: makePath("UnitTests/import-2.tsv"),
@@ -1042,7 +1046,8 @@ var impTodo = [
 testFuncs.importing = function (options) {
   if (options.cluster) {
     print("Skipped because of cluster.");
-    return {"ok":true, "skipped":0};
+    return {"importing": {"status":true, "skipped":true, 
+                          "message": "skipped because of cluster"}};
   }
 
   var instanceInfo = startInstance("tcp", options, [ ], "importing");
@@ -1052,14 +1057,14 @@ testFuncs.importing = function (options) {
     var r = runInArangosh(options, instanceInfo,
                           makePath("js/server/tests/import-setup.js"));
     result.setup = r;
-    if (r !== 0) {
+    if (r.status !== true) {
       throw "banana";
     }
     var i;
     for (i = 0; i < impTodo.length; i++) {
       r = runArangoImp(options, instanceInfo, impTodo[i]);
       result[impTodo[i].id] = r;
-      if (r !== 0 && !options.force) {
+      if (r.status !== true && !options.force) {
         throw "banana";
       }
     }
@@ -1124,7 +1129,7 @@ testFuncs.foxx_manager = function (options) {
                                   ["--configuration",
                                    "etc/relative/foxx-manager.conf",
                                    "update"]);
-  if (results.update === 0 || options.force) {
+  if (results.update.status === true || options.force) {
     results.search = runArangoshCmd(options, instanceInfo,
                                     ["--configuration",
                                      "etc/relative/foxx-manager.conf",
@@ -1150,7 +1155,7 @@ testFuncs.dump = function (options) {
   var results = {};
   results.setup = runInArangosh(options, instanceInfo,
        makePath("js/server/tests/dump-setup"+cluster+".js"));
-  if (results.setup === 0) {
+  if (results.setup.status === true) {
     results.dump = runArangoDumpRestore(options, instanceInfo, "dump",
                                         "UnitTestsDumpSrc");
     results.restore = runArangoDumpRestore(options, instanceInfo, "restore",
@@ -1213,7 +1218,7 @@ testFuncs.arangob = function (options) {
 
       continueTesting = checkInstanceAlive(instanceInfo, options);
 
-      if (r !== 0 && !options.force) {
+      if (r.status !== true && !options.force) {
         break;
       }
     }
@@ -1484,6 +1489,7 @@ function UnitTest (which, options) {
   else {
     var r;
     results[which] = r = testFuncs[which](options);
+    print("Testresult:", r);
     ok = true;
     for (i in r) {
       if (r.hasOwnProperty(i) &&

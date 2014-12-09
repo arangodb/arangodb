@@ -989,6 +989,12 @@ static v8::Handle<v8::Value> JS_ExplainAql (v8::Arguments const& argv) {
     else {
       result->Set(TRI_V8_STRING("warnings"), TRI_ObjectJson(queryResult.warnings));
     }
+    if (queryResult.stats == nullptr) {
+      result->Set(TRI_V8_STRING("stats"), v8::Object::New());
+    }
+    else {
+      result->Set(TRI_V8_STRING("stats"), TRI_ObjectJson(queryResult.stats));
+    }
   }
 
   return scope.Close(result);
@@ -1050,7 +1056,7 @@ static v8::Handle<v8::Value> JS_ExecuteAqlJson (v8::Arguments const& argv) {
       
     optionName = v8::String::New("ttl");
     if (argValue->Has(optionName)) {
-      ttl = TRI_ObjectToBoolean(argValue->Get(optionName));
+      ttl = TRI_ObjectToDouble(argValue->Get(optionName));
       ttl = (ttl <= 0.0 ? 30.0 : ttl);
     }
       
@@ -1210,7 +1216,7 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
       
     optionName = v8::String::New("ttl");
     if (argValue->Has(optionName)) {
-      ttl = TRI_ObjectToBoolean(argValue->Get(optionName));
+      ttl = TRI_ObjectToDouble(argValue->Get(optionName));
       ttl = (ttl <= 0.0 ? 30.0 : ttl);
     }
       

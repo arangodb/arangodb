@@ -1933,6 +1933,11 @@ char *linenoise(const char *prompt)
 
         initLinenoiseLine(&current);
         count = linenoiseEdit(&current);
+            
+        // move to EOL
+        eraseEol(&current);
+        current.pos = current.chars;
+        refreshLine(current.prompt, &current);
 
         disableRawMode(&current);
         printf("\n");

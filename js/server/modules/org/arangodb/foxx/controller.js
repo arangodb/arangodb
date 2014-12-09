@@ -492,7 +492,7 @@ extend(Controller.prototype, {
 ///
 /// `FoxxController#activateAuthentication(opts)`
 ///
-/// To activate authentication for this authentication, first call this function.
+/// To activate authentication for this controller, first call this function.
 /// Provide the following arguments:
 ///
 /// * *type*: Currently we only support *cookie*, but this will change in the future
@@ -605,7 +605,7 @@ extend(Controller.prototype, {
 /// `FoxxController#register(path, opts)`
 ///
 /// This works pretty similar to the logout function and adds a path to your
-/// app for the register functionality. You can customize it with a custom `*nSuccess*
+/// app for the register functionality. You can customize it with a custom *onSuccess*
 /// and *onError* function:
 ///
 /// * *onSuccess* is a function that you can define to do something if the registration was

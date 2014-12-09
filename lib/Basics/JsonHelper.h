@@ -702,6 +702,14 @@ namespace triagens {
           TRI_Insert3ArrayJson(_zone, _json, name, sub.steal());
           return *this;
         }
+        
+        Json& set (std::string const& name, Json sub) {
+          if (! TRI_IsArrayJson(_json)) {
+            throw JsonException("Json is no array");
+          }
+          TRI_Insert3ArrayJson(_zone, _json, name.c_str(), sub.steal());
+          return *this;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief this is a syntactic shortcut for the set method using operator()
