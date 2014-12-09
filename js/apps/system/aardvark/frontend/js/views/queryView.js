@@ -600,21 +600,43 @@
         return JSON.stringify(data);
       },
 
+      heatmapColors: [
+        "#313695",
+        "#4575b4",
+        "#74add1",
+        "#abd9e9",
+        "#e0f3f8",
+        "#ffffbf",
+        "#fee090",
+        "#fdae61",
+        "#f46d43",
+        "#d73027",
+        "#a50026",
+      ],
+
+      heatmap: function(value) {
+        return this.heatmapColors[Math.floor(value * 10)];
+      },
+
       followQueryPath: function(root, nodes) {
         var known = {};
+        var estCost = 0;
         known[nodes[0].id] = root;
         var i, nodeData, j, dep;
         for (i = 1; i < nodes.length; ++i) {
-          nodeData = this.preparePlanNodeEntry(nodes[i]);
+          nodeData = this.preparePlanNodeEntry(nodes[i], nodes[i-1].estimatedCost);
           known[nodes[i].id] = nodeData;
           dep = nodes[i].dependencies;
+          estCost = nodeData.estimatedCost;
           for (j = 0; j < dep.length; ++j) {
             known[dep[j]].children.push(nodeData);
           }
         }
+        return estCost;
       },
 
-      preparePlanNodeEntry: function(node) {
+      preparePlanNodeEntry: function(node, parentCost) {
+        console.log(node);
         var json = {
           estimatedCost: node.estimatedCost,
           estimatedNrItems: node.estimatedNrItems,
@@ -623,9 +645,10 @@
         };
         switch (node.type) {
           case "SubqueryNode":
-          this.followQueryPath(json, node.subquery.nodes);
-          break;
+            json.relativeCost =  json.estimatedCost - this.followQueryPath(json, node.subquery.nodes);
+            break;
           default:
+            json.relativeCost = json.estimatedCost - parentCost|| json.estimatedCost;
 
         }
         return json;
@@ -633,19 +656,19 @@
 
       drawTree: function() {
         var treeHeight = 0;
+        var heatmap = this.heatmap.bind(this);
         if (!this.treeData) {
           return;
         }
         var treeData = this.treeData;
         // outputEditor.setValue(JSON.stringify(treeData, undefined, 2));
 
-        console.log($("svg#explainOutput").parent().width());
-
         var margin = {top: 20, right: 20, bottom: 20, left: 20},
             width = $("svg#explainOutput").parent().width() - margin.right - margin.left,
             height = 500 - margin.top - margin.bottom;
 
         var i = 0;
+        var maxCost = 0;
 
         var tree = d3.layout.tree().size([width, height]);
 
@@ -667,7 +690,7 @@
           .projection(function(d) { return [d.x, d.y]; });
 
         // Normalize for fixed-depth.
-        nodes.forEach(function(d) { d.y = d.depth * 60 + margin.top; });
+        nodes.forEach(function(d) { d.y = d.depth * 80 + margin.top; });
 
         // Declare the nodes¦
         var node = svg.selectAll("g.node")
@@ -678,11 +701,13 @@
             if (treeHeight < d.y) {
               treeHeight = d.y;
             }
+            if (maxCost < d.relativeCost) {
+              maxCost = d.relativeCost;
+            }
             return d.id;
           });
 
           treeHeight += 60;
-          console.log("height:", treeHeight);
           $(".query-output").height(treeHeight);
 
         // Enter the nodes.
@@ -693,24 +718,20 @@
 
         nodeEnter.append("circle")
           .attr("r", 10)
-          .style("fill", "#fff");
+          .style("fill", function(d) {return heatmap(d.relativeCost / maxCost);});
 
         nodeEnter.append("text")
-          .attr("x", function(d) { 
-            return -20;}) // d.children || d._children ? -13 : 13; })
-          .attr("dy", "-20")
-          .attr("text-anchor", function(d) { 
-            return "start"; }) // d.children || d._children ? "end" : "start"; })
+          .attr("dx", "0")
+          .attr("dy", "-15")
+          .attr("text-anchor", function() {return "middle"; })
           .text(function(d) { return d.type.replace("Node",""); })
           .style("fill-opacity", 1);
 
         nodeEnter.append("text")
-          .attr("x", function(d) { 
-            return -20;}) // d.children || d._children ? -13 : 13; })
-          .attr("dy", "20")
-          .attr("text-anchor", function(d) { 
-            return "start"; }) // d.children || d._children ? "end" : "start"; })
-          .text(function(d) { return "Cost: " + d.estimatedCost; })
+          .attr("dx", "0")
+          .attr("dy", "25")
+          .attr("text-anchor", function() { return "middle"; })
+          .text(function(d) { return "Cost: " + d.relativeCost; })
           .style("fill-opacity", 1);
 
         // Declare the links¦

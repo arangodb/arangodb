@@ -332,14 +332,8 @@
 svg.explain-tree {
   width: 100%;
 
-  .node circle {
-    fill: #fff;
-    stroke: steelblue;
-    stroke-width: 1.5px;
-  }
-
-  .node {
-    font: 10px sans-serif;
+  .node text {
+    font-size: 14px;
   }
 
   .link {

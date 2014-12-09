@@ -5285,12 +5285,8 @@ pre.gv-object-view {
 
 svg.explain-tree {
   width: 100%; }
-  svg.explain-tree .node circle {
-    fill: #fff;
-    stroke: steelblue;
-    stroke-width: 1.5px; }
-  svg.explain-tree .node {
-    font: 10px sans-serif; }
+  svg.explain-tree .node text {
+    font-size: 14px; }
   svg.explain-tree .link {
     fill: none;
     stroke: #ccc;
