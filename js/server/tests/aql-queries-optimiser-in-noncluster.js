@@ -927,6 +927,18 @@ function ahuacatlQueryOptimiserInTestSuite () {
       ruleIsNotUsed(query);
     },
     
+    testOverlappingDynamicAndNonDynamic: function () {
+      for (var i = 1; i <= 5; ++i) {
+        c.save({ value1: i, value2: i + 5 });
+      }
+      c.ensureSkiplist("value1");
+      var query = "FOR x IN " + cn + " FILTER x.value1 IN [PASSTHRU(3),PASSTHRU(3),PASSTHRU(3), 4] || x.value1 in [3,4,5,9] RETURN x.value1";
+      var expected = [ 3, 4, 5 ];
+      var actual = getQueryResults(query);
+      assertEqual(expected, actual);
+      ruleIsUsed(query);
+    },
+    
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////

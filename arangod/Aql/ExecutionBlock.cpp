@@ -853,7 +853,7 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
   : ExecutionBlock(engine, en),
     _collection(en->collection()),
     _posInDocs(0),
-    _anyBoundVariable(true),
+    _anyBoundVariable(false),
     _skiplistIterator(nullptr),
     _condition(&en->_ranges),
     _posInRanges(0),
@@ -872,7 +872,7 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
     for (auto r : attrRanges) {
       isConstant &= r.isConstant();
     }
-    _anyBoundVariable &= ! isConstant;
+    _anyBoundVariable |= ! isConstant;
     _allBoundsConstant.push_back(isConstant);
   }
 }
