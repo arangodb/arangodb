@@ -938,6 +938,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
     
     void differenceRangeInfos (RangeInfo&, RangeInfo&);
+    void differenceIndexOrRangeInfo (IndexOrCondition const*, RangeInfo&);
   }
 }
 

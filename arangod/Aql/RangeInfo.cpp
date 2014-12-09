@@ -518,8 +518,6 @@ std::unordered_set<std::string> RangeInfoMapVec::attributes (std::string const& 
 /// @brief orCombineRangeInfoMapVecs: return a new RangeInfoMapVec appending
 /// those RIMs in the right arg (which are not identical to an existing RIM) in
 /// a copy of the left arg.
-///
-/// 
 ////////////////////////////////////////////////////////////////////////////////
 
 RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs, 
@@ -572,6 +570,7 @@ RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs,
   delete rhs;
   return lhs;
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief andCombineRangeInfoMaps: insert every RangeInfo in the <rhs> in the
@@ -750,6 +749,21 @@ void RangeInfoMapVec::differenceRangeInfo (RangeInfo& newRi) {
           (newRi._lowConst.bound().isEmpty() && newRi._highConst.bound().isEmpty())){
         break;
       }
+    }
+  }
+}
+
+void triagens::aql::differenceIndexOrRangeInfo(IndexOrCondition const* ioc,
+                                               RangeInfo&              newRi) {
+  for (IndexAndCondition iac: *ioc) {
+    for (RangeInfo oldRi: iac) {
+      differenceRangeInfos(oldRi, newRi);
+      if (! newRi.isValid()) { 
+        break;
+      }
+    }
+    if (! newRi.isValid()) { 
+      break;
     }
   }
 }
