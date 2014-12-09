@@ -301,9 +301,9 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
 
   var url = endpointToURL(cmd.agency.endpoints[0])+"/v2/keys/"+
             cmd.agency.agencyPrefix+"/";
-  console.info("Downloading %sLaunchers/%s", url, cmd.name);
-  var res = download(url+"Launchers/"+cmd.name,"",{method:"GET",
-                                                   followRedirects:true});
+  console.info("Downloading %sLaunchers/%s", url, encode(cmd.name));
+  var res = download(url+"Launchers/"+encode(cmd.name),"",{method:"GET",
+                                                       followRedirects:true});
   if (res.code !== 200) {
     return {"error": true, "isStartServers": true, "suberror": res};
   }
@@ -620,8 +620,8 @@ upgradeActions.startServers = function (dispatchers, cmd, isRelaunch) {
 
   var url = endpointToURL(cmd.agency.endpoints[0])+"/v2/keys/"+
             cmd.agency.agencyPrefix+"/";
-  console.info("Downloading %sLaunchers/%s", url, cmd.name);
-  var res = download(url+"Launchers/"+cmd.name,"",{method:"GET",
+  console.info("Downloading %sLaunchers/%s", url, encode(cmd.name));
+  var res = download(url+"Launchers/"+encode(cmd.name),"",{method:"GET",
                                                    followRedirects:true});
   if (res.code !== 200) {
     return {"error": true, "isStartServers": true, "suberror": res};
