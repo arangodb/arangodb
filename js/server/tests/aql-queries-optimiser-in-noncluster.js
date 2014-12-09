@@ -833,6 +833,18 @@ function ahuacatlQueryOptimiserInTestSuite () {
       ruleIsUsed(query);
     },
 
+    testDudSkiplist : function () {
+      for (var i = 1; i < 5; ++i) {
+        c.save({ value1: i, value2: i + 5 });
+      }
+      c.ensureSkiplist("value1");
+      var query = "FOR i IN " + cn + " FILTER i.value1 == 1 || i.value2 == 8 || i.value1 == 2 SORT i.value1 LIMIT 2 RETURN i.value1";
+      var expected = [ 1, 2 ];
+      var actual = getQueryResults(query);
+      assertEqual(expected, actual);
+      ruleIsNotUsed(query);
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
