@@ -858,7 +858,7 @@ void triagens::aql::removeOverlapsIndexOr (IndexOrCondition& ioc) {
       differenceIndexAnd(ioc.at(j), ioc.at(i));
     }
   }
-  // remove empty ones
+  // remove empty ones??
   for (auto it = ioc.begin(); it < ioc.end(); ) {
     if (it->empty()) {
       it = ioc.erase(it);

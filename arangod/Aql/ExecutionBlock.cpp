@@ -865,7 +865,9 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
       _condition->at(i).emplace_back(ri.clone());
     }
   }
-  removeOverlapsIndexOr(*_condition);
+  if (_condition->size() > 1) {
+    removeOverlapsIndexOr(*_condition);
+  }
 
   std::vector<std::vector<RangeInfo>> const& orRanges = en->_ranges;
   TRI_ASSERT(en->_index != nullptr);
