@@ -39,6 +39,12 @@ v2.4.0 (XXXX-XX-XX)
 v2.3.2 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #1173: AQL Editor "Save current query" resets user password
+
+* fixed missing makeDirectory when fetching a Foxx application from a zip file
+
+* put in warning about default changed: fixed issue #1134: Change the default endpoint to localhost
+
 * fixed issue #1163: invalid fullCount value returned from AQL
 
 * fixed range operator precedence 
@@ -56,11 +62,14 @@ v2.3.2 (XXXX-XX-XX)
 
 * fixed memleaks
 
+* added AQL optimizer rule for removing `INTO` from a `COLLECT` statement if not needed
+
 * fixed issue #1131
 
   This change provides the `KEEP` clause for `COLLECT ... INTO`. The `KEEP` clause
   allows controlling which variables will be kept in the variable created by `INTO`.
   
+* fixed issue #1147, must protect dispatcher ID for etcd
 
 v2.3.1 (2014-11-28)
 -------------------

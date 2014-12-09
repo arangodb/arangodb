@@ -479,25 +479,58 @@ ExecutionNode* ExecutionPlan::fromNodeSort (ExecutionNode* previous,
 
   try {
     size_t const n = list->numMembers();
+    elements.reserve(n);
+
     for (size_t i = 0; i < n; ++i) {
       auto element = list->getMember(i);
       TRI_ASSERT(element != nullptr);
       TRI_ASSERT(element->type == NODE_TYPE_SORT_ELEMENT);
-      TRI_ASSERT(element->numMembers() == 1);
+      TRI_ASSERT(element->numMembers() == 2);
 
       auto expression = element->getMember(0);
+      auto ascending = element->getMember(1);
+
+      // get sort order
+      bool isAscending;
+      bool handled = false;
+      if (ascending->type == NODE_TYPE_VALUE) {
+        if (ascending->value.type == VALUE_TYPE_STRING) {
+          // special treatment for string values ASC/DESC
+          if (TRI_CaseEqualString(ascending->value.value._string, "ASC")) {
+            isAscending = true;
+            handled = true;
+          }
+          else if (TRI_CaseEqualString(ascending->value.value._string, "DESC")) {
+            isAscending = false;
+            handled = true;
+          }
+        }
+      }
+
+      if (! handled) {
+        // if no sort order is set, ensure we have one
+        auto ascendingNode = ascending->castToBool(_ast);
+        if (ascendingNode->type == NODE_TYPE_VALUE && 
+            ascendingNode->value.type == VALUE_TYPE_BOOL) {
+          isAscending = ascendingNode->value.value._bool;
+        }
+        else {
+          // must have an order
+          isAscending = true;
+        }
+      }
 
       if (expression->type == NODE_TYPE_REFERENCE) {
         // sort operand is a variable
         auto v = static_cast<Variable*>(expression->getData());
         TRI_ASSERT(v != nullptr);
-        elements.push_back(std::make_pair(v, element->getBoolValue()));
+        elements.emplace_back(std::make_pair(v, isAscending));
       }
       else {
         // sort operand is some misc expression
         auto calc = createTemporaryCalculation(expression);
         temp.push_back(calc);
-        elements.push_back(std::make_pair(calc->outVariable(), element->getBoolValue()));
+        elements.emplace_back(std::make_pair(calc->outVariable(), isAscending));
       }
     }
   }

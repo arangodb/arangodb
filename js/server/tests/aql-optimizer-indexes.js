@@ -250,6 +250,294 @@ function optimizerIndexesTestSuite () {
       assertEqual(0, results.stats.scannedFull);
       assertNotEqual(0, results.stats.scannedIndex); 
       assertEqual([ [ [ 'test1' ], [ 'test2' ], [ 'test3' ], [ 'test4' ], [ 'test5' ], [ 'test6' ], [ 'test7' ], [ 'test8' ], [ 'test9' ], [ 'test10' ] ] ], results.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultipleSubqueriesMultipleIndexes : function () {
+      c.ensureHashIndex("value"); // now we have a hash and a skiplist index
+      var query = "LET a = (FOR x IN " + c.name() + " FILTER x.value == 1 RETURN x._key) " + 
+                  "LET b = (FOR x IN " + c.name() + " FILTER x.value == 2 RETURN x._key) " + 
+                  "LET c = (FOR x IN " + c.name() + " FILTER x.value == 3 RETURN x._key) " + 
+                  "LET d = (FOR x IN " + c.name() + " FILTER x.value == 4 RETURN x._key) " + 
+                  "LET e = (FOR x IN " + c.name() + " FILTER x.value == 5 RETURN x._key) " + 
+                  "LET f = (FOR x IN " + c.name() + " FILTER x.value == 6 RETURN x._key) " + 
+                  "LET g = (FOR x IN " + c.name() + " FILTER x.value == 7 RETURN x._key) " + 
+                  "LET h = (FOR x IN " + c.name() + " FILTER x.value == 8 RETURN x._key) " + 
+                  "LET i = (FOR x IN " + c.name() + " FILTER x.value == 9 RETURN x._key) " + 
+                  "LET j = (FOR x IN " + c.name() + " FILTER x.value == 10 RETURN x._key) " +
+                  "RETURN [ a, b, c, d, e, f, g, h, i, j ]";
+
+
+      var explain = AQL_EXPLAIN(query);
+      var plan = explain.plan;
+
+      var walker = function (nodes, func) {
+        nodes.forEach(function(node) {
+          if (node.type === "SubqueryNode") {
+            walker(node.subquery.nodes, func);
+          }
+          func(node);
+        });
+      };
+
+      var indexNodes = 0, collectionNodes = 0;
+      walker(plan.nodes, function (node) {
+        if (node.type === "IndexRangeNode") {
+          ++indexNodes;
+          if (indexNodes <= 5) {
+            assertEqual("hash", node.index.type);
+          }
+          else {
+            assertEqual("skiplist", node.index.type);
+          }
+        }
+        else if (node.type === "EnumerateCollectionNode") {
+          ++collectionNodes;
+        }
+      });
+
+      assertEqual(0, collectionNodes);
+      assertEqual(10, indexNodes);
+      assertEqual(32, explain.stats.plansCreated);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(0, results.stats.scannedFull);
+      assertNotEqual(0, results.stats.scannedIndex); 
+      assertEqual([ [ [ 'test1' ], [ 'test2' ], [ 'test3' ], [ 'test4' ], [ 'test5' ], [ 'test6' ], [ 'test7' ], [ 'test8' ], [ 'test9' ], [ 'test10' ] ] ], results.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultipleSubqueriesHashIndexes : function () {
+      c.dropIndex(c.getIndexes()[1]); // drop skiplist index
+      c.ensureHashIndex("value");
+      var query = "LET a = (FOR x IN " + c.name() + " FILTER x.value == 1 RETURN x._key) " + 
+                  "LET b = (FOR x IN " + c.name() + " FILTER x.value == 2 RETURN x._key) " + 
+                  "LET c = (FOR x IN " + c.name() + " FILTER x.value == 3 RETURN x._key) " + 
+                  "LET d = (FOR x IN " + c.name() + " FILTER x.value == 4 RETURN x._key) " + 
+                  "LET e = (FOR x IN " + c.name() + " FILTER x.value == 5 RETURN x._key) " + 
+                  "LET f = (FOR x IN " + c.name() + " FILTER x.value == 6 RETURN x._key) " + 
+                  "LET g = (FOR x IN " + c.name() + " FILTER x.value == 7 RETURN x._key) " + 
+                  "LET h = (FOR x IN " + c.name() + " FILTER x.value == 8 RETURN x._key) " + 
+                  "LET i = (FOR x IN " + c.name() + " FILTER x.value == 9 RETURN x._key) " + 
+                  "LET j = (FOR x IN " + c.name() + " FILTER x.value == 10 RETURN x._key) " +
+                  "RETURN [ a, b, c, d, e, f, g, h, i, j ]";
+
+      var explain = AQL_EXPLAIN(query);
+      var plan = explain.plan;
+
+      var walker = function (nodes, func) {
+        nodes.forEach(function(node) {
+          if (node.type === "SubqueryNode") {
+            walker(node.subquery.nodes, func);
+          }
+          func(node);
+        });
+      };
+
+      var indexNodes = 0, collectionNodes = 0;
+      walker(plan.nodes, function (node) {
+        if (node.type === "IndexRangeNode") {
+          ++indexNodes;
+          assertEqual("hash", node.index.type);
+        }
+        else if (node.type === "EnumerateCollectionNode") {
+          ++collectionNodes;
+        }
+      });
+
+      assertEqual(0, collectionNodes);
+      assertEqual(10, indexNodes);
+      assertEqual(1, explain.stats.plansCreated);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(0, results.stats.scannedFull);
+      assertNotEqual(0, results.stats.scannedIndex); 
+      assertEqual([ [ [ 'test1' ], [ 'test2' ], [ 'test3' ], [ 'test4' ], [ 'test5' ], [ 'test6' ], [ 'test7' ], [ 'test8' ], [ 'test9' ], [ 'test10' ] ] ], results.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testJoinMultipleIndexes : function () {
+      c.ensureHashIndex("value"); // now we have a hash and a skiplist index
+      var query = "FOR i IN " + c.name() + " FILTER i.value < 10 FOR j IN " + c.name() + " FILTER j.value == i.value RETURN j._key";
+
+      var explain = AQL_EXPLAIN(query);
+      var plan = explain.plan;
+
+      var collectionNodes = 0, indexNodes = 0;
+      plan.nodes.forEach(function(node) {
+        if (node.type === "IndexRangeNode") {
+          ++indexNodes;
+          if (indexNodes === 1) {
+            // skiplist must be used for the first FOR
+            assertEqual("skiplist", node.index.type);
+            assertEqual("i", node.outVariable.name);
+          }
+          else {
+            // second FOR should use a hash index
+            assertEqual("hash", node.index.type);
+            assertEqual("j", node.outVariable.name);
+          }
+        }
+        else if (node.type === "EnumerateCollectionNode") {
+          ++collectionNodes;
+        }
+      });
+
+      assertEqual(0, collectionNodes);
+      assertEqual(2, indexNodes);
+      assertEqual(4, explain.stats.plansCreated);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(0, results.stats.scannedFull);
+      assertNotEqual(0, results.stats.scannedIndex); 
+      assertEqual([ 'test0', 'test1', 'test2', 'test3', 'test4', 'test5', 'test6', 'test7', 'test8', 'test9' ], results.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testJoinRangesMultipleIndexes : function () {
+      c.ensureHashIndex("value"); // now we have a hash and a skiplist index
+      var query = "FOR i IN " + c.name() + " FILTER i.value < 5 FOR j IN " + c.name() + " FILTER j.value < i.value RETURN j._key";
+
+      var explain = AQL_EXPLAIN(query);
+      var plan = explain.plan;
+
+      var collectionNodes = 0, indexNodes = 0;
+      plan.nodes.forEach(function(node) {
+        if (node.type === "IndexRangeNode") {
+          ++indexNodes;
+          // skiplist must be used for both FORs
+          assertEqual("skiplist", node.index.type);
+          if (indexNodes === 1) {
+            assertEqual("i", node.outVariable.name);
+          }
+          else {
+            assertEqual("j", node.outVariable.name);
+          }
+        }
+        else if (node.type === "EnumerateCollectionNode") {
+          ++collectionNodes;
+        }
+      });
+
+      assertEqual(0, collectionNodes);
+      assertEqual(2, indexNodes);
+      assertEqual(2, explain.stats.plansCreated);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(0, results.stats.scannedFull);
+      assertNotEqual(0, results.stats.scannedIndex); 
+      assertEqual([ 'test0', 'test0', 'test1', 'test0', 'test1', 'test2', 'test0', 'test1', 'test2', 'test3' ], results.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testTripleJoin : function () {
+      c.ensureHashIndex("value"); // now we have a hash and a skiplist index
+      var query = "FOR i IN " + c.name() + " FILTER i.value == 4 FOR j IN " + c.name() + " FILTER j.value == i.value FOR k IN " + c.name() + " FILTER k.value < j.value RETURN k._key";
+
+      var explain = AQL_EXPLAIN(query);
+      var plan = explain.plan;
+
+      var collectionNodes = 0, indexNodes = 0;
+      plan.nodes.forEach(function(node) {
+        if (node.type === "IndexRangeNode") {
+          ++indexNodes;
+          if (indexNodes === 1) {
+            assertEqual("hash", node.index.type);
+            assertEqual("i", node.outVariable.name);
+          }
+          else if (indexNodes === 2) {
+            assertEqual("hash", node.index.type);
+            assertEqual("j", node.outVariable.name);
+          }
+          else {
+            assertEqual("skiplist", node.index.type);
+            assertEqual("k", node.outVariable.name);
+          }
+        }
+        else if (node.type === "EnumerateCollectionNode") {
+          ++collectionNodes;
+        }
+      });
+
+      assertEqual(0, collectionNodes);
+      assertEqual(3, indexNodes);
+      assertEqual(12, explain.stats.plansCreated);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(0, results.stats.scannedFull);
+      assertNotEqual(0, results.stats.scannedIndex); 
+      assertEqual([ 'test0', 'test1', 'test2', 'test3' ], results.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testSubqueryMadness : function () {
+      c.ensureHashIndex("value"); // now we have a hash and a skiplist index
+      var query = "LET a = (FOR x IN " + c.name() + " FILTER x.value == 1 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " + 
+                  "LET b = (FOR x IN " + c.name() + " FILTER x.value == 2 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " + 
+                  "LET c = (FOR x IN " + c.name() + " FILTER x.value == 3 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " + 
+                  "LET d = (FOR x IN " + c.name() + " FILTER x.value == 4 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " + 
+                  "LET e = (FOR x IN " + c.name() + " FILTER x.value == 5 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " + 
+                  "LET f = (FOR x IN " + c.name() + " FILTER x.value == 6 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " + 
+                  "LET g = (FOR x IN " + c.name() + " FILTER x.value == 7 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " + 
+                  "LET h = (FOR x IN " + c.name() + " FILTER x.value == 8 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " + 
+                  "LET i = (FOR x IN " + c.name() + " FILTER x.value == 9 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " + 
+                  "LET j = (FOR x IN " + c.name() + " FILTER x.value == 10 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " + 
+                  "RETURN [ a, b, c, d, e, f, g, h, i, j ]";
+
+      var explain = AQL_EXPLAIN(query);
+      var plan = explain.plan;
+      
+      var walker = function (nodes, func) {
+        nodes.forEach(function(node) {
+          if (node.type === "SubqueryNode") {
+            walker(node.subquery.nodes, func);
+          }
+          func(node);
+        });
+      };
+
+      var indexNodes = 0, collectionNodes = 0;
+      walker(plan.nodes, function (node) {
+        if (node.type === "IndexRangeNode") {
+          ++indexNodes;
+          if (indexNodes < 5) {
+            assertEqual("hash", node.index.type);
+          }
+          else {
+            assertEqual("skiplist", node.index.type);
+          }
+        }
+        else if (node.type === "EnumerateCollectionNode") {
+          ++collectionNodes;
+        }
+      });
+
+      assertEqual(0, collectionNodes);
+      assertEqual(20, indexNodes);
+      assertEqual(36, explain.stats.plansCreated);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(0, results.stats.scannedFull);
+      assertNotEqual(0, results.stats.scannedIndex); 
+      assertEqual([ [ [ 'test1' ], [ 'test2' ], [ 'test3' ], [ 'test4' ], [ 'test5' ], [ 'test6' ], [ 'test7' ], [ 'test8' ], [ 'test9' ], [ 'test10' ] ] ], results.json);
     }
 
   };

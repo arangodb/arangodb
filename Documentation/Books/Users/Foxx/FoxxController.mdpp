@@ -175,9 +175,10 @@ The *request* object inherits several attributes from the underlying Actions:
 * *path*: request URI path, with potential [database name](../Glossary/README.html#database_name) stripped off.
 
 * *url*: request URI path + query string, with potential database name
-   stripped off
+  stripped off
 
-* *headers*: a JSON object with the request headers as key/value pairs
+* *headers*: a JSON object with the request headers as key/value pairs. 
+  **Note:** All header field names are lower-cased
 
 * *cookies*: a JSON object with the request cookies as key/value pairs
 
