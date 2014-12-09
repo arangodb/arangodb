@@ -177,7 +177,7 @@ namespace triagens {
                  bool waitForSync,
                  bool isPatch,
                  bool keepNull,   // only counts for isPatch == true
-                 bool mergeArrays,   // only counts for isPatch == true
+                 bool mergeObjects,   // only counts for isPatch == true
                  TRI_json_t* json,
                  std::map<std::string, std::string> const& headers,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,

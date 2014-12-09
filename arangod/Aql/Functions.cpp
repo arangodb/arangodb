@@ -100,6 +100,51 @@ AqlValue Functions::IsDocument (triagens::arango::AqlTransaction* trx,
   return AqlValue(new Json(j.isArray()));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function LENGTH
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Length (triagens::arango::AqlTransaction* trx,
+                                TRI_document_collection_t const* collection,
+                                AqlValue const parameters) {
+  Json j(parameters.extractListMember(trx, collection, 0, false));
+
+  TRI_json_t const* json = j.json();
+  size_t length = 0;
+
+  if (json != nullptr) {
+    switch (json->_type) {
+      case TRI_JSON_UNUSED:
+      case TRI_JSON_NULL:
+        length = strlen("null"); 
+        break;
+
+      case TRI_JSON_BOOLEAN:
+        length = (json->_value._boolean ? strlen("true") : strlen("false"));
+        break;
+
+      case TRI_JSON_NUMBER:
+      case TRI_JSON_STRING:
+      case TRI_JSON_STRING_REFERENCE:
+        // return number of characters (not byteS) in string
+        length = TRI_CharLengthUtf8String(json->_value._string.data);
+        break;
+
+      case TRI_JSON_ARRAY:
+        // return number of attributes
+        length = json->_value._objects._length / 2;
+        break;
+
+      case TRI_JSON_LIST:
+        // return list length
+        length = TRI_LengthListJson(json);
+        break;
+    }
+  }
+
+  return AqlValue(new Json(static_cast<double>(length)));
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

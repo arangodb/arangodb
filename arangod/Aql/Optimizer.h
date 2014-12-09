@@ -44,6 +44,33 @@ namespace triagens {
 
     public:
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief optimizer statistics
+//////////////////////////////////////////////////////////////////////////////
+
+      struct Stats {
+        int64_t rulesExecuted = 0;
+        int64_t rulesSkipped  = 0;
+        int64_t plansCreated  = 1; // 1 for the initial plan
+
+        TRI_json_t* toJson (TRI_memory_zone_t* zone) const {
+          TRI_json_t* stats = TRI_CreateArrayJson(zone);
+          if (stats == nullptr) {
+            return nullptr;
+          }
+
+          TRI_Insert3ArrayJson(zone, stats, "rulesExecuted", TRI_CreateNumberJson(zone, static_cast<double>(rulesExecuted)));
+          TRI_Insert3ArrayJson(zone, stats, "rulesSkipped", TRI_CreateNumberJson(zone, static_cast<double>(rulesSkipped)));
+          TRI_Insert3ArrayJson(zone, stats, "plansCreated", TRI_CreateNumberJson(zone, static_cast<double>(plansCreated)));
+
+          return stats;
+        }
+      };
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief optimizer rules
+//////////////////////////////////////////////////////////////////////////////
+
       enum RuleLevel : int {
         // List all the rules in the system here:
         // lower level values mean earlier rule execution
@@ -54,37 +81,37 @@ namespace triagens {
 // "Pass 1": moving nodes "up" (potentially outside loops):
 //////////////////////////////////////////////////////////////////////////////
 
-        pass1                                     = 100,
+        pass1                                      = 100,
 
         // split and-combined filters into multiple smaller filters
-        splitFiltersRule_pass1                    = 110,
+        splitFiltersRule_pass1                     = 110,
 
         // move calculations up the dependency chain (to pull them out of
         // inner loops etc.)
-        moveCalculationsUpRule_pass1              = 120,
+        moveCalculationsUpRule_pass1               = 120,
 
         // move filters up the dependency chain (to make result sets as small
         // as possible as early as possible)
-        moveFiltersUpRule_pass1                   = 130,
+        moveFiltersUpRule_pass1                    = 130,
   
         // remove calculations that are repeatedly used in a query
-        removeRedundantCalculationsRule_pass1     = 140,
+        removeRedundantCalculationsRule_pass1      = 140,
 
 //////////////////////////////////////////////////////////////////////////////
 /// "Pass 2": try to remove redundant or unnecessary nodes
 //////////////////////////////////////////////////////////////////////////////
 
-        pass2                                     = 200,
+        pass2                                      = 200,
         // remove filters from the query that are not necessary at all
         // filters that are always true will be removed entirely
         // filters that are always false will be replaced with a NoResults node
-        removeUnnecessaryFiltersRule_pass2        = 210,
+        removeUnnecessaryFiltersRule_pass2         = 210,
   
         // remove calculations that are never necessary
-        removeUnnecessaryCalculationsRule_pass2   = 220,
+        removeUnnecessaryCalculationsRule_pass2    = 220,
 
         // remove redundant sort blocks
-        removeRedundantSorts_pass2                = 230,
+        removeRedundantSortsRule_pass2             = 230,
 
 //////////////////////////////////////////////////////////////////////////////
 /// "Pass 3": interchange EnumerateCollection nodes in all possible ways
@@ -92,21 +119,21 @@ namespace triagens {
 ///           levels go back to this or lower levels!
 //////////////////////////////////////////////////////////////////////////////
 
-        pass3                                     = 500,
-        interchangeAdjacentEnumerations_pass3     = 510,
+        pass3                                      = 500,
+        interchangeAdjacentEnumerationsRule_pass3  = 510,
 
 //////////////////////////////////////////////////////////////////////////////
 // "Pass 4": moving nodes "up" (potentially outside loops) (second try):
 //////////////////////////////////////////////////////////////////////////////
 
-        pass4                                     = 600,
+        pass4                                      = 600,
         // move calculations up the dependency chain (to pull them out of
         // inner loops etc.)
-        moveCalculationsUpRule_pass4              = 610,
+        moveCalculationsUpRule_pass4               = 610,
 
         // move filters up the dependency chain (to make result sets as small
         // as possible as early as possible)
-        moveFiltersUpRule_pass4                   = 620,
+        moveFiltersUpRule_pass4                    = 620,
         
 
 //////////////////////////////////////////////////////////////////////////////
@@ -116,61 +143,64 @@ namespace triagens {
         // remove filters from the query that are not necessary at all
         // filters that are always true will be removed entirely
         // filters that are always false will be replaced with a NoResults node
-        pass5                                     = 700,
-        removeUnnecessaryFiltersRule_pass5        = 710,
+        pass5                                      = 700,
+        removeUnnecessaryFiltersRule_pass5         = 710,
 
         // remove calculations that are never necessary
-        removeUnnecessaryCalculationsRule_pass5   = 720,
+        removeUnnecessaryCalculationsRule_pass5    = 720,
 
         // remove redundant sort blocks
-        removeRedundantSorts_pass5                = 730,
+        removeRedundantSortsRule_pass5             = 730,
+
+        // remove INTO for COLLECT if appropriate
+        removeCollectIntoRule_pass5                = 740,
 
 //////////////////////////////////////////////////////////////////////////////
 /// "Pass 6": use indexes if possible for FILTER and/or SORT nodes
 //////////////////////////////////////////////////////////////////////////////
 
-        pass6                                     = 800,
+        pass6                                      = 800,
         
         // replace simple OR conditions with IN
-        replaceOrWithIn_pass6                     = 810,
+        replaceOrWithInRule_pass6                  = 810,
         
         // remove redundant OR conditions
-        removeRedundantOr_pass6                   = 820,
+        removeRedundantOrRule_pass6                = 820,
         
         // try to find a filter after an enumerate collection and find an index . . . 
-        useIndexRange_pass6                       = 830,
+        useIndexRangeRule_pass6                    = 830,
 
         // try to find sort blocks which are superseeded by indexes
-        useIndexForSort_pass6                     = 840,
+        useIndexForSortRule_pass6                  = 840,
 
         // try to remove filters covered by index ranges
-        removeFiltersCoveredByIndex_pass6         = 850,
+        removeFiltersCoveredByIndexRule_pass6      = 850,
   
 //////////////////////////////////////////////////////////////////////////////
 /// "Pass 10": final transformations for the cluster
 //////////////////////////////////////////////////////////////////////////////
 
         // make operations on sharded collections use distribute 
-        distributeInCluster_pass10                = 1000,
+        distributeInClusterRule_pass10             = 1000,
         
         // make operations on sharded collections use scatter / gather / remote
-        scatterInCluster_pass10                   = 1010,
+        scatterInClusterRule_pass10                = 1010,
           
         // move FilterNodes & Calculation nodes inbetween
         // scatter(remote) <-> gather(remote) so they're
         // distributed to the cluster nodes.
-        distributeFilternCalcToCluster_pass10     = 1020,
+        distributeFilternCalcToClusterRule_pass10  = 1020,
 
         // move SortNodes into the distribution.
         // adjust gathernode to also contain the sort criterions.
-        distributeSortToCluster_pass10            = 1030,
+        distributeSortToClusterRule_pass10         = 1030,
         
         // try to get rid of a RemoteNode->ScatterNode combination which has
         // only a SingletonNode and possibly some CalculationNodes as dependencies
-        removeUnnecessaryRemoteScatter_pass10     = 1040,
+        removeUnnecessaryRemoteScatterRule_pass10  = 1040,
 
         //recognise that a RemoveNode can be moved to the shards
-        undistributeRemoveAfterEnumColl_pass10    = 1050
+        undistributeRemoveAfterEnumCollRule_pass10 = 1050
       };
     
       public:
@@ -521,6 +551,18 @@ namespace triagens {
         static void setupRules ();
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                    public members
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimizer statistics
+////////////////////////////////////////////////////////////////////////////////
+
+        Stats _stats;
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                   private members
 // -----------------------------------------------------------------------------
       
@@ -572,7 +614,7 @@ namespace triagens {
 /// @brief default value for maximal number of plans to produce
 ////////////////////////////////////////////////////////////////////////////////
 
-        static size_t const DefaultMaxNumberOfPlans = 1000;
+        static size_t const DefaultMaxNumberOfPlans = 256;
 
     };
 

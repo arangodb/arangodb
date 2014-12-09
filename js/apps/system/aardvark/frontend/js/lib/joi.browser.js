@@ -2896,7 +2896,7 @@ exports.clone = function (obj, seen) {
 
 // Merge all the properties of source into target, source wins in conflict, and by default null and undefined from source are applied
 
-exports.merge = function (target, source, isNullOverride /* = true */, isMergeArrays /* = true */) {
+exports.merge = function (target, source, isNullOverride /* = true */, isMergeObjects /* = true */) {
 
     exports.assert(target && typeof target === 'object', 'Invalid target value: must be an object');
     exports.assert(source === null || source === undefined || typeof source === 'object', 'Invalid source value: must be null, undefined, or an object');
@@ -2907,7 +2907,7 @@ exports.merge = function (target, source, isNullOverride /* = true */, isMergeAr
 
     if (Array.isArray(source)) {
         exports.assert(Array.isArray(target), 'Cannot merge array onto an object');
-        if (isMergeArrays === false) {                                                  // isMergeArrays defaults to true
+        if (isMergeObjects === false) {                                                  // isMergeObjects defaults to true
             target.length = 0;                                                          // Must not change target assignment
         }
 
@@ -2935,7 +2935,7 @@ exports.merge = function (target, source, isNullOverride /* = true */, isMergeAr
                 target[key] = exports.clone(value);
             }
             else {
-                exports.merge(target[key], value, isNullOverride, isMergeArrays);
+                exports.merge(target[key], value, isNullOverride, isMergeObjects);
             }
         }
         else {

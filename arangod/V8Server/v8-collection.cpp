@@ -79,8 +79,8 @@ struct LocalCollectionGuard {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct InsertOptions {
-  bool waitForSync = false;
-  bool silent      = false;
+  bool waitForSync  = false;
+  bool silent       = false;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -89,11 +89,11 @@ struct InsertOptions {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct UpdateOptions {
-  bool overwrite   = false;
-  bool keepNull    = true;
-  bool mergeArrays = true;
-  bool waitForSync = false;
-  bool silent      = false;
+  bool overwrite    = false;
+  bool keepNull     = true;
+  bool mergeObjects = true;
+  bool waitForSync  = false;
+  bool silent       = false;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -102,8 +102,8 @@ struct UpdateOptions {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct RemoveOptions {
-  bool overwrite   = false;
-  bool waitForSync = false;
+  bool overwrite    = false;
+  bool waitForSync  = false;
 };
 
 // -----------------------------------------------------------------------------
@@ -702,7 +702,7 @@ static v8::Handle<v8::Value> ModifyVocbaseColCoordinator (
                                   bool waitForSync,
                                   bool isPatch,
                                   bool keepNull, // only counts if isPatch==true
-                                  bool mergeArrays, // only counts if isPatch==true
+                                  bool mergeObjects, // only counts if isPatch==true
                                   bool silent,
                                   v8::Arguments const& argv) {
   v8::HandleScope scope;
@@ -736,7 +736,7 @@ static v8::Handle<v8::Value> ModifyVocbaseColCoordinator (
 
   error = triagens::arango::modifyDocumentOnCoordinator(
         dbname, collname, key, rev, policy, waitForSync, isPatch,
-        keepNull, mergeArrays, json, headers, responseCode, resultHeaders, resultBody);
+        keepNull, mergeObjects, json, headers, responseCode, resultHeaders, resultBody);
   // Note that the json has been freed inside!
 
   if (error != TRI_ERROR_NO_ERROR) {
@@ -877,7 +877,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
                                                    options.waitForSync,
                                                    false,  // isPatch
                                                    true,   // keepNull, does not matter
-                                                   false,   // mergeArrays, does not matter
+                                                   false,   // mergeObjects, does not matter
                                                    options.silent,
                                                    argv));
   }
@@ -1084,7 +1084,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
 
   if (argLength < 2 || argLength > 5) {
-    TRI_V8_EXCEPTION_USAGE(scope, "update(<document>, <data>, {overwrite: booleanValue, keepNull: booleanValue, mergeArrays: booleanValue, waitForSync: booleanValue})");
+    TRI_V8_EXCEPTION_USAGE(scope, "update(<document>, <data>, {overwrite: booleanValue, keepNull: booleanValue, mergeObjects: booleanValue, waitForSync: booleanValue})");
   }
 
   if (argLength > 2) {
@@ -1097,8 +1097,8 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
       if (optionsObject->Has(v8g->KeepNullKey)) {
         options.keepNull = TRI_ObjectToBoolean(optionsObject->Get(v8g->KeepNullKey));
       }
-      if (optionsObject->Has(v8g->MergeArraysKey)) {
-        options.mergeArrays = TRI_ObjectToBoolean(optionsObject->Get(v8g->MergeArraysKey));
+      if (optionsObject->Has(v8g->MergeObjectsKey)) {
+        options.mergeObjects = TRI_ObjectToBoolean(optionsObject->Get(v8g->MergeObjectsKey));
       }
       if (optionsObject->Has(v8g->WaitForSyncKey)) {
         options.waitForSync = TRI_ObjectToBoolean(optionsObject->Get(v8g->WaitForSyncKey));
@@ -1166,7 +1166,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
                                                    options.waitForSync,
                                                    true,  // isPatch
                                                    options.keepNull,
-                                                   options.mergeArrays,
+                                                   options.mergeObjects,
                                                    options.silent,
                                                    argv));
   }
@@ -1233,7 +1233,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
     }
   }
 
-  TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json, ! options.keepNull, options.mergeArrays);
+  TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json, ! options.keepNull, options.mergeObjects);
   TRI_FreeJson(zone, old);
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 

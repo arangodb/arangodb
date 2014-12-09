@@ -445,14 +445,15 @@ bool RestDocumentHandler::readDocument () {
 ///
 /// @RESTHEADERPARAM{If-Match,string,optional}
 /// If the "If-Match" header is given, then it must contain exactly one
-/// etag. The document is returned, if it has the same revision ad the
+/// etag. The document is returned, if it has the same revision as the
 /// given etag. Otherwise a *HTTP 412* is returned. As an alternative
 /// you can supply the etag in an attribute *rev* in the URL.
 ///
 /// @RESTDESCRIPTION
 /// Returns the document identified by *document-handle*. The returned
-/// document contains two special attributes: *_id* containing the document
-/// handle and *_rev* containing the revision.
+/// document contains three special attributes: *_id* containing the document
+/// handle, *_key* containing key which uniquely identifies a document
+/// in a given collection and *_rev* containing the revision.
 ///
 /// @RESTRETURNCODES
 ///
@@ -1202,11 +1203,11 @@ bool RestDocumentHandler::replaceDocument () {
 /// from the existing document that are contained in the patch document with an
 /// attribute value of *null*.
 ///
-/// @RESTQUERYPARAM{mergeArrays,boolean,optional}
-/// Controls whether arrays (not lists) will be merged if present in both the
+/// @RESTQUERYPARAM{mergeObjects,boolean,optional}
+/// Controls whether objects (not arrays) will be merged if present in both the
 /// existing and the patch document. If set to *false*, the value in the
 /// patch document will overwrite the existing document's value. If set to
-/// *true*, arrays will be merged. The default is *true*.
+/// *true*, objects will be merged. The default is *true*.
 ///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
 /// Wait until document has been synced to disk.
@@ -1313,6 +1314,36 @@ bool RestDocumentHandler::replaceDocument () {
 ///     assert(response5.code === 200);
 ///     logJsonResponse(response5);
 /// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Merging attributes of an object using `mergeObjects`:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPatchDocumentMerge}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+///
+///     var document = db.products.save({"inhabitants":{"china":1366980000,"india":1263590000,"usa":319220000}});
+///     var url = "/_api/document/" + document._id;
+///
+///     var response = logCurlRequest("GET", url);
+///     assert(response.code === 200);
+///     logJsonResponse(response);
+///
+///     var response = logCurlRequest("PATCH", url + "?mergeObjects=true", { "inhabitants": {"indonesia":252164800,"brazil":203553000 }});
+///     assert(response.code === 202);
+///
+///     var response2 = logCurlRequest("GET", url);
+///     assert(response2.code === 200);
+///     logJsonResponse(response2);
+///
+///     var response3 = logCurlRequest("PATCH", url + "?mergeObjects=false", { "inhabitants": { "pakistan":188346000 }});
+///     assert(response3.code === 202);
+///     logJsonResponse(response3);
+///
+///     var response4 = logCurlRequest("GET", url);
+///     assert(response4.code === 200);
+///     logJsonResponse(response4);
+/// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1416,7 +1447,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   if (isPatch) {
     // patching an existing document
     bool nullMeansRemove;
-    bool mergeArrays;
+    bool mergeObjects;
     bool found;
     char const* valueStr = _request->value("keepNull", found);
     if (! found || StringUtils::boolean(valueStr)) {
@@ -1428,13 +1459,13 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       nullMeansRemove = true;
     }
 
-    valueStr = _request->value("mergeArrays", found);
+    valueStr = _request->value("mergeObjects", found);
     if (! found || StringUtils::boolean(valueStr)) {
       // the default is true
-      mergeArrays = true;
+      mergeObjects = true;
     }
     else {
-      mergeArrays = false;
+      mergeObjects = false;
     }
 
     // read the existing document
@@ -1487,7 +1518,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       }
     }
 
-    TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json, nullMeansRemove, mergeArrays);
+    TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json, nullMeansRemove, mergeObjects);
     TRI_FreeJson(shaper->_memoryZone, old);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
@@ -1593,14 +1624,14 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
   if (! strcmp(_request->value("keepNull"), "false")) {
     keepNull = false;
   }
-  bool mergeArrays = true;
-  if (TRI_EqualString(_request->value("mergeArrays"), "false")) {
-    mergeArrays = false;
+  bool mergeObjects = true;
+  if (TRI_EqualString(_request->value("mergeObjects"), "false")) {
+    mergeObjects = false;
   }
 
   int error = triagens::arango::modifyDocumentOnCoordinator(
             dbname, collname, key, rev, policy, waitForSync, isPatch,
-            keepNull, mergeArrays, json, headers, responseCode, resultHeaders, resultBody);
+            keepNull, mergeObjects, json, headers, responseCode, resultHeaders, resultBody);
 
   if (error != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collname, error);

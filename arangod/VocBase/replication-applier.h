@@ -70,6 +70,9 @@ typedef struct TRI_replication_applier_configuration_s {
   uint32_t      _sslProtocol;
   bool          _autoStart;
   bool          _adaptivePolling;
+  bool          _includeSystem;
+  std::string   _restrictType;
+  std::unordered_map<std::string, bool> _restrictCollections;
 }
 TRI_replication_applier_configuration_t;
 
@@ -101,6 +104,7 @@ struct TRI_replication_applier_state_t {
   uint64_t                                 _totalRequests;
   uint64_t                                 _totalFailedConnects;
   uint64_t                                 _totalEvents;
+  uint64_t                                 _skippedOperations;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

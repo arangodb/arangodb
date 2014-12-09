@@ -881,7 +881,6 @@ IndexRangeBlock::~IndexRangeBlock () {
   for (auto e : _allVariableBoundExpressions) {
     delete e;
   }
-  _allVariableBoundExpressions.clear();
 
   if (_freeCondition && _condition != nullptr) {
     delete _condition;
@@ -951,6 +950,7 @@ int IndexRangeBlock::initialize () {
         for (auto e : _allVariableBoundExpressions) {
           delete e;
         }
+        _allVariableBoundExpressions.clear();
         throw;
       }
     }
@@ -1043,9 +1043,9 @@ bool IndexRangeBlock::initRanges () {
               TRI_ASSERT(e != nullptr);
               TRI_document_collection_t const* myCollection = nullptr; 
               AqlValue a = e->execute(_trx, docColls, data, nrRegs * _pos,
-                  _inVars[posInExpressions],
-                  _inRegs[posInExpressions],
-                  &myCollection);
+                                      _inVars[posInExpressions],
+                                      _inRegs[posInExpressions],
+                                      &myCollection);
               posInExpressions++;
 
               Json bound;
@@ -1056,7 +1056,8 @@ bool IndexRangeBlock::initRanges () {
               else if (a._type == AqlValue::SHAPED || a._type == AqlValue::DOCVEC) {
                 bound = a.toJson(_trx, myCollection);
                 a.destroy();  // the TRI_json_t* of a._json has been stolen
-              } else {
+              } 
+              else {
                 THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
                     "AQL: computed a variable bound and got non-JSON");
               }
@@ -1065,8 +1066,8 @@ bool IndexRangeBlock::initRanges () {
                 for (size_t j = 0; j < bound.size(); j++) {
                   Json json(Json::Array, 3);
                   json("include", Json(l.inclusive()))
-                    ("isConstant", Json(true))
-                    ("bound", bound.at(static_cast<int>(j)).copy());
+                      ("isConstant", Json(true))
+                      ("bound", bound.at(static_cast<int>(j)).copy());
                   auto ri = RangeInfo(r._var, 
                       r._attr, 
                       RangeInfoBound(json), 
@@ -1083,11 +1084,12 @@ bool IndexRangeBlock::initRanges () {
                   }
                 }
                 rangeInfoOr = andCombineIndexOrRangeInfoVec(rangeInfoOr, riv);
-              } else {
+              } 
+              else {
                 Json json(Json::Array, 3);
                 json("include", Json(l.inclusive()))
-                  ("isConstant", Json(true))
-                  ("bound", Json(TRI_UNKNOWN_MEM_ZONE, bound.steal()));
+                    ("isConstant", Json(true))
+                    ("bound", Json(TRI_UNKNOWN_MEM_ZONE, bound.steal()));
                 auto rib = RangeInfoBound(json);
                 andCombineIndexOrRIBLow(rangeInfoOr, rib);
               }
@@ -1098,9 +1100,9 @@ bool IndexRangeBlock::initRanges () {
               TRI_ASSERT(e != nullptr);
               TRI_document_collection_t const* myCollection = nullptr; 
               AqlValue a = e->execute(_trx, docColls, data, nrRegs * _pos,
-                  _inVars[posInExpressions],
-                  _inRegs[posInExpressions],
-                  &myCollection);
+                                      _inVars[posInExpressions],
+                                      _inRegs[posInExpressions],
+                                      &myCollection);
               posInExpressions++;
 
               Json bound;
@@ -1111,7 +1113,8 @@ bool IndexRangeBlock::initRanges () {
               else if (a._type == AqlValue::SHAPED || a._type == AqlValue::DOCVEC) {
                 bound = a.toJson(_trx, myCollection);
                 a.destroy();  // the TRI_json_t* of a._json has been stolen
-              } else {
+              } 
+              else {
                 THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
                     "AQL: computed a variable bound and got non-JSON");
               }
@@ -1121,8 +1124,8 @@ bool IndexRangeBlock::initRanges () {
                 for (size_t j = 0; j < bound.size(); j++) {
                   Json json(Json::Array, 3);
                   json("include", Json(h.inclusive()))
-                    ("isConstant", Json(true))
-                    ("bound", bound.at(static_cast<int>(j)).copy());
+                      ("isConstant", Json(true))
+                      ("bound", bound.at(static_cast<int>(j)).copy());
                   auto ri = RangeInfo(r._var, 
                       r._attr, 
                       RangeInfoBound(json), 
@@ -1142,8 +1145,8 @@ bool IndexRangeBlock::initRanges () {
               } else {
                 Json json(Json::Array, 3);
                 json("include", Json(h.inclusive()))
-                  ("isConstant", Json(true))
-                  ("bound", Json(TRI_UNKNOWN_MEM_ZONE, bound.steal()));
+                    ("isConstant", Json(true))
+                    ("bound", Json(TRI_UNKNOWN_MEM_ZONE, bound.steal()));
                 auto rib = RangeInfoBound(json);
                 andCombineIndexOrRIBHigh(rangeInfoOr, rib);
               }
@@ -1151,7 +1154,8 @@ bool IndexRangeBlock::initRanges () {
             if (newCondition != nullptr && !newCondition->empty()) {
               orCombineIndexOrs(newCondition, rangeInfoOr);
               delete rangeInfoOr;
-            } else {
+            } 
+            else {
               newCondition = rangeInfoOr;
             }
           }
@@ -1240,6 +1244,7 @@ IndexOrCondition* IndexRangeBlock::andCombineIndexOrRangeInfoVec (
   if (riv.empty()) {
     return ioc;
   }
+
   auto newIoc = new IndexOrCondition();
   try {
     for (IndexAndCondition andCond: *ioc) {
@@ -1639,6 +1644,7 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
   auto setupSearchValue = [&](size_t pos) -> bool {
     size_t const n = hashIndex->_paths._length;
     searchValue._length = 0;
+    // initialize the whole range of shapes with zeros
     searchValue._values = static_cast<TRI_shaped_json_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, 
           n * sizeof(TRI_shaped_json_t), true));
 
@@ -1653,6 +1659,7 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
       TRI_ASSERT(pid != 0);
    
       char const* name = TRI_AttributeNameShapePid(shaper, pid);
+      std::string const lookFor = std::string(name);
 
       for (auto x : ranges[pos]) {
         if (x._attr == std::string(name)) {    //found attribute
@@ -2626,29 +2633,40 @@ AggregateBlock::AggregateBlock (ExecutionEngine* engine,
   }
 
   if (en->_outVariable != nullptr) {
-    auto it = en->getRegisterPlan()->varInfo.find(en->_outVariable->id);
-    TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
+    auto const& registerPlan = en->getRegisterPlan()->varInfo;
+    auto it = registerPlan.find(en->_outVariable->id);
+    TRI_ASSERT(it != registerPlan.end());
     _groupRegister = (*it).second.registerId;
     TRI_ASSERT(_groupRegister > 0 && _groupRegister < ExecutionNode::MaxRegisterId);
 
     // construct a mapping of all register ids to variable names
     // we need this mapping to generate the grouped output
 
-    for (size_t i = 0; i < en->getRegisterPlan()->varInfo.size(); ++i) {
+    for (size_t i = 0; i < registerPlan.size(); ++i) {
       _variableNames.push_back(""); // initialize with some default value
     }
 
     // iterate over all our variables
-    for (auto& vi : en->getRegisterPlan()->varInfo) {
-      if (vi.second.depth > 0 || en->getDepth() == 1) {
-        // Do not keep variables from depth 0, unless we are depth 1 ourselves
-        // (which means no FOR in which we are contained)
- 
-        // find variable in the global variable map
-        auto itVar = en->_variableMap.find(vi.first);
+    if (en->_keepVariables.empty()) {
+      for (auto const& vi : registerPlan) {
+        if (vi.second.depth > 0 || en->getDepth() == 1) {
+          // Do not keep variables from depth 0, unless we are depth 1 ourselves
+          // (which means no FOR in which we are contained)
 
-        if (itVar != en->_variableMap.end()) {
-          _variableNames[vi.second.registerId] = (*itVar).second;
+          // find variable in the global variable map
+          auto itVar = en->_variableMap.find(vi.first);
+
+          if (itVar != en->_variableMap.end()) {
+            _variableNames[vi.second.registerId] = (*itVar).second;
+          }
+        }
+      }
+    }
+    else {
+      for (auto x : en->_keepVariables) {
+        auto it = registerPlan.find(x->id);
+        if (it != registerPlan.end()) {
+          _variableNames[(*it).second.registerId] = x->name;
         }
       }
     }
@@ -3626,7 +3644,7 @@ void UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
               TRI_json_t* old = TRI_JsonShapedJson(_collection->documentCollection()->getShaper(), &shapedJson);
 
               if (old != nullptr) {
-                TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json.json(), ep->_options.nullMeansRemove, ep->_options.mergeArrays);
+                TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json.json(), ep->_options.nullMeansRemove, ep->_options.mergeObjects);
                 TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, old); 
 
                 if (patchedJson != nullptr) {

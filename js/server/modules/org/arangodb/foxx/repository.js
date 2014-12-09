@@ -78,12 +78,39 @@ Repository = function (collection, opts) {
   this.collection = collection;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_repository_modelPrototype
-/// The prototype of the according model.
+/// @startDocuBlock JSF_foxx_repository_model
+/// The model of this repository. Formerly called "modelPrototype".
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  this.modelPrototype = this.options.model || Model;
+  this.model = this.options.model || Model;
+  Object.defineProperty(this, 'modelPrototype', {
+    configurable: true,
+    enumerable: true,
+    get: function () {
+      require('console').log('Repository#modelPrototype is deprecated, use Repository#model instead');
+      return this.model;
+    },
+    set: function (val) {
+      require('console').log('Repository#modelPrototype is deprecated, use Repository#model instead');
+      this.model = val;
+      return this.model;
+    }
+  });
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_repository_modelSchema
+/// The schema of this repository's model.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+  Object.defineProperty(this, 'modelSchema', {
+    configurable: false,
+    enumerable: true,
+    get: function () {
+      return this.model.prototype.schema;
+    }
+  });
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_prefix
@@ -160,7 +187,7 @@ _.extend(Repository.prototype, {
   byId: function (id) {
     'use strict';
     var data = this.collection.document(id);
-    return (new this.modelPrototype(data));
+    return (new this.model(data));
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -181,7 +208,7 @@ _.extend(Repository.prototype, {
     'use strict';
     var rawDocuments = this.collection.byExample(example).toArray();
     return _.map(rawDocuments, function (rawDocument) {
-      return (new this.modelPrototype(rawDocument));
+      return (new this.model(rawDocument));
     }, this);
   },
 
@@ -202,7 +229,7 @@ _.extend(Repository.prototype, {
   firstExample: function (example) {
     'use strict';
     var rawDocument = this.collection.firstExample(example);
-    return (new this.modelPrototype(rawDocument));
+    return (new this.model(rawDocument));
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -242,7 +269,7 @@ _.extend(Repository.prototype, {
       rawDocuments = rawDocuments.limit(options.limit);
     }
     return _.map(rawDocuments.toArray(), function (rawDocument) {
-      return (new this.modelPrototype(rawDocument));
+      return (new this.model(rawDocument));
     }, this);
   },
 
@@ -514,7 +541,7 @@ var indexPrototypes = {
       'use strict';
       var rawDocuments = this.collection.range(attribute, left, right).toArray();
       return _.map(rawDocuments, function (rawDocument) {
-        return (new this.modelPrototype(rawDocument));
+        return (new this.model(rawDocument));
       }, this);
     }
   },
@@ -567,7 +594,7 @@ var indexPrototypes = {
         rawDocuments = rawDocuments.limit(options.limit);
       }
       return _.map(rawDocuments.toArray(), function (rawDocument) {
-        var model = (new this.modelPrototype(rawDocument)),
+        var model = (new this.model(rawDocument)),
           distance;
         if (options.distance) {
           delete model.attributes._distance;
@@ -627,7 +654,7 @@ var indexPrototypes = {
         rawDocuments = rawDocuments.limit(options.limit);
       }
       return _.map(rawDocuments.toArray(), function (rawDocument) {
-        var model = (new this.modelPrototype(rawDocument)),
+        var model = (new this.model(rawDocument)),
           distance;
         if (options.distance) {
           delete model.attributes._distance;
@@ -676,7 +703,7 @@ var indexPrototypes = {
         rawDocuments = rawDocuments.limit(options.limit);
       }
       return _.map(rawDocuments.toArray(), function (rawDocument) {
-        return (new this.modelPrototype(rawDocument));
+        return (new this.model(rawDocument));
       }, this);
     }
   }

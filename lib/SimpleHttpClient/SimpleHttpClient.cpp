@@ -166,7 +166,7 @@ namespace triagens {
                 setErrorMessage(TRI_last_error(), false);
               }
 
-              this->close();   // this sets _state to IN_CONNECT for a retry
+              this->close(); // this sets _state to IN_CONNECT for a retry
             }
             else {
               _written += bytesWritten;
@@ -185,22 +185,25 @@ namespace triagens {
           case (IN_READ_CHUNKED_BODY): {
             TRI_set_errno(TRI_ERROR_NO_ERROR);
 
-            // we need to read a at least one byte to make progress
-            bool progress;
-            bool res = _connection->handleRead(remainingTime, _readBuffer, progress);
+            // we need to notice if the other side has closed the connection:
+            bool connectionClosed;
+
+            bool res = _connection->handleRead(remainingTime, _readBuffer,
+                                               connectionClosed);
+
 
             // If there was an error, then we are doomed:
             if (! res) {
-              this->close();   // this sets the state to IN_CONNECT for a retry
+              this->close(); // this sets the state to IN_CONNECT for a retry
               break;
             }
 
-            if (! progress) {
+            if (connectionClosed) {
               // write might have succeeded even if the server has closed 
               // the connection, this will then show up here with us being
               // in state IN_READ_HEADER but nothing read.
               if (_state == IN_READ_HEADER && 0 == _readBuffer.length()) {
-                this->close();   // sets _state to IN_CONNECT again for a retry
+                this->close(); // sets _state to IN_CONNECT again for a retry
                 continue;
               }
 
@@ -215,20 +218,20 @@ namespace triagens {
 
                 if (_state != FINISHED) {
                   // If the body was not fully found we give up:
-                  this->close();   // this sets the state to retry
+                  this->close(); // this sets the state IN_CONNECT to retry
                 }
 
                 break;
               }
 
               else {
-                // In all other cases of no progress, we are doomed:
-                this->close();   // this sets the state to retry
+                // In all other cases of closed connection, we are doomed:
+                this->close(); // this sets the state to IN_CONNECT retry
                 break;
               }
             }
 
-            // we made progress, we process whatever we are in progress to do
+            // the connection is still alive:
             switch (_state) {
               case (IN_READ_HEADER):
                 processHeader();
@@ -484,11 +487,20 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
     void SimpleHttpClient::processHeader () {
+      TRI_ASSERT(_readBufferOffset <= _readBuffer.length());
       size_t remain = _readBuffer.length() - _readBufferOffset;
       char const* ptr = _readBuffer.c_str() + _readBufferOffset;
       char const* pos = (char*) memchr(ptr, '\n', remain);
 
+      // We enforce the following invariants:
+      //   ptr = _readBuffer.c_str() + _readBufferOffset
+      //   _readBuffer.length() >= _readBufferOffset
+      //   remain = _readBuffer.length() - _readBufferOffset
       while (pos) {
+        TRI_ASSERT(_readBufferOffset <= _readBuffer.length());
+        TRI_ASSERT(ptr == _readBuffer.c_str() + _readBufferOffset);
+        TRI_ASSERT(remain == _readBuffer.length() - _readBufferOffset);
+
         if (pos > ptr && *(pos - 1) == '\r') {
           // adjust eol position
           --pos;
@@ -496,12 +508,16 @@ namespace triagens {
 
         // end of header found
         if (*ptr == '\r' || *ptr == '\0') {
-          size_t len = pos - (_readBuffer.c_str() + _readBufferOffset);
-          _readBufferOffset += (len + 1);
+          size_t len = pos - ptr;
+          _readBufferOffset += len + 1;
+          ptr += len + 1;
+          remain -= len + 1;
 
           if (*pos == '\r') {
             // adjust offset if line ended with \r\n
             ++_readBufferOffset;
+            ptr++;
+            remain--;
           }
 
           // handle chunks
@@ -526,6 +542,7 @@ namespace triagens {
             if (! _keepAlive) {
               _connection->disconnect();
             }
+            return;
           }
 
           // found content-length header in response
@@ -563,14 +580,18 @@ namespace triagens {
           }
         
           ptr += len + 1;
-          
-          TRI_ASSERT(remain >= (len + 1));
+          _readBufferOffset += len + 1;
           remain -= (len + 1);
-
+          
+          TRI_ASSERT(_readBufferOffset <= _readBuffer.length());
+          TRI_ASSERT(ptr == _readBuffer.c_str() + _readBufferOffset);
+          TRI_ASSERT(remain == _readBuffer.length() - _readBufferOffset);
           pos = (char*) memchr(ptr, '\n', remain);
 
           if (pos == nullptr) {
-            _readBufferOffset = ptr - _readBuffer.c_str() + 1;
+            _readBufferOffset++;
+            ptr++;
+            remain--;
           } 
         }
       }
@@ -608,14 +629,10 @@ namespace triagens {
 
       // body is not compressed
       else {
-        size_t len = _result->getContentLength();
-
-        // prevent reading across the string-buffer end
-        if (len > _readBuffer.length() - _readBufferOffset) {
-          len = _readBuffer.length() - _readBufferOffset;
-        }
-
-        _result->getBody().appendText(_readBuffer.c_str() + _readBufferOffset, len);
+        // Note that if we are here, then 
+        // _result->getContentLength() <= _readBuffer.length()-_readBufferOffset
+        _result->getBody().appendText(_readBuffer.c_str() + _readBufferOffset, 
+                                      _result->getContentLength());
       }
 
       _readBufferOffset += _result->getContentLength();

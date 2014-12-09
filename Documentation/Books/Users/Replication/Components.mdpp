@@ -250,7 +250,8 @@ The result might look like this:
   "maxConnectRetries" : 10, 
   "chunkSize" : 0, 
   "autoStart" : false, 
-  "adaptivePolling" : true 
+  "adaptivePolling" : true,
+  "includeSystem" : true 
 }
 ```
 
@@ -289,6 +290,10 @@ response (in bytes). Setting it to a low value may make the master respond faste
 assembled before the master sends the response), but may require more request-response roundtrips.
 Set it to *0* to use ArangoDB's built-in default value.
 
+The *includeSystem* attribute controls whether changes to system collections (such as *_graphs* or
+*_users*) should be applied. If set to *true*, changes in these collections will be replicated, 
+otherwise, they will not be replicated.
+
 The following example will set most of the discussed properties for the current database's applier:
 
 ```js
@@ -300,7 +305,8 @@ require("org/arangodb/replication").applier.properties({
   connectTimeout: 15,
   maxConnectRetries: 100,
   chunkSize: 262144,
-  autoStart: true 
+  autoStart: true,
+  includeSystem: true
 });
 ```
 
@@ -321,14 +327,36 @@ The initial synchronization for the current database is executed with the *sync*
 require("org/arangodb/replication").sync({
   endpoint: "tcp://master.domain.org:8529",
   username: "root",
-  password: "secret
+  password: "secret,
+  includeSystem: true
 });
 ```
+
+The *includeSystem* option controls whether data from system collections (such as *_graphs* and
+*_users*) shall be synchronized. 
+
+The initial synchronization can optionally be configured to include or exclude specific 
+collections using the *restrictType* and *restrictCollection* parameters.
+
+The following command only synchronizes collection *foo* and *bar*:
+
+```js
+require("org/arangodb/replication").sync({
+  endpoint: "tcp://master.domain.org:8529",
+  username: "root",
+  password: "secret,
+  restrictType: "include",
+  restrictCollections: [ "foo", "bar" ]
+});
+```
+
+Using a *restrictType* of *exclude*, all collections but the specified will be synchronized.
+
 
 **Warning**: *sync* will do a full synchronization of the collections in the current database with
 collections present in the master database.
 Any local instances of the collections and all their data are removed! Only execute this
-command when you are sure you want to remove the local data!
+command if you are sure you want to remove the local data!
 
 As *sync* does a full synchronization, it might take a while to execute.
 When *sync* completes successfully, it show a list of collections it has synchronized in its

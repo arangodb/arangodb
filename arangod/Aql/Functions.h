@@ -32,6 +32,7 @@
 
 #include "Basics/Common.h"
 #include "Aql/AqlValue.h"
+#include "Basics/tri-strings.h"
 #include "Utils/AqlTransaction.h"
 
 #include <functional>
@@ -55,6 +56,7 @@ namespace triagens {
       static AqlValue IsString (triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
       static AqlValue IsList (triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
       static AqlValue IsDocument (triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue Length (triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
     };
 
   }
