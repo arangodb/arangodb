@@ -25,6 +25,7 @@ v2.3.2 (2014-XX-XX)
   This change provides the `KEEP` clause for `COLLECT ... INTO`. The `KEEP` clause
   allows controlling which variables will be kept in the variable created by `INTO`.
   
+* fixed issue #1147, must protect dispatcher ID for etcd
 
 v2.3.1 (2014-11-28)
 -------------------
