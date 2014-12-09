@@ -17,6 +17,8 @@ v2.3.2 (2014-XX-XX)
   existing plans in place
 
 * fixed AQL cursor ttl (time-to-live) issue
+  
+  Any user-specified cursor ttl value was not honored since 2.3.0.
 
 * fixed segfault in AQL query hash index setup with unknown shapes
 
