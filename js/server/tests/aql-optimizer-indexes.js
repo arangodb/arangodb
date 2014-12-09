@@ -328,7 +328,6 @@ function optimizerIndexesTestSuite () {
                   "LET j = (FOR x IN " + c.name() + " FILTER x.value == 10 RETURN x._key) " +
                   "RETURN [ a, b, c, d, e, f, g, h, i, j ]";
 
-
       var explain = AQL_EXPLAIN(query);
       var plan = explain.plan;
 
@@ -483,6 +482,62 @@ function optimizerIndexesTestSuite () {
       assertEqual(0, results.stats.scannedFull);
       assertNotEqual(0, results.stats.scannedIndex); 
       assertEqual([ 'test0', 'test1', 'test2', 'test3' ], results.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testSubqueryMadness : function () {
+      c.ensureHashIndex("value"); // now we have a hash and a skiplist index
+      var query = "LET a = (FOR x IN " + c.name() + " FILTER x.value == 1 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " + 
+                  "LET b = (FOR x IN " + c.name() + " FILTER x.value == 2 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " + 
+                  "LET c = (FOR x IN " + c.name() + " FILTER x.value == 3 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " + 
+                  "LET d = (FOR x IN " + c.name() + " FILTER x.value == 4 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " + 
+                  "LET e = (FOR x IN " + c.name() + " FILTER x.value == 5 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " + 
+                  "LET f = (FOR x IN " + c.name() + " FILTER x.value == 6 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " + 
+                  "LET g = (FOR x IN " + c.name() + " FILTER x.value == 7 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " + 
+                  "LET h = (FOR x IN " + c.name() + " FILTER x.value == 8 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " + 
+                  "LET i = (FOR x IN " + c.name() + " FILTER x.value == 9 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " + 
+                  "LET j = (FOR x IN " + c.name() + " FILTER x.value == 10 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " + 
+                  "RETURN [ a, b, c, d, e, f, g, h, i, j ]";
+
+      var explain = AQL_EXPLAIN(query);
+      var plan = explain.plan;
+      
+      var walker = function (nodes, func) {
+        nodes.forEach(function(node) {
+          if (node.type === "SubqueryNode") {
+            walker(node.subquery.nodes, func);
+          }
+          func(node);
+        });
+      };
+
+      var indexNodes = 0, collectionNodes = 0;
+      walker(plan.nodes, function (node) {
+        if (node.type === "IndexRangeNode") {
+          ++indexNodes;
+          if (indexNodes < 5) {
+            assertEqual("hash", node.index.type);
+          }
+          else {
+            assertEqual("skiplist", node.index.type);
+          }
+        }
+        else if (node.type === "EnumerateCollectionNode") {
+          ++collectionNodes;
+        }
+      });
+
+      assertEqual(0, collectionNodes);
+      assertEqual(20, indexNodes);
+      assertEqual(36, explain.stats.plansCreated);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(0, results.stats.scannedFull);
+      assertNotEqual(0, results.stats.scannedIndex); 
+      assertEqual([ [ [ 'test1' ], [ 'test2' ], [ 'test3' ], [ 'test4' ], [ 'test5' ], [ 'test6' ], [ 'test7' ], [ 'test8' ], [ 'test9' ], [ 'test10' ] ] ], results.json);
     }
 
   };
