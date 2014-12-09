@@ -1148,10 +1148,8 @@ bool IndexRangeBlock::initRanges () {
                 andCombineIndexOrRIBHigh(rangeInfoOr, rib);
               }
             }
-            if (newCondition != nullptr) {
-              for (size_t i = 0; i < rangeInfoOr->size(); i++) {
-                newCondition->emplace_back(rangeInfoOr->at(i));
-              }
+            if (newCondition != nullptr && !newCondition->empty()) {
+              orCombineIndexOrs(newCondition, rangeInfoOr);
               delete rangeInfoOr;
             } else {
               newCondition = rangeInfoOr;
@@ -1195,6 +1193,36 @@ bool IndexRangeBlock::initRanges () {
           
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected index type"); 
   LEAVE_BLOCK;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief orCombineIndexOrs: return the lhs by appending the difference of
+/// those RIs in the rhs with those in the lhs into the lhs.
+////////////////////////////////////////////////////////////////////////////////
+
+void IndexRangeBlock::orCombineIndexOrs (IndexOrCondition* lhs, 
+                                         IndexOrCondition* rhs) {
+
+  TRI_ASSERT(lhs != nullptr && !lhs->empty());
+  
+  if (rhs->empty()) {
+    return;
+  }
+  
+  //avoid inserting overlapping conditions
+  for (IndexAndCondition indexAnd: *rhs) {
+    std::vector<RangeInfo> newIndexAnd;
+    for (RangeInfo& ri: indexAnd) {
+      differenceIndexOrRangeInfo(lhs, ri);
+      if (ri.isValid()) { 
+        // if ri is invalid, then don't insert it
+        newIndexAnd.emplace_back(ri);
+      }
+    }
+    if (! newIndexAnd.empty()) {
+      lhs->emplace_back(newIndexAnd);
+    }
+  }
 }
 
 // ioc = IndexOrCondition(IndexAndCondition(A && B) || IndexAndCondition(C && D))
