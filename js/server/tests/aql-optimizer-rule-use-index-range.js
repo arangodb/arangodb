@@ -1,5 +1,5 @@
 /*jshint strict: false, maxlen: 500 */
-/*global require, assertEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE */
+/*global require, assertEqual, assertTrue, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rule use index-range
@@ -38,7 +38,6 @@ var removeAlwaysOnClusterRules = helper.removeAlwaysOnClusterRules;
 ////////////////////////////////////////////////////////////////////////////////
 
 function optimizerRuleUseIndexRangeTester () {
-  var suiteName = "TestUseIndexRangeRule";
   var ruleName = "use-index-range";
   var collBaseName = "UTUseIndexRange";
   var collNames = ["NoInd", "SkipInd", "HashInd", "BothInd"];
@@ -50,7 +49,6 @@ function optimizerRuleUseIndexRangeTester () {
   // various choices to control the optimizer: 
   var paramNone     = { optimizer: { rules: [ "-all" ] } };
   var paramEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
-  var paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
   var paramAll      = { optimizer: { rules: [ "+all" ] } };
   var paramEnabledAllPlans = { optimizer: { rules: [ "-all", "+" + ruleName ]},
                                allPlans: true };
@@ -66,7 +64,7 @@ function optimizerRuleUseIndexRangeTester () {
       var n = collNames.map(function(x) { return collBaseName + x; });
       var colls = [];
       for (var i = 0; i < n.length; i++) {
-        var collName = n[i];
+        var collName = n[i], coll;
         internal.db._drop(collName);
         coll = internal.db._create(collName);
         for (var j = 0; j < 10; j++) {
@@ -198,7 +196,7 @@ function optimizerRuleUseIndexRangeTester () {
 
       var result = AQL_EXPLAIN(query, { }, paramEnabledAllPlans);
       assertTrue(result.plans.length < 40, query);
-      var result = AQL_EXPLAIN(query, { }, paramAllAllPlans);
+      result = AQL_EXPLAIN(query, { }, paramAllAllPlans);
       assertTrue(result.plans.length < 40, query);
     },
 
@@ -215,9 +213,9 @@ function optimizerRuleUseIndexRangeTester () {
         "  RETURN {A:A, B:B, C:C, K:k}";
 
       var result = AQL_EXPLAIN(query, { }, paramEnabledAllPlans);
-      assertTrue(result.plans.length == 16, query);
-      var result = AQL_EXPLAIN(query, { }, paramAllAllPlans);
-      assertTrue(result.plans.length == 16, query);
+      assertTrue(result.plans.length === 16, query);
+      result = AQL_EXPLAIN(query, { }, paramAllAllPlans);
+      assertTrue(result.plans.length === 16, query);
     }
 
   };
