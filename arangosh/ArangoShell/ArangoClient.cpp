@@ -47,6 +47,8 @@ double const ArangoClient::DEFAULT_CONNECTION_TIMEOUT = 3.0;
 double const ArangoClient::DEFAULT_REQUEST_TIMEOUT    = 300.0;
 size_t const ArangoClient::DEFAULT_RETRIES            = 2;
 
+double const ArangoClient::LONG_TIMEOUT               = 86400.0;
+
 namespace {
 #ifdef _WIN32
 bool _newLine () {
@@ -459,12 +461,18 @@ void ArangoClient::parse (ProgramOptions& options,
   if (_serverOptions) {
 
     // check connection args
-    if (_connectTimeout <= 0) {
-      LOG_FATAL_AND_EXIT("invalid value for --server.connect-timeout, must be positive");
+    if (_connectTimeout < 0.0) {
+      LOG_FATAL_AND_EXIT("invalid value for --server.connect-timeout, must be >= 0");
+    }
+    else if (_connectTimeout == 0.0) {
+      _connectTimeout = LONG_TIMEOUT;
     }
 
-    if (_requestTimeout <= 0) {
+    if (_requestTimeout < 0.0) {
       LOG_FATAL_AND_EXIT("invalid value for --server.request-timeout, must be positive");
+    }
+    else if (_requestTimeout == 0.0) {
+      _requestTimeout = LONG_TIMEOUT;
     }
 
     // must specify a user name
