@@ -745,6 +745,10 @@ namespace triagens {
 
        void attributes (std::unordered_set<std::string>& set, std::string const& var);
 
+
+       //TODO write @brief
+       std::unordered_set<std::string> variables();
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief private data
 ////TODO: make iterators for this i.e. method for begin and end, so that this

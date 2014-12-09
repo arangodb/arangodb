@@ -413,6 +413,14 @@ void RangeInfoMap::attributes (std::unordered_set<std::string>& set,
   }
 }
 
+std::unordered_set<std::string> RangeInfoMap::variables () {
+  std::unordered_set<std::string> vars;
+  for(auto x: _ranges) {
+    vars.insert(x.first);
+  }
+  return vars;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class RangeInfoMapVec
 ////////////////////////////////////////////////////////////////////////////////
@@ -567,6 +575,7 @@ RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs,
       throw;
     }
   }
+  
   delete rhs;
   return lhs;
 }

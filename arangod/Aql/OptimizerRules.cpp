@@ -1101,14 +1101,17 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                             indexOrCondition.clear();
                             break; // not usable
                         }
-                        else {
-                          indexOrCondition.at(k).push_back(range->second);
-                          bool equality = range->second.is1ValueRangeInfo();
-                          while (++j < prefixes.at(i) && equality) {
-                            range = map->find(idx->fields[j]);
-                            indexOrCondition.at(k).push_back(range->second);
-                            equality = equality && range->second.is1ValueRangeInfo();
+                        indexOrCondition.at(k).push_back(range->second);
+                        
+                        bool equality = range->second.is1ValueRangeInfo();
+                        while (++j < prefixes.at(i) && equality) {
+                          range = map->find(idx->fields[j]);
+                          if (range == map->end()) { 
+                              indexOrCondition.clear();
+                              break; // not usable
                           }
+                          indexOrCondition.at(k).push_back(range->second);
+                          equality = equality && range->second.is1ValueRangeInfo();
                         }
                       }
                     }

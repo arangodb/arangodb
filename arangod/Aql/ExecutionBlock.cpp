@@ -960,7 +960,7 @@ int IndexRangeBlock::initialize () {
   LEAVE_BLOCK;
 }
 
-// init the index for reading, this should be called once per new incoming
+// init the ranges for reading, this should be called once per new incoming
 // block!
 //
 // This is either called every time we get a new incoming block. 
