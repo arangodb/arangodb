@@ -70,3 +70,10 @@ A Chef recipe is available from jbianquetti at:
 
     https://github.com/jbianquetti/chef-arangodb
 
+!SECTION Using ansible
+
+An [Ansible](http://ansible.com) role is available trough [Ansible-Galaxy](https://galaxy.ansible.com)
+
+* Role on Ansible-Galaxy: https://galaxy.ansible.com/list#/roles/2344
+* Source on Github: https://github.com/stackmagic/ansible-arangodb
+

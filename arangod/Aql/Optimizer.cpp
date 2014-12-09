@@ -186,11 +186,20 @@ int Optimizer::createPlans (ExecutionPlan* plan,
 
         int res;
         try {
+          // all optimizer rule functions must obey the following guidelines:
+          // - the original plan passed to the rule function must be deleted if and only
+          //   if it has not been added (back) to the optimizer (using addPlan). 
+          // - if the rule throws, then the original plan will be deleted by the optimizer.
+          //   thus the rule must not have deleted the plan itself or add it back to the
+          //   optimizer
           res = (*it).second.func(this, p, &(it->second));
           ++_stats.rulesExecuted;
         }
         catch (...) {
-          delete p;
+          if (! _newPlans.isContained(p)) {
+            // only delete the plan if not yet contained in _newPlans
+            delete p;
+          }
           throw;
         }
 

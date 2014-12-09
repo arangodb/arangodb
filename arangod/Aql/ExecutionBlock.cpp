@@ -885,7 +885,7 @@ IndexRangeBlock::~IndexRangeBlock () {
   if (_freeCondition && _condition != nullptr) {
     delete _condition;
   }
-  
+    
   if (_skiplistIterator != nullptr) {
     TRI_FreeSkiplistIterator(_skiplistIterator);
   }
@@ -1906,6 +1906,7 @@ void IndexRangeBlock::readSkiplistIndex (size_t atMost) {
   catch (...) {
     if (_skiplistIterator != nullptr) {
       TRI_FreeSkiplistIterator(_skiplistIterator);
+      _skiplistIterator = nullptr;
     }
     throw;
   }
