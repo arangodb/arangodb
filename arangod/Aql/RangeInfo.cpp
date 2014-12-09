@@ -551,7 +551,7 @@ RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs,
           RangeInfo ri = y.second.clone();
           lhs->differenceRangeInfo(ri);
           if (ri.isValid()) { 
-            // if ri is nullptr, then y.second is contained in an existing ri 
+            // if ri is not valid, then y.second is contained in an existing ri 
             rim->insert(ri);
           }
         }
@@ -635,7 +635,6 @@ RangeInfoMapVec* triagens::aql::andCombineRangeInfoMapVecs (RangeInfoMapVec* lhs
 // contained in the other, and, 1 if rhs is contained in lhs. 
 
 static int containmentRangeInfos (RangeInfo const& lhs, RangeInfo const& rhs) {
-  
   int LoLo = CompareRangeInfoBound(lhs._lowConst, rhs._lowConst, -1); 
   // -1 if lhs is tighter than rhs, 1 if rhs tighter than lhs
   int HiHi = CompareRangeInfoBound(lhs._highConst, rhs._highConst, 1); 
@@ -688,9 +687,7 @@ static bool areDisjointRangeInfos (RangeInfo const& lhs, RangeInfo const& rhs) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief differenceRangeInfo: returns the difference of the constant parts of
-/// the given RangeInfos. 
-///
+/// @brief differenceRangeInfo:
 /// Modifies either lhs or rhs in place, so that the constant parts of lhs 
 /// and rhs are disjoint, and the union of the modified lhs and rhs equals the
 /// union of the originals.
@@ -700,6 +697,10 @@ void triagens::aql::differenceRangeInfos (RangeInfo& lhs, RangeInfo& rhs) {
   TRI_ASSERT(lhs._var == lhs._var);
   TRI_ASSERT(lhs._attr == rhs._attr);
   
+  if (! (lhs.isConstant() && rhs.isConstant())) {
+    return;
+  }
+
   if (! areDisjointRangeInfos(lhs, rhs)) {
     int contained = containmentRangeInfos(lhs, rhs);
     if (contained == -1) { 
