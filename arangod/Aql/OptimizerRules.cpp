@@ -1328,7 +1328,7 @@ int triagens::aql::useIndexRangeRule (Optimizer* opt,
   while (i < changes.size()) {
     possibilities *= changes[i].second.size();
     i++;
-    if (possibilities * nrPlans > 20) {
+    if (possibilities + nrPlans > 30) {
       break;
     }
   }
