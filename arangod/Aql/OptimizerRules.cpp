@@ -1359,8 +1359,10 @@ int triagens::aql::useIndexRangeRule (Optimizer* opt,
           plan->replaceNode(plan->getNodeById(id), v[choice]);
           modified = true;
           // Free the other nodes, if they are there:
-          for (size_t k = 1; k < v.size(); k++) {
-            delete v[k];
+          for (size_t k = 0; k < v.size(); k++) {
+            if (k != choice) {
+              delete v[k];
+            }
           }
           v.clear();   // take the new node away from changes such that 
                        // cleanupChanges does not touch it
