@@ -82,6 +82,7 @@
         "frontend/js/templates/notificationItem.ejs",
         "frontend/js/templates/notificationView.ejs",
         "frontend/js/templates/queryView.ejs",
+        "frontend/js/templates/warningList.ejs",
         "frontend/js/templates/shellView.ejs",
         "frontend/js/templates/progressBase.ejs",
         "frontend/js/templates/statisticBarView.ejs",

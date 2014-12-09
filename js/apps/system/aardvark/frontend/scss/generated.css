@@ -5284,7 +5284,7 @@ pre.gv-object-view {
   margin-bottom: 10px; }
 
 svg.explain-tree {
-  overflow: auto; }
+  width: 100%; }
   svg.explain-tree .node circle {
     fill: #fff;
     stroke: steelblue;
