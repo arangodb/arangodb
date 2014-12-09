@@ -938,7 +938,51 @@ function ahuacatlQueryOptimiserInTestSuite () {
       assertEqual(expected, actual);
       ruleIsUsed(query);
     },
+   
+    testSkiplistMoreThanOne1 : function () {
+      for (var i = 1; i <= 100; i++) {
+        for (var j = 1; j <= 100; j++) {
+          c.save({value1 : i, value2: j});
+        }
+      }
+      c.ensureSkiplist("value1", "value2");
+
+      var query = "FOR x in " + cn + " FILTER (x.value1 in [4,5] && x.value2 <= 2) || (x.value1 in [1,6] && x.value2 == 9) RETURN x.value1";
+      var expected = [ 4, 4, 5, 5, 1, 6 ];
+      var actual = getQueryResults(query);
+      assertEqual(expected, actual);
+      ruleIsUsed(query);
+    }, //TODO more test like this . . .
     
+    testSkiplistMoreThanOne2 : function () {
+      for (var i = 1; i <= 100; i++) {
+        for (var j = 1; j <= 100; j++) {
+          c.save({value1 : i, value2: j});
+        }
+      }
+      c.ensureSkiplist("value1", "value2");
+
+      var query = "FOR x in " + cn + " FILTER (x.value1 in [4,5] && x.value2 <= PASSTHRU(2)) || (x.value1 in [1,6] && x.value2 == 9) RETURN x.value1";
+      var expected = [ 4, 4, 5, 5, 1, 6 ];
+      var actual = getQueryResults(query);
+      assertEqual(expected, actual);
+      ruleIsUsed(query);
+    },
+    
+    testSkiplistMoreThanOne3 : function () {
+      for (var i = 1; i <= 100; i++) {
+        for (var j = 1; j <= 100; j++) {
+          c.save({value1 : i, value2: j});
+        }
+      }
+      c.ensureSkiplist("value1", "value2");
+
+      var query = "FOR x in " + cn + " FILTER (x.value1 in [4,5] && x.value2 <= PASSTHRU(2)) || (x.value1 in [PASSTHRU(1),6] && x.value2 == 9) RETURN x.value1";
+      var expected = [ 4, 4, 5, 5, 1, 6 ];
+      var actual = getQueryResults(query);
+      assertEqual(expected, actual);
+      ruleIsUsed(query);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////

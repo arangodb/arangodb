@@ -821,6 +821,10 @@ bool triagens::aql::isContainedIndexAndConditions (IndexAndCondition& and1, Inde
 
 void triagens::aql::differenceIndexAnd (IndexAndCondition& and1, IndexAndCondition& and2) {
 
+  if (and1.empty() || and2.empty()) {
+    return;
+  }
+
   if (! areDisjointIndexAndConditions(and1, and2)) {
     if (isContainedIndexAndConditions(and1, and2)) { 
       // and1 is a subset of and2, disregard and1
