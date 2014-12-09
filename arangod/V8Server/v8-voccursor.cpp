@@ -297,7 +297,7 @@ static v8::Handle<v8::Value> JS_NextGeneralCursor (v8::Arguments const& argv) {
     try {
       TRI_general_cursor_row_t row = cursor->next(cursor);
 
-      if (row == 0) {
+      if (row == nullptr) {
         value = v8::Undefined();
       }
       else {
