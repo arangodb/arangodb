@@ -276,6 +276,9 @@
         if (this.graphManagementView) {
           this.graphManagementView.handleResize($("#content").width());
         }
+        if (this.queryView) {
+          this.queryView.resize();
+        }
       },
 
       userManagement: function () {

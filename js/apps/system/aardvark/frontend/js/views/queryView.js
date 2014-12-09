@@ -631,16 +631,25 @@
         return json;
       },
 
-      drawTree: function(treeData) {
+      drawTree: function() {
+        var treeHeight = 0;
+        if (!this.treeData) {
+          return;
+        }
+        var treeData = this.treeData;
         // outputEditor.setValue(JSON.stringify(treeData, undefined, 2));
 
+        console.log($("svg#explainOutput").parent().width());
+
         var margin = {top: 20, right: 20, bottom: 20, left: 20},
-            width = 960 - margin.right - margin.left,
+            width = $("svg#explainOutput").parent().width() - margin.right - margin.left,
             height = 500 - margin.top - margin.bottom;
 
         var i = 0;
 
         var tree = d3.layout.tree().size([width, height]);
+
+        d3.select("svg#explainOutput g").remove();
 
         var svg = d3.select("svg#explainOutput")
           .attr("width", width + margin.right + margin.left)
@@ -658,7 +667,7 @@
           .projection(function(d) { return [d.x, d.y]; });
 
         // Normalize for fixed-depth.
-        nodes.forEach(function(d) { d.y = d.depth * 180 + margin.top; });
+        nodes.forEach(function(d) { d.y = d.depth * 60 + margin.top; });
 
         // Declare the nodes¦
         var node = svg.selectAll("g.node")
@@ -666,8 +675,15 @@
             if (!d.id) {
               d.id = ++i;
             }
+            if (treeHeight < d.y) {
+              treeHeight = d.y;
+            }
             return d.id;
           });
+
+          treeHeight += 60;
+          console.log("height:", treeHeight);
+          $(".query-output").height(treeHeight);
 
         // Enter the nodes.
         var nodeEnter = node.enter().append("g")
@@ -708,6 +724,10 @@
 
       },
 
+      resize: function() {
+        this.drawTree();
+      },
+
       showExplainPlan: function(plan) {
         $("svg#explainOutput").html();
         var nodes = plan.nodes;
@@ -715,7 +735,8 @@
           // Handle root element differently
           var treeData = this.preparePlanNodeEntry(nodes[0]);
           this.followQueryPath(treeData, nodes);
-          this.drawTree([treeData]);
+          this.treeData = [treeData];
+          this.drawTree();
         }
       },
 
@@ -733,11 +754,11 @@
           contentType: "application/json",
           processData: false,
           success: function (data) {
-            self.showExplainWarnings(data.warnings);
-            self.showExplainPlan(data.plan);
             if (typeof callback === "function") {
               callback();
             }
+            self.showExplainWarnings(data.warnings);
+            self.showExplainPlan(data.plan);
           },
           error: function (errObj) {
             var res = errObj.responseJSON;
