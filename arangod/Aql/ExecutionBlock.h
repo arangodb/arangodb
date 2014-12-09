@@ -618,12 +618,10 @@ namespace triagens {
         void readHashIndex (IndexOrCondition const&);
 
         void orCombineIndexOrs(IndexOrCondition*, IndexOrCondition*);
-        IndexOrCondition* 
-          andCombineIndexOrRangeInfoVec(IndexOrCondition*, std::vector<RangeInfo>&);
-        
-        void andCombineIndexOrRIBLow (IndexOrCondition*, RangeInfoBound&);
-        void andCombineIndexOrRIBHigh (IndexOrCondition*, RangeInfoBound&);
+        std::vector<RangeInfo> andCombineRangeInfoVecs (std::vector<RangeInfo>& riv1, 
+                                                        std::vector<RangeInfo>& riv2);
 
+        IndexOrCondition* cartesian (std::vector<std::vector<RangeInfo>> collector);
         
 
 // -----------------------------------------------------------------------------
