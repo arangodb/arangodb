@@ -1014,8 +1014,9 @@ bool RestDocumentHandler::checkDocument () {
 /// of *true*.
 ///
 /// The body of the response contains a JSON object with the information about
-/// the handle and the revision.  The attribute *_id* contains the known
-/// *document-handle* of the updated document, the attribute *_rev*
+/// the handle and the revision. The attribute *_id* contains the known
+/// *document-handle* of the updated document, *_key* contains the key which 
+/// uniquely identifies a document in a given collection, and the attribute *_rev*
 /// contains the new document revision.
 ///
 /// If the document does not exist, then a *HTTP 404* is returned and the
@@ -1249,7 +1250,8 @@ bool RestDocumentHandler::replaceDocument () {
 ///
 /// The body of the response contains a JSON object with the information about
 /// the handle and the revision. The attribute *_id* contains the known
-/// *document-handle* of the updated document, the attribute *_rev*
+/// *document-handle* of the updated document, *_key* contains the key which 
+/// uniquely identifies a document in a given collection, and the attribute *_rev*
 /// contains the new document revision.
 ///
 /// If the document does not exist, then a *HTTP 404* is returned and the
@@ -1679,9 +1681,10 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
 ///
 /// @RESTDESCRIPTION
 /// The body of the response contains a JSON object with the information about
-/// the handle and the revision.  The attribute *_id* contains the known
-/// *document-handle* of the deleted document, the attribute *_rev*
-/// contains the document revision.
+/// the handle and the revision. The attribute *_id* contains the known
+/// *document-handle* of the deleted document, *_key* contains the key which 
+/// uniquely identifies a document in a given collection, and the attribute *_rev*
+/// contains the new document revision.
 ///
 /// If the *waitForSync* parameter is not specified or set to
 /// *false*, then the collection's default *waitForSync* behavior is
