@@ -557,7 +557,8 @@ RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs,
         for (auto y: x.second) {
           // take the difference of 
           RangeInfo ri = y.second.clone();
-          lhs->differenceRangeInfo(ri);
+          //lhs->differenceRangeInfo(ri); //TODO delete this line, we remove
+          //duplicates later in the IndexRangeBlock
           if (ri.isValid()) { 
             // if ri is not valid, then y.second is contained in an existing ri 
             rim->insert(ri);
@@ -777,3 +778,94 @@ void triagens::aql::differenceIndexOrRangeInfo(IndexOrCondition const* ioc,
     }
   }
 }
+
+// 3 way comparison
+
+/*int triagens::aql::compareIndexAndConditions (IndexAndCondition& and1, IndexAndCondition& and2) {
+}*/
+
+bool triagens::aql::areDisjointIndexAndConditions (IndexAndCondition& and1, IndexAndCondition& and2) {
+  
+  for (auto ri1: and1) {
+    for (auto ri2: and2) {
+      if (ri2._attr == ri1._attr) {
+        if (areDisjointRangeInfos(ri1, ri2)) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+// is and1 contained in and2
+bool triagens::aql::isContainedIndexAndConditions (IndexAndCondition& and1, IndexAndCondition& and2) {
+  
+  for (auto ri1: and1) {
+    bool contained = false;
+    for (auto ri2: and2) {
+      if (ri2._attr == ri1._attr) {
+        if (containmentRangeInfos(ri2, ri1) == 1){
+          contained = true;
+          break;
+        }
+      }
+    }
+    
+    if (! contained) {
+      return false;
+    }
+  }    
+  return true;
+}
+
+void triagens::aql::differenceIndexAnd (IndexAndCondition& and1, IndexAndCondition& and2) {
+
+  if (! areDisjointIndexAndConditions(and1, and2)) {
+    if (isContainedIndexAndConditions(and1, and2)) { 
+      // and1 is a subset of and2, disregard and1
+      and1.clear();
+    } 
+    else if (isContainedIndexAndConditions(and2, and1)) {
+      // and2 is a subset of and1, disregard and2
+      and2.clear();
+    } 
+    else {
+      // and1 and and2 have non-empty intersection
+      for (auto& ri1: and1) {
+        for (auto& ri2: and2) {
+          if (ri2._attr == ri1._attr && containmentRangeInfos(ri1, ri2) == 0){
+            int LoLo = CompareRangeInfoBound(ri1._lowConst, ri2._lowConst, -1);
+            if (LoLo == 1) { // replace low bound of new with high bound of old
+              ri2._lowConst.assign(ri1._highConst);
+              ri2._lowConst.setInclude(! ri1._highConst.inclusive());
+            } 
+            else { // replace the high bound of the new with the low bound of the old
+              ri2._highConst.assign(ri1._lowConst);
+              ri2._highConst.setInclude(! ri1._lowConst.inclusive());
+            }
+          }
+        }
+      }    
+    }
+  }
+}
+
+void triagens::aql::removeOverlapsIndexOr (IndexOrCondition& ioc) {
+  
+  for (size_t i = 1; i < ioc.size(); i++) {
+    for (size_t j = 0; j < i; j++) {
+      differenceIndexAnd(ioc.at(j), ioc.at(i));
+    }
+  }
+  // remove empty ones
+  for (auto it = ioc.begin(); it < ioc.end(); ) {
+    if (it->empty()) {
+      it = ioc.erase(it);
+    } 
+    else {
+      it++;
+    }
+  }
+}
+

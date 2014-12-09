@@ -855,10 +855,18 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
     _posInDocs(0),
     _anyBoundVariable(false),
     _skiplistIterator(nullptr),
-    _condition(&en->_ranges),
+    _condition(new IndexOrCondition()),
     _posInRanges(0),
-    _freeCondition(false) {
-   
+    _freeCondition(true) {
+  
+  for (size_t i = 0; i < en->_ranges.size(); i++) {
+    _condition->emplace_back(IndexAndCondition());
+    for (auto ri: en->_ranges[i]) {
+      _condition->at(i).emplace_back(ri.clone());
+    }
+  }
+  removeOverlapsIndexOr(*_condition);
+
   std::vector<std::vector<RangeInfo>> const& orRanges = en->_ranges;
   TRI_ASSERT(en->_index != nullptr);
 
@@ -980,16 +988,12 @@ bool IndexRangeBlock::initRanges () {
   ENTER_BLOCK
   _flag = true; 
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
-  freeCondition();
-  _condition = &en->_ranges;
-  _freeCondition = false;
   
   TRI_ASSERT(en->_index != nullptr);
 
   // Find out about the actual values for the bounds in the variable bound case:
 
   if (_anyBoundVariable) {
-    
     size_t posInExpressions = 0;
       
     // The following are needed to evaluate expressions with local data from
@@ -999,7 +1003,6 @@ bool IndexRangeBlock::initRanges () {
     vector<TRI_document_collection_t const*>& docColls(cur->getDocumentCollections());
     RegisterId nrRegs = cur->getNrRegs();
     
-
     // must have a V8 context here to protect Expression::execute()
     auto engine = _engine;
     triagens::basics::ScopeGuard guard{
@@ -1178,7 +1181,10 @@ bool IndexRangeBlock::initRanges () {
         throw;
       }
     }
+    // remove duplicates . . .
+    removeOverlapsIndexOr(*_condition);
   }
+  
    
   if (en->_index->type == TRI_IDX_TYPE_PRIMARY_INDEX) {
     return true; //no initialization here!
@@ -1217,11 +1223,11 @@ void IndexRangeBlock::orCombineIndexOrs (IndexOrCondition* lhs,
   for (IndexAndCondition indexAnd: *rhs) {
     std::vector<RangeInfo> newIndexAnd;
     for (RangeInfo& ri: indexAnd) {
-      differenceIndexOrRangeInfo(lhs, ri);
-      if (ri.isValid()) { 
+      //differenceIndexOrRangeInfo(lhs, ri);
+      //if (ri.isValid()) { 
         // if ri is invalid, then don't insert it
         newIndexAnd.emplace_back(ri);
-      }
+      //}
     }
     if (! newIndexAnd.empty()) {
       lhs->emplace_back(newIndexAnd);
