@@ -761,6 +761,54 @@ function ahuacatlQueryOptimiserInTestSuite () {
       assertEqual(expected, actual);
       ruleIsUsed(query);
     },
+    
+    testDuplicatesListHashIndexDynamic : function () { 
+      for (var i = 1; i < 100; ++i) {
+        c.save({ value: i });
+      }
+      c.ensureHashIndex("value");
+      var query = "FOR x IN " + cn + " FILTER x.value IN [3,3,PASSTHRU(3)] RETURN x.value";
+      var expected = [ 3 ];
+      var actual = getQueryResults(query);
+      assertEqual(expected, actual);
+      ruleIsUsed(query);
+    },
+    
+    testDuplicatesListSkiplistDynamic : function () { 
+      for (var i = 1; i < 100; ++i) {
+        c.save({ value: i });
+      }
+      c.ensureSkiplist("value");
+      var query = "FOR x IN " + cn + " FILTER x.value IN [PASSTHRU(3),3,PASSTHRU(3)] RETURN x.value";
+      var expected = [ 3 ];
+      var actual = getQueryResults(query);
+      assertEqual(expected, actual);
+      ruleIsUsed(query);
+    },
+    
+    testDuplicatesOrHashIndexDynamic : function () { 
+      for (var i = 1; i < 100; ++i) {
+        c.save({ value: i });
+      }
+      c.ensureHashIndex("value");
+      var query = "FOR x IN " + cn + " FILTER x.value == PASSTHRU(3) || x.value == PASSTHRU(3) || x.value == 3 RETURN x.value";
+      var expected = [ 3 ];
+      var actual = getQueryResults(query);
+      assertEqual(expected, actual);
+      ruleIsUsed(query);
+    },
+    
+    testDuplicatesOrSkiplistDynamic : function () { 
+      for (var i = 1; i < 100; ++i) {
+        c.save({ value: i });
+      }
+      c.ensureSkiplist("value");
+      var query = "FOR x IN " + cn + " FILTER x.value == 3 || x.value == PASSTHRU(3) || x.value == 3 RETURN x.value";
+      var expected = [ 3 ];
+      var actual = getQueryResults(query);
+      assertEqual(expected, actual);
+      ruleIsUsed(query);
+    },
 
     // FIXME this test fails if "DESC" is not included in the query
     testOverlappingRangesListSkiplist1 : function () { 
@@ -844,6 +892,7 @@ function ahuacatlQueryOptimiserInTestSuite () {
       assertEqual(expected, actual);
       ruleIsNotUsed(query);
     },
+    
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
