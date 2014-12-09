@@ -288,7 +288,7 @@ function post_api_explain (req, res) {
     return;
   }
 
-  if (result.plans) {
+  if (result.hasOwnProperty("plans")) {
     result = { 
       plans: result.plans,
       warnings: result.warnings,

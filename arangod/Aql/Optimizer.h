@@ -277,11 +277,24 @@ namespace triagens {
           }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check if a plan is contained in the list
+////////////////////////////////////////////////////////////////////////////////
+          
+          bool isContained (ExecutionPlan* plan) const {
+            for (auto p : list) {
+              if (p == plan) {
+                return true;
+              }
+            }
+            return false;
+          }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get a plan index pointing before the referenced rule, so it can be 
 ///   re-executed
 ////////////////////////////////////////////////////////////////////////////////
 
-          static RuleLevel beforeRule(RuleLevel l) {
+          static RuleLevel beforeRule (RuleLevel l) {
             return (RuleLevel) (l - 1);
           }
 
@@ -464,6 +477,16 @@ namespace triagens {
 
           return res;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief numberOfPlans, returns the current number of plans in the system
+/// this should be called from rules, it will consider those that the
+/// current rules has already added
+////////////////////////////////////////////////////////////////////////////////
+
+          size_t numberOfPlans () {
+            return _plans.size() + _newPlans.size() + 1;
+          }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stealPlans, ownership of the plans is handed over to the caller,

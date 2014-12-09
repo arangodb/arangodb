@@ -60,7 +60,15 @@ ArangoStatement.prototype.parse = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype.explain = function (options) {
-  return AQL_EXPLAIN(this._query, this._bindVars, options || { });
+  var opts = this._options || { };
+  if (typeof opts === 'object' && typeof options === 'object') {
+    Object.keys(options).forEach(function(o) {
+      // copy options
+      opts[o] = options[o];
+    });
+  }
+
+  return AQL_EXPLAIN(this._query, this._bindVars, opts);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -70,11 +78,12 @@ ArangoStatement.prototype.explain = function (options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype.execute = function () {
-  var options = this._options || { };
-  if (typeof options === 'object') {
-    options._doCount = this._doCount;
+  var opts = this._options || { };
+  if (typeof opts === 'object') {
+    opts._doCount = this._doCount;
   }
-  var result = AQL_EXECUTE(this._query, this._bindVars, options);
+
+  var result = AQL_EXECUTE(this._query, this._bindVars, opts);
 
   return new GeneralArrayCursor(result.json, 0, null, result);
 };
