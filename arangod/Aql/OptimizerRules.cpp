@@ -1328,7 +1328,7 @@ int triagens::aql::useIndexRangeRule (Optimizer* opt,
   while (i < changes.size()) {
     possibilities *= changes[i].second.size();
     i++;
-    if (possibilities * nrPlans > 20) {
+    if (possibilities + nrPlans > 30) {
       break;
     }
   }
@@ -1359,8 +1359,10 @@ int triagens::aql::useIndexRangeRule (Optimizer* opt,
           plan->replaceNode(plan->getNodeById(id), v[choice]);
           modified = true;
           // Free the other nodes, if they are there:
-          for (size_t k = 1; k < v.size(); k++) {
-            delete v[k];
+          for (size_t k = 0; k < v.size(); k++) {
+            if (k != choice) {
+              delete v[k];
+            }
           }
           v.clear();   // take the new node away from changes such that 
                        // cleanupChanges does not touch it
@@ -1377,6 +1379,7 @@ int triagens::aql::useIndexRangeRule (Optimizer* opt,
   if (possibilities == 1) {
     try {
       opt->addPlan(plan, rule->level, modified);
+      cleanupChanges();
     }
     catch (...) {
       cleanupChanges();
@@ -1393,10 +1396,7 @@ int triagens::aql::useIndexRangeRule (Optimizer* opt,
   std::function <void(size_t, size_t, std::vector<size_t>&)> doworkrecursive;
   std::vector<std::vector<size_t>> todo;
   std::vector<size_t> work;
-  work.reserve(i);
-  for (size_t l = 0; l < i; l++) {
-    work.push_back(0);
-  }
+
 
   doworkrecursive = [&doworkrecursive, &changes, &todo] 
                     (size_t index, size_t limit, std::vector<size_t>& v) {
@@ -1413,8 +1413,16 @@ int triagens::aql::useIndexRangeRule (Optimizer* opt,
       }
     }
   };
+ 
+  // if we get here, we can choose between multiple plans... 
+  TRI_ASSERT(possibilities != 1);
 
   try {
+    work.reserve(i);
+    for (size_t l = 0; l < i; l++) {
+      work.push_back(0);
+    }
+
     doworkrecursive(0, i, work);
   }
   catch (...) {
@@ -1441,7 +1449,10 @@ int triagens::aql::useIndexRangeRule (Optimizer* opt,
     cleanupChanges();
     throw;
   }
+
   cleanupChanges();
+  // finally delete the original plan. all plans created in this rule will be better(tm)
+  delete plan;
 
   return TRI_ERROR_NO_ERROR;
 }
