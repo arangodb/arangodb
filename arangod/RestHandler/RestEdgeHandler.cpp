@@ -627,6 +627,12 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// from the existing edge document that are contained in the patch document with an
 /// attribute value of *null*.
 ///
+/// @RESTQUERYPARAM{mergeObjects,boolean,optional}
+/// Controls whether objects (not arrays) will be merged if present in both the
+/// existing and the patch edge. If set to *false*, the value in the
+/// patch edge will overwrite the existing edge's value. If set to
+/// *true*, objects will be merged. The default is *true*.
+///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
 /// Wait until edge document has been synced to disk.
 ///
