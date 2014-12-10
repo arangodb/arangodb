@@ -277,7 +277,7 @@ _.extend(Repository.prototype, {
 /// @startDocuBlock JSF_foxx_repository_any
 /// `FoxxRepository#any()`
 ///
-/// Returns a random document from this collection (or null if there is none).
+/// Returns a random model from this repository (or null if there is none).
 ///
 /// @EXAMPLES
 ///
