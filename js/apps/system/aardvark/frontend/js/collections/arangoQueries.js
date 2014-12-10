@@ -27,14 +27,11 @@
 
     activeUser: 0,
 
-    currentExtra: {},
-
     parse: function(response) {
       var self = this, toReturn;
 
       _.each(response.result, function(val) {
         if (val.user === self.activeUser) {
-          self.currentExtra = val.extra;
           try {
             if (val.extra.queries) {
               toReturn = val.extra.queries;
@@ -52,12 +49,8 @@
         return false;
       }
 
-      var queries = [],
-      returnValue1 = false,
-      returnValue2 = false,
-      returnValue3 = false,
-      extraBackup = null,
-      self = this;
+      var returnValue = false;
+      var queries = [];
 
       this.each(function(query) {
         queries.push({
@@ -66,33 +59,12 @@
         });
       });
 
-      extraBackup = self.currentExtra;
-      extraBackup.queries = [];
-
-      $.ajax({
-        cache: false,
-        type: "PUT",
-        async: false,
-        url: "/_api/user/" + this.activeUser,
-        data: JSON.stringify({
-          extra: extraBackup
-        }),
-        contentType: "application/json",
-        processData: false,
-        success: function() {
-          returnValue1 = true;
-        },
-        error: function() {
-          returnValue1 = false;
-        }
-      });
-
-      //save current collection
+      // save current collection
       $.ajax({
         cache: false,
         type: "PATCH",
         async: false,
-        url: "/_api/user/" + this.activeUser,
+        url: "/_api/user/" + encodeURIComponent(this.activeUser),
         data: JSON.stringify({
           extra: {
            queries: queries
@@ -101,20 +73,14 @@
         contentType: "application/json",
         processData: false,
         success: function() {
-          returnValue2 = true;
+          returnValue = true;
         },
         error: function() {
-          returnValue2 = false;
+          returnValue = false;
         }
       });
 
-      if (returnValue1 === true && returnValue2 === true) {
-        returnValue3 = true;
-      }
-      else {
-        returnValue3 = false;
-      }
-      return returnValue3;
+      return returnValue;
     },
 
     saveImportQueries: function(file, callback) {
@@ -128,7 +94,7 @@
         cache: false,
         type: "POST",
         async: false,
-        url: "query/upload/" + this.activeUser,
+        url: "query/upload/" + encodeURIComponent(this.activeUser),
         data: file,
         contentType: "application/json",
         processData: false,

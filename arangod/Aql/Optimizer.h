@@ -277,11 +277,24 @@ namespace triagens {
           }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check if a plan is contained in the list
+////////////////////////////////////////////////////////////////////////////////
+          
+          bool isContained (ExecutionPlan* plan) const {
+            for (auto p : list) {
+              if (p == plan) {
+                return true;
+              }
+            }
+            return false;
+          }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get a plan index pointing before the referenced rule, so it can be 
 ///   re-executed
 ////////////////////////////////////////////////////////////////////////////////
 
-          static RuleLevel beforeRule(RuleLevel l) {
+          static RuleLevel beforeRule (RuleLevel l) {
             return (RuleLevel) (l - 1);
           }
 
