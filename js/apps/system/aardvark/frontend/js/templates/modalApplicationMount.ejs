@@ -1,18 +1,4 @@
-<script id="modalCollectionInfo.ejs" type="text/template">
-<%
-  var roundNumber = function(number, n) {
-    var factor;
-    factor = Math.pow(10,n);
-    var returnVal = (Math.round(number * factor) / factor);
-    return returnVal;
-  };
-
-  var figuresData = content.getFigures();
-  var revision    = content.getRevision();
-  var index       = content.getIndex();
-
-%>
-
+<script id="modalApplicationMount.ejs" type="text/template">
   <ul id="infoTab" class="nav nav-tabs">
     <li class="active"><a href="#appstore" data-toggle="tab">App Store</a></li>
     <li><a href="#github" data-toggle="tab">Github</a></li>
@@ -22,6 +8,8 @@
   <div class="tab-content" id="tab-content-application-info">
 
     <div class="tab-pane active" id="appstore">
+      <table id="appstore-content">
+      </table>
     </div>
 
     <div class="tab-pane" id="github">
@@ -53,10 +41,33 @@
             </th>
           </tr>
         </table>
+        <button id="installGithub" class="button-success pull-right" style="margin-right:8px">Install</button>
       </div>
     </div>
 
     <div class="tab-pane" id="zip">
+      <div>Todo how ZIP.</div>
+      <div>
+        <table>
+          <tr class="tableRow">
+            <th class="collectionInfoTh">
+              File*:
+            </th>
+            <th class="collectionInfoTh">
+              <input id="zip-file" name="zip-file" type="file"/>
+            </th>
+          </tr>
+          <tr class="tableRow">
+            <th class="collectionInfoTh">
+              Mount*:
+            </th>
+            <th class="collectionInfoTh">
+              <input type="text" id="tag" value="" placeholder="/foxx/app">
+            </th>
+          </tr>
+        </table>
+        <button id="installZip" class="button-success pull-right" style="margin-right:8px">Install</button>
+      </div>
     </div>
   </div>
 </script>

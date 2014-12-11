@@ -44,6 +44,7 @@
         "frontend/js/templates/loginView.ejs",
         "frontend/js/templates/modalBase.ejs",
         "frontend/js/templates/modalCollectionInfo.ejs",
+        "frontend/js/templates/modalApplicationMount.ejs",
         "frontend/js/templates/modalGraph.ejs",
         "frontend/js/templates/modalNewVersion.ejs",
         "frontend/js/templates/modalTable.ejs",
