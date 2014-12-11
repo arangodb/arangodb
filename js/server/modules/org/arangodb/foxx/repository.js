@@ -138,6 +138,7 @@ Repository = function (collection, opts) {
 _.extend(Repository.prototype, {
 
   _buildId: function(key) {
+    'use strict';
     return this.collection.name() + '/' + key;
   },
 
@@ -458,7 +459,7 @@ _.extend(Repository.prototype, {
   replaceByKey: function (key, data) {
     'use strict';
     var id = this._buildId(key);
-    return this.replaceById(id);
+    return this.replaceById(id, data);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
