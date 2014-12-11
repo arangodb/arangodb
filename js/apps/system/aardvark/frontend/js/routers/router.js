@@ -19,6 +19,7 @@
       "api": "api",
       "databases": "databases",
       "applications": "applications",
+      "applications/:key": "applicationDetail",
       "application/documentation/:key": "appDocumentation",
       "graph": "graphManagement",
       "userManagement": "userManagement",
@@ -105,6 +106,16 @@
         return false;
       }
       return true;
+    },
+
+    applicationDetail: function (key) {
+      if (this.foxxList.length === 0) {
+        this.foxxList.fetch({ async: false });
+      }
+      var applicationDetailView = new window.ApplicationDetailView({
+        model: this.foxxList.get(key)
+      });
+      applicationDetailView.render();
     },
 
     login: function () {
