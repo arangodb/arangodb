@@ -273,6 +273,28 @@ _.extend(Repository.prototype, {
     }, this);
   },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_repository_any
+/// `FoxxRepository#any()`
+///
+/// Returns a random model from this repository (or null if there is none).
+///
+/// @EXAMPLES
+///
+/// ```javascript
+/// repository.any();
+/// ```
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+  any: function () {
+    'use strict';
+    var data = this.collection.any();
+    if (!data) {
+      return null;
+    }
+    return (new this.model(data));
+  },
+
 // -----------------------------------------------------------------------------
 // --SUBSECTION--                                               Removing Entries
 // -----------------------------------------------------------------------------
