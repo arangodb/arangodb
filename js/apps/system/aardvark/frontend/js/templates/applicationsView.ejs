@@ -1,91 +1,11 @@
 <script id="applicationsView.ejs" type="text/template">
   <div class="headerBar">
     <a class="arangoHeader">Applications</a>
-
-    <div class="headerButtonBar">
-      <ul class="headerButtonList">
-        <li>
-          <a id="foxxToggle" class="headerButton">
-            <span class="icon_arangodb_settings2" title="Settings"></span>
-          </a>
-        </li>
-        <li>
-          <a id="importFoxxToggle" class="headerButton">
-            <span class="icon_arangodb_import" title="Upload foxx from ZIP file"></span>
-          </a>
-        </li>
-      </ul>
-    </div>
-
   </div>
-
-  </div>
-  <div id="foxxDropdownOut" class="headerDropdown">
-    <div id="foxxDropdown" class="dropdownInner">
-
-      <ul>
-        <li class="nav-header">Type</li>
-        <li><a href="#">
-          <label class="checkbox checkboxLabel">
-            <input class="css-checkbox" type="checkbox" id="checkActive">
-            <label class="css-label"></label>Active
-          </label>
-        </a></li>
-
-        <li><a href="#">
-          <label class="checkbox checkboxLabel">
-            <input class="css-checkbox" type="checkbox" id="checkDevel">
-            <label class="css-label"></label>Development
-          </label>
-        </a></li>
-
-        <li><a href="#">
-          <label class="checkbox checkboxLabel">
-            <input class="css-checkbox checkSystem" type="checkbox">
-            <label class="css-label"></label>System applications
-          </label>
-        </a></li>
-      </ul>
-
-      <!--
-      <ul>
-        <li class="nav-header">Sorting</li>
-        <li><a>
-          <label class="checkbox checkboxLabel">
-            <input class="css-checkbox" type="checkbox" id="appsDesc">
-            <label class="css-label" id="appsDesc"></label>Sort descending
-          </label>
-        </a></li>
-      </ul>-->
-
-    </div>
-  </div>
-
-  <div id="foxxDropdownImport" class="dropdownImport">
-    <div class="queryline">
-      <input id="importFoxx" name="importFoxx" type="file" accept="application/zip"/>
-      <button id="confirmFoxxImport" class="button-success btn-old-padding" style="float:right">
-        <img id="uploadIndicator" class="upload-indicator" src="img/ajax-loader.gif"/>Import Foxx
-      </button>
-      <button id="installFoxxFromGithub" class="button-success btn-old-padding" style="float:right">
-        Download from Github
-      </button>
-    </div>
-  </div>
-
 
   <div class="contentDiv">
     <div id="installed">
-      <div class="headerBar">
-        <a class="arangoHeader">Active</a>
-      </div>
       <div id="installedList" class="tileList"></div>
-    </div>
-    <div id="available">
-      <div class="headerBar">
-        <a class="arangoHeader">Available</a>
-      </div>
-      <div id="availableList" class="tileList"></div>
     </div>
   </div>
 </script>
