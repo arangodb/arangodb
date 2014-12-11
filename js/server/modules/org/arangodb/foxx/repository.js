@@ -212,8 +212,8 @@ _.extend(Repository.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   byKey: function (key) {
     'use strict';
-    var id = _buildId(key);
-    return byId(id);
+    var id = this._buildId(key);
+    return this.byId(id);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -361,8 +361,8 @@ _.extend(Repository.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   removeByKey: function (key) {
     'use strict';
-    var id = _buildId(key);
-    return removeById(id);
+    var id = this._buildId(key);
+    return this.removeById(id);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -457,8 +457,8 @@ _.extend(Repository.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   replaceByKey: function (key, data) {
     'use strict';
-    var id = _buildId(key);
-    return replaceById(id);
+    var id = this._buildId(key);
+    return this.replaceById(id);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -556,8 +556,8 @@ _.extend(Repository.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   updateByKey: function (key, data) {
     'use strict';
-    var id = _buildId(key);
-    return updateById(id, data);
+    var id = this._buildId(key);
+    return this.updateById(id, data);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
