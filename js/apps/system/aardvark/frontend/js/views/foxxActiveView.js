@@ -15,11 +15,7 @@
     },
 
     openAppDetailView: function() {
-      // var url = window.location.origin + "/_db/" +
-      //           encodeURIComponent(arangoHelper.currentDatabase()) +
-      //           this.model.get("mount");
-      // var windowRef = window.open(url, this.model.get("title"));
-      alert('Michael will insert something here for ' + this.model.get('mount') + '. Stay tuned.');
+      window.App.navigate('applications/' + encodeURIComponent(this.model.get('_key')), { trigger: true });
     },
 
     render: function(){

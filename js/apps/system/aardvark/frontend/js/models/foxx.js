@@ -3,6 +3,8 @@
   "use strict";
 
   window.Foxx = Backbone.Model.extend({
+    idAttribute: '_key',
+
     defaults: {
       "title": "",
       "version": "",
@@ -23,6 +25,5 @@
     isNew: function() {
       return false;
     }
-
   });
 }());
