@@ -1,6 +1,8 @@
 v2.3.2 (2014-12-09)
 -------------------
 
+* fixed issue #1177: Fix bug in the user app's storage
+
 * fixed issue #1173: AQL Editor "Save current query" resets user password
 
 * fixed missing makeDirectory when fetching a Foxx application from a zip file
