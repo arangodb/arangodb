@@ -1,0 +1,62 @@
+<script id="modalCollectionInfo.ejs" type="text/template">
+<%
+  var roundNumber = function(number, n) {
+    var factor;
+    factor = Math.pow(10,n);
+    var returnVal = (Math.round(number * factor) / factor);
+    return returnVal;
+  };
+
+  var figuresData = content.getFigures();
+  var revision    = content.getRevision();
+  var index       = content.getIndex();
+
+%>
+
+  <ul id="infoTab" class="nav nav-tabs">
+    <li class="active"><a href="#appstore" data-toggle="tab">App Store</a></li>
+    <li><a href="#github" data-toggle="tab">Github</a></li>
+    <li><a href="#zip" data-toggle="tab">Zip</a></li>
+  </ul>
+
+  <div class="tab-content" id="tab-content-application-info">
+
+    <div class="tab-pane active" id="appstore">
+    </div>
+
+    <div class="tab-pane" id="github">
+      <div>The repository has to be private. The version has to be a git tag LINKTOTAG.</div>
+      <div>
+        <table>
+          <tr class="tableRow">
+            <th class="collectionInfoTh">
+              Repository*:
+            </th>
+            <th class="collectionInfoTh">
+              <input type="text" id="repository" value="" placeholder="username/repository">
+            </th>
+          </tr>
+          <tr class="tableRow">
+            <th class="collectionInfoTh">
+              Version*:
+            </th>
+            <th class="collectionInfoTh">
+              <input type="text" id="tag" value="" placeholder="master">
+            </th>
+          </tr>
+          <tr class="tableRow">
+            <th class="collectionInfoTh">
+              Mount*:
+            </th>
+            <th class="collectionInfoTh">
+              <input type="text" id="tag" value="" placeholder="/foxx/app">
+            </th>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="tab-pane" id="zip">
+    </div>
+  </div>
+</script>
