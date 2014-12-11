@@ -139,7 +139,7 @@ _.extend(Repository.prototype, {
 
   _buildId: function(key) {
     return this.collection.name() + '/' + key;
-  }
+  },
 
 // -----------------------------------------------------------------------------
 // --SUBSECTION--                                                 Adding Entries
