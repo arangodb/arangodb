@@ -8,13 +8,14 @@ window.ApplicationsView = Backbone.View.extend({
   template: templateEngine.createTemplate("applicationsView.ejs"),
 
   events: {
-    "click #checkDevel"         : "toggleDevel",
-    "click #checkActive"        : "toggleActive",
-    "click .checkSystem"        : "toggleSystem",
-    "click #foxxToggle"         : "slideToggle",
-    "click #importFoxxToggle"   : "slideToggleImport",
-    "change #importFoxx"        : "uploadSetup",
-    "click #confirmFoxxImport"  : "importFoxx",
+    "click #addApp"                : "createInstallModal",
+    "click #checkDevel"            : "toggleDevel",
+    "click #checkActive"           : "toggleActive",
+    "click .checkSystem"           : "toggleSystem",
+    "click #foxxToggle"            : "slideToggle",
+    "click #importFoxxToggle"      : "slideToggleImport",
+    "change #importFoxx"           : "uploadSetup",
+    "click #confirmFoxxImport"     : "importFoxx",
     "click #installFoxxFromGithub" : "createGithubModal",
     "click .css-label"             : "checkBoxes",
     "change #appsDesc"             : "sorting"
@@ -273,7 +274,7 @@ window.ApplicationsView = Backbone.View.extend({
     this._availableSubViews = {};
     this._showDevel = true;
     this._showActive = true;
-    this._showSystem = false;
+    this._showSystem = true;
     this.reload();
   },
 
@@ -299,8 +300,6 @@ window.ApplicationsView = Backbone.View.extend({
   },
 
   renderSubViews: function () {
-    $("#availableList").empty();
-    $("#installedList").empty();
     _.each(this._installedSubViews, function (v) {
       $("#installedList").append(v.render());
     });
@@ -353,5 +352,16 @@ window.ApplicationsView = Backbone.View.extend({
         $("#availableList").append(v.render());
       }
     });
+  },
+
+  createInstallModal: function(event) {
+    event.preventDefault();
+    var buttons = [];
+    window.modalView.show(
+      "modalApplicationMount.ejs",
+      "Pijotr",
+      buttons
+    );
   }
+
 });

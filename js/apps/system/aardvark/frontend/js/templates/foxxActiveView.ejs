@@ -1,0 +1,34 @@
+<script id="foxxActiveView.ejs" type="text/template">
+<% var appInfos = attributes.app.split(":"); %>
+<div class="iconSet">
+  <span class="icon_arangodb_settings2" alt="Edit application properties" title="Edit application properties"></span>
+  <span class="icon_arangodb_info" title="Show API documentation"></span>
+</div>
+<img src="foxxes/thumbnail/<%=attributes.app %>" height="50" width="50" alt="" class="icon">
+<%if (attributes.development) {%>
+  <div class="tileBadge">
+  <span>
+    <div class="corneredBadge loaded">
+      development
+    </div>
+  </span>
+    </div>
+<%} else if (attributes.active) {%>
+  <div class="tileBadge">
+  <span>
+    <div class="corneredBadge loaded">
+      active
+    </div>
+  </span>
+    </div>
+<%} else {%>
+  <div class="tileBadge">
+    <span>
+      <div class="corneredBadge unloaded">
+        inactive
+      </div>
+    </span>
+  </div>
+<%}%>
+<h5 class="collectionName"><%= appInfos[1] %><%= attributes.isSystem && attributes.mount.charAt(0) === "/" && attributes.mount.charAt(1) === "_" ? " (system)" : "" %><%= appInfos[0] === "dev" ? " (dev)" : ""%></h5>
+</script>
