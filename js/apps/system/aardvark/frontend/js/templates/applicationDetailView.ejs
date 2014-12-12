@@ -22,8 +22,14 @@
     <dl>
       <dt>Author</dt>
       <dd><%= attributes.author %></dd>
-      <dt>Keywords</dt>
-      <dd><%= attributes.keywords %></dd>
+      <dt>Contributors</dt>
+      <dd>
+        <ul>
+        <% _.each(attributes.contributors, function (contributor) { %>
+          <li><a href="mailto:<%= contributor.email %>"><%= contributor.name %></a></li>
+        <% }); %>
+        </ul>
+      </dd>
     </dl>
   </aside>
 </script>
