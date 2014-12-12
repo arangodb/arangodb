@@ -6,11 +6,13 @@
     idAttribute: '_key',
 
     defaults: {
+      "author": "Unknown Author",
       "title": "",
       "version": "Unknown Version",
       "mount": "",
       "description": "No description",
       "license": "Unknown License",
+      "contributors": [],
       "git": "",
       "isSystem": false,
       "development": false
