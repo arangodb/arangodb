@@ -256,7 +256,6 @@
       appDocumentation: function (key) {
         var docuView = new window.AppDocumentationView({key: key});
         docuView.render();
-        this.naviView.selectMenuItem('applications-menu');
       },
 
       handleSelectDatabase: function () {
