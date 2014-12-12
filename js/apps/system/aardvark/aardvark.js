@@ -123,7 +123,9 @@ controller.post("/foxxes/gitinstall", function (req, res) {
   res.json({
     error: false,
     configuration: app.manifest.configuration || {},
-    app: appID
+    app: appID,
+    name: app.name,
+    version: app.version
   });
 }).summary("Installs a foxx or update existing")
 .notes("This function is used to install or update a (new) foxx.");
