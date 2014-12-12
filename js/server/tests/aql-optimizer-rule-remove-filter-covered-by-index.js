@@ -35,54 +35,47 @@ var isEqual = helper.isEqual;
 var findExecutionNodes = helper.findExecutionNodes;
 var getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
 var removeAlwaysOnClusterRules = helper.removeAlwaysOnClusterRules;
-var yaml=require("js-yaml");
-// var x=function(a, b) {return yaml.safeDump(AQL_EXPLAIN(a, {}, b));};
-var py=function(what) {require("internal").print( yaml.safeDump(what));};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 function optimizerRuleTestSuite_filterByIndex() {
-    var IndexRangeRule = "use-index-range";
-    var FilterRemoveRule = "remove-filter-covered-by-index";
-    var SortRemoveRule = "use-index-for-sort"; 
+  var IndexRangeRule = "use-index-range";
+  var FilterRemoveRule = "remove-filter-covered-by-index";
+  var SortRemoveRule = "use-index-for-sort"; 
   var colName = "UnitTestsAqlOptimizer" + FilterRemoveRule.replace(/-/g, "_");
   var colNameOther = colName + "_XX";
 
   // various choices to control the optimizer: 
   var paramNone = { optimizer: { rules: [ "-all" ] } };
-  var paramIndexRangeFilter   = { optimizer: { rules: [ "-all", "+" + IndexRangeRule,  "+" + FilterRemoveRule] } };
-  var paramIndexRangeSortFilter   = { optimizer: { rules: [ "-all", "+" + IndexRangeRule,  "+" + FilterRemoveRule, "+" + SortRemoveRule]}/*, "allPlans": true*/ };
+  var paramIndexRangeFilter = { optimizer: { rules: [ "-all", "+" + IndexRangeRule,  "+" + FilterRemoveRule] } };
+  var paramIndexRangeSortFilter = { optimizer: { rules: [ "-all", "+" + IndexRangeRule,  "+" + FilterRemoveRule, "+" + SortRemoveRule] } };
   var skiplist;
   var skiplist2;
 
   var hasNoFilterNode = function (plan) {
-    assertEqual(findExecutionNodes(plan, "FilterNode").length, 0, "Has NO Filter Node");
+    assertEqual(findExecutionNodes(plan, "FilterNode").length, 0, "has no filter node");
   };
-  var hasIndexRangeNode_WithRanges = function (plan, haveRanges) {
+
+  var hasIndexRangeNodeWithRanges = function (plan) {
     var rn = findExecutionNodes(plan, "IndexRangeNode");
-    assertEqual(rn.length, 1, "Has IndexRangeNode");
+    assertTrue(rn.length >= 1, "has IndexRangeNode");
     assertTrue(rn[0].ranges.length > 0, "whether the IndexRangeNode ranges array is valid");
-    if (haveRanges) {
-      assertTrue(rn[0].ranges[0].length > 0, "Have IndexRangeNode with ranges");
-    }
-    else {
-      assertEqual(rn[0].ranges[0].length, 0, "Have IndexRangeNode with NO ranges");
-    }
+    assertTrue(rn[0].ranges[0].length > 0, "have IndexRangeNode with ranges");
   };
 
   return {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    // Datastructure: 
-    //  - double index on (a,b)/(f,g) for tests with these
-    //  - single column index on d/j to test sort behaviour without sub-columns
-    //  - non-indexed columns c/h to sort without indices.
-    //  - non-skiplist indexed columns e/j to check whether its not selecting them.
-    //  - join column 'joinme' to intersect both tables.
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+/// Datastructure: 
+///  - double index on (a,b)/(f,g) for tests with these
+///  - single column index on d/j to test sort behaviour without sub-columns
+///  - non-indexed columns c/h to sort without indices.
+///  - non-skiplist indexed columns e/j to check whether its not selecting them.
+///  - join column 'joinme' to intersect both tables.
+////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
       var loopto = 10;
@@ -116,9 +109,9 @@ function optimizerRuleTestSuite_filterByIndex() {
       skiplist2.ensureIndex({ type: "hash", fields: [ "h" ], unique: false });
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief tear down
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
       internal.db._drop(colName);
@@ -126,10 +119,9 @@ function optimizerRuleTestSuite_filterByIndex() {
       skiplist = null;
     },
 
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test that rule has no effect
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test that rule has no effect
+////////////////////////////////////////////////////////////////////////////////
 /*
     testRuleNoEffect : function () {
       var j;
@@ -159,30 +151,24 @@ function optimizerRuleTestSuite_filterByIndex() {
     },
 */
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test that rule has an effect on the FILTER and the SORT
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test that rule has an effect on the FILTER and the SORT
+////////////////////////////////////////////////////////////////////////////////
 
-    testRuleHasEffect_Combine_Sort_Filter : function () {
-      var allresults;
+    testRuleHasEffectCombineSortFilter : function () {
       var queries = [ 
         "FOR v IN " + colName + " FILTER v.a > 5 SORT v.a ASC RETURN [v.a]",
         "FOR v IN " + colName + " SORT v.a ASC FILTER v.a > 5 RETURN [v.a]",
-
         "FOR v IN " + colName + " FILTER v.d > 5 SORT v.d ASC RETURN [v.d]",
         "FOR v IN " + colName + " SORT v.d ASC FILTER v.d > 5 RETURN [v.d]",
-
-        "FOR v IN " + colName + " SORT v.d FILTER v.d > 2 LIMIT 3 RETURN [v.d]  ",
-        "FOR v IN " + colName + " FILTER v.d > 2 SORT v.d LIMIT 3 RETURN [v.d]  ",
-
+        "FOR v IN " + colName + " SORT v.d FILTER v.d > 2 LIMIT 3 RETURN [v.d]",
+        "FOR v IN " + colName + " FILTER v.d > 2 SORT v.d LIMIT 3 RETURN [v.d]",
         "FOR v IN " + colName + " FOR w IN 1..10 FILTER v.d > 2 SORT v.d RETURN [v.d]",
         "FOR v IN " + colName + " FOR w IN 1..10 SORT v.d FILTER v.d > 2 RETURN [v.d]",
-
-        "FOR v IN " + colName + " LET x = (FOR w IN " + colNameOther + " RETURN w.f ) FILTER v.a > 4 SORT v.a RETURN [v.a]",
-        "FOR v IN " + colName + " LET x = (FOR w IN " + colNameOther + " RETURN w.f ) SORT v.a FILTER v.a > 4 RETURN [v.a]"
+        "FOR v IN " + colName + " LET x = (FOR w IN " + colNameOther + " RETURN w.f) FILTER v.a > 4 SORT v.a RETURN [v.a]",
+        "FOR v IN " + colName + " LET x = (FOR w IN " + colNameOther + " RETURN w.f) SORT v.a FILTER v.a > 4 RETURN [v.a]"
       ];
-      var QResults = [];
-      var i = 0;
+
       queries.forEach(function(query) {
           var j, result;
 
@@ -216,7 +202,6 @@ function optimizerRuleTestSuite_filterByIndex() {
                        "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
                       );
         }
-        i++;
       });
 
     },
@@ -225,15 +210,13 @@ function optimizerRuleTestSuite_filterByIndex() {
     /// @brief test that rule has an effect, the filter can be removed, but the sort
     /// is kept in place since the index can't fullfill all the sorting.
     ////////////////////////////////////////////////////////////////////////////////
+
     testRuleHasEffect_Combine_Sort_NO_Filter : function () {
-      var allresults;
       var queries = [ 
         "FOR v IN " + colName + " FILTER v.a == 1 SORT v.a, v.c RETURN [v.a, v.b, v.c]",
         "FOR v IN " + colName + " LET x = (FOR w IN " 
           + colNameOther + " FILTER w.f == 1 SORT w.a, w.h RETURN  w.f ) SORT v.a , v.c FILTER v.a == 1RETURN [v.a, x]"
       ];
-      var QResults = [];
-      var i = 0;
       queries.forEach(function(query) {
           var j, result;
 
@@ -264,10 +247,8 @@ function optimizerRuleTestSuite_filterByIndex() {
                        "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
                       );
         }
-        i++;
       });
-
-    },
+    }
 
   };
 }

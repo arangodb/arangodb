@@ -61,11 +61,99 @@ function optimizerCountTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInvalidSyntax : function () {
-      assertQueryError(errors.ERROR_QUERY_PARSE.code, "LET a = 1 FOR i IN " + c.name() + " COLLECT class = i.group COUNT RETURN class");
-      assertQueryError(errors.ERROR_QUERY_PARSE.code, "LET a = 1 FOR i IN " + c.name() + " COLLECT class = i.group COUNT i RETURN class");
-      assertQueryError(errors.ERROR_QUERY_PARSE.code, "LET a = 1 FOR i IN " + c.name() + " COLLECT class = i.group INTO group COUNT i RETURN class");
-      assertQueryError(errors.ERROR_QUERY_PARSE.code, "LET a = 1 FOR i IN " + c.name() + " COLLECT class = i.group INTO group COUNT COUNT RETURN class");
-      assertQueryError(errors.ERROR_QUERY_PARSE.code, "LET a = 1 FOR i IN " + c.name() + " COLLECT COUNT RETURN class");
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT RETURN 1");
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT COUNT RETURN 1");
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT WITH COUNT RETURN 1");
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT WITH COUNT i RETURN 1");
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT WITH COUNT INTO RETURN 1");
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT WITH COUNT g RETURN 1");
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT COUNT INTO g RETURN 1");
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT g WITH COUNT RETURN 1");
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT g WITH COUNT INTO RETURN 1");
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT class = i.group WITH COUNT RETURN 1");
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT class = i.group WITH COUNT i RETURN 1");
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT class = i.group WITH COUNT i INTO group RETURN 1");
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT class = i.group WITH COUNT COUNT INTO group RETURN 1");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test count
+////////////////////////////////////////////////////////////////////////////////
+
+    testCountTotalSimple : function () {
+      var query = "FOR i IN " + c.name() + " COLLECT WITH COUNT INTO count RETURN count";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(1000, results.json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test count
+////////////////////////////////////////////////////////////////////////////////
+
+    testCountTotalFiltered : function () {
+      var query = "FOR i IN " + c.name() + " FILTER i.group == 'test4' COLLECT WITH COUNT INTO count RETURN count";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(100, results.json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test count
+////////////////////////////////////////////////////////////////////////////////
+
+    testCountTotalFilteredMulti : function () {
+      var query = "FOR i IN " + c.name() + " FILTER i.group >= 'test2' && i.group <= 'test4' COLLECT WITH COUNT INTO count RETURN count";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(300, results.json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test count
+////////////////////////////////////////////////////////////////////////////////
+
+    testCountTotalFilteredEmpty : function () {
+      var query = "FOR i IN " + c.name() + " FILTER i.group >= 'test99' COLLECT WITH COUNT INTO count RETURN count";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(0, results.json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test count
+////////////////////////////////////////////////////////////////////////////////
+
+    testCountTotalFilteredBig : function () {
+      var i;
+      for (i = 0; i < 10000; ++i) {
+        c.save({ age: 10 + (i % 80), type: 1 });
+      }
+      for (i = 0; i < 10000; ++i) {
+        c.save({ age: 10 + (i % 80), type: 2 });
+      }
+
+      var query = "FOR i IN " + c.name() + " FILTER i.age >= 20 && i.age < 50 && i.type == 1 COLLECT WITH COUNT INTO count RETURN count";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(125 * 30, results.json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test count
+////////////////////////////////////////////////////////////////////////////////
+
+    testCountTotalNested : function () {
+      var query = "FOR i IN 1..2 FOR j IN " + c.name() + " COLLECT WITH COUNT INTO count RETURN count";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(2000, results.json[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -73,7 +161,7 @@ function optimizerCountTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCountSimple : function () {
-      var query = "FOR i IN " + c.name() + " COLLECT class = i.group INTO count COUNT RETURN [ class, count ]";
+      var query = "FOR i IN " + c.name() + " COLLECT class = i.group WITH COUNT INTO count RETURN [ class, count ]";
 
       var results = AQL_EXECUTE(query);
       assertEqual(10, results.json.length);
@@ -90,7 +178,7 @@ function optimizerCountTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCountFiltered : function () {
-      var query = "FOR i IN " + c.name() + " FILTER i.group >= 'test1' && i.group <= 'test4' COLLECT class = i.group INTO count COUNT RETURN [ class, count ]";
+      var query = "FOR i IN " + c.name() + " FILTER i.group >= 'test1' && i.group <= 'test4' COLLECT class = i.group WITH COUNT INTO count RETURN [ class, count ]";
 
       var results = AQL_EXECUTE(query);
       assertEqual(4, results.json.length);
@@ -106,6 +194,17 @@ function optimizerCountTestSuite () {
 /// @brief test count
 ////////////////////////////////////////////////////////////////////////////////
 
+    testCountFilteredEmpty : function () {
+      var query = "FOR i IN " + c.name() + " FILTER i.group >= 'test99' COLLECT class = i.group WITH COUNT INTO count RETURN [ class, count ]";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(0, results.json.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test count
+////////////////////////////////////////////////////////////////////////////////
+
     testCountFilteredBig : function () {
       var i;
       for (i = 0; i < 10000; ++i) {
@@ -115,7 +214,7 @@ function optimizerCountTestSuite () {
         c.save({ age: 10 + (i % 80), type: 2 });
       }
 
-      var query = "FOR i IN " + c.name() + " FILTER i.age >= 20 && i.age < 50 && i.type == 1 COLLECT age = i.age INTO count COUNT RETURN [ age, count ]";
+      var query = "FOR i IN " + c.name() + " FILTER i.age >= 20 && i.age < 50 && i.type == 1 COLLECT age = i.age WITH COUNT INTO count RETURN [ age, count ]";
 
       var results = AQL_EXECUTE(query);
       assertEqual(30, results.json.length);
@@ -132,7 +231,7 @@ function optimizerCountTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCountNested : function () {
-      var query = "FOR i IN 1..2 FOR j IN " + c.name() + " COLLECT class1 = i, class2 = j.group INTO count COUNT RETURN [ class1, class2, count ]";
+      var query = "FOR i IN 1..2 FOR j IN " + c.name() + " COLLECT class1 = i, class2 = j.group WITH COUNT INTO count RETURN [ class1, class2, count ]";
 
       var results = AQL_EXECUTE(query), x = 0;
       assertEqual(20, results.json.length);
