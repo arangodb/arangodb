@@ -1,9 +1,16 @@
 {
   "name": "gharial",
   "description": "ArangoDB Graph Module",
-  "author": "Michael Hackstein",
+  "author": "ArangoDB GmbH",
   "version": "0.1",
   "isSystem": true,
+
+  "contributors": [
+    {
+      "name": "Michael Hackstein",
+      "email": "m.hackstein@arangodb.com"
+    }
+  ],
 
   "controllers": {
     "/": "gharial.js"
