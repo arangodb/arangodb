@@ -43,7 +43,7 @@ var py=function(what) {require("internal").print( yaml.safeDump(what));};
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function optimizerRuleTestSuite() {
+function optimizerRuleTestSuite_filterByIndex() {
     var IndexRangeRule = "use-index-range";
     var FilterRemoveRule = "remove-filter-covered-by-index";
     var SortRemoveRule = "use-index-for-sort"; 
@@ -190,13 +190,13 @@ function optimizerRuleTestSuite() {
           assertEqual([ IndexRangeRule, FilterRemoveRule ], 
                       removeAlwaysOnClusterRules(result.plan.rules), query);
 	  hasNoFilterNode(result);
-	  hasIndexRangeNode_WithRanges(result);
+	  hasIndexRangeNode_WithRanges(result, true);
 
           result = AQL_EXPLAIN(query, { }, paramIndexRangeSortFilter);
           assertEqual([ IndexRangeRule, FilterRemoveRule, SortRemoveRule ], 
                       removeAlwaysOnClusterRules(result.plan.rules), query);
 	  hasNoFilterNode(result);
-	  hasIndexRangeNode_WithRanges(result);
+	  hasIndexRangeNode_WithRanges(result, true);
 
 
           QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
@@ -241,15 +241,11 @@ function optimizerRuleTestSuite() {
           assertEqual([ IndexRangeRule, FilterRemoveRule ], 
                       removeAlwaysOnClusterRules(result.plan.rules), query);
 	  hasNoFilterNode(result);
-	  hasIndexRangeNode_WithRanges(result);
 
           result = AQL_EXPLAIN(query, { }, paramIndexRangeSortFilter);
-	  py(result);
           assertEqual([ IndexRangeRule, FilterRemoveRule ], 
                       removeAlwaysOnClusterRules(result.plan.rules), query);
 	  hasNoFilterNode(result);
-	  hasIndexRangeNode_WithRanges(result);
-
 
           QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
           QResults[1] = AQL_EXECUTE(query, { }, paramIndexRangeFilter).json;
@@ -280,7 +276,7 @@ function optimizerRuleTestSuite() {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(optimizerRuleTestSuite);
+jsunity.run(optimizerRuleTestSuite_filterByIndex);
 
 return jsunity.done();
 
