@@ -43,6 +43,7 @@
         "frontend/js/templates/appDocumentationView.ejs",
         "frontend/js/templates/applicationsView.ejs",
         "frontend/js/templates/applicationDetailView.ejs",
+        "frontend/js/templates/applicationListView.ejs",
         "frontend/js/templates/arangoTabbar.ejs",
         "frontend/js/templates/arangoTable.ejs",
         "frontend/js/templates/collectionsItemView.ejs",
