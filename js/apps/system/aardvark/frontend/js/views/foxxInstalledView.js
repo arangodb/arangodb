@@ -400,8 +400,7 @@
       var opts = this.model.get("manifest").configuration;
       if (opts && _.keys(opts).length) {
         try {
-          _.each(_.keys(opts), function(key) {
-            var opt = opts[key];
+          _.each(opts, function(opt, key) {
             var $el = $("#foxx_configs_" + key);
             var val = $el.val();
             if (opt.type === "boolean") {
@@ -453,7 +452,6 @@
         version: version
       });
 
-      //this.model.collection.create({
       toCreate.collection.create({
         mount: mountPoint,
         name: toCreate.get("name"),
