@@ -155,7 +155,7 @@ void Aqlerror (YYLTYPE* locp,
 %type <node> sort_direction;
 %type <node> collect_list;
 %type <node> collect_element;
-%type <node> optional_keep;
+%type <node> optional_count_or_keep;
 %type <strval> optional_into;
 %type <node> expression;
 %type <node> operator_unary;
@@ -268,7 +268,7 @@ collect_statement:
     T_COLLECT {
       auto node = parser->ast()->createNodeList();
       parser->pushStack(node);
-    } collect_list optional_into optional_keep {
+    } collect_list optional_into optional_count_or_keep {
       auto list = static_cast<AstNode const*>(parser->popStack());
 
       if (list == nullptr) {
@@ -298,12 +298,31 @@ collect_statement:
         }
       }
 
+      // NOTE: $5 might be a boolean (COUNT) or a list (KEEP) 
       if ($4 == nullptr && $5 != nullptr) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of 'KEEP' without 'INTO'", yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of 'COUNT' or 'KEEP' without 'INTO'", yylloc.first_line, yylloc.first_column);
       } 
 
-      auto node = parser->ast()->createNodeCollect(list, $4, $5);
-      parser->ast()->addOperation(node);
+      if ($5 != nullptr) {
+        if ($5->type == NODE_TYPE_LIST) {
+          // COLLECT with KEEP
+          auto node = parser->ast()->createNodeCollect(list, $4, $5);
+          parser->ast()->addOperation(node);
+        }
+        else if ($5->type == NODE_TYPE_VALUE && $5->value.type == VALUE_TYPE_BOOL) {
+          // COLLECT with COUNT
+          auto node = parser->ast()->createNodeCollect(list, $4);
+          parser->ast()->addOperation(node);
+        }
+        else {
+          parser->registerParseError(TRI_ERROR_INTERNAL, "invalid COLLECT node", yylloc.first_line, yylloc.first_column);
+        }
+      } 
+      else {
+        // COLLECT without INTO
+        auto node = parser->ast()->createNodeCollect(list, $4, nullptr);
+        parser->ast()->addOperation(node);
+      }
     }
   ;
 
@@ -361,9 +380,17 @@ variable_list:
     }
   ;
 
-optional_keep: 
+optional_count_or_keep: 
     /* empty */ {
       $$ = nullptr;
+    }
+  | T_STRING {
+      if (! TRI_CaseEqualString($1, "COUNT")) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'COUNT'", $1, yylloc.first_line, yylloc.first_column);
+      }
+
+      auto node = parser->ast()->createNodeValueBool(true);
+      $$ = node;
     }
   | T_STRING {
       if (! TRI_CaseEqualString($1, "KEEP")) {

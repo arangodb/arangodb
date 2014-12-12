@@ -58,10 +58,12 @@ using StringBuffer = triagens::basics::StringBuffer;
 // --SECTION--                                            struct AggregatorGroup
 // -----------------------------------------------------------------------------
       
-AggregatorGroup::AggregatorGroup ()
+AggregatorGroup::AggregatorGroup (bool countOnly)
   : firstRow(0),
     lastRow(0),
-    rowsAreValid(false) {
+    groupLength(0),
+    rowsAreValid(false),
+    countOnly(countOnly) {
 }
 
 AggregatorGroup::~AggregatorGroup () {
@@ -87,6 +89,8 @@ void AggregatorGroup::initialize (size_t capacity) {
     groupValues.emplace_back();
     collections.push_back(nullptr);
   }
+
+  groupLength = 0;
 }
 
 void AggregatorGroup::reset () {
@@ -96,6 +100,7 @@ void AggregatorGroup::reset () {
   groupBlocks.clear();
   groupValues[0].erase();   // only need to erase [0], because we have
                             // only copies of references anyway
+  groupLength = 0;
 }
 
 void AggregatorGroup::addValues (AqlItemBlock const* src,
@@ -109,13 +114,18 @@ void AggregatorGroup::addValues (AqlItemBlock const* src,
     // emit group details
     TRI_ASSERT(firstRow <= lastRow);
 
-    auto block = src->slice(firstRow, lastRow + 1);
-    try {
-      groupBlocks.push_back(block);
+    if (countOnly) {
+      groupLength += lastRow + 1 - firstRow;
     }
-    catch (...) {
-      delete block;
-      throw;
+    else {
+      auto block = src->slice(firstRow, lastRow + 1);
+      try {
+        groupBlocks.push_back(block);
+      }
+      catch (...) {
+        delete block;
+        throw;
+      }
     }
   }
 
@@ -2421,7 +2431,7 @@ AggregateBlock::AggregateBlock (ExecutionEngine* engine,
                                 AggregateNode const* en)
   : ExecutionBlock(engine, en),
     _aggregateRegisters(),
-    _currentGroup(),
+    _currentGroup(en->_countOnly),
     _groupRegister(ExecutionNode::MaxRegisterId),
     _variableNames() {
   
@@ -2677,17 +2687,21 @@ void AggregateBlock::emitGroup (AqlItemBlock const* cur,
     // set the group values
     _currentGroup.addValues(cur, _groupRegister);
 
-    res->setValue(row, _groupRegister,
-                  AqlValue::CreateFromBlocks(_trx,
-                                             _currentGroup.groupBlocks,
-                                             _variableNames));
+    if (static_cast<AggregateNode const*>(_exeNode)->_countOnly) {
+      res->setValue(row, _groupRegister, AqlValue(new Json(static_cast<double>(_currentGroup.groupLength))));
+    }
+    else {
+      res->setValue(row, _groupRegister,
+                    AqlValue::CreateFromBlocks(_trx,
+                                               _currentGroup.groupBlocks,
+                                               _variableNames));
+    }
     // FIXME: can throw:
   }
 
   // reset the group so a new one can start
   _currentGroup.reset();
 }
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   class SortBlock

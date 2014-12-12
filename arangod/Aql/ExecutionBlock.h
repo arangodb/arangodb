@@ -60,12 +60,13 @@ namespace triagens {
       std::vector<TRI_document_collection_t const*> collections;
 
       std::vector<AqlItemBlock*> groupBlocks;
-
       size_t firstRow;
       size_t lastRow;
+      size_t groupLength;
       bool rowsAreValid;
+      bool const countOnly;
 
-      AggregatorGroup ();
+      AggregatorGroup (bool);
 
       ~AggregatorGroup ();
 
