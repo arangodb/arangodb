@@ -2,7 +2,7 @@
 /*global require, assertTrue, assertFalse, assertEqual, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for index usage
+/// @brief tests for COLLECT w/ KEEP
 ///
 /// @file
 ///
