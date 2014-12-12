@@ -1,0 +1,164 @@
+/*jshint strict: false, maxlen: 500 */
+/*global require, assertTrue, assertEqual, AQL_EXECUTE */
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tests for COLLECT w/ COUNT
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Jan Steemann
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
+var jsunity = require("jsunity");
+var internal = require("internal");
+var errors = internal.errors;
+var db = require("org/arangodb").db;
+var helper = require("org/arangodb/aql-helper");
+var assertQueryError = helper.assertQueryError;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite
+////////////////////////////////////////////////////////////////////////////////
+
+function optimizerCountTestSuite () {
+  var c;
+
+  return {
+    setUp : function () {
+      db._drop("UnitTestsCollection");
+      c = db._create("UnitTestsCollection");
+
+      for (var i = 0; i < 1000; ++i) {
+        c.save({ group: "test" + (i % 10), value: i });
+      }
+    },
+
+    tearDown : function () {
+      db._drop("UnitTestsCollection");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test no into, no count
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidSyntax : function () {
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "LET a = 1 FOR i IN " + c.name() + " COLLECT class = i.group COUNT RETURN class");
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "LET a = 1 FOR i IN " + c.name() + " COLLECT class = i.group COUNT i RETURN class");
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "LET a = 1 FOR i IN " + c.name() + " COLLECT class = i.group INTO group COUNT i RETURN class");
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "LET a = 1 FOR i IN " + c.name() + " COLLECT class = i.group INTO group COUNT COUNT RETURN class");
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "LET a = 1 FOR i IN " + c.name() + " COLLECT COUNT RETURN class");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test count
+////////////////////////////////////////////////////////////////////////////////
+
+    testCountSimple : function () {
+      var query = "FOR i IN " + c.name() + " COLLECT class = i.group INTO count COUNT RETURN [ class, count ]";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(10, results.json.length);
+      for (var i = 0; i < results.json.length; ++i) {
+        var group = results.json[i];
+        assertTrue(Array.isArray(group));
+        assertEqual("test" + i, group[0]);
+        assertEqual(100, group[1]);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test count
+////////////////////////////////////////////////////////////////////////////////
+
+    testCountFiltered : function () {
+      var query = "FOR i IN " + c.name() + " FILTER i.group >= 'test1' && i.group <= 'test4' COLLECT class = i.group INTO count COUNT RETURN [ class, count ]";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(4, results.json.length);
+      for (var i = 0; i < results.json.length; ++i) {
+        var group = results.json[i];
+        assertTrue(Array.isArray(group));
+        assertEqual("test" + (i + 1), group[0]);
+        assertEqual(100, group[1]);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test count
+////////////////////////////////////////////////////////////////////////////////
+
+    testCountFilteredBig : function () {
+      var i;
+      for (i = 0; i < 10000; ++i) {
+        c.save({ age: 10 + (i % 80), type: 1 });
+      }
+      for (i = 0; i < 10000; ++i) {
+        c.save({ age: 10 + (i % 80), type: 2 });
+      }
+
+      var query = "FOR i IN " + c.name() + " FILTER i.age >= 20 && i.age < 50 && i.type == 1 COLLECT age = i.age INTO count COUNT RETURN [ age, count ]";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(30, results.json.length);
+      for (i = 0; i < results.json.length; ++i) {
+        var group = results.json[i];
+        assertTrue(Array.isArray(group));
+        assertEqual(20 + i, group[0]);
+        assertEqual(125, group[1]);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test count
+////////////////////////////////////////////////////////////////////////////////
+
+    testCountNested : function () {
+      var query = "FOR i IN 1..2 FOR j IN " + c.name() + " COLLECT class1 = i, class2 = j.group INTO count COUNT RETURN [ class1, class2, count ]";
+
+      var results = AQL_EXECUTE(query), x = 0;
+      assertEqual(20, results.json.length);
+      for (var i = 1; i <= 2; ++i) {
+        for (var j = 0; j < 10; ++j) {
+          var group = results.json[x++];
+          assertTrue(Array.isArray(group));
+          assertEqual(i, group[0]);
+          assertEqual("test" + j, group[1]);
+          assertEqual(100, group[2]);
+        }
+      }
+    }
+
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes the test suite
+////////////////////////////////////////////////////////////////////////////////
+
+jsunity.run(optimizerCountTestSuite);
+
+return jsunity.done();
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// End:

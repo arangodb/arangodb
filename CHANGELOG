@@ -1,6 +1,14 @@
 v2.4.0 (XXXX-XX-XX)
 -------------------
 
+* added optional `COUNT` clause to AQL `COLLECT`
+
+  This allows more efficient group count calculation queries, e.g.
+
+      FOR doc IN collection
+        COLLECT age = doc.age INTO length COUNT 
+        RETURN { age: age, count: length }
+
 * fixed issue #1134: Change the default endpoint to localhost
 
 * deprecated `Repository#modelPrototype`. Use `Repository#model` instead.
