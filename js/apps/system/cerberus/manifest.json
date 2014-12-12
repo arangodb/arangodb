@@ -1,8 +1,16 @@
 {
   "name": "cerberus",
   "version": "0.0.1",
-  "author": "gschwab",
+  "author": "ArangoDB GmbH",
   "isSystem": true,
+
+  "contributors": [
+    {
+      "name": "Guido Schwab",
+      "email": "g.Schwab@triagens.de"
+    }
+  ],
+
   "controllers": {
     "/": "cerberus.js"
   },

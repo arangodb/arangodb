@@ -1,9 +1,16 @@
 {
   "name": "sessions",
-  "author": "Alan Plum",
+  "author": "ArangoDB GmbH",
   "version": "0.1",
   "isSystem": true,
   "description": "Session storage for Foxx.",
+
+  "contributors": [
+    {
+      "name": "Alan Plum",
+      "email": "me@pluma.io"
+    }
+  ],
 
   "controllers": {
     "/": "app.js"

@@ -1,9 +1,24 @@
 {
   "name": "aardvark",
   "description": "ArangoDB Admin Web Interface",
-  "author": "Heiko Kernbach, Michael Hackstein, moonglum",
+  "author": "ArangoDB GmbH",
   "version": "1.0",
   "isSystem": true,
+
+  "contributors": [
+    {
+      "name": "Heiko Kernbach",
+      "email": "h.kernbach@triagens.de"
+    },
+    {
+      "name": "Michael Hackstein",
+      "email": "m.hackstein@arangodb.com"
+    },
+    {
+      "name": "Lucas Dohmen",
+      "email": "lucas@arangodb.com"
+    }
+  ],
 
   "controllers": {
     "/": "aardvark.js",
