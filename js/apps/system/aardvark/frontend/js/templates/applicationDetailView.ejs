@@ -1,12 +1,12 @@
 <script id="applicationDetailView.ejs" type="text/template">
-  <section>
-    <div class='applicationDetailView'>
-      <div class='header_left'>
+  <div class="applicationDetailView">
+    <section>
+      <div class="header_left">
         <img src="foxxes/thumbnail/<%=attributes.app %>" class="icon" alt="Icon for App">
         <input type="button" value="Open">
         <input type="button" value="Delete">
       </div>
-      <div class='header_right'>
+      <div class="header_right">
         <h3>
           <%= attributes.name %>
           <span class="license"><%= attributes.license %></span>
@@ -15,22 +15,22 @@
         <p class="description"><%= attributes.description %></p>
       </div>
       <div class="swagger">
-        <iframe src="http://localhost:8529/_db/_system/_admin/aardvark/standalone.html#application/documentation/<%= attributes._key %>" width="800" height="600" name="Documentation"></iframe>
+        <iframe src="http://localhost:8529/_db/_system/_admin/aardvark/standalone.html#application/documentation/<%= attributes._key %>" name="Documentation"></iframe>
       </div>
-    </div>
-  </section>
-  <aside>
-    <dl>
-      <dt>Author</dt>
-      <dd><%= attributes.author %></dd>
-      <dt>Contributors</dt>
-      <dd>
-        <ul>
-        <% _.each(attributes.contributors, function (contributor) { %>
-          <li><a href="mailto:<%= contributor.email %>"><%= contributor.name %></a></li>
-        <% }); %>
-        </ul>
-      </dd>
-    </dl>
-  </aside>
+    </section>
+    <aside>
+      <dl>
+        <dt>Author</dt>
+        <dd><%= attributes.author %></dd>
+        <dt>Contributors</dt>
+        <dd>
+          <ul>
+          <% _.each(attributes.contributors, function (contributor) { %>
+            <li><a href="mailto:<%= contributor.email %>"><%= contributor.name %></a></li>
+          <% }); %>
+          </ul>
+        </dd>
+      </dl>
+    </aside>
+  </div>
 </script>
