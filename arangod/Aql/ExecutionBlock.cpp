@@ -63,6 +63,7 @@ AggregatorGroup::AggregatorGroup (bool countOnly)
     lastRow(0),
     groupLength(0),
     rowsAreValid(false),
+    virginity(true),
     countOnly(countOnly) {
 }
 
@@ -78,28 +79,38 @@ AggregatorGroup::~AggregatorGroup () {
 // -----------------------------------------------------------------------------
 
 void AggregatorGroup::initialize (size_t capacity) {
-  TRI_ASSERT(capacity > 0);
+  // TRI_ASSERT(capacity > 0);
 
   groupValues.clear();
   collections.clear();
-  groupValues.reserve(capacity);
-  collections.reserve(capacity);
 
-  for (size_t i = 0; i < capacity; ++i) {
-    groupValues.emplace_back();
-    collections.push_back(nullptr);
+  if (capacity > 0) {
+    groupValues.reserve(capacity);
+    collections.reserve(capacity);
+
+    for (size_t i = 0; i < capacity; ++i) {
+      groupValues.emplace_back();
+      collections.push_back(nullptr);
+    }
   }
 
   groupLength = 0;
 }
 
 void AggregatorGroup::reset () {
+  virginity = false;
+
   for (auto it = groupBlocks.begin(); it != groupBlocks.end(); ++it) {
     delete (*it);
   }
+
   groupBlocks.clear();
-  groupValues[0].erase();   // only need to erase [0], because we have
-                            // only copies of references anyway
+
+  if (! groupValues.empty()) {
+    groupValues[0].erase();   // only need to erase [0], because we have
+                              // only copies of references anyway
+  }
+
   groupLength = 0;
 }
 
@@ -2518,15 +2529,26 @@ int AggregateBlock::getOrSkipSome (size_t atLeast,
                                    bool skipping,
                                    AqlItemBlock*& result,
                                    size_t& skipped) {
-
   TRI_ASSERT(result == nullptr && skipped == 0);
   if (_done) {
     return TRI_ERROR_NO_ERROR;
   }
 
+  bool const isTotalAggregation = _aggregateRegisters.empty();
+  unique_ptr<AqlItemBlock> res;
+
   if (_buffer.empty()) {
     if (! ExecutionBlock::getBlock(atLeast, atMost)) {
+      // done
       _done = true;
+
+      if (isTotalAggregation && _currentGroup.groupLength == 0) {
+        // total aggregation, but have not yet emitted a group
+        res.reset(new AqlItemBlock(1, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+        emitGroup(nullptr, res.get(), skipped);
+        result = res.release();
+      }
+
       return TRI_ERROR_NO_ERROR;
     }
     _pos = 0;           // this is in the first block
@@ -2534,7 +2556,6 @@ int AggregateBlock::getOrSkipSome (size_t atLeast,
 
   // If we get here, we do have _buffer.front()
   AqlItemBlock* cur = _buffer.front();
-  unique_ptr<AqlItemBlock> res;
 
   if (! skipping) {
     res.reset(new AqlItemBlock(atMost, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
@@ -2543,30 +2564,33 @@ int AggregateBlock::getOrSkipSome (size_t atLeast,
     inheritRegisters(cur, res.get(), _pos);
   }
 
+
   while (skipped < atMost) {
     // read the next input row
 
     bool newGroup = false;
-    if (_currentGroup.groupValues[0].isEmpty()) {
-      // we never had any previous group
-      newGroup = true;
-    }
-    else {
-      // we already had a group, check if the group has changed
-      size_t i = 0;
+    if (! isTotalAggregation) {
+      if (_currentGroup.groupValues[0].isEmpty()) {
+        // we never had any previous group
+        newGroup = true;
+      }
+      else {
+        // we already had a group, check if the group has changed
+        size_t i = 0;
 
-      for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
-        int cmp = AqlValue::Compare(_trx,
-                                    _currentGroup.groupValues[i],
-                                    _currentGroup.collections[i],
-                                    cur->getValue(_pos, (*it).second),
-                                    cur->getDocumentCollection((*it).second));
-        if (cmp != 0) {
-          // group change
-          newGroup = true;
-          break;
+        for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
+          int cmp = AqlValue::Compare(_trx,
+                                      _currentGroup.groupValues[i],
+                                      _currentGroup.collections[i],
+                                      cur->getValue(_pos, (*it).second),
+                                      cur->getDocumentCollection((*it).second));
+          if (cmp != 0) {
+            // group change
+            newGroup = true;
+            break;
+          }
+          ++i;
         }
-        ++i;
       }
     }
 

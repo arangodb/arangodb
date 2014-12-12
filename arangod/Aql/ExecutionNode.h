@@ -2018,6 +2018,9 @@ namespace triagens {
 
         virtual std::vector<Variable const*> getVariablesSetHere () const {
           std::vector<Variable const*> v;
+          size_t const n = _aggregateVariables.size() + (_outVariable == nullptr ? 0 : 1);
+          v.reserve(n);
+
           for (auto p : _aggregateVariables) {
             v.push_back(p.first);
           }
