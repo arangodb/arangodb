@@ -225,6 +225,7 @@ controller.del("/foxxes/:key", function (req, res) {
 }).summary("Uninstall a Foxx.")
 .notes("This function is used to uninstall a foxx.");
 
+
 /** Update a Foxx
  *
  * Update the Foxx with the given information.
@@ -267,6 +268,7 @@ controller.get("/foxxes/thumbnail/:app", function (req, res) {
 }).summary("Get the thumbnail of a foxx.")
   .notes("Used to request the thumbnail of the given Foxx in order to display it on the screen.");
 
+
 /** List all Foxxes
  *
  * Get a List of all Foxxes available and running
@@ -276,6 +278,16 @@ controller.get('/foxxes', function (req, res) {
   res.json(foxxes.viewAll());
 }).summary("List of all foxxes.")
   .notes("This function simply returns the list of all running foxxes");
+
+/** List all Foxxes in Fishbowl
+ * 
+ * Get the information for all Apps availbale in the Fishbowl and ready for download
+ *
+ */
+controller.get('/foxxes/fishbowl', function (req, res) {
+  res.json(FoxxManager.availableJson());
+}).summary("List of all foxx apps submitted to the fishbowl store.")
+  .notes("This function contacts the fishbowl and reports which apps are available for install");
 
 /** List available Documentation
  *

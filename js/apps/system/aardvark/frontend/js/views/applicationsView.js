@@ -17,6 +17,7 @@
     el: '#content',
 
     template: templateEngine.createTemplate("applicationsView.ejs"),
+    appStoreTemplate: templateEngine.createTemplate("applicationListView.ejs"),
 
     events: {
       "click #addApp"                : "createInstallModal",
@@ -368,8 +369,9 @@
       });
     },
 
+    ///// NEW CODE 
+
     installFoxxFromZip: function() {
-      console.log("Install From Zip");
       var self = this;
       if (this.allowUpload) {
         this.showSpinner();
@@ -613,18 +615,13 @@
       });
     },
 
-    installFoxx: function() {
-
-      this.reload();
-    },
-
     createInstallModal: function(event) {
       event.preventDefault();
       var buttons = [];
       var modalEvents = {
         "click #installGithub"         : this.installFoxxFromGithub.bind(this),
         "click #installZip"         : this.installFoxxFromZip.bind(this),
-        "click .install-app"         : this.submitGithubFoxx.bind(this),
+        "click .install-app"         : this.installFoxxFromStore.bind(this),
         "change #zip-file"             : this.uploadSetup.bind(this)
       };
       window.modalView.show(
@@ -635,6 +632,13 @@
         undefined,
         modalEvents
       );
+      var listTempl = this.appStoreTemplate;
+      $.get("foxxes/fishbowl", function(list) {
+        var table = $("#appstore-content");
+        _.each(list, function(app) {
+          table.append(listTempl.render(app));
+        });
+      });
     }
 
   });
