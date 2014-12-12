@@ -119,8 +119,12 @@ controller.post("/foxxes/gitinstall", function (req, res) {
   version = content.version;
 
   var appID = FoxxManager.fetchFromGithub(url, name, version);
-
-  res.json(appID);
+  var app = db._aal.firstExample({"app": appID});
+  res.json({
+    error: false,
+    configuration: app.manifest.configuration || {},
+    app: appID
+  });
 }).summary("Installs a foxx or update existing")
 .notes("This function is used to install or update a (new) foxx.");
 
