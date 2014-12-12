@@ -1929,15 +1929,17 @@ namespace triagens {
 
         AggregateNode (ExecutionPlan* plan,
                        size_t id,
-                       std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables,
+                       std::vector<std::pair<Variable const*, Variable const*>> const& aggregateVariables,
                        Variable const* outVariable,
                        std::vector<Variable const*> const& keepVariables,
-                       std::unordered_map<VariableId, std::string const> const& variableMap)
+                       std::unordered_map<VariableId, std::string const> const& variableMap,
+                       bool countOnly)
           : ExecutionNode(plan, id), 
             _aggregateVariables(aggregateVariables), 
             _outVariable(outVariable),
             _keepVariables(keepVariables),
-            _variableMap(variableMap) {
+            _variableMap(variableMap),
+            _countOnly(countOnly) {
           // outVariable can be a nullptr
         }
         
@@ -1946,7 +1948,8 @@ namespace triagens {
                        Variable const* outVariable,
                        std::vector<Variable const*> const& keepVariables,
                        std::unordered_map<VariableId, std::string const> const& variableMap,
-                       std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables);
+                       std::vector<std::pair<Variable const*, Variable const*>> const& aggregateVariables,
+                       bool countOnly);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -2054,8 +2057,12 @@ namespace triagens {
                        
         std::unordered_map<VariableId, std::string const> const _variableMap;
 
-    };
+////////////////////////////////////////////////////////////////////////////////
+/// @brief COUNT node?
+////////////////////////////////////////////////////////////////////////////////
 
+        bool const _countOnly;
+    };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class ReturnNode

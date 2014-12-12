@@ -262,6 +262,12 @@ In the above example, the list of *users* is grouped by first names and ages
 first, and for each distinct combination of first name and age, the number of
 users found is returned.
 
+Note: The *COLLECT* statement eliminates all local variables in the current
+scope. After *COLLECT* only the variables introduced by *COLLECT* itself are
+available.
+
+!SUBSUBSECTION Discarding obsolete variables
+
 *COLLECT* also provides an optional *KEEP* clause that can be used to control
 which variables will be copied into the variable created by `INTO`. If no 
 *KEEP* clause is specified, all variables will be copied into the *groups* 
@@ -283,9 +289,18 @@ FOR u IN users
 *KEEP* is only valid in combination with *INTO*. Only valid variable names can
 be used in the *KEEP* clause.
 
-Note: The *COLLECT* statement eliminates all local variables in the current
-scope. After *COLLECT* only the variables introduced by *COLLECT* itself are
-available.
+!SUBSUBSECTION Group length calculation
+
+*COLLECT* also provides a special *COUNT* clause that can be used to 
+determine the number of group members efficiently:
+
+```
+FOR u IN users
+  COLLECT age = u.age INTO length COUNT
+  RETURN { "age" : age, "count" : length }
+```
+
+The *COUNT* clause can only be used together with an *INTO* clause.
 
 !SUBSECTION REMOVE
 

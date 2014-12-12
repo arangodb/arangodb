@@ -105,8 +105,7 @@ void ExecutionNode::validateType (int type) {
 void ExecutionNode::getSortElements(SortElementVector& elements,
                                     ExecutionPlan* plan,
                                     triagens::basics::Json const& oneNode,
-                                    char const* which)
-{
+                                    char const* which) {
   triagens::basics::Json jsonElements = oneNode.get("elements");
   if (! jsonElements.isList()){
     std::string error = std::string("unexpected value for ") +
@@ -183,12 +182,16 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
         aggregateVariables.emplace_back(std::make_pair(outVariable, inVariable));
       }
 
+      triagens::basics::Json jsonCount = oneNode.get("count");
+      bool countOnly = JsonHelper::checkAndGetBooleanValue(oneNode.json(), "count");
+
       return new AggregateNode(plan,
                                oneNode,
                                outVariable,
                                keepVariables,
                                plan->getAst()->variables()->variables(false),
-                               aggregateVariables);
+                               aggregateVariables,  
+                               countOnly);
     }
     case INSERT:
       return new InsertNode(plan, oneNode);
@@ -407,7 +410,6 @@ void ExecutionNode::CloneHelper (ExecutionNode* other,
   if (withDependencies) {
     cloneDependencies(plan, other, withProperties);
   }
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1056,7 +1058,6 @@ void EnumerateCollectionNode::toJsonHelper (triagens::basics::Json& nodes,
   // And add it:
   nodes(json);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
@@ -1983,12 +1984,14 @@ AggregateNode::AggregateNode (ExecutionPlan* plan,
                               Variable const* outVariable,
                               std::vector<Variable const*> const& keepVariables,
                               std::unordered_map<VariableId, std::string const> const& variableMap,
-                              std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables)
+                              std::vector<std::pair<Variable const*, Variable const*>> const& aggregateVariables,
+                              bool countOnly)
   : ExecutionNode(plan, base),
     _aggregateVariables(aggregateVariables), 
     _outVariable(outVariable),
     _keepVariables(keepVariables),
-    _variableMap(variableMap) {
+    _variableMap(variableMap),
+    _countOnly(countOnly) {
 
 }
 
@@ -2028,6 +2031,8 @@ void AggregateNode::toJsonHelper (triagens::basics::Json& nodes,
     json("keepVariables", values);
   }
 
+  json("count", Json(_countOnly));
+
   // And add it:
   nodes(json);
 }
@@ -2050,12 +2055,12 @@ ExecutionNode* AggregateNode::clone (ExecutionPlan* plan,
     for (auto oneAggregate: _aggregateVariables) {
       auto in  = plan->getAst()->variables()->createVariable(oneAggregate.first);
       auto out = plan->getAst()->variables()->createVariable(oneAggregate.second);
-      aggregateVariables.push_back(std::make_pair(in, out));
+      aggregateVariables.emplace_back(std::make_pair(in, out));
     }
 
   }
 
-  auto c = new AggregateNode(plan, _id, aggregateVariables, outVariable, _keepVariables, _variableMap);
+  auto c = new AggregateNode(plan, _id, aggregateVariables, outVariable, _keepVariables, _variableMap, _countOnly);
 
   CloneHelper(c, plan, withDependencies, withProperties);
 
@@ -2106,7 +2111,7 @@ std::vector<Variable const*> AggregateNode::getVariablesUsedHere () const {
     v.insert(p.second);
   }
 
-  if (_outVariable != nullptr) {
+  if (_outVariable != nullptr && ! _countOnly) {
     if (_keepVariables.empty()) {
       // Here we have to find all user defined variables in this query
       // amongst our dependencies:
