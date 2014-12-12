@@ -3,26 +3,36 @@
     float: left;
     width: 900px;
 
-    .header_left {
+    .header {
       float: left;
-      width: 170px;
-      text-align: center;
-    }
+      margin-bottom: 10px;
 
-    .header_right {
-      float: left;
-      clear: right;
+      .header_left {
+        float: left;
+        width: 170px;
+        text-align: center;
 
-      .license, .version {
-        -webkit-border-radius: 6px;
-        -moz-border-radius: 6px;
-        border-radius: 6px;
-        border: 1px solid #AAA;
-        color: #AAA;
-        padding: 0px 8px;
-        font-size: 0.6em;
-        position: relative;
-        top: -2px;
+        img {
+          margin: 0px 0px 4px;
+        }
+      }
+
+      .header_right {
+        float: left;
+        clear: right;
+        padding: 5px;
+
+        .license, .version {
+          -webkit-border-radius: 6px;
+          -moz-border-radius: 6px;
+          border-radius: 6px;
+          border: 1px solid #AAA;
+          color: #AAA;
+          padding: 0px 8px;
+          font-size: 0.6em;
+          position: relative;
+          top: -2px;
+        }
       }
     }
 
