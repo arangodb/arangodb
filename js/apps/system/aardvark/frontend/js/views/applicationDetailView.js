@@ -18,10 +18,16 @@ window.ApplicationDetailView = Backbone.View.extend({
   },
 
   openApp: function() {
-    alert('Open!');
+    window.open(this.appUrl(), this.model.get('title')).focus();
   },
 
   deleteApp: function() {
     alert('Delete!');
-  }
+  },
+
+  appUrl: function () {
+    return window.location.origin + '/_db/' +
+      encodeURIComponent(arangoHelper.currentDatabase()) +
+      this.model.get('mount');
+  },
 });
