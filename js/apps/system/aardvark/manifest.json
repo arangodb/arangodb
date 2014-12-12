@@ -3,6 +3,7 @@
   "description": "ArangoDB Admin Web Interface",
   "author": "ArangoDB GmbH",
   "version": "1.0",
+  "license": "Apache License, Version 2.0",
   "isSystem": true,
 
   "contributors": [

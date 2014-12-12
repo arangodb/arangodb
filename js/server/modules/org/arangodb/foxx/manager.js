@@ -665,6 +665,7 @@ function mountAalApp (app, mount, options) {
     app: app._id,
     name: app._name,
     description: app._manifest.description,
+    license: app._manifest.license,
     author: app._manifest.author,
     contributors: app._manifest.contributors,
     mount: mount,

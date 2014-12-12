@@ -3,6 +3,7 @@
   "description": "ArangoDB Graph Module",
   "author": "ArangoDB GmbH",
   "version": "0.1",
+  "license": "Apache License, Version 2.0",
   "isSystem": true,
 
   "contributors": [

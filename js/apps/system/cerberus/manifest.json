@@ -1,7 +1,9 @@
 {
   "name": "cerberus",
-  "version": "0.0.1",
+  "description": "Password Manager",
   "author": "ArangoDB GmbH",
+  "version": "0.0.1",
+  "license": "Apache License, Version 2.0",
   "isSystem": true,
 
   "contributors": [

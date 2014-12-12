@@ -1,9 +1,10 @@
 {
   "name": "sessions",
+  "description": "Session storage for Foxx.",
   "author": "ArangoDB GmbH",
   "version": "0.1",
+  "license": "Apache License, Version 2.0",
   "isSystem": true,
-  "description": "Session storage for Foxx.",
 
   "contributors": [
     {
