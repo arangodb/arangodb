@@ -1682,10 +1682,7 @@ exports.fetchFromGithub = function (url, name, version) {
 
   if (fs.exists(path)) {
     fs.remove(realFile);
-    var err = new ArangoError();
-    err.errorNum = arangodb.errors.ERROR_APP_ALREADY_EXISTS.code;
-    err.errorMessage = arangodb.errors.ERROR_APP_ALREADY_EXISTS.message;
-    throw err;
+    return "app:" + source.name + ":" + source.version;
   }
 
   fs.makeDirectoryRecursive(path);
