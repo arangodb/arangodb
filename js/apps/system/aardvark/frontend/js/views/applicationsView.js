@@ -20,7 +20,6 @@
 
     events: {
       "click #addApp"                : "createInstallModal",
-      "change #zip-file"             : "uploadSetup",
 
       "click #checkDevel"            : "toggleDevel",
       "click #checkActive"           : "toggleActive",
@@ -42,6 +41,7 @@
     },
 
     uploadSetup: function (e) {
+      console.log("Set allowed true");
       var files = e.target.files || e.dataTransfer.files;
       this.file = files[0];
       this.allowUpload = true;
@@ -369,6 +369,7 @@
     },
 
     installFoxxFromZip: function() {
+      console.log("Install From Zip");
       var self = this;
       if (this.allowUpload) {
         this.showSpinner();
@@ -389,6 +390,7 @@
                   data: res.responseText,
                   contentType: "application/json"
                 }).done(function(res) {
+                  console.log("Peter2", res);
                   $.ajax({
                     type: "POST",
                     async: false,
@@ -399,8 +401,12 @@
                       filename: res.filename
                     }),
                     processData: false
-                  }).done(function () {
-                    self.reload();
+                  }).done(function (result) {
+                    console.log("Peter", result);
+                    if (result.error === false) {
+                      window.modalView.hide();
+                      self.showConfigureDialog(res.configuration, res.name, res.version);
+                    }
                   }).fail(function (err) {
                     self.hideSpinner();
                     var error = JSON.parse(err.responseText);
@@ -444,7 +450,6 @@
 
       //send server req through collection
       result = this.collection.installFoxxFromGithub(url, name, version);
-      console.log(result);
       if (result.error === false) {
         window.modalView.hide();
         this.showConfigureDialog(result.configuration, result.name, result.version);
@@ -618,8 +623,9 @@
       var buttons = [];
       var modalEvents = {
         "click #installGithub"         : this.installFoxxFromGithub.bind(this),
-        "click #installZip"         : this.submitGithubFoxx.bind(this),
+        "click #installZip"         : this.installFoxxFromZip.bind(this),
         "click .install-app"         : this.submitGithubFoxx.bind(this),
+        "change #zip-file"             : this.uploadSetup.bind(this)
       };
       window.modalView.show(
         "modalApplicationMount.ejs",
