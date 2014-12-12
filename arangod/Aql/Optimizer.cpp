@@ -495,20 +495,18 @@ void Optimizer::setupRules () {
                useIndexRangeRule_pass6,
                true);
 
+  // try to remove filters which are covered by index ranges  
+  registerRule("remove-filter-covered-by-index",
+               removeFiltersCoveredByIndexRule,
+               removeFiltersCoveredByIndexRule_pass6,
+               true);
+
   // try to find sort blocks which are superseeded by indexes
   registerRule("use-index-for-sort",
                useIndexForSortRule,
                useIndexForSortRule_pass6,
                true);
 
-#if 0 
-  // try to remove filters which are covered by index ranges  
-  // TODO: rule seems to work, but tests are still missing
-  registerRule("remove-filter-covered-by-index",
-               removeFiltersCoveredByIndex,
-               removeFiltersCoveredByIndex_pass6,
-               true);
-#endif
 
   if (ExecutionEngine::isCoordinator()) {
     // distribute operations in cluster
