@@ -560,6 +560,7 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-filters.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-indexes.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-keep.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-rule-use-index-instead-filter.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-interchange-adjacent-enumerations-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-move-calculations-up.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-move-filters-up.js \
