@@ -291,16 +291,16 @@ be used in the *KEEP* clause.
 
 !SUBSUBSECTION Group length calculation
 
-*COLLECT* also provides a special *COUNT* clause that can be used to 
+*COLLECT* also provides a special *WITH COUNT* clause that can be used to 
 determine the number of group members efficiently:
 
 ```
 FOR u IN users
-  COLLECT age = u.age INTO length COUNT
+  COLLECT age = u.age WITH COUNT INTO length
   RETURN { "age" : age, "count" : length }
 ```
 
-The *COUNT* clause can only be used together with an *INTO* clause.
+The *WITH COUNT* clause can only be used together with an *INTO* clause.
 
 !SUBSECTION REMOVE
 
