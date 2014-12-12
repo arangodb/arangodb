@@ -1875,7 +1875,6 @@ struct FilterCondition {
         }; 
 
         if (attributeName.empty()) {
-          TRI_ASSERT(! variableName.empty());
 
           buildName(rhs, variableName, attributeName);
           if (op == NODE_TYPE_OPERATOR_BINARY_EQ ||
@@ -2269,6 +2268,7 @@ int triagens::aql::scatterInClusterRule (Optimizer* opt,
         // if we replaced the root node, set a new root node
         plan->root(gatherNode);
       }
+      fprintf(stderr, "BLARG!");
       wasModified = true;
     }
   }
