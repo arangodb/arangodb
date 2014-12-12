@@ -1,3 +1,29 @@
 <script id="applicationDetailView.ejs" type="text/template">
-Hello <%= attributes.name %>
+  <section>
+    <div class='applicationDetailView'>
+      <div class='header_left'>
+        <img src="foxxes/thumbnail/<%=attributes.app %>" class="icon" alt="Icon for App">
+        <input type="button" value="Open">
+        <input type="button" value="Delete">
+      </div>
+      <div class='header_right'>
+        <h3>
+          <%= attributes.name %>
+          <span class="license"><%= attributes.license %></span>
+          <span class="version"><%= attributes.version %></span>
+        </h3>
+        <p class="description"><%= attributes.description %></p>
+      </div>
+      <div class="swagger">
+      </div>
+    </div>
+  </section>
+  <aside>
+    <dl>
+      <dt>Author</dt>
+      <dd><%= attributes.author %></dd>
+      <dt>Keywords</dt>
+      <dd><%= attributes.keywords %></dd>
+    </dl>
+  </aside>
 </script>
