@@ -7,9 +7,10 @@
 
     defaults: {
       "title": "",
-      "version": "",
+      "version": "Unknown Version",
       "mount": "",
-      "description": "",
+      "description": "No description",
+      "license": "Unknown License",
       "git": "",
       "isSystem": false,
       "development": false
