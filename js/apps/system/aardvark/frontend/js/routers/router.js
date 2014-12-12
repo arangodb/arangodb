@@ -112,10 +112,14 @@
       if (this.foxxList.length === 0) {
         this.foxxList.fetch({ async: false });
       }
-      var applicationDetailView = new window.ApplicationDetailView({
-        model: this.foxxList.get(key)
-      });
-      applicationDetailView.render();
+      if (!this.hasOwnProperty('applicationDetailView')) {
+        this.applicationDetailView = new window.ApplicationDetailView({
+          model: this.foxxList.get(key)
+        });
+      }
+
+      this.applicationDetailView.model = this.foxxList.get(key);
+      this.applicationDetailView.render();
     },
 
     login: function () {
