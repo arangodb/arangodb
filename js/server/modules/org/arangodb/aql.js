@@ -2799,8 +2799,7 @@ function AQL_APPEND (list, values, unique) {
     return list;
   }
   else if (type !== TYPEWEIGHT_LIST) {
-    WARN("APPEND", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return null;
+    values = [ values ];
   }
 
   if (values.length === 0) {

@@ -2151,6 +2151,12 @@ std::vector<Variable const*> AggregateNode::getVariablesUsedHere () const {
         
 double AggregateNode::estimateCost (size_t& nrItems) const {
   double depCost = _dependencies.at(0)->getCost(nrItems);
+
+  if (_countOnly && _aggregateVariables.empty()) {
+    // we are known to only produce a single output row
+    nrItems = 1;
+  }
+
   // As in the FilterNode case, we are pessimistic here by not reducing the
   // nrItems, since this is the worst case. We have to look at all incoming
   // items, and in particular in the COLLECT ... INTO ... case, we have
