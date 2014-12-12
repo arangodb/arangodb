@@ -5903,6 +5903,34 @@ input.gv-radio-button {
   margin-left: 10px;
   margin-top: 7px; }
 
+.applicationDetailView section {
+  float: left;
+  width: 900px; }
+  .applicationDetailView section .header_left {
+    float: left;
+    width: 170px;
+    text-align: center; }
+  .applicationDetailView section .header_right {
+    float: left;
+    clear: right; }
+    .applicationDetailView section .header_right .license, .applicationDetailView section .header_right .version {
+      -webkit-border-radius: 6px;
+      -moz-border-radius: 6px;
+      border-radius: 6px;
+      border: 1px solid #AAA;
+      color: #AAA;
+      padding: 0px 8px;
+      font-size: 0.6em;
+      position: relative;
+      top: -2px; }
+  .applicationDetailView section .swagger iframe {
+    width: 100%;
+    height: 600px; }
+.applicationDetailView aside {
+  float: left;
+  clear: right;
+  width: 200px; }
+
 .hotkeysList .hotkeysLabel {
   clear: both;
   color: #000;
