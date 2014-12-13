@@ -111,8 +111,7 @@ ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast* ast) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ExecutionPlan::getCollectionsFromJson (Ast *ast, 
-                                            triagens::basics::Json const& json)
-{
+                                            triagens::basics::Json const& json) {
   Json jsonCollectionList = json.get("collections");
 
   if (! jsonCollectionList.isList()) {
@@ -603,8 +602,8 @@ ExecutionNode* ExecutionPlan::fromNodeCollect (ExecutionNode* previous,
       calc->addDependency(previous);
       previous = calc;
 
-      aggregateVariables.push_back(std::make_pair(v, calc->outVariable()));
-      sortElements.push_back(std::make_pair(calc->outVariable(), true));
+      aggregateVariables.emplace_back(std::make_pair(v, calc->outVariable()));
+      sortElements.emplace_back(std::make_pair(calc->outVariable(), true));
     }
   }
 
@@ -637,7 +636,77 @@ ExecutionNode* ExecutionPlan::fromNodeCollect (ExecutionNode* previous,
   }
 
   auto en = registerNode(new AggregateNode(this, nextId(), aggregateVariables, 
-                  outVariable, keepVariables, _ast->variables()->variables(false)));
+                  outVariable, keepVariables, _ast->variables()->variables(false), false));
+
+  return addDependency(previous, en);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an execution plan element from an AST COLLECT node, COUNT
+/// note that also a sort plan node will be added in front of the collect plan
+/// node
+////////////////////////////////////////////////////////////////////////////////
+
+ExecutionNode* ExecutionPlan::fromNodeCollectCount (ExecutionNode* previous,
+                                                    AstNode const* node) {
+  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_COLLECT_COUNT);
+  size_t const n = node->numMembers();
+
+  TRI_ASSERT(n == 2);
+
+  auto list = node->getMember(0);
+  size_t const numVars = list->numMembers();
+  
+  std::vector<std::pair<Variable const*, bool>> sortElements;
+
+  std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables;
+  aggregateVariables.reserve(numVars);
+  for (size_t i = 0; i < numVars; ++i) {
+    auto assigner = list->getMember(i);
+
+    if (assigner == nullptr) {
+      continue;
+    }
+
+    TRI_ASSERT(assigner->type == NODE_TYPE_ASSIGN);
+    auto out = assigner->getMember(0);
+    TRI_ASSERT(out != nullptr);
+    auto v = static_cast<Variable*>(out->getData());
+    TRI_ASSERT(v != nullptr);
+   
+    auto expression = assigner->getMember(1);
+      
+    if (expression->type == NODE_TYPE_REFERENCE) {
+      // operand is a variable
+      auto e = static_cast<Variable*>(expression->getData());
+      aggregateVariables.emplace_back(std::make_pair(v, e));
+      sortElements.emplace_back(std::make_pair(e, true));
+    }
+    else {
+      // operand is some misc expression
+      auto calc = createTemporaryCalculation(expression);
+
+      calc->addDependency(previous);
+      previous = calc;
+
+      aggregateVariables.push_back(std::make_pair(v, calc->outVariable()));
+      sortElements.push_back(std::make_pair(calc->outVariable(), true));
+    }
+  }
+
+  // inject a sort node for all expressions / variables that we just picked up...
+  // note that this sort is stable
+  auto sort = registerNode(new SortNode(this, nextId(), sortElements, true));
+  sort->addDependency(previous);
+  previous = sort;
+
+  // output variable
+  auto v = node->getMember(1);
+  // handle out variable
+  Variable* outVariable = static_cast<Variable*>(v->getData());
+
+  auto en = registerNode(new AggregateNode(this, nextId(), aggregateVariables, 
+                  outVariable, std::vector<Variable const*>(), _ast->variables()->variables(false), true));
 
   return addDependency(previous, en);
 }
@@ -925,6 +994,11 @@ ExecutionNode* ExecutionPlan::fromNode (AstNode const* node) {
     
       case NODE_TYPE_COLLECT: {
         en = fromNodeCollect(en, member);
+        break;
+      }
+
+      case NODE_TYPE_COLLECT_COUNT: {
+        en = fromNodeCollectCount(en, member);
         break;
       }
       

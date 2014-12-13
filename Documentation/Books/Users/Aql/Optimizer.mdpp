@@ -371,6 +371,8 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
 * `use-index-range`: will appear if an index can be used to iterate over a collection.
   As a consequence, an *EnumerateCollectionNode* was replaced with an 
   *IndexRangeNode* in the plan.
+* `remove-filters-covered-by-index`: will appear if a *FilterNode* was removed or replaced
+  because the filter condition is already covered by an *IndexRangeNode*.
 * `use-index-for-sort`: will appear if an index can be used to avoid a *SORT* 
   operation. If the rule was applied, a *SortNode* has been removed from the
   plan.
