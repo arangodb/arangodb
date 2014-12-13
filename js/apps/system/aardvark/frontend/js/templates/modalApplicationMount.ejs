@@ -1,19 +1,73 @@
 <script id="modalApplicationMount.ejs" type="text/template">
   <ul id="infoTab" class="nav nav-tabs">
-    <li class="active"><a href="#appstore" data-toggle="tab">App Store</a></li>
+    <li class="active"><a href="#newApp" data-toggle="tab">New App</a></li>
+    <li><a href="#appstore" data-toggle="tab">App Store</a></li>
     <li><a href="#github" data-toggle="tab">Github</a></li>
     <li><a href="#zip" data-toggle="tab">Zip</a></li>
   </ul>
 
   <div class="tab-content" id="tab-content-application-info">
 
-    <div class="tab-pane active" id="appstore">
+    <div class="tab-pane active" id="newApp">
+      <table id="new-app-information">
+        <tr class="tableRow">
+          <th class="collectionInfoTh">
+            Author*:
+          </th>
+          <th class="collectionInfoTh">
+            <input type="text" id="author" value="" placeholder="Your Name">
+          </th>
+        </tr>
+        <tr class="tableRow">
+          <th class="collectionInfoTh">
+            Name*:
+          </th>
+          <th class="collectionInfoTh">
+            <input type="text" id="name" value="" placeholder="Name of the App">
+          </th>
+        </tr>
+        <tr class="tableRow">
+          <th class="collectionInfoTh">
+            Description*:
+          </th>
+          <th class="collectionInfoTh">
+            <input type="text" id="description" value="" placeholder="Please describe your App here">
+          </th>
+        </tr>
+        <tr class="tableRow">
+          <th class="collectionInfoTh">
+            License*:
+          </th>
+          <th class="collectionInfoTh">
+            <input type="text" id="license" value="" placeholder="Apache 2"></input>
+          </th>
+        </tr>
+        <tr class="tableRow">
+          <th class="collectionInfoTh">
+            Authentication*:
+          </th>
+          <th class="collectionInfoTh">
+            <input type="checkbox" id="authenticate" checked></input>
+          </th>
+        </tr>
+        <tr class="tableRow">
+          <th class="collectionInfoTh">
+            Collections*:
+          </th>
+          <th class="collectionInfoTh">
+            <input type="hidden" id="new-app-collections" value="" placeholder="Collections"></input>
+          </th>
+        </tr>
+      </table>
+    </div>
+
+    <div class="tab-pane" id="appstore">
       <table id="appstore-content">
       </table>
     </div>
 
     <div class="tab-pane" id="github">
-      <div>The repository has to be private. The version has to be a git tag LINKTOTAG.</div>
+      <div>The repository has to be public. The version has to be a git tag LINKTOTAG.</div>
       <div>
         <table>
           <tr class="tableRow">

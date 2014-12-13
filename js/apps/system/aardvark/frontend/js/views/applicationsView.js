@@ -626,15 +626,58 @@
       });
     },
 
+    generateNewFoxxApp: function() {
+      alert("GENERATOOOO!");
+    },
+
+    addAppAction: function() {
+      var openTab = $(".modal-body .tab-pane.active").attr("id");
+      switch (openTab) {
+        case "newApp":
+          this.generateNewFoxxApp();
+          break;
+        case "github":
+          this.installFoxxFromGithub();
+          break;
+        case "zip":
+          this.installFoxxFromZip();
+          break;
+        default:
+      }
+    },
+
+    switchModalButton: function(event) {
+      var openTab = $(event.currentTarget).attr("href").substr(1);
+      var button = $("#modalButton1");
+      switch (openTab) {
+        case "newApp":
+          button.html("Generate");
+          button.prop("disabled", false);
+          break;
+        case "appstore":
+          button.html("Install");
+          button.prop("disabled", true);
+          break;
+        case "github":
+        case "zip":
+          button.html("Install");
+          button.prop("disabled", false);
+          break;
+        default:
+      }
+    },
+
     createInstallModal: function(event) {
       event.preventDefault();
       var buttons = [];
       var modalEvents = {
-        "click #installGithub"         : this.installFoxxFromGithub.bind(this),
-        "click #installZip"         : this.installFoxxFromZip.bind(this),
+        "click #infoTab a": this.switchModalButton.bind(this),
         "click .install-app"         : this.installFoxxFromStore.bind(this),
         "change #zip-file"             : this.uploadSetup.bind(this)
       };
+      buttons.push(
+        window.modalView.createSuccessButton("Generate", this.addAppAction.bind(this))
+      );
       window.modalView.show(
         "modalApplicationMount.ejs",
         "Install Application",
@@ -643,6 +686,12 @@
         undefined,
         modalEvents
       );
+      $("#new-app-collections").select2({
+        tags: [],
+        showSearchBox: false,
+        minimumResultsForSearch: -1,
+        width: "336px"
+      });
       var listTempl = this.appStoreTemplate;
       $.get("foxxes/fishbowl", function(list) {
         var table = $("#appstore-content");
