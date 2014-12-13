@@ -1875,7 +1875,6 @@ struct FilterCondition {
         }; 
 
         if (attributeName.empty()) {
-          TRI_ASSERT(! variableName.empty());
 
           buildName(rhs, variableName, attributeName);
           if (op == NODE_TYPE_OPERATOR_BINARY_EQ ||
