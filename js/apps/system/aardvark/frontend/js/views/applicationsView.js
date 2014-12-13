@@ -433,8 +433,19 @@
       }
     },
 
-    installFoxxFromStore: function() {
-      //Todo
+    installFoxxFromStore: function(e) {
+      var toInstall = $(e.currentTarget).attr("appId");
+      var version = $(e.currentTarget).attr("appVersion");
+      var self = this;
+      $.post("foxxes/fishbowlinstall", JSON.stringify({
+        name: toInstall,
+        version: version
+      }), function(result) {
+        if (result.error === false) {
+          window.modalView.hide();
+          self.showConfigureDialog(result.configuration, result.name, result.version);
+        }
+      });
     },
 
     installFoxxFromGithub: function() {
