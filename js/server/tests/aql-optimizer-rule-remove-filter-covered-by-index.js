@@ -40,7 +40,7 @@ var removeAlwaysOnClusterRules = helper.removeAlwaysOnClusterRules;
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function optimizerRuleTestSuite_filterByIndex() {
+function optimizerRuleTestSuite() {
   var IndexRangeRule = "use-index-range";
   var FilterRemoveRule = "remove-filter-covered-by-index";
   var SortRemoveRule = "use-index-for-sort"; 
@@ -170,36 +170,36 @@ function optimizerRuleTestSuite_filterByIndex() {
       ];
 
       queries.forEach(function(query) {
-          var j, result;
+        var result;
+        result = AQL_EXPLAIN(query, { }, paramIndexRangeFilter);
+        assertEqual([ IndexRangeRule, FilterRemoveRule ], 
+          removeAlwaysOnClusterRules(result.plan.rules), query);
+        hasNoFilterNode(result);
 
-	  result = AQL_EXPLAIN(query, { }, paramIndexRangeFilter);
-          assertEqual([ IndexRangeRule, FilterRemoveRule ], 
-                      removeAlwaysOnClusterRules(result.plan.rules), query);
-	  hasNoFilterNode(result);
-	  hasIndexRangeNode_WithRanges(result, true);
+        hasIndexRangeNodeWithRanges(result);
 
-          result = AQL_EXPLAIN(query, { }, paramIndexRangeSortFilter);
-          assertEqual([ IndexRangeRule, FilterRemoveRule, SortRemoveRule ], 
-                      removeAlwaysOnClusterRules(result.plan.rules), query);
-	  hasNoFilterNode(result);
-	  hasIndexRangeNode_WithRanges(result, true);
+        result = AQL_EXPLAIN(query, { }, paramIndexRangeSortFilter);
+        assertEqual([ IndexRangeRule, FilterRemoveRule, SortRemoveRule ], 
+          removeAlwaysOnClusterRules(result.plan.rules), query);
+        hasNoFilterNode(result);
+        hasIndexRangeNodeWithRanges(result);
 
+        var QResults = [];
+        QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
+        QResults[1] = AQL_EXECUTE(query, { }, paramIndexRangeFilter).json;
+        QResults[2] = AQL_EXECUTE(query, { }, paramIndexRangeSortFilter).json;
 
-          QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
-          QResults[1] = AQL_EXECUTE(query, { }, paramIndexRangeFilter).json;
-          QResults[2] = AQL_EXECUTE(query, { }, paramIndexRangeSortFilter).json;
-	  
-        assertTrue(isEqual(QResults[0], QResults[1]), "result " + i + " is equal?");
-        assertTrue(isEqual(QResults[0], QResults[2]), "result " + i + " is equal?");
+        assertTrue(isEqual(QResults[0], QResults[1]), "result is equal?");
+        assertTrue(isEqual(QResults[0], QResults[2]), "result is equal?");
 
-        allresults = getQueryMultiplePlansAndExecutions(query, {});
-        for (j = 1; j < allresults.results.length; j++) {
-            assertTrue(isEqual(allresults.results[0],
-                               allresults.results[j]),
-                       "whether the execution of '" + query +
-                       "' this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
-                       " Should be: '" + JSON.stringify(allresults.results[0]) +
-                       "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
+        var allResults = getQueryMultiplePlansAndExecutions(query, {});
+        for (var j = 1; j < allResults.results.length; j++) {
+            assertTrue(isEqual(allResults.results[0],
+                               allResults.results[j]),
+                       "while executing '" + query +
+                       "' this plan gave the wrong results: " + JSON.stringify(allResults.plans[j]) +
+                       " Should be: '" + JSON.stringify(allResults.results[0]) +
+                       "', but is: " + JSON.stringify(allResults.results[j]) + "'"
                       );
         }
       });
@@ -218,34 +218,37 @@ function optimizerRuleTestSuite_filterByIndex() {
           + colNameOther + " FILTER w.f == 1 SORT w.a, w.h RETURN  w.f ) SORT v.a , v.c FILTER v.a == 1RETURN [v.a, x]"
       ];
       queries.forEach(function(query) {
-          var j, result;
+        var result;
 
-	  result = AQL_EXPLAIN(query, { }, paramIndexRangeFilter);
-          assertEqual([ IndexRangeRule, FilterRemoveRule ], 
-                      removeAlwaysOnClusterRules(result.plan.rules), query);
-	  hasNoFilterNode(result);
+        result = AQL_EXPLAIN(query, { }, paramIndexRangeFilter);
+        assertEqual([ IndexRangeRule, FilterRemoveRule ], 
+          removeAlwaysOnClusterRules(result.plan.rules), query);
+        hasNoFilterNode(result);
+        hasIndexRangeNodeWithRanges(result);
 
-          result = AQL_EXPLAIN(query, { }, paramIndexRangeSortFilter);
-          assertEqual([ IndexRangeRule, FilterRemoveRule ], 
-                      removeAlwaysOnClusterRules(result.plan.rules), query);
-	  hasNoFilterNode(result);
+        result = AQL_EXPLAIN(query, { }, paramIndexRangeSortFilter);
+        assertEqual([ IndexRangeRule, FilterRemoveRule ], 
+          removeAlwaysOnClusterRules(result.plan.rules), query);
+        hasNoFilterNode(result);
+        hasIndexRangeNodeWithRanges(result);
 
-          QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
-          QResults[1] = AQL_EXECUTE(query, { }, paramIndexRangeFilter).json;
-          QResults[2] = AQL_EXECUTE(query, { }, paramIndexRangeSortFilter).json;
-	  
-        assertTrue(isEqual(QResults[0], QResults[1]), "result " + i + " is equal?");
-        assertTrue(isEqual(QResults[0], QResults[2]), "result " + i + " is equal?");
+        var QResults = [];
+        QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
+        QResults[1] = AQL_EXECUTE(query, { }, paramIndexRangeFilter).json;
+        QResults[2] = AQL_EXECUTE(query, { }, paramIndexRangeSortFilter).json;
 
-        allresults = getQueryMultiplePlansAndExecutions(query, {});
-        for (j = 1; j < allresults.results.length; j++) {
-            assertTrue(isEqual(allresults.results[0],
-                               allresults.results[j]),
-                       "whether the execution of '" + query +
-                       "' this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
-                       " Should be: '" + JSON.stringify(allresults.results[0]) +
-                       "' but Is: " + JSON.stringify(allresults.results[j]) + "'"
-                      );
+        assertTrue(isEqual(QResults[0], QResults[1]), "result is equal?");
+        assertTrue(isEqual(QResults[0], QResults[2]), "result is equal?");
+
+        var allResults = getQueryMultiplePlansAndExecutions(query, {});
+        for (var j = 1; j < allResults.results.length; j++) {
+          assertTrue(isEqual(allResults.results[0],
+                             allResults.results[j]),
+                     "while executing '" + query +
+                     "' this plan gave the wrong results: " + JSON.stringify(allResults.plans[j]) +
+                     " Should be: '" + JSON.stringify(allResults.results[0]) +
+                     "', but is: " + JSON.stringify(allResults.results[j]) + "'"
+                    );
         }
       });
     }
@@ -257,7 +260,7 @@ function optimizerRuleTestSuite_filterByIndex() {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(optimizerRuleTestSuite_filterByIndex);
+jsunity.run(optimizerRuleTestSuite);
 
 return jsunity.done();
 
