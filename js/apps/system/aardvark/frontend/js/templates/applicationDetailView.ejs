@@ -48,7 +48,13 @@
         <dt>Links</dt>
         <dd>
           <ul>
-            <li>Download API Documentation</li>
+            <% if (!attributes.development) { %>
+              <li>
+                <a href="http://localhost:8529/_db/_system/_admin/aardvark/swagger/<%= encodeURIComponent(encodeURIComponent(attributes.mount)) %>" target="_blank">
+                  Download API Documentation
+                </a>
+              </li>
+            <% } %>
             <% if (attributes.repository && attributes.repository.type == 'git') { %>
               <li><a href="<%= attributes.repository.url %>" target="_blank">Git Repository</a></li>
             <% } %>
