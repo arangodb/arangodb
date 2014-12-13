@@ -14,7 +14,7 @@
         <div class="header_left">
           <img src="foxxes/thumbnail/<%=attributes.app %>" class="icon" alt="Icon for App">
           <input type="button" class="open button-success" disabled="true" value="Open">
-          <input type="button" class="delete button-danger" value="Delete">
+          <input type="button" class="delete button-danger" disabled="true" value="Delete">
         </div>
         <div class="header_right">
           <h3>
@@ -44,6 +44,15 @@
           <% } else { %>
           No contributors
           <% } %>
+        </dd>
+        <dt>Links</dt>
+        <dd>
+          <ul>
+            <li>Download API Documentation</li>
+            <% if (attributes.repository && attributes.repository.type == 'git') { %>
+              <li><a href="<%= attributes.repository.url %>" target="_blank">Git Repository</a></li>
+            <% } %>
+          </ul>
         </dd>
       </dl>
     </aside>
