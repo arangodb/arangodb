@@ -635,7 +635,7 @@
       var listTempl = this.appStoreTemplate;
       $.get("foxxes/fishbowl", function(list) {
         var table = $("#appstore-content");
-        _.each(list, function(app) {
+        _.each(_.sortBy(list, "name"), function(app) {
           table.append(listTempl.render(app));
         });
       });
