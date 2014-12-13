@@ -2268,7 +2268,6 @@ int triagens::aql::scatterInClusterRule (Optimizer* opt,
         // if we replaced the root node, set a new root node
         plan->root(gatherNode);
       }
-      fprintf(stderr, "BLARG!");
       wasModified = true;
     }
   }
