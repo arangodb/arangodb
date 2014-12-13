@@ -24,7 +24,8 @@
   "controllers": {
     "/": "aardvark.js",
     "/cluster": "cluster.js",
-    "/statistics": "statistics.js"
+    "/statistics": "statistics.js",
+    "/templates": "foxxTemplates.js"
   },
 
   "assets": {
