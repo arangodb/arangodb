@@ -15,6 +15,10 @@ window.ApplicationDetailView = Backbone.View.extend({
   render: function() {
     $(this.el).html(this.template.render(this.model));
 
+    if (!this.model.get('development') && !this.model.get('isSystem')) {
+      $('.delete', this.el).prop('disabled', false);
+    }
+
     $.get(this.appUrl()).success(function () {
       $('.open', this.el).prop('disabled', false);
     }, this);
