@@ -659,7 +659,10 @@ static int containmentRangeInfos (RangeInfo const& lhs, RangeInfo const& rhs) {
 // returns true if the constant parts of lhs and rhs are disjoint and false
 // otherwise
 
-static bool areDisjointRangeInfos (RangeInfo const& lhs, RangeInfo const& rhs) {
+bool triagens::aql::areDisjointRangeInfos (RangeInfo const& lhs, 
+                                           RangeInfo const& rhs) {
+  TRI_ASSERT(lhs._var == rhs._var);
+  TRI_ASSERT(lhs._attr == rhs._attr);
  
   int HiLo;
   if (lhs._highConst.isDefined() && rhs._lowConst.isDefined()) {
@@ -887,3 +890,21 @@ void triagens::aql::removeOverlapsIndexOr (IndexOrCondition& ioc) {
   }
 }
 
+// 3 way comparison for sorting
+/*int triagens::aql::compareRangeInfos (RangeInfo const& lhs, RangeInfo const& rhs) {
+  TRI_ASSERT(lhs._var == rhs._var);
+  TRI_ASSERT(lhs._attr == rhs._attr);
+
+  if (lhs.is1ValueRangeInfo() && rhs.is1ValueRangeInfo()) {
+    return TRI_CompareValuesJson(lhs._lowConst.bound().json(), 
+        rhs._lowConst.bound().json());
+  }
+
+  // assuming lhs and rhs are disjoint!!
+  TRI_ASSERT_EXPENSIVE(areDisjointRangeInfos(lhs, rhs));
+  if (lhs._highConst.isDefined() && rhs._lowConst.isDefined()) {
+    return TRI_CompareValuesJson(lhs._highConst.bound().json(), 
+        rhs._lowConst.bound().json());
+  } 
+  return 1; 
+}*/
