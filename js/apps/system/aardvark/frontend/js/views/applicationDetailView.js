@@ -27,7 +27,19 @@ window.ApplicationDetailView = Backbone.View.extend({
   },
 
   deleteApp: function() {
-    alert('Delete!');
+    modalDialogHelper.createModalDeleteDialog(
+      "Delete Foxx App mounted at '" + this.model.get('mount') + "'",
+      "deleteFoxxApp",
+      this.model,
+      function(model) {
+        model.destroy({
+          success: function () {
+            $("#deleteFoxxAppmodal").modal('hide');
+            window.App.navigate("applications", { trigger: true });
+          }
+        });
+      }
+    );
   },
 
   appUrl: function () {
