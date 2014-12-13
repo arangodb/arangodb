@@ -35,7 +35,7 @@
         <dd><%= attributes.author %></dd>
         <dt>Contributors</dt>
         <dd>
-          <% if (attributes.contributors.length > 0) { %>
+          <% if (attribute.contributors && attributes.contributors.length > 0) { %>
           <ul>
           <% _.each(attributes.contributors, function (contributor) { %>
             <li><a href="mailto:<%= contributor.email %>"><%= contributor.name %></a></li>
