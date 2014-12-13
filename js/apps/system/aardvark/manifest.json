@@ -6,6 +6,11 @@
   "license": "Apache License, Version 2.0",
   "isSystem": true,
 
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/triAGENS/ArangoDB.git"
+  },
+
   "contributors": [
     {
       "name": "Heiko Kernbach",
