@@ -109,6 +109,8 @@
     },
 
     applicationDetail: function (key) {
+      this.naviView.selectMenuItem('applications-menu');
+
       if (this.foxxList.length === 0) {
         this.foxxList.fetch({ async: false });
       }
