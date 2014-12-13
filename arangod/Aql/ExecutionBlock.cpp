@@ -1248,7 +1248,9 @@ bool IndexRangeBlock::initRanges () {
   LEAVE_BLOCK;
 }
 
-// is _condition[i] < _condition[j]? these are IndexAndConditions
+////////////////////////////////////////////////////////////////////////////////
+// @brief: is _condition[i] < _condition[j]? these are IndexAndConditions. 
+////////////////////////////////////////////////////////////////////////////////
 
 bool IndexRangeBlock::SortFunc::operator() (size_t const& i, size_t const& j) {
   size_t l, r;
@@ -1292,7 +1294,11 @@ bool IndexRangeBlock::SortFunc::operator() (size_t const& i, size_t const& j) {
   return false;
 }
 
-// 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief andCombineRangeInfoVecs: combine the arguments into a single vector,
+/// by intersecting every pair of range infos and inserting them in the returned
+/// value if the intersection is valid. 
+////////////////////////////////////////////////////////////////////////////////
 
 std::vector<RangeInfo> IndexRangeBlock::andCombineRangeInfoVecs (
     std::vector<RangeInfo>& riv1, 
@@ -1311,7 +1317,11 @@ std::vector<RangeInfo> IndexRangeBlock::andCombineRangeInfoVecs (
   return out;
 }
 
-//
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cartesian: form the cartesian product of the inner vectors. This is
+/// required in case a dynamic bound evaluates to a list, then we have an 
+/// "and" condition containing an "or" condition, which we must then distribute. 
+////////////////////////////////////////////////////////////////////////////////
 
 IndexOrCondition* IndexRangeBlock::cartesian (
     std::vector<std::vector<RangeInfo>> collector) {
@@ -1349,34 +1359,6 @@ IndexOrCondition* IndexRangeBlock::cartesian (
     throw;
   }
 }
-
-// insert the input rib into every ri in the IndexOrCondition . . .
-
-/*void IndexRangeBlock::andCombineIndexOrRIBLow (IndexOrCondition* ioc, 
-                                               RangeInfoBound& rib) {
-  for (size_t i = 0; i < ioc->size(); i++) {
-    if (! ioc[i].empty()) {
-      ioc->at(i).at(0)._lowConst.andCombineLowerBounds(rib);
-    } 
-    else { // FIXME can this occur?
-      TRI_ASSERT(false);
-    }
-  }
-}
-
-// insert the input rib into every ri in the IndexOrCondition . . .
-
-void IndexRangeBlock::andCombineIndexOrRIBHigh (IndexOrCondition* ioc, 
-                                                RangeInfoBound& rib) {
-  for (size_t i = 0; i < ioc->size(); i++) {
-    if (! ioc[i].empty()) {
-      ioc->at(i).at(0)._highConst.andCombineUpperBounds(rib);
-    } 
-    else { // FIXME can this occur?
-      TRI_ASSERT(false);
-    }
-  }
-}*/
 
 void IndexRangeBlock::freeCondition () {
   if (_condition != nullptr && _freeCondition) {

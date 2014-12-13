@@ -617,11 +617,27 @@ namespace triagens {
 
         void readHashIndex (IndexOrCondition const&);
 
-        void orCombineIndexOrs(IndexOrCondition*, IndexOrCondition*);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief andCombineRangeInfoVecs: combine the arguments into a single vector,
+/// by intersecting every pair of range infos and inserting them in the returned
+/// value if the intersection is valid. 
+////////////////////////////////////////////////////////////////////////////////
+
         std::vector<RangeInfo> andCombineRangeInfoVecs (std::vector<RangeInfo>&, 
                                                         std::vector<RangeInfo>&);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cartesian: form the cartesian product of the inner vectors. This is
+/// required in case a dynamic bound evaluates to a list, then we have an 
+/// "and" condition containing an "or" condition, which we must then distribute. 
+////////////////////////////////////////////////////////////////////////////////
+
         IndexOrCondition* cartesian (std::vector<std::vector<RangeInfo>>);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief: subclass for comparing IndexAndConditions in _condition. Similar to
+/// OurLessThan in the SortBlock
+////////////////////////////////////////////////////////////////////////////////
 
         class SortFunc {
           public:
@@ -641,7 +657,6 @@ namespace triagens {
             IndexOrCondition* _condition;
             bool _reverse;
         };
-        
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
