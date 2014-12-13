@@ -3,6 +3,7 @@
 
   var fs = require("fs"),
     _ = require("underscore"),
+    i = require('i')(),
     Engine;
 
   Engine = function(opts) {
@@ -21,7 +22,19 @@
   _.extend(Engine.prototype, {
     write: function() {
       fs.makeDirectory(this.folder);
-      fs.write(fs.join(this.folder, "manifest.json"), this.buildManifest());
+      fs.makeDirectory(fs.join(this.folder, 'controllers'));
+      fs.makeDirectory(fs.join(this.folder, 'models'));
+      fs.makeDirectory(fs.join(this.folder, 'repositories'));
+      fs.makeDirectory(fs.join(this.folder, 'scripts'));
+      fs.write(fs.join(this.folder, 'manifest.json'), this.buildManifest());
+
+      _.each(this.repositories, function (repository) {
+        fs.write(fs.join(this.folder, repository.path), this.buildRepository());
+      }, this);
+
+      _.each(this.models, function (model) {
+        fs.write(fs.join(this.folder, model.path), this.buildModel());
+      }, this);
     },
 
     template: function(name) {
@@ -31,12 +44,22 @@
     determineFromCollectionNames: function (collectionNames) {
       this.collectionNames = [];
       this.controllers = [];
+      this.repositories = [];
+      this.models = [];
 
       _.each(collectionNames, function (collectionName) {
+        var modelName = i.singularize(collectionName);
+
         this.collectionNames.push(collectionName);
         this.controllers.push({
           url: '/' + collectionName,
           path: 'controllers/' + collectionName + '.js'
+        });
+        this.repositories.push({
+          path: 'repositories/' + collectionName + '.js'
+        });
+        this.models.push({
+          path: 'models/' + modelName + '.js'
         });
       }, this);
     },
@@ -51,7 +74,19 @@
         license: this.license,
         controllers: this.controllers
       });
-    }
+    },
+
+    buildRepository: function() {
+      var manifest = this.template("repository.js.tmpl");
+
+      return manifest();
+    },
+
+    buildModel: function() {
+      var manifest = this.template("model.js.tmpl");
+
+      return manifest();
+    },
   });
 
   exports.Engine = Engine;
