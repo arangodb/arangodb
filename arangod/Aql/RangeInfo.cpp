@@ -857,17 +857,31 @@ void triagens::aql::differenceIndexAnd (IndexAndCondition& and1, IndexAndConditi
 
 void triagens::aql::removeOverlapsIndexOr (IndexOrCondition& ioc) {
   
+  // remove invalid  //TODO move this to initRanges
+  for (auto it = ioc.begin(); it < ioc.end(); ) {
+    bool invalid = false;
+    for (RangeInfo ri: *it) {
+      if (! ri.isValid()) {
+        invalid = true;
+        it = ioc.erase(it);
+        break;
+      }
+    } 
+    if (! invalid) { 
+      it++;
+    }
+  }
+
   for (size_t i = 1; i < ioc.size(); i++) {
     for (size_t j = 0; j < i; j++) {
       differenceIndexAnd(ioc.at(j), ioc.at(i));
     }
   }
-  // remove empty ones??
+  // remove empty 
   for (auto it = ioc.begin(); it < ioc.end(); ) {
     if (it->empty()) {
       it = ioc.erase(it);
-    } 
-    else {
+    } else {
       it++;
     }
   }
