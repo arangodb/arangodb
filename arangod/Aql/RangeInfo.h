@@ -859,7 +859,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief differenceRangeInfo: returns the difference of the constant parts of
 /// the given RangeInfo and the union of the RangeInfos (for the same var and
-/// attr) in the vector. Returns the nullptr if it is empty. //TODO update this
+/// attr) in the vector. Potentially modifies both the argument and the
+/// RangeInfos in the vector.
 ////////////////////////////////////////////////////////////////////////////////
         
         void differenceRangeInfo (RangeInfo&);
@@ -933,7 +934,7 @@ namespace triagens {
     typedef std::vector<IndexAndCondition> IndexOrCondition;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief differenceRangeInfo: returns the difference of the constant parts of
+/// @brief differenceRangeInfos: returns the difference of the constant parts of
 /// the given RangeInfos. 
 ///
 /// Modifies either lhs or rhs in place, so that the constant parts of lhs 
@@ -942,14 +943,44 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
     
     void differenceRangeInfos (RangeInfo&, RangeInfo&);
-    void differenceIndexOrRangeInfo (IndexOrCondition const*, RangeInfo&);
+
+////////////////////////////////////////////////////////////////////////////////
+// @brief areDisjointRangeInfos: returns true if the constant parts of lhs and
+// rhs are disjoint and false otherwise.
+// Only for range infos with the same variable and attribute
+////////////////////////////////////////////////////////////////////////////////
+
+    bool areDisjointRangeInfos (RangeInfo const&, RangeInfo const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief areDisjointIndexAndConditions: returns true if the arguments describe
+/// disjoint sets. 
+////////////////////////////////////////////////////////////////////////////////
+
+    bool areDisjointIndexAndConditions (IndexAndCondition&, IndexAndCondition&);
+    
+////////////////////////////////////////////////////////////////////////////////
+/// @brief isContainedIndexAndConditions: returns true if the first argument is
+/// contained in the second, and false otherwise.
+////////////////////////////////////////////////////////////////////////////////
 
     bool isContainedIndexAndConditions (IndexAndCondition&, IndexAndCondition&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief differenceIndexAnd: modifies and1 and and2 in place 
+/// so that the intersection of the sets they describe is empty and their union
+/// is the same as if the function was never called. 
+////////////////////////////////////////////////////////////////////////////////
+
     void differenceIndexAnd (IndexAndCondition&, IndexAndCondition&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief isContainedIndexAndConditions: returns true if the first argument is
+/// contained in the second, and false otherwise.
+////////////////////////////////////////////////////////////////////////////////
+
     void removeOverlapsIndexOr (IndexOrCondition&);
-    bool areDisjointIndexAndConditions (IndexAndCondition&, IndexAndCondition&);
-    bool areDisjointRangeInfos (RangeInfo const&, RangeInfo const&);
-    int compareRangeInfos (RangeInfo const&, RangeInfo const&);
+
   }
 }
 

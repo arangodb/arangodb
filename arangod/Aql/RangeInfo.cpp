@@ -523,6 +523,31 @@ std::unordered_set<std::string> RangeInfoMapVec::attributes (std::string const& 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief differenceRangeInfo: returns the difference of the constant parts of
+/// the given RangeInfo and the union of the RangeInfos (for the same var and
+/// attr) in the vector. Potentially modifies both the argument and the
+/// RangeInfos in the vector.
+////////////////////////////////////////////////////////////////////////////////
+
+void RangeInfoMapVec::differenceRangeInfo (RangeInfo& newRi) {
+  
+  for (auto rim: _rangeInfoMapVec) {
+    RangeInfo* oldRi = rim->find(newRi._var, newRi._attr);
+    if (oldRi != nullptr) {
+      differenceRangeInfos(*oldRi, newRi);
+      if (! newRi.isValid() || 
+          (newRi._lowConst.bound().isEmpty() && newRi._highConst.bound().isEmpty())){
+        break;
+      }
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief combining range info maps and vectors 
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief orCombineRangeInfoMapVecs: return a new RangeInfoMapVec appending
 /// those RIMs in the right arg (which are not identical to an existing RIM) in
 /// a copy of the left arg.
@@ -555,14 +580,8 @@ RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs,
     try {
       for (auto x: (*rhs)[i]->_ranges) {
         for (auto y: x.second) {
-          // take the difference of 
           RangeInfo ri = y.second.clone();
-          //lhs->differenceRangeInfo(ri); //TODO delete this line, we remove
-          //duplicates later in the IndexRangeBlock
-          if (ri.isValid()) { 
-            // if ri is not valid, then y.second is contained in an existing ri 
-            rim->insert(ri);
-          }
+          rim->insert(ri);
         }
       }
       if (! rim->empty()) {
@@ -581,7 +600,6 @@ RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs,
   return lhs;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief andCombineRangeInfoMaps: insert every RangeInfo in the <rhs> in the
 /// <lhs> and delete the <rhs>
@@ -599,12 +617,12 @@ RangeInfoMap* triagens::aql::andCombineRangeInfoMaps (RangeInfoMap* lhs, RangeIn
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief andCombineRangeInfoMapVecs: return a new RangeInfoMapVec by
+/// @brief andCombineRangeInfoMapVecs: returns a new RangeInfoMapVec by
 /// distributing the AND into the ORs in a condition like:
 /// (OR condition) AND (OR condition).
 ///
-/// The returned RIMV is the new, unless either side is empty or the nullptr, 
-/// in which case it is the other side.
+/// The returned RIMV is new, unless either side is empty or the nullptr, 
+/// in which case that side is returned and the other is deleted.
 ////////////////////////////////////////////////////////////////////////////////
 
 RangeInfoMapVec* triagens::aql::andCombineRangeInfoMapVecs (RangeInfoMapVec* lhs, 
@@ -640,11 +658,21 @@ RangeInfoMapVec* triagens::aql::andCombineRangeInfoMapVecs (RangeInfoMapVec* lhs
   return rimv;
 }
 
-// check if the constant bounds of a RI are a subset of another.
-// returns -1 if lhs is a (not necessarily proper) subset of rhs, 0 if neither is
-// contained in the other, and, 1 if rhs is contained in lhs. 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief comparison of range infos
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// @brief containmentRangeInfos: check if the constant bounds of a RI are a
+// subset of another.  Returns -1 if lhs is a (not necessarily proper) subset of
+// rhs, 0 if neither is contained in the other, and, 1 if rhs is contained in
+// lhs. Only for range infos with the same variable and attribute
+////////////////////////////////////////////////////////////////////////////////
 
 static int containmentRangeInfos (RangeInfo const& lhs, RangeInfo const& rhs) {
+  TRI_ASSERT(lhs._var == rhs._var);
+  TRI_ASSERT(lhs._attr == rhs._attr);
+  
   int LoLo = CompareRangeInfoBound(lhs._lowConst, rhs._lowConst, -1); 
   // -1 if lhs is tighter than rhs, 1 if rhs tighter than lhs
   int HiHi = CompareRangeInfoBound(lhs._highConst, rhs._highConst, 1); 
@@ -656,8 +684,11 @@ static int containmentRangeInfos (RangeInfo const& lhs, RangeInfo const& rhs) {
   return 0;
 }
 
-// returns true if the constant parts of lhs and rhs are disjoint and false
-// otherwise
+////////////////////////////////////////////////////////////////////////////////
+/// @brief areDisjointRangeInfos: returns true if the constant parts of lhs and
+/// rhs are disjoint and false otherwise.
+/// Only for range infos with the same variable and attribute
+////////////////////////////////////////////////////////////////////////////////
 
 bool triagens::aql::areDisjointRangeInfos (RangeInfo const& lhs, 
                                            RangeInfo const& rhs) {
@@ -700,10 +731,14 @@ bool triagens::aql::areDisjointRangeInfos (RangeInfo const& lhs,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief differenceRangeInfo:
+/// @brief differenceRangeInfos: returns the difference of the constant parts of
+/// the given RangeInfos. 
+///
 /// Modifies either lhs or rhs in place, so that the constant parts of lhs 
 /// and rhs are disjoint, and the union of the modified lhs and rhs equals the
 /// union of the originals.
+///
+/// Only for range infos with the same variable and attribute
 ////////////////////////////////////////////////////////////////////////////////
 
 void triagens::aql::differenceRangeInfos (RangeInfo& lhs, RangeInfo& rhs) {
@@ -753,39 +788,14 @@ void triagens::aql::differenceRangeInfos (RangeInfo& lhs, RangeInfo& rhs) {
   }
 }
 
-void RangeInfoMapVec::differenceRangeInfo (RangeInfo& newRi) {
-  
-  for (auto rim: _rangeInfoMapVec) {
-    RangeInfo* oldRi = rim->find(newRi._var, newRi._attr);
-    if (oldRi != nullptr) {
-      differenceRangeInfos(*oldRi, newRi);
-      if (! newRi.isValid() || 
-          (newRi._lowConst.bound().isEmpty() && newRi._highConst.bound().isEmpty())){
-        break;
-      }
-    }
-  }
-}
+////////////////////////////////////////////////////////////////////////////////
+/// @brief comparison of index "and" conditions
+////////////////////////////////////////////////////////////////////////////////
 
-void triagens::aql::differenceIndexOrRangeInfo(IndexOrCondition const* ioc,
-                                               RangeInfo&              newRi) {
-  for (IndexAndCondition iac: *ioc) {
-    for (RangeInfo oldRi: iac) {
-      differenceRangeInfos(oldRi, newRi);
-      if (! newRi.isValid()) { 
-        break;
-      }
-    }
-    if (! newRi.isValid()) { 
-      break;
-    }
-  }
-}
-
-// 3 way comparison
-
-/*int triagens::aql::compareIndexAndConditions (IndexAndCondition& and1, IndexAndCondition& and2) {
-}*/
+////////////////////////////////////////////////////////////////////////////////
+/// @brief areDisjointIndexAndConditions: returns true if the arguments describe
+/// disjoint sets, and false otherwise.
+////////////////////////////////////////////////////////////////////////////////
 
 bool triagens::aql::areDisjointIndexAndConditions (IndexAndCondition& and1, IndexAndCondition& and2) {
   
@@ -801,7 +811,11 @@ bool triagens::aql::areDisjointIndexAndConditions (IndexAndCondition& and1, Inde
   return false;
 }
 
-// is and1 contained in and2
+////////////////////////////////////////////////////////////////////////////////
+/// @brief isContainedIndexAndConditions: returns true if the first argument is
+/// contained in the second, and false otherwise.
+////////////////////////////////////////////////////////////////////////////////
+
 bool triagens::aql::isContainedIndexAndConditions (IndexAndCondition& and1, IndexAndCondition& and2) {
   
   for (auto ri1: and1) {
@@ -821,6 +835,12 @@ bool triagens::aql::isContainedIndexAndConditions (IndexAndCondition& and1, Inde
   }    
   return true;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief differenceIndexAnd: modifies its args in place 
+/// so that the intersection of the sets they describe is empty and their union
+/// is the same as if the function was never called. 
+////////////////////////////////////////////////////////////////////////////////
 
 void triagens::aql::differenceIndexAnd (IndexAndCondition& and1, IndexAndCondition& and2) {
 
@@ -858,9 +878,14 @@ void triagens::aql::differenceIndexAnd (IndexAndCondition& and1, IndexAndConditi
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief differenceIndexAnd: modifies its argument in place so that the index
+/// "and" conditions it contains describe disjoint sets. 
+////////////////////////////////////////////////////////////////////////////////
+
 void triagens::aql::removeOverlapsIndexOr (IndexOrCondition& ioc) {
   
-  // remove invalid  //TODO move this to initRanges
+  // remove invalid  
   for (auto it = ioc.begin(); it < ioc.end(); ) {
     bool invalid = false;
     for (RangeInfo ri: *it) {
@@ -889,22 +914,3 @@ void triagens::aql::removeOverlapsIndexOr (IndexOrCondition& ioc) {
     }
   }
 }
-
-// 3 way comparison for sorting
-/*int triagens::aql::compareRangeInfos (RangeInfo const& lhs, RangeInfo const& rhs) {
-  TRI_ASSERT(lhs._var == rhs._var);
-  TRI_ASSERT(lhs._attr == rhs._attr);
-
-  if (lhs.is1ValueRangeInfo() && rhs.is1ValueRangeInfo()) {
-    return TRI_CompareValuesJson(lhs._lowConst.bound().json(), 
-        rhs._lowConst.bound().json());
-  }
-
-  // assuming lhs and rhs are disjoint!!
-  TRI_ASSERT_EXPENSIVE(areDisjointRangeInfos(lhs, rhs));
-  if (lhs._highConst.isDefined() && rhs._lowConst.isDefined()) {
-    return TRI_CompareValuesJson(lhs._highConst.bound().json(), 
-        rhs._lowConst.bound().json());
-  } 
-  return 1; 
-}*/
