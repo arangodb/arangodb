@@ -1153,18 +1153,30 @@ bool IndexRangeBlock::initRanges () {
           } 
         }
       }
-      // the elements of the direct product of the collector are and
-      // conditions which should be added to newCondition 
-      auto indexAnds = cartesian(collector);
 
-      if (newCondition != nullptr) {
-        for (auto indexAnd: *indexAnds) {
-          newCondition->push_back(indexAnd);
+      bool isEmpty = false;
+      for (auto x: collector) {
+        if (x.empty()) { 
+          isEmpty = true;
+          break;
         }
-        delete indexAnds;
-      } 
-      else {
-        newCondition = indexAnds;
+      }
+
+      if (! isEmpty) { 
+        // otherwise the condition is impossible to fulfil
+        // the elements of the direct product of the collector are and
+        // conditions which should be added to newCondition 
+        auto indexAnds = cartesian(collector);
+
+        if (newCondition != nullptr) {
+          for (auto indexAnd: *indexAnds) {
+            newCondition->push_back(indexAnd);
+          }
+          delete indexAnds;
+        } 
+        else {
+          newCondition = indexAnds;
+        }
       }
     }
     //_condition = newCondition.release();
@@ -1173,7 +1185,7 @@ bool IndexRangeBlock::initRanges () {
       _condition = newCondition;
       _freeCondition = true;
     }
- 
+
     // remove duplicates . . .
     removeOverlapsIndexOr(*_condition);
   }
@@ -1225,33 +1237,38 @@ std::vector<RangeInfo> IndexRangeBlock::andCombineRangeInfoVecs (
 
 IndexOrCondition* IndexRangeBlock::cartesian (
     std::vector<std::vector<RangeInfo>> collector) {
-    
+  
   std::vector<size_t> indexes;
   indexes.reserve(collector.size());
   for (size_t i = 0; i < collector.size(); i++) {
     indexes[i] = 0;
   }
-
+  
   auto out = new IndexOrCondition();
-
-  while (true) {
-    IndexAndCondition next;
-    for (size_t i = 0; i < collector.size(); i++) {
-      next.push_back(collector[i][indexes[i]].clone());
-    }
-    out->push_back(next);
-    size_t j = collector.size() - 1;
+  try {
     while (true) {
-      indexes[j]++;
-      if (indexes[j] < collector[j].size()) {
-        break;
+      IndexAndCondition next;
+      for (size_t i = 0; i < collector.size(); i++) {
+        next.push_back(collector[i][indexes[i]].clone());
       }
-      indexes[j] = 0;
-      if (j == 0) { 
-        return out;
+      out->push_back(next);
+      size_t j = collector.size() - 1;
+      while (true) {
+        indexes[j]++;
+        if (indexes[j] < collector[j].size()) {
+          break;
+        }
+        indexes[j] = 0;
+        if (j == 0) { 
+          return out;
+        }
+        j--;
       }
-      j--;
     }
+  }
+  catch (...) {
+    delete out;
+    throw;
   }
 }
 
