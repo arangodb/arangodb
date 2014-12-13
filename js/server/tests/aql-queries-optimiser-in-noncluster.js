@@ -711,14 +711,13 @@ function ahuacatlQueryOptimiserInTestSuite () {
       ruleIsUsed(query);
     },
     
-    // FIXME SORT doesn't work here
     testOverlappingInListSkiplist3 : function () { 
       for (var i = 1; i < 100; ++i) {
         c.save({ value: i });
       }
       c.ensureSkiplist("value");
       var query = "FOR x IN " + cn + " FILTER (x.value > 3 || x.value == 1) && x.value IN [1,3,35,90] SORT x.value RETURN x.value";
-      var expected = [ 35, 90, 1 ];
+      var expected = [ 1, 35, 90 ];
       var actual = getQueryResults(query);
       assertEqual(expected, actual);
       ruleIsUsed(query);
@@ -729,7 +728,7 @@ function ahuacatlQueryOptimiserInTestSuite () {
         c.save({ value: i });
       }
       c.ensureHashIndex("value");
-      var query = "FOR x IN " + cn + " FILTER (x.value IN [3,35,90] || x.value IN [3, 90]) RETURN x.value";
+      var query = "FOR x IN " + cn + " FILTER (x.value IN [3,35,90] || x.value IN [3, 90]) SORT x.value RETURN x.value";
       var expected = [ 3, 35, 90 ];
       var actual = getQueryResults(query);
       assertEqual(expected, actual);
@@ -844,15 +843,14 @@ function ahuacatlQueryOptimiserInTestSuite () {
       ruleIsUsed(query);
     },
 
-    // FIXME this test fails if "DESC" is not included in the query
     testOverlappingRangesListSkiplist1 : function () { 
       for (var i = 1; i < 100; ++i) {
         c.save({ value: i });
       }
       c.ensureSkiplist("value");
-      var query = "FOR x IN " + cn + " FILTER (x.value > 3 || x.value < 90) SORT x.value DESC RETURN x.value";
+      var query = "FOR x IN " + cn + " FILTER (x.value > 3 || x.value < 90) SORT x.value RETURN x.value";
       var expected = [ ];
-      for (i = 99; i > 0; i--) {
+      for (i = 1; i < 100; i++) {
         expected.push(i);
       }
       var actual = getQueryResults(query);
@@ -865,7 +863,7 @@ function ahuacatlQueryOptimiserInTestSuite () {
         c.save({ value: i });
       }
       c.ensureHashIndex("value");
-      var query = "FOR x IN " + cn + " FILTER (x.value > 3 || x.value < 90) SORT x.value DESC RETURN x.value";
+      var query = "FOR x IN " + cn + " FILTER (x.value > 3 || x.value < 90) RETURN x.value";
       ruleIsNotUsed(query);
     },
 
@@ -887,7 +885,7 @@ function ahuacatlQueryOptimiserInTestSuite () {
         c.save({ value: i });
       }
       c.ensureHashIndex("value");
-      var query = "FOR i IN " + cn + " FILTER i.value == 8 || i.value <= 7 SORT i.value DESC RETURN i.value";
+      var query = "FOR i IN " + cn + " FILTER i.value == 8 || i.value <= 7 RETURN i.value";
       ruleIsNotUsed(query);
     },
 
@@ -948,11 +946,11 @@ function ahuacatlQueryOptimiserInTestSuite () {
       c.ensureSkiplist("value1", "value2");
 
       var query = "FOR x in " + cn + " FILTER (x.value1 in [4,5] && x.value2 <= 2) || (x.value1 in [1,6] && x.value2 == 9) RETURN x.value1";
-      var expected = [ 4, 4, 5, 5, 1, 6 ];
+      var expected = [ 1, 4, 4, 5, 5, 6 ];
       var actual = getQueryResults(query);
       assertEqual(expected, actual);
       ruleIsUsed(query);
-    }, //TODO more test like this . . .
+    }, 
     
     testSkiplistMoreThanOne2 : function () {
       for (var i = 1; i <= 100; i++) {
@@ -963,7 +961,7 @@ function ahuacatlQueryOptimiserInTestSuite () {
       c.ensureSkiplist("value1", "value2");
 
       var query = "FOR x in " + cn + " FILTER (x.value1 in [4,5] && x.value2 <= PASSTHRU(2)) || (x.value1 in [1,6] && x.value2 == 9) RETURN x.value1";
-      var expected = [ 4, 4, 5, 5, 1, 6 ];
+      var expected = [ 1, 4, 4, 5, 5, 6 ];
       var actual = getQueryResults(query);
       assertEqual(expected, actual);
       ruleIsUsed(query);
@@ -978,12 +976,12 @@ function ahuacatlQueryOptimiserInTestSuite () {
       c.ensureSkiplist("value1", "value2");
 
       var query = "FOR x in " + cn + " FILTER (x.value1 in [4,5] && x.value2 <= PASSTHRU(2)) || (x.value1 in [PASSTHRU(1),6] && x.value2 == 9) RETURN x.value1";
-      var expected = [ 4, 4, 5, 5, 1, 6 ];
+      var expected = [ 1, 4, 4, 5, 5, 6 ];
       var actual = getQueryResults(query);
       assertEqual(expected, actual);
       ruleIsUsed(query);
     },
-    //TODO add SORT here
+
     testSkiplistMoreThanOne4 : function () {
       for (var i = 1;i <= 100;i++) {
         for (var j = 1; j <= 100; j++) {
@@ -995,15 +993,16 @@ function ahuacatlQueryOptimiserInTestSuite () {
       c.ensureSkiplist("value1", "value2", "value3", "value4");
 
       var query = "FOR x IN " + cn + " FILTER (x.value1 IN [1, 2, 3] && x.value1 IN [2, 3, 4] && x.value2 == 10 && x.value3 <= 20) || (x.value1 == 1 && x.value2 == 2 && x.value3 >= 0 && x.value3 <= 6 && x.value4 in ['somethings2', 'somethings4'] ) RETURN [x.value1, x.value2, x.value3, x.value4]";
-      var expected = [ [ 2, 10, 12, "somethings20" ], 
+      var expected = [ 
+                       [ 1, 2, 3, "somethings4" ],
+                       [ 2, 10, 12, "somethings20" ], 
                        [ 3, 10, 13, "somethings20" ], 
-                       [ 1, 2, 3, "somethings4" ] ];
+                     ];
       var actual = getQueryResults(query);
       assertEqual(expected, actual);
       ruleIsUsed(query);
     },
 
-    //TODO add SORT here
     testSkiplistMoreThanOne5 : function () {
 
       for (var i = 1;i <= 100;i++) {
@@ -1019,17 +1018,17 @@ function ahuacatlQueryOptimiserInTestSuite () {
 
       var query = "FOR x IN " + cn + " FILTER (x.value1 IN [PASSTHRU(1), PASSTHRU(2), PASSTHRU(3)] && x.value1 IN [2, 3, 4] && x.value2 == PASSTHRU(10) && x.value3 <= 2) || (x.value1 == 1 && x.value2 == 2 && x.value3 >= 0 && x.value3 == PASSTHRU(6) && x.value4 in ['somethings2', PASSTHRU('somethings4')] ) RETURN [x.value1, x.value2, x.value3, x.value4]";
       var expected = [ 
-          [ 2, 10, 1, "somethings20" ], 
-          [ 2, 10, 2, "somethings20" ], 
-          [ 3, 10, 1, "somethings20" ], 
-          [ 3, 10, 2, "somethings20" ], 
-          [ 1, 2, 6, "somethings4" ] ];
+                       [ 1, 2, 6, "somethings4" ]  ,
+                       [ 2, 10, 1, "somethings20" ], 
+                       [ 2, 10, 2, "somethings20" ], 
+                       [ 3, 10, 1, "somethings20" ], 
+                       [ 3, 10, 2, "somethings20" ] 
+                     ];
       var actual = getQueryResults(query);
       assertEqual(expected, actual);
       ruleIsUsed(query);
     },
     
-    //TODO add SORT here
     testSkiplistMoreThanOne6 : function () {
 
       for (var i = 1;i <= 100;i++) {
@@ -1045,11 +1044,12 @@ function ahuacatlQueryOptimiserInTestSuite () {
 
       var query = "FOR x IN " + cn + " FILTER (x.value1 IN [PASSTHRU(1), PASSTHRU(2), PASSTHRU(3)] && x.value1 IN PASSTHRU([2, 3, 4]) && x.value2 == PASSTHRU(10) && x.value3 <= 2) || (x.value1 == 1 && x.value2 == 2 && x.value3 >= 0 && x.value3 == PASSTHRU(6) && x.value4 in ['somethings2', PASSTHRU('somethings4')] ) RETURN [x.value1, x.value2, x.value3, x.value4]";
       var expected = [ 
-          [ 2, 10, 1, "somethings20" ], 
-          [ 2, 10, 2, "somethings20" ], 
-          [ 3, 10, 1, "somethings20" ], 
-          [ 3, 10, 2, "somethings20" ], 
-          [ 1, 2, 6, "somethings4" ] ];
+                       [ 1, 2, 6, "somethings4" ]  ,
+                       [ 2, 10, 1, "somethings20" ], 
+                       [ 2, 10, 2, "somethings20" ], 
+                       [ 3, 10, 1, "somethings20" ], 
+                       [ 3, 10, 2, "somethings20" ] 
+                     ];
       var actual = getQueryResults(query);
       assertEqual(expected, actual);
       ruleIsUsed(query);

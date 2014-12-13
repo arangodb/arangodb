@@ -618,10 +618,29 @@ namespace triagens {
         void readHashIndex (IndexOrCondition const&);
 
         void orCombineIndexOrs(IndexOrCondition*, IndexOrCondition*);
-        std::vector<RangeInfo> andCombineRangeInfoVecs (std::vector<RangeInfo>& riv1, 
-                                                        std::vector<RangeInfo>& riv2);
+        std::vector<RangeInfo> andCombineRangeInfoVecs (std::vector<RangeInfo>&, 
+                                                        std::vector<RangeInfo>&);
 
-        IndexOrCondition* cartesian (std::vector<std::vector<RangeInfo>> collector);
+        IndexOrCondition* cartesian (std::vector<std::vector<RangeInfo>>);
+
+        class SortFunc {
+          public:
+            SortFunc (std::vector<std::vector<size_t>> prefix, 
+                      IndexOrCondition* condition,
+                      bool reverse)
+              : _prefix(prefix),
+                _condition(condition), 
+                _reverse(reverse){
+            }
+
+            bool operator() (size_t const&,
+                             size_t const&);
+
+          private:
+            std::vector<std::vector<size_t>> _prefix;
+            IndexOrCondition* _condition;
+            bool _reverse;
+        };
         
 
 // -----------------------------------------------------------------------------
@@ -703,6 +722,7 @@ namespace triagens {
 
         bool _flag;
         size_t _posInRanges;
+        std::vector<size_t> _sortCoords;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _freeCondition: whether or not the _condition is owned by the

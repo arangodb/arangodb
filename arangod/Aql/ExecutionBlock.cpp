@@ -857,6 +857,7 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
     _skiplistIterator(nullptr),
     _condition(new IndexOrCondition()),
     _posInRanges(0),
+    _sortCoords(),
     _freeCondition(true) {
   
   for (size_t i = 0; i < en->_ranges.size(); i++) {
@@ -1199,8 +1200,41 @@ bool IndexRangeBlock::initRanges () {
   
   if (en->_index->type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
     if (! _condition->empty()) {
+      // sort the conditions! 
+
+      // TODO this should also be done for hash indexes when
+      // they are lazy too. 
+
+      // first sort by the prefix of the index 
+      std::vector<std::vector<size_t>> prefix;
+      if (! _sortCoords.empty()) {
+        _sortCoords.clear();
+        _sortCoords.reserve(_condition->size());
+      }
+      for (size_t s = 0; s < _condition->size(); s++) {
+        _sortCoords.push_back(s);
+        std::vector<size_t> next;
+        next.reserve(en->_index->fields.size());
+        prefix.emplace_back(next);
+        // prefix[s][t] = position in _condition[s] corresponding to the <t>th index
+        // field
+        for (size_t t = 0; t < en->_index->fields.size(); t++) {
+          for (size_t u = 0; u < _condition->at(s).size(); u++) {
+            auto ri = _condition->at(s)[u];
+            if (en->_index->fields[t].compare(ri._attr) == 0) {
+              prefix.at(s).insert(prefix.at(s).begin()+t, u);
+              break;
+            }
+          }
+        }
+      }
+
+      SortFunc sortFunc(prefix, _condition, en->_reverse);
+
+      // then sort by the values of the bounds
+      std::sort(_sortCoords.begin(), _sortCoords.end(), sortFunc);
       _posInRanges = 0;
-      getSkiplistIterator(_condition->at(_posInRanges));
+      getSkiplistIterator(_condition->at(_sortCoords[_posInRanges]));
       return (_skiplistIterator != nullptr);
     } else {
       return false;
@@ -1212,6 +1246,50 @@ bool IndexRangeBlock::initRanges () {
           
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected index type"); 
   LEAVE_BLOCK;
+}
+
+// is _condition[i] < _condition[j]? these are IndexAndConditions
+
+bool IndexRangeBlock::SortFunc::operator() (size_t const& i, size_t const& j) {
+  size_t l, r;
+
+  if (! _reverse) {
+    l = i;
+    r = j;
+  } else {
+    l = j; 
+    r = i;
+  }
+
+  size_t shortest = std::min(_prefix.at(i).size(), _prefix.at(j).size());
+
+  for (size_t k = 0; k < shortest; k++) {
+    RangeInfo lhs = _condition->at(l).at(_prefix.at(l).at(k));
+    RangeInfo rhs = _condition->at(r).at(_prefix.at(r).at(k));
+    int cmp;
+      
+    if (lhs.is1ValueRangeInfo() && rhs.is1ValueRangeInfo()) {
+      cmp = TRI_CompareValuesJson(lhs._lowConst.bound().json(), 
+                                  rhs._lowConst.bound().json());
+      if (cmp != 0) {
+        return (cmp == -1);
+      }
+    } else {
+      // assuming lhs and rhs are disjoint!!
+      TRI_ASSERT_EXPENSIVE(areDisjointRangeInfos(lhs, rhs));
+      if (lhs._highConst.isDefined() && rhs._lowConst.isDefined()) {
+        cmp = (TRI_CompareValuesJson(lhs._highConst.bound().json(), 
+                                     rhs._lowConst.bound().json()));
+        return (cmp == 0 || cmp == -1);
+      } else { // lhs._lowConst.isDefined() && rhs._highConst.isDefined()
+        return false;
+      }
+    }
+  }
+  TRI_ASSERT(false); 
+  // shouldn't get here since the IndexAndConditions in _condition should be 
+  // disjoint!
+  return false;
 }
 
 // 
@@ -1898,7 +1976,7 @@ void IndexRangeBlock::readSkiplistIndex (size_t atMost) {
         TRI_FreeSkiplistIterator(_skiplistIterator);
         _skiplistIterator = nullptr;
         if (++_posInRanges < _condition->size()) {
-          getSkiplistIterator(_condition->at(_posInRanges));
+          getSkiplistIterator(_condition->at(_sortCoords[_posInRanges]));
         }
       } else {
         _documents.emplace_back(*(indexElement->_document));

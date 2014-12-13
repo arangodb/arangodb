@@ -944,10 +944,12 @@ namespace triagens {
     void differenceRangeInfos (RangeInfo&, RangeInfo&);
     void differenceIndexOrRangeInfo (IndexOrCondition const*, RangeInfo&);
 
-    bool isContainedIndexAndConditions (IndexAndCondition& and1, IndexAndCondition& and2);
+    bool isContainedIndexAndConditions (IndexAndCondition&, IndexAndCondition&);
     void differenceIndexAnd (IndexAndCondition&, IndexAndCondition&);
     void removeOverlapsIndexOr (IndexOrCondition&);
     bool areDisjointIndexAndConditions (IndexAndCondition&, IndexAndCondition&);
+    bool areDisjointRangeInfos (RangeInfo const&, RangeInfo const&);
+    int compareRangeInfos (RangeInfo const&, RangeInfo const&);
   }
 }
 
