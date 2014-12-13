@@ -32,8 +32,7 @@
 var FoxxController = require("org/arangodb/foxx").Controller,
   controller = new FoxxController(applicationContext),
   internal = require("internal"),
-  templateEngine = new (require("lib/foxxTemplateEngine").Engine)(applicationContext.foxxFilename("templates")),
-  fs = require("fs"),
+  TemplateEngine = require("lib/foxxTemplateEngine").Engine,
   isDevMode = function() {
     return internal.developmentMode;
   };
@@ -44,16 +43,24 @@ controller.get("/devMode", function(req, res) {
 
 controller.post("/generate", function(req, res) {
   var path,
-      name = "hansilein";
+    templateEngine;
+
   if (isDevMode()) {
     path = module.devAppPath();
   } else {
     path = module.appPath();
   }
-  var folder = fs.join(path, name);
-  fs.makeDirectory(folder);
-  var manifest = fs.join(folder, "manifest.json");
-  fs.write(manifest, templateEngine.buildManifest({
-    author: "Peterle"
-  }));
+
+  templateEngine = new TemplateEngine({
+    applicationContext: applicationContext,
+    path: path,
+    name: 'fancyApp',
+    collectionNames: ['people'],
+    authenticated: false,
+    author: 'Bob the Builder',
+    description: 'This app is pretty fancy',
+    license: 'Do Whatever You Want'
+  });
+
+  templateEngine.write();
 });
