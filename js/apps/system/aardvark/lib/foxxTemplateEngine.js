@@ -78,15 +78,27 @@
     },
 
     buildManifest: function() {
-      var manifest = this.template("manifest.json.tmpl");
-
-      return manifest({
+      var manifest = {
         name: this.name,
         description: this.description,
         author: this.author,
+        version: '0.0.1',
         license: this.license,
-        controllers: this.controllers
+        isSystem: false,
+
+        contributors: [],
+
+        controllers: {},
+
+        setup: "",
+        teardown: ""
+      };
+
+      _.each(this.controllers, function (controller) {
+        manifest.controllers[controller.url] = controller.path;
       });
+
+      return JSON.stringify(manifest, 0, 2);
     },
 
     buildController: function(controller) {
