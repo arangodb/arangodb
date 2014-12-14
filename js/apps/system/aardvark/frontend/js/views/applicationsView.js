@@ -627,7 +627,18 @@
     },
 
     generateNewFoxxApp: function() {
-      alert("GENERATOOOO!");
+      var info = {
+        name: $("#new-app-name").val(),
+        collectionNames: _.pluck($('#new-app-collections').select2("data"), "text"),
+        authenticated: $("#new-app-name").val(),
+        author: $("#new-app-author").val(),
+        license: $("#new-app-license").val(),
+        description: $("#new-app-description").val()
+      };
+      console.log(info);
+      $.post("templates/generate", info, function(a) {
+        alert("GENERATOOOO!", a);
+      });
     },
 
     addAppAction: function() {

@@ -30,6 +30,7 @@
 "use strict";
 
 var FoxxController = require("org/arangodb/foxx").Controller,
+  Configuration = require("models/configuration").Model,
   controller = new FoxxController(applicationContext),
   internal = require("internal"),
   TemplateEngine = require("lib/foxxTemplateEngine").Engine,
@@ -51,16 +52,13 @@ controller.post("/generate", function(req, res) {
     path = module.appPath();
   }
 
-  templateEngine = new TemplateEngine({
-    applicationContext: applicationContext,
-    path: path,
-    name: 'fancyApp',
-    collectionNames: ['people'],
-    authenticated: false,
-    author: 'Bob the Builder',
-    description: 'This app is pretty fancy',
-    license: 'Do Whatever You Want'
-  });
+  var conf = req.params("configuration");
+  conf.set("applicationContext", applicationContext);
+  conf.set("path", path);
+  templateEngine = new TemplateEngine(Configuration.forDB());
 
   templateEngine.write();
+}).bodyParam("configuration", {
+  description: "The configuration for the template.",
+  type: Configuration
 });
