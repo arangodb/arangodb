@@ -6,7 +6,7 @@
     <%= model %> = require('<%= modelPath %>').Model,
     _ = require('underscore'),
     controller,
-    todos;
+    <%= repositoryInstance %>;
 
   controller = new Foxx.Controller(applicationContext);
 
