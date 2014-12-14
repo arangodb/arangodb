@@ -35,6 +35,10 @@
       _.each(this.models, function (model) {
         fs.write(fs.join(this.folder, model.path), this.buildModel());
       }, this);
+
+      _.each(this.controllers, function (controller) {
+        fs.write(fs.join(this.folder, controller.path), this.buildController(controller));
+      }, this);
     },
 
     template: function(name) {
@@ -48,18 +52,27 @@
       this.models = [];
 
       _.each(collectionNames, function (collectionName) {
-        var modelName = i.singularize(collectionName);
+        var modelName = i.singularize(collectionName),
+          repositoryPath = 'repositories/' + collectionName + '.js',
+          modelPath = 'models/' + modelName + '.js';
 
         this.collectionNames.push(collectionName);
         this.controllers.push({
           url: '/' + collectionName,
-          path: 'controllers/' + collectionName + '.js'
+          path: 'controllers/' + collectionName + '.js',
+          repositoryInstance: collectionName,
+          repository: i.titleize(collectionName),
+          repositoryPath: repositoryPath,
+          model: i.titleize(modelName),
+          modelPath: modelPath,
+          basePath: collectionName,
+          collectionName: collectionName
         });
         this.repositories.push({
-          path: 'repositories/' + collectionName + '.js'
+          path: repositoryPath
         });
         this.models.push({
-          path: 'models/' + modelName + '.js'
+          path: modelPath
         });
       }, this);
     },
@@ -75,6 +88,13 @@
         controllers: this.controllers
       });
     },
+
+    buildController: function(controller) {
+      var manifest = this.template("controller.js.tmpl");
+
+      return manifest(controller);
+    },
+
 
     buildRepository: function() {
       var manifest = this.template("repository.js.tmpl");
