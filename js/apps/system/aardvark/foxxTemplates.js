@@ -55,7 +55,7 @@ controller.post("/generate", function(req, res) {
   var conf = req.params("configuration");
   conf.set("applicationContext", applicationContext);
   conf.set("path", path);
-  templateEngine = new TemplateEngine(Configuration.forDB());
+  templateEngine = new TemplateEngine(conf.forDB());
 
   templateEngine.write();
 }).bodyParam("configuration", {

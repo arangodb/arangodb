@@ -53,15 +53,30 @@
 
       _.each(collectionNames, function (collectionName) {
         var modelName = i.singularize(collectionName),
-          repositoryPath = 'repositories/' + collectionName + '.js',
-          modelPath = 'models/' + modelName + '.js';
+          collectionStart,
+          repositoryBase = collectionName.substr(1),
+          repositoryName,
+          repositoryPath,
+          repositoryInstance,
+          modelPath;
+        collectionStart = collectionName.charAt(0);
+        if (collectionStart.match("[a-zA-Z]") === null) {
+          throw "Collection Name has to start with a letter";
+        }
+        if (modelName === collectionName) {
+          repositoryBase += "_repo";
+        }
+        repositoryName = collectionStart.toUpperCase() + repositoryBase;
+        repositoryInstance = collectionStart.toLowerCase() + repositoryBase;
+        repositoryPath = 'repositories/' + collectionName;
+        modelPath = 'models/' + modelName;
 
         this.collectionNames.push(collectionName);
         this.controllers.push({
           url: '/' + collectionName,
           path: 'controllers/' + collectionName + '.js',
-          repositoryInstance: collectionName,
-          repository: i.titleize(collectionName),
+          repositoryInstance: repositoryName,
+          repository: repositoryInstance,
           repositoryPath: repositoryPath,
           model: i.titleize(modelName),
           modelPath: modelPath,
@@ -69,10 +84,10 @@
           collectionName: collectionName
         });
         this.repositories.push({
-          path: repositoryPath
+          path: repositoryPath + '.js'
         });
         this.models.push({
-          path: modelPath
+          path: modelPath + '.js'
         });
       }, this);
     },
@@ -90,8 +105,8 @@
 
         controllers: {},
 
-        setup: "",
-        teardown: ""
+        // setup: "",
+        // teardown: ""
       };
 
       _.each(this.controllers, function (controller) {
