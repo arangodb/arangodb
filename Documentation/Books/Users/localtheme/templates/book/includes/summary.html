@@ -34,7 +34,6 @@
 
 <div class="book-summary">
     <div class="book-search">
-        <a id="clear-search" href="#">&times;</a>
         <input type="text" placeholder="Type to search" class="form-control" />
     </div>
     <ul class="summary">
@@ -84,11 +83,5 @@ $(function(){
       $(this).get(0).scrollIntoView();
     }
   });
-});
-</script>
-<script type="text/javascript">
-$('#clear-search').on('click', function(event){
-    event.preventDefault();
-    $('.book-search input').val("").trigger("keyup");
 });
 </script>
