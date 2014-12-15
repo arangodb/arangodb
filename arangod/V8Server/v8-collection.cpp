@@ -2854,6 +2854,7 @@ static void InsertVocbaseColCoordinator (TRI_vocbase_col_t* collection,
   }
 
   v8::Handle<v8::Value> ret = TRI_ObjectJson(isolate, json);
+
   if (json != nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   }
@@ -2865,18 +2866,19 @@ static void InsertVocbaseColCoordinator (TRI_vocbase_col_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 static string GetId (const v8::FunctionCallbackInfo<v8::Value>& args, int which) {
-  v8::Isolate* isolate = args.GetIsolate();
+  v8::Isolate* isolate = args.GetIsolate(); // TODO: check if can be removed
 
-  if ((args.Length() >= which)) { //// todo && ! args[which].IsArray()) {
+  if (args[which]->IsObject() && ! args[which]->IsArray()) {
     TRI_GET_GLOBALS();
     TRI_GET_GLOBAL_STRING(_IdKey);
 
     v8::Local<v8::Object> obj = args[which]->ToObject();
-
+ 
     if (obj->Has(_IdKey)) {
       return TRI_ObjectToString(obj->Get(_IdKey));
     }
   }
+
   return TRI_ObjectToString(args[which]);
 }
 
