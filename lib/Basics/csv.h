@@ -85,6 +85,7 @@ typedef struct TRI_csv_parser_s {
   size_t _nResize;
   size_t _nMemmove;
   size_t _nMemcpy;
+  void *_data;
 }
 TRI_csv_parser_t;
 
@@ -100,7 +101,8 @@ void TRI_InitCsvParser (TRI_csv_parser_t*,
                         TRI_memory_zone_t*,
                         void (*) (TRI_csv_parser_t*, size_t),
                         void (*) (TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool),
-                        void (*) (TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool));
+                        void (*) (TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool),
+                        void *vData);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a CSV parser

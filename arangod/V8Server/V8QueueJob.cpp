@@ -114,11 +114,12 @@ Job::status_t V8QueueJob::work () {
 
   // now execute the function within this context
   {
-    v8::HandleScope scope;
+    auto isolate = context->isolate;
+    v8::HandleScope scope(isolate);
 
     // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
-    v8::Handle<v8::Object> current = v8::Context::GetCurrent()->Global();
-    v8::Local<v8::Function> main = v8::Local<v8::Function>::Cast(current->Get(v8::String::New("MAIN")));
+    auto current = isolate->GetCurrentContext()->Global();
+    auto main = v8::Local<v8::Function>::Cast(current->Get(TRI_V8_ASCII_STRING("MAIN")));
 
     if (main.IsEmpty()) {
       _v8Dealer->exitContext(context);
@@ -128,10 +129,10 @@ Job::status_t V8QueueJob::work () {
     v8::Handle<v8::Value> fArgs;
 
     if (_parameters != nullptr) {
-      fArgs = TRI_ObjectJson(_parameters);
+      fArgs = TRI_ObjectJson(isolate, _parameters);
     }
     else {
-      fArgs = v8::Undefined();
+      fArgs = v8::Undefined(isolate);
     }
 
     // call the function
@@ -140,10 +141,10 @@ Job::status_t V8QueueJob::work () {
 
     if (tryCatch.HasCaught()) {
       if (tryCatch.CanContinue()) {
-        TRI_LogV8Exception(&tryCatch);
+        TRI_LogV8Exception(isolate, &tryCatch);
       }
       else {
-        TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+        TRI_GET_GLOBALS();
 
         v8g->_canceled = true;
         LOG_WARNING("caught non-catchable exception (aka termination) in V8 queue job");

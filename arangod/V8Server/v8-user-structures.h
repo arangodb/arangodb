@@ -56,7 +56,7 @@ void TRI_FreeUserStructuresVocBase (struct TRI_vocbase_s*);
 /// @brief creates the user structures functions
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8UserStructures (v8::Handle<v8::Context>);
+void TRI_InitV8UserStructures (v8::Isolate* isolate, v8::Handle<v8::Context>);
 
 #endif
 

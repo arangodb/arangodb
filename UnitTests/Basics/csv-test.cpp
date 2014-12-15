@@ -36,15 +36,15 @@
 /// @brief create a parser instance
 ////////////////////////////////////////////////////////////////////////////////
 
-#define INIT_PARSER                                   \
-  TRI_csv_parser_t parser;                            \
-                                                      \
-  TRI_InitCsvParser(&parser,                          \
-                    TRI_UNKNOWN_MEM_ZONE,             \
-                    &CCsvSetup::ProcessCsvBegin,      \
-                    &CCsvSetup::ProcessCsvAdd,        \
-                    &CCsvSetup::ProcessCsvEnd);       \
-                                                      \
+#define INIT_PARSER                                                   \
+  TRI_csv_parser_t parser;                                            \
+                                                                      \
+  TRI_InitCsvParser(&parser,                                          \
+                    TRI_UNKNOWN_MEM_ZONE,                             \
+                    &CCsvSetup::ProcessCsvBegin,                      \
+                    &CCsvSetup::ProcessCsvAdd,                        \
+                    &CCsvSetup::ProcessCsvEnd,                        \
+                    nullptr);                                         \
   parser._dataAdd = this;                             
 
 ////////////////////////////////////////////////////////////////////////////////

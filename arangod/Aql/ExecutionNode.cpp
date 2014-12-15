@@ -35,7 +35,6 @@
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::aql;
-using Json = triagens::basics::Json;
 
 const static bool Optional = true;
 
@@ -2031,7 +2030,7 @@ void AggregateNode::toJsonHelper (triagens::basics::Json& nodes,
     json("keepVariables", values);
   }
 
-  json("count", Json(_countOnly));
+  json("count", triagens::basics::Json(_countOnly));
 
   // And add it:
   nodes(json);

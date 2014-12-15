@@ -49,7 +49,8 @@ using namespace triagens::basics;
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-static int FillShapeValueJson (TRI_shaper_t* shaper,
+static int FillShapeValueJson (v8::Isolate* isolate,
+                               TRI_shaper_t* shaper,
                                TRI_shape_value_t* dst,
                                v8::Handle<v8::Value> const json,
                                size_t level,
@@ -57,13 +58,15 @@ static int FillShapeValueJson (TRI_shaper_t* shaper,
                                vector<v8::Handle<v8::Object>>& seenObjects,
                                bool create);
 
-static v8::Handle<v8::Value> JsonShapeData (v8::Handle<v8::Value>&,
+static v8::Handle<v8::Value> JsonShapeData (v8::Isolate* isolate,
+                                            v8::Handle<v8::Value>&,
                                             TRI_shaper_t*,
                                             TRI_shape_t const*,
                                             char const*,
                                             size_t);
 
-static v8::Handle<v8::Value> JsonShapeData (TRI_shaper_t*,
+static v8::Handle<v8::Value> JsonShapeData (v8::Isolate* isolate,
+                                            TRI_shaper_t*,
                                             TRI_shape_t const*,
                                             char const*,
                                             size_t);
@@ -266,7 +269,8 @@ static int FillShapeValueString (TRI_shaper_t* shaper,
 /// @brief converts a json list into TRI_shape_value_t
 ////////////////////////////////////////////////////////////////////////////////
 
-static int FillShapeValueList (TRI_shaper_t* shaper,
+static int FillShapeValueList (v8::Isolate* isolate,
+                               TRI_shaper_t* shaper,
                                TRI_shape_value_t* dst,
                                v8::Handle<v8::Array> const json,
                                size_t level,
@@ -324,7 +328,7 @@ static int FillShapeValueList (TRI_shaper_t* shaper,
 
   for (uint32_t i = 0;  i < n;  ++i, ++p) {
     v8::Handle<v8::Value> el = json->Get(i);
-    int res = FillShapeValueJson(shaper, p, el, level + 1, seenHashes, seenObjects, create);
+    int res = FillShapeValueJson(isolate, shaper, p, el, level + 1, seenHashes, seenObjects, create);
 
     if (res != TRI_ERROR_NO_ERROR) {
       for (e = p, p = values;  p < e;  ++p) {
@@ -579,13 +583,15 @@ static int FillShapeValueList (TRI_shaper_t* shaper,
 /// @brief converts a json array into TRI_shape_value_t
 ////////////////////////////////////////////////////////////////////////////////
 
-static int FillShapeValueArray (TRI_shaper_t* shaper,
+static int FillShapeValueArray (v8::Isolate* isolate,
+                                TRI_shaper_t* shaper,
                                 TRI_shape_value_t* dst,
                                 v8::Handle<v8::Object> const json,
                                 size_t level,
                                 set<int>& seenHashes,
                                 vector<v8::Handle<v8::Object>>& seenObjects,
                                 bool create) {
+  v8::HandleScope scope(isolate);
   TRI_shape_value_t* values;
   TRI_shape_value_t* p;
   TRI_shape_value_t* e;
@@ -663,7 +669,7 @@ static int FillShapeValueArray (TRI_shaper_t* shaper,
     }
     else {
       v8::Handle<v8::Value> val = json->Get(key);
-      res = FillShapeValueJson(shaper, p, val, level + 1, seenHashes, seenObjects, create);
+      res = FillShapeValueJson(isolate, shaper, p, val, level + 1, seenHashes, seenObjects, create);
     }
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -834,13 +840,15 @@ static int FillShapeValueArray (TRI_shaper_t* shaper,
 /// @brief converts a json object into TRI_shape_value_t
 ////////////////////////////////////////////////////////////////////////////////
 
-static int FillShapeValueJson (TRI_shaper_t* shaper,
+static int FillShapeValueJson (v8::Isolate* isolate,
+                               TRI_shaper_t* shaper,
                                TRI_shape_value_t* dst,
                                v8::Handle<v8::Value> const json,
                                size_t level,
                                set<int>& seenHashes,
                                vector<v8::Handle<v8::Object>>& seenObjects,
                                bool create) {
+  v8::HandleScope scope(isolate);
   if (json->IsRegExp() || json->IsFunction() || json->IsExternal()) {
     LOG_TRACE("shaper failed because regexp/function/external/date object cannot be converted");
     return TRI_ERROR_BAD_PARAMETER;
@@ -848,7 +856,7 @@ static int FillShapeValueJson (TRI_shaper_t* shaper,
   
   if (json->IsObject() && ! json->IsArray()) {
     v8::Handle<v8::Object> o = json->ToObject();
-    v8::Handle<v8::String> toJsonString = v8::String::New("toJSON");
+    v8::Handle<v8::String> toJsonString = TRI_V8_ASCII_STRING("toJSON");
     if (o->Has(toJsonString)) {
       v8::Handle<v8::Value> func = o->Get(toJsonString);
       if (func->IsFunction()) {
@@ -910,15 +918,15 @@ static int FillShapeValueJson (TRI_shaper_t* shaper,
   }
 
   else if (json->IsStringObject()) {
-    return FillShapeValueString(shaper, dst, v8::Handle<v8::StringObject>::Cast(json)->StringValue());
+    return FillShapeValueString(shaper, dst, v8::Handle<v8::StringObject>::Cast(json)->ValueOf());
   }
 
   else if (json->IsArray()) {
-    return FillShapeValueList(shaper, dst, v8::Handle<v8::Array>::Cast(json), level, seenHashes, seenObjects, create);
+    return FillShapeValueList(isolate, shaper, dst, v8::Handle<v8::Array>::Cast(json), level, seenHashes, seenObjects, create);
   }
 
   else if (json->IsObject()) {
-    int res = FillShapeValueArray(shaper, dst, json->ToObject(), level, seenHashes, seenObjects, create);
+    int res = FillShapeValueArray(isolate, shaper, dst, json->ToObject(), level, seenHashes, seenObjects, create);
     seenObjects.pop_back();
     // cannot remove hash value from seenHashes because multiple objects might have the same
     // hash values (collisions)
@@ -933,18 +941,20 @@ static int FillShapeValueJson (TRI_shaper_t* shaper,
 /// @brief converts a data null blob into a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JsonShapeDataNull (TRI_shaper_t* shaper,
+static v8::Handle<v8::Value> JsonShapeDataNull (v8::Isolate* isolate,
+                                                TRI_shaper_t* shaper,
                                                 TRI_shape_t const* shape,
                                                 char const* data,
                                                 size_t size) {
-  return v8::Null();
+  return v8::Null(isolate);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a data boolean blob into a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JsonShapeDataBoolean (TRI_shaper_t* shaper,
+static v8::Handle<v8::Value> JsonShapeDataBoolean (v8::Isolate* isolate,
+                                                   TRI_shaper_t* shaper,
                                                    TRI_shape_t const* shape,
                                                    char const* data,
                                                    size_t size) {
@@ -952,14 +962,15 @@ static v8::Handle<v8::Value> JsonShapeDataBoolean (TRI_shaper_t* shaper,
 
   v = (* (TRI_shape_boolean_t const*) data) != 0;
 
-  return v8::Boolean::New(v);
+  return v8::Boolean::New(isolate, v);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a data number blob into a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JsonShapeDataNumber (TRI_shaper_t* shaper,
+static v8::Handle<v8::Value> JsonShapeDataNumber (v8::Isolate* isolate,
+                                                  TRI_shaper_t* shaper,
                                                   TRI_shape_t const* shape,
                                                   char const* data,
                                                   size_t size) {
@@ -967,14 +978,15 @@ static v8::Handle<v8::Value> JsonShapeDataNumber (TRI_shaper_t* shaper,
 
   v = * (TRI_shape_number_t const*) data;
 
-  return v8::Number::New(v);
+  return v8::Number::New(isolate, v);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a data short string blob into a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JsonShapeDataShortString (TRI_shaper_t* shaper,
+static v8::Handle<v8::Value> JsonShapeDataShortString (v8::Isolate* isolate,
+                                                       TRI_shaper_t* shaper,
                                                        TRI_shape_t const* shape,
                                                        char const* data,
                                                        size_t size) {
@@ -983,14 +995,15 @@ static v8::Handle<v8::Value> JsonShapeDataShortString (TRI_shaper_t* shaper,
   l = * (TRI_shape_length_short_string_t const*) data;
   data += sizeof(TRI_shape_length_short_string_t);
 
-  return v8::String::New(data, l - 1);
+  return TRI_V8_PAIR_STRING(data, l - 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a data long string blob into a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JsonShapeDataLongString (TRI_shaper_t* shaper,
+static v8::Handle<v8::Value> JsonShapeDataLongString (v8::Isolate* isolate,
+                                                      TRI_shaper_t* shaper,
                                                       TRI_shape_t const* shape,
                                                       char const* data,
                                                       size_t size) {
@@ -999,18 +1012,20 @@ static v8::Handle<v8::Value> JsonShapeDataLongString (TRI_shaper_t* shaper,
   l = * (TRI_shape_length_long_string_t const*) data;
   data += sizeof(TRI_shape_length_long_string_t);
 
-  return v8::String::New(data, l - 1);
+  return TRI_V8_PAIR_STRING(data, l - 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief merges a data array blob into an existing json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JsonShapeDataArray (v8::Handle<v8::Value>& value,
+static v8::Handle<v8::Value> JsonShapeDataArray (v8::Isolate* isolate,
+                                                 v8::Handle<v8::Value>& value,
                                                  TRI_shaper_t* shaper,
                                                  TRI_shape_t const* shape,
                                                  char const* data,
                                                  size_t size) {
+  v8::EscapableHandleScope scope(isolate);
   TRI_array_shape_t const* s;
   TRI_shape_aid_t const* aids;
   TRI_shape_sid_t const* sids;
@@ -1070,8 +1085,8 @@ static v8::Handle<v8::Value> JsonShapeDataArray (v8::Handle<v8::Value>& value,
     }
 
     const TRI_shape_size_t offset = *offsetsF;
-    v8::Handle<v8::Value> element = JsonShapeData(shaper, subshape, data + offset, offsetsF[1] - offset);
-    array->Set(v8::String::New(name), element);
+    v8::Handle<v8::Value> element = JsonShapeData(isolate, shaper, subshape, data + offset, offsetsF[1] - offset);
+    array->Set(TRI_V8_STRING(name), element);
   }
 
   offsetsV = (TRI_shape_size_t const*) data;
@@ -1102,21 +1117,23 @@ static v8::Handle<v8::Value> JsonShapeDataArray (v8::Handle<v8::Value>& value,
     }
 
     const TRI_shape_size_t offset = *offsetsV;
-    v8::Handle<v8::Value> element = JsonShapeData(shaper, subshape, data + offset, offsetsV[1] - offset);
-    array->Set(v8::String::New(name), element);
+    v8::Handle<v8::Value> element = JsonShapeData(isolate, shaper, subshape, data + offset, offsetsV[1] - offset);
+    array->Set(TRI_V8_STRING(name), element);
   }
 
-  return array;
+  return scope.Escape<v8::Value>(array);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a data array blob into a new json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JsonShapeDataArray (TRI_shaper_t* shaper,
+static v8::Handle<v8::Value> JsonShapeDataArray (v8::Isolate* isolate,
+                                                 TRI_shaper_t* shaper,
                                                  TRI_shape_t const* shape,
                                                  char const* data,
                                                  size_t size) {
+  v8::EscapableHandleScope scope(isolate);
   TRI_array_shape_t const* s;
   TRI_shape_aid_t const* aids;
   TRI_shape_sid_t const* sids;
@@ -1137,7 +1154,7 @@ static v8::Handle<v8::Value> JsonShapeDataArray (TRI_shaper_t* shaper,
   n = f + v;
 
   qtr = (char const*) shape;
-  array = v8::Object::New();
+  array = v8::Object::New(isolate);
 
   qtr += sizeof(TRI_array_shape_t);
 
@@ -1177,8 +1194,8 @@ static v8::Handle<v8::Value> JsonShapeDataArray (TRI_shaper_t* shaper,
     }
 
     const TRI_shape_size_t offset = *offsetsF;
-    v8::Handle<v8::Value> element = JsonShapeData(shaper, subshape, data + offset, offsetsF[1] - offset);
-    array->Set(v8::String::New(name), element);
+    v8::Handle<v8::Value> element = JsonShapeData(isolate, shaper, subshape, data + offset, offsetsF[1] - offset);
+    array->Set(TRI_V8_STRING(name), element);
   }
 
   offsetsV = (TRI_shape_size_t const*) data;
@@ -1209,21 +1226,23 @@ static v8::Handle<v8::Value> JsonShapeDataArray (TRI_shaper_t* shaper,
     }
 
     const TRI_shape_size_t offset = *offsetsV;
-    v8::Handle<v8::Value> element = JsonShapeData(shaper, subshape, data + offset, offsetsV[1] - offset);
-    array->Set(v8::String::New(name), element);
+    v8::Handle<v8::Value> element = JsonShapeData(isolate, shaper, subshape, data + offset, offsetsV[1] - offset);
+    array->Set(TRI_V8_STRING(name), element);
   }
 
-  return array;
+  return scope.Escape<v8::Value>(array);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a data list blob into a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JsonShapeDataList (TRI_shaper_t* shaper,
+static v8::Handle<v8::Value> JsonShapeDataList (v8::Isolate* isolate,
+                                                TRI_shaper_t* shaper,
                                                 TRI_shape_t const* shape,
                                                 char const* data,
                                                 size_t size) {
+  v8::EscapableHandleScope scope(isolate);
   TRI_shape_length_list_t i;
   TRI_shape_length_list_t l;
   TRI_shape_sid_t const* sids;
@@ -1235,12 +1254,12 @@ static v8::Handle<v8::Value> JsonShapeDataList (TRI_shaper_t* shaper,
   l = * (TRI_shape_length_list_t const*) ptr;
 
   if (l == 0) {
-    return v8::Array::New(l);
+    return scope.Escape<v8::Value>(v8::Array::New(isolate, 0));
   }
 
   shapeCache._sid   = 0;
   shapeCache._shape = 0;
-  v8::Handle<v8::Array> list = v8::Array::New(l);
+  v8::Handle<v8::Array> list = v8::Array::New(isolate, l);
 
   ptr += sizeof(TRI_shape_length_list_t);
   sids = (TRI_shape_sid_t const*) ptr;
@@ -1266,21 +1285,23 @@ static v8::Handle<v8::Value> JsonShapeDataList (TRI_shaper_t* shaper,
     }
 
     const TRI_shape_size_t offset = *offsets;
-    v8::Handle<v8::Value> element = JsonShapeData(shaper, subshape, data + offset, offsets[1] - offset);
-    list->Set(i, element);
+    v8::Handle<v8::Value> element = JsonShapeData(isolate, shaper, subshape, data + offset, offsets[1] - offset);
+    list->Set((uint32_t) i, element);
   }
 
-  return list;
+  return scope.Escape<v8::Value>(list);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a data homogeneous list blob into a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JsonShapeDataHomogeneousList (TRI_shaper_t* shaper,
+static v8::Handle<v8::Value> JsonShapeDataHomogeneousList (v8::Isolate* isolate,
+                                                           TRI_shaper_t* shaper,
                                                            TRI_shape_t const* shape,
                                                            char const* data,
                                                            size_t size) {
+  v8::EscapableHandleScope scope(isolate);
   TRI_homogeneous_list_shape_t const* s;
   TRI_shape_length_list_t i;
   TRI_shape_length_list_t l;
@@ -1302,29 +1323,31 @@ static v8::Handle<v8::Value> JsonShapeDataHomogeneousList (TRI_shaper_t* shaper,
 
   if (subshape == nullptr) {
     LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
-    return v8::Array::New();
+    return scope.Escape<v8::Value>(v8::Array::New(isolate));
   }
 
-  v8::Handle<v8::Array> list = v8::Array::New(l);
+  v8::Handle<v8::Array> list = v8::Array::New(isolate, l);
 
   for (i = 0;  i < l;  ++i, ++offsets) {
     TRI_shape_size_t offset = *offsets;
-    v8::Handle<v8::Value> element = JsonShapeData(shaper, subshape, data + offset, offsets[1] - offset);
+    v8::Handle<v8::Value> element = JsonShapeData(isolate, shaper, subshape, data + offset, offsets[1] - offset);
 
-    list->Set(i, element);
+    list->Set((uint32_t) i, element);
   }
 
-  return list;
+  return scope.Escape<v8::Value>(list);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a data homogeneous sized list blob into a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JsonShapeDataHomogeneousSizedList (TRI_shaper_t* shaper,
+static v8::Handle<v8::Value> JsonShapeDataHomogeneousSizedList (v8::Isolate* isolate,
+                                                                TRI_shaper_t* shaper,
                                                                 TRI_shape_t const* shape,
                                                                 char const* data,
                                                                 size_t size) {
+  v8::EscapableHandleScope scope(isolate);
   TRI_homogeneous_sized_list_shape_t const* s;
   TRI_shape_length_list_t i;
   TRI_shape_length_list_t l;
@@ -1339,7 +1362,7 @@ static v8::Handle<v8::Value> JsonShapeDataHomogeneousSizedList (TRI_shaper_t* sh
   l = * (TRI_shape_length_list_t const*) ptr;
 
   if (l == 0) {
-    return v8::Array::New();
+    return scope.Escape<v8::Value>(v8::Array::New(isolate));
   }
 
   sid    = s->_sidEntry;
@@ -1349,120 +1372,131 @@ static v8::Handle<v8::Value> JsonShapeDataHomogeneousSizedList (TRI_shaper_t* sh
 
   if (subshape == nullptr) {
     LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
-    return v8::Array::New();
+    return scope.Escape<v8::Value>(v8::Array::New(isolate));
   }
 
   TRI_shape_size_t offset = sizeof(TRI_shape_length_list_t);
  
-  v8::Handle<v8::Array> list = v8::Array::New(l);
+  v8::Handle<v8::Array> list = v8::Array::New(isolate, l);
 
   for (i = 0;  i < l;  ++i, offset += length) {
-    v8::Handle<v8::Value> element = JsonShapeData(shaper, subshape, data + offset, length);
-    list->Set(i, element);
+    v8::Handle<v8::Value> element = JsonShapeData(isolate, shaper, subshape, data + offset, length);
+    list->Set((uint32_t) i, element);
   }
 
-  return list;
+  return scope.Escape<v8::Value>(list);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief merges a data blob into an existing json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JsonShapeData (v8::Handle<v8::Value>& value,
+static v8::Handle<v8::Value> JsonShapeData (v8::Isolate* isolate,
+                                            v8::Handle<v8::Value>& value,
                                             TRI_shaper_t* shaper,
                                             TRI_shape_t const* shape,
                                             char const* data,
                                             size_t size) {
   if (shape == nullptr) {
-    return v8::Null();
+    v8::EscapableHandleScope scope(isolate);
+    return scope.Escape<v8::Value>(v8::Null(isolate));
   }
 
   TRI_ASSERT(shape->_type == TRI_SHAPE_ARRAY);
-  return JsonShapeDataArray(value, shaper, shape, data, size);
+  return JsonShapeDataArray(isolate, value, shaper, shape, data, size);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a data blob into a new json object
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JsonShapeData (TRI_shaper_t* shaper,
+static v8::Handle<v8::Value> JsonShapeData (v8::Isolate* isolate,
+                                            TRI_shaper_t* shaper,
                                             TRI_shape_t const* shape,
                                             char const* data,
                                             size_t size) {
   if (shape == nullptr) {
-    return v8::Null();
+    v8::EscapableHandleScope scope(isolate);
+    return scope.Escape<v8::Value>(v8::Null(isolate));
   }
 
   switch (shape->_type) {
     case TRI_SHAPE_NULL:
-      return JsonShapeDataNull(shaper, shape, data, size);
+      return JsonShapeDataNull(isolate, shaper, shape, data, size);
 
     case TRI_SHAPE_BOOLEAN:
-      return JsonShapeDataBoolean(shaper, shape, data, size);
+      return JsonShapeDataBoolean(isolate, shaper, shape, data, size);
 
     case TRI_SHAPE_NUMBER:
-      return JsonShapeDataNumber(shaper, shape, data, size);
+      return JsonShapeDataNumber(isolate, shaper, shape, data, size);
 
     case TRI_SHAPE_SHORT_STRING:
-      return JsonShapeDataShortString(shaper, shape, data, size);
+      return JsonShapeDataShortString(isolate, shaper, shape, data, size);
 
     case TRI_SHAPE_LONG_STRING:
-      return JsonShapeDataLongString(shaper, shape, data, size);
+      return JsonShapeDataLongString(isolate, shaper, shape, data, size);
 
     case TRI_SHAPE_ARRAY:
-      return JsonShapeDataArray(shaper, shape, data, size);
+      return JsonShapeDataArray(isolate, shaper, shape, data, size);
 
     case TRI_SHAPE_LIST:
-      return JsonShapeDataList(shaper, shape, data, size);
+      return JsonShapeDataList(isolate, shaper, shape, data, size);
 
     case TRI_SHAPE_HOMOGENEOUS_LIST:
-      return JsonShapeDataHomogeneousList(shaper, shape, data, size);
+      return JsonShapeDataHomogeneousList(isolate, shaper, shape, data, size);
 
     case TRI_SHAPE_HOMOGENEOUS_SIZED_LIST:
-      return JsonShapeDataHomogeneousSizedList(shaper, shape, data, size);
+      return JsonShapeDataHomogeneousSizedList(isolate, shaper, shape, data, size);
   }
-
-  return v8::Null();
+  {
+    v8::EscapableHandleScope scope(isolate);
+    return scope.Escape<v8::Value>(v8::Null(isolate));
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a TRI_json_t NULL into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline v8::Handle<v8::Value> ObjectJsonNull (TRI_json_t const* json) {
-  return v8::Null();
+static inline v8::Handle<v8::Value> ObjectJsonNull (v8::Isolate* isolate, TRI_json_t const* json) {
+  v8::EscapableHandleScope scope(isolate);
+  return scope.Escape<v8::Value>(v8::Null(isolate)); 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a TRI_json_t BOOLEAN into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline v8::Handle<v8::Value> ObjectJsonBoolean (TRI_json_t const* json) {
-  return v8::Boolean::New(json->_value._boolean);
+static inline v8::Handle<v8::Value> ObjectJsonBoolean (v8::Isolate* isolate, TRI_json_t const* json) {
+  v8::EscapableHandleScope scope(isolate);
+  return scope.Escape<v8::Value>(v8::Boolean::New(isolate, json->_value._boolean));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a TRI_json_t NUMBER into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline v8::Handle<v8::Value> ObjectJsonNumber (TRI_json_t const* json) {
-  return v8::Number::New(json->_value._number);
+static inline v8::Handle<v8::Value> ObjectJsonNumber (v8::Isolate* isolate, TRI_json_t const* json) {
+  v8::EscapableHandleScope scope(isolate);
+  return scope.Escape<v8::Value>(v8::Number::New(isolate, json->_value._number));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a TRI_json_t NUMBER into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline v8::Handle<v8::Value> ObjectJsonString (TRI_json_t const* json) {
-  return v8::String::New(json->_value._string.data, json->_value._string.length - 1);
+static inline v8::Handle<v8::Value> ObjectJsonString (v8::Isolate* isolate, TRI_json_t const* json) {
+  v8::EscapableHandleScope scope(isolate);
+  return scope.Escape<v8::Value>(TRI_V8_PAIR_STRING(json->_value._string.data, json->_value._string.length - 1));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a TRI_json_t ARRAY into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ObjectJsonArray (TRI_json_t const* json) {
-  v8::Handle<v8::Object> object = v8::Object::New();
+static v8::Handle<v8::Value> ObjectJsonArray (v8::Isolate* isolate, TRI_json_t const* json) {
+  v8::EscapableHandleScope scope(isolate);
+  v8::Handle<v8::Object> object = v8::Object::New(isolate);
 
   size_t const n = json->_value._objects._length;
 
@@ -1474,57 +1508,58 @@ static v8::Handle<v8::Value> ObjectJsonArray (TRI_json_t const* json) {
     }
 
     TRI_json_t const* j = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i + 1));
-    object->Set(v8::String::New(key->_value._string.data, key->_value._string.length - 1), TRI_ObjectJson(j));
+    object->Set(TRI_V8_PAIR_STRING(key->_value._string.data, key->_value._string.length - 1), TRI_ObjectJson(isolate, j));
   }
 
-  return object;
+  return scope.Escape<v8::Value>(object);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a TRI_json_t LIST into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ObjectJsonList (TRI_json_t const* json) {
+static v8::Handle<v8::Value> ObjectJsonList (v8::Isolate* isolate, TRI_json_t const* json) {
+  v8::EscapableHandleScope scope(isolate);
   uint32_t const n = (uint32_t) json->_value._objects._length;
 
-  v8::Handle<v8::Array> object = v8::Array::New((int) n);
+  v8::Handle<v8::Array> object = v8::Array::New(isolate, (int) n);
 
   for (uint32_t i = 0;  i < n;  ++i) {
     TRI_json_t const* j = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
-    v8::Handle<v8::Value> val = TRI_ObjectJson(j);
+    v8::Handle<v8::Value> val = TRI_ObjectJson(isolate, j);
 
     object->Set(i, val);
   }
 
-  return object;
+  return scope.Escape<v8::Value>(object);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts keys or values from a TRI_json_t* array
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ExtractArray (TRI_json_t const* json,
+static v8::Handle<v8::Value> ExtractArray (v8::Isolate* isolate,
+                                           TRI_json_t const* json,
                                            size_t offset) {
-  v8::HandleScope scope;
-
+  v8::EscapableHandleScope scope(isolate);
   if (json == nullptr || json->_type != TRI_JSON_ARRAY) {
-    return scope.Close(v8::Undefined());
+    return scope.Escape<v8::Value>(v8::Undefined(isolate));
   }
   
   size_t const n = TRI_LengthVector(&json->_value._objects);
   
-  v8::Handle<v8::Array> result = v8::Array::New(static_cast<int>(n / 2));
+  v8::Handle<v8::Array> result = v8::Array::New(isolate, static_cast<int>(n / 2));
   uint32_t count = 0;
 
   for (size_t i = offset; i < n; i += 2) {
     TRI_json_t const* value = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
 
     if (value != nullptr) {
-      result->Set(count++, TRI_ObjectJson(value));
+      result->Set(count++, TRI_ObjectJson(isolate, value));
     }
   }
 
-  return scope.Close(result);
+  return scope.Escape<v8::Value>(result);
 }
 
 // -----------------------------------------------------------------------------
@@ -1535,9 +1570,10 @@ static v8::Handle<v8::Value> ExtractArray (TRI_json_t const* json,
 /// @brief pushes the names of an associative char* array into a V8 array
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Array> TRI_ArrayAssociativePointer (TRI_associative_pointer_t const* array) {
-  v8::HandleScope scope;
-  v8::Handle<v8::Array> result = v8::Array::New();
+v8::Handle<v8::Array> TRI_ArrayAssociativePointer (v8::Isolate* isolate,
+                                                   TRI_associative_pointer_t const* array) {
+  v8::EscapableHandleScope scope(isolate);
+  v8::Handle<v8::Array> result = v8::Array::New(isolate);
 
   uint32_t j = 0;
   uint32_t n = (uint32_t) array->_nrAlloc;
@@ -1549,105 +1585,105 @@ v8::Handle<v8::Array> TRI_ArrayAssociativePointer (TRI_associative_pointer_t con
       continue;
     }
 
-    result->Set(j++, v8::String::New(value));
+    result->Set(j++, v8::String::NewFromUtf8(isolate, value));/// TODO: strlen...
   }
 
-  return scope.Close(result);
+  return scope.Escape<v8::Array>(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the keys of a TRI_json_t* array into a V8 list
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_KeysJson (TRI_json_t const* json) {
-  v8::HandleScope scope;
-
-  return scope.Close(ExtractArray(json, 0));
+v8::Handle<v8::Value> TRI_KeysJson (v8::Isolate* isolate,
+                                    TRI_json_t const* json) {
+  return ExtractArray(isolate, json, 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the values of a TRI_json_t* array into a V8 list
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_ValuesJson (TRI_json_t const* json) {
-  v8::HandleScope scope;
-
-  return scope.Close(ExtractArray(json, 1));
+v8::Handle<v8::Value> TRI_ValuesJson (v8::Isolate* isolate,
+                                      TRI_json_t const* json) {
+  return ExtractArray(isolate, json, 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a TRI_json_t into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_ObjectJson (TRI_json_t const* json) {
-  v8::HandleScope scope;
-
+v8::Handle<v8::Value> TRI_ObjectJson (v8::Isolate* isolate,
+                                      TRI_json_t const* json) {
   if (json == nullptr) {
-    return scope.Close(v8::Undefined());
+    return v8::Undefined(isolate);
   }
 
   switch (json->_type) {
     case TRI_JSON_UNUSED:
-      return scope.Close(v8::Undefined());
+      return v8::Undefined(isolate);
 
     case TRI_JSON_NULL:
-      return scope.Close(ObjectJsonNull(json));
+      return ObjectJsonNull(isolate, json);
 
     case TRI_JSON_BOOLEAN:
-      return scope.Close(ObjectJsonBoolean(json));
+      return ObjectJsonBoolean(isolate, json);
 
     case TRI_JSON_NUMBER:
-      return scope.Close(ObjectJsonNumber(json));
+      return ObjectJsonNumber(isolate, json);
 
     case TRI_JSON_STRING:
     case TRI_JSON_STRING_REFERENCE:
-      return scope.Close(ObjectJsonString(json));
+      return ObjectJsonString(isolate, json);
 
     case TRI_JSON_ARRAY:
-      return scope.Close(ObjectJsonArray(json));
+      return ObjectJsonArray(isolate, json);
 
     case TRI_JSON_LIST:
-      return scope.Close(ObjectJsonList(json));
+      return ObjectJsonList(isolate, json);
   }
 
-  return scope.Close(v8::Undefined());
+  return v8::Undefined(isolate);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a TRI_shaped_json_t into an existing V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_JsonShapeData (v8::Handle<v8::Value> value,
+v8::Handle<v8::Value> TRI_JsonShapeData (v8::Isolate* isolate,
+                                         v8::Handle<v8::Value> value,
                                          TRI_shaper_t* shaper,
                                          TRI_shape_t const* shape,
                                          char const* data,
                                          size_t size) {
-  return JsonShapeData(value, shaper, shape, data, size);
+  return JsonShapeData(isolate, value, shaper, shape, data, size);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a TRI_shaped_json_t into a new V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_JsonShapeData (TRI_shaper_t* shaper,
+v8::Handle<v8::Value> TRI_JsonShapeData (v8::Isolate* isolate,
+                                         TRI_shaper_t* shaper,
                                          TRI_shape_t const* shape,
                                          char const* data,
                                          size_t size) {
-  return JsonShapeData(shaper, shape, data, size);
+  return JsonShapeData(isolate, shaper, shape, data, size);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a V8 object to a TRI_shaped_json_t
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value> const object,
+TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Isolate* isolate,
+                                           v8::Handle<v8::Value> const object,
                                            TRI_shaper_t* shaper,
                                            bool create) {
   TRI_shape_value_t dst;
   set<int> seenHashes;
   vector<v8::Handle<v8::Object>> seenObjects;
 
-  int res = FillShapeValueJson(shaper, &dst, object, 0, seenHashes, seenObjects, create);
+  int res = FillShapeValueJson(isolate, shaper, &dst, object, 0, seenHashes, seenObjects, create);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (res == TRI_RESULT_ELEMENT_NOT_FOUND) {
@@ -1676,7 +1712,8 @@ TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value> const object,
 /// @brief converts a V8 object to a TRI_shaped_json_t in place
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_FillShapedJsonV8Object (v8::Handle<v8::Value> const object,
+int TRI_FillShapedJsonV8Object (v8::Isolate* isolate,
+                                v8::Handle<v8::Value> const object,
                                 TRI_shaped_json_t* result,
                                 TRI_shaper_t* shaper,
                                 bool create) {
@@ -1684,7 +1721,7 @@ int TRI_FillShapedJsonV8Object (v8::Handle<v8::Value> const object,
   set<int> seenHashes;
   vector<v8::Handle<v8::Object>> seenObjects;
 
-  int res = FillShapeValueJson(shaper, &dst, object, 0, seenHashes, seenObjects, create);
+  int res = FillShapeValueJson(isolate, shaper, &dst, object, 0, seenHashes, seenObjects, create);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (res != TRI_RESULT_ELEMENT_NOT_FOUND) {
@@ -1704,9 +1741,11 @@ int TRI_FillShapedJsonV8Object (v8::Handle<v8::Value> const object,
 /// @brief convert a V8 value to a json_t value,
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool ShapedJsonToJson (TRI_json_t* dst,
+static bool ShapedJsonToJson (v8::Isolate *isolate,
+                              TRI_json_t* dst,
                               triagens::utils::V8StringConverter& converter,
                               v8::Handle<v8::Value> const parameter) {
+  v8::HandleScope scope(isolate);
   if (parameter->IsBoolean()) {
     v8::Handle<v8::Boolean> booleanParameter = parameter->ToBoolean();
     TRI_InitBooleanJson(dst, booleanParameter->Value());
@@ -1763,7 +1802,10 @@ static bool ShapedJsonToJson (TRI_json_t* dst,
     
       TRI_json_t listElement;
       for (uint32_t j = 0; j < n; ++j) {
-        if (! ShapedJsonToJson(&listElement, converter, arrayParameter->Get(j))) {
+        if (! ShapedJsonToJson(isolate,
+                               &listElement,
+                               converter,
+                               arrayParameter->Get(j))) {
           return false;
         }
         TRI_PushBack2ListJson(dst, &listElement);
@@ -1789,7 +1831,10 @@ static bool ShapedJsonToJson (TRI_json_t* dst,
 
       for (uint32_t j = 0; j < n; ++j) {
         v8::Handle<v8::Value> key = names->Get(j);
-        if (! ShapedJsonToJson(&valueElement, converter, arrayParameter->Get(key))) {
+        if (! ShapedJsonToJson(isolate,
+                               &valueElement,
+                               converter,
+                               arrayParameter->Get(key))) {
           return false;
         }
 
@@ -1814,9 +1859,11 @@ static bool ShapedJsonToJson (TRI_json_t* dst,
 /// @brief convert a V8 value to a TRI_json_t value
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* ObjectToJson (v8::Handle<v8::Value> const parameter,
+static TRI_json_t* ObjectToJson (v8::Isolate* isolate,
+                                 v8::Handle<v8::Value> const parameter,
                                  set<int>& seenHashes,
                                  vector<v8::Handle<v8::Object>>& seenObjects) {
+  v8::HandleScope scope(isolate);
   if (parameter->IsBoolean()) {
     v8::Handle<v8::Boolean> booleanParameter = parameter->ToBoolean();
     return TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, booleanParameter->Value());
@@ -1865,7 +1912,10 @@ static TRI_json_t* ObjectToJson (v8::Handle<v8::Value> const parameter,
 
     if (listJson != nullptr) {
       for (uint32_t j = 0; j < n; ++j) {
-        TRI_json_t* result = ObjectToJson(arrayParameter->Get(j), seenHashes, seenObjects);
+        TRI_json_t* result = ObjectToJson(isolate,
+                                          arrayParameter->Get(j),
+                                          seenHashes,
+                                          seenObjects);
 
         if (result != nullptr) {
           TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, listJson, result);
@@ -1885,7 +1935,7 @@ static TRI_json_t* ObjectToJson (v8::Handle<v8::Value> const parameter,
     v8::Handle<v8::Object> o = parameter->ToObject();
 
     // first check if the object has a "toJSON" function
-    v8::Handle<v8::String> toJsonString = v8::String::New("toJSON");
+    v8::Handle<v8::String> toJsonString = TRI_V8_ASCII_STRING("toJSON");
     if (o->Has(toJsonString)) {
       // call it if yes
       v8::Handle<v8::Value> func = o->Get(toJsonString);
@@ -1941,7 +1991,10 @@ static TRI_json_t* ObjectToJson (v8::Handle<v8::Value> const parameter,
     if (arrayJson != nullptr && n > 0) {
       for (uint32_t j = 0; j < n; ++j) {
         v8::Handle<v8::Value> key  = names->Get(j);
-        TRI_json_t* result = ObjectToJson(arrayParameter->Get(key), seenHashes, seenObjects);
+        TRI_json_t* result = ObjectToJson(isolate,
+                                          arrayParameter->Get(key),
+                                          seenHashes,
+                                          seenObjects);
 
         if (result != nullptr) {
           TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, key);
@@ -1970,11 +2023,12 @@ static TRI_json_t* ObjectToJson (v8::Handle<v8::Value> const parameter,
 /// @brief convert a V8 value to a json_t value
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_ObjectToJson (v8::Handle<v8::Value> const parameter) {
+TRI_json_t* TRI_ObjectToJson (v8::Isolate* isolate,
+                              v8::Handle<v8::Value> const parameter) {
   set<int> seenHashes;
   vector<v8::Handle<v8::Object>> seenObjects;
 
-  return ObjectToJson(parameter, seenHashes, seenObjects);
+  return ObjectToJson(isolate, parameter, seenHashes, seenObjects);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1984,7 +2038,7 @@ TRI_json_t* TRI_ObjectToJson (v8::Handle<v8::Value> const parameter) {
 /// use for ShapedJson v8 objects only or for lists of ShapedJson v8 objects!
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_ShapedJsonToJson (v8::Handle<v8::Value> const parameter) {
+TRI_json_t* TRI_ShapedJsonToJson (v8::Isolate *isolate, v8::Handle<v8::Value> const parameter) {
   triagens::utils::V8StringConverter converter(TRI_UNKNOWN_MEM_ZONE);
 
   TRI_json_t* result = TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE);
@@ -1994,7 +2048,7 @@ TRI_json_t* TRI_ShapedJsonToJson (v8::Handle<v8::Value> const parameter) {
     return nullptr;
   }
 
-  if (! ShapedJsonToJson(result, converter, parameter)) {
+  if (! ShapedJsonToJson(isolate, result, converter, parameter)) {
     // something went wrong during JSON buildup
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, result);
     return nullptr;
