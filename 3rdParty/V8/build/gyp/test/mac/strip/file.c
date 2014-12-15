@@ -3,7 +3,20 @@
 // found in the LICENSE file.
 
 static void the_static_function() {}
+__attribute__((used)) void the_used_function() {}
+
+__attribute__((visibility("hidden"))) __attribute__((used))
+    void the_hidden_function() {}
+__attribute__((visibility("default"))) __attribute__((used))
+    void the_visible_function() {}
+
+extern const int eci;
+__attribute__((used)) int i;
+__attribute__((used)) const int ci = 34623;
 
 void the_function() {
   the_static_function();
+  the_used_function();
+  the_hidden_function();
+  the_visible_function();
 }

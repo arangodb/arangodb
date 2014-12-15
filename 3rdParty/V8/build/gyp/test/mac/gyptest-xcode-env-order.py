@@ -10,7 +10,13 @@ Verifies that dependent Xcode settings are processed correctly.
 
 import TestGyp
 
+import subprocess
 import sys
+
+def XcodeVersion():
+  stdout = subprocess.check_output(['xcodebuild', '-version'])
+  version = stdout.splitlines()[0].split()[-1].replace('.', '')
+  return (version + '0' * (3 - len(version))).zfill(4)
 
 if sys.platform == 'darwin':
   test = TestGyp.TestGyp(formats=['ninja', 'make', 'xcode'])
@@ -71,10 +77,15 @@ if sys.platform == 'darwin':
   # if it's not right at the start of the string (e.g. ':$PRODUCT_TYPE'), so
   # this looks like an Xcode bug. This bug isn't emulated (yet?), so check this
   # only for Xcode.
-  if test.format == 'xcode':
+  if test.format == 'xcode' and XcodeVersion() < '0500':
     test.must_contain(info_plist, '''\
 \t<key>BareProcessedKey3</key>
 \t<string>$PRODUCT_TYPE:D:/Source/Project/Test</string>''')
+  else:
+    # The bug has been fixed by Xcode version 5.0.0.
+    test.must_contain(info_plist, '''\
+\t<key>BareProcessedKey3</key>
+\t<string>com.apple.product-type.application:D:/Source/Project/Test</string>''')
 
   test.must_contain(info_plist, '''\
 \t<key>MixedProcessedKey</key>

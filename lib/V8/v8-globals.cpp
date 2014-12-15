@@ -40,6 +40,7 @@
 TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
   : JSBarriers(),
     JSCollections(),
+    JSCursors(),
 
     AgencyTempl(),
     ClusterInfoTempl(),
@@ -127,8 +128,8 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     _RevKey(),
     _ToKey(),
 
-    _currentRequest(nullptr),
-    _currentResponse(nullptr),
+    _currentRequest(),
+    _currentResponse(),
     _transactionContext(nullptr),
     _queryRegistry(nullptr),
     _query(nullptr),
@@ -138,80 +139,83 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     _hasDeadObjects(false),
     _applicationV8(nullptr),
     _loader(nullptr),
-    _canceled(false) {
-  v8::HandleScope scope;
+    _canceled(false)
 
-  BufferConstant = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("Buffer"));
-  DeleteConstant = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("DELETE"));
-  GetConstant = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("GET"));
-  HeadConstant = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("HEAD"));
-  OptionsConstant = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("OPTIONS"));
-  PatchConstant = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("PATCH"));
-  PostConstant = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("POST"));
-  PutConstant = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("PUT"));
 
-  AddressKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("address"));
-  AllowUseDatabaseKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("allowUseDatabase"));
-  BodyFromFileKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("bodyFromFile"));
-  BodyKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("body"));
-  ClientKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("client"));
-  ClientTransactionIDKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("clientTransactionID"));
-  CodeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("code"));
-  CompatibilityKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("compatibility"));
-  ContentTypeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("contentType"));
-  CookiesKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("cookies"));
-  CoordTransactionIDKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("coordTransactionID"));
-  DatabaseKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("database"));
-  DoCompactKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("doCompact"));
-  DomainKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("domain"));
-  ErrorKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("error"));
-  ErrorMessageKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("errorMessage"));
-  ErrorNumKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("errorNum"));
-  HeadersKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("headers"));
-  HttpOnlyKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("httpOnly"));
-  IdKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("id"));
-  IsSystemKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("isSystem"));
-  IsVolatileKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("isVolatile"));
-  JournalSizeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("journalSize"));
-  KeepNullKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("keepNull"));
-  KeyOptionsKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("keyOptions"));
-  LengthKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("length"));
-  LifeTimeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("lifeTime"));
-  MergeObjectsKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("mergeObjects"));
-  NameKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("name"));
-  OperationIDKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("operationID"));
-  OverwriteKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("overwrite"));
-  ParametersKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("parameters"));
-  PathKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("path"));
-  PrefixKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("prefix"));
-  PortKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("port"));
-  PortTypeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("portType"));
-  ProtocolKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("protocol"));
-  RequestBodyKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("requestBody"));
-  RequestTypeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("requestType"));
-  ResponseCodeKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("responseCode"));
-  SecureKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("secure"));
-  ServerKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("server"));
-  ShardIDKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("shardID"));
-  SilentKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("silent"));
-  SleepKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("sleep"));
-  StatusKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("status"));
-  SuffixKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("suffix"));
-  TimeoutKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("timeout"));
-  TransformationsKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("transformations"));
-  UrlKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("url"));
-  UserKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("user"));
-  ValueKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("value"));
-  VersionKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("version"));
-  WaitForSyncKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("waitForSync"));
+{
+  v8::HandleScope scope(isolate);
 
-  _FromKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("_from"));
-  _DbNameKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("_dbName"));
-  _IdKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("_id"));
-  _KeyKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("_key"));
-  _OldRevKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("_oldRev"));
-  _RevKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("_rev"));
-  _ToKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("_to"));
+  BufferConstant.Reset(isolate, TRI_V8_ASCII_STRING("Buffer"));
+  DeleteConstant.Reset(isolate, TRI_V8_ASCII_STRING("DELETE"));
+  GetConstant.Reset(isolate, TRI_V8_ASCII_STRING("GET"));
+  HeadConstant.Reset(isolate, TRI_V8_ASCII_STRING("HEAD"));
+  OptionsConstant.Reset(isolate, TRI_V8_ASCII_STRING("OPTIONS"));
+  PatchConstant.Reset(isolate, TRI_V8_ASCII_STRING("PATCH"));
+  PostConstant.Reset(isolate, TRI_V8_ASCII_STRING("POST"));
+  PutConstant.Reset(isolate, TRI_V8_ASCII_STRING("PUT"));
+
+  AddressKey.Reset(isolate, TRI_V8_ASCII_STRING("address"));
+  AllowUseDatabaseKey.Reset(isolate, TRI_V8_ASCII_STRING("allowUseDatabase"));
+  BodyFromFileKey.Reset(isolate, TRI_V8_ASCII_STRING("bodyFromFile"));
+  BodyKey.Reset(isolate, TRI_V8_ASCII_STRING("body"));
+  ClientKey.Reset(isolate, TRI_V8_ASCII_STRING("client"));
+  ClientTransactionIDKey.Reset(isolate, TRI_V8_ASCII_STRING("clientTransactionID"));
+  CodeKey.Reset(isolate, TRI_V8_ASCII_STRING("code"));
+  CompatibilityKey.Reset(isolate, TRI_V8_ASCII_STRING("compatibility"));
+  ContentTypeKey.Reset(isolate, TRI_V8_ASCII_STRING("contentType"));
+  CookiesKey.Reset(isolate, TRI_V8_ASCII_STRING("cookies"));
+  CoordTransactionIDKey.Reset(isolate, TRI_V8_ASCII_STRING("coordTransactionID"));
+  DatabaseKey.Reset(isolate, TRI_V8_ASCII_STRING("database"));
+  DoCompactKey.Reset(isolate, TRI_V8_ASCII_STRING("doCompact"));
+  DomainKey.Reset(isolate, TRI_V8_ASCII_STRING("domain"));
+  ErrorKey.Reset(isolate, TRI_V8_ASCII_STRING("error"));
+  ErrorMessageKey.Reset(isolate, TRI_V8_ASCII_STRING("errorMessage"));
+  ErrorNumKey.Reset(isolate, TRI_V8_ASCII_STRING("errorNum"));
+  HeadersKey.Reset(isolate, TRI_V8_ASCII_STRING("headers"));
+  HttpOnlyKey.Reset(isolate, TRI_V8_ASCII_STRING("httpOnly"));
+  IdKey.Reset(isolate, TRI_V8_ASCII_STRING("id"));
+  IsSystemKey.Reset(isolate, TRI_V8_ASCII_STRING("isSystem"));
+  IsVolatileKey.Reset(isolate, TRI_V8_ASCII_STRING("isVolatile"));
+  JournalSizeKey.Reset(isolate, TRI_V8_ASCII_STRING("journalSize"));
+  KeepNullKey.Reset(isolate, TRI_V8_ASCII_STRING("keepNull"));
+  KeyOptionsKey.Reset(isolate, TRI_V8_ASCII_STRING("keyOptions"));
+  LengthKey.Reset(isolate, TRI_V8_ASCII_STRING("length"));
+  LifeTimeKey.Reset(isolate, TRI_V8_ASCII_STRING("lifeTime"));
+  MergeObjectsKey.Reset(isolate, TRI_V8_ASCII_STRING("mergeObjects"));
+  NameKey.Reset(isolate, TRI_V8_ASCII_STRING("name"));
+  OperationIDKey.Reset(isolate, TRI_V8_ASCII_STRING("operationID"));
+  OverwriteKey.Reset(isolate, TRI_V8_ASCII_STRING("overwrite"));
+  ParametersKey.Reset(isolate, TRI_V8_ASCII_STRING("parameters"));
+  PathKey.Reset(isolate, TRI_V8_ASCII_STRING("path"));
+  PrefixKey.Reset(isolate, TRI_V8_ASCII_STRING("prefix"));
+  PortKey.Reset(isolate, TRI_V8_ASCII_STRING("port"));
+  PortTypeKey.Reset(isolate, TRI_V8_ASCII_STRING("portType"));
+  ProtocolKey.Reset(isolate, TRI_V8_ASCII_STRING("protocol"));
+  RequestBodyKey.Reset(isolate, TRI_V8_ASCII_STRING("requestBody"));
+  RequestTypeKey.Reset(isolate, TRI_V8_ASCII_STRING("requestType"));
+  ResponseCodeKey.Reset(isolate, TRI_V8_ASCII_STRING("responseCode"));
+  SecureKey.Reset(isolate, TRI_V8_ASCII_STRING("secure"));
+  ServerKey.Reset(isolate, TRI_V8_ASCII_STRING("server"));
+  ShardIDKey.Reset(isolate, TRI_V8_ASCII_STRING("shardID"));
+  SilentKey.Reset(isolate, TRI_V8_ASCII_STRING("silent"));
+  SleepKey.Reset(isolate, TRI_V8_ASCII_STRING("sleep"));
+  StatusKey.Reset(isolate, TRI_V8_ASCII_STRING("status"));
+  SuffixKey.Reset(isolate, TRI_V8_ASCII_STRING("suffix"));
+  TimeoutKey.Reset(isolate, TRI_V8_ASCII_STRING("timeout"));
+  TransformationsKey.Reset(isolate, TRI_V8_ASCII_STRING("transformations"));
+  UrlKey.Reset(isolate, TRI_V8_ASCII_STRING("url"));
+  UserKey.Reset(isolate, TRI_V8_ASCII_STRING("user"));
+  ValueKey.Reset(isolate, TRI_V8_ASCII_STRING("value"));
+  VersionKey.Reset(isolate, TRI_V8_ASCII_STRING("version"));
+  WaitForSyncKey.Reset(isolate, TRI_V8_ASCII_STRING("waitForSync"));
+
+  _FromKey.Reset(isolate, TRI_V8_ASCII_STRING("_from"));
+  _DbNameKey.Reset(isolate, TRI_V8_ASCII_STRING("_dbName"));
+  _IdKey.Reset(isolate, TRI_V8_ASCII_STRING("_id"));
+  _KeyKey.Reset(isolate, TRI_V8_ASCII_STRING("_key"));
+  _OldRevKey.Reset(isolate, TRI_V8_ASCII_STRING("_oldRev"));
+  _RevKey.Reset(isolate, TRI_V8_ASCII_STRING("_rev"));
+  _ToKey.Reset(isolate, TRI_V8_ASCII_STRING("_to"));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -230,11 +234,11 @@ TRI_v8_global_s::~TRI_v8_global_s () {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_v8_global_t* TRI_CreateV8Globals (v8::Isolate* isolate) {
-  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData());
+  TRI_GET_GLOBALS();
 
   TRI_ASSERT(v8g == nullptr);
   v8g = new TRI_v8_global_t(isolate);
-  isolate->SetData(v8g);
+  isolate->SetData(V8DataSlot, v8g);
 
   return v8g;
 }
@@ -244,7 +248,7 @@ TRI_v8_global_t* TRI_CreateV8Globals (v8::Isolate* isolate) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_v8_global_t* TRI_GetV8Globals (v8::Isolate* isolate) {
-  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData());
+  TRI_GET_GLOBALS();
   if (v8g == nullptr) {
     v8g = TRI_CreateV8Globals(isolate);
   }
@@ -257,17 +261,18 @@ TRI_v8_global_t* TRI_GetV8Globals (v8::Isolate* isolate) {
 /// @brief adds a method to an object
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AddMethodVocbase (v8::Handle<v8::ObjectTemplate> tpl,
-                           char const* name,
-                           v8::Handle<v8::Value>(*func)(v8::Arguments const&),
+void TRI_AddMethodVocbase (v8::Isolate* isolate,
+                           v8::Handle<v8::ObjectTemplate> tpl,
+                           v8::Handle<v8::String> name,
+                           void(*func)(v8::FunctionCallbackInfo<v8::Value> const&),
                            bool isHidden) {
   if (isHidden) {
     // hidden method
-    tpl->Set(TRI_V8_SYMBOL(name), v8::FunctionTemplate::New(func), v8::DontEnum);
+    tpl->Set(name, v8::FunctionTemplate::New(isolate, func), v8::DontEnum);
   }
   else {
     // normal method
-    tpl->Set(TRI_V8_SYMBOL(name), v8::FunctionTemplate::New(func));
+    tpl->Set(name, v8::FunctionTemplate::New(isolate, func));
   }
 }
 
@@ -275,20 +280,21 @@ void TRI_AddMethodVocbase (v8::Handle<v8::ObjectTemplate> tpl,
 /// @brief adds a global function to the given context
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
-                                   char const* name,
-                                   v8::Handle<v8::Value>(*func)(v8::Arguments const&),
+void TRI_AddGlobalFunctionVocbase (v8::Isolate* isolate,
+                                   v8::Handle<v8::Context> context,
+                                   v8::Handle<v8::String> name,
+                                   void(*func)(v8::FunctionCallbackInfo<v8::Value> const&),
                                    bool isHidden) {
   // all global functions are read-only
   if (isHidden) {
-    context->Global()->Set(TRI_V8_SYMBOL(name),
-                           v8::FunctionTemplate::New(func)->GetFunction(),
-                           static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum));
+    context->Global()->ForceSet(name,
+                                v8::FunctionTemplate::New(isolate, func)->GetFunction(),
+                                static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum));
   }
   else {
-    context->Global()->Set(TRI_V8_SYMBOL(name),
-                           v8::FunctionTemplate::New(func)->GetFunction(),
-                           v8::ReadOnly);
+    context->Global()->ForceSet(name,
+                                v8::FunctionTemplate::New(isolate, func)->GetFunction(),
+                                v8::ReadOnly);
   }
 }
 
@@ -296,20 +302,21 @@ void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
 /// @brief adds a global function to the given context
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
-                                   char const* name,
+void TRI_AddGlobalFunctionVocbase (v8::Isolate* isolate,
+                                   v8::Handle<v8::Context> context,
+                                   v8::Handle<v8::String> name,
                                    v8::Handle<v8::Function> func,
                                    bool isHidden) {
   // all global functions are read-only
   if (isHidden) {
-    context->Global()->Set(TRI_V8_SYMBOL(name),
-                           func,
-                           static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum));
+    context->Global()->ForceSet(name,
+                                func,
+                                static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum));
   }
   else {
-    context->Global()->Set(TRI_V8_SYMBOL(name),
-                           func,
-                           v8::ReadOnly);
+    context->Global()->ForceSet(name,
+                                func,
+                                v8::ReadOnly);
   }
 }
 
@@ -317,11 +324,12 @@ void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
 /// @brief adds a global read-only variable to the given context
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AddGlobalVariableVocbase (v8::Handle<v8::Context> context,
-                                   char const* name,
+void TRI_AddGlobalVariableVocbase (v8::Isolate* isolate,
+                                   v8::Handle<v8::Context> context,
+                                   v8::Handle<v8::String> name,
                                    v8::Handle<v8::Value> value) {
   // all global variables are read-only
-  context->Global()->Set(TRI_V8_SYMBOL(name), value, v8::ReadOnly);
+  context->Global()->ForceSet(name, value, v8::ReadOnly);
 }
 
 // -----------------------------------------------------------------------------

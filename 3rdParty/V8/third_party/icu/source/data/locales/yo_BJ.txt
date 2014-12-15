@@ -1,0 +1,239 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/yo_BJ.xml
+// *
+// ***************************************************************************
+yo_BJ{
+    AuxExemplarCharacters{"[c q v x z]"}
+    ExemplarCharacters{
+        "[a á à b d e é è ɛ {ɛ\u0301} {ɛ\u0300} f g {gb} h i í ì j k l m n o ó ò ɔ {ɔ"
+        "\u0301} {ɔ\u0300} p r s {sh} t u ú ù w y]"
+    }
+    ExemplarCharactersIndex{"[A B C D E F G H I J K L M N O P Q R S T U V W X Y Z]"}
+    NumberElements{
+        latn{
+            patterns{
+                accountingFormat{"¤#,##0.00;(¤#,##0.00)"}
+                currencyFormat{"¤#,##0.00"}
+            }
+        }
+    }
+    Version{"2.0.93.9"}
+    calendar{
+        generic{
+            DateTimePatterns{
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
+                "EEEE, d MMMM y G",
+                "d MMMM y G",
+                "d MMM y G",
+                "dd/MM/y GGGGG",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            availableFormats{
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
+                M{"L"}
+                MEd{"E, M/d"}
+                MMM{"LLL"}
+                MMMEd{"E, MMM d"}
+                MMMMEd{"E, MMMM d"}
+                MMMMd{"MMMM d"}
+                MMMd{"MMM d"}
+                Md{"M/d"}
+                d{"d"}
+                hm{"h:mm a"}
+                ms{"mm:ss"}
+                y{"y"}
+                yM{"M/y"}
+                yMEd{"E, M/d/y"}
+                yMMM{"MMM y"}
+                yMMMEd{"E, MMM d, y"}
+                yMMMM{"MMMM y"}
+                yQQQ{"QQQ y"}
+                yQQQQ{"QQQQ y"}
+            }
+        }
+        gregorian{
+            AmPmMarkers{
+                "Àárɔ̀",
+                "Ɔ̀sán",
+            }
+            DateTimePatterns{
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
+                "EEEE, d MMMM y",
+                "d MMMM y",
+                "d MMM y",
+                "dd/MM/y",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            availableFormats{
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
+                M{"L"}
+                MEd{"E, M/d"}
+                MMM{"LLL"}
+                MMMEd{"E, MMM d"}
+                MMMMEd{"E, MMMM d"}
+                MMMMd{"MMMM d"}
+                MMMd{"MMM d"}
+                Md{"M/d"}
+                d{"d"}
+                hm{"h:mm a"}
+                ms{"mm:ss"}
+                y{"y"}
+                yM{"M/y"}
+                yMEd{"E, M/d/y"}
+                yMMM{"MMM y"}
+                yMMMEd{"E, MMM d, y"}
+                yMMMM{"MMMM y"}
+                yQQQ{"QQQ y"}
+                yQQQQ{"QQQQ y"}
+            }
+            dayNames{
+                format{
+                    abbreviated{
+                        "Àìkú",
+                        "Ajé",
+                        "Ìsɛ́gun",
+                        "Ɔjɔ́rú",
+                        "Ɔjɔ́bɔ",
+                        "Ɛtì",
+                        "Àbámɛ́ta",
+                    }
+                    wide{
+                        "Ɔjɔ́ Àìkú",
+                        "Ɔjɔ́ Ajé",
+                        "Ɔjɔ́ Ìsɛ́gun",
+                        "Ɔjɔ́rú",
+                        "Ɔjɔ́bɔ",
+                        "Ɔjɔ́ Ɛtì",
+                        "Ɔjɔ́ Àbámɛ́ta",
+                    }
+                }
+            }
+            eras{
+                abbreviated{
+                    "SK",
+                    "LK",
+                }
+                wide{
+                    "Saju Kristi",
+                    "Lehin Kristi",
+                }
+            }
+            monthNames{
+                format{
+                    abbreviated{
+                        "Shɛ́rɛ́",
+                        "Èrèlè",
+                        "Ɛrɛ̀nà",
+                        "Ìgbé",
+                        "Ɛ̀bibi",
+                        "Òkúdu",
+                        "Agɛmɔ",
+                        "Ògún",
+                        "Owewe",
+                        "Ɔ̀wàrà",
+                        "Bélú",
+                        "Ɔ̀pɛ̀",
+                    }
+                    wide{
+                        "Oshù Shɛ́rɛ́",
+                        "Oshù Èrèlè",
+                        "Oshù Ɛrɛ̀nà",
+                        "Oshù Ìgbé",
+                        "Oshù Ɛ̀bibi",
+                        "Oshù Òkúdu",
+                        "Oshù Agɛmɔ",
+                        "Oshù Ògún",
+                        "Oshù Owewe",
+                        "Oshù Ɔ̀wàrà",
+                        "Oshù Bélú",
+                        "Oshù Ɔ̀pɛ̀",
+                    }
+                }
+            }
+            quarters{
+                format{
+                    abbreviated{
+                        "K1",
+                        "K2",
+                        "K3",
+                        "K4",
+                    }
+                    wide{
+                        "Kɔ́tà Kínní",
+                        "Kɔ́tà Kejì",
+                        "Kɔ́à Keta",
+                        "Kɔ́tà Kɛrin",
+                    }
+                }
+            }
+        }
+    }
+    delimiters{
+        alternateQuotationEnd{"’"}
+        alternateQuotationStart{"‘"}
+        quotationEnd{"”"}
+        quotationStart{"“"}
+    }
+    fields{
+        day{
+            dn{"Ɔjɔ́"}
+            relative{
+                "-1"{"Àná"}
+                "-2"{"íjɛta"}
+                "0"{"Òní"}
+                "1"{"Ɔ̀la"}
+                "2"{"òtúùnla"}
+            }
+        }
+        dayperiod{
+            dn{"Àárɔ̀/ɔ̀sán"}
+        }
+        era{
+            dn{"Ìgbà"}
+        }
+        hour{
+            dn{"wákàtí"}
+        }
+        minute{
+            dn{"Ìsɛ́jú"}
+        }
+        month{
+            dn{"Osù"}
+        }
+        second{
+            dn{"Ìsɛ́jú Ààyá"}
+        }
+        week{
+            dn{"Ɔ̀sè"}
+        }
+        weekday{
+            dn{"Ɔjɔ́ Ɔ̀sɛ̀"}
+        }
+        year{
+            dn{"Ɔdún"}
+        }
+        zone{
+            dn{"Ibi Àkókò Àgbáyé"}
+        }
+    }
+}

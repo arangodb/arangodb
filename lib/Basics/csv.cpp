@@ -41,11 +41,12 @@ void TRI_InitCsvParser (TRI_csv_parser_t* parser,
                         TRI_memory_zone_t* zone,
                         void (*begin) (TRI_csv_parser_t*, size_t),
                         void (*add) (TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool),
-                        void (*end) (TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool)) {
+                        void (*end) (TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool),
+                        void *vData) {
   size_t length;
 
   parser->_state = TRI_CSV_PARSER_BOL;
-
+  parser->_data = vData;
   TRI_SetQuoteCsvParser(parser, '"', true);
   TRI_SetSeparatorCsvParser(parser, ';');
   TRI_UseBackslashCsvParser(parser, false);

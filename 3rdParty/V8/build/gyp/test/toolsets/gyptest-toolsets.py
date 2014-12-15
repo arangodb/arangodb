@@ -7,17 +7,25 @@
 """
 Verifies that toolsets are correctly applied
 """
-
+import os
+import sys
 import TestGyp
 
-# Multiple toolsets are currently only supported by the make generator.
-test = TestGyp.TestGyp(formats=['make'])
+if sys.platform.startswith('linux'):
 
-test.run_gyp('toolsets.gyp')
+  test = TestGyp.TestGyp(formats=['make', 'ninja'])
 
-test.build('toolsets.gyp', test.ALL)
+  oldenv = os.environ.copy()
+  try:
+    os.environ['GYP_CROSSCOMPILE'] = '1'
+    test.run_gyp('toolsets.gyp')
+  finally:
+    os.environ.clear()
+    os.environ.update(oldenv)
 
-test.run_built_executable('host-main', stdout="Host\n")
-test.run_built_executable('target-main', stdout="Target\n")
+  test.build('toolsets.gyp', test.ALL)
 
-test.pass_test()
+  test.run_built_executable('host-main', stdout="Host\nShared: Host\n")
+  test.run_built_executable('target-main', stdout="Target\nShared: Target\n")
+
+  test.pass_test()

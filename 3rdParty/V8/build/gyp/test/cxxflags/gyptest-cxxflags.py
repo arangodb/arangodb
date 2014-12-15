@@ -23,8 +23,8 @@ def PopEnv():
   os.eniron=env_stack.pop()
 
 # Regenerating build files when a gyp file changes is currently only supported
-# by the make and Android generators.
-test = TestGyp.TestGyp(formats=['make', 'android'])
+# by the make generator.
+test = TestGyp.TestGyp(formats=['make'])
 
 try:
   PushEnv()

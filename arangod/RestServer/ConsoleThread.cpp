@@ -117,13 +117,17 @@ void ConsoleThread::run () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ConsoleThread::inner () {
-  v8::HandleScope globalScope;
+  v8::Isolate* isolate = v8::Isolate::GetCurrent(); // TODO: this may go away.
+  v8::HandleScope globalScope(isolate);
 
   // run the shell
   std::cout << "ArangoDB JavaScript emergency console (" << rest::Version::getVerboseVersionString() << ")" << std::endl;
 
-  v8::Local<v8::String> name(v8::String::New("(arango)"));
-  v8::Context::Scope contextScope(_context->_context);
+  v8::Local<v8::String> name(TRI_V8_ASCII_STRING("(arango)"));
+
+  auto localContext = v8::Local<v8::Context>::New(isolate, _context->_context);
+  localContext->Enter();
+  v8::Context::Scope contextScope(localContext);
 
   // .............................................................................
   // run console
@@ -133,16 +137,21 @@ void ConsoleThread::inner () {
   uint64_t nrCommands = 0;
 
   const std::string pretty = "start_pretty_print();";
-  TRI_ExecuteJavaScriptString(_context->_context, v8::String::New(pretty.c_str(), (int) pretty.size()), v8::String::New("(internal)"), false);
 
-  V8LineEditor console(_context->_context, ".arangod.history");
+  TRI_ExecuteJavaScriptString(isolate,
+                              localContext,
+                              TRI_V8_STD_STRING(pretty),
+                              TRI_V8_ASCII_STRING("(internal)"),
+                              false);
+
+  V8LineEditor console(localContext, ".arangod.history");
 
   console.open(true);
 
   while (! _userAborted) {
     if (nrCommands >= gcInterval) {
-      v8::V8::LowMemoryNotification();
-      while(! v8::V8::IdleNotification()) {
+      isolate->LowMemoryNotification();
+      while (! isolate->IdleNotification(1000)) {
       }
 
       nrCommands = 0;
@@ -172,14 +181,14 @@ void ConsoleThread::inner () {
     nrCommands++;
     console.addHistory(input);
 
-    v8::HandleScope scope;
     v8::TryCatch tryCatch;
+    v8::HandleScope scope(isolate);
 
-    TRI_ExecuteJavaScriptString(_context->_context, v8::String::New(input), name, true);
+    TRI_ExecuteJavaScriptString(isolate, localContext, TRI_V8_STRING(input), name, true);
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
 
     if (tryCatch.HasCaught()) {
-      std::cout << TRI_StringifyV8Exception(&tryCatch);
+      std::cout << TRI_StringifyV8Exception(isolate, &tryCatch);
     }
   }
 

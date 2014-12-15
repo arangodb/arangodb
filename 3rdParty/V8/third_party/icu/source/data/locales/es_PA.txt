@@ -1,0 +1,62 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/es_PA.xml
+// *
+// ***************************************************************************
+es_PA{
+    %%Parent{"es_419"}
+    Version{"2.0.90.61"}
+    calendar{
+        generic{
+            DateTimePatterns{
+                "H:mm:ss (zzzz)",
+                "H:mm:ss z",
+                "H:mm:ss",
+                "H:mm",
+                "EEEE, d 'de' MMMM 'de' y G",
+                "d 'de' MMMM 'de' y G",
+                "MM/dd/y G",
+                "MM/dd/yy GGGGG",
+                "{1} {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            availableFormats{
+                MEd{"E, MM/dd"}
+                Md{"MM/dd"}
+                yM{"MM/y"}
+                yMEd{"E MM/dd/y"}
+                yMd{"MM/dd/y"}
+            }
+        }
+        gregorian{
+            DateTimePatterns{
+                "H:mm:ss (zzzz)",
+                "H:mm:ss z",
+                "H:mm:ss",
+                "H:mm",
+                "EEEE, d 'de' MMMM 'de' y",
+                "d 'de' MMMM 'de' y",
+                "MM/dd/y",
+                "MM/dd/yy",
+                "{1} {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            availableFormats{
+                MEd{"E, MM/dd"}
+                Md{"MM/dd"}
+                yM{"MM/y"}
+                yMEd{"E MM/dd/y"}
+                yMd{"MM/dd/y"}
+            }
+        }
+    }
+}

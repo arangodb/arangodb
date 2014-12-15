@@ -26,6 +26,9 @@ if sys.platform == 'darwin':
       app_bundle_dir, 'Contents', 'My Framework.framework', 'Resources')
   final_plist_path = os.path.join(bundled_framework_dir, 'Info.plist')
   final_resource_path = os.path.join(bundled_framework_dir, 'resource_file.sb')
+  final_copies_path = os.path.join(
+      app_bundle_dir, 'Contents', 'My Framework.framework', 'Versions', 'A',
+      'Libraries', 'copied.txt')
 
   # Check that the dependency was built and copied into the app bundle:
   test.build('test.gyp', 'test_app', chdir=CHDIR)
@@ -58,5 +61,15 @@ if sys.platform == 'darwin':
   test.must_contain(final_plist_path, '''\
 \t<key>RandomKey</key>
 \t<string>NewRandomValue</string>''')
+
+  # Check the same for the copies section, test for http://crbug.com/157077
+  test.sleep()
+  contents = test.read('postbuild-copy-bundle/copied.txt')
+  contents = contents.replace('old', 'new')
+  test.write('postbuild-copy-bundle/copied.txt', contents)
+  test.build('test.gyp', 'test_app', chdir=CHDIR)
+
+  test.must_exist(final_copies_path)
+  test.must_contain(final_copies_path, 'new copied file')
 
   test.pass_test()

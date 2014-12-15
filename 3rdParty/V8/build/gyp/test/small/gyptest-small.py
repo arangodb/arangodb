@@ -28,7 +28,9 @@ files_to_test = [
     'pylib/gyp/easy_xml_test.py',
     'pylib/gyp/generator/msvs_test.py',
     'pylib/gyp/generator/ninja_test.py',
+    'pylib/gyp/generator/xcode_test.py',
     'pylib/gyp/common_test.py',
+    'pylib/gyp/input_test.py',
 ]
 
 # Collect all the suites from the above files.

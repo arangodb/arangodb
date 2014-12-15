@@ -45,9 +45,10 @@ using namespace triagens::aql;
 ////////////////////////////////////////////////////////////////////////////////
 
 V8Expression::V8Expression (v8::Isolate* isolate,
-                            v8::Persistent<v8::Function> func)
+                            v8::Handle<v8::Function> func)
   : isolate(isolate),
-    func(func) {
+  _func() {
+  _func.Reset(isolate, func);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -55,8 +56,7 @@ V8Expression::V8Expression (v8::Isolate* isolate,
 ////////////////////////////////////////////////////////////////////////////////
 
 V8Expression::~V8Expression () {
-  func.Dispose(isolate);
-  func.Clear();
+  _func.Reset();
 }
 
 // -----------------------------------------------------------------------------
@@ -67,7 +67,8 @@ V8Expression::~V8Expression () {
 /// @brief execute the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue V8Expression::execute (Query* query,
+AqlValue V8Expression::execute (v8::Isolate* isolate,
+                                Query* query,
                                 triagens::arango::AqlTransaction* trx,
                                 std::vector<TRI_document_collection_t const*>& docColls,
                                 std::vector<AqlValue>& argv,
@@ -77,7 +78,7 @@ AqlValue V8Expression::execute (Query* query,
   size_t const n = vars.size();
   TRI_ASSERT(regs.size() == n); // assert same vector length
 
-  v8::Handle<v8::Object> values = v8::Object::New();
+  v8::Handle<v8::Object> values = v8::Object::New(isolate);
 
   for (size_t i = 0; i < n; ++i) {
     auto varname = vars[i]->name;
@@ -85,12 +86,12 @@ AqlValue V8Expression::execute (Query* query,
 
     TRI_ASSERT(! argv[reg].isEmpty());
 
-    values->Set(v8::String::New(varname.c_str(), (int) varname.size()), argv[startPos + reg].toV8(trx, docColls[reg]));
+    values->ForceSet(TRI_V8_STD_STRING(varname), argv[startPos + reg].toV8(isolate, trx, docColls[reg]));
   }
 
   TRI_ASSERT(query != nullptr);
 
-  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+  TRI_GET_GLOBALS();
   auto old = v8g->_query;
   v8g->_query = static_cast<void*>(query);
   TRI_ASSERT(v8g->_query != nullptr);
@@ -100,6 +101,9 @@ AqlValue V8Expression::execute (Query* query,
 
   // execute the function
   v8::TryCatch tryCatch;
+
+  auto func = v8::Local<v8::Function>::New(isolate, _func);
+
   v8::Handle<v8::Value> result = func->Call(func, 1, args);
 
   v8g->_query = old;
@@ -115,7 +119,7 @@ AqlValue V8Expression::execute (Query* query,
   }
   else {
     // expression had a result. convert it to JSON
-    json = TRI_ObjectToJson(result);
+    json = TRI_ObjectToJson(isolate, result);
   }
 
   if (json == nullptr) {

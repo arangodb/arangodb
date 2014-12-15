@@ -1,0 +1,217 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/vai_Latn.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/vai_Latn.xml
+ */
+vai_Latn{
+    %%Parent{"root"}
+    Currencies{
+        AED{
+            "AED",
+            "Yunaitɛ Arabhi Ɛmire Dihami",
+        }
+        AOA{
+            "AOA",
+            "Angola Kuwaŋza",
+        }
+        AUD{
+            "A$",
+            "Ɔ́situwa Dala",
+        }
+        BHD{
+            "BHD",
+            "Bharɛŋ Dina",
+        }
+        BIF{
+            "BIF",
+            "Bhurundi Furaŋki",
+        }
+        BWP{
+            "BWP",
+            "Bhosuwana Pula",
+        }
+        CAD{
+            "CA$",
+            "Kanada Dala",
+        }
+        CDF{
+            "CDF",
+            "Kóngo Furaŋki",
+        }
+        CHF{
+            "CHF",
+            "Suwesi Furaŋki",
+        }
+        CNY{
+            "CN¥",
+            "Chaníĩ Yuwaŋ Rɛŋmimbi",
+        }
+        CVE{
+            "CVE",
+            "Ɛsikudo Cabovɛdiyano",
+        }
+        DJF{
+            "DJF",
+            "Jibhuti Furaŋki",
+        }
+        DZD{
+            "DZD",
+            "Agiriya Dina",
+        }
+        EGP{
+            "EGP",
+            "Míséla Pɔɔ̃",
+        }
+        ERN{
+            "ERN",
+            "Ɛritera Nakifa",
+        }
+        ETB{
+            "ETB",
+            "Ítiyopiya Bhii",
+        }
+        EUR{
+            "€",
+            "Yuro",
+        }
+        GBP{
+            "£",
+            "Jengési Pɔɔ̃ Sitɛ́liŋ",
+        }
+        GMD{
+            "GMD",
+            "Gambiya Dalasi",
+        }
+        GNS{
+            "GNS",
+            "Gini Furaŋki",
+        }
+        INR{
+            "₹",
+            "Índiya Rupi",
+        }
+        JPY{
+            "JP¥",
+            "Japaniĩ Yɛŋ",
+        }
+        KES{
+            "KES",
+            "Kénya Siyeŋ",
+        }
+        KMF{
+            "KMF",
+            "Komoro Furaŋki",
+        }
+        LRD{
+            "$",
+            "Laibhiya Dala",
+        }
+        LSL{
+            "LSL",
+            "Lisóto Loti",
+        }
+        LYD{
+            "LYD",
+            "Libhiya Dina",
+        }
+        MAD{
+            "MAD",
+            "Mɔroko Dihami",
+        }
+        MGA{
+            "MGA",
+            "Malagasi Ariyari",
+        }
+        MRO{
+            "MRO",
+            "Mɔretani Yugiya",
+        }
+        MUR{
+            "MUR",
+            "Mɔreshɔ Rupi",
+        }
+        MWK{
+            "MWK",
+            "Malawi Kuwacha",
+        }
+        NAD{
+            "NAD",
+            "Namibiya Dala",
+        }
+        NGN{
+            "NGN",
+            "Naĩjiriya Naĩra",
+        }
+        RWF{
+            "RWF",
+            "Rawunda Furaŋki",
+        }
+        SAR{
+            "SAR",
+            "Lahabu Sawodi Riya",
+        }
+        SDG{
+            "SDG",
+            "Sudaniĩ Pɔɔ̃",
+        }
+        SHP{
+            "SHP",
+            "Siŋ Hɛlina Pɔɔ̃",
+        }
+        SLL{
+            "SLL",
+            "Liyɔɔ̀",
+        }
+        SOS{
+            "SOS",
+            "Somaliya Siyeŋ",
+        }
+        STD{
+            "STD",
+            "Sawo Tombe ɓɛ a Gbawo Dobura",
+        }
+        SZL{
+            "SZL",
+            "Lilangeni",
+        }
+        TND{
+            "TND",
+            "Tunisiya Dina",
+        }
+        TZS{
+            "TZS",
+            "Taŋzaniya Siyeŋ",
+        }
+        UGX{
+            "UGX",
+            "Yuganda Siyeŋ",
+        }
+        USD{
+            "US$",
+            "Poo Dala",
+        }
+        XAF{
+            "FCFA",
+            "Áfíríka Tɛ Sifa",
+        }
+        XOF{
+            "CFA",
+            "Áfíríka Tele Jíí Sifa",
+        }
+        ZAR{
+            "ZAR",
+            "Afirika Kɔi Leŋŋɛ lɔ Randi",
+        }
+        ZMW{
+            "ZMW",
+            "Zambiya Kuwacha",
+        }
+    }
+    Version{"2.0.92.87"}
+}

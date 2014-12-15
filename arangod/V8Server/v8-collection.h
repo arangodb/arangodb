@@ -67,7 +67,8 @@ bool EqualCollection (triagens::arango::CollectionNameResolver const* resolver,
 /// @brief wraps a TRI_vocbase_col_t
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Object> WrapCollection (TRI_vocbase_col_t const* collection);
+v8::Handle<v8::Object> WrapCollection (v8::Isolate* isolate,
+                                       TRI_vocbase_col_t const* collection);
 
 void TRI_InitV8collection (v8::Handle<v8::Context> context,
                            TRI_server_t* server,
