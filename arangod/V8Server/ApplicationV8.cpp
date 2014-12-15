@@ -534,8 +534,7 @@ void ApplicationV8::exitContext (V8Context* context) {
         TRI_ASSERT(v8::Locker::IsLocked(isolate));
 
         isolate->LowMemoryNotification();
-        // todo 1000 w    as the old V8-default, is this really good?
-        while(! isolate->IdleNotification(1000)) {
+        while (! isolate->IdleNotification(1000)) {
         }
 
         localContext->Exit();
