@@ -2378,6 +2378,11 @@ int main (int argc, char* args[]) {
     }
   }
 
+  if (ClientConnection != nullptr) {
+    DestroyConnection(ClientConnection);
+    ClientConnection = nullptr;
+  }
+
   TRI_v8_global_t* v8g = TRI_GetV8Globals(isolate);
   delete v8g;
 
@@ -2386,11 +2391,6 @@ int main (int argc, char* args[]) {
 
   BaseClient.closeLog();
 
-  if (ClientConnection != nullptr) {
-    DestroyConnection(ClientConnection);
-    ClientConnection = nullptr;
-  }
-  
   TRIAGENS_REST_SHUTDOWN;
 
   arangoshExitFunction(ret, nullptr);
