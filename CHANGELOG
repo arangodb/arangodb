@@ -1,6 +1,8 @@
 v2.3.2 (2014-12-09)
 -------------------
 
+* fixed issue #1177: Fix bug in the user app's storage
+
 * fixed issue #1173: AQL Editor "Save current query" resets user password
 
 * fixed missing makeDirectory when fetching a Foxx application from a zip file
@@ -31,6 +33,7 @@ v2.3.2 (2014-12-09)
   This change provides the `KEEP` clause for `COLLECT ... INTO`. The `KEEP` clause
   allows controlling which variables will be kept in the variable created by `INTO`.
   
+* fixed issue #1147, must protect dispatcher ID for etcd
 
 v2.3.1 (2014-11-28)
 -------------------

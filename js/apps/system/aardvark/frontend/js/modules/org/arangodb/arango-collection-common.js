@@ -1,5 +1,5 @@
 module.define("org/arangodb/arango-collection-common", function(exports, module) {
-/*jshint strict: false, unused: false */
+/*jshint strict: false, unused: false, maxlen: 200 */
 /*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -547,9 +547,8 @@ ArangoCollection.prototype.closedRange = function (name, left, right) {
 /// .......> }
 ///
 /// arango> db.complex.near(0, 170).limit(5);
-/// exception in file '/simple-query' at 1018,5: a geo-index must be known
 ///
-/// arango> db.complex.ensureGeoIndex(""home"");
+/// arango> db.complex.ensureGeoIndex("home");
 /// arango> db.complex.near(0, 170).limit(5).toArray();
 /// [ { "_id" : "complex/74655276", "_key" : "74655276", "_rev" : "74655276", "name" :
 /// "Name/0/170", "home" : [ 0, 170 ], "work" : [ 0, -170 ] },
@@ -563,7 +562,6 @@ ArangoCollection.prototype.closedRange = function (name, left, right) {
 /// "Name/0/-180", "home" : [ 0, -180 ], "work" : [ 0, 180 ] } ]
 ///
 /// arango> db.complex.geo("work").near(0, 170).limit(5);
-/// exception in file '/simple-query' at 1018,5: a geo-index must be known
 ///
 /// arango> db.complex.ensureGeoIndex("work");
 /// arango> db.complex.geo("work").near(0, 170).limit(5).toArray();
@@ -692,7 +690,11 @@ ArangoCollection.prototype.geo = function(loc, order) {
 /// operator:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionNearDistance}
-///   db.geo.near(0,0).distance().limit(2).toArray();
+/// ~ db._drop("geo");
+/// ~ db._create("geo");
+/// ~ db.geo.ensureGeoIndex("loc");
+/// ~ for (var i = -90;  i <= 90;  i += 10) { for (var j = -180; j <= 180; j += 10) { db.geo.save({ name : "Name/" + i + "/" + j, loc: [ i, j ] }); } }
+///   db.geo.near(0, 0).distance().limit(2).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -731,6 +733,10 @@ ArangoCollection.prototype.near = function (lat, lon) {
 /// To find all documents within a radius of 2000 km use:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionWithin}
+/// ~ db._drop("geo");
+/// ~ db._create("geo");
+/// ~ db.geo.ensureGeoIndex("loc");
+/// ~ for (var i = -90;  i <= 90;  i += 10) { for (var j = -180; j <= 180; j += 10) { db.geo.save({ name : "Name/" + i + "/" + j, loc: [ i, j ] }); } }
 ///   db.geo.within(0, 0, 2000 * 1000).distance().toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
