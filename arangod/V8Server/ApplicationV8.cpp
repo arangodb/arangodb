@@ -1429,8 +1429,7 @@ void ApplicationV8::shutdownV8Instance (const string& name, size_t i) {
     localContext->Enter();
 
     isolate->LowMemoryNotification();
-    // todo 1000 was the old V8-default, is this really good?
-    while(! isolate->IdleNotification(1000)) {
+    while (! isolate->IdleNotification(1000)) {
     }
 
     TRI_GET_GLOBALS();
