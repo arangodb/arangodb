@@ -73,7 +73,7 @@
         user = new User({
           user: username,
           userData: userData,
-          authData: {active: true}
+          authData: authData
         });
         users.save(user);
       }
