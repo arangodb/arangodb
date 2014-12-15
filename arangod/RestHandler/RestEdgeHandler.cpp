@@ -203,12 +203,13 @@ bool RestEdgeHandler::createDocument () {
   const bool waitForSync = extractWaitForSync();
 
   TRI_json_t* json = parseJsonBody();
+  
+  if (json == nullptr) {
+    return false;
+  }
 
   if (! TRI_IsArrayJson(json)) {
-    if (json != 0) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    }
-
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     return false;
   }
