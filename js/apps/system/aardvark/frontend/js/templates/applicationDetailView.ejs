@@ -20,7 +20,11 @@
           <h3>
             <%= attributes.name %>
             <span class="license"><%= attributes.license %></span>
-            <span class="version"><%= attributes.app.split(':').pop() %></span>
+            <% if (attributes.development) { %>
+              <span class="version">devel</span>
+            <% } else { %>
+              <span class="version"><%= attributes.app.split(':').pop() %></span>
+            <% } %>
           </h3>
           <p class="description"><%= attributes.description %></p>
         </div>
