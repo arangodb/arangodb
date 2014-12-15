@@ -42,9 +42,9 @@
 
 int TRI_Levenshtein (char const* string1,
                      char const* string2,
-	                   int swap_penalty = 0, 
+                     int swap_penalty = 0, 
                      int substitution_penalty = 2,
-	                   int insertion_penalty = 1, 
+                     int insertion_penalty = 1, 
                      int deletion_penalty = 3);
 
 #endif

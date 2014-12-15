@@ -6,43 +6,39 @@ dnl ----------------------------------------------------------------------------
 
 AC_LANG(C)
 
-tr_ICU="yes"
-
 AC_ARG_WITH(icu-config,
   AS_HELP_STRING([--with-icu-config=FILE], [where the icu-config program is located]),
   [ICU_CONFIG="$withval"]
 )
 
-if test "x$tr_ICU" = xyes;  then
-  AC_MSG_NOTICE([--------------------------------------------------------------------------------])
-  AC_MSG_NOTICE([CHECKING FOR ICU])
-  AC_MSG_NOTICE([--------------------------------------------------------------------------------])
+AC_MSG_NOTICE([--------------------------------------------------------------------------------])
+AC_MSG_NOTICE([CHECKING FOR ICU])
+AC_MSG_NOTICE([--------------------------------------------------------------------------------])
 
-  dnl ----------------------------------------------------------------------------
-  dnl checks for the icu-config
-  dnl ----------------------------------------------------------------------------
+dnl ----------------------------------------------------------------------------
+dnl checks for the icu-config
+dnl ----------------------------------------------------------------------------
 
-  if test "x$ICU_CONFIG" == "x" ; then
-    ICU_CONFIG="icu-config"
-  fi
-
-  AC_MSG_CHECKING([for ICU config program "${ICU_CONFIG}"])
-
-  if $ICU_CONFIG --exists > /dev/null 2>&1; then
-    AC_MSG_RESULT([yes])
-    ICU_CPPFLAGS="$($ICU_CONFIG --cppflags)"
-    ICU_LDFLAGS=""
-    ICU_LIBS="$($ICU_CONFIG --ldflags)"
-    AC_MSG_CHECKING([ICU version])
-    TRI_ICU_VERSION="$($ICU_CONFIG --version)"
-    AC_MSG_RESULT([${TRI_ICU_VERSION}])
-  else
-    AC_MSG_RESULT([error])
-    AC_MSG_ERROR([ICU config program "${ICU_CONFIG}" not found. Use supplied ICU from 3rdParty directory (--enable-all-in-one-icu).])
-  fi
-
-  ICU_CPPFLAGS="${ICU_CPPFLAGS} -DTRI_ICU_VERSION='\"${TRI_ICU_VERSION}\"'"
+if test "x$ICU_CONFIG" == "x" ; then
+  ICU_CONFIG="icu-config"
 fi
+
+AC_MSG_CHECKING([for ICU config program "${ICU_CONFIG}"])
+
+if $ICU_CONFIG --exists > /dev/null 2>&1; then
+  AC_MSG_RESULT([yes])
+  ICU_CPPFLAGS="$($ICU_CONFIG --cppflags)"
+  ICU_LDFLAGS=""
+  ICU_LIBS="$($ICU_CONFIG --ldflags)"
+  AC_MSG_CHECKING([ICU version])
+  TRI_ICU_VERSION="$($ICU_CONFIG --version)"
+  AC_MSG_RESULT([${TRI_ICU_VERSION}])
+else
+  AC_MSG_RESULT([error])
+  AC_MSG_ERROR([ICU config program "${ICU_CONFIG}" not found. Use supplied ICU from 3rdParty directory (--enable-all-in-one-icu).])
+fi
+
+ICU_CPPFLAGS="${ICU_CPPFLAGS} -DTRI_ICU_VERSION='\"${TRI_ICU_VERSION}\"'"
 
 CMAKE_ICU_VERSION="${TRI_ICU_VERSION}"
 

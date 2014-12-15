@@ -41,8 +41,8 @@ using namespace triagens::arango;
 /// @brief get the vocbase pointer from the current V8 context
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t* GetContextVocBase () {
-  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+TRI_vocbase_t* GetContextVocBase (v8::Isolate* isolate) {
+  TRI_GET_GLOBALS();
 
   TRI_ASSERT_EXPENSIVE(v8g->_vocbase != nullptr);
   return static_cast<TRI_vocbase_t*>(v8g->_vocbase);
@@ -52,33 +52,34 @@ TRI_vocbase_t* GetContextVocBase () {
 /// @brief create a v8 tick id value from the internal tick id
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> V8TickId (TRI_voc_tick_t tick) {
+v8::Handle<v8::Value> V8TickId (v8::Isolate* isolate, TRI_voc_tick_t tick) {
   char buffer[21];
   size_t len = TRI_StringUInt64InPlace((uint64_t) tick, (char*) &buffer);
 
-  return v8::String::New((const char*) buffer, (int) len);
+  return TRI_V8_PAIR_STRING((const char*) buffer, (int) len);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a v8 revision id value from the internal revision id
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> V8RevisionId (TRI_voc_rid_t rid) {
+v8::Handle<v8::Value> V8RevisionId (v8::Isolate* isolate, TRI_voc_rid_t rid) {
   char buffer[21];
   size_t len = TRI_StringUInt64InPlace((uint64_t) rid, (char*) &buffer);
 
-  return v8::String::New((const char*) buffer, (int) len);
+  return TRI_V8_PAIR_STRING((const char*) buffer, (int) len);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a v8 document id value from the parameters
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> V8DocumentId (string const& collectionName,
+v8::Handle<v8::Value> V8DocumentId (v8::Isolate* isolate,
+                                    string const& collectionName,
                                     string const& key) {
   string const&& id = DocumentHelper::assembleDocumentId(collectionName, key);
 
-  return v8::String::New(id.c_str(), (int) id.size());
+  return TRI_V8_STD_STRING(id);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -131,7 +132,8 @@ static bool ParseDocumentHandle (v8::Handle<v8::Value> const arg,
 /// @brief parse document or document handle from a v8 value (string | object)
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ExtractDocumentHandle (v8::Handle<v8::Value> const val,
+bool ExtractDocumentHandle (v8::Isolate* isolate,
+                            v8::Handle<v8::Value> const val,
                             string& collectionName,
                             std::unique_ptr<char[]>& key,
                             TRI_voc_rid_t& rid) {
@@ -146,19 +148,20 @@ bool ExtractDocumentHandle (v8::Handle<v8::Value> const val,
 
   // extract the document identifier and revision from a document object
   if (val->IsObject()) {
-    TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+    TRI_GET_GLOBALS();
 
     v8::Handle<v8::Object> obj = val->ToObject();
-
-    if (obj->Has(v8g->_IdKey)) {
-      v8::Handle<v8::Value> didVal = obj->Get(v8g->_IdKey);
+    TRI_GET_GLOBAL_STRING(_IdKey);
+    TRI_GET_GLOBAL_STRING(_KeyKey);
+    if (obj->Has(_IdKey)) {
+      v8::Handle<v8::Value> didVal = obj->Get(_IdKey);
 
       if (! ParseDocumentHandle(didVal, collectionName, key)) {
         return false;
       }
     }
-    else if (obj->Has(v8g->_KeyKey)) {
-      v8::Handle<v8::Value> didVal = obj->Get(v8g->_KeyKey);
+    else if (obj->Has(_KeyKey)) {
+      v8::Handle<v8::Value> didVal = obj->Get(_KeyKey);
 
       if (! ParseDocumentHandle(didVal, collectionName, key)) {
         return false;
@@ -168,11 +171,12 @@ bool ExtractDocumentHandle (v8::Handle<v8::Value> const val,
       return false;
     }
 
-    if (! obj->Has(v8g->_RevKey)) {
+    TRI_GET_GLOBAL_STRING(_RevKey);
+    if (! obj->Has(_RevKey)) {
       return true;
     }
 
-    rid = TRI_ObjectToUInt64(obj->Get(v8g->_RevKey), true);
+    rid = TRI_ObjectToUInt64(obj->Get(_RevKey), true);
 
     if (rid == 0) {
       return false;

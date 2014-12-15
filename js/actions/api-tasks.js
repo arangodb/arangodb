@@ -285,9 +285,9 @@ function delete_api_task (req, res) {
   }
   else {
     try {
-      var result = tasks.unregister(decodeURIComponent(req.suffix[0]));
+      tasks.unregister(decodeURIComponent(req.suffix[0]));
 
-      actions.resultOk(req, res, actions.HTTP_OK, result);
+      actions.resultOk(req, res, actions.HTTP_OK, {});
     }
     catch (err) {
       actions.resultException(req, res, err, undefined, false);

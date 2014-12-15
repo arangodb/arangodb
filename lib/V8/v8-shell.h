@@ -46,7 +46,7 @@
 /// @brief stores the V8 shell function inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Shell (v8::Handle<v8::Context> context);
+void TRI_InitV8Shell (v8::Isolate* isolate, v8::Handle<v8::Context> context);
 
 #endif
 

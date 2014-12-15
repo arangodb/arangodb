@@ -115,14 +115,15 @@ Job::status_t V8Job::work () {
 
   // now execute the function within this context
   {
-    v8::HandleScope scope;
+    auto isolate = context->isolate;
+    v8::HandleScope scope(isolate);
 
     // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
-    v8::Handle<v8::Object> current = v8::Context::GetCurrent()->Global();
-    v8::Local<v8::Function> ctor = v8::Local<v8::Function>::Cast(current->Get(v8::String::New("Function")));
+    auto current = isolate->GetCurrentContext()->Global();
+    auto ctor = v8::Local<v8::Function>::Cast(current->Get(TRI_V8_ASCII_STRING("Function")));
 
     // Invoke Function constructor to create function with the given body and no arguments
-    v8::Handle<v8::Value> args[2] = { v8::String::New("params"), v8::String::New(_command.c_str(), (int) _command.size()) };
+    v8::Handle<v8::Value> args[2] = { TRI_V8_ASCII_STRING("params"), TRI_V8_STD_STRING(_command) };
     v8::Local<v8::Object> function = ctor->NewInstance(2, args);
 
     v8::Handle<v8::Function> action = v8::Local<v8::Function>::Cast(function);
@@ -135,22 +136,22 @@ Job::status_t V8Job::work () {
 
     v8::Handle<v8::Value> fArgs;
     if (_parameters != nullptr) {
-      fArgs = TRI_ObjectJson(_parameters);
+      fArgs = TRI_ObjectJson(isolate, _parameters);
     }
     else {
-      fArgs = v8::Undefined();
+      fArgs = v8::Undefined(isolate);
     }
 
-    // call the function
     v8::TryCatch tryCatch;
+    // call the function
     action->Call(current, 1, &fArgs);
 
     if (tryCatch.HasCaught()) {
       if (tryCatch.CanContinue()) {
-        TRI_LogV8Exception(&tryCatch);
+        TRI_LogV8Exception(isolate, &tryCatch);
       }
       else {
-        TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+        TRI_GET_GLOBALS();
 
         v8g->_canceled = true;
         LOG_WARNING("caught non-catchable exception (aka termination) in periodic job");
