@@ -91,6 +91,12 @@ ArangoClient BaseClient("arangosh");
 V8ClientConnection* ClientConnection = nullptr;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief map of connection objects
+////////////////////////////////////////////////////////////////////////////////
+
+std::unordered_map<void*, v8::Persistent<v8::External>> Connections;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Windows console codepage
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -571,9 +577,25 @@ static void objectToMap (v8::Isolate* isolate, map<string, string>& myMap, v8::H
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief weak reference callback for queries (call the destructor here)
+////////////////////////////////////////////////////////////////////////////////
+  
+static void DestroyConnection (V8ClientConnection* connection) {
+  TRI_ASSERT(connection != nullptr);
+
+  auto it = Connections.find(connection);
+
+  if (it != Connections.end()) {
+    (*it).second.Reset();
+    Connections.erase(it);    
+  }
+
+  delete connection;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a new client connection instance
 ////////////////////////////////////////////////////////////////////////////////
-std::map< void*, v8::Persistent<v8::External> > Connections;
 
 static V8ClientConnection* CreateConnection () {
   return new V8ClientConnection(BaseClient.endpointServer(),
@@ -596,17 +618,15 @@ static void ClientConnection_DestructorCallback (const v8::WeakCallbackData<v8::
   auto myConnection = v8::Local<v8::External>::New(data.GetIsolate(), *persistent);
   auto connection = static_cast<V8ClientConnection*>(myConnection->Value());
 
-  Connections[connection].Reset();
-  if (ClientConnection != connection) {
-    delete connection;
-  }
+  DestroyConnection(connection);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wrap V8ClientConnection in a v8::Object
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> wrapV8ClientConnection (v8::Isolate* isolate, V8ClientConnection* connection) {
+static v8::Handle<v8::Value> WrapV8ClientConnection (v8::Isolate* isolate, 
+                                                     V8ClientConnection* connection) {
   v8::EscapableHandleScope scope(isolate);
   auto localConnectionTempl = v8::Local<v8::ObjectTemplate>::New(isolate, ConnectionTempl);
   v8::Handle<v8::Object> result = localConnectionTempl->NewInstance();
@@ -627,7 +647,6 @@ static void ClientConnection_ConstructorCallback (const v8::FunctionCallbackInfo
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-
   if (args.Length() > 0 && args[0]->IsString()) {
     string definition = TRI_ObjectToString(args[0]);
 
@@ -645,6 +664,10 @@ static void ClientConnection_ConstructorCallback (const v8::FunctionCallbackInfo
 
   V8ClientConnection* connection = CreateConnection();
 
+  if (connection == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
   if (connection->isConnected() && connection->getLastHttpReturnCode() == HttpResponse::OK) {
     ostringstream s;
     s << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
@@ -658,7 +681,7 @@ static void ClientConnection_ConstructorCallback (const v8::FunctionCallbackInfo
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT, errorMessage.c_str());
   }
 
-  TRI_V8_RETURN(wrapV8ClientConnection(isolate, connection));
+  TRI_V8_RETURN(WrapV8ClientConnection(isolate, connection));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -715,7 +738,7 @@ static void ClientConnection_reconnect (const v8::FunctionCallbackInfo<v8::Value
   string const oldUsername     = BaseClient.username();
   string const oldPassword     = BaseClient.password();
 
-  delete connection;
+  DestroyConnection(connection);
   ClientConnection = nullptr;
 
   BaseClient.setEndpointString(definition);
@@ -800,7 +823,6 @@ static void ClientConnection_reconnect (const v8::FunctionCallbackInfo<v8::Value
 static void ClientConnection_httpGetAny (const v8::FunctionCallbackInfo<v8::Value>& args, bool raw) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
-
 
   // get the connection
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION);
@@ -1371,6 +1393,7 @@ static void ClientConnection_getDatabaseName (const v8::FunctionCallbackInfo<v8:
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ClientConnection method "setDatabaseName"
 ////////////////////////////////////////////////////////////////////////////////
+
 static void ClientConnection_setDatabaseName (const v8::FunctionCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
@@ -2133,7 +2156,7 @@ void InitCallbacks(v8::Isolate *isolate,
     ConnectionTempl.Reset(isolate, connection_inst);
 
     // add the client connection to the context:
-    TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_ARANGO"), wrapV8ClientConnection(isolate, ClientConnection));
+    TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_ARANGO"), WrapV8ClientConnection(isolate, ClientConnection));
   }
 
   TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_START_PAGER"),      v8::FunctionTemplate::New(isolate, JS_StartOutputPager)->GetFunction());
@@ -2154,9 +2177,9 @@ void InitCallbacks(v8::Isolate *isolate,
 
 }
 
-int warmupEnvironment(v8::Isolate *isolate,
-                      vector<string> &positionals,
-                      eRunMode runMode) {
+int warmupEnvironment (v8::Isolate *isolate,
+                       std::vector<string> &positionals,
+                       eRunMode runMode) {
   auto context = isolate->GetCurrentContext();
   // .............................................................................
   // read files
@@ -2354,15 +2377,20 @@ int main (int argc, char* args[]) {
       context.Reset();
     }
   }
+
+  TRI_v8_global_t* v8g = TRI_GetV8Globals(isolate);
+  delete v8g;
+
   isolate->Exit();
   isolate->Dispose();
 
   BaseClient.closeLog();
 
   if (ClientConnection != nullptr) {
-    delete ClientConnection;
+    DestroyConnection(ClientConnection);
+    ClientConnection = nullptr;
   }
-
+  
   TRIAGENS_REST_SHUTDOWN;
 
   arangoshExitFunction(ret, nullptr);
