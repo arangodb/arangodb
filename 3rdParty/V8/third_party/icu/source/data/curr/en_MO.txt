@@ -1,0 +1,22 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/en_MO.xml
+// *
+// ***************************************************************************
+en_MO{
+    %%Parent{"en_GB"}
+    Currencies{
+        MOP{
+            "MOP$",
+            "Macanese Pataca",
+        }
+        USD{
+            "US$",
+            "US Dollar",
+        }
+    }
+    Version{"2.0.92.29"}
+}

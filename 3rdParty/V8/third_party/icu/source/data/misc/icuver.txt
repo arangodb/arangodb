@@ -1,0 +1,11 @@
+// ***************************************************************************
+// *
+// * Copyright (C) 2010-2013 International Business Machines
+// * Corporation and others.  All Rights Reserved.
+// *
+// ***************************************************************************
+
+icuver:table(nofallback){ 
+    DataVersion { "52.0.1.0" }
+    ICUVersion  { "52.0.1.0" }
+}

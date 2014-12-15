@@ -1,0 +1,28 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/en_BW.xml
+// *
+// ***************************************************************************
+en_BW{
+    %%Parent{"en_001"}
+    Version{"2.0.92.80"}
+    zoneStrings{
+        "meta:Africa_Central"{
+            ss{"CAT"}
+        }
+        "meta:Africa_Eastern"{
+            ss{"EAT"}
+        }
+        "meta:Africa_Southern"{
+            ss{"SAST"}
+        }
+        "meta:Africa_Western"{
+            sd{"WAST"}
+            sg{"WAT"}
+            ss{"WAT"}
+        }
+    }
+}

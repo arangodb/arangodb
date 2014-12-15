@@ -1,0 +1,17 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/en_001.xml
+// *
+// ***************************************************************************
+en_001{
+    Currencies{
+        USD{
+            "US$",
+            "US Dollar",
+        }
+    }
+    Version{"2.0.91.92"}
+}

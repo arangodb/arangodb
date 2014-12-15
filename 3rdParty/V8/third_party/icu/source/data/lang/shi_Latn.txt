@@ -1,0 +1,62 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/shi_Latn.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/shi_Latn.xml
+ */
+shi_Latn{
+    %%Parent{"root"}
+    Languages{
+        ak{"takant"}
+        am{"tamharit"}
+        ar{"taɛrabt"}
+        be{"tabilarust"}
+        bg{"tablɣarit"}
+        bn{"tabnɣalit"}
+        cs{"tatcikit"}
+        de{"talimant"}
+        el{"tagrigit"}
+        en{"tanglizt"}
+        es{"tasbnyulit"}
+        fa{"tafursit"}
+        fr{"tafransist"}
+        ha{"tahawsat"}
+        hi{"tahindit"}
+        hu{"tahnɣarit"}
+        id{"tandunisit"}
+        ig{"tigbut"}
+        it{"taṭalyant"}
+        ja{"tajabbunit"}
+        jv{"tajavanit"}
+        km{"taxmirt"}
+        ko{"takurit"}
+        ms{"tamalawit"}
+        my{"tabirmanit"}
+        ne{"tanibalit"}
+        nl{"tahulandit"}
+        pa{"tabnjabit"}
+        pl{"tabulunit"}
+        pt{"tabṛṭqizt"}
+        ro{"tarumanit"}
+        ru{"tarusit"}
+        rw{"taruwandit"}
+        shi{"tamazight"}
+        so{"tasumalit"}
+        sv{"taswidit"}
+        ta{"tatamilt"}
+        th{"tataylandit"}
+        tr{"taturkit"}
+        uk{"tukranit"}
+        ur{"turdut"}
+        vi{"tafitnamit"}
+        yo{"tayrubat"}
+        zh{"tacinwit"}
+        zu{"tazulut"}
+    }
+    Version{"2.0.92.87"}
+}

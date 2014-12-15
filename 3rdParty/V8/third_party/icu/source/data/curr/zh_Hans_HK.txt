@@ -1,0 +1,68 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/zh_Hans_HK.xml
+// *
+// ***************************************************************************
+zh_Hans_HK{
+    Currencies{
+        AWG{
+            "AWG",
+            "阿鲁巴弗罗林",
+        }
+        HKD{
+            "$",
+            "港元",
+        }
+        HNL{
+            "HNL",
+            "洪都拉斯拉伦皮拉",
+        }
+        KYD{
+            "KYD",
+            "开曼群岛元",
+        }
+        KZT{
+            "KZT",
+            "哈萨克斯坦腾格",
+        }
+        NIO{
+            "NIO",
+            "尼加拉瓜科多巴",
+        }
+        UAH{
+            "UAH",
+            "乌克兰赫夫纳",
+        }
+        XAG{
+            "XAG",
+            "白银",
+        }
+    }
+    CurrencyPlurals{
+        AWG{
+            other{"阿鲁巴弗罗林"}
+        }
+        HNL{
+            other{"洪都拉斯拉伦皮拉"}
+        }
+        KYD{
+            other{"开曼群岛元"}
+        }
+        KZT{
+            other{"哈萨克斯坦腾格"}
+        }
+        NIO{
+            other{"尼加拉瓜科多巴"}
+        }
+        UAH{
+            other{"乌克兰赫夫纳"}
+        }
+    }
+    CurrencyUnitPatterns{
+        other{"{0} {1}"}
+    }
+    Version{"2.0.92.87"}
+}

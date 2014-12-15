@@ -1,0 +1,97 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/fr_CA.xml
+// *
+// ***************************************************************************
+fr_CA{
+    Keys{
+        calendar{"Calendrier"}
+        collation{"ordonnancement"}
+        currency{"Devise"}
+        numbers{"Chiffres"}
+    }
+    Languages{
+        es_ES{"espagnol ibérique"}
+        fy{"frison"}
+        gu{"goudjarâtî"}
+        pt_PT{"portugais ibérique"}
+        si{"singhalais"}
+        to{"tongan"}
+        ug{"ouïgour"}
+        und{"indéterminé"}
+        ybb{"yémba"}
+    }
+    LanguagesShort{
+        en_GB{"anglais (GB)"}
+    }
+    Scripts{
+        Beng{"bengâglî"}
+        Hans{"idéogrammes han simplifiés"}
+        Hant{"idéogrammes han traditionnels"}
+        Mlym{"malayâlam"}
+        Orya{"oriyâ"}
+        Sinh{"cingalais"}
+    }
+    Scripts%stand-alone{
+        Hans{"chinois simplifié"}
+        Hant{"chinois traditionnel"}
+    }
+    Types{
+        calendar{
+            ethiopic-amete-alem{"Calendrier éthiopien de l'An de grâce"}
+            gregorian{"Calendrier grégorien"}
+            islamic{"Calendrier musulman"}
+            islamic-civil{"Calendrier civil musulman"}
+            islamic-tbla{"calendrier religieux musulman"}
+            persian{"Calendrier perse"}
+        }
+        collation{
+            dictionary{"Ordre de tri du dictionnaire"}
+            ducet{"Ordre de tri Unicode par défaut"}
+            reformed{"Ordre de tri réformé"}
+            search{"Recherche générale"}
+            unihan{"Ordre de tri radical et trait"}
+        }
+        numbers{
+            arab{"Chiffres indo-arabes"}
+            arabext{"Chiffres indo-arabes étendus"}
+            armn{"Chiffres arméniens"}
+            armnlow{"Chiffres minuscules arméniens"}
+            beng{"Chiffres bengali"}
+            deva{"Chiffres devanagari"}
+            ethi{"Chiffre éthiopiens"}
+            fullwide{"Chiffre pleine largeur"}
+            geor{"Chiffres géorgiens"}
+            grek{"Chiffres grecs"}
+            greklow{"Chiffres minuscules grecs"}
+            gujr{"Chiffres gujarati"}
+            guru{"Chiffres gurmukhī"}
+            hanidec{"Chiffres numériques chinois"}
+            hans{"Chiffres chinois simplifiés"}
+            hansfin{"Chiffres monétaires chinois simplifiés"}
+            hant{"Chiffres chinois traditionnels"}
+            hantfin{"Chiffres financiers en chinois traditionnel"}
+            hebr{"Chiffre hébreux"}
+            jpan{"Chiffres japonais"}
+            jpanfin{"Chiffres monétaires japonais"}
+            khmr{"Chiffres khmer"}
+            knda{"Chiffres canara"}
+            laoo{"Chiffres laotiens"}
+            latn{"Chiffres occidentaux"}
+            mlym{"Chiffres malayâlam"}
+            mong{"Chiffres mongols"}
+            mymr{"Chiffres birmans"}
+            orya{"Chiffres oriya"}
+            roman{"Chiffres romains"}
+            romanlow{"Chiffres minuscules romains"}
+            taml{"Chiffres tamoul"}
+            telu{"Chiffres telugu"}
+            thai{"Chiffres thaïlandais"}
+            tibt{"Chiffres tibétains"}
+        }
+    }
+    Version{"2.0.92.80"}
+}

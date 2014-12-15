@@ -1,0 +1,99 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/be.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/be.xml
+ */
+be{
+    Version{"2.0.92.87"}
+    zoneStrings{
+        "America:Anchorage"{
+            ec{"Анкорыдж"}
+        }
+        "America:Campo_Grande"{
+            ec{"Кампа Грандэ"}
+        }
+        "America:Chicago"{
+            ec{"Чыкага"}
+        }
+        "America:Denver"{
+            ec{"Дэнвэр"}
+        }
+        "America:Indianapolis"{
+            ec{"Індыянапаліс"}
+        }
+        "America:Los_Angeles"{
+            ec{"Лос-Анджэлас"}
+        }
+        "America:New_York"{
+            ec{"Нью-Ёрк"}
+        }
+        "America:Phoenix"{
+            ec{"Фэнікс"}
+        }
+        "America:Rio_Branco"{
+            ec{"Рыё Бранка"}
+        }
+        "America:Sao_Paulo"{
+            ec{"Сан-Паўлу"}
+        }
+        "Etc:Unknown"{
+            ec{"Невядомы"}
+        }
+        "Pacific:Honolulu"{
+            ec{"Ганалулу"}
+        }
+        "meta:America_Central"{
+            ld{"Паўночнаамэрыканскі цэнтральны летні час"}
+            lg{"Паўночнаамэрыканскі цэнтральны час"}
+            ls{"Паўночнаамэрыканскі цэнтральны стандартны час"}
+        }
+        "meta:America_Eastern"{
+            ld{"Паўночнаамэрыканскі усходні летні час"}
+            lg{"Паўночнаамэрыканскі усходні час"}
+            ls{"Паўночнаамэрыканскі усходні стандартны час"}
+        }
+        "meta:America_Mountain"{
+            ld{"Паўночнаамэрыканскі горны летні час"}
+            lg{"Паўночнаамэрыканскі горны час"}
+            ls{"Паўночнаамэрыканскі горны стандартны час"}
+        }
+        "meta:America_Pacific"{
+            ld{"Ціхаакіянскі летні час"}
+            lg{"Ціхаакіянскі час"}
+            ls{"Ціхаакіянскі стандартны час"}
+        }
+        "meta:Atlantic"{
+            ld{"Атлянтычны летні час"}
+            lg{"Атлянтычны час"}
+            ls{"Атлянтычны стандартны час"}
+        }
+        "meta:Europe_Central"{
+            ld{"Цэнтральнаэўрапейскі летні час"}
+            lg{"Цэнтральнаэўрапейскі час"}
+            ls{"Цэнтральнаэўрапейскі стандартны час"}
+        }
+        "meta:Europe_Eastern"{
+            ld{"Усходнеэўрапейскі летні час"}
+            lg{"Усходнеэўрапейскі час"}
+            ls{"Усходнеэўрапейскі стандартны час"}
+        }
+        "meta:Europe_Western"{
+            ld{"Заходнеэўрапейскі летні час"}
+            lg{"Заходнеэўрапейскі час"}
+            ls{"Заходнеэўрапейскі стандартны час"}
+        }
+        "meta:GMT"{
+            ls{"Грынвічскі час"}
+        }
+        fallbackFormat{"{1} ({0})"}
+        gmtFormat{"GMT{0}"}
+        hourFormat{"+HH:mm;-HH:mm"}
+        regionFormat{"Час: {0}"}
+    }
+}

@@ -1,0 +1,115 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/root.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/root.xml
+ */
+root{
+    Currencies{
+        AUD{
+            "A$",
+            "AUD",
+        }
+        BRL{
+            "R$",
+            "BRL",
+        }
+        CAD{
+            "CA$",
+            "CAD",
+        }
+        CNY{
+            "CN¥",
+            "CNY",
+        }
+        EUR{
+            "€",
+            "EUR",
+        }
+        GBP{
+            "£",
+            "GBP",
+        }
+        HKD{
+            "HK$",
+            "HKD",
+        }
+        ILS{
+            "₪",
+            "ILS",
+        }
+        INR{
+            "₹",
+            "INR",
+        }
+        JPY{
+            "JP¥",
+            "JPY",
+        }
+        KRW{
+            "₩",
+            "KRW",
+        }
+        MXN{
+            "MX$",
+            "MXN",
+        }
+        NZD{
+            "NZ$",
+            "NZD",
+        }
+        THB{
+            "฿",
+            "THB",
+        }
+        TWD{
+            "NT$",
+            "TWD",
+        }
+        USD{
+            "US$",
+            "USD",
+        }
+        VND{
+            "₫",
+            "VND",
+        }
+        XAF{
+            "FCFA",
+            "XAF",
+        }
+        XCD{
+            "EC$",
+            "XCD",
+        }
+        XOF{
+            "CFA",
+            "XOF",
+        }
+        XPF{
+            "CFPF",
+            "XPF",
+        }
+    }
+    CurrencyUnitPatterns{
+        other{"{0} {1}"}
+    }
+    Version{"2.0.93.8"}
+    currencySpacing{
+        afterCurrency{
+            currencyMatch{"[:^S:]"}
+            insertBetween{" "}
+            surroundingMatch{"[:digit:]"}
+        }
+        beforeCurrency{
+            currencyMatch{"[:^S:]"}
+            insertBetween{" "}
+            surroundingMatch{"[:digit:]"}
+        }
+    }
+}

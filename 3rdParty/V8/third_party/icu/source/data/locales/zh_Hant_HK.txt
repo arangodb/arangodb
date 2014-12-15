@@ -1,0 +1,364 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/zh_Hant_HK.xml
+// *
+// ***************************************************************************
+zh_Hant_HK{
+    NumberElements{
+        latn{
+            patterns{
+                accountingFormat{"¤#,##0.00;(¤#,##0.00)"}
+                currencyFormat{"¤#,##0.00"}
+            }
+        }
+    }
+    Version{"2.0.92.87"}
+    calendar{
+        buddhist{
+            availableFormats{
+                MEd{"M-d（E）"}
+                Md{"M-d"}
+            }
+        }
+        chinese{
+            monthNames{
+                format{
+                    abbreviated{
+                        "一月",
+                        "二月",
+                        "三月",
+                        "四月",
+                        "五月",
+                        "六月",
+                        "七月",
+                        "八月",
+                        "九月",
+                        "十月",
+                        "十一月",
+                        "十二月",
+                    }
+                    narrow{
+                        "一",
+                        "二",
+                        "三",
+                        "四",
+                        "五",
+                        "六",
+                        "七",
+                        "八",
+                        "九",
+                        "十",
+                        "十一",
+                        "十二",
+                    }
+                    wide{
+                        "一月",
+                        "二月",
+                        "三月",
+                        "四月",
+                        "五月",
+                        "六月",
+                        "七月",
+                        "八月",
+                        "九月",
+                        "十月",
+                        "十一月",
+                        "十二月",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "一月",
+                        "二月",
+                        "三月",
+                        "四月",
+                        "五月",
+                        "六月",
+                        "七月",
+                        "八月",
+                        "九月",
+                        "十月",
+                        "十一月",
+                        "十二月",
+                    }
+                    narrow{
+                        "一",
+                        "二",
+                        "三",
+                        "四",
+                        "五",
+                        "六",
+                        "七",
+                        "八",
+                        "九",
+                        "十",
+                        "十一",
+                        "十二",
+                    }
+                    wide{
+                        "一月",
+                        "二月",
+                        "三月",
+                        "四月",
+                        "五月",
+                        "六月",
+                        "七月",
+                        "八月",
+                        "九月",
+                        "十月",
+                        "十一月",
+                        "十二月",
+                    }
+                }
+            }
+        }
+        generic{
+            DateTimePatterns{
+                "ah:mm:ss [zzzz]",
+                "ah:mm:ss [z]",
+                "ah:mm:ss",
+                "ah:mm",
+                "Gy年M月d日EEEE",
+                "Gy年M月d日",
+                "Gy年M月d日",
+                "d/M/yGGGGG",
+                "{1}{0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1}{0}",
+                "{1}{0}",
+            }
+            availableFormats{
+                Ed{"d E"}
+                GyMMM{"G y 年 M 月"}
+                GyMMMEd{"G y 年 M 月 d 日 (E)"}
+                MEd{"E, d/M"}
+                MMMEd{"M 月 d 日 (E)"}
+                MMMd{"M 月 d 日"}
+                Md{"d/M"}
+                yyyyM{"M/yGGGGG"}
+                yyyyMEd{"E, d/M/yGGGGG"}
+                yyyyMMMEd{"G y 年 M 月 d 日 (E)"}
+                yyyyMd{"d/M/yGGGGG"}
+                yyyyQQQ{"G y 年第QQQ"}
+                yyyyQQQQ{"G y 年QQQQ"}
+            }
+            intervalFormats{
+                MEd{
+                    M{"d/M (E) 至 d/M (E)"}
+                    d{"d/M (E) 至 d/M (E)"}
+                }
+                MMMEd{
+                    M{"M 月 d 日 (E) 至 M 月 d 日 (E)"}
+                    d{"M 月 d 日 (E) 至 d 日 (E)"}
+                }
+                MMMd{
+                    M{"M 月 d 日至 M 月 d 日"}
+                    d{"M 月 d 日至 d 日"}
+                }
+                Md{
+                    M{"d/M 至 d/M"}
+                    d{"d/M 至 d/M"}
+                }
+                y{
+                    y{"G y 年至 y 年"}
+                }
+                yM{
+                    M{"G M/y 至 M/y"}
+                }
+                yMEd{
+                    M{"G d/M/y (E) 至 d/M/y (E)"}
+                    d{"G d/M/y (E) 至 d/M/y (E)"}
+                    y{"G d/M/y (E) 至 d/M/y (E)"}
+                }
+                yMMM{
+                    y{"G y 年 M 月至 y 年 M 月"}
+                }
+                yMMMEd{
+                    M{"G y 年 M 月 d 日 (E) 至 M 月 d 日 (E)"}
+                    d{"G y 年 M 月 d 日 (E) 至 d 日 (E)"}
+                    y{"G y 年 M 月 d 日 (E) 至 y 年 M 月 d 日 (E)"}
+                }
+                yMd{
+                    M{"G d/M/y 至 d/M/y"}
+                    d{"G d/M/y 至 d/M/y"}
+                    y{"G d/M/y 至 d/M/y"}
+                }
+            }
+        }
+        gregorian{
+            DateTimePatterns{
+                "ah:mm:ss [zzzz]",
+                "ah:mm:ss [z]",
+                "ah:mm:ss",
+                "ah:mm",
+                "y年M月d日EEEE",
+                "y年M月d日",
+                "y年M月d日",
+                "d/M/yy",
+                "{1}{0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1}{0}",
+                "{1}{0}",
+            }
+            availableFormats{
+                Ed{"d E"}
+                GyMMMEd{"G y 年 M 月 d 日 (E)"}
+                MEd{"E, d/M"}
+                MMMEd{"M月d日 (E)"}
+                MMdd{"dd/MM"}
+                Md{"d/M"}
+                yM{"M/y"}
+                yMEd{"d/M/y（E）"}
+                yMM{"MM/y"}
+                yMMM{"y 年 M 月"}
+                yMMMEd{"y 年 M 月 d 日 (E)"}
+                yMMMM{"y 年 M 月"}
+                yMMMd{"y 年 M 月 d 日"}
+                yMd{"d/M/y"}
+            }
+            intervalFormats{
+                MEd{
+                    M{"d/M (E) 至 d/M (E)"}
+                    d{"d/M (E) 至 d/M (E)"}
+                }
+                MMMEd{
+                    M{"M 月 d 日 (E) 至 M 月 d 日 (E)"}
+                    d{"M 月 d 日 (E) 至 d 日 (E)"}
+                }
+                MMMd{
+                    M{"M 月 d 日至 M 月 d 日"}
+                    d{"M 月 d 日至 d 日"}
+                }
+                Md{
+                    M{"d/M 至 d/M"}
+                    d{"d/M 至 d/M"}
+                }
+                yM{
+                    M{"M/y 至 M/y"}
+                    y{"M/y 至 M/y"}
+                }
+                yMEd{
+                    M{"d/M/y (E) 至 d/M/y (E)"}
+                    d{"d/M/y (E) 至 d/M/y (E)"}
+                    y{"d/M/y (E) 至 d/M/y (E)"}
+                }
+                yMMM{
+                    M{"y 年 M 月至 M 月"}
+                    y{"y 年 M 月至 y 年 M 月"}
+                }
+                yMMMEd{
+                    M{"y 年 M 月 d 日 (E) 至 M 月 d 日 (E)"}
+                    d{"y 年 M 月 d 日 (E) 至 M 月 d 日 (E)"}
+                    y{"y 年 M 月 d 日 (E) 至 y 年 M 月 d日 (E)"}
+                }
+                yMMMM{
+                    M{"y 年 M 月 至 M 月"}
+                    y{"y 年 M 月至 y 年 M 月"}
+                }
+                yMMMd{
+                    M{"y 年 M 月 d 日至 M 月 d 日"}
+                    d{"y 年 M 月 d 日至 d 日"}
+                    y{"y 年 M 月 d 日至 y 年 M 月 d 日"}
+                }
+                yMd{
+                    M{"d/M/y 至 d/M/y"}
+                    d{"d/M/y 至 d/M/y"}
+                    y{"d/M/y 至 d/M/y"}
+                }
+            }
+        }
+        roc{
+            DateTimePatterns{
+                "ah:mm:ss [zzzz]",
+                "ah:mm:ss [z]",
+                "ah:mm:ss",
+                "ah:mm",
+                "Gy年M月d日EEEE",
+                "Gy年M月d日",
+                "Gy年M月d日",
+                "d/M/yGGGGG",
+                "{1}{0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1}{0}",
+                "{1}{0}",
+            }
+            availableFormats{
+                Gy{"G y 年"}
+                GyMMM{"G y 年 M 月"}
+                GyMMMEd{"G y 年 M 月 d 日 (E)"}
+                GyMMMd{"G y 年 M 月 d 日"}
+                MEd{"d-M（E）"}
+                MMMEd{"M 月 d 日 (E)"}
+                MMMd{"M 月 d 日"}
+                Md{"d-M"}
+                y{"G y 年"}
+                yyyy{"G y 年"}
+                yyyyM{"M/yGGGGG"}
+                yyyyMEd{"E, d/M/yGGGGG"}
+                yyyyMMM{"G y 年 M 月"}
+                yyyyMMMEd{"G y 年 M 月 d 日 (E)"}
+                yyyyMMMd{"G y 年 M 月 d 日"}
+                yyyyMd{"d/M/yGGGGG"}
+                yyyyQQQ{"G y 年第QQQ"}
+                yyyyQQQQ{"G y 年QQQQ"}
+            }
+        }
+    }
+    fields{
+        day{
+            relativeTime{
+                future{
+                    other{"{0} 日後"}
+                }
+                past{
+                    other{"{0} 日前"}
+                }
+            }
+        }
+        month{
+            relative{
+                "-1"{"上月"}
+                "1"{"下月"}
+            }
+            relativeTime{
+                past{
+                    other{"{0} 月前"}
+                }
+            }
+        }
+        year{
+            relative{
+                "-1"{"上年"}
+                "0"{"本年"}
+                "1"{"下年"}
+            }
+        }
+    }
+    measurementSystemNames{
+        UK{"英國"}
+        US{"美國"}
+        metric{"十進制"}
+    }
+    transformNames{
+        Numeric{"數值"}
+        x-Accents{"重音"}
+        x-Jamo{"韓文"}
+    }
+    units{
+        duration{
+            week{
+                other{"{0}星期"}
+            }
+        }
+    }
+    unitsNarrow{
+    }
+    unitsShort{
+    }
+}

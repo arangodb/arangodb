@@ -1,0 +1,108 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/to.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/to.xml
+ */
+to{
+    Version{"2.0.92.87"}
+    zoneStrings{
+        "America:Anchorage"{
+            ec{"Houa Puleʻanga fakataha ʻAmelika (Anchorage)"}
+        }
+        "America:Campo_Grande"{
+            ec{"Houa Palāsili (Campo Grande)"}
+        }
+        "America:Chicago"{
+            ec{"Houa Puleʻanga fakataha ʻAmelika (Chicago)"}
+        }
+        "America:Denver"{
+            ec{"Houa Puleʻanga fakataha ʻAmelika (Denver)"}
+        }
+        "America:Indianapolis"{
+            ec{"Houa Puleʻanga fakataha ʻAmelika (Indianapolis)"}
+        }
+        "America:Los_Angeles"{
+            ec{"Houa Puleʻanga fakataha ʻAmelika (Los Angeles)"}
+        }
+        "America:New_York"{
+            ec{"Houa Puleʻanga fakataha ʻAmelika (New York)"}
+        }
+        "America:Phoenix"{
+            ec{"Houa Puleʻanga fakataha ʻAmelika (Phoenix)"}
+        }
+        "America:Rio_Branco"{
+            ec{"Houa Palāsili (Rio Branco)"}
+        }
+        "America:Sao_Paulo"{
+            ec{"Houa Palāsili (Sao Paulo)"}
+        }
+        "Australia:Adelaide"{
+            ec{"Atelaite"}
+        }
+        "Australia:Brisbane"{
+            ec{"Pelisipane"}
+        }
+        "Etc:Unknown"{
+            ec{"Halaʻata"}
+        }
+        "Pacific:Easter"{
+            ec{"Lapanui"}
+        }
+        "Pacific:Honolulu"{
+            ec{"Houa Puleʻanga fakataha ʻAmelika (Honolulu)"}
+        }
+        "meta:Fiji"{
+            ld{"houa fakafisi fakamaama"}
+            lg{"houa fakafisi"}
+            ls{"houa fakafisi fakasīpinga"}
+        }
+        "meta:Hawaii_Aleutian"{
+            ld{"houa fakahauaʻi fakamaama"}
+            lg{"houa fakahauaʻi"}
+            ls{"houa fakahauaʻi fakasīpinga"}
+        }
+        "meta:New_Zealand"{
+            ld{"houa fakanuʻusila fakamaama"}
+            lg{"houa fakanuʻusila"}
+            ls{"houa fakanuʻusila fakasīpinga"}
+        }
+        "meta:Niue"{
+            ls{"houa fakaniuē"}
+        }
+        "meta:Samoa"{
+            ld{"houa fakahaʻamoa fakamaama"}
+            lg{"houa fakahaʻamoa"}
+            ls{"houa fakahaʻamoa fakasīpinga"}
+        }
+        "meta:Tahiti"{
+            ls{"houa fakatahisi"}
+        }
+        "meta:Tokelau"{
+            ls{"houa fakatokelau"}
+        }
+        "meta:Tonga"{
+            ld{"houa fakatonga lotohē"}
+            lg{"houa fakatonga"}
+            ls{"houa fakatonga fakasīpinga"}
+        }
+        "meta:Tuvalu"{
+            ls{"houa fakatūvalu"}
+        }
+        "meta:Wallis"{
+            ls{"houa fakaʻuvea mo futuna"}
+        }
+        fallbackFormat{"{1} ({0})"}
+        gmtFormat{"GMT{0}"}
+        gmtZeroFormat{"GMT"}
+        hourFormat{"+HH:mm;-HH:mm"}
+        regionFormat{"Taimi {0}"}
+        regionFormatDaylight{"{0} (+1)"}
+        regionFormatStandard{"{0} (+0)"}
+    }
+}

@@ -1,0 +1,1232 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ee.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/ee.xml
+ */
+ee{
+    Version{"2.0.93.8"}
+    zoneStrings{
+        "Africa:Abidjan"{
+            ec{"Abidzan nutomegaƒoƒome"}
+        }
+        "Africa:Accra"{
+            ec{"Gɛ̃ nutomegaƒoƒome"}
+        }
+        "Africa:Addis_Ababa"{
+            ec{"Addis Ababa nutomegaƒoƒome"}
+        }
+        "Africa:Algiers"{
+            ec{"Algiers nutomegaƒoƒome"}
+        }
+        "Africa:Asmera"{
+            ec{"Asmara nutomegaƒoƒome"}
+        }
+        "Africa:Bangui"{
+            ec{"Bangui nutomegaƒoƒome"}
+        }
+        "Africa:Banjul"{
+            ec{"Bandzul nutomegaƒoƒome"}
+        }
+        "Africa:Bissau"{
+            ec{"Bisao nutomegaƒoƒome"}
+        }
+        "Africa:Blantyre"{
+            ec{"Blantaire nutomegaƒoƒome"}
+        }
+        "Africa:Brazzaville"{
+            ec{"Brazzaville nutomegaƒoƒome"}
+        }
+        "Africa:Bujumbura"{
+            ec{"Budzumbura nutomegaƒoƒome"}
+        }
+        "Africa:Cairo"{
+            ec{"Kairo nutomegaƒoƒome"}
+        }
+        "Africa:Casablanca"{
+            ec{"Kasablanka nutomegaƒoƒome"}
+        }
+        "Africa:Ceuta"{
+            ec{"Keuta nutomegaƒoƒome"}
+        }
+        "Africa:Conakry"{
+            ec{"Konakry nutomegaƒoƒome"}
+        }
+        "Africa:Dakar"{
+            ec{"Dakar nutomegaƒoƒome"}
+        }
+        "Africa:Dar_es_Salaam"{
+            ec{"Dar es Salam nutomegaƒoƒome"}
+        }
+        "Africa:Djibouti"{
+            ec{"Dzibuti nutomegaƒoƒome"}
+        }
+        "Africa:Douala"{
+            ec{"Doula nutomegaƒoƒome"}
+        }
+        "Africa:El_Aaiun"{
+            ec{"El Aaiun nutomegaƒoƒome"}
+        }
+        "Africa:Freetown"{
+            ec{"Freetown nutomegaƒoƒome"}
+        }
+        "Africa:Gaborone"{
+            ec{"Gaborone nutomegaƒoƒome"}
+        }
+        "Africa:Harare"{
+            ec{"Harare nutomegaƒoƒome"}
+        }
+        "Africa:Johannesburg"{
+            ec{"Yohannesburg nutomegaƒoƒome"}
+        }
+        "Africa:Kampala"{
+            ec{"Kampala nutomegaƒoƒome"}
+        }
+        "Africa:Khartoum"{
+            ec{"Khartoum nutomegaƒoƒome"}
+        }
+        "Africa:Kigali"{
+            ec{"Kigali nutomegaƒoƒome"}
+        }
+        "Africa:Kinshasa"{
+            ec{"Kinshasa nutomegaƒoƒome"}
+        }
+        "Africa:Lagos"{
+            ec{"Lagos nutomegaƒoƒome"}
+        }
+        "Africa:Libreville"{
+            ec{"Libreville nutomegaƒoƒome"}
+        }
+        "Africa:Lome"{
+            ec{"Lome nutomegaƒoƒome"}
+        }
+        "Africa:Luanda"{
+            ec{"Luanda nutomegaƒoƒome"}
+        }
+        "Africa:Lubumbashi"{
+            ec{"Lubumbashi nutomegaƒoƒome"}
+        }
+        "Africa:Lusaka"{
+            ec{"Lusaka nutomegaƒoƒome"}
+        }
+        "Africa:Malabo"{
+            ec{"Malabo nutomegaƒoƒome"}
+        }
+        "Africa:Maputo"{
+            ec{"Maputo nutomegaƒoƒome"}
+        }
+        "Africa:Maseru"{
+            ec{"Maseru nutomegaƒoƒome"}
+        }
+        "Africa:Mbabane"{
+            ec{"Mbabane nutomegaƒoƒome"}
+        }
+        "Africa:Mogadishu"{
+            ec{"Mogadishu nutomegaƒoƒome"}
+        }
+        "Africa:Monrovia"{
+            ec{"Monrovia nutomegaƒoƒome"}
+        }
+        "Africa:Nairobi"{
+            ec{"Nairobi nutomegaƒoƒome"}
+        }
+        "Africa:Ndjamena"{
+            ec{"Ndzamena nutomegaƒoƒome"}
+        }
+        "Africa:Niamey"{
+            ec{"Niamey nutomegaƒoƒome"}
+        }
+        "Africa:Nouakchott"{
+            ec{"Nouakchott nutomegaƒoƒome"}
+        }
+        "Africa:Ouagadougou"{
+            ec{"Ouagadugu nutomegaƒoƒome"}
+        }
+        "Africa:Porto-Novo"{
+            ec{"Pɔto-Novo nutomegaƒoƒome"}
+        }
+        "Africa:Sao_Tome"{
+            ec{"Sao Tome nutomegaƒoƒome"}
+        }
+        "Africa:Tripoli"{
+            ec{"Tripoli nutomegaƒoƒome"}
+        }
+        "Africa:Tunis"{
+            ec{"Tunis nutomegaƒoƒome"}
+        }
+        "Africa:Windhoek"{
+            ec{"Windhoek nutomegaƒoƒome"}
+        }
+        "America:Adak"{
+            ec{"Adak nutomegaƒoƒome"}
+        }
+        "America:Anchorage"{
+            ec{"Anchorage nutomegaƒoƒome"}
+        }
+        "America:Anguilla"{
+            ec{"Anguilla nutomegaƒoƒome"}
+        }
+        "America:Antigua"{
+            ec{"Antigua nutomegaƒoƒome"}
+        }
+        "America:Araguaina"{
+            ec{"Araguaina nutomegaƒoƒome"}
+        }
+        "America:Argentina:La_Rioja"{
+            ec{"La Rioha nutomegaƒoƒome"}
+        }
+        "America:Argentina:Rio_Gallegos"{
+            ec{"Rio Gallegos nutomegaƒoƒome"}
+        }
+        "America:Argentina:Salta"{
+            ec{"Salta nutomegaƒoƒome"}
+        }
+        "America:Argentina:San_Juan"{
+            ec{"San Dzuan nutomegaƒoƒome"}
+        }
+        "America:Argentina:San_Luis"{
+            ec{"San Luis nutomegaƒoƒome"}
+        }
+        "America:Argentina:Tucuman"{
+            ec{"Tukuman nutomegaƒoƒome"}
+        }
+        "America:Argentina:Ushuaia"{
+            ec{"Ushuaia nutomegaƒoƒome"}
+        }
+        "America:Aruba"{
+            ec{"Aruba nutomegaƒoƒome"}
+        }
+        "America:Asuncion"{
+            ec{"Asunsion nutomegaƒoƒome"}
+        }
+        "America:Bahia"{
+            ec{"Bahia nutomegaƒoƒome"}
+        }
+        "America:Barbados"{
+            ec{"Barbados nutomegaƒoƒome"}
+        }
+        "America:Belem"{
+            ec{"Belem nutomegaƒoƒome"}
+        }
+        "America:Belize"{
+            ec{"Belize nutomegaƒoƒome"}
+        }
+        "America:Blanc-Sablon"{
+            ec{"Blank-Sablon nutomegaƒoƒome"}
+        }
+        "America:Boa_Vista"{
+            ec{"Boa Vista nutomegaƒoƒome"}
+        }
+        "America:Bogota"{
+            ec{"Bogota nutomegaƒoƒome"}
+        }
+        "America:Boise"{
+            ec{"Boise nutomegaƒoƒome"}
+        }
+        "America:Buenos_Aires"{
+            ec{"Buenos Aires nutomegaƒoƒome"}
+        }
+        "America:Cambridge_Bay"{
+            ec{"Kambridge Bay nutomegaƒoƒome"}
+        }
+        "America:Campo_Grande"{
+            ec{"Kampo Grande nutomegaƒoƒome"}
+        }
+        "America:Cancun"{
+            ec{"Kankun nutomegaƒoƒome"}
+        }
+        "America:Caracas"{
+            ec{"Karakas nutomegaƒoƒome"}
+        }
+        "America:Catamarca"{
+            ec{"Katamaka nutomegaƒoƒome"}
+        }
+        "America:Cayenne"{
+            ec{"Kayenne nutomegaƒoƒome"}
+        }
+        "America:Cayman"{
+            ec{"Keman nutomegaƒoƒome"}
+        }
+        "America:Chicago"{
+            ec{"Tsikago nutomegaƒoƒome"}
+        }
+        "America:Chihuahua"{
+            ec{"Tsihuahua nutomegaƒoƒome"}
+        }
+        "America:Coral_Harbour"{
+            ec{"Atikokannutomegaƒoƒome"}
+        }
+        "America:Cordoba"{
+            ec{"Kɔdoba nutomegaƒoƒome"}
+        }
+        "America:Costa_Rica"{
+            ec{"Kɔsta Rika nutomegaƒoƒome"}
+        }
+        "America:Cuiaba"{
+            ec{"Kuiaba nutomegaƒoƒome"}
+        }
+        "America:Curacao"{
+            ec{"Kurakao nutomegaƒoƒome"}
+        }
+        "America:Danmarkshavn"{
+            ec{"Danmarkshavn nutomegaƒoƒome"}
+        }
+        "America:Dawson"{
+            ec{"Dɔwson nutomegaƒoƒome"}
+        }
+        "America:Dawson_Creek"{
+            ec{"Dawson Krik nutomegaƒoƒome"}
+        }
+        "America:Denver"{
+            ec{"Denva nutomegaƒoƒome"}
+        }
+        "America:Detroit"{
+            ec{"Detrɔit nutomegaƒoƒome"}
+        }
+        "America:Dominica"{
+            ec{"Dominika nutomegaƒoƒome"}
+        }
+        "America:Edmonton"{
+            ec{"Edmonton nutomegaƒoƒome"}
+        }
+        "America:Eirunepe"{
+            ec{"Eirunepe nutomegaƒoƒome"}
+        }
+        "America:El_Salvador"{
+            ec{"El Salvadɔ nutomegaƒoƒome"}
+        }
+        "America:Fortaleza"{
+            ec{"Fortaleza nutomegaƒoƒome"}
+        }
+        "America:Glace_Bay"{
+            ec{"Glaise Bay nutomegaƒoƒome"}
+        }
+        "America:Goose_Bay"{
+            ec{"Guse Bay nutomegaƒoƒome"}
+        }
+        "America:Grand_Turk"{
+            ec{"Grand Tɛk nutomegaƒoƒome"}
+        }
+        "America:Grenada"{
+            ec{"Grenada nutomegaƒoƒome"}
+        }
+        "America:Guadeloupe"{
+            ec{"Guadelupe nutomegaƒoƒome"}
+        }
+        "America:Guatemala"{
+            ec{"Guatemala nutomegaƒoƒome"}
+        }
+        "America:Guyana"{
+            ec{"Gayana nutomegaƒoƒome"}
+        }
+        "America:Halifax"{
+            ec{"Halifaks nutomegaƒoƒome"}
+        }
+        "America:Havana"{
+            ec{"Havana nutomegaƒoƒome"}
+        }
+        "America:Hermosillo"{
+            ec{"Hermosillo nutomegaƒoƒome"}
+        }
+        "America:Indiana:Knox"{
+            ec{"Knox, Indiana nutomegaƒoƒome"}
+        }
+        "America:Indiana:Marengo"{
+            ec{"Marengo, Indiana nutomegaƒoƒome"}
+        }
+        "America:Indiana:Petersburg"{
+            ec{"Petersburg, Indiana nutomegaƒoƒome"}
+        }
+        "America:Indiana:Tell_City"{
+            ec{"Telldugã, Indiana nutomegaƒoƒome"}
+        }
+        "America:Indiana:Vevay"{
+            ec{"Vevay, Indiana nutomegaƒoƒome"}
+        }
+        "America:Indiana:Vincennes"{
+            ec{"Vinsennes, Indiana nutomegaƒoƒome"}
+        }
+        "America:Indiana:Winamac"{
+            ec{"Winamak, Indiana nutomegaƒoƒome"}
+        }
+        "America:Indianapolis"{
+            ec{"Indianapolis nutomegaƒoƒome"}
+        }
+        "America:Inuvik"{
+            ec{"Inuvik nutomegaƒoƒome"}
+        }
+        "America:Iqaluit"{
+            ec{"Ikaluit nutomegaƒoƒome"}
+        }
+        "America:Jamaica"{
+            ec{"Dzamaika nutomegaƒoƒome"}
+        }
+        "America:Jujuy"{
+            ec{"Dzudzoi nutomegaƒoƒome"}
+        }
+        "America:Juneau"{
+            ec{"Dzuneau nutomegaƒoƒome"}
+        }
+        "America:Kentucky:Monticello"{
+            ec{"Montisello, Kentaki nutomegaƒoƒome"}
+        }
+        "America:La_Paz"{
+            ec{"La Paz nutomegaƒoƒome"}
+        }
+        "America:Lima"{
+            ec{"Lima nutomegaƒoƒome"}
+        }
+        "America:Los_Angeles"{
+            ec{"Los Angeles nutomegaƒoƒome"}
+        }
+        "America:Louisville"{
+            ec{"Louisville nutomegaƒoƒome"}
+        }
+        "America:Maceio"{
+            ec{"Maseio nutomegaƒoƒome"}
+        }
+        "America:Managua"{
+            ec{"Managua nutomegaƒoƒome"}
+        }
+        "America:Manaus"{
+            ec{"Manaus nutomegaƒoƒome"}
+        }
+        "America:Marigot"{
+            ec{"Marigot nutomegaƒoƒome"}
+        }
+        "America:Martinique"{
+            ec{"Martinik nutomegaƒoƒome"}
+        }
+        "America:Mazatlan"{
+            ec{"Mazatlan nutomegaƒoƒome"}
+        }
+        "America:Mendoza"{
+            ec{"Mendoza nutomegaƒoƒome"}
+        }
+        "America:Menominee"{
+            ec{"Menomini nutomegaƒoƒome"}
+        }
+        "America:Merida"{
+            ec{"Merida nutomegaƒoƒome"}
+        }
+        "America:Mexico_City"{
+            ec{"Meksikodugã nutomegaƒoƒome"}
+        }
+        "America:Miquelon"{
+            ec{"Miquelon nutomegaƒoƒome"}
+        }
+        "America:Moncton"{
+            ec{"Moncton nutomegaƒoƒome"}
+        }
+        "America:Monterrey"{
+            ec{"Monterrey nutomegaƒoƒome"}
+        }
+        "America:Montevideo"{
+            ec{"Montevideo nutomegaƒoƒome"}
+        }
+        "America:Montreal"{
+            ec{"Montreal nutomegaƒoƒome"}
+        }
+        "America:Montserrat"{
+            ec{"Montserrat nutomegaƒoƒome"}
+        }
+        "America:Nassau"{
+            ec{"Nassau nutomegaƒoƒome"}
+        }
+        "America:New_York"{
+            ec{"New York nutomegaƒoƒome"}
+        }
+        "America:Nipigon"{
+            ec{"Nipigon nutomegaƒoƒome"}
+        }
+        "America:Nome"{
+            ec{"Nome nutomegaƒoƒome"}
+        }
+        "America:Noronha"{
+            ec{"Noronha nutomegaƒoƒome"}
+        }
+        "America:North_Dakota:Beulah"{
+            ec{"Beulah, North Dakota nutomegaƒoƒome"}
+        }
+        "America:North_Dakota:Center"{
+            ec{"Titina, North Dakota nutomegaƒoƒome"}
+        }
+        "America:North_Dakota:New_Salem"{
+            ec{"New Salem, North Dakota nutomegaƒoƒome"}
+        }
+        "America:Panama"{
+            ec{"Panama nutomegaƒoƒome"}
+        }
+        "America:Pangnirtung"{
+            ec{"Pangnirtung nutomegaƒoƒome"}
+        }
+        "America:Paramaribo"{
+            ec{"Paramaribo nutomegaƒoƒome"}
+        }
+        "America:Phoenix"{
+            ec{"Foenix nutomegaƒoƒome"}
+        }
+        "America:Port-au-Prince"{
+            ec{"Pɔrt-au-Princenutomegaƒoƒome"}
+        }
+        "America:Port_of_Spain"{
+            ec{"Pɔrt of Spain nutomegaƒoƒome"}
+        }
+        "America:Porto_Velho"{
+            ec{"Pɔrto Velho nutomegaƒoƒome"}
+        }
+        "America:Puerto_Rico"{
+            ec{"Puerto Riko nutomegaƒoƒome"}
+        }
+        "America:Rainy_River"{
+            ec{"Raini Riva nutomegaƒoƒome"}
+        }
+        "America:Rankin_Inlet"{
+            ec{"Rankin Inlet nutomegaƒoƒome"}
+        }
+        "America:Recife"{
+            ec{"Resife nutomegaƒoƒome"}
+        }
+        "America:Regina"{
+            ec{"Regina nutomegaƒoƒome"}
+        }
+        "America:Resolute"{
+            ec{"Resolute nutomegaƒoƒome"}
+        }
+        "America:Rio_Branco"{
+            ec{"Rio Branko nutomegaƒoƒome"}
+        }
+        "America:Santarem"{
+            ec{"Santarem nutomegaƒoƒome"}
+        }
+        "America:Santo_Domingo"{
+            ec{"Santo Domingo nutomegaƒoƒome"}
+        }
+        "America:Sao_Paulo"{
+            ec{"Sao Paulo nutomegaƒoƒome"}
+        }
+        "America:Scoresbysund"{
+            ec{"Skɔsbisund nutomegaƒoƒome"}
+        }
+        "America:Shiprock"{
+            ec{"Tsiprɔk nutomegaƒoƒome"}
+        }
+        "America:St_Barthelemy"{
+            ec{"St. Barthelemy nutomegaƒoƒome"}
+        }
+        "America:St_Johns"{
+            ec{"St. Yohannes nutomegaƒoƒome"}
+        }
+        "America:St_Kitts"{
+            ec{"St. Kitis nutomegaƒoƒome"}
+        }
+        "America:St_Lucia"{
+            ec{"St. Lusia nutomegaƒoƒome"}
+        }
+        "America:St_Thomas"{
+            ec{"St. Toma nutomegaƒoƒome"}
+        }
+        "America:St_Vincent"{
+            ec{"St. Vincent nutomegaƒoƒome"}
+        }
+        "America:Swift_Current"{
+            ec{"Swift Kurrent nutomegaƒoƒome"}
+        }
+        "America:Tegucigalpa"{
+            ec{"Tegukigalpa nutomegaƒoƒome"}
+        }
+        "America:Thule"{
+            ec{"Thule nutomegaƒoƒome"}
+        }
+        "America:Thunder_Bay"{
+            ec{"Thunder Bay nutomegaƒoƒome"}
+        }
+        "America:Tijuana"{
+            ec{"Tihuana nutomegaƒoƒome"}
+        }
+        "America:Toronto"{
+            ec{"Toronto nutomegaƒoƒome"}
+        }
+        "America:Tortola"{
+            ec{"Tɔtola nutomegaƒoƒome"}
+        }
+        "America:Vancouver"{
+            ec{"Vankouver nutomegaƒoƒome"}
+        }
+        "America:Whitehorse"{
+            ec{"Whitehorse nutomegaƒoƒome"}
+        }
+        "America:Winnipeg"{
+            ec{"Winnipeg nutomegaƒoƒome"}
+        }
+        "America:Yakutat"{
+            ec{"Yakutat nutomegaƒoƒome"}
+        }
+        "America:Yellowknife"{
+            ec{"Yellownaif nutomegaƒoƒome"}
+        }
+        "Antarctica:Casey"{
+            ec{"Kasey nutomegaƒoƒome"}
+        }
+        "Antarctica:Davis"{
+            ec{"Davis nutomegaƒoƒome"}
+        }
+        "Antarctica:DumontDUrville"{
+            ec{"Dumont d'Urville nutomegaƒoƒome"}
+        }
+        "Antarctica:Mawson"{
+            ec{"Mawson nutomegaƒoƒome"}
+        }
+        "Antarctica:McMurdo"{
+            ec{"MacMurdo nutomegaƒoƒome"}
+        }
+        "Antarctica:Palmer"{
+            ec{"Palmer nutomegaƒoƒome"}
+        }
+        "Antarctica:Rothera"{
+            ec{"Rothera nutomegaƒoƒome"}
+        }
+        "Antarctica:South_Pole"{
+            ec{"South Pole nutomegaƒoƒome"}
+        }
+        "Antarctica:Syowa"{
+            ec{"Syowa nutomegaƒoƒome"}
+        }
+        "Antarctica:Vostok"{
+            ec{"Vostok nutomegaƒoƒome"}
+        }
+        "Arctic:Longyearbyen"{
+            ec{"Longyearbiyen nutomegaƒoƒome"}
+        }
+        "Asia:Aden"{
+            ec{"Aden nutomegaƒoƒome"}
+        }
+        "Asia:Almaty"{
+            ec{"Almati nutomegaƒoƒome"}
+        }
+        "Asia:Amman"{
+            ec{"Amman nutomegaƒoƒome"}
+        }
+        "Asia:Anadyr"{
+            ec{"Anadir nutomegaƒoƒome"}
+        }
+        "Asia:Aqtau"{
+            ec{"Aktau nutomegaƒoƒome"}
+        }
+        "Asia:Aqtobe"{
+            ec{"Aktobe nutomegaƒoƒome"}
+        }
+        "Asia:Ashgabat"{
+            ec{"Ashgabat nutomegaƒoƒome"}
+        }
+        "Asia:Baghdad"{
+            ec{"Baghdad nutomegaƒoƒome"}
+        }
+        "Asia:Bahrain"{
+            ec{"Bahrain nutomegaƒoƒome"}
+        }
+        "Asia:Baku"{
+            ec{"Baku nutomegaƒoƒome"}
+        }
+        "Asia:Bangkok"{
+            ec{"Bangkok nutomegaƒoƒome"}
+        }
+        "Asia:Beirut"{
+            ec{"Beirut nutomegaƒoƒome"}
+        }
+        "Asia:Bishkek"{
+            ec{"Bishkek nutomegaƒoƒome"}
+        }
+        "Asia:Brunei"{
+            ec{"Brunei nutomegaƒoƒome"}
+        }
+        "Asia:Calcutta"{
+            ec{"Kolkata nutomegaƒoƒome"}
+        }
+        "Asia:Choibalsan"{
+            ec{"Tsoibalsan nutomegaƒoƒome"}
+        }
+        "Asia:Chongqing"{
+            ec{"Tsongking nutomegaƒoƒome"}
+        }
+        "Asia:Colombo"{
+            ec{"Kolombo nutomegaƒoƒome"}
+        }
+        "Asia:Damascus"{
+            ec{"Damaskus nutomegaƒoƒome"}
+        }
+        "Asia:Dhaka"{
+            ec{"Dhaka nutomegaƒoƒome"}
+        }
+        "Asia:Dili"{
+            ec{"Dili nutomegaƒoƒome"}
+        }
+        "Asia:Dubai"{
+            ec{"Dubai nutomegaƒoƒome"}
+        }
+        "Asia:Dushanbe"{
+            ec{"Dutsanbe nutomegaƒoƒome"}
+        }
+        "Asia:Gaza"{
+            ec{"Gaza nutomegaƒoƒome"}
+        }
+        "Asia:Harbin"{
+            ec{"Harbin nutomegaƒoƒome"}
+        }
+        "Asia:Hong_Kong"{
+            ec{"Hɔng Kɔng nutomegaƒoƒome"}
+        }
+        "Asia:Hovd"{
+            ec{"Hovd nutomegaƒoƒome"}
+        }
+        "Asia:Irkutsk"{
+            ec{"Irkutsk nutomegaƒoƒome"}
+        }
+        "Asia:Jakarta"{
+            ec{"Dzakarta nutomegaƒoƒome"}
+        }
+        "Asia:Jayapura"{
+            ec{"Dzayapura nutomegaƒoƒome"}
+        }
+        "Asia:Jerusalem"{
+            ec{"Yerusalem nutomegaƒoƒome"}
+        }
+        "Asia:Kabul"{
+            ec{"Kabul nutomegaƒoƒome"}
+        }
+        "Asia:Kamchatka"{
+            ec{"Kamtsatka nutomegaƒoƒome"}
+        }
+        "Asia:Karachi"{
+            ec{"Karatsi nutomegaƒoƒome"}
+        }
+        "Asia:Kashgar"{
+            ec{"Kashgar nutomegaƒoƒome"}
+        }
+        "Asia:Katmandu"{
+            ec{"Kathmandu nutomegaƒoƒome"}
+        }
+        "Asia:Krasnoyarsk"{
+            ec{"Krasnoyarsk nutomegaƒoƒome"}
+        }
+        "Asia:Kuching"{
+            ec{"Kutsing nutomegaƒoƒome"}
+        }
+        "Asia:Kuwait"{
+            ec{"Kuwait nutomegaƒoƒome"}
+        }
+        "Asia:Macau"{
+            ec{"Macau nutomegaƒoƒome"}
+        }
+        "Asia:Magadan"{
+            ec{"Magadan nutomegaƒoƒome"}
+        }
+        "Asia:Makassar"{
+            ec{"Makassar nutomegaƒoƒome"}
+        }
+        "Asia:Manila"{
+            ec{"Manila nutomegaƒoƒome"}
+        }
+        "Asia:Muscat"{
+            ec{"Muskat nutomegaƒoƒome"}
+        }
+        "Asia:Nicosia"{
+            ec{"Nikosia nutomegaƒoƒome"}
+        }
+        "Asia:Novosibirsk"{
+            ec{"Novosibirsk nutomegaƒoƒome"}
+        }
+        "Asia:Omsk"{
+            ec{"Omsk nutomegaƒoƒome"}
+        }
+        "Asia:Oral"{
+            ec{"Oral nutomegaƒoƒome"}
+        }
+        "Asia:Phnom_Penh"{
+            ec{"Nɔm Penh nutomegaƒoƒome"}
+        }
+        "Asia:Pontianak"{
+            ec{"Pontianak nutomegaƒoƒome"}
+        }
+        "Asia:Pyongyang"{
+            ec{"Piongyang nutomegaƒoƒome"}
+        }
+        "Asia:Qatar"{
+            ec{"Katar nutomegaƒoƒome"}
+        }
+        "Asia:Qyzylorda"{
+            ec{"Kizilɔda nutomegaƒoƒome"}
+        }
+        "Asia:Rangoon"{
+            ec{"Rangoon nutomegaƒoƒome"}
+        }
+        "Asia:Riyadh"{
+            ec{"Riyadh nutomegaƒoƒome"}
+        }
+        "Asia:Saigon"{
+            ec{"Ho Tsi Minh nutomegaƒoƒome"}
+        }
+        "Asia:Sakhalin"{
+            ec{"Sakhalin nutomegaƒoƒome"}
+        }
+        "Asia:Samarkand"{
+            ec{"Samarkand nutomegaƒoƒome"}
+        }
+        "Asia:Seoul"{
+            ec{"Seoul nutomegaƒoƒome"}
+        }
+        "Asia:Singapore"{
+            ec{"Singapore nutomegaƒoƒome"}
+        }
+        "Asia:Taipei"{
+            ec{"Taipei nutomegaƒoƒome"}
+        }
+        "Asia:Tbilisi"{
+            ec{"Tbilisi nutomegaƒoƒome"}
+        }
+        "Asia:Tehran"{
+            ec{"Tehran nutomegaƒoƒome"}
+        }
+        "Asia:Thimphu"{
+            ec{"Timfu nutomegaƒoƒome"}
+        }
+        "Asia:Tokyo"{
+            ec{"Tokio nutomegaƒoƒome"}
+        }
+        "Asia:Ulaanbaatar"{
+            ec{"Ulaanbaatar nutomegaƒoƒome"}
+        }
+        "Asia:Urumqi"{
+            ec{"Urumqi nutomegaƒoƒome"}
+        }
+        "Asia:Vientiane"{
+            ec{"Vientiane nutomegaƒoƒome"}
+        }
+        "Asia:Vladivostok"{
+            ec{"Vladivostok nutomegaƒoƒome"}
+        }
+        "Asia:Yakutsk"{
+            ec{"Yakutsk nutomegaƒoƒome"}
+        }
+        "Asia:Yekaterinburg"{
+            ec{"Yekaterinburg nutomegaƒoƒome"}
+        }
+        "Asia:Yerevan"{
+            ec{"Yerevan nutomegaƒoƒome"}
+        }
+        "Atlantic:Azores"{
+            ec{"Azores nutomegaƒoƒome"}
+        }
+        "Atlantic:Bermuda"{
+            ec{"Bermuda nutomegaƒoƒome"}
+        }
+        "Atlantic:Canary"{
+            ec{"Kanari nutomegaƒoƒome"}
+        }
+        "Atlantic:Cape_Verde"{
+            ec{"Kape Verde nutomegaƒoƒome"}
+        }
+        "Atlantic:Faeroe"{
+            ec{"Faroe nutomegaƒoƒome"}
+        }
+        "Atlantic:Madeira"{
+            ec{"Madeira nutomegaƒoƒome"}
+        }
+        "Atlantic:Reykjavik"{
+            ec{"Reykjavik nutomegaƒoƒome"}
+        }
+        "Atlantic:South_Georgia"{
+            ec{"Anyiehe Georgia nutomegaƒoƒome"}
+        }
+        "Atlantic:St_Helena"{
+            ec{"St. Helena nutomegaƒoƒome"}
+        }
+        "Atlantic:Stanley"{
+            ec{"Stanley nutomegaƒoƒome"}
+        }
+        "Australia:Adelaide"{
+            ec{"Adelaide nutomegaƒoƒome"}
+        }
+        "Australia:Brisbane"{
+            ec{"Brisbane nutomegaƒoƒome"}
+        }
+        "Australia:Broken_Hill"{
+            ec{"Broken Hill nutomegaƒoƒome"}
+        }
+        "Australia:Currie"{
+            ec{"Kurrie nutomegaƒoƒome"}
+        }
+        "Australia:Darwin"{
+            ec{"Darwin nutomegaƒoƒome"}
+        }
+        "Australia:Eucla"{
+            ec{"Eucla nutomegaƒoƒome"}
+        }
+        "Australia:Hobart"{
+            ec{"Hobart nutomegaƒoƒome"}
+        }
+        "Australia:Lindeman"{
+            ec{"Lindeman nutomegaƒoƒome"}
+        }
+        "Australia:Lord_Howe"{
+            ec{"Lɔd Howe nutomegaƒoƒome"}
+        }
+        "Australia:Melbourne"{
+            ec{"Melbourne nutomegaƒoƒome"}
+        }
+        "Australia:Perth"{
+            ec{"Perth nutomegaƒoƒome"}
+        }
+        "Australia:Sydney"{
+            ec{"Sidney nutomegaƒoƒome"}
+        }
+        "Etc:Unknown"{
+            ec{"du manya"}
+        }
+        "Europe:Amsterdam"{
+            ec{"Amsterdam nutomegaƒoƒome"}
+        }
+        "Europe:Andorra"{
+            ec{"Andorra nutomegaƒoƒome"}
+        }
+        "Europe:Athens"{
+            ec{"Atens nutomegaƒoƒome"}
+        }
+        "Europe:Belgrade"{
+            ec{"Belgrade nutomegaƒoƒome"}
+        }
+        "Europe:Berlin"{
+            ec{"Berlin nutomegaƒoƒome"}
+        }
+        "Europe:Bratislava"{
+            ec{"Bratislava nutomegaƒoƒome"}
+        }
+        "Europe:Brussels"{
+            ec{"Brussels nutomegaƒoƒome"}
+        }
+        "Europe:Bucharest"{
+            ec{"Bukarest nutomegaƒoƒome"}
+        }
+        "Europe:Budapest"{
+            ec{"Budapest nutomegaƒoƒome"}
+        }
+        "Europe:Chisinau"{
+            ec{"Tsisinau nutomegaƒoƒome"}
+        }
+        "Europe:Copenhagen"{
+            ec{"Kopenhagen nutomegaƒoƒome"}
+        }
+        "Europe:Dublin"{
+            ec{"Dublin nutomegaƒoƒome"}
+        }
+        "Europe:Gibraltar"{
+            ec{"Gibraltar nutomegaƒoƒome"}
+        }
+        "Europe:Guernsey"{
+            ec{"Guernse nutomegaƒoƒome"}
+        }
+        "Europe:Helsinki"{
+            ec{"Helsinki nutomegaƒoƒome"}
+        }
+        "Europe:Isle_of_Man"{
+            ec{"Aisle of Man nutomegaƒoƒome"}
+        }
+        "Europe:Istanbul"{
+            ec{"Istanbul nutomegaƒoƒome"}
+        }
+        "Europe:Jersey"{
+            ec{"Jɛse nutomegaƒoƒome"}
+        }
+        "Europe:Kaliningrad"{
+            ec{"Kaliningrad nutomegaƒoƒome"}
+        }
+        "Europe:Ljubljana"{
+            ec{"Lubliana nutomegaƒoƒome"}
+        }
+        "Europe:Luxembourg"{
+            ec{"Lazembɔg nutomegaƒoƒome"}
+        }
+        "Europe:Malta"{
+            ec{"Malta nutomegaƒoƒome"}
+        }
+        "Europe:Mariehamn"{
+            ec{"Mariehamn nutomegaƒoƒome"}
+        }
+        "Europe:Minsk"{
+            ec{"Minsk nutomegaƒoƒome"}
+        }
+        "Europe:Monaco"{
+            ec{"Monaco nutomegaƒoƒome"}
+        }
+        "Europe:Moscow"{
+            ec{"Moscow nutomegaƒoƒome"}
+        }
+        "Europe:Oslo"{
+            ec{"Oslo nutomegaƒoƒome"}
+        }
+        "Europe:Paris"{
+            ec{"Paris nutomegaƒoƒome"}
+        }
+        "Europe:Podgorica"{
+            ec{"Podgorika nutomegaƒoƒome"}
+        }
+        "Europe:Prague"{
+            ec{"Prague nutomegaƒoƒome"}
+        }
+        "Europe:Riga"{
+            ec{"Riga nutomegaƒoƒome"}
+        }
+        "Europe:Rome"{
+            ec{"Roma nutomegaƒoƒome"}
+        }
+        "Europe:Samara"{
+            ec{"Samara nutomegaƒoƒome"}
+        }
+        "Europe:San_Marino"{
+            ec{"San Marino nutomegaƒoƒome"}
+        }
+        "Europe:Sarajevo"{
+            ec{"Sarayevo nutomegaƒoƒome"}
+        }
+        "Europe:Simferopol"{
+            ec{"Simferopol nutomegaƒoƒome"}
+        }
+        "Europe:Skopje"{
+            ec{"Skopie nutomegaƒoƒome"}
+        }
+        "Europe:Sofia"{
+            ec{"Sofia nutomegaƒoƒome"}
+        }
+        "Europe:Stockholm"{
+            ec{"Stockholm nutomegaƒoƒome"}
+        }
+        "Europe:Tallinn"{
+            ec{"Tallinn nutomegaƒoƒome"}
+        }
+        "Europe:Tirane"{
+            ec{"Tirane nutomegaƒoƒome"}
+        }
+        "Europe:Uzhgorod"{
+            ec{"Uzhgorod nutomegaƒoƒome"}
+        }
+        "Europe:Vaduz"{
+            ec{"Vaduz nutomegaƒoƒome"}
+        }
+        "Europe:Vatican"{
+            ec{"Vatikan nutomegaƒoƒome"}
+        }
+        "Europe:Vienna"{
+            ec{"Vienna nutomegaƒoƒome"}
+        }
+        "Europe:Vilnius"{
+            ec{"Vilnius nutomegaƒoƒome"}
+        }
+        "Europe:Volgograd"{
+            ec{"Volgograd nutomegaƒoƒome"}
+        }
+        "Europe:Warsaw"{
+            ec{"Wɔsɔw nutomegaƒoƒome"}
+        }
+        "Europe:Zagreb"{
+            ec{"Zagreb nutomegaƒoƒome"}
+        }
+        "Europe:Zaporozhye"{
+            ec{"Zaporozhiye nutomegaƒoƒome"}
+        }
+        "Europe:Zurich"{
+            ec{"Zurich nutomegaƒoƒome"}
+        }
+        "Indian:Antananarivo"{
+            ec{"Antananarivo nutomegaƒoƒome"}
+        }
+        "Indian:Chagos"{
+            ec{"Tsagos nutomegaƒoƒome"}
+        }
+        "Indian:Christmas"{
+            ec{"Kristmas nutomegaƒoƒome"}
+        }
+        "Indian:Cocos"{
+            ec{"Kokos nutomegaƒoƒome"}
+        }
+        "Indian:Comoro"{
+            ec{"Komoro nutomegaƒoƒome"}
+        }
+        "Indian:Kerguelen"{
+            ec{"Kerguelen nutomegaƒoƒome"}
+        }
+        "Indian:Mahe"{
+            ec{"Mahe nutomegaƒoƒome"}
+        }
+        "Indian:Maldives"{
+            ec{"Maldives nutomegaƒoƒome"}
+        }
+        "Indian:Mauritius"{
+            ec{"Mauritius nutomegaƒoƒome"}
+        }
+        "Indian:Mayotte"{
+            ec{"Mayotte nutomegaƒoƒome"}
+        }
+        "Indian:Reunion"{
+            ec{"Reunion nutomegaƒoƒome"}
+        }
+        "Pacific:Apia"{
+            ec{"Apia nutomegaƒoƒome"}
+        }
+        "Pacific:Chatham"{
+            ec{"Tsatham nutomegaƒoƒome"}
+        }
+        "Pacific:Easter"{
+            ec{"Easter nutomegaƒoƒome"}
+        }
+        "Pacific:Efate"{
+            ec{"Efate nutomegaƒoƒome"}
+        }
+        "Pacific:Enderbury"{
+            ec{"Enderburi nutomegaƒoƒome"}
+        }
+        "Pacific:Fakaofo"{
+            ec{"Fakaofo nutomegaƒoƒome"}
+        }
+        "Pacific:Fiji"{
+            ec{"Fidzi nutomegaƒoƒome"}
+        }
+        "Pacific:Funafuti"{
+            ec{"Funafuti nutomegaƒoƒome"}
+        }
+        "Pacific:Galapagos"{
+            ec{"Galapagos nutomegaƒoƒome"}
+        }
+        "Pacific:Gambier"{
+            ec{"Gambier nutomegaƒoƒome"}
+        }
+        "Pacific:Guadalcanal"{
+            ec{"Guadalkanal nutomegaƒoƒome"}
+        }
+        "Pacific:Guam"{
+            ec{"Guam nutomegaƒoƒome"}
+        }
+        "Pacific:Honolulu"{
+            ec{"Honolulu nutomegaƒoƒome"}
+        }
+        "Pacific:Johnston"{
+            ec{"Yohanneston nutomegaƒoƒome"}
+        }
+        "Pacific:Kiritimati"{
+            ec{"Kiritimati nutomegaƒoƒome"}
+        }
+        "Pacific:Kosrae"{
+            ec{"Kosrae nutomegaƒoƒome"}
+        }
+        "Pacific:Kwajalein"{
+            ec{"Kwadzalein nutomegaƒoƒome"}
+        }
+        "Pacific:Marquesas"{
+            ec{"Markuesas nutomegaƒoƒome"}
+        }
+        "Pacific:Midway"{
+            ec{"Midway nutomegaƒoƒome"}
+        }
+        "Pacific:Nauru"{
+            ec{"Nauru nutomegaƒoƒome"}
+        }
+        "Pacific:Niue"{
+            ec{"Niue nutomegaƒoƒome"}
+        }
+        "Pacific:Norfolk"{
+            ec{"Nɔfɔlk nutomegaƒoƒome"}
+        }
+        "Pacific:Noumea"{
+            ec{"Numea nutomegaƒoƒome"}
+        }
+        "Pacific:Pago_Pago"{
+            ec{"Pago Pago nutomegaƒoƒome"}
+        }
+        "Pacific:Palau"{
+            ec{"Palau nutomegaƒoƒome"}
+        }
+        "Pacific:Pitcairn"{
+            ec{"Pitkairn nutomegaƒoƒome"}
+        }
+        "Pacific:Ponape"{
+            ec{"Pohnpei nutomegaƒoƒome"}
+        }
+        "Pacific:Port_Moresby"{
+            ec{"Pɔrt Moresbynutomegaƒoƒome"}
+        }
+        "Pacific:Rarotonga"{
+            ec{"Rarotonga nutomegaƒoƒome"}
+        }
+        "Pacific:Saipan"{
+            ec{"Saipan nutomegaƒoƒome"}
+        }
+        "Pacific:Tarawa"{
+            ec{"Tarawa nutomegaƒoƒome"}
+        }
+        "Pacific:Tongatapu"{
+            ec{"Tongatapu nutomegaƒoƒome"}
+        }
+        "Pacific:Truk"{
+            ec{"Tsuuk nutomegaƒoƒome"}
+        }
+        "Pacific:Wake"{
+            ec{"Wake nutomegaƒoƒome"}
+        }
+        "Pacific:Wallis"{
+            ec{"Wallis nutomegaƒoƒome"}
+        }
+        "meta:Africa_Central"{
+            ls{"Titina Afrika gaƒoƒome"}
+            ss{"CAT"}
+        }
+        "meta:Africa_Eastern"{
+            ls{"Ɣedzeƒe Afrika gaƒoƒome"}
+            ss{"EAT"}
+        }
+        "meta:Africa_Southern"{
+            ls{"Anyiehe Afrika gaƒoƒome"}
+            ss{"SAST"}
+        }
+        "meta:Africa_Western"{
+            ld{"Ɣetoɖoƒe Afrika dzomeŋɔli gaƒoƒome"}
+            lg{"Ɣetoɖoƒe Afrika gaƒoƒome"}
+            ls{"Ɣetoɖoƒe Afrika gaƒoƒoɖoanyime"}
+            sd{"WAST"}
+            sg{"WAT"}
+            ss{"WAT"}
+        }
+        "meta:America_Central"{
+            ld{"Titina Amerika ŋkekeme gaƒoƒome"}
+            lg{"Titina Amerika gaƒoƒome"}
+            ls{"Titina Amerika gaƒoƒoɖoanyime"}
+        }
+        "meta:America_Eastern"{
+            ld{"Ɣedzeƒe Amerika ŋkekeme gaƒoƒome"}
+            lg{"Ɣedzeƒe Amerika gaƒoƒome"}
+            ls{"Ɣedzeƒe Amerika gaƒoƒoɖoanyime"}
+        }
+        "meta:America_Mountain"{
+            ld{"Amerika Todzidukɔwo ƒe ŋkekme gaƒoƒome"}
+            lg{"Amerika Todzidukɔwo ƒe gaƒoƒome"}
+            ls{"Amerika Todzidukɔwo ƒe gaƒoƒoɖoanyime"}
+        }
+        "meta:America_Pacific"{
+            ld{"Amerika Pasifik ŋkekeme gaƒoƒome"}
+            lg{"Amerika Pasifik gaƒoƒome"}
+            ls{"Amerika Pasifik gaƒoƒoɖoanyime"}
+        }
+        "meta:Atlantic"{
+            ld{"Atlantic ŋkekeme gaƒoƒome"}
+            lg{"Atlantic gaƒoƒome"}
+            ls{"Atlantic gaƒoƒoɖoanyime"}
+        }
+        "meta:Suriname"{
+            ls{"Suriname gaƒoƒome"}
+        }
+        regionFormat{"{0} gaƒoƒo"}
+    }
+}

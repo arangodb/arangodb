@@ -1,0 +1,19 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ii.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/ii.xml
+ */
+ii{
+    Version{"2.0.90.61"}
+    zoneStrings{
+        "Etc:Unknown"{
+            ec{"ꅉꀋꐚꌠ"}
+        }
+    }
+}

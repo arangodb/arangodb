@@ -1,0 +1,149 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/en_GB.xml
+// *
+// ***************************************************************************
+en_GB{
+    %%Parent{"en_001"}
+    Version{"2.0.92.80"}
+    zoneStrings{
+        "Africa:Asmera"{
+            ec{"Asmara"}
+        }
+        "America:Coral_Harbour"{
+            ec{"Atikokan"}
+        }
+        "America:Godthab"{
+            ec{"Nuuk"}
+        }
+        "America:Indiana:Knox"{
+            ec{"Knox, Indiana"}
+        }
+        "America:Indiana:Marengo"{
+            ec{"Marengo, Indiana"}
+        }
+        "America:Indiana:Petersburg"{
+            ec{"Petersburg, Indiana"}
+        }
+        "America:Indiana:Tell_City"{
+            ec{"Tell City, Indiana"}
+        }
+        "America:Indiana:Vevay"{
+            ec{"Vevay, Indiana"}
+        }
+        "America:Indiana:Vincennes"{
+            ec{"Vincennes, Indiana"}
+        }
+        "America:Indiana:Winamac"{
+            ec{"Winamac, Indiana"}
+        }
+        "America:Kentucky:Monticello"{
+            ec{"Monticello, Kentucky"}
+        }
+        "America:Lower_Princes"{
+            ec{"Lower Prince's Quarter"}
+        }
+        "America:North_Dakota:Beulah"{
+            ec{"Beulah, North Dakota"}
+        }
+        "America:North_Dakota:Center"{
+            ec{"Center, North Dakota"}
+        }
+        "America:North_Dakota:New_Salem"{
+            ec{"New Salem, North Dakota"}
+        }
+        "America:Scoresbysund"{
+            ec{"Ittoqqortoormiit"}
+        }
+        "America:St_Johns"{
+            ec{"St. John’s"}
+        }
+        "America:St_Kitts"{
+            ec{"St. Kitts"}
+        }
+        "America:St_Lucia"{
+            ec{"St. Lucia"}
+        }
+        "America:St_Thomas"{
+            ec{"St. Thomas"}
+        }
+        "America:St_Vincent"{
+            ec{"St. Vincent"}
+        }
+        "Asia:Calcutta"{
+            ec{"Kolkata"}
+        }
+        "Asia:Katmandu"{
+            ec{"Kathmandu"}
+        }
+        "Atlantic:Faeroe"{
+            ec{"Faroe"}
+        }
+        "Atlantic:St_Helena"{
+            ec{"St. Helena"}
+        }
+        "Europe:London"{
+            sd{"BST"}
+        }
+        "Pacific:Ponape"{
+            ec{"Pohnpei"}
+        }
+        "Pacific:Truk"{
+            ec{"Chuuk"}
+        }
+        "meta:Arabian"{
+            ld{"Arabian Summer Time"}
+            lg{"Arabian Time"}
+            ls{"Arabian Standard Time"}
+        }
+        "meta:China"{
+            ld{"China Summer Time"}
+            lg{"China Time"}
+            ls{"China Standard Time"}
+        }
+        "meta:Europe_Central"{
+            sd{"CEST"}
+            sg{"CET"}
+            ss{"CET"}
+        }
+        "meta:Europe_Eastern"{
+            sd{"EEST"}
+            sg{"EET"}
+            ss{"EET"}
+        }
+        "meta:Europe_Western"{
+            sd{"WEST"}
+            sg{"WET"}
+            ss{"WET"}
+        }
+        "meta:Iran"{
+            ld{"Iran Summer Time"}
+            lg{"Iran Time"}
+            ls{"Iran Standard Time"}
+        }
+        "meta:Israel"{
+            ld{"Israel Summer Time"}
+            lg{"Israel Time"}
+            ls{"Israel Standard Time"}
+        }
+        "meta:Japan"{
+            ld{"Japan Summer Time"}
+            lg{"Japan Time"}
+            ls{"Japan Standard Time"}
+        }
+        "meta:Korea"{
+            ld{"Korean Summer Time"}
+            lg{"Korean Time"}
+            ls{"Korean Standard Time"}
+        }
+        "meta:Taipei"{
+            ld{"Taipei Summer Time"}
+            lg{"Taipei Time"}
+            ls{"Taipei Standard Time"}
+        }
+        gmtZeroFormat{"GMT"}
+    }
+}

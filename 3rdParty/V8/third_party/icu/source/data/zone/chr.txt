@@ -1,0 +1,75 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/chr.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/chr.xml
+ */
+chr{
+    Version{"2.0.93.15"}
+    zoneStrings{
+        "Pacific:Honolulu"{
+            sd{"HDT"}
+            sg{"HST"}
+            ss{"HST"}
+        }
+        "meta:Alaska"{
+            sd{"AKDT"}
+            sg{"AKT"}
+            ss{"AKST"}
+        }
+        "meta:America_Central"{
+            ld{"ᎠᏰᎵ ᎢᎦ ᎢᏳᏩᎪᏗ"}
+            lg{"ᎠᏰᎵ ᎢᏳᏩᎪᏗ"}
+            ls{"ᎠᏰᎵ ᏰᎵᏊ ᏗᏙᎳᎩ ᎢᏳᏩᎪᏗ"}
+            sd{"CDT"}
+            sg{"CT"}
+            ss{"CST"}
+        }
+        "meta:America_Eastern"{
+            ld{"ᎧᎸᎬᎢᏗᏢ ᎢᎦ ᎢᏳᏩᎪᏗ"}
+            lg{"ᎧᎸᎬᎢᏗᏢ ᎢᏳᏩᎪᏗ"}
+            ls{"ᎧᎸᎬᎢᏗᏢ ᏰᎵᏊ ᏗᏙᎳᎩ ᎢᏳᏩᎪᏗ"}
+            sd{"EDT"}
+            sg{"ET"}
+            ss{"EST"}
+        }
+        "meta:America_Mountain"{
+            ld{"ᎣᏓᎸ ᎢᎦ ᎢᏳᏩᎪᏗ"}
+            lg{"ᎣᏓᎸ ᎢᏳᏩᎪᏗ"}
+            ls{"ᎣᏓᎸ ᏰᎵᏊ ᏗᏙᎳᎩ ᎢᏳᏩᎪᏗ"}
+            sd{"MDT"}
+            sg{"MT"}
+            ss{"MST"}
+        }
+        "meta:America_Pacific"{
+            ld{"ᏭᏕᎵᎬ ᎢᎦ ᎢᏳᏩᎪᏗ"}
+            lg{"ᏭᏕᎵᎬ ᎢᏳᏩᎪᏗ"}
+            ls{"ᏭᏕᎵᎬ ᏰᎵᏊ ᏗᏙᎳᎩ ᎢᏳᏩᎪᏗ"}
+            sd{"PDT"}
+            sg{"PT"}
+            ss{"PST"}
+        }
+        "meta:Atlantic"{
+            sd{"ADT"}
+            sg{"AT"}
+            ss{"AST"}
+        }
+        "meta:GMT"{
+            ls{"ᎢᏤ ᎢᏳᏍᏗ ᎢᏳᏩᎪᏗ"}
+        }
+        "meta:Hawaii_Aleutian"{
+            sd{"HADT"}
+            sg{"HAT"}
+            ss{"HAST"}
+        }
+        gmtFormat{"GMT{0}"}
+        gmtZeroFormat{"ᎢᎢᎢ"}
+        hourFormat{"+HH:mm;-HH:mm"}
+        regionFormat{"{0} ᎢᏳᏩᎪᏗ"}
+    }
+}

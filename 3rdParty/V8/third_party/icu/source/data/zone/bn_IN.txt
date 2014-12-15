@@ -1,0 +1,69 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/bn_IN.xml
+// *
+// ***************************************************************************
+bn_IN{
+    Version{"2.0.92.80"}
+    zoneStrings{
+        "meta:Alaska"{
+            ld{"আলাসকা দিবালোক সময়"}
+            lg{"আলাস্কার সময়"}
+            ls{"অ্যালাসকা মানক সময়"}
+        }
+        "meta:America_Central"{
+            ld{"কেন্দ্রীয় দিবালোক মসয়"}
+            lg{"উত্তর আমিরিকা কেন্দ্রীয় সময়"}
+            ls{"উত্তর আমিরিকা কেন্দ্রীয় মানক সময়"}
+        }
+        "meta:Cook"{
+            ld{"কুক দ্বীপপুঞ্জ অর্ধেক গ্রীষ্মকাল সময়"}
+            lg{"কুক দ্বীপপুঞ্জ সময়"}
+            ls{"কুক দ্বীপপুঞ্জ মানক সময়"}
+        }
+        "meta:Fiji"{
+            ld{"ফিজি গ্রীষ্মকাল সময়"}
+            lg{"ফিজি সময়"}
+            ls{"ফিজি মানক সময়"}
+        }
+        "meta:French_Southern"{
+            ls{"ফরাসি দক্ষিণ এবং আন্টার্কটিক সময়"}
+        }
+        "meta:Guyana"{
+            ls{"গুয়ানা সময়"}
+        }
+        "meta:Indian_Ocean"{
+            ls{"ভারত মহাসাগরীয় সময়"}
+        }
+        "meta:Kosrae"{
+            ls{"কোসরেই সময়"}
+        }
+        "meta:New_Zealand"{
+            ld{"নিউজিল্যান্ড দিবালোকের সময়"}
+            lg{"নিউজিল্যান্ড সময়"}
+            ls{"নিউজিল্যান্ড মানক সময়"}
+        }
+        "meta:Papua_New_Guinea"{
+            ls{"পাপুয়া নিউগিনি সময়"}
+        }
+        "meta:Pitcairn"{
+            ls{"পিটকাইর্ন সময়"}
+        }
+        "meta:Ponape"{
+            ls{"পোনাপ সময়"}
+        }
+        "meta:Syowa"{
+            ls{"স্যোয়া সময়"}
+        }
+        "meta:Tokelau"{
+            ls{"টোকেলু সময়"}
+        }
+        "meta:Vostok"{
+            ls{"ভসটক সময়"}
+        }
+        gmtZeroFormat{"গ্রীনিচ মানক সময়"}
+    }
+}

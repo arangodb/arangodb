@@ -1,0 +1,1096 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/bg.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/bg.xml
+ */
+bg{
+    AuxExemplarCharacters{"[{а\u0300} ѐ ё ѝ {о\u0300} {у\u0300} {ъ\u0300} ы ѣ э {ю\u0300} {я\u0300} ѫ]"}
+    Ellipsis{
+        final{"{0}…"}
+        initial{"…{0}"}
+        medial{"{0}… {1}"}
+        word-final{"{0}…"}
+        word-initial{"…{0}"}
+        word-medial{"{0}… {1}"}
+    }
+    ExemplarCharacters{"[а б в г д е ж з и й к л м н о п р с т у ф х ц ч ш щ ъ ь ю я]"}
+    ExemplarCharactersIndex{"[А Б В Г Д Е Ж З И Й К Л М Н О П Р С Т У Ф Х Ц Ч Ш Щ Ю Я]"}
+    ExemplarCharactersPunctuation{"[\\- ‐ – — , ; \\: ! ? . … ' ‘ ‚ \u0022 “ „ ( ) \\[ \\] § * / ″ №]"}
+    LocaleScript{
+        "Cyrl",
+    }
+    MoreInformation{"?"}
+    NumberElements{
+        latn{
+            miscPatterns{
+                atLeast{"⩾ {0}"}
+                range{"{0} – {1}"}
+            }
+            patterns{
+                currencyFormat{"#,##0.00 ¤"}
+                decimalFormat{"#,##0.###"}
+                percentFormat{"#,##0%"}
+                scientificFormat{"#E0"}
+            }
+            patternsLong{
+                decimalFormat{
+                    1000{
+                        one{"0 хиляда"}
+                        other{"0 хиляди"}
+                    }
+                    10000{
+                        one{"00 хиляди"}
+                        other{"00 хиляди"}
+                    }
+                    100000{
+                        one{"000 Х"}
+                        other{"000 хиляди"}
+                    }
+                    1000000{
+                        one{"0 милион"}
+                        other{"0 милиона"}
+                    }
+                    10000000{
+                        one{"00 милиона"}
+                        other{"00 милиона"}
+                    }
+                    100000000{
+                        one{"000 милиона"}
+                        other{"000 милиона"}
+                    }
+                    1000000000{
+                        one{"0 милиард"}
+                        other{"0 милиарда"}
+                    }
+                    10000000000{
+                        one{"00 милиарда"}
+                        other{"00 милиарда"}
+                    }
+                    100000000000{
+                        one{"000 милиарда"}
+                        other{"000 милиарда"}
+                    }
+                    1000000000000{
+                        one{"0 трилион"}
+                        other{"0 трилиона"}
+                    }
+                    10000000000000{
+                        one{"00 трилиона"}
+                        other{"00 трилиона"}
+                    }
+                    100000000000000{
+                        one{"000 трилиона"}
+                        other{"000 трилиона"}
+                    }
+                }
+            }
+            patternsShort{
+                decimalFormat{
+                    1000{
+                        one{"0 хил'.'"}
+                        other{"0 хил'.'"}
+                    }
+                    10000{
+                        one{"00 хил'.'"}
+                        other{"00 хил'.'"}
+                    }
+                    100000{
+                        one{"000 хил'.'"}
+                        other{"000 хил'.'"}
+                    }
+                    1000000{
+                        one{"0 млн'.'"}
+                        other{"0 млн'.'"}
+                    }
+                    10000000{
+                        one{"00 млн'.'"}
+                        other{"00 млн'.'"}
+                    }
+                    100000000{
+                        one{"000 млн'.'"}
+                        other{"000 млн'.'"}
+                    }
+                    1000000000{
+                        one{"0 млрд'.'"}
+                        other{"0 млрд'.'"}
+                    }
+                    10000000000{
+                        one{"00 млрд'.'"}
+                        other{"00 млрд'.'"}
+                    }
+                    100000000000{
+                        one{"000 млрд'.'"}
+                        other{"000 млрд'.'"}
+                    }
+                    1000000000000{
+                        one{"0 трлн'.'"}
+                        other{"0 трлн'.'"}
+                    }
+                    10000000000000{
+                        one{"00 трлн'.'"}
+                        other{"00 трлн'.'"}
+                    }
+                    100000000000000{
+                        one{"000 трлн'.'"}
+                        other{"000 трлн'.'"}
+                    }
+                }
+            }
+            symbols{
+                decimal{","}
+                exponential{"E"}
+                group{" "}
+                infinity{"∞"}
+                list{";"}
+                minusSign{"-"}
+                nan{"NaN"}
+                perMille{"‰"}
+                percentSign{"%"}
+                plusSign{"+"}
+                superscriptingExponent{"."}
+            }
+        }
+    }
+    Version{"2.0.92.87"}
+    calendar{
+        generic{
+            DateTimePatterns{
+                "H:mm:ss zzzz",
+                "H:mm:ss z",
+                "H:mm:ss",
+                "H:mm",
+                "EEEE, d MMMM y 'г'. G",
+                "d MMMM y 'г'. G",
+                "d.MM.y 'г'. G",
+                "d.MM.yy G",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+            availableFormats{
+                Ed{"E, d"}
+                Gy{"y 'г'. G"}
+                GyMMM{"MMM y 'г'. G"}
+                GyMMMEd{"E, d MMM y 'г'. G"}
+                GyMMMd{"d MMM y 'г'. G"}
+                H{"HH"}
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
+                M{"M"}
+                MEd{"E, d.MM"}
+                MMM{"MMM"}
+                MMMEd{"E, d MMM"}
+                MMMMd{"d MMMM"}
+                MMMd{"d MMM"}
+                Md{"d.MM"}
+                d{"d"}
+                h{"h"}
+                hm{"h:mm a"}
+                hms{"h:mm:ss a"}
+                ms{"mm:ss"}
+                y{"y 'г'. G"}
+                yyyy{"y 'г'. G"}
+                yyyyM{"M.y 'г'. G"}
+                yyyyMEd{"E, d.MM.y 'г'. G"}
+                yyyyMM{"MM.y G"}
+                yyyyMMM{"MMM y 'г'. G"}
+                yyyyMMMEd{"E, d MMM y 'г'. G"}
+                yyyyMMMM{"MMMM y 'г'. G"}
+                yyyyMMMd{"d MMM y 'г'. G"}
+                yyyyMd{"d.MM.y 'г'. G"}
+                yyyyQQQ{"QQQ y 'г'. G"}
+                yyyyQQQQ{"QQQQ y 'г'. G"}
+            }
+            intervalFormats{
+                H{
+                    H{"HH-HH"}
+                }
+                Hm{
+                    H{"HH:mm-HH:mm"}
+                    m{"HH:mm-HH:mm"}
+                }
+                Hmv{
+                    H{"HH:mm-HH:mm v"}
+                    m{"HH:mm-HH:mm v"}
+                }
+                Hv{
+                    H{"HH-HH v"}
+                }
+                M{
+                    M{"M – M"}
+                }
+                MEd{
+                    M{"E, d.MM – E, d.MM"}
+                    d{"E, d.MM – E, d.MM"}
+                }
+                MMM{
+                    M{"MMM – MMM"}
+                }
+                MMMEd{
+                    M{"E, d MMM – E, d MMM"}
+                    d{"E, d MMM – E, d MMM"}
+                }
+                MMMd{
+                    M{"d MMM – d MMM"}
+                    d{"d – d MMM"}
+                }
+                Md{
+                    M{"d.MM – d.MM"}
+                    d{"d.MM – d.MM"}
+                }
+                d{
+                    d{"d – d"}
+                }
+                fallback{"{0} – {1}"}
+                h{
+                    a{"H – H"}
+                    h{"h-h a"}
+                }
+                hm{
+                    a{"H:mm – H:mm"}
+                    h{"h:mm-h:mm a"}
+                    m{"h:mm-h:mm a"}
+                }
+                hmv{
+                    a{"H:mm – H:mm v"}
+                    h{"h:mm-h:mm a v"}
+                    m{"h:mm-h:mm a v"}
+                }
+                hv{
+                    a{"H – H v"}
+                    h{"h-h a v"}
+                }
+                y{
+                    y{"y – y 'г'.G"}
+                }
+                yM{
+                    M{"MM – MM.y 'г'. G"}
+                    y{"MM 'г'. – MM.y 'г'. G"}
+                }
+                yMEd{
+                    M{"E, d.MM – E, d.MM.y 'г'. G"}
+                    d{"E, d.MM – E, d.MM.y 'г'. G"}
+                    y{"E, d.MM.y 'г'. – E, d.MM.y 'г'. G"}
+                }
+                yMMM{
+                    M{"MMM – MMM y 'г'. G"}
+                    y{"MMM y 'г'. – MMM y 'г'. G"}
+                }
+                yMMMEd{
+                    M{"E, d MMM – E, d MMM y 'г'. G"}
+                    d{"E, d MMM – E, d MMM y 'г'. G"}
+                    y{"E, d MMM y 'г'. – E, d MMM y 'г'. G"}
+                }
+                yMMMM{
+                    M{"MMMM – MMMM y 'г'. G"}
+                    y{"MMMM y 'г'. – MMMM y 'г'. G"}
+                }
+                yMMMd{
+                    M{"d MMM – d MMM y 'г'. G"}
+                    d{"d – d MMM y 'г'. G"}
+                    y{"d MMM y 'г'. – d MMM y 'г'. G"}
+                }
+                yMd{
+                    M{"d.MM – d.MM.y 'г'. G"}
+                    d{"d.MM – d.MM.y 'г'. G"}
+                    y{"d.MM.y 'г'. – d.MM.y 'г'. G"}
+                }
+            }
+        }
+        gregorian{
+            AmPmMarkers{
+                "пр.об.",
+                "сл.об.",
+            }
+            DateTimePatterns{
+                "H:mm:ss zzzz",
+                "H:mm:ss z",
+                "H:mm:ss",
+                "H:mm",
+                "EEEE, d MMMM y 'г'.",
+                "d MMMM y 'г'.",
+                "d.MM.y 'г'.",
+                "d.MM.yy",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+            appendItems{
+                Timezone{"{0} {1}"}
+            }
+            availableFormats{
+                EHm{"E HH:mm"}
+                EHms{"E, H:mm:ss"}
+                Ed{"E, d"}
+                Ehm{"E, h:mm a"}
+                Ehms{"E h:mm:ss a"}
+                Gy{"y 'г'. G"}
+                GyMMM{"MMM y 'г'. G"}
+                GyMMMEd{"E, d MMM y 'г'. G"}
+                GyMMMd{"d MMM y 'г'. G"}
+                H{"H"}
+                Hm{"H:mm"}
+                Hms{"H:mm:ss"}
+                M{"L"}
+                MEd{"E, d.MM"}
+                MMM{"LLL"}
+                MMMEd{"E, d MMM"}
+                MMMMd{"d MMMM"}
+                MMMMdd{"d MMMM"}
+                MMMd{"d MMM"}
+                Md{"d.MM"}
+                d{"d"}
+                h{"h a"}
+                hm{"h:mm a"}
+                hms{"h:mm:ss a"}
+                ms{"m:ss"}
+                y{"y 'г'."}
+                yM{"M.y 'г'."}
+                yMEd{"E, d.MM.y 'г'."}
+                yMM{"MM.y 'г'."}
+                yMMM{"MMM y 'г'."}
+                yMMMEd{"E, d MMM y 'г'."}
+                yMMMM{"MMMM y 'г'."}
+                yMMMd{"d MMM y 'г'."}
+                yMd{"d.MM.y 'г'."}
+                yQQQ{"QQQ y 'г'."}
+                yQQQQ{"QQQQ y 'г'."}
+            }
+            dayNames{
+                format{
+                    abbreviated{
+                        "нд",
+                        "пн",
+                        "вт",
+                        "ср",
+                        "чт",
+                        "пт",
+                        "сб",
+                    }
+                    narrow{
+                        "н",
+                        "п",
+                        "в",
+                        "с",
+                        "ч",
+                        "п",
+                        "с",
+                    }
+                    short{
+                        "нд",
+                        "пн",
+                        "вт",
+                        "ср",
+                        "чт",
+                        "пт",
+                        "сб",
+                    }
+                    wide{
+                        "неделя",
+                        "понеделник",
+                        "вторник",
+                        "сряда",
+                        "четвъртък",
+                        "петък",
+                        "събота",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "нд",
+                        "пн",
+                        "вт",
+                        "ср",
+                        "чт",
+                        "пт",
+                        "сб",
+                    }
+                    narrow{
+                        "н",
+                        "п",
+                        "в",
+                        "с",
+                        "ч",
+                        "п",
+                        "с",
+                    }
+                    short{
+                        "нд",
+                        "пн",
+                        "вт",
+                        "ср",
+                        "чт",
+                        "пт",
+                        "сб",
+                    }
+                    wide{
+                        "неделя",
+                        "понеделник",
+                        "вторник",
+                        "сряда",
+                        "четвъртък",
+                        "петък",
+                        "събота",
+                    }
+                }
+            }
+            eras{
+                abbreviated{
+                    "пр.Хр.",
+                    "сл.Хр.",
+                }
+                narrow{
+                    "пр.Хр.",
+                    "сл.н.е.",
+                }
+                wide{
+                    "пр.Хр.",
+                    "сл.Хр.",
+                }
+            }
+            intervalFormats{
+                H{
+                    H{"H – H"}
+                }
+                Hm{
+                    H{"H:mm – H:mm"}
+                    m{"H:mm – H:mm"}
+                }
+                Hmv{
+                    H{"H:mm – H:mm v"}
+                    m{"H:mm – H:mm v"}
+                }
+                Hv{
+                    H{"H – H v"}
+                }
+                M{
+                    M{"M – M"}
+                }
+                MEd{
+                    M{"E, d.MM – E, d.MM"}
+                    d{"E, d.MM – E, d.MM"}
+                }
+                MMM{
+                    M{"MMM – MMM"}
+                }
+                MMMEd{
+                    M{"E, d MMM – E, d MMM"}
+                    d{"E, d MMM – E, d MMM"}
+                }
+                MMMd{
+                    M{"d MMM – d MMM"}
+                    d{"d – d MMM"}
+                }
+                Md{
+                    M{"d.MM – d.MM"}
+                    d{"d.MM – d.MM"}
+                }
+                d{
+                    d{"d – d"}
+                }
+                fallback{"{0} – {1}"}
+                h{
+                    a{"H – H"}
+                    h{"H – H"}
+                }
+                hm{
+                    a{"H:mm – H:mm"}
+                    h{"H:mm – H:mm"}
+                    m{"H:mm – H:mm"}
+                }
+                hmv{
+                    a{"H:mm – H:mm v"}
+                    h{"H:mm – H:mm v"}
+                    m{"H:mm – H:mm v"}
+                }
+                hv{
+                    a{"H – H v"}
+                    h{"H – H v"}
+                }
+                y{
+                    y{"y – y 'г'."}
+                }
+                yM{
+                    M{"MM.y 'г'. – MM.y 'г'."}
+                    y{"MM.y 'г'. – MM.y 'г'."}
+                }
+                yMEd{
+                    M{"E, d.MM – E, d.MM.y 'г'."}
+                    d{"E, d.MM – E, d.MM.y 'г'."}
+                    y{"E, d.MM.y 'г'. – E, d.MM.y 'г'."}
+                }
+                yMMM{
+                    M{"MMM – MMM y 'г'."}
+                    y{"MMM y 'г'. – MMM y 'г'."}
+                }
+                yMMMEd{
+                    M{"E, d MMM – E, d MMM y 'г'."}
+                    d{"E, d MMM – E, d MMM y 'г'."}
+                    y{"E, d MMM y 'г'. – E, d MMM y 'г'."}
+                }
+                yMMMM{
+                    M{"MMMM – MMMM y 'г'."}
+                    y{"MMMM y 'г'. – MMMM y 'г'."}
+                }
+                yMMMd{
+                    M{"d MMM – d MMM y 'г'."}
+                    d{"d – d MMM y 'г'."}
+                    y{"d MMM y 'г'. – d MMM y 'г'."}
+                }
+                yMd{
+                    M{"d.MM – d.MM.y 'г'."}
+                    d{"d.MM – d.MM.y 'г'."}
+                    y{"d.MM.y 'г'. – d.MM.y 'г'."}
+                }
+            }
+            monthNames{
+                format{
+                    abbreviated{
+                        "ян.",
+                        "февр.",
+                        "март",
+                        "апр.",
+                        "май",
+                        "юни",
+                        "юли",
+                        "авг.",
+                        "септ.",
+                        "окт.",
+                        "ноем.",
+                        "дек.",
+                    }
+                    narrow{
+                        "я",
+                        "ф",
+                        "м",
+                        "а",
+                        "м",
+                        "ю",
+                        "ю",
+                        "а",
+                        "с",
+                        "о",
+                        "н",
+                        "д",
+                    }
+                    wide{
+                        "януари",
+                        "февруари",
+                        "март",
+                        "април",
+                        "май",
+                        "юни",
+                        "юли",
+                        "август",
+                        "септември",
+                        "октомври",
+                        "ноември",
+                        "декември",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "ян.",
+                        "февр.",
+                        "март",
+                        "апр.",
+                        "май",
+                        "юни",
+                        "юли",
+                        "авг.",
+                        "септ.",
+                        "окт.",
+                        "ноем.",
+                        "дек.",
+                    }
+                    narrow{
+                        "я",
+                        "ф",
+                        "м",
+                        "а",
+                        "м",
+                        "ю",
+                        "ю",
+                        "а",
+                        "с",
+                        "о",
+                        "н",
+                        "д",
+                    }
+                    wide{
+                        "януари",
+                        "февруари",
+                        "март",
+                        "април",
+                        "май",
+                        "юни",
+                        "юли",
+                        "август",
+                        "септември",
+                        "октомври",
+                        "ноември",
+                        "декември",
+                    }
+                }
+            }
+            quarters{
+                format{
+                    abbreviated{
+                        "1 трим.",
+                        "2 трим.",
+                        "3 трим.",
+                        "4 трим.",
+                    }
+                    narrow{
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                    }
+                    wide{
+                        "1-во тримесечие",
+                        "2-ро тримесечие",
+                        "3-то тримесечие",
+                        "4-то тримесечие",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "1 трим.",
+                        "2 трим.",
+                        "3 трим.",
+                        "4 трим.",
+                    }
+                    narrow{
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                    }
+                    wide{
+                        "1-во тримесечие",
+                        "2-ро тримесечие",
+                        "3-то тримесечие",
+                        "4-то тримесечие",
+                    }
+                }
+            }
+        }
+        hebrew{
+            monthNames{
+                format{
+                    wide{
+                        "тишри",
+                        "хешван",
+                        "кислев",
+                        "тебет",
+                        "шебат",
+                        "адар I",
+                        "адар",
+                        "нисан",
+                        "иар",
+                        "сиван",
+                        "тамуз",
+                        "ав",
+                        "елул",
+                        "адар II",
+                    }
+                }
+            }
+        }
+        indian{
+            monthNames{
+                format{
+                    wide{
+                        "чайтра",
+                        "вайсакха",
+                        "джаинтха",
+                        "асадха",
+                        "сравана",
+                        "бхада",
+                        "азвина",
+                        "картика",
+                        "аграхайана",
+                        "пауза",
+                        "магха",
+                        "пхалгуна",
+                    }
+                }
+            }
+        }
+        islamic{
+            monthNames{
+                format{
+                    wide{
+                        "мухарам",
+                        "сафар",
+                        "раби-1",
+                        "раби-2",
+                        "джумада-1",
+                        "джумада-2",
+                        "раджаб",
+                        "шабан",
+                        "рамазан",
+                        "Шавал",
+                        "Дхул-Каада",
+                        "Дхул-хиджа",
+                    }
+                }
+            }
+        }
+    }
+    delimiters{
+        alternateQuotationEnd{"“"}
+        alternateQuotationStart{"„"}
+        quotationEnd{"“"}
+        quotationStart{"„"}
+    }
+    durationUnits{
+        hm{"h:mm"}
+        hms{"h:mm:ss"}
+        ms{"m:ss"}
+    }
+    fields{
+        day{
+            dn{"ден"}
+            relative{
+                "-1"{"вчера"}
+                "-2"{"онзи ден"}
+                "0"{"днес"}
+                "1"{"утре"}
+                "2"{"вдругиден"}
+            }
+            relativeTime{
+                future{
+                    one{"след {0} дни"}
+                    other{"след {0} дни"}
+                }
+                past{
+                    one{"преди {0} ден"}
+                    other{"преди {0} дни"}
+                }
+            }
+        }
+        dayperiod{
+            dn{"пр.об./сл.об."}
+        }
+        era{
+            dn{"ера"}
+        }
+        fri{
+            relative{
+                "-1"{"миналият петък"}
+                "0"{"този петък"}
+                "1"{"следващият петък"}
+            }
+        }
+        hour{
+            dn{"час"}
+            relativeTime{
+                future{
+                    one{"след {0} час"}
+                    other{"след {0} часа"}
+                }
+                past{
+                    one{"преди {0} час"}
+                    other{"преди {0} часа"}
+                }
+            }
+        }
+        minute{
+            dn{"минута"}
+            relativeTime{
+                future{
+                    one{"след {0} минута"}
+                    other{"след {0} минути"}
+                }
+                past{
+                    one{"преди {0} минута"}
+                    other{"преди {0} минути"}
+                }
+            }
+        }
+        mon{
+            relative{
+                "-1"{"миналият понеделник"}
+                "0"{"този понеделник"}
+                "1"{"следващият понеделник"}
+            }
+        }
+        month{
+            dn{"месец"}
+            relative{
+                "-1"{"миналият месец"}
+                "0"{"този месец"}
+                "1"{"следващият месец"}
+            }
+            relativeTime{
+                future{
+                    one{"след {0} месец"}
+                    other{"след {0} месеца"}
+                }
+                past{
+                    one{"преди {0} месец"}
+                    other{"преди {0} месеца"}
+                }
+            }
+        }
+        sat{
+            relative{
+                "-1"{"миналата събота"}
+                "0"{"тази събота"}
+                "1"{"следващата събота"}
+            }
+        }
+        second{
+            dn{"секунда"}
+            relative{
+                "0"{"сега"}
+            }
+            relativeTime{
+                future{
+                    one{"след {0} секунда"}
+                    other{"след {0} секунди"}
+                }
+                past{
+                    one{"преди {0} секунда"}
+                    other{"преди {0} секунди"}
+                }
+            }
+        }
+        sun{
+            relative{
+                "-1"{"миналата неделя"}
+                "0"{"тази неделя"}
+                "1"{"следващата неделя"}
+            }
+        }
+        thu{
+            relative{
+                "-1"{"миналият четвъртък"}
+                "0"{"този четвъртък"}
+                "1"{"следващият четвъртък"}
+            }
+        }
+        tue{
+            relative{
+                "-1"{"миналият вторник"}
+                "0"{"този вторник"}
+                "1"{"следващият вторник"}
+            }
+        }
+        wed{
+            relative{
+                "-1"{"миналата сряда"}
+                "0"{"тази сряда"}
+                "1"{"следващата сряда"}
+            }
+        }
+        week{
+            dn{"седмица"}
+            relative{
+                "-1"{"миналата седмица"}
+                "0"{"тази седмица"}
+                "1"{"следващата седмица"}
+            }
+            relativeTime{
+                future{
+                    one{"след {0} седмица"}
+                    other{"след {0} седмици"}
+                }
+                past{
+                    one{"преди {0} седмица"}
+                    other{"преди {0} седмици"}
+                }
+            }
+        }
+        weekday{
+            dn{"ден от седмицата"}
+        }
+        year{
+            dn{"година"}
+            relative{
+                "-1"{"миналата година"}
+                "0"{"тази година"}
+                "1"{"следващата година"}
+            }
+            relativeTime{
+                future{
+                    one{"след {0} година"}
+                    other{"след {0} години"}
+                }
+                past{
+                    one{"преди {0} година"}
+                    other{"преди {0} години"}
+                }
+            }
+        }
+        zone{
+            dn{"часова зона"}
+        }
+    }
+    listPattern{
+        standard{
+            2{"{0} и {1}"}
+            end{"{0} и {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        unit{
+            2{"{0} и {1}"}
+            end{"{0} и {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        unit-short{
+            2{"{0} и {1}"}
+            end{"{0} и {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+    }
+    measurementSystemNames{
+        UK{"имперска"}
+        US{"американска"}
+        metric{"метрична"}
+    }
+    transformNames{
+        BGN{"АКГН (BGN)"}
+        Numeric{"Цифрови"}
+        Tone{"Интонация"}
+        UNGEGN{"ГЕСГИООН (UNGEGN)"}
+        x-Accents{"Диакритични знаци"}
+        x-Fullwidth{"С пълна ширина"}
+        x-Halfwidth{"С половин ширина"}
+        x-Jamo{"Джамо"}
+        x-Pinyin{"Пинин"}
+        x-Publishing{"Типографски"}
+    }
+    units{
+        compound{
+            per{"{0} в {1}"}
+        }
+        duration{
+            day{
+                one{"{0} ден"}
+                other{"{0} дни"}
+            }
+            hour{
+                one{"{0} час"}
+                other{"{0} часа"}
+            }
+            millisecond{
+                one{"{0} милисекунда"}
+                other{"{0} милисекунди"}
+            }
+            minute{
+                one{"{0} минута"}
+                other{"{0} минути"}
+            }
+            month{
+                one{"{0} месец"}
+                other{"{0} месеца"}
+            }
+            second{
+                one{"{0} секунда"}
+                other{"{0} секунди"}
+            }
+            week{
+                one{"{0} седмица"}
+                other{"{0} седмици"}
+            }
+            year{
+                one{"{0} година"}
+                other{"{0} години"}
+            }
+        }
+    }
+    unitsNarrow{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                one{"{0} д"}
+                other{"{0} д"}
+            }
+            hour{
+                one{"{0} h"}
+                other{"{0} h"}
+            }
+            millisecond{
+                one{"{0} ms"}
+                other{"{0} ms"}
+            }
+            minute{
+                one{"{0} min"}
+                other{"{0} min"}
+            }
+            month{
+                one{"{0} м"}
+                other{"{0} м"}
+            }
+            second{
+                one{"{0} s"}
+                other{"{0} s"}
+            }
+            week{
+                one{"{0} седм."}
+                other{"{0} седм."}
+            }
+            year{
+                one{"{0} г"}
+                other{"{0} г"}
+            }
+        }
+    }
+    unitsShort{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                one{"{0} д"}
+                other{"{0} д"}
+            }
+            hour{
+                one{"{0} h"}
+                other{"{0} h"}
+            }
+            millisecond{
+                one{"{0} ms"}
+                other{"{0} ms"}
+            }
+            minute{
+                one{"{0} min"}
+                other{"{0} min"}
+            }
+            month{
+                one{"{0} мес."}
+                other{"{0} мес."}
+            }
+            second{
+                one{"{0} s"}
+                other{"{0} s"}
+            }
+            week{
+                one{"{0} седм."}
+                other{"{0} седм."}
+            }
+            year{
+                one{"{0} г"}
+                other{"{0} г"}
+            }
+        }
+    }
+}

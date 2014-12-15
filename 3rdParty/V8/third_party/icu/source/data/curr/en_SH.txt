@@ -1,0 +1,22 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/en_SH.xml
+// *
+// ***************************************************************************
+en_SH{
+    %%Parent{"en_GB"}
+    Currencies{
+        GBP{
+            "GB£",
+            "British Pound",
+        }
+        SHP{
+            "£",
+            "Saint Helena Pound",
+        }
+    }
+    Version{"2.0.92.58"}
+}

@@ -1,0 +1,207 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/kea.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/kea.xml
+ */
+kea{
+    Languages{
+        ab{"abkaziu"}
+        af{"afrikaner"}
+        ak{"akan"}
+        am{"amariku"}
+        ar{"arabi"}
+        as{"asames"}
+        ay{"aimara"}
+        az{"azerbaijanu"}
+        be{"bielorusu"}
+        bg{"bulgaru"}
+        bn{"bengali"}
+        bo{"tibetanu"}
+        bs{"bosniu"}
+        ca{"katalãu"}
+        cs{"txeku"}
+        cy{"gales"}
+        da{"dinamarkes"}
+        de{"alemãu"}
+        de_AT{"alimãu austriaku"}
+        de_CH{"altu alimãu suisu"}
+        el{"gregu"}
+        en{"ingles"}
+        en_AU{"ingles australianu"}
+        en_CA{"ingles kanadianu"}
+        en_GB{"ingles britanuku"}
+        en_US{"ingles merkanu"}
+        eo{"sperantu"}
+        es{"spanhol"}
+        es_419{"spanhol latinu-merkanu"}
+        es_ES{"spanhol europeu"}
+        et{"stonianu"}
+        eu{"basku"}
+        fa{"persa"}
+        fi{"finlandes"}
+        fil{"filipinu"}
+        fj{"fijianu"}
+        fo{"faroes"}
+        fr{"franses"}
+        fr_CA{"franses kanadianu"}
+        fr_CH{"franses suisu"}
+        fy{"frisiu osidental"}
+        ga{"irlandes"}
+        gl{"galegu"}
+        gn{"guarani"}
+        gsw{"alimãu di Suisa"}
+        gu{"gujarati"}
+        ha{"auza"}
+        haw{"avaianu"}
+        he{"ebraiku"}
+        hi{"indi"}
+        hr{"kroata"}
+        ht{"aitianu"}
+        hu{"úngaru"}
+        hy{"arméniu"}
+        id{"indoneziu"}
+        ig{"ibo"}
+        is{"islandes"}
+        it{"italianu"}
+        ja{"japones"}
+        jv{"javanes"}
+        ka{"jorjianu"}
+        kea{"kabuverdianu"}
+        kk{"kazak"}
+        km{"kmer"}
+        kn{"kanares"}
+        ko{"kureanu"}
+        ks{"kaxmira"}
+        ku{"kurdu"}
+        ky{"kirgiz"}
+        la{"latin"}
+        lb{"luxemburges"}
+        lo{"lausianu"}
+        lt{"lituanes"}
+        lv{"letãu"}
+        mg{"malgaxi"}
+        mi{"maori"}
+        mk{"masedoniu"}
+        ml{"malaialam"}
+        mr{"marati"}
+        ms{"malaiu"}
+        mt{"maltes"}
+        my{"birmanes"}
+        nb{"norueges bokmål"}
+        ne{"nepales"}
+        nl{"olandes"}
+        nl_BE{"flamengu"}
+        nn{"norueges nynorsk"}
+        or{"oriya"}
+        pa{"pandjabi"}
+        pl{"pulaku"}
+        ps{"paxto"}
+        pt{"purtuges"}
+        pt_BR{"purtuges brazileru"}
+        pt_PT{"purtuges europeu"}
+        qu{"kexua"}
+        rm{"romanxi"}
+        ro{"rumenu"}
+        ru{"rusu"}
+        rw{"kiniaruanda"}
+        sa{"sanskritu"}
+        sd{"sindi"}
+        si{"singales"}
+        sk{"slovaku"}
+        sl{"sloveniu"}
+        so{"somali"}
+        sq{"albanes"}
+        sr{"sérviu"}
+        su{"sundanes"}
+        sv{"sueku"}
+        sw{"suaíli"}
+        ta{"tamil"}
+        te{"telugu"}
+        tg{"tajik"}
+        th{"tailandes"}
+        ti{"tigrinia"}
+        tk{"turkmenu"}
+        to{"tonganes"}
+        tr{"turku"}
+        tt{"tatar"}
+        ug{"uigur"}
+        uk{"ukranianu"}
+        und{"lingua diskonxedu"}
+        ur{"urdu"}
+        uz{"uzbeki"}
+        vi{"vietnamita"}
+        wo{"uolof"}
+        xh{"koza"}
+        yo{"ioruba"}
+        zh{"xines"}
+        zh_Hans{"xines simplifikadu"}
+        zh_Hant{"xines tradisional"}
+        zu{"zulu"}
+        zxx{"sem konteudo linguistiku"}
+    }
+    Scripts{
+        Arab{"arabiku"}
+        Armn{"armeniu"}
+        Beng{"bengali"}
+        Bopo{"bopomofo"}
+        Cyrl{"siriliku"}
+        Deva{"devanagari"}
+        Ethi{"etiopiku"}
+        Geor{"jorjianu"}
+        Grek{"gregu"}
+        Gujr{"gujarati"}
+        Guru{"gurmuki"}
+        Hang{"angul"}
+        Hani{"han"}
+        Hans{"han simplifikadu"}
+        Hant{"han tradisional"}
+        Hebr{"ebraiku"}
+        Hira{"iragana"}
+        Jpan{"japones"}
+        Kana{"katakana"}
+        Khmr{"kmer"}
+        Knda{"kanares"}
+        Kore{"koreanu"}
+        Laoo{"lausianu"}
+        Latn{"latinu"}
+        Mlym{"malaialam"}
+        Mong{"mongol"}
+        Mymr{"birmanes"}
+        Orya{"oriya"}
+        Sinh{"singales"}
+        Taml{"tamil"}
+        Telu{"telugu"}
+        Thaa{"taana"}
+        Thai{"tailandes"}
+        Tibt{"tibetanu"}
+        Zsym{"simbulus"}
+        Zxxx{"nãu skritu"}
+        Zyyy{"komun"}
+        Zzzz{"skrita diskonxedu"}
+    }
+    Types{
+        calendar{
+            gregorian{"Kalendariu Gregorianu"}
+        }
+        numbers{
+            latn{"Numerus Arabikus"}
+        }
+    }
+    Version{"2.0.92.87"}
+    codePatterns{
+        language{"Lingua: {0}"}
+        script{"Skrita: {0}"}
+        territory{"Rejiãu: {0}"}
+    }
+    localeDisplayPattern{
+        keyTypePattern{"{0}: {1}"}
+        pattern{"{0} ({1})"}
+        separator{"{0}, {1}"}
+    }
+}

@@ -1,0 +1,18 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/pt_MZ.xml
+// *
+// ***************************************************************************
+pt_MZ{
+    %%Parent{"pt_PT"}
+    Currencies{
+        MZN{
+            "MTn",
+            "Metical de Moçambique",
+        }
+    }
+    Version{"2.0.90.61"}
+}
