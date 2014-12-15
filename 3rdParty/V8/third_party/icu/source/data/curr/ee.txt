@@ -1,0 +1,1934 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ee.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/ee.xml
+ */
+ee{
+    Currencies{
+        ADP{
+            "ADP",
+            "andorraga peseta",
+        }
+        AED{
+            "AED",
+            "united arab emiratesga dirham",
+        }
+        AFN{
+            "AFN",
+            "afghanistanga afghani",
+        }
+        ALL{
+            "ALL",
+            "albaniaga lek",
+        }
+        AMD{
+            "AMD",
+            "armeniaga dram",
+        }
+        ANG{
+            "ANG",
+            "nedalands antilleaga guilder",
+        }
+        AOA{
+            "AOA",
+            "angolaga kwanza",
+        }
+        ARA{
+            "ARA",
+            "argentinaga austral",
+        }
+        ARS{
+            "ARS",
+            "argentinaga peso",
+        }
+        ATS{
+            "ATS",
+            "ɔstriaga schilling",
+        }
+        AUD{
+            "A$",
+            "australiaga dollar",
+        }
+        AWG{
+            "AWG",
+            "arubaga lorin",
+        }
+        AZN{
+            "AZN",
+            "azerbaidzanga manat",
+        }
+        BAM{
+            "BAM",
+            "bosnia-herzegovinaga convertible mark",
+        }
+        BBD{
+            "BBD",
+            "barbadiaga dollar",
+        }
+        BDT{
+            "BDT",
+            "bangladeshga taka",
+        }
+        BEC{
+            "BEC",
+            "beldziumga franc (convertible)",
+        }
+        BEF{
+            "BEF",
+            "beldziumga franc",
+        }
+        BEL{
+            "BEL",
+            "beldziumga franc (financial)",
+        }
+        BGL{
+            "BGL",
+            "bɔlgariaga hard lev",
+        }
+        BGM{
+            "BGM",
+            "bɔlgariaga socialist lev",
+        }
+        BGN{
+            "BGN",
+            "bulgariaga lev",
+        }
+        BHD{
+            "BHD",
+            "bahrainga dinar",
+        }
+        BIF{
+            "BIF",
+            "burundiga franc",
+        }
+        BMD{
+            "BMD",
+            "bermudaga dollar",
+        }
+        BND{
+            "BND",
+            "bruneiga dollar",
+        }
+        BOB{
+            "BOB",
+            "boliviaga boliviano",
+        }
+        BOP{
+            "BOP",
+            "boliviaga peso",
+        }
+        BOV{
+            "BOV",
+            "boliviaga mvdol",
+        }
+        BRL{
+            "R$",
+            "brazilga real",
+        }
+        BSD{
+            "BSD",
+            "bahamiaga dollar",
+        }
+        BTN{
+            "BTN",
+            "bhutanga ngultrum",
+        }
+        BUK{
+            "BUK",
+            "burmaga kyat",
+        }
+        BWP{
+            "BWP",
+            "botswanaga pula",
+        }
+        BYR{
+            "BYR",
+            "belarusiaga ruble",
+        }
+        BZD{
+            "BZD",
+            "belizega dollar",
+        }
+        CAD{
+            "CA$",
+            "kanadaga dollar",
+        }
+        CDF{
+            "CDF",
+            "kongoga franc",
+        }
+        CHE{
+            "CHE",
+            "WIR euro CHE",
+        }
+        CHF{
+            "CHF",
+            "swissga franc",
+        }
+        CHW{
+            "CHW",
+            "WIR euro CHW",
+        }
+        CLE{
+            "CLE",
+            "tsilega escudo",
+        }
+        CLF{
+            "CLF",
+            "tsilegakɔnta dzidzenu UF",
+        }
+        CLP{
+            "CLP",
+            "tsilega peso",
+        }
+        CNX{
+            "CNX",
+            "tsainatɔwo ƒe gadzraɖoƒe dollar",
+        }
+        CNY{
+            "CN¥",
+            "tsainaga yuan",
+        }
+        COP{
+            "COP",
+            "kolombiaga peso",
+        }
+        COU{
+            "COU",
+            "kolombiaga vavãtɔ",
+        }
+        CRC{
+            "CRC",
+            "kosta rikaga kolón",
+        }
+        CSD{
+            "CSD",
+            "serbiaga dinar (2002–2006)",
+        }
+        CSK{
+            "CSK",
+            "tsɛkoslovakiaga hard koruna",
+        }
+        CUC{
+            "CUC",
+            "kubaga convertible peso",
+        }
+        CUP{
+            "CUP",
+            "kubaga peso",
+        }
+        CVE{
+            "CVE",
+            "kape verdega escudo",
+        }
+        CYP{
+            "CYP",
+            "saipriɔtga pound",
+        }
+        CZK{
+            "CZK",
+            "tsɛk repɔblikga koruna",
+        }
+        DDM{
+            "DDM",
+            "ɣedzeƒe germaniaga mark",
+        }
+        DEM{
+            "DEM",
+            "germaniaga mark",
+        }
+        DJF{
+            "DJF",
+            "dziboutiga franc",
+        }
+        DKK{
+            "DKK",
+            "danemarkga krone",
+        }
+        DOP{
+            "DOP",
+            "dominicaga peso",
+        }
+        DZD{
+            "DZD",
+            "aldzeriaga dinar",
+        }
+        ECS{
+            "ECS",
+            "ekuadɔga sucre",
+        }
+        ECV{
+            "ECV",
+            "ekuadɔ dzidzenu matrɔmatrɔ",
+        }
+        EEK{
+            "EEK",
+            "estoniaga kroon",
+        }
+        EGP{
+            "EGP",
+            "egyptega pound",
+        }
+        ERN{
+            "ERN",
+            "eritreaga nakfa",
+        }
+        ESA{
+            "ESA",
+            "spaniaga peseta (A)",
+        }
+        ESB{
+            "ESB",
+            "spaniaga peseta (Convertible)",
+        }
+        ESP{
+            "ESP",
+            "spaniaga peseta",
+        }
+        ETB{
+            "ETB",
+            "ethiopiaga birr",
+        }
+        EUR{
+            "€",
+            "euro",
+        }
+        FIM{
+            "FIM",
+            "finlandga markka",
+        }
+        FJD{
+            "FJD",
+            "fidziga dollar",
+        }
+        FKP{
+            "FKP",
+            "falklanɖ ƒudomekpo dukɔwo ƒe ga pound",
+        }
+        FRF{
+            "FRF",
+            "frentsiga franc",
+        }
+        GBP{
+            "£",
+            "britainga pound sterling",
+        }
+        GEK{
+            "GEK",
+            "dzɔdziaga kupon larit",
+        }
+        GEL{
+            "GEL",
+            "dzɔdziaga lari",
+        }
+        GHS{
+            "GH₵",
+            "ghana siɖi",
+        }
+        GIP{
+            "GIP",
+            "gilbrataga pound",
+        }
+        GMD{
+            "GMD",
+            "gambiaga dalasi",
+        }
+        GNF{
+            "GNF",
+            "giniga franc",
+        }
+        GNS{
+            "GNS",
+            "giniga syli",
+        }
+        GQE{
+            "GQE",
+            "ekuatorial giniga ekwele",
+        }
+        GRD{
+            "GRD",
+            "grisiga drachma",
+        }
+        GTQ{
+            "GTQ",
+            "guatemalaga quetzal",
+        }
+        GWE{
+            "GWE",
+            "pɔtugaltɔwo ƒe giniga escudo",
+        }
+        GWP{
+            "GWP",
+            "gini-bisau peso",
+        }
+        GYD{
+            "GYD",
+            "guyanaga dollar",
+        }
+        HKD{
+            "HK$",
+            "hong kongga dollar",
+        }
+        HNL{
+            "HNL",
+            "honduraga lempira",
+        }
+        HRD{
+            "HRD",
+            "kroatiaga dinar",
+        }
+        HRK{
+            "HRK",
+            "kroatiaga kuna",
+        }
+        HTG{
+            "HTG",
+            "haitiga gourde",
+        }
+        HUF{
+            "HUF",
+            "hungariaga forint",
+        }
+        IDR{
+            "IDR",
+            "indinesiaga rupiah",
+        }
+        IEP{
+            "IEP",
+            "ireland pound",
+        }
+        ILP{
+            "ILP",
+            "israelga pound",
+        }
+        ILS{
+            "₪",
+            "israelga yeyetɔ sheqel",
+        }
+        INR{
+            "₹",
+            "indiaga rupee",
+        }
+        IQD{
+            "IQD",
+            "irakga dinar",
+        }
+        IRR{
+            "IRR",
+            "iranga rial",
+        }
+        ISK{
+            "ISK",
+            "aiselandga króna",
+        }
+        ITL{
+            "ITL",
+            "italiaga lira",
+        }
+        JMD{
+            "JMD",
+            "dzamaikaga dollar",
+        }
+        JOD{
+            "JOD",
+            "yɔdanga dinar",
+        }
+        JPY{
+            "JP¥",
+            "dzapanga yen",
+        }
+        KES{
+            "KES",
+            "kenyaga shilling",
+        }
+        KGS{
+            "KGS",
+            "kirgistanga som",
+        }
+        KHR{
+            "KHR",
+            "kambodiaga riel",
+        }
+        KMF{
+            "KMF",
+            "komoroga franc",
+        }
+        KPW{
+            "KPW",
+            "dziehe koreaga won",
+        }
+        KRW{
+            "₩",
+            "anyiehe koreaga won",
+        }
+        KWD{
+            "KWD",
+            "kuwaitga dinar",
+        }
+        KYD{
+            "KYD",
+            "kayman ƒudomekpoga dollar",
+        }
+        KZT{
+            "KZT",
+            "kazakhstanga tenge",
+        }
+        LAK{
+            "LAK",
+            "laosga kip",
+        }
+        LBP{
+            "LBP",
+            "lebanonga pound",
+        }
+        LKR{
+            "LKR",
+            "sri lankaga rupee",
+        }
+        LRD{
+            "LRD",
+            "liberiaga dollar",
+        }
+        LSL{
+            "LSL",
+            "lesotoga loti",
+        }
+        LTL{
+            "LTL",
+            "lithuaniaga litas",
+        }
+        LTT{
+            "LTT",
+            "lithuaniaga talonas",
+        }
+        LUC{
+            "LUC",
+            "lazembɔgga convertible franc",
+        }
+        LUF{
+            "LUF",
+            "lazembɔgga franc",
+        }
+        LUL{
+            "LUL",
+            "lazembɔgga gadzikpɔ franc",
+        }
+        LVL{
+            "LVL",
+            "latviaga lats",
+        }
+        LVR{
+            "LVR",
+            "latviaga ruble",
+        }
+        LYD{
+            "LYD",
+            "libyaga dinar",
+        }
+        MAD{
+            "MAD",
+            "morokoga dirham",
+        }
+        MAF{
+            "MAF",
+            "morokoga franc",
+        }
+        MCF{
+            "MCF",
+            "monegaskga franc",
+        }
+        MDC{
+            "MDC",
+            "moldovaga cupon",
+        }
+        MDL{
+            "MDL",
+            "moldovaga leu",
+        }
+        MGA{
+            "MGA",
+            "malagasega ariary",
+        }
+        MGF{
+            "MGF",
+            "malagasega franc",
+        }
+        MKD{
+            "MKD",
+            "makedoniaga denar",
+        }
+        MLF{
+            "MLF",
+            "maliga franc",
+        }
+        MMK{
+            "MMK",
+            "myanmaga kyat",
+        }
+        MNT{
+            "MNT",
+            "mongoliaga tugrik",
+        }
+        MOP{
+            "MOP",
+            "makanesega pataca",
+        }
+        MRO{
+            "MRO",
+            "mɔritaniaga ouguiya",
+        }
+        MTL{
+            "MTL",
+            "maltaga lira",
+        }
+        MTP{
+            "MTP",
+            "maltaga pound",
+        }
+        MUR{
+            "MUR",
+            "mɔritiusga rupee",
+        }
+        MVR{
+            "MVR",
+            "maldiviaga rufiyaa",
+        }
+        MXN{
+            "MX$",
+            "meksikoga peso",
+        }
+        MYR{
+            "MYR",
+            "malaysiaga ringit",
+        }
+        NGN{
+            "NGN",
+            "naidzeriaga naira",
+        }
+        NIO{
+            "NIO",
+            "nikaraguaga córdoba",
+        }
+        NLG{
+            "NLG",
+            "hollandga guilder",
+        }
+        NOK{
+            "NOK",
+            "norwayga krone",
+        }
+        NPR{
+            "NPR",
+            "nepalga rupee",
+        }
+        NZD{
+            "NZ$",
+            "new zealanɖga dollar",
+        }
+        OMR{
+            "OMR",
+            "omanga rial",
+        }
+        PAB{
+            "PAB",
+            "panamaga balboa",
+        }
+        PEI{
+            "PEI",
+            "peruga inti",
+        }
+        PEN{
+            "PEN",
+            "peruga nuevo sol",
+        }
+        PGK{
+            "PGK",
+            "papua new guineaga kina",
+        }
+        PHP{
+            "PHP",
+            "filipiniga peso",
+        }
+        PKR{
+            "PKR",
+            "pakistaniga rupee",
+        }
+        PLN{
+            "PLN",
+            "polanɖga zloty",
+        }
+        PTE{
+            "PTE",
+            "pɔtugalga escudo",
+        }
+        PYG{
+            "PYG",
+            "paraguayga guarani",
+        }
+        QAR{
+            "QAR",
+            "katarga rial",
+        }
+        RHD{
+            "RHD",
+            "rhodesiaga dollar",
+        }
+        RON{
+            "RON",
+            "romaniaga leu",
+        }
+        RSD{
+            "RSD",
+            "serbiaga dinar",
+        }
+        RUB{
+            "RUB",
+            "rɔtsiaga ruble",
+        }
+        RWF{
+            "RWF",
+            "rwandaga franc",
+        }
+        SAR{
+            "SAR",
+            "saudiga riyal",
+        }
+        SBD{
+            "SBD",
+            "solomon ƒudomekpo dukɔwo ƒe ga dollar",
+        }
+        SCR{
+            "SCR",
+            "sɛtselsga rupee",
+        }
+        SDG{
+            "SDG",
+            "sudanga pound",
+        }
+        SEK{
+            "SEK",
+            "swedenga krona",
+        }
+        SGD{
+            "SGD",
+            "singapɔga dollar",
+        }
+        SHP{
+            "SHP",
+            "saint helenaga pound",
+        }
+        SIT{
+            "SIT",
+            "slovaniaga tolar",
+        }
+        SKK{
+            "SKK",
+            "slovakga koruna",
+        }
+        SLL{
+            "SLL",
+            "sierra leonega leone",
+        }
+        SOS{
+            "SOS",
+            "somaliaga shilling",
+        }
+        SRD{
+            "SRD",
+            "surinamga dollar",
+        }
+        SRG{
+            "SRG",
+            "surinamega guilder",
+        }
+        STD{
+            "STD",
+            "são tomé kple príncipega dobra",
+        }
+        SUR{
+            "SUR",
+            "sovietga rouble",
+        }
+        SVC{
+            "SVC",
+            "salvadɔga colón",
+        }
+        SYP{
+            "SYP",
+            "syriaga pound",
+        }
+        SZL{
+            "SZL",
+            "swaziga lilangeni",
+        }
+        THB{
+            "฿",
+            "thaiga baht",
+        }
+        TJR{
+            "TJR",
+            "tajikistanga ruble",
+        }
+        TJS{
+            "TJS",
+            "tajikistanga somoni",
+        }
+        TMT{
+            "TMT",
+            "turkmenistanga manat",
+        }
+        TND{
+            "TND",
+            "tunisiaga dinar",
+        }
+        TOP{
+            "TOP",
+            "tonagaga pa'anga",
+        }
+        TPE{
+            "TPE",
+            "timɔga escudo",
+        }
+        TRY{
+            "TRY",
+            "tɛkiiga lira",
+        }
+        TTD{
+            "TTD",
+            "trinidad kple tobagoga dollar",
+        }
+        TWD{
+            "NT$",
+            "taiwanga yeye dollar",
+        }
+        TZS{
+            "TZS",
+            "Tanzaniatɔwofɛgadudu",
+        }
+        UAH{
+            "UAH",
+            "ukrainega hryvnia",
+        }
+        UAK{
+            "UAK",
+            "ukrainega karbovanet",
+        }
+        UGX{
+            "UGX",
+            "ugandaga shilling",
+        }
+        USD{
+            "US$",
+            "us ga dollar",
+        }
+        USN{
+            "USN",
+            "us ga dollar (ŋkeke si gbɔna tɔ)",
+        }
+        USS{
+            "USS",
+            "us ga dollar (ŋkeke ma ke tɔ)",
+        }
+        UYI{
+            "UYI",
+            "uruguayga peso UYI",
+        }
+        UYU{
+            "UYU",
+            "uruguayga peso",
+        }
+        UZS{
+            "UZS",
+            "uzbekistanga som",
+        }
+        VEF{
+            "VEF",
+            "venezuelaga bolívar",
+        }
+        VND{
+            "₫",
+            "vietnamga dong",
+        }
+        VUV{
+            "VUV",
+            "vanuatuga vatu",
+        }
+        WST{
+            "WST",
+            "samaoga tala",
+        }
+        XAF{
+            "FCFA",
+            "ɣetoɖofe afrikaga CFA franc BEAC",
+        }
+        XAG{
+            "XAG",
+            "klosalo",
+        }
+        XAU{
+            "XAU",
+            "sika",
+        }
+        XBA{
+            "XBA",
+            "europa dzidzenu xba",
+        }
+        XBB{
+            "XBB",
+            "europa gadzidzenu xbb",
+        }
+        XBC{
+            "XBC",
+            "europa kɔnta dzidzenu xbc",
+        }
+        XBD{
+            "XBD",
+            "europa kɔnta dzidzenu xbd",
+        }
+        XCD{
+            "EC$",
+            "ɣedzeƒe caribbeaga dollar",
+        }
+        XDR{
+            "XDR",
+            "gaɖuɖu ɖoɖo tɔxɛ",
+        }
+        XEU{
+            "XEU",
+            "europa gaɖuɖu",
+        }
+        XFO{
+            "XFO",
+            "fransemega sika franc",
+        }
+        XFU{
+            "XFU",
+            "frentsi UIC-franc",
+        }
+        XOF{
+            "CFA",
+            "ɣetoɖofe afrikaga CFA franc BCEAO",
+        }
+        XPD{
+            "XPD",
+            "palladiumga",
+        }
+        XPF{
+            "CFPF",
+            "CFP ga franc",
+        }
+        XPT{
+            "XPT",
+            "platinum",
+        }
+        XRE{
+            "XRE",
+            "RINET gadodo XRE",
+        }
+        XTS{
+            "XTS",
+            "gaɖuɖu dodokpɔ dzesi xts",
+        }
+        XXX{
+            "XXX",
+            "gaɖuɖu manya",
+        }
+        YDD{
+            "YDD",
+            "yemeniga dinar",
+        }
+        YER{
+            "YER",
+            "yemeniga rial",
+        }
+        ZAL{
+            "ZAL",
+            "anyiehe afrikaga rand (gadzikpɔtɔ)",
+        }
+        ZAR{
+            "ZAR",
+            "anyiehe afrikaga rand",
+        }
+        ZMW{
+            "ZMW",
+            "zambiaga kwacha",
+        }
+        ZWL{
+            "ZWL",
+            "zimbabwega dollar (2009)",
+        }
+        ZWR{
+            "ZWR",
+            "zimbabwega dollar (2008)",
+        }
+    }
+    CurrencyPlurals{
+        ADP{
+            one{"andorraga peseta"}
+            other{"andorraga peseta"}
+        }
+        AED{
+            one{"united arab emiratesga dirham"}
+            other{"united arab emiratesga dirham"}
+        }
+        AFN{
+            one{"afghanistanga afghani"}
+            other{"afghanistanga afghani"}
+        }
+        ALL{
+            one{"albaniaga lek"}
+            other{"albaniaga lek"}
+        }
+        AMD{
+            one{"armeniaga dram"}
+            other{"armeniaga dram"}
+        }
+        ANG{
+            one{"nedalands antilleaga guilder"}
+            other{"nedalands antilleaga guilder"}
+        }
+        AOA{
+            one{"angolaga kwanza"}
+            other{"angolaga kwanza"}
+        }
+        ARA{
+            one{"argentinaga austral"}
+            other{"argentinaga austral"}
+        }
+        ARS{
+            one{"argentinaga peso"}
+            other{"argentinaga peso"}
+        }
+        ATS{
+            one{"ɔstriaga schilling"}
+            other{"ɔstriaga schilling"}
+        }
+        AUD{
+            one{"ɔstraliaga dollar"}
+            other{"ɔstraliaga dollar"}
+        }
+        AWG{
+            one{"arubaga florin"}
+            other{"arubaga florin"}
+        }
+        AZN{
+            one{"azerbaidzanga manat"}
+            other{"azerbaidzanga manat"}
+        }
+        BAM{
+            one{"bosnia-herzegovinaga convertible mark"}
+            other{"bosnia-herzegovinaga convertible mark"}
+        }
+        BBD{
+            one{"barbadiaga dollar"}
+            other{"barbadiaga dollar"}
+        }
+        BDT{
+            one{"bangladeshga taka"}
+            other{"bangladeshga taka"}
+        }
+        BEC{
+            one{"beldziumga franc (convertible)"}
+            other{"beldziumga franc (convertible)"}
+        }
+        BEF{
+            one{"beldziumga franc"}
+            other{"beldziumga franc"}
+        }
+        BEL{
+            one{"beldziumga franc (financial)"}
+            other{"beldziumga franc (financial)"}
+        }
+        BGL{
+            one{"bɔlgariaga hard lev"}
+            other{"bɔlgariaga hard lev"}
+        }
+        BGM{
+            one{"bɔlgariaga socialist lev"}
+            other{"bɔlgariaga socialist lev"}
+        }
+        BGN{
+            one{"bulgariaga lev"}
+            other{"bulgariaga lev"}
+        }
+        BHD{
+            one{"bahrainga dinar"}
+            other{"bahrainga dinar"}
+        }
+        BIF{
+            one{"burundiga franc"}
+            other{"burundiga franc"}
+        }
+        BMD{
+            one{"bermudaga dollar"}
+            other{"bermudaga dollar"}
+        }
+        BND{
+            one{"bruneiga dollar"}
+            other{"bruneiga dollar"}
+        }
+        BOB{
+            one{"boliviaga boliviano"}
+            other{"boliviaga boliviano"}
+        }
+        BOP{
+            one{"boliviaga peso"}
+            other{"boliviaga peso"}
+        }
+        BOV{
+            one{"boliviaga mvdol"}
+            other{"boliviaga mvdol"}
+        }
+        BRL{
+            one{"braziliaga real"}
+            other{"braziliaga real"}
+        }
+        BSD{
+            one{"bahamiaga dollar"}
+            other{"bahamiaga dollar"}
+        }
+        BTN{
+            one{"bhutanga ngultrum"}
+            other{"bhutanga ngultrum"}
+        }
+        BUK{
+            one{"burmaga kyat"}
+            other{"burmaga kyat"}
+        }
+        BWP{
+            one{"botswanaga pula"}
+            other{"botswanaga pula"}
+        }
+        BYR{
+            one{"belarusiaga ruble"}
+            other{"belarusiaga rublewo"}
+        }
+        BZD{
+            one{"belizega dollar"}
+            other{"belizega dollar"}
+        }
+        CAD{
+            one{"kanadaga dollar"}
+            other{"kanadaga dollar"}
+        }
+        CDF{
+            one{"kongoga franc"}
+            other{"kongoga franc"}
+        }
+        CHE{
+            one{"WIR euro CHE"}
+            other{"WIR eurowo CHE"}
+        }
+        CHF{
+            one{"swissga franc"}
+            other{"swissga franc"}
+        }
+        CHW{
+            one{"WIR euro CHW"}
+            other{"WIR eurowo CHW"}
+        }
+        CLE{
+            one{"tsilega escudo"}
+            other{"tsilega escudo"}
+        }
+        CLF{
+            one{"tsilegakɔnta dzidzenu UF"}
+            other{"tsilegakɔnta dzidzenu UF"}
+        }
+        CLP{
+            one{"tsilega peso"}
+            other{"tsilega pesowo"}
+        }
+        CNX{
+            one{"tsainatɔwo ƒe gadzraɖoƒe dollar"}
+            other{"tsainatɔwo ƒe gadzraɖoƒe dollarwo"}
+        }
+        CNY{
+            one{"tsainaga yuan"}
+            other{"tsainaga yuan"}
+        }
+        COP{
+            one{"kolombiaga peso"}
+            other{"kolombiaga peso"}
+        }
+        COU{
+            one{"kolombiaga vavãtɔ"}
+            other{"kolombiaga vavãtɔ"}
+        }
+        CRC{
+            one{"kosta rikaga kolón"}
+            other{"kosta rikaga kolón"}
+        }
+        CSD{
+            one{"serbiaga dinar (2002–2006)"}
+            other{"serbiaga dinar (2002–2006)"}
+        }
+        CSK{
+            one{"tsɛkoslovakiaga hard koruna"}
+            other{"tsɛkoslovakiaga hard koruna"}
+        }
+        CUC{
+            one{"kubaga convertible peso"}
+            other{"kubaga convertible peso"}
+        }
+        CUP{
+            one{"kubaga peso"}
+            other{"kubaga peso"}
+        }
+        CVE{
+            one{"kape verdega escudo"}
+            other{"kape verdega escudo"}
+        }
+        CYP{
+            one{"saipriɔtga pound"}
+            other{"saipriɔtga pound"}
+        }
+        CZK{
+            one{"tsɛk repɔblikga koruna"}
+            other{"tsɛk repɔblikga koruna"}
+        }
+        DDM{
+            one{"ɣedzeƒe germaniaga mark"}
+            other{"ɣedzeƒe germaniaga mark"}
+        }
+        DEM{
+            one{"germaniaga mark"}
+            other{"germaniaga markwo"}
+        }
+        DJF{
+            one{"dziboutiga franc"}
+            other{"dzibutiga franc"}
+        }
+        DKK{
+            one{"denmarkga krone"}
+            other{"denmarkga krone"}
+        }
+        DOP{
+            one{"dominikaga peso"}
+            other{"dominikaga peso"}
+        }
+        DZD{
+            one{"aldzeriaga dinar"}
+            other{"aldzeriaga dinar"}
+        }
+        ECS{
+            one{"ekuadɔga sucre"}
+            other{"ekuadɔga sucre"}
+        }
+        ECV{
+            one{"ekuadɔ dzidzenu matrɔmatrɔ"}
+            other{"ekuadɔ dzidzenu matrɔmatrɔ"}
+        }
+        EEK{
+            one{"estoniaga kroon"}
+            other{"estoniaga kroon"}
+        }
+        EGP{
+            one{"egyptega pound"}
+            other{"egyptega pound"}
+        }
+        ERN{
+            one{"eritreaga nakfa"}
+            other{"eritreaga nakfa"}
+        }
+        ESA{
+            one{"spaniaga peseta (A)"}
+            other{"spaniaga peseta (A)"}
+        }
+        ESB{
+            one{"spaniaga peseta (Convertible)"}
+            other{"spaniaga pesetas (Convertible)"}
+        }
+        ESP{
+            one{"spaniaga peseta"}
+            other{"spaniaga pesetas"}
+        }
+        ETB{
+            one{"ethiopiaga birr"}
+            other{"ethiopiaga birr"}
+        }
+        EUR{
+            one{"euro"}
+            other{"euro"}
+        }
+        FIM{
+            one{"finlandga markka"}
+            other{"finlandga markka"}
+        }
+        FJD{
+            one{"fidziga dollar"}
+            other{"fidziga dollar"}
+        }
+        FKP{
+            one{"falkland ƒudomekpo dukɔwo ƒe ga pound"}
+            other{"falkland ƒudomekpo dukɔwo ƒe ga pound"}
+        }
+        FRF{
+            one{"frentsiga franc"}
+            other{"frentsiga franc"}
+        }
+        GBP{
+            one{"britainga pound sterling"}
+            other{"britainga pound sterling"}
+        }
+        GEK{
+            one{"dzɔdziaga kupon larit"}
+            other{"dzɔdziaga kupon larit"}
+        }
+        GEL{
+            one{"dzɔdziaga larit"}
+            other{"dzɔdziaga larit"}
+        }
+        GHS{
+            one{"ghana siɖi"}
+            other{"ghana siɖi"}
+        }
+        GIP{
+            one{"gilbrataga pound"}
+            other{"gilbrataga pound"}
+        }
+        GMD{
+            one{"gambiaga dalasi"}
+            other{"gambiaga dalasi"}
+        }
+        GNF{
+            one{"giniga franc"}
+            other{"giniga franc"}
+        }
+        GNS{
+            one{"giniga syli"}
+            other{"giniga syli"}
+        }
+        GQE{
+            one{"ekuatorial giniga ekwele"}
+            other{"ekuatorial giniga ekwele"}
+        }
+        GRD{
+            one{"grisiga drachma"}
+            other{"grisiga drachma"}
+        }
+        GTQ{
+            one{"guatemalaga quetzal"}
+            other{"guatemalaga quetzal"}
+        }
+        GWE{
+            one{"pɔtugaltɔwo ƒe giniga escudo"}
+            other{"pɔtugaltɔwo ƒe giniga escudo"}
+        }
+        GWP{
+            one{"gini-bisau peso"}
+            other{"gini-bisau peso"}
+        }
+        GYD{
+            one{"guyanaga dollar"}
+            other{"guyanaga dollar"}
+        }
+        HKD{
+            one{"hong kongga dollar"}
+            other{"hong kongga dollar"}
+        }
+        HNL{
+            one{"honduraga lempira"}
+            other{"honduraga lempira"}
+        }
+        HRD{
+            one{"kroatiaga dinar"}
+            other{"kroatiaga dinar"}
+        }
+        HRK{
+            one{"kroatiaga kuna"}
+            other{"kroatiaga kuna"}
+        }
+        HTG{
+            one{"haitiga gourde"}
+            other{"haitiga gourde"}
+        }
+        HUF{
+            one{"hungariaga forint"}
+            other{"hungariaga forint"}
+        }
+        IDR{
+            one{"indinesiaga rupiah"}
+            other{"indinesiaga rupiah"}
+        }
+        IEP{
+            one{"ireland pound"}
+            other{"ireland pound"}
+        }
+        ILP{
+            one{"israelga pound"}
+            other{"israelga pound"}
+        }
+        ILS{
+            one{"israelga yeyetɔ sheqel"}
+            other{"israelga yeyetɔ sheqel"}
+        }
+        INR{
+            one{"indiaga rupee"}
+            other{"indiaga rupee"}
+        }
+        IQD{
+            one{"irakga dinar"}
+            other{"irakga dinar"}
+        }
+        IRR{
+            one{"iranga rial"}
+            other{"iranga rial"}
+        }
+        ISK{
+            one{"aiselandga króna"}
+            other{"aiselandga krónur"}
+        }
+        ITL{
+            one{"italiaga lira"}
+            other{"italiaga lira"}
+        }
+        JMD{
+            one{"dzamaikaga dollar"}
+            other{"dzamaikaga dollar"}
+        }
+        JOD{
+            one{"yɔdanga dinar"}
+            other{"yɔdanga dinar"}
+        }
+        JPY{
+            one{"dzapanga yen"}
+            other{"dzapanga yen"}
+        }
+        KES{
+            one{"kenyaga shilling"}
+            other{"kenyaga shilling"}
+        }
+        KGS{
+            one{"kirgistanga som"}
+            other{"kirgistanga som"}
+        }
+        KHR{
+            one{"kambodiaga riel"}
+            other{"kambodiaga riel"}
+        }
+        KMF{
+            one{"komoroga franc"}
+            other{"komoroga franc"}
+        }
+        KPW{
+            one{"dziehe koreaga won"}
+            other{"dziehe koreaga won"}
+        }
+        KRW{
+            one{"anyiehe koreaga won"}
+            other{"anyiehe koreaga won"}
+        }
+        KWD{
+            one{"kuwaitga dinar"}
+            other{"kuwaitga dinar"}
+        }
+        KYD{
+            one{"kayman ƒudomekpoga dollar"}
+            other{"kayman ƒudomekpoga dollar"}
+        }
+        KZT{
+            one{"kazakhstanga tenge"}
+            other{"kazakhstanga tenge"}
+        }
+        LAK{
+            one{"laosga kip"}
+            other{"laosga kip"}
+        }
+        LBP{
+            one{"lebanonga pound"}
+            other{"lebanonga pound"}
+        }
+        LKR{
+            one{"sri lankaga rupee"}
+            other{"sri lankaga rupee"}
+        }
+        LRD{
+            one{"liberiaga dollar"}
+            other{"liberiaga dollar"}
+        }
+        LSL{
+            one{"lesotoga loti"}
+            other{"lesotoga loti"}
+        }
+        LTL{
+            one{"lithuaniaga litas"}
+            other{"lithuaniaga litai"}
+        }
+        LTT{
+            one{"lithuaniaga talonas"}
+            other{"lithuaniaga talonas"}
+        }
+        LUC{
+            one{"lazembɔgga convertible franc"}
+            other{"lazembɔgga convertible franc"}
+        }
+        LUF{
+            one{"lazembɔgga franc"}
+            other{"lazembɔgga franc"}
+        }
+        LUL{
+            one{"lazembɔgga gadzikpɔ franc"}
+            other{"lazembɔgga gadzikpɔ franc"}
+        }
+        LVL{
+            one{"latviaga lats"}
+            other{"latviaga lati"}
+        }
+        LVR{
+            one{"latviaga ruble"}
+            other{"latviaga ruble"}
+        }
+        LYD{
+            one{"libyaga dinar"}
+            other{"libyaga dinar"}
+        }
+        MAD{
+            one{"morokoga dirham"}
+            other{"morokoga dirham"}
+        }
+        MAF{
+            one{"morokoga franc"}
+            other{"morokoga franc"}
+        }
+        MCF{
+            one{"monegaskga franc"}
+            other{"monegaskga franc"}
+        }
+        MDC{
+            one{"moldovaga cupon"}
+            other{"moldovaga cupon"}
+        }
+        MDL{
+            one{"moldovaga leu"}
+            other{"moldovaga leu"}
+        }
+        MGA{
+            one{"malagasega ariary"}
+            other{"malagasega ariary"}
+        }
+        MGF{
+            one{"malagasega franc"}
+            other{"malagasega franc"}
+        }
+        MKD{
+            one{"makedoniaga denar"}
+            other{"makedoniaga denari"}
+        }
+        MLF{
+            one{"maliga franc"}
+            other{"maliga franc"}
+        }
+        MMK{
+            one{"myanmaga kyat"}
+            other{"myanmaga kyat"}
+        }
+        MNT{
+            one{"mongoliaga tugrik"}
+            other{"mongoliaga tugrik"}
+        }
+        MOP{
+            one{"makanesega pataca"}
+            other{"makanesega pataca"}
+        }
+        MRO{
+            one{"mɔritaniaga ouguiya"}
+            other{"mɔritaniaga ouguiya"}
+        }
+        MTL{
+            one{"maltaga lira"}
+            other{"maltaga lira"}
+        }
+        MTP{
+            one{"maltaga pound"}
+            other{"maltaga pound"}
+        }
+        MUR{
+            one{"mɔritiusga rupee"}
+            other{"mɔritiusga rupee"}
+        }
+        MVR{
+            one{"maldiviaga rufiyaa"}
+            other{"maldiviaga rufiyaa"}
+        }
+        MXN{
+            one{"meksikoga peso"}
+            other{"meksikoga peso"}
+        }
+        MYR{
+            one{"malaysiaga ringit"}
+            other{"malaysiaga ringit"}
+        }
+        NGN{
+            one{"naidzeriaga naira"}
+            other{"naidzeriaga naira"}
+        }
+        NIO{
+            one{"nikaraguaga córdoba"}
+            other{"nikaraguaga córdoba"}
+        }
+        NLG{
+            one{"hollandga guilder"}
+            other{"hollandga guilder"}
+        }
+        NOK{
+            one{"nɔweiga krone"}
+            other{"nɔweiga krone"}
+        }
+        NPR{
+            one{"nepalga rupee"}
+            other{"nepalga rupee"}
+        }
+        NZD{
+            one{"new zealanɖga dollar"}
+            other{"new zealanɖga dollar"}
+        }
+        OMR{
+            one{"omanga rial"}
+            other{"omanga rial"}
+        }
+        PAB{
+            one{"panamaga balboa"}
+            other{"panamaga balboa"}
+        }
+        PEI{
+            one{"peruga inti"}
+            other{"peruga inti"}
+        }
+        PEN{
+            one{"peruga nuevo sol"}
+            other{"peruga nuevo sol"}
+        }
+        PGK{
+            one{"papua new giniga kina"}
+            other{"papua new giniga kina"}
+        }
+        PHP{
+            one{"filipinga peso"}
+            other{"filipinga peso"}
+        }
+        PKR{
+            one{"pakistanga rupee"}
+            other{"pakistanga rupee"}
+        }
+        PLN{
+            one{"polandga zloty"}
+            other{"polandga zloty"}
+        }
+        PTE{
+            one{"pɔtugalga escudo"}
+            other{"pɔtugalga escudo"}
+        }
+        PYG{
+            one{"paraguayga guarani"}
+            other{"paraguayga guarani"}
+        }
+        QAR{
+            one{"katarga rial"}
+            other{"katarga rial"}
+        }
+        RHD{
+            one{"rhodesiaga dollar"}
+            other{"rhodesiaga dollar"}
+        }
+        RON{
+            one{"romaniaga leu"}
+            other{"romaniaga leu"}
+        }
+        RSD{
+            one{"serbiaga dinar"}
+            other{"serbiaga dinar"}
+        }
+        RUB{
+            one{"rɔtsiaga ruble"}
+            other{"rɔtsiaga ruble"}
+        }
+        RWF{
+            one{"rwandaga franc"}
+            other{"rwandaga franc"}
+        }
+        SAR{
+            one{"saudiga riyal"}
+            other{"saudiga riyal"}
+        }
+        SBD{
+            one{"solomon ƒudomekpo dukɔwo ƒe ga dollar"}
+            other{"solomon ƒudomekpo dukɔwo ƒe ga dollar"}
+        }
+        SCR{
+            one{"sɛtselsga rupee"}
+            other{"sɛtselsga rupee"}
+        }
+        SDG{
+            one{"sudanga pound"}
+            other{"sudanga pound"}
+        }
+        SEK{
+            one{"swedenga krona"}
+            other{"swedenga krona"}
+        }
+        SGD{
+            one{"singapɔga dollar"}
+            other{"singapɔga dollar"}
+        }
+        SHP{
+            one{"saint helenaga pound"}
+            other{"saint helenaga pound"}
+        }
+        SIT{
+            one{"slovaniaga tolar"}
+            other{"slovaniaga tolar"}
+        }
+        SKK{
+            one{"slovakiaga koruna"}
+            other{"slovakiaga koruna"}
+        }
+        SLL{
+            one{"sierra leonega leone"}
+            other{"sierra leonega leone"}
+        }
+        SOS{
+            one{"somaliaga shilling"}
+            other{"somaliaga shilling"}
+        }
+        SRD{
+            one{"surinamga dollar"}
+            other{"surinamga dollar"}
+        }
+        SRG{
+            one{"surinamega guilder"}
+            other{"surinamega guilder"}
+        }
+        STD{
+            one{"são tomé kple príncipega dobra"}
+            other{"são tomé kple príncipega dobra"}
+        }
+        SUR{
+            one{"sovietga rouble"}
+            other{"sovietga rouble"}
+        }
+        SVC{
+            one{"salvadɔga colón"}
+            other{"salvadɔga colón"}
+        }
+        SYP{
+            one{"syriaga pound"}
+            other{"syriaga pound"}
+        }
+        SZL{
+            one{"swaziga lilangeni"}
+            other{"swaziga lilangeni"}
+        }
+        THB{
+            one{"thaiga baht"}
+            other{"thaiga baht"}
+        }
+        TJR{
+            one{"tajikistanga ruble"}
+            other{"tajikistanga ruble"}
+        }
+        TJS{
+            one{"tajikistanga somoni"}
+            other{"tajikistanga somoni"}
+        }
+        TMT{
+            one{"turkmenistanga manat"}
+            other{"turkmenistanga manat"}
+        }
+        TND{
+            one{"tunisiaga dinar"}
+            other{"tunisiaga dinar"}
+        }
+        TOP{
+            one{"tonagaga pa'anga"}
+            other{"tonagaga pa'anga"}
+        }
+        TPE{
+            one{"timɔga escudo"}
+            other{"timɔga escudo"}
+        }
+        TRY{
+            one{"tɛkiiga lira"}
+            other{"tɛkiiga lira"}
+        }
+        TTD{
+            one{"trinidad kple tobagoga dollar"}
+            other{"trinidad kple tobagoga dollar"}
+        }
+        TWD{
+            one{"taiwanga yeye dollar"}
+            other{"taiwanga yeye dollar"}
+        }
+        TZS{
+            one{"tanzaniaga shilling"}
+            other{"tanzaniaga shilling"}
+        }
+        UAH{
+            one{"ukrainega hryvnia"}
+            other{"ukrainega hryvnia"}
+        }
+        UAK{
+            one{"ukrainega karbovanet"}
+            other{"ukrainega karbovantsiv"}
+        }
+        UGX{
+            one{"ugandaga shilling"}
+            other{"ugandaga shilling"}
+        }
+        USD{
+            one{"us ga dollar"}
+            other{"us ga dollar"}
+        }
+        USN{
+            one{"us ga dollar (ŋkeke si gbɔna tɔ)"}
+            other{"us ga dollar (ŋkeke si gbɔna tɔ)"}
+        }
+        USS{
+            one{"us ga dollar (ŋkeke ma ke tɔ)"}
+            other{"us ga dollar (ŋkeke ma ke tɔ)"}
+        }
+        UYI{
+            one{"uruguayga peso UYI"}
+            other{"uruguayga peso UYI"}
+        }
+        UYU{
+            one{"uruguayga peso"}
+            other{"uruguayga peso"}
+        }
+        UZS{
+            one{"uzbekistanga som"}
+            other{"uzbekistanga som"}
+        }
+        VEF{
+            one{"venezuelaga bolívar"}
+            other{"venezuelaga bolívar"}
+        }
+        VND{
+            one{"vietnamga dong"}
+            other{"vietnamga dong"}
+        }
+        VUV{
+            one{"vanuatuga vatu"}
+            other{"vanuatuga vatu"}
+        }
+        WST{
+            one{"samaoga tala"}
+            other{"samaoga tala"}
+        }
+        XAF{
+            one{"ɣetoɖofe afrikaga CFA franc BEAC"}
+            other{"ɣetoɖofe afrikaga CFA franc BEAC"}
+        }
+        XAG{
+            one{"klosalo"}
+            other{"klosalo"}
+        }
+        XAU{
+            one{"sika"}
+            other{"sika"}
+        }
+        XBA{
+            one{"europa dzidzenu xba"}
+            other{"europa dzidzenu xba"}
+        }
+        XBB{
+            one{"europa gadzidzenu xbb"}
+            other{"europa gadzidzenu xbb"}
+        }
+        XBC{
+            one{"europa kɔnta dzidzenu"}
+            other{"europa kɔnta dzidzenu"}
+        }
+        XBD{
+            one{"europaga (XBD)"}
+            other{"europaga (XBD)"}
+        }
+        XCD{
+            one{"ɣedzeƒe karibbeaga dollar"}
+            other{"ɣedzeƒe karibbeaga dollar"}
+        }
+        XDR{
+            one{"gaɖuɖu ɖoɖo tɔxɛ"}
+            other{"gaɖuɖu ɖoɖo tɔxɛ"}
+        }
+        XEU{
+            one{"europa gaɖuɖu"}
+            other{"europa gaɖuɖu"}
+        }
+        XFO{
+            one{"frentsiga sika franc"}
+            other{"frentsiga sika franc"}
+        }
+        XFU{
+            one{"frentsi UIC-franc"}
+            other{"frentsi UIC-franc"}
+        }
+        XOF{
+            one{"ɣetoɖofe afrikaga CFA franc BCEAO"}
+            other{"ɣetoɖofe afrikaga CFA franc BCEAO"}
+        }
+        XPD{
+            one{"palladiumga"}
+            other{"palladiumga"}
+        }
+        XPF{
+            one{"CFP ga franc"}
+            other{"CFP ga franc"}
+        }
+        XPT{
+            one{"platinum"}
+            other{"platinum"}
+        }
+        XRE{
+            one{"RINET gadodo XRE"}
+            other{"RINET gadodo XRE"}
+        }
+        XTS{
+            one{"gaɖuɖu dodokpɔ dzesi"}
+            other{"gaɖuɖu dodokpɔ dzesi"}
+        }
+        XXX{
+            one{"gaɖuɖu manya"}
+            other{"gaɖuɖu manya"}
+        }
+        YDD{
+            one{"yemeniga dinar"}
+            other{"yemeniga dinar"}
+        }
+        YER{
+            one{"yemeniga rial"}
+            other{"yemeniga rial"}
+        }
+        ZAL{
+            one{"anyiehe afrikaga rand (gadzikpɔtɔ)"}
+            other{"anyiehe afrikaga rand (gadzikpɔtɔ)"}
+        }
+        ZAR{
+            one{"anyiehe afrikaga rand"}
+            other{"anyiehe afrikaga rand"}
+        }
+        ZMW{
+            one{"zambiaga kwacha"}
+            other{"zambiaga kwacha"}
+        }
+        ZWL{
+            one{"zimbabwega dollar (2009)"}
+            other{"zimbabwega dollar (2009)"}
+        }
+        ZWR{
+            one{"zimbabwega dollar (2008)"}
+            other{"zimbabwega dollar (2008)"}
+        }
+    }
+    CurrencyUnitPatterns{
+        one{"{1} {0}"}
+        other{"{1} {0}"}
+    }
+    Version{"2.0.93.8"}
+}

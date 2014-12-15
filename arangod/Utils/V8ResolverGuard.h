@@ -58,7 +58,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         V8ResolverGuard (TRI_vocbase_t* vocbase)
-          : _v8g(static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData())),
+          : _v8g(static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData(V8DataSlot))),
             _ownResolver(false) {
 
           if (! static_cast<V8TransactionContext*>(_v8g->_transactionContext)->hasResolver()) {

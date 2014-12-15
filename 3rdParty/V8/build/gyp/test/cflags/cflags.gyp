@@ -7,7 +7,14 @@
     {
       'target_name': 'cflags',
       'type': 'executable',
-      'opt': '-Os',
+      'sources': [
+        'cflags.c',
+      ],
+    },
+    {
+      'target_name': 'cflags_host',
+      'toolsets': ['host'],
+      'type': 'executable',
       'sources': [
         'cflags.c',
       ],

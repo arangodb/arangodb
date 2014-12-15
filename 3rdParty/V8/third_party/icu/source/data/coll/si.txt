@@ -1,0 +1,32 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/collation/si.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/xml/collation/si.xml
+ */
+si{
+    Version{"2.0.89.0"}
+    collations{
+        dictionary{
+            Sequence{
+                "[normalization on][reorder Sinh Deva Beng Guru Gujr Orya Taml Telu Knda Mlym]"
+                "&ඖ<ං<ඃ"
+                "&ජ්ඤ<<ඥ"
+            }
+            Version{"24"}
+        }
+        standard{
+            Sequence{
+                "[normalization on][reorder Sinh Deva Beng Guru Gujr Orya Taml Telu Knda Mlym]"
+                "&ඖ<ං<ඃ"
+                "&ඥ<ඤ"
+            }
+            Version{"24"}
+        }
+    }
+}

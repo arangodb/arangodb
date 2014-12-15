@@ -1,46 +1,24 @@
 // Copyright 2011 the V8 project authors. All rights reserved.
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-//     * Redistributions of source code must retain the above copyright
-//       notice, this list of conditions and the following disclaimer.
-//     * Redistributions in binary form must reproduce the above
-//       copyright notice, this list of conditions and the following
-//       disclaimer in the documentation and/or other materials provided
-//       with the distribution.
-//     * Neither the name of Google Inc. nor the names of its
-//       contributors may be used to endorse or promote products derived
-//       from this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
 
-#include "v8.h"
+#include "src/v8.h"
 
-#include "safepoint-table.h"
+#include "src/safepoint-table.h"
 
-#include "deoptimizer.h"
-#include "disasm.h"
-#include "macro-assembler.h"
-#include "zone-inl.h"
+#include "src/deoptimizer.h"
+#include "src/disasm.h"
+#include "src/macro-assembler.h"
+#include "src/ostreams.h"
+#include "src/zone-inl.h"
 
 namespace v8 {
 namespace internal {
 
 
 bool SafepointEntry::HasRegisters() const {
-  ASSERT(is_valid());
-  ASSERT(IsAligned(kNumSafepointRegisters, kBitsPerByte));
+  DCHECK(is_valid());
+  DCHECK(IsAligned(kNumSafepointRegisters, kBitsPerByte));
   const int num_reg_bytes = kNumSafepointRegisters >> kBitsPerByteLog2;
   for (int i = 0; i < num_reg_bytes; i++) {
     if (bits_[i] != SafepointTable::kNoRegisters) return true;
@@ -50,8 +28,8 @@ bool SafepointEntry::HasRegisters() const {
 
 
 bool SafepointEntry::HasRegisterAt(int reg_index) const {
-  ASSERT(is_valid());
-  ASSERT(reg_index >= 0 && reg_index < kNumSafepointRegisters);
+  DCHECK(is_valid());
+  DCHECK(reg_index >= 0 && reg_index < kNumSafepointRegisters);
   int byte_index = reg_index >> kBitsPerByteLog2;
   int bit_index = reg_index & (kBitsPerByte - 1);
   return (bits_[byte_index] & (1 << bit_index)) != 0;
@@ -59,16 +37,15 @@ bool SafepointEntry::HasRegisterAt(int reg_index) const {
 
 
 SafepointTable::SafepointTable(Code* code) {
-  ASSERT(code->kind() == Code::OPTIMIZED_FUNCTION ||
-         code->kind() == Code::COMPILED_STUB);
+  DCHECK(code->is_crankshafted());
   code_ = code;
   Address header = code->instruction_start() + code->safepoint_table_offset();
   length_ = Memory::uint32_at(header + kLengthOffset);
   entry_size_ = Memory::uint32_at(header + kEntrySizeOffset);
   pc_and_deoptimization_indexes_ = header + kHeaderSize;
-  entries_ = pc_and_deoptimization_indexes_ +
-            (length_ * kPcAndDeoptimizationIndexSize);
-  ASSERT(entry_size_ > 0);
+  entries_ =
+      pc_and_deoptimization_indexes_ + (length_ * kPcAndDeoptimizationInfoSize);
+  DCHECK(entry_size_ > 0);
   STATIC_ASSERT(SafepointEntry::DeoptimizationIndexField::kMax ==
                 Safepoint::kNoDeoptimizationIndex);
 }
@@ -79,40 +56,42 @@ SafepointEntry SafepointTable::FindEntry(Address pc) const {
   for (unsigned i = 0; i < length(); i++) {
     // TODO(kasperl): Replace the linear search with binary search.
     if (GetPcOffset(i) == pc_offset) return GetEntry(i);
+    if (GetDeoptimizationPcOffset(i) == pc_offset) return GetEntry(i);
   }
   return SafepointEntry();
 }
 
 
-void SafepointTable::PrintEntry(unsigned index) const {
+void SafepointTable::PrintEntry(unsigned index, OStream& os) const {  // NOLINT
   disasm::NameConverter converter;
   SafepointEntry entry = GetEntry(index);
   uint8_t* bits = entry.bits();
 
   // Print the stack slot bits.
   if (entry_size_ > 0) {
-    ASSERT(IsAligned(kNumSafepointRegisters, kBitsPerByte));
+    DCHECK(IsAligned(kNumSafepointRegisters, kBitsPerByte));
     const int first = kNumSafepointRegisters >> kBitsPerByteLog2;
     int last = entry_size_ - 1;
-    for (int i = first; i < last; i++) PrintBits(bits[i], kBitsPerByte);
+    for (int i = first; i < last; i++) PrintBits(os, bits[i], kBitsPerByte);
     int last_bits = code_->stack_slots() - ((last - first) * kBitsPerByte);
-    PrintBits(bits[last], last_bits);
+    PrintBits(os, bits[last], last_bits);
 
     // Print the registers (if any).
     if (!entry.HasRegisters()) return;
     for (int j = 0; j < kNumSafepointRegisters; j++) {
       if (entry.HasRegisterAt(j)) {
-        PrintF(" | %s", converter.NameOfCPURegister(j));
+        os << " | " << converter.NameOfCPURegister(j);
       }
     }
   }
 }
 
 
-void SafepointTable::PrintBits(uint8_t byte, int digits) {
-  ASSERT(digits >= 0 && digits <= kBitsPerByte);
+void SafepointTable::PrintBits(OStream& os,  // NOLINT
+                               uint8_t byte, int digits) {
+  DCHECK(digits >= 0 && digits <= kBitsPerByte);
   for (int i = 0; i < digits; i++) {
-    PrintF("%c", ((byte & (1 << i)) == 0) ? '0' : '1');
+    os << (((byte & (1 << i)) == 0) ? "0" : "1");
   }
 }
 
@@ -127,11 +106,13 @@ Safepoint SafepointTableBuilder::DefineSafepoint(
     Safepoint::Kind kind,
     int arguments,
     Safepoint::DeoptMode deopt_mode) {
-  ASSERT(arguments >= 0);
+  DCHECK(arguments >= 0);
   DeoptimizationInfo info;
   info.pc = assembler->pc_offset();
   info.arguments = arguments;
   info.has_doubles = (kind & Safepoint::kWithDoubles);
+  info.deoptimization_pc = Safepoint::kNoDeoptimizationPc;
+  int safepoint_id = deoptimization_info_.length();
   deoptimization_info_.Add(info, zone_);
   deopt_index_list_.Add(Safepoint::kNoDeoptimizationIndex, zone_);
   if (deopt_mode == Safepoint::kNoLazyDeopt) {
@@ -142,7 +123,7 @@ Safepoint SafepointTableBuilder::DefineSafepoint(
       ? new(zone_) ZoneList<int>(4, zone_)
       : NULL,
       zone_);
-  return Safepoint(indexes_.last(), registers_.last());
+  return Safepoint(safepoint_id, indexes_.last(), registers_.last());
 }
 
 
@@ -153,7 +134,7 @@ void SafepointTableBuilder::RecordLazyDeoptimizationIndex(int index) {
 }
 
 unsigned SafepointTableBuilder::GetCodeOffset() const {
-  ASSERT(emitted_);
+  DCHECK(emitted_);
   return offset_;
 }
 
@@ -181,6 +162,7 @@ void SafepointTableBuilder::Emit(Assembler* assembler, int bits_per_entry) {
     assembler->dd(deoptimization_info_[i].pc);
     assembler->dd(EncodeExceptPC(deoptimization_info_[i],
                                  deopt_index_list_[i]));
+    assembler->dd(deoptimization_info_[i].deoptimization_pc);
   }
 
   // Emit table of bitmaps.
@@ -192,7 +174,7 @@ void SafepointTableBuilder::Emit(Assembler* assembler, int bits_per_entry) {
     bits.AddBlock(0, bytes_per_entry, zone_);
 
     // Run through the registers (if any).
-    ASSERT(IsAligned(kNumSafepointRegisters, kBitsPerByte));
+    DCHECK(IsAligned(kNumSafepointRegisters, kBitsPerByte));
     if (registers == NULL) {
       const int num_reg_bytes = kNumSafepointRegisters >> kBitsPerByteLog2;
       for (int j = 0; j < num_reg_bytes; j++) {
@@ -201,7 +183,7 @@ void SafepointTableBuilder::Emit(Assembler* assembler, int bits_per_entry) {
     } else {
       for (int j = 0; j < registers->length(); j++) {
         int index = registers->at(j);
-        ASSERT(index >= 0 && index < kNumSafepointRegisters);
+        DCHECK(index >= 0 && index < kNumSafepointRegisters);
         int byte_index = index >> kBitsPerByteLog2;
         int bit_index = index & (kBitsPerByte - 1);
         bits[byte_index] |= (1 << bit_index);

@@ -96,7 +96,8 @@ TRI_general_cursor_result_t* TRI_CreateResultGeneralCursor (TRI_json_t*);
 /// @brief create a result set
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_general_cursor_result_t* TRI_CreateResultGeneralCursor (v8::Handle<v8::Array> const);
+TRI_general_cursor_result_t* TRI_CreateResultGeneralCursor (v8::Isolate* isolate,
+                                                            v8::Handle<v8::Array> const);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      cursor store

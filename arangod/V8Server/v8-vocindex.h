@@ -41,17 +41,15 @@
 /// @brief looks up a index identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_LookupIndexByHandle (triagens::arango::CollectionNameResolver const*,
-                                      TRI_vocbase_col_t const*,
-                                      v8::Handle<v8::Value>,
-                                      bool,
-                                      v8::Handle<v8::Object>*);
+TRI_index_t* TRI_LookupIndexByHandle (v8::Isolate* isolate,
+                                      triagens::arango::CollectionNameResolver const* resolver,
+                                      TRI_vocbase_col_t const* collection,
+                                      v8::Handle<v8::Value> const val,
+                                      bool ignoreNotFound);
 
-void TRI_InitV8indexCollection (v8::Handle<v8::Context> context,
-                                TRI_server_t* server,
-                                TRI_vocbase_t* vocbase,
-                                triagens::arango::JSLoader* loader,
-                                const size_t threadNumber,
-                                TRI_v8_global_t* v8g,
+void TRI_InitV8indexArangoDB (v8::Isolate* isolate,
+                              v8::Handle<v8::ObjectTemplate>  ArangoDBNS);
+
+void TRI_InitV8indexCollection (v8::Isolate* isolate,
                                 v8::Handle<v8::ObjectTemplate> rt);
 #endif

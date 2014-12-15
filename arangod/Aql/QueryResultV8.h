@@ -52,18 +52,18 @@ namespace triagens {
       
       QueryResultV8 (QueryResult&& other) 
         : QueryResult((QueryResult&&)other),
-          result(nullptr) {
+          result() {
       }
       
       QueryResultV8 (int code,
                      std::string const& details) 
         : QueryResult(code, details),
-          result(nullptr) {
+          result() {
       }
 
       explicit QueryResultV8 (int code)
         : QueryResult(code, ""),
-          result(nullptr) {
+          result() {
       }
 
       v8::Handle<v8::Array>          result;

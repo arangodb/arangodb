@@ -1,10 +1,12 @@
-# Copyright (c) 2011 Google Inc. All rights reserved.
+# Copyright (c) 2012 Google Inc. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 import collections
+import os
 import gyp
 import gyp.common
+import gyp.msvs_emulation
 import json
 import sys
 
@@ -22,7 +24,8 @@ for unused in ['RULE_INPUT_PATH', 'RULE_INPUT_ROOT', 'RULE_INPUT_NAME',
                'RULE_INPUT_DIRNAME', 'RULE_INPUT_EXT',
                'EXECUTABLE_PREFIX', 'EXECUTABLE_SUFFIX',
                'STATIC_LIB_PREFIX', 'STATIC_LIB_SUFFIX',
-               'SHARED_LIB_PREFIX', 'SHARED_LIB_SUFFIX']:
+               'SHARED_LIB_PREFIX', 'SHARED_LIB_SUFFIX',
+               'CONFIGURATION_NAME']:
   generator_default_variables[unused] = ''
 
 
@@ -31,6 +34,18 @@ def CalculateVariables(default_variables, params):
   for key, val in generator_flags.items():
     default_variables.setdefault(key, val)
   default_variables.setdefault('OS', gyp.common.GetFlavor(params))
+
+  flavor = gyp.common.GetFlavor(params)
+  if flavor =='win':
+    # Copy additional generator configuration data from VS, which is shared
+    # by the Windows Ninja generator.
+    import gyp.generator.msvs as msvs_generator
+    generator_additional_non_configuration_keys = getattr(msvs_generator,
+        'generator_additional_non_configuration_keys', [])
+    generator_additional_path_sections = getattr(msvs_generator,
+        'generator_additional_path_sections', [])
+
+    gyp.msvs_emulation.CalculateCommonVariables(default_variables, params)
 
 
 def CalculateGeneratorInputInfo(params):

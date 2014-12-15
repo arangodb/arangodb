@@ -37,9 +37,10 @@
 #define V8_MIPS_ASSEMBLER_MIPS_H_
 
 #include <stdio.h>
-#include "assembler.h"
-#include "constants-mips.h"
-#include "serialize.h"
+
+#include "src/assembler.h"
+#include "src/mips/constants-mips.h"
+#include "src/serialize.h"
 
 namespace v8 {
 namespace internal {
@@ -72,23 +73,39 @@ namespace internal {
 // Core register.
 struct Register {
   static const int kNumRegisters = v8::internal::kNumRegisters;
-  static const int kMaxNumAllocatableRegisters = 14;  // v0 through t7.
+  static const int kMaxNumAllocatableRegisters = 14;  // v0 through t6 and cp.
   static const int kSizeInBytes = 4;
-  static const int kGPRsPerNonFPUDouble = 2;
+  static const int kCpRegister = 23;  // cp (s7) is the 23rd register.
+
+#if defined(V8_TARGET_LITTLE_ENDIAN)
+  static const int kMantissaOffset = 0;
+  static const int kExponentOffset = 4;
+#elif defined(V8_TARGET_BIG_ENDIAN)
+  static const int kMantissaOffset = 4;
+  static const int kExponentOffset = 0;
+#else
+#error Unknown endianness
+#endif
 
   inline static int NumAllocatableRegisters();
 
   static int ToAllocationIndex(Register reg) {
-    return reg.code() - 2;  // zero_reg and 'at' are skipped.
+    DCHECK((reg.code() - 2) < (kMaxNumAllocatableRegisters - 1) ||
+           reg.is(from_code(kCpRegister)));
+    return reg.is(from_code(kCpRegister)) ?
+           kMaxNumAllocatableRegisters - 1 :  // Return last index for 'cp'.
+           reg.code() - 2;  // zero_reg and 'at' are skipped.
   }
 
   static Register FromAllocationIndex(int index) {
-    ASSERT(index >= 0 && index < kMaxNumAllocatableRegisters);
-    return from_code(index + 2);  // zero_reg and 'at' are skipped.
+    DCHECK(index >= 0 && index < kMaxNumAllocatableRegisters);
+    return index == kMaxNumAllocatableRegisters - 1 ?
+           from_code(kCpRegister) :  // Last index is always the 'cp' register.
+           from_code(index + 2);  // zero_reg and 'at' are skipped.
   }
 
   static const char* AllocationIndexToString(int index) {
-    ASSERT(index >= 0 && index < kMaxNumAllocatableRegisters);
+    DCHECK(index >= 0 && index < kMaxNumAllocatableRegisters);
     const char* const names[] = {
       "v0",
       "v1",
@@ -103,7 +120,7 @@ struct Register {
       "t4",
       "t5",
       "t6",
-      "t7",
+      "s7",
     };
     return names[index];
   }
@@ -116,11 +133,11 @@ struct Register {
   bool is_valid() const { return 0 <= code_ && code_ < kNumRegisters; }
   bool is(Register reg) const { return code_ == reg.code_; }
   int code() const {
-    ASSERT(is_valid());
+    DCHECK(is_valid());
     return code_;
   }
   int bit() const {
-    ASSERT(is_valid());
+    DCHECK(is_valid());
     return 1 << code_;
   }
 
@@ -189,7 +206,7 @@ Register ToRegister(int num);
 
 // Coprocessor register.
 struct FPURegister {
-  static const int kNumRegisters = v8::internal::kNumFPURegisters;
+  static const int kMaxNumRegisters = v8::internal::kNumFPURegisters;
 
   // TODO(plind): Warning, inconsistent numbering here. kNumFPURegisters refers
   // to number of 32-bit FPU regs, but kNumAllocatableRegisters refers to
@@ -200,7 +217,7 @@ struct FPURegister {
   //  f28: 0.0
   //  f30: scratch register.
   static const int kNumReservedRegisters = 2;
-  static const int kMaxNumAllocatableRegisters = kNumRegisters / 2 -
+  static const int kMaxNumAllocatableRegisters = kMaxNumRegisters / 2 -
       kNumReservedRegisters;
 
   inline static int NumRegisters();
@@ -209,7 +226,7 @@ struct FPURegister {
   static const char* AllocationIndexToString(int index);
 
   static FPURegister FromAllocationIndex(int index) {
-    ASSERT(index >= 0 && index < kMaxNumAllocatableRegisters);
+    DCHECK(index >= 0 && index < kMaxNumAllocatableRegisters);
     return from_code(index * 2);
   }
 
@@ -218,36 +235,36 @@ struct FPURegister {
     return r;
   }
 
-  bool is_valid() const { return 0 <= code_ && code_ < kNumFPURegisters ; }
+  bool is_valid() const { return 0 <= code_ && code_ < kMaxNumRegisters ; }
   bool is(FPURegister creg) const { return code_ == creg.code_; }
   FPURegister low() const {
     // Find low reg of a Double-reg pair, which is the reg itself.
-    ASSERT(code_ % 2 == 0);  // Specified Double reg must be even.
+    DCHECK(code_ % 2 == 0);  // Specified Double reg must be even.
     FPURegister reg;
     reg.code_ = code_;
-    ASSERT(reg.is_valid());
+    DCHECK(reg.is_valid());
     return reg;
   }
   FPURegister high() const {
     // Find high reg of a Doubel-reg pair, which is reg + 1.
-    ASSERT(code_ % 2 == 0);  // Specified Double reg must be even.
+    DCHECK(code_ % 2 == 0);  // Specified Double reg must be even.
     FPURegister reg;
     reg.code_ = code_ + 1;
-    ASSERT(reg.is_valid());
+    DCHECK(reg.is_valid());
     return reg;
   }
 
   int code() const {
-    ASSERT(is_valid());
+    DCHECK(is_valid());
     return code_;
   }
   int bit() const {
-    ASSERT(is_valid());
+    DCHECK(is_valid());
     return 1 << code_;
   }
   void setcode(int f) {
     code_ = f;
-    ASSERT(is_valid());
+    DCHECK(is_valid());
   }
   // Unfortunately we can't make this private in a struct.
   int code_;
@@ -300,9 +317,6 @@ const FPURegister f29 = { 29 };
 const FPURegister f30 = { 30 };
 const FPURegister f31 = { 31 };
 
-const Register sfpd_lo  = { kRegister_t6_Code };
-const Register sfpd_hi  = { kRegister_t7_Code };
-
 // Register aliases.
 // cp is assumed to be a callee saved register.
 // Defined using #define instead of "static const Register&" because Clang
@@ -314,6 +328,8 @@ const Register sfpd_hi  = { kRegister_t7_Code };
 #define kLithiumScratchReg2 s4
 #define kLithiumScratchDouble f30
 #define kDoubleRegZero f28
+// Used on mips32r6 for compare operations.
+#define kDoubleCompareReg f31
 
 // FPU (coprocessor 1) control registers.
 // Currently only FCSR (#31) is implemented.
@@ -321,16 +337,16 @@ struct FPUControlRegister {
   bool is_valid() const { return code_ == kFCSRRegister; }
   bool is(FPUControlRegister creg) const { return code_ == creg.code_; }
   int code() const {
-    ASSERT(is_valid());
+    DCHECK(is_valid());
     return code_;
   }
   int bit() const {
-    ASSERT(is_valid());
+    DCHECK(is_valid());
     return 1 << code_;
   }
   void setcode(int f) {
     code_ = f;
-    ASSERT(is_valid());
+    DCHECK(is_valid());
   }
   // Unfortunately we can't make this private in a struct.
   int code_;
@@ -362,6 +378,11 @@ class Operand BASE_EMBEDDED {
   // Return true if this is a register operand.
   INLINE(bool is_reg() const);
 
+  inline int32_t immediate() const {
+    DCHECK(!is_reg());
+    return imm32_;
+  }
+
   Register rm() const { return rm_; }
 
  private:
@@ -378,7 +399,15 @@ class Operand BASE_EMBEDDED {
 // Class MemOperand represents a memory operand in load and store instructions.
 class MemOperand : public Operand {
  public:
+  // Immediate value attached to offset.
+  enum OffsetAddend {
+    offset_minus_one = -1,
+    offset_zero = 0
+  };
+
   explicit MemOperand(Register rn, int32_t offset = 0);
+  explicit MemOperand(Register rn, int32_t unit, int32_t multiplier,
+                      OffsetAddend offset_addend = offset_zero);
   int32_t offset() const { return offset_; }
 
   bool OffsetIsInt16Encodable() const {
@@ -389,109 +418,6 @@ class MemOperand : public Operand {
   int32_t offset_;
 
   friend class Assembler;
-};
-
-
-// CpuFeatures keeps track of which features are supported by the target CPU.
-// Supported features must be enabled by a Scope before use.
-class CpuFeatures : public AllStatic {
- public:
-  // Detect features of the target CPU. Set safe defaults if the serializer
-  // is enabled (snapshots must be portable).
-  static void Probe();
-
-  // Check whether a feature is supported by the target CPU.
-  static bool IsSupported(CpuFeature f) {
-    ASSERT(initialized_);
-    if (f == FPU && !FLAG_enable_fpu) return false;
-    return (supported_ & (1u << f)) != 0;
-  }
-
-
-#ifdef DEBUG
-  // Check whether a feature is currently enabled.
-  static bool IsEnabled(CpuFeature f) {
-    ASSERT(initialized_);
-    Isolate* isolate = Isolate::UncheckedCurrent();
-    if (isolate == NULL) {
-      // When no isolate is available, work as if we're running in
-      // release mode.
-      return IsSupported(f);
-    }
-    unsigned enabled = static_cast<unsigned>(isolate->enabled_cpu_features());
-    return (enabled & (1u << f)) != 0;
-  }
-#endif
-
-  // Enable a specified feature within a scope.
-  class Scope BASE_EMBEDDED {
-#ifdef DEBUG
-
-   public:
-    explicit Scope(CpuFeature f) {
-      unsigned mask = 1u << f;
-      ASSERT(CpuFeatures::IsSupported(f));
-      ASSERT(!Serializer::enabled() ||
-             (CpuFeatures::found_by_runtime_probing_ & mask) == 0);
-      isolate_ = Isolate::UncheckedCurrent();
-      old_enabled_ = 0;
-      if (isolate_ != NULL) {
-        old_enabled_ = static_cast<unsigned>(isolate_->enabled_cpu_features());
-        isolate_->set_enabled_cpu_features(old_enabled_ | mask);
-      }
-    }
-    ~Scope() {
-      ASSERT_EQ(Isolate::UncheckedCurrent(), isolate_);
-      if (isolate_ != NULL) {
-        isolate_->set_enabled_cpu_features(old_enabled_);
-      }
-    }
-
- private:
-    Isolate* isolate_;
-    unsigned old_enabled_;
-#else
-
- public:
-    explicit Scope(CpuFeature f) {}
-#endif
-  };
-
-  class TryForceFeatureScope BASE_EMBEDDED {
-   public:
-    explicit TryForceFeatureScope(CpuFeature f)
-        : old_supported_(CpuFeatures::supported_) {
-      if (CanForce()) {
-        CpuFeatures::supported_ |= (1u << f);
-      }
-    }
-
-    ~TryForceFeatureScope() {
-      if (CanForce()) {
-        CpuFeatures::supported_ = old_supported_;
-      }
-    }
-
-   private:
-    static bool CanForce() {
-      // It's only safe to temporarily force support of CPU features
-      // when there's only a single isolate, which is guaranteed when
-      // the serializer is enabled.
-      return Serializer::enabled();
-    }
-
-    const unsigned old_supported_;
-  };
-
- private:
-#ifdef DEBUG
-  static bool initialized_;
-#endif
-  static unsigned supported_;
-  static unsigned found_by_runtime_probing_;
-
-  friend class ExternalReference;
-  DISALLOW_COPY_AND_ASSIGN(CpuFeatures);
 };
 
 
@@ -541,9 +467,18 @@ class Assembler : public AssemblerBase {
   // position. Links the label to the current position if it is still unbound.
   // Manages the jump elimination optimization if the second parameter is true.
   int32_t branch_offset(Label* L, bool jump_elimination_allowed);
+  int32_t branch_offset_compact(Label* L, bool jump_elimination_allowed);
+  int32_t branch_offset21(Label* L, bool jump_elimination_allowed);
+  int32_t branch_offset21_compact(Label* L, bool jump_elimination_allowed);
   int32_t shifted_branch_offset(Label* L, bool jump_elimination_allowed) {
     int32_t o = branch_offset(L, jump_elimination_allowed);
-    ASSERT((o & 3) == 0);   // Assert the offset is aligned.
+    DCHECK((o & 3) == 0);   // Assert the offset is aligned.
+    return o >> 2;
+  }
+  int32_t shifted_branch_offset_compact(Label* L,
+      bool jump_elimination_allowed) {
+    int32_t o = branch_offset_compact(L, jump_elimination_allowed);
+    DCHECK((o & 3) == 0);   // Assert the offset is aligned.
     return o >> 2;
   }
   uint32_t jump_address(Label* L);
@@ -554,11 +489,41 @@ class Assembler : public AssemblerBase {
 
   // Read/Modify the code target address in the branch/call instruction at pc.
   static Address target_address_at(Address pc);
-  static void set_target_address_at(Address pc, Address target);
+  static void set_target_address_at(Address pc,
+                                    Address target,
+                                    ICacheFlushMode icache_flush_mode =
+                                        FLUSH_ICACHE_IF_NEEDED);
+  // On MIPS there is no Constant Pool so we skip that parameter.
+  INLINE(static Address target_address_at(Address pc,
+                                          ConstantPoolArray* constant_pool)) {
+    return target_address_at(pc);
+  }
+  INLINE(static void set_target_address_at(Address pc,
+                                           ConstantPoolArray* constant_pool,
+                                           Address target,
+                                           ICacheFlushMode icache_flush_mode =
+                                               FLUSH_ICACHE_IF_NEEDED)) {
+    set_target_address_at(pc, target, icache_flush_mode);
+  }
+  INLINE(static Address target_address_at(Address pc, Code* code)) {
+    ConstantPoolArray* constant_pool = code ? code->constant_pool() : NULL;
+    return target_address_at(pc, constant_pool);
+  }
+  INLINE(static void set_target_address_at(Address pc,
+                                           Code* code,
+                                           Address target,
+                                           ICacheFlushMode icache_flush_mode =
+                                               FLUSH_ICACHE_IF_NEEDED)) {
+    ConstantPoolArray* constant_pool = code ? code->constant_pool() : NULL;
+    set_target_address_at(pc, constant_pool, target, icache_flush_mode);
+  }
 
   // Return the code target address at a call site from the return address
   // of that call in the instruction stream.
   inline static Address target_address_from_return_address(Address pc);
+
+  // Return the code target address of the patch debug break slot
+  inline static Address break_address_from_return_address(Address pc);
 
   static void JumpLabelToJumpRegister(Address pc);
 
@@ -568,17 +533,11 @@ class Assembler : public AssemblerBase {
   // This is for calls and branches within generated code.  The serializer
   // has already deserialized the lui/ori instructions etc.
   inline static void deserialization_set_special_target_at(
-      Address instruction_payload, Address target) {
+      Address instruction_payload, Code* code, Address target) {
     set_target_address_at(
         instruction_payload - kInstructionsFor32BitConstant * kInstrSize,
+        code,
         target);
-  }
-
-  // This sets the branch destination.
-  // This is for calls and branches to runtime code.
-  inline static void set_external_target_at(Address instruction_payload,
-                                            Address target) {
-    set_target_address_at(instruction_payload, target);
   }
 
   // Size of an instruction.
@@ -653,14 +612,15 @@ class Assembler : public AssemblerBase {
     LAST_CODE_MARKER,
     FIRST_IC_MARKER = PROPERTY_ACCESS_INLINED,
     // Code aging
-    CODE_AGE_MARKER_NOP = 6
+    CODE_AGE_MARKER_NOP = 6,
+    CODE_AGE_SEQUENCE_NOP
   };
 
   // Type == 0 is the default non-marking nop. For mips this is a
   // sll(zero_reg, zero_reg, 0). We use rt_reg == at for non-zero
   // marking, to avoid conflict with ssnop and ehb instructions.
   void nop(unsigned int type = 0) {
-    ASSERT(type < 32);
+    DCHECK(type < 32);
     Register nop_rt_reg = (type == 0) ? zero_reg : at;
     sll(zero_reg, nop_rt_reg, type, true);
   }
@@ -678,14 +638,98 @@ class Assembler : public AssemblerBase {
     beq(rs, rt, branch_offset(L, false) >> 2);
   }
   void bgez(Register rs, int16_t offset);
+  void bgezc(Register rt, int16_t offset);
+  void bgezc(Register rt, Label* L) {
+    bgezc(rt, branch_offset_compact(L, false)>>2);
+  }
+  void bgeuc(Register rs, Register rt, int16_t offset);
+  void bgeuc(Register rs, Register rt, Label* L) {
+    bgeuc(rs, rt, branch_offset_compact(L, false)>>2);
+  }
+  void bgec(Register rs, Register rt, int16_t offset);
+  void bgec(Register rs, Register rt, Label* L) {
+    bgec(rs, rt, branch_offset_compact(L, false)>>2);
+  }
   void bgezal(Register rs, int16_t offset);
+  void bgezalc(Register rt, int16_t offset);
+  void bgezalc(Register rt, Label* L) {
+    bgezalc(rt, branch_offset_compact(L, false)>>2);
+  }
+  void bgezall(Register rs, int16_t offset);
+  void bgezall(Register rs, Label* L) {
+    bgezall(rs, branch_offset(L, false)>>2);
+  }
   void bgtz(Register rs, int16_t offset);
+  void bgtzc(Register rt, int16_t offset);
+  void bgtzc(Register rt, Label* L) {
+    bgtzc(rt, branch_offset_compact(L, false)>>2);
+  }
   void blez(Register rs, int16_t offset);
+  void blezc(Register rt, int16_t offset);
+  void blezc(Register rt, Label* L) {
+    blezc(rt, branch_offset_compact(L, false)>>2);
+  }
   void bltz(Register rs, int16_t offset);
+  void bltzc(Register rt, int16_t offset);
+  void bltzc(Register rt, Label* L) {
+    bltzc(rt, branch_offset_compact(L, false)>>2);
+  }
+  void bltuc(Register rs, Register rt, int16_t offset);
+  void bltuc(Register rs, Register rt, Label* L) {
+    bltuc(rs, rt, branch_offset_compact(L, false)>>2);
+  }
+  void bltc(Register rs, Register rt, int16_t offset);
+  void bltc(Register rs, Register rt, Label* L) {
+    bltc(rs, rt, branch_offset_compact(L, false)>>2);
+  }
   void bltzal(Register rs, int16_t offset);
+  void blezalc(Register rt, int16_t offset);
+  void blezalc(Register rt, Label* L) {
+    blezalc(rt, branch_offset_compact(L, false)>>2);
+  }
+  void bltzalc(Register rt, int16_t offset);
+  void bltzalc(Register rt, Label* L) {
+    bltzalc(rt, branch_offset_compact(L, false)>>2);
+  }
+  void bgtzalc(Register rt, int16_t offset);
+  void bgtzalc(Register rt, Label* L) {
+    bgtzalc(rt, branch_offset_compact(L, false)>>2);
+  }
+  void beqzalc(Register rt, int16_t offset);
+  void beqzalc(Register rt, Label* L) {
+    beqzalc(rt, branch_offset_compact(L, false)>>2);
+  }
+  void beqc(Register rs, Register rt, int16_t offset);
+  void beqc(Register rs, Register rt, Label* L) {
+    beqc(rs, rt, branch_offset_compact(L, false)>>2);
+  }
+  void beqzc(Register rs, int32_t offset);
+  void beqzc(Register rs, Label* L) {
+    beqzc(rs, branch_offset21_compact(L, false)>>2);
+  }
+  void bnezalc(Register rt, int16_t offset);
+  void bnezalc(Register rt, Label* L) {
+    bnezalc(rt, branch_offset_compact(L, false)>>2);
+  }
+  void bnec(Register rs, Register rt, int16_t offset);
+  void bnec(Register rs, Register rt, Label* L) {
+    bnec(rs, rt, branch_offset_compact(L, false)>>2);
+  }
+  void bnezc(Register rt, int32_t offset);
+  void bnezc(Register rt, Label* L) {
+    bnezc(rt, branch_offset21_compact(L, false)>>2);
+  }
   void bne(Register rs, Register rt, int16_t offset);
   void bne(Register rs, Register rt, Label* L) {
     bne(rs, rt, branch_offset(L, false)>>2);
+  }
+  void bovc(Register rs, Register rt, int16_t offset);
+  void bovc(Register rs, Register rt, Label* L) {
+    bovc(rs, rt, branch_offset_compact(L, false)>>2);
+  }
+  void bnvc(Register rs, Register rt, int16_t offset);
+  void bnvc(Register rs, Register rt, Label* L) {
+    bnvc(rs, rt, branch_offset_compact(L, false)>>2);
   }
 
   // Never use the int16_t b(l)cond version with a branch offset
@@ -700,7 +744,7 @@ class Assembler : public AssemblerBase {
   void jal_or_jalr(int32_t target, Register rs);
 
 
-  //-------Data-processing-instructions---------
+  // -------Data-processing-instructions---------
 
   // Arithmetic.
   void addu(Register rd, Register rs, Register rt);
@@ -709,7 +753,14 @@ class Assembler : public AssemblerBase {
   void multu(Register rs, Register rt);
   void div(Register rs, Register rt);
   void divu(Register rs, Register rt);
+  void div(Register rd, Register rs, Register rt);
+  void divu(Register rd, Register rs, Register rt);
+  void mod(Register rd, Register rs, Register rt);
+  void modu(Register rd, Register rs, Register rt);
   void mul(Register rd, Register rs, Register rt);
+  void muh(Register rd, Register rs, Register rt);
+  void mulu(Register rd, Register rs, Register rt);
+  void muhu(Register rd, Register rs, Register rt);
 
   void addiu(Register rd, Register rs, int32_t j);
 
@@ -723,6 +774,7 @@ class Assembler : public AssemblerBase {
   void ori(Register rd, Register rs, int32_t j);
   void xori(Register rd, Register rs, int32_t j);
   void lui(Register rd, int32_t j);
+  void aui(Register rs, Register rt, int32_t j);
 
   // Shifts.
   // Please note: sll(zero_reg, zero_reg, x) instructions are reserved as nop
@@ -738,7 +790,7 @@ class Assembler : public AssemblerBase {
   void rotrv(Register rd, Register rt, Register rs);
 
 
-  //------------Memory-instructions-------------
+  // ------------Memory-instructions-------------
 
   void lb(Register rd, const MemOperand& rs);
   void lbu(Register rd, const MemOperand& rs);
@@ -754,7 +806,12 @@ class Assembler : public AssemblerBase {
   void swr(Register rd, const MemOperand& rs);
 
 
-  //-------------Misc-instructions--------------
+  // ----------------Prefetch--------------------
+
+  void pref(int32_t hint, const MemOperand& rs);
+
+
+  // -------------Misc-instructions--------------
 
   // Break / Trap instructions.
   void break_(uint32_t code, bool break_as_stop = false);
@@ -782,12 +839,21 @@ class Assembler : public AssemblerBase {
   void movt(Register rd, Register rs, uint16_t cc = 0);
   void movf(Register rd, Register rs, uint16_t cc = 0);
 
+  void sel(SecondaryField fmt, FPURegister fd, FPURegister ft,
+      FPURegister fs, uint8_t sel);
+  void seleqz(Register rs, Register rt, Register rd);
+  void seleqz(SecondaryField fmt, FPURegister fd, FPURegister ft,
+      FPURegister fs);
+  void selnez(Register rs, Register rt, Register rd);
+  void selnez(SecondaryField fmt, FPURegister fd, FPURegister ft,
+      FPURegister fs);
+
   // Bit twiddling.
   void clz(Register rd, Register rs);
   void ins_(Register rt, Register rs, uint16_t pos, uint16_t size);
   void ext_(Register rt, Register rs, uint16_t pos, uint16_t size);
 
-  //--------Coprocessor-instructions----------------
+  // --------Coprocessor-instructions----------------
 
   // Load, store, and move.
   void lwc1(FPURegister fd, const MemOperand& src);
@@ -797,7 +863,10 @@ class Assembler : public AssemblerBase {
   void sdc1(FPURegister fs, const MemOperand& dst);
 
   void mtc1(Register rt, FPURegister fs);
+  void mthc1(Register rt, FPURegister fs);
+
   void mfc1(Register rt, FPURegister fs);
+  void mfhc1(Register rt, FPURegister fs);
 
   void ctc1(Register rt, FPUControlRegister fs);
   void cfc1(Register rt, FPUControlRegister fs);
@@ -836,6 +905,11 @@ class Assembler : public AssemblerBase {
   void ceil_l_s(FPURegister fd, FPURegister fs);
   void ceil_l_d(FPURegister fd, FPURegister fs);
 
+  void min(SecondaryField fmt, FPURegister fd, FPURegister ft, FPURegister fs);
+  void mina(SecondaryField fmt, FPURegister fd, FPURegister ft, FPURegister fs);
+  void max(SecondaryField fmt, FPURegister fd, FPURegister ft, FPURegister fs);
+  void maxa(SecondaryField fmt, FPURegister fd, FPURegister ft, FPURegister fs);
+
   void cvt_s_w(FPURegister fd, FPURegister fs);
   void cvt_s_l(FPURegister fd, FPURegister fs);
   void cvt_s_d(FPURegister fd, FPURegister fs);
@@ -844,7 +918,20 @@ class Assembler : public AssemblerBase {
   void cvt_d_l(FPURegister fd, FPURegister fs);
   void cvt_d_s(FPURegister fd, FPURegister fs);
 
-  // Conditions and branches.
+  // Conditions and branches for MIPSr6.
+  void cmp(FPUCondition cond, SecondaryField fmt,
+         FPURegister fd, FPURegister ft, FPURegister fs);
+
+  void bc1eqz(int16_t offset, FPURegister ft);
+  void bc1eqz(Label* L, FPURegister ft) {
+    bc1eqz(branch_offset(L, false)>>2, ft);
+  }
+  void bc1nez(int16_t offset, FPURegister ft);
+  void bc1nez(Label* L, FPURegister ft) {
+    bc1nez(branch_offset(L, false)>>2, ft);
+  }
+
+  // Conditions and branches for non MIPSr6.
   void c(FPUCondition cond, SecondaryField fmt,
          FPURegister ft, FPURegister fs, uint16_t cc = 0);
 
@@ -893,10 +980,10 @@ class Assembler : public AssemblerBase {
       assem_->EndBlockGrowBuffer();
     }
 
-    private:
-     Assembler* assem_;
+   private:
+    Assembler* assem_;
 
-     DISALLOW_IMPLICIT_CONSTRUCTORS(BlockGrowBufferScope);
+    DISALLOW_IMPLICIT_CONSTRUCTORS(BlockGrowBufferScope);
   };
 
   // Debugging.
@@ -910,12 +997,12 @@ class Assembler : public AssemblerBase {
   // Record the AST id of the CallIC being compiled, so that it can be placed
   // in the relocation information.
   void SetRecordedAstId(TypeFeedbackId ast_id) {
-    ASSERT(recorded_ast_id_.IsNone());
+    DCHECK(recorded_ast_id_.IsNone());
     recorded_ast_id_ = ast_id;
   }
 
   TypeFeedbackId RecordedAstId() {
-    ASSERT(!recorded_ast_id_.IsNone());
+    DCHECK(!recorded_ast_id_.IsNone());
     return recorded_ast_id_;
   }
 
@@ -931,6 +1018,9 @@ class Assembler : public AssemblerBase {
   // inline tables, e.g., jump-tables.
   void db(uint8_t data);
   void dd(uint32_t data);
+
+  // Emits the address of the code stub's first instruction.
+  void emit_code_stub_address(Code* stub);
 
   PositionsRecorder* positions_recorder() { return &positions_recorder_; }
 
@@ -1007,8 +1097,15 @@ class Assembler : public AssemblerBase {
   static Instr SetAddImmediateOffset(Instr instr, int16_t offset);
 
   static bool IsAndImmediate(Instr instr);
+  static bool IsEmittedConstant(Instr instr);
 
   void CheckTrampolinePool();
+
+  // Allocate a constant pool of the correct size for the generated code.
+  Handle<ConstantPoolArray> NewConstantPool(Isolate* isolate);
+
+  // Generate the constant pool for the generated code.
+  void PopulateConstantPool(ConstantPoolArray* constant_pool);
 
  protected:
   // Relocation for a type-recording IC has the AST id added to it.  This
@@ -1060,12 +1157,12 @@ class Assembler : public AssemblerBase {
 
   // Temporarily block automatic assembly buffer growth.
   void StartBlockGrowBuffer() {
-    ASSERT(!block_buffer_growth_);
+    DCHECK(!block_buffer_growth_);
     block_buffer_growth_ = true;
   }
 
   void EndBlockGrowBuffer() {
-    ASSERT(block_buffer_growth_);
+    DCHECK(block_buffer_growth_);
     block_buffer_growth_ = false;
   }
 
@@ -1227,7 +1324,7 @@ class Assembler : public AssemblerBase {
         // We have run out of space on trampolines.
         // Make sure we fail in debug mode, so we become aware of each case
         // when this happens.
-        ASSERT(0);
+        DCHECK(0);
         // Internal exception will be caught.
       } else {
         trampoline_slot = next_slot_;

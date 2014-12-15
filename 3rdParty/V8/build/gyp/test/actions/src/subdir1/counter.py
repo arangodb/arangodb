@@ -29,11 +29,9 @@ except:
   pass
 
 # Save the count in a file that is undeclared, and thus hidden, to gyp. We need
-# to do this because, prior to running commands, scons deletes any declared
-# outputs, so we would lose our count if we just wrote to the given output file.
-# (The other option is to use Precious() in the scons generator, but that seems
-# too heavy-handed just to support this somewhat unrealistic test case, and
-# might lead to unintended side-effects).
+# to do this because, prior to running commands, some build systems deletes
+# any declared outputs, so we would lose our count if we just wrote to the
+# given output file.
 open(persistoutput, 'w').write('%d' % (count))
 
 # Only write the given output file if the count has changed.

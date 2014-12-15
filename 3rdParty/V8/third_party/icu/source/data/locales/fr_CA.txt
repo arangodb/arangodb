@@ -1,0 +1,321 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/fr_CA.xml
+// *
+// ***************************************************************************
+fr_CA{
+    Version{"2.0.92.80"}
+    calendar{
+        generic{
+            DateTimePatterns{
+                "HH 'h' mm 'min' ss 's' zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "EEEE d MMMM y G",
+                "d MMMM y G",
+                "G y-MM-dd",
+                "GGGGG yy-MM-dd",
+                "{1} {0}",
+                "{1} 'à' {0}",
+                "{1} 'à' {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            availableFormats{
+                MEd{"E M-d"}
+                MMd{"MM-d"}
+                MMdd{"MM-dd"}
+                Md{"M-d"}
+                yyyyM{"G y-MM"}
+                yyyyMEd{"E G y-MM-dd"}
+                yyyyMM{"G y-MM"}
+                yyyyMd{"G y-MM-dd"}
+            }
+            intervalFormats{
+                H{
+                    H{"HH–HH"}
+                }
+                Hm{
+                    H{"HH:mm–HH:mm"}
+                    m{"HH:mm–HH:mm"}
+                }
+                Hmv{
+                    H{"HH:mm–HH:mm v"}
+                    m{"HH:mm–HH:mm v"}
+                }
+                Hv{
+                    H{"HH–HH v"}
+                }
+                MEd{
+                    M{"E MM-dd – E MM-dd"}
+                    d{"E MM-dd – E MM-dd"}
+                }
+                Md{
+                    M{"MM-dd – MM-dd"}
+                    d{"MM-dd – MM-dd"}
+                }
+                d{
+                    d{"d–d"}
+                }
+                h{
+                    h{"h–h a"}
+                }
+                hm{
+                    h{"h:mm–h:mm a"}
+                    m{"h:mm–h:mm a"}
+                }
+                hmv{
+                    h{"h:mm–h:mm a v"}
+                    m{"h:mm–h:mm a v"}
+                }
+                hv{
+                    h{"h–h a v"}
+                }
+                y{
+                    y{"G y–y"}
+                }
+                yM{
+                    M{"G y-MM – y-MM"}
+                    y{"G y-MM – y-MM"}
+                }
+                yMEd{
+                    M{"'du' E y-MM-dd 'au' E y-MM-dd G"}
+                    d{"'du' E y-MM-dd 'au' E y-MM-dd G"}
+                    y{"'du' E y-MM-dd 'au' E y-MM-dd G"}
+                }
+                yMMM{
+                    y{"'de' MMM y 'à' MMM y G"}
+                }
+                yMMMEd{
+                    M{"'du' E d MMM 'au' E d MMM y G"}
+                    d{"'du' E d 'au' E d MMM y G"}
+                    y{"'du' E d MMM y 'au' E d MMM y G"}
+                }
+                yMMMM{
+                    M{"MMMM – MMMM y G"}
+                }
+                yMMMd{
+                    M{"'du' d MMM 'au' d MMM y G"}
+                    y{"'du' d MMM y 'au' d MMM y G"}
+                }
+                yMd{
+                    M{"G y-MM-dd – y-MM-dd"}
+                    d{"G y-MM-dd – y-MM-dd"}
+                    y{"G y-MM-dd – y-MM-dd"}
+                }
+            }
+        }
+        gregorian{
+            DateTimePatterns{
+                "HH 'h' mm 'min' ss 's' zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "EEEE d MMMM y",
+                "d MMMM y",
+                "y-MM-dd",
+                "yy-MM-dd",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            availableFormats{
+                MEd{"E M-d"}
+                MMd{"MM-d"}
+                MMdd{"MM-dd"}
+                Md{"M-d"}
+                yM{"y-MM"}
+                yMEd{"E y-MM-dd"}
+                yMM{"y-MM"}
+                yMd{"y-MM-dd"}
+            }
+            intervalFormats{
+                H{
+                    H{"HH–HH"}
+                }
+                Hm{
+                    H{"HH:mm–HH:mm"}
+                    m{"HH:mm–HH:mm"}
+                }
+                Hmv{
+                    H{"HH:mm–HH:mm v"}
+                    m{"HH:mm–HH:mm v"}
+                }
+                Hv{
+                    H{"HH–HH v"}
+                }
+                MEd{
+                    M{"E MM-dd – E MM-dd"}
+                    d{"E MM-dd – E MM-dd"}
+                }
+                Md{
+                    M{"MM-dd – MM-dd"}
+                    d{"MM-dd – MM-dd"}
+                }
+                d{
+                    d{"d–d"}
+                }
+                h{
+                    h{"h–h a"}
+                }
+                hm{
+                    h{"h:mm–h:mm a"}
+                    m{"h:mm–h:mm a"}
+                }
+                hmv{
+                    h{"h:mm–h:mm a v"}
+                    m{"h:mm–h:mm a v"}
+                }
+                hv{
+                    h{"h–h a v"}
+                }
+                yM{
+                    M{"y-MM – y-MM"}
+                    y{"y-MM – y-MM"}
+                }
+                yMEd{
+                    M{"'du' E y-MM-dd 'au' E y-MM-dd"}
+                    d{"'du' E y-MM-dd 'au' E y-MM-dd"}
+                    y{"'du' E y-MM-dd 'au' E y-MM-dd"}
+                }
+                yMMM{
+                    y{"'de' MMM y 'à' MMM y"}
+                }
+                yMMMEd{
+                    M{"'du' E d MMM 'au' E d MMM y"}
+                    d{"'du' E d 'au' E d MMM y"}
+                    y{"'du' E d MMM y 'au' E d MMM y"}
+                }
+                yMMMd{
+                    M{"'du' d MMM 'au' d MMM y"}
+                    y{"'du' d MMM y 'au' d MMM y"}
+                }
+                yMd{
+                    M{"y-MM-dd – y-MM-dd"}
+                    d{"y-MM-dd – y-MM-dd"}
+                    y{"y-MM-dd – y-MM-dd"}
+                }
+            }
+        }
+    }
+    delimiters{
+        alternateQuotationEnd{"›"}
+        alternateQuotationStart{"‹"}
+    }
+    fields{
+        day{
+            relativeTime{
+                future{
+                    one{"Dans {0} jour"}
+                    other{"Dans {0} jours"}
+                }
+                past{
+                    one{"Il y a {0} jour"}
+                    other{"Il y a {0} jours"}
+                }
+            }
+        }
+        hour{
+            relativeTime{
+                future{
+                    one{"Dans {0} heure"}
+                    other{"Dans {0} heures"}
+                }
+                past{
+                    one{"Il y a {0} heure"}
+                    other{"Il y a {0} heures"}
+                }
+            }
+        }
+        minute{
+            relativeTime{
+                future{
+                    one{"Dans {0} minute"}
+                    other{"Dans {0} minutes"}
+                }
+                past{
+                    one{"Il y a {0} minute"}
+                    other{"Il y a {0} minutes"}
+                }
+            }
+        }
+        month{
+            relative{
+                "-1"{"Le mois dernier"}
+                "0"{"Ce mois-ci"}
+                "1"{"Le mois prochain"}
+            }
+            relativeTime{
+                future{
+                    one{"Dans {0} mois"}
+                    other{"Dans {0} mois"}
+                }
+                past{
+                    one{"Il y a {0} mois"}
+                    other{"Il y a {0} mois"}
+                }
+            }
+        }
+        second{
+            relativeTime{
+                future{
+                    one{"Dans {0} seconde"}
+                    other{"Dans {0} secondes"}
+                }
+                past{
+                    one{"Il y a {0} seconde"}
+                    other{"Il y a {0} secondes"}
+                }
+            }
+        }
+        week{
+            relative{
+                "-1"{"La semaine dernière"}
+                "0"{"Cette semaine"}
+                "1"{"La semaine prochaine"}
+            }
+            relativeTime{
+                future{
+                    one{"Dans {0} semaine"}
+                    other{"Dans {0} semaines"}
+                }
+                past{
+                    one{"Il y a {0} semaine"}
+                    other{"Il y a {0} semaines"}
+                }
+            }
+        }
+        year{
+            relative{
+                "-1"{"L'année dernière"}
+                "0"{"Cette année"}
+                "1"{"L'année prochaine"}
+            }
+            relativeTime{
+                future{
+                    one{"Dans {0} an"}
+                    other{"Dans {0} ans"}
+                }
+                past{
+                    one{"Il y a {0} an"}
+                    other{"Il y a {0} ans"}
+                }
+            }
+        }
+    }
+    measurementSystemNames{
+        UK{"R-U"}
+    }
+    transformNames{
+        Numeric{"Chiffres"}
+        x-Fullwidth{"Pleine largeur"}
+        x-Halfwidth{"Demie largeur"}
+        x-Publishing{"Édition"}
+    }
+}

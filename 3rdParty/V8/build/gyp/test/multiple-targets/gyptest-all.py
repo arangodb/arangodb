@@ -15,8 +15,6 @@ test.run_gyp('multiple.gyp', chdir='src')
 
 test.relocate('src', 'relocate/src')
 
-# TODO(sgk):  remove stderr=None when the --generator-output= support
-# gets rid of the scons warning
 test.build('multiple.gyp', test.ALL, chdir='relocate/src', stderr=None)
 
 expect1 = """\

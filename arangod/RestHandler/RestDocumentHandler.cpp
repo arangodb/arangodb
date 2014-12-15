@@ -1377,11 +1377,13 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 
   TRI_json_t* json = parseJsonBody();
 
-  if (! TRI_IsArrayJson(json)) {
+  if (json == nullptr) {
+    return false;
+  }
+
+  if (json->_type != TRI_JSON_ARRAY) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-    if (json != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    }
     return false;
   }
 
@@ -1389,12 +1391,10 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   bool isValidRevision;
   TRI_voc_rid_t const revision = extractRevision("if-match", "rev", isValidRevision);
   if (! isValidRevision) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid revision number");
-    if (json != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    }
     return false;
   }
 
@@ -1420,8 +1420,8 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    generateTransactionError(collection, res);
     return false;
   }
 
@@ -1441,8 +1441,8 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   string const&& cidString = StringUtils::itoa(document->_info._planId);
 
   if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
-    generateTransactionError(collectionName, TRI_ERROR_OUT_OF_MEMORY);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    generateTransactionError(collectionName, TRI_ERROR_OUT_OF_MEMORY);
     return false;
   }
 

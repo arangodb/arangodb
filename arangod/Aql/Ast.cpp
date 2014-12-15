@@ -1189,8 +1189,8 @@ AstNode* Ast::createArithmeticResultNode (double value) {
 AstNode* Ast::executeConstExpression (AstNode const* node) {
   // must enter v8 before we can execute any expression
   _query->enterContext();
-  
-  v8::HandleScope scope; // do not delete this!
+  ISOLATE;
+  v8::HandleScope scope(isolate); // do not delete this!
 
   TRI_json_t* result = _query->executor()->executeExpression(_query, node); 
 

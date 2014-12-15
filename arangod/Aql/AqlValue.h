@@ -216,7 +216,8 @@ namespace triagens {
 /// @brief construct a V8 value as input for the expression execution in V8
 ////////////////////////////////////////////////////////////////////////////////
 
-      v8::Handle<v8::Value> toV8 (triagens::arango::AqlTransaction*, 
+      v8::Handle<v8::Value> toV8 (v8::Isolate* isolate,
+                                  triagens::arango::AqlTransaction*, 
                                   TRI_document_collection_t const*) const;
 
 ////////////////////////////////////////////////////////////////////////////////

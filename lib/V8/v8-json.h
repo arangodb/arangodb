@@ -31,7 +31,8 @@
 
 #include "V8/v8-globals.h"
 
-v8::Handle<v8::Value> TRI_FromJsonString (char const* text, char** error);
+v8::Handle<v8::Value> TRI_FromJsonString (v8::Isolate* isolate,
+                                          char const* text, char** error);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

@@ -1,0 +1,21 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/collation/gl.xml
+// *
+// ***************************************************************************
+gl{
+    Version{"2.0.92.29"}
+    collations{
+        search{
+            Sequence{"[import es-u-co-search]"}
+            Version{"24"}
+        }
+        standard{
+            Sequence{"[import es]"}
+            Version{"24"}
+        }
+    }
+}

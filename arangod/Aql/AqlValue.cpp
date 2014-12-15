@@ -406,18 +406,19 @@ char const* AqlValue::toChar () const {
 /// @brief construct a V8 value as input for the expression execution in V8
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> AqlValue::toV8 (triagens::arango::AqlTransaction* trx, 
+v8::Handle<v8::Value> AqlValue::toV8 (v8::Isolate* isolate,
+                                      triagens::arango::AqlTransaction* trx, 
                                       TRI_document_collection_t const* document) const {
   switch (_type) {
     case JSON: {
       TRI_ASSERT(_json != nullptr);
-      return TRI_ObjectJson(_json->json());
+      return TRI_ObjectJson(isolate, _json->json());
     }
 
     case SHAPED: {
       TRI_ASSERT(document != nullptr);
       TRI_ASSERT(_marker != nullptr);
-      return TRI_WrapShapedJson<triagens::arango::AqlTransaction>(*trx, document->_info._cid, _marker);
+      return TRI_WrapShapedJson<triagens::arango::AqlTransaction>(isolate, *trx, document->_info._cid, _marker);
     }
 
     case DOCVEC: {
@@ -430,7 +431,7 @@ v8::Handle<v8::Value> AqlValue::toV8 (triagens::arango::AqlTransaction* trx,
       }
 
       // allocate the result list
-      v8::Handle<v8::Array> result = v8::Array::New(static_cast<int>(totalSize));
+      v8::Handle<v8::Array> result = v8::Array::New(isolate, static_cast<int>(totalSize));
       uint32_t j = 0; // output row count
 
       for (auto it = _vector->begin(); it != _vector->end(); ++it) {
@@ -438,7 +439,7 @@ v8::Handle<v8::Value> AqlValue::toV8 (triagens::arango::AqlTransaction* trx,
         size_t const n = current->size();
         auto vecCollection = current->getDocumentCollection(0);
         for (size_t i = 0; i < n; ++i) {
-          result->Set(j++, current->getValue(i, 0).toV8(trx, vecCollection));
+          result->Set(j++, current->getValue(i, 0).toV8(isolate, trx, vecCollection));
         }
       }
       return result;
@@ -449,18 +450,18 @@ v8::Handle<v8::Value> AqlValue::toV8 (triagens::arango::AqlTransaction* trx,
 
       // allocate the buffer for the result
       size_t const n = _range->size();
-      v8::Handle<v8::Array> result = v8::Array::New(static_cast<int>(n));
+      v8::Handle<v8::Array> result = v8::Array::New(isolate, static_cast<int>(n));
       
       for (uint32_t i = 0; i < n; ++i) {
         // is it safe to use a double here (precision loss)?
-        result->Set(i, v8::Number::New(static_cast<double>(_range->at(static_cast<size_t>(i)))));
+        result->Set(i, v8::Number::New(isolate, static_cast<double>(_range->at(static_cast<size_t>(i)))));
       }
 
       return result;
     }
 
     case EMPTY: {
-      return v8::Undefined();
+      return v8::Undefined(isolate);
     }
   }
       
