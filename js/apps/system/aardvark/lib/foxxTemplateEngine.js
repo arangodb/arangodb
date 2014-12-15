@@ -39,6 +39,10 @@
       _.each(this.controllers, function (controller) {
         fs.write(fs.join(this.folder, controller.path), this.buildController(controller));
       }, this);
+
+      fs.write(fs.join(this.folder, "scripts", "setup.js"), this.buildSetup(this.collectionNames));
+
+      fs.write(fs.join(this.folder, "scripts", "teardown.js"), this.buildTeardown(this.collectionNames));
     },
 
     template: function(name) {
@@ -105,8 +109,8 @@
 
         controllers: {},
 
-        // setup: "",
-        // teardown: ""
+        setup: "scripts/setup.js",
+        teardown: "scripts/teardown.js"
       };
 
       _.each(this.controllers, function (controller) {
@@ -116,23 +120,40 @@
       return JSON.stringify(manifest, 0, 2);
     },
 
-    buildController: function(controller) {
-      var manifest = this.template("controller.js.tmpl");
 
-      return manifest(controller);
+    buildSetup: function(collections) {
+      var templ = this.template("setup.js.tmpl");
+
+      return templ({
+        collections: collections
+      });
+    },
+
+    buildTeardown: function(collections) {
+      var templ = this.template("teardown.js.tmpl");
+
+      return templ({
+        collections: collections
+      });
+    },
+
+    buildController: function(controller) {
+      var templ = this.template("controller.js.tmpl");
+
+      return templ(controller);
     },
 
 
     buildRepository: function() {
-      var manifest = this.template("repository.js.tmpl");
+      var templ = this.template("repository.js.tmpl");
 
-      return manifest();
+      return templ();
     },
 
     buildModel: function() {
-      var manifest = this.template("model.js.tmpl");
+      var templ = this.template("model.js.tmpl");
 
-      return manifest();
+      return templ();
     },
   });
 

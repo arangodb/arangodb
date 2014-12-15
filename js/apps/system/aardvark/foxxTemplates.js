@@ -34,6 +34,7 @@ var FoxxController = require("org/arangodb/foxx").Controller,
   controller = new FoxxController(applicationContext),
   internal = require("internal"),
   TemplateEngine = require("lib/foxxTemplateEngine").Engine,
+  FoxxManager = require("org/arangodb/foxx/manager"),
   isDevMode = function() {
     return internal.developmentMode;
   };
@@ -49,15 +50,21 @@ controller.post("/generate", function(req, res) {
   if (isDevMode()) {
     path = module.devAppPath();
   } else {
-    path = module.appPath();
+    path = module.tmpPath();
   }
 
   var conf = req.params("configuration");
   conf.set("applicationContext", applicationContext);
   conf.set("path", path);
   templateEngine = new TemplateEngine(conf.forDB());
-
   templateEngine.write();
+
+  if (isDevMode()) {
+    FoxxManager.devSetup(conf.get("name"));
+  } else {
+    // TODO Zip and ship it
+  }
+
 }).bodyParam("configuration", {
   description: "The configuration for the template.",
   type: Configuration
