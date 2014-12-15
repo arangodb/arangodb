@@ -31,7 +31,7 @@
    */
   controller.post('/<%= basePath %>', function (req, res) {
     var <%= modelInstance %> = req.params('<%= modelInstance %>');
-    res.json(<%= repositoryInstance %>.save(todo).forClient());
+    res.json(<%= repositoryInstance %>.save(<%= modelInstance %>).forClient());
   }).bodyParam('<%= modelInstance %>', 'The <%= model %> you want to create', <%= model %>);
 
   /** Updates a <%= model %>
