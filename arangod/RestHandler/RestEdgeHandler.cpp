@@ -118,7 +118,8 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request)
 /// *true*.
 ///
 /// @RESTRETURNCODE{202}
-/// is returned if the edge was created successfully.
+/// is returned if the edge was created successfully and *waitForSync* was
+/// *false*.
 ///
 /// @RESTRETURNCODE{400}
 /// is returned if the body does not contain a valid JSON representation of an
@@ -448,6 +449,12 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 ///
 /// @RESTHEADERPARAMETERS
 ///
+/// @RESTHEADERPARAM{If-None-Match,string,optional}
+/// If the "If-None-Match" header is given, then it must contain exactly one
+/// etag. If the current document revision is different to the specified etag,
+/// an *HTTP 200* response is returned. If the current document revision is
+/// identical to the specified etag, then an *HTTP 304* is returned.
+///
 /// @RESTHEADERPARAM{If-Match,string,optional}
 /// You can conditionally fetch an edge document based on a target revision id by
 /// using the *if-match* HTTP header.
@@ -533,9 +540,10 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// of *true*.
 ///
 /// The body of the response contains a JSON object with the information about
-/// the handle and the revision.  The attribute *_id* contains the known
-/// *document-handle* of the updated edge document, the attribute *_rev*
-/// contains the new revision of the edge document.
+/// the handle and the revision. The attribute *_id* contains the known
+/// *document-handle* of the updated edge document, *_key* contains the key which 
+/// uniquely identifies a document in a given collection, and the attribute *_rev*
+/// contains the new document revision.
 ///
 /// If the edge document does not exist, then a *HTTP 404* is returned and the
 /// body of the response contains an error document.
@@ -676,8 +684,9 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 ///
 /// The body of the response contains a JSON object with the information about
 /// the handle and the revision. The attribute *_id* contains the known
-/// *document-handle* of the updated edge document, the attribute *_rev*
-/// contains the new edge document revision.
+/// *document-handle* of the updated edge document, *_key* contains the key which 
+/// uniquely identifies a document in a given collection, and the attribute *_rev*
+/// contains the new document revision.
 ///
 /// If the edge document does not exist, then a *HTTP 404* is returned and the
 /// body of the response contains an error document.
@@ -747,9 +756,10 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 ///
 /// @RESTDESCRIPTION
 /// The body of the response contains a JSON object with the information about
-/// the handle and the revision.  The attribute *_id* contains the known
-/// *document-handle* of the deleted edge document, the attribute *_rev*
-/// contains the edge document revision.
+/// the handle and the revision. The attribute *_id* contains the known
+/// *document-handle* of the deleted edge document, *_key* contains the key which 
+/// uniquely identifies a document in a given collection, and the attribute *_rev*
+/// contains the new document revision.
 ///
 /// If the *waitForSync* parameter is not specified or set to
 /// *false*, then the collection's default *waitForSync* behavior is
