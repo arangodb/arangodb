@@ -35,13 +35,13 @@ using namespace triagens::aql;
 using Json = triagens::basics::Json;
 using EN   = triagens::aql::ExecutionNode;
 
-//#if 0
+#if 0
 #define ENTER_BLOCK try { (void) 0;
 #define LEAVE_BLOCK } catch (...) { std::cout << "caught an exception in " << __FUNCTION__ << ", " << __FILE__ << ":" << __LINE__ << "!\n"; throw; }
-//#else
-//#define ENTER_BLOCK
-//#define LEAVE_BLOCK
-//#endif
+#else
+#define ENTER_BLOCK
+#define LEAVE_BLOCK
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           rules for the optimizer
@@ -969,7 +969,8 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                 worker(x.second._highs);
               }
               map = _rangeInfoMapVec->find(var->name, ++pos);  
-            } while (map !=nullptr);
+            } 
+            while (map !=nullptr);
             
             // Now remove empty conditions: 
             _rangeInfoMapVec->eraseEmptyOrUndefined(var->name);
@@ -980,7 +981,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             // x.a == 1 || y.c == 2 || x.a == 3
             if (_rangeInfoMapVec->isMapped(var->name)) {
 
-              std::vector<size_t> validPos = _rangeInfoMapVec->validPositions(var->name);
+              std::vector<size_t> const validPos = _rangeInfoMapVec->validPositions(var->name);
 
               // are any of the RangeInfoMaps in the vector valid? 
 
@@ -995,7 +996,6 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                   _modified = true;
                 }
                 else {
-
                   std::vector<Index*> idxs;
                   std::vector<size_t> prefixes;
                   // {idxs.at(i)->_fields[0]..idxs.at(i)->_fields[prefixes.at(i)]}
@@ -1005,15 +1005,16 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                   // for all other index types, the prefix value will always be 0
                   node->getIndexesForIndexRangeNode(
                       _rangeInfoMapVec->attributes(var->name), idxs, prefixes);
-
                   // make one new plan for every index in <idxs> that replaces the
                   // enumerate collection node with a IndexRangeNode ... 
 
                   for (size_t i = 0; i < idxs.size(); i++) {
                     IndexOrCondition indexOrCondition;
+                    indexOrCondition.reserve(validPos.size());
+
                     for (size_t k = 0; k < validPos.size(); k++) {
                       indexOrCondition.push_back(std::vector<RangeInfo>());
-                    }
+                    } 
 
                     // ranges must be valid and all comparisons == if hash
                     // index or == followed by a single <, >, >=, or <=
@@ -1110,20 +1111,27 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                         size_t j = 0;
                         auto range = map->find(idx->fields[0]);
                         if (range == map->end()) { 
-                            indexOrCondition.clear();
-                            break; // not usable
+                          indexOrCondition.clear();
+                          break; // not usable
                         }
                         indexOrCondition.at(k).push_back(range->second);
                         
                         bool equality = range->second.is1ValueRangeInfo();
+                        bool handled = false;
                         while (++j < prefixes.at(i) && equality) {
                           range = map->find(idx->fields[j]);
                           if (range == map->end()) { 
-                              indexOrCondition.clear();
-                              break; // not usable
+                            indexOrCondition.clear();
+                            handled = true;
+                            break; // not usable
                           }
                           indexOrCondition.at(k).push_back(range->second);
                           equality = equality && range->second.is1ValueRangeInfo();
+                        }
+                        if (handled) {
+                          // exit the for loop, too. otherwise it will crash because
+                          // indexOrCondition is empty now
+                          break;
                         }
                       }
                     }
@@ -1173,7 +1181,6 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
     void findVarAndAttr (AstNode const* node, 
                          Variable const*& enumCollVar,
                          std::string& attr) {
-      
       if (node->type == NODE_TYPE_REFERENCE) {
         auto x = static_cast<Variable*>(node->getData());
         auto setter = _plan->getVarSetBy(x->id);
@@ -1203,7 +1210,6 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
     RangeInfoMapVec* buildRangeInfo (AstNode const* node, 
                                      Variable const*& enumCollVar,
                                      std::string& attr) {
-      
       if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
         auto lhs = node->getMember(0);
         auto rhs = node->getMember(1);
@@ -3112,7 +3118,6 @@ struct OrToInConverter {
 int triagens::aql::replaceOrWithInRule (Optimizer* opt, 
                                         ExecutionPlan* plan, 
                                         Optimizer::Rule const* rule) {
-  ENTER_BLOCK;
   std::vector<ExecutionNode*> nodes
     = plan->findNodesOfType(EN::FILTER, true);
 
@@ -3171,7 +3176,6 @@ int triagens::aql::replaceOrWithInRule (Optimizer* opt,
   opt->addPlan(plan, rule->level, modified);
 
   return TRI_ERROR_NO_ERROR;
-  LEAVE_BLOCK;
 }
 
 struct RemoveRedundantOr {
@@ -3306,7 +3310,6 @@ struct RemoveRedundantOr {
 int triagens::aql::removeRedundantOrRule (Optimizer* opt, 
                                           ExecutionPlan* plan, 
                                           Optimizer::Rule const* rule) {
-  ENTER_BLOCK;
   std::vector<ExecutionNode*> nodes
     = plan->findNodesOfType(EN::FILTER, true);
 
@@ -3359,7 +3362,6 @@ int triagens::aql::removeRedundantOrRule (Optimizer* opt,
   opt->addPlan(plan, rule->level, modified);
 
   return TRI_ERROR_NO_ERROR;
-  LEAVE_BLOCK;
 }
 
 // Local Variables:
