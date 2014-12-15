@@ -586,7 +586,8 @@ RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs,
       }
       if (! rim->empty()) {
         lhs->emplace_back(rim);
-      } else {
+      } 
+      else {
         delete rim;
       }
     }
@@ -756,7 +757,8 @@ void triagens::aql::differenceRangeInfos (RangeInfo& lhs, RangeInfo& rhs) {
       // unassign _lowConst and _highConst
       if (lhs.isConstant()) {
         lhs.invalidate();
-      } else {
+      } 
+      else {
         RangeInfoBound rib;
         lhs._lowConst.assign(rib);
         lhs._highConst.assign(rib);
@@ -767,7 +769,8 @@ void triagens::aql::differenceRangeInfos (RangeInfo& lhs, RangeInfo& rhs) {
       // unassign _lowConst and _highConst
       if (rhs.isConstant()) {
         rhs.invalidate();
-      } else {
+      } 
+      else {
         RangeInfoBound rib;
         rhs._lowConst.assign(rib);
         rhs._highConst.assign(rib);
@@ -909,7 +912,8 @@ void triagens::aql::removeOverlapsIndexOr (IndexOrCondition& ioc) {
   for (auto it = ioc.begin(); it < ioc.end(); ) {
     if (it->empty()) {
       it = ioc.erase(it);
-    } else {
+    } 
+    else {
       it++;
     }
   }

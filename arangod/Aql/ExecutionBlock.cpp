@@ -1259,7 +1259,8 @@ bool IndexRangeBlock::initRanges () {
       _posInRanges = 0;
       getSkiplistIterator(_condition->at(_sortCoords[_posInRanges]));
       return (_skiplistIterator != nullptr);
-    } else {
+    } 
+    else {
       return false;
     }
   }
@@ -1281,12 +1282,13 @@ bool IndexRangeBlock::SortFunc::operator() (size_t const& i, size_t const& j) {
   if (! _reverse) {
     l = i;
     r = j;
-  } else {
+  } 
+  else {
     l = j; 
     r = i;
   }
 
-  size_t shortest = std::min(_prefix.at(i).size(), _prefix.at(j).size());
+  size_t shortest = (std::min)(_prefix.at(i).size(), _prefix.at(j).size());
 
   for (size_t k = 0; k < shortest; k++) {
     RangeInfo lhs = _condition->at(l).at(_prefix.at(l).at(k));
@@ -1299,14 +1301,16 @@ bool IndexRangeBlock::SortFunc::operator() (size_t const& i, size_t const& j) {
       if (cmp != 0) {
         return (cmp == -1);
       }
-    } else {
+    } 
+    else {
       // assuming lhs and rhs are disjoint!!
       TRI_ASSERT_EXPENSIVE(areDisjointRangeInfos(lhs, rhs));
       if (lhs._highConst.isDefined() && rhs._lowConst.isDefined()) {
         cmp = (TRI_CompareValuesJson(lhs._highConst.bound().json(), 
                                      rhs._lowConst.bound().json()));
         return (cmp == 0 || cmp == -1);
-      } else { // lhs._lowConst.isDefined() && rhs._highConst.isDefined()
+      } 
+      else { // lhs._lowConst.isDefined() && rhs._highConst.isDefined()
         return false;
       }
     }
@@ -1983,7 +1987,8 @@ void IndexRangeBlock::readSkiplistIndex (size_t atMost) {
         if (++_posInRanges < _condition->size()) {
           getSkiplistIterator(_condition->at(_sortCoords[_posInRanges]));
         }
-      } else {
+      } 
+      else {
         _documents.emplace_back(*(indexElement->_document));
         ++nrSent;
         ++_engine->_stats.scannedIndex;

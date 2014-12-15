@@ -878,7 +878,8 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             // there is an implicit AND between FILTER statements
             if (_rangeInfoMapVec == nullptr) {
               _rangeInfoMapVec = buildRangeInfo(node->expression()->node(), enumCollVar, attr);
-            } else {
+            } 
+            else {
               _rangeInfoMapVec = andCombineRangeInfoMapVecs(_rangeInfoMapVec,
                   buildRangeInfo(node->expression()->node(), enumCollVar, attr));
             }
@@ -1361,7 +1362,8 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                     rimv->emplace_back(new RangeInfoMap(ri));
                   }
                 }
-              } else { 
+              } 
+              else { 
                 RangeInfo ri(enumCollVar->name, 
                              attr.substr(0, attr.size() - 1), 
                              RangeInfoBound(rhs, true),
