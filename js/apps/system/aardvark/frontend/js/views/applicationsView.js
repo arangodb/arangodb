@@ -371,7 +371,40 @@
 
     ///// NEW CODE 
 
-    installFoxxFromZip: function() {
+    installFoxxFromZip: function(files, data) {
+      var self = this;
+      $.ajax({
+        type: "POST",
+        async: false,
+        url: "/_admin/aardvark/foxxes/inspect",
+        data: JSON.stringify(data),
+        contentType: "application/json"
+      }).done(function(res) {
+        $.ajax({
+          type: "POST",
+          async: false,
+          url: '/_admin/foxx/fetch',
+          data: JSON.stringify({
+            name: res.name,
+            version: res.version,
+            filename: res.filename
+          }),
+          processData: false
+        }).done(function (result) {
+          if (result.error === false) {
+            window.modalView.hide();
+            self.showConfigureDialog(res.configuration, res.name, res.version);
+          }
+        }).fail(function (err) {
+          var error = JSON.parse(err.responseText);
+          arangoHelper.arangoError("Error: " + error.errorMessage);
+        });
+      }).fail(function(err) {
+        var error = JSON.parse(err.responseText);
+        arangoHelper.arangoError("Error: " + error.error);
+      });
+      self.hideImportModal();
+      /*
       var self = this;
       if (this.allowUpload) {
         this.showSpinner();
@@ -384,53 +417,14 @@
           contentType: 'application/octet-stream',
           complete: function(res) {
             if (res.readyState === 4) {
-              if (res.status === 201) {
-                $.ajax({
-                  type: "POST",
-                  async: false,
-                  url: "/_admin/aardvark/foxxes/inspect",
-                  data: res.responseText,
-                  contentType: "application/json"
-                }).done(function(res) {
-                  console.log("Peter2", res);
-                  $.ajax({
-                    type: "POST",
-                    async: false,
-                    url: '/_admin/foxx/fetch',
-                    data: JSON.stringify({
-                      name: res.name,
-                      version: res.version,
-                      filename: res.filename
-                    }),
-                    processData: false
-                  }).done(function (result) {
-                    console.log("Peter", result);
-                    if (result.error === false) {
-                      window.modalView.hide();
-                      self.showConfigureDialog(res.configuration, res.name, res.version);
-                    }
-                  }).fail(function (err) {
-                    self.hideSpinner();
-                    var error = JSON.parse(err.responseText);
-                    arangoHelper.arangoError("Error: " + error.errorMessage);
-                  });
-                }).fail(function(err) {
-                  self.hideSpinner();
-                  var error = JSON.parse(err.responseText);
-                  arangoHelper.arangoError("Error: " + error.error);
-                });
-                delete self.file;
-                self.allowUpload = false;
-                self.hideSpinner();
-                self.hideImportModal();
-                return;
-              }
+              if (res.status === 201) 
             }
             self.hideSpinner();
             arangoHelper.arangoError("Upload error");
           }
         });
       }
+      */
     },
 
     installFoxxFromStore: function(e) {
@@ -685,9 +679,9 @@
       event.preventDefault();
       var buttons = [];
       var modalEvents = {
-        "click #infoTab a": this.switchModalButton.bind(this),
-        "click .install-app"         : this.installFoxxFromStore.bind(this),
-        "change #zip-file"             : this.uploadSetup.bind(this)
+        "click #infoTab a"   : this.switchModalButton.bind(this),
+        "click .install-app" : this.installFoxxFromStore.bind(this),
+        "change #zip-file"   : this.uploadSetup.bind(this)
       };
       buttons.push(
         window.modalView.createSuccessButton("Generate", this.addAppAction.bind(this))
@@ -705,6 +699,11 @@
         showSearchBox: false,
         minimumResultsForSearch: -1,
         width: "336px"
+      });
+      $("#upload-foxx-zip").uploadFile({
+        url: "/_api/upload",
+        allowedTypes: "zip",
+        onSuccess: this.installFoxxFromZip.bind(this)
       });
       var listTempl = this.appStoreTemplate;
       $.get("foxxes/fishbowl", function(list) {
