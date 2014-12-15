@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint strict: false, unused: false */
-/*global Backbone, $, window, arangoHelper, templateEngine, Joi, _*/
+/*global Backbone, $, window, arangoHelper, templateEngine, Joi, _, modalDialogHelper*/
 
 window.ApplicationDetailView = Backbone.View.extend({
   el: '#content',

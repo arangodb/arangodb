@@ -636,7 +636,7 @@
         description: $("#new-app-description").val()
       };
       console.log(info);
-      $.post("templates/generate", info, function(a) {
+      $.post("templates/generate", JSON.stringify(info), function(a) {
         alert("GENERATOOOO!", a);
       });
     },
