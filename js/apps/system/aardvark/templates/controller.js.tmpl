@@ -30,9 +30,9 @@
    * requestBody.
    */
   controller.post('/<%= basePath %>', function (req, res) {
-    var todo = req.params('todo');
+    var <%= modelInstance %> = req.params('<%= modelInstance %>');
     res.json(<%= repositoryInstance %>.save(todo).forClient());
-  }).bodyParam('todo', 'The <%= model %> you want to create', <%= model %>);
+  }).bodyParam('<%= modelInstance %>', 'The <%= model %> you want to create', <%= model %>);
 
   /** Updates a <%= model %>
    *
@@ -41,12 +41,12 @@
    */
   controller.put('/<%= basePath %>/:id', function (req, res) {
     var id = req.params('id'),
-    todo = req.params('todo');
-    res.json(<%= repositoryInstance %>.replaceById(id, todo));
+    <%= modelInstance %> = req.params('<%= modelInstance %>');
+    res.json(<%= repositoryInstance %>.replaceById(id, <%= modelInstance %>));
   }).pathParam('id', {
     description: 'The id of the <%= model %>-Item',
     type: 'string'
-  }).bodyParam('todo', 'The <%= model %> you want your old one to be replaced with', <%= model %>);
+  }).bodyParam('<%= modelInstance %>', 'The <%= model %> you want your old one to be replaced with', <%= model %>);
 
   /** Removes a <%= model %>
    *

@@ -634,10 +634,13 @@
         author: $("#new-app-author").val(),
         license: $("#new-app-license").val(),
         description: $("#new-app-description").val()
-      };
+      },
+        self = this;
       console.log(info);
       $.post("templates/generate", JSON.stringify(info), function(a) {
-        alert("GENERATOOOO!", a);
+        //TODO Error Handling
+        window.modalView.hide();
+        self.reload();
       });
     },
 
