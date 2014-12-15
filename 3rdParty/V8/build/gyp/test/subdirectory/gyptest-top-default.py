@@ -13,7 +13,7 @@ of the tree as the entry point.
 There is a difference here in the default behavior of the underlying
 build tools.  Specifically, when building the entire "solution", Xcode
 puts the output of each project relative to the .xcodeproj directory,
-while Visual Studio (and our implementations of SCons and Make) put it
+while Visual Studio (and our implementation of Make) put it
 in a build directory relative to the "solution"--that is, the entry-point
 from which you built the entire tree.
 """

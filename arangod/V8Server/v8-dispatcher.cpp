@@ -79,12 +79,12 @@ static Dispatcher* GlobalDispatcher = nullptr;
 /// @brief extract a task id from an argument
 ////////////////////////////////////////////////////////////////////////////////
 
-static string GetTaskId (v8::Handle<v8::Value> arg) {
+static string GetTaskId (v8::Isolate* isolate, v8::Handle<v8::Value> arg) {
   if (arg->IsObject()) {
     // extract "id" from object
     v8::Handle<v8::Object> obj = arg.As<v8::Object>();
-    if (obj->Has(TRI_V8_SYMBOL("id"))) {
-      return TRI_ObjectToString(obj->Get(TRI_V8_SYMBOL("id")));
+    if (obj->Has(TRI_V8_ASCII_STRING("id"))) {
+      return TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("id")));
     }
   }
 
@@ -107,25 +107,26 @@ static DispatcherThread* CreateV8DispatcherThread (DispatcherQueue* queue, void*
 /// @brief registers a task
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_RegisterTask (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_RegisterTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
   if (GlobalScheduler == nullptr || GlobalDispatcher == nullptr) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "no scheduler found");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no scheduler found");
   }
 
-  if (argv.Length() != 1 || ! argv[0]->IsObject()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "register(<task>)");
+  if (args.Length() != 1 || ! args[0]->IsObject()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("register(<task>)");
   }
 
-  v8::Handle<v8::Object> obj = argv[0].As<v8::Object>();
+  v8::Handle<v8::Object> obj = args[0].As<v8::Object>();
 
   // job id
   string id;
 
-  if (obj->HasOwnProperty(TRI_V8_SYMBOL("id"))) {
+  if (obj->HasOwnProperty(TRI_V8_ASCII_STRING("id"))) {
     // user-specified id
-    id = TRI_ObjectToString(obj->Get(TRI_V8_SYMBOL("id")));
+    id = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("id")));
   }
   else {
     // auto-generated id
@@ -136,8 +137,8 @@ static v8::Handle<v8::Value> JS_RegisterTask (v8::Arguments const& argv) {
   // job name
   string name;
 
-  if (obj->HasOwnProperty(TRI_V8_SYMBOL("name"))) {
-    name = TRI_ObjectToString(obj->Get(TRI_V8_SYMBOL("name")));
+  if (obj->HasOwnProperty(TRI_V8_ASCII_STRING("name"))) {
+    name = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("name")));
   }
   else {
     name = "user-defined task";
@@ -146,43 +147,43 @@ static v8::Handle<v8::Value> JS_RegisterTask (v8::Arguments const& argv) {
   // offset in seconds into period or from now on if no period
   double offset = 0.0;
 
-  if (obj->HasOwnProperty(TRI_V8_SYMBOL("offset"))) {
-    offset = TRI_ObjectToDouble(obj->Get(TRI_V8_SYMBOL("offset")));
+  if (obj->HasOwnProperty(TRI_V8_ASCII_STRING("offset"))) {
+    offset = TRI_ObjectToDouble(obj->Get(TRI_V8_ASCII_STRING("offset")));
   }
 
   // period in seconds & count
   double period = 0.0;
 
-  if (obj->HasOwnProperty(TRI_V8_SYMBOL("period"))) {
-    period = TRI_ObjectToDouble(obj->Get(TRI_V8_SYMBOL("period")));
+  if (obj->HasOwnProperty(TRI_V8_ASCII_STRING("period"))) {
+    period = TRI_ObjectToDouble(obj->Get(TRI_V8_ASCII_STRING("period")));
 
     if (period <= 0.0) {
-      TRI_V8_EXCEPTION_PARAMETER(scope, "task period must be specified and positive");
+      TRI_V8_THROW_EXCEPTION_PARAMETER("task period must be specified and positive");
     }
   }
 
   // extract the command
-  if (! obj->HasOwnProperty(TRI_V8_SYMBOL("command"))) {
-    TRI_V8_EXCEPTION_PARAMETER(scope, "command must be specified");
+  if (! obj->HasOwnProperty(TRI_V8_ASCII_STRING("command"))) {
+    TRI_V8_THROW_EXCEPTION_PARAMETER("command must be specified");
   }
 
   string command;
-  if (obj->Get(TRI_V8_SYMBOL("command"))->IsFunction()) {
+  if (obj->Get(TRI_V8_ASCII_STRING("command"))->IsFunction()) {
     // need to add ( and ) around function because call would otherwise break
-    command = "(" + TRI_ObjectToString(obj->Get(TRI_V8_SYMBOL("command"))) + ")(params)";
+    command = "(" + TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("command"))) + ")(params)";
   }
   else {
-    command = TRI_ObjectToString(obj->Get(TRI_V8_SYMBOL("command")));
+    command = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("command")));
   }
 
   // extract the parameters
   TRI_json_t* parameters = nullptr;
 
-  if (obj->HasOwnProperty(TRI_V8_SYMBOL("params"))) {
-    parameters = TRI_ObjectToJson(obj->Get(TRI_V8_SYMBOL("params")));
+  if (obj->HasOwnProperty(TRI_V8_ASCII_STRING("params"))) {
+    parameters = TRI_ObjectToJson(isolate, obj->Get(TRI_V8_ASCII_STRING("params")));
   }
 
-  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+  TRI_GET_GLOBALS();
 
   Task* task;
 
@@ -227,7 +228,7 @@ static v8::Handle<v8::Value> JS_RegisterTask (v8::Arguments const& argv) {
       delete t;
     }
 
-    TRI_V8_EXCEPTION_MEMORY(scope);
+    TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
   TRI_ASSERT(json != nullptr);
@@ -245,13 +246,13 @@ static v8::Handle<v8::Value> JS_RegisterTask (v8::Arguments const& argv) {
       delete t;
     }
 
-    TRI_V8_EXCEPTION(scope, res);
+    TRI_V8_THROW_EXCEPTION(res);
   }
 
-  v8::Handle<v8::Value> result = TRI_ObjectJson(json);
+  v8::Handle<v8::Value> result = TRI_ObjectJson(isolate, json);
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
-  return scope.Close(result);
+  TRI_V8_RETURN(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -260,26 +261,27 @@ static v8::Handle<v8::Value> JS_RegisterTask (v8::Arguments const& argv) {
 /// @FUN{internal.unregisterTask(@FA{id})}
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_UnregisterTask (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_UnregisterTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  if (argv.Length() != 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "unregister(<id>)");
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("unregister(<id>)");
   }
 
-  string const id = GetTaskId(argv[0]);
+  string const id = GetTaskId(isolate, args[0]);
 
   if (GlobalScheduler == nullptr || GlobalDispatcher == nullptr) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "no scheduler found");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no scheduler found");
   }
 
   int res = GlobalScheduler->unregisterUserTask(id);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION(scope, res);
+    TRI_V8_THROW_EXCEPTION(res);
   }
 
-  return scope.Close(v8::True());
+  TRI_V8_RETURN_TRUE();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -288,22 +290,23 @@ static v8::Handle<v8::Value> JS_UnregisterTask (v8::Arguments const& argv) {
 /// @FUN{internal.getTask(@FA{id})}
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_GetTask (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_GetTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  if (argv.Length() > 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "get(<id>)");
+  if (args.Length() > 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("get(<id>)");
   }
 
   if (GlobalScheduler == nullptr || GlobalDispatcher == nullptr) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "no scheduler found");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no scheduler found");
   }
 
   TRI_json_t* json;
 
-  if (argv.Length() == 1) {
+  if (args.Length() == 1) {
     // get a single task
-    string const id = GetTaskId(argv[0]);
+    string const id = GetTaskId(isolate, args[0]);
     json = GlobalScheduler->getUserTask(id);
   }
   else {
@@ -312,13 +315,13 @@ static v8::Handle<v8::Value> JS_GetTask (v8::Arguments const& argv) {
   }
 
   if (json == nullptr) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_TASK_NOT_FOUND);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_TASK_NOT_FOUND);
   }
 
-  v8::Handle<v8::Value> result = TRI_ObjectJson(json);
+  v8::Handle<v8::Value> result = TRI_ObjectJson(isolate, json);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, json);
 
-  return scope.Close(result);
+  TRI_V8_RETURN(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -332,60 +335,61 @@ static v8::Handle<v8::Value> JS_GetTask (v8::Arguments const& argv) {
 /// worker: the Javascript for the worker, must evaluate to a function
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_CreateNamedQueue (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_CreateNamedQueue (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
   if (GlobalDispatcher == nullptr) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "no dispatcher found");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no dispatcher found");
   }
 
-  if (argv.Length() != 1 || ! argv[0]->IsObject()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "createNamedQueue(<options>)");
+  if (args.Length() != 1 || ! args[0]->IsObject()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("createNamedQueue(<options>)");
   }
 
-  v8::Handle<v8::Object> obj = argv[0].As<v8::Object>();
+  v8::Handle<v8::Object> obj = args[0].As<v8::Object>();
 
   // name of the queue
-  if (! obj->HasOwnProperty(TRI_V8_SYMBOL("name"))) {
-    TRI_V8_EXCEPTION_USAGE(scope, "<options>.name is missing");
+  if (! obj->HasOwnProperty(TRI_V8_ASCII_STRING("name"))) {
+    TRI_V8_THROW_EXCEPTION_USAGE("<options>.name is missing");
   }
 
-  string name = TRI_ObjectToString(obj->Get(TRI_V8_SYMBOL("name")));
+  string name = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("name")));
 
   // number of threads
-  if (! obj->HasOwnProperty(TRI_V8_SYMBOL("threads"))) {
-    TRI_V8_EXCEPTION_USAGE(scope, "<options>.threads is missing");
+  if (! obj->HasOwnProperty(TRI_V8_ASCII_STRING("threads"))) {
+    TRI_V8_THROW_EXCEPTION_USAGE("<options>.threads is missing");
   }
 
-  int nrThreads = static_cast<int>(TRI_ObjectToInt64(obj->Get(TRI_V8_SYMBOL("threads"))));
+  int nrThreads = static_cast<int>(TRI_ObjectToInt64(obj->Get(TRI_V8_ASCII_STRING("threads"))));
 
   if (nrThreads < 1) {
-    TRI_V8_EXCEPTION_PARAMETER(scope, "<options>.threads must be at least 1");
+    TRI_V8_THROW_EXCEPTION_PARAMETER("<options>.threads must be at least 1");
   }
 
   // queue size
-  if (! obj->HasOwnProperty(TRI_V8_SYMBOL("size"))) {
-    TRI_V8_EXCEPTION_USAGE(scope, "<options>.size is missing");
+  if (! obj->HasOwnProperty(TRI_V8_ASCII_STRING("size"))) {
+    TRI_V8_THROW_EXCEPTION_USAGE("<options>.size is missing");
   }
 
-  int size = static_cast<int>(TRI_ObjectToInt64(obj->Get(TRI_V8_SYMBOL("size"))));
+  int size = static_cast<int>(TRI_ObjectToInt64(obj->Get(TRI_V8_ASCII_STRING("size"))));
 
   if (size < nrThreads) {
-    TRI_V8_EXCEPTION_PARAMETER(scope, "<options>.size must be at least <options>.threads");
+    TRI_V8_THROW_EXCEPTION_PARAMETER("<options>.size must be at least <options>.threads");
   }
 
   // worker for the queue
-  if (! obj->HasOwnProperty(TRI_V8_SYMBOL("worker"))) {
-    TRI_V8_EXCEPTION_USAGE(scope, "<options>.worker is missing");
+  if (! obj->HasOwnProperty(TRI_V8_ASCII_STRING("worker"))) {
+    TRI_V8_THROW_EXCEPTION_USAGE("<options>.worker is missing");
   }
 
-  string worker = TRI_ObjectToString(obj->Get(TRI_V8_SYMBOL("worker")));
+  string worker = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("worker")));
 
   // create V8 contexts
   bool ok = GlobalV8Dealer->prepareNamedContexts(name, nrThreads, worker);
 
   if (! ok) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "cannot create V8 queue engines");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot create V8 queue engines");
   }
 
   // create a new queue
@@ -397,14 +401,14 @@ static v8::Handle<v8::Value> JS_CreateNamedQueue (v8::Arguments const& argv) {
     size);
 
   if (result == TRI_ERROR_QUEUE_ALREADY_EXISTS) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, result, "named queue already exists");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(result, "named queue already exists");
   }
 
   if (result != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "cannot create queue");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot create queue");
   }
 
-  return scope.Close(v8::Undefined());
+  TRI_V8_RETURN_UNDEFINED();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -413,16 +417,18 @@ static v8::Handle<v8::Value> JS_CreateNamedQueue (v8::Arguments const& argv) {
 /// @FUN{internal.addJob(@FA{queue}, @FA{parameter})}
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_AddJob (v8::Arguments const &argv) {
-  v8::HandleScope scope;
+static void JS_AddJob (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
   
-  if (argv.Length() != 2 || ! argv[1]->IsObject()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "addJob(<queue>, <options>)");
+  if (args.Length() != 2 || ! args[1]->IsObject()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("addJob(<queue>, <options>)");
   }
 
-  string name = TRI_ObjectToString(argv[0]);
-  TRI_json_t* parameters = TRI_ObjectToJson(argv[1]);
-  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+  string name = TRI_ObjectToString(args[0]);
+  TRI_json_t* parameters = TRI_ObjectToJson(isolate, args[1]);
+
+  TRI_GET_GLOBALS();
 
   V8QueueJob* job = new V8QueueJob(name,
                                    static_cast<TRI_vocbase_t*>(v8g->_vocbase),
@@ -432,16 +438,16 @@ static v8::Handle<v8::Value> JS_AddJob (v8::Arguments const &argv) {
   int result = GlobalDispatcher->addJob(job);
 
   if (result == TRI_ERROR_QUEUE_FULL) {
-    return scope.Close(v8::False());
+    TRI_V8_RETURN_FALSE();
   }
 
   if (result != TRI_ERROR_NO_ERROR) {
     delete job;
 
-    TRI_V8_EXCEPTION_MESSAGE(scope, result, "cannot add job");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(result, "cannot add job");
   }
 
-  return scope.Close(v8::True());
+  TRI_V8_RETURN_TRUE();
 }
 
 // -----------------------------------------------------------------------------
@@ -452,17 +458,15 @@ static v8::Handle<v8::Value> JS_AddJob (v8::Arguments const &argv) {
 /// @brief stores the V8 dispatcher function inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Dispatcher (v8::Handle<v8::Context> context,
+void TRI_InitV8Dispatcher (v8::Isolate* isolate,
+                           v8::Handle<v8::Context> context,
                            TRI_vocbase_t* vocbase,
                            ApplicationScheduler* scheduler,
                            ApplicationDispatcher* dispatcher,
                            ApplicationV8* applicationV8) {
-  v8::HandleScope scope;
+  v8::HandleScope scope(isolate);
 
   GlobalV8Dealer = applicationV8;
-
-  // check the isolate
-  v8::Isolate::GetCurrent();
 
   // .............................................................................
   // create the global functions
@@ -473,11 +477,11 @@ void TRI_InitV8Dispatcher (v8::Handle<v8::Context> context,
   GlobalDispatcher = dispatcher->dispatcher();
 
   if (GlobalScheduler != nullptr && GlobalDispatcher != nullptr) {
-    TRI_AddGlobalFunctionVocbase(context, "SYS_REGISTER_TASK", JS_RegisterTask);
-    TRI_AddGlobalFunctionVocbase(context, "SYS_UNREGISTER_TASK", JS_UnregisterTask);
-    TRI_AddGlobalFunctionVocbase(context, "SYS_GET_TASK", JS_GetTask);
-    TRI_AddGlobalFunctionVocbase(context, "SYS_CREATE_NAMED_QUEUE", JS_CreateNamedQueue);
-    TRI_AddGlobalFunctionVocbase(context, "SYS_ADD_JOB", JS_AddJob);
+    TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_REGISTER_TASK"), JS_RegisterTask);
+    TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_UNREGISTER_TASK"), JS_UnregisterTask);
+    TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_GET_TASK"), JS_GetTask);
+    TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_CREATE_NAMED_QUEUE"), JS_CreateNamedQueue);
+    TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_ADD_JOB"), JS_AddJob);
   }
   else {
     LOG_ERROR("cannot initialise tasks, scheduler or dispatcher unknown");

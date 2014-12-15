@@ -1,0 +1,333 @@
+Index: source/common/ucnv2022.cpp
+===================================================================
+--- source/common/ucnv2022.cpp	(revision 259715)
++++ source/common/ucnv2022.cpp	(working copy)
+@@ -167,13 +167,19 @@
+  *   all versions, not just JIS7 and JIS8.
+  * - ICU does not distinguish between different versions of JIS X 0208.
+  */
++#if UCONFIG_NO_NON_HTML5_CONVERSION
++enum { MAX_JA_VERSION=0 };
++#else
+ enum { MAX_JA_VERSION=4 };
++#endif
+ static const uint16_t jpCharsetMasks[MAX_JA_VERSION+1]={
+     CSM(ASCII)|CSM(JISX201)|CSM(JISX208)|CSM(HWKANA_7BIT),
++#if !UCONFIG_NO_NON_HTML5_CONVERSION
+     CSM(ASCII)|CSM(JISX201)|CSM(JISX208)|CSM(HWKANA_7BIT)|CSM(JISX212),
+     CSM(ASCII)|CSM(JISX201)|CSM(JISX208)|CSM(HWKANA_7BIT)|CSM(JISX212)|CSM(GB2312)|CSM(KSC5601)|CSM(ISO8859_1)|CSM(ISO8859_7),
+     CSM(ASCII)|CSM(JISX201)|CSM(JISX208)|CSM(HWKANA_7BIT)|CSM(JISX212)|CSM(GB2312)|CSM(KSC5601)|CSM(ISO8859_1)|CSM(ISO8859_7),
+     CSM(ASCII)|CSM(JISX201)|CSM(JISX208)|CSM(HWKANA_7BIT)|CSM(JISX212)|CSM(GB2312)|CSM(KSC5601)|CSM(ISO8859_1)|CSM(ISO8859_7)
++#endif
+ };
+ 
+ typedef enum {
+@@ -361,14 +367,25 @@
+ };
+ 
+ 
++/* Enable ISO-2022-{KR,CN,CN-Ext} for now.
++ * TODO(jshin): Disable it when we know what to do about 'replacement'
++ * encodings. See http://crbug.com/277037 and
++ * https://codereview.chromium.org/145973021/
++ */
++#ifndef U_ENABLE_ISO_2022_KR_CN
++#define U_ENABLE_ISO_2022_KR_CN 1
++#endif
++
+ /* Type def for refactoring changeState_2022 code*/
+ typedef enum{
+ #ifdef U_ENABLE_GENERIC_ISO_2022
+     ISO_2022=0,
+ #endif
+     ISO_2022_JP=1,
++#ifdef U_ENABLE_ISO_2022_KR_CN
+     ISO_2022_KR=2,
+     ISO_2022_CN=3
++#endif
+ } Variant2022;
+ 
+ /*********** ISO 2022 Converter Protos ***********/
+@@ -485,24 +502,28 @@
+                 /* prevent indexing beyond jpCharsetMasks[] */
+                 myConverterData->version = version = 0;
+             }
++#if !UCONFIG_NO_NON_HTML5_CONVERSION
+             if(jpCharsetMasks[version]&CSM(ISO8859_7)) {
+                 myConverterData->myConverterArray[ISO8859_7] =
+                     ucnv_loadSharedData("ISO8859_7", &stackPieces, &stackArgs, errorCode);
+             }
++#endif
+             myConverterData->myConverterArray[JISX208] =
+                 ucnv_loadSharedData("Shift-JIS", &stackPieces, &stackArgs, errorCode);
++#if !UCONFIG_NO_NON_HTML5_CONVERSION
+             if(jpCharsetMasks[version]&CSM(JISX212)) {
+                 myConverterData->myConverterArray[JISX212] =
+                     ucnv_loadSharedData("jisx-212", &stackPieces, &stackArgs, errorCode);
+             }
+             if(jpCharsetMasks[version]&CSM(GB2312)) {
+                 myConverterData->myConverterArray[GB2312] =
+-                    ucnv_loadSharedData("ibm-5478", &stackPieces, &stackArgs, errorCode);   /* gb_2312_80-1 */
++                    ucnv_loadSharedData("noop-gb2312_gl", &stackPieces, &stackArgs, errorCode);   /* gb_2312_80-1 */
+             }
+             if(jpCharsetMasks[version]&CSM(KSC5601)) {
+                 myConverterData->myConverterArray[KSC5601] =
+                     ucnv_loadSharedData("ksc_5601", &stackPieces, &stackArgs, errorCode);
+             }
++#endif
+ 
+             /* set the function pointers to appropriate funtions */
+             cnv->sharedData=(UConverterSharedData*)(&_ISO2022JPData);
+@@ -513,6 +534,7 @@
+             myConverterData->name[len]=(char)(myConverterData->version+(int)'0');
+             myConverterData->name[len+1]='\0';
+         }
++#ifdef U_ENABLE_ISO_2022_KR_CN
+         else if(myLocale[0]=='k' && (myLocale[1]=='o'|| myLocale[1]=='r') &&
+             (myLocale[2]=='_' || myLocale[2]=='\0'))
+         {
+@@ -558,13 +580,13 @@
+ 
+             /* open the required converters and cache them */
+             myConverterData->myConverterArray[GB2312_1] =
+-                ucnv_loadSharedData("ibm-5478", &stackPieces, &stackArgs, errorCode);
++                ucnv_loadSharedData("noop-gb2312_gl", &stackPieces, &stackArgs, errorCode);
+             if(version==1) {
+                 myConverterData->myConverterArray[ISO_IR_165] =
+-                    ucnv_loadSharedData("iso-ir-165", &stackPieces, &stackArgs, errorCode);
++                    ucnv_loadSharedData("noop-iso-ir-165", &stackPieces, &stackArgs, errorCode);
+             }
+             myConverterData->myConverterArray[CNS_11643] =
+-                ucnv_loadSharedData("cns-11643-1992", &stackPieces, &stackArgs, errorCode);
++                ucnv_loadSharedData("noop-cns-11643", &stackPieces, &stackArgs, errorCode);
+ 
+ 
+             /* set the function pointers to appropriate funtions */
+@@ -582,6 +604,7 @@
+                 (void)uprv_strcpy(myConverterData->name,"ISO_2022,locale=zh,version=2");
+             }
+         }
++#endif // U_ENABLE_ISO_2022_KR_CN
+         else{
+ #ifdef U_ENABLE_GENERIC_ISO_2022
+             myConverterData->isFirstBuffer = TRUE;
+Index: source/common/ucnvbocu.cpp
+===================================================================
+--- source/common/ucnvbocu.cpp	(revision 259715)
++++ source/common/ucnvbocu.cpp	(working copy)
+@@ -19,7 +19,7 @@
+ 
+ #include "unicode/utypes.h"
+ 
+-#if !UCONFIG_NO_CONVERSION
++#if !UCONFIG_NO_CONVERSION && !UCONFIG_NO_NON_HTML5_CONVERSION
+ 
+ #include "unicode/ucnv.h"
+ #include "unicode/ucnv_cb.h"
+Index: source/common/ucnvisci.c
+===================================================================
+--- source/common/ucnvisci.c	(revision 259715)
++++ source/common/ucnvisci.c	(working copy)
+@@ -17,7 +17,7 @@
+ 
+ #include "unicode/utypes.h"
+ 
+-#if !UCONFIG_NO_CONVERSION && !UCONFIG_NO_LEGACY_CONVERSION
++#if !UCONFIG_NO_CONVERSION && !UCONFIG_NO_LEGACY_CONVERSION && !UCONFIG_NO_NON_HTML5_CONVERSION
+ 
+ #include "unicode/ucnv.h"
+ #include "unicode/ucnv_cb.h"
+Index: source/common/ucnvscsu.c
+===================================================================
+--- source/common/ucnvscsu.c	(revision 259715)
++++ source/common/ucnvscsu.c	(working copy)
+@@ -21,7 +21,7 @@
+ 
+ #include "unicode/utypes.h"
+ 
+-#if !UCONFIG_NO_CONVERSION
++#if !UCONFIG_NO_CONVERSION && !UCONFIG_NO_NON_HTML5_CONVERSION
+ 
+ #include "unicode/ucnv.h"
+ #include "unicode/ucnv_cb.h"
+Index: source/common/ucnv_u7.c
+===================================================================
+--- source/common/ucnv_u7.c	(revision 259715)
++++ source/common/ucnv_u7.c	(working copy)
+@@ -16,7 +16,7 @@
+ 
+ #include "unicode/utypes.h"
+ 
+-#if !UCONFIG_NO_CONVERSION
++#if !UCONFIG_NO_CONVERSION && !UCONFIG_NO_NON_HTML5_CONVERSION
+ 
+ #include "unicode/ucnv.h"
+ #include "ucnv_bld.h"
+Index: source/common/unicode/uconfig.h
+===================================================================
+--- source/common/unicode/uconfig.h	(revision 259715)
++++ source/common/unicode/uconfig.h	(working copy)
+@@ -265,6 +265,14 @@
+ #endif
+ 
+ /**
++ * This switch turns off all the converters NOT listed in
++ * the encoding standard : http://encoding.spec.whatwg.org
++ */
++#ifndef UCONFIG_NO_NON_HTML5_CONVERSION
++#define UCONFIG_NO_NON_HTML5_CONVERSION 0
++#endif
++
++/**
+  * \def UCONFIG_NO_LEGACY_CONVERSION
+  * This switch turns off all converters except for
+  * - Unicode charsets (UTF-7/8/16/32, CESU-8, SCSU, BOCU-1)
+Index: source/common/ucnv_bld.cpp
+===================================================================
+--- source/common/ucnv_bld.cpp	(revision 259715)
++++ source/common/ucnv_bld.cpp	(working copy)
+@@ -79,16 +79,25 @@
+     &_HZData,
+ #endif
+ 
++#if UCONFIG_NO_NON_HTML5_CONVERSION
++    NULL,
++#else
+     &_SCSUData,
++#endif
+ 
+-#if UCONFIG_NO_LEGACY_CONVERSION
++
++#if UCONFIG_NO_LEGACY_CONVERSION || UCONFIG_NO_NON_HTML5_CONVERSION
+     NULL,
+ #else
+     &_ISCIIData,
+ #endif
+ 
+     &_ASCIIData,
++#if UCONFIG_NO_NON_HTML5_CONVERSION
++    NULL, NULL, &_UTF16Data, &_UTF32Data, NULL, NULL,
++#else
+     &_UTF7Data, &_Bocu1Data, &_UTF16Data, &_UTF32Data, &_CESU8Data, &_IMAPData,
++#endif
+ 
+ #if UCONFIG_NO_LEGACY_CONVERSION
+     NULL,
+Index: source/common/ucnv_u8.c
+===================================================================
+--- source/common/ucnv_u8.c	(revision 259715)
++++ source/common/ucnv_u8.c	(working copy)
+@@ -87,6 +87,15 @@
+ static const uint32_t
+ utf8_minChar32[7]={ 0, 0, 0x80, 0x800, 0x10000, 0xffffffff, 0xffffffff };
+ 
++static UBool hasCESU8Data(const UConverter *cnv)
++{
++#if UCONFIG_NO_NON_HTML5_CONVERSION
++    return FALSE;
++#else
++    return (UBool)(cnv->sharedData == &_CESU8Data);
++#endif
++}
++
+ static void ucnv_toUnicode_UTF8 (UConverterToUnicodeArgs * args,
+                                   UErrorCode * err)
+ {
+@@ -96,10 +105,10 @@
+     const unsigned char *sourceLimit = (unsigned char *) args->sourceLimit;
+     const UChar *targetLimit = args->targetLimit;
+     unsigned char *toUBytes = cnv->toUBytes;
+-    UBool isCESU8 = (UBool)(cnv->sharedData == &_CESU8Data);
++    UBool isCESU8 = hasCESU8Data(cnv);
+     uint32_t ch, ch2 = 0;
+     int32_t i, inBytes;
+-  
++
+     /* Restore size of current sequence */
+     if (cnv->toUnicodeStatus && myTarget < targetLimit)
+     {
+@@ -226,7 +235,7 @@
+     const unsigned char *sourceLimit = (unsigned char *) args->sourceLimit;
+     const UChar *targetLimit = args->targetLimit;
+     unsigned char *toUBytes = cnv->toUBytes;
+-    UBool isCESU8 = (UBool)(cnv->sharedData == &_CESU8Data);
++    UBool isCESU8 = hasCESU8Data(cnv);
+     uint32_t ch, ch2 = 0;
+     int32_t i, inBytes;
+ 
+@@ -357,7 +366,7 @@
+     UChar32 ch;
+     uint8_t tempBuf[4];
+     int32_t indexToWrite;
+-    UBool isNotCESU8 = (UBool)(cnv->sharedData != &_CESU8Data);
++    UBool isNotCESU8 = !hasCESU8Data(cnv);
+ 
+     if (cnv->fromUChar32 && myTarget < targetLimit)
+     {
+@@ -473,7 +482,7 @@
+     int32_t offsetNum, nextSourceIndex;
+     int32_t indexToWrite;
+     uint8_t tempBuf[4];
+-    UBool isNotCESU8 = (UBool)(cnv->sharedData != &_CESU8Data);
++    UBool isNotCESU8 = !hasCESU8Data(cnv);
+ 
+     if (cnv->fromUChar32 && myTarget < targetLimit)
+     {
+Index: source/common/unicode/urename.h
+===================================================================
+--- source/common/unicode/urename.h	(revision 259715)
++++ source/common/unicode/urename.h	(working copy)
+@@ -73,12 +73,16 @@
+ #define UDataMemory_setData U_ICU_ENTRY_POINT_RENAME(UDataMemory_setData)
+ #define UDatamemory_assign U_ICU_ENTRY_POINT_RENAME(UDatamemory_assign)
+ #define _ASCIIData U_ICU_ENTRY_POINT_RENAME(_ASCIIData)
++#if !UCONFIG_NO_NON_HTML5_CONVERSION
+ #define _Bocu1Data U_ICU_ENTRY_POINT_RENAME(_Bocu1Data)
+ #define _CESU8Data U_ICU_ENTRY_POINT_RENAME(_CESU8Data)
++#endif
+ #define _CompoundTextData U_ICU_ENTRY_POINT_RENAME(_CompoundTextData)
+ #define _HZData U_ICU_ENTRY_POINT_RENAME(_HZData)
++#if !UCONFIG_NO_NON_HTML5_CONVERSION
+ #define _IMAPData U_ICU_ENTRY_POINT_RENAME(_IMAPData)
+ #define _ISCIIData U_ICU_ENTRY_POINT_RENAME(_ISCIIData)
++#endif
+ #define _ISO2022Data U_ICU_ENTRY_POINT_RENAME(_ISO2022Data)
+ #define _LMBCSData1 U_ICU_ENTRY_POINT_RENAME(_LMBCSData1)
+ #define _LMBCSData11 U_ICU_ENTRY_POINT_RENAME(_LMBCSData11)
+@@ -94,14 +98,18 @@
+ #define _LMBCSData8 U_ICU_ENTRY_POINT_RENAME(_LMBCSData8)
+ #define _Latin1Data U_ICU_ENTRY_POINT_RENAME(_Latin1Data)
+ #define _MBCSData U_ICU_ENTRY_POINT_RENAME(_MBCSData)
++#if !UCONFIG_NO_NON_HTML5_CONVERSION
+ #define _SCSUData U_ICU_ENTRY_POINT_RENAME(_SCSUData)
++#endif
+ #define _UTF16BEData U_ICU_ENTRY_POINT_RENAME(_UTF16BEData)
+ #define _UTF16Data U_ICU_ENTRY_POINT_RENAME(_UTF16Data)
+ #define _UTF16LEData U_ICU_ENTRY_POINT_RENAME(_UTF16LEData)
+ #define _UTF32BEData U_ICU_ENTRY_POINT_RENAME(_UTF32BEData)
+ #define _UTF32Data U_ICU_ENTRY_POINT_RENAME(_UTF32Data)
+ #define _UTF32LEData U_ICU_ENTRY_POINT_RENAME(_UTF32LEData)
++#if !UCONFIG_NO_NON_HTML5_CONVERSION
+ #define _UTF7Data U_ICU_ENTRY_POINT_RENAME(_UTF7Data)
++#endif
+ #define _UTF8Data U_ICU_ENTRY_POINT_RENAME(_UTF8Data)
+ #define cmemory_cleanup U_ICU_ENTRY_POINT_RENAME(cmemory_cleanup)
+ #define cmemory_inUse U_ICU_ENTRY_POINT_RENAME(cmemory_inUse)
+Index: source/common/ucnv_cnv.h
+===================================================================
+--- source/common/ucnv_cnv.h	(revision 259715)
++++ source/common/ucnv_cnv.h	(working copy)
+@@ -259,8 +259,13 @@
+     _ISO2022Data, 
+     _LMBCSData1,_LMBCSData2, _LMBCSData3, _LMBCSData4, _LMBCSData5, _LMBCSData6,
+     _LMBCSData8,_LMBCSData11,_LMBCSData16,_LMBCSData17,_LMBCSData18,_LMBCSData19,
++#if !UCONFIG_NO_NON_HTML5_CONVERSION
+     _HZData,_ISCIIData, _SCSUData, _ASCIIData,
+     _UTF7Data, _Bocu1Data, _UTF16Data, _UTF32Data, _CESU8Data, _IMAPData, _CompoundTextData;
++#else
++    _HZData, _ASCIIData,
++    _UTF16Data, _UTF32Data, _CompoundTextData;
++#endif
+ 
+ U_CDECL_END
+ 

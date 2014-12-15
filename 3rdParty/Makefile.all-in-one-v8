@@ -25,10 +25,18 @@ if ENABLE_ARM
 		   CXXFLAGS="-O2 -g -fsigned-char" \
 		   $(MAKE) CXX=$(CXX) LINK=$(CXX) library=static strictaliasing=off snapshot=off werror=no hardfp=on @V8_TARGET@
 else
+if ENABLE_DARWIN
+	cd @top_srcdir@/3rdParty/V8 \
+		&& LDFLAGS="-lc++" \
+                   CFLAGS="-O2 -g" \
+		   CXXFLAGS="-O2 -g" \
+		   $(MAKE) CXX=$(CXX) LINK=$(CXX) library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
+else
 	cd @top_srcdir@/3rdParty/V8 \
 		&& CFLAGS="-O2 -g" \
 		   CXXFLAGS="-O2 -g" \
 		   $(MAKE) CXX=$(CXX) LINK=$(CXX) library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
+endif
 endif
 
 	touch @srcdir@/.v8-build-@TRI_BITS@

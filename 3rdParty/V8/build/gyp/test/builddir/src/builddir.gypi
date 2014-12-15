@@ -12,9 +12,6 @@
       },
     },
   },
-  'scons_settings': {
-    'sconsbuild_dir': '<(DEPTH)/builddir',
-  },
   'xcode_settings': {
     'SYMROOT': '<(DEPTH)/builddir',
   },

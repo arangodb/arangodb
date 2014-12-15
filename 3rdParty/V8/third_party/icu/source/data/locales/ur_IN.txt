@@ -1,0 +1,162 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ur_IN.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/ur_IN.xml
+ */
+ur_IN{
+    NumberElements{
+        default{"arabext"}
+        latn{
+            patterns{
+                currencyFormat{"¤ #,##,##0.00"}
+                decimalFormat{"#,##,##0.###"}
+                percentFormat{"#,##,##0%"}
+            }
+        }
+    }
+    Version{"2.0.92.87"}
+    calendar{
+        generic{
+            DateTimePatterns{
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
+                "EEEE، d MMMM، y G",
+                "d MMMM، y G",
+                "d MMM، y G",
+                "d/M/yy GGGGG",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+        }
+        gregorian{
+            dayNames{
+                format{
+                    abbreviated{
+                        "اتوار",
+                        "پیر",
+                        "منگل",
+                        "بدھ",
+                        "جمعرات",
+                        "جمعہ",
+                        "ہفتہ",
+                    }
+                    short{
+                        "اتوار",
+                        "سوموار",
+                        "منگل",
+                        "بدھ",
+                        "جمعرات",
+                        "جمعہ",
+                        "ہفتہ",
+                    }
+                    wide{
+                        "اتوار",
+                        "پیر",
+                        "منگل",
+                        "بدھ",
+                        "جمعرات",
+                        "جمعہ",
+                        "ہفتہ",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "اتوار",
+                        "پیر",
+                        "منگل",
+                        "بدھ",
+                        "جمعرات",
+                        "جمعہ",
+                        "ہفتہ",
+                    }
+                    short{
+                        "اتوار",
+                        "پیر",
+                        "منگل",
+                        "بدھ",
+                        "جمعرات",
+                        "جمعہ",
+                        "ہفتہ",
+                    }
+                    wide{
+                        "اتوار",
+                        "پیر",
+                        "منگل",
+                        "بدھ",
+                        "جمعرات",
+                        "جمعہ",
+                        "ہفتہ",
+                    }
+                }
+            }
+        }
+    }
+    fields{
+        dayperiod{
+            dn{"قبل دوپہر/بعد دوپہر"}
+        }
+        fri{
+            relative{
+                "-1"{"پچھلے جمعہ"}
+                "0"{"اس جمعہ"}
+                "1"{"اگلے جمعہ"}
+            }
+        }
+        mon{
+            relative{
+                "-1"{"پچھلے پیر"}
+                "0"{"اس پیر"}
+                "1"{"اگلے پیر"}
+            }
+        }
+        sat{
+            relative{
+                "-1"{"پچھلے ہفتہ"}
+                "0"{"اس ہفتہ"}
+                "1"{"اگلے ہفتہ"}
+            }
+        }
+        sun{
+            relative{
+                "-1"{"پچھلے اتوار"}
+                "0"{"اس اتوار"}
+                "1"{"اگلے اتوار"}
+            }
+        }
+        thu{
+            relative{
+                "-1"{"پچھلے جمعرات"}
+                "0"{"اس جمعرات"}
+                "1"{"اگلے جمعرات"}
+            }
+        }
+        tue{
+            relative{
+                "-1"{"پچھلے منگل"}
+                "0"{"اس منگل"}
+                "1"{"اگلے منگل"}
+            }
+        }
+        wed{
+            relative{
+                "-1"{"پچھلے بدھ"}
+                "0"{"اس بدھ"}
+                "1"{"اگلے بدھ"}
+            }
+        }
+        zone{
+            dn{"منطقۂ وقت"}
+        }
+    }
+}

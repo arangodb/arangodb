@@ -23,7 +23,9 @@
         'TestApp/TestAppAppDelegate.m',
       ],
       'mac_bundle_resources': [
-        'TestApp/English.lproj/InfoPlist.strings',
+        'TestApp/English.lproj/InfoPlist.strings',  # UTF-8
+        'TestApp/English.lproj/utf-16be.strings',
+        'TestApp/English.lproj/utf-16le.strings',
         'TestApp/English.lproj/MainMenu.xib',
       ],
       'link_settings': {

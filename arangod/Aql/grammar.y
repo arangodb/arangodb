@@ -155,9 +155,12 @@ void Aqlerror (YYLTYPE* locp,
 %type <node> sort_direction;
 %type <node> collect_list;
 %type <node> collect_element;
+%type <node> collect_variable_list;
 %type <node> optional_keep;
 %type <strval> optional_into;
+%type <strval> count_into;
 %type <node> expression;
+%type <node> expression_or_query;
 %type <node> operator_unary;
 %type <node> operator_binary;
 %type <node> operator_ternary;
@@ -264,15 +267,34 @@ let_element:
     }
   ;
 
-collect_statement: 
+count_into: 
+    T_WITH T_STRING T_INTO variable_name {
+      if (! TRI_CaseEqualString($2, "COUNT")) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'COUNT'", $2, yylloc.first_line, yylloc.first_column);
+      }
+
+      $$ = $4;
+    }
+  ;
+
+collect_variable_list:
     T_COLLECT {
       auto node = parser->ast()->createNodeList();
       parser->pushStack(node);
-    } collect_list optional_into optional_keep {
-      auto list = static_cast<AstNode const*>(parser->popStack());
+    } collect_list { 
+      auto list = static_cast<AstNode*>(parser->popStack());
 
       if (list == nullptr) {
         ABORT_OOM
+      }
+      $$ = list;
+    }
+  ;
+
+collect_statement: 
+    T_COLLECT count_into {
+      if ($2 == nullptr) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of 'COUNT' without 'INTO'", yylloc.first_line, yylloc.first_column);
       }
 
       auto scopes = parser->ast()->scopes();
@@ -285,10 +307,26 @@ collect_statement:
         scopes->endNested();
         // start a new scope
         scopes->start(triagens::aql::AQL_SCOPE_COLLECT);
+      }
 
-        size_t const n = list->numMembers();
+      auto node = parser->ast()->createNodeCollect(parser->ast()->createNodeList(), $2);
+      parser->ast()->addOperation(node);
+    }
+  | collect_variable_list count_into {
+      auto scopes = parser->ast()->scopes();
+
+      // check if we are in the main scope
+      bool reRegisterVariables = (scopes->type() != triagens::aql::AQL_SCOPE_MAIN); 
+
+      if (reRegisterVariables) {
+        // end the active scopes
+        scopes->endNested();
+        // start a new scope
+        scopes->start(triagens::aql::AQL_SCOPE_COLLECT);
+
+        size_t const n = $1->numMembers();
         for (size_t i = 0; i < n; ++i) {
-          auto member = list->getMember(i);
+          auto member = $1->getMember(i);
 
           if (member != nullptr) {
             TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
@@ -298,11 +336,38 @@ collect_statement:
         }
       }
 
-      if ($4 == nullptr && $5 != nullptr) {
+      auto node = parser->ast()->createNodeCollect($1, $2);
+      parser->ast()->addOperation(node);
+    }
+  | collect_variable_list optional_into optional_keep {
+      auto scopes = parser->ast()->scopes();
+
+      // check if we are in the main scope
+      bool reRegisterVariables = (scopes->type() != triagens::aql::AQL_SCOPE_MAIN); 
+
+      if (reRegisterVariables) {
+        // end the active scopes
+        scopes->endNested();
+        // start a new scope
+        scopes->start(triagens::aql::AQL_SCOPE_COLLECT);
+
+        size_t const n = $1->numMembers();
+        for (size_t i = 0; i < n; ++i) {
+          auto member = $1->getMember(i);
+
+          if (member != nullptr) {
+            TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
+            auto v = static_cast<Variable*>(member->getMember(0)->getData());
+            scopes->addVariable(v);
+          }
+        }
+      }
+
+      if ($2 == nullptr && $3 != nullptr) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of 'KEEP' without 'INTO'", yylloc.first_line, yylloc.first_column);
       } 
 
-      auto node = parser->ast()->createNodeCollect(list, $4, $5);
+      auto node = parser->ast()->createNodeCollect($1, $2, $3);
       parser->ast()->addOperation(node);
     }
   ;
@@ -657,11 +722,30 @@ optional_function_call_arguments:
     }
   ;
 
-function_arguments_list:
+expression_or_query:
     expression {
+      $$ = $1;
+    }
+  | {
+      parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_SUBQUERY);
+      parser->ast()->startSubQuery();
+    } query {
+      AstNode* node = parser->ast()->endSubQuery();
+      parser->ast()->scopes()->endCurrent();
+
+      std::string const variableName = parser->ast()->variables()->nextName();
+      auto subQuery = parser->ast()->createNodeLet(variableName.c_str(), node, false);
+      parser->ast()->addOperation(subQuery);
+
+      $$ = parser->ast()->createNodeReference(variableName.c_str());
+    }
+  ;
+
+function_arguments_list:
+    expression_or_query {
       parser->pushList($1);
     }
-  | function_arguments_list T_COMMA expression {
+  | function_arguments_list T_COMMA expression_or_query {
       parser->pushList($3);
     }
   ;

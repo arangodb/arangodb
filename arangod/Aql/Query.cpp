@@ -238,7 +238,8 @@ Query::~Query () {
     TRI_ASSERT(! _contextOwnedByExterior);
         
     // unregister transaction and resolver in context
-    TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+    ISOLATE;
+    TRI_GET_GLOBALS();
     auto ctx = static_cast<triagens::arango::V8TransactionContext*>(v8g->_transactionContext);
     if (ctx != nullptr) {
       ctx->unregisterTransaction();
@@ -646,7 +647,7 @@ QueryResult Query::execute (QueryRegistry* registry) {
 /// may only be called with an active V8 handle scope
 ////////////////////////////////////////////////////////////////////////////////
 
-QueryResultV8 Query::executeV8 (QueryRegistry* registry) {
+QueryResultV8 Query::executeV8 (v8::Isolate* isolate, QueryRegistry* registry) {
 
   // Now start the execution:
   try {
@@ -657,7 +658,7 @@ QueryResultV8 Query::executeV8 (QueryRegistry* registry) {
 
     uint32_t j = 0;
     QueryResultV8 result(TRI_ERROR_NO_ERROR);
-    result.result  = v8::Array::New();
+    result.result  = v8::Array::New(isolate);
     triagens::basics::Json stats;
 
     AqlItemBlock* value;
@@ -672,7 +673,7 @@ QueryResultV8 Query::executeV8 (QueryRegistry* registry) {
         AqlValue val = value->getValue(i, 0);
 
         if (! val.isEmpty()) {
-          result.result->Set(j++, val.toV8(_trx, doc)); 
+          result.result->Set(j++, val.toV8(isolate, _trx, doc)); 
         }
       }
       delete value;
@@ -905,7 +906,8 @@ void Query::enterContext () {
       }
     
       // register transaction and resolver in context
-      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+      ISOLATE;
+      TRI_GET_GLOBALS();
       auto ctx = static_cast<triagens::arango::V8TransactionContext*>(v8g->_transactionContext);
       if (ctx != nullptr) {
         ctx->registerTransaction(_trx->getInternals());
@@ -924,7 +926,8 @@ void Query::exitContext () {
   if (! _contextOwnedByExterior) {
     if (_context != nullptr) {
       // unregister transaction and resolver in context
-      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+      ISOLATE;
+      TRI_GET_GLOBALS();
       auto ctx = static_cast<triagens::arango::V8TransactionContext*>(v8g->_transactionContext);
       if (ctx != nullptr) {
         ctx->unregisterTransaction();

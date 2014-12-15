@@ -1,0 +1,698 @@
+# ******************************************************************************
+# *
+# *   Copyright (C) 1995-2013, International Business Machines
+# *   Corporation and others.  All Rights Reserved.
+# *
+# ******************************************************************************
+
+# If this converter alias table looks very confusing, a much easier to
+# understand view can be found at this demo:
+# http://demo.icu-project.org/icu-bin/convexp
+
+# IMPORTANT NOTE
+#
+# This file is not read directly by ICU. If you change it, you need to
+# run gencnval, and eventually run pkgdata to update the representation that
+# ICU uses for aliases. The gencnval tool will normally compile this file into
+# cnvalias.icu. The gencnval -v verbose option will help you when you edit
+# this file.
+
+# Please be friendly to the rest of us that edit this table by
+# keeping this table free of tabs.
+
+# This is an alias file used by the character set converter.
+# A lot of converter information can be found in unicode/ucnv.h, but here
+# is more information about this file.
+# 
+# If you are adding a new converter to this list and want to include it in the
+# icu data library, please be sure to add an entry to the appropriate ucm*.mk file
+# (see ucmfiles.mk for more information).
+# 
+# Here is the file format using BNF-like syntax:
+#
+# converterTable ::= tags { converterLine* }
+# converterLine ::= converterName [ tags ] { taggedAlias* }'\n'
+# taggedAlias ::= alias [ tags ]
+# tags ::= '{' { tag+ } '}'
+# tag ::= standard['*']
+# converterName ::= [0-9a-zA-Z:_'-']+
+# alias ::= converterName
+#
+# Except for the converter name, aliases are case insensitive.
+# Names are separated by whitespace.
+# Line continuation and comment sytax are similar to the GNU make syntax.
+# Any lines beginning with whitespace (e.g. U+0020 SPACE or U+0009 HORIZONTAL
+# TABULATION) are presumed to be a continuation of the previous line.
+# The # symbol starts a comment and the comment continues till the end of
+# the line.
+#
+# The converter
+#
+# All names can be tagged by including a space-separated list of tags in
+# curly braces, as in ISO_8859-1:1987{IANA*} iso-8859-1 { MIME* } or
+# some-charset{MIME* IANA*}. The order of tags does not matter, and
+# whitespace is allowed between the tagged name and the tags list.
+#
+# The tags can be used to get standard names using ucnv_getStandardName().
+#
+# The complete list of recognized tags used in this file is defined in
+# the affinity list near the beginning of the file.
+#
+# The * after the standard tag denotes that the previous alias is the
+# preferred (default) charset name for that standard. There can only
+# be one of these default charset names per converter.
+
+
+
+# The world is getting more complicated...
+# Supporting XML parsers, HTML, MIME, and similar applications
+# that mark encodings with a charset name can be difficult.
+# Many of these applications and operating systems will update
+# their codepages over time.
+
+# It means that a new codepage, one that differs from an
+# old one by changing a code point, e.g., to the Euro sign,
+# must not get an old alias, because it would mean that
+# old files with this alias would be interpreted differently.
+
+# If an codepage gets updated by assigning characters to previously
+# unassigned code points, then a new name is not necessary.
+# Also, some codepages map unassigned codepage byte values
+# to the same numbers in Unicode for roundtripping. It may be
+# industry practice to keep the encoding name in such a case, too
+# (example: Windows codepages).
+
+# The aliases listed in the list of character sets
+# that is maintained by the IANA (http://www.iana.org/) must
+# not be changed to mean encodings different from what this
+# list shows. Currently, the IANA list is at
+# http://www.iana.org/assignments/character-sets
+# It should also be mentioned that the exact mapping table used for each
+# IANA names usually isn't specified. This means that some other applications
+# and operating systems are left to interpret the exact mappings for the
+# underspecified aliases. For instance, Shift-JIS on a Solaris platform
+# may be different from Shift-JIS on a Windows platform. This is why
+# some of the aliases can be tagged to differentiate different mapping
+# tables with the same alias. If an alias is given to more than one converter,
+# it is considered to be an ambiguous alias, and the affinity list will
+# choose the converter to use when a standard isn't specified with the alias.
+
+# Name matching is case-insensitive. Also, dashes '-', underscores '_'
+# and spaces ' ' are ignored in names (thus cs-iso_latin-1, csisolatin1
+# and "cs iso latin 1" are the same).
+# However, the names in the left column are directly file names
+# or names of algorithmic converters, and their case must not
+# be changed - or else code and/or file names must also be changed.
+# For example, the converter ibm-921 is expected to be the file ibm-921.cnv.
+
+
+
+# The immediately following list is the affinity list of supported standard tags.
+# When multiple converters have the same alias under different standards,
+# the standard nearest to the top of this list with that alias will
+# be the first converter that will be opened. The ordering of the aliases
+# after this affinity list does not affect the preferred alias, but it may
+# affect the order of the returned list of aliases for a given converter.
+#
+# The general ordering is from specific and frequently used to more general
+# or rarely used at the bottom.
+{   UTR22           # Name format specified by http://www.unicode.org/unicode/reports/tr22/
+    # ICU             # Can also use ICU_FEATURE
+    IBM             # The IBM CCSID number is specified by ibm-*
+    WINDOWS         # The Microsoft code page identifier number is specified by windows-*. The rest are recognized IE names.
+    JAVA            # Source: Sun JDK. Alias name case is ignored, but dashes are not ignored.
+    # GLIBC
+    # AIX
+    # DB2
+    # SOLARIS
+    # APPLE
+    # HPUX
+    IANA            # Source: http://www.iana.org/assignments/character-sets
+    MIME            # Source: http://www.iana.org/assignments/character-sets
+    # MSIE            # MSIE is Internet Explorer, which can be different from Windows (From the IMultiLanguage COM interface)
+    # ZOS_USS         # z/OS (os/390) Unix System Services (USS), which has NL<->LF swapping. They have the same format as the IBM tag.
+    }
+
+
+
+# Fully algorithmic converters
+
+UTF-8 { IANA* MIME* JAVA* WINDOWS }
+                                ibm-1208 { IBM* } # UTF-8 with IBM PUA
+                                ibm-1209 { IBM }  # UTF-8
+                                ibm-5304 { IBM }  # Unicode 2.0, UTF-8 with IBM PUA
+                                ibm-5305 { IBM }  # Unicode 2.0, UTF-8
+                                ibm-13496 { IBM } # Unicode 3.0, UTF-8 with IBM PUA
+                                ibm-13497 { IBM } # Unicode 3.0, UTF-8
+                                ibm-17592 { IBM } # Unicode 4.0, UTF-8 with IBM PUA
+                                ibm-17593 { IBM } # Unicode 4.0, UTF-8
+                                windows-65001 { WINDOWS* }
+                                cp1208
+                                x-UTF_8J
+                                unicode-1-1-utf-8
+                                unicode-2-0-utf-8
+
+# The ICU 2.2 UTF-16/32 converters detect and write a BOM.
+UTF-16 { IANA* MIME* JAVA* }    ISO-10646-UCS-2 { IANA }
+                                ibm-1204 { IBM* } # UTF-16 with IBM PUA and BOM sensitive
+                                ibm-1205 { IBM }  # UTF-16 BOM sensitive
+                                unicode
+                                csUnicode
+                                ucs-2
+# The following Unicode CCSIDs (IBM) are not valid in ICU because they are
+# considered pure DBCS (exactly 2 bytes) of Unicode,
+# and they are a subset of Unicode. ICU does not support their encoding structures.
+# 1400 1401 1402 1410 1414 1415 1446 1447 1448 1449 64770 64771 65520 5496 5497 5498 9592 13688
+UTF-16BE { IANA* MIME* JAVA* }  x-utf-16be { JAVA }
+                                UnicodeBigUnmarked { JAVA } # java.io name
+                                ibm-1200 { IBM* } # UTF-16 BE with IBM PUA
+                                ibm-1201 { IBM }  # UTF-16 BE
+                                ibm-13488 { IBM } # Unicode 2.0, UTF-16 BE with IBM PUA
+                                ibm-13489 { IBM } # Unicode 2.0, UTF-16 BE
+                                ibm-17584 { IBM } # Unicode 3.0, UTF-16 BE with IBM PUA
+                                ibm-17585 { IBM } # Unicode 3.0, UTF-16 BE
+                                ibm-21680 { IBM } # Unicode 4.0, UTF-16 BE with IBM PUA
+                                ibm-21681 { IBM } # Unicode 4.0, UTF-16 BE
+                                ibm-25776 { IBM } # Unicode 4.1, UTF-16 BE with IBM PUA
+                                ibm-25777 { IBM } # Unicode 4.1, UTF-16 BE
+                                ibm-29872 { IBM } # Unicode 5.0, UTF-16 BE with IBM PUA
+                                ibm-29873 { IBM } # Unicode 5.0, UTF-16 BE
+                                ibm-61955 { IBM } # UTF-16BE with Gaidai University (Japan) PUA
+                                ibm-61956 { IBM } # UTF-16BE with Microsoft HKSCS-Big 5 PUA
+                                windows-1201 { WINDOWS* }
+                                cp1200
+                                cp1201
+                                UTF16_BigEndian
+                                # ibm-5297 { IBM }  # Unicode 2.0, UTF-16 (BE) (reserved, never used)
+                                # iso-10646-ucs-2 { JAVA } # This is ambiguous
+                                # ibm-61952 is not a valid CCSID because it's Unicode 1.1
+                                # ibm-61953 is not a valid CCSID because it's Unicode 1.0
+UTF-16LE { IANA* MIME* JAVA* }  x-utf-16le { JAVA }
+                                UnicodeLittleUnmarked { JAVA } # java.io name
+                                ibm-1202 { IBM* } # UTF-16 LE with IBM PUA
+                                ibm-1203 { IBM }  # UTF-16 LE
+                                ibm-13490 { IBM } # Unicode 2.0, UTF-16 LE with IBM PUA
+                                ibm-13491 { IBM } # Unicode 2.0, UTF-16 LE
+                                ibm-17586 { IBM } # Unicode 3.0, UTF-16 LE with IBM PUA
+                                ibm-17587 { IBM } # Unicode 3.0, UTF-16 LE
+                                ibm-21682 { IBM } # Unicode 4.0, UTF-16 LE with IBM PUA
+                                ibm-21683 { IBM } # Unicode 4.0, UTF-16 LE
+                                ibm-25778 { IBM } # Unicode 4.1, UTF-16 LE with IBM PUA
+                                ibm-25779 { IBM } # Unicode 4.1, UTF-16 LE
+                                ibm-29874 { IBM } # Unicode 5.0, UTF-16 LE with IBM PUA
+                                ibm-29875 { IBM } # Unicode 5.0, UTF-16 LE
+                                UTF16_LittleEndian
+                                windows-1200 { WINDOWS* }
+
+UTF-32 { IANA* MIME* }          ISO-10646-UCS-4 { IANA }
+                                ibm-1236 { IBM* } # UTF-32 with IBM PUA and BOM sensitive
+                                ibm-1237 { IBM }  # UTF-32 BOM sensitive
+                                csUCS4
+                                ucs-4
+UTF-32BE { IANA* }              UTF32_BigEndian
+                                ibm-1232 { IBM* } # UTF-32 BE with IBM PUA
+                                ibm-1233 { IBM }  # UTF-32 BE
+                                ibm-9424 { IBM }  # Unicode 4.1, UTF-32 BE with IBM PUA
+UTF-32LE { IANA* }              UTF32_LittleEndian
+                                ibm-1234 { IBM* } # UTF-32 LE, with IBM PUA
+                                ibm-1235 { IBM }  # UTF-32 LE
+
+# ICU-specific names for special uses
+UTF16_PlatformEndian
+UTF16_OppositeEndian
+
+UTF32_PlatformEndian
+UTF32_OppositeEndian
+
+
+# Java-specific, non-Unicode-standard UTF-16 variants.
+# These are in the Java "Basic Encoding Set (contained in lib/rt.jar)".
+# See the "Supported Encodings" at
+# http://java.sun.com/javase/6/docs/technotes/guides/intl/encoding.doc.html
+# or a newer version of this document.
+#
+# Aliases marked with { JAVA* } are canonical names for java.io and java.lang APIs.
+# Aliases marked with { JAVA } are canonical names for the java.nio API.
+#
+# "BOM" means the Unicode Byte Order Mark, which is the encoding-scheme-specific
+# byte sequence for U+FEFF.
+# "Reverse BOM" means the BOM for the sibling encoding scheme with the
+# opposite endianness. (LE<->BE)
+
+# "Sixteen-bit Unicode (or UCS) Transformation Format, big-endian byte order,
+# with byte-order mark"
+#
+# From Unicode: Writes BOM.
+# To Unicode: Detects and consumes BOM. 
+#   If there is a "reverse BOM", Java throws
+#   MalformedInputException: Incorrect byte-order mark.
+#   In this case, ICU4C sets a U_ILLEGAL_ESCAPE_SEQUENCE UErrorCode value
+#   and a UCNV_ILLEGAL UConverterCallbackReason.
+UTF-16BE,version=1		UnicodeBig { JAVA* }
+
+# "Sixteen-bit Unicode (or UCS) Transformation Format, little-endian byte order,
+# with byte-order mark"
+#
+# From Unicode: Writes BOM.
+# To Unicode: Detects and consumes BOM. 
+#   If there is a "reverse BOM", Java throws
+#   MalformedInputException: Incorrect byte-order mark.
+#   In this case, ICU4C sets a U_ILLEGAL_ESCAPE_SEQUENCE UErrorCode value
+#   and a UCNV_ILLEGAL UConverterCallbackReason.
+UTF-16LE,version=1		UnicodeLittle { JAVA* }  x-UTF-16LE-BOM { JAVA }
+
+# This one is not mentioned on the "Supported Encodings" page
+# but is available in Java.
+# In Java, this is called "Unicode" but we cannot give it that alias
+# because the standard UTF-16 converter already has a "unicode" alias.
+#
+# From Unicode: Writes BOM.
+# To Unicode: Detects and consumes BOM.
+#   If there is no BOM, rather than defaulting to BE, Java throws
+#   MalformedInputException: Missing byte-order mark.
+#   In this case, ICU4C sets a U_ILLEGAL_ESCAPE_SEQUENCE UErrorCode value
+#   and a UCNV_ILLEGAL UConverterCallbackReason.
+UTF-16,version=1
+
+# This is the same as standard UTF-16 but always writes a big-endian byte stream,
+# regardless of the platform endianness, as expected by the Java compatibility tests.
+# See the java.nio.charset.Charset API documentation at
+# http://java.sun.com/javase/6/docs/api/java/nio/charset/Charset.html
+# or a newer version of this document.
+#
+# From Unicode: Write BE BOM and BE bytes
+# To Unicode: Detects and consumes BOM. Defaults to BE.
+UTF-16,version=2
+
+# Note: ICU does not currently support Java-specific, non-Unicode-standard UTF-32 variants.
+# Presumably, these behave analogously to the UTF-16 variants with similar names.
+# UTF_32BE_BOM  x-UTF-32BE-BOM
+# UTF_32LE_BOM  x-UTF-32LE-BOM
+
+# End of Java-specific, non-Unicode-standard UTF variants.
+
+
+# Chrome: Remove all the entries for UTF-7, SCSU, BOCU, CESU-8.
+
+# Standard iso-8859-1, which does not have the Euro update.
+# See iso-8859-15 (latin9) for the Euro update
+ISO-8859-1 { MIME* IANA JAVA* }
+    ibm-819 { IBM* JAVA }    # This is not truely ibm-819 because it's missing the fallbacks.
+    IBM819 { IANA }
+    cp819 { IANA JAVA }
+    latin1 { IANA JAVA }
+    8859_1 { JAVA }
+    csISOLatin1 { IANA JAVA }
+    iso-ir-100 { IANA JAVA }
+    ISO_8859-1:1987 { IANA* JAVA }
+    l1 { IANA JAVA }
+    819 { JAVA }
+    # windows-28591 { WINDOWS* } # This has odd behavior because it has the Euro update, which isn't correct.
+    # LATIN_1     # Old ICU name
+    # ANSI_X3.110-1983  # This is for a different IANA alias.  This isn't iso-8859-1.
+
+US-ASCII { MIME* IANA JAVA WINDOWS }
+    ASCII { JAVA* IANA WINDOWS }
+    ANSI_X3.4-1968 { IANA* WINDOWS }
+    ANSI_X3.4-1986 { IANA WINDOWS }
+    ISO_646.irv:1991 { IANA WINDOWS }
+    iso_646.irv:1983 { JAVA }
+    ISO646-US { JAVA IANA WINDOWS }
+    us { IANA }
+    csASCII { IANA WINDOWS }
+    iso-ir-6 { IANA }
+    cp367 { IANA WINDOWS }
+    ascii7 { JAVA }
+    646 { JAVA }
+    windows-20127 { WINDOWS* }
+    ibm-367 { IBM* } IBM367 { IANA WINDOWS } # This is not truely ibm-367 because it's missing the fallbacks.
+
+# GB 18030 is partly algorithmic, using the MBCS converter
+# Chrome: HTML5 GBK an alias for GB18030
+#         TODO(jshin): Decide if Chrome should follow spec. crbug.com/339862
+gb18030 { IANA* }       ibm-1392 { IBM* } windows-54936 { WINDOWS* } gb18030 { MIME* }
+
+# Table-based interchange codepages
+
+# Central Europe
+ibm-912_P100-1995 { UTR22* }
+                        ibm-912 { IBM* JAVA }
+                        ISO-8859-2 { MIME* IANA JAVA* WINDOWS }
+                        ISO_8859-2:1987 { IANA* WINDOWS JAVA }
+                        latin2 { IANA WINDOWS JAVA }
+                        csISOLatin2 { IANA WINDOWS JAVA }
+                        iso-ir-101 { IANA WINDOWS JAVA }
+                        l2 { IANA WINDOWS JAVA }
+                        8859_2 { JAVA }
+                        cp912 { JAVA }
+                        912 { JAVA }
+                        windows-28592 { WINDOWS* }
+
+# Maltese Esperanto
+ibm-913_P100-2000 { UTR22* }
+                        ibm-913 { IBM* JAVA }
+                        ISO-8859-3 { MIME* IANA WINDOWS JAVA* }
+                        ISO_8859-3:1988 { IANA* WINDOWS JAVA }
+                        latin3 { IANA JAVA WINDOWS }
+                        csISOLatin3 { IANA WINDOWS }
+                        iso-ir-109 { IANA WINDOWS JAVA }
+                        l3 { IANA WINDOWS JAVA }
+                        8859_3 { JAVA }
+                        cp913 { JAVA }
+                        913 { JAVA }
+                        windows-28593 { WINDOWS* }
+
+# Baltic
+ibm-914_P100-1995 { UTR22* }
+                        ibm-914 { IBM* JAVA }
+                        ISO-8859-4 { MIME* IANA WINDOWS JAVA* }
+                        latin4 { IANA WINDOWS JAVA }
+                        csISOLatin4 { IANA WINDOWS JAVA }
+                        iso-ir-110 { IANA WINDOWS JAVA }
+                        ISO_8859-4:1988 { IANA* WINDOWS JAVA }
+                        l4 { IANA WINDOWS JAVA }
+                        8859_4 { JAVA }
+                        cp914 { JAVA }
+                        914 { JAVA }
+                        windows-28594 { WINDOWS* }
+
+# Cyrillic
+ibm-915_P100-1995 { UTR22* }
+                        ibm-915 { IBM* JAVA }
+                        ISO-8859-5 { MIME* IANA WINDOWS JAVA* }
+                        cyrillic { IANA WINDOWS JAVA }
+                        csISOLatinCyrillic { IANA WINDOWS JAVA }
+                        iso-ir-144 { IANA WINDOWS JAVA }
+                        ISO_8859-5:1988 { IANA* WINDOWS JAVA }
+                        8859_5 { JAVA }
+                        cp915 { JAVA }
+                        915 { JAVA }
+                        windows-28595 { WINDOWS* }
+
+# Arabic
+# ISO_8859-6-E and ISO_8859-6-I are similar to this charset, but BiDi is done differently
+# From a narrow mapping point of view, there is no difference.
+# -E means explicit. -I means implicit.
+# -E requires the client to handle the ISO 6429 bidirectional controls
+ibm-1089_P100-1995 { UTR22* }
+                        ibm-1089 { IBM* JAVA }
+                        ISO-8859-6 { MIME* IANA WINDOWS JAVA* }
+                        arabic { IANA WINDOWS JAVA }
+                        csISOLatinArabic { IANA WINDOWS JAVA }
+                        iso-ir-127 { IANA WINDOWS JAVA }
+                        ISO_8859-6:1987 { IANA* WINDOWS JAVA }
+                        ECMA-114 { IANA JAVA }
+                        ASMO-708 { IANA JAVA }
+                        8859_6 { JAVA }
+                        cp1089 { JAVA }
+                        1089 { JAVA }
+                        windows-28596 { WINDOWS* }
+                        ISO-8859-6-I { IANA MIME } # IANA considers this alias different and BiDi needs to be applied.
+                        ISO-8859-6-E { IANA MIME } # IANA considers this alias different and BiDi needs to be applied.
+                        x-ISO-8859-6S { JAVA }
+
+# ISO Greek (with euro update). This is really ISO_8859-7:2003
+ibm-9005_X110-2007 { UTR22* }
+                        ibm-9005 { IBM* }
+                        ISO-8859-7 { MIME* IANA JAVA* WINDOWS }
+                        8859_7 { JAVA }
+                        greek { IANA JAVA WINDOWS }
+                        greek8 { IANA JAVA WINDOWS }
+                        ELOT_928 { IANA JAVA WINDOWS }
+                        ECMA-118 { IANA JAVA WINDOWS }
+                        csISOLatinGreek { IANA JAVA WINDOWS }
+                        iso-ir-126 { IANA JAVA WINDOWS }
+                        ISO_8859-7:1987 { IANA* JAVA WINDOWS }
+                        windows-28597 { WINDOWS* }
+                        sun_eu_greek # For Solaris
+
+# hebrew
+# ISO_8859-8-E and ISO_8859-8-I are similar to this charset, but BiDi is done differently
+# From a narrow mapping point of view, there is no difference.
+# -E means explicit. -I means implicit.
+# -E requires the client to handle the ISO 6429 bidirectional controls
+# This matches the official mapping on unicode.org
+ibm-5012_P100-1999 { UTR22* }
+                        ibm-5012 { IBM* }
+                        ISO-8859-8 { MIME* IANA WINDOWS JAVA* }
+                        hebrew { IANA WINDOWS JAVA }
+                        csISOLatinHebrew { IANA WINDOWS JAVA }
+                        iso-ir-138 { IANA WINDOWS JAVA }
+                        ISO_8859-8:1988 { IANA* WINDOWS JAVA }
+                        ISO-8859-8-I { IANA MIME } # IANA and Windows considers this alias different and BiDi needs to be applied.
+                        ISO-8859-8-E { IANA MIME } # IANA and Windows considers this alias different and BiDi needs to be applied.
+                        8859_8 { JAVA }
+                        windows-28598 { WINDOWS* } # Hebrew (ISO-Visual). A hybrid between ibm-5012 and ibm-916 with extra PUA mappings.
+                        hebrew8 # Reflect HP-UX code page update
+
+# Turkish
+# Chrome: ISO-8859-9 and its aliases are moved to windows-1254 per
+# HTML5. 
+ibm-920_P100-1995 { UTR22* }
+                        ibm-920 { IBM* JAVA }
+                        ISO-8859-9
+                        latin5
+                        csISOLatin5
+                        iso-ir-148 
+                        ISO_8859-9:1989
+                        l5
+                        cp920 { JAVA }
+                        920 { JAVA }
+                        windows-28599 { WINDOWS* }
+                        ECMA-128    # IANA doesn't have this alias 6/24/2002
+                        turkish8    # Reflect HP-UX codepage update 8/1/2008
+                        turkish     # Reflect HP-UX codepage update 8/1/2008
+
+# Nordic languages
+iso-8859_10-1998 { UTR22* } ISO-8859-10 { MIME* IANA* }
+                        iso-ir-157 { IANA }
+                        l6 { IANA }
+                        ISO_8859-10:1992 { IANA }
+                        csISOLatin6 { IANA }
+                        latin6 { IANA }
+
+# Thai
+# Be warned. There several iso-8859-11 codepage variants, and they are all incompatible.
+# ISO-8859-11 is a superset of TIS-620. The difference is that ISO-8859-11 contains the C1 control codes.
+iso-8859_11-2001 { UTR22* } ISO-8859-11
+                        thai8 # HP-UX alias. HP-UX says TIS-620, but it's closer to ISO-8859-11.
+                        x-iso-8859-11 { JAVA* }
+
+# iso-8859-13, PC Baltic (w/o euro update)
+ibm-921_P100-1995 { UTR22* }
+                        ibm-921 { IBM* }
+                        ISO-8859-13 { IANA* MIME* JAVA* }
+                        8859_13 { JAVA }
+                        windows-28603 { WINDOWS* }
+                        cp921
+                        921
+                        x-IBM921 { JAVA }
+
+# Celtic
+iso-8859_14-1998 { UTR22* } ISO-8859-14 { IANA* }
+                        iso-ir-199 { IANA }
+                        ISO_8859-14:1998 { IANA }
+                        latin8 { IANA }
+                        iso-celtic { IANA }
+                        l8 { IANA }
+
+# Latin 9
+ibm-923_P100-1998 { UTR22* }
+                        ibm-923 { IBM* JAVA }
+                        ISO-8859-15 { IANA* MIME* WINDOWS JAVA* }
+                        Latin-9 { IANA WINDOWS }
+                        l9 { WINDOWS }
+                        8859_15 { JAVA }
+                        latin0 { JAVA }
+                        csisolatin0 { JAVA }
+                        csisolatin9 { JAVA }
+                        iso8859_15_fdis { JAVA }
+                        cp923 { JAVA }
+                        923 { JAVA }
+                        windows-28605 { WINDOWS* }
+
+# CJK encodings
+
+
+# ibm-943_P15A-2003 differs from windows-932-2000 only in a few roundtrip mappings:
+# - the usual IBM PC control code rotation (1A-1C-7F)
+# - the Windows table has roundtrips for bytes 80, A0, and FD-FF to U+0080 and PUA
+ibm-943_P15A-2003 { UTR22* }
+                        ibm-943 # Leave untagged because this isn't the default
+                        Shift_JIS { IANA* MIME* WINDOWS JAVA }
+                        MS_Kanji { IANA WINDOWS JAVA }
+                        csShiftJIS { IANA WINDOWS JAVA }
+                        windows-31j { IANA JAVA } # A further extension of Shift_JIS to include NEC special characters (Row 13)
+                        csWindows31J { IANA WINDOWS JAVA } # A further extension of Shift_JIS to include NEC special characters (Row 13)
+                        x-sjis { WINDOWS JAVA }
+                        x-ms-cp932 { WINDOWS }
+                        cp932 { WINDOWS }
+                        windows-932 { WINDOWS* }
+                        cp943c { JAVA* }    # This is slightly different, but the backslash mapping is the same.
+                        IBM-943C #{ AIX* } # Add this tag once AIX aliases becomes available
+                        ms932
+                        pck     # Probably SOLARIS
+                        sjis    # This might be for ibm-1351
+                        ibm-943_VSUB_VPUA
+                        x-MS932_0213 { JAVA }
+                        x-JISAutoDetect { JAVA }
+                        # cp943 # This isn't Windows, and no one else uses it.
+                        # IANA says that Windows-31J is an extension to csshiftjis ibm-932 
+
+# Chrome: Instead of ibm-33722_P*, we use what's specified in the WHATWG
+# encoding standard (HTML5) with 30+ additional decode-only mappings. All the
+# 3-byte seqeunces in the normative EUC-JP are now decode-only.
+euc-jp-html5 { UTR22* }
+                        EUC-JP { MIME* IANA JAVA* WINDOWS*}
+                        Extended_UNIX_Code_Packed_Format_for_Japanese { IANA* JAVA WINDOWS }
+                        csEUCPkdFmtJapanese { IANA JAVA WINDOWS }
+                        windows-51932 { WINDOWS }
+                        X-EUC-JP { MIME JAVA WINDOWS }   # Japan EUC. x-euc-jp is a MIME name
+                        eucjis {JAVA}
+                        ujis # Linux sometimes uses this name. This is an unfortunate generic and rarely used name. Its use is discouraged.
+
+
+windows-950-2000 { UTR22* }
+                        Big5 { IANA* MIME* JAVA* WINDOWS }
+                        csBig5 { IANA WINDOWS }
+                        windows-950 { WINDOWS* }
+                        x-windows-950 { JAVA }
+                        x-big5
+                        ms950
+ibm-1375_P100-2007 { UTR22* }   # Big5-HKSCS-2004 with Unicode 3.1 mappings. This uses supplementary characters.
+                        ibm-1375 { IBM* }
+                        Big5-HKSCS { IANA* JAVA* }
+                        big5hk { JAVA }
+                        HKSCS-BIG5  # From http://www.openi18n.org/localenameguide/
+
+# Chrome: HTML5 has big5-hkscs as an alias for big5
+#         TODO(jshin): Decide if Chrome should follow spec. crbug.com/277040
+ibm-5471_P100-2006 { UTR22* }   # Big5-HKSCS-2001 with Unicode 3.0 mappings. This uses many PUA characters.
+                        ibm-5471 { IBM* }
+                        Big5-HKSCS
+                        MS950_HKSCS { JAVA* }
+                        hkbig5 # from HP-UX 11i, which can't handle supplementary characters.
+                        big5-hkscs:unicode3.0
+                        x-MS950-HKSCS { JAVA }
+                        # windows-950 # Windows-950 can be w/ or w/o HKSCS extensions. By default it's not.
+                        # windows-950_hkscs
+# GBK
+# Chrome: Added 4 GB2312 aliases and EUC-CN to Windows-936 to reflect the
+#         reality of the web (GB2312 is treated synonymously with its
+#         superset, Windows-936/GBK)
+#         All the aliases listed for this converter (windows-936-2000)
+#         are removed from the list of aliases for other simplified Chinese
+#         converters above.
+#         HTML5 makes GBK an alias for GB18030
+#         TODO(jshin): Decide if Chrome should follow spec. crbug.com/339862
+windows-936-2000 { UTR22* }
+                        GB2312 { IANA MIME }
+                        GBK { IANA* MIME* WINDOWS JAVA* }
+                        CP936 { IANA JAVA }
+                        MS936 { IANA }  # In JDK 1.5, this goes to x-mswin-936. This is an IANA name split.
+                        windows-936 { IANA WINDOWS* JAVA }
+                        chinese { IANA }
+                        iso-ir-58 { IANA }
+                        gb2312-1980
+                        EUC-CN
+                        csGB2312 { IANA }
+                        GB_2312-80 { IANA }
+
+
+# Chrome: ibm-5478 and ibm-949 are replaced by noop-gb2312_gl and windows-949
+# (ksc_5601), respectively, in ucnv2022.c
+
+# Korean EUC.
+
+# Chrome: Windows-949 is not EUC-KR, but a superset of EUC-KR with 8,822
+#         additional Hangul syllables. However, the reality of the web
+#         and HTML5 require that we treat EUC-KR a
+#         synonym of windows-949.
+#         All the aliases listed for this converter (windows-949-2000)
+#         are removed from the list of aliases for other Korean converters
+#         above.
+windows-949-2000 { UTR22* }
+                        windows-949 { JAVA* WINDOWS* }
+                        EUC-KR { IANA* MIME* WINDOWS }
+                        KS_C_5601-1987 { WINDOWS IANA }
+                        KS_C_5601-1989 { WINDOWS IANA }
+                        KSC_5601 { IANA WINDOWS } # Needed by iso-2022
+                        csKSC56011987 { WINDOWS }
+                        korean { IANA WINDOWS }
+                        iso-ir-149 { IANA WINDOWS }
+                        csEUCKR { IANA WINDOWS }
+
+#Chrome: TIS-620, ISO-8859-11 and Windows-874 are slightly different from
+# each other, but they're used as if they're identical on the web. This is
+# also per HTML5.
+windows-874-2000 { UTR22* }   # Thai (w/ euro update)
+                        TIS-620 { IANA* WINDOWS MIME* }
+                        windows-874 { JAVA* WINDOWS* MIME }
+                        MS874 { JAVA }
+                        x-windows-874 { JAVA }
+                        iso-8859-11 { IANA WINDOWS MIME } # iso-8859-11 is similar to TIS-620. ibm-13162 is a closer match.
+
+# Platform codepages
+# Chrome: only keep ibm-878 for KOI8-R, ibm-1168 for KOI8-RU and ibm-866
+ibm-878_P100-1996 { UTR22* }    ibm-878 { IBM* } KOI8-R { IANA* MIME* WINDOWS JAVA* } koi8 { WINDOWS JAVA } csKOI8R { IANA WINDOWS JAVA } windows-20866 { WINDOWS* } cp878   # Russian internet
+# Chrome: Use the table from the WHATWG encoding standard (HTML5).
+ibm-866_html5-2012 { UTR22* }    ibm-866 { IBM* } IBM866 { IANA* MIME* JAVA } cp866 { IANA MIME WINDOWS JAVA* } 866 { IANA JAVA } csIBM866 { IANA JAVA } # PC Russian (w/o euro update)
+ibm-1168_P100-2002 { UTR22* }   ibm-1168 { IBM* } KOI8-U { IANA* WINDOWS } windows-21866 { WINDOWS* } # Ukrainian KOI8. koi8-ru != KOI8-U and Microsoft is wrong for aliasing them as the same.
+
+# The cp aliases in this section aren't really windows aliases, but it was used by ICU for Windows.
+# cp is usually used to denote IBM in Java, and that is why we don't do that anymore.
+# The windows-* aliases mean windows codepages.
+ibm-5346_P100-1998 { UTR22* }   ibm-5346 { IBM* } windows-1250 { IANA* JAVA* WINDOWS* } cp1250 { WINDOWS JAVA } # Windows Latin2 (w/ euro update)
+ibm-5347_P100-1998 { UTR22* }   ibm-5347 { IBM* } windows-1251 { IANA* JAVA* WINDOWS* } cp1251 { WINDOWS JAVA } ANSI1251 # Windows Cyrillic (w/ euro update). ANSI1251 is from Solaris
+ibm-5348_P100-1997 { UTR22* }   ibm-5348 { IBM* } windows-1252 { IANA* JAVA* WINDOWS* } cp1252 { JAVA }         # Windows Latin1 (w/ euro update)
+ibm-5349_P100-1998 { UTR22* }   ibm-5349 { IBM* } windows-1253 { IANA* JAVA* WINDOWS* } cp1253 { JAVA }         # Windows Greek (w/ euro update)
+
+#CHROME : Make ISO-8859-9 an alias to windows-1254 per HTML5. Move
+#         other IANA aliases for ISO-8859-9 as well.
+ibm-5350_P100-1998 { UTR22* }   ibm-5350 { IBM* } windows-1254 { MIME* IANA* JAVA* WINDOWS* } cp1254 { JAVA }         # Windows Turkish (w/ euro update)
+                        ISO-8859-9 { MIME }
+                        latin5 { IANA }
+                        csISOLatin5 { IANA }
+                        iso-ir-148 { IANA }
+                        ISO_8859-9:1989 { IANA }
+                        l5 { IANA }
+                        8859_9 { JAVA }
+ibm-9447_P100-2002 { UTR22* }   ibm-9447 { IBM* } windows-1255 { IANA* JAVA* WINDOWS* } cp1255 { JAVA }         # Windows Hebrew (w/ euro update)
+ibm-9448_X100-2005 { UTR22* }   ibm-9448 { IBM* } windows-1256 { IANA* JAVA* WINDOWS* } cp1256 { WINDOWS JAVA } x-windows-1256S { JAVA } # Windows Arabic (w/ euro update)
+ibm-9449_P100-2002 { UTR22* }   ibm-9449 { IBM* } windows-1257 { IANA* JAVA* WINDOWS* } cp1257 { JAVA }         # Windows Baltic (w/ euro update)
+ibm-5354_P100-1998 { UTR22* }   ibm-5354 { IBM* } windows-1258 { IANA* JAVA* WINDOWS* } cp1258 { JAVA }         # Windows Vietnamese (w/ euro update)
+
+# Chrome: Only MacRoman and MacCyrillic are necessary for HTML5.
+macos-0_2-10.2 { UTR22* }       macintosh { IANA* MIME* WINDOWS } mac { IANA } csMacintosh { IANA } windows-10000 { WINDOWS* } macroman { JAVA } x-macroman { JAVA* } # Apple latin 1
+macos-7_3-10.2 { UTR22* }       x-mac-cyrillic { MIME* WINDOWS } windows-10007 { WINDOWS* } mac-cyrillic maccy x-MacCyrillic { JAVA } x-MacUkraine { JAVA* } # Apple Cyrillic
+
+# Partially algorithmic converters
+
+# [U_ENABLE_GENERIC_ISO_2022]
+# The _generic_ ISO-2022 converter is disabled starting 2003-dec-03 (ICU 2.8).
+# For details see the icu mailing list from 2003-dec-01 and the ucnv2022.c file.
+# Language-specific variants of ISO-2022 continue to be available as listed below.
+# ISO_2022                         ISO-2022
+
+# Chrome: The encoding standard only supports ISO-2022-JP and HZ-GB. 
+# Keep ISO-2022-{KR,CN,CN-Ext} until we're sure what to do about
+# replacement encodings. See crbug.com/277037
+# TODO(jshin): Remove them when the bug is resolved.
+ISO_2022,locale=ja,version=0    ISO-2022-JP { IANA* MIME* JAVA* } csISO2022JP { IANA JAVA } x-windows-iso2022jp { JAVA } x-windows-50220 { JAVA }
+ISO_2022,locale=ko,version=0    ISO-2022-KR { IANA* MIME* JAVA* } csISO2022KR { IANA JAVA } # This uses ibm-949
+ISO_2022,locale=zh,version=0    ISO-2022-CN { IANA* JAVA* } csISO2022CN { JAVA } x-ISO-2022-CN-GB { JAVA }
+ISO_2022,locale=zh,version=1    ISO-2022-CN-EXT { IANA* }
+HZ                              HZ-GB-2312 { IANA* }
+
+# Chrome: HTML5 does not need ISCII.
+#         Remove all Lotus entries as well.
+
+# EBCDIC codepages according to the CDRA
+# Chrome: Removed all EBCDIC code pages.
+
+# These are not installed by default. They are rarely used.
+# Many of them can be added through the online ICU Data Library Customization tool
+# Chrome: Removed all these entries except for ISO-8859-16 required by HTML5.
+
+iso-8859_16-2001 { UTR22* }     ISO-8859-16 { IANA* } iso-ir-226 { IANA } ISO_8859-16:2001 { IANA } latin10 { IANA } l10 { IANA }
+

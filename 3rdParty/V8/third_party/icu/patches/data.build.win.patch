@@ -1,0 +1,21 @@
+Index: source/data/makedata.mak
+===================================================================
+--- source/data/makedata.mak	(revision 266014)
++++ source/data/makedata.mak	(working copy)
+@@ -478,7 +478,7 @@
+ #				Building the common dll in $(ICUBLD_PKG) unconditionally copies it to $(DLL_OUTPUT) too.
+ #
+ #############################################################################
+-ALL : GODATA "$(ICU_LIB_TARGET)" "$(TESTDATAOUT)\testdata.dat"
++ALL : GODATA "$(ICU_LIB_TARGET)"
+ 	@echo All targets are up to date
+ 
+ # The core Unicode properties files (uprops.icu, ucase.icu, ubidi.icu)
+@@ -597,6 +597,7 @@
+ 	cd "$(ICUBLD_PKG)"
+ 	"$(ICUPBIN)\icupkg" -x * --list "$(ICUDATA_SOURCE_ARCHIVE)" > "$(ICUTMP)\icudata.lst"
+ 	"$(ICUPBIN)\pkgdata" $(COMMON_ICUDATA_ARGUMENTS) "$(ICUTMP)\icudata.lst"
++	editbin /NXCOMPAT /DYNAMICBASE "$(U_ICUDATA_NAME).dll"
+ 	copy "$(U_ICUDATA_NAME).dll" "$(DLL_OUTPUT)"
+ 	-@erase "$(U_ICUDATA_NAME).dll"
+ 	copy "$(ICUTMP)\$(ICUPKG).dat" "$(ICUOUT)\$(U_ICUDATA_NAME)$(U_ICUDATA_ENDIAN_SUFFIX).dat"

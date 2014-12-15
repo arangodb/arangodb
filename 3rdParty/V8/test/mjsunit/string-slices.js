@@ -197,9 +197,9 @@ var a = "123456789" + "qwertyuiopasdfghjklzxcvbnm";
 var b = "23456789qwertyuiopasdfghjklzxcvbn"
 assertEquals(a.slice(1,-1), b);
 
-assertTrue(isAsciiString(a));
+assertTrue(isOneByteString(a));
 externalizeString(a, true);
-assertFalse(isAsciiString(a));
+assertFalse(isOneByteString(a));
 
 assertEquals(a.slice(1,-1), b);
 assertTrue(/3456789qwe/.test(a));
@@ -223,3 +223,14 @@ function test_crankshaft() {
 test_crankshaft();
 %OptimizeFunctionOnNextCall(test_crankshaft);
 test_crankshaft();
+
+var s1 = "12345678901234567890";
+var s2 = "abcdefghijklmnopqrstuvwxyz";
+var c1 = s1 + s2;
+var c2 = s1 + c1 + s2;
+assertEquals("234567890123456789", c1.substring(1, 19));
+assertEquals("bcdefghijklmno", c1.substring(21, 35));
+assertEquals("2345678901234567890abcdefghijklmno", c1.substring(1, 35));
+assertEquals("234567890123456789", c2.substring(1, 19));
+assertEquals("bcdefghijklmno", c2.substring(41, 55));
+assertEquals("2345678901234567890abcdefghijklmno", c2.substring(21, 55));

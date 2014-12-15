@@ -1,0 +1,68 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/en_ZW.xml
+// *
+// ***************************************************************************
+en_ZW{
+    %%Parent{"en_001"}
+    Version{"2.0.92.80"}
+    calendar{
+        generic{
+            DateTimePatterns{
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
+                "EEEE dd MMMM y G",
+                "dd MMMM y G",
+                "dd MMM,y G",
+                "d/M/y GGGGG",
+                "{1}, {0}",
+                "{1} 'at' {0}",
+                "{1} 'at' {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+            availableFormats{
+                MEd{"E d/M"}
+                MMMEd{"E dd MMM"}
+                MMMd{"dd MMM"}
+                Md{"d/M"}
+                yyyyMEd{"E, d/M/y G"}
+                yyyyMMMEd{"E, dd MMM, y G"}
+                yyyyMMMd{"dd MMM, y G"}
+                yyyyMd{"d/M/y G"}
+            }
+        }
+        gregorian{
+            DateTimePatterns{
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
+                "EEEE dd MMMM y",
+                "dd MMMM y",
+                "dd MMM,y",
+                "d/M/y",
+                "{1}, {0}",
+                "{1} 'at' {0}",
+                "{1} 'at' {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+            availableFormats{
+                MEd{"E d/M"}
+                MMMEd{"E dd MMM"}
+                MMMd{"dd MMM"}
+                Md{"d/M"}
+                yMEd{"E, d/M/y"}
+                yMMMEd{"E, dd MMM, y"}
+                yMMMd{"dd MMM, y"}
+                yMd{"d/M/y"}
+            }
+        }
+    }
+}

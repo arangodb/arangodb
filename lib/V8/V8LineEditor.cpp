@@ -179,7 +179,10 @@ bool V8Completer::isComplete(std::string const& source, size_t lineno, size_t co
 
 void V8Completer::getAlternatives(char const * text, vector<string> & result) {
   // locate global object or sub-object
-  v8::Handle<v8::Object> current = v8::Context::GetCurrent()->Global();
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+  v8::Handle<v8::Object> current = context->Global();
   string path;
   char* prefix;
 
@@ -188,7 +191,7 @@ void V8Completer::getAlternatives(char const * text, vector<string> & result) {
 
     if (1 < splitted._length) {
       for (size_t i = 0;  i < splitted._length - 1;  ++i) {
-        v8::Handle<v8::String> name = v8::String::New(splitted._buffer[i]);
+        v8::Handle<v8::String> name = TRI_V8_STRING(splitted._buffer[i]);
 
         if (! current->Has(name)) {
           TRI_DestroyVectorString(&splitted);
@@ -218,11 +221,11 @@ void V8Completer::getAlternatives(char const * text, vector<string> & result) {
     prefix = TRI_DuplicateString(text);
   }
 
-  v8::HandleScope scope;
+  v8::HandleScope scope(isolate);
 
   // compute all possible completions
   v8::Handle<v8::Array> properties;
-  v8::Handle<v8::String> cpl = v8::String::New("_COMPLETIONS");
+  v8::Handle<v8::String> cpl = TRI_V8_ASCII_STRING("_COMPLETIONS");
 
   if (current->HasOwnProperty(cpl)) {
     v8::Handle<v8::Value> funcVal = current->Get(cpl);

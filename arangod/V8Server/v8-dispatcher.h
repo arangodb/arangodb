@@ -58,7 +58,8 @@ namespace triagens {
 /// @brief stores the V8 actions function inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Dispatcher (v8::Handle<v8::Context> context,
+void TRI_InitV8Dispatcher (v8::Isolate* isolate,
+                           v8::Handle<v8::Context> context,
                            TRI_vocbase_t* vocbase,
                            triagens::rest::ApplicationScheduler* scheduler,
                            triagens::rest::ApplicationDispatcher* dispatcher,

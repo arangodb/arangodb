@@ -1,0 +1,220 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ff.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/ff.xml
+ */
+ff{
+    Currencies{
+        AED{
+            "AED",
+            "Dirham Emiraati Araab Dentuɗi",
+        }
+        AOA{
+            "AOA",
+            "Kwansaa Anngolaa",
+        }
+        AUD{
+            "A$",
+            "Dolaar Ostaraalii",
+        }
+        BHD{
+            "BHD",
+            "Dinaar Bahrayn",
+        }
+        BIF{
+            "BIF",
+            "Mbuuɗu Burunndi",
+        }
+        BWP{
+            "BWP",
+            "Pulaa Botwanaa",
+        }
+        CAD{
+            "CA$",
+            "Dolaar Kandaaa",
+        }
+        CDF{
+            "CDF",
+            "Faraa Konngo",
+        }
+        CHF{
+            "CHF",
+            "Faraa Suwiis",
+        }
+        CNY{
+            "CN¥",
+            "Yuam Siin",
+        }
+        CVE{
+            "CVE",
+            "Eskudoo Kap Weer",
+        }
+        DJF{
+            "DJF",
+            "Faraa Jibutii",
+        }
+        DZD{
+            "DZD",
+            "Dinaar Alaseri",
+        }
+        EGP{
+            "EGP",
+            "Liibar Ejipt",
+        }
+        ERN{
+            "ERN",
+            "Nafka Eriteree",
+        }
+        ETB{
+            "ETB",
+            "Biir Ecoppi",
+        }
+        EUR{
+            "€",
+            "Oroo",
+        }
+        GBP{
+            "£",
+            "Liibar Sterling",
+        }
+        GMD{
+            "GMD",
+            "Dalasi Gammbi",
+        }
+        GNS{
+            "GNS",
+            "Faraa Gine",
+        }
+        INR{
+            "₹",
+            "Rupii Enndo",
+        }
+        JPY{
+            "JP¥",
+            "Yen Sapoo",
+        }
+        KES{
+            "KES",
+            "Siling Keñaa",
+        }
+        KMF{
+            "KMF",
+            "Faraa Komoor",
+        }
+        LRD{
+            "LRD",
+            "Dolaar Liberiyaa",
+        }
+        LSL{
+            "LSL",
+            "Loti Lesotoo",
+        }
+        LYD{
+            "LYD",
+            "Dinaar Libi",
+        }
+        MAD{
+            "MAD",
+            "Diraham Maruk",
+        }
+        MGA{
+            "MGA",
+            "Ariyari Madagaskaar",
+        }
+        MRO{
+            "MRO",
+            "Ugiyya Muritani",
+        }
+        MUR{
+            "MUR",
+            "Rupii Moriis",
+        }
+        MWK{
+            "MWK",
+            "Kuwacca Malaawi",
+        }
+        NAD{
+            "NAD",
+            "Dolaar Namibii",
+        }
+        NGN{
+            "NGN",
+            "Nayraa Nijeriyaa",
+        }
+        RWF{
+            "RWF",
+            "Faraa Ruwanndaa",
+        }
+        SAR{
+            "SAR",
+            "Riyaal Arabi Sawdit",
+        }
+        SCR{
+            "SCR",
+            "Rupii Seysel",
+        }
+        SDG{
+            "SDG",
+            "Liibar Sudaan",
+        }
+        SHP{
+            "SHP",
+            "Liibar Sent Helen",
+        }
+        SLL{
+            "SLL",
+            "Lewoon Seraa Liyon",
+        }
+        SOS{
+            "SOS",
+            "Siling Soomali",
+        }
+        STD{
+            "STD",
+            "Dobra Sawo Tome e Prensipe",
+        }
+        SZL{
+            "SZL",
+            "Lilangeni Swaasilannda",
+        }
+        TND{
+            "TND",
+            "Dinaar Tunisii",
+        }
+        TZS{
+            "TZS",
+            "Siling Tansanii",
+        }
+        UGX{
+            "UGX",
+            "Siling Uganndaa",
+        }
+        USD{
+            "US$",
+            "Dolaar Dowlaaji Dentuɗi",
+        }
+        XAF{
+            "FCFA",
+            "Mbuuɗi Seefaa BEAC",
+        }
+        XOF{
+            "CFA",
+            "Mbuuɗu Seefaa BCEAO",
+        }
+        ZAR{
+            "ZAR",
+            "Rannda Afrik Bŋ Worgo",
+        }
+        ZMW{
+            "ZMW",
+            "Kuwacca Sammbi",
+        }
+    }
+    Version{"2.0.92.87"}
+}

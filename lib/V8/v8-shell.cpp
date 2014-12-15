@@ -57,9 +57,10 @@ using namespace std;
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessCsvBegin (TRI_csv_parser_t* parser, size_t row) {
+  v8::Isolate* isolate = (v8::Isolate*) parser->_data;
   v8::Handle<v8::Array>* array = reinterpret_cast<v8::Handle<v8::Array>*>(parser->_dataBegin);
 
-  (*array) = v8::Array::New();
+  (*array) = v8::Array::New(isolate);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -67,9 +68,10 @@ static void ProcessCsvBegin (TRI_csv_parser_t* parser, size_t row) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessCsvAdd (TRI_csv_parser_t* parser, const char* field, size_t, size_t row, size_t column, bool escaped) {
+  v8::Isolate* isolate = (v8::Isolate*) parser->_data;
   v8::Handle<v8::Array>* array = reinterpret_cast<v8::Handle<v8::Array>*>(parser->_dataBegin);
 
-  (*array)->Set((uint32_t) column, v8::String::New(field));
+  (*array)->Set((uint32_t) column, TRI_V8_STRING(field));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -77,12 +79,13 @@ static void ProcessCsvAdd (TRI_csv_parser_t* parser, const char* field, size_t, 
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessCsvEnd (TRI_csv_parser_t* parser, const char* field, size_t, size_t row, size_t column, bool escaped) {
+  v8::Isolate* isolate = (v8::Isolate*) parser->_data;
   v8::Handle<v8::Array>* array = reinterpret_cast<v8::Handle<v8::Array>*>(parser->_dataBegin);
 
-  (*array)->Set((uint32_t) column, v8::String::New(field));
+  (*array)->Set((uint32_t) column, TRI_V8_STRING(field));
 
   v8::Handle<v8::Function>* cb = reinterpret_cast<v8::Handle<v8::Function>*>(parser->_dataEnd);
-  v8::Handle<v8::Number> r = v8::Integer::New((int) row);
+  v8::Handle<v8::Number> r = v8::Integer::New(isolate, (int) row);
 
   v8::Handle<v8::Value> args[] = { *array, r };
   (*cb)->Call(*cb, 2, args);
@@ -116,39 +119,40 @@ static void ProcessCsvEnd (TRI_csv_parser_t* parser, const char* field, size_t, 
 /// character.
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_ProcessCsvFile (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  if (argv.Length() < 2) {
-    TRI_V8_EXCEPTION_USAGE(scope, "processCsvFile(<filename>, <callback>[, <options>])");
+  if (args.Length() < 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("processCsvFile(<filename>, <callback>[, <options>])");
   }
 
   // extract the filename
-  TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE, argv[0]);
+  TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE, args[0]);
 
   if (*filename == 0) {
-    TRI_V8_TYPE_ERROR(scope, "<filename> must be an UTF8 filename");
+    TRI_V8_THROW_TYPE_ERROR("<filename> must be an UTF8 filename");
   }
 
   // extract the callback
-  v8::Handle<v8::Function> cb = v8::Handle<v8::Function>::Cast(argv[1]);
+  v8::Handle<v8::Function> cb = v8::Handle<v8::Function>::Cast(args[1]);
 
   // extract the options
-  v8::Handle<v8::String> separatorKey = v8::String::New("separator");
-  v8::Handle<v8::String> quoteKey = v8::String::New("quote");
+  v8::Handle<v8::String> separatorKey = TRI_V8_ASCII_STRING("separator");
+  v8::Handle<v8::String> quoteKey = TRI_V8_ASCII_STRING("quote");
 
   string separator = ",";
   string quote = "\"";
 
-  if (3 <= argv.Length()) {
-    v8::Handle<v8::Object> options = argv[2]->ToObject();
+  if (3 <= args.Length()) {
+    v8::Handle<v8::Object> options = args[2]->ToObject();
 
     // separator
     if (options->Has(separatorKey)) {
       separator = TRI_ObjectToString(options->Get(separatorKey));
 
       if (separator.size() != 1) {
-        TRI_V8_TYPE_ERROR(scope, "<options>.separator must be exactly one character");
+        TRI_V8_THROW_TYPE_ERROR("<options>.separator must be exactly one character");
       }
     }
 
@@ -157,7 +161,7 @@ static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
       quote = TRI_ObjectToString(options->Get(quoteKey));
 
       if (quote.length() > 1) {
-        TRI_V8_TYPE_ERROR(scope, "<options>.quote must be at most one character");
+        TRI_V8_THROW_TYPE_ERROR("<options>.quote must be at most one character");
       }
     }
   }
@@ -166,7 +170,7 @@ static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
   int fd = TRI_OPEN(*filename, O_RDONLY);
 
   if (fd < 0) {
-    TRI_V8_EXCEPTION_SYS(scope, "cannot open file");
+    TRI_V8_THROW_EXCEPTION_SYS("cannot open file");
   }
 
   TRI_csv_parser_t parser;
@@ -175,7 +179,8 @@ static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
                     TRI_UNKNOWN_MEM_ZONE,
                     ProcessCsvBegin,
                     ProcessCsvAdd,
-                    ProcessCsvEnd);
+                    ProcessCsvEnd,
+                    isolate);
 
   TRI_SetSeparatorCsvParser(&parser, separator[0]);
   if (quote.length() > 0) {
@@ -193,14 +198,12 @@ static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
   char buffer[10240];
 
   while (true) {
-    v8::HandleScope scope;
-
     ssize_t n = TRI_READ(fd, buffer, sizeof(buffer));
 
     if (n < 0) {
       TRI_DestroyCsvParser(&parser);
       TRI_CLOSE(fd);
-      TRI_V8_EXCEPTION_SYS(scope, "cannot read file");
+      TRI_V8_THROW_EXCEPTION_SYS("cannot read file");
     }
     else if (n == 0) {
       TRI_DestroyCsvParser(&parser);
@@ -212,7 +215,7 @@ static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
 
   TRI_CLOSE(fd);
 
-  return scope.Close(v8::Undefined());
+  TRI_V8_RETURN_UNDEFINED();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -233,22 +236,23 @@ static v8::Handle<v8::Value> JS_ProcessCsvFile (v8::Arguments const& argv) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_ProcessJsonFile (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_ProcessJsonFile (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  if (argv.Length() < 2) {
-    TRI_V8_EXCEPTION_USAGE(scope, "processJsonFile(<filename>, <callback>)");
+  if (args.Length() < 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("processJsonFile(<filename>, <callback>)");
   }
 
   // extract the filename
-  TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE, argv[0]);
+  TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE, args[0]);
 
   if (*filename == 0) {
-    TRI_V8_TYPE_ERROR(scope, "<filename> must be an UTF8 filename");
+    TRI_V8_THROW_TYPE_ERROR("<filename> must be an UTF8 filename");
   }
 
   // extract the callback
-  v8::Handle<v8::Function> cb = v8::Handle<v8::Function>::Cast(argv[1]);
+  v8::Handle<v8::Function> cb = v8::Handle<v8::Function>::Cast(args[1]);
 
   // read and convert
   string line;
@@ -258,7 +262,6 @@ static v8::Handle<v8::Value> JS_ProcessJsonFile (v8::Arguments const& argv) {
     size_t row = 0;
 
     while (file.good()) {
-      v8::HandleScope scope;
 
       getline(file, line);
 
@@ -274,16 +277,16 @@ static v8::Handle<v8::Value> JS_ProcessJsonFile (v8::Arguments const& argv) {
       }
 
       char* error = 0;
-      v8::Handle<v8::Value> object = TRI_FromJsonString(line.c_str(), &error);
+      v8::Handle<v8::Value> object = TRI_FromJsonString(isolate, line.c_str(), &error);
 
       if (object->IsUndefined()) {
         if (error != 0) {
           string msg = error;
           TRI_FreeString(TRI_CORE_MEM_ZONE, error);
-          TRI_V8_SYNTAX_ERROR(scope, msg.c_str());
+          TRI_V8_THROW_SYNTAX_ERROR(msg.c_str());
         }
         else {
-          TRI_V8_EXCEPTION(scope, TRI_ERROR_OUT_OF_MEMORY);
+          TRI_V8_THROW_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
         }
       }
 
@@ -291,7 +294,7 @@ static v8::Handle<v8::Value> JS_ProcessJsonFile (v8::Arguments const& argv) {
         TRI_FreeString(TRI_CORE_MEM_ZONE, error);
       }
 
-      v8::Handle<v8::Number> r = v8::Integer::New((int) row);
+      v8::Handle<v8::Number> r = v8::Integer::New(isolate, (int) row);
       v8::Handle<v8::Value> args[] = { object, r };
       cb->Call(cb, 2, args);
 
@@ -301,10 +304,10 @@ static v8::Handle<v8::Value> JS_ProcessJsonFile (v8::Arguments const& argv) {
     file.close();
   }
   else {
-    TRI_V8_EXCEPTION_SYS(scope, "cannot open file");
+    TRI_V8_THROW_EXCEPTION_SYS("cannot open file");
   }
 
-  return scope.Close(v8::Undefined());
+  TRI_V8_RETURN_UNDEFINED();
 }
 
 // -----------------------------------------------------------------------------
@@ -319,15 +322,15 @@ static v8::Handle<v8::Value> JS_ProcessJsonFile (v8::Arguments const& argv) {
 /// @brief stores the V8 shell functions inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Shell (v8::Handle<v8::Context> context) {
-  v8::HandleScope scope;
+void TRI_InitV8Shell (v8::Isolate* isolate, v8::Handle<v8::Context> context) {
+  v8::HandleScope scope(isolate);
 
   // .............................................................................
   // create the global functions
   // .............................................................................
 
-  TRI_AddGlobalFunctionVocbase(context, "SYS_PROCESS_CSV_FILE", JS_ProcessCsvFile);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_PROCESS_JSON_FILE", JS_ProcessJsonFile);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_PROCESS_CSV_FILE"), JS_ProcessCsvFile);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_PROCESS_JSON_FILE"), JS_ProcessJsonFile);
 
   bool isTty = (isatty(STDOUT_FILENO) != 0);
   // on Linux, isatty() == 0 may also indicate an error. we can ignore this safely
@@ -338,85 +341,85 @@ void TRI_InitV8Shell (v8::Handle<v8::Context> context) {
   // create the global variables
   // .............................................................................
 
-  v8::Handle<v8::Object> colors = v8::Object::New();
+  v8::Handle<v8::Object> colors = v8::Object::New(isolate);
 
-  colors->Set(TRI_V8_STRING("COLOR_RED"),
-              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_RED) : v8::String::Empty(),
-              v8::ReadOnly);
+  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_RED"),
+                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_RED) : v8::String::Empty(isolate),
+                   v8::ReadOnly);
 
-  colors->Set(TRI_V8_STRING("COLOR_BOLD_RED"),
-              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_RED) : v8::String::Empty(),
-              v8::ReadOnly);
+  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BOLD_RED"),
+                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_BOLD_RED) : v8::String::Empty(isolate),
+                   v8::ReadOnly);
 
-  colors->Set(TRI_V8_STRING("COLOR_GREEN"),
-              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_GREEN) : v8::String::Empty(),
-              v8::ReadOnly);
+  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_GREEN"),
+                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_GREEN) : v8::String::Empty(isolate),
+                   v8::ReadOnly);
 
-  colors->Set(TRI_V8_STRING("COLOR_BOLD_GREEN"),
-              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_GREEN) : v8::String::Empty(),
-              v8::ReadOnly);
+  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BOLD_GREEN"),
+                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_BOLD_GREEN) : v8::String::Empty(isolate),
+                   v8::ReadOnly);
 
-  colors->Set(TRI_V8_STRING("COLOR_BLUE"),
-              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_BLUE) : v8::String::Empty(),
-              v8::ReadOnly);
+  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BLUE"),
+                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_BLUE) : v8::String::Empty(isolate),
+                   v8::ReadOnly);
 
-  colors->Set(TRI_V8_STRING("COLOR_BOLD_BLUE"),
-              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_BLUE) : v8::String::Empty(),
-              v8::ReadOnly);
+  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BOLD_BLUE"),
+                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_BOLD_BLUE) : v8::String::Empty(isolate),
+                   v8::ReadOnly);
 
-  colors->Set(TRI_V8_STRING("COLOR_YELLOW"),
-              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_YELLOW) : v8::String::Empty(),
-              v8::ReadOnly);
+  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_YELLOW"),
+                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_YELLOW) : v8::String::Empty(isolate),
+                   v8::ReadOnly);
 
-  colors->Set(TRI_V8_STRING("COLOR_BOLD_YELLOW"),
-              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_YELLOW) : v8::String::Empty(),
-              v8::ReadOnly);
+  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BOLD_YELLOW"),
+                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_BOLD_YELLOW) : v8::String::Empty(isolate),
+                   v8::ReadOnly);
 
-  colors->Set(TRI_V8_STRING("COLOR_WHITE"),
-              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_WHITE) : v8::String::Empty(),
-              v8::ReadOnly);
+  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_WHITE"),
+                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_WHITE) : v8::String::Empty(isolate),
+                   v8::ReadOnly);
 
-  colors->Set(TRI_V8_STRING("COLOR_BOLD_WHITE"),
-              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_WHITE) : v8::String::Empty(),
-              v8::ReadOnly);
+  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BOLD_WHITE"),
+                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_BOLD_WHITE) : v8::String::Empty(isolate),
+                   v8::ReadOnly);
 
-  colors->Set(TRI_V8_STRING("COLOR_CYAN"),
-              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_CYAN) : v8::String::Empty(),
-              v8::ReadOnly);
+  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_CYAN"),
+                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_CYAN) : v8::String::Empty(isolate),
+                   v8::ReadOnly);
 
-  colors->Set(TRI_V8_STRING("COLOR_BOLD_CYAN"),
-              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_CYAN) : v8::String::Empty(),
-              v8::ReadOnly);
+  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BOLD_CYAN"),
+                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_BOLD_CYAN) : v8::String::Empty(isolate),
+                   v8::ReadOnly);
 
-  colors->Set(TRI_V8_STRING("COLOR_MAGENTA"),
-              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_MAGENTA) : v8::String::Empty(),
-              v8::ReadOnly);
+  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_MAGENTA"),
+                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_MAGENTA) : v8::String::Empty(isolate),
+                   v8::ReadOnly);
 
-  colors->Set(TRI_V8_STRING("COLOR_BOLD_MAGENTA"),
-              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_MAGENTA) : v8::String::Empty(),
-              v8::ReadOnly);
+  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BOLD_MAGENTA"),
+                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_BOLD_MAGENTA) : v8::String::Empty(isolate),
+                   v8::ReadOnly);
 
-  colors->Set(TRI_V8_STRING("COLOR_BLACK"),
-              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_BLACK) : v8::String::Empty(),
-              v8::ReadOnly);
+  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BLACK"),
+                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_BLACK) : v8::String::Empty(isolate),
+                   v8::ReadOnly);
 
-  colors->Set(TRI_V8_STRING("COLOR_BOLD_BLACK"),
-              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_BOLD_BLACK) : v8::String::Empty(),
-              v8::ReadOnly);
+  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BOLD_BLACK"),
+                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_BOLD_BLACK) : v8::String::Empty(isolate),
+                   v8::ReadOnly);
 
-  colors->Set(TRI_V8_STRING("COLOR_BLINK"),
-              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_BLINK) : v8::String::Empty(),
-              v8::ReadOnly);
+  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BLINK"),
+                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_BLINK) : v8::String::Empty(isolate),
+                   v8::ReadOnly);
 
-  colors->Set(TRI_V8_STRING("COLOR_BRIGHT"),
-              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_BRIGHT) : v8::String::Empty(),
-              v8::ReadOnly);
+  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BRIGHT"),
+                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_BRIGHT) : v8::String::Empty(isolate),
+                   v8::ReadOnly);
 
-  colors->Set(TRI_V8_STRING("COLOR_RESET"),
-              isTty ? TRI_V8_STRING(TRI_SHELL_COLOR_RESET) : v8::String::Empty(),
-              v8::ReadOnly);
+  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_RESET"),
+                   isTty ? TRI_V8_ASCII_STRING(TRI_SHELL_COLOR_RESET) : v8::String::Empty(isolate),
+                   v8::ReadOnly);
 
-  TRI_AddGlobalVariableVocbase(context, "COLORS", colors);
+  TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("COLORS"), colors);
 }
 
 // -----------------------------------------------------------------------------

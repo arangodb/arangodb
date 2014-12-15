@@ -353,6 +353,21 @@ AstNode* Ast::createNodeCollect (AstNode const* list,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST collect node, COUNT
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeCollect (AstNode const* list,
+                                 char const* name) {
+  AstNode* node = createNode(NODE_TYPE_COLLECT_COUNT);
+  node->addMember(list);
+
+  AstNode* variable = createNodeVariable(name, true);
+  node->addMember(variable);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST sort node
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1174,8 +1189,8 @@ AstNode* Ast::createArithmeticResultNode (double value) {
 AstNode* Ast::executeConstExpression (AstNode const* node) {
   // must enter v8 before we can execute any expression
   _query->enterContext();
-  
-  v8::HandleScope scope; // do not delete this!
+  ISOLATE;
+  v8::HandleScope scope(isolate); // do not delete this!
 
   TRI_json_t* result = _query->executor()->executeExpression(_query, node); 
 

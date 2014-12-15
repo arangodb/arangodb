@@ -94,14 +94,14 @@ int main(int argc, char *argv[])
 #if defined(PLATFORM_WIN)
   if (!GetModuleFileName(NULL, bin_path, MAX_PATH)) {
     fprintf(stderr, "Failed to determine executable path.\n");
-    return;
+    return 1;
   }
 #elif defined(PLATFORM_MAC) || defined(PLATFORM_LINUX)
   // Using argv[0] should be OK here since we control how the tests run, and
   // can avoid exec and such issues that make it unreliable.
   if (!realpath(argv[0], bin_path)) {
     fprintf(stderr, "Failed to determine executable path (%s).\n", argv[0]);
-    return;
+    return 1;
   }
 #endif
 

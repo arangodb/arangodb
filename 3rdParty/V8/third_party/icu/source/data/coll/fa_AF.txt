@@ -1,0 +1,20 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/collation/fa_AF.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/xml/collation/fa_AF.xml
+ */
+fa_AF{
+    Version{"2.0.89.0"}
+    collations{
+        standard{
+            Sequence{"[import ps]"}
+            Version{"24"}
+        }
+    }
+}

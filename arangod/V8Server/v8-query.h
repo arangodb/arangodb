@@ -42,7 +42,8 @@
 /// @brief creates the query functions
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Queries (v8::Handle<v8::Context> context);
+void TRI_InitV8Queries (v8::Isolate* isolate,
+                        v8::Handle<v8::Context> context);
 
 #endif
 

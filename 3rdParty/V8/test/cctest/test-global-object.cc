@@ -25,21 +25,21 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "v8.h"
+#include "src/v8.h"
 
-#include "cctest.h"
+#include "test/cctest/cctest.h"
 
 using namespace v8;
 
 // This test fails if properties on the prototype of the global object appear
 // as declared globals.
 TEST(StrictUndeclaredGlobalVariable) {
-  HandleScope scope;
+  HandleScope scope(CcTest::isolate());
   v8::Local<v8::String> var_name = v8_str("x");
   LocalContext context;
   v8::TryCatch try_catch;
   v8::Local<v8::Script> script = v8_compile("\"use strict\"; x = 42;");
-  v8::Handle<v8::Object> proto = v8::Object::New();
+  v8::Handle<v8::Object> proto = v8::Object::New(CcTest::isolate());
   v8::Handle<v8::Object> global =
       context->Global()->GetPrototype().As<v8::Object>();
   proto->Set(var_name, v8_num(100));

@@ -49,31 +49,36 @@
 /// @brief pushes the names of an associative char* array into a V8 array
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Array> TRI_ArrayAssociativePointer (TRI_associative_pointer_t const*);
+v8::Handle<v8::Array> TRI_ArrayAssociativePointer (v8::Isolate* isolate,
+                                                   TRI_associative_pointer_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the keys of a TRI_json_t* array into a V8 list
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_KeysJson (TRI_json_t const*);
+v8::Handle<v8::Value> TRI_KeysJson (v8::Isolate* isolate,
+                                    TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the values of a TRI_json_t* array into a V8 list
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_ValuesJson (TRI_json_t const*);
+v8::Handle<v8::Value> TRI_ValuesJson (v8::Isolate* isolate,
+                                      TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a TRI_json_t into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_ObjectJson (TRI_json_t const*);
+v8::Handle<v8::Value> TRI_ObjectJson (v8::Isolate* isolate,
+                                      TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a TRI_shaped_json_t into an existing V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_JsonShapeData (v8::Handle<v8::Value>,
+v8::Handle<v8::Value> TRI_JsonShapeData (v8::Isolate* isolate,
+                                         v8::Handle<v8::Value>,
                                          TRI_shaper_t*,
                                          TRI_shape_t const*,
                                          char const* data,
@@ -83,7 +88,8 @@ v8::Handle<v8::Value> TRI_JsonShapeData (v8::Handle<v8::Value>,
 /// @brief converts a TRI_shaped_json_t into a new V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_JsonShapeData (TRI_shaper_t*,
+v8::Handle<v8::Value> TRI_JsonShapeData (v8::Isolate* isolate,
+                                         TRI_shaper_t*,
                                          TRI_shape_t const*,
                                          char const* data,
                                          size_t size);
@@ -92,7 +98,8 @@ v8::Handle<v8::Value> TRI_JsonShapeData (TRI_shaper_t*,
 /// @brief converts an V8 object to a TRI_shaped_json_t
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value> const,
+TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Isolate* isolate,
+                                           v8::Handle<v8::Value> const,
                                            TRI_shaper_t*,
                                            bool);
 
@@ -100,7 +107,8 @@ TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value> const,
 /// @brief converts a V8 object to a TRI_shaped_json_t in place
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_FillShapedJsonV8Object (v8::Handle<v8::Value> const,
+int TRI_FillShapedJsonV8Object (v8::Isolate* isolate,
+                                v8::Handle<v8::Value> const,
                                 TRI_shaped_json_t*,
                                 TRI_shaper_t*,
                                 bool);
@@ -109,7 +117,8 @@ int TRI_FillShapedJsonV8Object (v8::Handle<v8::Value> const,
 /// @brief convert a V8 value to a json_t value
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_ObjectToJson (v8::Handle<v8::Value> const);
+TRI_json_t* TRI_ObjectToJson (v8::Isolate* isolate,
+                              v8::Handle<v8::Value> const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a V8 object to a json_t value
@@ -118,7 +127,7 @@ TRI_json_t* TRI_ObjectToJson (v8::Handle<v8::Value> const);
 /// use for ShapedJson v8 objects only or for lists of ShapedJson v8 objects!
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_ShapedJsonToJson (v8::Handle<v8::Value> const);
+TRI_json_t* TRI_ShapedJsonToJson (v8::Isolate *isolate, v8::Handle<v8::Value> const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts an V8 object to a string

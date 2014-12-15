@@ -1,0 +1,220 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/mua.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/mua.xml
+ */
+mua{
+    Currencies{
+        AED{
+            "AED",
+            "Solai Arabiya",
+        }
+        AOA{
+            "AOA",
+            "solai Angola",
+        }
+        AUD{
+            "A$",
+            "solai Australya",
+        }
+        BHD{
+            "BHD",
+            "solai Barenya",
+        }
+        BIF{
+            "BIF",
+            "solai Burundi",
+        }
+        BWP{
+            "BWP",
+            "solai Botswana",
+        }
+        CAD{
+            "CA$",
+            "solai Kanada",
+        }
+        CDF{
+            "CDF",
+            "solai Kongo",
+        }
+        CHF{
+            "CHF",
+            "Solai Swiss",
+        }
+        CNY{
+            "CN¥",
+            "solai Syiŋ",
+        }
+        CVE{
+            "CVE",
+            "solai Kapverdiya",
+        }
+        DJF{
+            "DJF",
+            "solai Djibouti",
+        }
+        DZD{
+            "DZD",
+            "solai Algerya",
+        }
+        EGP{
+            "EGP",
+            "solai Egypt",
+        }
+        ERN{
+            "ERN",
+            "solai Eritre",
+        }
+        ETB{
+            "ETB",
+            "solai Etiopia",
+        }
+        EUR{
+            "€",
+            "solai Euro",
+        }
+        GBP{
+            "£",
+            "solai Britaniya",
+        }
+        GMD{
+            "GMD",
+            "solai Gambiya",
+        }
+        GNS{
+            "GNS",
+            "solai Guine",
+        }
+        INR{
+            "₹",
+            "solai India",
+        }
+        JPY{
+            "JP¥",
+            "solai Japoŋ",
+        }
+        KES{
+            "KES",
+            "solai Kenia",
+        }
+        KMF{
+            "KMF",
+            "solai Komorya",
+        }
+        LRD{
+            "LRD",
+            "solai Liberiya",
+        }
+        LSL{
+            "LSL",
+            "solai Lesotho",
+        }
+        LYD{
+            "LYD",
+            "solai Libya",
+        }
+        MAD{
+            "MAD",
+            "Solai Marok",
+        }
+        MGA{
+            "MGA",
+            "Solai Malagasya",
+        }
+        MRO{
+            "MRO",
+            "Solai Mauritaniya",
+        }
+        MUR{
+            "MUR",
+            "Solai Mauricǝ",
+        }
+        MWK{
+            "MWK",
+            "Solai Malawi",
+        }
+        NAD{
+            "NAD",
+            "Solai Namibiya",
+        }
+        NGN{
+            "NGN",
+            "Solai Nigeriya",
+        }
+        RWF{
+            "RWF",
+            "Solai Rwanda",
+        }
+        SAR{
+            "SAR",
+            "Solai Saudiya",
+        }
+        SCR{
+            "SCR",
+            "Solai Saichel",
+        }
+        SDG{
+            "SDG",
+            "Solai Sudaŋ ma dii ne dinar",
+        }
+        SHP{
+            "SHP",
+            "Solai Helena",
+        }
+        SLL{
+            "SLL",
+            "solai Sierra leonǝ",
+        }
+        SOS{
+            "SOS",
+            "Solai Somaliya",
+        }
+        STD{
+            "STD",
+            "Solai Sao Tome",
+        }
+        SZL{
+            "SZL",
+            "solai Swaziland",
+        }
+        TND{
+            "TND",
+            "Solai Tunisiya",
+        }
+        TZS{
+            "TZS",
+            "Solai Tanzaniya",
+        }
+        UGX{
+            "UGX",
+            "Solai Uganda",
+        }
+        USD{
+            "US$",
+            "Solai Amerika",
+        }
+        XAF{
+            "FCFA",
+            "solai BEAC",
+        }
+        XOF{
+            "CFA",
+            "solai BCEAO",
+        }
+        ZAR{
+            "ZAR",
+            "Solai Africa nekǝsǝŋ",
+        }
+        ZMW{
+            "ZMW",
+            "Solai Zambiya",
+        }
+    }
+    Version{"2.0.92.87"}
+}

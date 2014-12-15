@@ -170,12 +170,12 @@ namespace triagens {
         // try to find a filter after an enumerate collection and find an index . . . 
         useIndexRangeRule_pass6                    = 830,
 
-        // try to find sort blocks which are superseeded by indexes
-        useIndexForSortRule_pass6                  = 840,
-
         // try to remove filters covered by index ranges
-        removeFiltersCoveredByIndexRule_pass6      = 850,
+        removeFiltersCoveredByIndexRule_pass6      = 840,
   
+        // try to find sort blocks which are superseeded by indexes
+        useIndexForSortRule_pass6                  = 850,
+
 //////////////////////////////////////////////////////////////////////////////
 /// "Pass 10": final transformations for the cluster
 //////////////////////////////////////////////////////////////////////////////
