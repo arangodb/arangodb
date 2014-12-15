@@ -132,12 +132,53 @@ function ahuacatlSubqueryTestSuite () {
       assertEqual(expected, actual);
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test subquery optimisation
+////////////////////////////////////////////////////////////////////////////////
+
     testSubqueryOutVariableName : function () {
-      var XPResult = AQL_EXPLAIN('FOR u IN _users LET theLetVariable = (FOR j IN _users RETURN j) RETURN theLetVariable');
+      var XPResult = AQL_EXPLAIN("FOR u IN _users LET theLetVariable = (FOR j IN _users RETURN j) RETURN theLetVariable");
 
       var SubqueryNode = findExecutionNodes(XPResult, "SubqueryNode")[0];
 
       assertEqual(SubqueryNode.outVariable.name, "theLetVariable");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test subquery as function parameter
+////////////////////////////////////////////////////////////////////////////////
+
+    testSubqueryAsFunctionParameter1: function () {
+      var expected = [ [ 1, 2, 3 ] ];
+      var actual = getQueryResults("RETURN PASSTHRU(FOR i IN [ 1, 2, 3 ] RETURN i)");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN PASSTHRU((FOR i IN [ 1, 2, 3 ] RETURN i))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test subquery as function parameter
+////////////////////////////////////////////////////////////////////////////////
+
+    testSubqueryAsFunctionParameter2: function () {
+      var expected = [ 6 ];
+      var actual = getQueryResults("RETURN MAX(APPEND((FOR i IN [ 1, 2, 3 ] RETURN i), (FOR i IN [ 4, 5, 6 ] RETURN i)))");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN MAX(APPEND(FOR i IN [ 1, 2, 3 ] RETURN i, FOR i IN [ 4, 5, 6 ] RETURN i))");
+      assertEqual(expected, actual);
+
+      expected = [ 9 ];
+      actual = getQueryResults("RETURN MAX(APPEND(FOR i IN [ 9, 7, 8 ] RETURN i, [ 1 ]))");
+      assertEqual(expected, actual);
+
+      expected = [ [ 1, 2, 3, 4, 5, 6 ] ];
+      actual = getQueryResults("RETURN UNION((FOR i IN [ 1, 2, 3 ] RETURN i), (FOR i IN [ 4, 5, 6 ] RETURN i))");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN UNION(FOR i IN [ 1, 2, 3 ] RETURN i, FOR i IN [ 4, 5, 6 ] RETURN i)");
+      assertEqual(expected, actual);
     }
 
   };

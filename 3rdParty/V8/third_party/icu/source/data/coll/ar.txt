@@ -1,0 +1,24 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/collation/ar.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/xml/collation/ar.xml
+ */
+ar{
+    Version{"2.0.89.0"}
+    collations{
+        standard{
+            Sequence{
+                "[reorder Arab]"
+                "&ت<<ة<<<ﺔ<<<ﺓ"
+                "&ي<<ى<<<ﯨ<<<ﯩ<<<ﻰ<<<ﻯ<<<ﲐ<<<ﱝ"
+            }
+            Version{"24"}
+        }
+    }
+}

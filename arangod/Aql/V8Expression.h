@@ -56,7 +56,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       V8Expression (v8::Isolate*,
-                    v8::Persistent<v8::Function>);
+                    v8::Handle<v8::Function>);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the v8 expression
@@ -72,7 +72,8 @@ namespace triagens {
 /// @brief execute the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-      AqlValue execute (Query* query,
+      AqlValue execute (v8::Isolate* isolate,
+                        Query* query,
                         triagens::arango::AqlTransaction*,
                         std::vector<TRI_document_collection_t const*>&,
                         std::vector<AqlValue>&,
@@ -94,7 +95,7 @@ namespace triagens {
 /// @brief the compiled expression as a V8 function
 ////////////////////////////////////////////////////////////////////////////////
 
-       v8::Persistent<v8::Function> func;
+       v8::Persistent<v8::Function> _func;
 
     };
 

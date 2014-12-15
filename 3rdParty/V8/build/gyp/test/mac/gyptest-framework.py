@@ -10,7 +10,18 @@ Verifies that app bundles are built correctly.
 
 import TestGyp
 
+import os
 import sys
+
+
+def ls(path):
+  '''Returns a list of all files in a directory, relative to the directory.'''
+  result = []
+  for dirpath, _, files in os.walk(path):
+    for f in files:
+      result.append(os.path.join(dirpath, f)[len(path) + 1:])
+  return result
+
 
 if sys.platform == 'darwin':
   test = TestGyp.TestGyp(formats=['ninja', 'make', 'xcode'])
@@ -25,9 +36,11 @@ if sys.platform == 'darwin':
       chdir='framework')
 
   # Info.plist
-  test.built_file_must_exist(
+  info_plist = test.built_file_path(
       'Test Framework.framework/Versions/A/Resources/Info.plist',
       chdir='framework')
+  test.must_exist(info_plist)
+  test.must_contain(info_plist, 'com.yourcompany.Test_Framework')
 
   # Resources
   test.built_file_must_exist(
@@ -46,5 +59,16 @@ if sys.platform == 'darwin':
   test.built_file_must_not_exist(
       'Test Framework.framework/Versions/A/Resources/PkgInfo',
       chdir='framework')
+
+  # Check that no other files get added to the bundle.
+  if set(ls(test.built_file_path('Test Framework.framework',
+                                 chdir='framework'))) != \
+     set(['Versions/A/Test Framework',
+          'Versions/A/Resources/Info.plist',
+          'Versions/A/Resources/English.lproj/InfoPlist.strings',
+          'Test Framework',
+          'Versions/A/Libraries/empty.c',  # Written by a gyp action.
+          ]):
+    test.fail_test()
 
   test.pass_test()

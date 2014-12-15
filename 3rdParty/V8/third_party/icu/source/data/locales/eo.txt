@@ -1,0 +1,19 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/eo.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/eo.xml
+ */
+eo{
+    AuxExemplarCharacters{"[q w x y]"}
+    ExemplarCharacters{"[a b c ĉ d e f g ĝ h ĥ i j ĵ k l m n o p r s ŝ t u ŭ v z]"}
+    LocaleScript{
+        "Latn",
+    }
+    Version{"2.0.90.61"}
+}

@@ -167,6 +167,13 @@
       this.collection.resetFilter();
       this.collection.loadTotal();
       this.restoredFilters = [];
+
+      //for resetting json upload
+      this.allowUpload = false;
+      this.files = undefined;
+      this.file = undefined;
+      $('#confirmDocImport').attr("disabled", true);
+
       this.markFilterToggle();
       this.collection.getDocuments(this.getDocsCallback.bind(this));
     },
@@ -208,6 +215,7 @@
       $('#importDocuments').change(function(e) {
         self.files = e.target.files || e.dataTransfer.files;
         self.file = self.files[0];
+        $('#confirmDocImport').attr("disabled", false);
 
         self.allowUpload = true;
       });

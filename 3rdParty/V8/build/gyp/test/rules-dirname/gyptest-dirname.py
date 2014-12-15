@@ -9,6 +9,7 @@ Verifies simple rules when using an explicit build target of 'all'.
 """
 
 import TestGyp
+import os
 
 test = TestGyp.TestGyp(formats=['make', 'ninja', 'xcode'])
 
@@ -28,11 +29,8 @@ else:
   chdir = 'relocate/src'
 test.run_built_executable('gencc_int_output', chdir=chdir, stdout=expect)
 
-if test.format == 'msvs':
-  test.must_exist('relocate/src/subdir/foo/bar/baz.printed')
-  test.must_exist('relocate/src/subdir/a/b/c.printed')
-else:
-  test.must_match('relocate/src/subdir/foo/bar/baz.printed', 'foo/bar')
-  test.must_match('relocate/src/subdir/a/b/c.printed', 'a/b')
+test.must_match('relocate/src/subdir/foo/bar/baz.printed',
+                os.path.join('foo', 'bar'))
+test.must_match('relocate/src/subdir/a/b/c.printed', os.path.join('a', 'b'))
 
 test.pass_test()

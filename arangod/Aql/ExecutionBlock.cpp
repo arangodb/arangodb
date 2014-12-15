@@ -31,6 +31,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/json-utilities.h"
+#include "V8/v8-globals.h"
 #include "HashIndex/hash-index.h"
 #include "Utils/Exception.h"
 #include "VocBase/edge-collection.h"
@@ -58,10 +59,13 @@ using StringBuffer = triagens::basics::StringBuffer;
 // --SECTION--                                            struct AggregatorGroup
 // -----------------------------------------------------------------------------
       
-AggregatorGroup::AggregatorGroup ()
+AggregatorGroup::AggregatorGroup (bool countOnly)
   : firstRow(0),
     lastRow(0),
-    rowsAreValid(false) {
+    groupLength(0),
+    rowsAreValid(false),
+    virginity(true),
+    countOnly(countOnly) {
 }
 
 AggregatorGroup::~AggregatorGroup () {
@@ -76,26 +80,39 @@ AggregatorGroup::~AggregatorGroup () {
 // -----------------------------------------------------------------------------
 
 void AggregatorGroup::initialize (size_t capacity) {
-  TRI_ASSERT(capacity > 0);
+  // TRI_ASSERT(capacity > 0);
 
   groupValues.clear();
   collections.clear();
-  groupValues.reserve(capacity);
-  collections.reserve(capacity);
 
-  for (size_t i = 0; i < capacity; ++i) {
-    groupValues.emplace_back();
-    collections.push_back(nullptr);
+  if (capacity > 0) {
+    groupValues.reserve(capacity);
+    collections.reserve(capacity);
+
+    for (size_t i = 0; i < capacity; ++i) {
+      groupValues.emplace_back();
+      collections.push_back(nullptr);
+    }
   }
+
+  groupLength = 0;
 }
 
 void AggregatorGroup::reset () {
+  virginity = false;
+
   for (auto it = groupBlocks.begin(); it != groupBlocks.end(); ++it) {
     delete (*it);
   }
+
   groupBlocks.clear();
-  groupValues[0].erase();   // only need to erase [0], because we have
-                            // only copies of references anyway
+
+  if (! groupValues.empty()) {
+    groupValues[0].erase();   // only need to erase [0], because we have
+                              // only copies of references anyway
+  }
+
+  groupLength = 0;
 }
 
 void AggregatorGroup::addValues (AqlItemBlock const* src,
@@ -109,13 +126,18 @@ void AggregatorGroup::addValues (AqlItemBlock const* src,
     // emit group details
     TRI_ASSERT(firstRow <= lastRow);
 
-    auto block = src->slice(firstRow, lastRow + 1);
-    try {
-      groupBlocks.push_back(block);
+    if (countOnly) {
+      groupLength += lastRow + 1 - firstRow;
     }
-    catch (...) {
-      delete block;
-      throw;
+    else {
+      auto block = src->slice(firstRow, lastRow + 1);
+      try {
+        groupBlocks.push_back(block);
+      }
+      catch (...) {
+        delete block;
+        throw;
+      }
     }
   }
 
@@ -1027,7 +1049,8 @@ bool IndexRangeBlock::initRanges () {
       }
     };
 
-    v8::HandleScope scope; // do not delete this!
+    ISOLATE;
+    v8::HandleScope scope(isolate); // do not delete this!
     
     IndexOrCondition* newCondition = nullptr;
     for (size_t i = 0; i < en->_ranges.size(); i++) {
@@ -2363,8 +2386,8 @@ void CalculationBlock::doEvaluation (AqlItemBlock* result) {
         engine->getQuery()->exitContext(); 
       }
     };
-    
-    v8::HandleScope scope; // do not delete this!
+    ISOLATE;
+    v8::HandleScope scope(isolate); // do not delete this!
 
     for (size_t i = 0; i < n; i++) {
       // need to execute the expression
@@ -2680,7 +2703,7 @@ AggregateBlock::AggregateBlock (ExecutionEngine* engine,
                                 AggregateNode const* en)
   : ExecutionBlock(engine, en),
     _aggregateRegisters(),
-    _currentGroup(),
+    _currentGroup(en->_countOnly),
     _groupRegister(ExecutionNode::MaxRegisterId),
     _variableNames() {
   
@@ -2767,15 +2790,26 @@ int AggregateBlock::getOrSkipSome (size_t atLeast,
                                    bool skipping,
                                    AqlItemBlock*& result,
                                    size_t& skipped) {
-
   TRI_ASSERT(result == nullptr && skipped == 0);
   if (_done) {
     return TRI_ERROR_NO_ERROR;
   }
 
+  bool const isTotalAggregation = _aggregateRegisters.empty();
+  unique_ptr<AqlItemBlock> res;
+
   if (_buffer.empty()) {
     if (! ExecutionBlock::getBlock(atLeast, atMost)) {
+      // done
       _done = true;
+
+      if (isTotalAggregation && _currentGroup.groupLength == 0) {
+        // total aggregation, but have not yet emitted a group
+        res.reset(new AqlItemBlock(1, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+        emitGroup(nullptr, res.get(), skipped);
+        result = res.release();
+      }
+
       return TRI_ERROR_NO_ERROR;
     }
     _pos = 0;           // this is in the first block
@@ -2783,7 +2817,6 @@ int AggregateBlock::getOrSkipSome (size_t atLeast,
 
   // If we get here, we do have _buffer.front()
   AqlItemBlock* cur = _buffer.front();
-  unique_ptr<AqlItemBlock> res;
 
   if (! skipping) {
     res.reset(new AqlItemBlock(atMost, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
@@ -2792,30 +2825,33 @@ int AggregateBlock::getOrSkipSome (size_t atLeast,
     inheritRegisters(cur, res.get(), _pos);
   }
 
+
   while (skipped < atMost) {
     // read the next input row
 
     bool newGroup = false;
-    if (_currentGroup.groupValues[0].isEmpty()) {
-      // we never had any previous group
-      newGroup = true;
-    }
-    else {
-      // we already had a group, check if the group has changed
-      size_t i = 0;
+    if (! isTotalAggregation) {
+      if (_currentGroup.groupValues[0].isEmpty()) {
+        // we never had any previous group
+        newGroup = true;
+      }
+      else {
+        // we already had a group, check if the group has changed
+        size_t i = 0;
 
-      for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
-        int cmp = AqlValue::Compare(_trx,
-                                    _currentGroup.groupValues[i],
-                                    _currentGroup.collections[i],
-                                    cur->getValue(_pos, (*it).second),
-                                    cur->getDocumentCollection((*it).second));
-        if (cmp != 0) {
-          // group change
-          newGroup = true;
-          break;
+        for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
+          int cmp = AqlValue::Compare(_trx,
+                                      _currentGroup.groupValues[i],
+                                      _currentGroup.collections[i],
+                                      cur->getValue(_pos, (*it).second),
+                                      cur->getDocumentCollection((*it).second));
+          if (cmp != 0) {
+            // group change
+            newGroup = true;
+            break;
+          }
+          ++i;
         }
-        ++i;
       }
     }
 
@@ -2936,17 +2972,21 @@ void AggregateBlock::emitGroup (AqlItemBlock const* cur,
     // set the group values
     _currentGroup.addValues(cur, _groupRegister);
 
-    res->setValue(row, _groupRegister,
-                  AqlValue::CreateFromBlocks(_trx,
-                                             _currentGroup.groupBlocks,
-                                             _variableNames));
+    if (static_cast<AggregateNode const*>(_exeNode)->_countOnly) {
+      res->setValue(row, _groupRegister, AqlValue(new Json(static_cast<double>(_currentGroup.groupLength))));
+    }
+    else {
+      res->setValue(row, _groupRegister,
+                    AqlValue::CreateFromBlocks(_trx,
+                                               _currentGroup.groupBlocks,
+                                               _variableNames));
+    }
     // FIXME: can throw:
   }
 
   // reset the group so a new one can start
   _currentGroup.reset();
 }
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   class SortBlock

@@ -1,0 +1,24 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/collation/sr_Latn.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/xml/collation/sr_Latn.xml
+ */
+sr_Latn{
+    Version{"2.0.89.0"}
+    collations{
+        search{
+            Sequence{"[import hr-u-co-search]"}
+            Version{"24"}
+        }
+        standard{
+            Sequence{"[import hr]"}
+            Version{"24"}
+        }
+    }
+}

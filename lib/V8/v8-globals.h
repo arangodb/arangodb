@@ -33,7 +33,6 @@
 #include "Basics/Common.h"
 
 #include <v8.h>
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
@@ -47,161 +46,359 @@ namespace triagens {
   }
 }
 
+static const uint32_t V8DataSlot = 0;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     public macros
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shortcut for creating a v8 symbol for the specified string
+/// @brief shortcut for fetching the isolate from the thread context
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_V8_SYMBOL(name) \
-  v8::String::NewSymbol(name, (int) strlen(name))
+#define ISOLATE v8::Isolate* isolate = v8::Isolate::GetCurrent()
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortcut for creating a v8 symbol for the specified string
+///   implicites isolate available.
+/// @param name local string constant to source
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_V8_ASCII_STRING(name)                                             \
+  v8::String::NewFromOneByte(isolate, (const uint8_t*) name, v8::String::kNormalString, (int) strlen(name))
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for creating a v8 string for the specified string
+///  Implicit argument: isolate (is assumed to be defined)
+/// @param name local char* to use
+///  should be avoided if possible due to performance reasons!
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_V8_STRING(name) \
-  v8::String::New(name)
+#define TRI_V8_STRING(name)                     \
+  v8::String::NewFromUtf8(isolate, name, v8::String::kNormalString, (int)strlen(name))
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shortcut for current v8 globals
+/// @brief shortcut for creating a v8 symbol for the specified string
+///   implicites isolate available.
+/// @param name local std::string to use
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_V8_CURRENT_GLOBALS                                  \
-  v8::Isolate* isolate = v8::Isolate::GetCurrent();             \
-  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData()); \
-  while (0)
+#define TRI_V8_STD_STRING(name)                                  \
+  v8::String::NewFromUtf8(isolate, name.c_str(), v8::String::kNormalString, (int) name.length())
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortcut for creating a v8 symbol for the specified string
+///   implicites isolate available.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_V8_STRING_UTF16(name, length)                               \
+  v8::String::NewFromTwoByte(isolate, name, v8::String::kNormalString, length)
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortcut for creating a v8 symbol for the specified string of known length
+///   implicites isolate available.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_V8_PAIR_STRING(name, length)                                \
+  v8::String::NewFromUtf8(isolate, name, v8::String::kNormalString, (int) length)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for current v8 globals and scope
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_V8_CURRENT_GLOBALS_AND_SCOPE                        \
-  v8::Isolate* isolate = v8::Isolate::GetCurrent();             \
-  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData()); \
-  v8::HandleScope scope;                                        \
+#define TRI_V8_CURRENT_GLOBALS_AND_SCOPE                                              \
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData(V8DataSlot)); \
+  v8::HandleScope scope(isolate);                                                     \
   while (0)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for throwing an exception with an error code
+/// Implicitely demands *args* to be function arguments.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_V8_EXCEPTION(scope, code)                 \
-  return scope.Close(v8::ThrowException(              \
-    TRI_CreateErrorObject(__FILE__, __LINE__, code)))
+#define TRI_V8_SET_EXCEPTION(code)                                      \
+  do {                                                                  \
+    TRI_CreateErrorObject(isolate, code);                               \
+  } while (0)
+
+#define TRI_V8_THROW_EXCEPTION(code)                                    \
+  do {                                                                  \
+    TRI_V8_SET_EXCEPTION(code);                                         \
+    return;                                                             \
+  } while (0)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for throwing an exception and returning
+/// Implicitely demands *args* to be function arguments.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_V8_EXCEPTION_MESSAGE(scope, code, message)               \
-  return scope.Close(v8::ThrowException(                             \
-    TRI_CreateErrorObject(__FILE__, __LINE__, code, message, true)))
+#define TRI_V8_SET_EXCEPTION_MESSAGE(code, message)                     \
+  do {                                                                  \
+    TRI_CreateErrorObject(isolate, code, message, true);                \
+  } while (0)
+
+#define TRI_V8_THROW_EXCEPTION_MESSAGE(code, message)                   \
+  do {                                                                  \
+    TRI_V8_SET_EXCEPTION_MESSAGE(code, message);                        \
+    return;                                                             \
+  } while (0)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for throwing an exception and returning
+/// Implicitely demands *args* to be function arguments.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_V8_EXCEPTION_FULL(scope, code, message)                  \
-  return scope.Close(v8::ThrowException(                             \
-    TRI_CreateErrorObject(__FILE__, __LINE__, code, message, false)))
+#define TRI_V8_THROW_EXCEPTION_FULL(code, message)                      \
+  do {                                                                  \
+    TRI_CreateErrorObject(isolate, code, message, false);               \
+    return;                                                             \
+ } while (0)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for throwing a usage exception and returning
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_V8_EXCEPTION_USAGE(scope, usage)                            \
+#define TRI_V8_THROW_EXCEPTION_USAGE(usage)                             \
   do {                                                                  \
     std::string msg = "usage: ";                                        \
     msg += usage;                                                       \
-    return scope.Close(                                                 \
-      v8::ThrowException(                                               \
-        TRI_CreateErrorObject(__FILE__, __LINE__,                       \
-                              TRI_ERROR_BAD_PARAMETER,                  \
-                              msg.c_str())));                           \
-  }                                                                     \
-  while (0)
+    TRI_CreateErrorObject(isolate,                                      \
+                          TRI_ERROR_BAD_PARAMETER,                      \
+                          msg.c_str());                                 \
+    return;                                                             \
+  } while (0)
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for throwing an internal exception and returning
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_V8_EXCEPTION_INTERNAL(scope, message)                            \
-  return scope.Close(v8::ThrowException(                                     \
-    TRI_CreateErrorObject(__FILE__, __LINE__, TRI_ERROR_INTERNAL, message)));
+#define TRI_V8_THROW_EXCEPTION_INTERNAL(message)                        \
+  do {                                                                  \
+    TRI_CreateErrorObject(isolate, TRI_ERROR_INTERNAL, message);        \
+    return;                                                             \
+  } while(0)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for throwing a parameter exception and returning
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_V8_EXCEPTION_PARAMETER(scope, message)                                 \
-  return scope.Close(v8::ThrowException(                                           \
-    TRI_CreateErrorObject(__FILE__, __LINE__, TRI_ERROR_BAD_PARAMETER, message)));
+#define TRI_V8_THROW_EXCEPTION_PARAMETER(message)                       \
+  do {                                                                  \
+    TRI_CreateErrorObject(isolate, TRI_ERROR_BAD_PARAMETER, message);   \
+    return;                                                             \
+  } while(0)
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for throwing an out-of-memory exception and returning
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_V8_EXCEPTION_MEMORY(scope)                                   \
-  return scope.Close(v8::ThrowException(                                 \
-    TRI_CreateErrorObject(__FILE__, __LINE__, TRI_ERROR_OUT_OF_MEMORY)));
+#define TRI_V8_SET_EXCEPTION_MEMORY()                                   \
+  do {                                                                  \
+    TRI_CreateErrorObject(isolate, TRI_ERROR_OUT_OF_MEMORY);            \
+  } while (0)
+
+#define TRI_V8_THROW_EXCEPTION_MEMORY()                                 \
+  do {                                                                  \
+    TRI_V8_SET_EXCEPTION_MEMORY();                                      \
+    return;                                                             \
+ } while (0)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for throwing an exception for an system error
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_V8_EXCEPTION_SYS(scope, message)                        \
+#define TRI_V8_THROW_EXCEPTION_SYS(message)                         \
   do {                                                              \
     TRI_set_errno(TRI_ERROR_SYS_ERROR);                             \
     std::string msg = message;                                      \
     msg += ": ";                                                    \
     msg += TRI_LAST_ERROR_STR;                                      \
-    return scope.Close(v8::ThrowException(                          \
-      TRI_CreateErrorObject(                                        \
-        __FILE__, __LINE__,                                         \
-        TRI_errno(),                                                \
-        msg.c_str())));                                             \
-  }                                                                 \
-  while (0)
+    TRI_CreateErrorObject(isolate,                                  \
+                          TRI_errno(),                              \
+                          msg.c_str());                             \
+    return;                                                         \
+  } while (0)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shortcut for logging and forward throwing an error
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_V8_LOG_THROW_EXCEPTION(TRYCATCH)                      \
+  do {                                                            \
+    TRI_LogV8Exception(isolate, &TRYCATCH);                       \
+    TRYCATCH.ReThrow();                                           \
+    return;                                                       \
+  } while(0)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for throwing an error
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_V8_ERROR(scope, message) \
-  return scope.Close(v8::ThrowException(v8::Exception::Error(v8::String::New(message))))
+#define TRI_V8_SET_ERROR(message)                                          \
+  do {                                                                     \
+    isolate->ThrowException(v8::Exception::Error(TRI_V8_STRING(message))); \
+  } while(0)
+
+#define TRI_V8_THROW_ERROR(message)                                        \
+  do {                                                                     \
+    TRI_V8_SET_ERROR(message);                                             \
+    return;                                                                \
+  } while(0)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for throwing a range error
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_V8_RANGE_ERROR(scope, message) \
-  return scope.Close(v8::ThrowException(v8::Exception::RangeError(v8::String::New(message))))
+#define TRI_V8_THROW_RANGE_ERROR(message)                                       \
+  do {                                                                          \
+    isolate->ThrowException(v8::Exception::RangeError(TRI_V8_STRING(message))); \
+    return;                                                                     \
+} while(0)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for throwing a syntax error
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_V8_SYNTAX_ERROR(scope, message) \
-  return scope.Close(v8::ThrowException(v8::Exception::SyntaxError(v8::String::New(message))))
+#define TRI_V8_THROW_SYNTAX_ERROR(message)                                       \
+  do {                                                                           \
+    isolate->ThrowException(v8::Exception::SyntaxError(TRI_V8_STRING(message))); \
+    return;                                                                      \
+  } while (0)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortcut for throwing a type error
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_V8_TYPE_ERROR(scope, message) \
-  return scope.Close(v8::ThrowException(v8::Exception::TypeError(v8::String::New(message))))
+#define TRI_V8_SET_TYPE_ERROR(message)                                         \
+  do {                                                                         \
+    isolate->ThrowException(v8::Exception::TypeError(TRI_V8_STRING(message))); \
+  } while (0)
+
+#define TRI_V8_THROW_TYPE_ERROR(message)                                       \
+  do {                                                                         \
+    TRI_V8_SET_TYPE_ERROR(message);                                            \
+    return;                                                                    \
+  } while (0)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief "not yet implemented" handler for sharding
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection) \
-  if (collection != 0 && ! collection->_isLocal) {                     \
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_NOT_IMPLEMENTED);                \
+#define TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(collection)        \
+  if (collection != nullptr && ! collection->_isLocal) {                     \
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);                       \
   }
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Return undefined (default..)
+///   implicitely requires 'args and 'isolate' to be available
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_V8_RETURN_UNDEFINED()                                      \
+  args.GetReturnValue().Set(v8::Undefined(isolate));                   \
+  return
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Return 'true'
+///   implicitely requires 'args and 'isolate' to be available
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_V8_RETURN_TRUE()                            \
+  args.GetReturnValue().Set(v8::True(isolate));         \
+  return
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Return 'false'
+///   implicitely requires 'args and 'isolate' to be available
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_V8_RETURN_FALSE()                           \
+  args.GetReturnValue().Set(v8::False(isolate));        \
+  return
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return 'null'
+///   implicitely requires 'args and 'isolate' to be available
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_V8_RETURN_NULL()                            \
+  args.GetReturnValue().Set(v8::Null(isolate));         \
+  return
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return any sort of V8-value
+///   implicitely requires 'args and 'isolate' to be available
+/// @param WHAT the name of the v8::Value/v8::Number/...
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_V8_RETURN(WHAT)               \
+  args.GetReturnValue().Set(WHAT);        \
+  return
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a char*
+///   implicitely requires 'args and 'isolate' to be available
+/// @param WHAT the name of the char* variable
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_V8_RETURN_STRING(WHAT)                                      \
+  args.GetReturnValue().Set(v8::String::NewFromUtf8(isolate, WHAT));    \
+  return
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a std::string
+///   implicitely requires 'args and 'isolate' to be available
+/// @param WHAT the name of the std::string variable
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_V8_RETURN_STD_STRING(WHAT)                                  \
+  args.GetReturnValue().Set(v8::String::NewFromUtf8(isolate, WHAT.c_str(), v8::String::kNormalString, (int) WHAT.length())); \
+  return
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a string which you know the length of
+///   implicitely requires 'args and 'isolate' to be available
+/// @param WHAT the name of the char* variable
+/// @param WHATLEn the name of the int variable containing the length of WHAT
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_V8_RETURN_PAIR_STRING(WHAT, WHATLEN)                        \
+  args.GetReturnValue().Set(v8::String::NewFromUtf8(isolate, WHAT, v8::String::kNormalString, (int) WHATLEN)); \
+  return
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief retrieve the instance of the TRI_v8_global of the current thread
+///   implicitely creates a variable 'v8g' with a pointer to it.
+///   implicitely requires 'isolate' to be available
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_GET_GLOBALS()                                               \
+        TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData(V8DataSlot))
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fetch a string-member from the globel into the local scope of the function
+///     will give you a variable of the same name.
+///     implicitely requires 'v8g' and 'isolate' to be there.
+/// @param WHICH the member string name to get as local variable
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_GET_GLOBAL_STRING(WHICH)                            \
+  auto WHICH = v8::Local<v8::String>::New(isolate, v8g->WHICH)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fetch a member from the globel into the local scope of the function
+///     will give you a variable of the same name.
+///     implicitely requires 'v8g' and 'isolate' to be there.
+/// @param WHICH the member name to get as local variable
+/// @param TYPE  the type of the member to instanciate
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_GET_GLOBAL(WHICH, TYPE)                             \
+  auto WHICH = v8::Local<TYPE>::New(isolate, v8g->WHICH)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -233,13 +430,19 @@ typedef struct TRI_v8_global_s {
 /// @brief barrier mapping for weak pointers
 ////////////////////////////////////////////////////////////////////////////////
 
-  std::map< void*, v8::Persistent<v8::Value> > JSBarriers;
+  std::map< void*, v8::Persistent<v8::External> > JSBarriers;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection mapping for weak pointers
 ////////////////////////////////////////////////////////////////////////////////
 
-  std::map< void*, v8::Persistent<v8::Value> > JSCollections;
+  std::map< void*, v8::Persistent<v8::External> > JSCollections;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cursor mapping for weak pointers
+////////////////////////////////////////////////////////////////////////////////
+
+  std::map< void*, v8::Persistent<v8::External> > JSCursors;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                       JAVASCRIPT OBJECT TEMPLATES
@@ -863,22 +1066,23 @@ TRI_v8_global_t* TRI_GetV8Globals(v8::Isolate*);
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename TARGET>
-void TRI_V8_AddProtoMethod (TARGET tpl,
-                            char const* name,
-                            v8::InvocationCallback callback,
+void TRI_V8_AddProtoMethod (v8::Isolate* isolate,
+                            TARGET tpl,
+                            v8::Handle<v8::String> name,
+                            v8::FunctionCallback callback,
                             bool isHidden = false) {
-  // hidden method
+    // hidden method
   if (isHidden) {
-    tpl->PrototypeTemplate()->Set(TRI_V8_SYMBOL(name),
-                                  v8::FunctionTemplate::New(callback),
+    tpl->PrototypeTemplate()->Set(name,
+                                  v8::FunctionTemplate::New(isolate, callback),
                                   v8::DontEnum);
   }
 
   // normal method
   else {
-    tpl->PrototypeTemplate()->Set(TRI_V8_SYMBOL(name),
-                                  v8::FunctionTemplate::New(callback));
-  }
+    tpl->PrototypeTemplate()->Set(name,
+                                  v8::FunctionTemplate::New(isolate, callback));
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -886,75 +1090,78 @@ void TRI_V8_AddProtoMethod (TARGET tpl,
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename TARGET>
-inline void TRI_V8_AddMethod (TARGET tpl,
-                              char const* name,
+inline void TRI_V8_AddMethod (v8::Isolate* isolate,
+                              TARGET tpl,
+                              v8::Handle<v8::String> name,
                               v8::Handle<v8::FunctionTemplate> callback,
                               bool isHidden = false) {
   // hidden method
   if (isHidden) {
-    tpl->Set(TRI_V8_SYMBOL(name),
-             callback->GetFunction(),
-             v8::DontEnum);
+    tpl->ForceSet(name,
+                  callback->GetFunction(),
+                  v8::DontEnum);
   }
-
   // normal method
   else {
-    tpl->Set(TRI_V8_SYMBOL(name),
+    tpl->Set(name,
              callback->GetFunction());
   }
 }
 
 template <typename TARGET>
-inline void TRI_V8_AddMethod (TARGET tpl,
-                              char const* name,
-                              v8::InvocationCallback callback,
+inline void TRI_V8_AddMethod (v8::Isolate* isolate,
+                              TARGET tpl,
+                              v8::Handle<v8::String> name,
+                              v8::FunctionCallback callback,
                               bool isHidden = false) {
   // hidden method
   if (isHidden) {
-    tpl->Set(TRI_V8_SYMBOL(name),
-             v8::FunctionTemplate::New(callback)->GetFunction(),
-             v8::DontEnum);
+    tpl->Set(name,
+             v8::FunctionTemplate::New(isolate, callback)->GetFunction());
   }
-
   // normal method
   else {
-    tpl->Set(TRI_V8_SYMBOL(name),
-             v8::FunctionTemplate::New(callback)->GetFunction());
+    tpl->Set(name,
+             v8::FunctionTemplate::New(isolate, callback)->GetFunction());
   }
 }
 
 template <>
-inline void TRI_V8_AddMethod (v8::Handle<v8::FunctionTemplate> tpl,
-                              const char* const name,
-                              v8::InvocationCallback callback,
+inline void TRI_V8_AddMethod (v8::Isolate* isolate,
+                              v8::Handle<v8::FunctionTemplate> tpl,
+                              v8::Handle<v8::String> name,
+                              v8::FunctionCallback callback,
                               bool isHidden) {
-  TRI_V8_AddMethod(tpl->GetFunction(), name, callback, isHidden);
+  TRI_V8_AddMethod(isolate, tpl->GetFunction(), name, callback, isHidden);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a method to an object
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AddMethodVocbase (v8::Handle<v8::ObjectTemplate> tpl,
-                           char const* name,
-                           v8::Handle<v8::Value>(*func)(v8::Arguments const&),
+void TRI_AddMethodVocbase (v8::Isolate* isolate,
+                           v8::Handle<v8::ObjectTemplate> tpl,
+                           v8::Handle<v8::String> name,
+                           void(*func)(v8::FunctionCallbackInfo<v8::Value> const&),
                            bool isHidden = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a global function to the given context
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
-                                   char const* name,
-                                   v8::Handle<v8::Value>(*func)(v8::Arguments const&),
+void TRI_AddGlobalFunctionVocbase (v8::Isolate* isolate,
+                                   v8::Handle<v8::Context> context,
+                                   v8::Handle<v8::String> name,
+                                   void(*func)(v8::FunctionCallbackInfo<v8::Value> const&),
                                    bool isHidden = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a global function to the given context
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
-                                   char const* name,
+void TRI_AddGlobalFunctionVocbase (v8::Isolate* isolate,
+                                   v8::Handle<v8::Context> context,
+                                   v8::Handle<v8::String> name,
                                    v8::Handle<v8::Function> func,
                                    bool isHidden = false);
 
@@ -962,8 +1169,9 @@ void TRI_AddGlobalFunctionVocbase (v8::Handle<v8::Context> context,
 /// @brief adds a global read-only variable to the given context
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AddGlobalVariableVocbase (v8::Handle<v8::Context> context,
-                                   char const* name,
+void TRI_AddGlobalVariableVocbase (v8::Isolate* isolate,
+                                   v8::Handle<v8::Context> context,
+                                   v8::Handle<v8::String> name,
                                    v8::Handle<v8::Value> value);
 
 #endif

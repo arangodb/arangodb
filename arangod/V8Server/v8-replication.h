@@ -35,7 +35,8 @@
 #include "VocBase/server.h"
 
 
-void TRI_InitV8replication (v8::Handle<v8::Context> context,
+void TRI_InitV8replication (v8::Isolate* isolate,
+                            v8::Handle<v8::Context> context,
                             TRI_server_t* server,
                             TRI_vocbase_t* vocbase,
                             triagens::arango::JSLoader* loader,

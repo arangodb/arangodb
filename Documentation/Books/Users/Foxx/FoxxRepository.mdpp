@@ -138,6 +138,8 @@ var FulltextRepository = Foxx.Repository.extend({
 
 @startDocuBlock JSF_foxx_repository_all
 
+@startDocuBlock JSF_foxx_repository_any
+
 !SUBSECTION Removing entries from the repository
 
 @startDocuBlock JSF_foxx_repository_remove

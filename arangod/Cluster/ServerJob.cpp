@@ -144,20 +144,21 @@ bool ServerJob::execute () {
     return false;
   }
 
+  auto isolate = context->isolate;
   try {
-    v8::HandleScope scope;
+    v8::HandleScope scope(isolate);
+    
     // execute script inside the context
-    char const* file = "handle-plan-change";
-    char const* content = "require('org/arangodb/cluster').handlePlanChange();";
-
-    TRI_ExecuteJavaScriptString(v8::Context::GetCurrent(), v8::String::New(content, (int) strlen(content)), v8::String::New(file), false);
+    auto file = TRI_V8_ASCII_STRING("handle-plan-change");
+    auto content = TRI_V8_ASCII_STRING("require('org/arangodb/cluster').handlePlanChange();");
+    TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(), content, file, false);
   }
   catch (...) {
   }
 
 
   // get the pointer to the last used vocbase
-  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(context->_isolate->GetData());
+  TRI_GET_GLOBALS();
   void* orig = v8g->_vocbase;
 
   _applicationV8->exitContext(context);

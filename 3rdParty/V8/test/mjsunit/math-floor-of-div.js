@@ -184,7 +184,7 @@ test_div();
 %OptimizeFunctionOnNextCall(test_div);
 test_div();
 
-// Test for ia32/x64 flooring correctness.
+// Test for flooring correctness.
 var values2 = [1, 3, 10, 99, 100, 101, 0x7fffffff];
 function test_div2() {
   for (var i = 0; i < values2.length; i++) {
@@ -286,3 +286,14 @@ test_div_deopt_div_by_zero_v();
 test_div_deopt_minus_zero_v();
 test_div_deopt_overflow_v();
 test_div_deopt_div_by_zero_v();
+
+
+// Test for flooring division with negative dividend.
+function flooring_div_by_3(y) {
+  return Math.floor(y / 3);
+}
+
+assertEquals(-1, flooring_div_by_3(-2));
+assertEquals(-1, flooring_div_by_3(-2));
+%OptimizeFunctionOnNextCall(flooring_div_by_3);
+assertEquals(-1, flooring_div_by_3(-2));

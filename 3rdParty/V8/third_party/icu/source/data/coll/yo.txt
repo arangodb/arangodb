@@ -1,0 +1,26 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/collation/yo.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/xml/collation/yo.xml
+ */
+yo{
+    Version{"2.0.89.0"}
+    collations{
+        standard{
+            Sequence{
+                "[normalization on]"
+                "&E<ẹ<<<Ẹ"
+                "&G<gb<<<Gb<<<GB"
+                "&O<ọ<<<Ọ"
+                "&S<ṣ<<<Ṣ"
+            }
+            Version{"24"}
+        }
+    }
+}

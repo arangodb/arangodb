@@ -588,6 +588,32 @@ function runThere (options, instanceInfo, file) {
   return r;
 }
 
+
+function runHere (options, instanceInfo, file) {
+  var result;
+  try {
+    var test;
+    if (file.indexOf("-spec") === -1) {
+      test = 'var runTest = require("jsunity").runTest; '+
+          'result = runTest(' + JSON.stringify(file) + ');';
+    }
+    else {
+      var jasmineReportFormat = options.jasmineReportFormat || 'progress';
+      test = 'var executeTestSuite = require("jasmine").executeTestSuite; '+
+          'result = executeTestSuite([' + JSON.stringify(file) + '],{"format": '+
+          JSON.stringify(jasmineReportFormat) + '});';
+    }
+    eval(test);
+    if (file.indexOf("-spec") !== -1) {
+      result = {status: result, message: ''};
+    }
+ }
+  catch (err) {
+    result = err;
+  }
+  return result;
+}
+
 function executeAndWait (cmd, args) {
   var startTime = time();
   var res = executeExternalAndWait(cmd, args);
@@ -650,8 +676,11 @@ function runArangoshCmd (options, instanceInfo, cmds) {
   return executeAndWait(arangosh, args);
 }
 
-function performTests(options, testList, testname) {
-  var instanceInfo = startInstance("tcp", options, [], testname);
+function performTests(options, testList, testname, remote) {
+  var instanceInfo;
+  if (remote) {
+    instanceInfo = startInstance("tcp", options, [], testname);
+  }
   var results = {};
   var i;
   var te;
@@ -662,6 +691,7 @@ function performTests(options, testList, testname) {
     te = testList[i];
     if (filterTestcaseByOptions(te, options, filtered)) {
       if (!continueTesting) {
+        print('oops!');
         print("Skipping, " + te + " server is gone.");
         results[te] = {status: false, message: instanceInfo.exitStatus};
         instanceInfo.exitStatus = "server is gone.";
@@ -669,24 +699,37 @@ function performTests(options, testList, testname) {
       }
 
       print("\nArangod: Trying",te,"...");
-      var r = runThere(options, instanceInfo, te);
+      var r;
+      if (remote) {
+        r = runThere(options, instanceInfo, te);
+      }
+      else {
+        r = runHere(options, instanceInfo, te);
+      }
       if (r.hasOwnProperty('status')) {
         results[te] = r;
+        if (!r.status && ! options.force) {
+          break;
+        }
       }
       else {
         results[te] = {status: false, message: r};
+        if (!options.force) {
+          break;
+        }
       }
-      if (r !== true && !options.force) {
-        break;
+      if (remote) {
+        continueTesting = checkInstanceAlive(instanceInfo, options);
       }
-      continueTesting = checkInstanceAlive(instanceInfo, options);
     }
     else {
       print("Skipped " + te + " because of " + filtered.filter);
     }
   }
-  print("Shutting down...");
-  shutdownInstance(instanceInfo,options);
+  if (remote) {
+    print("Shutting down...");
+    shutdownInstance(instanceInfo,options);
+  }
   print("done.");
   return results;
 }
@@ -748,19 +791,21 @@ testFuncs.shell_server_perf = function(options) {
   findTests();
   return performTests(options,
                       tests_shell_server_aql_performance,
-                      'shell_server_perf');
+                      'shell_server_perf',
+                      true);
 };
 
 testFuncs.shell_server = function (options) {
   findTests();
-  return performTests(options, tests_shell_server, 'shell_server');
+  return performTests(options, tests_shell_server, 'shell_server', true);
 };
 
 testFuncs.shell_server_only = function (options) {
   findTests();
   return performTests(options,
                       tests_shell_server_only,
-                      'shell_server_only');
+                      'shell_server_only',
+                      true);
 };
 
 testFuncs.shell_server_ahuacatl = function(options) {
@@ -769,13 +814,15 @@ testFuncs.shell_server_ahuacatl = function(options) {
     if (options.skipRanges) {
       return performTests(options,
                           tests_shell_server_ahuacatl,
-                          'shell_server_ahuacatl_skipranges');
+                          'shell_server_ahuacatl_skipranges',
+                          true);
     }
     else {
       return performTests(options,
                           tests_shell_server_ahuacatl.concat(
                             tests_shell_server_ahuacatl_extended),
-                          'shell_server_ahuacatl');
+                          'shell_server_ahuacatl',
+                          true);
     }
   }
   return "skipped";
@@ -787,16 +834,43 @@ testFuncs.shell_server_aql = function(options) {
     if (options.skipRanges) {
       return performTests(options,
                           tests_shell_server_aql,
-                          'shell_server_aql_skipranges');
+                          'shell_server_aql_skipranges',
+                          true);
     }
     else {
       return performTests(options,
                           tests_shell_server_aql.concat(
                             tests_shell_server_aql_extended),
-                          'shell_server_aql');
+                          'shell_server_aql',
+                          true);
     }
   }
   return "skipped";
+};
+
+testFuncs.shell_server_aql_local = function(options) {
+  if (!options.hasOwnProperty('cluster')) {
+    print('need to specify whether this is a coordinator or not! Add "Cluster":true/false to the options.');
+    return;
+  }
+  findTests();
+  if (! options.skipAql) {
+    if (options.skipRanges) {
+      unitTestPrettyPrintResults(
+        performTests(options,
+                     tests_shell_server_aql,
+                     'shell_server_aql_skipranges',
+                     false));
+    }
+    else {
+      unitTestPrettyPrintResults(
+        performTests(options,
+                     tests_shell_server_aql.concat(
+                       tests_shell_server_aql_extended),
+                     'shell_server_aql',
+                     false));
+    }
+  }
 };
 
 testFuncs.shell_client = function(options) {
@@ -1520,6 +1594,7 @@ function UnitTest (which, options) {
   }
 }
 
+exports.testFuncs = testFuncs;
 exports.UnitTest = UnitTest;
 exports.unitTestPrettyPrintResults = unitTestPrettyPrintResults;
 // -----------------------------------------------------------------------------

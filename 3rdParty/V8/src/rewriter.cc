@@ -1,50 +1,29 @@
 // Copyright 2012 the V8 project authors. All rights reserved.
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-//     * Redistributions of source code must retain the above copyright
-//       notice, this list of conditions and the following disclaimer.
-//     * Redistributions in binary form must reproduce the above
-//       copyright notice, this list of conditions and the following
-//       disclaimer in the documentation and/or other materials provided
-//       with the distribution.
-//     * Neither the name of Google Inc. nor the names of its
-//       contributors may be used to endorse or promote products derived
-//       from this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
 
-#include "v8.h"
+#include "src/v8.h"
 
-#include "rewriter.h"
+#include "src/rewriter.h"
 
-#include "ast.h"
-#include "compiler.h"
-#include "scopes.h"
+#include "src/ast.h"
+#include "src/compiler.h"
+#include "src/scopes.h"
 
 namespace v8 {
 namespace internal {
 
 class Processor: public AstVisitor {
  public:
-  Processor(Variable* result, Zone* zone)
+  Processor(Variable* result, Zone* zone, AstNode::IdGen* ast_node_id_gen)
       : result_(result),
         result_assigned_(false),
         is_set_(false),
         in_try_(false),
-        factory_(Isolate::Current(), zone) {
-    InitializeAstVisitor();
+        // Passing a null AstValueFactory is fine, because Processor doesn't
+        // need to create strings or literals.
+        factory_(zone, NULL, ast_node_id_gen) {
+    InitializeAstVisitor(zone);
   }
 
   virtual ~Processor() { }
@@ -168,6 +147,11 @@ void Processor::VisitForInStatement(ForInStatement* node) {
 }
 
 
+void Processor::VisitForOfStatement(ForOfStatement* node) {
+  VisitIterationStatement(node);
+}
+
+
 void Processor::VisitTryCatchStatement(TryCatchStatement* node) {
   // Rewrite both try and catch blocks (reversed order).
   bool set_after_catch = is_set_;
@@ -245,34 +229,35 @@ EXPRESSION_NODE_LIST(DEF_VISIT)
 // continue to be used in the case of failure.
 bool Rewriter::Rewrite(CompilationInfo* info) {
   FunctionLiteral* function = info->function();
-  ASSERT(function != NULL);
+  DCHECK(function != NULL);
   Scope* scope = function->scope();
-  ASSERT(scope != NULL);
+  DCHECK(scope != NULL);
   if (!scope->is_global_scope() && !scope->is_eval_scope()) return true;
 
   ZoneList<Statement*>* body = function->body();
   if (!body->is_empty()) {
-    Variable* result = scope->NewTemporary(
-        info->isolate()->factory()->result_symbol());
-    Processor processor(result, info->zone());
+    Variable* result =
+        scope->NewTemporary(info->ast_value_factory()->dot_result_string());
+    // The name string must be internalized at this point.
+    DCHECK(!result->name().is_null());
+    Processor processor(result, info->zone(), info->ast_node_id_gen());
     processor.Process(body);
     if (processor.HasStackOverflow()) return false;
 
     if (processor.result_assigned()) {
-      ASSERT(function->end_position() != RelocInfo::kNoPosition);
+      DCHECK(function->end_position() != RelocInfo::kNoPosition);
       // Set the position of the assignment statement one character past the
       // source code, such that it definitely is not in the source code range
       // of an immediate inner scope. For example in
       //   eval('with ({x:1}) x = 1');
       // the end position of the function generated for executing the eval code
       // coincides with the end of the with scope which is the position of '1'.
-      int position = function->end_position();
+      int pos = function->end_position();
       VariableProxy* result_proxy = processor.factory()->NewVariableProxy(
-          result->name(), false, result->interface(), position);
+          result->raw_name(), false, result->interface(), pos);
       result_proxy->BindTo(result);
       Statement* result_statement =
-          processor.factory()->NewReturnStatement(result_proxy);
-      result_statement->set_statement_pos(position);
+          processor.factory()->NewReturnStatement(result_proxy, pos);
       body->Add(result_statement, info->zone());
     }
   }
