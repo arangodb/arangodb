@@ -1,0 +1,52 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ti.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/ti.xml
+ */
+ti{
+    Currencies{
+        BRL{
+            "R$",
+            "የብራዚል ሪል",
+        }
+        CNY{
+            "CN¥",
+            "የቻይና ዩአን ረንሚንቢ",
+        }
+        ETB{
+            "Br",
+            "የኢትዮጵያ ብር",
+        }
+        EUR{
+            "€",
+            "አውሮ",
+        }
+        GBP{
+            "£",
+            "የእንግሊዝ ፓውንድ ስተርሊንግ",
+        }
+        INR{
+            "₹",
+            "የሕንድ ሩፒ",
+        }
+        JPY{
+            "JP¥",
+            "የጃፓን የን",
+        }
+        RUB{
+            "RUB",
+            "የራሻ ሩብል",
+        }
+        USD{
+            "US$",
+            "የአሜሪካን ዶላር",
+        }
+    }
+    Version{"2.0.92.87"}
+}

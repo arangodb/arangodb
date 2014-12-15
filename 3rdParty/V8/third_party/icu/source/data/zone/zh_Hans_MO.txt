@@ -1,0 +1,63 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/zh_Hans_MO.xml
+// *
+// ***************************************************************************
+zh_Hans_MO{
+    Version{"2.0.92.87"}
+    zoneStrings{
+        "America:Menominee"{
+            ec{"梅诺米尼"}
+        }
+        "America:Santo_Domingo"{
+            ec{"圣多明戈"}
+        }
+        "America:St_Barthelemy"{
+            ec{"圣巴太累米"}
+        }
+        "America:St_Johns"{
+            ec{"圣约翰"}
+        }
+        "Antarctica:DumontDUrville"{
+            ec{"杜蒙杜威勒"}
+        }
+        "Europe:Zaporozhye"{
+            ec{"扎波罗什"}
+        }
+        "meta:Cocos"{
+            ls{"科科斯岛时间"}
+        }
+        "meta:DumontDUrville"{
+            ls{"杜蒙特杜维尔时间"}
+        }
+        "meta:French_Southern"{
+            ls{"法属南部和南极洲时间"}
+        }
+        "meta:Gilbert_Islands"{
+            ls{"吉尔柏特群岛时间"}
+        }
+        "meta:Phoenix_Islands"{
+            ls{"凤凰岛时间"}
+        }
+        "meta:Pierre_Miquelon"{
+            ld{"圣皮埃尔和密克隆夏令时间"}
+            lg{"圣皮埃尔和密克隆时间"}
+            ls{"圣皮埃尔和密克隆标准时间"}
+        }
+        "meta:South_Georgia"{
+            ls{"南乔治亚时间"}
+        }
+        "meta:Tahiti"{
+            ls{"大溪地时间"}
+        }
+        "meta:Truk"{
+            ls{"特鲁克时间"}
+        }
+        "meta:Tuvalu"{
+            ls{"吐瓦鲁时间"}
+        }
+    }
+}

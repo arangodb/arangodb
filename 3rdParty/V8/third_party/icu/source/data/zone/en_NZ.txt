@@ -1,0 +1,67 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/en_NZ.xml
+// *
+// ***************************************************************************
+en_NZ{
+    %%Parent{"en_GB"}
+    Version{"2.0.90.61"}
+    zoneStrings{
+        "Europe:London"{
+            sd{"∅∅∅"}
+        }
+        "meta:Australia_Central"{
+            sd{"ACDT"}
+            sg{"ACT"}
+            ss{"ACST"}
+        }
+        "meta:Australia_CentralWestern"{
+            sd{"ACWDT"}
+            sg{"ACWT"}
+            ss{"ACWST"}
+        }
+        "meta:Australia_Eastern"{
+            sd{"AEDT"}
+            sg{"AET"}
+            ss{"AEST"}
+        }
+        "meta:Australia_Western"{
+            sd{"AWDT"}
+            sg{"AWT"}
+            ss{"AWST"}
+        }
+        "meta:Chatham"{
+            sd{"CHADT"}
+            sg{"CHAT"}
+            ss{"CHAST"}
+        }
+        "meta:Europe_Central"{
+            sd{"∅∅∅"}
+            sg{"∅∅∅"}
+            ss{"∅∅∅"}
+        }
+        "meta:Europe_Eastern"{
+            sd{"∅∅∅"}
+            sg{"∅∅∅"}
+            ss{"∅∅∅"}
+        }
+        "meta:Europe_Western"{
+            sd{"∅∅∅"}
+            sg{"∅∅∅"}
+            ss{"∅∅∅"}
+        }
+        "meta:Lord_Howe"{
+            sd{"LHDT"}
+            sg{"LHT"}
+            ss{"LHST"}
+        }
+        "meta:New_Zealand"{
+            sd{"NZDT"}
+            sg{"NZT"}
+            ss{"NZST"}
+        }
+    }
+}

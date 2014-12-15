@@ -1,0 +1,21 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/en_GB.xml
+// *
+// ***************************************************************************
+en_GB{
+    %%Parent{"en_001"}
+    Languages{
+    }
+    LanguagesShort{
+        en_GB{"UK English"}
+        en_US{"US English"}
+    }
+    Scripts{
+        Thai{"Thai"}
+    }
+    Version{"2.0.92.80"}
+}

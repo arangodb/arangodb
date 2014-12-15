@@ -1,0 +1,693 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/uz.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/uz.xml
+ */
+uz{
+    Version{"2.0.92.87"}
+    zoneStrings{
+        "Africa:Asmera"{
+            ec{"Asmara"}
+        }
+        "America:Coral_Harbour"{
+            ec{"Atikokan"}
+        }
+        "America:Godthab"{
+            ec{"Nuuk"}
+        }
+        "America:Indiana:Knox"{
+            ec{"Knox, Indiana"}
+        }
+        "America:Indiana:Marengo"{
+            ec{"Marengo, Indiana"}
+        }
+        "America:Indiana:Petersburg"{
+            ec{"Petersburg, Indiana"}
+        }
+        "America:Indiana:Tell_City"{
+            ec{"Tell City, Indiana"}
+        }
+        "America:Indiana:Vevay"{
+            ec{"Vevay, Indiana"}
+        }
+        "America:Indiana:Vincennes"{
+            ec{"Vincennes, Indiana"}
+        }
+        "America:Indiana:Winamac"{
+            ec{"Winamac, Indiana"}
+        }
+        "America:Kentucky:Monticello"{
+            ec{"Monticello, Kentucky"}
+        }
+        "America:Lower_Princes"{
+            ec{"Lower Prince's Quarter"}
+        }
+        "America:North_Dakota:Beulah"{
+            ec{"Beulah, North Dakota"}
+        }
+        "America:North_Dakota:Center"{
+            ec{"Center, North Dakota"}
+        }
+        "America:North_Dakota:New_Salem"{
+            ec{"New Salem, North Dakota"}
+        }
+        "America:Scoresbysund"{
+            ec{"Ittoqqortoormiit"}
+        }
+        "America:St_Barthelemy"{
+            ec{"St. Barthelemy"}
+        }
+        "America:St_Johns"{
+            ec{"St. John’s"}
+        }
+        "America:St_Kitts"{
+            ec{"St. Kitts"}
+        }
+        "America:St_Lucia"{
+            ec{"St. Lucia"}
+        }
+        "America:St_Thomas"{
+            ec{"St. Thomas"}
+        }
+        "America:St_Vincent"{
+            ec{"St. Vincent"}
+        }
+        "Antarctica:DumontDUrville"{
+            ec{"Dumont d’Urville"}
+        }
+        "Asia:Calcutta"{
+            ec{"Kolkata"}
+        }
+        "Asia:Katmandu"{
+            ec{"Kathmandu"}
+        }
+        "Asia:Saigon"{
+            ec{"Ho Chi Minh"}
+        }
+        "Asia:Tashkent"{
+            ec{"Toshkent"}
+        }
+        "Atlantic:Faeroe"{
+            ec{"Faroe"}
+        }
+        "Atlantic:St_Helena"{
+            ec{"St. Helena"}
+        }
+        "Etc:Unknown"{
+            ec{"Nomaʼlum"}
+        }
+        "Europe:Dublin"{
+            ld{"Irlandiya yozgi vaqti"}
+        }
+        "Europe:London"{
+            ld{"Britaniya yozgi vaqti"}
+        }
+        "Pacific:Ponape"{
+            ec{"Pohnpei"}
+        }
+        "Pacific:Truk"{
+            ec{"Chuuk"}
+        }
+        "meta:Afghanistan"{
+            ls{"Afgʻoniston vaqti"}
+        }
+        "meta:Africa_Central"{
+            ls{"Markaziy Afrika vaqti"}
+        }
+        "meta:Africa_Eastern"{
+            ls{"Sharqiy Afrika vaqti"}
+        }
+        "meta:Africa_Southern"{
+            ls{"Janubiy Afrika vaqti"}
+        }
+        "meta:Africa_Western"{
+            ld{"Gʻarbiy Afrika yozgi vaqti"}
+            lg{"Gʻarbiy Afrika vaqti"}
+            ls{"Gʻarbiy Afrika standart vaqti"}
+        }
+        "meta:Alaska"{
+            ld{"Alyaska kunduzgi vaqti"}
+            lg{"Alyaska vaqti"}
+            ls{"Alyaska standart vaqti"}
+        }
+        "meta:Amazon"{
+            ld{"Amazonka yozgi vaqti"}
+            lg{"Amazonka vaqti"}
+            ls{"Amazonka standart vaqti"}
+        }
+        "meta:America_Central"{
+            ld{"Shimoliy Amerika markaziy kunduzgi vaqti"}
+            lg{"Shimoliy Amerika markaziy vaqti"}
+            ls{"Shimoliy Amerika markaziy standart vaqti"}
+        }
+        "meta:America_Eastern"{
+            ld{"Shimoliy Amerika sharqiy kunduzgi vaqti"}
+            lg{"Shimoliy Amerika sharqiy vaqti"}
+            ls{"Shimoliy Amerika sharqiy standart vaqti"}
+        }
+        "meta:America_Mountain"{
+            ld{"Shimoliy Amerika togʻ kunduzgi vaqti"}
+            lg{"Shimoliy Amerika togʻ vaqti"}
+            ls{"Shimoliy Amerika togʻ standart vaqti"}
+        }
+        "meta:America_Pacific"{
+            ld{"Shimoliy Amerika tinch okeani kunduzgi vaqti"}
+            lg{"Shimoliy Amerika tinch okeani vaqti"}
+            ls{"Shimoliy Amerika tinch okeani standart vaqti"}
+        }
+        "meta:Arabian"{
+            ld{"Arabiston kunduzgi vaqti"}
+            lg{"Arabiston vaqti"}
+            ls{"Arabiston standart vaqti"}
+        }
+        "meta:Argentina"{
+            ld{"Argentina yozgi vaqti"}
+            lg{"Argentina vaqti"}
+            ls{"Argentina standart vaqti"}
+        }
+        "meta:Argentina_Western"{
+            ld{"Gʻarbiy Argentina yozgi vaqti"}
+            lg{"Gʻarbiy Argentina vaqti"}
+            ls{"Gʻarbiy Argentina standart vaqti"}
+        }
+        "meta:Armenia"{
+            ld{"Armaniston yozgi vaqti"}
+            lg{"Aramniston vaqti"}
+            ls{"Armaniston standart vaqti"}
+        }
+        "meta:Atlantic"{
+            ld{"Atlantika kunduzgi vaqti"}
+            lg{"Atlantika vaqti"}
+            ls{"Atlantika standart vaqti"}
+        }
+        "meta:Australia_Central"{
+            ld{"Markaziy Avstraliya kunduzgi vaqti"}
+            lg{"Markaziy Avstraliya vaqti"}
+            ls{"Markaziy Avstraliya standart vaqti"}
+        }
+        "meta:Australia_CentralWestern"{
+            ld{"Markaziy Avstraliya Gʻarbiy kunduzgi vaqti"}
+            lg{"Markaziy Avstraliya Gʻarbiy vaqti"}
+            ls{"Markaziy Avstraliya Gʻarbiy standart vaqti"}
+        }
+        "meta:Australia_Eastern"{
+            ld{"Sharqiy Avstraliya kunduzgi vaqti"}
+            lg{"Sharqiy Avstraliya vaqti"}
+            ls{"Sharqiy Avstraliya standart vaqti"}
+        }
+        "meta:Australia_Western"{
+            ld{"Gʻarbiy Avstraliya kunduzgi vaqti"}
+            lg{"Gʻarbiy Avstraliya vaqti"}
+            ls{"Gʻarbiy Avstraliya standart vaqti"}
+        }
+        "meta:Azerbaijan"{
+            ld{"Ozarbayjon yozgi vaqti"}
+            lg{"Ozarbayjon vaqti"}
+            ls{"Ozarbayjon standart vaqti"}
+        }
+        "meta:Azores"{
+            ld{"Azor yozgi vaqti"}
+            lg{"Azor vaqti"}
+            ls{"Azor standart vaqti"}
+        }
+        "meta:Bangladesh"{
+            ld{"Bangladesh yozgi vaqti"}
+            lg{"Bangladesh vaqti"}
+            ls{"Bangladesh standart vaqti"}
+        }
+        "meta:Bhutan"{
+            ls{"Butan vaqti"}
+        }
+        "meta:Bolivia"{
+            ls{"Boliviya vaqti"}
+        }
+        "meta:Brasilia"{
+            ld{"Braziliya yozgi vaqti"}
+            lg{"Braziliya vaqti"}
+            ls{"Braziliya standart vaqti"}
+        }
+        "meta:Brunei"{
+            ls{"Bruney Darussalom vaqti"}
+        }
+        "meta:Cape_Verde"{
+            ld{"Kabo-Verde yozgi vaqti"}
+            lg{"Kabo-Verde vaqti"}
+            ls{"Kabo-Verde standart vaqti"}
+        }
+        "meta:Chamorro"{
+            ls{"Kamorro vaqti"}
+        }
+        "meta:Chatham"{
+            ld{"Chatxam kunduzgi vaqti"}
+            lg{"Chatxam vaqti"}
+            ls{"Chatxam standart vaqti"}
+        }
+        "meta:Chile"{
+            ld{"Chili yozgi vaqti"}
+            lg{"Chili vaqti"}
+            ls{"Chili standart vaqti"}
+        }
+        "meta:China"{
+            ld{"Xitoy kunduzgi vaqti"}
+            lg{"Xitoy vaqti"}
+            ls{"Xitoy standart vaqti"}
+        }
+        "meta:Choibalsan"{
+            ld{"Choybalsan yozgi vaqti"}
+            lg{"Choybalsan vaqti"}
+            ls{"Choybalsan standart vaqti"}
+        }
+        "meta:Christmas"{
+            ls{"Rojdestvo oroli vaqti"}
+        }
+        "meta:Cocos"{
+            ls{"Kokos orollari vaqti"}
+        }
+        "meta:Colombia"{
+            ld{"Kolumbiya yozgi vaqti"}
+            lg{"Kolumbiya vaqti"}
+            ls{"Kolumbiya standart vaqti"}
+        }
+        "meta:Cook"{
+            ld{"Kuk orollari yarim yozgi vaqti"}
+            lg{"Kuk orollari vaqti"}
+            ls{"Kuk orollari standart vaqti"}
+        }
+        "meta:Cuba"{
+            ld{"Kuba kunduzgi vaqti"}
+            lg{"Kuba vaqti"}
+            ls{"Kuba standart vaqti"}
+        }
+        "meta:Davis"{
+            ls{"Devis vaqti"}
+        }
+        "meta:DumontDUrville"{
+            ls{"Dumont-d-Urvil vaqti"}
+        }
+        "meta:East_Timor"{
+            ls{"Sharqiy Timor vaqti"}
+        }
+        "meta:Easter"{
+            ld{"Pasxi oroli yozgi vaqti"}
+            lg{"Pasxi Oroli vaqti"}
+            ls{"Pasxi oroli standart vaqti"}
+        }
+        "meta:Ecuador"{
+            ls{"Ekvador vaqti"}
+        }
+        "meta:Europe_Central"{
+            ld{"Markaziy Yevropa yozgi vaqti"}
+            lg{"Markaziy Yevropa vaqti"}
+            ls{"Markaziy Yevropa standart vaqti"}
+        }
+        "meta:Europe_Eastern"{
+            ld{"Sharqiy Yevropa yozgi vaqti"}
+            lg{"Sharqiy Yevropa vaqti"}
+            ls{"Sharqiy Yevropa standart vaqti"}
+        }
+        "meta:Europe_Western"{
+            ld{"Gʻarbiy Yevropa yozgi vaqti"}
+            lg{"Gʻarbiy Yevropa vaqti"}
+            ls{"Gʻarbiy Yevropa standart vaqti"}
+        }
+        "meta:Falkland"{
+            ld{"Folklend orollari yozgi vaqti"}
+            lg{"Folklend orollari vaqti"}
+            ls{"Folklend orollari standart vaqti"}
+        }
+        "meta:Fiji"{
+            ld{"Fiji yozgi vaqti"}
+            lg{"Fiji vaqti"}
+            ls{"Fiji standart vaqti"}
+        }
+        "meta:French_Guiana"{
+            ls{"Frantsuz Gvianasi vaqti"}
+        }
+        "meta:French_Southern"{
+            ls{"Frantsuz janubiy va Antarktika vaqti"}
+        }
+        "meta:GMT"{
+            ls{"Grinvich vaqti"}
+        }
+        "meta:Galapagos"{
+            ls{"Galapagos vaqti"}
+        }
+        "meta:Gambier"{
+            ls{"Gambiyer vaqti"}
+        }
+        "meta:Georgia"{
+            ld{"Gruziya yozgi vaqti"}
+            lg{"Gruziya vaqti"}
+            ls{"Gruziya standart vaqti"}
+        }
+        "meta:Gilbert_Islands"{
+            ls{"Gilbert orollari vaqti"}
+        }
+        "meta:Greenland_Eastern"{
+            ld{"Sharqiy Grenlandiya yozgi vaqti"}
+            lg{"Sharqiy Grenlandiya vaqti"}
+            ls{"Sharqiy Grenlandiya standart vaqti"}
+        }
+        "meta:Greenland_Western"{
+            ld{"Gʻarbiy Grenlandiya yozgi vaqti"}
+            lg{"Gʻarbiy Grenlandiya vaqti"}
+            ls{"Gʻarbiy Grenlandiya standart vaqti"}
+        }
+        "meta:Gulf"{
+            ls{"Koʻrfaz vaqti"}
+        }
+        "meta:Guyana"{
+            ls{"Gayana vaqti"}
+        }
+        "meta:Hawaii_Aleutian"{
+            ld{"Gavayi-aleut kunduzgi vaqti"}
+            lg{"Gavayi-aleut vaqti"}
+            ls{"Gavayi-aleut standart vaqti"}
+        }
+        "meta:Hong_Kong"{
+            ld{"Gonkong yozgi vaqti"}
+            lg{"Gonkong vaqti"}
+            ls{"Gonkong standart vaqti"}
+        }
+        "meta:Hovd"{
+            ld{"Xovd yozgi vaqti"}
+            lg{"Xovd vaqti"}
+            ls{"Xovd standart vaqti"}
+        }
+        "meta:India"{
+            ls{"Hindiston vaqti"}
+        }
+        "meta:Indian_Ocean"{
+            ls{"Hind okeani vaqti"}
+        }
+        "meta:Indochina"{
+            ls{"Hind-Xitoy vaqti"}
+        }
+        "meta:Indonesia_Central"{
+            ls{"Markaziy Indoneziya vaqti"}
+        }
+        "meta:Indonesia_Eastern"{
+            ls{"Sharqiy Indoneziya vaqti"}
+        }
+        "meta:Indonesia_Western"{
+            ls{"Gʻarbiy Indoneziya vaqti"}
+        }
+        "meta:Iran"{
+            ld{"Eron kunduzgi vaqti"}
+            lg{"Eron vaqti"}
+            ls{"Eron standart vaqti"}
+        }
+        "meta:Irkutsk"{
+            ld{"Irkutsk yozgi vaqti"}
+            lg{"Irkutsk vaqti"}
+            ls{"Irkutsk standart vaqti"}
+        }
+        "meta:Israel"{
+            ld{"Isroil kunduzgi vaqti"}
+            lg{"Isroil vaqti"}
+            ls{"Isroil standart vaqti"}
+        }
+        "meta:Japan"{
+            ld{"Yaponiya kunduzgi vaqti"}
+            lg{"Yaponiya vaqti"}
+            ls{"Yaponiya standart vaqti"}
+        }
+        "meta:Kazakhstan_Eastern"{
+            ls{"Sharqiy Qozogʻiston vaqti"}
+        }
+        "meta:Kazakhstan_Western"{
+            ls{"Gʻarbiy Qozogʻiston vaqti"}
+        }
+        "meta:Korea"{
+            ld{"Koreya kunduzgi vaqti"}
+            lg{"Koreya vaqti"}
+            ls{"Koreya standart vaqti"}
+        }
+        "meta:Kosrae"{
+            ls{"Kosraye vaqti"}
+        }
+        "meta:Krasnoyarsk"{
+            ld{"Krasnoyarsk yozgi vaqti"}
+            lg{"Krasnoyarsk vaqti"}
+            ls{"Krasnoyarsk standart vaqti"}
+        }
+        "meta:Kyrgystan"{
+            ls{"Qirgʻiziston vaqti"}
+        }
+        "meta:Line_Islands"{
+            ls{"Layn orollari vaqti"}
+        }
+        "meta:Lord_Howe"{
+            ld{"Lord Xove kunduzgi vaqti"}
+            lg{"Lord Xove vaqti"}
+            ls{"Lord Xove standart vaqti"}
+        }
+        "meta:Macquarie"{
+            ls{"Makvari oroli vaqti"}
+        }
+        "meta:Magadan"{
+            ld{"Magadan yozgi vaqti"}
+            lg{"Magadan vaqti"}
+            ls{"Magadan standart vaqti"}
+        }
+        "meta:Malaysia"{
+            ls{"Malayziya vaqti"}
+        }
+        "meta:Maldives"{
+            ls{"Maldiv orollar"}
+        }
+        "meta:Marquesas"{
+            ls{"Markezas vaqti"}
+        }
+        "meta:Marshall_Islands"{
+            ls{"Marshall orollari vaqti"}
+        }
+        "meta:Mauritius"{
+            ld{"Mavrikiy yozgi vaqti"}
+            lg{"Mavrikiy vaqti"}
+            ls{"Mavrikiy standart vaqti"}
+        }
+        "meta:Mawson"{
+            ls{"Mouvson vaqti"}
+        }
+        "meta:Mongolia"{
+            ld{"Ulan-Bator yozgi vaqti"}
+            lg{"Ulan-Bator vaqti"}
+            ls{"Ulan-Bator standart vaqti"}
+        }
+        "meta:Moscow"{
+            ld{"Moskva yozgi vaqti"}
+            lg{"Moskva vaqti"}
+            ls{"Moskva standart vaqti"}
+        }
+        "meta:Myanmar"{
+            ls{"Myanma vaqti"}
+        }
+        "meta:Nauru"{
+            ls{"Nauru vaqti"}
+        }
+        "meta:Nepal"{
+            ls{"Nepal vaqti"}
+        }
+        "meta:New_Caledonia"{
+            ld{"Yangi Kaledoniya yozgi vaqti"}
+            lg{"Yangi Kaledoniya vaqti"}
+            ls{"Yangi Kaledoniya standart vaqti"}
+        }
+        "meta:New_Zealand"{
+            ld{"Yangi Zelandiya kunduzgi vaqti"}
+            lg{"Yangi Zelandiya vaqti"}
+            ls{"Yangi Zelandiya standart vaqti"}
+        }
+        "meta:Newfoundland"{
+            ld{"Nyufaundlend kunduzgi vaqti"}
+            lg{"Nyufaundlend vaqti"}
+            ls{"Nyufaundlend standart vaqti"}
+        }
+        "meta:Niue"{
+            ls{"Niuye vaqti"}
+        }
+        "meta:Norfolk"{
+            ls{"Norfolk oroli vaqti"}
+        }
+        "meta:Noronha"{
+            ld{"Fernando de Noronya yozgi vaqti"}
+            lg{"Fernando de Noronya vaqti"}
+            ls{"Fernando de Noronya standart vaqti"}
+        }
+        "meta:Novosibirsk"{
+            ld{"Novosibirsk yozgi vaqti"}
+            lg{"Novosibirsk vaqti"}
+            ls{"Novosibirsk standart vaqti"}
+        }
+        "meta:Omsk"{
+            ld{"Omsk yozgi vaqti"}
+            lg{"Omsk vaqti"}
+            ls{"Omsk standart vaqti"}
+        }
+        "meta:Pakistan"{
+            ld{"Pokiston yozgi vaqti"}
+            lg{"Pokiston vaqti"}
+            ls{"Pokiston standart vaqti"}
+        }
+        "meta:Palau"{
+            ls{"Palau vaqti"}
+        }
+        "meta:Papua_New_Guinea"{
+            ls{"Papua-Yangi Gvineya vaqti"}
+        }
+        "meta:Paraguay"{
+            ld{"Paragvay yozgi vaqti"}
+            lg{"Paragvay vaqti"}
+            ls{"Paragvay standart vaqti"}
+        }
+        "meta:Peru"{
+            ld{"Peru yozgi vaqti"}
+            lg{"Peru vaqti"}
+            ls{"Peru standart vaqti"}
+        }
+        "meta:Philippines"{
+            ld{"Filippin yozgi vaqti"}
+            lg{"Filippin vaqti"}
+            ls{"Filippin standart vaqti"}
+        }
+        "meta:Phoenix_Islands"{
+            ls{"Feniks orollari vaqti"}
+        }
+        "meta:Pierre_Miquelon"{
+            ld{"Sent-Pyer va Mikelon kunduzgi vaqti"}
+            lg{"Sent-Pyer va Mikelon vaqti"}
+            ls{"Sent-Pyer va Mikelon standart vaqti"}
+        }
+        "meta:Pitcairn"{
+            ls{"Pitkern vaqti"}
+        }
+        "meta:Ponape"{
+            ls{"Ponape vaqti"}
+        }
+        "meta:Reunion"{
+            ls{"Reyunon vaqti"}
+        }
+        "meta:Rothera"{
+            ls{"Rotera vaqti"}
+        }
+        "meta:Sakhalin"{
+            ld{"Saxalin yozgi vaqti"}
+            lg{"Saxalin vaqti"}
+            ls{"Saxalin standart vaqti"}
+        }
+        "meta:Samoa"{
+            ld{"Samoa kunduzgi vaqti"}
+            lg{"Samoa vaqti"}
+            ls{"Samoa standart vaqti"}
+        }
+        "meta:Seychelles"{
+            ls{"Seyshel orollari vaqti"}
+        }
+        "meta:Singapore"{
+            ls{"Singapur vaqti"}
+        }
+        "meta:Solomon"{
+            ls{"Solomon orollari vaqti"}
+        }
+        "meta:South_Georgia"{
+            ls{"Janubiy Djordjiya vaqti"}
+        }
+        "meta:Suriname"{
+            ls{"Surinam vaqti"}
+        }
+        "meta:Syowa"{
+            ls{"Sova vaqti"}
+        }
+        "meta:Tahiti"{
+            ls{"Taiti vaqti"}
+        }
+        "meta:Taipei"{
+            ld{"Taypey kunduzgi vaqti"}
+            lg{"Taypey vaqti"}
+            ls{"Taypey standart vaqti"}
+        }
+        "meta:Tajikistan"{
+            ls{"Tojikiston vaqti"}
+        }
+        "meta:Tokelau"{
+            ls{"Tokelau vaqti"}
+        }
+        "meta:Tonga"{
+            ld{"Tonga yozgi vaqti"}
+            lg{"Tonga vaqti"}
+            ls{"Tonga standart vaqti"}
+        }
+        "meta:Truk"{
+            ls{"Chuuk vaqti"}
+        }
+        "meta:Turkmenistan"{
+            ld{"Turkmaniston yozgi vaqti"}
+            lg{"Turkmaniston vaqti"}
+            ls{"Turkmaniston standart vaqti"}
+        }
+        "meta:Tuvalu"{
+            ls{"Tuvalu vaqti"}
+        }
+        "meta:Uruguay"{
+            ld{"Urugvay yozgi vaqti"}
+            lg{"Urugvay vaqti"}
+            ls{"Urugvay standart vaqti"}
+        }
+        "meta:Uzbekistan"{
+            ld{"Oʻzbekiston yozgi vaqti"}
+            lg{"Oʻzbekiston vaqti"}
+            ls{"Oʻzbekiston standart vaqti"}
+        }
+        "meta:Vanuatu"{
+            ld{"Vanuatu yozgi vaqti"}
+            lg{"Vanuatu vaqti"}
+            ls{"Vanuatu standart vaqti"}
+        }
+        "meta:Venezuela"{
+            ls{"Venesuela vaqti"}
+        }
+        "meta:Vladivostok"{
+            ld{"Vladivostok yozgi vaqti"}
+            lg{"Vladivostok vaqti"}
+            ls{"Vladivostok standart vaqti"}
+        }
+        "meta:Volgograd"{
+            ld{"Volgograd yozgi vaqti"}
+            lg{"Volgograd vaqti"}
+            ls{"Volgograd standart vaqti"}
+        }
+        "meta:Vostok"{
+            ls{"Vostok vaqti"}
+        }
+        "meta:Wake"{
+            ls{"Ueyk oroli vaqti"}
+        }
+        "meta:Wallis"{
+            ls{"Uellis va Futuna vaqti"}
+        }
+        "meta:Yakutsk"{
+            ld{"Yakutsk yozgi vaqti"}
+            lg{"Yakutsk vaqti"}
+            ls{"Yakutsk standart vaqti"}
+        }
+        "meta:Yekaterinburg"{
+            ld{"Yekaterinburg yozgi vaqti"}
+            lg{"Yekaterinburg vaqti"}
+            ls{"Yekaterinburg standart vaqti"}
+        }
+        fallbackFormat{"{1} ({0})"}
+        gmtFormat{"GMT{0}"}
+        gmtZeroFormat{"GMT"}
+        hourFormat{"+HH:mm;-HH:mm"}
+        regionFormat{"{0} vaqti"}
+        regionFormatDaylight{"{0} kunduzgi vaqti"}
+        regionFormatStandard{"{0} standart vaqti"}
+    }
+}

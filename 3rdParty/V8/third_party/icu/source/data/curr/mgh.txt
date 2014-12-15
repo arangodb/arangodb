@@ -1,0 +1,20 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/mgh.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/mgh.xml
+ */
+mgh{
+    Currencies{
+        MZN{
+            "MTn",
+            "MZN",
+        }
+    }
+    Version{"2.0.90.61"}
+}

@@ -1,0 +1,918 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/id.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/id.xml
+ */
+id{
+    Version{"2.0.93.8"}
+    zoneStrings{
+        "Africa:Accra"{
+            ec{"Akra"}
+        }
+        "Africa:Algiers"{
+            ec{"Aljir"}
+        }
+        "Africa:Asmera"{
+            ec{"Asmara"}
+        }
+        "Africa:Cairo"{
+            ec{"Kairo"}
+        }
+        "Africa:Conakry"{
+            ec{"Konakri"}
+        }
+        "Africa:Djibouti"{
+            ec{"Jibouti"}
+        }
+        "Africa:Khartoum"{
+            ec{"Khartum"}
+        }
+        "Africa:Sao_Tome"{
+            ec{"São Tomé"}
+        }
+        "America:Anguilla"{
+            ec{"Anguila"}
+        }
+        "America:Asuncion"{
+            ec{"Asunción"}
+        }
+        "America:Cambridge_Bay"{
+            ec{"Teluk Cambridge"}
+        }
+        "America:Caracas"{
+            ec{"Karakas"}
+        }
+        "America:Coral_Harbour"{
+            ec{"Atikokan"}
+        }
+        "America:Cordoba"{
+            ec{"Kordoba"}
+        }
+        "America:Costa_Rica"{
+            ec{"Kosta Rika"}
+        }
+        "America:Curacao"{
+            ec{"Curaçao"}
+        }
+        "America:Dominica"{
+            ec{"Dominika"}
+        }
+        "America:Glace_Bay"{
+            ec{"Teluk Glace"}
+        }
+        "America:Godthab"{
+            ec{"Nuuk"}
+        }
+        "America:Goose_Bay"{
+            ec{"Teluk Goose"}
+        }
+        "America:Indiana:Knox"{
+            ec{"Knox, Indiana"}
+        }
+        "America:Indiana:Marengo"{
+            ec{"Marengo, Indiana"}
+        }
+        "America:Indiana:Petersburg"{
+            ec{"Petersburg, Indiana"}
+        }
+        "America:Indiana:Tell_City"{
+            ec{"Tell City, Indiana"}
+        }
+        "America:Indiana:Vevay"{
+            ec{"Vevay, Indiana"}
+        }
+        "America:Indiana:Vincennes"{
+            ec{"Vincennes, Indiana"}
+        }
+        "America:Indiana:Winamac"{
+            ec{"Winamac, Indiana"}
+        }
+        "America:Jamaica"{
+            ec{"Jamaika"}
+        }
+        "America:Kentucky:Monticello"{
+            ec{"Monticello, Kentucky"}
+        }
+        "America:Lower_Princes"{
+            ec{"Lower Prince's Quarter"}
+        }
+        "America:Martinique"{
+            ec{"Martinik"}
+        }
+        "America:North_Dakota:Beulah"{
+            ec{"Beulah, Dakota Utara"}
+        }
+        "America:North_Dakota:Center"{
+            ec{"Center, Dakota Utara"}
+        }
+        "America:North_Dakota:New_Salem"{
+            ec{"New Salem, Dakota Utara"}
+        }
+        "America:Puerto_Rico"{
+            ec{"Puerto Riko"}
+        }
+        "America:Scoresbysund"{
+            ec{"Ittoqqortoormiit"}
+        }
+        "America:St_Barthelemy"{
+            ec{"Saint Barthélemy"}
+        }
+        "America:St_Johns"{
+            ec{"St. John’s"}
+        }
+        "America:St_Kitts"{
+            ec{"St. Kitts"}
+        }
+        "America:St_Lucia"{
+            ec{"St. Lucia"}
+        }
+        "America:St_Thomas"{
+            ec{"St. Thomas"}
+        }
+        "America:St_Vincent"{
+            ec{"St. Vincent"}
+        }
+        "America:Thunder_Bay"{
+            ec{"Teluk Thunder"}
+        }
+        "Antarctica:DumontDUrville"{
+            ec{"Dumont d’Urville"}
+        }
+        "Antarctica:South_Pole"{
+            ec{"Kutub Selatan"}
+        }
+        "Asia:Aqtau"{
+            ec{"Aktau"}
+        }
+        "Asia:Aqtobe"{
+            ec{"Aktobe"}
+        }
+        "Asia:Baghdad"{
+            ec{"Bagdad"}
+        }
+        "Asia:Calcutta"{
+            ec{"Kolkata"}
+        }
+        "Asia:Colombo"{
+            ec{"Kolombo"}
+        }
+        "Asia:Damascus"{
+            ec{"Damaskus"}
+        }
+        "Asia:Katmandu"{
+            ec{"Kathmandu"}
+        }
+        "Asia:Macau"{
+            ec{"Makau"}
+        }
+        "Asia:Muscat"{
+            ec{"Muskat"}
+        }
+        "Asia:Nicosia"{
+            ec{"Nikosia"}
+        }
+        "Asia:Riyadh"{
+            ec{"Riyad"}
+        }
+        "Asia:Saigon"{
+            ec{"Kota Ho Chi Minh"}
+        }
+        "Asia:Singapore"{
+            ec{"Singapura"}
+        }
+        "Asia:Tehran"{
+            ec{"Teheran"}
+        }
+        "Atlantic:Cape_Verde"{
+            ec{"Tanjung Verde"}
+        }
+        "Atlantic:Faeroe"{
+            ec{"Faroe"}
+        }
+        "Atlantic:South_Georgia"{
+            ec{"Georgia Selatan"}
+        }
+        "Atlantic:St_Helena"{
+            ec{"St. Helena"}
+        }
+        "Etc:Unknown"{
+            ec{"Tidak Dikenal"}
+        }
+        "Europe:Athens"{
+            ec{"Athena"}
+        }
+        "Europe:Belgrade"{
+            ec{"Beograd"}
+        }
+        "Europe:Brussels"{
+            ec{"Brussel"}
+        }
+        "Europe:Bucharest"{
+            ec{"Bukares"}
+        }
+        "Europe:Chisinau"{
+            ec{"Kishinev"}
+        }
+        "Europe:Copenhagen"{
+            ec{"Kopenhagen"}
+        }
+        "Europe:Dublin"{
+            ld{"Musim Panas Irlandia"}
+        }
+        "Europe:Lisbon"{
+            ec{"Lisboa"}
+        }
+        "Europe:London"{
+            ld{"Musim Panas Inggris"}
+        }
+        "Europe:Luxembourg"{
+            ec{"Luksemburg"}
+        }
+        "Europe:Monaco"{
+            ec{"Monako"}
+        }
+        "Europe:Moscow"{
+            ec{"Moskwa"}
+        }
+        "Europe:Prague"{
+            ec{"Praha"}
+        }
+        "Europe:Rome"{
+            ec{"Roma"}
+        }
+        "Europe:Uzhgorod"{
+            ec{"Uzhhorod"}
+        }
+        "Europe:Vatican"{
+            ec{"Vatikan"}
+        }
+        "Europe:Vienna"{
+            ec{"Wina"}
+        }
+        "Europe:Warsaw"{
+            ec{"Warsawa"}
+        }
+        "Europe:Zaporozhye"{
+            ec{"Zaporizhia"}
+        }
+        "Indian:Comoro"{
+            ec{"Komoro"}
+        }
+        "Indian:Maldives"{
+            ec{"Maladewa"}
+        }
+        "Indian:Reunion"{
+            ec{"Réunion"}
+        }
+        "Pacific:Guadalcanal"{
+            ec{"Guadalkanal"}
+        }
+        "Pacific:Ponape"{
+            ec{"Pohnpei"}
+        }
+        "Pacific:Truk"{
+            ec{"Chuuk"}
+        }
+        "meta:Acre"{
+            ld{"Waktu Musim Panas Acre"}
+            lg{"Waktu Acre"}
+            ls{"Waktu Standar Acre"}
+        }
+        "meta:Afghanistan"{
+            ls{"Waktu Afganistan"}
+        }
+        "meta:Africa_Central"{
+            ls{"Waktu Afrika Tengah"}
+        }
+        "meta:Africa_Eastern"{
+            ls{"Waktu Afrika Timur"}
+        }
+        "meta:Africa_Southern"{
+            ls{"Waktu Standar Afrika Selatan"}
+        }
+        "meta:Africa_Western"{
+            ld{"Waktu Musim Panas Afrika Barat"}
+            lg{"Waktu Afrika Barat"}
+            ls{"Waktu Standar Afrika Barat"}
+        }
+        "meta:Alaska"{
+            ld{"Waktu Terang Alaska"}
+            lg{"Waktu Alaska"}
+            ls{"Waktu Standar Alaska"}
+        }
+        "meta:Almaty"{
+            ld{"Waktu Musim Panas Almaty"}
+            lg{"Waktu Almaty"}
+            ls{"Waktu Standar Almaty"}
+        }
+        "meta:Amazon"{
+            ld{"Waktu Musim Panas Amazon"}
+            lg{"Waktu Amazon"}
+            ls{"Waktu Standar Amazon"}
+        }
+        "meta:America_Central"{
+            ld{"Waktu Terang Hari Tengah"}
+            lg{"Waktu Tengah"}
+            ls{"Waktu Standar Tengah"}
+        }
+        "meta:America_Eastern"{
+            ld{"Waktu Terang Hari Timur"}
+            lg{"Waktu Timur"}
+            ls{"Waktu Standar Timur"}
+        }
+        "meta:America_Mountain"{
+            ld{"Waktu Terang Hari Pegunungan"}
+            lg{"Waktu Pegunungan"}
+            ls{"Waktu Standar Pegunungan"}
+        }
+        "meta:America_Pacific"{
+            ld{"Waktu Terang Hari Pasifik"}
+            lg{"Waktu Pasifik"}
+            ls{"Waktu Standar Pasifik"}
+        }
+        "meta:Anadyr"{
+            ld{"Waktu Musim Panas Anadyr"}
+            lg{"Waktu Anadyr"}
+            ls{"Waktu Standar Anadyr"}
+        }
+        "meta:Aqtau"{
+            ld{"Waktu Musim Panas Aqtau"}
+            lg{"Waktu Aqtau"}
+            ls{"Waktu Standar Aqtau"}
+        }
+        "meta:Aqtobe"{
+            ld{"Waktu Musim Panas Aqtobe"}
+            lg{"Waktu Aqtobe"}
+            ls{"Waktu Standar Aqtobe"}
+        }
+        "meta:Arabian"{
+            ld{"Waktu Terang Arab"}
+            lg{"Waktu Arab"}
+            ls{"Waktu Standar Arab"}
+        }
+        "meta:Argentina"{
+            ld{"Waktu Musim Panas Argentina"}
+            lg{"Waktu Argentina"}
+            ls{"Waktu Standar Argentina"}
+        }
+        "meta:Argentina_Western"{
+            ld{"Waktu Musim Panas Argentina Bagian Barat"}
+            lg{"Waktu Argentina Bagian Barat"}
+            ls{"Waktu Standar Argentina Bagian Barat"}
+        }
+        "meta:Armenia"{
+            ld{"Waktu Musim Panas Armenia"}
+            lg{"Waktu Armenia"}
+            ls{"Waktu Standar Armenia"}
+        }
+        "meta:Atlantic"{
+            ld{"Waktu Terang Atlantik"}
+            lg{"Waktu Atlantik"}
+            ls{"Waktu Standar Atlantik"}
+        }
+        "meta:Australia_Central"{
+            ld{"Waktu Terang Tengah Australia"}
+            lg{"Waktu Tengah Australia"}
+            ls{"Waktu Standar Tengah Australia"}
+        }
+        "meta:Australia_CentralWestern"{
+            ld{"Waktu Terang Barat Tengah Australia"}
+            lg{"Waktu Barat Tengah Australia"}
+            ls{"Waktu Standar Barat Tengah Australia"}
+        }
+        "meta:Australia_Eastern"{
+            ld{"Waktu Terang Timur Australia"}
+            lg{"Waktu Timur Australia"}
+            ls{"Waktu Standar Timur Australia"}
+        }
+        "meta:Australia_Western"{
+            ld{"Waktu Terang Barat Australia"}
+            lg{"Waktu Australia Barat"}
+            ls{"Waktu Standar Barat Australia"}
+        }
+        "meta:Azerbaijan"{
+            ld{"Waktu Musim Panas Azerbaijan"}
+            lg{"Waktu Azerbaijan"}
+            ls{"Waktu Standar Azerbaijan"}
+        }
+        "meta:Azores"{
+            ld{"Waktu Musim Panas Azores"}
+            lg{"Waktu Azores"}
+            ls{"Waktu Standar Azores"}
+        }
+        "meta:Bangladesh"{
+            ld{"Waktu Musim Panas Bangladesh"}
+            lg{"Waktu Bangladesh"}
+            ls{"Waktu Standar Bangladesh"}
+        }
+        "meta:Bhutan"{
+            ls{"Waktu Bhutan"}
+        }
+        "meta:Bolivia"{
+            ls{"Waktu Bolivia"}
+        }
+        "meta:Brasilia"{
+            ld{"Waktu Musim Panas Brasil"}
+            lg{"Waktu Brasil"}
+            ls{"Waktu Standar Brasil"}
+        }
+        "meta:Brunei"{
+            ls{"Waktu Brunei Darussalam"}
+        }
+        "meta:Cape_Verde"{
+            ld{"Waktu Musim Panas Tanjung Verde"}
+            lg{"Waktu Tanjung Verde"}
+            ls{"Waktu Standar Tanjung Verde"}
+        }
+        "meta:Casey"{
+            ls{"Waktu Casey"}
+        }
+        "meta:Chamorro"{
+            ls{"Waktu Chamorro"}
+        }
+        "meta:Chatham"{
+            ld{"Waktu Terang Chatham"}
+            lg{"Waktu Chatham"}
+            ls{"Waktu Standar Chatham"}
+        }
+        "meta:Chile"{
+            ld{"Waktu Musim Panas Cile"}
+            lg{"Waktu Cile"}
+            ls{"Waktu Standar Cile"}
+        }
+        "meta:China"{
+            ld{"Waktu Terang China"}
+            lg{"Waktu China"}
+            ls{"Waktu Standar China"}
+        }
+        "meta:Choibalsan"{
+            ld{"Waktu Musim Panas Choibalsan"}
+            lg{"Waktu Choibalsan"}
+            ls{"Waktu Standar Choibalsan"}
+        }
+        "meta:Christmas"{
+            ls{"Waktu Pulau Natal"}
+        }
+        "meta:Cocos"{
+            ls{"Waktu Kepulauan Cocos"}
+        }
+        "meta:Colombia"{
+            ld{"Waktu Musim Panas Kolombia"}
+            lg{"Waktu Kolombia"}
+            ls{"Waktu Standar Kolombia"}
+        }
+        "meta:Cook"{
+            ld{"Waktu Tengah Musim Panas Kep. Cook"}
+            lg{"Waktu Kep. Cook"}
+            ls{"Waktu Standar Kep. Cook"}
+        }
+        "meta:Cuba"{
+            ld{"Waktu Musim Panas Kuba"}
+            lg{"Waktu Kuba"}
+            ls{"Waktu Standar Kuba"}
+        }
+        "meta:Davis"{
+            ls{"Waktu Davis"}
+        }
+        "meta:DumontDUrville"{
+            ls{"Waktu Dumont-d’Urville"}
+        }
+        "meta:East_Timor"{
+            ls{"Waktu Timor Leste"}
+        }
+        "meta:Easter"{
+            ld{"Waktu Musim Panas Pulau Paskah"}
+            lg{"Waktu Pulau Paskah"}
+            ls{"Waktu Standar Pulau Paskah"}
+        }
+        "meta:Ecuador"{
+            ls{"Waktu Ekuador"}
+        }
+        "meta:Europe_Central"{
+            ld{"Waktu Musim Panas Eropa Tengah"}
+            lg{"Waktu Eropa Tengah"}
+            ls{"Waktu Standar Eropa Tengah"}
+        }
+        "meta:Europe_Eastern"{
+            ld{"Waktu Musim Panas Eropa Timur"}
+            lg{"Waktu Eropa Timur"}
+            ls{"Waktu Standar Eropa Timur"}
+        }
+        "meta:Europe_Western"{
+            ld{"Waktu Musim Panas Eropa Barat"}
+            lg{"Waktu Eropa Barat"}
+            ls{"Waktu Standar Eropa Barat"}
+        }
+        "meta:Falkland"{
+            ld{"Waktu Musim Panas Kepulauan Falkland"}
+            lg{"Waktu Kepulauan Falkland"}
+            ls{"Waktu Standar Kepulauan Falkland"}
+        }
+        "meta:Fiji"{
+            ld{"Waktu Musim Panas Fiji"}
+            lg{"Waktu Fiji"}
+            ls{"Waktu Standar Fiji"}
+        }
+        "meta:French_Guiana"{
+            ls{"Waktu Guyana Prancis"}
+        }
+        "meta:French_Southern"{
+            ls{"Waktu Wilayah Selatan dan Antarktika Prancis"}
+        }
+        "meta:GMT"{
+            ls{"Waktu Rata-Rata Greenwich"}
+        }
+        "meta:Galapagos"{
+            ls{"Waktu Galapagos"}
+        }
+        "meta:Gambier"{
+            ls{"Waktu Gambier"}
+        }
+        "meta:Georgia"{
+            ld{"Waktu Musim Panas Georgia"}
+            lg{"Waktu Georgia"}
+            ls{"Waktu Standar Georgia"}
+        }
+        "meta:Gilbert_Islands"{
+            ls{"Waktu Kep. Gilbert"}
+        }
+        "meta:Greenland_Eastern"{
+            ld{"Waktu Musim Panas Greenland Timur"}
+            lg{"Waktu Greenland Timur"}
+            ls{"Waktu Standar Greenland Timur"}
+        }
+        "meta:Greenland_Western"{
+            ld{"Waktu Musim Panas Greenland Barat"}
+            lg{"Waktu Greenland Barat"}
+            ls{"Waktu Standar Greenland Barat"}
+        }
+        "meta:Guam"{
+            ls{"Waktu Guam"}
+        }
+        "meta:Gulf"{
+            ls{"Waktu Gulf"}
+        }
+        "meta:Guyana"{
+            ls{"Waktu Guyana"}
+        }
+        "meta:Hawaii_Aleutian"{
+            ld{"Waktu Terang Hawaii-Aleutian"}
+            lg{"Waktu Hawaii-Aleutian"}
+            ls{"Waktu Standar Hawaii-Aleutian"}
+        }
+        "meta:Hong_Kong"{
+            ld{"Waktu Musim Panas Hong Kong"}
+            lg{"Waktu Hong Kong"}
+            ls{"Waktu Standar Hong Kong"}
+        }
+        "meta:Hovd"{
+            ld{"Waktu Musim Panas Hovd"}
+            lg{"Waktu Hovd"}
+            ls{"Waktu Standar Hovd"}
+        }
+        "meta:India"{
+            ls{"Waktu India"}
+        }
+        "meta:Indian_Ocean"{
+            ls{"Waktu Samudera Hindia"}
+        }
+        "meta:Indochina"{
+            ls{"Waktu Indochina"}
+        }
+        "meta:Indonesia_Central"{
+            ls{"Waktu Indonesia Tengah"}
+            ss{"WITA"}
+        }
+        "meta:Indonesia_Eastern"{
+            ls{"Waktu Indonesia Timur"}
+            ss{"WIT"}
+        }
+        "meta:Indonesia_Western"{
+            ls{"Waktu Indonesia Barat"}
+            ss{"WIB"}
+        }
+        "meta:Iran"{
+            ld{"Waktu Musim Panas Iran"}
+            lg{"Waktu Iran"}
+            ls{"Waktu Standar Iran"}
+        }
+        "meta:Irkutsk"{
+            ld{"Waktu Musim Panas Irkutsk"}
+            lg{"Waktu Irkutsk"}
+            ls{"Waktu Standar Irkutsk"}
+        }
+        "meta:Israel"{
+            ld{"Waktu Musim Panas Israel"}
+            lg{"Waktu Israel"}
+            ls{"Waktu Standar Israel"}
+        }
+        "meta:Japan"{
+            ld{"Waktu Musim Panas Jepang"}
+            lg{"Waktu Jepang"}
+            ls{"Waktu Standar Jepang"}
+        }
+        "meta:Kamchatka"{
+            ld{"Waktu Musim Panas Petropavlovsk-Kamchatski"}
+            lg{"Waktu Petropavlovsk-Kamchatsky"}
+            ls{"Waktu Standar Petropavlovsk-Kamchatsky"}
+        }
+        "meta:Kazakhstan_Eastern"{
+            ls{"Waktu Kazakhstan Timur"}
+        }
+        "meta:Kazakhstan_Western"{
+            ls{"Waktu Kazakhstan Barat"}
+        }
+        "meta:Korea"{
+            ld{"Waktu Musim Panas Korea"}
+            lg{"Waktu Korea"}
+            ls{"Waktu Standar Korea"}
+        }
+        "meta:Kosrae"{
+            ls{"Waktu Kosrae"}
+        }
+        "meta:Krasnoyarsk"{
+            ld{"Waktu Musim Panas Krasnoyarsk"}
+            lg{"Waktu Krasnoyarsk"}
+            ls{"Waktu Standar Krasnoyarsk"}
+        }
+        "meta:Kyrgystan"{
+            ls{"Waktu Kirghizia"}
+        }
+        "meta:Lanka"{
+            ls{"Waktu Lanka"}
+        }
+        "meta:Line_Islands"{
+            ls{"Waktu Kep. Line"}
+        }
+        "meta:Lord_Howe"{
+            ld{"Waktu Terang Lord Howe"}
+            lg{"Waktu Lord Howe"}
+            ls{"Waktu Standar Lord Howe"}
+        }
+        "meta:Macau"{
+            ld{"Waktu Musim Panas Makau"}
+            lg{"Waktu Makau"}
+            ls{"Waktu Standar Makau"}
+        }
+        "meta:Macquarie"{
+            ls{"Waktu Kepulauan Macquarie"}
+        }
+        "meta:Magadan"{
+            ld{"Waktu Musim Panas Magadan"}
+            lg{"Waktu Magadan"}
+            ls{"Waktu Standar Magadan"}
+        }
+        "meta:Malaysia"{
+            ls{"Waktu Malaysia"}
+        }
+        "meta:Maldives"{
+            ls{"Waktu Maladewa"}
+        }
+        "meta:Marquesas"{
+            ls{"Waktu Marquesas"}
+        }
+        "meta:Marshall_Islands"{
+            ls{"Waktu Kep. Marshall"}
+        }
+        "meta:Mauritius"{
+            ld{"Waktu Musim Panas Mauritius"}
+            lg{"Waktu Mauritius"}
+            ls{"Waktu Standar Mauritius"}
+        }
+        "meta:Mawson"{
+            ls{"Waktu Mawson"}
+        }
+        "meta:Mongolia"{
+            ld{"Waktu Musim Panas Ulan Bator"}
+            lg{"Waktu Ulan Bator"}
+            ls{"Waktu Standar Ulan Bator"}
+        }
+        "meta:Moscow"{
+            ld{"Waktu Musim Panas Moskow"}
+            lg{"Waktu Moskow"}
+            ls{"Waktu Standar Moskow"}
+        }
+        "meta:Myanmar"{
+            ls{"Waktu Myanmar"}
+        }
+        "meta:Nauru"{
+            ls{"Waktu Nauru"}
+        }
+        "meta:Nepal"{
+            ls{"Waktu Nepal"}
+        }
+        "meta:New_Caledonia"{
+            ld{"Waktu Musim Panas Kaledonia Baru"}
+            lg{"Waktu Kaledonia Baru"}
+            ls{"Waktu Standar Kaledonia Baru"}
+        }
+        "meta:New_Zealand"{
+            ld{"Waktu Terang Selandia Baru"}
+            lg{"Waktu Selandia Baru"}
+            ls{"Waktu Standar Selandia Baru"}
+        }
+        "meta:Newfoundland"{
+            ld{"Waktu Siang Hari Newfoundland"}
+            lg{"Waktu Newfoundland"}
+            ls{"Waktu Standar Newfoundland"}
+        }
+        "meta:Niue"{
+            ls{"Waktu Niue"}
+        }
+        "meta:Norfolk"{
+            ls{"Waktu Kepulauan Norfolk"}
+        }
+        "meta:Noronha"{
+            ld{"Waktu Musim Panas Fernando de Noronha"}
+            lg{"Waktu Fernando de Noronha"}
+            ls{"Waktu Standar Fernando de Noronha"}
+        }
+        "meta:North_Mariana"{
+            ls{"Waktu Kep. Mariana Utara"}
+        }
+        "meta:Novosibirsk"{
+            ld{"Waktu Musim Panas Novosibirsk"}
+            lg{"Waktu Novosibirsk"}
+            ls{"Waktu Standar Novosibirsk"}
+        }
+        "meta:Omsk"{
+            ld{"Waktu Musim Panas Omsk"}
+            lg{"Waktu Omsk"}
+            ls{"Waktu Standar Omsk"}
+        }
+        "meta:Pakistan"{
+            ld{"Waktu Musim Panas Pakistan"}
+            lg{"Waktu Pakistan"}
+            ls{"Waktu Standar Pakistan"}
+        }
+        "meta:Palau"{
+            ls{"Waktu Palau"}
+        }
+        "meta:Papua_New_Guinea"{
+            ls{"Waktu Papua Nugini"}
+        }
+        "meta:Paraguay"{
+            ld{"Waktu Musim Panas Paraguay"}
+            lg{"Waktu Paraguay"}
+            ls{"Waktu Standar Paraguay"}
+        }
+        "meta:Peru"{
+            ld{"Waktu Musim Panas Peru"}
+            lg{"Waktu Peru"}
+            ls{"Waktu Standar Peru"}
+        }
+        "meta:Philippines"{
+            ld{"Waktu Musim Panas Filipina"}
+            lg{"Waktu Filipina"}
+            ls{"Waktu Standar Filipina"}
+        }
+        "meta:Phoenix_Islands"{
+            ls{"Waktu Kepulauan Phoenix"}
+        }
+        "meta:Pierre_Miquelon"{
+            ld{"Waktu Musim Panas Saint Pierre dan Miquelon"}
+            lg{"Waktu Saint Pierre dan Miquelon"}
+            ls{"Waktu Standar Saint Pierre dan Miquelon"}
+        }
+        "meta:Pitcairn"{
+            ls{"Waktu Pitcairn"}
+        }
+        "meta:Ponape"{
+            ls{"Waktu Ponape"}
+        }
+        "meta:Qyzylorda"{
+            ld{"Waktu Musim Panas Qyzylorda"}
+            lg{"Waktu Qyzylorda"}
+            ls{"Waktu Standar Qyzylorda"}
+        }
+        "meta:Reunion"{
+            ls{"Waktu Reunion"}
+        }
+        "meta:Rothera"{
+            ls{"Waktu Rothera"}
+        }
+        "meta:Sakhalin"{
+            ld{"Waktu Musim Panas Sakhalin"}
+            lg{"Waktu Sakhalin"}
+            ls{"Waktu Standar Sakhalin"}
+        }
+        "meta:Samara"{
+            ld{"Waktu Musim Panas Samara"}
+            lg{"Waktu Samara"}
+            ls{"Waktu Standar Samara"}
+        }
+        "meta:Samoa"{
+            ld{"Waktu Musim Panas Samoa"}
+            lg{"Waktu Samoa"}
+            ls{"Waktu Standar Samoa"}
+        }
+        "meta:Seychelles"{
+            ls{"Waktu Seychelles"}
+        }
+        "meta:Singapore"{
+            ls{"Waktu Standar Singapura"}
+        }
+        "meta:Solomon"{
+            ls{"Waktu Kepulauan Solomon"}
+        }
+        "meta:South_Georgia"{
+            ls{"Waktu Georgia Selatan"}
+        }
+        "meta:Suriname"{
+            ls{"Waktu Suriname"}
+        }
+        "meta:Syowa"{
+            ls{"Waktu Syowa"}
+        }
+        "meta:Tahiti"{
+            ls{"Waktu Tahiti"}
+        }
+        "meta:Taipei"{
+            ld{"Waktu Musim Panas Taipei"}
+            lg{"Waktu Taipei"}
+            ls{"Waktu Standar Taipei"}
+        }
+        "meta:Tajikistan"{
+            ls{"Waktu Tajikistan"}
+        }
+        "meta:Tokelau"{
+            ls{"Waktu Tokelau"}
+        }
+        "meta:Tonga"{
+            ld{"Waktu Musim Panas Tonga"}
+            lg{"Waktu Tonga"}
+            ls{"Waktu Standar Tonga"}
+        }
+        "meta:Truk"{
+            ls{"Waktu Chuuk"}
+        }
+        "meta:Turkmenistan"{
+            ld{"Waktu Musim Panas Turkmenistan"}
+            lg{"Waktu Turkmenistan"}
+            ls{"Waktu Standar Turkmenistan"}
+        }
+        "meta:Tuvalu"{
+            ls{"Waktu Tuvalu"}
+        }
+        "meta:Uruguay"{
+            ld{"Waktu Musim Panas Uruguay"}
+            lg{"Waktu Uruguay"}
+            ls{"Waktu Standar Uruguay"}
+        }
+        "meta:Uzbekistan"{
+            ld{"Waktu Musim Panas Uzbekistan"}
+            lg{"Waktu Uzbekistan"}
+            ls{"Waktu Standar Uzbekistan"}
+        }
+        "meta:Vanuatu"{
+            ld{"Waktu Musim Panas Vanuatu"}
+            lg{"Waktu Vanuatu"}
+            ls{"Waktu Standar Vanuatu"}
+        }
+        "meta:Venezuela"{
+            ls{"Waktu Venezuela"}
+        }
+        "meta:Vladivostok"{
+            ld{"Waktu Musim Panas Vladivostok"}
+            lg{"Waktu Vladivostok"}
+            ls{"Waktu Standar Vladivostok"}
+        }
+        "meta:Volgograd"{
+            ld{"Waktu Musim Panas Volgograd"}
+            lg{"Waktu Volgograd"}
+            ls{"Waktu Standar Volgograd"}
+        }
+        "meta:Vostok"{
+            ls{"Waktu Vostok"}
+        }
+        "meta:Wake"{
+            ls{"Waktu Kepulauan Wake"}
+        }
+        "meta:Wallis"{
+            ls{"Waktu Wallis dan Futuna"}
+        }
+        "meta:Yakutsk"{
+            ld{"Waktu Musim Panas Yakutsk"}
+            lg{"Waktu Yakutsk"}
+            ls{"Waktu Standar Yakutsk"}
+        }
+        "meta:Yekaterinburg"{
+            ld{"Waktu Musim Panas Yekaterinburg"}
+            lg{"Waktu Yekaterinburg"}
+            ls{"Waktu Standar Yekaterinburg"}
+        }
+        fallbackFormat{"{1} ({0})"}
+        gmtFormat{"GMT{0}"}
+        gmtZeroFormat{"GMT"}
+        hourFormat{"+HH.mm;-HH.mm"}
+        regionFormat{"Waktu {0}"}
+        regionFormatDaylight{"Waktu Terang {0}"}
+        regionFormatStandard{"Waktu Standar {0}"}
+    }
+}

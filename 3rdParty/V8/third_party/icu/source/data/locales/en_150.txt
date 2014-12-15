@@ -1,0 +1,73 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/en_150.xml
+// *
+// ***************************************************************************
+en_150{
+    %%Parent{"en_GB"}
+    NumberElements{
+        latn{
+            patterns{
+                currencyFormat{"#,##0.00 ¤"}
+            }
+            symbols{
+                decimal{","}
+                group{"."}
+            }
+        }
+    }
+    Version{"2.0.92.87"}
+    calendar{
+        generic{
+            DateTimePatterns{
+                "HH 'h' mm 'min' ss 's' zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "EEEE d MMMM y G",
+                "d MMM y G",
+                "dd MMM y G",
+                "dd/MM/y GGGGG",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            availableFormats{
+                MEd{"E d/M"}
+                Md{"d/M"}
+                yyyyMEd{"E, d/M/y G"}
+                yyyyMMMEd{"E d MMM y G"}
+                yyyyMd{"d/M/y G"}
+            }
+        }
+        gregorian{
+            DateTimePatterns{
+                "HH 'h' mm 'min' ss 's' zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "EEEE d MMMM y",
+                "d MMM y",
+                "dd MMM y",
+                "dd/MM/yy",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            availableFormats{
+                MEd{"E d/M"}
+                Md{"d/M"}
+                yMEd{"E, d/M/y"}
+                yMMMEd{"E d MMM y"}
+                yMd{"d/M/y"}
+            }
+        }
+    }
+}

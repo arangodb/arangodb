@@ -1,0 +1,18 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/en_TT.xml
+// *
+// ***************************************************************************
+en_TT{
+    %%Parent{"en_001"}
+    Currencies{
+        TTD{
+            "$",
+            "Trinidad and Tobago Dollar",
+        }
+    }
+    Version{"2.0.92.80"}
+}

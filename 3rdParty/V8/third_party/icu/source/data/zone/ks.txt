@@ -1,0 +1,1768 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ks.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/ks.xml
+ */
+ks{
+    Version{"2.0.92.87"}
+    zoneStrings{
+        "Africa:Abidjan"{
+            ec{"عابِدجان"}
+        }
+        "Africa:Accra"{
+            ec{"اٮ۪کرا"}
+        }
+        "Africa:Algiers"{
+            ec{"اَلجیٖرِیا"}
+        }
+        "Africa:Asmera"{
+            ec{"اَسمیرا"}
+        }
+        "Africa:Bamako"{
+            ec{"بماکو"}
+        }
+        "Africa:Bangui"{
+            ec{"بٮ۪نٛگوٗیی"}
+        }
+        "Africa:Banjul"{
+            ec{"بَنجوٗل"}
+        }
+        "Africa:Bissau"{
+            ec{"بِساؤں"}
+        }
+        "Africa:Blantyre"{
+            ec{"بلانتَیر"}
+        }
+        "Africa:Brazzaville"{
+            ec{"برٛازاوِل"}
+        }
+        "Africa:Bujumbura"{
+            ec{"بُجُمبُرا"}
+        }
+        "Africa:Cairo"{
+            ec{"کَیرو"}
+        }
+        "Africa:Casablanca"{
+            ec{"کٮ۪سابلٮ۪نٛکا"}
+        }
+        "Africa:Ceuta"{
+            ec{"کیوٗٹا"}
+        }
+        "Africa:Conakry"{
+            ec{"کوناکرٛی"}
+        }
+        "Africa:Dakar"{
+            ec{"دَکار"}
+        }
+        "Africa:Dar_es_Salaam"{
+            ec{"دارُالسلام"}
+        }
+        "Africa:Djibouti"{
+            ec{"ڑِزِبوٹی"}
+        }
+        "Africa:Douala"{
+            ec{"دوعالا"}
+        }
+        "Africa:Freetown"{
+            ec{"فری ٹاوُن"}
+        }
+        "Africa:Gaborone"{
+            ec{"گٮ۪بورون"}
+        }
+        "Africa:Harare"{
+            ec{"ہَراریے"}
+        }
+        "Africa:Johannesburg"{
+            ec{"جانسبٔرگ"}
+        }
+        "Africa:Kampala"{
+            ec{"کَمپالا"}
+        }
+        "Africa:Khartoum"{
+            ec{"کھارتوم"}
+        }
+        "Africa:Kigali"{
+            ec{"کِگالی"}
+        }
+        "Africa:Kinshasa"{
+            ec{"کِنشاسا"}
+        }
+        "Africa:Lagos"{
+            ec{"لیٚگوس"}
+        }
+        "Africa:Libreville"{
+            ec{"لِبَروِل"}
+        }
+        "Africa:Lome"{
+            ec{"لوم"}
+        }
+        "Africa:Luanda"{
+            ec{"لُعٮ۪نٛڑا"}
+        }
+        "Africa:Lubumbashi"{
+            ec{"لُبُمباشی"}
+        }
+        "Africa:Lusaka"{
+            ec{"لُساکا"}
+        }
+        "Africa:Malabo"{
+            ec{"مالابو"}
+        }
+        "Africa:Maputo"{
+            ec{"مَپوٗٹو"}
+        }
+        "Africa:Maseru"{
+            ec{"مَسیروٗ"}
+        }
+        "Africa:Mbabane"{
+            ec{"مابین"}
+        }
+        "Africa:Mogadishu"{
+            ec{"موگادِشوٗ"}
+        }
+        "Africa:Monrovia"{
+            ec{"مونرووِیا"}
+        }
+        "Africa:Nairobi"{
+            ec{"نیروبی"}
+        }
+        "Africa:Ndjamena"{
+            ec{"جَمیٖنا"}
+        }
+        "Africa:Niamey"{
+            ec{"نَیمیے"}
+        }
+        "Africa:Nouakchott"{
+            ec{"نوواکچھوت"}
+        }
+        "Africa:Ouagadougou"{
+            ec{"اوآگدوگو"}
+        }
+        "Africa:Porto-Novo"{
+            ec{"پوٹو نووو"}
+        }
+        "Africa:Sao_Tome"{
+            ec{"ساو ٹوم"}
+        }
+        "Africa:Tripoli"{
+            ec{"ترٛپولی"}
+        }
+        "Africa:Tunis"{
+            ec{"ٹوٗنِس"}
+        }
+        "Africa:Windhoek"{
+            ec{"وِنڈہوک"}
+        }
+        "America:Adak"{
+            ec{"اِدَک"}
+        }
+        "America:Anchorage"{
+            ec{"اَنکوراج"}
+        }
+        "America:Anguilla"{
+            ec{"اٮ۪نگِولا"}
+        }
+        "America:Antigua"{
+            ec{"اٮ۪نٹِگُوا"}
+        }
+        "America:Araguaina"{
+            ec{"اٮ۪ریگُوینا"}
+        }
+        "America:Argentina:La_Rioja"{
+            ec{"لا رِیوجا"}
+        }
+        "America:Argentina:Rio_Gallegos"{
+            ec{"رِیو گالیگوس"}
+        }
+        "America:Argentina:San_Juan"{
+            ec{"سین جُواں"}
+        }
+        "America:Argentina:San_Luis"{
+            ec{"سین لوٗیِس"}
+        }
+        "America:Argentina:Tucuman"{
+            ec{"ٹوکوٗمَن"}
+        }
+        "America:Argentina:Ushuaia"{
+            ec{"اُشُوٗاییا"}
+        }
+        "America:Aruba"{
+            ec{"اَروٗبا"}
+        }
+        "America:Asuncion"{
+            ec{"اَسُنچِیَن"}
+        }
+        "America:Bahia"{
+            ec{"بَہِیا"}
+        }
+        "America:Barbados"{
+            ec{"بَرباڑوس"}
+        }
+        "America:Belem"{
+            ec{"بٮ۪لٮ۪م"}
+        }
+        "America:Belize"{
+            ec{"بٮ۪لیٖز"}
+        }
+        "America:Blanc-Sablon"{
+            ec{"بلانٛک سٮ۪بلَن"}
+        }
+        "America:Boa_Vista"{
+            ec{"بوآ وِسٹا"}
+        }
+        "America:Bogota"{
+            ec{"بوگوٹا"}
+        }
+        "America:Boise"{
+            ec{"بویِس"}
+        }
+        "America:Buenos_Aires"{
+            ec{"بیوٗنَس آیرَس"}
+        }
+        "America:Cambridge_Bay"{
+            ec{"کیمبرِج خلیٖج"}
+        }
+        "America:Campo_Grande"{
+            ec{"کٮ۪مپو گرینٛڑ"}
+        }
+        "America:Cancun"{
+            ec{"کینکَن"}
+        }
+        "America:Caracas"{
+            ec{"کیرَکَس"}
+        }
+        "America:Catamarca"{
+            ec{"کیٹامارکا"}
+        }
+        "America:Cayenne"{
+            ec{"کَیین"}
+        }
+        "America:Cayman"{
+            ec{"کیمَن"}
+        }
+        "America:Chicago"{
+            ec{"شِکاگو"}
+        }
+        "America:Chihuahua"{
+            ec{"چِہُوا ہُوا"}
+        }
+        "America:Coral_Harbour"{
+            ec{"کورَل بٔنٛدٕرگاہ"}
+        }
+        "America:Cordoba"{
+            ec{"کورڑوبا"}
+        }
+        "America:Costa_Rica"{
+            ec{"کوسٹا ریٖکا"}
+        }
+        "America:Cuiaba"{
+            ec{"کوٗیابا"}
+        }
+        "America:Curacao"{
+            ec{"کیوٗراکااو"}
+        }
+        "America:Danmarkshavn"{
+            ec{"ڑٮ۪نمارکشَون"}
+        }
+        "America:Dawson"{
+            ec{"ڑاسَن"}
+        }
+        "America:Dawson_Creek"{
+            ec{"ڑاسَن کرٛیٖک"}
+        }
+        "America:Denver"{
+            ec{"ڈیٚنوَر"}
+        }
+        "America:Detroit"{
+            ec{"ڈیٚٹرایِٹ"}
+        }
+        "America:Dominica"{
+            ec{"ڈومِنِکا"}
+        }
+        "America:Edmonton"{
+            ec{"اٮ۪ڑمَنٹَن"}
+        }
+        "America:Eirunepe"{
+            ec{"ایٖروٗنیپ"}
+        }
+        "America:El_Salvador"{
+            ec{"ایٚل سَلویدَر"}
+        }
+        "America:Fortaleza"{
+            ec{"فورٹیلیزا"}
+        }
+        "America:Glace_Bay"{
+            ec{"گلیس خلیٖج"}
+        }
+        "America:Godthab"{
+            ec{"گعاڑتھیب"}
+        }
+        "America:Goose_Bay"{
+            ec{"گوٗس خلیٖج"}
+        }
+        "America:Grand_Turk"{
+            ec{"گرینٛڈ تٔرک"}
+        }
+        "America:Grenada"{
+            ec{"گرٛیناڑا"}
+        }
+        "America:Guadeloupe"{
+            ec{"گوڑلوپ"}
+        }
+        "America:Guatemala"{
+            ec{"گواٹیمالا"}
+        }
+        "America:Guayaquil"{
+            ec{"گوایاکِوَل"}
+        }
+        "America:Guyana"{
+            ec{"گُیانا"}
+        }
+        "America:Halifax"{
+            ec{"حیلِفٮ۪کس"}
+        }
+        "America:Havana"{
+            ec{"حوانا"}
+        }
+        "America:Hermosillo"{
+            ec{"ۂرموسِلو"}
+        }
+        "America:Indiana:Knox"{
+            ec{"نوکس"}
+        }
+        "America:Indiana:Marengo"{
+            ec{"میٚریٚنگو"}
+        }
+        "America:Indiana:Petersburg"{
+            ec{"پِٹس بٔرگ"}
+        }
+        "America:Indiana:Tell_City"{
+            ec{"ٹیٚل سِٹی"}
+        }
+        "America:Indiana:Vevay"{
+            ec{"ویٚویے"}
+        }
+        "America:Indiana:Vincennes"{
+            ec{"وِنسیٚنیٚس"}
+        }
+        "America:Indiana:Winamac"{
+            ec{"وِنیمیک"}
+        }
+        "America:Indianapolis"{
+            ec{"اِنڈیَن پولِس"}
+        }
+        "America:Inuvik"{
+            ec{"اِنوٗوِک"}
+        }
+        "America:Iqaluit"{
+            ec{"اِقالیوٗیِت"}
+        }
+        "America:Jamaica"{
+            ec{"جَمَیکا"}
+        }
+        "America:Jujuy"{
+            ec{"جُجویے"}
+        }
+        "America:Juneau"{
+            ec{"جوٗنی"}
+        }
+        "America:Kentucky:Monticello"{
+            ec{"مونٹِسیٚلو"}
+        }
+        "America:La_Paz"{
+            ec{"لا پاز"}
+        }
+        "America:Lima"{
+            ec{"لِما"}
+        }
+        "America:Los_Angeles"{
+            ec{"لاس ایٚنجٕلز"}
+        }
+        "America:Louisville"{
+            ec{"لوٗیِس وِل"}
+        }
+        "America:Maceio"{
+            ec{"میسِیوو"}
+        }
+        "America:Managua"{
+            ec{"مَناگوا"}
+        }
+        "America:Manaus"{
+            ec{"مَنوس"}
+        }
+        "America:Martinique"{
+            ec{"مارٹِنِک"}
+        }
+        "America:Mazatlan"{
+            ec{"مَزَٹلان"}
+        }
+        "America:Mendoza"{
+            ec{"مٮ۪نڑوزا"}
+        }
+        "America:Menominee"{
+            ec{"میٚنومِنی"}
+        }
+        "America:Merida"{
+            ec{"میٚرِڈا"}
+        }
+        "America:Mexico_City"{
+            ec{"میٚکسِکو سِٹی"}
+        }
+        "America:Miquelon"{
+            ec{"مِکیٖلَن"}
+        }
+        "America:Moncton"{
+            ec{"مونٛکٹٕن"}
+        }
+        "America:Monterrey"{
+            ec{"موٹیٚری"}
+        }
+        "America:Montevideo"{
+            ec{"مونٹیٚوِڈیو"}
+        }
+        "America:Montreal"{
+            ec{"مونٛٹرِیَل"}
+        }
+        "America:Montserrat"{
+            ec{"مونژیرات"}
+        }
+        "America:Nassau"{
+            ec{"نساؤں"}
+        }
+        "America:New_York"{
+            ec{"نِو یارک"}
+        }
+        "America:Nipigon"{
+            ec{"نِپِگَن"}
+        }
+        "America:Nome"{
+            ec{"نوم"}
+        }
+        "America:Noronha"{
+            ec{"نورونٛہا"}
+        }
+        "America:North_Dakota:Center"{
+            ec{"مَرکزی جنوٗبی ڈکوٹا"}
+        }
+        "America:North_Dakota:New_Salem"{
+            ec{"نوو سیلٕم"}
+        }
+        "America:Panama"{
+            ec{"پَناما"}
+        }
+        "America:Pangnirtung"{
+            ec{"پَنٛگنِرٹَنٛگ"}
+        }
+        "America:Paramaribo"{
+            ec{"پَرامارِبو"}
+        }
+        "America:Phoenix"{
+            ec{"پھِنِکس"}
+        }
+        "America:Port-au-Prince"{
+            ec{"پوٹ آؤں پرِنٛس"}
+        }
+        "America:Port_of_Spain"{
+            ec{"پوٹ آف سپین"}
+        }
+        "America:Porto_Velho"{
+            ec{"پوٹو وٮ۪لہو"}
+        }
+        "America:Puerto_Rico"{
+            ec{"پیٖٹو رِکو"}
+        }
+        "America:Rainy_River"{
+            ec{"رینی رِوَر"}
+        }
+        "America:Rankin_Inlet"{
+            ec{"رینٛکِن اِنلٮ۪ٹ"}
+        }
+        "America:Recife"{
+            ec{"رٮ۪چیٖف"}
+        }
+        "America:Regina"{
+            ec{"رٮ۪جیٖنا"}
+        }
+        "America:Resolute"{
+            ec{"رِسولیوٗٹ"}
+        }
+        "America:Rio_Branco"{
+            ec{"رِیو برٛانٛکو"}
+        }
+        "America:Santiago"{
+            ec{"سینٹِعٮ۪گو"}
+        }
+        "America:Santo_Domingo"{
+            ec{"سٮ۪نٹو ڑومِنگو"}
+        }
+        "America:Sao_Paulo"{
+            ec{"ساو پعالو"}
+        }
+        "America:Scoresbysund"{
+            ec{"سکورٕسباےسَنٛڑ"}
+        }
+        "America:Shiprock"{
+            ec{"شِپراک"}
+        }
+        "America:St_Johns"{
+            ec{"سٮ۪نٛٹ جونس"}
+        }
+        "America:St_Kitts"{
+            ec{"سینٛٹ کِٹس"}
+        }
+        "America:St_Lucia"{
+            ec{"سٮ۪نٛٹ لوٗسِیا"}
+        }
+        "America:St_Thomas"{
+            ec{"سینٛٹ تھامَس"}
+        }
+        "America:St_Vincent"{
+            ec{"وِنسیٚنٛٹ"}
+        }
+        "America:Swift_Current"{
+            ec{"سٕوِفٹ کَرَنٛٹ"}
+        }
+        "America:Thule"{
+            ec{"تھیوٗلے"}
+        }
+        "America:Thunder_Bay"{
+            ec{"تھَنڑَر خلیٖج"}
+        }
+        "America:Tijuana"{
+            ec{"تِجُوانا"}
+        }
+        "America:Toronto"{
+            ec{"ٹورونٛٹو"}
+        }
+        "America:Tortola"{
+            ec{"ٹارٹولا"}
+        }
+        "America:Vancouver"{
+            ec{"وٮ۪نٛکووَر"}
+        }
+        "America:Whitehorse"{
+            ec{"وایِٹ ہارٕس"}
+        }
+        "America:Winnipeg"{
+            ec{"وِنِپٮ۪گ"}
+        }
+        "America:Yakutat"{
+            ec{"یکوٗتات"}
+        }
+        "America:Yellowknife"{
+            ec{"یٮ۪لو نایِف"}
+        }
+        "Antarctica:Casey"{
+            ec{"کیسی"}
+        }
+        "Antarctica:Davis"{
+            ec{"ڈیوِس"}
+        }
+        "Antarctica:DumontDUrville"{
+            ec{"ڈُمونٛٹ ڈ اَروِل"}
+        }
+        "Antarctica:Mawson"{
+            ec{"ماسَن"}
+        }
+        "Antarctica:McMurdo"{
+            ec{"مٮ۪ک مٲڑو"}
+        }
+        "Antarctica:Palmer"{
+            ec{"پامَر"}
+        }
+        "Antarctica:Rothera"{
+            ec{"روتھیرا"}
+        }
+        "Antarctica:South_Pole"{
+            ec{"جنوٗبی پول"}
+        }
+        "Antarctica:Syowa"{
+            ec{"سیٚووا"}
+        }
+        "Antarctica:Vostok"{
+            ec{"ووستوک"}
+        }
+        "Asia:Aden"{
+            ec{"ایٚڈٕن"}
+        }
+        "Asia:Almaty"{
+            ec{"اَلماٹی"}
+        }
+        "Asia:Amman"{
+            ec{"اَمان"}
+        }
+        "Asia:Anadyr"{
+            ec{"اَنَدیر"}
+        }
+        "Asia:Aqtau"{
+            ec{"اَکتاؤں"}
+        }
+        "Asia:Aqtobe"{
+            ec{"اَقٹوب"}
+        }
+        "Asia:Ashgabat"{
+            ec{"اَشگَبَت"}
+        }
+        "Asia:Baghdad"{
+            ec{"بغداد"}
+        }
+        "Asia:Bahrain"{
+            ec{"بٮ۪ہریٖن"}
+        }
+        "Asia:Baku"{
+            ec{"باقوٗ"}
+        }
+        "Asia:Bangkok"{
+            ec{"بینگ کاک"}
+        }
+        "Asia:Beirut"{
+            ec{"بیرُت"}
+        }
+        "Asia:Bishkek"{
+            ec{"بِشکیک"}
+        }
+        "Asia:Brunei"{
+            ec{"برٛوٗنَے"}
+        }
+        "Asia:Choibalsan"{
+            ec{"چویبالسَن"}
+        }
+        "Asia:Chongqing"{
+            ec{"چونٛگقِنٛگ"}
+        }
+        "Asia:Colombo"{
+            ec{"کولَمبو"}
+        }
+        "Asia:Damascus"{
+            ec{"دَمَسکَس"}
+        }
+        "Asia:Dhaka"{
+            ec{"ڈھاکا"}
+        }
+        "Asia:Dili"{
+            ec{"دِلی"}
+        }
+        "Asia:Dubai"{
+            ec{"دُبَے"}
+        }
+        "Asia:Dushanbe"{
+            ec{"دُشانبیے"}
+        }
+        "Asia:Gaza"{
+            ec{"غازا"}
+        }
+        "Asia:Harbin"{
+            ec{"حاربِن"}
+        }
+        "Asia:Hong_Kong"{
+            ec{"حانٛگ کانٛگ"}
+        }
+        "Asia:Hovd"{
+            ec{"حووڑ"}
+        }
+        "Asia:Irkutsk"{
+            ec{"اِرکُسک"}
+        }
+        "Asia:Jakarta"{
+            ec{"جکارتا"}
+        }
+        "Asia:Jayapura"{
+            ec{"جَیاپوٗرا"}
+        }
+        "Asia:Jerusalem"{
+            ec{"یٮ۪روٗسَلَم"}
+        }
+        "Asia:Kabul"{
+            ec{"قابُل"}
+        }
+        "Asia:Kamchatka"{
+            ec{"کَمچھٹکا"}
+        }
+        "Asia:Karachi"{
+            ec{"کَراچی"}
+        }
+        "Asia:Kashgar"{
+            ec{"کاشگَر"}
+        }
+        "Asia:Katmandu"{
+            ec{"کاٹھمَنڈوٗ"}
+        }
+        "Asia:Krasnoyarsk"{
+            ec{"کرنٛسنویارسک"}
+        }
+        "Asia:Kuala_Lumpur"{
+            ec{"کولالَمپوٗر"}
+        }
+        "Asia:Kuching"{
+            ec{"کُچِنٛگ"}
+        }
+        "Asia:Kuwait"{
+            ec{"کُویت"}
+        }
+        "Asia:Macau"{
+            ec{"مقاؤں"}
+        }
+        "Asia:Magadan"{
+            ec{"مَگادَن"}
+        }
+        "Asia:Makassar"{
+            ec{"مَکَسَر"}
+        }
+        "Asia:Manila"{
+            ec{"مَنیٖلا"}
+        }
+        "Asia:Muscat"{
+            ec{"مَسکَت"}
+        }
+        "Asia:Nicosia"{
+            ec{"نِکوسِیا"}
+        }
+        "Asia:Novosibirsk"{
+            ec{"نوووسِبِرسک"}
+        }
+        "Asia:Omsk"{
+            ec{"اومسک"}
+        }
+        "Asia:Oral"{
+            ec{"اورَل"}
+        }
+        "Asia:Phnom_Penh"{
+            ec{"نوم پٮ۪نٛہہ"}
+        }
+        "Asia:Pontianak"{
+            ec{"پونٛتِعانٛک"}
+        }
+        "Asia:Pyongyang"{
+            ec{"پیونٛگیانٛگ"}
+        }
+        "Asia:Qatar"{
+            ec{"قَتَر"}
+        }
+        "Asia:Qyzylorda"{
+            ec{"قٮ۪زٮ۪لوڑا"}
+        }
+        "Asia:Rangoon"{
+            ec{"رنٛگوٗن"}
+        }
+        "Asia:Riyadh"{
+            ec{"رِیاد"}
+        }
+        "Asia:Saigon"{
+            ec{"سیگَن"}
+        }
+        "Asia:Sakhalin"{
+            ec{"سَکھالِن"}
+        }
+        "Asia:Samarkand"{
+            ec{"سَمَرکَنٛد"}
+        }
+        "Asia:Seoul"{
+            ec{"سول"}
+        }
+        "Asia:Singapore"{
+            ec{"سِنٛگاپور"}
+        }
+        "Asia:Taipei"{
+            ec{"تَیپیے"}
+        }
+        "Asia:Tashkent"{
+            ec{"تاشکیٚنٛٹ"}
+        }
+        "Asia:Tbilisi"{
+            ec{"بِلِسی"}
+        }
+        "Asia:Tehran"{
+            ec{"تٮ۪ہران"}
+        }
+        "Asia:Thimphu"{
+            ec{"تھِمپوٗ"}
+        }
+        "Asia:Tokyo"{
+            ec{"ٹوکیو"}
+        }
+        "Asia:Ulaanbaatar"{
+            ec{"اُلانباٹَر"}
+        }
+        "Asia:Urumqi"{
+            ec{"اُرَمچی"}
+        }
+        "Asia:Vientiane"{
+            ec{"وِیَنتِیین"}
+        }
+        "Asia:Vladivostok"{
+            ec{"لادِووستوک"}
+        }
+        "Asia:Yakutsk"{
+            ec{"یکوسک"}
+        }
+        "Asia:Yekaterinburg"{
+            ec{"یَکاتِرِنبٔرگ"}
+        }
+        "Asia:Yerevan"{
+            ec{"یےریٚوَن"}
+        }
+        "Atlantic:Azores"{
+            ec{"اَزورَس"}
+        }
+        "Atlantic:Bermuda"{
+            ec{"برموٗڑا"}
+        }
+        "Atlantic:Canary"{
+            ec{"کٮ۪نَری"}
+        }
+        "Atlantic:Cape_Verde"{
+            ec{"کیپ ؤرڑے"}
+        }
+        "Atlantic:Faeroe"{
+            ec{"فٮ۪رو"}
+        }
+        "Atlantic:Madeira"{
+            ec{"مَڈیٖرا"}
+        }
+        "Atlantic:Reykjavik"{
+            ec{"رٮ۪کیاوِک"}
+        }
+        "Atlantic:South_Georgia"{
+            ec{"ساوتھ جورجِیا"}
+        }
+        "Atlantic:St_Helena"{
+            ec{"سینٛٹ ہیٚلِنا"}
+        }
+        "Atlantic:Stanley"{
+            ec{"سٹینلی"}
+        }
+        "Australia:Adelaide"{
+            ec{"اٮ۪ڑِلیڑ"}
+        }
+        "Australia:Brisbane"{
+            ec{"برٛسبین"}
+        }
+        "Australia:Broken_Hill"{
+            ec{"برٛوکٕن ہِل"}
+        }
+        "Australia:Currie"{
+            ec{"کیوٗری"}
+        }
+        "Australia:Darwin"{
+            ec{"ڈاروِن"}
+        }
+        "Australia:Eucla"{
+            ec{"یوٗکلا"}
+        }
+        "Australia:Hobart"{
+            ec{"حۄبٲٹ"}
+        }
+        "Australia:Lindeman"{
+            ec{"لِنڑیمان"}
+        }
+        "Australia:Lord_Howe"{
+            ec{"لعاڑ ہووے"}
+        }
+        "Australia:Melbourne"{
+            ec{"مٮ۪لبعارن"}
+        }
+        "Australia:Perth"{
+            ec{"پٔرتھ"}
+        }
+        "Australia:Sydney"{
+            ec{"سِڑنی"}
+        }
+        "Etc:Unknown"{
+            ec{"غٲر زان"}
+        }
+        "Europe:Amsterdam"{
+            ec{"ایمسٹَرڈیم"}
+        }
+        "Europe:Andorra"{
+            ec{"اَنٛڑورا"}
+        }
+        "Europe:Athens"{
+            ec{"اٮ۪تھٕنس"}
+        }
+        "Europe:Berlin"{
+            ec{"بٔرلِن"}
+        }
+        "Europe:Brussels"{
+            ec{"برٛسٕلس"}
+        }
+        "Europe:Bucharest"{
+            ec{"بَچاریٚسٹ"}
+        }
+        "Europe:Budapest"{
+            ec{"بُڑاپیسٹ"}
+        }
+        "Europe:Chisinau"{
+            ec{"چِسیٖنو"}
+        }
+        "Europe:Copenhagen"{
+            ec{"کوپَنہیگَن"}
+        }
+        "Europe:Dublin"{
+            ec{"ڈَبلِن"}
+            ld{"اَیرِش سَمَر ٹایِم"}
+        }
+        "Europe:Gibraltar"{
+            ec{"گِبرالٹَر"}
+        }
+        "Europe:Helsinki"{
+            ec{"حٮ۪لسِنٛکی"}
+        }
+        "Europe:Istanbul"{
+            ec{"اِستانبُل"}
+        }
+        "Europe:Kaliningrad"{
+            ec{"کَلِناِنگرَد"}
+        }
+        "Europe:Kiev"{
+            ec{"کیٖو"}
+        }
+        "Europe:Lisbon"{
+            ec{"لِسبَن"}
+        }
+        "Europe:London"{
+            ec{"لَنٛدَن"}
+            ld{"برطٲنوی سَمَر ٹایِم"}
+        }
+        "Europe:Luxembourg"{
+            ec{"لَکزٕمبٔرگ"}
+        }
+        "Europe:Madrid"{
+            ec{"میڑرِڑ"}
+        }
+        "Europe:Malta"{
+            ec{"مالٹا"}
+        }
+        "Europe:Minsk"{
+            ec{"مِنٛسک"}
+        }
+        "Europe:Monaco"{
+            ec{"موناکو"}
+        }
+        "Europe:Moscow"{
+            ec{"ماسکو"}
+        }
+        "Europe:Oslo"{
+            ec{"اوسلو"}
+        }
+        "Europe:Paris"{
+            ec{"پیرِس"}
+        }
+        "Europe:Riga"{
+            ec{"رِگا"}
+        }
+        "Europe:Rome"{
+            ec{"روم"}
+        }
+        "Europe:Samara"{
+            ec{"سَمارا"}
+        }
+        "Europe:Simferopol"{
+            ec{"سِمفیٚروپول"}
+        }
+        "Europe:Sofia"{
+            ec{"سوفِیا"}
+        }
+        "Europe:Stockholm"{
+            ec{"سٹاک ہولم"}
+        }
+        "Europe:Tallinn"{
+            ec{"ٹٮ۪لِن"}
+        }
+        "Europe:Tirane"{
+            ec{"ٹِرین"}
+        }
+        "Europe:Uzhgorod"{
+            ec{"اُزگورود"}
+        }
+        "Europe:Vaduz"{
+            ec{"وادُز"}
+        }
+        "Europe:Vienna"{
+            ec{"وِیَننا"}
+        }
+        "Europe:Vilnius"{
+            ec{"وِلِنِیَس"}
+        }
+        "Europe:Volgograd"{
+            ec{"وولگوگرَد"}
+        }
+        "Europe:Warsaw"{
+            ec{"وارسا"}
+        }
+        "Europe:Zaporozhye"{
+            ec{"زَپوروزَے"}
+        }
+        "Europe:Zurich"{
+            ec{"زیوٗرِک"}
+        }
+        "Indian:Antananarivo"{
+            ec{"اٮ۪نٛٹنانرِوو"}
+        }
+        "Indian:Chagos"{
+            ec{"چاگوس"}
+        }
+        "Indian:Christmas"{
+            ec{"کرِسمَس"}
+        }
+        "Indian:Cocos"{
+            ec{"کوکوس"}
+        }
+        "Indian:Comoro"{
+            ec{"کومورو"}
+        }
+        "Indian:Kerguelen"{
+            ec{"کیرگولِن"}
+        }
+        "Indian:Mahe"{
+            ec{"ماہیے"}
+        }
+        "Indian:Maldives"{
+            ec{"مالدیٖوز"}
+        }
+        "Indian:Mauritius"{
+            ec{"مورِشیٚس"}
+        }
+        "Indian:Mayotte"{
+            ec{"میوٹ"}
+        }
+        "Indian:Reunion"{
+            ec{"رِیوٗنیَن"}
+        }
+        "Pacific:Apia"{
+            ec{"آپِیا"}
+        }
+        "Pacific:Auckland"{
+            ec{"آکلینڈ"}
+        }
+        "Pacific:Chatham"{
+            ec{"چَتھَم"}
+        }
+        "Pacific:Easter"{
+            ec{"ایٖسٹَر"}
+        }
+        "Pacific:Efate"{
+            ec{"ایٚفاتیے"}
+        }
+        "Pacific:Enderbury"{
+            ec{"اٮ۪نٛڑربیری"}
+        }
+        "Pacific:Fakaofo"{
+            ec{"فَکَوفو"}
+        }
+        "Pacific:Fiji"{
+            ec{"فِجی"}
+        }
+        "Pacific:Funafuti"{
+            ec{"فُنافوٗتی"}
+        }
+        "Pacific:Galapagos"{
+            ec{"گٮ۪لَپگوس"}
+        }
+        "Pacific:Gambier"{
+            ec{"گیمبِیَر"}
+        }
+        "Pacific:Guadalcanal"{
+            ec{"گُوادَلچَنَل"}
+        }
+        "Pacific:Guam"{
+            ec{"گوام"}
+        }
+        "Pacific:Honolulu"{
+            ec{"ہونولو لو"}
+        }
+        "Pacific:Johnston"{
+            ec{"جانسٹَن"}
+        }
+        "Pacific:Kiritimati"{
+            ec{"کِرِتِماتی"}
+        }
+        "Pacific:Kosrae"{
+            ec{"کوسراے"}
+        }
+        "Pacific:Kwajalein"{
+            ec{"کُوجلین"}
+        }
+        "Pacific:Majuro"{
+            ec{"مَجوٗرو"}
+        }
+        "Pacific:Marquesas"{
+            ec{"مارکیسَس"}
+        }
+        "Pacific:Midway"{
+            ec{"مِڈویے"}
+        }
+        "Pacific:Nauru"{
+            ec{"ناوروٗ"}
+        }
+        "Pacific:Niue"{
+            ec{"نِو"}
+        }
+        "Pacific:Norfolk"{
+            ec{"نورفوک"}
+        }
+        "Pacific:Noumea"{
+            ec{"نومیی"}
+        }
+        "Pacific:Pago_Pago"{
+            ec{"پیگو پیگو"}
+        }
+        "Pacific:Palau"{
+            ec{"پَلاو"}
+        }
+        "Pacific:Pitcairn"{
+            ec{"پِٹکیرَن"}
+        }
+        "Pacific:Ponape"{
+            ec{"پوناپے"}
+        }
+        "Pacific:Port_Moresby"{
+            ec{"پوٹ مورسبی"}
+        }
+        "Pacific:Rarotonga"{
+            ec{"راروٹونٛگا"}
+        }
+        "Pacific:Saipan"{
+            ec{"سَیپان"}
+        }
+        "Pacific:Tahiti"{
+            ec{"تَہِتی"}
+        }
+        "Pacific:Tarawa"{
+            ec{"ٹَراوا"}
+        }
+        "Pacific:Tongatapu"{
+            ec{"تونگاتَپوٗ"}
+        }
+        "Pacific:Truk"{
+            ec{"ٹرٛک"}
+        }
+        "Pacific:Wake"{
+            ec{"ویک"}
+        }
+        "Pacific:Wallis"{
+            ec{"ویلِس"}
+        }
+        "meta:Acre"{
+            ld{"اٮ۪کرے سَمَر ٹایِم"}
+            lg{"اٮ۪کرے ٹایِم"}
+            ls{"اٮ۪کرے سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Afghanistan"{
+            ls{"افغانِستان ٹایِم"}
+        }
+        "meta:Africa_Central"{
+            ls{"مرکزی افریٖقا ٹایِم"}
+        }
+        "meta:Africa_Eastern"{
+            ls{"مشرقی افریٖقا ٹایِم"}
+        }
+        "meta:Africa_Southern"{
+            ls{"جنوٗبی افریقا ٹایِم"}
+        }
+        "meta:Africa_Western"{
+            ld{"مغربی افریٖقا سَمَر ٹایِم"}
+            lg{"مغربی افریٖقا ٹایِم"}
+            ls{"مغربی افریٖقا سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Alaska"{
+            ld{"اٮ۪لاسکا ڈےلایِٔٹ ٹایِم"}
+            lg{"اٮ۪لاسکا ٹایِم"}
+            ls{"اٮ۪لاسکا سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Almaty"{
+            ld{"اٮ۪لمٮ۪ٹی سَمَر ٹایِم"}
+            lg{"اٮ۪لمٮ۪ٹی ٹایِم"}
+            ls{"اٮ۪لمٮ۪ٹی سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Amazon"{
+            ld{"اٮ۪مَزَن سَمَر ٹایِم"}
+            lg{"اٮ۪مَزَن ٹایِم"}
+            ls{"اٮ۪مَزَن سٹینڑاڑ ٹایِم"}
+        }
+        "meta:America_Central"{
+            ld{"مرکزی ڈےلایِٔٹ ٹایِم"}
+            lg{"مرکزی ٹایِم"}
+            ls{"مرکزی سٹینڑاڑ ٹایِم"}
+        }
+        "meta:America_Eastern"{
+            ld{"مشرقی ڈےلایِٔٹ ٹایِم"}
+            lg{"مشرقی ٹایِم"}
+            ls{"مشرقی سٹینڑاڑ ٹایِم"}
+        }
+        "meta:America_Mountain"{
+            ld{"ماونٹین ڈےلایِٔٹ ٹایِم"}
+            lg{"ماونٹین ٹایِم"}
+            ls{"ماونٹین سٹینڑاڑ ٹایِم"}
+        }
+        "meta:America_Pacific"{
+            ld{"پیسِفِک ڈےلایِٔٹ ٹایِم"}
+            lg{"پیسِفِک ٹایِم"}
+            ls{"پیسِفِک سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Anadyr"{
+            ld{"اٮ۪نڑیٖر سَمَر ٹایِم"}
+            lg{"اٮ۪نَڑیٖر ٹایِم"}
+            ls{"اٮ۪نَڑیٖر سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Aqtau"{
+            ld{"اٮ۪کٹاؤ سَمَر ٹایِم"}
+            lg{"اٮ۪کٹاؤ ٹایِم"}
+            ls{"اٮ۪کٹاؤ سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Aqtobe"{
+            ld{"اٮ۪کٹوب سَمَر ٹایِم"}
+            lg{"اٮ۪کٹوب ٹایِم"}
+            ls{"اٮ۪کٹوب سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Arabian"{
+            ld{"ارٮ۪بِیَن ڈےلایِٔٹ ٹایِم"}
+            lg{"ارٮ۪بِیَن ٹایِم"}
+            ls{"ارٮ۪بِیَن سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Argentina"{
+            ld{"ارجٮ۪نٹیٖنا سَمَر ٹایِم"}
+            lg{"ارجٮ۪نٹیٖنا ٹایِم"}
+            ls{"ارجٮ۪نٹیٖنا سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Argentina_Western"{
+            ld{"مغربی ارجٮ۪نٹیٖنا سَمَر ٹایِم"}
+            lg{"مغربی ارجٮ۪نٹیٖنا ٹایِم"}
+            ls{"مغربی ارجٮ۪نٹیٖنا سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Armenia"{
+            ld{"ارمیٖنِیا سَمَر ٹایِم"}
+            lg{"ارمیٖنِیا ٹایِم"}
+            ls{"ارمیٖنِیا سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Atlantic"{
+            ld{"اٮ۪ٹلانٹِک ڈےلایِٔٹ ٹایِم"}
+            lg{"اٮ۪ٹلانٹِک ٹایِم"}
+            ls{"اٮ۪ٹلانٹِک سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Australia_Central"{
+            ld{"آسٹریلِیَن مرکزی ڈےلایِٔٹ ٹایِم"}
+            lg{"مرکزی آسٹریلِیَن ٹایِم"}
+            ls{"آسٹریلِیَن مرکزی سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Australia_CentralWestern"{
+            ld{"آسٹریلِیَن مرکزی مغربی ڈےلایِٔٹ ٹایِم"}
+            lg{"آسٹریلِیَن مرکزی مغربی ٹایِم"}
+            ls{"آسٹریلِیَن مرکزی مغربی سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Australia_Eastern"{
+            ld{"آسٹریلِیَن مشرقی ڈےلایِٔٹ ٹایِم"}
+            lg{"مشرِقی آسٹریلِیا ٹایِم"}
+            ls{"آسٹریلِیَن مشرقی سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Australia_Western"{
+            ld{"آسٹریلِیَن مغرِبیٖ ڈےلایٔٹ ٹایِم"}
+            lg{"مغرِبی آسٹریلِیا ٹایِم"}
+            ls{"آسٹریلِیَن مغرِبی سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Azerbaijan"{
+            ld{"اَزَربیجان سَمَر ٹایِم"}
+            lg{"اَزَربیجان ٹایِم"}
+            ls{"اَزَربیجان سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Azores"{
+            ld{"اٮ۪زورٕس سَمَر ٹ"}
+            lg{"اٮ۪زورٕس ٹایِم"}
+            ls{"اٮ۪زورٕس سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Bangladesh"{
+            ld{"بَنٛگلادیش سَمَر ٹایِم"}
+            lg{"بَنٛگلادیش ٹایِم"}
+            ls{"بَنٛگلادیش سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Bhutan"{
+            ls{"بوٗٹان ٹایِم"}
+        }
+        "meta:Bolivia"{
+            ls{"بولِوِیا ٹایِم"}
+        }
+        "meta:Brasilia"{
+            ld{"برٮ۪سِلِیا سَمَر ٹایِم"}
+            lg{"برٮ۪سِلِیا ٹایِم"}
+            ls{"برٮ۪سِلِیا سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Brunei"{
+            ls{"برٛوٗنَے دَروٗسَلَم ٹایِم"}
+        }
+        "meta:Cape_Verde"{
+            ld{"کیپ سَمَر ٹایِم"}
+            lg{"کیپ ؤرڑو ٹایِم"}
+            ls{"کیپ ؤرڑو سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Chamorro"{
+            ls{"کٮ۪مورو سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Chatham"{
+            ld{"چٮ۪تھَم سَمَر ٹایِم"}
+            lg{"کٮ۪تھَم ٹایِم"}
+            ls{"کٮ۪تھَم سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Chile"{
+            ld{"چِلی سَمَر ٹایِم"}
+            lg{"چِلی ٹایِم"}
+            ls{"چِلی سٹینڑاڑ ٹایِم"}
+        }
+        "meta:China"{
+            ld{"چَینا ڈےلایِٔٹ ٹایِم"}
+            lg{"چَینا ٹایِم"}
+            ls{"چَینا سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Choibalsan"{
+            ld{"کوےبٮ۪لسَن سَمَر ٹایِم"}
+            lg{"کوےبٮ۪لسَن ٹایِم"}
+            ls{"کوےبٮ۪لسَن سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Christmas"{
+            ls{"کرٛسمَس ٹایِم"}
+        }
+        "meta:Cocos"{
+            ls{"کوکوز اَیلینڑز ٹایِم"}
+        }
+        "meta:Colombia"{
+            ld{"کولومبِیا سَمَر ٹایِم"}
+            lg{"کولومبِیا ٹایِم"}
+            ls{"کولومبِیا سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Cook"{
+            ld{"کُک اَیلینڑز حاف سَمَر ٹایِم"}
+            lg{"کُک اَیلینڑز ٹایِم"}
+            ls{"کُک اَیلینڑز سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Cuba"{
+            ld{"کیوٗبا ڈےلایِٔٹ ٹایِم"}
+            lg{"کیوٗبا ٹایِم"}
+            ls{"کیوٗبا سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Davis"{
+            ls{"ڑیوِس ٹایِم"}
+        }
+        "meta:DumontDUrville"{
+            ls{"ڑمانٹ ڈی اُرویٖل ٹایِم"}
+        }
+        "meta:East_Timor"{
+            ls{"ایٖسٹ ٹیٖمَر ٹایِم"}
+        }
+        "meta:Easter"{
+            ld{"ایٖسٹَر سَمَر ٹایِم"}
+            lg{"ایٖسٹَر ٹایِم"}
+            ls{"ایٖسٹَر سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Ecuador"{
+            ls{"اِکویڑَر ٹایِم"}
+        }
+        "meta:Europe_Central"{
+            ld{"مرکزی یوٗرپی سَمَر ٹایِم"}
+            lg{"مرکزی یوٗرپی ٹایِم"}
+            ls{"مرکزی یوٗرپی سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Europe_Eastern"{
+            ld{"مشرقی یوٗرپی سَمَر ٹایِم"}
+            lg{"مشرقی یوٗرپی ٹایِم"}
+            ls{"مشرقی یوٗرپی سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Europe_Western"{
+            ld{"مغرِبی یوٗرِپی سَمَر ٹایِم"}
+            lg{"مغرِبی یوٗرپی ٹایِم"}
+            ls{"مغرِبی یوٗرپی سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Falkland"{
+            ld{"فاکلینڑ سَمَر ٹایِم"}
+            lg{"فاکلینڑ ٹایِم"}
+            ls{"فاکلینڑ سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Fiji"{
+            ld{"فیٖجی سَمَر ٹایِم"}
+            lg{"فیٖجی ٹایِم"}
+            ls{"فیٖجی سٹینڑاڑ ٹایِم"}
+        }
+        "meta:French_Guiana"{
+            ls{"فرٛٮ۪نٛچ گیوٗٮ۪نا ٹایِم"}
+        }
+        "meta:French_Southern"{
+            ls{"جنوٗبی فرٮ۪نٛچ ٹایِم"}
+        }
+        "meta:GMT"{
+            ls{"گرٛیٖن وِچ میٖن ٹایِم"}
+        }
+        "meta:Galapagos"{
+            ls{"گٮ۪لٮ۪پیٚگوز ٹایِم"}
+        }
+        "meta:Gambier"{
+            ls{"گٮ۪مبِیَر ٹایِم"}
+        }
+        "meta:Georgia"{
+            ld{"جورجِیاہُک سَمَر ٹایِم"}
+            lg{"جورجِیاہُک ٹایِم"}
+            ls{"جورجِیاہُک سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Gilbert_Islands"{
+            ls{"گِلبٲٹ ججیٖرُک ٹایِم"}
+        }
+        "meta:Greenland_Eastern"{
+            ld{"مشرِقی گریٖن لینڑُک سَمَر ٹایِم"}
+            lg{"مشرِقی گریٖن لینڑُک ٹایِم"}
+            ls{"مشرِقی گریٖن لینڑُک سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Greenland_Western"{
+            ld{"مغرِبی گریٖن لینڑُک سَمَر ٹایِم"}
+            lg{"مغرِبی گریٖن لینڑُک ٹایِم"}
+            ls{"مغرِبی گریٖن لینڑُک سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Guam"{
+            ls{"گُوٮ۪م ٹایِم"}
+        }
+        "meta:Gulf"{
+            ls{"گَلف سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Guyana"{
+            ls{"گُیَنا ٹایِم"}
+        }
+        "meta:Hawaii_Aleutian"{
+            ld{"حَواے اٮ۪لیوٗٹِیَن سَمَر ٹایِم"}
+            lg{"حَواے اٮ۪لیوٗٹِیَن ٹایِم"}
+            ls{"حَواے اٮ۪لیوٗٹِیَن سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Hong_Kong"{
+            ld{"حانٛگ کانٛگ سَمَر ٹایِم"}
+            lg{"حانگ کانٛگ ٹایِم"}
+            ls{"حانگ کانٛگ سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Hovd"{
+            ld{"حووڑ سَمَر ٹایِم"}
+            lg{"حووڑ ٹایِم"}
+            ls{"حووڑ سٹینڑاڑ ٹایِم"}
+        }
+        "meta:India"{
+            ls{"ہِنٛدوستان"}
+        }
+        "meta:Indian_Ocean"{
+            ls{"ہِندوستٲنۍ اوشَن ٹایِن"}
+        }
+        "meta:Indochina"{
+            ls{"اِنڑوچَینا ٹایِم"}
+        }
+        "meta:Indonesia_Central"{
+            ls{"مرکزی اِنڑونیشِیا ٹایِم"}
+        }
+        "meta:Indonesia_Eastern"{
+            ls{"مشرِقی اِنڑونیشِیا ٹایِم"}
+        }
+        "meta:Indonesia_Western"{
+            ls{"مغرِبی اِنڑونیشِیا ٹایِم"}
+        }
+        "meta:Iran"{
+            ld{"اِیٖرٲنی سَمَر ٹایِم"}
+            lg{"اِیٖرٲنۍ ٹایِم"}
+            ls{"اِیٖرٲنۍ سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Irkutsk"{
+            ld{"اِرکُٹسک سَمَر ٹایِم"}
+            lg{"اِرکُٹسک ٹایِم"}
+            ls{"اِرکُٹسک سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Israel"{
+            ld{"اِسرٲیِلی ڑےلایِٔٹ ٹایِم"}
+            lg{"اِسرٲیِلی ٹایِم"}
+            ls{"اِسرٲیِلی سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Japan"{
+            ld{"جاپٲنۍ ڑےلایِٔٹ ٹایِم"}
+            lg{"جاپٲنۍ ٹایِم"}
+            ls{"جاپٲنۍ سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Kamchatka"{
+            ld{"کَمچَٹکا سَمَر ٹایِم"}
+            lg{"کَمچَٹکا ٹایِم"}
+            ls{"کَمچَٹکا سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Kazakhstan_Eastern"{
+            ls{"مشرِقی کَزاکھِستان ٹایِم"}
+        }
+        "meta:Kazakhstan_Western"{
+            ls{"مغرِبی کَزاکھِستان ٹایِم"}
+        }
+        "meta:Korea"{
+            ld{"کورِیا ڑےلایِٔٹ ٹایِم"}
+            lg{"کورِیا ٹایِم"}
+            ls{"کورِیا سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Kosrae"{
+            ls{"کورسَے ٹایِم"}
+        }
+        "meta:Krasnoyarsk"{
+            ld{"کرٮ۪سنوےیارسک سَمَر ٹایِم"}
+            lg{"کرٮ۪سنوےیارسک ٹایِم"}
+            ls{"کرٮ۪سنوےیارسک سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Kyrgystan"{
+            ls{"کِرگِستان ٹایِم"}
+        }
+        "meta:Lanka"{
+            ls{"لَنٛکا ٹایِم"}
+        }
+        "meta:Line_Islands"{
+            ls{"لایِٔن ججیٖرُک ٹایِم"}
+        }
+        "meta:Lord_Howe"{
+            ld{"لعاڑ ڑےلایٔٹ ٹایِم"}
+            lg{"لعاڑ حووے ٹایِم"}
+            ls{"لعاڑ حووے سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Macau"{
+            ld{"مَکَعوٗ سَمَر ٹایِم"}
+            lg{"مَکَعوٗ ٹایِم"}
+            ls{"مَکَعوٗ سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Magadan"{
+            ld{"مَگَدَن سَمَر ٹایِم"}
+            lg{"مَگَدَن ٹایِم"}
+            ls{"مَگَدَن سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Malaysia"{
+            ls{"مَلیشِیا ٹایِم"}
+        }
+        "meta:Maldives"{
+            ls{"مالدیٖوٕز ٹایِم"}
+        }
+        "meta:Marquesas"{
+            ls{"مارقیوٗسَس ٹایِم"}
+        }
+        "meta:Marshall_Islands"{
+            ls{"مارشَل ججیٖرُک ٹایِم"}
+        }
+        "meta:Mauritius"{
+            ld{"مورِشَس سَمَر ٹایِم"}
+            lg{"مورِشَس ٹایِم"}
+            ls{"مورِشَس سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Mawson"{
+            ls{"ماسَن ٹایِم"}
+        }
+        "meta:Mongolia"{
+            ld{"مونگولِیا سَمَر ٹایِم"}
+            lg{"مونگولِیا ٹایِم"}
+            ls{"مونگولِیا سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Moscow"{
+            ld{"ماسکو سَمَر ٹایِم"}
+            lg{"ماسکَو ٹایِم"}
+            ls{"ماسکو سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Myanmar"{
+            ls{"مِیانمَر ٹایِم"}
+        }
+        "meta:Nauru"{
+            ls{"نَعوٗروٗ ٹایِم"}
+        }
+        "meta:Nepal"{
+            ls{"نٮ۪پٲلۍ ٹایِم"}
+        }
+        "meta:New_Caledonia"{
+            ld{"نِو کیلٮ۪ڑونِیس سَمَر ٹایِم"}
+            lg{"نِو کیلٮ۪ڑونِیا ٹایِم"}
+            ls{"نِو کیلٮ۪ڑونِیا سٹینڑاڑ ٹایِم"}
+        }
+        "meta:New_Zealand"{
+            ld{"نِوزِلینڑ ڑےلایٔٹ ٹایِم"}
+            lg{"نِوزِلینڑ ٹایِم"}
+            ls{"نِوزِلینڑ سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Newfoundland"{
+            ld{"نیوٗ فاونڑ لینڑ ڑےلایِٔٹ ٹایِم"}
+            lg{"نیوٗ فاونڑلینڑ ٹایِم"}
+            ls{"نیوٗ فاونڑلینڑ سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Niue"{
+            ls{"نِیوٗ ٹایِم"}
+        }
+        "meta:Norfolk"{
+            ls{"نورفعاک ٹایِم"}
+        }
+        "meta:Noronha"{
+            ld{"نورونہا سَمَر ٹایِم"}
+            lg{"نورونہا ٹایِم"}
+            ls{"نورونہا سٹینڑاڑ ٹایِم"}
+        }
+        "meta:North_Mariana"{
+            ls{"شُمٲلی مَرِیانا ٹایِم"}
+        }
+        "meta:Novosibirsk"{
+            ld{"نۄوۄسِبٔرسک سَمَر ٹایِم"}
+            lg{"نۄوۄسِبٔرسک ٹایِم"}
+            ls{"نۄوۄسِبٔرسک سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Omsk"{
+            ld{"اۄمسک سَمَر ٹایِم"}
+            lg{"اۄمسک ٹایِم"}
+            ls{"اۄمسک سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Pakistan"{
+            ld{"پاکِستان سَمَر ٹایِم"}
+            lg{"پاکِستان ٹایِم"}
+            ls{"پاکِستان سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Palau"{
+            ls{"پَلاو ٹایِم"}
+        }
+        "meta:Papua_New_Guinea"{
+            ls{"پاپُعا نیوٗ گٮ۪نی ٹایِم"}
+        }
+        "meta:Paraguay"{
+            ld{"پیرٮ۪گوے سَمَر ٹایِم"}
+            lg{"پیرٮ۪گوے ٹایِم"}
+            ls{"پیرٮ۪گوے سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Peru"{
+            ld{"پٔروٗ سَمَر ٹایِم"}
+            lg{"پٔروٗ ٹایِم"}
+            ls{"پٔروٗ سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Philippines"{
+            ld{"پھِلِپایِن سَمَر ٹایِم"}
+            lg{"پھِلِپایِن ٹایِم"}
+            ls{"پھِلِپایِن سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Phoenix_Islands"{
+            ls{"پھونِکس ججیٖرُک ٹایِم"}
+        }
+        "meta:Pierre_Miquelon"{
+            ld{"سینٛٹ پَیری مِقیوٗلَن ڑےلایِٔٹ ٹایِم"}
+            lg{"سینٛٹ پَیری مِقیوٗلَن ٹایِم"}
+            ls{"سینٛٹ پَیری مِقیوٗلَن سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Pitcairn"{
+            ls{"پِٹکیرٕن ٹایِم"}
+        }
+        "meta:Ponape"{
+            ls{"پونیپ ٹایِم"}
+        }
+        "meta:Qyzylorda"{
+            ld{"قِزلوڑا سَمَر ٹایِم"}
+            lg{"قِزلوڑا ٹایِم"}
+            ls{"قِزلوڑا سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Reunion"{
+            ls{"رِیوٗنِیَن ٹایِم"}
+        }
+        "meta:Rothera"{
+            ls{"روتھٮ۪را ٹایِم"}
+        }
+        "meta:Sakhalin"{
+            ld{"سَکھٮ۪لِن سَمَر ٹایِم"}
+            lg{"سَکھٮ۪لِن ٹایِم"}
+            ls{"سَکھٮ۪لِن سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Samara"{
+            ld{"سمٮ۪را سَمَر ٹایِم"}
+            lg{"سمٮ۪را ٹایِم"}
+            ls{"سمٮ۪را سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Samoa"{
+            ld{"سٮ۪موآ سَمَر ٹایِم"}
+            lg{"سٮ۪موآ ٹایِم"}
+            ls{"سٮ۪موآ سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Seychelles"{
+            ls{"سیشٮ۪لٕز ٹایِم"}
+        }
+        "meta:Singapore"{
+            ls{"سِنٛگاپوٗر ٹایِم"}
+        }
+        "meta:Solomon"{
+            ls{"سولومَن ججیٖرَن ہُنٛد ٹایِم"}
+        }
+        "meta:South_Georgia"{
+            ls{"شُمٲلی جورجِیا ٹایِم"}
+        }
+        "meta:Suriname"{
+            ls{"سُرِنام ٹایِم"}
+        }
+        "meta:Syowa"{
+            ls{"سیووا ٹایِم"}
+        }
+        "meta:Tahiti"{
+            ls{"ٹاہِٹی ٹایِم"}
+        }
+        "meta:Tajikistan"{
+            ls{"تازِکِستان ٹایِم"}
+        }
+        "meta:Tokelau"{
+            ls{"ٹوکٮ۪لو ٹایِم"}
+        }
+        "meta:Tonga"{
+            ld{"ٹعانٛگا سَمَر ٹایِم"}
+            lg{"ٹعانٛگا ٹایِم"}
+            ls{"ٹعانٛگا سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Truk"{
+            ls{"ٹٔرک ٹایِم"}
+        }
+        "meta:Turkmenistan"{
+            ld{"تُرکمٮ۪نِستان سَمَر ٹایِم"}
+            lg{"تُرکمٮ۪نِستان ٹایِم"}
+            ls{"تُرکمٮ۪نِستان سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Tuvalu"{
+            ls{"ٹوٗوَلوٗ ٹایِم"}
+        }
+        "meta:Uruguay"{
+            ld{"یوٗرٮ۪گوَے سَمَر ٹایِم"}
+            lg{"یوٗرٮ۪گوَے ٹایِم"}
+            ls{"یوٗرٮ۪گوَے سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Uzbekistan"{
+            ld{"اُزبیکِستانُک سَمَر ٹایِم"}
+            lg{"اُزبیکِستان ٹایِم"}
+            ls{"اُزبیکِستان سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Vanuatu"{
+            ld{"وَنوٗاَٹوٗ سَمَر ٹایِم"}
+            lg{"وَنوٗاَٹوٗ ٹایِم"}
+            ls{"وَنوٗاَٹوٗ سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Venezuela"{
+            ls{"وٮ۪نٮ۪زیوٗلا ٹایِم"}
+        }
+        "meta:Vladivostok"{
+            ld{"ولاڑِووسٹوک سَمَر ٹایِم"}
+            lg{"ولاڑِووسٹوک ٹایِم"}
+            ls{"ولاڑِووسٹوک سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Volgograd"{
+            ld{"وولگوگریڑ سَمَر ٹایِم"}
+            lg{"وولگوگریڑ ٹایِم"}
+            ls{"وولگوگریڑ سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Vostok"{
+            ls{"ووسٹوک ٹایِم"}
+        }
+        "meta:Wake"{
+            ls{"ویک ججیٖرُک ٹایِم"}
+        }
+        "meta:Wallis"{
+            ls{"والِس تہٕ فیوٗٹیوٗنا ٹایِم"}
+        }
+        "meta:Yakutsk"{
+            ld{"یَکُٹُسک سَمَر ٹایِم"}
+            lg{"یَکُٹسک ٹایِم"}
+            ls{"یَکُٹسک سٹینڑاڑ ٹایِم"}
+        }
+        "meta:Yekaterinburg"{
+            ld{"یٮ۪کَٹرِنبٔرگ سَمَر ٹایِم"}
+            lg{"یٮ۪کَٹٔرِنبٔرگ ٹایِم"}
+            ls{"یٮ۪کَٹٔرِنبٔرگ سٹینڑاڑ ٹایِم"}
+        }
+        gmtFormat{"GMT{0}"}
+        hourFormat{"+HH:mm;-HH:mm"}
+    }
+}

@@ -1,0 +1,304 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/kea.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/kea.xml
+ */
+kea{
+    Currencies{
+        AED{
+            "AED",
+            "Diren di Emiradus Arabi Unidu",
+        }
+        AOA{
+            "AOA",
+            "Kuanza",
+        }
+        AUD{
+            "AU$",
+            "Dola australianu",
+        }
+        BHD{
+            "BHD",
+            "Dinar di Barain",
+        }
+        BIF{
+            "BIF",
+            "Franku borundes",
+        }
+        BRL{
+            "R$",
+            "Rial brazileru",
+        }
+        BWP{
+            "BWP",
+            "Pula di Botsuana",
+        }
+        CAD{
+            "CA$",
+            "Dola kanadianu",
+        }
+        CDF{
+            "CDF",
+            "Franku kongoles",
+        }
+        CHF{
+            "CHF",
+            "Franku suisu",
+        }
+        CNY{
+            "CN¥",
+            "Iuan xines",
+        }
+        CVE{
+            "CVE",
+            "Skudu Kabuverdianu",
+            {
+                "#,##0.00 ¤",
+                "$",
+                ",",
+            }
+        }
+        DJF{
+            "DJF",
+            "Franku di Djibuti",
+        }
+        DKK{
+            "DKK",
+            "Kuroa dinamarkeza",
+        }
+        DZD{
+            "DZD",
+            "Dinar arjelinu",
+        }
+        EGP{
+            "EGP",
+            "Libra ejipsiu",
+        }
+        ERN{
+            "ERN",
+            "Nafka di Eritreia",
+        }
+        ETB{
+            "ETB",
+            "Bir etiopi",
+        }
+        EUR{
+            "€",
+            "Euro",
+        }
+        GBP{
+            "£",
+            "Libra sterlina britaniku",
+        }
+        GMD{
+            "GMD",
+            "Dalasi",
+        }
+        GNS{
+            "GNS",
+            "Sili",
+        }
+        HKD{
+            "HK$",
+            "Dola di Ong Kong",
+        }
+        IDR{
+            "IDR",
+            "Rupia indoneziu",
+        }
+        ILS{
+            "₪",
+            "ILS",
+        }
+        INR{
+            "₹",
+            "Rupia indianu",
+        }
+        JPY{
+            "JP¥",
+            "Ieni japones",
+        }
+        KES{
+            "KES",
+            "Xelin kenianu",
+        }
+        KMF{
+            "KMF",
+            "Franku di Komoris",
+        }
+        KRW{
+            "₩",
+            "Won sul-koreanu",
+        }
+        LRD{
+            "LRD",
+            "Dola liberianu",
+        }
+        LSL{
+            "LSL",
+            "Loti di Lezotu",
+        }
+        LYD{
+            "LYD",
+            "Dinar libiu",
+        }
+        MAD{
+            "MAD",
+            "Diren marokinu",
+        }
+        MGA{
+            "MGA",
+            "Ariari di Madagaskar",
+        }
+        MRO{
+            "MRO",
+            "Ougia",
+        }
+        MUR{
+            "MUR",
+            "Rupia di Maurisias",
+        }
+        MWK{
+            "MWK",
+            "Kuaxa di Malaui",
+        }
+        MXN{
+            "MX$",
+            "Pezu mexikanu",
+        }
+        NAD{
+            "NAD",
+            "Dola namibianu",
+        }
+        NGN{
+            "NGN",
+            "Naira",
+        }
+        NOK{
+            "NOK",
+            "Kuroa norueges",
+        }
+        NZD{
+            "NZ$",
+            "NZD",
+        }
+        PLN{
+            "PLN",
+            "Zloty polaku",
+        }
+        RUB{
+            "RUB",
+            "Rublu rusu",
+        }
+        RWF{
+            "RWF",
+            "Franku ruandes",
+        }
+        SAR{
+            "SAR",
+            "Rial saudita",
+        }
+        SCR{
+            "SCR",
+            "Rupia di Seixelis",
+        }
+        SDG{
+            "SDG",
+            "Libra sudanes",
+        }
+        SEK{
+            "SEK",
+            "Kuroa sueku",
+        }
+        SHP{
+            "SHP",
+            "Libra di Santa Ilena",
+        }
+        SLL{
+            "SLL",
+            "Leone di Sera Leoa",
+        }
+        SOS{
+            "SOS",
+            "Xelin somalianu",
+        }
+        STD{
+            "STD",
+            "Dobra di Sãu Tume i Prinsipi",
+        }
+        SZL{
+            "SZL",
+            "Lilanjeni",
+        }
+        THB{
+            "฿",
+            "Baht tailandes",
+        }
+        TND{
+            "TND",
+            "Dinar tunizianu",
+        }
+        TRY{
+            "TRY",
+            "Lira turku",
+        }
+        TWD{
+            "NT$",
+            "Dola Novu di Taiwan",
+        }
+        TZS{
+            "TZS",
+            "Xelin di Tanzania",
+        }
+        UGX{
+            "UGX",
+            "Xelin ugandensi",
+        }
+        USD{
+            "US$",
+            "Dola merkanu",
+        }
+        VND{
+            "₫",
+            "VND",
+        }
+        XAF{
+            "FCFA",
+            "Franku CFA BEAC",
+        }
+        XCD{
+            "EC$",
+            "XCD",
+        }
+        XOF{
+            "CFA",
+            "Franku CFA BCEAO",
+        }
+        XPF{
+            "CFPF",
+            "XPF",
+        }
+        XXX{
+            "XXX",
+            "Mueda diskonxedu",
+        }
+        ZAR{
+            "ZAR",
+            "Rand sulafrikanu",
+        }
+        ZMW{
+            "ZMW",
+            "Kuaxa zambianu",
+        }
+    }
+    CurrencyUnitPatterns{
+        other{"{0} {1}"}
+    }
+    Version{"2.0.92.87"}
+}

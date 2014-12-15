@@ -1,0 +1,18 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ko_KP.xml
+// *
+// ***************************************************************************
+ko_KP{
+    Version{"2.0.90.61"}
+    zoneStrings{
+        "meta:Korea"{
+            ld{"조선 하계 표준시"}
+            lg{"조선 시간"}
+            ls{"조선 표준시"}
+        }
+    }
+}

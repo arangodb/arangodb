@@ -1,0 +1,14 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/icu-locale-deprecates.xml & build.xml
+// *
+// ***************************************************************************
+/**
+ * generated alias target
+ */
+th_TH{
+    ___{""}
+}

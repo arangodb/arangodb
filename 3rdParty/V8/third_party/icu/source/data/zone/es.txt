@@ -1,0 +1,1179 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/es.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/es.xml
+ */
+es{
+    Version{"2.0.92.87"}
+    zoneStrings{
+        "Africa:Abidjan"{
+            ec{"Abiyán"}
+        }
+        "Africa:Addis_Ababa"{
+            ec{"Addis Abeba"}
+        }
+        "Africa:Algiers"{
+            ec{"Argel"}
+        }
+        "Africa:Asmera"{
+            ec{"Asmara"}
+        }
+        "Africa:Bissau"{
+            ec{"Bisáu"}
+        }
+        "Africa:Cairo"{
+            ec{"El Cairo"}
+        }
+        "Africa:Djibouti"{
+            ec{"Yibuti"}
+        }
+        "Africa:Douala"{
+            ec{"Duala"}
+        }
+        "Africa:El_Aaiun"{
+            ec{"El Aaiún"}
+        }
+        "Africa:Johannesburg"{
+            ec{"Johannesburgo"}
+        }
+        "Africa:Khartoum"{
+            ec{"Jartún"}
+        }
+        "Africa:Lome"{
+            ec{"Lomé"}
+        }
+        "Africa:Mogadishu"{
+            ec{"Mogadiscio"}
+        }
+        "Africa:Ndjamena"{
+            ec{"Yamena"}
+        }
+        "Africa:Nouakchott"{
+            ec{"Nuakchot"}
+        }
+        "Africa:Ouagadougou"{
+            ec{"Uagadugú"}
+        }
+        "Africa:Porto-Novo"{
+            ec{"Portonovo"}
+        }
+        "Africa:Sao_Tome"{
+            ec{"Santo Tomé"}
+        }
+        "Africa:Tripoli"{
+            ec{"Trípoli"}
+        }
+        "Africa:Tunis"{
+            ec{"Túnez capital"}
+        }
+        "America:Anguilla"{
+            ec{"Anguila"}
+        }
+        "America:Araguaina"{
+            ec{"Araguaína"}
+        }
+        "America:Argentina:Rio_Gallegos"{
+            ec{"Río Gallegos"}
+        }
+        "America:Argentina:Tucuman"{
+            ec{"Tucumán"}
+        }
+        "America:Asuncion"{
+            ec{"Asunción"}
+        }
+        "America:Bahia"{
+            ec{"Bahía"}
+        }
+        "America:Bahia_Banderas"{
+            ec{"Bahía de Banderas"}
+        }
+        "America:Belem"{
+            ec{"Belén"}
+        }
+        "America:Belize"{
+            ec{"Belice"}
+        }
+        "America:Bogota"{
+            ec{"Bogotá"}
+        }
+        "America:Cancun"{
+            ec{"Cancún"}
+        }
+        "America:Cayenne"{
+            ec{"Cayena"}
+        }
+        "America:Cayman"{
+            ec{"Caimán"}
+        }
+        "America:Coral_Harbour"{
+            ec{"Atikokan"}
+        }
+        "America:Cordoba"{
+            ec{"Córdoba"}
+        }
+        "America:Cuiaba"{
+            ec{"Cuiabá"}
+        }
+        "America:Curacao"{
+            ec{"Curazao"}
+        }
+        "America:Eirunepe"{
+            ec{"Eirunepé"}
+        }
+        "America:Godthab"{
+            ec{"Nuuk"}
+        }
+        "America:Grenada"{
+            ec{"Granada"}
+        }
+        "America:Guadeloupe"{
+            ec{"Guadalupe"}
+        }
+        "America:Havana"{
+            ec{"La Habana"}
+        }
+        "America:Indiana:Knox"{
+            ec{"Knox, Indiana"}
+        }
+        "America:Indiana:Marengo"{
+            ec{"Marengo, Indiana"}
+        }
+        "America:Indiana:Petersburg"{
+            ec{"Petersburg, Indiana"}
+        }
+        "America:Indiana:Tell_City"{
+            ec{"Tell City, Indiana"}
+        }
+        "America:Indiana:Vevay"{
+            ec{"Vevay, Indiana"}
+        }
+        "America:Indiana:Vincennes"{
+            ec{"Vincennes, Indiana"}
+        }
+        "America:Indiana:Winamac"{
+            ec{"Winamac, Indiana"}
+        }
+        "America:Indianapolis"{
+            ec{"Indianápolis"}
+        }
+        "America:Kentucky:Monticello"{
+            ec{"Monticello, Kentucky"}
+        }
+        "America:Los_Angeles"{
+            ec{"Los Ángeles"}
+        }
+        "America:Lower_Princes"{
+            ec{"Lower Prince's Quarter"}
+        }
+        "America:Maceio"{
+            ec{"Maceió"}
+        }
+        "America:Manaus"{
+            ec{"Manaos"}
+        }
+        "America:Martinique"{
+            ec{"Martinica"}
+        }
+        "America:Mazatlan"{
+            ec{"Mazatlán"}
+        }
+        "America:Merida"{
+            ec{"Mérida"}
+        }
+        "America:Mexico_City"{
+            ec{"Ciudad de México"}
+        }
+        "America:Miquelon"{
+            ec{"Miquelón"}
+        }
+        "America:New_York"{
+            ec{"Nueva York"}
+        }
+        "America:North_Dakota:Beulah"{
+            ec{"Beulah, Dakota del Norte"}
+        }
+        "America:North_Dakota:Center"{
+            ec{"Centro"}
+        }
+        "America:North_Dakota:New_Salem"{
+            ec{"New Salem, Dakota del Norte"}
+        }
+        "America:Panama"{
+            ec{"Panamá"}
+        }
+        "America:Port-au-Prince"{
+            ec{"Puerto Príncipe"}
+        }
+        "America:Port_of_Spain"{
+            ec{"Puerto España"}
+        }
+        "America:Rio_Branco"{
+            ec{"Río Branco"}
+        }
+        "America:Santarem"{
+            ec{"Santarém"}
+        }
+        "America:Sao_Paulo"{
+            ec{"São Paulo"}
+        }
+        "America:Scoresbysund"{
+            ec{"Ittoqqortoormiit"}
+        }
+        "America:St_Barthelemy"{
+            ec{"San Bartolomé"}
+        }
+        "America:St_Johns"{
+            ec{"St. John’s"}
+        }
+        "America:St_Kitts"{
+            ec{"St. Kitts"}
+        }
+        "America:St_Lucia"{
+            ec{"Santa Lucía"}
+        }
+        "America:St_Thomas"{
+            ec{"St. Thomas"}
+        }
+        "America:St_Vincent"{
+            ec{"San Vicente"}
+        }
+        "America:Tortola"{
+            ec{"Tórtola"}
+        }
+        "Antarctica:DumontDUrville"{
+            ec{"Dumont d'Urville"}
+        }
+        "Antarctica:South_Pole"{
+            ec{"Polo Sur"}
+        }
+        "Asia:Aden"{
+            ec{"Adén"}
+        }
+        "Asia:Amman"{
+            ec{"Ammán"}
+        }
+        "Asia:Aqtau"{
+            ec{"Aktau"}
+        }
+        "Asia:Aqtobe"{
+            ec{"Aktobe"}
+        }
+        "Asia:Ashgabat"{
+            ec{"Asjabad"}
+        }
+        "Asia:Baghdad"{
+            ec{"Bagdad"}
+        }
+        "Asia:Bahrain"{
+            ec{"Baréin"}
+        }
+        "Asia:Baku"{
+            ec{"Bakú"}
+        }
+        "Asia:Brunei"{
+            ec{"Brunéi"}
+        }
+        "Asia:Calcutta"{
+            ec{"Calcuta"}
+        }
+        "Asia:Damascus"{
+            ec{"Damasco"}
+        }
+        "Asia:Dhaka"{
+            ec{"Dacca"}
+        }
+        "Asia:Dubai"{
+            ec{"Dubái"}
+        }
+        "Asia:Dushanbe"{
+            ec{"Duchanbé"}
+        }
+        "Asia:Hebron"{
+            ec{"Hebrón"}
+        }
+        "Asia:Jakarta"{
+            ec{"Yakarta"}
+        }
+        "Asia:Jerusalem"{
+            ec{"Jerusalén"}
+        }
+        "Asia:Katmandu"{
+            ec{"Katmandú"}
+        }
+        "Asia:Macau"{
+            ec{"Macao"}
+        }
+        "Asia:Magadan"{
+            ec{"Magadán"}
+        }
+        "Asia:Makassar"{
+            ec{"Makasar"}
+        }
+        "Asia:Muscat"{
+            ec{"Mascate"}
+        }
+        "Asia:Qatar"{
+            ec{"Catar"}
+        }
+        "Asia:Rangoon"{
+            ec{"Rangún"}
+        }
+        "Asia:Riyadh"{
+            ec{"Riad"}
+        }
+        "Asia:Saigon"{
+            ec{"Ciudad Ho Chi Minh"}
+        }
+        "Asia:Sakhalin"{
+            ec{"Sajalín"}
+        }
+        "Asia:Samarkand"{
+            ec{"Samarcanda"}
+        }
+        "Asia:Seoul"{
+            ec{"Seúl"}
+        }
+        "Asia:Shanghai"{
+            ec{"Shanghái"}
+        }
+        "Asia:Singapore"{
+            ec{"Singapur"}
+        }
+        "Asia:Taipei"{
+            ec{"Taipéi"}
+        }
+        "Asia:Tbilisi"{
+            ec{"Tiflis"}
+        }
+        "Asia:Tehran"{
+            ec{"Teherán"}
+        }
+        "Asia:Thimphu"{
+            ec{"Timbu"}
+        }
+        "Asia:Tokyo"{
+            ec{"Tokio"}
+        }
+        "Asia:Ulaanbaatar"{
+            ec{"Ulán Bator"}
+        }
+        "Asia:Urumqi"{
+            ec{"Ürümqi"}
+        }
+        "Asia:Vientiane"{
+            ec{"Vientián"}
+        }
+        "Asia:Yekaterinburg"{
+            ec{"Yekaterinburgo"}
+        }
+        "Asia:Yerevan"{
+            ec{"Ereván"}
+        }
+        "Atlantic:Bermuda"{
+            ec{"Bermudas"}
+        }
+        "Atlantic:Canary"{
+            ec{"Islas Canarias"}
+        }
+        "Atlantic:Cape_Verde"{
+            ec{"Cabo Verde"}
+        }
+        "Atlantic:Faeroe"{
+            ec{"Islas Feroe"}
+        }
+        "Atlantic:Reykjavik"{
+            ec{"Reikiavik"}
+        }
+        "Atlantic:South_Georgia"{
+            ec{"Georgia del Sur"}
+        }
+        "Atlantic:St_Helena"{
+            ec{"Santa Helena"}
+        }
+        "Australia:Adelaide"{
+            ec{"Adelaida"}
+        }
+        "Australia:Sydney"{
+            ec{"Sídney"}
+        }
+        "Etc:Unknown"{
+            ec{"Desconocida"}
+        }
+        "Europe:Amsterdam"{
+            ec{"Ámsterdam"}
+        }
+        "Europe:Athens"{
+            ec{"Atenas"}
+        }
+        "Europe:Belgrade"{
+            ec{"Belgrado"}
+        }
+        "Europe:Berlin"{
+            ec{"Berlín"}
+        }
+        "Europe:Brussels"{
+            ec{"Bruselas"}
+        }
+        "Europe:Bucharest"{
+            ec{"Bucarest"}
+        }
+        "Europe:Copenhagen"{
+            ec{"Copenhague"}
+        }
+        "Europe:Dublin"{
+            ec{"Dublín"}
+            ld{"Hora de verano de Irlanda"}
+        }
+        "Europe:Isle_of_Man"{
+            ec{"Isla de Man"}
+        }
+        "Europe:Istanbul"{
+            ec{"Estambul"}
+        }
+        "Europe:Kaliningrad"{
+            ec{"Kaliningrado"}
+        }
+        "Europe:Lisbon"{
+            ec{"Lisboa"}
+        }
+        "Europe:Ljubljana"{
+            ec{"Liubliana"}
+        }
+        "Europe:London"{
+            ec{"Londres"}
+            ld{"Hora de verano británica"}
+        }
+        "Europe:Luxembourg"{
+            ec{"Luxemburgo"}
+        }
+        "Europe:Monaco"{
+            ec{"Mónaco"}
+        }
+        "Europe:Moscow"{
+            ec{"Moscú"}
+        }
+        "Europe:Paris"{
+            ec{"París"}
+        }
+        "Europe:Prague"{
+            ec{"Praga"}
+        }
+        "Europe:Rome"{
+            ec{"Roma"}
+        }
+        "Europe:Skopje"{
+            ec{"Skopie"}
+        }
+        "Europe:Sofia"{
+            ec{"Sofía"}
+        }
+        "Europe:Stockholm"{
+            ec{"Estocolmo"}
+        }
+        "Europe:Tallinn"{
+            ec{"Tallin"}
+        }
+        "Europe:Tirane"{
+            ec{"Tirana"}
+        }
+        "Europe:Vatican"{
+            ec{"El Vaticano"}
+        }
+        "Europe:Vienna"{
+            ec{"Viena"}
+        }
+        "Europe:Vilnius"{
+            ec{"Vilna"}
+        }
+        "Europe:Volgograd"{
+            ec{"Volgogrado"}
+        }
+        "Europe:Warsaw"{
+            ec{"Varsovia"}
+        }
+        "Europe:Zaporozhye"{
+            ec{"Zaporizhia"}
+        }
+        "Europe:Zurich"{
+            ec{"Zúrich"}
+        }
+        "Indian:Comoro"{
+            ec{"Comoras"}
+        }
+        "Indian:Mahe"{
+            ec{"Mahé"}
+        }
+        "Indian:Maldives"{
+            ec{"Maldivas"}
+        }
+        "Indian:Mauritius"{
+            ec{"Mauricio"}
+        }
+        "Indian:Reunion"{
+            ec{"Reunión"}
+        }
+        "Pacific:Easter"{
+            ec{"Isla de Pascua"}
+        }
+        "Pacific:Fiji"{
+            ec{"Fiyi"}
+        }
+        "Pacific:Galapagos"{
+            ec{"Galápagos"}
+        }
+        "Pacific:Honolulu"{
+            ec{"Honolulú"}
+        }
+        "Pacific:Noumea"{
+            ec{"Numea"}
+        }
+        "Pacific:Palau"{
+            ec{"Palaos"}
+        }
+        "Pacific:Pitcairn"{
+            ec{"Islas Pitcairn"}
+        }
+        "Pacific:Ponape"{
+            ec{"Pohnpei"}
+        }
+        "Pacific:Saipan"{
+            ec{"Saipán"}
+        }
+        "Pacific:Tahiti"{
+            ec{"Tahití"}
+        }
+        "Pacific:Truk"{
+            ec{"Chuuk"}
+        }
+        "meta:Acre"{
+            ld{"Hora de verano de Acre"}
+            lg{"Hora de Acre"}
+            ls{"Hora estándar de Acre"}
+        }
+        "meta:Afghanistan"{
+            ls{"Hora de Afganistán"}
+        }
+        "meta:Africa_Central"{
+            ls{"Hora de África central"}
+        }
+        "meta:Africa_Eastern"{
+            ls{"Hora de África oriental"}
+        }
+        "meta:Africa_Southern"{
+            ls{"Hora de Sudáfrica"}
+        }
+        "meta:Africa_Western"{
+            ld{"Hora de verano de África occidental"}
+            lg{"Hora de África occidental"}
+            ls{"Hora estándar de África occidental"}
+        }
+        "meta:Alaska"{
+            ld{"Hora de verano de Alaska"}
+            lg{"Hora de Alaska"}
+            ls{"Hora estándar de Alaska"}
+        }
+        "meta:Amazon"{
+            ld{"Hora de verano del Amazonas"}
+            lg{"Hora del Amazonas"}
+            ls{"Hora estándar del Amazonas"}
+        }
+        "meta:America_Central"{
+            ld{"Hora de verano central"}
+            lg{"Hora central"}
+            ls{"Hora estándar central"}
+        }
+        "meta:America_Eastern"{
+            ld{"Hora de verano oriental"}
+            lg{"Hora oriental"}
+            ls{"Hora estándar oriental"}
+        }
+        "meta:America_Mountain"{
+            ld{"Hora de verano de las Montañas"}
+            lg{"Hora de las Montañas"}
+            ls{"Hora estándar de las Montañas"}
+        }
+        "meta:America_Pacific"{
+            ld{"Hora de verano del Pacífico"}
+            lg{"Hora del Pacífico"}
+            ls{"Hora estándar del Pacífico"}
+        }
+        "meta:Anadyr"{
+            ld{"Hora de verano de Anadyr"}
+            lg{"Hora de Anadyr"}
+            ls{"Hora estándar de Anadyr"}
+        }
+        "meta:Aqtau"{
+            ld{"Hora de verano de Aktau"}
+            lg{"Hora de Aktau"}
+            ls{"Hora estándar de Aktau"}
+        }
+        "meta:Aqtobe"{
+            ld{"Hora de verano de Aktobe"}
+            lg{"Hora de Aktobe"}
+            ls{"Hora estándar de Aktobe"}
+        }
+        "meta:Arabian"{
+            ld{"Hora de verano de Arabia"}
+            lg{"Hora de Arabia"}
+            ls{"Hora estándar de Arabia"}
+        }
+        "meta:Argentina"{
+            ld{"Hora de verano de Argentina"}
+            lg{"Hora de Argentina"}
+            ls{"Hora estándar de Argentina"}
+        }
+        "meta:Argentina_Western"{
+            ld{"Hora de verano de Argentina occidental"}
+            lg{"Hora de Argentina occidental"}
+            ls{"Hora estándar de Argentina occidental"}
+        }
+        "meta:Armenia"{
+            ld{"Hora de verano de Armenia"}
+            lg{"Hora de Armenia"}
+            ls{"Hora estándar de Armenia"}
+        }
+        "meta:Atlantic"{
+            ld{"Hora de verano del Atlántico"}
+            lg{"Hora del Atlántico"}
+            ls{"Hora estándar del Atlántico"}
+        }
+        "meta:Australia_Central"{
+            ld{"Hora de verano de Australia central"}
+            lg{"Hora de Australia central"}
+            ls{"Hora estándar de Australia central"}
+        }
+        "meta:Australia_CentralWestern"{
+            ld{"Hora de verano de Australia centroccidental"}
+            lg{"Hora de Australia centroccidental"}
+            ls{"Hora estándar de Australia centroccidental"}
+        }
+        "meta:Australia_Eastern"{
+            ld{"Hora de verano de Australia oriental"}
+            lg{"Hora de Australia oriental"}
+            ls{"Hora estándar de Australia oriental"}
+        }
+        "meta:Australia_Western"{
+            ld{"Hora de verano de Australia occidental"}
+            lg{"Hora de Australia occidental"}
+            ls{"Hora estándar de Australia occidental"}
+        }
+        "meta:Azerbaijan"{
+            ld{"Hora de verano de Azerbaiyán"}
+            lg{"Hora de Azerbaiyán"}
+            ls{"Hora estándar de Azerbaiyán"}
+        }
+        "meta:Azores"{
+            ld{"Hora de verano de las Azores"}
+            lg{"Hora de las Azores"}
+            ls{"Hora estándar de las Azores"}
+        }
+        "meta:Bangladesh"{
+            ld{"Hora de verano de Bangladés"}
+            lg{"Hora de Bangladés"}
+            ls{"Hora estándar de Bangladés"}
+        }
+        "meta:Bhutan"{
+            ls{"Hora de Bután"}
+        }
+        "meta:Bolivia"{
+            ls{"Hora de Bolivia"}
+        }
+        "meta:Brasilia"{
+            ld{"Hora de verano de Brasilia"}
+            lg{"Hora de Brasilia"}
+            ls{"Hora estándar de Brasilia"}
+        }
+        "meta:Brunei"{
+            ls{"Hora de Brunéi"}
+        }
+        "meta:Cape_Verde"{
+            ld{"Hora de verano de Cabo Verde"}
+            lg{"Hora de Cabo Verde"}
+            ls{"Hora estándar de Cabo Verde"}
+        }
+        "meta:Chamorro"{
+            ls{"Hora estándar de Chamorro"}
+        }
+        "meta:Chatham"{
+            ld{"Hora de verano de Chatham"}
+            lg{"Hora de Chatham"}
+            ls{"Hora estándar de Chatham"}
+        }
+        "meta:Chile"{
+            ld{"Hora de verano de Chile"}
+            lg{"Hora de Chile"}
+            ls{"Hora estándar de Chile"}
+        }
+        "meta:China"{
+            ld{"Hora de verano de China"}
+            lg{"Hora de China"}
+            ls{"Hora estándar de China"}
+        }
+        "meta:Choibalsan"{
+            ld{"Hora de verano de Choibalsan"}
+            lg{"Hora de Choibalsan"}
+            ls{"Hora estándar de Choibalsan"}
+        }
+        "meta:Christmas"{
+            ls{"Hora de la isla de Navidad"}
+        }
+        "meta:Cocos"{
+            ls{"Hora de las islas Cocos"}
+        }
+        "meta:Colombia"{
+            ld{"Hora de verano de Colombia"}
+            lg{"Hora de Colombia"}
+            ls{"Hora estándar de Colombia"}
+        }
+        "meta:Cook"{
+            ld{"Hora de verano media de las islas Cook"}
+            lg{"Hora de las islas Cook"}
+            ls{"Hora estándar de las islas Cook"}
+        }
+        "meta:Cuba"{
+            ld{"Hora de verano de Cuba"}
+            lg{"Hora de Cuba"}
+            ls{"Hora estándar de Cuba"}
+        }
+        "meta:Davis"{
+            ls{"Hora de Davis"}
+        }
+        "meta:DumontDUrville"{
+            ls{"Hora de Dumont-d’Urville"}
+        }
+        "meta:East_Timor"{
+            ls{"Hora de Timor Oriental"}
+        }
+        "meta:Easter"{
+            ld{"Hora de verano de la isla de Pascua"}
+            lg{"Hora de la isla de Pascua"}
+            ls{"Hora estándar de la isla de Pascua"}
+        }
+        "meta:Ecuador"{
+            ls{"Hora de Ecuador"}
+        }
+        "meta:Europe_Central"{
+            ld{"Hora de verano de Europa central"}
+            lg{"Hora de Europa central"}
+            ls{"Hora estándar de Europa central"}
+        }
+        "meta:Europe_Eastern"{
+            ld{"Hora de verano de Europa oriental"}
+            lg{"Hora de Europa oriental"}
+            ls{"Hora estándar de Europa oriental"}
+        }
+        "meta:Europe_Western"{
+            ld{"Hora de verano de Europa occidental"}
+            lg{"Hora de Europa occidental"}
+            ls{"Hora estándar de Europa occidental"}
+        }
+        "meta:Falkland"{
+            ld{"Hora de verano de las islas Malvinas"}
+            lg{"Hora de las islas Malvinas"}
+            ls{"Hora estándar de las islas Malvinas"}
+        }
+        "meta:Fiji"{
+            ld{"Hora de verano de Fiyi"}
+            lg{"Hora de Fiyi"}
+            ls{"Hora estándar de Fiyi"}
+        }
+        "meta:French_Guiana"{
+            ls{"Hora de la Guayana Francesa"}
+        }
+        "meta:French_Southern"{
+            ls{"Hora de las Tierras Australes y Antárticas Francesas"}
+        }
+        "meta:GMT"{
+            ls{"Hora del meridiano de Greenwich"}
+        }
+        "meta:Galapagos"{
+            ls{"Hora de Galápagos"}
+        }
+        "meta:Gambier"{
+            ls{"Hora de Gambier"}
+        }
+        "meta:Georgia"{
+            ld{"Hora de verano de Georgia"}
+            lg{"Hora de Georgia"}
+            ls{"Hora estándar de Georgia"}
+        }
+        "meta:Gilbert_Islands"{
+            ls{"Hora de las islas Gilbert"}
+        }
+        "meta:Greenland_Eastern"{
+            ld{"Hora de verano de Groenlandia oriental"}
+            lg{"Hora de Groenlandia oriental"}
+            ls{"Hora estándar de Groenlandia oriental"}
+        }
+        "meta:Greenland_Western"{
+            ld{"Hora de verano de Groenlandia occidental"}
+            lg{"Hora de Groenlandia occidental"}
+            ls{"Hora estándar de Groenlandia occidental"}
+        }
+        "meta:Guam"{
+            ls{"Hora estándar de Guam"}
+        }
+        "meta:Gulf"{
+            ls{"Hora estándar del Golfo"}
+        }
+        "meta:Guyana"{
+            ls{"Hora de Guyana"}
+        }
+        "meta:Hawaii_Aleutian"{
+            ld{"Hora de verano de Hawái-Aleutiano"}
+            lg{"Hora de Hawái-Aleutiano"}
+            ls{"Hora estándar de Hawái-Aleutiano"}
+        }
+        "meta:Hong_Kong"{
+            ld{"Hora de verano de Hong Kong"}
+            lg{"Hora de Hong Kong"}
+            ls{"Hora estándar de Hong Kong"}
+        }
+        "meta:Hovd"{
+            ld{"Hora de verano de Hovd"}
+            lg{"Hora de Hovd"}
+            ls{"Hora estándar de Hovd"}
+        }
+        "meta:India"{
+            ls{"Hora estándar de la India"}
+        }
+        "meta:Indian_Ocean"{
+            ls{"Hora del Océano Índico"}
+        }
+        "meta:Indochina"{
+            ls{"Hora de Indochina"}
+        }
+        "meta:Indonesia_Central"{
+            ls{"Hora de Indonesia central"}
+        }
+        "meta:Indonesia_Eastern"{
+            ls{"Hora de Indonesia oriental"}
+        }
+        "meta:Indonesia_Western"{
+            ls{"Hora de Indonesia occidental"}
+        }
+        "meta:Iran"{
+            ld{"Hora de verano de Irán"}
+            lg{"Hora de Irán"}
+            ls{"Hora estándar de Irán"}
+        }
+        "meta:Irkutsk"{
+            ld{"Hora de verano de Irkutsk"}
+            lg{"Hora de Irkutsk"}
+            ls{"Hora estándar de Irkutsk"}
+        }
+        "meta:Israel"{
+            ld{"Hora de verano de Israel"}
+            lg{"Hora de Israel"}
+            ls{"Hora estándar de Israel"}
+        }
+        "meta:Japan"{
+            ld{"Hora de verano de Japón"}
+            lg{"Hora de Japón"}
+            ls{"Hora estándar de Japón"}
+        }
+        "meta:Kamchatka"{
+            ld{"Hora de verano de Kamchatka"}
+            lg{"Hora de Kamchatka"}
+            ls{"Hora de estándar de Kamchatka"}
+        }
+        "meta:Kazakhstan_Eastern"{
+            ls{"Hora de Kazajistán oriental"}
+        }
+        "meta:Kazakhstan_Western"{
+            ls{"Hora de Kazajistán occidental"}
+        }
+        "meta:Korea"{
+            ld{"Hora de verano de Corea"}
+            lg{"Hora de Corea"}
+            ls{"Hora estándar de Corea"}
+        }
+        "meta:Kosrae"{
+            ls{"Hora de Kosrae"}
+        }
+        "meta:Krasnoyarsk"{
+            ld{"Hora de verano de Krasnoyarsk"}
+            lg{"Hora de Krasnoyarsk"}
+            ls{"Hora estándar de Krasnoyarsk"}
+        }
+        "meta:Kyrgystan"{
+            ls{"Hora de Kirguistán"}
+        }
+        "meta:Lanka"{
+            ls{"Hora de Sri Lanka"}
+        }
+        "meta:Line_Islands"{
+            ls{"Hora de las Espóradas Ecuatoriales"}
+        }
+        "meta:Lord_Howe"{
+            ld{"Hora de verano de Lord Howe"}
+            lg{"Hora de Lord Howe"}
+            ls{"Hora estándar de Lord Howe"}
+        }
+        "meta:Macau"{
+            ld{"Hora de verano de Macao"}
+            lg{"Hora de Macao"}
+            ls{"Hora estándar de Macao"}
+        }
+        "meta:Macquarie"{
+            ls{"Hora de la isla Macquarie"}
+        }
+        "meta:Magadan"{
+            ld{"Hora de verano de Magadán"}
+            lg{"Hora de Magadán"}
+            ls{"Hora estándar de Magadán"}
+        }
+        "meta:Malaysia"{
+            ls{"Hora de Malasia"}
+        }
+        "meta:Maldives"{
+            ls{"Hora de Maldivas"}
+        }
+        "meta:Marquesas"{
+            ls{"Hora de las islas Marquesas"}
+        }
+        "meta:Marshall_Islands"{
+            ls{"Hora de las Islas Marshall"}
+        }
+        "meta:Mauritius"{
+            ld{"Hora de verano de Mauricio"}
+            lg{"Hora de Mauricio"}
+            ls{"Hora estándar de Mauricio"}
+        }
+        "meta:Mawson"{
+            ls{"Hora de Mawson"}
+        }
+        "meta:Mongolia"{
+            ld{"Hora de verano de Ulán Bator"}
+            lg{"Hora de Ulán Bator"}
+            ls{"Hora estándar de Ulán Bator"}
+        }
+        "meta:Moscow"{
+            ld{"Hora de verano de Moscú"}
+            lg{"Hora de Moscú"}
+            ls{"Hora estándar de Moscú"}
+        }
+        "meta:Myanmar"{
+            ls{"Hora de Birmania"}
+        }
+        "meta:Nauru"{
+            ls{"Hora de Nauru"}
+        }
+        "meta:Nepal"{
+            ls{"Hora de Nepal"}
+        }
+        "meta:New_Caledonia"{
+            ld{"Hora de verano de Nueva Caledonia"}
+            lg{"Hora de Nueva Caledonia"}
+            ls{"Hora estándar de Nueva Caledonia"}
+        }
+        "meta:New_Zealand"{
+            ld{"Hora de verano de Nueva Zelanda"}
+            lg{"Hora de Nueva Zelanda"}
+            ls{"Hora estándar de Nueva Zelanda"}
+        }
+        "meta:Newfoundland"{
+            ld{"Hora de verano de Terranova"}
+            lg{"Hora de Terranova"}
+            ls{"Hora estándar de Terranova"}
+        }
+        "meta:Niue"{
+            ls{"Hora de Niue"}
+        }
+        "meta:Norfolk"{
+            ls{"Hora de las islas Norfolk"}
+        }
+        "meta:Noronha"{
+            ld{"Hora de verano de Fernando de Noronha"}
+            lg{"Hora de Fernando de Noronha"}
+            ls{"Hora estándar de Fernando de Noronha"}
+        }
+        "meta:North_Mariana"{
+            ls{"Hora de las Islas Marianas del Norte"}
+        }
+        "meta:Novosibirsk"{
+            ld{"Hora de verano de Novosibirsk"}
+            lg{"Hora de Novosibirsk"}
+            ls{"Hora estándar de Novosibirsk"}
+        }
+        "meta:Omsk"{
+            ld{"Hora de verano de Omsk"}
+            lg{"Hora de Omsk"}
+            ls{"Hora estándar de Omsk"}
+        }
+        "meta:Pakistan"{
+            ld{"Hora de verano de Pakistán"}
+            lg{"Hora de Pakistán"}
+            ls{"Hora estándar de Pakistán"}
+        }
+        "meta:Palau"{
+            ls{"Hora de Palaos"}
+        }
+        "meta:Papua_New_Guinea"{
+            ls{"Hora de Papúa-Nueva Guinea"}
+        }
+        "meta:Paraguay"{
+            ld{"Hora de verano de Paraguay"}
+            lg{"Hora de Paraguay"}
+            ls{"Hora estándar de Paraguay"}
+        }
+        "meta:Peru"{
+            ld{"Hora de verano de Perú"}
+            lg{"Hora de Perú"}
+            ls{"Hora estándar de Perú"}
+        }
+        "meta:Philippines"{
+            ld{"Hora de verano de Filipinas"}
+            lg{"Hora de Filipinas"}
+            ls{"Hora estándar de Filipinas"}
+        }
+        "meta:Phoenix_Islands"{
+            ls{"Hora de las islas Fénix"}
+        }
+        "meta:Pierre_Miquelon"{
+            ld{"Hora de verano de San Pedro y Miquelón"}
+            lg{"Hora de San Pedro y Miquelón"}
+            ls{"Hora estándar de San Pedro y Miquelón"}
+        }
+        "meta:Pitcairn"{
+            ls{"Hora de Pitcairn"}
+        }
+        "meta:Ponape"{
+            ls{"Hora de Pohnpei"}
+        }
+        "meta:Qyzylorda"{
+            ld{"Hora de verano de Qyzylorda"}
+            lg{"Hora de Qyzylorda"}
+            ls{"Hora estándar de Qyzylorda"}
+        }
+        "meta:Reunion"{
+            ls{"Hora de Reunión"}
+        }
+        "meta:Rothera"{
+            ls{"Hora de Rothera"}
+        }
+        "meta:Sakhalin"{
+            ld{"Hora de verano de Sajalín"}
+            lg{"Hora de Sajalín"}
+            ls{"Hora estándar de Sajalín"}
+        }
+        "meta:Samara"{
+            ld{"Hora de verano de Samara"}
+            lg{"Hora de Samara"}
+            ls{"Hora estándar de Samara"}
+        }
+        "meta:Samoa"{
+            ld{"Hora de verano de Samoa"}
+            lg{"Hora de Samoa"}
+            ls{"Hora estándar de Samoa"}
+        }
+        "meta:Seychelles"{
+            ls{"Hora de Seychelles"}
+        }
+        "meta:Singapore"{
+            ls{"Hora de Singapur"}
+        }
+        "meta:Solomon"{
+            ls{"Hora de las Islas Salomón"}
+        }
+        "meta:South_Georgia"{
+            ls{"Hora de Georgia meridional"}
+        }
+        "meta:Suriname"{
+            ls{"Hora de Surinam"}
+        }
+        "meta:Syowa"{
+            ls{"Hora de Syowa"}
+        }
+        "meta:Tahiti"{
+            ls{"Hora de Tahití"}
+        }
+        "meta:Taipei"{
+            ld{"Hora de verano de Taipéi"}
+            lg{"Hora de Taipéi"}
+            ls{"Hora estándar de Taipéi"}
+        }
+        "meta:Tajikistan"{
+            ls{"Hora de Tayikistán"}
+        }
+        "meta:Tokelau"{
+            ls{"Hora de Tokelau"}
+        }
+        "meta:Tonga"{
+            ld{"Hora de verano de Tonga"}
+            lg{"Hora de Tonga"}
+            ls{"Hora estándar de Tonga"}
+        }
+        "meta:Truk"{
+            ls{"Hora de Chuuk"}
+        }
+        "meta:Turkmenistan"{
+            ld{"Hora de verano de Turkmenistán"}
+            lg{"Hora de Turkmenistán"}
+            ls{"Hora estándar de Turkmenistán"}
+        }
+        "meta:Tuvalu"{
+            ls{"Hora de Tuvalu"}
+        }
+        "meta:Uruguay"{
+            ld{"Hora de verano de Uruguay"}
+            lg{"Hora de Uruguay"}
+            ls{"Hora estándar de Uruguay"}
+        }
+        "meta:Uzbekistan"{
+            ld{"Hora de verano de Uzbekistán"}
+            lg{"Hora de Uzbekistán"}
+            ls{"Hora estándar de Uzbekistán"}
+        }
+        "meta:Vanuatu"{
+            ld{"Hora de verano de Vanuatu"}
+            lg{"Hora de Vanuatu"}
+            ls{"Hora estándar de Vanuatu"}
+        }
+        "meta:Venezuela"{
+            ls{"Hora de Venezuela"}
+        }
+        "meta:Vladivostok"{
+            ld{"Hora de verano de Vladivostok"}
+            lg{"Hora de Vladivostok"}
+            ls{"Hora estándar de Vladivostok"}
+        }
+        "meta:Volgograd"{
+            ld{"Hora de verano de Volgogrado"}
+            lg{"Hora de Volgogrado"}
+            ls{"Hora estándar de Volgogrado"}
+        }
+        "meta:Vostok"{
+            ls{"Hora de Vostok"}
+        }
+        "meta:Wake"{
+            ls{"Hora de la isla Wake"}
+        }
+        "meta:Wallis"{
+            ls{"Hora de Wallis y Futuna"}
+        }
+        "meta:Yakutsk"{
+            ld{"Hora de verano de Yakutsk"}
+            lg{"Hora de Yakutsk"}
+            ls{"Hora estándar de Yakutsk"}
+        }
+        "meta:Yekaterinburg"{
+            ld{"Hora de verano de Ekaterimburgo"}
+            lg{"Hora de Ekaterimburgo"}
+            ls{"Hora estándar de Ekaterimburgo"}
+        }
+        fallbackFormat{"{1} ({0})"}
+        gmtFormat{"GMT{0}"}
+        gmtZeroFormat{"GMT"}
+        hourFormat{"+HH:mm;-HH:mm"}
+        regionFormat{"Hora de {0}"}
+        regionFormatDaylight{"horario de verano de {0}"}
+        regionFormatStandard{"horario estándar de {0}"}
+    }
+}

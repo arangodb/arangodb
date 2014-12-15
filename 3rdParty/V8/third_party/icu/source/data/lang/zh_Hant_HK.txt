@@ -1,0 +1,92 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/zh_Hant_HK.xml
+// *
+// ***************************************************************************
+zh_Hant_HK{
+    Keys{
+        x{"專用區"}
+    }
+    Languages{
+        de_CH{"瑞士德語"}
+        eo{"世界語"}
+        fr_CA{"法文 (加拿大)"}
+        gsw{"德文 (瑞士)"}
+        it{"意大利文"}
+        lol{"蒙古語"}
+        pt_BR{"巴西葡萄牙語"}
+        zgh{"摩洛哥標準塔馬齊格特文"}
+    }
+    LanguagesShort{
+        az{"阿澤里"}
+    }
+    Scripts{
+        Cyrl{"西里爾語字母"}
+        Deva{"梵文"}
+        Hang{"韓文字母"}
+    }
+    Scripts%stand-alone{
+        Hant{"繁體漢字"}
+    }
+    Types{
+        calendar{
+            ethiopic{"埃及曆"}
+            ethiopic-amete-alem{"埃塞俄比亞阿美德阿萊姆曆"}
+        }
+        collation{
+            big5han{"繁體中文順序 (Big5)"}
+            dictionary{"詞典排序"}
+            ducet{"預設統一碼排序"}
+            gb2312han{"簡體中文順序 (GB2312)"}
+            reformed{"改革版排序"}
+            search{"一般用途搜索"}
+            unihan{"筆劃排序"}
+        }
+        numbers{
+            arab{"阿拉伯印度語位數"}
+            arabext{"擴展阿拉伯語印度語位數"}
+            armnlow{"亞美尼亞小寫數字"}
+            beng{"孟加拉語位數"}
+            deva{"梵文位數"}
+            ethi{"埃塞俄比亞數詞"}
+            fullwide{"全寬位數"}
+            geor{"格魯吉亞數字"}
+            grek{"希臘語數字"}
+            greklow{"希臘小寫數字"}
+            gujr{"古加拉特語位數"}
+            guru{"果魯穆奇語位數"}
+            hanidec{"中文小數位"}
+            hans{"簡體中文數字"}
+            hansfin{"簡體中文金融數字"}
+            hant{"繁體中文數字"}
+            hantfin{"繁體中文金融數字"}
+            hebr{"希伯萊語數字"}
+            jpan{"日本數字"}
+            jpanfin{"日本金融數字"}
+            khmr{"高棉位數"}
+            knda{"卡納達語位數"}
+            laoo{"老撾文位數"}
+            latn{"西方位數"}
+            mlym{"馬來亞位數"}
+            mong{"蒙古文位數"}
+            mymr{"緬甸語位數"}
+            orya{"奧里亞語位數"}
+            romanlow{"羅馬小寫數字"}
+            taml{"泰米爾語數字"}
+            telu{"泰盧固語位數"}
+            thai{"泰文位數"}
+            tibt{"藏文位數"}
+        }
+    }
+    Variants{
+        1901{"傳統德國拼字法"}
+        1996{"1996 德國拼字法"}
+        BISKE{"San Giorgio/Bila 方言"}
+        REVISED{"已修訂拼字法"}
+        SCOTLAND{"蘇格蘭標準英語"}
+    }
+    Version{"2.0.92.87"}
+}

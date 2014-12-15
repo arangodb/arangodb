@@ -1,0 +1,23 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/to.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/to.xml
+ */
+to{
+    Currencies{
+        TOP{
+            "T$",
+            "Tongan Pa'anga",
+        }
+    }
+    CurrencyUnitPatterns{
+        other{"{1} {0}"}
+    }
+    Version{"2.0.92.87"}
+}

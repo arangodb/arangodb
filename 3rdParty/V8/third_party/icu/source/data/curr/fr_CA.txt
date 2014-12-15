@@ -1,0 +1,31 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/fr_CA.xml
+// *
+// ***************************************************************************
+fr_CA{
+    Currencies{
+        CAD{
+            "$",
+            "dollar canadien",
+        }
+        CNY{
+            "CN¥",
+            "yuan renminbi chinois",
+        }
+        WST{
+            "WST",
+            "tala samoan",
+        }
+    }
+    CurrencyPlurals{
+        GYD{
+            one{"dollar guyanien"}
+            other{"dollars guyaniens"}
+        }
+    }
+    Version{"2.0.92.80"}
+}

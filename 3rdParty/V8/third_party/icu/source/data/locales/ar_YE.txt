@@ -1,0 +1,18 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ar_YE.xml
+// *
+// ***************************************************************************
+ar_YE{
+    NumberElements{
+        latn{
+            patterns{
+                currencyFormat{"¤#0.00"}
+            }
+        }
+    }
+    Version{"2.0.92.87"}
+}

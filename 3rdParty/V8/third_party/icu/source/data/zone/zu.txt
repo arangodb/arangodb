@@ -1,0 +1,627 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/zu.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/zu.xml
+ */
+zu{
+    Version{"2.0.92.87"}
+    zoneStrings{
+        "Africa:Sao_Tome"{
+            ec{"I-São Tomé"}
+        }
+        "America:Asuncion"{
+            ec{"I-Asunción"}
+        }
+        "America:Curacao"{
+            ec{"I-Curaçao"}
+        }
+        "America:Lower_Princes"{
+            ec{"I-Lower Prince's Quarter"}
+        }
+        "America:St_Barthelemy"{
+            ec{"I-Saint Barthélemy"}
+        }
+        "America:St_Johns"{
+            ec{"I-St. John’s"}
+        }
+        "Indian:Reunion"{
+            ec{"I-Réunion"}
+        }
+        "meta:Afghanistan"{
+            ls{"Isikhathi sase-Afghanistan"}
+        }
+        "meta:Africa_Central"{
+            ls{"Isikhathi sase-Central Africa"}
+        }
+        "meta:Africa_Eastern"{
+            ls{"Isikhathi saseMpumalanga Afrika"}
+        }
+        "meta:Africa_Southern"{
+            ls{"Isikhathi esivamile saseNingizimu Afrika"}
+        }
+        "meta:Africa_Western"{
+            ld{"Isikhathi sehlobo saseNtshonalanga Afrika"}
+            lg{"Isikhathi saseNtshonalanga Afrika"}
+            ls{"Isikhathi esivamile saseNtshonalanga Afrika"}
+        }
+        "meta:Alaska"{
+            ld{"esase-Alaska Daylight Time"}
+            lg{"esase-Alaska Time"}
+            ls{"esase-Alaska Standard Time"}
+        }
+        "meta:Amazon"{
+            ld{"Isikhathi sehlobo sase-Amazon"}
+            lg{"esase-Amazon Time"}
+            ls{"Isikhathi esivamile sase-Amazon"}
+        }
+        "meta:America_Central"{
+            ld{"esase-Central Daylight Time"}
+            lg{"esase-Central Time"}
+            ls{"esase-Central Standard Time"}
+        }
+        "meta:America_Eastern"{
+            ld{"esase-Eastern Daylight Time"}
+            lg{"esase-Eastern Time"}
+            ls{"esase-Eastern Standard Time"}
+        }
+        "meta:America_Mountain"{
+            ld{"esase-Mountain Daylight Time"}
+            lg{"esase-Mountain Time"}
+            ls{"esase-Mountain Standard Time"}
+        }
+        "meta:America_Pacific"{
+            ld{"esase-Pacific Daylight Time"}
+            lg{"esase-Pacific Time"}
+            ls{"esase-Pacific Standard Time"}
+        }
+        "meta:Anadyr"{
+            ld{"esase-Anadyr Summer Time"}
+            lg{"esase-Anadyr Time"}
+            ls{"esase-Anadyr Standard Time"}
+        }
+        "meta:Arabian"{
+            ld{"Isikhathi semini sase-Arabian"}
+            lg{"Isikhathi sase-Arabian"}
+            ls{"Isikhathi esivamile sase-Arabian"}
+        }
+        "meta:Argentina"{
+            ld{"esase-Argentina Summer Time"}
+            lg{"esase-Argentina Time"}
+            ls{"Isikhathi esimisiwe sase-Argentina"}
+        }
+        "meta:Argentina_Western"{
+            ld{"Isikhathi sasehlobo sase-Ntshonalanga ne-Argentina"}
+            lg{"Isikhathi saseNyakatho ne-Argentina"}
+            ls{"Isikhathi esimisiwe sase-Ntshonalanga ne-Argentina"}
+        }
+        "meta:Armenia"{
+            ld{"Isikhathi sehlobo sase-Armenia"}
+            lg{"Isikhathi saseArmenia"}
+            ls{"Isikhathi esezingeni sase-Armenia"}
+        }
+        "meta:Atlantic"{
+            ld{"esase-Atlantic Daylight Time"}
+            lg{"esase-Atlantic Time"}
+            ls{"esase-Atlantic Standard Time"}
+        }
+        "meta:Australia_Central"{
+            ld{"esase-Austrilian Central Daylight Time"}
+            lg{"esase-Central Australia Time"}
+            ls{"esase-Austrilian Central Standard Time"}
+        }
+        "meta:Australia_CentralWestern"{
+            ld{"esase-Austrilian Central Western Daylight Time"}
+            lg{"esase-Austrilian Central Western Time"}
+            ls{"esase-Austrilian Central Western Standard Time"}
+        }
+        "meta:Australia_Eastern"{
+            ld{"esase-Australian Eastern Daylight Time"}
+            lg{"esase-Austrilian Eastern Time"}
+            ls{"esase-Australian Eastern Standard Time"}
+        }
+        "meta:Australia_Western"{
+            ld{"esase-Austrilian Western Daylight Time"}
+            lg{"esase-Western Australia Time"}
+            ls{"esase-Austrilian Western Standard Time"}
+        }
+        "meta:Azerbaijan"{
+            ld{"Isikhathi sehlobo sase-Azerbaijan"}
+            lg{"Isikhathi sase-Azerbaijan"}
+            ls{"Isikhathi esivamile sase-Azerbaijan"}
+        }
+        "meta:Azores"{
+            ld{"Isikhathi sehlobo sase-Azores"}
+            lg{"Isikhathi sase-Azores"}
+            ls{"Isikhathi esivamile sase-Azores"}
+        }
+        "meta:Bangladesh"{
+            ld{"Isikhathi sehlobo sase-Bangladesh"}
+            lg{"Isikhathi sase-Bangladesh"}
+            ls{"Isikhathi esivamile sase-Bangladesh"}
+        }
+        "meta:Bhutan"{
+            ls{"Isikhathi sase-Bhutan"}
+        }
+        "meta:Bolivia"{
+            ls{"Isikhathi sase-Bolivia"}
+        }
+        "meta:Brasilia"{
+            ld{"esase-Brasilia Summer Time"}
+            lg{"esase-Brasilia Time"}
+            ls{"Isikhathi esimisiwe sase-Brasilia"}
+        }
+        "meta:Brunei"{
+            ls{"Isikhathi sase-Brunei Darussalam"}
+        }
+        "meta:Cape_Verde"{
+            ld{"Isikhathi sehlobo sase-Cape Verde"}
+            lg{"Isikhathi sase-Cape Verde"}
+            ls{"Isikhathi esezingeni sase-Cape Verde"}
+        }
+        "meta:Chamorro"{
+            ls{"Isikhathi esezingeni sase-Chamorro"}
+        }
+        "meta:Chatham"{
+            ld{"Isikhathi semini sase-Chatham"}
+            lg{"Isikhathi sase-Chatham"}
+            ls{"Isikhathi esivamile sase-Chatham"}
+        }
+        "meta:Chile"{
+            ld{"Isikhathi sehlobo sase-Chile"}
+            lg{"Isikhathi sase-Chile"}
+            ls{"Isikhathi esivamile sase-Chile"}
+        }
+        "meta:China"{
+            ld{"Isikhathi semini sase-China"}
+            lg{"Isikhathi sase-China"}
+            ls{"Isikhathi esivamile sase-China"}
+        }
+        "meta:Choibalsan"{
+            ld{"esase-Choibalsan Summer Time"}
+            lg{"esase-Choibalsan Time"}
+            ls{"Isikhathi Esimisiwe sase-Choibalsan"}
+        }
+        "meta:Christmas"{
+            ls{"Isikhathi sase-Christmas Island"}
+        }
+        "meta:Cocos"{
+            ls{"Isikhathi sase-Cocos Islands"}
+        }
+        "meta:Colombia"{
+            ld{"Isikhathi sehlobo sase-Colombia"}
+            lg{"Isikhathi sase-Colombia"}
+            ls{"Isikhathi esivamile sase-Colombia"}
+        }
+        "meta:Cook"{
+            ld{"Isikhathi esiyingxenye yasehlobo sase-Cook Islands"}
+            lg{"Isikhathi sase-Cook Islands"}
+            ls{"Isikhathi esivamile sase-Cook Islands"}
+        }
+        "meta:Cuba"{
+            ld{"Isikhathi semini sase-Cuba"}
+            lg{"Isikhathi sase-Cuba"}
+            ls{"Isikhathi esivamile sase-Cuba"}
+        }
+        "meta:Davis"{
+            ls{"Isikhathi sase-Davis"}
+        }
+        "meta:DumontDUrville"{
+            ls{"Isikhathi sase-Dumont-d’Urville"}
+        }
+        "meta:East_Timor"{
+            ls{"Isikhathi sase-East Timor"}
+        }
+        "meta:Easter"{
+            ld{"Isikhathi sehlobo sase-Easter Island"}
+            lg{"Isikhathi sase-Easter Island"}
+            ls{"Isikhathi esivamile sase-Easter Island"}
+        }
+        "meta:Ecuador"{
+            ls{"Isikhathi sase-Ecuador"}
+        }
+        "meta:Europe_Central"{
+            ld{"Isikhathi sehlobo sase-Central Europe"}
+            lg{"Isikhathi sase-Central Europe"}
+            ls{"Isikhathi esivamile sase-Central Europe"}
+        }
+        "meta:Europe_Eastern"{
+            ld{"Isikhathi sehlobo sase-Eastern Europe"}
+            lg{"Isikhathi sase-Eastern Europe"}
+            ls{"Isikhathi esivamile sase-Eastern Europe"}
+        }
+        "meta:Europe_Western"{
+            ld{"Isikhathi sehlobo sase-Western Europe"}
+            lg{"Isikhathi sase-Western Europe"}
+            ls{"Isikhathi esivamile sase-Western Europe"}
+        }
+        "meta:Falkland"{
+            ld{"Isikhathi sehlobo sase-Falkland Islands"}
+            lg{"Isikhathi sase-Falkland Islands"}
+            ls{"Isikhathi esivamile sase-Falkland Islands"}
+        }
+        "meta:Fiji"{
+            ld{"Isikhathi sehlobo sase-Fiji"}
+            lg{"Isikhathi sase-Fiji"}
+            ls{"Isikhathi esivamile sase-Fiji"}
+        }
+        "meta:French_Guiana"{
+            ls{"Isikhathi sase-French Guiana"}
+        }
+        "meta:French_Southern"{
+            ls{"Isikhathi sase-French Southern and Antarctic"}
+        }
+        "meta:GMT"{
+            ls{"Isikhathi sase-Greenwich Mean"}
+        }
+        "meta:Galapagos"{
+            ls{"Isikhathi sase-Galapagos"}
+        }
+        "meta:Gambier"{
+            ls{"Isikhathi sase-Gambier"}
+        }
+        "meta:Georgia"{
+            ld{"Isikhathi sehlobo sase-Georgia"}
+            lg{"Isikhathi sase-Georgia"}
+            ls{"Isikhathi esivamile sase-Georgia"}
+        }
+        "meta:Gilbert_Islands"{
+            ls{"Isikhathi sase-Gilbert Islands"}
+        }
+        "meta:Greenland_Eastern"{
+            ld{"Isikhathi sehlobo sase-East Greenland"}
+            lg{"Isikhathi sase-East Greenland"}
+            ls{"Isikhathi esivamile sase-East Greenland"}
+        }
+        "meta:Greenland_Western"{
+            ld{"Isikhathi sehlobo sase-West Greenland"}
+            lg{"Isikhathi sase-West Greenland"}
+            ls{"Isikhathi esivamile sase-West Greenland"}
+        }
+        "meta:Gulf"{
+            ls{"Isikhathi esivamile sase-Gulf"}
+        }
+        "meta:Guyana"{
+            ls{"Isikhathi sase-Guyana"}
+        }
+        "meta:Hawaii_Aleutian"{
+            ld{"Isikhathi semini sase-Hawaii-Aleutian"}
+            lg{"Isikathi sase-Hawaii-Aleutian"}
+            ls{"Isikhathi esivamile sase-Hawaii-Aleutian"}
+        }
+        "meta:Hong_Kong"{
+            ld{"Isikhathi sehlobo sase-Hong Kong"}
+            lg{"Isikhathi sase-Hong Kong"}
+            ls{"Isikhathi esivamile sase-Hong Kong"}
+        }
+        "meta:Hovd"{
+            ld{"esase-Hovd Summer Time"}
+            lg{"esase-Hovd Time"}
+            ls{"Isikhathi Esimisiwe sase-Hovd"}
+        }
+        "meta:India"{
+            ls{"Isikhathi esivamile sase-India"}
+        }
+        "meta:Indian_Ocean"{
+            ls{"Isikhathi sase-Indian Ocean"}
+        }
+        "meta:Indochina"{
+            ls{"Isikhathi sase-Indochina"}
+        }
+        "meta:Indonesia_Central"{
+            ls{"Isikhathi sase-Central Indonesia"}
+        }
+        "meta:Indonesia_Eastern"{
+            ls{"Isikhathi sase-Eastern Indonesia"}
+        }
+        "meta:Indonesia_Western"{
+            ls{"Isikhathi sase-Western Indonesia"}
+        }
+        "meta:Iran"{
+            ld{"Isikhathi sasemini sase-Iran"}
+            lg{"Isikhathi sase-Iran"}
+            ls{"Isikhathi esivamile sase-Iran"}
+        }
+        "meta:Irkutsk"{
+            ld{"esase-Irkutsk Summer Time"}
+            lg{"esase-Irkutsk Time"}
+            ls{"Isikhathi Esimisiwe sase-Irkutsk"}
+        }
+        "meta:Israel"{
+            ld{"Isikhathi sasemini sase-Israel"}
+            lg{"Isikhathi sase-Israel"}
+            ls{"Isikhathi esivamile sase-Israel"}
+        }
+        "meta:Japan"{
+            ld{"Isikhathi semini sase-Japan"}
+            lg{"Isikhathi sase-Japan"}
+            ls{"Isikhathi esivamile sase-Japan"}
+        }
+        "meta:Kamchatka"{
+            ld{"esase-Petropavlovsk-Kamchatski Summer Time"}
+            lg{"esase-Petropavlovsk-Kamchatski Time"}
+            ls{"esase-Petropavlovsk-Kamchatski Standard Time"}
+        }
+        "meta:Kazakhstan_Eastern"{
+            ls{"Isikhathi sase-Mpumalanga ne-Kazakhstan"}
+        }
+        "meta:Kazakhstan_Western"{
+            ls{"Isikhathi saseNtshonalanga ne-Kazakhstan"}
+        }
+        "meta:Korea"{
+            ld{"Isikhathi semini sase-Korea"}
+            lg{"Isikhathi sase-Korea"}
+            ls{"Isikhathi esisezengeni sase-Korea"}
+        }
+        "meta:Kosrae"{
+            ls{"Isikhathi sase-Kosrae"}
+        }
+        "meta:Krasnoyarsk"{
+            ld{"esase-Krasnoyarsk Summer Time"}
+            lg{"esase-Krasnoyarsk Time"}
+            ls{"Isikhathi Esimisiwe sase-Krasnoyarsk"}
+        }
+        "meta:Kyrgystan"{
+            ls{"Isikhathi sase-Kyrgystan"}
+        }
+        "meta:Line_Islands"{
+            ls{"Isikhathi sase-Line Islands"}
+        }
+        "meta:Lord_Howe"{
+            ld{"esase-Lord Howe Daylight Time"}
+            lg{"esase-Lord Howe Time"}
+            ls{"esase-Lord Howe Standard Time"}
+        }
+        "meta:Macquarie"{
+            ls{"Isikhathi sase-Macquarie Island"}
+        }
+        "meta:Magadan"{
+            ld{"esase-Magadan Summer Time"}
+            lg{"esase-Magadan Time"}
+            ls{"Isikhathi Esimisiwe sase-Magadan"}
+        }
+        "meta:Malaysia"{
+            ls{"Isikhathi sase-Malaysia"}
+        }
+        "meta:Maldives"{
+            ls{"Isikhathi sase-Maldives"}
+        }
+        "meta:Marquesas"{
+            ls{"Isikhathi sase-Marquesas"}
+        }
+        "meta:Marshall_Islands"{
+            ls{"Isikhathi sase-Marshall Islands"}
+        }
+        "meta:Mauritius"{
+            ld{"Isikhathi sehlobo sase-Mauritius"}
+            lg{"Isikhathi sase-Mauritius"}
+            ls{"Isikhathi esivamile sase-Mauritius"}
+        }
+        "meta:Mawson"{
+            ls{"Isikhathi sase-Mawson"}
+        }
+        "meta:Mongolia"{
+            ld{"esase-Ulan Bator Summer Time"}
+            lg{"Isikhathi sase-Ulan Bator"}
+            ls{"Isikhathi Esimisiwe sase-Ulan Bator"}
+        }
+        "meta:Moscow"{
+            ld{"esase-Moscow Summer Time"}
+            lg{"esase-Moscow Time"}
+            ls{"esase-Moscow Standard Time"}
+        }
+        "meta:Myanmar"{
+            ls{"Isikhathi sase-Myanmar"}
+        }
+        "meta:Nauru"{
+            ls{"Isikhathi sase-Nauru"}
+        }
+        "meta:Nepal"{
+            ls{"Isikhathi sase-Nepal"}
+        }
+        "meta:New_Caledonia"{
+            ld{"Isikhathi sehlobo sase-New Caledonia"}
+            lg{"Isikhathi sase-New Caledonia"}
+            ls{"Isikhathi esivamile sase-New Caledonia"}
+        }
+        "meta:New_Zealand"{
+            ld{"Isikhathi sasemini sase-New Zealand"}
+            lg{"Isikhathi sase-New Zealand"}
+            ls{"Isikhathi esivamile sase-New Zealand"}
+        }
+        "meta:Newfoundland"{
+            ld{"esase-Newfoundland Daylight Time"}
+            lg{"esase-Newfoundland Time"}
+            ls{"esase-Newfoundland Standard Time"}
+        }
+        "meta:Niue"{
+            ls{"Isikhathi sase-Niue"}
+        }
+        "meta:Norfolk"{
+            ls{"Isikhathi sase-Norfolk Islands"}
+        }
+        "meta:Noronha"{
+            ld{"esase-Fernando de Noronha Summer Time"}
+            lg{"Isikhathi sase-Fernando de Noronha"}
+            ls{"Isikhathi esimisiwe sase-Fernando de Noronha"}
+        }
+        "meta:Novosibirsk"{
+            ld{"esase-Novosibirsk Summer Time"}
+            lg{"esase-Novosibirsk Time"}
+            ls{"Isikhathi Esimisiwe sase-Novosibirsk"}
+        }
+        "meta:Omsk"{
+            ld{"esase-Omsk Summer Time"}
+            lg{"esase-Omsk Time"}
+            ls{"Isikhathi Esimisiwe sase-Omsk"}
+        }
+        "meta:Pakistan"{
+            ld{"Isikhathi sehlobo sase-Pakistan"}
+            lg{"Isikhathi sase-Pakistan"}
+            ls{"Isikhathi esivamile sase-Pakistan"}
+        }
+        "meta:Palau"{
+            ls{"Isikhathi sase-Palau"}
+        }
+        "meta:Papua_New_Guinea"{
+            ls{"Isikhathi sase-Papua New Guinea"}
+        }
+        "meta:Paraguay"{
+            ld{"Isikhathi sehlobo sase-Paraguay"}
+            lg{"Isikhathi sase-Paraguay"}
+            ls{"Isikhathi esivamile sase-Paraguay"}
+        }
+        "meta:Peru"{
+            ld{"Isikhathi sehlobo sase-Peru"}
+            lg{"Isikhathi sase-Peru"}
+            ls{"Isikhathi esivamile sase-Peru"}
+        }
+        "meta:Philippines"{
+            ld{"Isikhathi sehlobo sase-Philippine"}
+            lg{"Isikhathi sase-Philippine"}
+            ls{"Isikhathi esivamile sase-Philippine"}
+        }
+        "meta:Phoenix_Islands"{
+            ls{"Isikhathi sase-Phoenix Islands"}
+        }
+        "meta:Pierre_Miquelon"{
+            ld{"Isikhathi semini sase-Saint Pierre kanye ne-Miquelon"}
+            lg{"Isikhathi sase-Saint Pierre kanye ne-Miquelon"}
+            ls{"Isikhathi esivamile sase-Saint Pierre kanye ne-Miquelon"}
+        }
+        "meta:Pitcairn"{
+            ls{"Isikhathi sase-Pitcairn"}
+        }
+        "meta:Ponape"{
+            ls{"Isikhathi sase-Ponape"}
+        }
+        "meta:Reunion"{
+            ls{"Isikhathi sase-Reunion"}
+        }
+        "meta:Rothera"{
+            ls{"Isikhathi sase-Rothera"}
+        }
+        "meta:Sakhalin"{
+            ld{"esase-Sakhalin Summer Time"}
+            lg{"esase-Sakhalin Time"}
+            ls{"Isikhathi Esimisiwe sase-Sakhalin"}
+        }
+        "meta:Samara"{
+            ld{"esase-Samara Summer Time"}
+            lg{"esase-Samara Time"}
+            ls{"esase-Samara Standard Time"}
+        }
+        "meta:Samoa"{
+            ld{"Isikhathi sehlobo sase-Samoa"}
+            lg{"Isikhathi sase-Samoa"}
+            ls{"Isikhathi esivamile sase-Samoa"}
+        }
+        "meta:Seychelles"{
+            ls{"Isikhathi sase-Seychelles"}
+        }
+        "meta:Singapore"{
+            ls{"Isikhathi esivamile sase-Singapore"}
+        }
+        "meta:Solomon"{
+            ls{"Isikhathi sase-Solomon Islands"}
+        }
+        "meta:South_Georgia"{
+            ls{"Isikhathi sase-South Georgia"}
+        }
+        "meta:Suriname"{
+            ls{"Isikhathi sase-Suriname"}
+        }
+        "meta:Syowa"{
+            ls{"Isikhathi sase-Syowa"}
+        }
+        "meta:Tahiti"{
+            ls{"Isikhathi sase-Tahiti"}
+        }
+        "meta:Taipei"{
+            ld{"Isikhathi semini sase-Taipei"}
+            lg{"Isikhathi sase-Taipei"}
+            ls{"Isikhathi esivamile sase-Taipei"}
+        }
+        "meta:Tajikistan"{
+            ls{"Isikhathi sase-Tajikistan"}
+        }
+        "meta:Tokelau"{
+            ls{"Isikhathi sase-Tokelau"}
+        }
+        "meta:Tonga"{
+            ld{"Isikhathi sehlobo sase-Tonga"}
+            lg{"Isikhathi sase-Tonga"}
+            ls{"Isikhathi esivamile sase-Tonga"}
+        }
+        "meta:Truk"{
+            ls{"Isikhathi sase-Chuuk"}
+        }
+        "meta:Turkmenistan"{
+            ld{"Isikhathi sehlobo sase-Turkmenistan"}
+            lg{"Isikhathi sase-Turkmenistan"}
+            ls{"Isikhathi esivamile sase-Turkmenistan"}
+        }
+        "meta:Tuvalu"{
+            ls{"Isikhathi sase-Tuvalu"}
+        }
+        "meta:Uruguay"{
+            ld{"Isikhathi sehlobo sase-Uruguay"}
+            lg{"Isikhathi sase-Uruguay"}
+            ls{"Isikhathi esivamile sase-Uruguay"}
+        }
+        "meta:Uzbekistan"{
+            ld{"Isikhathi sehlobo sase-Uzbekistan"}
+            lg{"Isikhathi sase-Uzbekistan"}
+            ls{"Isikhathi esivamile sase-Uzbekistan"}
+        }
+        "meta:Vanuatu"{
+            ld{"Isikhathi sehlobo sase-Vanuatu"}
+            lg{"Isikhathi sase-Vanuatu"}
+            ls{"Isikhathi esivamile sase-Vanuatu"}
+        }
+        "meta:Venezuela"{
+            ls{"Isikhathi sase-Venezuela"}
+        }
+        "meta:Vladivostok"{
+            ld{"esase-Vladivostok Summer Time"}
+            lg{"esase-Vladivostok Time"}
+            ls{"Isikhathi Esimisiwe sase-Vladivostok"}
+        }
+        "meta:Volgograd"{
+            ld{"esase-Volgograd Summer Time"}
+            lg{"esase-Volgograd Time"}
+            ls{"Isikhathi Esimisiwe sase-Volgograd"}
+        }
+        "meta:Vostok"{
+            ls{"Isikhathi sase-Vostok"}
+        }
+        "meta:Wake"{
+            ls{"Isikhathi sase-Wake Island"}
+        }
+        "meta:Wallis"{
+            ls{"Isikhathi sase-Wallis and Futuna"}
+        }
+        "meta:Yakutsk"{
+            ld{"esase-Yakutsk Summer Time"}
+            lg{"esase-Yakutsk Time"}
+            ls{"Isikhathi Esimisiwe sase-Yakutsk"}
+        }
+        "meta:Yekaterinburg"{
+            ld{"esase-Yekaterinburg Summer Time"}
+            lg{"esase-Yekaterinburg Time"}
+            ls{"Isikhathi Esimisiwe sase-Yekaterinburg"}
+        }
+        fallbackFormat{"{1} ({0})"}
+        gmtFormat{"GMT{0}"}
+        gmtZeroFormat{"GMT"}
+        hourFormat{"+HH:mm;-HH:mm"}
+        regionFormat{"Isikhathi sase-{0}"}
+        regionFormatDaylight{"{0} Isikhathi sasemini"}
+        regionFormatStandard{"{0} Isikhathi esijwayelekile"}
+    }
+}

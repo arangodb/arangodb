@@ -1,0 +1,17 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ln_AO.xml
+// *
+// ***************************************************************************
+ln_AO{
+    Currencies{
+        AOA{
+            "Kz",
+            "Kwanza ya Angóla",
+        }
+    }
+    Version{"2.0.90.61"}
+}
