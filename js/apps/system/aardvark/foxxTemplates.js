@@ -61,6 +61,7 @@ controller.post("/generate", function(req, res) {
 
   if (isDevMode()) {
     FoxxManager.devSetup(conf.get("name"));
+    internal.executeGlobalContextFunction("reloadRouting");
   } else {
     // TODO Zip and ship it
   }

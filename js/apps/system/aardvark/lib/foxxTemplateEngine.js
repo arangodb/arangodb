@@ -56,20 +56,24 @@
       this.models = [];
 
       _.each(collectionNames, function (collectionName) {
-        var modelName = i.singularize(collectionName),
+        var modelBase = i.singularize(collectionName).substr(1),
           collectionStart,
           repositoryBase = collectionName.substr(1),
           repositoryName,
           repositoryPath,
           repositoryInstance,
-          modelPath;
+          modelPath,
+          modelName,
+          modelInstance;
         collectionStart = collectionName.charAt(0);
         if (collectionStart.match("[a-zA-Z]") === null) {
           throw "Collection Name has to start with a letter";
         }
-        if (modelName === collectionName) {
+        if (modelBase === repositoryBase) {
           repositoryBase += "_repo";
         }
+        modelName = collectionStart.toUpperCase() + modelBase;
+        modelInstance = collectionStart.toLowerCase() + modelBase;
         repositoryName = collectionStart.toUpperCase() + repositoryBase;
         repositoryInstance = collectionStart.toLowerCase() + repositoryBase;
         repositoryPath = 'repositories/' + collectionName;
@@ -82,7 +86,8 @@
           repositoryInstance: repositoryName,
           repository: repositoryInstance,
           repositoryPath: repositoryPath,
-          model: i.titleize(modelName),
+          modelInstance: modelInstance,
+          model: modelName,
           modelPath: modelPath,
           basePath: collectionName,
           collectionName: collectionName
