@@ -77,7 +77,59 @@
 * http://coffeescript.org
 * free "as is” license
 
-# swagger
+### swagger
 
 * http://swagger.io
 * Apache License 2
+
+### Backbone.js 
+
+- MIT
+
+### Bootstrap 
+
+- MIT
+
+### D3js 
+
+- [BSD](http://opensource.org/licenses/BSD-3-Clause)
+
+### dygraph
+
+- MIT
+
+### EJS
+
+- MIT
+
+### Handlebars 
+
+- MIT
+
+### Highlight.js
+
+- BSD
+
+### Joi
+
+- AS-IS
+
+### jqconsole
+
+- MIT
+
+### jquery
+
+- MIT
+
+### jsoneditor.js
+
+- Apache 2
+
+### Crypto.js
+
+- AS-IS
+
+### select2
+
+- Apache 2
