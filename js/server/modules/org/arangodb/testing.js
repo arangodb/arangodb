@@ -592,20 +592,20 @@ function runThere (options, instanceInfo, file) {
 function runHere (options, instanceInfo, file) {
   var result;
   try {
-    var test;
     if (file.indexOf("-spec") === -1) {
-      test = 'var runTest = require("jsunity").runTest; '+
-          'result = runTest(' + JSON.stringify(file) + ');';
+      var runTest = require("jsunity").runTest; 
+      result = runTest(file);
     }
     else {
       var jasmineReportFormat = options.jasmineReportFormat || 'progress';
-      test = 'var executeTestSuite = require("jasmine").executeTestSuite; '+
-          'result = executeTestSuite([' + JSON.stringify(file) + '],{"format": '+
-          JSON.stringify(jasmineReportFormat) + '});';
+      var executeTestSuite = require("jasmine").executeTestSuite; 
+      result = executeTestSuite([ file ], { format: jasmineReportFormat });
     }
-    eval(test);
     if (file.indexOf("-spec") !== -1) {
-      result = {status: result, message: ''};
+      result = {
+        status: result, 
+        message: ''
+      };
     }
  }
   catch (err) {

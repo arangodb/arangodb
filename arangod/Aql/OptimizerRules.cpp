@@ -35,13 +35,13 @@ using namespace triagens::aql;
 using Json = triagens::basics::Json;
 using EN   = triagens::aql::ExecutionNode;
 
-//#if 0
+#if 0
 #define ENTER_BLOCK try { (void) 0;
 #define LEAVE_BLOCK } catch (...) { std::cout << "caught an exception in " << __FUNCTION__ << ", " << __FILE__ << ":" << __LINE__ << "!\n"; throw; }
-//#else
-//#define ENTER_BLOCK
-//#define LEAVE_BLOCK
-//#endif
+#else
+#define ENTER_BLOCK
+#define LEAVE_BLOCK
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           rules for the optimizer
@@ -821,11 +821,11 @@ int triagens::aql::removeUnnecessaryCalculationsRule (Optimizer* opt,
 ////////////////////////////////////////////////////////////////////////////////
 
 class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
+  RangeInfoMapVec* _rangeInfoMapVec;
   ExecutionPlan* _plan;
-  bool _canThrow; 
-  bool _modified;
   std::unordered_set<VariableId> _varIds;
-  RangesInfo* _ranges;
+  bool _modified;
+  bool _canThrow; 
   // The following maps ids of EnumerateCollectionNodes in the original
   // plan to an index in the (outer vector) of the _changes container.
   std::unordered_map<size_t, size_t>& _changesPlaces;
@@ -838,14 +838,14 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
   public:
 
     FilterToEnumCollFinder (ExecutionPlan* plan,
-          Variable const* var,
-          std::unordered_map<size_t, size_t>& changesPlaces,
-          std::vector<std::pair<size_t, std::vector<ExecutionNode*>>>& changes) 
-      : _plan(plan), 
-        _canThrow(false),
-        _modified(false),
+                            Variable const* var,
+                            std::unordered_map<size_t, size_t>& changesPlaces,
+                            std::vector<std::pair<size_t, std::vector<ExecutionNode*>>>& changes) 
+      : _rangeInfoMapVec(nullptr),
+        _plan(plan), 
         _varIds(),
-        _ranges(new RangesInfo()),
+        _modified(false),
+        _canThrow(false),
         _changesPlaces(changesPlaces),
         _changes(changes) {
 
@@ -853,10 +853,12 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
     };
 
     ~FilterToEnumCollFinder () {
-      delete _ranges;
+      if (_rangeInfoMapVec != nullptr) {
+        delete _rangeInfoMapVec;
+      }
     }
-
-    bool modified () {
+    
+    bool modified () const {
       return _modified;
     }
 
@@ -873,7 +875,14 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             auto node = static_cast<CalculationNode*>(en);
             std::string attr;
             Variable const* enumCollVar = nullptr;
-            buildRangeInfo(node->expression()->node(), enumCollVar, attr);
+            // there is an implicit AND between FILTER statements
+            if (_rangeInfoMapVec == nullptr) {
+              _rangeInfoMapVec = buildRangeInfo(node->expression()->node(), enumCollVar, attr);
+            } 
+            else {
+              _rangeInfoMapVec = andCombineRangeInfoMapVecs(_rangeInfoMapVec,
+                  buildRangeInfo(node->expression()->node(), enumCollVar, attr));
+            }
           }
           break;
         }
@@ -914,8 +923,11 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         case EN::ENUMERATE_COLLECTION: {
           auto node = static_cast<EnumerateCollectionNode*>(en);
           auto var = node->getVariablesSetHere()[0];  // should only be 1
+          if (_rangeInfoMapVec == nullptr) {
+            break;
+          }
           std::unordered_map<std::string, RangeInfo>* map
-              = _ranges->find(var->name);        
+              = _rangeInfoMapVec->find(var->name, 0);        
               // check if we have any ranges with this var
 
           if (map != nullptr) {
@@ -929,201 +941,247 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             for (auto v : varsSetHere) {
               varsDefined.erase(v);
             }
-            for (auto& x : *map) {
-              auto worker = [&] (std::list<RangeInfoBound>& bounds) -> void {
-                for (auto it = bounds.begin(); it != bounds.end();
-                     /* no hoisting */) {
-                  AstNode const* a = it->getExpressionAst(_plan->getAst());
-                  std::unordered_set<Variable*> varsUsed
-                      = Ast::getReferencedVariables(a);
-                  bool bad = false;
-                  for (auto v : varsUsed) {
-                    if (varsDefined.find(const_cast<Variable const*>(v))
-                        == varsDefined.end()) {
-                      bad = true;
+            size_t pos = 0;
+            do {
+              for (auto& x : *map) {
+                auto worker = [&] (std::list<RangeInfoBound>& bounds) -> void {
+                  for (auto it = bounds.begin(); it != bounds.end();
+                       /* no hoisting */) {
+                    AstNode const* a = it->getExpressionAst(_plan->getAst());
+                    std::unordered_set<Variable*> varsUsed
+                        = Ast::getReferencedVariables(a);
+                    bool bad = false;
+                    for (auto v : varsUsed) {
+                      if (varsDefined.find(const_cast<Variable const*>(v))
+                          == varsDefined.end()) {
+                        bad = true;
+                      }
+                    }
+                    if (bad) {
+                      it = bounds.erase(it);
+                      x.second.revokeEquality();  // just to be sure
+                    }
+                    else {
+                      it++;
                     }
                   }
-                  if (bad) {
-                    it = bounds.erase(it);
-                    x.second.revokeEquality();  // just to be sure
-                  }
-                  else {
-                    it++;
-                  }
-                }
-              };
-              worker(x.second._lows);
-              worker(x.second._highs);
-            }
-            // Now remove empty conditions:
-            for (auto it = map->begin(); it != map->end(); /* no hoisting */ ) {
-              if (it->second._lows.empty() &&
-                  it->second._highs.empty() &&
-                  ! it->second._lowConst.isDefined() &&
-                  ! it->second._highConst.isDefined()) {
-                it = map->erase(it);
+                };
+                worker(x.second._lows);
+                worker(x.second._highs);
               }
-              else {
-                it++;
-              }
-            }
-
-            // check the first components of <map> against indexes of <node>...
-            std::unordered_set<std::string> attrs;
+              map = _rangeInfoMapVec->find(var->name, ++pos);  
+            } 
+            while (map !=nullptr);
             
-            bool valid = true;     // are all the range infos valid?
+            // Now remove empty conditions: 
+            _rangeInfoMapVec->eraseEmptyOrUndefined(var->name);
+            
+            // if var->name is not mapped in every position of _rangeInfoMapVec
+            // then we cannot use the index range node (we would return too few
+            // results), for example
+            // x.a == 1 || y.c == 2 || x.a == 3
+            if (_rangeInfoMapVec->isMapped(var->name)) {
 
-            for (auto x: *map) {
-              valid &= x.second.isValid(); 
-              if (! valid) {
-                break;
-              }
-              attrs.insert(x.first);
-            }
-               
-            if (! _canThrow) {
-              if (! valid) { // ranges are not valid . . . 
-                auto parents = node->getParents();
-                for (auto x : parents) {
-                  auto noRes = new NoResultsNode(_plan, _plan->nextId());
-                  _plan->registerNode(noRes);
-                  _plan->insertDependency(x, noRes);
+              std::vector<size_t> const validPos = _rangeInfoMapVec->validPositions(var->name);
+
+              // are any of the RangeInfoMaps in the vector valid? 
+
+              if (! _canThrow) {
+                if (validPos.empty()) { // ranges are not valid . . . 
+                  auto parents = node->getParents();
+                  for (auto x : parents) {
+                    auto noRes = new NoResultsNode(_plan, _plan->nextId());
+                    _plan->registerNode(noRes);
+                    _plan->insertDependency(x, noRes);
+                  }
                   _modified = true;
                 }
-              }
-              else {
-                std::vector<Index*> idxs;
-                std::vector<size_t> prefixes;
-                // {idxs.at(i)->_fields[0]..idxs.at(i)->_fields[prefixes.at(i)]}
-                // is a subset of <attrs>
+                else {
+                  std::vector<Index*> idxs;
+                  std::vector<size_t> prefixes;
+                  // {idxs.at(i)->_fields[0]..idxs.at(i)->_fields[prefixes.at(i)]}
+                  // is a subset of <attrs>
 
-                // note: prefixes are only used for skiplist indexes
-                // for all other index types, the prefix value will always be 0
-                node->getIndexesForIndexRangeNode(attrs, idxs, prefixes);
+                  // note: prefixes are only used for skiplist indexes
+                  // for all other index types, the prefix value will always be 0
+                  node->getIndexesForIndexRangeNode(
+                      _rangeInfoMapVec->attributes(var->name), idxs, prefixes);
+                  // make one new plan for every index in <idxs> that replaces the
+                  // enumerate collection node with a IndexRangeNode ... 
 
-                // make one new plan for every index in <idxs> that replaces the
-                // enumerate collection node with a IndexRangeNode ... 
-                
-                for (size_t i = 0; i < idxs.size(); i++) {
-                  std::vector<std::vector<RangeInfo>> rangeInfo;
-                  rangeInfo.push_back(std::vector<RangeInfo>());
-                  
-                  // ranges must be valid and all comparisons == if hash
-                  // index or == followed by a single <, >, >=, or <=
-                  // if a skip index in the order of the fields of the
-                  // index.
-                  auto idx = idxs.at(i);
-                  TRI_ASSERT(idx != nullptr);
-               
-                  if (idx->type == TRI_IDX_TYPE_PRIMARY_INDEX) {
-                    bool handled = false;
-                    auto range = map->find(std::string(TRI_VOC_ATTRIBUTE_ID));
-                
-                    if (range != map->end()) { 
-                      if (! range->second.is1ValueRangeInfo()) {
-                        rangeInfo.at(0).clear();   // not usable
-                      }
-                      else {
-                        rangeInfo.at(0).push_back(range->second);
-                        handled = true;
-                      }
-                    }
+                  for (size_t i = 0; i < idxs.size(); i++) {
+                    IndexOrCondition indexOrCondition;
+                    indexOrCondition.reserve(validPos.size());
 
-                    if (! handled) {
-                      range = map->find(std::string(TRI_VOC_ATTRIBUTE_KEY));
+                    for (size_t k = 0; k < validPos.size(); k++) {
+                      indexOrCondition.push_back(std::vector<RangeInfo>());
+                    } 
 
-                      if (range != map->end()) {
-                        if (! range->second.is1ValueRangeInfo()) {
-                          rangeInfo.at(0).clear();   // not usable
+                    // ranges must be valid and all comparisons == if hash
+                    // index or == followed by a single <, >, >=, or <=
+                    // if a skip index in the order of the fields of the
+                    // index.
+                    auto idx = idxs.at(i);
+                    TRI_ASSERT(idx != nullptr);
+
+                    if (idx->type == TRI_IDX_TYPE_PRIMARY_INDEX) {
+                      for (size_t k = 0; k < validPos.size(); k++) {
+                        bool handled = false;
+
+                        auto map = _rangeInfoMapVec->find(var->name, validPos[k]);
+                        auto range = map->find(std::string(TRI_VOC_ATTRIBUTE_ID));
+
+                        if (range != map->end()) { 
+                          if (! range->second.is1ValueRangeInfo()) {
+                            indexOrCondition.clear();   // not usable
+                            break;
+                          }
+                          else {
+                            indexOrCondition.at(k).push_back(range->second);
+                            handled = true;
+                          }
                         }
-                        else {
-                          rangeInfo.at(0).push_back(range->second);
-                        }
-                      }
-                    }
-                  }
-                  else if (idx->type == TRI_IDX_TYPE_HASH_INDEX) {
-                    for (size_t j = 0; j < idx->fields.size(); j++) {
-                      auto range = map->find(idx->fields[j]);
-                   
-                      if (! range->second.is1ValueRangeInfo()) {
-                        rangeInfo.at(0).clear();   // not usable
-                        break;
-                      }
-                      rangeInfo.at(0).push_back(range->second);
-                    }
-                  }
-                  else if (idx->type == TRI_IDX_TYPE_EDGE_INDEX) {
-                    bool handled = false;
-                    auto range = map->find(std::string(TRI_VOC_ATTRIBUTE_FROM));
-                
-                    if (range != map->end()) { 
-                      if (! range->second.is1ValueRangeInfo()) {
-                        rangeInfo.at(0).clear();   // not usable
-                      }
-                      else {
-                        rangeInfo.at(0).push_back(range->second);
-                        handled = true;
-                      }
-                    }
 
-                    if (! handled) {
-                      range = map->find(std::string(TRI_VOC_ATTRIBUTE_TO));
+                        if (! handled) {
+                          range = map->find(std::string(TRI_VOC_ATTRIBUTE_KEY));
 
-                      if (range != map->end()) {
-                        if (! range->second.is1ValueRangeInfo()) {
-                          rangeInfo.at(0).clear();   // not usable
-                        }
-                        else {
-                          rangeInfo.at(0).push_back(range->second);
+                          if (range != map->end()) {
+                            if (! range->second.is1ValueRangeInfo()) {
+                              indexOrCondition.clear();   // not usable
+                              break;
+                            }
+                            else {
+                              indexOrCondition.at(k).push_back(range->second);
+                            }
+                          }
                         }
                       }
                     }
-                  }
-                  else if (idx->type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
-                    size_t j = 0;
-                    auto range = map->find(idx->fields[0]);
-                    TRI_ASSERT(range != map->end());
-                    rangeInfo.at(0).push_back(range->second);
-                    bool equality = range->second.is1ValueRangeInfo();
-                    while (++j < prefixes.at(i) && equality) {
-                      range = map->find(idx->fields[j]);
-                      rangeInfo.at(0).push_back(range->second);
-                      equality = equality && range->second.is1ValueRangeInfo();
+                    else if (idx->type == TRI_IDX_TYPE_HASH_INDEX) {
+                      //each valid orCondition should match every field of the given index
+                      for (size_t k = 0; k < validPos.size() && !indexOrCondition.empty(); k++) {
+                        auto map = _rangeInfoMapVec->find(var->name, validPos[k]);
+                        for (size_t j = 0; j < idx->fields.size(); j++) {
+                          auto range = map->find(idx->fields[j]);
+
+                          if (range == map->end() || ! range->second.is1ValueRangeInfo()) {
+                            indexOrCondition.clear();   // not usable
+                            break;
+                          } 
+                          else {
+                            indexOrCondition.at(k).push_back(range->second);
+                          }
+                        }
+                      }
                     }
-                  }
-                  
-                  if (! rangeInfo.at(0).empty()) {
-                    std::unique_ptr<ExecutionNode> newNode
-                      (new IndexRangeNode(_plan, 
-                          _plan->nextId(), node->vocbase(), node->collection(), 
-                          node->outVariable(), idx, rangeInfo, false));
-                    size_t place = node->id();
-                    std::unordered_map<size_t, size_t>::iterator it 
-                         = _changesPlaces.find(place);
-                    if (it == _changesPlaces.end()) {
-                      _changes.push_back(std::make_pair(place, std::vector<ExecutionNode*>()));
-                      it = _changesPlaces.emplace(place, _changes.size()-1).first;
+                    else if (idx->type == TRI_IDX_TYPE_EDGE_INDEX) {
+                      for (size_t k = 0; k < validPos.size(); k++) {
+                        bool handled = false;
+                        auto map = _rangeInfoMapVec->find(var->name, validPos[k]);
+                        auto range = map->find(std::string(TRI_VOC_ATTRIBUTE_FROM));
+                        if (range != map->end()) { 
+                          if (! range->second.is1ValueRangeInfo()) {
+                            indexOrCondition.clear();
+                            break; // not usable
+                          }
+                          else {
+                            indexOrCondition.at(k).push_back(range->second);
+                            handled = true;
+                          }
+                        }
+
+                        if (! handled) {
+                          range = map->find(std::string(TRI_VOC_ATTRIBUTE_TO));
+
+                          if (range != map->end()) {
+                            if (! range->second.is1ValueRangeInfo()) {
+                              indexOrCondition.clear();   // not usable
+                              break;
+                            }
+                            else {
+                              indexOrCondition.at(k).push_back(range->second);
+                            }
+                          }
+                        }
+                      }
                     }
-                    std::vector<ExecutionNode*>& vec = _changes[it->second].second;
-                    vec.push_back(newNode.release());
-                    // if all goes well, this node will be used, if an 
-                    // exception happens, the destructor will free it
+                    else if (idx->type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
+                      for (size_t k = 0; k < validPos.size(); k++) {
+                        auto map = _rangeInfoMapVec->find(var->name, validPos[k]);
+
+                        size_t j = 0;
+                        auto range = map->find(idx->fields[0]);
+                        if (range == map->end()) { 
+                          indexOrCondition.clear();
+                          break; // not usable
+                        }
+                        indexOrCondition.at(k).push_back(range->second);
+                        
+                        bool equality = range->second.is1ValueRangeInfo();
+                        bool handled = false;
+                        while (++j < prefixes.at(i) && equality) {
+                          range = map->find(idx->fields[j]);
+                          if (range == map->end()) { 
+                            indexOrCondition.clear();
+                            handled = true;
+                            break; // not usable
+                          }
+                          indexOrCondition.at(k).push_back(range->second);
+                          equality = equality && range->second.is1ValueRangeInfo();
+                        }
+                        if (handled) {
+                          // exit the for loop, too. otherwise it will crash because
+                          // indexOrCondition is empty now
+                          break;
+                        }
+                      }
+                    }
+
+                    // check if there are all positions are non-empty
+                    bool isEmpty = indexOrCondition.empty();
+                    if (! isEmpty) {
+                      for (size_t k = 0; k < validPos.size(); k++) {
+                        if (indexOrCondition.at(k).empty()) {
+                          isEmpty = true;
+                          break;
+                        }
+                      }
+                    }
+
+                    if (! isEmpty) {
+                      std::unique_ptr<ExecutionNode> newNode
+                        (new IndexRangeNode(_plan, 
+                            _plan->nextId(), node->vocbase(), node->collection(), 
+                            node->outVariable(), idx, indexOrCondition, false));
+                      size_t place = node->id();
+                      std::unordered_map<size_t, size_t>::iterator it 
+                           = _changesPlaces.find(place);
+                      if (it == _changesPlaces.end()) {
+                        _changes.emplace_back(std::make_pair(place, std::vector<ExecutionNode*>()));
+                        it = _changesPlaces.emplace(place, _changes.size()-1).first;
+                      }
+                      std::vector<ExecutionNode*>& vec = _changes[it->second].second;
+                      vec.push_back(newNode.release());
+                      // if all goes well, this node will be used, if an 
+                      // exception happens, the destructor will free it
+                    }
                   }
                 }
               }
             }
           }
-          break;
         }
+        break;
       }
+
       return false;
     }
 
-    void buildRangeInfo (AstNode const* node, 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void findVarAndAttr (AstNode const* node, 
                          Variable const*& enumCollVar,
                          std::string& attr) {
-
       if (node->type == NODE_TYPE_REFERENCE) {
         auto x = static_cast<Variable*>(node->getData());
         auto setter = _plan->getVarSetBy(x->id);
@@ -1135,7 +1193,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       }
       
       if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        buildRangeInfo(node->getMember(0), enumCollVar, attr);
+        findVarAndAttr(node->getMember(0), enumCollVar, attr);
 
         if (enumCollVar != nullptr) {
           char const* attributeName = node->getStringValue();
@@ -1144,49 +1202,61 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         }
         return;
       }
-      
+
+      attr.clear();
+      enumCollVar = nullptr;
+      return;
+    }
+
+    RangeInfoMapVec* buildRangeInfo (AstNode const* node, 
+                                     Variable const*& enumCollVar,
+                                     std::string& attr) {
       if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
         auto lhs = node->getMember(0);
         auto rhs = node->getMember(1);
-
+        std::unique_ptr<RangeInfoMap> rim(new RangeInfoMap());
+        
         if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-          buildRangeInfo(rhs, enumCollVar, attr);
+          findVarAndAttr(rhs, enumCollVar, attr);
           if (enumCollVar != nullptr) {
             std::unordered_set<Variable*> varsUsed 
-                = Ast::getReferencedVariables(lhs);
+              = Ast::getReferencedVariables(lhs);
             if (varsUsed.find(const_cast<Variable*>(enumCollVar)) 
                 == varsUsed.end()) {
               // Found a multiple attribute access of a variable and an
               // expression which does not involve that variable:
-              _ranges->insert(enumCollVar->name, 
-                              attr.substr(0, attr.size() - 1), 
-                              RangeInfoBound(lhs, true), 
-                              RangeInfoBound(lhs, true), true);
+              
+              rim->insert(enumCollVar->name, 
+                          attr.substr(0, attr.size() - 1), 
+                          RangeInfoBound(lhs, true), 
+                          RangeInfoBound(lhs, true), 
+                          true);
+
+              enumCollVar = nullptr;
+              attr.clear();
             }
-            enumCollVar = nullptr;
-            attr.clear();
           }
         }
-          
         if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-          buildRangeInfo(lhs, enumCollVar, attr);
+          findVarAndAttr(lhs, enumCollVar, attr);
           if (enumCollVar != nullptr) {
             std::unordered_set<Variable*> varsUsed 
-                = Ast::getReferencedVariables(rhs);
+              = Ast::getReferencedVariables(rhs);
             if (varsUsed.find(const_cast<Variable*>(enumCollVar)) 
                 == varsUsed.end()) {
               // Found a multiple attribute access of a variable and an
               // expression which does not involve that variable:
-              _ranges->insert(enumCollVar->name, 
-                              attr.substr(0, attr.size() - 1), 
-                              RangeInfoBound(rhs, true),
-                              RangeInfoBound(rhs, true), true);
+              rim->insert(enumCollVar->name, 
+                          attr.substr(0, attr.size() - 1), 
+                          RangeInfoBound(rhs, true), 
+                          RangeInfoBound(rhs, true), 
+                          true);
+              enumCollVar = nullptr;
+              attr.clear();
             }
-            enumCollVar = nullptr;
-            attr.clear();
           }
         }
-        return;
+        return new RangeInfoMapVec(rim.release());
       }
 
       if (node->type == NODE_TYPE_OPERATOR_BINARY_LT || 
@@ -1194,6 +1264,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           node->type == NODE_TYPE_OPERATOR_BINARY_LE ||
           node->type == NODE_TYPE_OPERATOR_BINARY_GE) {
       
+        std::unique_ptr<RangeInfoMap> rim(new RangeInfoMap());
         bool include = (node->type == NODE_TYPE_OPERATOR_BINARY_LE ||
                         node->type == NODE_TYPE_OPERATOR_BINARY_GE);
         
@@ -1204,7 +1275,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           // Attribute access on the right:
           // First find out whether there is a multiple attribute access
           // of a variable on the right:
-          buildRangeInfo(rhs, enumCollVar, attr);
+          findVarAndAttr(rhs, enumCollVar, attr);
           if (enumCollVar != nullptr) {
             RangeInfoBound low;
             RangeInfoBound high;
@@ -1217,9 +1288,13 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             else {
               low.assign(lhs, include);
             }
-            _ranges->insert(enumCollVar->name, attr.substr(0, attr.size() - 1), 
-                            low, high, false);
-          
+            
+            rim->insert(enumCollVar->name, 
+                        attr.substr(0, attr.size() - 1), 
+                        low,
+                        high,
+                        false);
+
             enumCollVar = nullptr;
             attr.clear();
           }
@@ -1229,7 +1304,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           // Attribute access on the left:
           // First find out whether there is a multiple attribute access
           // of a variable on the left:
-          buildRangeInfo(lhs, enumCollVar, attr);
+          findVarAndAttr(lhs, enumCollVar, attr);
           if (enumCollVar != nullptr) {
             RangeInfoBound low;
             RangeInfoBound high;
@@ -1242,30 +1317,80 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             else {
               high.assign(rhs, include);
             }
-            _ranges->insert(enumCollVar->name, attr.substr(0, attr.size() - 1), 
-                            low, high, false);
+
+            rim->insert(enumCollVar->name, 
+                        attr.substr(0, attr.size() - 1), 
+                        low,
+                        high,
+                        false);
 
             enumCollVar = nullptr;
             attr.clear();
           }
         }
-
-        return;
+        return new RangeInfoMapVec(rim.release());
       }
       
       if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
-        buildRangeInfo(node->getMember(0), enumCollVar, attr);
-        buildRangeInfo(node->getMember(1), enumCollVar, attr);
+        // distribute AND into OR
+        return andCombineRangeInfoMapVecs(buildRangeInfo(node->getMember(0), enumCollVar, attr),
+                                          buildRangeInfo(node->getMember(1), enumCollVar, attr));
       }
-      /* TODO: or isn't implemented yet.
+
+      if (node->type == NODE_TYPE_OPERATOR_BINARY_IN) {
+        auto lhs = node->getMember(0); // enumCollVar
+        auto rhs = node->getMember(1); // value
+        std::unique_ptr<RangeInfoMapVec> rimv(new RangeInfoMapVec());
+        if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) { 
+          findVarAndAttr(lhs, enumCollVar, attr);
+          if (enumCollVar != nullptr) {
+            std::unordered_set<Variable*> varsUsed 
+              = Ast::getReferencedVariables(rhs);
+            if (varsUsed.find(const_cast<Variable*>(enumCollVar)) 
+                == varsUsed.end()) {
+              // Found a multiple attribute access of a variable and an
+              // expression which does not involve that variable:
+              if (rhs->type == NODE_TYPE_LIST) {
+                for (size_t i = 0; i < rhs->numMembers(); i++) {
+                  RangeInfo ri(enumCollVar->name, 
+                               attr.substr(0, attr.size() - 1), 
+                               RangeInfoBound(rhs->getMember(i), true),
+                               RangeInfoBound(rhs->getMember(i), true), 
+                               true);
+                  rimv->differenceRangeInfo(ri);
+                  if (ri.isValid()) { 
+                    rimv->emplace_back(new RangeInfoMap(ri));
+                  }
+                }
+              } 
+              else { 
+                RangeInfo ri(enumCollVar->name, 
+                             attr.substr(0, attr.size() - 1), 
+                             RangeInfoBound(rhs, true),
+                             RangeInfoBound(rhs, true), 
+                             true);
+                rimv->differenceRangeInfo(ri);
+                if (ri.isValid()) { 
+                  rimv->emplace_back(new RangeInfoMap(ri));
+                }
+              }
+              enumCollVar = nullptr;
+              attr.clear();
+            }
+          }
+        }
+        return rimv.release();
+      }
+
       if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
-        buildRangeInfo(node->getMember(0), enumCollVar, attr);
-        buildRangeInfo(node->getMember(1), enumCollVar, attr);
+        return orCombineRangeInfoMapVecs(buildRangeInfo(node->getMember(0), enumCollVar, attr),
+          buildRangeInfo(node->getMember(1), enumCollVar, attr));
       }
-      */
+
       // default case
       attr.clear();
       enumCollVar = nullptr;
+      return nullptr;
     }
 
     bool enterSubquery (ExecutionNode* super, ExecutionNode* sub) final {
@@ -2943,7 +3068,7 @@ struct OrToInConverter {
   }
 
   bool canConvertExpression (AstNode const* node) {
-    if (finder.find(node, NODE_TYPE_OPERATOR_BINARY_EQ, commonNode, commonName)){
+    if (finder.find(node, NODE_TYPE_OPERATOR_BINARY_EQ, commonNode, commonName)) {
       return canConvertExpressionWalker(node);
     }
     return false;
@@ -2995,7 +3120,6 @@ struct OrToInConverter {
 int triagens::aql::replaceOrWithInRule (Optimizer* opt, 
                                         ExecutionPlan* plan, 
                                         Optimizer::Rule const* rule) {
-  ENTER_BLOCK;
   std::vector<ExecutionNode*> nodes
     = plan->findNodesOfType(EN::FILTER, true);
 
@@ -3054,7 +3178,6 @@ int triagens::aql::replaceOrWithInRule (Optimizer* opt,
   opt->addPlan(plan, rule->level, modified);
 
   return TRI_ERROR_NO_ERROR;
-  LEAVE_BLOCK;
 }
 
 struct RemoveRedundantOr {
@@ -3079,7 +3202,6 @@ struct RemoveRedundantOr {
   }
 
   int isCompatibleBound (AstNodeType type, AstNode const* value) {
-    
     if ((comparison == NODE_TYPE_OPERATOR_BINARY_LE
           || comparison == NODE_TYPE_OPERATOR_BINARY_LT) &&
         (type == NODE_TYPE_OPERATOR_BINARY_LE
@@ -3097,8 +3219,7 @@ struct RemoveRedundantOr {
 
   // returns false if the existing value is better and true if the input value is
   // better
-  bool compareBounds(AstNodeType type, AstNode const* value, int lowhigh) { 
-
+  bool compareBounds (AstNodeType type, AstNode const* value, int lowhigh) { 
     int cmp = CompareAstNodes(bestValue, value);
 
     if (cmp == 0 && (isInclusiveBound(comparison) != isInclusiveBound(type))) {
@@ -3183,9 +3304,6 @@ struct RemoveRedundantOr {
       // get a string representation of the node for comparisons 
       return (node->toString() == commonName);
     } 
-    else if (node->isBoolValue()) {
-      return true;
-    }
 
     return false;
   }
@@ -3194,7 +3312,6 @@ struct RemoveRedundantOr {
 int triagens::aql::removeRedundantOrRule (Optimizer* opt, 
                                           ExecutionPlan* plan, 
                                           Optimizer::Rule const* rule) {
-  ENTER_BLOCK;
   std::vector<ExecutionNode*> nodes
     = plan->findNodesOfType(EN::FILTER, true);
 
@@ -3247,7 +3364,6 @@ int triagens::aql::removeRedundantOrRule (Optimizer* opt,
   opt->addPlan(plan, rule->level, modified);
 
   return TRI_ERROR_NO_ERROR;
-  LEAVE_BLOCK;
 }
 
 // Local Variables:
