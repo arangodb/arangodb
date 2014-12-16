@@ -11,10 +11,11 @@ before_install:
 - sudo apt-get update -qq
 
 install:
+ls -l /usr/bin/
 # g++4.8.1
-- if [ "$CXX" = "g++" ]; then sudo apt-get install -qq g++-4.8; fi
+- if [ "$CXX" = "g++" ]; then sudo apt-get install -qq g++-4.9; fi
 - if [ "$CXX" = "g++" ]; then export CXX="g++-4.8"; fi
-- if [ "$CXX" = "g++" ]; then sudo /bin/bash -e 'cd /usr/bin/; for i in `ls -l |grep -- -4.6 |grep ^l |sed -e "s;.*201[0-9] ;;" -e "s; -.*;;"`; do rm -f $i; ln -s ${i}-4.8 $i; done' ; fi
+- if [ "$CXX" = "g++" ]; then sudo /bin/bash -e 'cd /usr/bin/; for i in `ls -l |grep -- -4.6 |grep ^l |sed -e "s;.*201[0-9] ;;" -e "s; -.*;;"`; do rm -f $i; ln -s ${i}-4.9 $i; done' ; fi
 
 # clang 3.4
 - if [ "$CXX" == "clang++" ]; then sudo apt-get install --allow-unauthenticated -qq clang-3.4; fi
