@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint strict: false, unused: false */
-/*global Backbone, $, window, arangoHelper, templateEngine, Joi, _*/
+/*global Backbone, $, window, arangoHelper, templateEngine, Joi, alert, _*/
 (function() {
   "use strict";
 
@@ -74,11 +74,11 @@
           [
             {
               rule: Joi.string().regex(/^[a-zA-Z0-9]+[\/]/),
-              msg: "No valid github link given."
+              msg: "No valid Github link given."
             },
             {
               rule: Joi.string().required(),
-              msg: "No github link given."
+              msg: "No Github link given."
             }
           ]
       ));
@@ -446,7 +446,7 @@
       } else {
         switch(result.errorNum) {
           case errors.ERROR_APPLICATION_DOWNLOAD_FAILED.code:
-            alert("Unable to download Application from the given repository.");
+            alert("Unable to download application from the given repository.");
             break;
           default:
             alert("Error: " + result.errorNum + ". " + result.errorMessage);
@@ -463,7 +463,7 @@
           "mount-point",
           "Mount",
           "",
-          "The path the App will be mounted. Has to start with /. Is not allowed to start with /_",
+          "The path the app will be mounted. Has to start with /. Is not allowed to start with /_",
           "/my/app",
           true,
           //TODO nochmal schauen
@@ -503,6 +503,7 @@
               rule: Joi.number().integer(),
               msg: "Has to be an integer."
             }];
+            /* falls through */
           default:
             if (check === undefined) {
               check = [{
@@ -531,7 +532,7 @@
         window.modalView.createSuccessButton("Configure", this.mountFoxx.bind(this, config, name, version))
       );
       window.modalView.show(
-        "modalTable.ejs", "Configure Application", buttons, tableContent
+        "modalTable.ejs", "Configure application", buttons, tableContent
       );
 
     },
@@ -599,7 +600,7 @@
         },
         error: function(e, info) {
           if (info.responseText.indexOf("already used by") > -1) {
-            alert("Mount-Path already in use.");
+            alert("Mount path already in use.");
           } else if (info.responseText.indexOf("app is not defined") > -1) {
             //temp ignore this message, fix needs to be server-side
             window.modalView.hide();
@@ -625,7 +626,7 @@
       ];
       window.modalView.show(
         "modalDownloadFoxx.ejs",
-        "Download Application",
+        "Download application",
         buttons
       );
     },
@@ -721,7 +722,7 @@
       );
       window.modalView.show(
         "modalApplicationMount.ejs",
-        "Install Application",
+        "Install application",
         buttons,
         undefined,
         undefined,
