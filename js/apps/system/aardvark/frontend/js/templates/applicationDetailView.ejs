@@ -1,0 +1,70 @@
+<script id="applicationDetailView.ejs" type="text/template">
+  <div class="applicationDetailView">
+    <div class="headerBar">
+      <div class="breadcrumb">
+        <a class="activeBread" href="#applications">Applications</a>
+        &gt;
+        <a class="disabledBread">
+          <%= attributes.mount %>
+        </a>
+      </div>
+    </div>
+    <section>
+      <div class="header">
+        <div class="header_left">
+          <img src="foxxes/thumbnail/<%=attributes.app %>" class="icon" alt="Icon for App">
+          <input type="button" class="open button-success" disabled="true" value="Open">
+          <input type="button" class="delete button-danger" disabled="true" value="Delete">
+        </div>
+        <div class="header_right">
+          <h3>
+            <%= attributes.name %>
+            <span class="license"><%= attributes.license %></span>
+            <% if (attributes.development) { %>
+              <span class="version">devel</span>
+            <% } else { %>
+              <span class="version"><%= attributes.app.split(':').pop() %></span>
+            <% } %>
+          </h3>
+          <p class="description"><%= attributes.description %></p>
+        </div>
+      </div>
+      <div class="swagger">
+        <iframe src="http://localhost:8529/_db/_system/_admin/aardvark/standalone.html#application/documentation/<%= attributes._key %>" name="Documentation"></iframe>
+      </div>
+    </section>
+    <aside>
+      <dl>
+        <dt>Author</dt>
+        <dd><%= attributes.author %></dd>
+        <dt>Contributors</dt>
+        <dd>
+          <% if (attributes.contributors && attributes.contributors.length > 0) { %>
+          <ul>
+          <% _.each(attributes.contributors, function (contributor) { %>
+            <li><a href="mailto:<%= contributor.email %>"><%= contributor.name %></a></li>
+          <% }); %>
+          </ul>
+          <% } else { %>
+          No contributors
+          <% } %>
+        </dd>
+        <dt>Links</dt>
+        <dd>
+          <ul>
+            <% if (!attributes.development) { %>
+              <li>
+                <a href="http://localhost:8529/_db/_system/_admin/aardvark/swagger/<%= encodeURIComponent(encodeURIComponent(attributes.mount)) %>" target="_blank">
+                  Download API Documentation
+                </a>
+              </li>
+            <% } %>
+            <% if (attributes.repository && attributes.repository.type == 'git') { %>
+              <li><a href="<%= attributes.repository.url %>" target="_blank">Git Repository</a></li>
+            <% } %>
+          </ul>
+        </dd>
+      </dl>
+    </aside>
+  </div>
+</script>

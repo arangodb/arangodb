@@ -2,7 +2,7 @@ language: cpp
 compiler: g++
 
 before_install:
-# g++4.8.1
+# g++4.9.2
 - if [ "$CXX" == "g++" ]; then sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test; fi
 
 # clang 3.4
@@ -11,9 +11,11 @@ before_install:
 - sudo apt-get update -qq
 
 install:
-# g++4.8.1
-- if [ "$CXX" = "g++" ]; then sudo apt-get install -qq g++-4.8; fi
-- if [ "$CXX" = "g++" ]; then export CXX="g++-4.8"; fi
+# g++4.9.2
+- if [ "$CXX" = "g++" ]; then sudo apt-get install -qq g++-4.9; fi
+- if [ "$CXX" = "g++" ]; then export CXX="g++-4.9"; fi
+- if [ "$CXX" = "g++" ]; then sudo /bin/bash -c 'cd /usr/bin/; for i in `ls -l |grep -- -4.8 |grep ^l |sed -e "s; ->.*;;" -e  "s;.*[0-9] ;;" |grep -v -- "-4."`; do echo rm -f $i; rm -f $i; ln -s ${i}-4.9 $i; echo ln -s ${i}-4.9 $i; done' ; fi
+- ls -l /usr/bin/
 
 # clang 3.4
 - if [ "$CXX" == "clang++" ]; then sudo apt-get install --allow-unauthenticated -qq clang-3.4; fi

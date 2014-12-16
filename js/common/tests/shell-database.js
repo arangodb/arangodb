@@ -577,7 +577,7 @@ function DatabaseSuite () {
       }
       catch (err) {
         // cannot call method ... of undefined
-        assertMatch(/^Cannot call method.*of undefined/, err.message);
+        assertMatch(/^Cannot read property 'save' of undefined/, err.message);
       }
     },
 
@@ -610,7 +610,7 @@ function DatabaseSuite () {
       }
       catch (err) {
         // cannot call method ... of undefined
-        assertMatch(/^Cannot call method.*of undefined/, err.message);
+        assertMatch(/^Cannot read property 'save' of undefined/, err.message);
       }
 
       db._create(name);

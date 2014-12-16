@@ -111,6 +111,7 @@ function processDirectory (source) {
   source.removeFile = true;
 
   fs.zipFile(tempFile, location, files);
+  return tempFile;
 }
 
 
@@ -345,9 +346,163 @@ function listJson (showPrefix) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the fishbowl repository
+////////////////////////////////////////////////////////////////////////////////
+
+function getFishbowlUrl () {
+  'use strict';
+
+  return "arangodb/foxx-apps";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief updates the fishbowl from a zip archive
+////////////////////////////////////////////////////////////////////////////////
+
+function updateFishbowlFromZip (filename) {
+  'use strict';
+
+  var i;
+  var tempPath = fs.getTempPath();
+  var toSave = [ ];
+
+  try {
+    fs.makeDirectoryRecursive(tempPath);
+    var root = fs.join(tempPath, "foxx-apps-master/applications");
+
+    // remove any previous files in the directory
+    fs.listTree(root).forEach(function (file) {
+      if (file.match(/\.json$/)) {
+        try {
+          fs.remove(fs.join(root, file));
+        }
+        catch (ignore) {
+        }
+      }
+    });
+
+    fs.unzipFile(filename, tempPath, false, true);
+
+    if (! fs.exists(root)) {
+      throw new Error("'applications' directory is missing in foxx-apps-master, giving up");
+    }
+
+    var m = fs.listTree(root);
+    var reSub = /(.*)\.json$/;
+    var f, match, app, desc;
+
+    for (i = 0;  i < m.length;  ++i) {
+      f = m[i];
+      match = reSub.exec(f);
+
+      if (match === null) {
+        continue;
+      }
+
+      app = fs.join(root, f);
+
+      try {
+        desc = JSON.parse(fs.read(app));
+      }
+      catch (err1) {
+        arangodb.printf("Cannot parse description for app '" + f + "': %s\n", String(err1));
+        continue;
+      }
+
+      desc._key = match[1];
+
+      if (! desc.hasOwnProperty("name")) {
+        desc.name = match[1];
+      }
+
+      toSave.push(desc);
+    }
+
+    if (toSave.length > 0) {
+      var fishbowl = getFishbowlStorage();
+
+      db._executeTransaction({
+        collections: {
+          write: fishbowl.name()
+        },
+        action: function (params) {
+          var c = require("internal").db._collection(params.collection);
+          c.truncate();
+
+          params.apps.forEach(function(app) {
+            c.save(app);
+          });
+        },
+        params: {
+          apps: toSave,
+          collection: fishbowl.name()
+        }
+      });
+
+      arangodb.printf("Updated local repository information with %d application(s)\n",
+                      toSave.length);
+    }
+  }
+  catch (err) {
+    if (tempPath !== undefined && tempPath !== "") {
+      try {
+        fs.removeDirectoryRecursive(tempPath);
+      }
+      catch (ignore) {
+      }
+    }
+
+    throw err;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief downloads the fishbowl repository
+////////////////////////////////////////////////////////////////////////////////
+
+function updateFishbowl () {
+  'use strict';
+
+  var url = buildGithubUrl(getFishbowlUrl());
+  var filename = fs.getTempFile("downloads", false);
+  var path = fs.getTempFile("zip", false);
+
+  try {
+    var result = download(url, "", {
+      method: "get",
+      followRedirects: true,
+      timeout: 30
+    }, filename);
+
+    if (result.code < 200 || result.code > 299) {
+      throwDownloadError("Github download from '" + url + "' failed with error code " + result.code);
+    }
+
+    updateFishbowlFromZip(filename);
+
+    filename = undefined;
+  }
+  catch (err) {
+    if (filename !== undefined && fs.exists(filename)) {
+      fs.remove(filename);
+    }
+
+    try {
+      fs.removeDirectoryRecursive(path);
+    }
+    catch (ignore) {
+    }
+
+    throw err;
+  }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Exports
 ////////////////////////////////////////////////////////////////////////////////
 
+exports.updateFishbowl = updateFishbowl;
 exports.listJson = listJson;
 exports.getFishbowlStorage = getFishbowlStorage;
 exports.availableJson = availableJson;

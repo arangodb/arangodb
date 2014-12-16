@@ -958,7 +958,7 @@ void TRI_CreateExternalProcess (const char* executable,
 TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
                                                 bool wait) {
   TRI_external_status_t status;
-  TRI_external_t* external;
+  TRI_external_t* external = nullptr;  // Just to please the compiler
   size_t i;
   
   TRI_LockMutex(&ExternalProcessesLock);
@@ -1193,7 +1193,7 @@ static bool ourKillProcessPID (DWORD pid) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_KillExternalProcess (TRI_external_id_t pid) {
-  TRI_external_t* external;
+  TRI_external_t* external = nullptr;  // just to please the compiler
   size_t i;
   bool ok = true;
 

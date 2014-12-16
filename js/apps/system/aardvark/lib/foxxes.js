@@ -208,7 +208,7 @@ exports.Foxxes = function () {
       }
     }
 
-    if (typeof found === "undefined") {
+    if (found === "undefined") {
       fs.removeDirectoryRecursive(path);
       throw "Cannot find manifest file in zip file";
     }
@@ -229,7 +229,8 @@ exports.Foxxes = function () {
     var result = {
       name : manifest.name,
       version: manifest.version,
-      filename: absolutePath.substr(fs.getTempPath().length + 1)
+      filename: absolutePath.substr(fs.getTempPath().length + 1),
+      configuration: manifest.configuration || {}
     };
 
     fs.removeDirectoryRecursive(path);

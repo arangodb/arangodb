@@ -57,6 +57,10 @@
     }
   }
 
+  input[type='file'] {
+    line-height: 17px;
+  }
+
   th {
     %cell-centered {
       text-align: center;

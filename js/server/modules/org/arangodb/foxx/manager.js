@@ -29,8 +29,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var arangodb = require("org/arangodb");
-var ArangoError = arangodb.ArangoError;
-
 var console = require("console");
 var fs = require("fs");
 var utils = require("org/arangodb/foxx/manager-utils");
@@ -665,7 +663,10 @@ function mountAalApp (app, mount, options) {
     app: app._id,
     name: app._name,
     description: app._manifest.description,
+    repository: app._manifest.repository,
+    license: app._manifest.license,
     author: app._manifest.author,
+    contributors: app._manifest.contributors,
     mount: mount,
     active: true,
     error: false,
@@ -1595,6 +1596,8 @@ exports.developmentRoutes = function () {
           app: app._id,
           name: app._name,
           description: app._manifest.description,
+          repository: app._manifest.repository,
+          license: app._manifest.license,
           author: app._manifest.author,
           mount: mount,
           active: true,
@@ -1682,10 +1685,7 @@ exports.fetchFromGithub = function (url, name, version) {
 
   if (fs.exists(path)) {
     fs.remove(realFile);
-    var err = new ArangoError();
-    err.errorNum = arangodb.errors.ERROR_APP_ALREADY_EXISTS.code;
-    err.errorMessage = arangodb.errors.ERROR_APP_ALREADY_EXISTS.message;
-    throw err;
+    return "app:" + source.name + ":" + source.version;
   }
 
   fs.makeDirectoryRecursive(path);
@@ -1698,6 +1698,12 @@ exports.fetchFromGithub = function (url, name, version) {
 
   return "app:" + source.name + ":" + source.version;
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief updates the repository
+////////////////////////////////////////////////////////////////////////////////
+
+exports.update = utils.updateFishbowl;
 
 ////////////////////////////////////////////////////////////////////////////////
 ///// @brief returns all available FOXX applications

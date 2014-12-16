@@ -307,7 +307,6 @@
         buttons,
         tableContent
       );
-
     }
 
   });

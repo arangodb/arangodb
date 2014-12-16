@@ -681,7 +681,7 @@ SHELL_CLIENT_ONLY = \
 	       @top_srcdir@/js/client/tests/shell-fm.js \
 	       @top_srcdir@/js/client/tests/shell-client.js
 
-SHELL_CLIENT = $(SHELL_COMMON)
+SHELL_CLIENT = $(SHELL_COMMON) $(SHELL_CLIENT_ONLY)
 
 .PHONY: unittests-shell-client
 UNITTESTS_CLIENT = $(addprefix --javascript.unit-tests ,$(SHELL_CLIENT))
