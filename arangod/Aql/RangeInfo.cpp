@@ -73,6 +73,8 @@ using Json = triagens::basics::Json;
 static int CompareRangeInfoBound (RangeInfoBound const& left, 
                                   RangeInfoBound const& right, 
                                   int lowhigh) {
+  TRI_ASSERT(lowhigh == -1 || lowhigh == 1);
+
   if (! left.isDefined()) {
     return (right.isDefined() ? 1 : 0);
   } 
@@ -274,13 +276,15 @@ RangeInfoMap::RangeInfoMap (std::string const& var,
                             RangeInfoBound low, 
                             RangeInfoBound high,
                             bool equality) {
-    RangeInfoMap(RangeInfo(var, name, low, high, equality));
+  RangeInfoMap(RangeInfo(var, name, low, high, equality));
 }
 
-RangeInfoMap::RangeInfoMap (RangeInfo ri) : _ranges() {
-    std::unordered_map<std::string, RangeInfo> map;
-    map.emplace(make_pair(ri._attr, ri));
-    _ranges.emplace(std::make_pair(ri._var, map));
+RangeInfoMap::RangeInfoMap (RangeInfo ri) : 
+  _ranges() {
+
+  std::unordered_map<std::string, RangeInfo> map;
+  map.emplace(std::make_pair(ri._attr, ri));
+  _ranges.emplace(std::make_pair(ri._var, map));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -301,14 +305,14 @@ void RangeInfoMap::insert (std::string const& var,
 /// and attribute <name>, and otherwise intersection with existing range
 ////////////////////////////////////////////////////////////////////////////////
 
-void RangeInfoMap::insert (RangeInfo newRange) { 
+void RangeInfoMap::insert (RangeInfo const& newRange) { 
   TRI_ASSERT(newRange.isDefined());
 
   std::unordered_map<std::string, RangeInfo>* oldMap = find(newRange._var);
 
   if (oldMap == nullptr) {
     std::unordered_map<std::string, RangeInfo> newMap;
-    newMap.emplace(make_pair(newRange._attr, newRange));
+    newMap.emplace(std::make_pair(newRange._attr, newRange));
     _ranges.emplace(std::make_pair(newRange._var, newMap));
     return;
   }
@@ -316,7 +320,7 @@ void RangeInfoMap::insert (RangeInfo newRange) {
   auto it = oldMap->find(newRange._attr); 
   
   if (it == oldMap->end()) {
-    oldMap->emplace(make_pair(newRange._attr, newRange));
+    oldMap->emplace(std::make_pair(newRange._attr, newRange));
     return;
   }
 
@@ -362,8 +366,7 @@ RangeInfoMap* RangeInfoMap::clone () {
 /// the variable <var> in the RIM
 ////////////////////////////////////////////////////////////////////////////////
 
-void RangeInfoMap::eraseEmptyOrUndefined(std::string const& var) {
-  
+void RangeInfoMap::eraseEmptyOrUndefined (std::string const& var) {
   std::unordered_map<std::string, RangeInfo>* map = find(var);
   if (map != nullptr) {
     for (auto it = map->begin(); it != map->end(); /* no hoisting */ ) {
@@ -385,7 +388,6 @@ void RangeInfoMap::eraseEmptyOrUndefined(std::string const& var) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RangeInfoMap::isValid (std::string const& var) {
-
   std::unordered_map<std::string, RangeInfo>* map = find(var);
   if (map != nullptr) {
     for(auto x: *map) {
@@ -430,7 +432,7 @@ std::unordered_set<std::string> RangeInfoMap::variables () {
 /// RangeInfoMap containing a single RangeInfo.
 ////////////////////////////////////////////////////////////////////////////////
 
-RangeInfoMapVec::RangeInfoMapVec  (RangeInfoMap* rim) :
+RangeInfoMapVec::RangeInfoMapVec (RangeInfoMap* rim) :
   _rangeInfoMapVec() {
   
   _rangeInfoMapVec.emplace_back(rim);
@@ -460,7 +462,7 @@ void RangeInfoMapVec::emplace_back (RangeInfoMap* rim) {
 /// the variable <var> in every RangeInfoMap in the vector 
 ////////////////////////////////////////////////////////////////////////////////
 
-void RangeInfoMapVec::eraseEmptyOrUndefined(std::string const& var) {
+void RangeInfoMapVec::eraseEmptyOrUndefined (std::string const& var) {
   for (RangeInfoMap* x: _rangeInfoMapVec) {
     x->eraseEmptyOrUndefined(var);
   }
@@ -483,7 +485,7 @@ std::unordered_map<std::string, RangeInfo>* RangeInfoMapVec::find (
 /// @brief isMapped: returns true if <var> is in every RIM in the vector
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RangeInfoMapVec::isMapped(std::string const& var) {
+bool RangeInfoMapVec::isMapped (std::string const& var) const {
   for (size_t i = 0; i < _rangeInfoMapVec.size(); i++) {
     if (_rangeInfoMapVec[i]->find(var) == nullptr) {
       return false;
@@ -497,7 +499,7 @@ bool RangeInfoMapVec::isMapped(std::string const& var) {
 /// that contain valid RangeInfoMap for the variable named var
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<size_t> RangeInfoMapVec::validPositions(std::string const& var) {
+std::vector<size_t> RangeInfoMapVec::validPositions (std::string const& var) {
   std::vector<size_t> valid;
 
   for (size_t i = 0; i < _rangeInfoMapVec.size(); i++) {
@@ -530,7 +532,6 @@ std::unordered_set<std::string> RangeInfoMapVec::attributes (std::string const& 
 ////////////////////////////////////////////////////////////////////////////////
 
 void RangeInfoMapVec::differenceRangeInfo (RangeInfo& newRi) {
-  
   for (auto rim: _rangeInfoMapVec) {
     RangeInfo* oldRi = rim->find(newRi._var, newRi._attr);
     if (oldRi != nullptr) {
@@ -555,7 +556,6 @@ void RangeInfoMapVec::differenceRangeInfo (RangeInfo& newRi) {
 
 RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs, 
                                                            RangeInfoMapVec* rhs) {
- 
   if (lhs == nullptr) {
     return rhs;
   }
@@ -573,7 +573,7 @@ RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs,
     delete rhs;
     return lhs;
   }
-  
+
   //avoid inserting overlapping conditions
   for (size_t i = 0; i < rhs->size(); i++) {
     auto rim = new RangeInfoMap();
@@ -606,8 +606,8 @@ RangeInfoMapVec* triagens::aql::orCombineRangeInfoMapVecs (RangeInfoMapVec* lhs,
 /// <lhs> and delete the <rhs>
 ////////////////////////////////////////////////////////////////////////////////
 
-RangeInfoMap* triagens::aql::andCombineRangeInfoMaps (RangeInfoMap* lhs, RangeInfoMap* rhs) {
-
+RangeInfoMap* triagens::aql::andCombineRangeInfoMaps (RangeInfoMap* lhs, 
+                                                      RangeInfoMap* rhs) {
   for (auto x: rhs->_ranges) {
     for (auto y: x.second) {
       lhs->insert(y.second.clone());
@@ -670,18 +670,25 @@ RangeInfoMapVec* triagens::aql::andCombineRangeInfoMapVecs (RangeInfoMapVec* lhs
 // lhs. Only for range infos with the same variable and attribute
 ////////////////////////////////////////////////////////////////////////////////
 
-static int containmentRangeInfos (RangeInfo const& lhs, RangeInfo const& rhs) {
+static int ContainmentRangeInfos (RangeInfo const& lhs, 
+                                  RangeInfo const& rhs) {
   TRI_ASSERT(lhs._var == rhs._var);
   TRI_ASSERT(lhs._attr == rhs._attr);
-  
+ 
   int LoLo = CompareRangeInfoBound(lhs._lowConst, rhs._lowConst, -1); 
   // -1 if lhs is tighter than rhs, 1 if rhs tighter than lhs
   int HiHi = CompareRangeInfoBound(lhs._highConst, rhs._highConst, 1); 
   // -1 if lhs is tighter than rhs, 1 if rhs tighter than lhs
+
   // 0 if equal
   if (LoLo == HiHi) {
     return (LoLo == 0 ? 1 : LoLo);
   }
+  else if (LoLo == 0 || HiHi == 0) {
+    return (LoLo == 0 ? HiHi : LoLo);
+  }
+
+  // default: not contained
   return 0;
 }
 
@@ -701,7 +708,7 @@ bool triagens::aql::areDisjointRangeInfos (RangeInfo const& lhs,
     HiLo = TRI_CompareValuesJson(lhs._highConst.bound().json(), 
         rhs._lowConst.bound().json());
     if ((HiLo == -1) ||
-      (HiLo == 0 && (! lhs._highConst.inclusive() ||! rhs._lowConst.inclusive()))) {
+      (HiLo == 0 && (! lhs._highConst.inclusive() || ! rhs._lowConst.inclusive()))) {
       return true;
     }
   } 
@@ -713,7 +720,7 @@ bool triagens::aql::areDisjointRangeInfos (RangeInfo const& lhs,
     LoHi = TRI_CompareValuesJson(lhs._lowConst.bound().json(), 
         rhs._highConst.bound().json());
     return (LoHi == 1) || 
-      (LoHi == 0 && (! lhs._lowConst.inclusive() ||! rhs._highConst.inclusive()));
+      (LoHi == 0 && (! lhs._lowConst.inclusive() || ! rhs._highConst.inclusive()));
   } 
   // in this case, either:
   // a) lhs.hi defined and rhs.lo undefined; or
@@ -742,7 +749,8 @@ bool triagens::aql::areDisjointRangeInfos (RangeInfo const& lhs,
 /// Only for range infos with the same variable and attribute
 ////////////////////////////////////////////////////////////////////////////////
 
-void triagens::aql::differenceRangeInfos (RangeInfo& lhs, RangeInfo& rhs) {
+void triagens::aql::differenceRangeInfos (RangeInfo& lhs, 
+                                          RangeInfo& rhs) {
   TRI_ASSERT(lhs._var == lhs._var);
   TRI_ASSERT(lhs._attr == rhs._attr);
   
@@ -751,7 +759,7 @@ void triagens::aql::differenceRangeInfos (RangeInfo& lhs, RangeInfo& rhs) {
   }
 
   if (! areDisjointRangeInfos(lhs, rhs)) {
-    int contained = containmentRangeInfos(lhs, rhs);
+    int contained = ContainmentRangeInfos(lhs, rhs);
     if (contained == -1) { 
       // lhs is a subset of rhs, disregard lhs
       // unassign _lowConst and _highConst
@@ -800,8 +808,8 @@ void triagens::aql::differenceRangeInfos (RangeInfo& lhs, RangeInfo& rhs) {
 /// disjoint sets, and false otherwise.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool triagens::aql::areDisjointIndexAndConditions (IndexAndCondition& and1, IndexAndCondition& and2) {
-  
+bool triagens::aql::areDisjointIndexAndConditions (IndexAndCondition& and1, 
+                                                   IndexAndCondition& and2) {
   for (auto ri1: and1) {
     for (auto ri2: and2) {
       if (ri2._attr == ri1._attr) {
@@ -811,6 +819,7 @@ bool triagens::aql::areDisjointIndexAndConditions (IndexAndCondition& and1, Inde
       }
     }
   }
+  
   return false;
 }
 
@@ -819,13 +828,13 @@ bool triagens::aql::areDisjointIndexAndConditions (IndexAndCondition& and1, Inde
 /// contained in the second, and false otherwise.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool triagens::aql::isContainedIndexAndConditions (IndexAndCondition& and1, IndexAndCondition& and2) {
-  
+bool triagens::aql::isContainedIndexAndConditions (IndexAndCondition& and1, 
+                                                   IndexAndCondition& and2) {
   for (auto ri1: and1) {
     bool contained = false;
     for (auto ri2: and2) {
       if (ri2._attr == ri1._attr) {
-        if (containmentRangeInfos(ri2, ri1) == 1){
+        if (ContainmentRangeInfos(ri2, ri1) == 1) {
           contained = true;
           break;
         }
@@ -845,8 +854,8 @@ bool triagens::aql::isContainedIndexAndConditions (IndexAndCondition& and1, Inde
 /// is the same as if the function was never called. 
 ////////////////////////////////////////////////////////////////////////////////
 
-void triagens::aql::differenceIndexAnd (IndexAndCondition& and1, IndexAndCondition& and2) {
-
+void triagens::aql::differenceIndexAnd (IndexAndCondition& and1, 
+                                        IndexAndCondition& and2) {
   if (and1.empty() || and2.empty()) {
     return;
   }
@@ -864,7 +873,7 @@ void triagens::aql::differenceIndexAnd (IndexAndCondition& and1, IndexAndConditi
       // and1 and and2 have non-empty intersection
       for (auto& ri1: and1) {
         for (auto& ri2: and2) {
-          if (ri2._attr == ri1._attr && containmentRangeInfos(ri1, ri2) == 0){
+          if (ri2._attr == ri1._attr && ContainmentRangeInfos(ri1, ri2) == 0) {
             int LoLo = CompareRangeInfoBound(ri1._lowConst, ri2._lowConst, -1);
             if (LoLo == 1) { // replace low bound of new with high bound of old
               ri2._lowConst.assign(ri1._highConst);
@@ -887,7 +896,6 @@ void triagens::aql::differenceIndexAnd (IndexAndCondition& and1, IndexAndConditi
 ////////////////////////////////////////////////////////////////////////////////
 
 void triagens::aql::removeOverlapsIndexOr (IndexOrCondition& ioc) {
-  
   // remove invalid  
   for (auto it = ioc.begin(); it < ioc.end(); ) {
     bool invalid = false;
@@ -908,6 +916,7 @@ void triagens::aql::removeOverlapsIndexOr (IndexOrCondition& ioc) {
       differenceIndexAnd(ioc.at(j), ioc.at(i));
     }
   }
+
   // remove empty 
   for (auto it = ioc.begin(); it < ioc.end(); ) {
     if (it->empty()) {
