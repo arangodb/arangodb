@@ -136,6 +136,12 @@ Repository = function (collection, opts) {
 // -----------------------------------------------------------------------------
 
 _.extend(Repository.prototype, {
+
+  _buildId: function(key) {
+    'use strict';
+    return this.collection.name() + '/' + key;
+  },
+
 // -----------------------------------------------------------------------------
 // --SUBSECTION--                                                 Adding Entries
 // -----------------------------------------------------------------------------
@@ -188,6 +194,27 @@ _.extend(Repository.prototype, {
     'use strict';
     var data = this.collection.document(id);
     return (new this.model(data));
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_repository_byKey
+/// `FoxxRepository#byKey(key)`
+///
+/// Returns the model for the given key. This is a convenience method, it simply
+/// pre-pends the collection's name and re-uses `byId`.
+///
+/// @EXAMPLES
+///
+/// ```javascript
+/// var myModel = repository.byKey('12411');
+/// myModel.get('name');
+/// ```
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+  byKey: function (key) {
+    'use strict';
+    var id = this._buildId(key);
+    return this.byId(id);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -342,6 +369,26 @@ _.extend(Repository.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_repository_removeByKey
+/// `FoxxRepository#removeByKey(key)`
+///
+/// Remove the document with the given Key. This is a convenience method, it simply
+/// pre-pends the collection's name and re-uses `removeById`.
+///
+/// @EXAMPLES
+///
+/// ```javascript
+/// repository.removeByKey('12121');
+/// ```
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+  removeByKey: function (key) {
+    'use strict';
+    var id = this._buildId(key);
+    return this.removeById(id);
+  },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_removeByExample
 /// `FoxxRepository#removeByExample(example)`
 ///
@@ -412,6 +459,29 @@ _.extend(Repository.prototype, {
       return data;
     }
     return this.collection.replace(id, data);
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_repository_replaceByKey
+/// `FoxxRepository#replaceByKey(key, object)`
+///
+/// Find the item in the database by the given Key and replace it with the
+/// given object's attributes. This is a convenience method, it simply
+/// pre-pends the collection's name and re-uses `replaceById`.
+///
+/// If the object is a model, updates the model's revision and returns the model.
+///
+/// @EXAMPLES
+///
+/// ```javascript
+/// repository.replaceByKey('123345', myNewModel);
+/// ```
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+  replaceByKey: function (key, data) {
+    'use strict';
+    var id = this._buildId(key);
+    return this.replaceById(id, data);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -488,6 +558,29 @@ _.extend(Repository.prototype, {
       return data;
     }
     return this.collection.update(id, data);
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_repository_updateByKey
+/// `FoxxRepository#updateByKey(key, object)`
+///
+/// Find an item by Key and update it with the attributes in the provided object.
+/// This is a convenience method, it simply pre-pends the collection's name and
+/// re-uses `updateById`.
+///
+/// If the object is a model, updates the model's revision and returns the model.
+///
+/// @EXAMPLES
+///
+/// ```javascript
+/// repository.updateByKey('12131', { newAttribute: 'awesome' });
+/// ```
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+  updateByKey: function (key, data) {
+    'use strict';
+    var id = this._buildId(key);
+    return this.updateById(id, data);
   },
 
 ////////////////////////////////////////////////////////////////////////////////

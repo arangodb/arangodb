@@ -132,6 +132,8 @@ var FulltextRepository = Foxx.Repository.extend({
 
 @startDocuBlock JSF_foxx_repository_byId
 
+@startDocuBlock JSF_foxx_repository_byKey
+
 @startDocuBlock JSF_foxx_repository_byExample
 
 @startDocuBlock JSF_foxx_repository_firstExample
@@ -146,6 +148,8 @@ var FulltextRepository = Foxx.Repository.extend({
 
 @startDocuBlock JSF_foxx_repository_removeById
 
+@startDocuBlock JSF_foxx_repository_removeByKey
+
 @startDocuBlock JSF_foxx_repository_removeByExample
 
 !SUBSECTION Replacing entries in the repository
@@ -154,11 +158,15 @@ var FulltextRepository = Foxx.Repository.extend({
 
 @startDocuBlock JSF_foxx_repository_replaceById
 
+@startDocuBlock JSF_foxx_repository_replaceByKey
+
 @startDocuBlock JSF_foxx_repository_replaceByExample
 
 !SUBSECTION Updating entries in the repository
 
 @startDocuBlock JSF_foxx_repository_updateById
+
+@startDocuBlock JSF_foxx_repository_updateByKey
 
 @startDocuBlock JSF_foxx_repository_updateByExample
 
