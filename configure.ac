@@ -182,6 +182,16 @@ dnl --SECTION--                                               EXTERNAL LIBRARIES
 dnl ============================================================================
 
 
+AC_MSG_CHECKING([for clock_gettime in libc])
+AC_TRY_LINK([ #include <time.h> ], [struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);], [
+  have_clock_gettime=yes
+  AC_MSG_RESULT([yes])
+], [
+  LDFLAGS="${LDFLAGS} -lrt"
+  AC_MSG_RESULT([no])
+])
+
+
 dnl ----------------------------------------------------------------------------
 dnl MATH
 dnl ----------------------------------------------------------------------------
