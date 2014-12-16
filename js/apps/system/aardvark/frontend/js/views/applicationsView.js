@@ -12,6 +12,7 @@
       return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
     }).join(" ");
   };
+  var errors = require("internal").errors;
 
   window.ApplicationsView = Backbone.View.extend({
     el: '#content',
@@ -444,8 +445,8 @@
         this.showConfigureDialog(result.configuration, result.name, result.version);
       } else {
         switch(result.errorNum) {
-          case 1752:
-            alert("Unable to download Application from the given repository");
+          case errors.ERROR_APPLICATION_DOWNLOAD_FAILED.code:
+            alert("Unable to download Application from the given repository.");
             break;
           default:
             alert("Error: " + result.errorNum + ". " + result.errorMessage);
