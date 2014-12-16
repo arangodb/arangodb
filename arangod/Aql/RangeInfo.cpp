@@ -33,13 +33,13 @@ using namespace triagens::basics;
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
 
-//#if 0
+#if 0
 #define ENTER_BLOCK try { (void) 0;
 #define LEAVE_BLOCK } catch (...) { std::cout << "caught an exception in " << __FUNCTION__ << ", " << __FILE__ << ":" << __LINE__ << "!\n"; throw; }
-//#else
-//#define ENTER_BLOCK
-//#define LEAVE_BLOCK
-//#endif
+#else
+#define ENTER_BLOCK
+#define LEAVE_BLOCK
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3-way comparison of the tightness of upper or lower constant
