@@ -58,6 +58,17 @@ var API = "/_api/edges";
 /// Returns the list of edges starting or ending in the vertex identified by
 /// *vertex-handle*.
 ///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// is returned if the edge collection was found and edges were retrieved.
+///
+/// @RESTRETURNCODE{400}
+/// is returned if the request contains invalid parameters.
+///
+/// @RESTRETURNCODE{404}
+/// is returned if the edge collection was not found.
+///
 /// @EXAMPLES
 ///
 /// Any direction
