@@ -48,7 +48,6 @@
           result = data;
         },
         error: function(data) {
-          console.log(data);
           result = {
             error: true 
           };

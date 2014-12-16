@@ -29,8 +29,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var arangodb = require("org/arangodb");
-var ArangoError = arangodb.ArangoError;
-
 var console = require("console");
 var fs = require("fs");
 var utils = require("org/arangodb/foxx/manager-utils");
