@@ -143,13 +143,16 @@ _.extend(Repository.prototype, {
 /// @startDocuBlock JSF_foxx_repository_byId
 /// `FoxxRepository#byId(id)`
 ///
-/// Returns the model for the given ID.
+/// Returns the model for the given ID ("collection/key") or "key".
 ///
 /// @EXAMPLES
 ///
 /// ```javascript
-/// var myModel = repository.byId('test/12411');
-/// myModel.get('name');
+/// var byIdModel = repository.byId('test/12411');
+/// byIdModel.get('name');
+///
+/// var byKeyModel = repository.byId('12412');
+/// byKeyModel.get('name');
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -270,13 +273,14 @@ _.extend(Repository.prototype, {
 /// @startDocuBlock JSF_foxx_repository_removeById
 /// `FoxxRepository#removeById(id)`
 ///
-/// Remove the document with the given ID.
-/// Expects an ID of an existing document.
+/// Remove the document with the given ID ("collection/key") or "key".
+/// Expects an ID or key of an existing document.
 ///
 /// @EXAMPLES
 ///
 /// ```javascript
 /// repository.removeById('test/12121');
+/// repository.removeById('12122');
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -336,8 +340,8 @@ _.extend(Repository.prototype, {
 /// @startDocuBlock JSF_foxx_repository_replaceById
 /// `FoxxRepository#replaceById(id, object)`
 ///
-/// Find the item in the database by the given ID and replace it with the
-/// given object's attributes.
+/// Find the item in the database by the given ID  ("collection/key") or "key"
+/// and replace it with the given object's attributes.
 ///
 /// If the object is a model, updates the model's revision and returns the model.
 ///
@@ -345,6 +349,7 @@ _.extend(Repository.prototype, {
 ///
 /// ```javascript
 /// repository.replaceById('test/123345', myNewModel);
+/// repository.replaceById('123346', myNewModel);
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -409,7 +414,8 @@ _.extend(Repository.prototype, {
 /// @startDocuBlock JSF_foxx_repository_updateById
 /// `FoxxRepository#updateById(id, object)`
 ///
-/// Find an item by ID and update it with the attributes in the provided object.
+/// Find an item by ID ("collection/key") or "key" and update it with the
+/// attributes in the provided object.
 ///
 /// If the object is a model, updates the model's revision and returns the model.
 ///
@@ -417,6 +423,7 @@ _.extend(Repository.prototype, {
 ///
 /// ```javascript
 /// repository.updateById('test/12131', { newAttribute: 'awesome' });
+/// repository.updateById('12132', { newAttribute: 'awesomer' });
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
