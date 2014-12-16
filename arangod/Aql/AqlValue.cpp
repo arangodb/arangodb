@@ -787,6 +787,33 @@ AqlValue AqlValue::CreateFromBlocks (triagens::arango::AqlTransaction* trx,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AqlValue from a vector of AqlItemBlock*s
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue AqlValue::CreateFromBlocks (triagens::arango::AqlTransaction* trx,
+                                     std::vector<AqlItemBlock*> const& src,
+                                     triagens::aql::RegisterId expressionRegister) {
+  size_t totalSize = 0;
+
+  for (auto it = src.begin(); it != src.end(); ++it) {
+    totalSize += (*it)->size();
+  }
+
+  std::unique_ptr<Json> json(new Json(Json::List, totalSize));
+
+  for (auto it = src.begin(); it != src.end(); ++it) {
+    auto current = (*it);
+    auto document = current->getDocumentCollection(expressionRegister); 
+
+    for (size_t i = 0; i < current->size(); ++i) {
+      json->add(current->getValueReference(i, expressionRegister).toJson(trx, document));
+    }
+  }
+
+  return AqlValue(json.release());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 3-way comparison for AqlValue objects
 ////////////////////////////////////////////////////////////////////////////////
 

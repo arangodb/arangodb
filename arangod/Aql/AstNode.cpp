@@ -119,7 +119,8 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
   { static_cast<int>(NODE_TYPE_FCALL_USER),               "user function call" },
   { static_cast<int>(NODE_TYPE_RANGE),                    "range" },
   { static_cast<int>(NODE_TYPE_NOP),                      "no-op" },
-  { static_cast<int>(NODE_TYPE_COLLECT_COUNT),            "collect count" }
+  { static_cast<int>(NODE_TYPE_COLLECT_COUNT),            "collect count" },
+  { static_cast<int>(NODE_TYPE_COLLECT_EXPRESSION),       "collect expression" }
 };
 
 std::unordered_map<int, std::string const> const AstNode::valueTypeNames{
@@ -492,6 +493,7 @@ AstNode::AstNode (Ast* ast,
     case NODE_TYPE_REPLACE:
     case NODE_TYPE_COLLECT:
     case NODE_TYPE_COLLECT_COUNT:
+    case NODE_TYPE_COLLECT_EXPRESSION:
     case NODE_TYPE_SORT:
     case NODE_TYPE_SORT_ELEMENT:
     case NODE_TYPE_LIMIT:

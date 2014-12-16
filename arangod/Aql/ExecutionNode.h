@@ -1930,12 +1930,14 @@ namespace triagens {
         AggregateNode (ExecutionPlan* plan,
                        size_t id,
                        std::vector<std::pair<Variable const*, Variable const*>> const& aggregateVariables,
+                       Variable const* expressionVariable,
                        Variable const* outVariable,
                        std::vector<Variable const*> const& keepVariables,
                        std::unordered_map<VariableId, std::string const> const& variableMap,
                        bool countOnly)
           : ExecutionNode(plan, id), 
             _aggregateVariables(aggregateVariables), 
+            _expressionVariable(expressionVariable),
             _outVariable(outVariable),
             _keepVariables(keepVariables),
             _variableMap(variableMap),
@@ -1945,6 +1947,7 @@ namespace triagens {
         
         AggregateNode (ExecutionPlan*,
                        triagens::basics::Json const& base,
+                       Variable const* expressionVariable,
                        Variable const* outVariable,
                        std::vector<Variable const*> const& keepVariables,
                        std::unordered_map<VariableId, std::string const> const& variableMap,
@@ -2041,6 +2044,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<std::pair<Variable const*, Variable const*>> _aggregateVariables;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief input expression variable (might be null)
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* _expressionVariable;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief output variable to write to (might be null)

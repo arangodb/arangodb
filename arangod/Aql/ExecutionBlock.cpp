@@ -2709,6 +2709,7 @@ AggregateBlock::AggregateBlock (ExecutionEngine* engine,
   : ExecutionBlock(engine, en),
     _aggregateRegisters(),
     _currentGroup(en->_countOnly),
+    _expressionRegister(ExecutionNode::MaxRegisterId),
     _groupRegister(ExecutionNode::MaxRegisterId),
     _variableNames() {
   
@@ -2731,6 +2732,12 @@ AggregateBlock::AggregateBlock (ExecutionEngine* engine,
     TRI_ASSERT(it != registerPlan.end());
     _groupRegister = (*it).second.registerId;
     TRI_ASSERT(_groupRegister > 0 && _groupRegister < ExecutionNode::MaxRegisterId);
+
+    if (en->_expressionVariable != nullptr) {
+      auto it = registerPlan.find(en->_expressionVariable->id);
+      TRI_ASSERT(it != registerPlan.end());
+      _expressionRegister = (*it).second.registerId;
+    }
 
     // construct a mapping of all register ids to variable names
     // we need this mapping to generate the grouped output
@@ -2978,9 +2985,18 @@ void AggregateBlock::emitGroup (AqlItemBlock const* cur,
     _currentGroup.addValues(cur, _groupRegister);
 
     if (static_cast<AggregateNode const*>(_exeNode)->_countOnly) {
+      // only set group count in result register
       res->setValue(row, _groupRegister, AqlValue(new Json(static_cast<double>(_currentGroup.groupLength))));
     }
+    else if (static_cast<AggregateNode const*>(_exeNode)->_expressionVariable != nullptr) {
+      // copy expression result into result register
+      res->setValue(row, _groupRegister,
+                    AqlValue::CreateFromBlocks(_trx,
+                                               _currentGroup.groupBlocks,
+                                               _expressionRegister));
+    }
     else {
+      // copy variables / keep variables into result register
       res->setValue(row, _groupRegister,
                     AqlValue::CreateFromBlocks(_trx,
                                                _currentGroup.groupBlocks,

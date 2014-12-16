@@ -353,11 +353,29 @@ AstNode* Ast::createNodeCollect (AstNode const* list,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create an AST collect node, COUNT
+/// @brief create an AST collect node, INTO var = expr
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode* Ast::createNodeCollect (AstNode const* list,
-                                 char const* name) {
+AstNode* Ast::createNodeCollectExpression (AstNode const* list,
+                                           char const* name,
+                                           AstNode const* expression) {
+  AstNode* node = createNode(NODE_TYPE_COLLECT_EXPRESSION);
+  node->addMember(list);
+
+  AstNode* variable = createNodeVariable(name, true);
+  node->addMember(variable);
+
+  node->addMember(expression);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST collect node, COUNT INTO 
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeCollectCount (AstNode const* list,
+                                      char const* name) {
   AstNode* node = createNode(NODE_TYPE_COLLECT_COUNT);
   node->addMember(list);
 
