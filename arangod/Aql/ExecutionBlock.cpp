@@ -888,8 +888,8 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
       _condition->at(i).emplace_back(ri.clone());
     }
   }
-  if (_condition->size() > 1) {
 
+  if (_condition->size() > 1) {
     removeOverlapsIndexOr(*_condition);
   }
 
