@@ -5,7 +5,7 @@ AC_DEFUN([AC_CLOCK],
 [
   have_clock_gettime=no
 
-  AC_MSG_CHECKING([for clock_gettime oooooooooooooooooooooooooooooo])
+  AC_MSG_CHECKING([for clock_gettime])
 
   AC_TRY_LINK([ #include <time.h> ], [struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);], [
     have_clock_gettime=yes
