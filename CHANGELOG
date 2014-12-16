@@ -1,6 +1,8 @@
 v2.4.0 (XXXX-XX-XX)
 -------------------
 
+* AQL: range optimizations for IN and OR
+
 * allow passing subqueries as AQL function parameters without using
   duplicate brackets (e.g. `FUNC(query)` instead of `FUNC((query))`
 
