@@ -1157,7 +1157,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                       std::unordered_map<size_t, size_t>::iterator it 
                            = _changesPlaces.find(place);
                       if (it == _changesPlaces.end()) {
-                        _changes.push_back(std::make_pair(place, std::vector<ExecutionNode*>()));
+                        _changes.emplace_back(std::make_pair(place, std::vector<ExecutionNode*>()));
                         it = _changesPlaces.emplace(place, _changes.size()-1).first;
                       }
                       std::vector<ExecutionNode*>& vec = _changes[it->second].second;
