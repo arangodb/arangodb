@@ -158,7 +158,8 @@ namespace triagens {
       NODE_TYPE_FCALL_USER                    = 48,
       NODE_TYPE_RANGE                         = 49,
       NODE_TYPE_NOP                           = 50,
-      NODE_TYPE_COLLECT_COUNT                 = 51
+      NODE_TYPE_COLLECT_COUNT                 = 51,
+      NODE_TYPE_COLLECT_EXPRESSION            = 52
     };
 
     static_assert(NODE_TYPE_VALUE < NODE_TYPE_LIST, "incorrect node types");
