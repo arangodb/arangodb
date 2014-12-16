@@ -1,4 +1,4 @@
-/*global require, applicationContext*/
+/*global require, applicationContext, parseInt*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief A Foxx.Controller to show all Foxx Applications
@@ -45,6 +45,50 @@ var FoxxController = require("org/arangodb/foxx").Controller,
 var foxxes = new (require("lib/foxxes").Foxxes)();
 var FoxxManager = require("org/arangodb/foxx/manager");
 var docus = new (require("lib/swagger").Swagger)();
+var sortVersions = function(a, b) {
+  var left = a.split(".").map(function(c) {
+    return parseInt(c, 10);
+  });
+  var right = b.split(".").map(function(c) {
+    return parseInt(c, 10);
+  });
+  if (left[0] === right[0]) {
+    if (left[1] === right[1]) {
+      if (left[2] < right[2]) {
+        return 1;
+      }
+      if (left[2] < right[2]) {
+        return -1;
+      }
+      return 0;
+    }
+    if (left[1] < right[1]) {
+      return 1;
+    }
+    return -1;
+  }
+  if (left[0] < right[0]) {
+    return 1;
+  }
+  return -1;
+};
+
+var installFromGithub = function(res, url, name, version) {
+  try {
+    var appID = FoxxManager.fetchFromGithub(url, name, version);
+    var app = db._aal.firstExample({"app": appID});
+    res.json({
+      error: false,
+      configuration: app.manifest.configuration || {},
+      app: appID,
+      name: app.name,
+      version: app.version
+    });
+  } catch (e) {
+    e.error = true;
+    res.json(e);
+  }
+};
 
 controller.get("/whoAmI", function(req, res) {
   res.json({
@@ -106,23 +150,49 @@ controller.put("/foxxes/install", function (req, res) {
 }).summary("Installs a new foxx")
 .notes("This function is used to install a new foxx.");
 
+/** Install a Foxx from fishbowl
+ *
+ * Downloads a Foxx from the fishbowl and returns the required configuration for this foxx.
+ */
+controller.post("/foxxes/fishbowlinstall", function (req, res) {
+  var content = JSON.parse(req.requestBody),
+    name = content.name,
+    version = content.version,
+    url,
+    appInfo = FoxxManager.getFishbowlStorage().firstExample({
+      name: name
+    });
+  if (version !== undefined) {
+    if (appInfo.versions.hasOwnProperty(version)) {
+      url = appInfo.versions[version].location;
+    } else {
+      res.json({
+        error: true,
+        errorMessage: "Internal Error in ArangoDB Store. Please report this alongside with the app you tried to install to arangodb@googlegroups.com."
+      });
+      return;
+    }
+  } else {
+    var keys = Object.keys(appInfo.versions);
+    if (keys.length > 1) {
+      keys = keys.sort(sortVersions);
+    }
+    url = appInfo.versions[keys[0]].location;
+  }
+  installFromGithub(res, url, name, "v" + version);
+});
+
 /** Install a Foxx from Github
  *
  * Install a Foxx with URL and .....
  */
-
 controller.post("/foxxes/gitinstall", function (req, res) {
-
   var content = JSON.parse(req.requestBody),
   name = content.name,
   url = content.url,
   version = content.version;
-
-  var appID = FoxxManager.fetchFromGithub(url, name, version);
-
-  res.json(appID);
-}).summary("Installs a foxx or update existing")
-.notes("This function is used to install or update a (new) foxx.");
+  installFromGithub(res, url, name, version);
+});
 
 /** Remove an uninstalled Foxx
  *
@@ -219,6 +289,7 @@ controller.del("/foxxes/:key", function (req, res) {
 }).summary("Uninstall a Foxx.")
 .notes("This function is used to uninstall a foxx.");
 
+
 /** Update a Foxx
  *
  * Update the Foxx with the given information.
@@ -261,6 +332,7 @@ controller.get("/foxxes/thumbnail/:app", function (req, res) {
 }).summary("Get the thumbnail of a foxx.")
   .notes("Used to request the thumbnail of the given Foxx in order to display it on the screen.");
 
+
 /** List all Foxxes
  *
  * Get a List of all Foxxes available and running
@@ -270,6 +342,17 @@ controller.get('/foxxes', function (req, res) {
   res.json(foxxes.viewAll());
 }).summary("List of all foxxes.")
   .notes("This function simply returns the list of all running foxxes");
+
+/** List all Foxxes in Fishbowl
+ * 
+ * Get the information for all Apps availbale in the Fishbowl and ready for download
+ *
+ */
+controller.get('/foxxes/fishbowl', function (req, res) {
+  FoxxManager.update();
+  res.json(FoxxManager.availableJson());
+}).summary("List of all foxx apps submitted to the fishbowl store.")
+  .notes("This function contacts the fishbowl and reports which apps are available for install");
 
 /** List available Documentation
  *

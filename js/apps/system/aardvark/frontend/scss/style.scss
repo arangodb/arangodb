@@ -65,6 +65,8 @@
 @import 'documentView';
 // progress view
 @import 'progressView';
+// application detail view
+@import 'applicationDetailView';
 
 // screen hotkeys
 @import 'hotkeys';
@@ -80,3 +82,6 @@
 
 // Temporary:
 @import 'documentsView';
+
+// Plugin
+@import 'uploadfile';
