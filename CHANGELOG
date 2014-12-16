@@ -1,3 +1,9 @@
+v2.3.3 (XXXX-XX-XX)
+
+* fixed error handling in instanciation of distributed AQL queries, this 
+  also fixes a bug in cluster startup with many servers
+
+
 v2.3.2 (2014-12-09)
 -------------------
 
