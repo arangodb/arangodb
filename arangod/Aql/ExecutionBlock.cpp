@@ -875,25 +875,46 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
   : ExecutionBlock(engine, en),
     _collection(en->collection()),
     _posInDocs(0),
-    _allBoundsConstant(true),
+    _anyBoundVariable(false),
     _skiplistIterator(nullptr),
-    _condition(&en->_ranges),
-    _freeCondition(false) {
-   
-  std::vector<std::vector<RangeInfo>> const& orRanges = en->_ranges;//TODO replace this with _condition
+    _condition(new IndexOrCondition()),
+    _posInRanges(0),
+    _sortCoords(),
+    _freeCondition(true) {
+  
+  for (size_t i = 0; i < en->_ranges.size(); i++) {
+    _condition->emplace_back(IndexAndCondition());
+    for (auto ri: en->_ranges[i]) {
+      _condition->at(i).emplace_back(ri.clone());
+    }
+  }
+  if (_condition->size() > 1) {
+
+    removeOverlapsIndexOr(*_condition);
+  }
+
+  std::vector<std::vector<RangeInfo>> const& orRanges = en->_ranges;
   TRI_ASSERT(en->_index != nullptr);
 
-  TRI_ASSERT(orRanges.size() == 1);  // OR expressions not yet implemented
+  _allBoundsConstant.clear();
+  _allBoundsConstant.reserve(orRanges.size());
 
   // Detect, whether all ranges are constant:
-  std::vector<RangeInfo> const& attrRanges = orRanges[0];
-  for (auto r : attrRanges) {
-    _allBoundsConstant &= r.isConstant();
+  for (size_t i = 0; i < orRanges.size(); i++) {
+    bool isConstant = true;
+    std::vector<RangeInfo> const& attrRanges = orRanges[i];
+    for (auto r : attrRanges) {
+      isConstant &= r.isConstant();
+    }
+    _anyBoundVariable |= ! isConstant;
+    _allBoundsConstant.push_back(isConstant);
   }
 }
 
 IndexRangeBlock::~IndexRangeBlock () {
-  freeDynamicBoundsExpressions();
+  for (auto e : _allVariableBoundExpressions) {
+    delete e;
+  }
 
   if (_freeCondition && _condition != nullptr) {
     delete _condition;
@@ -905,6 +926,7 @@ IndexRangeBlock::~IndexRangeBlock () {
 }
 
 int IndexRangeBlock::initialize () {
+  ENTER_BLOCK
   int res = ExecutionBlock::initialize();
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -912,11 +934,6 @@ int IndexRangeBlock::initialize () {
       res = TRI_ERROR_OUT_OF_MEMORY;
     }
   }
-  
-  // Get the ranges from the node:
-  auto en = static_cast<IndexRangeNode const*>(getPlanNode());
-  std::vector<std::vector<RangeInfo>> const& orRanges = en->_ranges;
-  std::vector<RangeInfo> const& attrRanges = orRanges[0];
 
   // instanciate expressions:
   auto instanciateExpression = [&] (RangeInfoBound& b) -> void {
@@ -947,26 +964,37 @@ int IndexRangeBlock::initialize () {
 
   };
 
-  if (! _allBoundsConstant) {
-    try {
-      for (auto r : attrRanges) {
-        for (auto l : r._lows) {
-          instanciateExpression(l);
-        }
-        for (auto h : r._highs) {
-          instanciateExpression(h);
+  // Get the ranges from the node:
+  auto en = static_cast<IndexRangeNode const*>(getPlanNode());
+  std::vector<std::vector<RangeInfo>> const& orRanges = en->_ranges;
+  
+  for (size_t i = 0; i < orRanges.size(); i++) {
+    if (! _allBoundsConstant[i]) {
+      try {
+        for (auto r : orRanges[i]) {
+          for (auto l : r._lows) {
+            instanciateExpression(l);
+          }
+          for (auto h : r._highs) {
+            instanciateExpression(h);
+          }
         }
       }
-    }
-    catch (...) {
-      freeDynamicBoundsExpressions();
-      throw;
+      catch (...) {
+        for (auto e : _allVariableBoundExpressions) {
+          delete e;
+        }
+        _allVariableBoundExpressions.clear();
+        throw;
+      }
     }
   }
+
   return res;
+  LEAVE_BLOCK;
 }
 
-// init the index for reading, this should be called once per new incoming
+// init the ranges for reading, this should be called once per new incoming
 // block!
 //
 // This is either called every time we get a new incoming block. 
@@ -982,29 +1010,25 @@ int IndexRangeBlock::initialize () {
 // Therefore, we can use the register values in _buffer.front() in row
 // _pos to evaluate the variable bounds.
 
-bool IndexRangeBlock::initIndex () {
+bool IndexRangeBlock::initRanges () {
   ENTER_BLOCK
   _flag = true; 
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
-  freeCondition();
-  _condition = &en->_ranges;
-  _freeCondition = false;
   
   TRI_ASSERT(en->_index != nullptr);
 
   // Find out about the actual values for the bounds in the variable bound case:
-  if (! _allBoundsConstant) {
-    std::unique_ptr<IndexOrCondition> newCondition;
+
+  if (_anyBoundVariable) {
+    size_t posInExpressions = 0;
+      
     // The following are needed to evaluate expressions with local data from
     // the current incoming item:
     AqlItemBlock* cur = _buffer.front();
     vector<AqlValue>& data(cur->getData());
     vector<TRI_document_collection_t const*>& docColls(cur->getDocumentCollections());
     RegisterId nrRegs = cur->getNrRegs();
-
-    newCondition = std::unique_ptr<IndexOrCondition>(new IndexOrCondition());
-    newCondition.get()->push_back(std::vector<RangeInfo>());
-
+    
     // must have a V8 context here to protect Expression::execute()
     auto engine = _engine;
     triagens::basics::ScopeGuard guard{
@@ -1024,89 +1048,170 @@ bool IndexRangeBlock::initIndex () {
         engine->getQuery()->exitContext(); 
       }
     };
+
     ISOLATE;
     v8::HandleScope scope(isolate); // do not delete this!
+    
+    IndexOrCondition* newCondition = nullptr;
+    for (size_t i = 0; i < en->_ranges.size(); i++) {
+      std::vector<std::vector<RangeInfo>> collector;   
+      //collect the evaluated bounds here
+      for (size_t k = 0; k < en->_ranges[i].size(); k++) {
+        auto r = en->_ranges[i][k];
+        collector.push_back(std::vector<RangeInfo>());
+        // First create a new RangeInfo containing only the constant 
+        // low and high bound of r:
+        RangeInfo riConst(r._var, r._attr, r._lowConst, r._highConst,
+            r.is1ValueRangeInfo());
+        collector[k].push_back(riConst);
 
-    size_t posInExpressions = 0;
-    for (auto r : en->_ranges.at(0)) {
-      // First create a new RangeInfo containing only the constant 
-      // low and high bound of r:
-      RangeInfo actualRange(r._var, r._attr, r._lowConst, r._highConst,
-                            r.is1ValueRangeInfo());
-      // Now work the actual values of the variable lows and highs into 
-      // this constant range:
-      for (auto l : r._lows) {
-        Expression* e = _allVariableBoundExpressions[posInExpressions];
-        TRI_ASSERT(e != nullptr);
-        TRI_document_collection_t const* myCollection = nullptr; 
-        AqlValue a = e->execute(_trx, docColls, data, nrRegs * _pos,
-                                _inVars[posInExpressions],
-                                _inRegs[posInExpressions], 
-                                &myCollection);
-        posInExpressions++;
-        if (a._type == AqlValue::JSON) {
-          Json json(Json::Array, 3);
-          json("include", Json(l.inclusive()))
-              ("isConstant", Json(true))
-              ("bound", a._json->copy());
-          a.destroy(); 
-          RangeInfoBound b(json);   // Construct from JSON
-          actualRange._lowConst.andCombineLowerBounds(b);
+        // Now work the actual values of the variable lows and highs into 
+        // this constant range:
+        for (auto l : r._lows) {
+          Expression* e = _allVariableBoundExpressions[posInExpressions];
+          TRI_ASSERT(e != nullptr);
+          TRI_document_collection_t const* myCollection = nullptr; 
+          AqlValue a = e->execute(_trx, docColls, data, nrRegs * _pos,
+              _inVars[posInExpressions],
+              _inRegs[posInExpressions],
+              &myCollection);
+          posInExpressions++;
+
+          Json bound;
+          if (a._type == AqlValue::JSON) {
+            bound = *(a._json);
+            a.destroy();  // the TRI_json_t* of a._json has been stolen
+          } 
+          else if (a._type == AqlValue::SHAPED || a._type == AqlValue::DOCVEC) {
+            bound = a.toJson(_trx, myCollection);
+            a.destroy();  // the TRI_json_t* of a._json has been stolen
+          } 
+          else {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
+                "AQL: computed a variable bound and got non-JSON");
+          }
+          if (! bound.isList()) {
+            Json json(Json::Array, 3);
+            json("include", Json(l.inclusive()))
+                ("isConstant", Json(true))
+                ("bound", bound.copy());
+            RangeInfo ri = RangeInfo(r._var, 
+                                     r._attr, 
+                                     RangeInfoBound(json), 
+                                     RangeInfoBound(), 
+                                     false);
+            for (size_t j = 0; j < collector[k].size(); j++) {
+              collector[k][j].fuse(ri);
+            }
+          } 
+          else {
+            std::vector<RangeInfo> riv; 
+            for (size_t j = 0; j < bound.size(); j++) {
+              Json json(Json::Array, 3);
+              json("include", Json(l.inclusive()))
+                  ("isConstant", Json(true))
+                  ("bound", bound.at(static_cast<int>(j)).copy());
+               
+              riv.emplace_back(RangeInfo(r._var, 
+                                         r._attr, 
+                                         RangeInfoBound(json), 
+                                         RangeInfoBound(json), 
+                                         true));
+            }
+            collector[k] = andCombineRangeInfoVecs(collector[k], riv);
+          } 
         }
-        else if (a._type == AqlValue::SHAPED) {
-          Json json(Json::Array, 3);
-          json("include", Json(l.inclusive()))
-              ("isConstant", Json(true))
-              ("bound", a.toJson(_trx, myCollection));
-          a.destroy(); 
-          RangeInfoBound b(json);   // Construct from JSON
-          actualRange._lowConst.andCombineLowerBounds(b);
-        }
-        else {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
-              "AQL: computed a variable bound and got unexpected result");
+
+        for (auto h : r._highs) {
+          Expression* e = _allVariableBoundExpressions[posInExpressions];
+          TRI_ASSERT(e != nullptr);
+          TRI_document_collection_t const* myCollection = nullptr; 
+          AqlValue a = e->execute(_trx, docColls, data, nrRegs * _pos,
+              _inVars[posInExpressions],
+              _inRegs[posInExpressions],
+              &myCollection);
+          posInExpressions++;
+
+          Json bound;
+          if (a._type == AqlValue::JSON) {
+            bound = *(a._json);
+            a.destroy();  // the TRI_json_t* of a._json has been stolen
+          } 
+          else if (a._type == AqlValue::SHAPED || a._type == AqlValue::DOCVEC) {
+            bound = a.toJson(_trx, myCollection);
+            a.destroy();  // the TRI_json_t* of a._json has been stolen
+          } 
+          else {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
+                "AQL: computed a variable bound and got non-JSON");
+          }
+          if (! bound.isList()) {
+            Json json(Json::Array, 3);
+            json("include", Json(h.inclusive()))
+                ("isConstant", Json(true))
+                ("bound", bound.copy());
+            RangeInfo ri = RangeInfo(r._var, 
+                                     r._attr, 
+                                     RangeInfoBound(), 
+                                     RangeInfoBound(json), 
+                                     false);
+            for (size_t j = 0; j < collector[k].size(); j++) {
+              collector[k][j].fuse(ri);
+            }
+          } 
+          else {
+            std::vector<RangeInfo> riv; 
+            for (size_t j = 0; j < bound.size(); j++) {
+              Json json(Json::Array, 3);
+              json("include", Json(h.inclusive()))
+                  ("isConstant", Json(true))
+                  ("bound", bound.at(static_cast<int>(j)).copy());
+               
+              riv.emplace_back(RangeInfo(r._var, 
+                                         r._attr, 
+                                         RangeInfoBound(json), 
+                                         RangeInfoBound(json), 
+                                         true));
+            }
+            collector[k] = andCombineRangeInfoVecs(collector[k], riv);
+          } 
         }
       }
 
-      for (auto h : r._highs) {
-        Expression* e = _allVariableBoundExpressions[posInExpressions];
-        TRI_ASSERT(e != nullptr);
-        TRI_document_collection_t const* myCollection = nullptr; 
-        AqlValue a = e->execute(_trx, docColls, data, nrRegs * _pos,
-                                _inVars[posInExpressions],
-                                _inRegs[posInExpressions],
-                                &myCollection);
-        posInExpressions++;
-        if (a._type == AqlValue::JSON) {
-          Json json(Json::Array, 3);
-          json("include", Json(h.inclusive()))
-              ("isConstant", Json(true))
-              ("bound", a._json->copy());
-          a.destroy();  
-          RangeInfoBound b(json);   // Construct from JSON
-          actualRange._highConst.andCombineUpperBounds(b);
-        }
-        else if (a._type == AqlValue::SHAPED) {
-          Json json(Json::Array, 3);
-          json("include", Json(h.inclusive()))
-              ("isConstant", Json(true))
-              ("bound", a.toJson(_trx, myCollection));
-          a.destroy(); 
-          RangeInfoBound b(json);   // Construct from JSON
-          actualRange._highConst.andCombineUpperBounds(b);
-        }
-        else {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
-              "AQL: computed a variable bound and got unexpected result");
+      bool isEmpty = false;
+      for (auto x: collector) {
+        if (x.empty()) { 
+          isEmpty = true;
+          break;
         }
       }
 
-      newCondition.get()->at(0).push_back(actualRange);
+      if (! isEmpty) { 
+        // otherwise the condition is impossible to fulfil
+        // the elements of the direct product of the collector are and
+        // conditions which should be added to newCondition 
+        auto indexAnds = cartesian(collector);
+
+        if (newCondition != nullptr) {
+          for (auto indexAnd: *indexAnds) {
+            newCondition->push_back(indexAnd);
+          }
+          delete indexAnds;
+        } 
+        else {
+          newCondition = indexAnds;
+        }
+      }
     }
-   
-    freeCondition(); 
-    _condition = newCondition.release();
-    _freeCondition = true;
+    //_condition = newCondition.release();
+    if (newCondition != nullptr) {
+      freeCondition(); 
+      _condition = newCondition;
+      _freeCondition = true;
+    }
+
+    // remove duplicates . . .
+    removeOverlapsIndexOr(*_condition);
   }
    
   if (en->_index->type == TRI_IDX_TYPE_PRIMARY_INDEX) {
@@ -1115,9 +1220,49 @@ bool IndexRangeBlock::initIndex () {
   else if (en->_index->type == TRI_IDX_TYPE_HASH_INDEX) {
     return true; //no initialization here!
   }
+  
   if (en->_index->type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
-    initSkiplistIndex(*_condition);
-    return (_skiplistIterator != nullptr);
+    if (! _condition->empty()) {
+      // sort the conditions! 
+
+      // TODO this should also be done for hash indexes when
+      // they are lazy too. 
+
+      // first sort by the prefix of the index 
+      std::vector<std::vector<size_t>> prefix;
+      if (! _sortCoords.empty()) {
+        _sortCoords.clear();
+        _sortCoords.reserve(_condition->size());
+      }
+      for (size_t s = 0; s < _condition->size(); s++) {
+        _sortCoords.push_back(s);
+        std::vector<size_t> next;
+        next.reserve(en->_index->fields.size());
+        prefix.emplace_back(next);
+        // prefix[s][t] = position in _condition[s] corresponding to the <t>th index
+        // field
+        for (size_t t = 0; t < en->_index->fields.size(); t++) {
+          for (size_t u = 0; u < _condition->at(s).size(); u++) {
+            auto ri = _condition->at(s)[u];
+            if (en->_index->fields[t].compare(ri._attr) == 0) {
+              prefix.at(s).insert(prefix.at(s).begin()+t, u);
+              break;
+            }
+          }
+        }
+      }
+
+      SortFunc sortFunc(prefix, _condition, en->_reverse);
+
+      // then sort by the values of the bounds
+      std::sort(_sortCoords.begin(), _sortCoords.end(), sortFunc);
+      _posInRanges = 0;
+      getSkiplistIterator(_condition->at(_sortCoords[_posInRanges]));
+      return (_skiplistIterator != nullptr);
+    } 
+    else {
+      return false;
+    }
   }
   else if (en->_index->type == TRI_IDX_TYPE_EDGE_INDEX) {
     return true; //no initialization here!
@@ -1127,11 +1272,119 @@ bool IndexRangeBlock::initIndex () {
   LEAVE_BLOCK;
 }
 
-void IndexRangeBlock::freeDynamicBoundsExpressions () {
-  for (auto e : _allVariableBoundExpressions) {
-    delete e;
+////////////////////////////////////////////////////////////////////////////////
+// @brief: is _condition[i] < _condition[j]? these are IndexAndConditions. 
+////////////////////////////////////////////////////////////////////////////////
+
+bool IndexRangeBlock::SortFunc::operator() (size_t const& i, size_t const& j) {
+  size_t l, r;
+
+  if (! _reverse) {
+    l = i;
+    r = j;
+  } 
+  else {
+    l = j; 
+    r = i;
   }
-  _allVariableBoundExpressions.clear();
+
+  size_t shortest = (std::min)(_prefix.at(i).size(), _prefix.at(j).size());
+
+  for (size_t k = 0; k < shortest; k++) {
+    RangeInfo lhs = _condition->at(l).at(_prefix.at(l).at(k));
+    RangeInfo rhs = _condition->at(r).at(_prefix.at(r).at(k));
+    int cmp;
+      
+    if (lhs.is1ValueRangeInfo() && rhs.is1ValueRangeInfo()) {
+      cmp = TRI_CompareValuesJson(lhs._lowConst.bound().json(), 
+                                  rhs._lowConst.bound().json());
+      if (cmp != 0) {
+        return (cmp == -1);
+      }
+    } 
+    else {
+      // assuming lhs and rhs are disjoint!!
+      TRI_ASSERT_EXPENSIVE(areDisjointRangeInfos(lhs, rhs));
+      if (lhs._highConst.isDefined() && rhs._lowConst.isDefined()) {
+        cmp = (TRI_CompareValuesJson(lhs._highConst.bound().json(), 
+                                     rhs._lowConst.bound().json()));
+        return (cmp == 0 || cmp == -1);
+      } 
+      else { // lhs._lowConst.isDefined() && rhs._highConst.isDefined()
+        return false;
+      }
+    }
+  }
+  TRI_ASSERT(false); 
+  // shouldn't get here since the IndexAndConditions in _condition should be 
+  // disjoint!
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief andCombineRangeInfoVecs: combine the arguments into a single vector,
+/// by intersecting every pair of range infos and inserting them in the returned
+/// value if the intersection is valid. 
+////////////////////////////////////////////////////////////////////////////////
+
+std::vector<RangeInfo> IndexRangeBlock::andCombineRangeInfoVecs (
+    std::vector<RangeInfo>& riv1, 
+    std::vector<RangeInfo>& riv2) {
+  
+  std::vector<RangeInfo> out;
+  for (RangeInfo ri1: riv1) {
+    for (RangeInfo ri2: riv2) {
+      RangeInfo x = ri1.clone();
+      x.fuse(ri2);
+      if (x.isValid()){
+        out.push_back(x);
+      }
+    }
+  }
+  return out;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cartesian: form the cartesian product of the inner vectors. This is
+/// required in case a dynamic bound evaluates to a list, then we have an 
+/// "and" condition containing an "or" condition, which we must then distribute. 
+////////////////////////////////////////////////////////////////////////////////
+
+IndexOrCondition* IndexRangeBlock::cartesian (
+    std::vector<std::vector<RangeInfo>> collector) {
+  
+  std::vector<size_t> indexes;
+  indexes.reserve(collector.size());
+  for (size_t i = 0; i < collector.size(); i++) {
+    indexes[i] = 0;
+  }
+  
+  auto out = new IndexOrCondition();
+  try {
+    while (true) {
+      IndexAndCondition next;
+      for (size_t i = 0; i < collector.size(); i++) {
+        next.push_back(collector[i][indexes[i]].clone());
+      }
+      out->push_back(next);
+      size_t j = collector.size() - 1;
+      while (true) {
+        indexes[j]++;
+        if (indexes[j] < collector[j].size()) {
+          break;
+        }
+        indexes[j] = 0;
+        if (j == 0) { 
+          return out;
+        }
+        j--;
+      }
+    }
+  }
+  catch (...) {
+    delete out;
+    throw;
+  }
 }
 
 void IndexRangeBlock::freeCondition () {
@@ -1149,9 +1402,9 @@ bool IndexRangeBlock::readIndex (size_t atMost) {
   // this is called every time we want more in _documents. 
   // For non-skiplist indexes (currently hash, primary, edge), this 
   // only reads the index once, and never again (although there might be
-  // multiple calls to this function). For skiplists indexes, initIndex creates
+  // multiple calls to this function). For skiplists indexes, initRanges creates
   // a skiplistIterator and readIndex just reads from the iterator until it is
-  // done. Then initIndex is read again and so on. This is to avoid reading the
+  // done. Then initRanges is read again and so on. This is to avoid reading the
   // entire index when we only want a small number of documents. 
   
   if (_documents.empty()) {
@@ -1224,7 +1477,7 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t atLeast,
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize, atMost);
       if (! ExecutionBlock::getBlock(toFetch, toFetch) 
-          || (! initIndex())) {
+          || (! initRanges())) {
         _done = true;
         return nullptr;
       }
@@ -1255,7 +1508,7 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t atLeast,
           _pos = 0;           // this is in the first block
         }
         
-        if(! initIndex()) {
+        if(! initRanges()) {
           _done = true;
           return nullptr;
         }
@@ -1331,7 +1584,7 @@ size_t IndexRangeBlock::skipSome (size_t atLeast,
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize, atMost);
       if (! ExecutionBlock::getBlock(toFetch, toFetch) 
-          || (! initIndex())) {
+          || (! initRanges())) {
         _done = true;
         return skipped;
       }
@@ -1363,7 +1616,7 @@ size_t IndexRangeBlock::skipSome (size_t atLeast,
 
       // let's read the index if bounds are variable:
       if (! _buffer.empty()) {
-          if(! initIndex()) {
+          if(! initRanges()) {
             _done = true;
             return skipped;
           }
@@ -1386,59 +1639,68 @@ size_t IndexRangeBlock::skipSome (size_t atLeast,
 void IndexRangeBlock::readPrimaryIndex (IndexOrCondition const& ranges) {
   ENTER_BLOCK;
   TRI_primary_index_t* primaryIndex = &(_collection->documentCollection()->_primaryIndex);
-     
-  std::string key;
-  for (auto x : ranges.at(0)) {
-    if (x._attr == std::string(TRI_VOC_ATTRIBUTE_ID)) {
-      // lookup by _id
+  
+  for (size_t i = 0; i < ranges.size(); i++) {
+    std::string key;
+    for (auto x : ranges[i]) {
+      if (x._attr == std::string(TRI_VOC_ATTRIBUTE_ID)) {
+        // lookup by _id
 
-      // we can use lower bound because only equality is supported
-      TRI_ASSERT(x.is1ValueRangeInfo());
-      auto const json = x._lowConst.bound().json();
+        // we can use lower bound because only equality is supported
+        TRI_ASSERT(x.is1ValueRangeInfo());
+        auto const json = x._lowConst.bound().json();
 
-      if (TRI_IsStringJson(json)) {
-        // _id must be a string
-        TRI_voc_cid_t documentCid;
-        std::string documentKey;
+        if (TRI_IsStringJson(json)) {
+          // _id must be a string
+          TRI_voc_cid_t documentCid;
+          std::string documentKey;
 
-        // parse _id value
-        int errorCode = resolve(json->_value._string.data, documentCid, documentKey);
+          // parse _id value
+          int errorCode = resolve(json->_value._string.data, documentCid, documentKey);
 
-        if (errorCode == TRI_ERROR_NO_ERROR) {
-          bool const isCluster = (ExecutionEngine::isCoordinator() || ExecutionEngine::isDBServer());
-          if (! isCluster && documentCid == _collection->documentCollection()->_info._cid) {
+          if (errorCode == TRI_ERROR_NO_ERROR) {
+            bool const isCluster = (ExecutionEngine::isCoordinator() ||
+                ExecutionEngine::isDBServer());
+            if (! isCluster && documentCid == _collection->documentCollection()->_info._cid) {
+              // only continue lookup if the id value is syntactically correct and
+              // refers to "our" collection, using local collection id
+              key = documentKey;
+            }
+            else if (isCluster && documentCid == _collection->documentCollection()->_info._planId) {
             // only continue lookup if the id value is syntactically correct and
-            // refers to "our" collection, using local collection id
-            key = documentKey;
-          }
-          else if (isCluster && documentCid == _collection->documentCollection()->_info._planId) {
-          // only continue lookup if the id value is syntactically correct and
-          // refers to "our" collection, using cluster collection id
-            key = documentKey;
+            // refers to "our" collection, using cluster collection id
+              key = documentKey;
+            }
           }
         }
+        /*if (! x._lows.empty() || ! x._highs.empty() || x._lowConst.isDefined() || x._highConst.isDefined()) {
+          break;
+        }*/
       }
-      break;
-    }
-    else if (x._attr == std::string(TRI_VOC_ATTRIBUTE_KEY)) {
-      // lookup by _key
+      else if (x._attr == std::string(TRI_VOC_ATTRIBUTE_KEY)) {
+        // lookup by _key
 
-      // we can use lower bound because only equality is supported
-      TRI_ASSERT(x.is1ValueRangeInfo());
-      auto const json = x._lowConst.bound().json();
-      if (TRI_IsStringJson(json)) {
-        key = std::string(json->_value._string.data, json->_value._string.length - 1);
+        // we can use lower bound because only equality is supported
+        TRI_ASSERT(x.is1ValueRangeInfo());
+        auto const json = x._lowConst.bound().json();
+        if (TRI_IsStringJson(json)) {
+          key = std::string(json->_value._string.data, json->_value._string.length - 1);
+        }
+
+        /*if (! x._lows.empty() || ! x._highs.empty() || x._lowConst.isDefined() || x._highConst.isDefined()) {
+          break;
+        }*/
       }
-      break;
     }
-  }
 
-  if (! key.empty()) {
-    ++_engine->_stats.scannedIndex;
+    if (! key.empty()) {
+      ++_engine->_stats.scannedIndex;
 
-    auto found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyPrimaryIndex(primaryIndex, key.c_str()));
-    if (found != nullptr) {
-      _documents.emplace_back(*found);
+      auto found = static_cast<TRI_doc_mptr_t
+        const*>(TRI_LookupByKeyPrimaryIndex(primaryIndex, key.c_str()));
+      if (found != nullptr) {
+        _documents.emplace_back(*found);
+      }
     }
   }
   LEAVE_BLOCK;
@@ -1470,7 +1732,7 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
     searchValue._values = nullptr;
   };
 
-  auto setupSearchValue = [&]() -> bool {
+  auto setupSearchValue = [&](size_t pos) -> bool {
     size_t const n = hashIndex->_paths._length;
     searchValue._length = 0;
     // initialize the whole range of shapes with zeros
@@ -1482,7 +1744,6 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
     }
     
     searchValue._length = n;
-    bool valid = true;
 
     for (size_t i = 0; i < n; ++i) {
       TRI_shape_pid_t pid = *(static_cast<TRI_shape_pid_t*>(TRI_AtVector(&hashIndex->_paths, i)));
@@ -1491,46 +1752,44 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
       char const* name = TRI_AttributeNameShapePid(shaper, pid);
       std::string const lookFor = std::string(name);
 
-      for (auto x : ranges.at(0)) {
-        if (x._attr == lookFor) {
-          // found attribute
+      for (auto x : ranges[pos]) {
+        if (x._attr == std::string(name)) {    //found attribute
           auto shaped = TRI_ShapedJsonJson(shaper, x._lowConst.bound().json(), false); 
-
+          // here x->_low->_bound = x->_high->_bound 
           if (shaped == nullptr) {
-            valid = false;
+            return false;
           }
-          else {
-            // here x->_low->_bound = x->_high->_bound 
-            searchValue._values[i] = *shaped;
-            TRI_Free(shaper->_memoryZone, shaped);
-          }
+          searchValue._values[i] = *shaped;
+          TRI_Free(shaper->_memoryZone, shaped);
           break; 
         }
       }
     }
-
-    return valid;
+    return true;
   };
- 
-  if (! setupSearchValue()) {
-    destroySearchValue();
-    return;
-  }
-  TRI_vector_pointer_t list = TRI_LookupHashIndex(idx, &searchValue);
-  destroySearchValue();
   
-  size_t const n = TRI_LengthVectorPointer(&list);
-  try {
-    for (size_t i = 0; i < n; ++i) {
-      _documents.emplace_back(* (static_cast<TRI_doc_mptr_t*>(TRI_AtVectorPointer(&list, i))));
+  for (size_t i = 0; i < ranges.size(); i++) {
+    if (setupSearchValue(i)) {
+      TRI_vector_pointer_t list = TRI_LookupHashIndex(idx, &searchValue);
+      destroySearchValue();
+
+      size_t const n = TRI_LengthVectorPointer(&list);
+      try {
+        for (size_t i = 0; i < n; ++i) {
+          _documents.emplace_back(* (static_cast<TRI_doc_mptr_t*>(TRI_AtVectorPointer(&list, i))));
+        }
+
+        _engine->_stats.scannedIndex += static_cast<int64_t>(n);
+        TRI_DestroyVectorPointer(&list);
+      }
+      catch (...) {
+        TRI_DestroyVectorPointer(&list);
+        throw;
+      }
     }
-  
-    _engine->_stats.scannedIndex += static_cast<int64_t>(n);
-    TRI_DestroyVectorPointer(&list);
-  }
-  catch (...) {
-    TRI_DestroyVectorPointer(&list);
-    throw;
+    else {
+      destroySearchValue();
+    }
   }
   LEAVE_BLOCK;
 }
@@ -1545,46 +1804,48 @@ void IndexRangeBlock::readEdgeIndex (IndexOrCondition const& ranges) {
      
   std::string key;
   TRI_edge_direction_e direction = TRI_EDGE_IN; // must set a default to satisfy compiler
-   
-  for (auto x : ranges.at(0)) {
-    if (x._attr == std::string(TRI_VOC_ATTRIBUTE_FROM)) {
-      // we can use lower bound because only equality is supported
-      TRI_ASSERT(x.is1ValueRangeInfo());
-      auto const json = x._lowConst.bound().json();
-      if (TRI_IsStringJson(json)) {
-        // no error will be thrown if _from is not a string
-        key = std::string(json->_value._string.data, json->_value._string.length - 1);
-        direction = TRI_EDGE_OUT;
+  for (size_t i = 0; i < ranges.size(); i++) { 
+    for (auto x : ranges[i]) {
+      if (x._attr == std::string(TRI_VOC_ATTRIBUTE_FROM)) {
+        // we can use lower bound because only equality is supported
+        TRI_ASSERT(x.is1ValueRangeInfo());
+        auto const json = x._lowConst.bound().json();
+        if (TRI_IsStringJson(json)) {
+          // no error will be thrown if _from is not a string
+          key = std::string(json->_value._string.data, json->_value._string.length - 1);
+          direction = TRI_EDGE_OUT;
+        }
+        break;
       }
-      break;
+      else if (x._attr == std::string(TRI_VOC_ATTRIBUTE_TO)) {
+        // we can use lower bound because only equality is supported
+        TRI_ASSERT(x.is1ValueRangeInfo());
+        auto const json = x._lowConst.bound().json();
+        if (TRI_IsStringJson(json)) {
+          // no error will be thrown if _to is not a string
+          key = std::string(json->_value._string.data, json->_value._string.length - 1);
+          direction = TRI_EDGE_IN;
+        }
+        break;
+      }
     }
-    else if (x._attr == std::string(TRI_VOC_ATTRIBUTE_TO)) {
-      // we can use lower bound because only equality is supported
-      TRI_ASSERT(x.is1ValueRangeInfo());
-      auto const json = x._lowConst.bound().json();
-      if (TRI_IsStringJson(json)) {
-        // no error will be thrown if _to is not a string
-        key = std::string(json->_value._string.data, json->_value._string.length - 1);
-        direction = TRI_EDGE_IN;
+
+    if (! key.empty()) {
+      TRI_voc_cid_t documentCid;
+      std::string documentKey;
+
+      int errorCode = resolve(key.c_str(), documentCid, documentKey);
+
+      if (errorCode == TRI_ERROR_NO_ERROR) {
+        // silently ignore all errors due to wrong _from / _to specifications
+        auto&& result = TRI_LookupEdgesDocumentCollection(document, direction,
+            documentCid, (TRI_voc_key_t) documentKey.c_str());
+        for (auto it : result) {
+          _documents.emplace_back(it);
+        }
+    
+        _engine->_stats.scannedIndex += static_cast<int64_t>(result.size());
       }
-      break;
-    }
-  }
-
-  if (! key.empty()) {
-    TRI_voc_cid_t documentCid;
-    std::string documentKey;
-
-    int errorCode = resolve(key.c_str(), documentCid, documentKey);
-
-    if (errorCode == TRI_ERROR_NO_ERROR) {
-      // silently ignore all errors due to wrong _from / _to specifications
-      auto&& result = TRI_LookupEdgesDocumentCollection(document, direction, documentCid, (TRI_voc_key_t) documentKey.c_str());
-      for (auto it : result) {
-        _documents.emplace_back(it);
-      }
-  
-      _engine->_stats.scannedIndex += static_cast<int64_t>(result.size());
     }
   }
   LEAVE_BLOCK;
@@ -1626,7 +1887,7 @@ void IndexRangeBlock::readEdgeIndex (IndexOrCondition const& ranges) {
 // (i.e. the 1 in x.c >= 1) cannot be lists or arrays.
 //
 
-void IndexRangeBlock::initSkiplistIndex (IndexOrCondition const& ranges) {
+void IndexRangeBlock::getSkiplistIterator (IndexAndCondition const& ranges) {
   ENTER_BLOCK;
   TRI_ASSERT(_skiplistIterator == nullptr);
   
@@ -1641,11 +1902,8 @@ void IndexRangeBlock::initSkiplistIndex (IndexOrCondition const& ranges) {
 
   Json parameters(Json::List); 
   size_t i = 0;
-  for (; i < ranges.at(0).size(); i++) {
-    // ranges.at(0) corresponds to a prefix of idx->_fields . . .
-    // TODO only doing case with a single OR (i.e. ranges.size()==1 at the
-    // moment ...
-    auto range = ranges.at(0).at(i);
+  for (; i < ranges.size(); i++) {
+    auto range = ranges[i];
     TRI_ASSERT(range.isConstant());
     if (range.is1ValueRangeInfo()) {   // it's an equality . . . 
       parameters(range._lowConst.bound().copy());
@@ -1691,7 +1949,10 @@ void IndexRangeBlock::initSkiplistIndex (IndexOrCondition const& ranges) {
           nullptr, parameters.steal(), shaper, i);
     }
   }
-
+  
+  if (_skiplistIterator != nullptr) {
+    TRI_FreeSkiplistIterator(_skiplistIterator);
+  }
   _skiplistIterator = TRI_LookupSkiplistIndex(idx, skiplistOperator, en->_reverse);
   if (skiplistOperator != nullptr) {
     TRI_FreeIndexOperator(skiplistOperator);
@@ -1717,24 +1978,28 @@ void IndexRangeBlock::readSkiplistIndex (size_t atMost) {
   try {
     size_t nrSent = 0;
     TRI_skiplist_index_element_t* indexElement;
-    while (nrSent < atMost) { 
+    while (nrSent < atMost && _skiplistIterator !=nullptr) { 
       indexElement = _skiplistIterator->next(_skiplistIterator);
 
       if (indexElement == nullptr) {
-        break;
+        TRI_FreeSkiplistIterator(_skiplistIterator);
+        _skiplistIterator = nullptr;
+        if (++_posInRanges < _condition->size()) {
+          getSkiplistIterator(_condition->at(_sortCoords[_posInRanges]));
+        }
+      } 
+      else {
+        _documents.emplace_back(*(indexElement->_document));
+        ++nrSent;
+        ++_engine->_stats.scannedIndex;
       }
-      _documents.emplace_back(*(indexElement->_document));
-      ++nrSent;
-      ++_engine->_stats.scannedIndex;
-    }
-    if (indexElement == nullptr) {
-      TRI_FreeSkiplistIterator(_skiplistIterator);
-      _skiplistIterator = nullptr;
     }
   }
   catch (...) {
-    TRI_FreeSkiplistIterator(_skiplistIterator);
-    _skiplistIterator = nullptr;
+    if (_skiplistIterator != nullptr) {
+      TRI_FreeSkiplistIterator(_skiplistIterator);
+      _skiplistIterator = nullptr;
+    }
     throw;
   }
   LEAVE_BLOCK;
