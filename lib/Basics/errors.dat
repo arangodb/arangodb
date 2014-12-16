@@ -343,6 +343,15 @@ SIMPLE_CLIENT_COULD_NOT_CONNECT,2001,"could not connect to server","Will be rais
 SIMPLE_CLIENT_COULD_NOT_WRITE,2002,"could not write to server","Will be raised when the client could not write data."
 SIMPLE_CLIENT_COULD_NOT_READ,2003,"could not read from server","Will be raised when the client could not read data."
 
+
+################################################################################
+## Foxx Manager
+################################################################################
+
+MALFORMED_MANIFEST_FILE,3000,"malformed manifest file","The Manifest file is malformed. It is not in a valid JSON format."
+MANIFEST_FILE_ATTRIBUTE_MISSING,3001,"missing manifest attribute","The Manifest file is incomplete. A required attribute is missing."
+
+
 ################################################################################
 ## results, which are not errors
 ################################################################################
