@@ -8,7 +8,6 @@ make setup || exit 1
 echo
 echo "$0: configuring ArangoDB"
 # V8 needs lib realtime:
-export LDFLAGS='-lrt -pthread'
 ./configure \
 	--enable-relative \
 	--enable-all-in-one-libev \
