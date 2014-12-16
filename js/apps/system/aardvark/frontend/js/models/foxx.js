@@ -3,11 +3,16 @@
   "use strict";
 
   window.Foxx = Backbone.Model.extend({
+    idAttribute: '_key',
+
     defaults: {
+      "author": "Unknown Author",
       "title": "",
-      "version": "",
+      "version": "Unknown Version",
       "mount": "",
-      "description": "",
+      "description": "No description",
+      "license": "Unknown License",
+      "contributors": [],
       "git": "",
       "isSystem": false,
       "development": false
@@ -23,6 +28,5 @@
     isNew: function() {
       return false;
     }
-
   });
 }());

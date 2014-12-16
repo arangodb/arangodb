@@ -40,8 +40,11 @@
   @extend %positive;
 }
 
-.button-success:disabled {
-  @extend %neutral;
+[class^='button-']:disabled,
+[class*=' button-']:disabled {
+  @extend %inactive;
+
+  cursor: not-allowed;
 }
 
 .button-danger {
