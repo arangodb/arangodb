@@ -36,7 +36,6 @@
 #include "Basics/tri-strings.h"
 #include "ShapedJson/shaped-json.h"
 
-#include "V8/V8StringConverter.h"
 #include "V8/v8-json.h"
 #include "V8/v8-utils.h"
 
@@ -1738,124 +1737,6 @@ int TRI_FillShapedJsonV8Object (v8::Isolate* isolate,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert a V8 value to a json_t value,
-////////////////////////////////////////////////////////////////////////////////
-
-static bool ShapedJsonToJson (v8::Isolate *isolate,
-                              TRI_json_t* dst,
-                              triagens::utils::V8StringConverter& converter,
-                              v8::Handle<v8::Value> const parameter) {
-  v8::HandleScope scope(isolate);
-  if (parameter->IsBoolean()) {
-    v8::Handle<v8::Boolean> booleanParameter = parameter->ToBoolean();
-    TRI_InitBooleanJson(dst, booleanParameter->Value());
-    return true;
-  }
-
-  if (parameter->IsBooleanObject()) {
-    v8::Handle<v8::BooleanObject> bo = v8::Handle<v8::BooleanObject>::Cast(parameter);
-    TRI_InitBooleanJson(dst, bo->BooleanValue());
-    return true;
-  }
-  
-  if (parameter->IsNull()) {
-    TRI_InitNullJson(dst);
-    return true;
-  }
-
-  if (parameter->IsNumber()) {
-    v8::Handle<v8::Number> numberParameter = parameter->ToNumber();
-    TRI_InitNumberJson(dst, numberParameter->Value());
-    return true;
-  }
-
-  if (parameter->IsNumberObject()) {
-    v8::Handle<v8::NumberObject> no = v8::Handle<v8::NumberObject>::Cast(parameter);
-    TRI_InitNumberJson(dst, no->NumberValue());
-    return true;
-  }
-  
-  if (parameter->IsString() || parameter->IsStringObject()) {
-    v8::Handle<v8::String> stringParameter = parameter->ToString();
-    if (converter.assign(stringParameter)) {
-      TRI_InitString2Json(dst, converter.steal(), converter.length());
-      // this passes ownership for the utf8 string to the JSON object
-      // so the converter dtor won't free the string now
-      return true;
-    }
-
-    // failed
-    TRI_InitNullJson(dst);
-    return false;
-  }
-  
-  if (parameter->IsArray()) {
-    v8::Handle<v8::Array> arrayParameter = v8::Handle<v8::Array>::Cast(parameter);
-    uint32_t const n = arrayParameter->Length();
-
-    TRI_InitList2Json(TRI_UNKNOWN_MEM_ZONE, dst, static_cast<size_t const>(n));
-    if (n > 0) {
-      if (dst->_value._objects._capacity < n) {
-        // initialisation failed
-        return false;
-      }
-    
-      TRI_json_t listElement;
-      for (uint32_t j = 0; j < n; ++j) {
-        if (! ShapedJsonToJson(isolate,
-                               &listElement,
-                               converter,
-                               arrayParameter->Get(j))) {
-          return false;
-        }
-        TRI_PushBack2ListJson(dst, &listElement);
-      }
-    }
-    return true;
-  }
-  
-  if (parameter->IsObject()) {
-    v8::Handle<v8::Array> arrayParameter = v8::Handle<v8::Array>::Cast(parameter);
-    v8::Handle<v8::Array> names = arrayParameter->GetOwnPropertyNames();
-    uint32_t const n = names->Length();
-
-    if (n > 0) {
-      TRI_InitArray2Json(TRI_UNKNOWN_MEM_ZONE, dst, static_cast<size_t const>(n));
-      if (dst->_value._objects._capacity < n * 2) {
-        // initialisation failed
-        return false;
-      }
-
-      TRI_json_t keyElement;
-      TRI_json_t valueElement;
-
-      for (uint32_t j = 0; j < n; ++j) {
-        v8::Handle<v8::Value> key = names->Get(j);
-        if (! ShapedJsonToJson(isolate,
-                               &valueElement,
-                               converter,
-                               arrayParameter->Get(key))) {
-          return false;
-        }
-
-        if (converter.assign(key)) {
-          // move the string pointer into the JSON object
-          TRI_InitString2Json(&keyElement, converter.steal(), converter.length());
-
-          TRI_PushBackVector(&dst->_value._objects, &keyElement);
-          TRI_PushBackVector(&dst->_value._objects, &valueElement);
-          // this passes ownership for the utf8 string to the JSON object
-        }
-      }
-    }
-
-    return true;
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a V8 value to a TRI_json_t value
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2029,32 +1910,6 @@ TRI_json_t* TRI_ObjectToJson (v8::Isolate* isolate,
   vector<v8::Handle<v8::Object>> seenObjects;
 
   return ObjectToJson(isolate, parameter, seenHashes, seenObjects);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert a V8 object to a json_t value
-/// this function makes some assumption about the v8 object to achieve
-/// substantial speedups (in comparison to TRI_ObjectToJson)
-/// use for ShapedJson v8 objects only or for lists of ShapedJson v8 objects!
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* TRI_ShapedJsonToJson (v8::Isolate *isolate, v8::Handle<v8::Value> const parameter) {
-  triagens::utils::V8StringConverter converter(TRI_UNKNOWN_MEM_ZONE);
-
-  TRI_json_t* result = TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE);
-
-  if (result == nullptr) {
-    // OOM
-    return nullptr;
-  }
-
-  if (! ShapedJsonToJson(isolate, result, converter, parameter)) {
-    // something went wrong during JSON buildup
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, result);
-    return nullptr;
-  }
-
-  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

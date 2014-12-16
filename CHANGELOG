@@ -1,6 +1,8 @@
 v2.4.0 (XXXX-XX-XX)
 -------------------
 
+* AQL: range optimizations for IN and OR
+
 * fixed missing makeDirectory when fetching a Foxx application from a zip file
 
 * allow passing subqueries as AQL function parameters without using
