@@ -325,11 +325,10 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (v8::Isolate* isolate,
     TRI_ASSERT(barrier->_container->_collection != nullptr);
     TRI_UseVocBase(barrier->_container->_collection->_vocbase);
     auto externalBarrier = v8::External::New(isolate, barrier);
-
-    v8g->JSBarriers[barrier].Reset(isolate, externalBarrier);
+    v8::Persistent<v8::External>& per(v8g->JSBarriers[barrier]);
+    per.Reset(isolate, externalBarrier);
     result->SetInternalField(SLOT_BARRIER, externalBarrier);
-
-    v8g->JSBarriers[barrier].SetWeak(&v8g->JSBarriers[barrier], WeakBarrierCallback);
+    per.SetWeak(&per, WeakBarrierCallback);
   }
   else {
     auto myBarrier = v8::Local<v8::External>::New(isolate, it->second);

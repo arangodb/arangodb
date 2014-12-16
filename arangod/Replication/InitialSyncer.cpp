@@ -554,7 +554,7 @@ int InitialSyncer::handleCollectionDump (string const& cid,
       return TRI_ERROR_REPLICATION_MASTER_ERROR;
     }
 
-    int res;
+    int res = TRI_ERROR_NO_ERROR;  // Just to please the compiler
     bool checkMore = false;
     bool found;
     TRI_voc_tick_t tick;
