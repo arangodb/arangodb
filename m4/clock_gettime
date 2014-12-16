@@ -17,7 +17,6 @@ AC_DEFUN([AC_CLOCK],
   if test "$have_clock_gettime" = "no"; then
     AC_MSG_CHECKING([for clock_gettime in -lrt])
 
-    SAVED_LIBS="$LIBS"
     LIBS="$LIBS -lrt"
 
     AC_TRY_LINK([ #include <time.h> ], [struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);], [
@@ -69,6 +68,8 @@ AC_DEFUN([AC_CLOCK],
   if test "$have_clock_get_time" = "yes"; then
     AC_DEFINE([HAVE_CLOCK_GET_TIME], 1, [do we have clock_get_time?])
   fi
+  RT_LIBS=LIBS
+  AC_SUBST(RT_LIBS)
 ])
 
 dnl Local Variables:
