@@ -45,7 +45,7 @@
 * https://coreos.com/using-coreos/etcd/
 * [Apache 2 License](https://github.com/coreos/etcd/blob/master/LICENSE)
 
-## Node and NPM
+## Javascript, Node and NPM
 
 ### node
 
