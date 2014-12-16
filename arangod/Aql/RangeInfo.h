@@ -669,7 +669,7 @@ namespace triagens {
 /// @brief insert, directly using a RangeInfo structure
 ////////////////////////////////////////////////////////////////////////////////
 
-        void insert (RangeInfo range);
+        void insert (RangeInfo const& range);
        
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief insert, directly using a RangeInfo structure
@@ -732,7 +732,6 @@ namespace triagens {
         
         void eraseEmptyOrUndefined (std::string const&);
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief isValid: are all the range infos for the variable <var> valid?
 ////////////////////////////////////////////////////////////////////////////////
@@ -751,8 +750,8 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief private data
-////TODO: make iterators for this i.e. method for begin and end, so that this
-//can be private
+/// TODO: make iterators for this i.e. method for begin and end, so that this
+/// can be private
 ////////////////////////////////////////////////////////////////////////////////
     
         std::unordered_map<std::string, std::unordered_map<std::string,
@@ -824,7 +823,7 @@ namespace triagens {
 /// @brief size: the number of RangeInfoMaps in the vector
 ////////////////////////////////////////////////////////////////////////////////
         
-        size_t size () {
+        size_t size () const {
           return _rangeInfoMapVec.size();
         }
 
@@ -832,7 +831,7 @@ namespace triagens {
 /// @brief empty: is the vector of RangeInfoMaps empty
 ////////////////////////////////////////////////////////////////////////////////
         
-        bool empty () {
+        bool empty () const {
           return _rangeInfoMapVec.empty();
         }
 
@@ -869,7 +868,7 @@ namespace triagens {
 /// @brief isMapped: is the input variable in every RIM in the vector
 ////////////////////////////////////////////////////////////////////////////////
         
-        bool isMapped (std::string const&);
+        bool isMapped (std::string const&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief validPositions: returns a vector of the positions in the RIM vector
@@ -899,7 +898,7 @@ namespace triagens {
 /// in a new copy of the left argument
 ////////////////////////////////////////////////////////////////////////////////
 
-    RangeInfoMap*    andCombineRangeInfoMaps (RangeInfoMap*, RangeInfoMap*);
+    RangeInfoMap* andCombineRangeInfoMaps (RangeInfoMap*, RangeInfoMap*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief orCombineRangeInfoMapVecs: return a new RangeInfoMapVec appending
@@ -957,14 +956,16 @@ namespace triagens {
 /// disjoint sets. 
 ////////////////////////////////////////////////////////////////////////////////
 
-    bool areDisjointIndexAndConditions (IndexAndCondition&, IndexAndCondition&);
+    bool areDisjointIndexAndConditions (IndexAndCondition&, 
+                                        IndexAndCondition&);
     
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief isContainedIndexAndConditions: returns true if the first argument is
 /// contained in the second, and false otherwise.
 ////////////////////////////////////////////////////////////////////////////////
 
-    bool isContainedIndexAndConditions (IndexAndCondition&, IndexAndCondition&);
+    bool isContainedIndexAndConditions (IndexAndCondition&, 
+                                        IndexAndCondition&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief differenceIndexAnd: modifies and1 and and2 in place 
