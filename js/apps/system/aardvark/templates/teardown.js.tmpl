@@ -1,0 +1,8 @@
+(function () {
+  'use strict';
+  var db = require("org/arangodb").db;
+
+  <% _.each(collections, function(c) { %>
+  db._drop("<%= c %>");
+  <% }); %>
+}());

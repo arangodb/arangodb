@@ -14,22 +14,22 @@
     };
   };
 
-  var createTextStub = function(type, label, value, info, placeholder, mandatory, regexp,
+  var createTextStub = function(type, label, value, info, placeholder, mandatory, joiObj,
                                 addDelete, addAdd, maxEntrySize, tags) {
     var obj = {
       type: type,
       label: label
     };
-    if (value) {
+    if (value !== undefined) {
       obj.value = value;
     }
-    if (info) {
+    if (info !== undefined) {
       obj.info = info;
     }
-    if (placeholder) {
+    if (placeholder !== undefined) {
       obj.placeholder = placeholder;
     }
-    if (mandatory) {
+    if (mandatory !== undefined) {
       obj.mandatory = mandatory;
     }
     if (addDelete !== undefined) {
@@ -44,11 +44,11 @@
     if (tags !== undefined) {
       obj.tags = tags;
     }
-    if (regexp){
+    if (joiObj){
       // returns true if the string contains the match
-      obj.validateInput = function(el){
-        //return regexp.test(el.val());
-        return regexp;
+      obj.validateInput = function() {
+        // return regexp.test(el.val());
+        return joiObj;
       };
     }
     return obj;
@@ -311,14 +311,14 @@
       self.testInput = (function(){
         _.each(completeTableContent,function(r){
 
-          if(r.validateInput) {
+          if(r.validateInput !== undefined) {
             //catch result of validation and act
             $('#' + r.id).on('keyup focusout', function(e){
 
               var validation = r.validateInput($('#' + r.id));
               var error = false, msg;
 
-              _.each(validation, function(validator, key) {
+              _.each(validation, function(validator) {
 
                 var schema = Joi.object().keys({
                   toCheck: validator.rule
@@ -334,8 +334,7 @@
                   toCheck: valueToCheck
                 },
                 schema,
-                function (err, value) {
-
+                function (err) {
                   if (err) {
                     msg = validator.msg;
                     error = true;

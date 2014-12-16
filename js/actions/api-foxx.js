@@ -98,15 +98,13 @@ actions.defineHttp({
 
       var path = fs.join(appPath, name + "-" + version);
 
-      if (fs.exists(path)) {
-        fs.remove(realFile);
-        throw "destination path '" + path + "' already exists";
+      if (!fs.exists(path)) {
+        fs.makeDirectoryRecursive(path);
+        fs.unzipFile(realFile, path, false, true);
+
+        foxxManager.scanAppDirectory();
       }
-
-      fs.makeDirectoryRecursive(path);
-      fs.unzipFile(realFile, path, false, true);
-
-      foxxManager.scanAppDirectory();
+      fs.remove(realFile);
 
       var found = arangodb.db._collection("_aal").firstExample({
         type: "app",
