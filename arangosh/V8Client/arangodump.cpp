@@ -567,7 +567,7 @@ static int DumpCollection (int fd,
       return TRI_ERROR_INTERNAL;
     }
 
-    int res;
+    int res = TRI_ERROR_NO_ERROR;  // just to please the compiler
     bool checkMore = false;
     bool found;
     uint64_t tick;
@@ -924,7 +924,7 @@ static int DumpShard (int fd,
       return TRI_ERROR_INTERNAL;
     }
 
-    int res;
+    int res = TRI_ERROR_NO_ERROR;   // just to please the compiler
     bool checkMore = false;
     bool found;
     uint64_t tick;
