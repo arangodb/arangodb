@@ -35,6 +35,8 @@ var FoxxController = require("org/arangodb/foxx").Controller,
   internal = require("internal"),
   TemplateEngine = require("lib/foxxTemplateEngine").Engine,
   FoxxManager = require("org/arangodb/foxx/manager"),
+  FoxxManagerUtils = require("org/arangodb/foxx/manager-utils"),
+  fs = require("fs"),
   isDevMode = function() {
     return internal.developmentMode;
   };
@@ -50,7 +52,7 @@ controller.post("/generate", function(req, res) {
   if (isDevMode()) {
     path = module.devAppPath();
   } else {
-    path = module.tmpPath();
+    path = fs.getTempPath();
   }
 
   var conf = req.params("configuration");
@@ -58,15 +60,31 @@ controller.post("/generate", function(req, res) {
   conf.set("path", path);
   templateEngine = new TemplateEngine(conf.forDB());
   templateEngine.write();
+  var location = fs.join(path, conf.get("name"));
 
   if (isDevMode()) {
     FoxxManager.devSetup(conf.get("name"));
     internal.executeGlobalContextFunction("reloadRouting");
+    res.json({
+      appPath: location
+    });
   } else {
-    // TODO Zip and ship it
+    var zipPath = FoxxManagerUtils.processDirectory({
+      location: location
+    });
+    res.json({
+      file: zipPath.split(fs.pathSeparator).pop()
+    });
   }
-
 }).bodyParam("configuration", {
   description: "The configuration for the template.",
   type: Configuration
+});
+
+controller.get("/download/:file", function(req, res) {
+  var fileName = req.params("file"),
+    path = fs.join(fs.getTempPath(), "downloads", fileName);
+  res.set("Content-Type", "application/octet-stream");
+  res.set("Content-Disposition", "attachment; filename=app.zip");
+  res.body = fs.readFileSync(path);
 });

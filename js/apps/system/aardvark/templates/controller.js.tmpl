@@ -10,7 +10,7 @@
 
   controller = new Foxx.Controller(applicationContext);
 
-  <%= repositoryInstance %> = new <%= repository %>(controller.collection('<%= collectionName %>'), {
+  <%= repositoryInstance %> = new <%= repository %>(applicationContext.collection('<%= collectionName %>'), {
     model: <%= model %>
   });
 

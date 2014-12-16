@@ -74,15 +74,20 @@ var sortVersions = function(a, b) {
 };
 
 var installFromGithub = function(res, url, name, version) {
-  var appID = FoxxManager.fetchFromGithub(url, name, version);
-  var app = db._aal.firstExample({"app": appID});
-  res.json({
-    error: false,
-    configuration: app.manifest.configuration || {},
-    app: appID,
-    name: app.name,
-    version: app.version
-  });
+  try {
+    var appID = FoxxManager.fetchFromGithub(url, name, version);
+    var app = db._aal.firstExample({"app": appID});
+    res.json({
+      error: false,
+      configuration: app.manifest.configuration || {},
+      app: appID,
+      name: app.name,
+      version: app.version
+    });
+  } catch (e) {
+    e.error = true;
+    res.json(e);
+  }
 };
 
 controller.get("/whoAmI", function(req, res) {
@@ -161,7 +166,11 @@ controller.post("/foxxes/fishbowlinstall", function (req, res) {
     if (appInfo.versions.hasOwnProperty(version)) {
       url = appInfo.versions[version].location;
     } else {
-      throw "Banana";
+      res.json({
+        error: true,
+        errorMessage: "Internal Error in ArangoDB Store. Please report this alongside with the app you tried to install to arangodb@googlegroups.com."
+      });
+      return;
     }
   } else {
     var keys = Object.keys(appInfo.versions);

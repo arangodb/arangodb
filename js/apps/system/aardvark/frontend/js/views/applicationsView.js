@@ -41,13 +41,14 @@
       $('#'+clicked).click();
     },
 
+    /*
     uploadSetup: function (e) {
       console.log("Set allowed true");
       var files = e.target.files || e.dataTransfer.files;
       this.file = files[0];
       this.allowUpload = true;
     },
-
+    */
     sorting: function() {
       if ($('#appsDesc').is(":checked")) {
         this.collection.setSortingDesc(true);
@@ -404,27 +405,6 @@
         arangoHelper.arangoError("Error: " + error.error);
       });
       self.hideImportModal();
-      /*
-      var self = this;
-      if (this.allowUpload) {
-        this.showSpinner();
-        $.ajax({
-          type: "POST",
-          async: false,
-          url: '/_api/upload',
-          data: self.file,
-          processData: false,
-          contentType: 'application/octet-stream',
-          complete: function(res) {
-            if (res.readyState === 4) {
-              if (res.status === 201) 
-            }
-            self.hideSpinner();
-            arangoHelper.arangoError("Upload error");
-          }
-        });
-      }
-      */
     },
 
     installFoxxFromStore: function(e) {
@@ -438,6 +418,8 @@
         if (result.error === false) {
           window.modalView.hide();
           self.showConfigureDialog(result.configuration, result.name, result.version);
+        } else {
+          alert("Error: " + result.errorNum + ". " + result.errorMessage);
         }
       });
     },
@@ -460,6 +442,14 @@
       if (result.error === false) {
         window.modalView.hide();
         this.showConfigureDialog(result.configuration, result.name, result.version);
+      } else {
+        switch(result.errorNum) {
+          case 1752:
+            alert("Unable to download Application from the given repository");
+            break;
+          default:
+            alert("Error: " + result.errorNum + ". " + result.errorMessage);
+        }
       }
     },
 
@@ -620,6 +610,43 @@
       });
     },
 
+
+    /// NEW CODE
+
+    showFoxxDownload: function(file) {
+      var self = this;
+      var buttons = [
+        window.modalView.createSuccessButton("Download", function() {
+          window.open("templates/download/" + file);
+          window.modalView.hide();
+          self.reload();
+        })
+      ];
+      window.modalView.show(
+        "modalDownloadFoxx.ejs",
+        "Download Application",
+        buttons
+      );
+    },
+
+    showFoxxDevappPath: function(path) {
+      var self = this;
+      var buttons = [
+        window.modalView.createSuccessButton("OK", function() {
+          window.modalView.hide();
+          self.reload();
+        })
+      ];
+      window.modalView.show(
+        "modalFoxxDevPath.ejs",
+        "Application created",
+        buttons,
+        {
+          path: path
+        }
+      );
+    },
+
     generateNewFoxxApp: function() {
       var info = {
         name: $("#new-app-name").val(),
@@ -630,11 +657,17 @@
         description: $("#new-app-description").val()
       },
         self = this;
-      console.log(info);
       $.post("templates/generate", JSON.stringify(info), function(a) {
-        //TODO Error Handling
         window.modalView.hide();
-        self.reload();
+        if (a.hasOwnProperty("file")) {
+          self.showFoxxDownload(a.file);
+          return;
+        }
+        if (a.hasOwnProperty("appPath")) {
+          self.showFoxxDevappPath(a.appPath);
+          return;
+        }
+        //TODO Error Handling
       });
     },
 
@@ -680,8 +713,7 @@
       var buttons = [];
       var modalEvents = {
         "click #infoTab a"   : this.switchModalButton.bind(this),
-        "click .install-app" : this.installFoxxFromStore.bind(this),
-        "change #zip-file"   : this.uploadSetup.bind(this)
+        "click .install-app" : this.installFoxxFromStore.bind(this)
       };
       buttons.push(
         window.modalView.createSuccessButton("Generate", this.addAppAction.bind(this))

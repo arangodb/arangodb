@@ -111,6 +111,7 @@ function processDirectory (source) {
   source.removeFile = true;
 
   fs.zipFile(tempFile, location, files);
+  return tempFile;
 }
 
 
