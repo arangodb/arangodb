@@ -160,8 +160,8 @@ function checkManifest (filename, mf) {
 
   if (failed) {
     throw new ArangoError({
-      errorNum: errors.ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING.code,
-      errorMessage: errors.ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING.message
+      errorNum: errors.MANIFEST_FILE_ATTRIBUTE_MISSING.code,
+      errorMessage: errors.MANIFEST_FILE_ATTRIBUTE_MISSING.message
     });
   }
 
