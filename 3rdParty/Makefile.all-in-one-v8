@@ -23,19 +23,31 @@ if ENABLE_ARM
 	cd @top_srcdir@/3rdParty/V8 \
 		&& CFLAGS="-O2 -g -fsigned-char" \
 		   CXXFLAGS="-O2 -g -fsigned-char" \
-		   $(MAKE) CXX=$(CXX) LINK=$(CXX) library=static strictaliasing=off snapshot=off werror=no hardfp=on @V8_TARGET@
+		   $(MAKE) \
+			CXX=$(CXX) \
+			LINK=$(CXX) \
+			GYPFLAGS="-Dstandalone_static_library=1" \
+			library=static strictaliasing=off snapshot=off werror=no hardfp=on @V8_TARGET@
 else
 if ENABLE_DARWIN
 	cd @top_srcdir@/3rdParty/V8 \
 		&& LDFLAGS="-lc++" \
                    CFLAGS="-O2 -g" \
 		   CXXFLAGS="-O2 -g" \
-		   $(MAKE) CXX=$(CXX) LINK=$(CXX) library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
+		   $(MAKE) \
+			CXX=$(CXX) \
+			LINK=$(CXX) \
+			GYPFLAGS="-Dstandalone_static_library=1" \
+			library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 else
 	cd @top_srcdir@/3rdParty/V8 \
 		&& CFLAGS="-O2 -g" \
 		   CXXFLAGS="-O2 -g" \
-		   $(MAKE) CXX=$(CXX) LINK=$(CXX) library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
+		   $(MAKE) \
+			CXX=$(CXX) \
+			LINK=$(CXX) \
+			GYPFLAGS="-Dstandalone_static_library=1" \
+			library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 endif
 endif
 
@@ -56,10 +68,8 @@ CLEANUP_3RD += clean-v8
 clean-v8:
 	rm -f @srcdir@/.v8-build-@TRI_BITS@
 	cd @top_srcdir@/3rdParty/V8 && ( $(MAKE) clean || true )
+	find @top_srcdir@/3rdParty/V8 -name "*.pyc" -exec rm "{}" ";"
 	rm -rf @top_srcdir@/3rdParty/V8/out
-	rm -rf @top_srcdir@/3rdParty/V8/tools/*.pyc
-	rm -rf @top_srcdir@/3rdParty/V8/build/gyp/pylib/gyp/*.pyc
-	rm -rf @top_srcdir@/3rdParty/V8/build/gyp/pylib/gyp/*/*.pyc
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
