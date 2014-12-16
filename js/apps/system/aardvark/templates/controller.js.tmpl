@@ -1,0 +1,64 @@
+(function () {
+  'use strict';
+  var Foxx = require('org/arangodb/foxx'),
+    ArangoError = require('org/arangodb').ArangoError,
+    <%= repository %> = require('<%= repositoryPath %>').Repository,
+    <%= model %> = require('<%= modelPath %>').Model,
+    _ = require('underscore'),
+    controller,
+    <%= repositoryInstance %>;
+
+  controller = new Foxx.Controller(applicationContext);
+
+  <%= repositoryInstance %> = new <%= repository %>(applicationContext.collection('<%= collectionName %>'), {
+    model: <%= model %>
+  });
+
+  /** Lists of all <%= model %>
+   *
+   * This function simply returns the list of all <%= model %>.
+   */
+  controller.get('/<%= basePath %>', function (req, res) {
+    res.json(_.map(<%= repositoryInstance %>.all(), function (model) {
+      return model.forClient();
+    }));
+  });
+
+  /** Creates a new <%= model %>
+   *
+   * Creates a new <%= model %>-Item. The information has to be in the
+   * requestBody.
+   */
+  controller.post('/<%= basePath %>', function (req, res) {
+    var <%= modelInstance %> = req.params('<%= modelInstance %>');
+    res.json(<%= repositoryInstance %>.save(<%= modelInstance %>).forClient());
+  }).bodyParam('<%= modelInstance %>', 'The <%= model %> you want to create', <%= model %>);
+
+  /** Updates a <%= model %>
+   *
+   * Changes a <%= model %>-Item. The information has to be in the
+   * requestBody.
+   */
+  controller.put('/<%= basePath %>/:id', function (req, res) {
+    var id = req.params('id'),
+    <%= modelInstance %> = req.params('<%= modelInstance %>');
+    res.json(<%= repositoryInstance %>.replaceById(id, <%= modelInstance %>));
+  }).pathParam('id', {
+    description: 'The id of the <%= model %>-Item',
+    type: 'string'
+  }).bodyParam('<%= modelInstance %>', 'The <%= model %> you want your old one to be replaced with', <%= model %>);
+
+  /** Removes a <%= model %>
+   *
+   * Removes a <%= model %>-Item.
+   */
+  controller.del('/<%= basePath %>/:id', function (req, res) {
+    var id = req.params('id');
+    <%= repositoryInstance %>.removeById(id);
+    res.json({ success: true });
+  }).pathParam('id', {
+    description: 'The ID of the <%= model %>-Item',
+    type: 'string'
+  }).errorResponse(ArangoError, 404, 'The document could not be found');
+}());
+

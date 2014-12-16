@@ -45,13 +45,13 @@
         contentType: "application/json",
         processData: false,
         success: function(data) {
-          result = true;
+          result = data;
         },
         error: function(data) {
-          if (data.responseText.indexOf() !== -1) {
-            alert("Already newest app version installed.");
-          }
-          result = false;
+          console.log(data);
+          result = {
+            error: true 
+          };
         }
       });
       return result;

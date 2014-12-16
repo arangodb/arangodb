@@ -19,6 +19,7 @@
       "api": "api",
       "databases": "databases",
       "applications": "applications",
+      "applications/:key": "applicationDetail",
       "application/documentation/:key": "appDocumentation",
       "graph": "graphManagement",
       "userManagement": "userManagement",
@@ -105,6 +106,22 @@
         return false;
       }
       return true;
+    },
+
+    applicationDetail: function (key) {
+      this.naviView.selectMenuItem('applications-menu');
+
+      if (this.foxxList.length === 0) {
+        this.foxxList.fetch({ async: false });
+      }
+      if (!this.hasOwnProperty('applicationDetailView')) {
+        this.applicationDetailView = new window.ApplicationDetailView({
+          model: this.foxxList.get(key)
+        });
+      }
+
+      this.applicationDetailView.model = this.foxxList.get(key);
+      this.applicationDetailView.render();
     },
 
     login: function () {
@@ -245,7 +262,6 @@
       appDocumentation: function (key) {
         var docuView = new window.AppDocumentationView({key: key});
         docuView.render();
-        this.naviView.selectMenuItem('applications-menu');
       },
 
       handleSelectDatabase: function () {
