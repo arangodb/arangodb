@@ -160,8 +160,8 @@ controller.post("/foxxes/fishbowlinstall", function (req, res) {
     version = content.version,
     url,
     appInfo = FoxxManager.getFishbowlStorage().firstExample({
-    name: name
-  });
+      name: name
+    });
   if (version !== undefined) {
     if (appInfo.versions.hasOwnProperty(version)) {
       url = appInfo.versions[version].location;
@@ -349,7 +349,7 @@ controller.get('/foxxes', function (req, res) {
  *
  */
 controller.get('/foxxes/fishbowl', function (req, res) {
-  // FoxxManager.update();
+  FoxxManager.update();
   res.json(FoxxManager.availableJson());
 }).summary("List of all foxx apps submitted to the fishbowl store.")
   .notes("This function contacts the fishbowl and reports which apps are available for install");
