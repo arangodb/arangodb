@@ -1,5 +1,5 @@
 /*jshint strict: false, maxlen: 500 */
-/*global require, assertTrue, assertFalse, assertEqual, AQL_EXECUTE */
+/*global require, assertEqual, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for COLLECT w/ INTO var = expr
@@ -29,11 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var internal = require("internal");
-var errors = internal.errors;
 var db = require("org/arangodb").db;
-var helper = require("org/arangodb/aql-helper");
-var assertQueryError = helper.assertQueryError;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -48,7 +44,7 @@ function optimizerCollectExpressionTestSuite () {
       c = db._create("UnitTestsCollection");
 
       for (var i = 0; i < 1000; ++i) {
-        c.save({ gender: (i % 2 == 0 ? "m" : "f"), age: 11 + (i % 71), value: i });
+        c.save({ gender: (i % 2 === 0 ? "m" : "f"), age: 11 + (i % 71), value: i });
       }
     },
 
