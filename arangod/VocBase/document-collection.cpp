@@ -141,7 +141,7 @@ TRI_shaper_t* TRI_document_collection_t::getShaper () const {
 /// @brief add a WAL operation for a transaction collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AddOperationTransaction (triagens::wal::DocumentOperation&, bool);
+int TRI_AddOperationTransaction (triagens::wal::DocumentOperation&, bool&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -588,7 +588,7 @@ static int InsertDocument (TRI_transaction_collection_t* trxCollection,
                            TRI_doc_mptr_t* header,
                            triagens::wal::DocumentOperation& operation,
                            TRI_doc_mptr_copy_t* mptr,
-                           bool syncRequested) {
+                           bool& waitForSync) {
 
   TRI_ASSERT(header != nullptr);
   TRI_ASSERT(mptr != nullptr);
@@ -627,7 +627,7 @@ static int InsertDocument (TRI_transaction_collection_t* trxCollection,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  res = TRI_AddOperationTransaction(operation, syncRequested);
+  res = TRI_AddOperationTransaction(operation, waitForSync);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -4896,6 +4896,7 @@ int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
 
   TRI_doc_mptr_t* header;
   int res;
+  TRI_voc_tick_t markerTick = 0;
   {
     TRI_IF_FAILURE("RemoveDocumentNoLock") {
       // test what happens if no lock can be acquired
@@ -4946,6 +4947,15 @@ int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
     }
 
     res = TRI_AddOperationTransaction(operation, forceSync);
+
+    if (res == TRI_ERROR_NO_ERROR && forceSync) {
+      markerTick = operation.tick;
+    }
+  }
+
+  if (markerTick > 0) {
+    // need to wait for tick, outside the lock
+    triagens::wal::LogfileManager::instance()->slots()->waitForTick(markerTick);
   }
 
   return res;
@@ -5019,6 +5029,7 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
 
   TRI_ASSERT(marker != nullptr);
 
+  TRI_voc_tick_t markerTick = 0;
   // now insert into indexes
   {
     TRI_IF_FAILURE("InsertDocumentNoLock") {
@@ -5064,7 +5075,16 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
 
     if (res == TRI_ERROR_NO_ERROR) {
       TRI_ASSERT(mptr->getDataPtr() != nullptr);  // PROTECTED by trx in trxCollection
+
+      if (forceSync) {
+        markerTick = operation.tick;
+      }
     }
+  }
+
+  if (markerTick > 0) {
+    // need to wait for tick, outside the lock
+    triagens::wal::LogfileManager::instance()->slots()->waitForTick(markerTick);
   }
 
   return res;
@@ -5097,7 +5117,7 @@ int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
   //TRI_ASSERT_EXPENSIVE(lock || TRI_IsLockedCollectionTransaction(trxCollection, TRI_TRANSACTION_WRITE, 0));
 
   int res = TRI_ERROR_NO_ERROR;
-
+  TRI_voc_tick_t markerTick = 0;
   {
     TRI_IF_FAILURE("UpdateDocumentNoLock") {
       return TRI_ERROR_DEBUG;
@@ -5154,11 +5174,20 @@ int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
     operation.init();
 
     res = UpdateDocument(trxCollection, oldHeader, operation, mptr, forceSync);
+
+    if (res == TRI_ERROR_NO_ERROR && forceSync) {
+      markerTick = operation.tick;
+    }
   }
 
   if (res == TRI_ERROR_NO_ERROR) {
     TRI_ASSERT(mptr->getDataPtr() != nullptr);  // PROTECTED by trx in trxCollection
     TRI_ASSERT(mptr->_rid > 0);
+  }
+
+  if (markerTick > 0) {
+    // need to wait for tick, outside the lock
+    triagens::wal::LogfileManager::instance()->slots()->waitForTick(markerTick);
   }
 
   return res;
