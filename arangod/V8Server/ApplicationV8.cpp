@@ -707,7 +707,7 @@ void ApplicationV8::upgradeDatabase (bool skip,
   isolate->Enter();
   {
     v8::HandleScope scope(isolate);
-
+    
     auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
     localContext->Enter();
     v8::Context::Scope contextScope(localContext);
@@ -754,45 +754,42 @@ void ApplicationV8::upgradeDatabase (bool skip,
         }
       }
     }
+  }
+  if (perform) {
 
-    if (perform) {
+    // issue #391: when invoked with --upgrade, the server will not always shut down
+    LOG_INFO("database upgrade passed");
+    delete context->_locker;
 
-      // issue #391: when invoked with --upgrade, the server will not always shut down
-      LOG_INFO("database upgrade passed");
-      localContext->Exit();
-      delete context->_locker;
+    // regular shutdown... wait for all threads to finish
 
-      // regular shutdown... wait for all threads to finish
+    // again, can do this without the lock
+    for (size_t j = 0; j < _server->_databases._nrAlloc; ++j) {
+      TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(_server->_databases._table[j]);
 
-      // again, can do this without the lock
-      for (size_t j = 0; j < _server->_databases._nrAlloc; ++j) {
-        TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(_server->_databases._table[j]);
+      if (vocbase != nullptr) {
+        vocbase->_state = 2;
 
-        if (vocbase != nullptr) {
-          vocbase->_state = 2;
+        int res = TRI_ERROR_NO_ERROR;
 
-          int res = TRI_ERROR_NO_ERROR;
+        res |= TRI_StopCompactorVocBase(vocbase);
+        vocbase->_state = 3;
+        res |= TRI_JoinThread(&vocbase->_cleanup);
 
-          res |= TRI_StopCompactorVocBase(vocbase);
-          vocbase->_state = 3;
-          res |= TRI_JoinThread(&vocbase->_cleanup);
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            LOG_ERROR("unable to join database threads for database '%s'", vocbase->_name);
-          }
+        if (res != TRI_ERROR_NO_ERROR) {
+          LOG_ERROR("unable to join database threads for database '%s'", vocbase->_name);
         }
       }
+    }
 
-      LOG_INFO("finished");
-      TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
-    }
-    else {
-      // and return from the context
-      localContext->Exit();
-      delete context->_locker;
+    LOG_INFO("finished");
+    TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
+  }
+  else {
+    // and return from the context
+    delete context->_locker;
     
-      LOG_TRACE("finished database init/upgrade");
-    }
+    LOG_TRACE("finished database init/upgrade");
   }
   isolate->Exit();
 }
