@@ -356,7 +356,7 @@ ExecutionNode* ExecutionPlan::fromNodeFor (ExecutionNode* previous,
     if (collection == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no collection for EnumerateCollection");
     }
-    en = registerNode(new EnumerateCollectionNode(this, nextId(), _ast->query()->vocbase(), collection, v));
+    en = registerNode(new EnumerateCollectionNode(this, nextId(), _ast->query()->vocbase(), collection, v, false));
   }
   else if (expression->type == NODE_TYPE_REFERENCE) {
     // second operand is already a variable
