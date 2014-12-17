@@ -108,7 +108,7 @@ struct jsonData {
   * numbers
   * ----------------------------------------------------------------------------- */
 
-({MINUS}|{PLUS})?({ZERO}|({DIGIT1}{DIGIT}*))(\.{DIGIT}+([eE]({MINUS}|{PLUS})?{DIGIT}+)?)? {
+({MINUS}|{PLUS})?({ZERO}|({DIGIT1}{DIGIT}*))((\.{DIGIT}+)?([eE]({MINUS}|{PLUS})?{DIGIT}+)?)? {
   return NUMBER_CONSTANT;
 }
 
