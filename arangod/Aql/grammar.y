@@ -309,7 +309,7 @@ collect_statement:
         scopes->start(triagens::aql::AQL_SCOPE_COLLECT);
       }
 
-      auto node = parser->ast()->createNodeCollect(parser->ast()->createNodeList(), $2);
+      auto node = parser->ast()->createNodeCollectCount(parser->ast()->createNodeList(), $2);
       parser->ast()->addOperation(node);
     }
   | collect_variable_list count_into {
@@ -336,7 +336,7 @@ collect_statement:
         }
       }
 
-      auto node = parser->ast()->createNodeCollect($1, $2);
+      auto node = parser->ast()->createNodeCollectCount($1, $2);
       parser->ast()->addOperation(node);
     }
   | collect_variable_list optional_into optional_keep {
@@ -368,6 +368,33 @@ collect_statement:
       } 
 
       auto node = parser->ast()->createNodeCollect($1, $2, $3);
+      parser->ast()->addOperation(node);
+    }
+  | collect_variable_list T_INTO variable_name T_ASSIGN expression {
+      auto scopes = parser->ast()->scopes();
+
+      // check if we are in the main scope
+      bool reRegisterVariables = (scopes->type() != triagens::aql::AQL_SCOPE_MAIN); 
+
+      if (reRegisterVariables) {
+        // end the active scopes
+        scopes->endNested();
+        // start a new scope
+        scopes->start(triagens::aql::AQL_SCOPE_COLLECT);
+
+        size_t const n = $1->numMembers();
+        for (size_t i = 0; i < n; ++i) {
+          auto member = $1->getMember(i);
+
+          if (member != nullptr) {
+            TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
+            auto v = static_cast<Variable*>(member->getMember(0)->getData());
+            scopes->addVariable(v);
+          }
+        }
+      }
+
+      auto node = parser->ast()->createNodeCollectExpression($1, $3, $5);
       parser->ast()->addOperation(node);
     }
   ;

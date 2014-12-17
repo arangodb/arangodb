@@ -30,6 +30,7 @@
 
 #include "Basics/Common.h"
 #include "Aql/Range.h"
+#include "Aql/types.h"
 #include "Basics/JsonHelper.h"
 #include "Utils/V8TransactionContext.h"
 #include "Utils/AqlTransaction.h"
@@ -256,6 +257,14 @@ namespace triagens {
       static AqlValue CreateFromBlocks (triagens::arango::AqlTransaction*,
                                         std::vector<AqlItemBlock*> const&,
                                         std::vector<std::string> const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AqlValue from a vector of AqlItemBlock*s
+////////////////////////////////////////////////////////////////////////////////
+
+      static AqlValue CreateFromBlocks (triagens::arango::AqlTransaction*,
+                                        std::vector<AqlItemBlock*> const&,
+                                        triagens::aql::RegisterId);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3-way comparison for AqlValue objects
