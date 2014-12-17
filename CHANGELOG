@@ -49,10 +49,23 @@ v2.4.0 (XXXX-XX-XX)
 
 * renamed option `mergeArrays` to `mergeObjects` for AQL data-modification query options
   and HTTP document modification API
+
+
+v2.3.3 (XXXX-XX-XX)
+-------------------
+
+* fixed error handling in instanciation of distributed AQL queries, this 
+  also fixes a bug in cluster startup with many servers
+
+* issue #1185: parse non-fractional JSON numbers with exponent (e.g. `4e-261`)
+
+* issue #1159: allow --server.request-timeout and --server.connect-timeout of 0
   
 
-v2.3.2 (XXXX-XX-XX)
+v2.3.2 (2014-12-09)
 -------------------
+
+* fixed issue #1177: Fix bug in the user app's storage
 
 * fixed issue #1173: AQL Editor "Save current query" resets user password
 
