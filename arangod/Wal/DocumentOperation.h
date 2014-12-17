@@ -30,6 +30,7 @@ namespace triagens {
           trxCollection(trxCollection),
           header(nullptr),
           rid(rid),
+          tick(0),
           type(type),
           status(StatusType::CREATED),
           freeMarker(freeMarker) {
@@ -55,6 +56,7 @@ namespace triagens {
 
       DocumentOperation* swap () {
         DocumentOperation* copy = new DocumentOperation(marker, freeMarker, trxCollection, type, rid);
+        copy->tick = tick;
         copy->header = header;
         copy->oldHeader = oldHeader;
         copy->status = status;
@@ -131,6 +133,7 @@ namespace triagens {
       TRI_doc_mptr_t*                       header;
       TRI_doc_mptr_copy_t                   oldHeader;
       TRI_voc_rid_t const                   rid;
+      TRI_voc_tick_t                        tick;
       TRI_voc_document_operation_e          type;
       StatusType                            status;
       bool                                  freeMarker;
