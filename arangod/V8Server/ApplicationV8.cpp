@@ -374,8 +374,8 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (std::string const& name,
 
   v8::HandleScope scope(isolate);
   auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
-  /// v8::Context::Scope contextScope(localContext);
   localContext->Enter();
+  v8::Context::Scope contextScope(localContext);
 
   TRI_ASSERT(context->_locker->IsLocked(isolate));
   TRI_ASSERT(v8::Locker::IsLocked(isolate));
@@ -427,7 +427,6 @@ void ApplicationV8::exitContext (V8Context* context) {
   context->_hasDeadObjects = v8g->_hasDeadObjects;
   ++context->_numExecutions;
 
-  /// TODO do we need this?  v8::Context::Scope contextScope(localContext);
   // check for cancelation requests
   bool const canceled = v8g->_canceled;
   v8g->_canceled = false;
@@ -710,8 +709,8 @@ void ApplicationV8::upgradeDatabase (bool skip,
     v8::HandleScope scope(isolate);
 
     auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
-  //// TODO do we need this? v8::Context::Scope contextScope(localContext);
     localContext->Enter();
+    v8::Context::Scope contextScope(localContext);
 
     // run upgrade script 
     if (! skip) {
@@ -816,8 +815,8 @@ void ApplicationV8::versionCheck () {
   {
     v8::HandleScope scope(isolate);
     auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
-    /// v8::Context::Scope contextScope(localContext);
     localContext->Enter();
+    v8::Context::Scope contextScope(localContext);
 
     // run upgrade script
     LOG_DEBUG("running database version check");
@@ -928,8 +927,8 @@ bool ApplicationV8::prepareNamedContexts (const string& name,
     {
       v8::HandleScope scope(isolate);
       auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
-      ///             v8::Context::Scope contextScope(localContext);
       localContext->Enter();
+      v8::Context::Scope contextScope(localContext);
 
       {
         v8::TryCatch tryCatch;
@@ -1290,7 +1289,7 @@ bool ApplicationV8::prepareV8Instance (const string& name, size_t i, bool useAct
     auto localContext = v8::Local<v8::Context>::New(isolate, persistentContext);
 
     localContext->Enter();
-    /// TODO  v8::Context::Scope contextScope(localContext);
+    v8::Context::Scope contextScope(localContext);
 
     context->_context.Reset(context->isolate, localContext);
 
@@ -1388,8 +1387,8 @@ void ApplicationV8::prepareV8Server (const string& name, const size_t i, const s
   {
     v8::HandleScope handle_scope(isolate);
     auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
-    /// TODO: do we need this? v8::Context::Scope contextScope(localContext);
     localContext->Enter();
+    v8::Context::Scope contextScope(localContext);
 
     // load server startup file
     bool ok = _startupLoader.loadScript(isolate, localContext, startupFile);
@@ -1424,8 +1423,8 @@ void ApplicationV8::shutdownV8Instance (const string& name, size_t i) {
     v8::HandleScope scope(isolate);
 
     auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
-    //// TODO v8::Context::Scope contextScope(localContext);
     localContext->Enter();
+    v8::Context::Scope contextScope(localContext);
 
     isolate->LowMemoryNotification();
     while (! isolate->IdleNotification(1000)) {
