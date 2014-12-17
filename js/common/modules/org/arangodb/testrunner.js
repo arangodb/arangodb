@@ -17,9 +17,9 @@ runJSUnityTests = function (tests) {
 
   _.each(tests, function (file) {
     // find out whether we're on server or client...
-    var runenvironment = "arangoD";
+    var runenvironment = "arangod";
     if (typeof(require('internal').arango) === 'object') {
-      runenvironment = "ArangoSH";
+      runenvironment = "arangosh";
     }
 
     if (result) {
