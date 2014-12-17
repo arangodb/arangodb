@@ -27,7 +27,10 @@ install:
 - sudo apt-get -y install gdb
 
 before_script: "bash -c Installation/travisCI/before_script.sh"
-script: "bash -c Installation/travisCI/script.sh"
+script:
+ - "bash -c Installation/travisCI/build.sh"
+ - "bash -c Installation/travisCI/jslint.sh"
+ - "bash -c Installation/travisCI/tests.sh"
 after_failure: "bash -c Installation/travisCI/after_failure.sh"
 branches:
   only:
