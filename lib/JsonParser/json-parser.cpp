@@ -1724,7 +1724,7 @@ YY_BUFFER_STATE tri_jsp__scan_bytes  (yyconst char * yybytes, yy_size_t  _yybyte
 	if ( ! buf )
 		YY_FATAL_ERROR( "out of dynamic memory in tri_jsp__scan_bytes()" );
 
-	for ( i = 0; i < (int) _yybytes_len; ++i )
+	for ( i = 0; i < _yybytes_len; ++i )
 		buf[i] = yybytes[i];
 
 	buf[_yybytes_len] = buf[_yybytes_len+1] = YY_END_OF_BUFFER_CHAR;
