@@ -1058,7 +1058,7 @@ bool TRI_IsLockedCollectionTransaction (TRI_transaction_collection_t const* trxC
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
-                                 bool syncRequested) {
+                                 bool& waitForSync) {
   TRI_transaction_collection_t* trxCollection = operation.trxCollection;
   TRI_transaction_t* trx = trxCollection->_transaction;
 
@@ -1067,13 +1067,13 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
   bool const isSingleOperationTransaction = IsSingleOperationTransaction(trx);
 
   // default is false
-  bool waitForSync = false;
+  waitForSync = false;
   if (isSingleOperationTransaction) {
-    waitForSync = syncRequested || trxCollection->_waitForSync;
+    waitForSync |= trxCollection->_waitForSync;
   }
 
   // upgrade the info for the transaction
-  if (syncRequested || trxCollection->_waitForSync) {
+  if (waitForSync) {
     trx->_waitForSync = true;
   }
 
@@ -1105,7 +1105,7 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
     auto oldm = reinterpret_cast<triagens::wal::document_marker_t*>(oldmarker);
     if ((oldm->_type == TRI_WAL_MARKER_DOCUMENT ||
          oldm->_type == TRI_WAL_MARKER_EDGE) &&
-        !triagens::wal::LogfileManager::instance()->suppressShapeInformation()) {
+         ! triagens::wal::LogfileManager::instance()->suppressShapeInformation()) {
       // In this case we have to take care of the legend, we know that the
       // marker does not have a legend so far, so first try to get away 
       // with this:
@@ -1113,7 +1113,7 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
       TRI_voc_cid_t cid = oldm->_collectionId;
       TRI_shape_sid_t sid = oldm->_shape;
       void* oldLegend;
-      triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(oldmarker, operation.marker->size(), waitForSync, cid, sid, 0, oldLegend);
+      triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(oldmarker, operation.marker->size(), false, cid, sid, 0, oldLegend);
       if (slotInfo.errorCode == TRI_ERROR_LEGEND_NOT_IN_WAL_FILE) {
         // Oh dear, we have to build a legend and patch the marker:
         triagens::basics::JsonLegend legend(document->getShaper());  // PROTECTED by trx in trxCollection
@@ -1139,14 +1139,14 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
           auto newm = reinterpret_cast<triagens::wal::document_marker_t*>(newmarker);
           newm->_size = newMarkerSize;
           newm->_offsetJson = (uint32_t) (oldm->_offsetLegend + legend.getSize());
-          triagens::wal::SlotInfoCopy slotInfo2 = triagens::wal::LogfileManager::instance()->allocateAndWrite(newmarker, newMarkerSize, waitForSync, cid, sid, newm->_offsetLegend, oldLegend);
+          triagens::wal::SlotInfoCopy slotInfo2 = triagens::wal::LogfileManager::instance()->allocateAndWrite(newmarker, newMarkerSize, false, cid, sid, newm->_offsetLegend, oldLegend);
           delete[] newmarker;
           if (slotInfo2.errorCode != TRI_ERROR_NO_ERROR) {
             return slotInfo2.errorCode;
           }
           fid = slotInfo2.logfileId;
           position = slotInfo2.mem; 
-
+          operation.tick = slotInfo2.tick;
         }
       }
       else if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
@@ -1159,6 +1159,7 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
                      -reinterpret_cast<char*>(legendPtr);
         // This means that we can find the old legend relative to
         // the new position in the same WAL file.
+        operation.tick = slotInfo.tick;
         fid = slotInfo.logfileId;
         position = slotInfo.mem; 
       }
@@ -1166,11 +1167,12 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
     }
     else {  
       // No document or edge marker, just append it to the WAL:
-      triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(operation.marker->mem(), operation.marker->size(), waitForSync);
+      triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(operation.marker->mem(), operation.marker->size(), false);
       if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
         // some error occurred
         return slotInfo.errorCode;
       }
+      operation.tick = slotInfo.tick;
       fid = slotInfo.logfileId;
       position = slotInfo.mem; 
     }
@@ -1181,7 +1183,7 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
     fid = operation.marker->fid();
     position = operation.marker->mem();
   }
-
+   
   TRI_ASSERT(fid > 0);
   TRI_ASSERT(position != nullptr);
 
