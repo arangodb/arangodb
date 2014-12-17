@@ -1066,16 +1066,17 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
 
   bool const isSingleOperationTransaction = IsSingleOperationTransaction(trx);
 
+  // upgrade the info for the transaction
+  if (waitForSync || trxCollection->_waitForSync) {
+    trx->_waitForSync = true;
+  }
+
   // default is false
   waitForSync = false;
   if (isSingleOperationTransaction) {
     waitForSync |= trxCollection->_waitForSync;
   }
-
-  // upgrade the info for the transaction
-  if (waitForSync) {
-    trx->_waitForSync = true;
-  }
+  
 
   TRI_IF_FAILURE("TransactionOperationNoSlot") {
     return TRI_ERROR_DEBUG;
