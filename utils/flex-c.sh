@@ -27,8 +27,6 @@ test -f ${OUTPUT} || exit 1
 
 cat ${OUTPUT} \
   | sed -e 's:yy_n_chars, (size_t) num_to_read );:yy_n_chars, (int) num_to_read );:' \
-  | sed -e 's:i = 0; i < _yybytes_len; :i = 0; i < (int) _yybytes_len; :' \
-  | sed -e 's:yyl = 0; yyl < yyleng; :yyl = 0; yyl < (int) yyleng; :' \
   | awk '$0 == "extern int isatty (int );" {print "#ifndef _WIN32"; print $0; print "#endif"; next;} {print $0}' \
   > ${OUTPUT}.tmp
 
