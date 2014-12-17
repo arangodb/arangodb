@@ -151,6 +151,7 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
       return new SortNode(plan, oneNode, elements, stable);
     }
     case AGGREGATE: {
+      Variable* expressionVariable = varFromJson(plan->getAst(), oneNode, "expressionVariable", Optional);
       Variable* outVariable = varFromJson(plan->getAst(), oneNode, "outVariable", Optional);
 
       triagens::basics::Json jsonAggregates = oneNode.get("aggregates");
@@ -175,10 +176,10 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
       aggregateVariables.reserve(len);
       for (size_t i = 0; i < len; i++) {
         triagens::basics::Json oneJsonAggregate = jsonAggregates.at(static_cast<int>(i));
-        Variable* outVariable = varFromJson(plan->getAst(), oneJsonAggregate, "outVariable");
-        Variable* inVariable =  varFromJson(plan->getAst(), oneJsonAggregate, "inVariable");
+        Variable* outVar = varFromJson(plan->getAst(), oneJsonAggregate, "outVariable");
+        Variable* inVar =  varFromJson(plan->getAst(), oneJsonAggregate, "inVariable");
 
-        aggregateVariables.emplace_back(std::make_pair(outVariable, inVariable));
+        aggregateVariables.emplace_back(std::make_pair(outVar, inVar));
       }
 
       triagens::basics::Json jsonCount = oneNode.get("count");
@@ -186,6 +187,7 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
 
       return new AggregateNode(plan,
                                oneNode,
+                               expressionVariable,
                                outVariable,
                                keepVariables,
                                plan->getAst()->variables()->variables(false),
@@ -1980,6 +1982,7 @@ double SortNode::estimateCost (size_t& nrItems) const {
 
 AggregateNode::AggregateNode (ExecutionPlan* plan,
                               triagens::basics::Json const& base,
+                              Variable const* expressionVariable,
                               Variable const* outVariable,
                               std::vector<Variable const*> const& keepVariables,
                               std::unordered_map<VariableId, std::string const> const& variableMap,
@@ -1987,6 +1990,7 @@ AggregateNode::AggregateNode (ExecutionPlan* plan,
                               bool countOnly)
   : ExecutionNode(plan, base),
     _aggregateVariables(aggregateVariables), 
+    _expressionVariable(expressionVariable),
     _outVariable(outVariable),
     _keepVariables(keepVariables),
     _variableMap(variableMap),
@@ -2014,6 +2018,11 @@ void AggregateNode::toJsonHelper (triagens::basics::Json& nodes,
     values(variable);
   }
   json("aggregates", values);
+
+  // expression variable might be empty
+  if (_expressionVariable != nullptr) {
+    json("expressionVariable", _expressionVariable->toJson());
+  }
 
   // output variable might be empty
   if (_outVariable != nullptr) {
@@ -2044,9 +2053,14 @@ ExecutionNode* AggregateNode::clone (ExecutionPlan* plan,
                                      bool withDependencies,
                                      bool withProperties) const {
   auto outVariable = _outVariable;
+  auto expressionVariable = _expressionVariable;
   auto aggregateVariables = _aggregateVariables;
 
   if (withProperties) {
+    if (expressionVariable != nullptr) {
+      expressionVariable = plan->getAst()->variables()->createVariable(expressionVariable);
+    }
+
     if (outVariable != nullptr) {
       outVariable = plan->getAst()->variables()->createVariable(outVariable);
     }
@@ -2059,7 +2073,14 @@ ExecutionNode* AggregateNode::clone (ExecutionPlan* plan,
 
   }
 
-  auto c = new AggregateNode(plan, _id, aggregateVariables, outVariable, _keepVariables, _variableMap, _countOnly);
+  auto c = new AggregateNode(plan, 
+                             _id, 
+                             aggregateVariables, 
+                             expressionVariable, 
+                             outVariable, 
+                             _keepVariables, 
+                             _variableMap, 
+                             _countOnly);
 
   CloneHelper(c, plan, withDependencies, withProperties);
 
@@ -2108,6 +2129,10 @@ std::vector<Variable const*> AggregateNode::getVariablesUsedHere () const {
   std::unordered_set<Variable const*> v;
   for (auto p : _aggregateVariables) {
     v.insert(p.second);
+  }
+
+  if (_expressionVariable != nullptr) {
+    v.insert(_expressionVariable);
   }
 
   if (_outVariable != nullptr && ! _countOnly) {

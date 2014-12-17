@@ -253,3 +253,30 @@ AC_DEFUN([TR_LIBRARY],[
     esac
   done
 ])
+
+dnl ----------------------------------------------------------------------------
+dnl check for std::unordered_map::emplace() 
+dnl ----------------------------------------------------------------------------
+
+AC_DEFUN([AX_CXX_CHECK_UNORDERED_MAP_EMPLACE], [
+  AC_LANG_PUSH([C++])
+  AC_MSG_CHECKING([whether C++ has support for std::unordered_map::emplace()])
+  AC_COMPILE_IFELSE(
+    [AC_LANG_SOURCE[
+      #include <unordered_map>
+      void test () {
+        std::unordered_map<int, int> x; 
+        x.emplace(1, 1); 
+      }
+    ]],
+    [eval unordered_map_emplace=yes], 
+    [eval unordered_map_emplace=no]
+  )
+  AC_MSG_RESULT([$unordered_map_emplace])
+  AC_LANG_POP([C++])
+  if test x$unordered_map_emplace = xno; then
+    AC_MSG_ERROR([C++ has no support for std::unordered_map::emplace()])
+  fi
+])
+AX_CXX_CHECK_UNORDERED_MAP_EMPLACE
+
