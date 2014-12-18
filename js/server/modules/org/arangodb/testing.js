@@ -566,20 +566,20 @@ function runThere (options, instanceInfo, file) {
     else {
       var jasmineReportFormat = options.jasmineReportFormat || 'progress';
       t = 'var executeTestSuite = require("jasmine").executeTestSuite; '+
-          'return executeTestSuite([' + JSON.stringify(file) + '],{"format": '+
-          JSON.stringify(jasmineReportFormat) + '});';
+          'return { status: executeTestSuite([' + JSON.stringify(file) + '],{"format": '+
+          JSON.stringify(jasmineReportFormat) + '}) };';
     }
     var o = makeAuthorisationHeaders(options);
     o.method = "POST";
     o.timeout = 24*3600;
     o.returnBodyOnError = true;
-    r = download(instanceInfo.url+"/_admin/execute?returnAsJSON=true",t,o);
+    r = download(instanceInfo.url + "/_admin/execute?returnAsJSON=true",t,o);
     if (!r.error && r.code === 200) {
       r = JSON.parse(r.body);
     }
     if (file.indexOf("-spec") !== -1) {
       // remoting a jasmine suite... 
-      r = {status: r, message: ''};
+      r = {status: r.status, message: ''};
     }
   }
   catch (err) {
@@ -698,7 +698,7 @@ function performTests(options, testList, testname, remote) {
         continue;
       }
 
-      print("\nArangod: Trying",te,"...");
+      print("\narangod: Trying",te,"...");
       var r;
       if (remote) {
         r = runThere(options, instanceInfo, te);
@@ -755,7 +755,7 @@ testFuncs.single_server = function (options) {
   if (options.test !== undefined) {
     var instanceInfo = startInstance("tcp", options, [], "single_server");
     var te = options.test;
-    print("\nArangod: Trying",te,"...");
+    print("\narangod: Trying",te,"...");
     result = {};
     result[te] = runThere(options, instanceInfo, makePath(te));
     print("Shutting down...");
@@ -774,7 +774,7 @@ testFuncs.single_client = function (options) {
   if (options.test !== undefined) {
     var instanceInfo = startInstance("tcp", options, [], "single_client");
     var te = options.test;
-    print("\nArangoSH: Trying ",te,"...");
+    print("\narangosh: Trying ",te,"...");
     result[te] = runInArangosh(options, instanceInfo, te);
     print("Shutting down...");
     shutdownInstance(instanceInfo,options);
@@ -893,7 +893,7 @@ testFuncs.shell_client = function(options) {
         continue;
       }
 
-      print("\nArangoSH: Trying",te,"...");
+      print("\narangosh: Trying",te,"...");
 
       var r = runInArangosh(options, instanceInfo, te);
       results[te] = r;

@@ -470,6 +470,7 @@ SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/shell-foxx-repository-spec.js \
                @top_srcdir@/js/server/tests/shell-foxx-query-spec.js \
                @top_srcdir@/js/server/tests/shell-foxx-model.js \
+               @top_srcdir@/js/server/tests/shell-foxx-model-events-spec.js \
                @top_srcdir@/js/server/tests/shell-foxx-base-middleware.js \
                @top_srcdir@/js/server/tests/shell-foxx-template-middleware.js \
                @top_srcdir@/js/server/tests/shell-foxx-format-middleware.js \
