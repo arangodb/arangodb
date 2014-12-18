@@ -374,8 +374,8 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (std::string const& name,
 
   v8::HandleScope scope(isolate);
   auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
-  /// v8::Context::Scope contextScope(localContext);
   localContext->Enter();
+  v8::Context::Scope contextScope(localContext);
 
   TRI_ASSERT(context->_locker->IsLocked(isolate));
   TRI_ASSERT(v8::Locker::IsLocked(isolate));
@@ -427,7 +427,6 @@ void ApplicationV8::exitContext (V8Context* context) {
   context->_hasDeadObjects = v8g->_hasDeadObjects;
   ++context->_numExecutions;
 
-  /// TODO do we need this?  v8::Context::Scope contextScope(localContext);
   // check for cancelation requests
   bool const canceled = v8g->_canceled;
   v8g->_canceled = false;
@@ -708,10 +707,10 @@ void ApplicationV8::upgradeDatabase (bool skip,
   isolate->Enter();
   {
     v8::HandleScope scope(isolate);
-
+    
     auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
-  //// TODO do we need this? v8::Context::Scope contextScope(localContext);
     localContext->Enter();
+    v8::Context::Scope contextScope(localContext);
 
     // run upgrade script 
     if (! skip) {
@@ -755,45 +754,42 @@ void ApplicationV8::upgradeDatabase (bool skip,
         }
       }
     }
+  }
+  if (perform) {
 
-    if (perform) {
+    // issue #391: when invoked with --upgrade, the server will not always shut down
+    LOG_INFO("database upgrade passed");
+    delete context->_locker;
 
-      // issue #391: when invoked with --upgrade, the server will not always shut down
-      LOG_INFO("database upgrade passed");
-      localContext->Exit();
-      delete context->_locker;
+    // regular shutdown... wait for all threads to finish
 
-      // regular shutdown... wait for all threads to finish
+    // again, can do this without the lock
+    for (size_t j = 0; j < _server->_databases._nrAlloc; ++j) {
+      TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(_server->_databases._table[j]);
 
-      // again, can do this without the lock
-      for (size_t j = 0; j < _server->_databases._nrAlloc; ++j) {
-        TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(_server->_databases._table[j]);
+      if (vocbase != nullptr) {
+        vocbase->_state = 2;
 
-        if (vocbase != nullptr) {
-          vocbase->_state = 2;
+        int res = TRI_ERROR_NO_ERROR;
 
-          int res = TRI_ERROR_NO_ERROR;
+        res |= TRI_StopCompactorVocBase(vocbase);
+        vocbase->_state = 3;
+        res |= TRI_JoinThread(&vocbase->_cleanup);
 
-          res |= TRI_StopCompactorVocBase(vocbase);
-          vocbase->_state = 3;
-          res |= TRI_JoinThread(&vocbase->_cleanup);
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            LOG_ERROR("unable to join database threads for database '%s'", vocbase->_name);
-          }
+        if (res != TRI_ERROR_NO_ERROR) {
+          LOG_ERROR("unable to join database threads for database '%s'", vocbase->_name);
         }
       }
+    }
 
-      LOG_INFO("finished");
-      TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
-    }
-    else {
-      // and return from the context
-      localContext->Exit();
-      delete context->_locker;
+    LOG_INFO("finished");
+    TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
+  }
+  else {
+    // and return from the context
+    delete context->_locker;
     
-      LOG_TRACE("finished database init/upgrade");
-    }
+    LOG_TRACE("finished database init/upgrade");
   }
   isolate->Exit();
 }
@@ -816,8 +812,8 @@ void ApplicationV8::versionCheck () {
   {
     v8::HandleScope scope(isolate);
     auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
-    /// v8::Context::Scope contextScope(localContext);
     localContext->Enter();
+    v8::Context::Scope contextScope(localContext);
 
     // run upgrade script
     LOG_DEBUG("running database version check");
@@ -928,8 +924,8 @@ bool ApplicationV8::prepareNamedContexts (const string& name,
     {
       v8::HandleScope scope(isolate);
       auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
-      ///             v8::Context::Scope contextScope(localContext);
       localContext->Enter();
+      v8::Context::Scope contextScope(localContext);
 
       {
         v8::TryCatch tryCatch;
@@ -1290,7 +1286,7 @@ bool ApplicationV8::prepareV8Instance (const string& name, size_t i, bool useAct
     auto localContext = v8::Local<v8::Context>::New(isolate, persistentContext);
 
     localContext->Enter();
-    /// TODO  v8::Context::Scope contextScope(localContext);
+    v8::Context::Scope contextScope(localContext);
 
     context->_context.Reset(context->isolate, localContext);
 
@@ -1388,8 +1384,8 @@ void ApplicationV8::prepareV8Server (const string& name, const size_t i, const s
   {
     v8::HandleScope handle_scope(isolate);
     auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
-    /// TODO: do we need this? v8::Context::Scope contextScope(localContext);
     localContext->Enter();
+    v8::Context::Scope contextScope(localContext);
 
     // load server startup file
     bool ok = _startupLoader.loadScript(isolate, localContext, startupFile);
@@ -1424,8 +1420,8 @@ void ApplicationV8::shutdownV8Instance (const string& name, size_t i) {
     v8::HandleScope scope(isolate);
 
     auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
-    //// TODO v8::Context::Scope contextScope(localContext);
     localContext->Enter();
+    v8::Context::Scope contextScope(localContext);
 
     isolate->LowMemoryNotification();
     while (! isolate->IdleNotification(1000)) {
