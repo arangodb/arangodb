@@ -5,8 +5,8 @@ understandability the query results are also included directly below each query.
 
 !SECTION Simple queries
 
-Following is a query that returns a string value. The result string is contained in a list
-because the result of every valid query is a list:
+Following is a query that returns a string value. The result string is contained in an array
+because the result of every valid query is an array:
 
 ```js
 RETURN "this will be returned"
@@ -15,7 +15,7 @@ RETURN "this will be returned"
 ]
 ```
 
-Here is a query that creates the cross products of two lists and runs a projection 
+Here is a query that creates the cross products of two arrays and runs a projection 
 on it, using a few of AQL's built-in functions:
 
 ```js

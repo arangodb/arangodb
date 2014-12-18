@@ -78,7 +78,7 @@ require("internal").print(result.visited.vertices.map(function(vertex) {
 }));
 ```
 
-The result is a list of vertices that were visited during the traversal, starting at the
+The result is an array of vertices that were visited during the traversal, starting at the
 start vertex (i.e. *v/world* in our example):
 
 ```js
@@ -95,7 +95,7 @@ start vertex (i.e. *v/world* in our example):
 
 **Note**: The result is limited to vertices directly connected to the start vertex. We
 achieved this by setting the *maxDepth* attribute to *1*. Not setting it would return the
-full list of vertices.
+full array of vertices.
 
 !SUBSECTION Traversal Direction
 
@@ -213,7 +213,7 @@ require("internal").print(result.visited.vertices.map(function(vertex) {
 }));
 ```
 
-The result will be a longer list, assembled in depth-first, pre-order order. For 
+The result will be a longer array, assembled in depth-first, pre-order order. For 
 each continent found, the traverser will descend into linked countries, and then into
 the linked capital:
 
@@ -438,8 +438,8 @@ var config = {
 The above filter function will exclude all vertices that do not have a *type* value of
 *capital*. The filter function will be called for each vertex found during the traversal.
 It will receive the traversal configuration, the current vertex, and the full path from 
-the traversal start vertex to the current vertex. The path consists of a list of edges, 
-and a list of vertices. We could also filter everything but capitals by checking the
+the traversal start vertex to the current vertex. The path consists of an array of edges, 
+and an array of vertices. We could also filter everything but capitals by checking the
 length of the path from the start vertex to the current vertex. Capitals will have a
 distance of 3 from the *v/world* start vertex 
 (capital -> is-in -> country -> is-in -> continent -> is-in -> world):
@@ -476,7 +476,7 @@ var config = {
 }
 ```
 
-It is also possible to combine *exclude* and *prune* by returning a list with both
+It is also possible to combine *exclude* and *prune* by returning an array with both
 values:
 
 ```js
@@ -536,7 +536,7 @@ It is the expander's responsibility to return all edges and vertices directly
 connected to the current vertex (which is passed via the *vertex* variable). 
 The full path from the start vertex up to the current vertex is also supplied via
 the *path* variable.
-An expander is expected to return a list of objects, which need to have an *edge*
+An expander is expected to return an array of objects, which need to have an *edge*
 and a *vertex* attribute each.
 
 **Note**: If you want to rely on a particular order in which the edges
@@ -620,7 +620,7 @@ var config = {
     var outEdges = datasource.getOutEdges(vertex);
  
     if (outEdges.length === 0) {
-      return [ ]; // return an empty list
+      return [ ]; // return an empty array
     }
 
     // sort all outgoing edges according to "when" attribute
@@ -683,7 +683,7 @@ To adjust the uniqueness for following edges, there are the following options fo
 ``` 
 
 Note that uniqueness checking will have some effect on both runtime and memory usage. For example, when
-uniqueness checks are set to *"global"*, lists of visited vertices and edges must be kept in memory while the
+uniqueness checks are set to *"global"*, arrays of visited vertices and edges must be kept in memory while the
 traversal is executed. Global uniqueness should thus only be used when a traversal is expected to visit
 few nodes.
 
@@ -728,7 +728,7 @@ configuration can consist of the following attributes:
    (e.g. by pushing vertex data into the result).
 - *expander*: expander function that is responsible for returning edges and vertices
    directly connected to a vertex . The function signature is *function (config, vertex, path)*.
-   The expander function is required to return a list of connection objects, consisting of an
+   The expander function is required to return an array of connection objects, consisting of an
    *edge* and *vertex* attribute each.
 - *filter*: vertex filter function. The function signature is *function (config, vertex, path)*. It
    may return one of the following values:

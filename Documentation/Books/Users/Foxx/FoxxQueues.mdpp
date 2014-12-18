@@ -200,7 +200,7 @@ Deletes a job with the given job id.
 
 Returns *true* if the job was deleted successfully. If the job did not exist, it returns *false* instead.
 
-!SECTION Fetching a list of jobs in a queue
+!SECTION Fetching an arry of jobs in a queue
 
 *Examples*
 
@@ -215,7 +215,7 @@ assertEqual(queue.progress("log").length, 0);
 assertEqual(queue.complete("log").length, 1);
 ```
 
-!SUBSECTION Fetching a list of pending jobs in a queue
+!SUBSECTION Fetching an array of pending jobs in a queue
 
 `Queue::pending([type])`
 
@@ -225,7 +225,7 @@ Returns an array of job ids of jobs in the given queue with the status *"pending
 
 * *type* (optional): the name of the job type to filter the results.
 
-!SUBSECTION Fetching a list of jobs that are currently in progress
+!SUBSECTION Fetching an array of jobs that are currently in progress
 
 `Queue::progress([type])`
 
@@ -235,7 +235,7 @@ Returns an array of job ids of jobs in the given queue with the status *"progres
 
 * *type* (optional): the name of the job type to filter the results.
 
-!SUBSECTION Fetching a list of completed jobs in a queue
+!SUBSECTION Fetching an array of completed jobs in a queue
 
 `Queue::complete([type])`
 
@@ -245,7 +245,7 @@ Returns an array of job ids of jobs in the given queue with the status *"complet
 
 * *type* (optional): the name of the job type to filter the results.
 
-!SUBSECTION Fetching a list of failed jobs in a queue
+!SUBSECTION Fetching an array of failed jobs in a queue
 
 `Queue::failed([type])`
 
@@ -255,7 +255,7 @@ Returns an array of job ids of jobs in the given queue with the status *"failed"
 
 * *type* (optional): the name of the job type to filter the results.
 
-!SUBSECTION Fetching a list of all jobs in a queue
+!SUBSECTION Fetching an array of all jobs in a queue
 
 `Queue::all([type])`
 

@@ -17,12 +17,12 @@ Wait until document has been sync to disk.
 
 `graph (json,required)`
 
-The call expects a JSON hash array as body with the following attributes: _key: The name of the new graph. vertices: The name of the vertices collection. edges: The name of the egde collection.
+The call expects a JSON object as body with the following attributes: _key: The name of the new graph. vertices: The name of the vertices collection. edges: The name of the egde collection.
 
 !SUBSECTION Description
 
 Creates a new graph.
-Returns an object with an attribute graph containing a list of all graph properties.
+Returns an object with an attribute *graph* containing an array of all graph properties.
 
 !SUBSECTION Return codes
 
@@ -83,15 +83,15 @@ If the "If-Match" header is given, then it must contain exactly one etag. The do
 
 !SUBSECTION Description
 
-If graph-name is specified, returns an object with an attribute graph containing a JSON hash with all properties of the specified graph.
+If graph-name is specified, returns an object with an attribute graph containing a JSON array with all properties of the specified graph.
 
-If graph-name is not specified, returns a list of graph objects.
+If graph-name is not specified, returns an array of graph objects.
 
 !SUBSECTION Return codes
 
 `HTTP 200`
 
-is returned if the graph was found (in case graph-name was specified) or the list of graphs was assembled successfully (in case graph-name was not specified).
+is returned if the graph was found (in case graph-name was specified) or the array of graphs was assembled successfully (in case graph-name was not specified).
 
 `HTTP 404`
 

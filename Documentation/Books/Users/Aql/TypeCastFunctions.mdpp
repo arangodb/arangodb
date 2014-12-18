@@ -19,8 +19,8 @@ will return a number value):
   - *null* is converted to *false*.
   - Numbers are converted to *true* if they are unequal to 0, and to *false* otherwise. 
   - Strings are converted to *true* if they are non-empty, and to *false* otherwise. 
-  - Lists are always converted to *true*.
-  - Documents are always converted to *true*.
+  - Arrays are always converted to *true*.
+  - Objects / documents are always converted to *true*.
 
 - *TO_NUMBER(value)*: Takes an input *value* of any type and converts it 
   into a numeric value as follows:
@@ -31,28 +31,28 @@ will return a number value):
     valid representation of a number. Whitespace at the start and end of the string
     is allowed. String values that do not contain any valid representation of a number
     will be converted to *null*.
-  - An empty list is converted to *0*, a list with one member is converted into the
-    result of `TO_NUMBER()` for its sole member. A list with two or more members is
+  - An empty array is converted to *0*, an array with one member is converted into the
+    result of `TO_NUMBER()` for its sole member. An array with two or more members is
     converted to *null*.
-  - A document is converted to *null*.
+  - An object / document is converted to *null*.
 
 - *TO_STRING(value)*: Takes an input *value* of any type and converts it 
   into a string value as follows:
   - *null* is converted to the string *"null"*
   - *false* is converted to the string *"false"*, *true* to the string *"true"*
   - Numbers are converted to their string representations.
-  - An empty list is converted to the empty string. A list with one member is converted
-    to the result of `TO_STRING()` for its sole member. A list with two or more members
-    is converted to a comma-separated list with the string representation of its members.
-  - A document is converted to the string *[object Object]*.
+  - An empty array is converted to the empty string. An array with one member is converted
+    to the result of `TO_STRING()` for its sole member. An array with two or more members
+    is converted to a comma-separated array with the string representation of its members.
+  - An object / document is converted to the string *[object Object]*.
 
 - *TO_LIST(value)*: Takes an input *value* of any type and converts it 
-  into a list value as follows:
-  - *null* is converted to an empty list.
-  - Boolean values, numbers and strings are converted to a list containing the original
+  into an array value as follows:
+  - *null* is converted to an empty array.
+  - Boolean values, numbers and strings are converted to an array containing the original
     value as its single element.
-  - Lists keep their original value.
-  - Documents are converted to a list containing their attribute values as list elements
+  - Arrays keep their original value.
+  - Objects / documents are converted to an array containing their attribute values as array elements
 
 !SECTION Type check functions
 
@@ -71,6 +71,6 @@ The following type check functions are available:
 
 - *IS_STRING(value)*: Checks whether *value* is a *string* value
 
-- *IS_LIST(value)*: Checks whether *value* is a *list* value
+- *IS_LIST(value)*: Checks whether *value* is an *array* value
 
-- *IS_DOCUMENT(value)*: Checks whether *value* is a *document* value
+- *IS_DOCUMENT(value)*: Checks whether *value* is an *object* / *document* value

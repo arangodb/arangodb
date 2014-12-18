@@ -2291,8 +2291,8 @@ AqlValue EnumerateListBlock::getAqlValue (AqlValue inVarReg) {
 }
           
 void EnumerateListBlock::throwListExpectedException () {
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_LIST_EXPECTED, 
-                                 TRI_errno_string(TRI_ERROR_QUERY_LIST_EXPECTED) +
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_ARRAY_EXPECTED, 
+                                 TRI_errno_string(TRI_ERROR_QUERY_ARRAY_EXPECTED) +
                                  std::string(" as operand to FOR loop"));
 }
 

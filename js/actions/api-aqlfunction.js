@@ -157,7 +157,7 @@ function get_api_aqlfunction (req, res) {
 ///     code : "function (celsius) { return celsius * 1.8 + 32; }"
 ///   };
 ///
-///   var response = logCurlRequest('POST', url, body);
+///   var response = logCurlRequest('POST', url, JSON.stringify(body));
 ///
 ///   assert(response.code === 201);
 ///
@@ -243,7 +243,7 @@ function post_api_aqlfunction (req, res) {
 ///     code : "function (x) { return x*x; }" 
 ///   };
 ///
-///   db._connection.POST("/_api/aqlfunction", body);
+///   db._connection.POST("/_api/aqlfunction", JSON.stringify(body));
 ///   var response = logCurlRequest('DELETE', url);
 ///
 ///   assert(response.code === 200);

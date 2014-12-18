@@ -3,7 +3,7 @@
 AQL supports the following functions to operate on document values:
 
 - *MATCHES(document, examples, return-index)*: Compares the document
-  *document* against each example document provided in the list *examples*. 
+  *document* against each example document provided in the array *examples*. 
   If *document* matches one of the examples, *true* is returned, and if there is
   no match *false* will be returned. The default return value type can be changed by
   passing *true* as the third function parameter *return-index*. Setting this
@@ -15,8 +15,8 @@ AQL supports the following functions to operate on document values:
   comparison stops and the result is returned. If there is a mismatch, the function will
   continue the comparison with the next example until there are no more examples left.
 
-  The *examples* must be a list of 1..n example documents, with any number of attributes
-  each. Note: specifying an empty list of examples is not allowed.
+  The *examples* must be an array of 1..n example documents, with any number of attributes
+  each. Note: specifying an empty array of examples is not allowed.
    
   @EXAMPLES
 
@@ -85,18 +85,18 @@ AQL supports the following functions to operate on document values:
   attribute named *attributename*, and *false* otherwise.
 
 - *ATTRIBUTES(document, removeInternal, sort)*: Returns the attribute
-  names of the *document* as a list. 
+  names of the *document* as an array. 
   If *removeInternal* is set to *true*, then all internal attributes (such as *_id*, 
   *_key* etc.) are removed from the result. If *sort* is set to *true*, then the
   attribute names in the result will be sorted. Otherwise they will be returned in any order.
 
 - *VALUES(document, removeInternal)*: Returns the attribute values of the *document*
-  as a list. If *removeInternal* is set to *true*, then all internal attributes (such 
+  as an array. If *removeInternal* is set to *true*, then all internal attributes (such 
   as *_id*, *_key* etc.) are removed from the result. 
 
 - *ZIP(attributes, values)*: Returns a document object assembled from the
   separate parameters *attributes* and *values*. *attributes* and *values* must be
-  lists and must have the same length. The items in *attributes* will be used for
+  arrays and must have the same length. The items in *attributes* will be used for
   naming the attributes in the result. The items in *values* will be used as the
   actual values of the result.
 
@@ -106,7 +106,7 @@ AQL supports the following functions to operate on document values:
 - *UNSET(document, attributename, ...)*: Removes the attributes *attributename*
   (can be one or many) from *document*. All other attributes will be preserved.
   Multiple attribute names can be specified by either passing multiple individual string argument 
-  names, or by passing a list of attribute names:
+  names, or by passing an array of attribute names:
 
       UNSET(doc, '_id', '_key', [ 'foo', 'bar' ])
       UNSET(doc, [ '_id', '_key', 'foo', 'bar' ])
@@ -114,7 +114,7 @@ AQL supports the following functions to operate on document values:
 - *KEEP(document, attributename, ...)*: Keeps only the attributes *attributename*
   (can be one or many) from *document*. All other attributes will be removed from the result.
   Multiple attribute names can be specified by either passing multiple individual string argument 
-  names, or by passing a list of attribute names:
+  names, or by passing an array of attribute names:
 
       KEEP(doc, 'firstname', 'name', 'likes')
       KEEP(doc, [ 'firstname', 'name', 'likes' ])
