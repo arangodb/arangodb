@@ -43,7 +43,7 @@ using JsonHelper = triagens::basics::JsonHelper;
 ////////////////////////////////////////////////////////////////////////////////
 
 Json ExecutionStats::toJson () const {
-  Json json(Json::Array);
+  Json json(Json::Object);
   json.set("writesExecuted", Json(static_cast<double>(writesExecuted)));
   json.set("writesIgnored",  Json(static_cast<double>(writesIgnored)));
   json.set("scannedFull",    Json(static_cast<double>(scannedFull)));
@@ -59,7 +59,7 @@ Json ExecutionStats::toJson () const {
 }
 
 Json ExecutionStats::toJsonStatic () {
-  Json json(Json::Array);
+  Json json(Json::Object);
   json.set("writesExecuted", Json(0.0));
   json.set("writesIgnored",  Json(0.0));
   json.set("scannedFull",    Json(0.0));
@@ -79,7 +79,7 @@ ExecutionStats::ExecutionStats()
 }
 
 ExecutionStats::ExecutionStats (triagens::basics::Json const& jsonStats) {
-  if (! jsonStats.isArray()) {
+  if (! jsonStats.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "stats is not an array");
   }
 

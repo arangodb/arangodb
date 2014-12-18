@@ -504,7 +504,7 @@ static void JS_GetExtraGeneralCursor (const v8::FunctionCallbackInfo<v8::Value>&
     TRI_LockGeneralCursor(cursor);
     TRI_json_t* extra = cursor->getExtra(cursor);
 
-    if (extra != nullptr && extra->_type == TRI_JSON_ARRAY) {
+    if (extra != nullptr && extra->_type == TRI_JSON_OBJECT) {
       TRI_UnlockGeneralCursor(cursor);
       TRI_ReleaseGeneralCursor(cursor);
 

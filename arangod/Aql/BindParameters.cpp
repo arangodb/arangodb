@@ -74,7 +74,7 @@ void BindParameters::process () {
     return;
   }
 
-  if (! TRI_IsArrayJson(_json)) {
+  if (! TRI_IsObjectJson(_json)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_BIND_PARAMETERS_INVALID);
   }
   

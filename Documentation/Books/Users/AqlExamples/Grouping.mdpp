@@ -124,7 +124,7 @@ FOR u IN users
 !SUBSECTION Aggregation
 
 So far we only grouped data without aggregation. Adding aggregation is simple in AQL,
-as all that needs to be done is to run an aggregate function on the list created by
+as all that needs to be done is to run an aggregate function on the array created by
 the *INTO* clause of a *COLLECT* statement:
 
 ```js
@@ -173,13 +173,13 @@ FOR u IN users
 ]
 ```
 
-We have used the function *LENGTH* here (it returns the length of a list). This is the
+We have used the function *LENGTH* here (it returns the length of a array). This is the
 equivalent to SQL's `SELECT g, COUNT(*) FROM ... GROUP BY g`.
 In addition to *LENGTH* AQL also provides *MAX*, *MIN*, *SUM* and *AVERAGE* as 
 basic aggregation functions.
 
-In AQL all aggregation functions can be run on lists only. If an aggregation function
-is run on anything that is not a list, an error will be occur and the query will fail.
+In AQL all aggregation functions can be run on arrays only. If an aggregation function
+is run on anything that is not an array, an error will occur and the query will fail.
 
 !SUBSECTION Post-filtering aggregated data
 

@@ -86,9 +86,9 @@ static int ReadTick (TRI_json_t const* json,
   TRI_json_t* tick;
 
   TRI_ASSERT(json != nullptr); 
-  TRI_ASSERT(json->_type == TRI_JSON_ARRAY);
+  TRI_ASSERT(json->_type == TRI_JSON_OBJECT);
 
-  tick = TRI_LookupArrayJson(json, attributeName);
+  tick = TRI_LookupObjectJson(json, attributeName);
 
   if (! TRI_IsStringJson(tick)) {
     return TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE;
@@ -115,99 +115,99 @@ static TRI_json_t* JsonConfiguration (TRI_replication_applier_configuration_t co
                                       bool includePassword) {
   TRI_json_t* json;
 
-  json = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 9);
+  json = TRI_CreateObject2Json(TRI_CORE_MEM_ZONE, 9);
 
   if (json == nullptr) {
     return nullptr;
   }
 
   if (config->_endpoint != nullptr) {
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE,
+    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                          json,
                          "endpoint",
                          TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config->_endpoint));
   }
 
   if (config->_database != nullptr) {
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE,
+    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                          json,
                          "database",
                          TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config->_database));
   }
 
   if (config->_username != nullptr) {
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE,
+    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                          json,
                          "username",
                          TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config->_username));
   }
 
   if (config->_password != nullptr && includePassword) {
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE,
+    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                          json,
                          "password",
                          TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config->_password));
   }
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE,
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                        json,
                        "requestTimeout",
                        TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, config->_requestTimeout));
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE,
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                        json,
                        "connectTimeout",
                        TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, config->_connectTimeout));
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE,
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                        json,
                        "ignoreErrors",
                        TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) config->_ignoreErrors));
   
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE,
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                        json,
                        "maxConnectRetries",
                        TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) config->_maxConnectRetries));
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE,
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                        json,
                        "sslProtocol",
                        TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) config->_sslProtocol));
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE,
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                        json,
                        "chunkSize",
                        TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) config->_chunkSize));
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE,
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                        json,
                        "autoStart",
                        TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, config->_autoStart));
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE,
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                        json,
                        "adaptivePolling",
                        TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, config->_adaptivePolling));
   
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE,
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                        json,
                        "includeSystem",
                        TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, config->_includeSystem));
   
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE,
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                        json,
                        "restrictType",
                        TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config->_restrictType.c_str()));
   
-  TRI_json_t* collections = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
+  TRI_json_t* collections = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
   if (collections != nullptr) {
     for (auto it : config->_restrictCollections) {
-      TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE,
+      TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE,
                             collections,
                             TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, it.first.c_str()));
     }
 
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE,
+    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                          json,
                          "restrictCollections",
                          collections);
@@ -241,7 +241,7 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
   json  = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, nullptr);
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
-  if (! TRI_IsArrayJson(json)) {
+  if (! TRI_IsObjectJson(json)) {
     if (json != nullptr) {
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     }
@@ -269,7 +269,7 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
   }
 
   // read the endpoint
-  value = TRI_LookupArrayJson(json, "endpoint");
+  value = TRI_LookupObjectJson(json, "endpoint");
 
   if (! TRI_IsStringJson(value)) {
     res = TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION;
@@ -281,7 +281,7 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
   }
 
   // read the database name
-  value = TRI_LookupArrayJson(json, "database");
+  value = TRI_LookupObjectJson(json, "database");
 
   if (! TRI_IsStringJson(value)) {
     config->_database = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE,
@@ -294,7 +294,7 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
   }
 
   // read username / password
-  value = TRI_LookupArrayJson(json, "username");
+  value = TRI_LookupObjectJson(json, "username");
 
   if (TRI_IsStringJson(value)) {
     config->_username = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE,
@@ -302,7 +302,7 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
                                               value->_value._string.length - 1);
   }
 
-  value = TRI_LookupArrayJson(json, "password");
+  value = TRI_LookupObjectJson(json, "password");
 
   if (TRI_IsStringJson(value)) {
     config->_password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE,
@@ -310,55 +310,55 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
                                               value->_value._string.length - 1);
   }
 
-  value = TRI_LookupArrayJson(json, "requestTimeout");
+  value = TRI_LookupObjectJson(json, "requestTimeout");
 
   if (TRI_IsNumberJson(value)) {
     config->_requestTimeout = value->_value._number;
   }
 
-  value = TRI_LookupArrayJson(json, "connectTimeout");
+  value = TRI_LookupObjectJson(json, "connectTimeout");
 
   if (TRI_IsNumberJson(value)) {
     config->_connectTimeout = value->_value._number;
   }
 
-  value = TRI_LookupArrayJson(json, "maxConnectRetries");
+  value = TRI_LookupObjectJson(json, "maxConnectRetries");
 
   if (TRI_IsNumberJson(value)) {
     config->_maxConnectRetries = (uint64_t) value->_value._number;
   }
 
-  value = TRI_LookupArrayJson(json, "sslProtocol");
+  value = TRI_LookupObjectJson(json, "sslProtocol");
 
   if (TRI_IsNumberJson(value)) {
     config->_sslProtocol = (uint32_t) value->_value._number;
   }
 
-  value = TRI_LookupArrayJson(json, "chunkSize");
+  value = TRI_LookupObjectJson(json, "chunkSize");
 
   if (TRI_IsNumberJson(value)) {
     config->_chunkSize = (uint64_t) value->_value._number;
   }
 
-  value = TRI_LookupArrayJson(json, "autoStart");
+  value = TRI_LookupObjectJson(json, "autoStart");
 
   if (TRI_IsBooleanJson(value)) {
     config->_autoStart = value->_value._boolean;
   }
 
-  value = TRI_LookupArrayJson(json, "adaptivePolling");
+  value = TRI_LookupObjectJson(json, "adaptivePolling");
 
   if (TRI_IsBooleanJson(value)) {
     config->_adaptivePolling = value->_value._boolean;
   }
   
-  value = TRI_LookupArrayJson(json, "includeSystem");
+  value = TRI_LookupObjectJson(json, "includeSystem");
 
   if (TRI_IsBooleanJson(value)) {
     config->_includeSystem = value->_value._boolean;
   }
   
-  value = TRI_LookupArrayJson(json, "ignoreErrors");
+  value = TRI_LookupObjectJson(json, "ignoreErrors");
 
   if (TRI_IsNumberJson(value)) {
     config->_ignoreErrors = (uint64_t) value->_value._number;
@@ -372,20 +372,20 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
     }
   }
   
-  value = TRI_LookupArrayJson(json, "restrictType");
+  value = TRI_LookupObjectJson(json, "restrictType");
 
   if (TRI_IsStringJson(value)) {
     config->_restrictType = std::string(value->_value._string.data, value->_value._string.length - 1);
   }
 
-  value = TRI_LookupArrayJson(json, "restrictCollections");
+  value = TRI_LookupObjectJson(json, "restrictCollections");
 
-  if (TRI_IsListJson(value)) {
+  if (TRI_IsArrayJson(value)) {
     config->_restrictCollections.clear();
-    size_t const n = TRI_LengthListJson(value);
+    size_t const n = TRI_LengthArrayJson(value);
 
     for (size_t i = 0; i < n; ++i) {
-      TRI_json_t* collection = TRI_LookupListJson(value, i);
+      TRI_json_t* collection = TRI_LookupArrayJson(value, i);
       if (TRI_IsStringJson(collection)) {
         config->_restrictCollections.emplace(std::make_pair(std::string(collection->_value._string.data), true));
       }
@@ -415,7 +415,7 @@ static TRI_json_t* JsonApplyState (TRI_replication_applier_state_t const* state)
   char* lastProcessedContinuousTick;
   char* lastAppliedContinuousTick;
 
-  json = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 4);
+  json = TRI_CreateObject2Json(TRI_CORE_MEM_ZONE, 4);
 
   if (json == nullptr) {
     return nullptr;
@@ -425,17 +425,17 @@ static TRI_json_t* JsonApplyState (TRI_replication_applier_state_t const* state)
   lastAppliedContinuousTick   = TRI_StringUInt64(state->_lastAppliedContinuousTick);
   serverId                    = TRI_StringUInt64(state->_serverId);
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE,
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                        json,
                        "serverId",
                        TRI_CreateStringJson(TRI_CORE_MEM_ZONE, serverId));
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE,
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                        json,
                        "lastProcessedContinuousTick",
                        TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastProcessedContinuousTick));
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE,
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                        json,
                        "lastAppliedContinuousTick",
                        TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastAppliedContinuousTick));
@@ -634,10 +634,10 @@ static TRI_json_t* JsonState (TRI_replication_applier_state_t const* state) {
   char* lastString;
   char timeString[24];
 
-  json = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 9);
+  json = TRI_CreateObject2Json(TRI_CORE_MEM_ZONE, 9);
 
   // add replication state
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, state->_active));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, state->_active));
 
   // lastAppliedContinuousTick
   if (state->_lastAppliedContinuousTick > 0) {
@@ -647,7 +647,7 @@ static TRI_json_t* JsonState (TRI_replication_applier_state_t const* state) {
   else {
     last = TRI_CreateNullJson(TRI_CORE_MEM_ZONE);
   }
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "lastAppliedContinuousTick", last);
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "lastAppliedContinuousTick", last);
 
   // lastProcessedContinuousTick
   if (state->_lastProcessedContinuousTick > 0) {
@@ -657,7 +657,7 @@ static TRI_json_t* JsonState (TRI_replication_applier_state_t const* state) {
   else {
     last = TRI_CreateNullJson(TRI_CORE_MEM_ZONE);
   }
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "lastProcessedContinuousTick", last);
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "lastProcessedContinuousTick", last);
 
   // lastAvailableContinuousTick
   if (state->_lastAvailableContinuousTick > 0) {
@@ -667,44 +667,44 @@ static TRI_json_t* JsonState (TRI_replication_applier_state_t const* state) {
   else {
     last = TRI_CreateNullJson(TRI_CORE_MEM_ZONE);
   }
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "lastAvailableContinuousTick", last);
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "lastAvailableContinuousTick", last);
 
   // progress
-  progress = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 2);
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, progress, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_progressTime));
+  progress = TRI_CreateObject2Json(TRI_CORE_MEM_ZONE, 2);
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, progress, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_progressTime));
 
   if (state->_progressMsg != nullptr) {
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, progress, "message", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_progressMsg));
+    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, progress, "message", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_progressMsg));
   }
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, progress, "failedConnects", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_failedConnects));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, progress, "failedConnects", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_failedConnects));
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "progress", progress);
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "progress", progress);
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "totalRequests", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_totalRequests));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "totalFailedConnects", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_totalFailedConnects));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "totalEvents", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_totalEvents));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "totalOperationsExcluded", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_skippedOperations));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "totalRequests", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_totalRequests));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "totalFailedConnects", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_totalFailedConnects));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "totalEvents", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_totalEvents));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "totalOperationsExcluded", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_skippedOperations));
 
   // lastError
-  error = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+  error = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE);
 
   if (error != nullptr) {
     if (state->_lastError._code > 0) {
-      TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, error, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_lastError._time));
+      TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, error, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_lastError._time));
 
       if (state->_lastError._msg != nullptr) {
-        TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, error, "errorMessage", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_lastError._msg));
+        TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, error, "errorMessage", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_lastError._msg));
       }
     }
 
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, error, "errorNum", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_lastError._code));
+    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, error, "errorNum", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_lastError._code));
 
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "lastError", error);
+    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "lastError", error);
   }
 
   TRI_GetTimeStampReplication(timeString, sizeof(timeString) - 1);
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, timeString));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, timeString));
 
   return json;
 }
@@ -1058,7 +1058,7 @@ TRI_json_t* TRI_JsonReplicationApplier (TRI_replication_applier_t* applier) {
     return nullptr;
   }
 
-  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+  json = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE);
 
   if (json == nullptr) {
     TRI_DestroyStateReplicationApplier(&state);
@@ -1066,20 +1066,20 @@ TRI_json_t* TRI_JsonReplicationApplier (TRI_replication_applier_t* applier) {
     return nullptr;
   }
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "state", JsonState(&state));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "state", JsonState(&state));
 
   // add server info
-  server = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+  server = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE);
 
   if (server != nullptr) {
     TRI_server_id_t serverId;
 
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, server, "version", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRI_VERSION));
+    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, server, "version", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRI_VERSION));
 
     serverId = TRI_GetIdServer();
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, server, "serverId", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, TRI_StringUInt64(serverId)));
+    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, server, "serverId", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, TRI_StringUInt64(serverId)));
 
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "server", server);
+    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "server", server);
   }
 
   TRI_InitConfigurationReplicationApplier(&config);
@@ -1089,11 +1089,11 @@ TRI_json_t* TRI_JsonReplicationApplier (TRI_replication_applier_t* applier) {
   TRI_ReadUnlockReadWriteLock(&applier->_statusLock);
 
   if (config._endpoint != nullptr) {
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "endpoint", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config._endpoint));
+    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "endpoint", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config._endpoint));
   }
 
   if (config._database != nullptr) {
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "database", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config._database));
+    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "database", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config._database));
   }
 
   TRI_DestroyConfigurationReplicationApplier(&config);
@@ -1282,7 +1282,7 @@ int TRI_LoadStateReplicationApplier (TRI_vocbase_t* vocbase,
   json  = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, nullptr);
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
-  if (! TRI_IsArrayJson(json)) {
+  if (! TRI_IsObjectJson(json)) {
     if (json != nullptr) {
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     }
@@ -1293,7 +1293,7 @@ int TRI_LoadStateReplicationApplier (TRI_vocbase_t* vocbase,
   res = TRI_ERROR_NO_ERROR;
 
   // read the server id
-  serverId = TRI_LookupArrayJson(json, "serverId");
+  serverId = TRI_LookupObjectJson(json, "serverId");
 
   if (! TRI_IsStringJson(serverId)) {
     res = TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE;

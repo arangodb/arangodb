@@ -57,7 +57,7 @@ var users = require("org/arangodb/users");
 ///
 /// Fetches data about the specified user.
 ///
-/// The call will return a JSON document with at least the following attributes on success:
+/// The call will return a JSON object with at least the following attributes on success:
 ///
 /// - *user*: The name of the user as a string.
 /// - *active*: An optional flag that specifies whether the user is active.
@@ -125,20 +125,17 @@ function get_api_user (req, res) {
 ///   If not specified, this will default to true
 /// - *extra*: An optional JSON object with arbitrary extra data about the user
 /// - *changePassword*: An optional flag that specifies whethers the user must
-///   change the password or not. If not specified, this will default to false
+///   change the password or not. If not specified, this will default to false.
+///   If set to true, the only operations allowed are PUT /_api/user or PATCH /_api/user.
+///   All other operations executed by the user will result in an HTTP 403.
 ///
-/// If set to true, the only operations allowed are PUT /_api/user or PATCH /_api/user.
-/// All other operations will result in a HTTP 403.
 /// If the user can be added by the server, the server will respond with HTTP 201.
 /// In case of success, the returned JSON object has the following properties:
 ///
 /// - *error*: Boolean flag to indicate that an error occurred (false in this case)
 /// - *code*: The HTTP status code
 ///
-/// If the JSON representation is malformed or mandatory data is missing from the request,
-/// the server will respond with HTTP 400.
-///
-/// The body of the response will contain a JSON object with additional error details.
+/// In case of error, the body of the response will contain a JSON object with additional error details.
 /// The object has the following attributes:
 ///
 /// - *error*: Boolean flag to indicate that an error occurred (true in this case)
@@ -238,11 +235,7 @@ function post_api_user (req, res) {
 /// - *error*: Boolean flag to indicate that an error occurred (false in this case)
 /// - *code*: The HTTP status code
 ///
-/// If the JSON representation is malformed or mandatory data is missing from the request,
-/// the server will respond with HTTP 400. If the specified user does not exist,
-/// the server will respond with HTTP 404.
-///
-/// The body of the response will contain a JSON object with additional
+/// In case of error, the body of the response will contain a JSON object with additional
 /// error details. The object has the following attributes:
 ///
 /// - *error*: Boolean flag to indicate that an error occurred (true in this case)
@@ -313,7 +306,7 @@ function put_api_user (req, res) {
 /// @RESTDESCRIPTION
 ///
 /// Partially updates the data of an existing user. The name of an existing
-/// user must be specified in user.
+/// user must be specified in *user*.
 ///
 /// The following data can be passed in a JSON representation in the body of the
 /// POST request:
@@ -334,11 +327,7 @@ function put_api_user (req, res) {
 /// - *error*: Boolean flag to indicate that an error occurred (false in this case)
 /// - *code*: The HTTP status code
 ///
-/// If the JSON representation is malformed or mandatory data is missing from the request,
-/// the server will respond with HTTP 400. If the specified user does not exist,
-/// the server will respond with HTTP 404.
-///
-/// The body of the response will contain a JSON object with additional error details.
+/// In case of error, the body of the response will contain a JSON object with additional error details.
 /// The object has the following attributes:
 ///
 /// - *error*: Boolean flag to indicate that an error occurred (true in this case)
@@ -405,7 +394,7 @@ function patch_api_user (req, res) {
 ///
 /// @RESTDESCRIPTION
 ///
-/// Removes an existing user, identified by user.
+/// Removes an existing user, identified by *user*.
 ///
 /// If the user can be removed, the server will respond with HTTP 202.
 /// In case of success, the returned JSON object has the following properties:
@@ -413,9 +402,7 @@ function patch_api_user (req, res) {
 /// - *error*: Boolean flag to indicate that an error occurred (false in this case)
 /// - *code*: The HTTP status code
 ///
-/// If the specified user does not exist, the server will respond with HTTP 404.
-///
-/// The body of the response will contain a JSON object with additional error details.
+/// In case of error, the body of the response will contain a JSON object with additional error details.
 /// The object has the following attributes:
 ///
 /// - *error*: Boolean flag to indicate that an error occurred (true in this case)

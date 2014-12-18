@@ -147,23 +147,23 @@ The following other date functions are also available:
 
 The following other AQL functions have been added in ArangoDB 2.1:
 
-- `FLATTEN`: this function can turn a list of sub-lists into a single flat list. All
-  list elements in the original list will be expanded recursively up to a configurable
-  depth. The expanded values will be added to the single result list.
+- `FLATTEN`: this function can turn an array of sub-arrays into a single flat array. All
+  array elements in the original array will be expanded recursively up to a configurable
+  depth. The expanded values will be added to the single result array.
 
   Example:
 
       FLATTEN([ 1, 2, [ 3, 4 ], 5, [ 6, 7 ], [ 8, [ 9, 10 ] ])
 
-  will expand the sub-lists on the first level and produce:
+  will expand the sub-arrays on the first level and produce:
 
       [ 1, 2, 3, 4, 5, 6, 7, 8, [ 9, 10 ] ]
 
-  To fully flatten the list, the maximum depth can be specified (e.g. with a value of `2`):
+  To fully flatten the array, the maximum depth can be specified (e.g. with a value of `2`):
       
       FLATTEN([ 1, 2, [ 3, 4 ], 5, [ 6, 7 ], [ 8, [ 9, 10 ] ], 2)
 
-  This will fully expand the sub-lists and produce:
+  This will fully expand the sub-arrays and produce:
       
       [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
 

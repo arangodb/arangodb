@@ -446,11 +446,11 @@ actions.defineHttp({
 ///
 /// The call returns an object with the following attributes:
 ///
-/// - *headers*: a list of HTTP headers received
+/// - *headers*: object with HTTP headers received
 ///
 /// - *requestType*: the HTTP request method (e.g. GET)
 ///
-/// - *parameters*: list of URL parameters received
+/// - *parameters*: object with URL parameters received
 ///
 /// @RESTRETURNCODES
 ///
@@ -539,8 +539,8 @@ actions.defineHttp({
 /// @RESTDESCRIPTION
 ///
 /// Returns a description of the statistics returned by */_admin/statistics*.
-/// The returned objects contains a list of statistics groups in the attribute
-/// *groups* and a list of statistics figures in the attribute *figures*.
+/// The returned objects contains an array of statistics groups in the attribute
+/// *groups* and an array of statistics figures in the attribute *figures*.
 ///
 /// A statistics group is described by
 ///
@@ -907,7 +907,7 @@ actions.defineHttp({
 /// @RESTHEADER{POST /_admin/test, Runs tests on server}
 ///
 /// @RESTBODYPARAM{body,javascript,required}
-/// A JSON body containing an attribute "tests" which lists the files
+/// A JSON object containing an attribute *tests* which lists the files
 /// containing the test suites.
 ///
 /// @RESTDESCRIPTION

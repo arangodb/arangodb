@@ -526,8 +526,8 @@ static int SendRestoreData (string const& cname,
 
 static int SortCollections (const void* l,
                             const void* r) {
-  TRI_json_t const* left  = JsonHelper::getArrayElement((TRI_json_t const*) l, "parameters");
-  TRI_json_t const* right = JsonHelper::getArrayElement((TRI_json_t const*) r, "parameters");
+  TRI_json_t const* left  = JsonHelper::getObjectElement((TRI_json_t const*) l, "parameters");
+  TRI_json_t const* right = JsonHelper::getObjectElement((TRI_json_t const*) r, "parameters");
 
   int leftType  = JsonHelper::getNumericValue<int>(left,  "type", 0);
   int rightType = JsonHelper::getNumericValue<int>(right, "type", 0);
@@ -554,7 +554,7 @@ static int ProcessInputDirectory (string& errorMsg) {
     restrictList.insert(pair<string, bool>(Collections[i], true));
   }
 
-  TRI_json_t* collections = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+  TRI_json_t* collections = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
 
   if (collections == nullptr) {
     errorMsg = "out of memory";
@@ -596,12 +596,12 @@ static int ProcessInputDirectory (string& errorMsg) {
       const string fqn = InputDirectory + TRI_DIR_SEPARATOR_STR + files[i];
 
       TRI_json_t* json = TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, fqn.c_str(), 0);
-      TRI_json_t const* parameters = JsonHelper::getArrayElement(json, "parameters");
-      TRI_json_t const* indexes = JsonHelper::getArrayElement(json, "indexes");
+      TRI_json_t const* parameters = JsonHelper::getObjectElement(json, "parameters");
+      TRI_json_t const* indexes = JsonHelper::getObjectElement(json, "indexes");
 
-      if (! JsonHelper::isArray(json) ||
-          ! JsonHelper::isArray(parameters) ||
-          ! JsonHelper::isList(indexes)) {
+      if (! JsonHelper::isObject(json) ||
+          ! JsonHelper::isObject(parameters) ||
+          ! JsonHelper::isArray(indexes)) {
         errorMsg = "could not read collection structure file '" + name + "'";
 
         if (json != nullptr) {
@@ -630,7 +630,7 @@ static int ProcessInputDirectory (string& errorMsg) {
           // we can patch the name in our array and go on
           cout << "ignoring collection name mismatch in collection structure file '" + name + "' (offending value: '" + cname + "')" << endl;
 
-          TRI_json_t* nameAttribute = TRI_LookupArrayJson(parameters, "name");
+          TRI_json_t* nameAttribute = TRI_LookupObjectJson(parameters, "name");
 
           if (TRI_IsStringJson(nameAttribute)) {
             char* old = nameAttribute->_value._string.data;
@@ -644,7 +644,7 @@ static int ProcessInputDirectory (string& errorMsg) {
         }
       }
 
-      TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, collections, json);
+      TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, collections, json);
     }
   }
 
@@ -658,8 +658,8 @@ static int ProcessInputDirectory (string& errorMsg) {
     const size_t n = collections->_value._objects._length;
     for (size_t i = 0; i < n; ++i) {
       TRI_json_t const* json = (TRI_json_t const*) TRI_AtVector(&collections->_value._objects, i);
-      TRI_json_t const* parameters = JsonHelper::getArrayElement(json, "parameters");
-      TRI_json_t const* indexes = JsonHelper::getArrayElement(json, "indexes");
+      TRI_json_t const* parameters = JsonHelper::getObjectElement(json, "parameters");
+      TRI_json_t const* indexes = JsonHelper::getObjectElement(json, "indexes");
       const string cname = JsonHelper::getStringValue(parameters, "name", "");
       const string cid   = JsonHelper::getStringValue(parameters, "cid", "");
 

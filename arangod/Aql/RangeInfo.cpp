@@ -150,11 +150,11 @@ RangeInfo::RangeInfo (triagens::basics::Json const& json)
     _equality(basics::JsonHelper::checkAndGetBooleanValue(json.json(), "equality")) {
 
   triagens::basics::Json jsonLowList = json.get("lows");
-  if (! jsonLowList.isList()) {
+  if (! jsonLowList.isArray()) {
     THROW_INTERNAL_ERROR("low attribute must be a list");
   }
   triagens::basics::Json jsonHighList = json.get("highs");
-  if (! jsonHighList.isList()) {
+  if (! jsonHighList.isArray()) {
     THROW_INTERNAL_ERROR("high attribute must be a list");
   }
   // If an exception is thrown from within these loops, then the
@@ -175,17 +175,17 @@ RangeInfo::RangeInfo (triagens::basics::Json const& json)
 ////////////////////////////////////////////////////////////////////////////////
 
 triagens::basics::Json RangeInfo::toJson () const {
-  triagens::basics::Json item(basics::Json::Array);
+  triagens::basics::Json item(basics::Json::Object);
   item("variable", triagens::basics::Json(_var))
       ("attr", triagens::basics::Json(_attr))
       ("lowConst", _lowConst.toJson())
       ("highConst", _highConst.toJson());
-  triagens::basics::Json lowList(triagens::basics::Json::List, _lows.size());
+  triagens::basics::Json lowList(triagens::basics::Json::Array, _lows.size());
   for (auto l : _lows) {
     lowList(l.toJson());
   }
   item("lows", lowList);
-  triagens::basics::Json highList(triagens::basics::Json::List, _highs.size());
+  triagens::basics::Json highList(triagens::basics::Json::Array, _highs.size());
   for (auto h : _highs) {
     highList(h.toJson());
   }
@@ -703,8 +703,8 @@ bool triagens::aql::areDisjointRangeInfos (RangeInfo const& lhs,
   TRI_ASSERT(lhs._var == rhs._var);
   TRI_ASSERT(lhs._attr == rhs._attr);
  
-  int HiLo;
   if (lhs._highConst.isDefined() && rhs._lowConst.isDefined()) {
+    int HiLo;
     HiLo = TRI_CompareValuesJson(lhs._highConst.bound().json(), 
         rhs._lowConst.bound().json());
     if ((HiLo == -1) ||
@@ -715,8 +715,8 @@ bool triagens::aql::areDisjointRangeInfos (RangeInfo const& lhs,
   
   //else compare lhs low > rhs high 
 
-  int LoHi;
   if (lhs._lowConst.isDefined() && rhs._highConst.isDefined()) {
+    int LoHi;
     LoHi = TRI_CompareValuesJson(lhs._lowConst.bound().json(), 
         rhs._highConst.bound().json());
     return (LoHi == 1) || 

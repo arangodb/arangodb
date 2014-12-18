@@ -217,7 +217,7 @@ bool Expression::findInList (AqlValue const& left,
                              TRI_document_collection_t const* rightCollection,
                              triagens::arango::AqlTransaction* trx,
                              AstNode const* node) const {
-  TRI_ASSERT_EXPENSIVE(right.isList());
+  TRI_ASSERT_EXPENSIVE(right.isArray());
  
   size_t const n = right.listSize();
 
@@ -377,7 +377,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     TRI_document_collection_t const* myCollection = nullptr;
     AqlValue result = executeSimpleExpression(member, &myCollection, trx, docColls, argv, startPos, vars, regs);
 
-    if (result.isList()) {
+    if (result.isArray()) {
       TRI_document_collection_t const* myCollection2 = nullptr;
       AqlValue indexResult = executeSimpleExpression(index, &myCollection2, trx, docColls, argv, startPos, vars, regs);
 
@@ -404,7 +404,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
       }
       // fall-through to returning null
     }
-    else if (result.isArray()) {
+    else if (result.isObject()) {
       TRI_document_collection_t const* myCollection2 = nullptr;
       AqlValue indexResult = executeSimpleExpression(index, &myCollection2, trx, docColls, argv, startPos, vars, regs);
 
@@ -430,7 +430,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     return AqlValue(new Json(Json::Null));
   }
   
-  else if (node->type == NODE_TYPE_LIST) {
+  else if (node->type == NODE_TYPE_ARRAY) {
     if (node->isConstant()) {
       auto json = node->computeJson();
 
@@ -443,7 +443,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     }
 
     size_t const n = node->numMembers();
-    auto list = new Json(Json::List, n);
+    auto list = new Json(Json::Array, n);
 
     try {
       for (size_t i = 0; i < n; ++i) {
@@ -463,7 +463,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     }
   }
 
-  else if (node->type == NODE_TYPE_ARRAY) {
+  else if (node->type == NODE_TYPE_OBJECT) {
     if (node->isConstant()) {
       auto json = node->computeJson();
 
@@ -476,14 +476,14 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     }
 
     size_t const n = node->numMembers();
-    auto resultArray = new Json(Json::Array, n);
+    auto resultArray = new Json(Json::Object, n);
 
     try {
       for (size_t i = 0; i < n; ++i) {
         auto member = node->getMember(i);
         TRI_document_collection_t const* myCollection = nullptr;
 
-        TRI_ASSERT(member->type == NODE_TYPE_ARRAY_ELEMENT);
+        TRI_ASSERT(member->type == NODE_TYPE_OBJECT_ELEMENT);
         auto key = member->getStringValue();
         member = member->getMember(0);
 
@@ -614,7 +614,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     if (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
         node->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
       // IN and NOT IN
-      if (! right.isList()) {
+      if (! right.isArray()) {
         // right operand must be a list, otherwise we return false
         left.destroy();
         right.destroy();

@@ -18,13 +18,13 @@ fulfilling these requirements are rejected.
 
 `collection.ensureGeoIndex( location)`
 
-Creates a geo-spatial index on all documents using location as path to the coordinates. The value of the attribute must be a list with at least two double values. The list must contain the latitude (first value) and the longitude (second value). All documents, which do not have the attribute path or with value that are not suitable, are ignored.
+Creates a geo-spatial index on all documents using location as path to the coordinates. The value of the attribute must be an array with at least two numeric values. The array must contain the latitude (first value) and the longitude (second value). All documents, which do not have the attribute path or with value that are not suitable, are ignored.
 
 In case that the index was successfully created, the index identifier is returned.
 
 `collection.ensureGeoIndex( location, true)`
 
-As above which the exception, that the order within the list is longitude followed by latitude. This corresponds to the format described in
+As above which the exception, that the order within the array is longitude followed by latitude. This corresponds to the format described in
 
 http://geojson.org/geojson-spec.html
 
@@ -36,18 +36,17 @@ In case that the index was successfully created, the index identifier is returne
 
 *Examples*
 
-Create an geo index for a list attribute:
+Create an geo index for an array attribute:
 
 ```
 arangosh> db.geo.ensureGeoIndex("loc");
 { "id" : "geo/47772301", "type" : "geo1", "geoJson" : false, "fields" : ["loc"], "isNewlyCreated" : true }
 	
 arangosh> for (i = -90;  i <= 90;  i += 10) {
-.......>   for (j = -180; j <= 180; j += 10) {
-.......>     db.geo.save({ name : "Name/" + i + "/" + j,
-.......>                   loc: [ i, j ] });
-.......>   }
-.......> }
+            for (j = -180; j <= 180; j += 10) {
+              db.geo.save({ name : "Name/" + i + "/" + j, loc: [ i, j ] });
+            }
+          }
 	
 arangosh> db.geo.count();
 703
@@ -70,12 +69,10 @@ arangosh> db.geo2.ensureGeoIndex("location.latitude", "location.longitude");
 { "id" : "geo2/1070652", "type" : "geo2", "fields" : ["location.latitude", "location.longitude"], "isNewlyCreated" : true }
 
 arangosh> for (i = -90;  i <= 90;  i += 10) {
-.......>   for (j = -180; j <= 180; j += 10) {
-.......>     db.geo2.save({ name : "Name/" + i + "/" + j,
-.......>                    location: { latitude : i,
-.......>                                longitude : j } });
-.......>   }
-.......> }
+            for (j = -180; j <= 180; j += 10) {
+              db.geo2.save({ name : "Name/" + i + "/" + j, location: { latitude : i, longitude : j } });
+            }
+          }
 	
 arangosh> db.geo2.near(0,0).limit(3).toArray();
 [
@@ -133,16 +130,14 @@ Returns a geo index object if an index was found. The near or within operators c
 
 *Examples*
 
-Assume you have a location stored as list in the attribute home and a destination stored in the attribute work. Then you can use the geo operator to select which geo-spatial attributes (and thus which index) to use in a near query.
+Assume you have a location stored as array in the attribute *home* and a destination stored in the attribute *work*. Then you can use the geo operator to select which geo-spatial attributes (and thus which index) to use in a near query.
 	
 ```
 arangosh> for (i = -90;  i <= 90;  i += 10) {
-.......>   for (j = -180;  j <= 180;  j += 10) {
-.......>     db.complex.save({ name : "Name/" + i + "/" + j, 
-.......>                       home : [ i, j ], 
-.......>                       work : [ -i, -j ] });
-.......>   }
-.......> }
+            for (j = -180;  j <= 180;  j += 10) {
+              db.complex.save({ name : "Name/" + i + "/" + j, home : [ i, j ], work : [ -i, -j ] });
+            }
+          }
 	
 arangosh> db.complex.near(0, 170).limit(5);
 exception in file '/simple-query' at 1018,5: a geo-index must be known
@@ -173,7 +168,7 @@ arangosh> db.complex.geo("work").near(0, 170).limit(5).toArray();
 
 `collection.near( latitude, longitude)`
 
-The returned list is sorted according to the distance, with the nearest document to the coordinate ( latitude, longitude) coming first. If there are near documents of equal distance, documents are chosen randomly from this set until the limit is reached. It is possible to change the limit using the limit operator.
+The returned array is sorted according to the distance, with the nearest document to the coordinate ( latitude, longitude) coming first. If there are near documents of equal distance, documents are chosen randomly from this set until the limit is reached. It is possible to change the limit using the limit operator.
 
 In order to use the near operator, a geo index must be defined for the collection. This index also defines which attribute holds the coordinates for the document. If you have more then one geo-spatial index, you can use the geo operator to select a particular index.
 
@@ -218,7 +213,7 @@ arangosh> db.geo.near(0,0).distance().limit(2).toArray();
 
 `collection.within( latitude, longitude, radius)`
 
-This will find all documents within a given radius around the coordinate ( latitude, longitude). The returned list is sorted by distance, beginning with the nearest document.
+This will find all documents within a given radius around the coordinate ( latitude, longitude). The returned array is sorted by distance, beginning with the nearest document.
 
 In order to use the within operator, a geo index must be defined for the collection. This index also defines which attribute holds the coordinates for the document. If you have more then one geo-spatial index, you can use the geo operator to select a particular index.
 

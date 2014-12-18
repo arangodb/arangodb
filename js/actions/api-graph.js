@@ -169,10 +169,10 @@ function matchError (req, res, doc, errorCode) {
 /// @RESTQUERYPARAMETERS
 ///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
-/// Wait until document has been sync to disk.
+/// Wait until document has been synced to disk.
 ///
 /// @RESTBODYPARAM{graph,json,required}
-/// The call expects a JSON hash array as body with the following attributes:
+/// The call expects a JSON object as body with the following attributes:
 /// `_key`: The name of the new graph.
 /// `vertices`: The name of the vertices collection.
 /// `edges`: The name of the egde collection.
@@ -282,7 +282,7 @@ function post_graph_graph (req, res) {
 /// @RESTDESCRIPTION
 ///
 /// If `graph-name` is specified, returns an object with an attribute `graph`
-/// containing a JSON hash with all properties of the specified graph.
+/// containing a JSON object with all properties of the specified graph.
 ///
 /// If `graph-name` is not specified, returns a list of graph objects.
 ///
@@ -484,7 +484,7 @@ function delete_graph_graph (req, res) {
 /// Wait until document has been sync to disk.
 ///
 /// @RESTBODYPARAM{vertex,json,required}
-/// The call expects a JSON hash array as body with the vertex properties:
+/// The call expects a JSON object as body with the vertex properties:
 /// - `_key`: The name of the vertex (optional).
 /// - further optional attributes.
 ///
@@ -833,7 +833,7 @@ function update_graph_vertex (req, res, g, isPatch) {
 /// Revision of a vertex
 ///
 /// @RESTBODYPARAM{vertex,json,required}
-/// The call expects a JSON hash array as body with the new vertex properties.
+/// The call expects a JSON object as body with the new vertex properties.
 ///
 /// @RESTHEADERPARAMETERS
 ///
@@ -914,7 +914,7 @@ function put_graph_vertex (req, res, g) {
 /// Modify the behavior of the patch command to remove any attribute
 ///
 /// @RESTBODYPARAM{graph,json,required}
-/// The call expects a JSON hash array as body with the properties to patch.
+/// The call expects a JSON object as body with the properties to patch.
 ///
 /// @RESTHEADERPARAMETERS
 ///
@@ -1086,12 +1086,12 @@ function process_labels_filter (data, labels, collname) {
 /// The name of the graph
 ///
 /// @RESTBODYPARAM{filter,json,required}
-/// The call expects a JSON hash array as body to filter the result:
+/// The call expects a JSON object as body to filter the result:
 ///
 /// @RESTDESCRIPTION
 /// Returns a cursor.
 ///
-/// The call expects a JSON hash array as body to filter the result:
+/// The call expects a JSON object as body to filter the result:
 ///
 /// - `batchSize`: the batch size of the returned cursor
 /// - `limit`: limit the result size
@@ -1195,12 +1195,12 @@ function post_graph_all_vertices (req, res, g) {
 /// The key of the vertex
 ///
 /// @RESTBODYPARAM{graph,json,required}
-/// The call expects a JSON hash array as body to filter the result:
+/// The call expects a JSON object as body to filter the result:
 ///
 /// @RESTDESCRIPTION
 /// Returns a cursor.
 ///
-/// The call expects a JSON hash array as body to filter the result:
+/// The call expects a JSON object as body to filter the result:
 ///
 /// - `batchSize`: the batch size of the returned cursor
 /// - `limit`: limit the result size
@@ -1365,12 +1365,12 @@ function post_graph_vertex_vertices (req, res, g) {
 /// Wait until edge has been sync to disk.
 ///
 /// @RESTBODYPARAM{edge,json,required}
-/// The call expects a JSON hash array as body with the edge properties:
+/// The call expects a JSON object as body with the edge properties:
 ///
 /// @RESTDESCRIPTION
 /// Creates an edge in a graph.
 ///
-/// The call expects a JSON hash array as body with the edge properties:
+/// The call expects a JSON object as body with the edge properties:
 ///
 /// - `_key`: The name of the edge (optional, if edge collection allows user defined keys).
 /// - `_from`: The name of the from vertex.
@@ -1733,7 +1733,7 @@ function update_graph_edge (req, res, g, isPatch) {
 /// Revision of an edge
 ///
 /// @RESTBODYPARAM{edge,json,required}
-/// The call expects a JSON hash array as body with the new edge properties.
+/// The call expects a JSON object as body with the new edge properties.
 ///
 /// @RESTHEADERPARAMETERS
 ///
@@ -1746,7 +1746,7 @@ function update_graph_edge (req, res, g, isPatch) {
 /// @RESTDESCRIPTION
 /// Replaces the optional edge properties.
 ///
-/// The call expects a JSON hash array as body with the new edge properties.
+/// The call expects a JSON object as body with the new edge properties.
 ///
 /// Returns an object with an attribute `edge` containing a
 /// list of all edge properties.
@@ -1818,7 +1818,7 @@ function put_graph_edge (req, res, g) {
 /// Modify the behavior of the patch command to remove any attribute
 ///
 /// @RESTBODYPARAM{edge-properties,json,required}
-/// The call expects a JSON hash array as body with the properties to patch.
+/// The call expects a JSON object as body with the properties to patch.
 ///
 /// @RESTHEADERPARAMETERS
 ///
@@ -1895,12 +1895,12 @@ function patch_graph_edge (req, res, g) {
 /// The name of the graph
 ///
 /// @RESTBODYPARAM{edge-properties,json,required}
-/// The call expects a JSON hash array as body to filter the result:
+/// The call expects a JSON object as body to filter the result:
 ///
 /// @RESTDESCRIPTION
 /// Returns a cursor.
 ///
-/// The call expects a JSON hash array as body to filter the result:
+/// The call expects a JSON object as body to filter the result:
 ///
 /// - `batchSize`: the batch size of the returned cursor
 /// - `limit`: limit the result size
@@ -2018,13 +2018,13 @@ function post_graph_all_edges (req, res, g) {
 /// The name of the vertex
 ///
 /// @RESTBODYPARAM{edge-properties,json,required}
-/// The call expects a JSON hash array as body to filter the result:
+/// The call expects a JSON object as body to filter the result:
 ///
 /// @RESTDESCRIPTION
 ///
 /// Returns a cursor.
 ///
-/// The call expects a JSON hash array as body to filter the result:
+/// The call expects a JSON object as body to filter the result:
 ///
 /// - `batchSize`: the batch size of the returned cursor
 /// - `limit`: limit the result size

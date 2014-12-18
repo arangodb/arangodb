@@ -293,11 +293,11 @@ class KeySpace {
       if (found != nullptr) {
         TRI_json_t const* value = found->json;
 
-        if (TRI_IsListJson(value)) {
+        if (TRI_IsArrayJson(value)) {
           result = static_cast<uint32_t>(TRI_LengthVector(&value->_value._objects));
           return true;
         }
-        if (TRI_IsArrayJson(value)) {
+        if (TRI_IsObjectJson(value)) {
           result = static_cast<uint32_t>(TRI_LengthVector(&value->_value._objects) / 2);
           return true;
         }
@@ -459,13 +459,13 @@ class KeySpace {
       auto found = static_cast<KeySpaceElement*>(TRI_LookupByKeyAssociativePointer(&_hash, key.c_str()));
 
       if (found == nullptr) {
-        TRI_json_t* list = TRI_CreateList2Json(TRI_UNKNOWN_MEM_ZONE, 1);
+        TRI_json_t* list = TRI_CreateArray2Json(TRI_UNKNOWN_MEM_ZONE, 1);
 
         if (list == nullptr) {
           return TRI_ERROR_OUT_OF_MEMORY;
         }
 
-        if (TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, list, TRI_ObjectToJson(isolate, value)) != TRI_ERROR_NO_ERROR) {
+        if (TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, list, TRI_ObjectToJson(isolate, value)) != TRI_ERROR_NO_ERROR) {
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, list);
           return TRI_ERROR_OUT_OF_MEMORY;
         }
@@ -480,12 +480,12 @@ class KeySpace {
       else {
         TRI_json_t* current = found->json;
 
-        if (! TRI_IsListJson(current)) {
+        if (! TRI_IsArrayJson(current)) {
           // TODO: change error code
           return TRI_ERROR_INTERNAL;
         }
 
-        if (TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, current, TRI_ObjectToJson(isolate, value)) != TRI_ERROR_NO_ERROR) {
+        if (TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, current, TRI_ObjectToJson(isolate, value)) != TRI_ERROR_NO_ERROR) {
           return TRI_ERROR_OUT_OF_MEMORY;
         }
       }
@@ -507,7 +507,7 @@ class KeySpace {
         
       TRI_json_t* current = found->json;
 
-      if (! TRI_IsListJson(current)) {
+      if (! TRI_IsArrayJson(current)) {
         // TODO: change error code
         TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL); 
       }
@@ -544,7 +544,7 @@ class KeySpace {
         
       TRI_json_t* current = source->json;
 
-      if (! TRI_IsListJson(current)) {
+      if (! TRI_IsArrayJson(current)) {
         // TODO: change error code
         TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL); 
       }
@@ -560,13 +560,13 @@ class KeySpace {
       auto dest = static_cast<KeySpaceElement*>(TRI_LookupByKeyAssociativePointer(&_hash, keyTo.c_str()));
 
       if (dest == nullptr) {
-        TRI_json_t* list = TRI_CreateList2Json(TRI_UNKNOWN_MEM_ZONE, 1);
+        TRI_json_t* list = TRI_CreateArray2Json(TRI_UNKNOWN_MEM_ZONE, 1);
 
         if (list == nullptr) {
           TRI_V8_THROW_EXCEPTION_MEMORY();
         }
 
-        TRI_PushBack2ListJson(list, sourceItem);
+        TRI_PushBack2ArrayJson(list, sourceItem);
  
         try {
           auto element = new KeySpaceElement(keyTo.c_str(), keyTo.size(), list);
@@ -581,12 +581,12 @@ class KeySpace {
         }
       }
 
-      if (! TRI_IsListJson(dest->json)) {
+      if (! TRI_IsArrayJson(dest->json)) {
         // TODO: change error code
         TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL); 
       }
 
-      TRI_PushBack2ListJson(dest->json, sourceItem);
+      TRI_PushBack2ArrayJson(dest->json, sourceItem);
 
       // hack: decrease the vector size
       --current->_value._objects._length;
@@ -648,7 +648,7 @@ class KeySpace {
           result = v8::Undefined(isolate);
         }
         else {
-          if (! TRI_IsListJson(found->json)) {
+          if (! TRI_IsArrayJson(found->json)) {
             // TODO: change error code
             TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL); 
           }
@@ -684,7 +684,7 @@ class KeySpace {
         return false;
       }
       else {
-        if (! TRI_IsListJson(found->json)) {
+        if (! TRI_IsArrayJson(found->json)) {
           // TODO: change error code
           return false;
         }
@@ -740,9 +740,9 @@ class KeySpace {
           case TRI_JSON_STRING:
           case TRI_JSON_STRING_REFERENCE:
             return "string";
-          case TRI_JSON_LIST:
-            return "list";
           case TRI_JSON_ARRAY:
+            return "list";
+          case TRI_JSON_OBJECT:
             return "object";
           case TRI_JSON_UNUSED:
             break;
@@ -775,7 +775,7 @@ class KeySpace {
         TRI_V8_RETURN(value);
       }
 
-      if (! TRI_IsArrayJson(found->json)) {
+      if (! TRI_IsObjectJson(found->json)) {
         // TODO: change error code
         TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
       }

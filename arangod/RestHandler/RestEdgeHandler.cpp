@@ -208,7 +208,7 @@ bool RestEdgeHandler::createDocument () {
     return false;
   }
 
-  if (! TRI_IsArrayJson(json)) {
+  if (! TRI_IsObjectJson(json)) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     return false;
@@ -418,7 +418,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// The name of the collection.
 ///
 /// @RESTDESCRIPTION
-/// Returns a list of all URI for all edges from the collection identified
+/// Returns an array of all URIs for all edges from the collection identified
 /// by *collection*.
 ///
 /// @RESTRETURNCODES

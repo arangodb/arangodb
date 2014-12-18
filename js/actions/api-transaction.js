@@ -51,14 +51,14 @@ var actions = require("org/arangodb/actions");
 ///
 /// The following attributes must be specified inside the JSON object:
 ///
-/// - *collections*: contains the list of collections to be used in the
-///   transaction (mandatory). *collections* must be a JSON array that can
+/// - *collections*: contains the array of collections to be used in the
+///   transaction (mandatory). *collections* must be a JSON object that can
 ///   have the optional sub-attributes *read* and *write*. *read*
-///   and *write* must each be either lists of collections names or strings
+///   and *write* must each be either arrays of collections names or strings
 ///   with a single collection name.
 ///
 /// - *action*: the actual transaction operations to be executed, in the
-///   form of stringified Javascript code. The code will be executed on server
+///   form of stringified JavaScript code. The code will be executed on server
 ///   side, with late binding. It is thus critical that the code specified in
 ///   *action* properly sets up all the variables it needs.
 ///   If the code specified in *action* ends with a return statement, the

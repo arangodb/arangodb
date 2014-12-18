@@ -51,9 +51,9 @@ var API = "_api/index";
 ///
 /// @RESTDESCRIPTION
 ///
-/// Returns an object with an attribute *indexes* containing a list of all
+/// Returns an object with an attribute *indexes* containing an array of all
 /// index descriptions for the given collection. The same information is also
-/// available in the *identifiers* as hash map with the index handle as
+/// available in the *identifiers* as an object with the index handles as
 /// keys.
 ///
 /// @EXAMPLES
@@ -112,7 +112,7 @@ function get_api_indexes (req, res) {
 ///
 /// @RESTDESCRIPTION
 ///
-/// The result is an objects describing the index. It has at least the following
+/// The result is an object describing the index. It has at least the following
 /// attributes:
 ///
 /// - *id*: The identifier of the index.
@@ -288,16 +288,16 @@ function get_api_index (req, res) {
 ///
 /// - *type*: must be equal to *"geo"*.
 ///
-/// - *fields*: A list with one or two attribute paths.
+/// - *fields*: An array with one or two attribute paths.
 ///
-///   If it is a list with one attribute path *location*, then a geo-spatial
+///   If it is an array with one attribute path *location*, then a geo-spatial
 ///   index on all documents is created using *location* as path to the
-///   coordinates. The value of the attribute must be a list with at least two
-///   double values. The list must contain the latitude (first value) and the
+///   coordinates. The value of the attribute must be an array with at least two
+///   double values. The array must contain the latitude (first value) and the
 ///   longitude (second value). All documents, which do not have the attribute
 ///   path or with value that are not suitable, are ignored.
 ///
-///   If it is a list with two attribute paths *latitude* and *longitude*,
+///   If it is an array with two attribute paths *latitude* and *longitude*,
 ///   then a geo-spatial index on all documents is created using *latitude*
 ///   and *longitude* as paths the latitude and the longitude. The value of
 ///   the attribute *latitude* and of the attribute *longitude* must a
@@ -305,7 +305,7 @@ function get_api_index (req, res) {
 ///   values are not suitable, are ignored.
 ///
 /// - *geoJson*: If a geo-spatial index on a *location* is constructed
-///   and *geoJson* is *true*, then the order within the list is longitude
+///   and *geoJson* is *true*, then the order within the array is longitude
 ///   followed by latitude. This corresponds to the format described in
 ///   http://geojson.org/geojson-spec.html#positions
 ///
@@ -392,7 +392,7 @@ function get_api_index (req, res) {
 ///
 /// - *type*: must be equal to *"hash"*.
 ///
-/// - *fields*: A list of attribute paths.
+/// - *fields*: An array of attribute paths.
 ///
 /// - *unique*: If *true*, then create a unique index.
 ///
@@ -475,7 +475,7 @@ function get_api_index (req, res) {
 ///
 /// - *type*: must be equal to *"skiplist"*.
 ///
-/// - *fields*: A list of attribute paths.
+/// - *fields*: an array of attribute paths.
 ///
 /// - *unique*: If *true*, then create a unique index.
 ///
@@ -541,7 +541,7 @@ function get_api_index (req, res) {
 ///
 /// - *type*: must be equal to *"fulltext"*.
 ///
-/// - *fields*: A list of attribute names. Currently, the list is limited
+/// - *fields*: an array of attribute names. Currently, the array is limited
 ///   to exactly one attribute, so the value of *fields* should look like
 ///   this for example: *[ "text" ]*.
 ///
@@ -607,7 +607,7 @@ function get_api_index (req, res) {
 /// the index.
 ///
 /// Most indexes (a notable exception being the cap constraint) require the
-/// list of attributes to be indexed in the *fields* attribute of the index
+/// array of attributes to be indexed in the *fields* attribute of the index
 /// details. Depending on the index type, a single attribute or multiple
 /// attributes may be indexed.
 ///

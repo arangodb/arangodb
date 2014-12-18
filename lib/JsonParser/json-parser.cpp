@@ -557,7 +557,7 @@ struct jsonData {
   do {                                 \
     LOG_DEBUG("json-parser: %s", (a)); \
     if (false) {                       \
-      yy_fatal_error(a, NULL);         \
+      yy_fatal_error(a, nullptr);         \
     }                                  \
   }                                    \
   while (0)
@@ -2093,8 +2093,8 @@ void tri_jsp_free (void * ptr , yyscan_t yyscanner)
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-static bool ParseArray (yyscan_t, TRI_json_t*);
-static bool ParseObject (yyscan_t, TRI_json_t*, int);
+static bool ParseObject (yyscan_t, TRI_json_t*);
+static bool ParseValue (yyscan_t, TRI_json_t*, int);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -2112,13 +2112,13 @@ void TRI_JsonError (const char* msg) {
 /// @brief parses a list
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool ParseList (yyscan_t scanner, TRI_json_t* result) {
+static bool ParseArray (yyscan_t scanner, TRI_json_t* result) {
   struct yyguts_t * yyg = (struct yyguts_t*) scanner;
 
   bool comma;
   int c;
 
-  TRI_InitListJson(yyextra._memoryZone, result);
+  TRI_InitArrayJson(yyextra._memoryZone, result);
 
   c = tri_jsp_lex(scanner);
   comma = false;
@@ -2143,11 +2143,11 @@ static bool ParseList (yyscan_t scanner, TRI_json_t* result) {
     {
       TRI_json_t sub;
 
-      if (! ParseObject(scanner, &sub, c)) {
+      if (! ParseValue(scanner, &sub, c)) {
         return false;
       }
 
-      TRI_PushBack2ListJson(result, &sub);
+      TRI_PushBack2ArrayJson(result, &sub);
     }
 
     c = tri_jsp_lex(scanner);
@@ -2162,7 +2162,7 @@ static bool ParseList (yyscan_t scanner, TRI_json_t* result) {
 /// @brief parse an array
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool ParseArray (yyscan_t scanner, TRI_json_t* result) {
+static bool ParseObject (yyscan_t scanner, TRI_json_t* result) {
   struct yyguts_t * yyg = (struct yyguts_t*) scanner;
 
   bool comma;
@@ -2171,7 +2171,7 @@ static bool ParseArray (yyscan_t scanner, TRI_json_t* result) {
   int c;
 
   comma = false;
-  TRI_InitArrayJson(yyextra._memoryZone, result);
+  TRI_InitObjectJson(yyextra._memoryZone, result);
 
   c = tri_jsp_lex(scanner);
 
@@ -2215,7 +2215,7 @@ static bool ParseArray (yyscan_t scanner, TRI_json_t* result) {
       return false;
     }
       
-    if (name == NULL) {
+    if (name == nullptr) {
       yyextra._message = "out-of-memory";
       return false;
     }
@@ -2235,12 +2235,12 @@ static bool ParseArray (yyscan_t scanner, TRI_json_t* result) {
     { 
       TRI_json_t sub;
 
-      if (! ParseObject(scanner, &sub, c)) {
+      if (! ParseValue(scanner, &sub, c)) {
         TRI_FreeString(yyextra._memoryZone, name);
         return false;
       }
 
-      TRI_Insert4ArrayJson(yyextra._memoryZone, result, name, nameLen, &sub, false);
+      TRI_Insert4ObjectJson(yyextra._memoryZone, result, name, nameLen, &sub, false);
     }
 
     c = tri_jsp_lex(scanner);
@@ -2255,7 +2255,7 @@ static bool ParseArray (yyscan_t scanner, TRI_json_t* result) {
 /// @brief parse an object
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool ParseObject (yyscan_t scanner, TRI_json_t* result, int c) {
+static bool ParseValue (yyscan_t scanner, TRI_json_t* result, int c) {
   struct yyguts_t * yyg = (struct yyguts_t*) scanner;
 
   switch (c) {
@@ -2319,7 +2319,7 @@ static bool ParseObject (yyscan_t scanner, TRI_json_t* result, int c) {
         // string is not empty, process it
         size_t outLength;
         char* ptr = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength);
-        if (ptr == NULL) {
+        if (ptr == nullptr) {
           yyextra._message = "out-of-memory";
           return false;
         }
@@ -2338,7 +2338,7 @@ static bool ParseObject (yyscan_t scanner, TRI_json_t* result, int c) {
       else {
         char* ptr = TRI_DuplicateString2Z(yyextra._memoryZone, yytext + 1, yyleng - 2);
  
-        if (ptr == NULL) {
+        if (ptr == nullptr) {
           yyextra._message = "out-of-memory";
           return false;
         }
@@ -2349,10 +2349,10 @@ static bool ParseObject (yyscan_t scanner, TRI_json_t* result, int c) {
     }
 
     case OPEN_BRACE:
-      return ParseArray(scanner, result);
+      return ParseObject(scanner, result);
 
     case OPEN_BRACKET:
-      return ParseList(scanner, result);
+      return ParseArray(scanner, result);
     
     case CLOSE_BRACE:
       yyextra._message = "expected object, got '}'";
@@ -2401,9 +2401,9 @@ TRI_json_t* TRI_Json2String (TRI_memory_zone_t* zone, char const* text, char** e
   object = static_cast<TRI_json_t*>
                       (TRI_Allocate(zone, sizeof(TRI_json_t), false));
 
-  if (object == NULL) {
+  if (object == nullptr) {
     // out of memory
-    return NULL;
+    return nullptr;
   }
   
   // init as a JSON null object so the memory in object is initialised
@@ -2417,9 +2417,9 @@ TRI_json_t* TRI_Json2String (TRI_memory_zone_t* zone, char const* text, char** e
   buf = tri_jsp__scan_string((char yyconst*) text,scanner);
 
   c = tri_jsp_lex(scanner);
-  if (! ParseObject(scanner, object, c)) {
+  if (! ParseValue(scanner, object, c)) {
     TRI_FreeJson(zone, object);
-    object = NULL;
+    object = nullptr;
     LOG_DEBUG("failed to parse json object: '%s'", yyextra._message);
   }
   else {
@@ -2427,19 +2427,19 @@ TRI_json_t* TRI_Json2String (TRI_memory_zone_t* zone, char const* text, char** e
 
     if (c != END_OF_FILE) {
       TRI_FreeJson(zone, object);
-      object = NULL;
+      object = nullptr;
       yyextra._message = "failed to parse json object: expecting EOF";
 
       LOG_DEBUG("failed to parse json object: expecting EOF");
     }
   }
 
-  if (error != NULL) {
-    if (yyextra._message != NULL) {
+  if (error != nullptr) {
+    if (yyextra._message != nullptr) {
       *error = TRI_DuplicateString(yyextra._message);
     }
     else {
-      *error = NULL;
+      *error = nullptr;
     }
   }
 
@@ -2463,30 +2463,29 @@ TRI_json_t* TRI_JsonString (TRI_memory_zone_t* zone, char const* text) {
 
 TRI_json_t* TRI_JsonFile (TRI_memory_zone_t* zone, char const* path, char** error) {
   FILE* in;
-  TRI_json_t* object;
+  TRI_json_t* value;
   int c;
   struct yyguts_t * yyg;
   yyscan_t scanner;
 
-  object = static_cast<TRI_json_t*>
-                      (TRI_Allocate(zone, sizeof(TRI_json_t), false));
+  value = static_cast<TRI_json_t*>(TRI_Allocate(zone, sizeof(TRI_json_t), false));
   
-  if (object == NULL) {
+  if (value == nullptr) {
     // out of memory
-    return NULL;
+    return nullptr;
   }
 
   in = fopen(path, "rb");
 
-  if (in == 0) {
+  if (in == nullptr) {
     LOG_ERROR("cannot open file '%s': '%s'", path, TRI_LAST_ERROR_STR);
-    TRI_Free(zone, object);
+    TRI_Free(zone, value);
 
-    return NULL;
+    return nullptr;
   }
 
-  // init as a JSON null object so the memory in object is initialised
-  TRI_InitNullJson(object);
+  // init as a JSON null object so the memory in value is initialised
+  TRI_InitNullJson(value);
 
   tri_jsp_lex_init(&scanner);
   yyg = (struct yyguts_t*) scanner;
@@ -2495,27 +2494,27 @@ TRI_json_t* TRI_JsonFile (TRI_memory_zone_t* zone, char const* path, char** erro
   yyin = in;
 
   c = tri_jsp_lex(scanner);
-  if (! ParseObject(scanner, object, c)) {
-    TRI_FreeJson(zone, object);
-    object = NULL;
-    LOG_DEBUG("failed to parse json object: '%s'", yyextra._message);
+  if (! ParseValue(scanner, value, c)) {
+    TRI_FreeJson(zone, value);
+    value = nullptr;
+    LOG_DEBUG("failed to parse json value: '%s'", yyextra._message);
   }
   else {
     c = tri_jsp_lex(scanner);
 
     if (c != END_OF_FILE) {
-      TRI_FreeJson(zone, object);
-      object = NULL;
-      LOG_DEBUG("failed to parse json object: expecting EOF");
+      TRI_FreeJson(zone, value);
+      value = nullptr;
+      LOG_DEBUG("failed to parse json value: expecting EOF");
     }
   }
 
-  if (error != NULL) {
-    if (yyextra._message != NULL) {
+  if (error != nullptr) {
+    if (yyextra._message != nullptr) {
       *error = TRI_DuplicateString(yyextra._message);
     }
     else {
-      *error = NULL;
+      *error = nullptr;
     }
   }
 
@@ -2523,7 +2522,7 @@ TRI_json_t* TRI_JsonFile (TRI_memory_zone_t* zone, char const* path, char** erro
 
   fclose(in);
 
-  return object;
+  return value;
 }
 
 // Local Variables:

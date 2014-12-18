@@ -267,7 +267,7 @@ function ahuacatlOperatorsTestSuite () {
 /// @brief test aql.IS_LIST function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testIsArrayTrue : function () {
+    testIsListTrue : function () {
       assertTrue(aql.AQL_IS_LIST([ ]));
       assertTrue(aql.AQL_IS_LIST([ 0 ]));
       assertTrue(aql.AQL_IS_LIST([ 0, 1 ]));
@@ -283,7 +283,7 @@ function ahuacatlOperatorsTestSuite () {
 /// @brief test aql.IS_LIST function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testIsArrayFalse : function () {
+    testIsListFalse : function () {
       assertFalse(aql.AQL_IS_LIST('abc'));
       assertFalse(aql.AQL_IS_LIST('null'));
       assertFalse(aql.AQL_IS_LIST('false'));
@@ -307,11 +307,56 @@ function ahuacatlOperatorsTestSuite () {
       assertFalse(aql.AQL_IS_LIST({ 'a' : 0, 'b' : 1 }));
     },
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test aql.IS_ARRAY function
+////////////////////////////////////////////////////////////////////////////////
+
+    testIsArrayTrue : function () {
+      assertTrue(aql.AQL_IS_ARRAY([ ]));
+      assertTrue(aql.AQL_IS_ARRAY([ 0 ]));
+      assertTrue(aql.AQL_IS_ARRAY([ 0, 1 ]));
+      assertTrue(aql.AQL_IS_ARRAY([ 1, 2 ]));
+      assertTrue(aql.AQL_IS_ARRAY([ '' ]));
+      assertTrue(aql.AQL_IS_ARRAY([ '0' ]));
+      assertTrue(aql.AQL_IS_ARRAY([ '1' ]));
+      assertTrue(aql.AQL_IS_ARRAY([ true ]));
+      assertTrue(aql.AQL_IS_ARRAY([ false ]));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test aql.IS_ARRAY function
+////////////////////////////////////////////////////////////////////////////////
+
+    testIsArrayFalse : function () {
+      assertFalse(aql.AQL_IS_ARRAY('abc'));
+      assertFalse(aql.AQL_IS_ARRAY('null'));
+      assertFalse(aql.AQL_IS_ARRAY('false'));
+      assertFalse(aql.AQL_IS_ARRAY('undefined'));
+      assertFalse(aql.AQL_IS_ARRAY(''));
+      assertFalse(aql.AQL_IS_ARRAY(' '));
+      assertFalse(aql.AQL_IS_ARRAY(false));
+      assertFalse(aql.AQL_IS_ARRAY(true));
+      assertFalse(aql.AQL_IS_ARRAY(undefined));
+      assertFalse(aql.AQL_IS_ARRAY(NaN));
+      assertFalse(aql.AQL_IS_ARRAY(1.3e308 * 1.3e308));
+      assertFalse(aql.AQL_IS_ARRAY(0));
+      assertFalse(aql.AQL_IS_ARRAY(1));
+      assertFalse(aql.AQL_IS_ARRAY(-1));
+      assertFalse(aql.AQL_IS_ARRAY(0.1));
+      assertFalse(aql.AQL_IS_ARRAY(-0.1));
+      assertFalse(aql.AQL_IS_ARRAY(null));
+      assertFalse(aql.AQL_IS_ARRAY({ }));
+      assertFalse(aql.AQL_IS_ARRAY({ 'a' : 0 }));
+      assertFalse(aql.AQL_IS_ARRAY({ 'a' : 1 }));
+      assertFalse(aql.AQL_IS_ARRAY({ 'a' : 0, 'b' : 1 }));
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test aql.IS_DOCUMENT function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testIsObjectTrue : function () {
+    testIsDocumentTrue : function () {
       assertTrue(aql.AQL_IS_DOCUMENT({ }));
       assertTrue(aql.AQL_IS_DOCUMENT({ 'a' : 0 }));
       assertTrue(aql.AQL_IS_DOCUMENT({ 'a' : 1 }));
@@ -324,7 +369,7 @@ function ahuacatlOperatorsTestSuite () {
 /// @brief test aql.IS_DOCUMENT function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testIsObjectFalse : function () {
+    testIsDocumentFalse : function () {
       assertFalse(aql.AQL_IS_DOCUMENT('abc'));
       assertFalse(aql.AQL_IS_DOCUMENT('null'));
       assertFalse(aql.AQL_IS_DOCUMENT('false'));
@@ -351,6 +396,52 @@ function ahuacatlOperatorsTestSuite () {
       assertFalse(aql.AQL_IS_DOCUMENT([ '1' ]));
       assertFalse(aql.AQL_IS_DOCUMENT([ true ]));
       assertFalse(aql.AQL_IS_DOCUMENT([ false ]));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test aql.IS_OBJECT function
+////////////////////////////////////////////////////////////////////////////////
+
+    testIsObjectTrue : function () {
+      assertTrue(aql.AQL_IS_OBJECT({ }));
+      assertTrue(aql.AQL_IS_OBJECT({ 'a' : 0 }));
+      assertTrue(aql.AQL_IS_OBJECT({ 'a' : 1 }));
+      assertTrue(aql.AQL_IS_OBJECT({ 'a' : 0, 'b' : 1 }));
+      assertTrue(aql.AQL_IS_OBJECT({ '1' : false, 'b' : false }));
+      assertTrue(aql.AQL_IS_OBJECT({ '0' : false }));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test aql.IS_OBJECT function
+////////////////////////////////////////////////////////////////////////////////
+
+    testIsObjectFalse : function () {
+      assertFalse(aql.AQL_IS_OBJECT('abc'));
+      assertFalse(aql.AQL_IS_OBJECT('null'));
+      assertFalse(aql.AQL_IS_OBJECT('false'));
+      assertFalse(aql.AQL_IS_OBJECT('undefined'));
+      assertFalse(aql.AQL_IS_OBJECT(''));
+      assertFalse(aql.AQL_IS_OBJECT(' '));
+      assertFalse(aql.AQL_IS_OBJECT(false));
+      assertFalse(aql.AQL_IS_OBJECT(true));
+      assertFalse(aql.AQL_IS_OBJECT(undefined));
+      assertFalse(aql.AQL_IS_OBJECT(NaN));
+      assertFalse(aql.AQL_IS_OBJECT(1.3e308 * 1.3e308));
+      assertFalse(aql.AQL_IS_OBJECT(0));
+      assertFalse(aql.AQL_IS_OBJECT(1));
+      assertFalse(aql.AQL_IS_OBJECT(-1));
+      assertFalse(aql.AQL_IS_OBJECT(0.1));
+      assertFalse(aql.AQL_IS_OBJECT(-0.1));
+      assertFalse(aql.AQL_IS_OBJECT(null));
+      assertFalse(aql.AQL_IS_OBJECT([ ]));
+      assertFalse(aql.AQL_IS_OBJECT([ 0 ]));
+      assertFalse(aql.AQL_IS_OBJECT([ 0, 1 ]));
+      assertFalse(aql.AQL_IS_OBJECT([ 1, 2 ]));
+      assertFalse(aql.AQL_IS_OBJECT([ '' ]));
+      assertFalse(aql.AQL_IS_OBJECT([ '0' ]));
+      assertFalse(aql.AQL_IS_OBJECT([ '1' ]));
+      assertFalse(aql.AQL_IS_OBJECT([ true ]));
+      assertFalse(aql.AQL_IS_OBJECT([ false ]));
     },
 
 ////////////////////////////////////////////////////////////////////////////////

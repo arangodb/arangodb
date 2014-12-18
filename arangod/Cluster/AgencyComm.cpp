@@ -144,7 +144,7 @@ int AgencyCommResult::errorCode () const {
 
   TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, _body.c_str());
 
-  if (! TRI_IsArrayJson(json)) {
+  if (! TRI_IsObjectJson(json)) {
     if (json != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
@@ -152,7 +152,7 @@ int AgencyCommResult::errorCode () const {
   }
 
   // get "errorCode" attribute
-  TRI_json_t const* errorCode = TRI_LookupArrayJson(json, "errorCode");
+  TRI_json_t const* errorCode = TRI_LookupObjectJson(json, "errorCode");
 
   if (TRI_IsNumberJson(errorCode)) {
     result = (int) errorCode->_value._number;
@@ -186,13 +186,13 @@ std::string AgencyCommResult::errorMessage () const {
     return std::string("Out of memory");
   }
 
-  if (! TRI_IsArrayJson(json)) {
+  if (! TRI_IsObjectJson(json)) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return result;
   }
 
   // get "message" attribute
-  TRI_json_t const* message = TRI_LookupArrayJson(json, "message");
+  TRI_json_t const* message = TRI_LookupObjectJson(json, "message");
 
   if (TRI_IsStringJson(message)) {
     result = std::string(message->_value._string.data, message->_value._string.length - 1);
@@ -251,12 +251,12 @@ void AgencyCommResult::clear () {
 bool AgencyCommResult::parseJsonNode (TRI_json_t const* node,
                                       std::string const& stripKeyPrefix,
                                       bool withDirs) {
-  if (! TRI_IsArrayJson(node)) {
+  if (! TRI_IsObjectJson(node)) {
     return true;
   }
 
   // get "key" attribute
-  TRI_json_t const* key = TRI_LookupArrayJson(node, "key");
+  TRI_json_t const* key = TRI_LookupObjectJson(node, "key");
 
   if (! TRI_IsStringJson(key)) {
     return false;
@@ -279,7 +279,7 @@ bool AgencyCommResult::parseJsonNode (TRI_json_t const* node,
   }
 
   // get "dir" attribute
-  TRI_json_t const* dir = TRI_LookupArrayJson(node, "dir");
+  TRI_json_t const* dir = TRI_LookupObjectJson(node, "dir");
   bool isDir = (TRI_IsBooleanJson(dir) && dir->_value._boolean);
 
   if (isDir) {
@@ -293,9 +293,9 @@ bool AgencyCommResult::parseJsonNode (TRI_json_t const* node,
     }
 
     // is a directory, so there may be a "nodes" attribute
-    TRI_json_t const* nodes = TRI_LookupArrayJson(node, "nodes");
+    TRI_json_t const* nodes = TRI_LookupObjectJson(node, "nodes");
 
-    if (! TRI_IsListJson(nodes)) {
+    if (! TRI_IsArrayJson(nodes)) {
       // if directory is empty...
       return true;
     }
@@ -314,7 +314,7 @@ bool AgencyCommResult::parseJsonNode (TRI_json_t const* node,
     // not a directory
 
     // get "value" attribute
-    TRI_json_t const* value = TRI_LookupArrayJson(node, "value");
+    TRI_json_t const* value = TRI_LookupObjectJson(node, "value");
 
     if (TRI_IsStringJson(value)) {
       if (! prefix.empty()) {
@@ -342,7 +342,7 @@ bool AgencyCommResult::parse (std::string const& stripKeyPrefix,
                               bool withDirs) {
   TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, _body.c_str());
 
-  if (! TRI_IsArrayJson(json)) {
+  if (! TRI_IsObjectJson(json)) {
     if (json != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
@@ -350,7 +350,7 @@ bool AgencyCommResult::parse (std::string const& stripKeyPrefix,
   }
 
   // get "node" attribute
-  TRI_json_t const* node = TRI_LookupArrayJson(json, "node");
+  TRI_json_t const* node = TRI_LookupObjectJson(json, "node");
 
   const bool result = parseJsonNode(node, stripKeyPrefix, withDirs);
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -924,7 +924,7 @@ AgencyEndpoint* AgencyComm::createAgencyEndpoint (std::string const& endpointSpe
 
 AgencyCommResult AgencyComm::sendServerState (double ttl) {
   // construct JSON value { "status": "...", "time": "..." }
-  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  TRI_json_t* json = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
 
   if (json == nullptr) {
     return AgencyCommResult();
@@ -933,8 +933,8 @@ AgencyCommResult AgencyComm::sendServerState (double ttl) {
   const std::string status = ServerState::stateToString(ServerState::instance()->getState());
   const std::string stamp = AgencyComm::generateStamp();
 
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "status", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, status.c_str(), status.size()));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "time", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, stamp.c_str(), stamp.size()));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "status", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, status.c_str(), status.size()));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "time", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, stamp.c_str(), stamp.size()));
 
   AgencyCommResult result(setValue("Sync/ServerStates/" + ServerState::instance()->getId(), json, ttl));
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);

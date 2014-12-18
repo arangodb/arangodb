@@ -171,7 +171,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         triagens::basics::Json toJson() const {
-          triagens::basics::Json item(basics::Json::Array, 3);
+          triagens::basics::Json item(basics::Json::Object, 3);
           if (! _bound.isEmpty()) {
             item("bound", _bound.copy());
           }
@@ -706,10 +706,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
     
         triagens::basics::Json toJson() const {
-          triagens::basics::Json list(triagens::basics::Json::List);
+          triagens::basics::Json list(triagens::basics::Json::Array);
           for (auto x : _ranges) {
             for (auto y: x.second) {
-              triagens::basics::Json item(triagens::basics::Json::Array);
+              triagens::basics::Json item(triagens::basics::Json::Object);
               item("variable", triagens::basics::Json(x.first))
                   ("attribute name", triagens::basics::Json(y.first))
                   ("range info", y.second.toJson());
@@ -804,7 +804,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
     
         triagens::basics::Json toJson() const {
-          triagens::basics::Json list(triagens::basics::Json::List);
+          triagens::basics::Json list(triagens::basics::Json::Array);
           for (size_t i = 0; i < _rangeInfoMapVec.size(); i++) {
             list(_rangeInfoMapVec[i]->toJson());
           }

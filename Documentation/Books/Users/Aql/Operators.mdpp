@@ -16,8 +16,8 @@ The following comparison operators are supported:
 - *<=* less or equal
 - *>*  greater than
 - *>=* greater or equal
-- *IN* test if a value is contained in a list
-- *NOT IN* test if a value is not contained in a list
+- *IN* test if a value is contained in an array
+- *NOT IN* test if a value is not contained in an array
 
 These operators accept any data types for the first and second operands.
 
@@ -90,7 +90,7 @@ The *conversion to a boolean value* works as follows:
 - boolean values remain unchanged
 - all numbers unequal to zero are `true`, zero is `false`
 - the empty string is `false`, all other strings are `true`
-- lists (`[ ]`) and documents (`{ }`) are `true`, regardless of their contents
+- arrays (`[ ]`) and objects / documents (`{ }`) are `true`, regardless of their contents
 
 The result of *logical and* and *logical or* operations can now have any data 
 type and is not necessarily a boolean value.
@@ -147,10 +147,10 @@ The *conversion to a numeric value* works as follows:
 - string values are converted to a number if they contain a valid string representation
   of a number. Any whitespace at the start or the end of the string is ignored. Strings
   with any other contents are converted to `null`
-- an empty list is converted to `0`, a list with one member is converted to the numeric
-  representation of its sole member. Lists with more members are converted 
+- an empty array is converted to `0`, an array with one member is converted to the numeric
+  representation of its sole member. Arrays with more members are converted 
   to `null`
-- documents are converted to `null`
+- objects / documents are converted to `null`
 
 If the conversion to a number produces a value of `null` for one of the operands,
 the result of the whole arithmetic operation will also be `null`. An arithmetic operation
@@ -190,7 +190,7 @@ AQL supports expressing simple numeric ranges with the *..* operator.
 This operator can be used to easily iterate over a sequence of numeric
 values.    
 
-The *..* operator will produce a list of values in the defined range, with 
+The *..* operator will produce an array of values in the defined range, with 
 both bounding values included.
 
 *Examples*

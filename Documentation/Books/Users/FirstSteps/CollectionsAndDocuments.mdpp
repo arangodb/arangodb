@@ -5,7 +5,7 @@ ArangoDB is a database that serves documents to clients.
 
 * A *document* contains zero or more attributes, each one of these
   attributes has a value. A value can either be an atomic type, i. e.
-  integer, strings, boolean, a list or an embedded document. Documents
+  integer, strings, boolean, an array or an embedded document. Documents
   are normally represented as JSON objects
 * Documents are grouped into *collections*. A collection contains zero
   or more documents
@@ -164,7 +164,7 @@ The last document was a mistake – so let's delete it:
     ]
 
 Now we want to look for a person with a given name. We can use
-*byExample* for this. The method returns a list of documents
+*byExample* for this. The method returns an array of documents
 matching a given example.
 
     arangosh> db.example.byExample({ name: "Jane Smith" }).toArray()

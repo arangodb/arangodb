@@ -64,7 +64,7 @@ static inline int setErrormsg (int ourerrno, string& errorMsg) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline bool hasError (TRI_json_t const* json) {
-  TRI_json_t const* error = TRI_LookupArrayJson(json, "error");
+  TRI_json_t const* error = TRI_LookupObjectJson(json, "error");
 
   return (TRI_IsBooleanJson(error) && error->_value._boolean);
 }
@@ -78,14 +78,14 @@ static string extractErrorMessage (string const& shardId,
   string msg = " shardID:" + shardId + ": ";
 
   // add error message text
-  TRI_json_t const* errorMessage = TRI_LookupArrayJson(json, "errorMessage");
+  TRI_json_t const* errorMessage = TRI_LookupObjectJson(json, "errorMessage");
   if (TRI_IsStringJson(errorMessage)) {
     msg += string(errorMessage->_value._string.data,
                   errorMessage->_value._string.length - 1);
   }
 
   // add error number
-  TRI_json_t const* errorNum = TRI_LookupArrayJson(json, "errorNum");
+  TRI_json_t const* errorNum = TRI_LookupObjectJson(json, "errorNum");
   if (TRI_IsNumberJson(errorNum)) {
     msg += " (errNum=" + triagens::basics::StringUtils::itoa(static_cast<uint32_t>(errorNum->_value._number)) + ")";
   }
@@ -974,17 +974,17 @@ int ClusterInfo::createDatabaseCoordinator (string const& name,
         bool tmpHaveError = false;
         for (it = res._values.begin(); it != res._values.end(); ++it) {
           TRI_json_t const* json = (*it).second._json;
-          TRI_json_t const* error = TRI_LookupArrayJson(json, "error");
+          TRI_json_t const* error = TRI_LookupObjectJson(json, "error");
           if (TRI_IsBooleanJson(error) && error->_value._boolean) {
             tmpHaveError = true;
             tmpMsg += " DBServer:"+it->first+":";
             TRI_json_t const* errorMessage
-                  = TRI_LookupArrayJson(json, "errorMessage");
+                  = TRI_LookupObjectJson(json, "errorMessage");
             if (TRI_IsStringJson(errorMessage)) {
               tmpMsg += string(errorMessage->_value._string.data,
                                errorMessage->_value._string.length-1);
             }
-            TRI_json_t const* errorNum = TRI_LookupArrayJson(json, "errorNum");
+            TRI_json_t const* errorNum = TRI_LookupObjectJson(json, "errorNum");
             if (TRI_IsNumberJson(errorNum)) {
               tmpMsg += " (errorNum=";
               tmpMsg += basics::StringUtils::itoa(static_cast<uint32_t>(
@@ -1178,17 +1178,17 @@ int ClusterInfo::createCollectionCoordinator (string const& databaseName,
         bool tmpHaveError = false;
         for (it = res._values.begin(); it != res._values.end(); ++it) {
           TRI_json_t const* json = (*it).second._json;
-          TRI_json_t const* error = TRI_LookupArrayJson(json, "error");
+          TRI_json_t const* error = TRI_LookupObjectJson(json, "error");
           if (TRI_IsBooleanJson(error) && error->_value._boolean) {
             tmpHaveError = true;
             tmpMsg += " shardID:"+it->first+":";
             TRI_json_t const* errorMessage
-                  = TRI_LookupArrayJson(json, "errorMessage");
+                  = TRI_LookupObjectJson(json, "errorMessage");
             if (TRI_IsStringJson(errorMessage)) {
               tmpMsg += string(errorMessage->_value._string.data,
                                errorMessage->_value._string.length-1);
             }
-            TRI_json_t const* errorNum = TRI_LookupArrayJson(json, "errorNum");
+            TRI_json_t const* errorNum = TRI_LookupObjectJson(json, "errorNum");
             if (TRI_IsNumberJson(errorNum)) {
               tmpMsg += " (errNum=";
               tmpMsg += basics::StringUtils::itoa(static_cast<uint32_t>(
@@ -1336,13 +1336,13 @@ int ClusterInfo::setCollectionPropertiesCoordinator (string const& databaseName,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, copy, "doCompact");
-  TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, copy, "journalSize");
-  TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, copy, "waitForSync");
+  TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "doCompact");
+  TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "journalSize");
+  TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "waitForSync");
 
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, copy, "doCompact", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->_doCompact));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, copy, "journalSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_maximalSize));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, copy, "waitForSync", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->_waitForSync));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "doCompact", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->_doCompact));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "journalSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_maximalSize));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "waitForSync", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->_waitForSync));
 
   res.clear();
   res = ac.setValue("Plan/Collections/" + databaseName + "/" + collectionID, copy, 0.0);
@@ -1407,8 +1407,8 @@ int ClusterInfo::setCollectionStatusCoordinator (string const& databaseName,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, copy, "status");
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, copy, "status", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, status));
+  TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "status");
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "status", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, status));
 
   res.clear();
   res = ac.setValue("Plan/Collections/" + databaseName + "/" + collectionID, copy, 0.0);
@@ -1448,7 +1448,7 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
   // check index id
   uint64_t iid = 0;
 
-  TRI_json_t const* idxJson = TRI_LookupArrayJson(json, "id");
+  TRI_json_t const* idxJson = TRI_LookupObjectJson(json, "id");
   if (TRI_IsStringJson(idxJson)) {
     // use predefined index id
     iid = triagens::basics::StringUtils::uint64(idxJson->_value._string.data);
@@ -1483,19 +1483,19 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
       TRI_json_t const* indexes = c->getIndexes();
       numberOfShards = c->numberOfShards();
 
-      if (TRI_IsListJson(indexes)) {
+      if (TRI_IsArrayJson(indexes)) {
         bool hasSameIndexType = false;
-        TRI_json_t const* type = TRI_LookupArrayJson(json, "type");
+        TRI_json_t const* type = TRI_LookupObjectJson(json, "type");
 
         if (! TRI_IsStringJson(type)) {
           return setErrormsg(TRI_ERROR_INTERNAL, errorMsg);
         }
 
         for (size_t i = 0; i < indexes->_value._objects._length; ++i) {
-          TRI_json_t const* other = TRI_LookupListJson(indexes, i);
+          TRI_json_t const* other = TRI_LookupArrayJson(indexes, i);
 
-          if (! TRI_CheckSameValueJson(TRI_LookupArrayJson(json, "type"),
-                                       TRI_LookupArrayJson(other, "type"))) {
+          if (! TRI_CheckSameValueJson(TRI_LookupObjectJson(json, "type"),
+                                       TRI_LookupObjectJson(other, "type"))) {
             // compare index types first. they must match
             continue;
           }
@@ -1507,7 +1507,7 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
           if (isSame) {
             // found an existing index...
             resultJson = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, other);
-            TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, resultJson, "isNewlyCreated", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
+            TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, resultJson, "isNewlyCreated", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
             return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
           }
         }
@@ -1541,7 +1541,7 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
       return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
     }
 
-    TRI_json_t* idx = TRI_LookupArrayJson(collectionJson, "indexes");
+    TRI_json_t* idx = TRI_LookupObjectJson(collectionJson, "indexes");
 
     if (idx == 0) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collectionJson);
@@ -1556,12 +1556,12 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
     }
 
     // add index id
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE,
                          newIndex,
                          "id",
                          TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, idString.c_str()));
 
-    TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, idx, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, newIndex));
+    TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, idx, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, newIndex));
 
     AgencyCommResult result = ac.setValue("Plan/Collections/" + databaseName + "/" + collectionID,
                                           collectionJson,
@@ -1600,14 +1600,14 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
         size_t found = 0;
         for (it = res._values.begin(); it != res._values.end(); ++it) {
           TRI_json_t const* json = (*it).second._json;
-          TRI_json_t const* indexes = TRI_LookupArrayJson(json, "indexes");
-          if (! TRI_IsListJson(indexes)) {
+          TRI_json_t const* indexes = TRI_LookupObjectJson(json, "indexes");
+          if (! TRI_IsArrayJson(indexes)) {
             // no list, so our index is not present. we can abort searching
             break;
           }
 
           for (size_t i = 0; i < indexes->_value._objects._length; ++i) {
-            TRI_json_t const* v = TRI_LookupListJson(indexes, i);
+            TRI_json_t const* v = TRI_LookupArrayJson(indexes, i);
 
             // check for errors
             if (hasError(v)) {
@@ -1616,7 +1616,7 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
 
               errorMsg = "Error during index creation: " + errorMsg;
 
-              v = TRI_LookupArrayJson(v, "errorNum");
+              v = TRI_LookupObjectJson(v, "errorNum");
               if (TRI_IsNumberJson(v)) {
                 // found a specific error number
                 return (int) v->_value._number;
@@ -1626,7 +1626,7 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
               return TRI_ERROR_ARANGO_INDEX_CREATION_FAILED;
             }
 
-            TRI_json_t const* k = TRI_LookupArrayJson(v, "id");
+            TRI_json_t const* k = TRI_LookupObjectJson(v, "id");
 
             if (! TRI_IsStringJson(k) || idString != string(k->_value._string.data)) {
               // this is not our index
@@ -1641,7 +1641,7 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
 
         if (found == (size_t) numberOfShards) {
           resultJson = newIndex;
-          TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, resultJson, "isNewlyCreated", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
+          TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, resultJson, "isNewlyCreated", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
 
           return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
         }
@@ -1698,7 +1698,7 @@ int ClusterInfo::dropIndexCoordinator (string const& databaseName,
 
       indexes = c->getIndexes();
 
-      if (! TRI_IsListJson(indexes)) {
+      if (! TRI_IsArrayJson(indexes)) {
         // no indexes present, so we can't delete our index
         return setErrormsg(TRI_ERROR_ARANGO_INDEX_NOT_FOUND, errorMsg);
       }
@@ -1712,12 +1712,12 @@ int ClusterInfo::dropIndexCoordinator (string const& databaseName,
       return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
     }
 
-    TRI_ASSERT(TRI_IsListJson(indexes));
+    TRI_ASSERT(TRI_IsArrayJson(indexes));
 
     // delete previous indexes entry
-    TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, collectionJson, "indexes");
+    TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, collectionJson, "indexes");
 
-    TRI_json_t* copy = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+    TRI_json_t* copy = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
 
     if (copy == 0) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collectionJson);
@@ -1728,9 +1728,9 @@ int ClusterInfo::dropIndexCoordinator (string const& databaseName,
 
     // copy remaining indexes back into collection
     for (size_t i = 0; i < indexes->_value._objects._length; ++i) {
-      TRI_json_t const* v = TRI_LookupListJson(indexes, i);
-      TRI_json_t const* id = TRI_LookupArrayJson(v, "id");
-      TRI_json_t const* type = TRI_LookupArrayJson(v, "type");
+      TRI_json_t const* v = TRI_LookupArrayJson(indexes, i);
+      TRI_json_t const* id = TRI_LookupObjectJson(v, "id");
+      TRI_json_t const* type = TRI_LookupObjectJson(v, "type");
 
       if (! TRI_IsStringJson(id) || ! TRI_IsStringJson(type)) {
         continue;
@@ -1751,10 +1751,10 @@ int ClusterInfo::dropIndexCoordinator (string const& databaseName,
         continue;
       }
 
-      TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, copy, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, v));
+      TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, copy, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, v));
     }
 
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, collectionJson, "indexes", copy);
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, collectionJson, "indexes", copy);
 
     if (! found) {
       // did not find the sought index
@@ -1797,13 +1797,13 @@ int ClusterInfo::dropIndexCoordinator (string const& databaseName,
         bool found = false;
         for (it = res._values.begin(); it != res._values.end(); ++it) {
           TRI_json_t const* json = (*it).second._json;
-          TRI_json_t const* indexes = TRI_LookupArrayJson(json, "indexes");
+          TRI_json_t const* indexes = TRI_LookupObjectJson(json, "indexes");
 
-          if (TRI_IsListJson(indexes)) {
+          if (TRI_IsArrayJson(indexes)) {
             for (size_t i = 0; i < indexes->_value._objects._length; ++i) {
-              TRI_json_t const* v = TRI_LookupListJson(indexes, i);
-              if (TRI_IsArrayJson(v)) {
-                TRI_json_t const* k = TRI_LookupArrayJson(v, "id");
+              TRI_json_t const* v = TRI_LookupArrayJson(indexes, i);
+              if (TRI_IsObjectJson(v)) {
+                TRI_json_t const* k = TRI_LookupObjectJson(v, "id");
                 if (TRI_IsStringJson(k) && idString == string(k->_value._string.data)) {
                   // still found the index in some shard
                   found = true;
@@ -1860,7 +1860,7 @@ void ClusterInfo::loadServers () {
 
     while (it != result._values.end()) {
       TRI_json_t const* sub
-        = triagens::basics::JsonHelper::getArrayElement((*it).second._json,
+        = triagens::basics::JsonHelper::getObjectElement((*it).second._json,
                                                         "endpoint");
       if (nullptr != sub) {
         std::string server = triagens::basics::JsonHelper::getStringValue(sub, "");
