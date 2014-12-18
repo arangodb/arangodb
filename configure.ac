@@ -71,43 +71,6 @@ dnl --SECTION--                                              3RD-PARTY LIBRARIES
 dnl ============================================================================
 
 dnl ----------------------------------------------------------------------------
-dnl LIBEV
-dnl ----------------------------------------------------------------------------
-
-AC_ARG_ENABLE(all-in-one-libev,
-  AS_HELP_STRING([--enable-all-in-one-libev], [use supplied LIBEV from 3rdParty directory (default: yes)]),
-  [tr_ALL_IN_ONE_LIBEV="${enableval:-yes}"],
-  [tr_ALL_IN_ONE_LIBEV=yes]
-)
-
-AM_CONDITIONAL(ENABLE_ALL_IN_ONE_LIBEV, test "x$tr_ALL_IN_ONE_LIBEV" = xyes)
-
-dnl ----------------------------------------------------------------------------
-dnl V8
-dnl ----------------------------------------------------------------------------
-
-AC_ARG_ENABLE(all-in-one-v8,
-  AS_HELP_STRING([--enable-all-in-one-v8], [use supplied V8 from 3rdParty directory (default: yes)]),
-  [tr_ALL_IN_ONE_V8="${enableval:-yes}"],
-  [tr_ALL_IN_ONE_V8=yes]
-)
-
-AM_CONDITIONAL(ENABLE_ALL_IN_ONE_V8, test "x$tr_ALL_IN_ONE_V8" = xyes)
-
-dnl ----------------------------------------------------------------------------
-dnl ICU
-dnl ----------------------------------------------------------------------------
-
-AC_ARG_ENABLE(all-in-one-icu,
-  AS_HELP_STRING([--enable-all-in-one-icu], [use supplied ICU from 3rdParty directory (default: no)]),
-  [tr_ALL_IN_ONE_ICU="${enableval:-yes}"],
-  [tr_ALL_IN_ONE_ICU=yes]
-)
-
-AM_CONDITIONAL(ENABLE_ALL_IN_ONE_ICU, test "x$tr_ALL_IN_ONE_ICU" = xyes)
-
-
-dnl ----------------------------------------------------------------------------
 dnl ETCD
 dnl ----------------------------------------------------------------------------
 
@@ -213,41 +176,121 @@ dnl ----------------------------------------------------------------------------
 m4_include([m4/all-in-one.zlib])
 
 dnl ----------------------------------------------------------------------------
-dnl LIBEV
-dnl ----------------------------------------------------------------------------
-
-if test "x$tr_ALL_IN_ONE_LIBEV" = xyes;  then
-  m4_include([m4/all-in-one.libev])
-else
-  m4_include([m4/external.libev])
-fi
-
-dnl ----------------------------------------------------------------------------
 dnl MRUBY
 dnl ----------------------------------------------------------------------------
 
 m4_include([m4/all-in-one.mruby])
 
 dnl ----------------------------------------------------------------------------
+dnl LIBEV
+dnl ----------------------------------------------------------------------------
+
+LIBEV_VERSION="4.11"
+
+LIBEV_CPPFLAGS="-I${srcdir}/3rdParty/libev -DTRI_LIBEV_VERSION='\"${LIBEV_VERSION}\"'"
+LIBEV_CPPFLAGS="${LIBEV_CPPFLAGS}"
+LIBEV_LDFLAGS=""
+LIBEV_LIBS="${srcdir}/3rdParty/libev/BUILD/.libs/libev.a"
+
+AC_SUBST(LIBEV_CPPFLAGS)
+AC_SUBST(LIBEV_LDFLAGS)
+AC_SUBST(LIBEV_LIBS)
+
+LIB_INFO="$LIB_INFO|LIBEV: 3rdParty version"
+LIB_INFO="$LIB_INFO|LIBEV VERSION: ${LIBEV_VERSION}"
+
+LIB_INFO="$LIB_INFO|LIBEV_CPPFLAGS: ${LIBEV_CPPFLAGS}"
+LIB_INFO="$LIB_INFO|LIBEV_LDFLAGS:  ${LIBEV_LDFLAGS}"
+LIB_INFO="$LIB_INFO|LIBEV_LIBS:     ${LIBEV_LIBS}"
+
+LIB_INFO="$LIB_INFO|."
+
+dnl ----------------------------------------------------------------------------
 dnl V8
 dnl ----------------------------------------------------------------------------
 
-if test "x$tr_ALL_IN_ONE_V8" = xyes;  then
-  m4_include([m4/all-in-one.v8])
+V8_VERSION="3.29.59"
+V8_CPPFLAGS="-I${srcdir}/3rdParty/V8/include -DTRI_V8_VERSION='\"${V8_VERSION}\"'"
+V8_LDFLAGS=""
+V8_TARGET="native"
+
+v8_lib_dir=""
+
+if test x$tr_ARM == xyes;  then
+  V8_TARGET="arm.release"
+  v8_lib_dir="${srcdir}/3rdParty/V8/out/$V8_TARGET/obj.target/tools/gyp"
+
+elif test x$tr_DARWIN == xyes;  then
+  if test "x$tr_BITS" == x64;  then
+    V8_TARGET="x64.release"
+  else
+    V8_TARGET="ia32.release"
+  fi
+
+  v8_lib_dir="${srcdir}/3rdParty/V8/out/$V8_TARGET"
+
 else
-  m4_include([m4/external.v8])
+  if test "x$tr_BITS" == x64;  then
+    V8_TARGET="x64.release"
+  else
+    V8_TARGET="ia32.release"
+  fi
+
+  v8_lib_dir="${srcdir}/3rdParty/V8/out/$V8_TARGET/obj.target/tools/gyp"
 fi
+
+V8_LIBS="${v8_lib_dir}/libv8_base.a ${v8_lib_dir}/libv8_libbase.a ${v8_lib_dir}/libv8_libplatform.a ${v8_lib_dir}/libv8_nosnapshot.a"
+
+if test "x$tr_FREEBSD" == xyes;  then
+  V8_LIBS="$V8_LIBS -lexecinfo"
+fi
+
+AC_SUBST(V8_CPPFLAGS)
+AC_SUBST(V8_LDFLAGS)
+AC_SUBST(V8_LIBS)
+AC_SUBST(V8_TARGET)
+
+LIB_INFO="$LIB_INFO|V8: 3rdParty version"
+LIB_INFO="$LIB_INFO|V8 VERSION: ${V8_VERSION}"
+
+LIB_INFO="$LIB_INFO|V8_TARGET:   ${V8_TARGET}"
+
+LIB_INFO="$LIB_INFO|V8_CPPFLAGS: ${V8_CPPFLAGS}"
+LIB_INFO="$LIB_INFO|V8_LDFLAGS:  ${V8_LDFLAGS}"
+LIB_INFO="$LIB_INFO|V8_LIBS:     ${V8_LIBS}"
+
+LIB_INFO="$LIB_INFO|."
 
 dnl ----------------------------------------------------------------------------
 dnl ICU
 dnl ----------------------------------------------------------------------------
 
-if test "x$tr_ALL_IN_ONE_ICU" = xyes;  then
-  m4_include([m4/all-in-one.icu])
+ICU_VERSION="52.2"
+ICU_CPPFLAGS="-D_REENTRANT -I${srcdir}/3rdParty/V8/third_party/icu/source/common -I${srcdir}/3rdParty/V8/third_party/icu/source/i18n -I${srcdir}/3rdParty/V8/third_party/icu/source/io -DTRI_ICU_VERSION='\"${ICU_VERSION}\"'"
+ICU_LDFLAGS=""
+ICU_LIBS="-ldl -lm ${icu_lib_dir}/libicui18n.a ${icu_lib_dir}/libicuuc.a ${icu_lib_dir}/libicudata.a -ldl -lm"
+
+if test "x$tr_DARWIN" = xyes; then
+  icu_lib_dir="${srcdir}/3rdParty/V8/out/$V8_TARGET"
 else
-  m4_include([m4/external.icu])
+  icu_lib_dir="${srcdir}/3rdParty/V8/out/$V8_TARGET/obj.target/third_party/icu"
 fi
 
+AC_SUBST(ICU_CPPFLAGS)
+AC_SUBST(ICU_LDFLAGS)
+AC_SUBST(ICU_LIBS)
+
+ICU_CPPFLAGS="${ICU_CPPFLAGS}"
+
+LIB_INFO="$LIB_INFO|."
+LIB_INFO="$LIB_INFO|ICU: 3rdParty version"
+LIB_INFO="$LIB_INFO|ICU VERSION: ${ICU_VERSION}"
+
+LIB_INFO="$LIB_INFO|ICU_CPPFLAGS: ${ICU_CPPFLAGS}"
+LIB_INFO="$LIB_INFO|ICU_LDFLAGS:  ${ICU_LDFLAGS}"
+LIB_INFO="$LIB_INFO|ICU_LIBS:     ${ICU_LIBS}"
+
+LIB_INFO="$LIB_INFO|."
 
 dnl ============================================================================
 dnl --SECTION--                                                   GENERATE FILES
