@@ -1,6 +1,8 @@
 v2.4.0 (XXXX-XX-XX)
 -------------------
 
+* removed enable-all-in-one-v8, enable-all-in-one-icu and enable-all-in-one-libev
+
 * AQL: range optimizations for IN and OR
 
 * fixed missing makeDirectory when fetching a Foxx application from a zip file
