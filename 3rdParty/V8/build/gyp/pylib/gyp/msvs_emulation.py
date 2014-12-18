@@ -317,20 +317,15 @@ class MsvsSettings(object):
           output_file, config=config))
     return output_file
 
-  def GetPDBName(self, config, expand_special, default):
-    """Gets the explicitly overridden pdb name for a target or returns
-    default if it's not overridden, or if no pdb will be generated."""
+  def GetPDBName(self, config, expand_special):
+    """Gets the explicitly overridden pdb name for a target or returns None
+    if it's not overridden."""
     config = self._TargetConfig(config)
     output_file = self._Setting(('VCLinkerTool', 'ProgramDatabaseFile'), config)
-    generate_debug_info = self._Setting(
-        ('VCLinkerTool', 'GenerateDebugInformation'), config)
-    if generate_debug_info:
-      if output_file:
-        return expand_special(self.ConvertVSMacros(output_file, config=config))
-      else:
-        return default
-    else:
-      return None
+    if output_file:
+      output_file = expand_special(self.ConvertVSMacros(
+          output_file, config=config))
+    return output_file
 
   def GetCflags(self, config):
     """Returns the flags that need to be added to .c and .cc compilations."""
@@ -459,7 +454,7 @@ class MsvsSettings(object):
     return output_file
 
   def GetLdflags(self, config, gyp_to_build_path, expand_special,
-                 manifest_base_name, output_name, is_executable, build_dir):
+                 manifest_base_name, is_executable, build_dir):
     """Returns the flags that need to be added to link commands, and the
     manifest files."""
     config = self._TargetConfig(config)
@@ -477,7 +472,7 @@ class MsvsSettings(object):
     out = self.GetOutputName(config, expand_special)
     if out:
       ldflags.append('/OUT:' + out)
-    pdb = self.GetPDBName(config, expand_special, output_name + '.pdb')
+    pdb = self.GetPDBName(config, expand_special)
     if pdb:
       ldflags.append('/PDB:' + pdb)
     pgd = self.GetPGDName(config, expand_special)

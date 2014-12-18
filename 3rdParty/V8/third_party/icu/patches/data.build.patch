@@ -1,0 +1,77 @@
+Index: source/data/Makefile.in
+===================================================================
+--- source/data/Makefile.in	(revision 259715)
++++ source/data/Makefile.in	(working copy)
+@@ -240,7 +240,14 @@
+ #  2010-dec Removed pnames.icu.
+ # These are now hardcoded in ICU4C and only loaded in ICU4J.
+ #
+-DAT_FILES_SHORT=unames.icu cnvalias.icu coll/ucadata.icu coll/invuca.icu nfc.nrm nfkc.nrm nfkc_cf.nrm uts46.nrm
++# CHROME: unames.icu is excluded from the data file.
++# coll/invuca.icu is also excluded. When building a ICU data file to check in,
++# we need to copy data/in/coll/invuca.icu to the build location (expected
++# by genrb : out/build/icudt46l/coll) by hand because genrb requires its
++# presence when compiling coll/root.txt. We have to put it back if Webkit
++# begins to use it.
++# See https://bugs.webkit.org/show_bug.cgi?id=30437#c32 about invuca.icu.
++DAT_FILES_SHORT=cnvalias.icu coll/ucadata.icu nfc.nrm nfkc.nrm nfkc_cf.nrm uts46.nrm
+ DAT_FILES=$(DAT_FILES_SHORT:%=$(BUILDDIR)/%)
+ 
+ ## BRK files
+@@ -271,7 +278,8 @@
+ -include $(UCMSRCDIR)/ucmfiles.mk
+ -include $(UCMSRCDIR)/ucmebcdic.mk
+ -include $(UCMSRCDIR)/ucmlocal.mk
+-ALL_UCM_SOURCE=ibm-37_P100-1995.ucm ibm-1047_P100-1995.ucm $(UCM_SOURCE_CORE) $(UCM_SOURCE_FILES) $(UCM_SOURCE_EBCDIC) $(UCM_SOURCE_LOCAL)
++# CHROME: we don't need any EBCDIC converters.
++ALL_UCM_SOURCE=$(UCM_SOURCE_CORE) $(UCM_SOURCE_FILES) $(UCM_SOURCE_EBCDIC) $(UCM_SOURCE_LOCAL)
+ UCM_FILES = $(ALL_UCM_SOURCE:%=$(SRCDATADIR)/%)
+ CNV_FILES = $(ALL_UCM_SOURCE:%.ucm=$(BUILDDIR)/%.cnv)
+ CNV_FILES_SHORT = $(ALL_UCM_SOURCE:%.ucm=%.cnv)
+@@ -338,7 +346,8 @@
+ TRANSLIT_SRC_FILES = $(TRANSLIT_SRC:%=$(TRANSLITSRCDIR)/%)
+ INSTALLED_TRANSLIT_FILES = $(TRANSLIT_SOURCE:%.txt=%)  $(TRANSLIT_SOURCE_LOCAL:%.txt=%)
+ endif
+-GENRBOPTS=-k
++# CHROME : To save space, use '-R' option.
++GENRBOPTS=-k -R
+ 
+ ## MISC files
+ -include $(MISCSRCDIR)/miscfiles.mk
+Index: source/tools/toolutil/pkg_genc.c
+===================================================================
+--- source/tools/toolutil/pkg_genc.c	(revision 259715)
++++ source/tools/toolutil/pkg_genc.c	(working copy)
+@@ -119,7 +119,11 @@
+         ".globl %s\n"
+         "\t.section .note.GNU-stack,\"\",%%progbits\n"
+         "\t.section .rodata\n"
+-        "\t.balign 16\n" 
++        "\t.balign 16\n"
++        /* The 3 lines below are added for Chrome. */
++        "#ifdef U_HIDE_DATA_SYMBOL\n"
++        "\t.hidden %s\n"
++        "#endif\n"
+         "\t.type %s,%%object\n"
+         "%s:\n\n",
+ 
+@@ -129,6 +133,10 @@
+         /*"\t.section __TEXT,__text,regular,pure_instructions\n"
+         "\t.section __TEXT,__picsymbolstub1,symbol_stubs,pure_instructions,32\n"*/
+         ".globl _%s\n"
++        /* The 3 lines below are added for Chrome. */
++        "#ifdef U_HIDE_DATA_SYMBOL\n"
++        "\t.private_extern _%s\n"
++        "#endif\n"
+         "\t.data\n"
+         "\t.const\n"
+         "\t.balign 16\n"
+@@ -264,7 +272,7 @@
+         exit(U_FILE_ACCESS_ERROR);
+     }
+ 
+-    getOutFilename(filename, destdir, bufferStr, entry, ".s", optFilename);
++    getOutFilename(filename, destdir, bufferStr, entry, ".S", optFilename);
+     out=T_FileStream_open(bufferStr, "w");
+     if(out==NULL) {
+         fprintf(stderr, "genccode: unable to open output file %s\n", bufferStr);

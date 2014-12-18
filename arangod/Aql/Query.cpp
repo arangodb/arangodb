@@ -238,7 +238,8 @@ Query::~Query () {
     TRI_ASSERT(! _contextOwnedByExterior);
         
     // unregister transaction and resolver in context
-    TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+    ISOLATE;
+    TRI_GET_GLOBALS();
     auto ctx = static_cast<triagens::arango::V8TransactionContext*>(v8g->_transactionContext);
     if (ctx != nullptr) {
       ctx->unregisterTransaction();
@@ -613,7 +614,7 @@ QueryResult Query::execute (QueryRegistry* registry) {
     enterState(FINALIZATION); 
 
     QueryResult result(TRI_ERROR_NO_ERROR);
-    result.warnings = warningsToJson();
+    result.warnings = warningsToJson(TRI_UNKNOWN_MEM_ZONE);
     result.json     = jsonResult.steal();
     result.stats    = stats.steal(); 
 
@@ -646,7 +647,7 @@ QueryResult Query::execute (QueryRegistry* registry) {
 /// may only be called with an active V8 handle scope
 ////////////////////////////////////////////////////////////////////////////////
 
-QueryResultV8 Query::executeV8 (QueryRegistry* registry) {
+QueryResultV8 Query::executeV8 (v8::Isolate* isolate, QueryRegistry* registry) {
 
   // Now start the execution:
   try {
@@ -657,7 +658,7 @@ QueryResultV8 Query::executeV8 (QueryRegistry* registry) {
 
     uint32_t j = 0;
     QueryResultV8 result(TRI_ERROR_NO_ERROR);
-    result.result  = v8::Array::New();
+    result.result  = v8::Array::New(isolate);
     triagens::basics::Json stats;
 
     AqlItemBlock* value;
@@ -672,7 +673,7 @@ QueryResultV8 Query::executeV8 (QueryRegistry* registry) {
         AqlValue val = value->getValue(i, 0);
 
         if (! val.isEmpty()) {
-          result.result->Set(j++, val.toV8(_trx, doc)); 
+          result.result->Set(j++, val.toV8(isolate, _trx, doc)); 
         }
       }
       delete value;
@@ -686,7 +687,7 @@ QueryResultV8 Query::executeV8 (QueryRegistry* registry) {
 
     enterState(FINALIZATION); 
 
-    result.warnings = warningsToJson();
+    result.warnings = warningsToJson(TRI_UNKNOWN_MEM_ZONE);
     result.stats    = stats.steal(); 
 
     if (_profile != nullptr) {
@@ -805,7 +806,8 @@ QueryResult Query::explain () {
 
     _trx->commit();
       
-    result.warnings = warningsToJson();
+    result.warnings = warningsToJson(TRI_UNKNOWN_MEM_ZONE);
+    result.stats = opt._stats.toJson(TRI_UNKNOWN_MEM_ZONE);
 
     return result;
   }
@@ -904,7 +906,8 @@ void Query::enterContext () {
       }
     
       // register transaction and resolver in context
-      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+      ISOLATE;
+      TRI_GET_GLOBALS();
       auto ctx = static_cast<triagens::arango::V8TransactionContext*>(v8g->_transactionContext);
       if (ctx != nullptr) {
         ctx->registerTransaction(_trx->getInternals());
@@ -923,7 +926,8 @@ void Query::exitContext () {
   if (! _contextOwnedByExterior) {
     if (_context != nullptr) {
       // unregister transaction and resolver in context
-      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+      ISOLATE;
+      TRI_GET_GLOBALS();
       auto ctx = static_cast<triagens::arango::V8TransactionContext*>(v8g->_transactionContext);
       if (ctx != nullptr) {
         ctx->unregisterTransaction();
@@ -970,23 +974,23 @@ bool Query::getBooleanOption (char const* option, bool defaultValue) const {
 /// @brief convert the list of warnings to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* Query::warningsToJson () const {
+TRI_json_t* Query::warningsToJson (TRI_memory_zone_t* zone) const {
   if (_warnings.empty()) {
     return nullptr;
   }
 
   size_t const n = _warnings.size();
-  TRI_json_t* json = TRI_CreateList2Json(TRI_UNKNOWN_MEM_ZONE, n);
+  TRI_json_t* json = TRI_CreateList2Json(zone, n);
 
   if (json != nullptr) {
     for (size_t i = 0; i < n; ++i) {
-      TRI_json_t* error = TRI_CreateArray2Json(TRI_UNKNOWN_MEM_ZONE, 2);
+      TRI_json_t* error = TRI_CreateArray2Json(zone, 2);
 
       if (error != nullptr) {
-        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, error, "code", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, static_cast<double>(_warnings[i].first)));
-        TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, error, "message", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, _warnings[i].second.c_str(), _warnings[i].second.size()));
+        TRI_Insert3ArrayJson(zone, error, "code", TRI_CreateNumberJson(zone, static_cast<double>(_warnings[i].first)));
+        TRI_Insert3ArrayJson(zone, error, "message", TRI_CreateString2CopyJson(zone, _warnings[i].second.c_str(), _warnings[i].second.size()));
 
-        TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, json, error);
+        TRI_PushBack3ListJson(zone, json, error);
       }
     }
   }

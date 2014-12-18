@@ -1,0 +1,220 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/kab.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/kab.xml
+ */
+kab{
+    Currencies{
+        AED{
+            "AED",
+            "Adirham n Tgeldunin Taɛrabin Yedduklen",
+        }
+        AOA{
+            "AOA",
+            "Akwanza n Ungula",
+        }
+        AUD{
+            "A$",
+            "Adular n Lusṭrali",
+        }
+        BHD{
+            "BHD",
+            "Adinar Abaḥrini",
+        }
+        BIF{
+            "BIF",
+            "Afrank Aburandi",
+        }
+        BWP{
+            "BWP",
+            "Apula Abusṭwanan",
+        }
+        CAD{
+            "CA$",
+            "Adular Akanadi",
+        }
+        CDF{
+            "CDF",
+            "Afrank Akunguli",
+        }
+        CHF{
+            "CHF",
+            "Afrank Aswis",
+        }
+        CNY{
+            "CN¥",
+            "Ayuwan Renminbi Acinwa",
+        }
+        CVE{
+            "CVE",
+            "Akabuviradinu Askudi",
+        }
+        DJF{
+            "DJF",
+            "Afrank Ajibuti",
+        }
+        DZD{
+            "DA",
+            "Adinar Azzayri",
+        }
+        EGP{
+            "EGP",
+            "Apund Amaṣri",
+        }
+        ERN{
+            "ERN",
+            "Anakfa Iritiri",
+        }
+        ETB{
+            "ETB",
+            "Abir Utyupi",
+        }
+        EUR{
+            "€",
+            "Uru",
+        }
+        GBP{
+            "£",
+            "Apund Sterling Aglizi",
+        }
+        GMD{
+            "GMD",
+            "Adalasi Agambi",
+        }
+        GNS{
+            "GNS",
+            "Afrank Aɣini",
+        }
+        INR{
+            "₹",
+            "Arupi Ahendi",
+        }
+        JPY{
+            "JP¥",
+            "Ayen Ajappuni",
+        }
+        KES{
+            "KES",
+            "Aciling Akini",
+        }
+        KMF{
+            "KMF",
+            "Afrank Akamiruni",
+        }
+        LRD{
+            "LRD",
+            "Adular Alibiri",
+        }
+        LSL{
+            "LSL",
+            "Aluṭi Alizuṭi",
+        }
+        LYD{
+            "LYD",
+            "Adinar Alibi",
+        }
+        MAD{
+            "MAD",
+            "Adirham Amerruki",
+        }
+        MGA{
+            "MGA",
+            "Aryari Amalgac",
+        }
+        MRO{
+            "MRO",
+            "Agiya Amuriṭani",
+        }
+        MUR{
+            "MUR",
+            "Arupi Amurisi",
+        }
+        MWK{
+            "MWK",
+            "Akwaca Amalawi",
+        }
+        NAD{
+            "NAD",
+            "Adular Anamibi",
+        }
+        NGN{
+            "NGN",
+            "Anayra Anijiri",
+        }
+        RWF{
+            "RWF",
+            "Afrank Aruwandi",
+        }
+        SAR{
+            "SAR",
+            "Aryal Asuɛudi",
+        }
+        SCR{
+            "SCR",
+            "Arupi Aseycili",
+        }
+        SDG{
+            "SDG",
+            "Apund Asudani",
+        }
+        SHP{
+            "SHP",
+            "Apund Asant Ilini",
+        }
+        SLL{
+            "SLL",
+            "Alyun",
+        }
+        SOS{
+            "SOS",
+            "Aciling Aṣumali",
+        }
+        STD{
+            "STD",
+            "Asw Ṭum d Udubra Amenzay",
+        }
+        SZL{
+            "SZL",
+            "Alilangini",
+        }
+        TND{
+            "TND",
+            "Adinar Atunsi",
+        }
+        TZS{
+            "TZS",
+            "Aciling Aṭanẓani",
+        }
+        UGX{
+            "UGX",
+            "Aciling Awgandi",
+        }
+        USD{
+            "US$",
+            "Adular WD",
+        }
+        XAF{
+            "FCFA",
+            "Afrank BCEA CFA",
+        }
+        XOF{
+            "CFA",
+            "Afrank BCEAO CFA",
+        }
+        ZAR{
+            "ZAR",
+            "Arand Afriqi n Wadda",
+        }
+        ZMW{
+            "ZMW",
+            "Akwaca Azambi",
+        }
+    }
+    Version{"2.0.92.87"}
+}

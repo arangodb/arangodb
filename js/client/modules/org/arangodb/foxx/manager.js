@@ -73,26 +73,6 @@ function getFishbowlStorage () {
   return utils.getFishbowlStorage();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the fishbow repository
-////////////////////////////////////////////////////////////////////////////////
-
-function getFishbowlUrl () {
-  'use strict';
-
-  return "arangodb/foxx-apps";
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief builds a github repository URL
-////////////////////////////////////////////////////////////////////////////////
-
-function buildGithubFishbowlUrl (name) {
-  'use strict';
-
-  return "https://raw.github.com/" + getFishbowlUrl() + "/master/applications/" + name + ".json";
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief validate an app name and fail if it is invalid
@@ -191,147 +171,6 @@ function processSource (src) {
   return response.filename;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief updates the fishbowl from a zip archive
-////////////////////////////////////////////////////////////////////////////////
-
-function updateFishbowlFromZip (filename) {
-  'use strict';
-
-  var i;
-  var tempPath = fs.getTempPath();
-  var toSave = [ ];
-
-  try {
-    fs.makeDirectoryRecursive(tempPath);
-    var root = fs.join(tempPath, "foxx-apps-master/applications");
-
-    // remove any previous files in the directory
-    fs.listTree(root).forEach(function (file) {
-      if (file.match(/\.json$/)) {
-        try {
-          fs.remove(fs.join(root, file));
-        }
-        catch (ignore) {
-        }
-      }
-    });
-
-    fs.unzipFile(filename, tempPath, false, true);
-
-    if (! fs.exists(root)) {
-      throw new Error("'applications' directory is missing in foxx-apps-master, giving up");
-    }
-
-    var m = fs.listTree(root);
-    var reSub = /(.*)\.json$/;
-
-    for (i = 0;  i < m.length;  ++i) {
-      var f = m[i];
-      var match = reSub.exec(f);
-
-      if (match === null) {
-        continue;
-      }
-
-      var app = fs.join(root, f);
-      var desc;
-
-      try {
-        desc = JSON.parse(fs.read(app));
-      }
-      catch (err1) {
-        arangodb.printf("Cannot parse description for app '" + f + "': %s\n", String(err1));
-        continue;
-      }
-
-      desc._key = match[1];
-
-      if (! desc.hasOwnProperty("name")) {
-        desc.name = match[1];
-      }
-
-      toSave.push(desc);
-    }
-
-    if (toSave.length > 0) {
-      var fishbowl = getFishbowlStorage();
-
-      db._executeTransaction({
-        collections: {
-          write: fishbowl.name()
-        },
-        action: function (params) {
-          var c = require("internal").db._collection(params.collection);
-          c.truncate();
-
-          params.apps.forEach(function(app) {
-            c.save(app);
-          });
-        },
-        params: {
-          apps: toSave,
-          collection: fishbowl.name()
-        }
-      });
-
-      arangodb.printf("Updated local repository information with %d application(s)\n",
-                      toSave.length);
-    }
-  }
-  catch (err) {
-    if (tempPath !== undefined && tempPath !== "") {
-      try {
-        fs.removeDirectoryRecursive(tempPath);
-      }
-      catch (ignore) {
-      }
-    }
-
-    throw err;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief downloads the fishbowl repository
-////////////////////////////////////////////////////////////////////////////////
-
-function updateFishbowl () {
-  'use strict';
-
-  var url = utils.buildGithubUrl(getFishbowlUrl());
-  var filename = fs.getTempFile("downloads", false);
-  var path = fs.getTempFile("zip", false);
-
-  try {
-    var result = download(url, "", {
-      method: "get",
-      followRedirects: true,
-      timeout: 30
-    }, filename);
-
-    if (result.code < 200 || result.code > 299) {
-      throwDownloadError("Github download from '" + url + "' failed with error code " + result.code);
-    }
-
-    updateFishbowlFromZip(filename);
-
-    filename = undefined;
-  }
-  catch (err) {
-    if (filename !== undefined && fs.exists(filename)) {
-      fs.remove(filename);
-    }
-
-    try {
-      fs.removeDirectoryRecursive(path);
-    }
-    catch (ignore) {
-    }
-
-    throw err;
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief comparator for applications
@@ -1233,7 +1072,7 @@ exports.search = function (name) {
 /// @brief updates the repository
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.update = updateFishbowl;
+exports.update = utils.updateFishbowl;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief outputs the help

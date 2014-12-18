@@ -59,12 +59,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     enum AstNodeFlagType : uint8_t {
-      FLAG_SORTED           = 1,   // node is a list and its members are sorted asc.
-      FLAG_CONSTANT         = 2,   // node value is constant (i.e. not dynamic)
-      FLAG_DYNAMIC          = 4,   // node value is dynamic (i.e. not constant)
-      FLAG_SIMPLE           = 8,   // node value is simple (i.e. for use in a simple expression)
-      FLAG_THROWS           = 16,  // node can throws an exception
-      FLAG_NONDETERMINISTIC = 32   // node produces non-deterministic result (e.g. function call nodes)
+      FLAG_SORTED            = 1,   // node is a list and its members are sorted asc.
+      FLAG_CONSTANT          = 2,   // node value is constant (i.e. not dynamic)
+      FLAG_DYNAMIC           = 4,   // node value is dynamic (i.e. not constant)
+      FLAG_SIMPLE            = 8,   // node value is simple (i.e. for use in a simple expression)
+      FLAG_THROWS            = 16,  // node can throws an exception
+      FLAG_NONDETERMINISTIC  = 32,  // node produces non-deterministic result (e.g. function call nodes)
+      FLAG_KEEP_VARIABLENAME = 64   // node is a reference to a variable name, not the variable value (used in KEEP nodes)
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -156,7 +157,9 @@ namespace triagens {
       NODE_TYPE_FCALL                         = 47,
       NODE_TYPE_FCALL_USER                    = 48,
       NODE_TYPE_RANGE                         = 49,
-      NODE_TYPE_NOP                           = 50
+      NODE_TYPE_NOP                           = 50,
+      NODE_TYPE_COLLECT_COUNT                 = 51,
+      NODE_TYPE_COLLECT_EXPRESSION            = 52
     };
 
     static_assert(NODE_TYPE_VALUE < NODE_TYPE_LIST, "incorrect node types");

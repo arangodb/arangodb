@@ -1,0 +1,110 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ne_IN.xml
+// *
+// ***************************************************************************
+ne_IN{
+    Version{"2.0.92.80"}
+    calendar{
+        gregorian{
+            AmPmMarkers{
+                "पूर्वाह्न",
+                "अपराह्न",
+            }
+            dayNames{
+                format{
+                    wide{
+                        "आइतवार",
+                        "सोमवार",
+                        "मङ्गलवार",
+                        "बुधवार",
+                        "बिहीवार",
+                        "शुक्रवार",
+                        "शनिवार",
+                    }
+                }
+            }
+            monthNames{
+                format{
+                    wide{
+                        "जनवरी",
+                        "फरवरी",
+                        "मार्च",
+                        "अप्रेल",
+                        "मई",
+                        "जुन",
+                        "जुलाई",
+                        "अगस्त",
+                        "सेप्टेम्बर",
+                        "अक्टोबर",
+                        "नोभेम्बर",
+                        "दिसम्बर",
+                    }
+                }
+            }
+        }
+        indian{
+            monthNames{
+                format{
+                    wide{
+                        "वैशाख",
+                        "जेठ",
+                        "असार",
+                        "साउन",
+                        "भदौ",
+                        "असोज",
+                        "कात्तिक",
+                        "मङसिर",
+                        "पुस",
+                        "माघ",
+                        "फागुन",
+                        "चैत",
+                    }
+                }
+            }
+        }
+    }
+    fields{
+        day{
+            dn{"वार"}
+            relative{
+                "2"{"पर्सि"}
+            }
+        }
+        dayperiod{
+            dn{"पूर्वाह्न / अपराह्न"}
+        }
+        era{
+            dn{"युग"}
+        }
+        second{
+            dn{"सेकेन्ड"}
+        }
+        week{
+            dn{"साता"}
+        }
+        weekday{
+            dn{"हप्ताको वार"}
+        }
+        year{
+            dn{"वर्ष"}
+        }
+        zone{
+            dn{"अञ्‍चल"}
+        }
+    }
+    measurementSystemNames{
+        US{"अमेरिकेली"}
+    }
+    units{
+        duration{
+            week{
+                one{"{0} साता"}
+                other{"{0} सप्ताह"}
+            }
+        }
+    }
+}

@@ -1174,6 +1174,7 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
 /// @param id the id of the document
 /// @param overwrite (optional) a boolean value or a json object
 /// @param keepNull (optional) determines if null values should saved or not
+/// @param mergeObjects (optional) whether or not object values should be merged
 /// @param waitForSync (optional) a boolean value .
 /// @example update("example/996280832675", { a : 1, c : 2} )
 /// @example update("example/996280832675", { a : 1, c : 2, x: null}, true, true, true)
@@ -1211,6 +1212,11 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
       options.keepNull = true;
     }
     params = "?keepNull=" + options.keepNull;
+
+    if (! options.hasOwnProperty("mergeObjects")) {
+      options.mergeObjects = true;
+    }
+    params += "&mergeObjects=" + options.mergeObjects;
 
     if (options.hasOwnProperty("overwrite") && options.overwrite) {
       params += "&policy=last";

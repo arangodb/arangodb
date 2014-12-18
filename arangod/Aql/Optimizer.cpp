@@ -82,7 +82,7 @@ bool Optimizer::addPlan (ExecutionPlan* plan,
                          RuleLevel level,
                          bool wasModified) {
   TRI_ASSERT(plan != nullptr);
-
+  
   _newPlans.push_back(plan, level);
 
   if (wasModified) {
@@ -90,7 +90,7 @@ bool Optimizer::addPlan (ExecutionPlan* plan,
     plan->addAppliedRule(_currentRule);
     plan->invalidateCost();
   }
-
+    
   if (_newPlans.size() >= _maxNumberOfPlans) {
     return false;
   }
@@ -177,6 +177,7 @@ int Optimizer::createPlans (ExecutionPlan* plan,
           level = it->first;
 
           _newPlans.push_back(p, level);  // nothing to do, just keep it
+          ++_stats.rulesSkipped;
           // now try next
           continue;
         }
@@ -185,10 +186,20 @@ int Optimizer::createPlans (ExecutionPlan* plan,
 
         int res;
         try {
+          // all optimizer rule functions must obey the following guidelines:
+          // - the original plan passed to the rule function must be deleted if and only
+          //   if it has not been added (back) to the optimizer (using addPlan). 
+          // - if the rule throws, then the original plan will be deleted by the optimizer.
+          //   thus the rule must not have deleted the plan itself or add it back to the
+          //   optimizer
           res = (*it).second.func(this, p, &(it->second));
+          ++_stats.rulesExecuted;
         }
         catch (...) {
-          delete p;
+          if (! _newPlans.isContained(p)) {
+            // only delete the plan if not yet contained in _newPlans
+            delete p;
+          }
           throw;
         }
 
@@ -220,6 +231,8 @@ int Optimizer::createPlans (ExecutionPlan* plan,
       runOnlyRequiredRules = true;
     }
   }
+  
+  _stats.plansCreated = _plans.size();
   
   TRI_ASSERT(_plans.size() >= 1);
 
@@ -394,8 +407,8 @@ void Optimizer::setupRules () {
 
   // remove redundant sort blocks
   registerRule("remove-redundant-sorts",
-               removeRedundantSorts,
-               removeRedundantSorts_pass2,
+               removeRedundantSortsRule,
+               removeRedundantSortsRule_pass2,
                true);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -405,8 +418,8 @@ void Optimizer::setupRules () {
   //////////////////////////////////////////////////////////////////////////////
 
   registerRule("interchange-adjacent-enumerations", 
-               interchangeAdjacentEnumerations,
-               interchangeAdjacentEnumerations_pass3,
+               interchangeAdjacentEnumerationsRule,
+               interchangeAdjacentEnumerationsRule_pass3,
                true);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -449,8 +462,14 @@ void Optimizer::setupRules () {
 
   // remove redundant sort blocks
   registerRule("remove-redundant-sorts-2",
-               removeRedundantSorts,
-               removeRedundantSorts_pass5,
+               removeRedundantSortsRule,
+               removeRedundantSortsRule_pass5,
+               true);
+  
+  // remove INTO from COLLECT
+  registerRule("remove-collect-into",
+               removeCollectIntoRule,
+               removeCollectIntoRule_pass5,
                true);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -460,68 +479,66 @@ void Optimizer::setupRules () {
   
   // try to replace simple OR conditions with IN
   registerRule("replace-or-with-in",
-               replaceOrWithIn,
-               replaceOrWithIn_pass6,
+               replaceOrWithInRule,
+               replaceOrWithInRule_pass6,
                true);
 
   // try to remove redundant OR conditions
   registerRule("remove-redundant-or",
-               removeRedundantOr,
-               removeRedundantOr_pass6,
+               removeRedundantOrRule,
+               removeRedundantOrRule_pass6,
                true);
 
   // try to find a filter after an enumerate collection and find an index . . . 
   registerRule("use-index-range",
-               useIndexRange,
-               useIndexRange_pass6,
+               useIndexRangeRule,
+               useIndexRangeRule_pass6,
+               true);
+
+  // try to remove filters which are covered by index ranges  
+  registerRule("remove-filter-covered-by-index",
+               removeFiltersCoveredByIndexRule,
+               removeFiltersCoveredByIndexRule_pass6,
                true);
 
   // try to find sort blocks which are superseeded by indexes
   registerRule("use-index-for-sort",
-               useIndexForSort,
-               useIndexForSort_pass6,
+               useIndexForSortRule,
+               useIndexForSortRule_pass6,
                true);
 
-#if 0 
-  // try to remove filters which are covered by index ranges  
-  // TODO: rule seems to work, but tests are still missing
-  registerRule("remove-filter-covered-by-index",
-               removeFiltersCoveredByIndex,
-               removeFiltersCoveredByIndex_pass6,
-               true);
-#endif
 
   if (ExecutionEngine::isCoordinator()) {
     // distribute operations in cluster
     registerRule("scatter-in-cluster",
-                 scatterInCluster,
-                 scatterInCluster_pass10,
+                 scatterInClusterRule,
+                 scatterInClusterRule_pass10,
                  false);
     
     registerRule("distribute-in-cluster",
-                 distributeInCluster,
-                 distributeInCluster_pass10,
+                 distributeInClusterRule,
+                 distributeInClusterRule_pass10,
                  false);
 
     // distribute operations in cluster
     registerRule("distribute-filtercalc-to-cluster",
-                 distributeFilternCalcToCluster,
-                 distributeFilternCalcToCluster_pass10,
+                 distributeFilternCalcToClusterRule,
+                 distributeFilternCalcToClusterRule_pass10,
                  true);
 
     registerRule("distribute-sort-to-cluster",
-                 distributeSortToCluster,
-                 distributeSortToCluster_pass10,
+                 distributeSortToClusterRule,
+                 distributeSortToClusterRule_pass10,
                  true);
     
     registerRule("remove-unnecessary-remote-scatter",
-                 removeUnnecessaryRemoteScatter,
-                 removeUnnecessaryRemoteScatter_pass10,
+                 removeUnnecessaryRemoteScatterRule,
+                 removeUnnecessaryRemoteScatterRule_pass10,
                  true);
     
     registerRule("undistribute-remove-after-enum-coll",
-                 undistributeRemoveAfterEnumColl,
-                 undistributeRemoveAfterEnumColl_pass10,
+                 undistributeRemoveAfterEnumCollRule,
+                 undistributeRemoveAfterEnumCollRule_pass10,
                  true);
 
   }

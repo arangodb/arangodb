@@ -1,0 +1,216 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/cgg.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/cgg.xml
+ */
+cgg{
+    Currencies{
+        AED{
+            "AED",
+            "Dirham za Buharabu",
+        }
+        AOA{
+            "AOA",
+            "Kwanza ya Angora",
+        }
+        AUD{
+            "A$",
+            "Doora ya Austureeriya",
+        }
+        BHD{
+            "BHD",
+            "Dinari ya Bahareni",
+        }
+        BIF{
+            "BIF",
+            "Faranga ya Burundi",
+        }
+        BWP{
+            "BWP",
+            "Pura ya Botswana",
+        }
+        CAD{
+            "CA$",
+            "Doora ya Kanada",
+        }
+        CDF{
+            "CDF",
+            "Faranga ya Kongo",
+        }
+        CHF{
+            "CHF",
+            "Faranga ya Swisi",
+        }
+        CNY{
+            "CN¥",
+            "Yuan Renminbi ya China",
+        }
+        CVE{
+            "CVE",
+            "Eskudo ya Kepuvede",
+        }
+        DJF{
+            "DJF",
+            "Faranga ya Gyibuti",
+        }
+        DZD{
+            "DZD",
+            "Dinari ya Arigyeriya",
+        }
+        EGP{
+            "EGP",
+            "Paundi ya Misiri",
+        }
+        ERN{
+            "ERN",
+            "Nakfa ya Eritireya",
+        }
+        ETB{
+            "ETB",
+            "Birr ya Ethiopiya",
+        }
+        EUR{
+            "€",
+            "Yuro",
+        }
+        GBP{
+            "£",
+            "Paundi ya Bungyereza",
+        }
+        GMD{
+            "GMD",
+            "Dalasi ya Gambia",
+        }
+        GNS{
+            "GNS",
+            "Faranga ya Guinea",
+        }
+        INR{
+            "₹",
+            "Rupiya ya India",
+        }
+        JPY{
+            "JP¥",
+            "Yeni ya Japaani",
+        }
+        KES{
+            "KES",
+            "Shiringi ya Kenya",
+        }
+        KMF{
+            "KMF",
+            "Faranga ya Komoro",
+        }
+        LRD{
+            "LRD",
+            "Doora ya Liberia",
+        }
+        LSL{
+            "LSL",
+            "Loti ya Lesoto",
+        }
+        LYD{
+            "LYD",
+            "Dinari ya Libya",
+        }
+        MAD{
+            "MAD",
+            "Dirram ya Moroko",
+        }
+        MGA{
+            "MGA",
+            "Ariari ya Maragariita",
+        }
+        MRO{
+            "MRO",
+            "Ougwiya ya Mouriteeniya",
+        }
+        MUR{
+            "MUR",
+            "Rupiiha ya Mauritiasi",
+        }
+        MWK{
+            "MWK",
+            "Kwaca ya Malawi",
+        }
+        NAD{
+            "NAD",
+            "Doora ya Namibiya",
+        }
+        NGN{
+            "NGN",
+            "Naira ya Naigyeriya",
+        }
+        RWF{
+            "RWF",
+            "Faranga ya Rwanda",
+        }
+        SAR{
+            "SAR",
+            "Riya ya Saudi",
+        }
+        SCR{
+            "SCR",
+            "Rupiiha ya Sherisheri",
+        }
+        SDG{
+            "SDG",
+            "Dinari ya Sudani",
+        }
+        SHP{
+            "SHP",
+            "Paundi ya Senti Herena",
+        }
+        SLL{
+            "SLL",
+            "Leone",
+        }
+        SOS{
+            "SOS",
+            "Eshiringi ya Somalia",
+        }
+        STD{
+            "STD",
+            "Dobra ya Sao Tome na Purinsipo",
+        }
+        TND{
+            "TND",
+            "Dinari ya Tunisia",
+        }
+        TZS{
+            "TZS",
+            "Eshiringi ya Tanzania",
+        }
+        UGX{
+            "USh",
+            "Eshiringi ya Uganda",
+        }
+        USD{
+            "US$",
+            "Doora ya America",
+        }
+        XAF{
+            "FCFA",
+            "Faranga ya CFA BEAC",
+        }
+        XOF{
+            "CFA",
+            "Faranga ya CFA BCEAO",
+        }
+        ZAR{
+            "ZAR",
+            "Randi ya Sausi Afirika",
+        }
+        ZMW{
+            "ZMW",
+            "Kwacha ya Zambia",
+        }
+    }
+    Version{"2.0.92.87"}
+}

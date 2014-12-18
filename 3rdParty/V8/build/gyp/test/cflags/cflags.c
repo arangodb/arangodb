@@ -6,10 +6,10 @@
 
 int main(int argc, char *argv[])
 {
-#ifdef __OPTIMIZE__
-  printf("Using an optimization flag\n");
+#ifdef FOO
+  printf("FOO defined\n");
 #else
-  printf("Using no optimization flag\n");
+  printf("FOO not defined\n");
 #endif
   return 0;
 }

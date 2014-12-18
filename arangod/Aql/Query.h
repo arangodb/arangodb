@@ -304,7 +304,7 @@ namespace triagens {
 /// may only be called with an active V8 handle scope
 ////////////////////////////////////////////////////////////////////////////////
 
-        QueryResultV8 executeV8 (QueryRegistry*);
+        QueryResultV8 executeV8 (v8::Isolate* isolate, QueryRegistry*);
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -417,7 +417,7 @@ namespace triagens {
 /// @brief convert the list of warnings to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_json_t* warningsToJson () const;
+        TRI_json_t* warningsToJson (TRI_memory_zone_t*) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods

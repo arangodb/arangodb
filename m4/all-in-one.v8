@@ -7,11 +7,22 @@ dnl ----------------------------------------------------------------------------
 V8_CPPFLAGS="-I${srcdir}/3rdParty/V8/include"
 V8_LDFLAGS=""
 V8_TARGET="native"
+local_v8=1
+
+V8_DIR="${srcdir}/3rdParty/V8"
+AC_ARG_WITH(v8,
+  AS_HELP_STRING([--with-v8=DIR], [where the v8 library and includes are located]),
+  [
+    V8_DIR="$withval"
+    local_v8=0
+  ]
+)
+V8_OUTPUT=""
 
 if test x$tr_ARM == xyes;  then
   V8_TARGET="arm.release"
+  V8_OUTPUT=${V8_DIR}/out/$V8_TARGET/obj.target/tools/gyp
 
-  V8_LIBS="${srcdir}/3rdParty/V8/out/$V8_TARGET/obj.target/tools/gyp/libv8_base.a ${srcdir}/3rdParty/V8/out/$V8_TARGET/obj.target/tools/gyp/libv8_nosnapshot.a"
 elif test x$tr_DARWIN == xyes;  then
   if test "x$tr_BITS" == x64;  then
     V8_TARGET="x64.release"
@@ -19,7 +30,8 @@ elif test x$tr_DARWIN == xyes;  then
     V8_TARGET="ia32.release"
   fi
 
-  V8_LIBS="${srcdir}/3rdParty/V8/out/$V8_TARGET/libv8_base.a ${srcdir}/3rdParty/V8/out/$V8_TARGET/libv8_nosnapshot.a"
+  V8_OUTPUT=${V8_DIR}/out/$V8_TARGET
+
 else
   if test "x$tr_BITS" == x64;  then
     V8_TARGET="x64.release"
@@ -27,13 +39,21 @@ else
     V8_TARGET="ia32.release"
   fi
 
-  V8_LIBS="${srcdir}/3rdParty/V8/out/$V8_TARGET/obj.target/tools/gyp/libv8_base.a ${srcdir}/3rdParty/V8/out/$V8_TARGET/obj.target/tools/gyp/libv8_nosnapshot.a"
+  V8_OUTPUT=${V8_DIR}/out/$V8_TARGET/obj.target/tools/gyp
+
 fi
 
-TRI_V8_VERSION="3.16.14"
+
+V8_LIBS="${V8_OUTPUT}/libv8_base.a ${V8_OUTPUT}/libv8_libbase.a ${V8_OUTPUT}/libv8_libplatform.a ${V8_OUTPUT}/libv8_nosnapshot.a"
+
+TRI_V8_VERSION="3.29.59"
 
 if test "x$tr_FREEBSD" == xyes;  then
   V8_LIBS="$V8_LIBS -lexecinfo"
+fi
+
+if test $local_v8 -eq "0"; then
+  touch ${srcdir}/.v8-build-${TRI_BITS}
 fi
 
 dnl ----------------------------------------------------------------------------
@@ -44,6 +64,7 @@ AC_SUBST(V8_CPPFLAGS)
 AC_SUBST(V8_LDFLAGS)
 AC_SUBST(V8_LIBS)
 AC_SUBST(V8_TARGET)
+AC_SUBST(V8_DIR)
 
 V8_CPPFLAGS="${V8_CPPFLAGS} -DTRI_V8_VERSION='\"${TRI_V8_VERSION}\"'"
 

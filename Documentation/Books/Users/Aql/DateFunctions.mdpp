@@ -1,7 +1,7 @@
 !CHAPTER Date functions
 
 AQL offers functionality to work with dates. Dates are no datatypes of their own in 
-AQL (neither they are in JSON, which is often used as a format to ship data into and
+AQL (neither are they in JSON, which is often used as a format to ship data into and
 out of ArangoDB). Instead, dates in AQL are internally represented by either numbers 
 (timestamps) or strings. The date functions in AQL provide mechanisms to convert from 
 a numeric timestamp to a string representation and vice versa. 

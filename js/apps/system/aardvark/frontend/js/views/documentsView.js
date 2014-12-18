@@ -19,6 +19,11 @@
 
     allowUpload: false,
 
+    el: '#content',
+    table: '#documentsTableID',
+
+    template: templateEngine.createTemplate("documentsView.ejs"),
+
     collectionContext : {
       prev: null,
       next: null
@@ -29,6 +34,12 @@
     initialize : function () {
       this.documentStore = this.options.documentStore;
       this.collectionsStore = this.options.collectionsStore;
+      this.tableView = new window.TableView({
+        el: this.table,
+        collection: this.collection
+      });
+      this.tableView.setRowClick(this.clicked.bind(this));
+      this.tableView.setRemoveClick(this.remove.bind(this));
     },
 
     setCollectionId : function (colid, pageid) {
@@ -43,10 +54,6 @@
       this.collectionModel = this.collectionsStore.get(colid);
     },
 
-    alreadyClicked: false,
-
-    el: '#content',
-    table: '#documentsTableID',
     getDocsCallback: function() {
       //Hide first/last pagination
       $('#documents_last').css("visibility", "hidden");
@@ -54,8 +61,6 @@
       this.drawTable();
       this.renderPaginationElements();
     },
-
-    template: templateEngine.createTemplate("documentsView.ejs"),
 
     events: {
       "click #collectionPrev"      : "prevCollection",
@@ -68,8 +73,6 @@
       "click #filterSend"          : "sendFilter",
       "click #addFilterItem"       : "addFilterItem",
       "click .removeFilterItem"    : "removeFilterItem",
-      "click #documentsTableID tbody tr" : "clicked",
-      "click #deleteDoc"           : "remove",
       "click #deleteSelected"      : "deleteSelectedDocs",
       "click #moveSelected"        : "moveSelectedDocs",
       "click #addDocumentButton"   : "addDocument",
@@ -158,13 +161,19 @@
       this.removeAllFilterItems();
       $('#documentSize').val(this.collection.getPageSize());
 
-      this.clearTable();
       $('#documents_last').css("visibility", "visible");
       $('#documents_first').css("visibility", "visible");
       this.addDocumentSwitch = true;
       this.collection.resetFilter();
       this.collection.loadTotal();
       this.restoredFilters = [];
+
+      //for resetting json upload
+      this.allowUpload = false;
+      this.files = undefined;
+      this.file = undefined;
+      $('#confirmDocImport').attr("disabled", true);
+
       this.markFilterToggle();
       this.collection.getDocuments(this.getDocsCallback.bind(this));
     },
@@ -206,6 +215,7 @@
       $('#importDocuments').change(function(e) {
         self.files = e.target.files || e.dataTransfer.files;
         self.file = self.files[0];
+        $('#confirmDocImport').attr("disabled", false);
 
         self.allowUpload = true;
       });
@@ -265,7 +275,8 @@
       $('#importCollection').removeClass('activated');
       $('#exportCollection').removeClass('activated');
       this.markFilterToggle();
-      $('#markDocuments').toggleClass('activated'); this.changeEditMode();
+      $('#markDocuments').toggleClass('activated');
+      this.changeEditMode();
       $('#filterHeader').hide();
       $('#importHeader').hide();
       $('#indexHeader').hide();
@@ -277,7 +288,8 @@
       $('#indexCollection').removeClass('activated');
       $('#importCollection').removeClass('activated');
       $('#exportCollection').removeClass('activated');
-      $('#markDocuments').removeClass('activated'); this.changeEditMode(false);
+      $('#markDocuments').removeClass('activated');
+      this.changeEditMode(false);
       this.markFilterToggle();
       this.activeFilter = true;
       $('#importHeader').hide();
@@ -299,7 +311,8 @@
       $('#indexCollection').removeClass('activated');
       $('#importCollection').removeClass('activated');
       $('#filterHeader').removeClass('activated');
-      $('#markDocuments').removeClass('activated'); this.changeEditMode(false);
+      $('#markDocuments').removeClass('activated');
+      this.changeEditMode(false);
       $('#exportCollection').toggleClass('activated');
       this.markFilterToggle();
       $('#exportHeader').slideToggle(200);
@@ -312,7 +325,8 @@
     importCollection: function () {
       this.markFilterToggle();
       $('#indexCollection').removeClass('activated');
-      $('#markDocuments').removeClass('activated'); this.changeEditMode(false);
+      $('#markDocuments').removeClass('activated');
+      this.changeEditMode(false);
       $('#importCollection').toggleClass('activated');
       $('#exportCollection').removeClass('activated');
       $('#importHeader').slideToggle(200);
@@ -326,7 +340,8 @@
       this.markFilterToggle();
       $('#importCollection').removeClass('activated');
       $('#exportCollection').removeClass('activated');
-      $('#markDocuments').removeClass('activated'); this.changeEditMode(false);
+      $('#markDocuments').removeClass('activated');
+      this.changeEditMode(false);
       $('#indexCollection').toggleClass('activated');
       $('#newIndexView').hide();
       $('#indexEditView').show();
@@ -344,6 +359,7 @@
         $('.addButton').fadeIn();
         $('.selected-row').removeClass('selected-row');
         this.editMode = false;
+        this.tableView.setRowClick(this.clicked.bind(this));
       }
       else {
         $('#documentsTableID tbody tr').css('cursor', 'copy');
@@ -351,6 +367,7 @@
         $('.addButton').fadeOut();
         $('.selectedCount').text(0);
         this.editMode = true;
+        this.tableView.setRowClick(this.editModeClick.bind(this));
       }
     },
 
@@ -391,7 +408,6 @@
           self.collection.addFilter(f.attribute, f.operator, f.value);
         }
       });
-      this.clearTable();
       this.collection.setToFirst();
 
       this.collection.getDocuments(this.getDocsCallback.bind(this));
@@ -631,7 +647,7 @@
       tableContent.push(
         window.modalView.createReadOnlyEntry(
           undefined,
-          toDelete.length + ' Documents selected',
+          toDelete.length + ' documents selected',
           'Do you want to delete all selected documents?',
           undefined,
           undefined,
@@ -701,10 +717,7 @@
     },
 
     remove: function (a) {
-      this.target = a.currentTarget;
-      var thiselement = a.currentTarget.parentElement;
-      this.idelement = $(thiselement).prev().prev();
-      this.alreadyClicked = true;
+      this.docid = $(a.currentTarget).closest("tr").attr("id").substr(4);
       $("#confirmDeleteBtn").attr("disabled", false);
       $('#docDeleteModal').modal('show');
     },
@@ -722,12 +735,8 @@
     reallyDelete: function () {
       var self = this;
       var row = $(self.target).closest("tr").get(0);
-      var hash = window.location.hash.split("/");
-      var page = hash[3];
 
       var deleted = false;
-      this.docid = $(self.idelement).next().text();
-
       var result;
       if (this.type === 'document') {
         result = this.documentStore.deleteDocument(
@@ -755,148 +764,68 @@
       }
 
       if (deleted === true) {
-        $('#documentsTableID').dataTable().fnDeleteRow(
-          $('#documentsTableID').dataTable().fnGetPosition(row)
-        );
-        $('#documentsTableID').dataTable().fnClearTable();
         this.collection.getDocuments(this.getDocsCallback.bind(this));
         $('#docDeleteModal').modal('hide');
       }
 
     },
-    clicked: function (event) {
-      var self = event.currentTarget;
 
-      if (this.alreadyClicked === true) {
-        this.alreadyClicked = false;
-        return 0;
+    editModeClick: function(event) {
+      var target = $(event.currentTarget);
+
+      if(target.hasClass('selected-row')) {
+        target.removeClass('selected-row');
+      } else {
+        target.addClass('selected-row');
       }
 
-      if(this.editMode === true) {
-        if($(self).hasClass('selected-row')) {
-          $(event.currentTarget).removeClass('selected-row');
-        }
-        else {
-          $(event.currentTarget).addClass('selected-row');
-        }
+      var selected = this.getSelectedDocs();
+      $('.selectedCount').text(selected.length);
 
-        var selected = this.getSelectedDocs();
-        $('.selectedCount').text(selected.length);
-
-        _.each(this.editButtons, function(button) {
-          if (selected.length > 0) {
-            $(button).prop('disabled', false);
-            $(button).removeClass('button-neutral');
-            $(button).removeClass('disabled');
-            if (button === "#moveSelected") {
-              $(button).addClass('button-success');
-            }
-            else {
-              $(button).addClass('button-danger');
-            }
+      _.each(this.editButtons, function(button) {
+        if (selected.length > 0) {
+          $(button).prop('disabled', false);
+          $(button).removeClass('button-neutral');
+          $(button).removeClass('disabled');
+          if (button === "#moveSelected") {
+            $(button).addClass('button-success');
           }
           else {
-            $(button).prop('disabled', true);
-            $(button).addClass('disabled');
-            $(button).addClass('button-neutral');
-            if (button === "#moveSelected") {
-              $(button).removeClass('button-success');
-            }
-            else {
-              $(button).removeClass('button-danger');
-            }
+            $(button).addClass('button-danger');
           }
-        });
-        return;
-      }
-
-      var aPos = $(this.table).dataTable().fnGetPosition(self);
-      if (aPos === null) {
-        // headline
-        return;
-      }
-
-      var checkData = $(this.table).dataTable().fnGetData(self);
-      if (checkData && checkData[1] === '') {
-        this.addDocument();
-        return;
-      }
-      var docId = self.firstChild;
-      var NeXt = $(docId).next().text();
-      window.location.hash = "#collection/" + this.collection.collectionID
-          + "/" + NeXt;
-    },
-
-    initTable: function () {
-      $('#documentsTableID').dataTable({
-        "bSortClasses": false,
-        "bFilter": false,
-        "bPaginate":false,
-        "bRetrieve": true,
-        "bSortable": false,
-        "bSort": false,
-        "bLengthChange": false,
-        "bAutoWidth": false,
-        "iDisplayLength": -1,
-        "bJQueryUI": false,
-        "aoColumns": [
-          { "sClass":"docsFirstCol","bSortable": false},
-          { "sClass":"docsSecCol", "bSortable": false},
-          { "bSortable": false, "sClass": "docsThirdCol"}
-        ],
-        "oLanguage": { "sEmptyTable": "Loading..."}
+        }
+        else {
+          $(button).prop('disabled', true);
+          $(button).addClass('disabled');
+          $(button).addClass('button-neutral');
+          if (button === "#moveSelected") {
+            $(button).removeClass('button-success');
+          }
+          else {
+            $(button).removeClass('button-danger');
+          }
+        }
       });
     },
-    clearTable: function() {
-      $(this.table).dataTable().fnClearTable();
+
+    clicked: function (event) {
+      var self = event.currentTarget;
+      window.App.navigate("collection/" + this.collection.collectionID + "/" + $(self).attr("id").substr(4), true);
     },
+
     drawTable: function() {
-      this.clearTable();
-      var self = this;
+      this.tableView.setElement(this.$(this.table)).render();
 
-        if (this.collection.size() === 0) {
-        $('.dataTables_empty').text('No documents');
-      }
-      else {
-          this.collection.each(function(value, key) {
-          var tempObj = {};
-          $.each(value.attributes.content, function(k, v) {
-            if (! (k === '_id' || k === '_rev' || k === '_key')) {
-              tempObj[k] = v;
-            }
-          });
+      // we added some icons, so we need to fix their tooltips
+      arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "top");
 
-          $(self.table).dataTable().fnAddData(
-            [
-              '<pre class="prettify" title="'
-              + self.escaped(JSON.stringify(tempObj))
-              + '">'
-              + self.cutByResolution(JSON.stringify(tempObj))
-              + '</pre>',
-
-              '<div class="key">'
-              + value.attributes.key
-              + '</div>',
-
-              '<a id="deleteDoc" class="deleteButton">'
-              + '<span class="icon_arangodb_roundminus" data-original-title="'
-              +'Delete document" title="Delete document"></span><a>'
-            ]
-          );
-        });
-
-        // we added some icons, so we need to fix their tooltips
-        arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "top");
-
-        $(".prettify").snippet("javascript", {
-          style: "nedit",
-          menu: false,
-          startText: false,
-          transparent: true,
-          showNum: false
-        });
-
-      }
+      $(".prettify").snippet("javascript", {
+        style: "nedit",
+        menu: false,
+        startText: false,
+        transparent: true,
+        showNum: false
+      });
     },
 
     checkCollectionState: function() {
@@ -917,14 +846,14 @@
     },
 
     render: function() {
+      $(this.el).html(this.template.render({}));
+      this.tableView.setElement(this.$(this.table)).drawLoading();
+
       this.collectionContext = this.collectionsStore.getPosition(
         this.collection.collectionID
       );
 
-      $(this.el).html(this.template.render({}));
-
       this.getIndex();
-      this.initTable();
       this.breadcrumb();
 
       this.checkCollectionState();
@@ -945,7 +874,6 @@
       $('.upload-info').tooltip();
 
       arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "top");
-      this.drawTable();
       this.renderPaginationElements();
       this.selectActivePagesize();
       this.markFilterToggle();
@@ -953,7 +881,6 @@
     },
 
     rerender : function () {
-      this.clearTable();
       this.collection.getDocuments(this.getDocsCallback.bind(this));
     },
 
@@ -983,16 +910,7 @@
         '</div>'
       );
     },
-    cutByResolution: function (string) {
-      if (string.length > 1024) {
-        return this.escaped(string.substr(0, 1024)) + '...';
-      }
-      return this.escaped(string);
-    },
-    escaped: function (value) {
-      return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-    },
+
     resetIndexForms: function () {
       $('#indexHeader input').val('').prop("checked", false);
       $('#newIndexType').val('Cap').prop('selected',true);

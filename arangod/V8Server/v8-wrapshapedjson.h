@@ -38,7 +38,8 @@
 /// @brief wraps a TRI_shaped_json_t
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_WrapShapedJson (triagens::arango::CollectionNameResolver const*,
+v8::Handle<v8::Value> TRI_WrapShapedJson (v8::Isolate* isolate,
+                                          triagens::arango::CollectionNameResolver const*,
                                           TRI_barrier_t*,
                                           TRI_voc_cid_t,
                                           TRI_document_collection_t*,
@@ -49,7 +50,8 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (triagens::arango::CollectionNameResolv
 ////////////////////////////////////////////////////////////////////////////////
 
 template<class T>
-v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
+v8::Handle<v8::Value> TRI_WrapShapedJson (v8::Isolate* isolate,
+                                          T& trx,
                                           TRI_voc_cid_t cid,
                                           void const* data) {
   TRI_barrier_t* barrier = trx.barrier(cid);
@@ -60,17 +62,15 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
 
   TRI_ASSERT(collection != nullptr);
 
-  return TRI_WrapShapedJson(resolver, barrier, cid, collection, data);
+  return TRI_WrapShapedJson(isolate, resolver, barrier, cid, collection, data);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate the TRI_shaped_json_t template
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8ShapedJson (v8::Handle<v8::Context> context,
-                           TRI_server_t* server,
-                           TRI_vocbase_t* vocbase,
-                           triagens::arango::JSLoader* loader,
+void TRI_InitV8ShapedJson (v8::Isolate *isolate, 
+                           v8::Handle<v8::Context> context,
                            size_t threadNumber,
                            TRI_v8_global_t* v8g);
 #endif

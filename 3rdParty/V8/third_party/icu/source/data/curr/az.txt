@@ -1,0 +1,1830 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/az.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/az.xml
+ */
+az{
+    Currencies{
+        ADP{
+            "ADP",
+            "Andora Pesetası",
+        }
+        AED{
+            "AED",
+            "Birləşmiş Ərəb Əmirlikləri Dirhəmi",
+        }
+        AFN{
+            "AFN",
+            "Əfqanıstan Əfqanisi",
+        }
+        ALL{
+            "ALL",
+            "Albaniya Leki",
+        }
+        AMD{
+            "AMD",
+            "Ermənistan Dramı",
+        }
+        ANG{
+            "ANG",
+            "Niderland Antilyası Gilderi",
+        }
+        AOA{
+            "AOA",
+            "Anqola Kvanzası",
+        }
+        ARA{
+            "ARA",
+            "Argentina avstralı",
+        }
+        ARS{
+            "ARS",
+            "Argentina Pesosu",
+        }
+        ATS{
+            "ATS",
+            "Avstriya Şillinqi",
+        }
+        AUD{
+            "A$",
+            "Avstraliya Dolları",
+        }
+        AWG{
+            "AWG",
+            "Aruba Florini",
+        }
+        AZN{
+            "man.",
+            "Azərbaycan Manatı",
+        }
+        BAM{
+            "BAM",
+            "Bosniya-Herseqovina Markası",
+        }
+        BBD{
+            "BBD",
+            "Barbados Dolları",
+        }
+        BDT{
+            "BDT",
+            "Banqladeş Takası",
+        }
+        BEC{
+            "BEC",
+            "Belçika Frankı (deyşirik)",
+        }
+        BEF{
+            "BEF",
+            "Belçika Frankı",
+        }
+        BEL{
+            "BEL",
+            "Belçika Frankı (finans)",
+        }
+        BGL{
+            "BGL",
+            "Bolqarıstan Levası",
+        }
+        BGN{
+            "BGN",
+            "Bolqarıstan Levi",
+        }
+        BHD{
+            "BHD",
+            "Bəhreyn Dinarı",
+        }
+        BIF{
+            "BIF",
+            "Burundi Frankı",
+        }
+        BMD{
+            "BMD",
+            "Bermuda Dolları",
+        }
+        BND{
+            "BND",
+            "Bruney Dolları",
+        }
+        BOB{
+            "BOB",
+            "Boliviya Bolivianosu",
+        }
+        BOP{
+            "BOP",
+            "Boliviya pesosu",
+        }
+        BOV{
+            "BOV",
+            "Boliviya mvdolı",
+        }
+        BRL{
+            "R$",
+            "Braziliya Realı",
+        }
+        BSD{
+            "BSD",
+            "Bahama Dolları",
+        }
+        BTN{
+            "BTN",
+            "Butan Nqultrumu",
+        }
+        BUK{
+            "BUK",
+            "Burmis Kyatı",
+        }
+        BWP{
+            "BWP",
+            "Botsvana Pulası",
+        }
+        BYR{
+            "BYR",
+            "Belarus Rublu",
+        }
+        BZD{
+            "BZD",
+            "Beliz Dolları",
+        }
+        CAD{
+            "CA$",
+            "Kanada Dolları",
+        }
+        CDF{
+            "CDF",
+            "Konqo Frankı",
+        }
+        CHE{
+            "CHE",
+            "WIR Avro",
+        }
+        CHF{
+            "CHF",
+            "İsveçrə Frankı",
+        }
+        CHW{
+            "CHW",
+            "WIR Frankası",
+        }
+        CLP{
+            "CLP",
+            "Çili Pesosu",
+        }
+        CNY{
+            "CN¥",
+            "Çin Yuanı",
+        }
+        COP{
+            "COP",
+            "Kolumbiya Pesosu",
+        }
+        CRC{
+            "CRC",
+            "Kosta Rika Kolonu",
+        }
+        CSD{
+            "CSD",
+            "Serbiya Dinarı (2002–2006)",
+        }
+        CSK{
+            "CSK",
+            "Çexoslavakiya Korunası",
+        }
+        CUC{
+            "CUC",
+            "Kuba Çevrilən Pesosu",
+        }
+        CUP{
+            "CUP",
+            "Kuba Pesosu",
+        }
+        CVE{
+            "CVE",
+            "Kape Verde Eskudosu",
+        }
+        CYP{
+            "CYP",
+            "Kipr Paundu",
+        }
+        CZK{
+            "CZK",
+            "Çexiya Korunası",
+        }
+        DDM{
+            "DDM",
+            "Şərq Almaniya Ostmarkı",
+        }
+        DEM{
+            "DEM",
+            "Alman Markası",
+        }
+        DJF{
+            "DJF",
+            "Cibuti Frankı",
+        }
+        DKK{
+            "DKK",
+            "Danimarka Kronu",
+        }
+        DOP{
+            "DOP",
+            "Dominika Pesosu",
+        }
+        DZD{
+            "DZD",
+            "Əlcəzair Dinarı",
+        }
+        ECS{
+            "ECS",
+            "Ekvador Sukresi",
+        }
+        EEK{
+            "EEK",
+            "Estoniya Krunu",
+        }
+        EGP{
+            "EGP",
+            "Misir Funtu",
+        }
+        ERN{
+            "ERN",
+            "Eritreya Nakfası",
+        }
+        ESA{
+            "ESA",
+            "İspan Pesetası (A account)",
+        }
+        ESB{
+            "ESB",
+            "İspan Pesetası (dəyşirik)",
+        }
+        ESP{
+            "ESP",
+            "İspan Pesetası",
+        }
+        ETB{
+            "ETB",
+            "Efiopiya Bırrı",
+        }
+        EUR{
+            "€",
+            "Avro",
+        }
+        FIM{
+            "FIM",
+            "Fin Markası",
+        }
+        FJD{
+            "FJD",
+            "Fici Dolları",
+        }
+        FKP{
+            "FKP",
+            "Folklend Adaları Funtu",
+        }
+        FRF{
+            "FRF",
+            "Fransız Markası",
+        }
+        GBP{
+            "£",
+            "Britaniya Funt Sterlinqi",
+        }
+        GEK{
+            "GEK",
+            "Gürcüstan Kupon Lariti",
+        }
+        GEL{
+            "GEL",
+            "Gürcüstan Larisi",
+        }
+        GHS{
+            "GHS",
+            "Qana Sedisi",
+        }
+        GIP{
+            "GIP",
+            "Gibraltar Funtu",
+        }
+        GMD{
+            "GMD",
+            "Qambiya Dalasisi",
+        }
+        GNF{
+            "GNF",
+            "Qvineya Frankı",
+        }
+        GNS{
+            "GNS",
+            "Qvineya Sulisi",
+        }
+        GQE{
+            "GQE",
+            "Ekvatoriya Gvineya Ekvele Quneanası",
+        }
+        GRD{
+            "GRD",
+            "Yunan Draçması",
+        }
+        GTQ{
+            "GTQ",
+            "Qvatemala Küetzalı",
+        }
+        GWE{
+            "GWE",
+            "Portugal Qvineya Eskudosu",
+        }
+        GWP{
+            "GWP",
+            "Qvineya-Bisau Pesosu",
+        }
+        GYD{
+            "GYD",
+            "Qayana Dolları",
+        }
+        HKD{
+            "HK$",
+            "Honq Konq Dolları",
+        }
+        HNL{
+            "HNL",
+            "Honduras Lempirası",
+        }
+        HRD{
+            "HRD",
+            "Xorvatiya Dinarı",
+        }
+        HRK{
+            "HRK",
+            "Xorvatiya Kunası",
+        }
+        HTG{
+            "HTG",
+            "Haiti Qourdu",
+        }
+        HUF{
+            "HUF",
+            "Macarıstan Forinti",
+        }
+        IDR{
+            "IDR",
+            "İndoneziya Rupisi",
+        }
+        IEP{
+            "IEP",
+            "İrlandiya Paundu",
+        }
+        ILP{
+            "ILP",
+            "İzrail Paundu",
+        }
+        ILS{
+            "₪",
+            "İsrail Yeni Şekeli",
+        }
+        INR{
+            "₹",
+            "Hindistan Rupisi",
+        }
+        IQD{
+            "IQD",
+            "İraq Dinarı",
+        }
+        IRR{
+            "IRR",
+            "İran Rialı",
+        }
+        ISK{
+            "ISK",
+            "İslandiya Kronu",
+        }
+        ITL{
+            "ITL",
+            "İtaliya Lirası",
+        }
+        JMD{
+            "JMD",
+            "Yamayka Dolları",
+        }
+        JOD{
+            "JOD",
+            "İordaniya Dinarı",
+        }
+        JPY{
+            "JP¥",
+            "Yaponiya Yeni",
+        }
+        KES{
+            "KES",
+            "Keniya Şillinqi",
+        }
+        KGS{
+            "KGS",
+            "Kırğızıstan Somu",
+        }
+        KHR{
+            "KHR",
+            "Kamboca Rieli",
+        }
+        KMF{
+            "KMF",
+            "Komor Frankı",
+        }
+        KPW{
+            "KPW",
+            "Şimali Koreya Vonu",
+        }
+        KRW{
+            "₩",
+            "Cənubi Koreya Vonu",
+        }
+        KWD{
+            "KWD",
+            "Küveyt Dinarı",
+        }
+        KYD{
+            "KYD",
+            "Kayman Adaları Dolları",
+        }
+        KZT{
+            "KZT",
+            "Qazaxıstan Tengesi",
+        }
+        LAK{
+            "LAK",
+            "Laos Kipi",
+        }
+        LBP{
+            "LBP",
+            "Livan Funtu",
+        }
+        LKR{
+            "LKR",
+            "Şri Lanka Rupisi",
+        }
+        LRD{
+            "LRD",
+            "Liberiya Dolları",
+        }
+        LSL{
+            "LSL",
+            "Lesoto Lotisi",
+        }
+        LTL{
+            "LTL",
+            "Litva Liti",
+        }
+        LTT{
+            "LTT",
+            "Litva Talonası",
+        }
+        LUC{
+            "LUC",
+            "Luksemburq Frankası (dəyişik)",
+        }
+        LUF{
+            "LUF",
+            "Luksemburq Frankası",
+        }
+        LUL{
+            "LUL",
+            "Luksemburq Frankası (finans)",
+        }
+        LVL{
+            "LVL",
+            "Latviya Latı",
+        }
+        LVR{
+            "LVR",
+            "Latviya Rublu",
+        }
+        LYD{
+            "LYD",
+            "Liviya Dinarı",
+        }
+        MAD{
+            "MAD",
+            "Mərakeş Dirhəmi",
+        }
+        MAF{
+            "MAF",
+            "Mərakeş Frankası",
+        }
+        MDL{
+            "MDL",
+            "Moldova Leyi",
+        }
+        MGA{
+            "MGA",
+            "Madaqaskar Ariarisi",
+        }
+        MGF{
+            "MGF",
+            "Madaqaskar Frankası",
+        }
+        MKD{
+            "MKD",
+            "Makedoniya Dinarı",
+        }
+        MLF{
+            "MLF",
+            "Mali Frankı",
+        }
+        MMK{
+            "MMK",
+            "Myanma Kiyatı",
+        }
+        MNT{
+            "MNT",
+            "Monqoliya Tuqriki",
+        }
+        MOP{
+            "MOP",
+            "Makao Patakası",
+        }
+        MRO{
+            "MRO",
+            "Mavritaniya Ugiyası",
+        }
+        MTP{
+            "MTP",
+            "Maltiz Paundu",
+        }
+        MUR{
+            "MUR",
+            "Mavriki Rupisi",
+        }
+        MVR{
+            "MVR",
+            "Maldiv Rufiyası",
+        }
+        MWK{
+            "MWK",
+            "Malavi Kvaçası",
+        }
+        MXN{
+            "MX$",
+            "Meksika Pesosu",
+        }
+        MYR{
+            "MYR",
+            "Malayziya Ringiti",
+        }
+        MZE{
+            "MZE",
+            "Mozambik Eskudosu",
+        }
+        MZN{
+            "MZN",
+            "Mozambik Metikalı",
+        }
+        NAD{
+            "NAD",
+            "Namibiya Dolları",
+        }
+        NGN{
+            "NGN",
+            "Nigeriya Nairası",
+        }
+        NIO{
+            "NIO",
+            "Nikaraqua Kordobası",
+        }
+        NLG{
+            "NLG",
+            "Hollandiya Gilderi",
+        }
+        NOK{
+            "NOK",
+            "Norveç Kronu",
+        }
+        NPR{
+            "NPR",
+            "Nepal Rupisi",
+        }
+        NZD{
+            "NZ$",
+            "Yeni Zelandiya Dolları",
+        }
+        OMR{
+            "OMR",
+            "Oman Rialı",
+        }
+        PAB{
+            "PAB",
+            "Panama Balboası",
+        }
+        PEI{
+            "PEI",
+            "Peru Inti",
+        }
+        PEN{
+            "PEN",
+            "Peru Nuevo Solu",
+        }
+        PGK{
+            "PGK",
+            "Papua Yeni Qvineya Kinası",
+        }
+        PHP{
+            "PHP",
+            "Filippin Pesosu",
+        }
+        PKR{
+            "PKR",
+            "Pakistan Rupisi",
+        }
+        PLN{
+            "PLN",
+            "Polşa Zlotısı",
+        }
+        PTE{
+            "PTE",
+            "Portuqal Eskudosu",
+        }
+        PYG{
+            "PYG",
+            "Paraqvay Quaranisi",
+        }
+        QAR{
+            "QAR",
+            "Qatar Rialı",
+        }
+        RHD{
+            "RHD",
+            "Rodezian Dolları",
+        }
+        RON{
+            "RON",
+            "Rumıniya Leyi",
+        }
+        RSD{
+            "RSD",
+            "Serbiya Dinarı",
+        }
+        RUB{
+            "RUB",
+            "Rusiya Rublu",
+        }
+        RWF{
+            "RWF",
+            "Ruanda Frankı",
+        }
+        SAR{
+            "SAR",
+            "Səudiyyə Riyalı",
+        }
+        SBD{
+            "SBD",
+            "Solomon Adaları Dolları",
+        }
+        SCR{
+            "SCR",
+            "Seyşel Rupisi",
+        }
+        SDG{
+            "SDG",
+            "Sudan Funtu",
+        }
+        SEK{
+            "SEK",
+            "İsveç Kronu",
+        }
+        SGD{
+            "SGD",
+            "Sinqapur Dolları",
+        }
+        SHP{
+            "SHP",
+            "Müqəddəs Yelena Funtu",
+        }
+        SIT{
+            "SIT",
+            "Sloveniya Toları",
+        }
+        SKK{
+            "SKK",
+            "Slovak Korunası",
+        }
+        SLL{
+            "SLL",
+            "Sierra Leon Leonu",
+        }
+        SOS{
+            "SOS",
+            "Somali Şillinqi",
+        }
+        SRD{
+            "SRD",
+            "Surinam Dolları",
+        }
+        SSP{
+            "SSP",
+            "Cənubi Sudan Funtu",
+        }
+        STD{
+            "STD",
+            "San Tom və Prinsip Dobrası",
+        }
+        SUR{
+            "SUR",
+            "Sovet Rublu",
+        }
+        SVC{
+            "SVC",
+            "El Salvador kolonu",
+        }
+        SYP{
+            "SYP",
+            "Suriya Funtu",
+        }
+        SZL{
+            "SZL",
+            "Svazilend Lilangenini",
+        }
+        THB{
+            "฿",
+            "Tayland Batı",
+        }
+        TJR{
+            "TJR",
+            "Tacikistan Rublu",
+        }
+        TJS{
+            "TJS",
+            "Tacikistan Somonisi",
+        }
+        TMT{
+            "TMT",
+            "Türkmənistan Manatı",
+        }
+        TND{
+            "TND",
+            "Tunis Dinarı",
+        }
+        TOP{
+            "TOP",
+            "Tonqa Panqası",
+        }
+        TPE{
+            "TPE",
+            "Timor Eskudu",
+        }
+        TRY{
+            "TRY",
+            "Türkiyə Lirəsi",
+        }
+        TTD{
+            "TTD",
+            "Trinidad və Tobaqo Dolları",
+        }
+        TWD{
+            "NT$",
+            "Tayvan Yeni Dolları",
+        }
+        TZS{
+            "TZS",
+            "Tanzaniya Şillinqi",
+        }
+        UAH{
+            "UAH",
+            "Ukrayna Qrivnası",
+        }
+        UAK{
+            "UAK",
+            "Ukrayna Karbovenesası",
+        }
+        UGX{
+            "UGX",
+            "Uqanda Şillinqi",
+        }
+        USD{
+            "US$",
+            "ABŞ Dolları",
+        }
+        USN{
+            "USN",
+            "ABŞ dolları (yeni gün)",
+        }
+        USS{
+            "USS",
+            "ABŞ dolları (həmin gün)",
+        }
+        UYI{
+            "UYI",
+            "Uruqvay pesosu Unidades Indexadas",
+        }
+        UYU{
+            "UYU",
+            "Uruqvay Pesosu",
+        }
+        UZS{
+            "UZS",
+            "Özbəkistan Somu",
+        }
+        VEF{
+            "VEF",
+            "Venesuela Bolivarı",
+        }
+        VND{
+            "₫",
+            "Vyetnam Donqu",
+        }
+        VUV{
+            "VUV",
+            "Vanuatu Vatusu",
+        }
+        WST{
+            "WST",
+            "Samoa Talası",
+        }
+        XAF{
+            "FCFA",
+            "Kamerun Frankı",
+        }
+        XAG{
+            "XAG",
+            "gümüş",
+        }
+        XAU{
+            "XAU",
+            "qızıl",
+        }
+        XCD{
+            "EC$",
+            "Şərqi Karib Dolları",
+        }
+        XFO{
+            "XFO",
+            "Fransız Gızıl Frankı",
+        }
+        XFU{
+            "XFU",
+            "Fransız UİC Frankı",
+        }
+        XOF{
+            "CFA",
+            "Fil Dişi Sahili Frankı",
+        }
+        XPD{
+            "XPD",
+            "Palladium",
+        }
+        XPF{
+            "CFPF",
+            "Fransız Polineziyası Frankı",
+        }
+        XPT{
+            "XPT",
+            "Platinum",
+        }
+        XXX{
+            "XXX",
+            "Naməlum Valyuta",
+        }
+        YDD{
+            "YDD",
+            "Yəmən Dinarı",
+        }
+        YER{
+            "YER",
+            "Yəmən Rialı",
+        }
+        ZAL{
+            "ZAL",
+            "Cənubi Afrika Randı (finans)",
+        }
+        ZAR{
+            "ZAR",
+            "Cənubi Afrika Randı",
+        }
+        ZMW{
+            "ZMW",
+            "Zambiya Kvaçası",
+        }
+        ZWL{
+            "ZWL",
+            "Zimbabve Dolları (2009)",
+        }
+        ZWR{
+            "ZWR",
+            "Zimbabve Dolları (2008)",
+        }
+    }
+    CurrencyPlurals{
+        ADP{
+            one{"Andora pesetası"}
+            other{"Andora pesetası"}
+        }
+        AED{
+            one{"BƏƏ dirhəmi"}
+            other{"BƏƏ dirhəmi"}
+        }
+        AFN{
+            one{"Əfqanıstan əfqanisi"}
+            other{"Əfqanıstan əfqanisi"}
+        }
+        ALL{
+            one{"Albaniya leki"}
+            other{"Albaniya leki"}
+        }
+        AMD{
+            one{"Ermənistan dramı"}
+            other{"Ermənistan dramı"}
+        }
+        ANG{
+            one{"Niderland Antilyası gilderi"}
+            other{"Niderland Antilya gilderi"}
+        }
+        AOA{
+            one{"Anqola kvanzasi"}
+            other{"Anqola kvanzasi"}
+        }
+        ARA{
+            one{"Argentina avstralı"}
+            other{"Argentina avstralı"}
+        }
+        ARS{
+            one{"Argentina pesosu"}
+            other{"Argentina pesosu"}
+        }
+        ATS{
+            one{"Avstriya şillinqi"}
+            other{"Avstriya şillinqi"}
+        }
+        AUD{
+            one{"Avstraliya dolları"}
+            other{"Avstraliya dolları"}
+        }
+        AWG{
+            one{"Aruba florini"}
+            other{"Aruba florini"}
+        }
+        AZN{
+            one{"Azərbaycan manatı"}
+            other{"Azərbaycan manatı"}
+        }
+        BAM{
+            one{"Bosniya-Herseqovina markası"}
+            other{"Bosniya-Herseqovina markası"}
+        }
+        BBD{
+            one{"Barbados dolları"}
+            other{"Barbados dolları"}
+        }
+        BDT{
+            one{"Banqladeş takası"}
+            other{"Banqladeş takası"}
+        }
+        BEC{
+            one{"Belçika frankı (deyşirik)"}
+            other{"Belçika frankı (deyşirik)"}
+        }
+        BEF{
+            one{"Belçika frankı"}
+            other{"Belçika frankı"}
+        }
+        BEL{
+            one{"Belçika frankı (finans)"}
+            other{"Belçika frankı (finans)"}
+        }
+        BGL{
+            one{"Bolqarıstan levası"}
+            other{"Bolqarıstan levası"}
+        }
+        BGN{
+            one{"Bolqarıstan levi"}
+            other{"Bolqarıstan levi"}
+        }
+        BHD{
+            one{"Bəhreyn dinarı"}
+            other{"Bəhreyn dinarı"}
+        }
+        BIF{
+            one{"Burundi frankı"}
+            other{"Burundi frankı"}
+        }
+        BMD{
+            one{"Bermuda dolları"}
+            other{"Bermuda dolları"}
+        }
+        BND{
+            one{"Bruney dolları"}
+            other{"Bruney dolları"}
+        }
+        BOB{
+            one{"Boliviya bolivianosu"}
+            other{"Boliviya bolivianosu"}
+        }
+        BOP{
+            one{"Boliviya pesosu"}
+            other{"Boliviya pesosu"}
+        }
+        BOV{
+            one{"Boliviya mvdolı"}
+            other{"Boliviya mvdolı"}
+        }
+        BRL{
+            one{"Braziliya realı"}
+            other{"Braziliya realı"}
+        }
+        BSD{
+            one{"Bahama dolları"}
+            other{"Bahama dolları"}
+        }
+        BTN{
+            one{"Butan nqultrumu"}
+            other{"Butan nqultrumu"}
+        }
+        BUK{
+            one{"Burmis kyatı"}
+            other{"Burmis kyatı"}
+        }
+        BWP{
+            one{"Botsvana pulası"}
+            other{"Botsvana pulası"}
+        }
+        BYR{
+            one{"Belarus rublu"}
+            other{"Belarus rublu"}
+        }
+        BZD{
+            one{"Beliz dolları"}
+            other{"Beliz dolları"}
+        }
+        CAD{
+            one{"Kanada dolları"}
+            other{"Kanada dolları"}
+        }
+        CDF{
+            one{"Konqo frankı"}
+            other{"Konqo frankı"}
+        }
+        CHE{
+            one{"WIR avro"}
+            other{"WIR avro"}
+        }
+        CHF{
+            one{"İsveçrə frankı"}
+            other{"İsveçrə frankı"}
+        }
+        CHW{
+            one{"WIR frankası"}
+            other{"WIR frankası"}
+        }
+        CLP{
+            one{"Çili pesosu"}
+            other{"Çili pesosu"}
+        }
+        CNY{
+            one{"Çin yuanı"}
+            other{"Çin yuanı"}
+        }
+        COP{
+            one{"Kolombiya pesosu"}
+            other{"Kolombiya pesosu"}
+        }
+        CRC{
+            one{"Kosta Rika kolonu"}
+            other{"Kosta Rika kolonu"}
+        }
+        CSD{
+            one{"Serbiya dinarı (2002–2006)"}
+            other{"Serbiya dinarı (2002–2006)"}
+        }
+        CSK{
+            one{"Çexoslavakiya korunası"}
+            other{"Çexoslavakiya korunası"}
+        }
+        CUC{
+            one{"Kuba çevrilən pesosu"}
+            other{"Kuba çevrilən pesosu"}
+        }
+        CUP{
+            one{"Kuba pesosu"}
+            other{"Kuba pesosu"}
+        }
+        CVE{
+            one{"Kape Verde eskudosu"}
+            other{"Kape Verde eskudosu"}
+        }
+        CYP{
+            one{"Kipr paundu"}
+            other{"Kipr paundu"}
+        }
+        CZK{
+            one{"Çexiya korunası"}
+            other{"Çexiya korunası"}
+        }
+        DDM{
+            one{"Şərq Almaniya ostmarkı"}
+            other{"Şərq Almaniya ostmarkı"}
+        }
+        DEM{
+            one{"Alman markası"}
+            other{"Alman markası"}
+        }
+        DJF{
+            one{"Cibuti frankı"}
+            other{"Cibuti frankı"}
+        }
+        DKK{
+            one{"Danimarka kronu"}
+            other{"Danimarka kronu"}
+        }
+        DOP{
+            one{"Dominika pesosu"}
+            other{"Dominika pesosu"}
+        }
+        DZD{
+            one{"Əlcəzair dinarı"}
+            other{"Əlcəzair dinarı"}
+        }
+        ECS{
+            one{"Ekvador sukresi"}
+            other{"Ekvador sukresi"}
+        }
+        EEK{
+            one{"Estoniya krunu"}
+            other{"Estoniya krunu"}
+        }
+        EGP{
+            one{"Misir funtu"}
+            other{"Misir funtu"}
+        }
+        ERN{
+            one{"Eritreya nakfası"}
+            other{"Eritreya nakfası"}
+        }
+        ESA{
+            one{"İspan pesetası (A account)"}
+            other{"İspan pesetası (A account)"}
+        }
+        ESB{
+            one{"İspan pesetası (dəyşirik)"}
+            other{"İspan pesetası (dəyşirik)"}
+        }
+        ESP{
+            one{"İspan pesetası"}
+            other{"İspan pesetası"}
+        }
+        ETB{
+            one{"Efiopiya bırrı"}
+            other{"Efiopiya bırrı"}
+        }
+        EUR{
+            one{"Avro"}
+            other{"Avro"}
+        }
+        FIM{
+            one{"Fin markası"}
+            other{"Fin markası"}
+        }
+        FJD{
+            one{"Fici dolları"}
+            other{"Fici dolları"}
+        }
+        FKP{
+            one{"Folklend Adaları funtu"}
+            other{"Folklend Adaları funtu"}
+        }
+        FRF{
+            one{"Fransız markası"}
+            other{"Fransız markası"}
+        }
+        GBP{
+            one{"Britaniya funt sterlinqi"}
+            other{"Britaniya funt sterlinqi"}
+        }
+        GEK{
+            one{"Gürcüstan kupon lariti"}
+            other{"Gürcüstan kupon lariti"}
+        }
+        GEL{
+            one{"Gürcüstan larisi"}
+            other{"Gürcüstan larisi"}
+        }
+        GHS{
+            one{"Qana sedisi"}
+            other{"Qana sedisi"}
+        }
+        GIP{
+            one{"Gibraltar funtu"}
+            other{"Gibraltar funtu"}
+        }
+        GMD{
+            one{"Qambiya dalasisi"}
+            other{"Qambiya dalasisi"}
+        }
+        GNF{
+            one{"Qvineya frankı"}
+            other{"Qvineya frankı"}
+        }
+        GNS{
+            one{"Qvineya sulisi"}
+            other{"Qvineya sulisi"}
+        }
+        GQE{
+            one{"Ekvatoriya Gvineya ekvele quneanası"}
+            other{"Ekvatoriya Gvineya ekvele quneanası"}
+        }
+        GRD{
+            one{"Yunan draxması"}
+            other{"Yunan draxması"}
+        }
+        GTQ{
+            one{"Qvatemala küetzalı"}
+            other{"Qvatemala küetzalı"}
+        }
+        GWE{
+            one{"Portugal Qvineya eskudosu"}
+            other{"Portugal Qvineya eskudosu"}
+        }
+        GWP{
+            one{"Qvineya-Bisau pesosu"}
+            other{"Qvineya-Bisau pesosu"}
+        }
+        GYD{
+            one{"Qayana dolları"}
+            other{"Qayana dolları"}
+        }
+        HKD{
+            one{"Honq Konq dolları"}
+            other{"Honq Konq dolları"}
+        }
+        HNL{
+            one{"Honduras lempirası"}
+            other{"Honduras lempirası"}
+        }
+        HRD{
+            one{"Xorvatiya dinarı"}
+            other{"Xorvatiya dinarı"}
+        }
+        HRK{
+            one{"Xorvatiya kunası"}
+            other{"Xorvatiya kunası"}
+        }
+        HTG{
+            one{"Haiti qourdu"}
+            other{"Haiti qourdu"}
+        }
+        HUF{
+            one{"Macarıstan forinti"}
+            other{"Macarıstan forinti"}
+        }
+        IDR{
+            one{"İndoneziya rupisi"}
+            other{"İndoneziya rupisi"}
+        }
+        IEP{
+            one{"İrlandiya paundu"}
+            other{"İrlandiya paundu"}
+        }
+        ILP{
+            one{"İzrail paundu"}
+            other{"İzrail paundu"}
+        }
+        ILS{
+            one{"İsrail yeni şekeli"}
+            other{"İsrail yeni şekeli"}
+        }
+        INR{
+            one{"Hindistan rupisi"}
+            other{"Hindistan rupisi"}
+        }
+        IQD{
+            one{"İraq dinarı"}
+            other{"İraq dinarı"}
+        }
+        IRR{
+            one{"İran rialı"}
+            other{"İran rialı"}
+        }
+        ISK{
+            one{"İslandiya kronu"}
+            other{"İslandiya kronu"}
+        }
+        ITL{
+            one{"İtaliya lirası"}
+            other{"İtaliya lirası"}
+        }
+        JMD{
+            one{"Yamayka dolları"}
+            other{"Yamayka dolları"}
+        }
+        JOD{
+            one{"İordaniya dinarı"}
+            other{"İordaniya dinarı"}
+        }
+        JPY{
+            one{"Yaponiya yeni"}
+            other{"Yaponiya yeni"}
+        }
+        KES{
+            one{"Keniya şillinqi"}
+            other{"Keniya şillinqi"}
+        }
+        KGS{
+            one{"Kırğızıstan somu"}
+            other{"Kırğızıstan somu"}
+        }
+        KHR{
+            one{"Kamboca rieli"}
+            other{"Kamboca rieli"}
+        }
+        KMF{
+            one{"Komor frankı"}
+            other{"Komor frankı"}
+        }
+        KPW{
+            one{"Şimali Koreya vonu"}
+            other{"Şimali Koreya vonu"}
+        }
+        KRW{
+            one{"Cənubi Koreya vonu"}
+            other{"Cənubi Koreya vonu"}
+        }
+        KWD{
+            one{"Küveyt dinarı"}
+            other{"Küveyt dinarı"}
+        }
+        KYD{
+            one{"Kayman Adaları dolları"}
+            other{"Kayman Adaları dolları"}
+        }
+        KZT{
+            one{"Qazaxıstan tengesi"}
+            other{"Qazaxıstan tengesi"}
+        }
+        LAK{
+            one{"Laos kipi"}
+            other{"Laos kipi"}
+        }
+        LBP{
+            one{"Livan funtu"}
+            other{"Livan funtu"}
+        }
+        LKR{
+            one{"Şri Lanka rupisi"}
+            other{"Şri Lanka rupisi"}
+        }
+        LRD{
+            one{"Liberiya dolları"}
+            other{"Liberiya dolları"}
+        }
+        LSL{
+            one{"Lesoto lotisi"}
+            other{"Lesoto lotisi"}
+        }
+        LTL{
+            one{"Litva liti"}
+            other{"Litva liti"}
+        }
+        LTT{
+            one{"Litva talonası"}
+            other{"Litva talonası"}
+        }
+        LUC{
+            one{"Luksemburq dəyişik frankası"}
+            other{"Luksemburq dəyişik frankası"}
+        }
+        LUF{
+            one{"Luksemburq frankası"}
+            other{"Luksemburq frankası"}
+        }
+        LUL{
+            one{"Luksemburq finans frankası"}
+            other{"Luksemburq finans frankası"}
+        }
+        LVL{
+            one{"Latviya latı"}
+            other{"Latviya latı"}
+        }
+        LVR{
+            one{"Latviya rublu"}
+            other{"Latviya rublu"}
+        }
+        LYD{
+            one{"Liviya dinarı"}
+            other{"Liviya dinarı"}
+        }
+        MAD{
+            one{"Mərakeş dirhəmi"}
+            other{"Mərakeş dirhəmi"}
+        }
+        MAF{
+            one{"Mərakeş frankası"}
+            other{"Mərakeş frankası"}
+        }
+        MDL{
+            one{"Moldova leyi"}
+            other{"Moldova leyi"}
+        }
+        MGA{
+            one{"Madaqaskar ariarisi"}
+            other{"Madaqaskar ariarisi"}
+        }
+        MGF{
+            one{"Madaqaskar frankası"}
+            other{"Madaqaskar frankası"}
+        }
+        MKD{
+            one{"Makedoniya dinarı"}
+            other{"Makedoniya dinarı"}
+        }
+        MLF{
+            one{"Mali frankı"}
+            other{"Mali frankı"}
+        }
+        MMK{
+            one{"Myanmar kiyatı"}
+            other{"Myanmar kiyatı"}
+        }
+        MNT{
+            one{"Monqoliya tuqriki"}
+            other{"Monqoliya tuqriki"}
+        }
+        MOP{
+            one{"Makao patakası"}
+            other{"Makao patakası"}
+        }
+        MRO{
+            one{"Mavritaniya ugiyası"}
+            other{"Mavritaniya ugiyası"}
+        }
+        MTP{
+            one{"Maltiz paundu"}
+            other{"Maltiz paundu"}
+        }
+        MUR{
+            one{"Mavriki rupisi"}
+            other{"Mavriki rupisi"}
+        }
+        MVR{
+            one{"Maldiv rufiyası"}
+            other{"Maldiv rufiyası"}
+        }
+        MWK{
+            one{"Malavi kvaçası"}
+            other{"Malavi kvaçası"}
+        }
+        MXN{
+            one{"Meksika pesosu"}
+            other{"Meksika pesosu"}
+        }
+        MYR{
+            one{"Malayziya ringiti"}
+            other{"Malayziya ringiti"}
+        }
+        MZE{
+            one{"Mozambik eskudosu"}
+            other{"Mozambik eskudosu"}
+        }
+        MZN{
+            one{"Mozambik metikalı"}
+            other{"Mozambik metikalı"}
+        }
+        NAD{
+            one{"Namibiya dolları"}
+            other{"Namibiya dolları"}
+        }
+        NGN{
+            one{"Nigeriya nairası"}
+            other{"Nigeriya nairası"}
+        }
+        NIO{
+            one{"Nikaraqua kordobası"}
+            other{"Nikaraqua kordobası"}
+        }
+        NLG{
+            one{"Hollandiya gilderi"}
+            other{"Hollandiya gilderi"}
+        }
+        NOK{
+            one{"Norveç kronu"}
+            other{"Norveç kronu"}
+        }
+        NPR{
+            one{"Nepal rupisi"}
+            other{"Nepal rupisi"}
+        }
+        NZD{
+            one{"Yeni Zelandiya dolları"}
+            other{"Yeni Zelandiya dolları"}
+        }
+        OMR{
+            one{"Oman rialı"}
+            other{"Oman rialı"}
+        }
+        PAB{
+            one{"Panama balboası"}
+            other{"Panama balboası"}
+        }
+        PEI{
+            one{"Peru inti"}
+            other{"Peru inti"}
+        }
+        PEN{
+            one{"Peru Nuevo solu"}
+            other{"Peru Nuevo solu"}
+        }
+        PGK{
+            one{"Papua Yeni Qvineya kinası"}
+            other{"Papua Yeni Qvineya kinası"}
+        }
+        PHP{
+            one{"Filippin pesosu"}
+            other{"Filippin pesosu"}
+        }
+        PKR{
+            one{"Pakistan rupisi"}
+            other{"Pakistan rupisi"}
+        }
+        PLN{
+            one{"Polşa zlotısı"}
+            other{"Polşa zlotısı"}
+        }
+        PTE{
+            one{"Portuqal eskudosu"}
+            other{"Portuqal eskudosu"}
+        }
+        PYG{
+            one{"Paraqvay quaranisi"}
+            other{"Paraqvay quaranisi"}
+        }
+        QAR{
+            one{"Qatar rialı"}
+            other{"Qatar rialı"}
+        }
+        RHD{
+            one{"Rodezian dolları"}
+            other{"Rodezian dolları"}
+        }
+        RON{
+            one{"Rumıniya leyi"}
+            other{"Rumıniya leyi"}
+        }
+        RSD{
+            one{"Serbiya dinarı"}
+            other{"Serbiya dinarı"}
+        }
+        RUB{
+            one{"Rusiya rublu"}
+            other{"Rusiya rublu"}
+        }
+        RWF{
+            one{"Ruanda frankı"}
+            other{"Ruanda frankı"}
+        }
+        SAR{
+            one{"Səudiyyə riyalı"}
+            other{"Səudiyyə riyalı"}
+        }
+        SBD{
+            one{"Solomon Adaları dolları"}
+            other{"Solomon Adaları dolları"}
+        }
+        SCR{
+            one{"Seyşel rupisi"}
+            other{"Seyşel rupisi"}
+        }
+        SDG{
+            one{"Sudan funtu"}
+            other{"Sudan funtu"}
+        }
+        SEK{
+            one{"İsveç kronu"}
+            other{"İsveç kronu"}
+        }
+        SGD{
+            one{"Sinqapur dolları"}
+            other{"Sinqapur dolları"}
+        }
+        SHP{
+            one{"Müqəddəs Yelena funtu"}
+            other{"Müqəddəs Yelena funtu"}
+        }
+        SIT{
+            one{"Sloveniya toları"}
+            other{"Sloveniya toları"}
+        }
+        SKK{
+            one{"Slovak korunası"}
+            other{"Slovak korunası"}
+        }
+        SLL{
+            one{"Sierra Leon leonu"}
+            other{"Sierra Leon leonu"}
+        }
+        SOS{
+            one{"Somali şillinqi"}
+            other{"Somali şillinqi"}
+        }
+        SRD{
+            one{"Surinam dolları"}
+            other{"Surinam dolları"}
+        }
+        SSP{
+            one{"Cənubi Sudan funtu"}
+            other{"Cənubi Sudan funtu"}
+        }
+        STD{
+            one{"San Tom və Prinsip dobrası"}
+            other{"San Tom və Prinsip dobrası"}
+        }
+        SUR{
+            one{"Sovet rublu"}
+            other{"Sovet rublu"}
+        }
+        SVC{
+            one{"El Salvador kolonu"}
+            other{"El Salvador kolonu"}
+        }
+        SYP{
+            one{"Suriya funtu"}
+            other{"Suriya funtu"}
+        }
+        SZL{
+            one{"Svazilend lilangenini"}
+            other{"Svazilend emalangenini"}
+        }
+        THB{
+            one{"Tayland batı"}
+            other{"Tayland batı"}
+        }
+        TJR{
+            one{"Tacikistan rublu"}
+            other{"Tacikistan rublu"}
+        }
+        TJS{
+            one{"Tacikistan somonisi"}
+            other{"Tacikistan somonisi"}
+        }
+        TMT{
+            one{"Türkmənistan manatı"}
+            other{"Türkmənistan manatı"}
+        }
+        TND{
+            one{"Tunis dinarı"}
+            other{"Tunis dinarı"}
+        }
+        TOP{
+            one{"Tonqa panqası"}
+            other{"Tonqa panqası"}
+        }
+        TPE{
+            one{"Timor eskudu"}
+            other{"Timor eskudu"}
+        }
+        TRY{
+            one{"Türkiyə lirəsi"}
+            other{"Türkiyə lirəsi"}
+        }
+        TTD{
+            one{"Trinidad və Tobaqo dolları"}
+            other{"Trinidad və Tobaqo dolları"}
+        }
+        TWD{
+            one{"Tayvan yeni dolları"}
+            other{"Tayvan yeni dolları"}
+        }
+        TZS{
+            one{"Tanzaniya şillinqi"}
+            other{"Tanzaniya şillinqi"}
+        }
+        UAH{
+            one{"Ukrayna qrivnası"}
+            other{"Ukrayna qrivnası"}
+        }
+        UAK{
+            one{"Ukrayna karbovenesası"}
+            other{"Ukrayna karbovenesası"}
+        }
+        UGX{
+            one{"Uqanda şillinqi"}
+            other{"Uqanda şillinqi"}
+        }
+        USD{
+            one{"ABŞ dolları"}
+            other{"ABŞ dolları"}
+        }
+        USN{
+            one{"ABŞ dolları (yeni gün)"}
+            other{"ABŞ dolları (yeni gün)"}
+        }
+        USS{
+            one{"ABŞ dolları (həmin gün)"}
+            other{"ABŞ dolları (həmin gün)"}
+        }
+        UYI{
+            one{"Uruqvay pesosu unidades indexadas"}
+            other{"Uruqvay pesosu unidades indexadas"}
+        }
+        UYU{
+            one{"Uruqvay pesosu"}
+            other{"Uruqvay pesosu"}
+        }
+        UZS{
+            one{"Özbəkistan somu"}
+            other{"Özbəkistan somu"}
+        }
+        VEF{
+            one{"Venesuela bolivarı"}
+            other{"Venesuela bolivarı"}
+        }
+        VND{
+            one{"Vyetnam donqu"}
+            other{"Vyetnam donqu"}
+        }
+        VUV{
+            one{"Vanuatu vatusu"}
+            other{"Vanuatu vatusu"}
+        }
+        WST{
+            one{"Samoa talası"}
+            other{"Samoa talası"}
+        }
+        XAF{
+            one{"Kamerun frankı"}
+            other{"Kamerun frankı"}
+        }
+        XAG{
+            one{"gümüş"}
+            other{"gümüş"}
+        }
+        XAU{
+            one{"qızıl"}
+            other{"qızıl"}
+        }
+        XCD{
+            one{"Şərqi Karib dolları"}
+            other{"Şərqi Karib dolları"}
+        }
+        XFO{
+            one{"Fransız gızıl frankı"}
+            other{"Fransız gızıl frankı"}
+        }
+        XFU{
+            one{"Fransız UİC frankı"}
+            other{"Fransız UİC frankı"}
+        }
+        XOF{
+            one{"Fil Dişi Sahili frankı"}
+            other{"Fil Dişi Sahili frankı"}
+        }
+        XPD{
+            one{"Palladium"}
+            other{"Palladium"}
+        }
+        XPF{
+            one{"Fransız Polineziyası frankı"}
+            other{"Fransız Polineziyası frankı"}
+        }
+        XPT{
+            one{"platinum"}
+            other{"platinum"}
+        }
+        XXX{
+            one{"naməlum valyuta"}
+            other{"naməlum valyuta"}
+        }
+        YDD{
+            one{"Yəmən dinarı"}
+            other{"Yəmən dinarı"}
+        }
+        YER{
+            one{"Yəmən rialı"}
+            other{"Yəmən rialı"}
+        }
+        ZAL{
+            one{"Cənubi Afrika randı (finans)"}
+            other{"Cənubi Afrika randı (finans)"}
+        }
+        ZAR{
+            one{"Cənubi Afrika randı"}
+            other{"Cənubi Afrika randı"}
+        }
+        ZMW{
+            one{"Zambiya kvaçası"}
+            other{"Zambiya kvaçası"}
+        }
+        ZWL{
+            one{"Zimbabve dolları (2009)"}
+            other{"Zimbabve dolları (2009)"}
+        }
+        ZWR{
+            one{"Zimbabve dolları (2008)"}
+            other{"Zimbabve dolları (2008)"}
+        }
+    }
+    CurrencyUnitPatterns{
+        one{"{0} {1}"}
+        other{"{0} {1}"}
+    }
+    Version{"2.0.92.87"}
+}

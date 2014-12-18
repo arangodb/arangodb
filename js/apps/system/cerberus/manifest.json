@@ -1,8 +1,23 @@
 {
   "name": "cerberus",
+  "description": "Password Manager",
+  "author": "ArangoDB GmbH",
   "version": "0.0.1",
-  "author": "gschwab",
+  "license": "Apache License, Version 2.0",
   "isSystem": true,
+
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/triAGENS/ArangoDB.git"
+  },
+
+  "contributors": [
+    {
+      "name": "Guido Schwab",
+      "email": "g.Schwab@triagens.de"
+    }
+  ],
+
   "controllers": {
     "/": "cerberus.js"
   },

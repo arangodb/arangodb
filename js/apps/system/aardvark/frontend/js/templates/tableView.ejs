@@ -1,0 +1,59 @@
+<script id="tableView.ejs" type="text/template">
+<%
+var escaped = function (value) {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+  .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+};
+var cutByResolution = function (str) {
+  if (str.length > 1024) {
+    return escaped(str.substr(0, 1024)) + '...';
+  }
+  return escaped(str);
+};
+%>
+
+<thead>
+  <tr role="row">
+    <th class="sorting_disabled docsFirstCol" role="columnheader" rowspan="1" colspan="1">Content</th>
+    <th class="sorting_disabled docsSecCol" role="columnheader" rowspan="1" colspan="1">_key</th>
+    <th class="sorting_disabled docsThirdCol" role="columnheader" rowspan="1" colspan="1">
+      <a id="addDocumentButton" class="pull-right addButton"><span class="arangoicon icon_arangodb_roundplus" title="Add a document"></span></a>
+    </th>
+  </tr>
+</thead>
+<tbody>
+  <%
+  if (docs.length === 0) {
+  %>
+    <tr class="odd">
+      <td valign="top" colspan="3" class="dataTables_empty">No documents</td>
+    </tr>
+  <%
+  }
+  var odd = true;
+  docs.forEach(function(d) {
+    var tempObj = {};
+    $.each(d.attributes.content, function(k, v) {
+      if (! (k === '_id' || k === '_rev' || k === '_key')) {
+        tempObj[k] = v;
+      }
+    });
+    var tmpObj = JSON.stringify(tempObj); %>
+  <tr class="<%=odd?'odd':'even'%>" id="row_<%=d.attributes.key %>">
+    <td class="docsFirstCol">
+      <pre class="prettify" title="<%=escaped(tmpObj)%>"><%= cutByResolution(tmpObj) %></pre>
+    </td>
+    <td class="docsSecCol">
+    <div class="key"><%= d.attributes.key %></div>
+    </td>
+    <td class="docsThirdCol">
+      <a class="deleteButton">
+      <span class="icon_arangodb_roundminus" data-original-title="Delete document" title="Delete document"></span></a>
+    </td>
+  </tr>
+  <% 
+    odd = !odd;
+    });
+  %>
+</tbody>
+</script>

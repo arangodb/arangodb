@@ -118,7 +118,8 @@ AqlValue Expression::execute (triagens::arango::AqlTransaction* trx,
                               std::vector<AqlValue>& argv,
                               size_t startPos,
                               std::vector<Variable*> const& vars,
-                              std::vector<RegisterId> const& regs) {
+                              std::vector<RegisterId> const& regs,
+                              TRI_document_collection_t const** collection) {
 
   if (! _built) {
     buildExpression();
@@ -137,9 +138,10 @@ AqlValue Expression::execute (triagens::arango::AqlTransaction* trx,
     case V8: {
       TRI_ASSERT(_func != nullptr);
       try {
+        ISOLATE;
         // Dump the expression in question  
         // std::cout << triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, _node->toJson(TRI_UNKNOWN_MEM_ZONE, true)).toString()<< "\n";
-        return _func->execute(_ast->query(), trx, docColls, argv, startPos, vars, regs);
+        return _func->execute(isolate, _ast->query(), trx, docColls, argv, startPos, vars, regs);
       }
       catch (triagens::arango::Exception& ex) {
         if (_ast->query()->verboseErrors()) {
@@ -155,8 +157,7 @@ AqlValue Expression::execute (triagens::arango::AqlTransaction* trx,
     }
 
     case SIMPLE: {
-      TRI_document_collection_t const* myCollection = nullptr;
-      return executeSimpleExpression(_node, &myCollection, trx, docColls, argv, startPos, vars, regs);
+      return executeSimpleExpression(_node, collection, trx, docColls, argv, startPos, vars, regs);
     }
  
     case UNPROCESSED: {
@@ -317,6 +318,7 @@ void Expression::buildExpression () {
   }
 
   if (_type == JSON) {
+    TRI_ASSERT(_data == nullptr);
     // generate a constant value
     _data = _node->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
 

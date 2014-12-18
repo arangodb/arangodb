@@ -16,17 +16,24 @@ runJSUnityTests = function (tests) {
   var result = true;
 
   _.each(tests, function (file) {
+    // find out whether we're on server or client...
+    var runenvironment = "arangod";
+    if (typeof(require('internal').arango) === 'object') {
+      runenvironment = "arangosh";
+    }
+
     if (result) {
-      print("\nRunning JSUnity test from file '" + file + "'");
+      print("\n" + runenvironment + ": Running JSUnity test from file '" + file + "'");
     } else {
-      print("\nSkipping JSUnity test from file '" + file + "' due to previous errors");
+      print("\n" + runenvironment + ": Skipping JSUnity test from file '" + file + "' due to previous errors");
     }
 
     try {
       result = result && runTest(file).status;
     } catch (err) {
-      print("cannot run test file '" + file + "': " + err);
+      print(runenvironment + ": cannot run test file '" + file + "': " + err);
       print(err.stack);
+      print(err.message);
       result = false;
     }
 

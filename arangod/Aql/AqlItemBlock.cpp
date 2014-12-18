@@ -275,7 +275,7 @@ AqlItemBlock* AqlItemBlock::slice (size_t from,
   TRI_ASSERT(from < to && to <= _nrItems);
 
   std::unordered_map<AqlValue, AqlValue> cache;
-  cache.reserve((to-from)*_nrRegs / 4 + 1);
+  cache.reserve((to - from) * _nrRegs / 4 + 1);
 
   AqlItemBlock* res = nullptr;
   try {

@@ -2,7 +2,7 @@ language: cpp
 compiler: g++
 
 before_install:
-# g++4.8.1
+# g++4.9.2
 - if [ "$CXX" == "g++" ]; then sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test; fi
 
 # clang 3.4
@@ -11,9 +11,13 @@ before_install:
 - sudo apt-get update -qq
 
 install:
-# g++4.8.1
-- if [ "$CXX" = "g++" ]; then sudo apt-get install -qq g++-4.8; fi
-- if [ "$CXX" = "g++" ]; then export CXX="g++-4.8"; fi
+# g++4.9.2
+- if [ "$CXX" = "g++" ]; then sudo apt-get install -qq g++-4.9 gcc-4.9; fi
+- if [ "$CXX" = "g++" ]; then sudo /bin/bash -c 'rm /usr/bin/gcc; ln -s /usr/bin/gcc-4.9 /usr/bin/gcc' ; fi
+- if [ "$CXX" = "g++" ]; then sudo /bin/bash -c 'rm /usr/bin/g++; ln -s /usr/bin/g++-4.9 /usr/bin/g++' ; fi
+- if [ "$CXX" = "g++" ]; then export CC="gcc-4.9"; fi
+- if [ "$CXX" = "g++" ]; then export CXX="g++-4.9"; fi
+- ls -l /usr/bin/
 
 # clang 3.4
 - if [ "$CXX" == "clang++" ]; then sudo apt-get install --allow-unauthenticated -qq clang-3.4; fi
@@ -23,7 +27,10 @@ install:
 - sudo apt-get -y install gdb
 
 before_script: "bash -c Installation/travisCI/before_script.sh"
-script: "bash -c Installation/travisCI/script.sh"
+script:
+ - "bash -c Installation/travisCI/build.sh"
+ - "bash -c Installation/travisCI/jslint.sh"
+ - "bash -c Installation/travisCI/tests.sh"
 after_failure: "bash -c Installation/travisCI/after_failure.sh"
 branches:
   only:

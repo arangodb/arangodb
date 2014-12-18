@@ -4,18 +4,21 @@ dnl ----------------------------------------------------------------------------
 dnl --SECTION--                                                               V8
 dnl ----------------------------------------------------------------------------
 
-icu_build_dir="${srcdir}/3rdParty/icu/BUILD"
-icu_lib_dir="${icu_build_dir}/libs"
+icu_build_dir="${V8_DIR}/third_party/icu"
 
-dnl --- do we need "-ffunction-sections -fdata-sections" in ICU_CPPFLAGS?
-dnl --- ICU_LIBS was: " -lpthread -ldl -lm ${icu_lib_dir}/libicui18n.a ${icu_lib_dir}/libicuuc.a ${icu_lib_dir}/libicudata.a ${icu_lib_dir}/libicuio.a ${icu_lib_dir}/libicule.a ${icu_lib_dir}/libiculx.a -lpthread -ldl -lm "
+if test "x$tr_DARWIN" = xyes; then
+  icu_lib_dir="${V8_DIR}/out/$V8_TARGET"
+else
+  icu_lib_dir="${V8_DIR}/out/$V8_TARGET/obj.target/third_party/icu"
+fi
 
-ICU_CPPFLAGS="-D_REENTRANT -I${icu_build_dir}/include"
+ICU_CPPFLAGS="-D_REENTRANT -I${V8_DIR}/third_party/icu/source/common -I${V8_DIR}/third_party/icu/source/i18n/ -I${V8_DIR}/third_party/icu/source/io/"
 ICU_LDFLAGS=""
-ICU_LIBS=" -ldl -lm  ${icu_lib_dir}/libicui18n.a ${icu_lib_dir}/libicuuc.a ${icu_lib_dir}/libicudata.a -ldl -lm  "
-ICU_BUILT="${icu_lib_dir}/libicui18n.a ${icu_lib_dir}/libicuuc.a ${icu_lib_dir}/libicudata.a"
+ICU_LIBS=" -ldl -lm ${icu_lib_dir}/libicui18n.a \
+	${icu_lib_dir}/libicuuc.a \
+	${icu_lib_dir}/libicudata.a -ldl -lm  "
 
-TRI_ICU_VERSION="52.1"
+TRI_ICU_VERSION="52.2"
 
 dnl ----------------------------------------------------------------------------
 dnl add substitutions
@@ -24,7 +27,6 @@ dnl ----------------------------------------------------------------------------
 AC_SUBST(ICU_CPPFLAGS)
 AC_SUBST(ICU_LDFLAGS)
 AC_SUBST(ICU_LIBS)
-AC_SUBST(ICU_BUILT)
 
 ICU_CPPFLAGS="${ICU_CPPFLAGS} -DTRI_ICU_VERSION='\"${TRI_ICU_VERSION}\"'"
 

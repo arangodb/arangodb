@@ -35,7 +35,6 @@
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::aql;
-using Json = triagens::basics::Json;
 
 const static bool Optional = true;
 
@@ -105,8 +104,7 @@ void ExecutionNode::validateType (int type) {
 void ExecutionNode::getSortElements(SortElementVector& elements,
                                     ExecutionPlan* plan,
                                     triagens::basics::Json const& oneNode,
-                                    char const* which)
-{
+                                    char const* which) {
   triagens::basics::Json jsonElements = oneNode.get("elements");
   if (! jsonElements.isList()){
     std::string error = std::string("unexpected value for ") +
@@ -153,30 +151,48 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
       return new SortNode(plan, oneNode, elements, stable);
     }
     case AGGREGATE: {
-      Variable *outVariable = varFromJson(plan->getAst(), oneNode, "outVariable", Optional);
+      Variable* expressionVariable = varFromJson(plan->getAst(), oneNode, "expressionVariable", Optional);
+      Variable* outVariable = varFromJson(plan->getAst(), oneNode, "outVariable", Optional);
 
       triagens::basics::Json jsonAggregates = oneNode.get("aggregates");
-      if (! jsonAggregates.isList()){
+      if (! jsonAggregates.isList()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "missing node type in valueTypeNames"); 
       }
 
-      size_t len = jsonAggregates.size();
+      std::vector<Variable const*> keepVariables;
+      triagens::basics::Json jsonKeepVariables = oneNode.get("keepVariables");
+      if (jsonKeepVariables.isList()) {
+        size_t const n = jsonKeepVariables.size();
+        for (size_t i = 0; i < n; i++) {
+          triagens::basics::Json keepVariable = jsonKeepVariables.at(static_cast<int>(i));
+          Variable const* variable = varFromJson(plan->getAst(), keepVariable, "variable");
+          keepVariables.push_back(variable);
+        }
+      }
+
+      size_t const len = jsonAggregates.size();
       std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables;
 
       aggregateVariables.reserve(len);
       for (size_t i = 0; i < len; i++) {
         triagens::basics::Json oneJsonAggregate = jsonAggregates.at(static_cast<int>(i));
-        Variable* outVariable = varFromJson(plan->getAst(), oneJsonAggregate, "outVariable");
-        Variable* inVariable =  varFromJson(plan->getAst(), oneJsonAggregate, "inVariable");
+        Variable* outVar = varFromJson(plan->getAst(), oneJsonAggregate, "outVariable");
+        Variable* inVar =  varFromJson(plan->getAst(), oneJsonAggregate, "inVariable");
 
-        aggregateVariables.push_back(std::make_pair(outVariable, inVariable));
+        aggregateVariables.emplace_back(std::make_pair(outVar, inVar));
       }
+
+      triagens::basics::Json jsonCount = oneNode.get("count");
+      bool countOnly = JsonHelper::checkAndGetBooleanValue(oneNode.json(), "count");
 
       return new AggregateNode(plan,
                                oneNode,
+                               expressionVariable,
                                outVariable,
+                               keepVariables,
                                plan->getAst()->variables()->variables(false),
-                               aggregateVariables);
+                               aggregateVariables,  
+                               countOnly);
     }
     case INSERT:
       return new InsertNode(plan, oneNode);
@@ -395,7 +411,6 @@ void ExecutionNode::CloneHelper (ExecutionNode* other,
   if (withDependencies) {
     cloneDependencies(plan, other, withProperties);
   }
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1044,7 +1059,6 @@ void EnumerateCollectionNode::toJsonHelper (triagens::basics::Json& nodes,
   // And add it:
   nodes(json);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
@@ -1968,13 +1982,20 @@ double SortNode::estimateCost (size_t& nrItems) const {
 
 AggregateNode::AggregateNode (ExecutionPlan* plan,
                               triagens::basics::Json const& base,
+                              Variable const* expressionVariable,
                               Variable const* outVariable,
+                              std::vector<Variable const*> const& keepVariables,
                               std::unordered_map<VariableId, std::string const> const& variableMap,
-                              std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables)
+                              std::vector<std::pair<Variable const*, Variable const*>> const& aggregateVariables,
+                              bool countOnly)
   : ExecutionNode(plan, base),
     _aggregateVariables(aggregateVariables), 
+    _expressionVariable(expressionVariable),
     _outVariable(outVariable),
-    _variableMap(variableMap) {
+    _keepVariables(keepVariables),
+    _variableMap(variableMap),
+    _countOnly(countOnly) {
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1998,10 +2019,27 @@ void AggregateNode::toJsonHelper (triagens::basics::Json& nodes,
   }
   json("aggregates", values);
 
+  // expression variable might be empty
+  if (_expressionVariable != nullptr) {
+    json("expressionVariable", _expressionVariable->toJson());
+  }
+
   // output variable might be empty
   if (_outVariable != nullptr) {
     json("outVariable", _outVariable->toJson());
   }
+
+  if (! _keepVariables.empty()) {
+    triagens::basics::Json values(triagens::basics::Json::List, _keepVariables.size());
+    for (auto it = _keepVariables.begin(); it != _keepVariables.end(); ++it) {
+      triagens::basics::Json variable(triagens::basics::Json::Array);
+      variable("variable", (*it)->toJson());
+      values(variable);
+    }
+    json("keepVariables", values);
+  }
+
+  json("count", triagens::basics::Json(_countOnly));
 
   // And add it:
   nodes(json);
@@ -2015,9 +2053,14 @@ ExecutionNode* AggregateNode::clone (ExecutionPlan* plan,
                                      bool withDependencies,
                                      bool withProperties) const {
   auto outVariable = _outVariable;
+  auto expressionVariable = _expressionVariable;
   auto aggregateVariables = _aggregateVariables;
 
   if (withProperties) {
+    if (expressionVariable != nullptr) {
+      expressionVariable = plan->getAst()->variables()->createVariable(expressionVariable);
+    }
+
     if (outVariable != nullptr) {
       outVariable = plan->getAst()->variables()->createVariable(outVariable);
     }
@@ -2025,12 +2068,19 @@ ExecutionNode* AggregateNode::clone (ExecutionPlan* plan,
     for (auto oneAggregate: _aggregateVariables) {
       auto in  = plan->getAst()->variables()->createVariable(oneAggregate.first);
       auto out = plan->getAst()->variables()->createVariable(oneAggregate.second);
-      aggregateVariables.push_back(std::make_pair(in, out));
+      aggregateVariables.emplace_back(std::make_pair(in, out));
     }
 
   }
 
-  auto c = new AggregateNode(plan, _id, aggregateVariables, outVariable, _variableMap);
+  auto c = new AggregateNode(plan, 
+                             _id, 
+                             aggregateVariables, 
+                             expressionVariable, 
+                             outVariable, 
+                             _keepVariables, 
+                             _variableMap, 
+                             _countOnly);
 
   CloneHelper(c, plan, withDependencies, withProperties);
 
@@ -2043,22 +2093,35 @@ ExecutionNode* AggregateNode::clone (ExecutionPlan* plan,
 ////////////////////////////////////////////////////////////////////////////////
 
 struct UserVarFinder : public WalkerWorker<ExecutionNode> {
-  UserVarFinder () {};
+  UserVarFinder (int mindepth) : mindepth(mindepth), depth(-1) {};
   ~UserVarFinder () {};
   std::vector<Variable const*> userVars;
+  int mindepth;   // minimal depth to consider
+  int depth;
 
   bool enterSubquery (ExecutionNode*, ExecutionNode*) override final {
     return false;
   }
 
-  bool before (ExecutionNode* en) override final {
-    auto vars = en->getVariablesSetHere();
-    for (auto v : vars) {
-      if (v->isUserDefined()) {
-        userVars.push_back(v);
+  void after (ExecutionNode* en) override final {
+    if (en->getType() == ExecutionNode::SINGLETON) {
+      depth = 0;
+    }
+    else if (en->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
+             en->getType() == ExecutionNode::INDEX_RANGE ||
+             en->getType() == ExecutionNode::ENUMERATE_LIST ||
+             en->getType() == ExecutionNode::AGGREGATE) {
+      depth += 1;
+    }
+    // Now depth is set correct for this node.
+    if (depth >= mindepth) {
+      auto vars = en->getVariablesSetHere();
+      for (auto v : vars) {
+        if (v->isUserDefined()) {
+          userVars.push_back(v);
+        }
       }
     }
-    return false;
   }
 };
 
@@ -2067,17 +2130,39 @@ std::vector<Variable const*> AggregateNode::getVariablesUsedHere () const {
   for (auto p : _aggregateVariables) {
     v.insert(p.second);
   }
-  if (_outVariable != nullptr) {
-    // Here we have to find all user defined variables in this query
-    // amonst our dependencies:
-    UserVarFinder finder;
-    auto myselfasnonconst = const_cast<AggregateNode*>(this);
-    myselfasnonconst->walk(&finder);
-    for (auto x : finder.userVars) {
-      v.insert(x);
+
+  if (_expressionVariable != nullptr) {
+    v.insert(_expressionVariable);
+  }
+
+  if (_outVariable != nullptr && ! _countOnly) {
+    if (_keepVariables.empty()) {
+      // Here we have to find all user defined variables in this query
+      // amongst our dependencies:
+      UserVarFinder finder(1);
+      auto myselfAsNonConst = const_cast<AggregateNode*>(this);
+      myselfAsNonConst->walk(&finder);
+      if (finder.depth == 1) {
+        // we are toplevel, let's run again with mindepth = 0
+        finder.userVars.clear();
+        finder.mindepth = 0;
+        finder.depth = -1;
+        finder.reset();
+        myselfAsNonConst->walk(&finder);
+      }
+      for (auto x : finder.userVars) {
+        v.insert(x);
+      }
+    }
+    else {
+      for (auto x : _keepVariables) {
+        v.insert(x);
+      }
     }
   }
+
   std::vector<Variable const*> vv;
+  vv.reserve(v.size());
   for (auto x : v) {
     vv.push_back(x);
   }
@@ -2090,6 +2175,12 @@ std::vector<Variable const*> AggregateNode::getVariablesUsedHere () const {
         
 double AggregateNode::estimateCost (size_t& nrItems) const {
   double depCost = _dependencies.at(0)->getCost(nrItems);
+
+  if (_countOnly && _aggregateVariables.empty()) {
+    // we are known to only produce a single output row
+    nrItems = 1;
+  }
+
   // As in the FilterNode case, we are pessimistic here by not reducing the
   // nrItems, since this is the worst case. We have to look at all incoming
   // items, and in particular in the COLLECT ... INTO ... case, we have

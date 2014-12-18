@@ -339,8 +339,13 @@ int64_t AqlValue::toInt64 () const {
   switch (_type) {
     case JSON: 
       return TRI_ToInt64Json(_json->json());
-    case RANGE: 
-      return _range->at(0);
+    case RANGE: {
+      size_t rangeSize = _range->size();
+      if (rangeSize == 1) {  
+        return _range->at(0);
+      }
+      return 0;
+    }
     case DOCVEC: 
     case SHAPED: 
     case EMPTY: 
@@ -401,18 +406,19 @@ char const* AqlValue::toChar () const {
 /// @brief construct a V8 value as input for the expression execution in V8
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> AqlValue::toV8 (triagens::arango::AqlTransaction* trx, 
+v8::Handle<v8::Value> AqlValue::toV8 (v8::Isolate* isolate,
+                                      triagens::arango::AqlTransaction* trx, 
                                       TRI_document_collection_t const* document) const {
   switch (_type) {
     case JSON: {
       TRI_ASSERT(_json != nullptr);
-      return TRI_ObjectJson(_json->json());
+      return TRI_ObjectJson(isolate, _json->json());
     }
 
     case SHAPED: {
       TRI_ASSERT(document != nullptr);
       TRI_ASSERT(_marker != nullptr);
-      return TRI_WrapShapedJson<triagens::arango::AqlTransaction>(*trx, document->_info._cid, _marker);
+      return TRI_WrapShapedJson<triagens::arango::AqlTransaction>(isolate, *trx, document->_info._cid, _marker);
     }
 
     case DOCVEC: {
@@ -425,7 +431,7 @@ v8::Handle<v8::Value> AqlValue::toV8 (triagens::arango::AqlTransaction* trx,
       }
 
       // allocate the result list
-      v8::Handle<v8::Array> result = v8::Array::New(static_cast<int>(totalSize));
+      v8::Handle<v8::Array> result = v8::Array::New(isolate, static_cast<int>(totalSize));
       uint32_t j = 0; // output row count
 
       for (auto it = _vector->begin(); it != _vector->end(); ++it) {
@@ -433,7 +439,7 @@ v8::Handle<v8::Value> AqlValue::toV8 (triagens::arango::AqlTransaction* trx,
         size_t const n = current->size();
         auto vecCollection = current->getDocumentCollection(0);
         for (size_t i = 0; i < n; ++i) {
-          result->Set(j++, current->getValue(i, 0).toV8(trx, vecCollection));
+          result->Set(j++, current->getValue(i, 0).toV8(isolate, trx, vecCollection));
         }
       }
       return result;
@@ -444,18 +450,18 @@ v8::Handle<v8::Value> AqlValue::toV8 (triagens::arango::AqlTransaction* trx,
 
       // allocate the buffer for the result
       size_t const n = _range->size();
-      v8::Handle<v8::Array> result = v8::Array::New(static_cast<int>(n));
+      v8::Handle<v8::Array> result = v8::Array::New(isolate, static_cast<int>(n));
       
       for (uint32_t i = 0; i < n; ++i) {
         // is it safe to use a double here (precision loss)?
-        result->Set(i, v8::Number::New(static_cast<double>(_range->at(static_cast<size_t>(i)))));
+        result->Set(i, v8::Number::New(isolate, static_cast<double>(_range->at(static_cast<size_t>(i)))));
       }
 
       return result;
     }
 
     case EMPTY: {
-      return v8::Undefined();
+      return v8::Undefined(isolate);
     }
   }
       
@@ -724,6 +730,7 @@ Json AqlValue::extractListMember (triagens::arango::AqlTransaction* trx,
           auto vecCollection = (*it)->getDocumentCollection(0);
           return (*it)->getValue(p - totalSize, 0).toJson(trx, vecCollection);
         }
+        totalSize += (*it)->size();
       }
       break; // fall-through to returning null
     }
@@ -755,18 +762,51 @@ AqlValue AqlValue::CreateFromBlocks (triagens::arango::AqlTransaction* trx,
   for (auto it = src.begin(); it != src.end(); ++it) {
     auto current = (*it);
     RegisterId const n = current->getNrRegs();
+    
+    std::vector<std::pair<RegisterId, TRI_document_collection_t const*>> registers;
+    for (RegisterId j = 0; j < n; ++j) {
+      // temporaries don't have a name and won't be included
+      if (variableNames[j][0] != '\0') {
+        registers.emplace_back(std::make_pair(j, current->getDocumentCollection(j)));
+      }
+    }
 
     for (size_t i = 0; i < current->size(); ++i) {
-      Json values(Json::Array);
+      Json values(Json::Array, registers.size());
 
-      for (RegisterId j = 0; j < n; ++j) {
-        if (variableNames[j][0] != '\0') {
-          // temporaries don't have a name and won't be included
-          values.set(variableNames[j].c_str(), current->getValue(i, j).toJson(trx, current->getDocumentCollection(j)));
-        }
+      // only enumerate the registers that are left
+      for (auto const& reg : registers) {
+        values.set(variableNames[reg.first], current->getValueReference(i, reg.first).toJson(trx, reg.second));
       }
 
       json->add(values);
+    }
+  }
+
+  return AqlValue(json.release());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AqlValue from a vector of AqlItemBlock*s
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue AqlValue::CreateFromBlocks (triagens::arango::AqlTransaction* trx,
+                                     std::vector<AqlItemBlock*> const& src,
+                                     triagens::aql::RegisterId expressionRegister) {
+  size_t totalSize = 0;
+
+  for (auto it = src.begin(); it != src.end(); ++it) {
+    totalSize += (*it)->size();
+  }
+
+  std::unique_ptr<Json> json(new Json(Json::List, totalSize));
+
+  for (auto it = src.begin(); it != src.end(); ++it) {
+    auto current = (*it);
+    auto document = current->getDocumentCollection(expressionRegister); 
+
+    for (size_t i = 0; i < current->size(); ++i) {
+      json->add(current->getValueReference(i, expressionRegister).toJson(trx, document));
     }
   }
 

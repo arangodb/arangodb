@@ -1,0 +1,184 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/en_GB.xml
+// *
+// ***************************************************************************
+en_GB{
+    %%Parent{"en_001"}
+    Currencies{
+        AUD{
+            "AU$",
+            "Australian Dollar",
+        }
+        BRL{
+            "R$",
+            "Brazilian Real",
+        }
+        BYR{
+            "BYR",
+            "Belarusian Rouble",
+        }
+        CAD{
+            "CA$",
+            "Canadian Dollar",
+        }
+        CNY{
+            "CN¥",
+            "Chinese Yuan",
+        }
+        EUR{
+            "€",
+            "Euro",
+        }
+        GBP{
+            "£",
+            "British Pound",
+        }
+        HKD{
+            "HK$",
+            "Hong Kong Dollar",
+        }
+        ILS{
+            "₪",
+            "Israeli New Shekel",
+        }
+        INR{
+            "₹",
+            "Indian Rupee",
+        }
+        KRW{
+            "₩",
+            "South Korean Won",
+        }
+        LVR{
+            "LVR",
+            "Latvian Rouble",
+        }
+        MGA{
+            "MGA",
+            "Malagasy Ariary",
+        }
+        MWK{
+            "MWK",
+            "Malawian Kwacha",
+        }
+        MXN{
+            "MX$",
+            "Mexican Peso",
+        }
+        NZD{
+            "NZ$",
+            "New Zealand Dollar",
+        }
+        RUB{
+            "RUB",
+            "Russian Rouble",
+        }
+        SCR{
+            "SCR",
+            "Seychelles Rupee",
+        }
+        THB{
+            "฿",
+            "Thai Baht",
+        }
+        TJR{
+            "TJR",
+            "Tajikistani Rouble",
+        }
+        TWD{
+            "NT$",
+            "New Taiwan Dollar",
+        }
+        USD{
+            "$",
+            "US Dollar",
+        }
+        UZS{
+            "UZS",
+            "Uzbekistani Som",
+        }
+        VND{
+            "₫",
+            "Vietnamese Dong",
+        }
+        XAF{
+            "FCFA",
+            "Central African CFA Franc",
+        }
+        XCD{
+            "EC$",
+            "East Caribbean Dollar",
+        }
+        XOF{
+            "CFA",
+            "West African CFA Franc",
+        }
+        XPF{
+            "CFPF",
+            "CFP Franc",
+        }
+        XXX{
+            "XXX",
+            "Unknown Currency",
+        }
+    }
+    CurrencyPlurals{
+        BYR{
+            one{"Belarusian rouble"}
+            other{"Belarusian roubles"}
+        }
+        GBP{
+            one{"British pound"}
+            other{"British pounds"}
+        }
+        ILS{
+            one{"Israeli new shekel"}
+            other{"Israeli new shekels"}
+        }
+        LVR{
+            one{"Latvian rouble"}
+            other{"Latvian roubles"}
+        }
+        MGA{
+            one{"Malagasy ariary"}
+            other{"Malagasy ariarys"}
+        }
+        MWK{
+            one{"Malawian kwacha"}
+            other{"Malawian kwachas"}
+        }
+        RUB{
+            one{"Russian rouble"}
+            other{"Russian roubles"}
+        }
+        SCR{
+            one{"Seychelles rupee"}
+            other{"Seychelles rupees"}
+        }
+        TJR{
+            one{"Tajikistani rouble"}
+            other{"Tajikistani roubles"}
+        }
+        UZS{
+            one{"Uzbekistani som"}
+            other{"Uzbekistani som"}
+        }
+        XAF{
+            one{"Central African CFA franc"}
+            other{"Central African CFA francs"}
+        }
+        XOF{
+            one{"West African CFA franc"}
+            other{"West African CFA francs"}
+        }
+        XXX{
+            one{"(unknown currency)"}
+            other{"(unknown currency)"}
+        }
+    }
+    Version{"2.0.92.80"}
+}

@@ -7,6 +7,122 @@ v2.4.0-alpha2 (2014-11-28)
 v2.4.0-alpha1 (2014-11-25)
 --------------------------
 
+* AQL: range optimizations for IN and OR
+
+* fixed missing makeDirectory when fetching a Foxx application from a zip file
+
+* allow passing subqueries as AQL function parameters without using
+  duplicate brackets (e.g. `FUNC(query)` instead of `FUNC((query))`
+
+* added optional `COUNT` clause to AQL `COLLECT`
+
+  This allows more efficient group count calculation queries, e.g.
+
+      FOR doc IN collection
+        COLLECT age = doc.age WITH COUNT INTO length 
+        RETURN { age: age, count: length }
+
+* fixed issue #1134: Change the default endpoint to localhost
+
+* deprecated `Repository#modelPrototype`. Use `Repository#model` instead.
+
+* IMPORTANT CHANGE: by default, system collections are included in replication and all
+  replication API return values. This will lead to user accounts and credentials
+  data being replicated from master to slave servers. This may overwrite 
+  slave-specific database users.
+
+  If this is undesired, the `_users` collection can be excluded from replication
+  easily by setting the `includeSystem` attribute to `false` in the following commands:
+
+  * replication.sync({ includeSystem: false });
+  * replication.applier.properties({ includeSystem: false });
+
+  This will exclude all system collections (including `_aqlfunctions`, `_graphs` etc.)
+  from the initial synchronisation and the continuous replication.
+
+  If this is also undesired, it is also possible to specify a list of collections to
+  exclude from the initial synchronisation and the continuous replication using the
+  `restrictCollections` attribute, e.g.:
+  
+      replication.applier.properties({ 
+        includeSystem: true,
+        restrictType: "exclude",
+        restrictCollections: [ "_users", "_graphs", "foo" ] 
+      });
+
+  The HTTP API methods for fetching the replication inventory and for dumping collections
+  also support the `includeSystem` control flag via a URL parameter.
+
+* renamed option `mergeArrays` to `mergeObjects` for AQL data-modification query options
+  and HTTP document modification API
+
+
+v2.3.3 (XXXX-XX-XX)
+-------------------
+
+* fixed error handling in instanciation of distributed AQL queries, this 
+  also fixes a bug in cluster startup with many servers
+
+* issue #1185: parse non-fractional JSON numbers with exponent (e.g. `4e-261`)
+
+* issue #1159: allow --server.request-timeout and --server.connect-timeout of 0
+  
+
+v2.3.2 (2014-12-09)
+-------------------
+
+* fixed issue #1177: Fix bug in the user app's storage
+
+* fixed issue #1173: AQL Editor "Save current query" resets user password
+
+* fixed missing makeDirectory when fetching a Foxx application from a zip file
+
+* put in warning about default changed: fixed issue #1134: Change the default endpoint to localhost
+
+* fixed issue #1163: invalid fullCount value returned from AQL
+
+* fixed range operator precedence 
+
+* limit default maximum number of plans created by AQL optimizer to 256 (from 1024)
+
+* make AQL optimizer not generate an extra plan if an index can be used, but modify
+  existing plans in place
+
+* fixed AQL cursor ttl (time-to-live) issue
+
+  Any user-specified cursor ttl value was not honored since 2.3.0.
+
+* fixed segfault in AQL query hash index setup with unknown shapes
+
+* fixed memleaks
+
+* added AQL optimizer rule for removing `INTO` from a `COLLECT` statement if not needed
+
+* fixed issue #1131
+
+  This change provides the `KEEP` clause for `COLLECT ... INTO`. The `KEEP` clause
+  allows controlling which variables will be kept in the variable created by `INTO`.
+  
+* fixed issue #1147, must protect dispatcher ID for etcd
+
+v2.3.1 (2014-11-28)
+-------------------
+
+* recreate password if missing during upgrade
+
+* fixed issue #1126
+
+* fixed non-working subquery index optimizations
+
+* do not restrict summary of Foxx applications to 60 characters
+
+* fixed display of "required" path parameters in Foxx application documentation
+
+* added more optimizations of constants values in AQL FILTER conditions
+
+* fixed invalid or-to-in optimization for FILTERs containing comparisons
+  with boolean values
+
 * fixed replication of `_graphs` collection
 
 * added AQL list functions `PUSH`, `POP`, `UNSHIFT`, `SHIFT`, `REMOVE_VALUES`,
@@ -15,6 +131,21 @@ v2.4.0-alpha1 (2014-11-25)
 * added AQL functions `CALL` and `APPLY` to dynamically call other functions
 
 * fixed AQL optimizer cost estimation for LIMIT node
+
+* prevent Foxx queues from permanently writing to the journal even when
+  server is idle
+
+* fixed AQL COLLECT statement with INTO clause, which copied more variables
+  than v2.2 and thus lead to too much memory consumption. 
+  This deals with #1107.
+
+* fixed AQL COLLECT statement, this concerned every COLLECT statement, 
+  only the first group had access to the values of the variables before 
+  the COLLECT statement. This deals with #1127.
+
+* fixed some AQL internals, where sometimes too many items were
+  fetched from upstream in the presence of a LIMIT clause. This should
+  generally improve performance.
 
 
 v2.3.0 (2014-11-18)

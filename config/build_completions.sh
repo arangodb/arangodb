@@ -23,7 +23,7 @@ _PROGNAME()
     fi
 }
 
-complete -F _PROGNAME PROGNAME
+complete -o default -F _PROGNAME PROGNAME
 
 EOF
 

@@ -1,6 +1,6 @@
 !CHAPTER The AQL query optimizer
 
-AQL queres are sent through an optimizer before execution. The task of the optimizer is
+AQL queries are sent through an optimizer before execution. The task of the optimizer is
 to create an initial execution plan for the query, look for optimization opportunities and
 apply them. As a result, the optimizer might produce multiple execution plans for a
 single query. It will then calculate the costs for all plans and pick the plan with the
@@ -32,7 +32,10 @@ arangosh> stmt.explain();
   },
   "warnings" : [
     ...
-  ]
+  ],
+  "stats" : {
+    ...
+  }
 }
 ```
 
@@ -204,7 +207,7 @@ the explain on a cluster coordinator) set the option `rules` to `-all`:
 This will return an unoptimized plan in the `plan`:
 
 ```
-arangosh> stmt.explain({ optimizer: { rules: [ '-all'] } });
+arangosh> stmt.explain({ optimizer: { rules: [ "-all" ] } });
 { 
   "plan" : {
     ...
@@ -213,8 +216,56 @@ arangosh> stmt.explain({ optimizer: { rules: [ '-all'] } });
 }
 ```
 Note that some optimisations are already done at parse time (i.e. evaluate simple constant
-calculation as 1 + 1)
+calculation as `1 + 1`)
 
+
+!SUBSECTION Turning specific optimizer rules off
+
+Optimizer rules can also be turned on or off individually, using the `rules` attribute.
+This can be used to enable or disable one or multiple rules. Rules that shall be enabled
+need to be prefixed with a `+`, rules to be disabled should be prefixed with a `-`. The
+pseudo-rule `all` matches all rules.
+
+Rules specified in `rules` are evaluated from left to right, so the following works to
+turn on just the one specific rule:
+
+```
+arangosh> stmt.explain({ optimizer: { rules: [ "-all", "+use-index-range" ] } });
+{ 
+  ...
+}
+```
+
+By default, all rules are turned on. To turn off just a few specific rules, use something
+like this:
+
+```
+arangosh> stmt.explain({ optimizer: { rules: [ "-use-index-range", "-use-index-for-sort" ] } });
+{ 
+  ...
+}
+```
+
+The maximum number of plans created by the optimizer can also be limited using the 
+`maxNumberOfPlans` attribute:
+
+```
+arangosh> stmt.explain({ maxNumberOfPlans: 1 });
+{ 
+  ...
+}
+```
+
+!SUBSECTION Optimizer statistics
+
+The optimizer will return statistics as a part of an `explain` result.
+
+The following attributes will be returned in the `stats` attribute of an `explain` result:
+
+- `plansCreated`: total number of plans created by the optimizer
+- `rulesExecuted`: number of rules executed (note: an executed rule does not 
+  indicate a plan was actually modified by a rule)
+- `rulesSkipped`: number of rules skipped by the optimizer
 
 
 !SUBSECTION Warnings
@@ -312,12 +363,20 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
   optimizations).
 * `remove-redundant-sorts`: will appear if multiple *SORT* statements can be merged
   into fewer sorts.
+* `remove-collect-into`: will appear if an *INTO* clause was removed from a *COLLECT*
+  statement because the result of *INTO* is not used.
 * `interchange-adjacent-enumerations`: will appear if a query contains multiple 
   *FOR* statements whose order were permuted. Permutation of *FOR* statements is
   performed because it may enable further optimizations by other rules.
+* `replace-or-with-in`: will appear if multiple *OR*-combined equality conditions 
+  on the same variable or attribute were replaced with an *IN* condition.
+* `remove-redundant-or`: will appear if multiple *OR* conditions for the same variable
+  or attribute were combined into a single condition.
 * `use-index-range`: will appear if an index can be used to iterate over a collection.
   As a consequence, an *EnumerateCollectionNode* was replaced with an 
   *IndexRangeNode* in the plan.
+* `remove-filters-covered-by-index`: will appear if a *FilterNode* was removed or replaced
+  because the filter condition is already covered by an *IndexRangeNode*.
 * `use-index-for-sort`: will appear if an index can be used to avoid a *SORT* 
   operation. If the rule was applied, a *SortNode* has been removed from the
   plan.

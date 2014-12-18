@@ -137,7 +137,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "MINUS",                       Function("MINUS",                       "AQL_MINUS", "l,l|+", true, false, true) },
   { "INTERSECTION",                Function("INTERSECTION",                "AQL_INTERSECTION", "l,l|+", true, false, true) },
   { "FLATTEN",                     Function("FLATTEN",                     "AQL_FLATTEN", "l|n", true, false, true) },
-  { "LENGTH",                      Function("LENGTH",                      "AQL_LENGTH", "las", true, false, true) },
+  { "LENGTH",                      Function("LENGTH",                      "AQL_LENGTH", "las", true, false, true, &Functions::Length) },
   { "MIN",                         Function("MIN",                         "AQL_MIN", "l", true, false, true) },
   { "MAX",                         Function("MAX",                         "AQL_MAX", "l", true, false, true) },
   { "SUM",                         Function("SUM",                         "AQL_SUM", "l", true, false, true) },
@@ -159,7 +159,6 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "APPLY",                       Function("APPLY",                       "AQL_APPLY", "s|l", false, true, false) },
   { "PUSH",                        Function("PUSH",                        "AQL_PUSH", "l,.|b", true, false, false) },
   { "APPEND",                      Function("APPEND",                      "AQL_APPEND", "l,lz|b", true, false, false) },
-  { "POP",                         Function("POP",                         "AQL_POP", "l", true, false, false) },
   { "POP",                         Function("POP",                         "AQL_POP", "l", true, false, false) },
   { "SHIFT",                       Function("SHIFT",                       "AQL_SHIFT", "l", true, false, false) },
   { "UNSHIFT",                     Function("UNSHIFT",                     "AQL_UNSHIFT", "l,.|b", true, false, false) },
@@ -277,17 +276,17 @@ V8Expression* Executor::generateExpression (AstNode const* node) {
   generateCodeExpression(node);
   
   // std::cout << "Executor::generateExpression: " << _buffer->c_str() << "\n";
-  v8::HandleScope scope;
-
+  ISOLATE;
   v8::TryCatch tryCatch;
+  v8::HandleScope scope(isolate);
+
   // compile the expression
   v8::Handle<v8::Value> func(compileExpression());
   
   // exit early if an error occurred
   HandleV8Error(tryCatch, func);
 
-  v8::Isolate* isolate = v8::Isolate::GetCurrent(); 
-  return new V8Expression(isolate, v8::Persistent<v8::Function>::New(isolate, v8::Handle<v8::Function>::Cast(func)));
+  return new V8Expression(isolate, v8::Handle<v8::Function>::Cast(func));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -297,11 +296,11 @@ V8Expression* Executor::generateExpression (AstNode const* node) {
 TRI_json_t* Executor::executeExpression (Query* query,
                                          AstNode const* node) {
   generateCodeExpression(node);
-
+  ISOLATE;
   // std::cout << "Executor::ExecuteExpression: " << _buffer->c_str() << "\n";
-  v8::HandleScope scope;
-
   v8::TryCatch tryCatch;
+  v8::HandleScope scope(isolate);
+
   // compile the expression
   v8::Handle<v8::Value> func(compileExpression());
 
@@ -310,14 +309,14 @@ TRI_json_t* Executor::executeExpression (Query* query,
 
   TRI_ASSERT(query != nullptr);
 
-  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+  TRI_GET_GLOBALS();
   auto old = v8g->_query;
   v8g->_query = static_cast<void*>(query);
   TRI_ASSERT(v8g->_query != nullptr);
  
   // execute the function
   v8::Handle<v8::Value> args;
-  v8::Handle<v8::Value> result = v8::Handle<v8::Function>::Cast(func)->Call(v8::Object::New(), 0, &args);
+  v8::Handle<v8::Value> result = v8::Handle<v8::Function>::Cast(func)->Call(v8::Object::New(isolate), 0, &args);
   
   v8g->_query = old;
   
@@ -329,7 +328,7 @@ TRI_json_t* Executor::executeExpression (Query* query,
     return TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE);
   }
   
-  return TRI_ObjectToJson(result);
+  return TRI_ObjectToJson(isolate, result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -358,12 +357,12 @@ Function const* Executor::getFunctionByName (std::string const& name) {
 
 void Executor::HandleV8Error (v8::TryCatch& tryCatch,
                               v8::Handle<v8::Value>& result) {
+  ISOLATE;
   if (tryCatch.HasCaught()) {
     // caught a V8 exception
     if (! tryCatch.CanContinue()) {
       // request was cancelled
-      v8::Isolate* isolate = v8::Isolate::GetCurrent(); 
-      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData());
+      TRI_GET_GLOBALS();
       v8g->_canceled = true;
 
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
@@ -375,8 +374,8 @@ void Executor::HandleV8Error (v8::TryCatch& tryCatch,
       // cast the exception to an object
 
       v8::Handle<v8::Array> objValue = v8::Handle<v8::Array>::Cast(tryCatch.Exception());
-      v8::Handle<v8::String> errorNum = v8::String::New("errorNum");
-      v8::Handle<v8::String> errorMessage = v8::String::New("errorMessage");
+      v8::Handle<v8::String> errorNum = TRI_V8_ASCII_STRING("errorNum");
+      v8::Handle<v8::String> errorMessage = TRI_V8_ASCII_STRING("errorMessage");
         
       if (objValue->HasOwnProperty(errorNum) && 
           objValue->HasOwnProperty(errorMessage)) {
@@ -415,9 +414,10 @@ void Executor::HandleV8Error (v8::TryCatch& tryCatch,
   
 v8::Handle<v8::Value> Executor::compileExpression () {
   TRI_ASSERT(_buffer != nullptr);
+  ISOLATE;
 
-  v8::Handle<v8::Script> compiled = v8::Script::Compile(v8::String::New(_buffer->c_str(), (int) _buffer->length()),
-                                                        v8::String::New("--script--"));
+  v8::Handle<v8::Script> compiled = v8::Script::Compile(TRI_V8_STD_STRING((*_buffer)),
+                                                        TRI_V8_ASCII_STRING("--script--"));
   
   if (compiled.IsEmpty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to compile v8 expression");

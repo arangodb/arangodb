@@ -107,8 +107,10 @@ ContinuousSyncer::ContinuousSyncer (TRI_server_t* server,
     _server(server),
     _applier(vocbase->_replicationApplier),
     _chunkSize(),
+    _restrictType(RESTRICT_NONE),
     _initialTick(initialTick),
-    _useTick(useTick) {
+    _useTick(useTick),
+    _includeSystem(configuration->_includeSystem) {
 
   uint64_t c = configuration->_chunkSize;
   if (c == 0) {
@@ -123,6 +125,13 @@ ContinuousSyncer::ContinuousSyncer (TRI_server_t* server,
   // statistics
   int const n = static_cast<int>(_applier->_runningRemoteTransactions.size());
   triagens::arango::TransactionBase::setNumbers(n, n);
+
+  if (configuration->_restrictType == "include") {
+    _restrictType = RESTRICT_INCLUDE;
+  }
+  else if (configuration->_restrictType == "exclude") {
+    _restrictType = RESTRICT_EXCLUDE;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -247,6 +256,52 @@ int ContinuousSyncer::saveApplierState () {
   }
 
   return res;
+}
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a collection should be excluded
+////////////////////////////////////////////////////////////////////////////////
+
+bool ContinuousSyncer::excludeCollection (TRI_json_t const* json) const {
+  if (_restrictType == RESTRICT_NONE && _includeSystem) {
+    return false;
+  }
+
+  if (! TRI_IsArrayJson(json)) {
+    return false;
+  }
+
+  TRI_json_t const* name = TRI_LookupArrayJson(json, "cname");
+
+  if (TRI_IsStringJson(name)) {
+    return excludeCollection(std::string(name->_value._string.data, name->_value._string.length - 1));
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a collection should be excluded
+////////////////////////////////////////////////////////////////////////////////
+
+bool ContinuousSyncer::excludeCollection (std::string const& masterName) const {
+  if (masterName[0] == '_' && ! _includeSystem) {
+    // system collection
+    return true;
+  }
+
+  auto const it = _configuration._restrictCollections.find(masterName);
+
+  bool found = (it != _configuration._restrictCollections.end());
+
+  if (_restrictType == RESTRICT_INCLUDE && ! found) {
+    // collection should not be included
+    return true;
+  }
+  else if (_restrictType == RESTRICT_EXCLUDE && found) {
+    return true;
+  }
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -605,12 +660,9 @@ int ContinuousSyncer::changeCollection (TRI_json_t const* json) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ContinuousSyncer::applyLogMarker (TRI_json_t const* json,
-                                      bool& updateTick,
                                       string& errorMsg) {
 
   static const string invalidMsg = "received invalid JSON data";
-
-  updateTick = true;
 
   // check data
   if (! JsonHelper::isArray(json)) {
@@ -687,12 +739,9 @@ int ContinuousSyncer::applyLogMarker (TRI_json_t const* json,
     return dropIndex(json);
   }
 
-  else {
-    errorMsg = "unexpected marker type " + StringUtils::itoa(type);
-    updateTick = true;
+  errorMsg = "unexpected marker type " + StringUtils::itoa(type);
 
-    return TRI_ERROR_REPLICATION_UNEXPECTED_MARKER;
-  }
+  return TRI_ERROR_REPLICATION_UNEXPECTED_MARKER;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -722,12 +771,23 @@ int ContinuousSyncer::applyLog (SimpleHttpResult* response,
 
     TRI_json_t* json = TRI_JsonString(TRI_CORE_MEM_ZONE, line.c_str());
 
-    bool updateTick;
-    int res = applyLogMarker(json, updateTick, errorMsg);
-
-    if (json != nullptr) {
-      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+    if (json == nullptr) {
+      return TRI_ERROR_OUT_OF_MEMORY;
     }
+
+    int res;
+    bool skipped;
+    if (excludeCollection(json)) {
+      // entry is skipped
+      res = TRI_ERROR_NO_ERROR;
+      skipped = true;
+    }
+    else {
+      res = applyLogMarker(json, errorMsg);
+      skipped = false;
+    }
+
+    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
     if (res != TRI_ERROR_NO_ERROR) {
       // apply error
@@ -756,14 +816,15 @@ int ContinuousSyncer::applyLog (SimpleHttpResult* response,
       }
     }
 
-    if (updateTick) {
-      // update tick value
-      WRITE_LOCK_STATUS(_applier);
-      if (_applier->_state._lastProcessedContinuousTick > _applier->_state._lastAppliedContinuousTick) {
-        _applier->_state._lastAppliedContinuousTick = _applier->_state._lastProcessedContinuousTick;
-      }
-      WRITE_UNLOCK_STATUS(_applier);
+    // update tick value
+    WRITE_LOCK_STATUS(_applier);
+    if (_applier->_state._lastProcessedContinuousTick > _applier->_state._lastAppliedContinuousTick) {
+      _applier->_state._lastAppliedContinuousTick = _applier->_state._lastProcessedContinuousTick;
     }
+    if (skipped) {
+      ++_applier->_state._skippedOperations;
+    }
+    WRITE_UNLOCK_STATUS(_applier);
   }
 }
 
@@ -903,7 +964,10 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
   worked = false;
 
   string const tickString = StringUtils::itoa(fromTick);
-  string const url = baseUrl + "&from=" + tickString + "&serverId=" + _localServerIdString;
+  string const url = baseUrl + 
+                     "&from=" + tickString + 
+                     "&serverId=" + _localServerIdString + 
+                     "&includeSystem=" + (_includeSystem ? "true" : "false");
 
   LOG_TRACE("running continuous replication request with tick %llu, url %s",
             (unsigned long long) fromTick,

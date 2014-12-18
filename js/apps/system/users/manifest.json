@@ -1,9 +1,22 @@
 {
   "name": "users",
-  "author": "Alan Plum",
-  "version": "0.1",
-  "isSystem": true,
   "description": "Username-based user storage for Foxx.",
+  "author": "ArangoDB GmbH",
+  "version": "0.1",
+  "license": "Apache License, Version 2.0",
+  "isSystem": true,
+
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/triAGENS/ArangoDB.git"
+  },
+
+  "contributors": [
+    {
+      "name": "Alan Plum",
+      "email": "me@pluma.io"
+    }
+  ],
 
   "exports": {
     "userStorage": "storage.js"

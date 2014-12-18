@@ -1,0 +1,14 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/uz_Arab_AF.xml
+// *
+// ***************************************************************************
+uz_Arab_AF{
+    Version{"2.0.90.61"}
+    calendar{
+        default{"persian"}
+    }
+}

@@ -330,14 +330,57 @@ AstNode* Ast::createNodeReplace (AstNode const* keyExpression,
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::createNodeCollect (AstNode const* list,
-                                 char const* name) {
+                                 char const* name,
+                                 AstNode const* keepVariables) {
   AstNode* node = createNode(NODE_TYPE_COLLECT);
   node->addMember(list);
 
+  // INTO
   if (name != nullptr) {
     AstNode* variable = createNodeVariable(name, true);
     node->addMember(variable);
+
+    // KEEP
+    if (keepVariables != nullptr) {
+      node->addMember(keepVariables);
+    }
   }
+  else {
+    TRI_ASSERT(keepVariables == nullptr);
+  }
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST collect node, INTO var = expr
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeCollectExpression (AstNode const* list,
+                                           char const* name,
+                                           AstNode const* expression) {
+  AstNode* node = createNode(NODE_TYPE_COLLECT_EXPRESSION);
+  node->addMember(list);
+
+  AstNode* variable = createNodeVariable(name, true);
+  node->addMember(variable);
+
+  node->addMember(expression);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST collect node, COUNT INTO 
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeCollectCount (AstNode const* list,
+                                      char const* name) {
+  AstNode* node = createNode(NODE_TYPE_COLLECT_COUNT);
+  node->addMember(list);
+
+  AstNode* variable = createNodeVariable(name, true);
+  node->addMember(variable);
 
   return node;
 }
@@ -358,10 +401,10 @@ AstNode* Ast::createNodeSort (AstNode const* list) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::createNodeSortElement (AstNode const* expression,
-                                     bool ascending) {
+                                     AstNode const* ascending) {
   AstNode* node = createNode(NODE_TYPE_SORT_ELEMENT);
   node->addMember(expression);
-  node->setBoolValue(ascending);
+  node->addMember(ascending);
 
   return node;
 }
@@ -905,7 +948,7 @@ void Ast::injectBindParameters (BindParameters& parameters) {
 
 AstNode* Ast::replaceVariables (AstNode* node,
                                 std::unordered_map<VariableId, Variable const*> const& replacements) {
-  auto func = [&](AstNode* node, void*) -> AstNode* {
+  auto visitor = [&](AstNode* node, void*) -> AstNode* {
     if (node == nullptr) {
       return nullptr;
     }
@@ -926,7 +969,7 @@ AstNode* Ast::replaceVariables (AstNode* node,
     return node;
   };
 
-  return traverse(node, func, nullptr);
+  return traverse(node, visitor, nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -934,7 +977,23 @@ AstNode* Ast::replaceVariables (AstNode* node,
 ////////////////////////////////////////////////////////////////////////////////
 
 void Ast::optimize () {
-  auto func = [&](AstNode* node, void*) -> AstNode* {
+  struct TraversalContext {
+    bool isInFilter  = false;
+  };
+
+  auto preVisitor = [&](AstNode const* node, void* data) -> void {
+    if (node->type == NODE_TYPE_FILTER) {
+      static_cast<TraversalContext*>(data)->isInFilter = true;
+    }
+  };
+
+  auto postVisitor = [&](AstNode const* node, void* data) -> void {
+    if (node->type == NODE_TYPE_FILTER) {
+      static_cast<TraversalContext*>(data)->isInFilter = false;
+    }
+  };
+
+  auto visitor = [&](AstNode* node, void* data) -> AstNode* {
     if (node == nullptr) {
       return nullptr;
     }
@@ -942,17 +1001,17 @@ void Ast::optimize () {
     // unary operators
     if (node->type == NODE_TYPE_OPERATOR_UNARY_PLUS ||
         node->type == NODE_TYPE_OPERATOR_UNARY_MINUS) {
-      return optimizeUnaryOperatorArithmetic(node);
+      return this->optimizeUnaryOperatorArithmetic(node);
     }
 
     if (node->type == NODE_TYPE_OPERATOR_UNARY_NOT) {
-      return optimizeUnaryOperatorLogical(node);
+      return this->optimizeUnaryOperatorLogical(node);
     }
 
     // binary operators
     if (node->type == NODE_TYPE_OPERATOR_BINARY_AND ||
         node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
-      return optimizeBinaryOperatorLogical(node);
+      return this->optimizeBinaryOperatorLogical(node, static_cast<TraversalContext*>(data)->isInFilter);
     }
     
     if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ ||
@@ -963,7 +1022,7 @@ void Ast::optimize () {
         node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
         node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
         node->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
-      return optimizeBinaryOperatorRelational(node);
+      return this->optimizeBinaryOperatorRelational(node);
     }
     
     if (node->type == NODE_TYPE_OPERATOR_BINARY_PLUS ||
@@ -971,44 +1030,45 @@ void Ast::optimize () {
         node->type == NODE_TYPE_OPERATOR_BINARY_TIMES ||
         node->type == NODE_TYPE_OPERATOR_BINARY_DIV ||
         node->type == NODE_TYPE_OPERATOR_BINARY_MOD) {
-      return optimizeBinaryOperatorArithmetic(node);
+      return this->optimizeBinaryOperatorArithmetic(node);
     }
       
     // ternary operator
     if (node->type == NODE_TYPE_OPERATOR_TERNARY) {
-      return optimizeTernaryOperator(node);
+      return this->optimizeTernaryOperator(node);
     }
 
     // call to built-in function
     if (node->type == NODE_TYPE_FCALL) {
-      return optimizeFunctionCall(node);
+      return this->optimizeFunctionCall(node);
     }
     
-    // reference to a variable
+    // reference to a variable, may be able to insert the variable value directly
     if (node->type == NODE_TYPE_REFERENCE) {
-      return optimizeReference(node);
+      return this->optimizeReference(node);
     }
     
     // LET
     if (node->type == NODE_TYPE_LET) {
-      return optimizeLet(node);
+      return this->optimizeLet(node);
     }
 
     // FILTER
     if (node->type == NODE_TYPE_FILTER) {
-      return optimizeFilter(node);
+      return this->optimizeFilter(node);
     }
  
     // FOR
     if (node->type == NODE_TYPE_FOR) {
-      return optimizeFor(node);
+      return this->optimizeFor(node);
     }
 
     return node;
   };
 
-  // optimization
-  _root = traverse(_root, func, nullptr);
+  // run the optimizations
+  TraversalContext context;
+  this->_root = traverse(this->_root, preVisitor, visitor, postVisitor, &context);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1016,7 +1076,7 @@ void Ast::optimize () {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::unordered_set<Variable*> Ast::getReferencedVariables (AstNode const* node) {
-  auto func = [&](AstNode const* node, void* data) -> void {
+  auto visitor = [&](AstNode const* node, void* data) -> void {
     if (node == nullptr) {
       return;
     }
@@ -1037,7 +1097,7 @@ std::unordered_set<Variable*> Ast::getReferencedVariables (AstNode const* node) 
   };
 
   std::unordered_set<Variable*> result;  
-  traverse(node, func, &result); 
+  traverse(node, visitor, &result); 
 
   return result;
 }
@@ -1063,9 +1123,6 @@ AstNode* Ast::clone (AstNode const* node) {
            type == NODE_TYPE_REFERENCE ||
            type == NODE_TYPE_FCALL) {
     copy->setData(node->getData());
-  }
-  else if (type == NODE_TYPE_SORT_ELEMENT) {
-    copy->setBoolValue(node->getBoolValue());
   }
   else if (type == NODE_TYPE_VALUE) {
     switch (node->value.type) {
@@ -1150,8 +1207,8 @@ AstNode* Ast::createArithmeticResultNode (double value) {
 AstNode* Ast::executeConstExpression (AstNode const* node) {
   // must enter v8 before we can execute any expression
   _query->enterContext();
-  
-  v8::HandleScope scope; // do not delete this!
+  ISOLATE;
+  v8::HandleScope scope(isolate); // do not delete this!
 
   TRI_json_t* result = _query->executor()->executeExpression(_query, node); 
 
@@ -1287,7 +1344,8 @@ AstNode* Ast::optimizeUnaryOperatorLogical (AstNode* node) {
 /// @brief optimizes the binary logical operators && and ||
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode* Ast::optimizeBinaryOperatorLogical (AstNode* node) {
+AstNode* Ast::optimizeBinaryOperatorLogical (AstNode* node,
+                                             bool canModifyResultType) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_BINARY_AND ||
              node->type == NODE_TYPE_OPERATOR_BINARY_OR);
@@ -1301,8 +1359,8 @@ AstNode* Ast::optimizeBinaryOperatorLogical (AstNode* node) {
   }
 
   if (lhs->isConstant()) {
+    // left operand is a constant value
     if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
-      // left operand is a constant value
       if (lhs->isFalse()) {
         // return it if it is falsey
         return lhs;
@@ -1312,7 +1370,6 @@ AstNode* Ast::optimizeBinaryOperatorLogical (AstNode* node) {
       return rhs;
     }
     else if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
-      // left operand is a constant value
       if (lhs->isTrue()) {
         // return it if it is trueish
         return lhs;
@@ -1320,6 +1377,29 @@ AstNode* Ast::optimizeBinaryOperatorLogical (AstNode* node) {
 
       // left-operand was falsey, now return right operand
       return rhs;
+    }
+  }
+
+  if (canModifyResultType) {
+    if (rhs->isConstant() && ! lhs->canThrow()) {
+      // right operand is a constant value
+      if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
+        if (rhs->isFalse()) {
+          return createNodeValueBool(false);
+        }
+
+        // right-operand was trueish, now return it
+        return lhs;
+      }
+      else if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
+        if (rhs->isTrue()) {
+          // return it if it is trueish
+          return createNodeValueBool(true);
+        }
+
+        // right-operand was falsey, now return left operand
+        return lhs;
+      }
     }
   }
 
@@ -1675,6 +1755,11 @@ AstNode* Ast::optimizeReference (AstNode* node) {
     return node;
   }
 
+  if (node->hasFlag(FLAG_KEEP_VARIABLENAME)) {
+    // this is a reference to a variable name, not a reference to the result
+    return node;
+  }
+
   return static_cast<AstNode*>(variable->constValue());
 }
 
@@ -1815,11 +1900,44 @@ AstNode* Ast::nodeFromJson (TRI_json_t const* json) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief traverse the AST
+/// @brief traverse the AST, using pre- and post-order visitors
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::traverse (AstNode* node, 
-                        std::function<AstNode*(AstNode*, void*)> func,
+                        std::function<void(AstNode const*, void*)> preVisitor,
+                        std::function<AstNode*(AstNode*, void*)> visitor,
+                        std::function<void(AstNode const*, void*)> postVisitor,
+                        void* data) {
+  if (node == nullptr) {
+    return nullptr;
+  }
+ 
+  preVisitor(node, data);
+  size_t const n = node->numMembers();
+
+  for (size_t i = 0; i < n; ++i) {
+    auto member = node->getMember(i);
+
+    if (member != nullptr) {
+      AstNode* result = traverse(member, preVisitor, visitor, postVisitor, data);
+
+      if (result != node) {
+        node->changeMember(i, result);
+      }
+    }
+  }
+
+  auto result = visitor(node, data);
+  postVisitor(node, data);
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief traverse the AST, using a visitor
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::traverse (AstNode* node, 
+                        std::function<AstNode*(AstNode*, void*)> visitor,
                         void* data) {
   if (node == nullptr) {
     return nullptr;
@@ -1831,7 +1949,7 @@ AstNode* Ast::traverse (AstNode* node,
     auto member = node->getMember(i);
 
     if (member != nullptr) {
-      AstNode* result = traverse(member, func, data);
+      AstNode* result = traverse(member, visitor, data);
 
       if (result != node) {
         node->changeMember(i, result);
@@ -1839,15 +1957,15 @@ AstNode* Ast::traverse (AstNode* node,
     }
   }
 
-  return func(node, data);
+  return visitor(node, data);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief traverse the AST, with const nodes
+/// @brief traverse the AST using a visitor, with const nodes
 ////////////////////////////////////////////////////////////////////////////////
 
 void Ast::traverse (AstNode const* node, 
-                    std::function<void(AstNode const*, void*)> func,
+                    std::function<void(AstNode const*, void*)> visitor,
                     void* data) {
   if (node == nullptr) {
     return;
@@ -1859,11 +1977,11 @@ void Ast::traverse (AstNode const* node,
     auto member = node->getMember(i);
 
     if (member != nullptr) {
-      traverse(const_cast<AstNode const*>(member), func, data);
+      traverse(const_cast<AstNode const*>(member), visitor, data);
     }
   }
 
-  func(node, data);
+  visitor(node, data);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
