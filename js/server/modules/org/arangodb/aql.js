@@ -59,8 +59,8 @@ var TYPEWEIGHT_NULL      = 0;
 var TYPEWEIGHT_BOOL      = 1;
 var TYPEWEIGHT_NUMBER    = 2;
 var TYPEWEIGHT_STRING    = 4;
-var TYPEWEIGHT_LIST      = 8;
-var TYPEWEIGHT_DOCUMENT  = 16;
+var TYPEWEIGHT_ARRAY     = 8;
+var TYPEWEIGHT_OBJECT    = 16;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  helper functions
@@ -393,7 +393,7 @@ function TYPEWEIGHT (value) {
 
   if (value !== undefined && value !== null) {
     if (Array.isArray(value)) {
-      return TYPEWEIGHT_LIST;
+      return TYPEWEIGHT_ARRAY;
     }
 
     switch (typeof(value)) {
@@ -408,7 +408,7 @@ function TYPEWEIGHT (value) {
       case 'string':
         return TYPEWEIGHT_STRING;
       case 'object':
-        return TYPEWEIGHT_DOCUMENT;
+        return TYPEWEIGHT_OBJECT;
     }
   }
 
@@ -602,7 +602,7 @@ function FCALL_DYNAMIC (func, applyDirect, values, name, args) {
 
   var type = TYPEWEIGHT(values), result, i;
 
-  if (type === TYPEWEIGHT_DOCUMENT) {
+  if (type === TYPEWEIGHT_OBJECT) {
     result = { };
     for (i in values) {
       if (values.hasOwnProperty(i)) {
@@ -612,7 +612,7 @@ function FCALL_DYNAMIC (func, applyDirect, values, name, args) {
     }
     return result;
   }
-  else if (type === TYPEWEIGHT_LIST) {
+  else if (type === TYPEWEIGHT_ARRAY) {
     result = [ ];
     for (i = 0; i < values.length; ++i) {
       args[0] = values[i];
@@ -770,10 +770,10 @@ function GET_INDEX (value, index) {
   }
 
   var result = null;
-  if (TYPEWEIGHT(value) === TYPEWEIGHT_DOCUMENT) {
+  if (TYPEWEIGHT(value) === TYPEWEIGHT_OBJECT) {
     result = value[String(index)];
   }
-  else if (TYPEWEIGHT(value) === TYPEWEIGHT_LIST) {
+  else if (TYPEWEIGHT(value) === TYPEWEIGHT_ARRAY) {
     var i = parseInt(index, 10);
     if (i < 0) {
       // negative indexes fetch the element from the end, e.g. -1 => value[value.length - 1];
@@ -835,7 +835,7 @@ function NORMALIZE (value) {
 function DOCUMENT_MEMBER (value, attributeName) {
   "use strict";
 
-  if (TYPEWEIGHT(value) !== TYPEWEIGHT_DOCUMENT) {
+  if (TYPEWEIGHT(value) !== TYPEWEIGHT_OBJECT) {
     return null;
   }
 
@@ -855,7 +855,7 @@ function DOCUMENT_MEMBER (value, attributeName) {
 function DOCUMENT_HANDLE (id) {
   "use strict";
 
-  if (TYPEWEIGHT(id) === TYPEWEIGHT_LIST) {
+  if (TYPEWEIGHT(id) === TYPEWEIGHT_ARRAY) {
     var result = [ ], i;
     for (i = 0; i < id.length; ++i) {
       try {
@@ -887,12 +887,12 @@ function AQL_DOCUMENT (collection, id) {
     // called with a single parameter
     var weight = TYPEWEIGHT(collection);
 
-    if (weight === TYPEWEIGHT_STRING || weight === TYPEWEIGHT_LIST) {
+    if (weight === TYPEWEIGHT_STRING || weight === TYPEWEIGHT_ARRAY) {
       return DOCUMENT_HANDLE(collection);
     }
   }
 
-  if (TYPEWEIGHT(id) === TYPEWEIGHT_LIST) {
+  if (TYPEWEIGHT(id) === TYPEWEIGHT_ARRAY) {
     var c = COLLECTION(collection);
 
     var result = [ ], i;
@@ -1048,7 +1048,7 @@ function RELATIONAL_EQUAL (lhs, rhs) {
 
   // lhs and rhs have the same type
 
-  if (leftWeight >= TYPEWEIGHT_LIST) {
+  if (leftWeight >= TYPEWEIGHT_ARRAY) {
     // arrays and objects
     var keys = KEYLIST(lhs, rhs), i, n = keys.length;
     for (i = 0; i < n; ++i) {
@@ -1090,7 +1090,7 @@ function RELATIONAL_UNEQUAL (lhs, rhs) {
 
   // lhs and rhs have the same type
 
-  if (leftWeight >= TYPEWEIGHT_LIST) {
+  if (leftWeight >= TYPEWEIGHT_ARRAY) {
     // arrays and objects
     var keys = KEYLIST(lhs, rhs), i, n = keys.length;
     for (i = 0; i < n; ++i) {
@@ -1134,7 +1134,7 @@ function RELATIONAL_GREATER_REC (lhs, rhs) {
 
   // lhs and rhs have the same type
 
-  if (leftWeight >= TYPEWEIGHT_LIST) {
+  if (leftWeight >= TYPEWEIGHT_ARRAY) {
     // arrays and objects
     var keys = KEYLIST(lhs, rhs), i, n = keys.length;
     for (i = 0; i < n; ++i) {
@@ -1200,7 +1200,7 @@ function RELATIONAL_GREATEREQUAL_REC (lhs, rhs) {
 
   // lhs and rhs have the same type
 
-  if (leftWeight >= TYPEWEIGHT_LIST) {
+  if (leftWeight >= TYPEWEIGHT_ARRAY) {
     // arrays and objects
     var keys = KEYLIST(lhs, rhs), i, n = keys.length;
     for (i = 0; i < n; ++i) {
@@ -1266,7 +1266,7 @@ function RELATIONAL_LESS_REC (lhs, rhs) {
 
   // lhs and rhs have the same type
 
-  if (leftWeight >= TYPEWEIGHT_LIST) {
+  if (leftWeight >= TYPEWEIGHT_ARRAY) {
     // arrays and objects
     var keys = KEYLIST(lhs, rhs), i, n = keys.length;
     for (i = 0; i < n; ++i) {
@@ -1332,7 +1332,7 @@ function RELATIONAL_LESSEQUAL_REC (lhs, rhs) {
 
   // lhs and rhs have the same type
 
-  if (leftWeight >= TYPEWEIGHT_LIST) {
+  if (leftWeight >= TYPEWEIGHT_ARRAY) {
     // arrays and objects
     var keys = KEYLIST(lhs, rhs), i, n = keys.length;
     for (i = 0; i < n; ++i) {
@@ -1401,7 +1401,7 @@ function RELATIONAL_CMP (lhs, rhs) {
 
   // lhs and rhs have the same type
 
-  if (leftWeight >= TYPEWEIGHT_LIST) {
+  if (leftWeight >= TYPEWEIGHT_ARRAY) {
     // arrays and objects
     var keys = KEYLIST(lhs, rhs), i, n = keys.length;
     for (i = 0; i < n; ++i) {
@@ -1445,8 +1445,8 @@ function RELATIONAL_IN (lhs, rhs) {
 
   var rightWeight = TYPEWEIGHT(rhs);
 
-  if (rightWeight !== TYPEWEIGHT_LIST) {
-    WARN(null, INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+  if (rightWeight !== TYPEWEIGHT_ARRAY) {
+    WARN(null, INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return false;
   }
 
@@ -1626,7 +1626,7 @@ function AQL_CONCAT () {
     if (weight === TYPEWEIGHT_NULL) {
       continue;
     }
-    else if (weight === TYPEWEIGHT_LIST) {
+    else if (weight === TYPEWEIGHT_ARRAY) {
       for (j = 0; j < element.length; ++j) {
         if (TYPEWEIGHT(element[j]) !== TYPEWEIGHT_NULL) {
           result += AQL_TO_STRING(element[j]);
@@ -1666,7 +1666,7 @@ function AQL_CONCAT_SEPARATOR () {
       result += separator;
     }
 
-    if (weight === TYPEWEIGHT_LIST) {
+    if (weight === TYPEWEIGHT_ARRAY) {
       found = false;
       for (j = 0; j < element.length; ++j) {
         if (TYPEWEIGHT(element[j]) !== TYPEWEIGHT_NULL) {
@@ -1888,7 +1888,7 @@ function AQL_SPLIT (value, separator, limit) {
     return null;
   }
 
-  if (TYPEWEIGHT(separator) === TYPEWEIGHT_LIST) {
+  if (TYPEWEIGHT(separator) === TYPEWEIGHT_ARRAY) {
     var patterns = [];
     separator.forEach(function(s) {
       patterns.push(CREATE_REGEX_PATTERN(AQL_TO_STRING(s)));
@@ -1910,7 +1910,7 @@ function AQL_SUBSTITUTE (value, search, replace, limit) {
   var pattern, patterns, replacements = { }, sWeight = TYPEWEIGHT(search);
   value = AQL_TO_STRING(value);
 
-  if (sWeight === TYPEWEIGHT_DOCUMENT) {
+  if (sWeight === TYPEWEIGHT_OBJECT) {
     patterns = [ ];
     KEYS(search, false).forEach(function(k) {
       patterns.push(CREATE_REGEX_PATTERN(k));
@@ -1928,7 +1928,7 @@ function AQL_SUBSTITUTE (value, search, replace, limit) {
       replacements[search] = AQL_TO_STRING(replace);
     }
   }
-  else if (sWeight === TYPEWEIGHT_LIST) {
+  else if (sWeight === TYPEWEIGHT_ARRAY) {
     if (search.length === 0) {
       // empty list
       WARN("SUBSTITUTE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
@@ -1937,7 +1937,7 @@ function AQL_SUBSTITUTE (value, search, replace, limit) {
 
     patterns = [ ];
 
-    if (TYPEWEIGHT(replace) === TYPEWEIGHT_LIST) {
+    if (TYPEWEIGHT(replace) === TYPEWEIGHT_ARRAY) {
       // replace each occurrence with a member from the second list
       search.forEach(function(k, i) {
         k = AQL_TO_STRING(k);
@@ -2089,8 +2089,8 @@ function AQL_TO_BOOL (value) {
       return (value !== 0);
     case TYPEWEIGHT_STRING:
       return (value !== '');
-    case TYPEWEIGHT_LIST:
-    case TYPEWEIGHT_DOCUMENT:
+    case TYPEWEIGHT_ARRAY:
+    case TYPEWEIGHT_OBJECT:
       return true;
   }
 }
@@ -2122,7 +2122,7 @@ function AQL_TO_NUMBER (value) {
     case TYPEWEIGHT_STRING:
       var result = NUMERIC_VALUE(Number(value));
       return ((TYPEWEIGHT(result) === TYPEWEIGHT_NUMBER) ? result : null);
-    case TYPEWEIGHT_LIST:
+    case TYPEWEIGHT_ARRAY:
       if (value.length === 0) {
         return 0;
       }
@@ -2151,19 +2151,19 @@ function AQL_TO_STRING (value) {
     case TYPEWEIGHT_STRING:
       return value;
     case TYPEWEIGHT_NUMBER:
-    case TYPEWEIGHT_LIST:
-    case TYPEWEIGHT_DOCUMENT:
+    case TYPEWEIGHT_ARRAY:
+    case TYPEWEIGHT_OBJECT:
       return value.toString();
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief cast to a list
+/// @brief cast to an array
 ///
 /// the operand can have any type, always returns a list
 ////////////////////////////////////////////////////////////////////////////////
 
-function AQL_TO_LIST (value) {
+function AQL_TO_ARRAY (value) {
   "use strict";
 
   switch (TYPEWEIGHT(value)) {
@@ -2173,9 +2173,9 @@ function AQL_TO_LIST (value) {
     case TYPEWEIGHT_NUMBER:
     case TYPEWEIGHT_STRING:
       return [ value ];
-    case TYPEWEIGHT_LIST:
+    case TYPEWEIGHT_ARRAY:
       return value;
-    case TYPEWEIGHT_DOCUMENT:
+    case TYPEWEIGHT_OBJECT:
       return VALUES(value);
   }
 }
@@ -2233,27 +2233,27 @@ function AQL_IS_STRING (value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test if value is of type list
+/// @brief test if value is of type array
 ///
 /// returns a bool
 ////////////////////////////////////////////////////////////////////////////////
 
-function AQL_IS_LIST (value) {
+function AQL_IS_ARRAY (value) {
   "use strict";
 
-  return (TYPEWEIGHT(value) === TYPEWEIGHT_LIST);
+  return (TYPEWEIGHT(value) === TYPEWEIGHT_ARRAY);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test if value is of type document
+/// @brief test if value is of type object
 ///
 /// returns a bool
 ////////////////////////////////////////////////////////////////////////////////
 
-function AQL_IS_DOCUMENT (value) {
+function AQL_IS_OBJECT (value) {
   "use strict";
 
-  return (TYPEWEIGHT(value) === TYPEWEIGHT_DOCUMENT);
+  return (TYPEWEIGHT(value) === TYPEWEIGHT_OBJECT);
 }
 
 // -----------------------------------------------------------------------------
@@ -2333,10 +2333,10 @@ function AQL_LENGTH (value) {
 
   var result, typeWeight = TYPEWEIGHT(value);
 
-  if (typeWeight === TYPEWEIGHT_LIST) {
+  if (typeWeight === TYPEWEIGHT_ARRAY) {
     return value.length;
   }
-  else if (typeWeight === TYPEWEIGHT_DOCUMENT) {
+  else if (typeWeight === TYPEWEIGHT_OBJECT) {
     return KEYS(value, false).length;
   }
 
@@ -2350,8 +2350,8 @@ function AQL_LENGTH (value) {
 function AQL_FIRST (value) {
   "use strict";
 
-  if (TYPEWEIGHT(value) !== TYPEWEIGHT_LIST) {
-    WARN("FIRST", INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+  if (TYPEWEIGHT(value) !== TYPEWEIGHT_ARRAY) {
+    WARN("FIRST", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
@@ -2369,8 +2369,8 @@ function AQL_FIRST (value) {
 function AQL_LAST (value) {
   "use strict";
 
-  if (TYPEWEIGHT(value) !== TYPEWEIGHT_LIST) {
-    WARN("LAST", INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+  if (TYPEWEIGHT(value) !== TYPEWEIGHT_ARRAY) {
+    WARN("LAST", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
@@ -2388,8 +2388,8 @@ function AQL_LAST (value) {
 function AQL_POSITION (value, search, returnIndex) {
   "use strict";
 
-  if (TYPEWEIGHT(value) !== TYPEWEIGHT_LIST) {
-    WARN("POSITION", INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+  if (TYPEWEIGHT(value) !== TYPEWEIGHT_ARRAY) {
+    WARN("POSITION", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
@@ -2415,8 +2415,8 @@ function AQL_POSITION (value, search, returnIndex) {
 function AQL_NTH (value, position) {
   "use strict";
 
-  if (TYPEWEIGHT(value) !== TYPEWEIGHT_LIST) {
-    WARN("NTH", INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+  if (TYPEWEIGHT(value) !== TYPEWEIGHT_ARRAY) {
+    WARN("NTH", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
@@ -2439,11 +2439,11 @@ function AQL_REVERSE (value) {
     return value.split("").reverse().join("");
   }
 
-  if (TYPEWEIGHT(value) === TYPEWEIGHT_LIST) {
+  if (TYPEWEIGHT(value) === TYPEWEIGHT_ARRAY) {
     return CLONE(value).reverse();
   }
     
-  WARN("REVERSE", INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+  WARN("REVERSE", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
   return null;
 }
 
@@ -2504,8 +2504,8 @@ function AQL_RANGE (from, to, step) {
 function AQL_UNIQUE (values) {
   "use strict";
 
-  if (TYPEWEIGHT(values) !== TYPEWEIGHT_LIST) {
-    WARN("UNIQUE", INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+  if (TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY) {
+    WARN("UNIQUE", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
@@ -2540,7 +2540,7 @@ function AQL_UNION () {
     if (arguments.hasOwnProperty(i)) {
       var element = arguments[i];
 
-      if (TYPEWEIGHT(element) !== TYPEWEIGHT_LIST) {
+      if (TYPEWEIGHT(element) !== TYPEWEIGHT_ARRAY) {
         WARN("UNION", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return null;
       }
@@ -2569,7 +2569,7 @@ function AQL_UNION_DISTINCT () {
     if (arguments.hasOwnProperty(i)) {
       var element = arguments[i];
 
-      if (TYPEWEIGHT(element) !== TYPEWEIGHT_LIST) {
+      if (TYPEWEIGHT(element) !== TYPEWEIGHT_ARRAY) {
         WARN("UNION_DISTINCT", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return null;
       }
@@ -2666,7 +2666,7 @@ function AQL_REMOVE_VALUES (list, values) {
   if (type === TYPEWEIGHT_NULL) {
     return list;
   }
-  else if (type !== TYPEWEIGHT_LIST) {
+  else if (type !== TYPEWEIGHT_ARRAY) {
     WARN("REMOVE_VALUES", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
@@ -2675,7 +2675,7 @@ function AQL_REMOVE_VALUES (list, values) {
   if (type === TYPEWEIGHT_NULL) {
     return [ ];
   }
-  else if (type === TYPEWEIGHT_LIST) {
+  else if (type === TYPEWEIGHT_ARRAY) {
     var copy = [ ], i;
     for (i = 0; i < list.length; ++i) {
       if (RELATIONAL_IN(list[i], values)) {
@@ -2701,7 +2701,7 @@ function AQL_REMOVE_VALUE (list, value, limit) {
   if (type === TYPEWEIGHT_NULL) {
     return [ ];
   }
-  else if (type === TYPEWEIGHT_LIST) {
+  else if (type === TYPEWEIGHT_ARRAY) {
     if (TYPEWEIGHT(limit) === TYPEWEIGHT_NULL) {
       limit = -1;
     }
@@ -2735,7 +2735,7 @@ function AQL_REMOVE_NTH (list, position) {
   if (type === TYPEWEIGHT_NULL) {
     return [ ];
   }
-  else if (type === TYPEWEIGHT_LIST) {
+  else if (type === TYPEWEIGHT_ARRAY) {
     position = AQL_TO_NUMBER(position);
     if (position >= list.length || position < - list.length) {
       return list;
@@ -2771,7 +2771,7 @@ function AQL_PUSH (list, value, unique) {
   if (type === TYPEWEIGHT_NULL) {
     return [ value ];
   }
-  else if (type === TYPEWEIGHT_LIST) {
+  else if (type === TYPEWEIGHT_ARRAY) {
     if (AQL_TO_BOOL(unique)) {
       if (RELATIONAL_IN(value, list)) {
         return list;
@@ -2798,7 +2798,7 @@ function AQL_APPEND (list, values, unique) {
   if (type === TYPEWEIGHT_NULL) {
     return list;
   }
-  else if (type !== TYPEWEIGHT_LIST) {
+  else if (type !== TYPEWEIGHT_ARRAY) {
     values = [ values ];
   }
 
@@ -2816,7 +2816,7 @@ function AQL_APPEND (list, values, unique) {
   if (type === TYPEWEIGHT_NULL) {
     return values;
   }
-  else if (type === TYPEWEIGHT_LIST) {
+  else if (type === TYPEWEIGHT_ARRAY) {
     var copy = CLONE(list);
     if (unique) {
       var i;
@@ -2846,7 +2846,7 @@ function AQL_POP (list) {
   if (type === TYPEWEIGHT_NULL) {
     return null;
   }
-  else if (type === TYPEWEIGHT_LIST) {
+  else if (type === TYPEWEIGHT_ARRAY) {
     if (list.length === 0) {
       return [ ];
     }
@@ -2871,7 +2871,7 @@ function AQL_UNSHIFT (list, value, unique) {
   if (type === TYPEWEIGHT_NULL) {
     return [ value ];
   }
-  else if (type === TYPEWEIGHT_LIST) {
+  else if (type === TYPEWEIGHT_ARRAY) {
     if (unique) {
       if (RELATIONAL_IN(value, list)) {
         return list;
@@ -2897,7 +2897,7 @@ function AQL_SHIFT (list) {
   if (type === TYPEWEIGHT_NULL) {
     return null;
   }
-  else if (type === TYPEWEIGHT_LIST) {
+  else if (type === TYPEWEIGHT_ARRAY) {
     if (list.length === 0) {
       return [ ];
     }
@@ -2918,7 +2918,7 @@ function AQL_SHIFT (list) {
 function AQL_SLICE (value, from, to) {
   "use strict";
 
-  if (TYPEWEIGHT(value) !== TYPEWEIGHT_LIST) {
+  if (TYPEWEIGHT(value) !== TYPEWEIGHT_ARRAY) {
     WARN("SLICE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
@@ -2951,7 +2951,7 @@ function AQL_MINUS () {
     if (arguments.hasOwnProperty(i)) {
       var element = arguments[i];
 
-      if (TYPEWEIGHT(element) !== TYPEWEIGHT_LIST) {
+      if (TYPEWEIGHT(element) !== TYPEWEIGHT_ARRAY) {
         WARN("MINUS", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return null;
       }
@@ -3003,7 +3003,7 @@ function AQL_INTERSECTION () {
     if (arguments.hasOwnProperty(i)) {
       var element = arguments[i];
 
-      if (TYPEWEIGHT(element) !== TYPEWEIGHT_LIST) {
+      if (TYPEWEIGHT(element) !== TYPEWEIGHT_ARRAY) {
         WARN("INTERSECTION", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return null;
       }
@@ -3043,8 +3043,8 @@ function AQL_INTERSECTION () {
 function AQL_FLATTEN (values, maxDepth, depth) {
   "use strict";
 
-  if (TYPEWEIGHT(values) !== TYPEWEIGHT_LIST) {
-    WARN("FLATTEN", INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+  if (TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY) {
+    WARN("FLATTEN", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
@@ -3065,7 +3065,7 @@ function AQL_FLATTEN (values, maxDepth, depth) {
 
   for (i = 0, n = values.length; i < n; ++i) {
     value = values[i];
-    if (depth < maxDepth && TYPEWEIGHT(value) === TYPEWEIGHT_LIST) {
+    if (depth < maxDepth && TYPEWEIGHT(value) === TYPEWEIGHT_ARRAY) {
       AQL_FLATTEN(value, maxDepth, depth + 1).forEach(p);
     }
     else {
@@ -3083,8 +3083,8 @@ function AQL_FLATTEN (values, maxDepth, depth) {
 function AQL_MAX (values) {
   "use strict";
 
-  if (TYPEWEIGHT(values) !== TYPEWEIGHT_LIST) {
-    WARN("MAX", INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+  if (TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY) {
+    WARN("MAX", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
@@ -3110,8 +3110,8 @@ function AQL_MAX (values) {
 function AQL_MIN (values) {
   "use strict";
 
-  if (TYPEWEIGHT(values) !== TYPEWEIGHT_LIST) {
-    WARN("MIN", INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+  if (TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY) {
+    WARN("MIN", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
@@ -3137,8 +3137,8 @@ function AQL_MIN (values) {
 function AQL_SUM (values) {
   "use strict";
 
-  if (TYPEWEIGHT(values) !== TYPEWEIGHT_LIST) {
-    WARN("SUM", INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+  if (TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY) {
+    WARN("SUM", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
@@ -3168,8 +3168,8 @@ function AQL_SUM (values) {
 function AQL_AVERAGE (values) {
   "use strict";
 
-  if (TYPEWEIGHT(values) !== TYPEWEIGHT_LIST) {
-    WARN("AVERAGE", INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+  if (TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY) {
+    WARN("AVERAGE", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
@@ -3205,8 +3205,8 @@ function AQL_AVERAGE (values) {
 function AQL_MEDIAN (values) {
   "use strict";
 
-  if (TYPEWEIGHT(values) !== TYPEWEIGHT_LIST) {
-    WARN("MEDIAN", INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+  if (TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY) {
+    WARN("MEDIAN", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
@@ -3248,8 +3248,8 @@ function AQL_MEDIAN (values) {
 function AQL_PERCENTILE (values, p, method) {
   "use strict";
 
-  if (TYPEWEIGHT(values) !== TYPEWEIGHT_LIST) {
-    WARN("PERCENTILE", INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+  if (TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY) {
+    WARN("PERCENTILE", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
@@ -3329,8 +3329,8 @@ function AQL_PERCENTILE (values, p, method) {
 function VARIANCE (values) {
   "use strict";
 
-  if (TYPEWEIGHT(values) !== TYPEWEIGHT_LIST) {
-    WARN("VARIANCE", INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+  if (TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY) {
+    WARN("VARIANCE", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
@@ -3556,13 +3556,13 @@ function AQL_WITHIN_RECTANGLE (collection, latitude1, longitude1, latitude2, lon
 function AQL_IS_IN_POLYGON (points, latitude, longitude) {
   "use strict";
   
-  if (TYPEWEIGHT(points) !== TYPEWEIGHT_LIST) {
-    WARN("POINT_IN_POLYGON", INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+  if (TYPEWEIGHT(points) !== TYPEWEIGHT_ARRAY) {
+    WARN("POINT_IN_POLYGON", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return false;
   }
 
   var searchLat, searchLon, pointLat, pointLon, geoJson = false;
-  if (TYPEWEIGHT(latitude) === TYPEWEIGHT_LIST) {
+  if (TYPEWEIGHT(latitude) === TYPEWEIGHT_ARRAY) {
     geoJson = AQL_TO_BOOL(longitude);
     if (geoJson) {
       // first list value is longitude, then latitude
@@ -3595,7 +3595,7 @@ function AQL_IS_IN_POLYGON (points, latitude, longitude) {
   var oddNodes = false;
 
   for (i = 0; i < points.length; ++i) {
-    if (TYPEWEIGHT(points[i]) !== TYPEWEIGHT_LIST) {
+    if (TYPEWEIGHT(points[i]) !== TYPEWEIGHT_ARRAY) {
       continue;
     }
 
@@ -3686,7 +3686,7 @@ function AQL_FIRST_LIST () {
     if (arguments.hasOwnProperty(i)) {
       var element = arguments[i];
 
-      if (TYPEWEIGHT(element) === TYPEWEIGHT_LIST) {
+      if (TYPEWEIGHT(element) === TYPEWEIGHT_ARRAY) {
         return element;
       }
     }
@@ -3711,7 +3711,7 @@ function AQL_FIRST_DOCUMENT () {
     if (arguments.hasOwnProperty(i)) {
       var element = arguments[i];
 
-      if (TYPEWEIGHT(element) === TYPEWEIGHT_DOCUMENT) {
+      if (TYPEWEIGHT(element) === TYPEWEIGHT_OBJECT) {
         return element;
       }
     }
@@ -3740,7 +3740,7 @@ function AQL_PARSE_IDENTIFIER (value) {
     }
     // fall through intentional
   }
-  else if (TYPEWEIGHT(value) === TYPEWEIGHT_DOCUMENT) {
+  else if (TYPEWEIGHT(value) === TYPEWEIGHT_OBJECT) {
     if (value.hasOwnProperty('_id')) {
       return AQL_PARSE_IDENTIFIER(value._id);
     }
@@ -3813,7 +3813,7 @@ function AQL_HAS (element, name) {
     return false;
   }
 
-  if (weight !== TYPEWEIGHT_DOCUMENT) {
+  if (weight !== TYPEWEIGHT_OBJECT) {
     return false;
   }
 
@@ -3827,7 +3827,7 @@ function AQL_HAS (element, name) {
 function AQL_ATTRIBUTES (element, removeInternal, sort) {
   "use strict";
 
-  if (TYPEWEIGHT(element) !== TYPEWEIGHT_DOCUMENT) {
+  if (TYPEWEIGHT(element) !== TYPEWEIGHT_OBJECT) {
     WARN("ATTRIBUTES", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
@@ -3858,7 +3858,7 @@ function AQL_ATTRIBUTES (element, removeInternal, sort) {
 function AQL_VALUES (element, removeInternal) {
   "use strict";
 
-  if (TYPEWEIGHT(element) !== TYPEWEIGHT_DOCUMENT) {
+  if (TYPEWEIGHT(element) !== TYPEWEIGHT_OBJECT) {
     WARN("VALUES", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
@@ -3883,8 +3883,8 @@ function AQL_VALUES (element, removeInternal) {
 function AQL_ZIP (keys, values) {
   "use strict";
 
-  if (TYPEWEIGHT(keys) !== TYPEWEIGHT_LIST ||
-      TYPEWEIGHT(values) !== TYPEWEIGHT_LIST ||
+  if (TYPEWEIGHT(keys) !== TYPEWEIGHT_ARRAY ||
+      TYPEWEIGHT(values) !== TYPEWEIGHT_ARRAY ||
       keys.length !== values.length) {
     WARN("ZIP", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
@@ -3906,7 +3906,7 @@ function AQL_ZIP (keys, values) {
 function AQL_UNSET (value) {
   "use strict";
 
-  if (TYPEWEIGHT(value) !== TYPEWEIGHT_DOCUMENT) {
+  if (TYPEWEIGHT(value) !== TYPEWEIGHT_OBJECT) {
     WARN("UNSET", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
@@ -3930,7 +3930,7 @@ function AQL_UNSET (value) {
 function AQL_KEEP (value) {
   "use strict";
 
-  if (TYPEWEIGHT(value) !== TYPEWEIGHT_DOCUMENT) {
+  if (TYPEWEIGHT(value) !== TYPEWEIGHT_OBJECT) {
     WARN("KEEP", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
@@ -3966,7 +3966,7 @@ function AQL_MERGE () {
     if (arguments.hasOwnProperty(i)) {
       var element = arguments[i];
 
-      if (TYPEWEIGHT(element) !== TYPEWEIGHT_DOCUMENT) {
+      if (TYPEWEIGHT(element) !== TYPEWEIGHT_OBJECT) {
         WARN("MERGE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return null;
       }
@@ -3992,7 +3992,7 @@ function AQL_MERGE_RECURSIVE () {
     var r = CLONE(old);
 
     Object.keys(element).forEach(function(k) {
-      if (r.hasOwnProperty(k) && TYPEWEIGHT(element[k]) === TYPEWEIGHT_DOCUMENT) {
+      if (r.hasOwnProperty(k) && TYPEWEIGHT(element[k]) === TYPEWEIGHT_OBJECT) {
         r[k] = recurse(r[k], element[k]);
       }
       else {
@@ -4007,7 +4007,7 @@ function AQL_MERGE_RECURSIVE () {
     if (arguments.hasOwnProperty(i)) {
       var element = arguments[i];
 
-      if (TYPEWEIGHT(element) !== TYPEWEIGHT_DOCUMENT) {
+      if (TYPEWEIGHT(element) !== TYPEWEIGHT_OBJECT) {
         WARN("MERGE_RECURSIVE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
         return null;
       }
@@ -4026,7 +4026,7 @@ function AQL_MERGE_RECURSIVE () {
 function AQL_TRANSLATE (value, lookup, defaultValue) {
   "use strict";
 
-  if (TYPEWEIGHT(lookup) !== TYPEWEIGHT_DOCUMENT) {
+  if (TYPEWEIGHT(lookup) !== TYPEWEIGHT_OBJECT) {
     WARN("TRANSLATE", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return null;
   }
@@ -4052,7 +4052,7 @@ function AQL_TRANSLATE (value, lookup, defaultValue) {
 function AQL_MATCHES (element, examples, returnIndex) {
   "use strict";
 
-  if (TYPEWEIGHT(element) !== TYPEWEIGHT_DOCUMENT) {
+  if (TYPEWEIGHT(element) !== TYPEWEIGHT_OBJECT) {
     return false;
   }
 
@@ -4069,7 +4069,7 @@ function AQL_MATCHES (element, examples, returnIndex) {
   for (i = 0; i < examples.length; ++i) {
     var example = examples[i];
     var result = true;
-    if (TYPEWEIGHT(example) !== TYPEWEIGHT_DOCUMENT) {
+    if (TYPEWEIGHT(example) !== TYPEWEIGHT_OBJECT) {
       WARN("MATCHES", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       continue;
     }
@@ -4541,8 +4541,8 @@ function AQL_PATHS (vertices, edgeCollection, direction, followCycles, minLength
   minLength      = minLength || 0;
   maxLength      = maxLength !== undefined ? maxLength : 10;
 
-  if (TYPEWEIGHT(vertices) !== TYPEWEIGHT_LIST) {
-    WARN("PATHS", INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
+  if (TYPEWEIGHT(vertices) !== TYPEWEIGHT_ARRAY) {
+    WARN("PATHS", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
     return null;
   }
 
@@ -4849,7 +4849,7 @@ function TRAVERSAL_CHECK_EXAMPLES_TYPEWEIGHTS (examples, func) {
     return true;
   }
 
-  if (TYPEWEIGHT(examples) !== TYPEWEIGHT_LIST) {
+  if (TYPEWEIGHT(examples) !== TYPEWEIGHT_ARRAY) {
     WARN(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return false;
   }
@@ -4860,7 +4860,7 @@ function TRAVERSAL_CHECK_EXAMPLES_TYPEWEIGHTS (examples, func) {
 
   var i;
   for (i = 0; i < examples.length; ++i) {
-    if (TYPEWEIGHT(examples[i]) !== TYPEWEIGHT_DOCUMENT) {
+    if (TYPEWEIGHT(examples[i]) !== TYPEWEIGHT_OBJECT) {
       WARN(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       return false;
     }
@@ -7510,13 +7510,16 @@ exports.AQL_FIND_LAST = AQL_FIND_LAST;
 exports.AQL_TO_BOOL = AQL_TO_BOOL;
 exports.AQL_TO_NUMBER = AQL_TO_NUMBER;
 exports.AQL_TO_STRING = AQL_TO_STRING;
-exports.AQL_TO_LIST = AQL_TO_LIST;
+exports.AQL_TO_ARRAY = AQL_TO_ARRAY;
+exports.AQL_TO_LIST = AQL_TO_ARRAY; // alias
 exports.AQL_IS_NULL = AQL_IS_NULL;
 exports.AQL_IS_BOOL = AQL_IS_BOOL;
 exports.AQL_IS_NUMBER = AQL_IS_NUMBER;
 exports.AQL_IS_STRING = AQL_IS_STRING;
-exports.AQL_IS_LIST = AQL_IS_LIST;
-exports.AQL_IS_DOCUMENT = AQL_IS_DOCUMENT;
+exports.AQL_IS_ARRAY = AQL_IS_ARRAY;
+exports.AQL_IS_LIST = AQL_IS_ARRAY; // alias
+exports.AQL_IS_OBJECT = AQL_IS_OBJECT;
+exports.AQL_IS_DOCUMENT = AQL_IS_OBJECT; // alias
 exports.AQL_FLOOR = AQL_FLOOR;
 exports.AQL_CEIL = AQL_CEIL;
 exports.AQL_ROUND = AQL_ROUND;

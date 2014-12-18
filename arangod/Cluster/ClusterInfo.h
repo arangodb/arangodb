@@ -178,7 +178,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_json_t const* getIndexes () const {
-          return triagens::basics::JsonHelper::getArrayElement(_json, "indexes");
+          return triagens::basics::JsonHelper::getObjectElement(_json, "indexes");
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -187,7 +187,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_json_t* keyOptions () const {
-          TRI_json_t const* keyOptions = triagens::basics::JsonHelper::getArrayElement(_json, "keyOptions");
+          TRI_json_t const* keyOptions = triagens::basics::JsonHelper::getObjectElement(_json, "keyOptions");
 
           if (keyOptions != nullptr) {
             return TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
@@ -201,7 +201,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool allowUserKeys () const {
-          TRI_json_t const* keyOptions = triagens::basics::JsonHelper::getArrayElement(_json, "keyOptions");
+          TRI_json_t const* keyOptions = triagens::basics::JsonHelper::getObjectElement(_json, "keyOptions");
 
           if (keyOptions != nullptr) {
             return triagens::basics::JsonHelper::getBooleanValue(keyOptions, "allowUserKeys", true);
@@ -231,8 +231,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<std::string> shardKeys () const {
-          TRI_json_t* const node = triagens::basics::JsonHelper::getArrayElement(_json, "shardKeys");
-          return triagens::basics::JsonHelper::stringList(node);
+          TRI_json_t* const node = triagens::basics::JsonHelper::getObjectElement(_json, "shardKeys");
+          return triagens::basics::JsonHelper::stringArray(node);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -240,7 +240,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::map<std::string, std::string> shardIds () const {
-          TRI_json_t* const node = triagens::basics::JsonHelper::getArrayElement(_json, "shards");
+          TRI_json_t* const node = triagens::basics::JsonHelper::getObjectElement(_json, "shards");
           return triagens::basics::JsonHelper::stringObject(node);
         }
 
@@ -249,8 +249,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int numberOfShards () const {
-          TRI_json_t* const node = triagens::basics::JsonHelper::getArrayElement(_json, "shards");
-          if (TRI_IsArrayJson(node)) {
+          TRI_json_t* const node = triagens::basics::JsonHelper::getObjectElement(_json, "shards");
+          if (TRI_IsObjectJson(node)) {
             return (int) (node->_value._objects._length / 2);
           }
           return 0;
@@ -536,7 +536,7 @@ namespace triagens {
           if (it != _jsons.end()) {
             TRI_json_t* _json = it->second;
             TRI_json_t const* keyOptions
-                 = triagens::basics::JsonHelper::getArrayElement
+                 = triagens::basics::JsonHelper::getObjectElement
                                         (_json, "keyOptions");
 
             if (keyOptions != nullptr) {
@@ -619,9 +619,9 @@ namespace triagens {
           if (it != _jsons.end()) {
             TRI_json_t* _json = it->second;
             TRI_json_t* const node
-              = triagens::basics::JsonHelper::getArrayElement
+              = triagens::basics::JsonHelper::getObjectElement
                                   (_json, "shardKeys");
-            return triagens::basics::JsonHelper::stringList(node);
+            return triagens::basics::JsonHelper::stringArray(node);
           }
           else {
             std::vector<std::string> result;

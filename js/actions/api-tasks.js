@@ -36,7 +36,7 @@ var API = "_api/tasks";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_get_api_tasks
-/// @brief Retrieves all (or one) currently active server task
+/// @brief Retrieves all (or one) currently active server task(s)
 ///
 /// @RESTHEADER{GET /_api/tasks/{id}, Fetch all tasks or one task with id}
 /// 
@@ -111,15 +111,16 @@ function get_api_tasks (req, res) {
 /// @RESTHEADER{POST /_api/tasks, creates a task}
 ///
 /// @RESTBODYPARAM{body,json,required}
-/// the body with the new task:
+/// A JSON object describing the new task:
+///
 /// - *name*: name of the task
-/// - *command*: javascript code to be executed
+/// - *command*: JavaScript code to be executed
 /// - *params*: parameters to be passed into command
 /// - *period*: n seconds between the executions
-/// - *offset*: n seconds delay 
+/// - *offset*: n seconds initial delay 
 ///
 /// @RESTDESCRIPTION
-/// creates a new task under a generated id
+/// creates a new task with a generated id
 ///
 /// @RESTRETURNCODES
 ///
@@ -133,10 +134,10 @@ function get_api_tasks (req, res) {
 ///
 ///     // Note: prints stuff if server is running in non-daemon mode.
 ///     var sampleTask = {
-///       name:"SampleTask",
+///       name: "SampleTask",
 ///       command: "(function(params) { require('internal').print(params); })(params)",
 ///       params: { "foo": "bar", "bar": "foo"},
-///       period:2
+///       period: 2
 ///     }
 ///     var response = logCurlRequest('POST', url,
 ///                                   JSON.stringify(sampleTask));
@@ -154,23 +155,24 @@ function get_api_tasks (req, res) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_put_api_new_tasks
-/// @brief registers a new task with a pre-defined Id
+/// @brief registers a new task with a pre-defined id
 ///
 /// @RESTHEADER{PUT /_api/tasks/{id}, creates a task with id}
 /// 
 /// @RESTURLPARAM{id,string,required}
-/// The id of the task to fetch.
+/// The id of the task to create
 ///
 /// @RESTBODYPARAM{body,json,required}
-/// the body with the new task:
+/// A JSON object describing the new task:
+///
 /// - *name*: name of the task
 /// - *command*: javascript code to be executed
 /// - *params*: parameters to be passed into command
 /// - *period*: n seconds between the executions
-/// - *offset*: n seconds delay 
+/// - *offset*: n seconds initial delay 
 ///
 /// @RESTDESCRIPTION
-/// registers a new task under id
+/// registers a new task with the specified id
 ///
 /// @RESTRETURNCODES
 ///

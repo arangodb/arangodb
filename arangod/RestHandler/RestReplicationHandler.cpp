@@ -308,8 +308,8 @@ BAD_CALL:
 
 int RestReplicationHandler::sortCollections (const void* l,
                                              const void* r) {
-  TRI_json_t const* left  = JsonHelper::getArrayElement(static_cast<TRI_json_t const*>(l), "parameters");
-  TRI_json_t const* right = JsonHelper::getArrayElement(static_cast<TRI_json_t const*>(r), "parameters");
+  TRI_json_t const* left  = JsonHelper::getObjectElement(static_cast<TRI_json_t const*>(l), "parameters");
+  TRI_json_t const* right = JsonHelper::getObjectElement(static_cast<TRI_json_t const*>(r), "parameters");
 
   int leftType  = JsonHelper::getNumericValue<int>(left,  "type", (int) TRI_COL_TYPE_DOCUMENT);
   int rightType = JsonHelper::getNumericValue<int>(right, "type", (int) TRI_COL_TYPE_DOCUMENT);
@@ -425,8 +425,8 @@ void RestReplicationHandler::handleCommandLoggerStart () {
   // so the logger cannot be started but is always running
   TRI_json_t result;
 
-  TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
+  TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &result);
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &result, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
 
   generateResult(&result);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
@@ -442,8 +442,8 @@ void RestReplicationHandler::handleCommandLoggerStop () {
   // so the logger cannot be stopped
   TRI_json_t result;
 
-  TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
+  TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &result);
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &result, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
 
   generateResult(&result);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
@@ -467,7 +467,7 @@ void RestReplicationHandler::handleCommandLoggerStop () {
 /// The body of the response contains a JSON object with the following
 /// attributes:
 ///
-/// - *state*: the current logger state as a JSON hash array with the following
+/// - *state*: the current logger state as a JSON object with the following
 ///   sub-attributes:
 ///
 ///   - *running*: whether or not the logger is running
@@ -480,7 +480,7 @@ void RestReplicationHandler::handleCommandLoggerStop () {
 ///
 ///   - *time*: the current date and time on the logger server
 ///
-/// - *server*: a JSON hash with the following sub-attributes:
+/// - *server*: a JSON object with the following sub-attributes:
 ///
 ///   - *version*: the logger server's version
 ///
@@ -518,7 +518,7 @@ void RestReplicationHandler::handleCommandLoggerStop () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerState () {
-  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  TRI_json_t* json = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
 
   if (json == nullptr) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
@@ -526,7 +526,7 @@ void RestReplicationHandler::handleCommandLoggerState () {
   }
 
   // "state" part 
-  TRI_json_t* state = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  TRI_json_t* state = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
 
   if (state == nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -536,14 +536,14 @@ void RestReplicationHandler::handleCommandLoggerState () {
 
   triagens::wal::LogfileManagerState const&& s = triagens::wal::LogfileManager::instance()->state();
 
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, state, "running", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, state, "lastLogTick", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, StringUtils::itoa(s.lastTick).c_str()));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, state, "totalEvents", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) s.numEvents));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, state, "time", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, s.timeString.c_str()));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "state", state);
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, state, "running", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, state, "lastLogTick", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, StringUtils::itoa(s.lastTick).c_str()));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, state, "totalEvents", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) s.numEvents));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, state, "time", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, s.timeString.c_str()));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "state", state);
 
   // "server" part
-  TRI_json_t* server = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  TRI_json_t* server = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
 
   if (server == nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -551,16 +551,16 @@ void RestReplicationHandler::handleCommandLoggerState () {
     return;
   }
 
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, server, "version", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_VERSION));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, server, "version", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_VERSION));
   char* serverIdString = TRI_StringUInt64(TRI_GetIdServer());
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, server, "serverId", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, serverIdString));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, server, "serverId", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, serverIdString));
   TRI_FreeString(TRI_CORE_MEM_ZONE, serverIdString);
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "server", server);
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "server", server);
  
   // clients
-  TRI_json_t* clients = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+  TRI_json_t* clients = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
   if (clients != nullptr) {
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "clients", clients);
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "clients", clients);
   }
 
   generateResult(json);
@@ -573,17 +573,17 @@ void RestReplicationHandler::handleCommandLoggerState () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerGetConfig () {
-  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  TRI_json_t* json = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
 
   if (json == nullptr) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     return;
   }
 
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "autoStart", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "logRemoteChanges", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "maxEvents", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, 0));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "maxEventsSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, 0));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "autoStart", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "logRemoteChanges", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "maxEvents", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, 0));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "maxEventsSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, 0));
 
   generateResult(json);
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -609,11 +609,11 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 /// @RESTDESCRIPTION
 /// Creates a new dump batch and returns the batch's id.
 ///
-/// The body of the request must be a JSON hash with the following attributes:
+/// The body of the request must be a JSON object with the following attributes:
 ///
 /// - *ttl*: the time-to-live for the new batch (in seconds)
 ///
-/// The response is a JSON hash with the following attributes:
+/// The response is a JSON object with the following attributes:
 ///
 /// - *id*: the id of the batch
 ///
@@ -652,7 +652,7 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 /// Extends the ttl of an existing dump batch, using the batch's id and
 /// the provided ttl value.
 ///
-/// The body of the request must be a JSON hash with the following attributes:
+/// The body of the request must be a JSON object with the following attributes:
 ///
 /// - *ttl*: the time-to-live for the batch (in seconds)
 ///
@@ -739,8 +739,8 @@ void RestReplicationHandler::handleCommandBatch () {
     }
 
     TRI_json_t json;
-    TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &json);
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "id", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, TRI_StringUInt64((uint64_t) id)));
+    TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &json);
+    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &json, "id", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, TRI_StringUInt64((uint64_t) id)));
 
     generateResult(&json);
     TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
@@ -932,7 +932,7 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 ///
 /// The *Content-Type* of the result is *application/x-arango-dump*. This is an
 /// easy-to-process format, with all log events going onto separate lines in the
-/// response body. Each log event itself is a JSON hash, with at least the
+/// response body. Each log event itself is a JSON object, with at least the
 /// following attributes:
 ///
 /// - *tick*: the log event tick value
@@ -1184,24 +1184,25 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 /// Include system collections in the result. The default value is *true*.
 ///
 /// @RESTDESCRIPTION
-/// Returns the list of collections and indexes available on the server. This
-/// list can be used by replication clients to initiate an initial sync with the
+/// Returns the array of collections and indexes available on the server. This
+/// array can be used by replication clients to initiate an initial sync with the
 /// server.
 ///
-/// The response will contain a JSON hash array with the *collection* and *state* and
+/// The response will contain a JSON object with the *collection* and *state* and
 /// *tick* attributes.
 ///
-/// *collections* is a list of collections with the following sub-attributes:
+/// *collections* is a array of collections with the following sub-attributes:
 ///
 /// - *parameters*: the collection properties
 ///
-/// - *indexes*: a list of the indexes of a the collection. Primary indexes and edges indexes
-///    are not included in this list.
+/// - *indexes*: a array of the indexes of a the collection. Primary indexes and edges indexes
+///    are not included in this array.
 ///
 /// The *state* attribute contains the current state of the replication logger. It
 /// contains the following sub-attributes:
 ///
-/// - *running*: whether or not the replication logger is currently active
+/// - *running*: whether or not the replication logger is currently active. Note:
+///   since ArangoDB 2.2, the value will always be *true*
 ///
 /// - *lastLogTick*: the value of the last tick the replication logger has written
 ///
@@ -1211,11 +1212,11 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 /// fetch collections' data using the dump method up to the value of lastLogTick, and
 /// query the continuous replication log for log events after this tick value.
 ///
-/// To create a full copy of the collections on the logger server, a replication client
+/// To create a full copy of the collections on the server, a replication client
 /// can execute these steps:
 ///
 /// - call the */inventory* API method. This returns the *lastLogTick* value and the
-///   list of collections and indexes from the logger server.
+///   array of collections and indexes from the server.
 ///
 /// - for each collection returned by */inventory*, create the collection locally and
 ///   call */dump* to stream the collection data to the client, up to the value of
@@ -1317,7 +1318,7 @@ void RestReplicationHandler::handleCommandInventory () {
     return;
   }
 
-  TRI_ASSERT(JsonHelper::isList(collections));
+  TRI_ASSERT(JsonHelper::isArray(collections));
 
   // sort collections by type, then name
   size_t const n = collections->_value._objects._length;
@@ -1329,15 +1330,15 @@ void RestReplicationHandler::handleCommandInventory () {
 
 
   TRI_json_t json;
-  TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &json);
+  TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &json);
 
   char* tickString = TRI_StringUInt64(tick);
 
   // add collections data
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "collections", collections);
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &json, "collections", collections);
 
   // "state"
-  TRI_json_t* state = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+  TRI_json_t* state = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE);
 
   if (state == nullptr) {
     TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
@@ -1347,14 +1348,14 @@ void RestReplicationHandler::handleCommandInventory () {
 
   triagens::wal::LogfileManagerState const&& s = triagens::wal::LogfileManager::instance()->state();
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, state, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, state, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
   char* logTickString = TRI_StringUInt64(s.lastTick);
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, state, "lastLogTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, logTickString));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, state, "totalEvents", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) s.numEvents));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, state, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, s.timeString.c_str()));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "state", state);
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, state, "lastLogTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, logTickString));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, state, "totalEvents", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) s.numEvents));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, state, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, s.timeString.c_str()));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &json, "state", state);
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "tick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, tickString));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &json, "tick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, tickString));
 
   generateResult(&json);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
@@ -1370,10 +1371,10 @@ void RestReplicationHandler::handleCommandInventory () {
 /// Include system collections in the result. The default value is *true*.
 ///
 /// @RESTDESCRIPTION
-/// Returns the list of collections and indexes available on the cluster.
+/// Returns the array of collections and indexes available on the cluster.
 ///
-/// The response will be a list of JSON hash array, one for each collection,
-/// which contains exactly two keys "parameters" and "indexes". This
+/// The response will be an array of JSON objects, one for each collection.
+/// Each collection containscontains exactly two keys "parameters" and "indexes". This
 /// information comes from Plan/Collections/<DB-Name>/* in the agency,
 /// just that the *indexes* attribute there is relocated to adjust it to
 /// the data format of arangodump.
@@ -1428,39 +1429,39 @@ void RestReplicationHandler::handleCommandClusterInventory () {
         else {
           map<string, AgencyCommResultEntry>::iterator it;
           TRI_json_t json;
-          TRI_InitList2Json(TRI_CORE_MEM_ZONE, &json, result._values.size());
+          TRI_InitArray2Json(TRI_CORE_MEM_ZONE, &json, result._values.size());
           for (it = result._values.begin();
                it != result._values.end(); ++it) {
-            if (TRI_IsArrayJson(it->second._json)) {
+            if (TRI_IsObjectJson(it->second._json)) {
               TRI_json_t const* sub
-                  = TRI_LookupArrayJson(it->second._json, "isSystem");
+                  = TRI_LookupObjectJson(it->second._json, "isSystem");
               if (includeSystem ||
                   (TRI_IsBooleanJson(sub) && ! sub->_value._boolean)) {
                 TRI_json_t coll;
-                TRI_InitArray2Json(TRI_CORE_MEM_ZONE, &coll, 2);
-                sub = TRI_LookupArrayJson( it->second._json, "indexes");
-                TRI_InsertArrayJson(TRI_CORE_MEM_ZONE,&coll,"indexes", sub);
-                TRI_DeleteArrayJson(TRI_UNKNOWN_MEM_ZONE, it->second._json,
+                TRI_InitObject2Json(TRI_CORE_MEM_ZONE, &coll, 2);
+                sub = TRI_LookupObjectJson( it->second._json, "indexes");
+                TRI_InsertObjectJson(TRI_CORE_MEM_ZONE,&coll,"indexes", sub);
+                TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, it->second._json,
                                     "indexes");
                 // This makes a copy to the CORE memory zone:
-                TRI_InsertArrayJson(TRI_CORE_MEM_ZONE, &coll,
+                TRI_InsertObjectJson(TRI_CORE_MEM_ZONE, &coll,
                                      "parameters", it->second._json);
-                TRI_PushBack2ListJson(&json, &coll);
+                TRI_PushBack2ArrayJson(&json, &coll);
               }
             }
           }
 
           // Wrap the result:
           TRI_json_t wrap;
-          TRI_InitArray2Json(TRI_CORE_MEM_ZONE, &wrap, 3);
-          TRI_Insert2ArrayJson(TRI_CORE_MEM_ZONE,&wrap,"collections", &json);
+          TRI_InitObject2Json(TRI_CORE_MEM_ZONE, &wrap, 3);
+          TRI_Insert2ObjectJson(TRI_CORE_MEM_ZONE,&wrap,"collections", &json);
           TRI_voc_tick_t tick = TRI_CurrentTickServer();
           char* tickString = TRI_StringUInt64(tick);
           char const* stateStatic = "unused";
           char* state = TRI_DuplicateString2(stateStatic, strlen(stateStatic));
-          TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &wrap, "tick",
+          TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &wrap, "tick",
                       TRI_CreateStringJson(TRI_CORE_MEM_ZONE, tickString));
-          TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &wrap, "state",
+          TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &wrap, "state",
                       TRI_CreateStringJson(TRI_CORE_MEM_ZONE, state));
 
           generateResult(HttpResponse::OK, &wrap);
@@ -1478,11 +1479,11 @@ void RestReplicationHandler::handleCommandClusterInventory () {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_voc_cid_t RestReplicationHandler::getCid (TRI_json_t const* json) const {
-  if (! JsonHelper::isArray(json)) {
+  if (! JsonHelper::isObject(json)) {
     return 0;
   }
 
-  TRI_json_t const* id = JsonHelper::getArrayElement(json, "cid");
+  TRI_json_t const* id = JsonHelper::getObjectElement(json, "cid");
 
   if (JsonHelper::isString(id)) {
     return StringUtils::uint64(id->_value._string.data, id->_value._string.length - 1);
@@ -1505,7 +1506,7 @@ int RestReplicationHandler::createCollection (TRI_json_t const* json,
     *dst = nullptr;
   }
 
-  if (! JsonHelper::isArray(json)) {
+  if (! JsonHelper::isObject(json)) {
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
@@ -1542,8 +1543,8 @@ int RestReplicationHandler::createCollection (TRI_json_t const* json,
 
   TRI_json_t* keyOptions = nullptr;
 
-  if (JsonHelper::isArray(JsonHelper::getArrayElement(json, "keyOptions"))) {
-    keyOptions = TRI_CopyJson(TRI_CORE_MEM_ZONE, JsonHelper::getArrayElement(json, "keyOptions"));
+  if (JsonHelper::isObject(JsonHelper::getObjectElement(json, "keyOptions"))) {
+    keyOptions = TRI_CopyJson(TRI_CORE_MEM_ZONE, JsonHelper::getObjectElement(json, "keyOptions"));
   }
 
   TRI_col_info_t params;
@@ -1662,8 +1663,8 @@ void RestReplicationHandler::handleCommandRestoreCollection () {
   else {
     TRI_json_t result;
 
-    TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "result", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
+    TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &result);
+    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &result, "result", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
 
     generateResult(&result);
   }
@@ -1708,8 +1709,8 @@ void RestReplicationHandler::handleCommandRestoreIndexes () {
   else {
     TRI_json_t result;
 
-    TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "result", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
+    TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &result);
+    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &result, "result", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
 
     generateResult(&result);
   }
@@ -1724,23 +1725,23 @@ int RestReplicationHandler::processRestoreCollection (TRI_json_t const* collecti
                                                       bool reuseId,
                                                       bool force,
                                                       string& errorMsg) {
-  if (! JsonHelper::isArray(collection)) {
+  if (! JsonHelper::isObject(collection)) {
     errorMsg = "collection declaration is invalid";
 
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
-  TRI_json_t const* parameters = JsonHelper::getArrayElement(collection, "parameters");
+  TRI_json_t const* parameters = JsonHelper::getObjectElement(collection, "parameters");
 
-  if (! JsonHelper::isArray(parameters)) {
+  if (! JsonHelper::isObject(parameters)) {
     errorMsg = "collection parameters declaration is invalid";
 
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
-  TRI_json_t const* indexes = JsonHelper::getArrayElement(collection, "indexes");
+  TRI_json_t const* indexes = JsonHelper::getObjectElement(collection, "indexes");
 
-  if (! JsonHelper::isList(indexes)) {
+  if (! JsonHelper::isArray(indexes)) {
     errorMsg = "collection indexes declaration is invalid";
 
     return TRI_ERROR_HTTP_BAD_PARAMETER;
@@ -1762,7 +1763,7 @@ int RestReplicationHandler::processRestoreCollection (TRI_json_t const* collecti
   TRI_vocbase_col_t* col = nullptr;
 
   if (reuseId) {
-    TRI_json_t const* idString = JsonHelper::getArrayElement(parameters, "cid");
+    TRI_json_t const* idString = JsonHelper::getObjectElement(parameters, "cid");
 
     if (! JsonHelper::isString(idString)) {
       errorMsg = "collection id is missing";
@@ -1842,15 +1843,15 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
                  bool force,
                  string& errorMsg) {
 
-  if (! JsonHelper::isArray(collection)) {
+  if (! JsonHelper::isObject(collection)) {
     errorMsg = "collection declaration is invalid";
 
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
-  TRI_json_t* parameters = JsonHelper::getArrayElement(collection, "parameters");
+  TRI_json_t* parameters = JsonHelper::getObjectElement(collection, "parameters");
 
-  if (! JsonHelper::isArray(parameters)) {
+  if (! JsonHelper::isObject(parameters)) {
     errorMsg = "collection parameters declaration is invalid";
 
     return TRI_ERROR_HTTP_BAD_PARAMETER;
@@ -1908,20 +1909,20 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
   // now re-create the collection
   // dig out number of shards:
   uint64_t numberOfShards = 1;
-  TRI_json_t const* shards = JsonHelper::getArrayElement(parameters, "shards");
-  if (nullptr != shards && TRI_IsArrayJson(shards)) {
+  TRI_json_t const* shards = JsonHelper::getObjectElement(parameters, "shards");
+  if (nullptr != shards && TRI_IsObjectJson(shards)) {
     numberOfShards = TRI_LengthVector(&shards->_value._objects)/2;
   }
   // We take one shard if "shards" was not given
 
   TRI_voc_tick_t new_id_tick = ci->uniqid(1);
   string new_id = StringUtils::itoa(new_id_tick);
-  TRI_ReplaceArrayJson(TRI_UNKNOWN_MEM_ZONE, parameters, "id",
+  TRI_ReplaceObjectJson(TRI_UNKNOWN_MEM_ZONE, parameters, "id",
                        TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE,
                                               new_id.c_str(), new_id.size()));
 
   // Now put in the primary and an edge index if needed:
-  TRI_json_t* indexes = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+  TRI_json_t* indexes = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
 
   if (indexes == nullptr) {
     errorMsg = "out of memory";
@@ -1940,10 +1941,10 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
   TRI_json_t* idxJson = idx->json(idx);
   TRI_FreeIndex(idx);
 
-  TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, indexes, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson));
+  TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, indexes, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson));
   TRI_FreeJson(TRI_CORE_MEM_ZONE, idxJson);
 
-  TRI_json_t* type = TRI_LookupArrayJson(parameters, "type");
+  TRI_json_t* type = TRI_LookupObjectJson(parameters, "type");
   TRI_col_type_e collectionType;
   if (TRI_IsNumberJson(type)) {
     collectionType = (TRI_col_type_e) ((int) type->_value._number);
@@ -1966,11 +1967,11 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
     idxJson = idx->json(idx);
     TRI_FreeIndex(idx);
 
-    TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, indexes, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson));
+    TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, indexes, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson));
     TRI_FreeJson(TRI_CORE_MEM_ZONE, idxJson);
   }
 
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, parameters, "indexes", indexes);
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, parameters, "indexes", indexes);
 
   int res = ci->createCollectionCoordinator(dbName, new_id, numberOfShards,
                                             parameters, errorMsg, 0.0);
@@ -1991,23 +1992,23 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
 int RestReplicationHandler::processRestoreIndexes (TRI_json_t const* collection,
                                                    bool force,
                                                    string& errorMsg) {
-  if (! JsonHelper::isArray(collection)) {
+  if (! JsonHelper::isObject(collection)) {
     errorMsg = "collection declaration is invalid";
 
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
-  TRI_json_t const* parameters = JsonHelper::getArrayElement(collection, "parameters");
+  TRI_json_t const* parameters = JsonHelper::getObjectElement(collection, "parameters");
 
-  if (! JsonHelper::isArray(parameters)) {
+  if (! JsonHelper::isObject(parameters)) {
     errorMsg = "collection parameters declaration is invalid";
 
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
-  TRI_json_t const* indexes = JsonHelper::getArrayElement(collection, "indexes");
+  TRI_json_t const* indexes = JsonHelper::getObjectElement(collection, "indexes");
 
-  if (! JsonHelper::isList(indexes)) {
+  if (! JsonHelper::isArray(indexes)) {
     errorMsg = "collection indexes declaration is invalid";
 
     return TRI_ERROR_HTTP_BAD_PARAMETER;
@@ -2094,23 +2095,23 @@ int RestReplicationHandler::processRestoreIndexesCoordinator (
                  bool force,
                  string& errorMsg) {
 
-  if (! JsonHelper::isArray(collection)) {
+  if (! JsonHelper::isObject(collection)) {
     errorMsg = "collection declaration is invalid";
 
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
-  TRI_json_t const* parameters = JsonHelper::getArrayElement(collection, "parameters");
+  TRI_json_t const* parameters = JsonHelper::getObjectElement(collection, "parameters");
 
-  if (! JsonHelper::isArray(parameters)) {
+  if (! JsonHelper::isObject(parameters)) {
     errorMsg = "collection parameters declaration is invalid";
 
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
-  TRI_json_t const* indexes = JsonHelper::getArrayElement(collection, "indexes");
+  TRI_json_t const* indexes = JsonHelper::getObjectElement(collection, "indexes");
 
-  if (! JsonHelper::isList(indexes)) {
+  if (! JsonHelper::isArray(indexes)) {
     errorMsg = "collection indexes declaration is invalid";
 
     return TRI_ERROR_HTTP_BAD_PARAMETER;
@@ -2322,7 +2323,7 @@ int RestReplicationHandler::processRestoreDataBatch (CollectionNameResolver cons
       // found something
       TRI_json_t* json = TRI_JsonString(TRI_CORE_MEM_ZONE, ptr);
 
-      if (! JsonHelper::isArray(json)) {
+      if (! JsonHelper::isObject(json)) {
         if (json != nullptr) {
           TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
         }
@@ -2371,7 +2372,7 @@ int RestReplicationHandler::processRestoreDataBatch (CollectionNameResolver cons
         }
 
         else if (TRI_EqualString(attributeName, "data")) {
-          if (JsonHelper::isArray(value)) {
+          if (JsonHelper::isObject(value)) {
             doc = value;
           }
         }
@@ -2487,8 +2488,8 @@ void RestReplicationHandler::handleCommandRestoreData () {
   else {
     TRI_json_t result;
 
-    TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "result", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
+    TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &result);
+    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &result, "result", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
 
     generateResult(&result);
   }
@@ -2558,7 +2559,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
       // found something
       TRI_json_t* json = TRI_JsonString(TRI_CORE_MEM_ZONE, ptr);
 
-      if (! JsonHelper::isArray(json)) {
+      if (! JsonHelper::isObject(json)) {
         if (json != nullptr) {
           TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
         }
@@ -2602,7 +2603,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
         }
 
         else if (TRI_EqualString(attributeName, "data")) {
-          if (JsonHelper::isArray(value)) {
+          if (JsonHelper::isObject(value)) {
             doc = value;
           }
         }
@@ -2716,15 +2717,15 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
           TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE,
                                             result->answer->body());
 
-          if (JsonHelper::isArray(json)) {
-            TRI_json_t const* r = TRI_LookupArrayJson(json, "result");
+          if (JsonHelper::isObject(json)) {
+            TRI_json_t const* r = TRI_LookupObjectJson(json, "result");
             if (TRI_IsBooleanJson(r)) {
               if (r->_value._boolean) {
                 nrok++;
               }
             }
             else {
-              TRI_json_t const* m = TRI_LookupArrayJson(json, "errorMessage");
+              TRI_json_t const* m = TRI_LookupObjectJson(json, "errorMessage");
               if (TRI_IsStringJson(m)) {
                 errorMsg.append(m->_value._string.data,
                                 m->_value._string.length);
@@ -2741,8 +2742,8 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
           TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE,
                                             result->answer->body());
 
-          if (JsonHelper::isArray(json)) {
-            TRI_json_t const* m = TRI_LookupArrayJson(json, "errorMessage");
+          if (JsonHelper::isObject(json)) {
+            TRI_json_t const* m = TRI_LookupObjectJson(json, "errorMessage");
             if (TRI_IsStringJson(m)) {
               errorMsg.append(m->_value._string.data,
                               m->_value._string.length);
@@ -2777,8 +2778,8 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
 
   TRI_json_t result;
 
-  TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "result", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
+  TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &result);
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &result, "result", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
 
   generateResult(&result);
 }
@@ -2835,7 +2836,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
 /// easy-to-process format, with all entries going onto separate lines in the
 /// response body.
 ///
-/// Each line itself is a JSON hash, with at least the following attributes:
+/// Each line itself is a JSON object, with at least the following attributes:
 ///
 /// - *tick*: the operation's tick attribute
 ///
@@ -3073,7 +3074,7 @@ void RestReplicationHandler::handleCommandDump () {
 /// from the remote database to the local ArangoDB database. It will extract data from the
 /// remote database by calling the remote database's *dump* API until all data are fetched.
 ///
-/// The body of the request must be JSON hash with the configuration. The
+/// The body of the request must be JSON object with the configuration. The
 /// following attributes are allowed for the configuration:
 ///
 /// - *endpoint*: the endpoint to connect to (e.g. "tcp://192.168.173.13:8529").
@@ -3090,15 +3091,15 @@ void RestReplicationHandler::handleCommandDump () {
 /// - *restrictType*: an optional string value for collection filtering. When
 ///    specified, the allowed values are *include* or *exclude*.
 ///
-/// - *restrictCollections*: an optional list of collections for use with
+/// - *restrictCollections*: an optional array of collections for use with
 ///   *restrictType*. If *restrictType* is *include*, only the specified collections
 ///    will be sychronised. If *restrictType* is *exclude*, all but the specified
 ///    collections will be synchronized.
 ///
-/// In case of success, the body of the response is a JSON hash with the following
+/// In case of success, the body of the response is a JSON object with the following
 /// attributes:
 ///
-/// - *collections*: a list of collections that were transferred from the endpoint
+/// - *collections*: an array of collections that were transferred from the endpoint
 ///
 /// - *lastLogTick*: the last log tick on the endpoint at the time the transfer
 ///   was started. Use this value as the *from* value when starting the continuous
@@ -3154,9 +3155,9 @@ void RestReplicationHandler::handleCommandSync () {
   bool includeSystem = JsonHelper::getBooleanValue(json, "includeSystem", true);
 
   std::unordered_map<string, bool> restrictCollections;
-  TRI_json_t* restriction = JsonHelper::getArrayElement(json, "restrictCollections");
+  TRI_json_t* restriction = JsonHelper::getObjectElement(json, "restrictCollections");
 
-  if (restriction != nullptr && restriction->_type == TRI_JSON_LIST) {
+  if (restriction != nullptr && restriction->_type == TRI_JSON_ARRAY) {
     size_t const n = restriction->_value._objects._length;
 
     for (size_t i = 0; i < n; ++i) {
@@ -3208,9 +3209,9 @@ void RestReplicationHandler::handleCommandSync () {
 
   TRI_json_t result;
 
-  TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
+  TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &result);
 
-  TRI_json_t* jsonCollections = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
+  TRI_json_t* jsonCollections = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
   if (jsonCollections != nullptr) {
     map<TRI_voc_cid_t, string>::const_iterator it;
@@ -3219,28 +3220,28 @@ void RestReplicationHandler::handleCommandSync () {
     for (it = c.begin(); it != c.end(); ++it) {
       const string cidString = StringUtils::itoa((*it).first);
 
-      TRI_json_t* ci = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 2);
+      TRI_json_t* ci = TRI_CreateObject2Json(TRI_CORE_MEM_ZONE, 2);
 
       if (ci != nullptr) {
-        TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE,
+        TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                              ci,
                              "id",
                              TRI_CreateString2CopyJson(TRI_CORE_MEM_ZONE, cidString.c_str(), cidString.size()));
 
-        TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE,
+        TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                              ci,
                              "name",
                              TRI_CreateString2CopyJson(TRI_CORE_MEM_ZONE, (*it).second.c_str(), (*it).second.size()));
 
-        TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, jsonCollections, ci);
+        TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, jsonCollections, ci);
       }
     }
 
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "collections", jsonCollections);
+    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &result, "collections", jsonCollections);
   }
 
   char* tickString = TRI_StringUInt64(syncer.getLastLogTick());
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &result, "lastLogTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, tickString));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &result, "lastLogTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, tickString));
 
   generateResult(&result);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
@@ -3254,7 +3255,7 @@ void RestReplicationHandler::handleCommandSync () {
 /// Returns the servers id. The id is also returned by other replication API
 /// methods, and this method is an easy means of determining a server's id.
 ///
-/// The body of the response is a JSON hash with the attribute *serverId*. The
+/// The body of the response is a JSON object with the attribute *serverId*. The
 /// server id is returned as a string.
 ///
 /// @RESTRETURNCODES
@@ -3283,10 +3284,10 @@ void RestReplicationHandler::handleCommandSync () {
 void RestReplicationHandler::handleCommandServerId () {
   TRI_json_t result;
 
-  TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &result);
+  TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &result);
 
   const string serverId = StringUtils::itoa(TRI_GetIdServer());
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE,
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                        &result,
                        "serverId",
                        TRI_CreateString2CopyJson(TRI_CORE_MEM_ZONE, serverId.c_str(), serverId.size()));
@@ -3302,7 +3303,7 @@ void RestReplicationHandler::handleCommandServerId () {
 /// @RESTDESCRIPTION
 /// Returns the configuration of the replication applier.
 ///
-/// The body of the response is a JSON hash with the configuration. The
+/// The body of the response is a JSON object with the configuration. The
 /// following attributes may be present in the configuration:
 ///
 /// - *endpoint*: the logger server to connect to (e.g. "tcp://192.168.173.13:8529").
@@ -3335,7 +3336,7 @@ void RestReplicationHandler::handleCommandServerId () {
 ///
 /// - *restrictType*: the configuration for *restrictCollections*
 ///
-/// - *restrictCollections*: the optional list of collections to include or exclude,
+/// - *restrictCollections*: the optional array of collections to include or exclude,
 ///   based on the setting of *restrictType*
 ///
 /// @RESTRETURNCODES
@@ -3396,7 +3397,7 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 /// will be saved immediately but only become active with the next start of the
 /// applier.
 ///
-/// The body of the request must be JSON hash with the configuration. The
+/// The body of the request must be JSON object with the configuration. The
 /// following attributes are allowed for the configuration:
 ///
 /// - *endpoint*: the logger server to connect to (e.g. "tcp://192.168.173.13:8529").
@@ -3441,10 +3442,10 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 ///
 /// - *restrictType*: the configuration for *restrictCollections*
 ///
-/// - *restrictCollections*: the optional list of collections to include or exclude,
+/// - *restrictCollections*: the optional array of collections to include or exclude,
 ///   based on the setting of *restrictType*
 ///
-/// In case of success, the body of the response is a JSON hash with the updated
+/// In case of success, the body of the response is a JSON object with the updated
 /// configuration.
 ///
 /// @RESTRETURNCODES
@@ -3513,7 +3514,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
     config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
   }
 
-  value = JsonHelper::getArrayElement(json, "database");
+  value = JsonHelper::getObjectElement(json, "database");
   if (config._database != nullptr) {
     // free old value
     TRI_FreeString(TRI_CORE_MEM_ZONE, config._database);
@@ -3526,7 +3527,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
     config._database = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, _vocbase->_name);
   }
 
-  value = JsonHelper::getArrayElement(json, "username");
+  value = JsonHelper::getObjectElement(json, "username");
   if (JsonHelper::isString(value)) {
     if (config._username != nullptr) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, config._username);
@@ -3534,7 +3535,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
     config._username = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, value->_value._string.data, value->_value._string.length - 1);
   }
 
-  value = JsonHelper::getArrayElement(json, "password");
+  value = JsonHelper::getObjectElement(json, "password");
   if (JsonHelper::isString(value)) {
     if (config._password != nullptr) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, config._password);
@@ -3553,12 +3554,12 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
   config._includeSystem     = JsonHelper::getBooleanValue(json, "includeSystem", config._includeSystem);
   config._restrictType      = JsonHelper::getStringValue(json, "restrictType", config._restrictType);
 
-  value = JsonHelper::getArrayElement(json, "restrictCollections");
-  if (TRI_IsListJson(value)) {
+  value = JsonHelper::getObjectElement(json, "restrictCollections");
+  if (TRI_IsArrayJson(value)) {
     config._restrictCollections.clear();
-    size_t const n = TRI_LengthListJson(value);
+    size_t const n = TRI_LengthArrayJson(value);
     for (size_t i = 0; i < n; ++i) {
-      TRI_json_t const* collection = TRI_LookupListJson(value, i);
+      TRI_json_t const* collection = TRI_LookupArrayJson(value, i);
       if (TRI_IsStringJson(collection)) {
         config._restrictCollections.emplace(std::make_pair(std::string(collection->_value._string.data), true));
       }
@@ -3742,9 +3743,9 @@ void RestReplicationHandler::handleCommandApplierStop () {
 /// Returns the state of the replication applier, regardless of whether the
 /// applier is currently running or not.
 ///
-/// The response is a JSON hash with the following attributes:
+/// The response is a JSON object with the following attributes:
 ///
-/// - *state*: a JSON hash with the following sub-attributes:
+/// - *state*: a JSON object with the following sub-attributes:
 ///
 ///   - *running*: whether or not the applier is active and running
 ///
@@ -3777,7 +3778,7 @@ void RestReplicationHandler::handleCommandApplierStop () {
 ///   - *totalOperationsExcluded*: the total number of log events excluded because
 ///     of *restrictCollections*.
 ///
-///   - *progress*: a JSON hash with details about the replication applier progress.
+///   - *progress*: a JSON object with details about the replication applier progress.
 ///     It contains the following sub-attributes if there is progress to report:
 ///
 ///     - *message*: a textual description of the progress
@@ -3786,7 +3787,7 @@ void RestReplicationHandler::handleCommandApplierStop () {
 ///
 ///     - *failedConnects*: the current number of failed connection attempts
 ///
-///   - *lastError*: a JSON hash with details about the last error that happened on
+///   - *lastError*: a JSON object with details about the last error that happened on
 ///     the applier. It contains the following sub-attributes if there was an error:
 ///
 ///     - *errorNum*: a numerical error code
@@ -3797,7 +3798,7 @@ void RestReplicationHandler::handleCommandApplierStop () {
 ///
 ///     In case no error has occurred, *lastError* will be empty.
 ///
-/// - *server*: a JSON hash with the following sub-attributes:
+/// - *server*: a JSON object with the following sub-attributes:
 ///
 ///   - *version*: the applier server's version
 ///

@@ -174,7 +174,7 @@ int ProcessIndexFields (v8::Isolate* isolate,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", fieldJson);
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "fields", fieldJson);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -187,7 +187,7 @@ int ProcessIndexGeoJsonFlag (v8::Isolate* isolate,
                              TRI_json_t* json) {
   v8::HandleScope scope(isolate);
   bool geoJson = ExtractBoolFlag(isolate, obj, TRI_V8_ASCII_STRING("geoJson"), false);
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "geoJson", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, geoJson));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "geoJson", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, geoJson));
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -202,9 +202,9 @@ int ProcessIndexUniqueFlag (v8::Isolate* isolate,
                             bool fillConstraint = false) {
   v8::HandleScope scope(isolate);
   bool unique = ExtractBoolFlag(isolate, obj, TRI_V8_ASCII_STRING("unique"), false);
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, unique));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, unique));
   if (fillConstraint) {
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "constraint", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, unique));
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "constraint", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, unique));
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -219,7 +219,7 @@ int ProcessIndexIgnoreNullFlag (v8::Isolate* isolate,
                                 TRI_json_t* json) {
   v8::HandleScope scope(isolate);
   bool ignoreNull = ExtractBoolFlag(isolate, obj, TRI_V8_ASCII_STRING("ignoreNull"), false);
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, ignoreNull));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, ignoreNull));
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -233,7 +233,7 @@ int ProcessIndexUndefinedFlag (v8::Isolate* isolate,
                                TRI_json_t* json) {
   v8::HandleScope scope(isolate);
   bool undefined = ExtractBoolFlag(isolate, obj, TRI_V8_ASCII_STRING("undefined"), false);
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "undefined", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, undefined));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "undefined", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, undefined));
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -308,7 +308,7 @@ static int EnhanceJsonIndexFulltext (v8::Isolate* isolate,
   if (obj->Has(TRI_V8_ASCII_STRING("minLength")) && obj->Get(TRI_V8_ASCII_STRING("minLength"))->IsNumber()) {
     minWordLength = (int) TRI_ObjectToInt64(obj->Get(TRI_V8_ASCII_STRING("minLength")));
   }
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "minLength", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, minWordLength));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "minLength", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, minWordLength));
 
   return res;
 }
@@ -345,8 +345,8 @@ static int EnhanceJsonIndexCap (v8::Isolate* isolate,
     return TRI_ERROR_BAD_PARAMETER;
   }
 
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "size", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) count));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "byteSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) byteSize));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "size", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) count));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "byteSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) byteSize));
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -401,7 +401,7 @@ static int EnhanceIndexJson (const v8::FunctionCallbackInfo<v8::Value>& args,
     }
   }
 
-  json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  json = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
 
   if (json == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -411,12 +411,12 @@ static int EnhanceIndexJson (const v8::FunctionCallbackInfo<v8::Value>& args,
     uint64_t id = TRI_ObjectToUInt64(obj->Get(TRI_V8_ASCII_STRING("id")), true);
     if (id > 0) {
       char* idString = TRI_StringUInt64(id);
-      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "id", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, idString));
+      TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "id", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, idString));
       TRI_FreeString(TRI_CORE_MEM_ZONE, idString);
     }
   }
 
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE,
                        json,
                        "type",
                        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_TypeNameIndex(type)));
@@ -525,7 +525,7 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
   TRI_ASSERT(json != nullptr);
 
   // extract type
-  TRI_json_t* value = TRI_LookupArrayJson(json, "type");
+  TRI_json_t* value = TRI_LookupObjectJson(json, "type");
   if (! TRI_IsStringJson(value)) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
@@ -534,7 +534,7 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
 
   // extract unique
   bool unique = false;
-  value = TRI_LookupArrayJson(json, "unique");
+  value = TRI_LookupObjectJson(json, "unique");
   if (TRI_IsBooleanJson(value)) {
     unique = value->_value._boolean;
   }
@@ -547,14 +547,14 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
 
   // extract id
   TRI_idx_iid_t iid = 0;
-  value = TRI_LookupArrayJson(json, "id");
+  value = TRI_LookupObjectJson(json, "id");
   if (TRI_IsStringJson(value)) {
     iid = TRI_UInt64String2(value->_value._string.data, value->_value._string.length - 1);
   }
 
   // extract fields
-  value = TRI_LookupArrayJson(json, "fields");
-  if (TRI_IsListJson(value)) {
+  value = TRI_LookupObjectJson(json, "fields");
+  if (TRI_IsArrayJson(value)) {
     // note: "fields" is not mandatory for all index types
 
     // copy all field names (attributes)
@@ -614,13 +614,13 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
       TRI_ASSERT(attributes._length == 1);
 
       bool ignoreNull = false;
-      TRI_json_t* value = TRI_LookupArrayJson(json, "ignoreNull");
+      TRI_json_t* value = TRI_LookupObjectJson(json, "ignoreNull");
       if (TRI_IsBooleanJson(value)) {
         ignoreNull = value->_value._boolean;
       }
 
       bool geoJson = false;
-      value = TRI_LookupArrayJson(json, "geoJson");
+      value = TRI_LookupObjectJson(json, "geoJson");
       if (TRI_IsBooleanJson(value)) {
         geoJson = value->_value._boolean;
       }
@@ -652,7 +652,7 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
       TRI_ASSERT(attributes._length == 2);
 
       bool ignoreNull = false;
-      TRI_json_t* value = TRI_LookupArrayJson(json, "ignoreNull");
+      TRI_json_t* value = TRI_LookupObjectJson(json, "ignoreNull");
       if (TRI_IsBooleanJson(value)) {
         ignoreNull = value->_value._boolean;
       }
@@ -729,7 +729,7 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
       TRI_ASSERT(attributes._length == 1);
 
       int minWordLength = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
-      TRI_json_t* value = TRI_LookupArrayJson(json, "minLength");
+      TRI_json_t* value = TRI_LookupObjectJson(json, "minLength");
       if (TRI_IsNumberJson(value)) {
         minWordLength = (int) value->_value._number;
       }
@@ -753,13 +753,13 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
 
     case TRI_IDX_TYPE_CAP_CONSTRAINT: {
       size_t size = 0;
-      TRI_json_t* value = TRI_LookupArrayJson(json, "size");
+      TRI_json_t* value = TRI_LookupObjectJson(json, "size");
       if (TRI_IsNumberJson(value)) {
         size = (size_t) value->_value._number;
       }
 
       int64_t byteSize = 0;
-      value = TRI_LookupArrayJson(json, "byteSize");
+      value = TRI_LookupObjectJson(json, "byteSize");
       if (TRI_IsNumberJson(value)) {
         byteSize = (int64_t) value->_value._number;
       }
@@ -853,13 +853,13 @@ static void EnsureIndex (const v8::FunctionCallbackInfo<v8::Value>& args,
 
     // check if there is an attempt to create a unique index on non-shard keys
     if (create) {
-      TRI_json_t const* v = TRI_LookupArrayJson(json, "unique");
+      TRI_json_t const* v = TRI_LookupObjectJson(json, "unique");
 
       if (TRI_IsBooleanJson(v) && v->_value._boolean) {
         // unique index, now check if fields and shard keys match
-        TRI_json_t const* flds = TRI_LookupArrayJson(json, "fields");
+        TRI_json_t const* flds = TRI_LookupObjectJson(json, "fields");
 
-        if (TRI_IsListJson(flds) && c->numberOfShards() > 1) {
+        if (TRI_IsArrayJson(flds) && c->numberOfShards() > 1) {
           vector<string> const& shardKeys = c->shardKeys();
           size_t const n = flds->_value._objects._length;
 
@@ -868,7 +868,7 @@ static void EnsureIndex (const v8::FunctionCallbackInfo<v8::Value>& args,
           }
           else {
             for (size_t i = 0; i < n; ++i) {
-              TRI_json_t const* f = TRI_LookupListJson(flds, i);
+              TRI_json_t const* f = TRI_LookupArrayJson(flds, i);
 
               if (! TRI_IsStringJson(f)) {
                 res = TRI_ERROR_INTERNAL;
@@ -1044,35 +1044,35 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
   }
 
   // now create the JSON for the collection
-  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  TRI_json_t* json = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
 
   if (json == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "id",          TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, cid.c_str(), cid.size()));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "name",        TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, name.c_str(), name.size()));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type",        TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (int) collectionType));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "status",      TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (int) TRI_VOC_COL_STATUS_LOADED));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "deleted",     TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameter._deleted));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "doCompact",   TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameter._doCompact));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "isSystem",    TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameter._isSystem));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "isVolatile",  TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameter._isVolatile));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "waitForSync", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameter._waitForSync));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "journalSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, parameter._maximalSize));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "id",          TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, cid.c_str(), cid.size()));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "name",        TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, name.c_str(), name.size()));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "type",        TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (int) collectionType));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "status",      TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (int) TRI_VOC_COL_STATUS_LOADED));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "deleted",     TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameter._deleted));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "doCompact",   TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameter._doCompact));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "isSystem",    TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameter._isSystem));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "isVolatile",  TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameter._isVolatile));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "waitForSync", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameter._waitForSync));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "journalSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, parameter._maximalSize));
 
-  TRI_json_t* keyOptions = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  TRI_json_t* keyOptions = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
   if (keyOptions != 0) {
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, keyOptions, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "traditional"));
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, keyOptions, "allowUserKeys", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, allowUserKeys));
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, keyOptions, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "traditional"));
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, keyOptions, "allowUserKeys", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, allowUserKeys));
 
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "keyOptions", keyOptions);
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "keyOptions", keyOptions);
   }
 
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "shardKeys", JsonHelper::stringList(TRI_UNKNOWN_MEM_ZONE, shardKeys));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "shards", JsonHelper::stringObject(TRI_UNKNOWN_MEM_ZONE, shards));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "shardKeys", JsonHelper::stringArray(TRI_UNKNOWN_MEM_ZONE, shardKeys));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "shards", JsonHelper::stringObject(TRI_UNKNOWN_MEM_ZONE, shards));
 
-  TRI_json_t* indexes = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+  TRI_json_t* indexes = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
 
   if (indexes == 0) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -1091,7 +1091,7 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
   TRI_json_t* idxJson = idx->json(idx);
   TRI_FreeIndex(idx);
 
-  TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, indexes, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson));
+  TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, indexes, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson));
   TRI_FreeJson(TRI_CORE_MEM_ZONE, idxJson);
 
   if (collectionType == TRI_COL_TYPE_EDGE) {
@@ -1107,11 +1107,11 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
     idxJson = idx->json(idx);
     TRI_FreeIndex(idx);
 
-    TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, indexes, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson));
+    TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, indexes, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson));
     TRI_FreeJson(TRI_CORE_MEM_ZONE, idxJson);
   }
 
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "indexes", indexes);
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "indexes", indexes);
 
   string errorMsg;
   int myerrno = ci->createCollectionCoordinator(databaseName,
@@ -1376,11 +1376,11 @@ static void GetIndexesCoordinator (const v8::FunctionCallbackInfo<v8::Value>& ar
   v8::Handle<v8::Array> ret = v8::Array::New(isolate);
 
   TRI_json_t const* json = (*c).getIndexes();
-  if (TRI_IsListJson(json)) {
+  if (TRI_IsArrayJson(json)) {
     uint32_t j = 0;
 
     for (size_t i = 0;  i < json->_value._objects._length; ++i) {
-      TRI_json_t const* v = TRI_LookupListJson(json, i);
+      TRI_json_t const* v = TRI_LookupArrayJson(json, i);
 
       if (v != nullptr) {
         ret->Set(j++, IndexRep(isolate, collectionName, v));

@@ -6,7 +6,7 @@ If you have created a graph in the general-graph module you may want to use
 [Graph operations](../Aql/GraphOperations.md) instead.
 
 - *PATHS(vertexcollection, edgecollection, direction, followcycles)*: 
-  returns a list of paths through the graph defined by the nodes in the collection 
+  returns an array of paths through the graph defined by the nodes in the collection 
   *vertexcollection* and edges in the collection *edgecollection*. For each vertex
   in *vertexcollection*, it will determine the paths through the graph depending on the
   value of *direction*:
@@ -17,10 +17,10 @@ If you have created a graph in the general-graph module you may want to use
   If *followcycles* is true, cyclic paths will be followed as well. This is turned off by
   default.
 
-  The result of the function is a list of paths. Paths of length 0 will also be returned. Each 
+  The result of the function is an array of paths. Paths of length 0 will also be returned. Each 
   path is a document consisting of the following attributes:
-  - *vertices*: list of vertices visited along the path
-  - *edges*: list of edges visited along the path (may be empty)
+  - *vertices*: array of vertices visited along the path
+  - *edges*: array of edges visited along the path (may be empty)
   - *source*: start vertex of path
   - *destination*: destination vertex of path
 
@@ -63,7 +63,7 @@ If you have created a graph in the general-graph module you may want to use
     for big graphs to limit the traversal to some sensible amount, and for graphs 
     containing cycles to prevent infinite traversals. The maximum depth defaults to 256, 
     with the chance of this value being non-sensical. For several graphs, a much lower
-    maximum depth is sensible, whereas for other, more list-oriented graphs a higher
+    maximum depth is sensible, whereas for other, more array-oriented graphs a higher
     depth should be used
   - *paths*: If *true*, the paths encountered during the traversal will
     also be returned along with each traversed vertex. If *false*, only the 
@@ -79,7 +79,7 @@ If you have created a graph in the general-graph module you may want to use
       - *global*: An edge may be visited at most once. This is the default
       - *path*: An edge is visited only if not already contained in the current
         traversal path
-  - *followEdges*: An optional list of example edge documents that the traversal will
+  - *followEdges*: An optional array of example edge documents that the traversal will
     expand into. If no examples are given, the traversal will follow all edges. If one
     or many edge examples are given, the traversal will only follow an edge if it matches
     at least one of the specified examples. *followEdges* can also be a string with the
@@ -92,7 +92,7 @@ If you have created a graph in the general-graph module you may want to use
     The function is expected to return a boolean value. If it returns *true*, the edge
     will be followed. If *false* is returned, the edge will be ignored.
 
-  - *filterVertices*: An optional list of example vertex documents that the traversal will
+  - *filterVertices*: An optional array of example vertex documents that the traversal will
     treat specially. If no examples are given, the traversal will handle all encountered
     vertices equally. If one or many vertex examples are given, the traversal will exclude
     any non-matching vertex from the result and/or not descend into it. Optionally,
@@ -114,11 +114,11 @@ If you have created a graph in the general-graph module you may want to use
     - *[ "exclude" ]*: Will not include non-matching vertices in the result but descend into them
     - *[ "prune", "exclude" ]*: Will neither include non-matching vertices in the result nor descend into them
 
-  The result of the TRAVERSAL function is a list of traversed points. Each point is a 
+  The result of the TRAVERSAL function is a array of traversed points. Each point is a 
   document consisting of the following attributes:
   - *vertex*: The vertex at the traversal point
   - *path*: The path history for the traversal point. The path is a document with the
-    attributes *vertices* and *edges*, which are both lists. Note that *path* is only present
+    attributes *vertices* and *edges*, which are both arrays. Note that *path* is only present
     in the result if the *paths* attribute is set in the *options*
 
 *Examples*
@@ -179,8 +179,8 @@ If you have created a graph in the general-graph module you may want to use
   Traverses the graph described by *vertexcollection* and *edgecollection*, 
   starting at the vertex identified by id *startVertex* and creates a hierarchical result.
   Vertex connectivity is establish by inserted an attribute which has the name specified via
-  the *connectName* parameter. Connected vertices will be placed in this attribute as a 
-  list.
+  the *connectName* parameter. Connected vertices will be placed in this attribute as an 
+  array.
 
   The *options* are the same as for the *TRAVERSAL* function, except that the result will
   be set up in a way that resembles a depth-first, pre-order visitation result. Thus, the
@@ -236,7 +236,7 @@ If you have created a graph in the general-graph module you may want to use
     same distance (1) to each other. If a function name is specified, it must have been
     registered as a regular user-defined AQL function.
 
-  - *followEdges*: An optional list of example edge documents that the search will
+  - *followEdges*: An optional array of example edge documents that the search will
     expand into. If no examples are given, the search will follow all edges. If one
     or many edge examples are given, the search will only follow an edge if it matches
     at least one of the specified examples. *followEdges* can also be a string with the
@@ -249,7 +249,7 @@ If you have created a graph in the general-graph module you may want to use
     The function is expected to return a boolean value. If it returns *true*, the edge
     will be followed. If *false* is returned, the edge will be ignored.
 
-  - *filterVertices*: An optional list of example vertex documents that the search will
+  - *filterVertices*: An optional array of example vertex documents that the search will
     treat specially. If no examples are given, the search will handle all encountered
     vertices equally. If one or many vertex examples are given, the search will exclude
     the vertex from the result and/or not descend into it. Optionally, *filterVertices* can 
@@ -264,11 +264,11 @@ If you have created a graph in the general-graph module you may want to use
     - *[ "exclude" ]*: Will not include the vertex in the result but descend into its connected edges
     - *[ "prune", "exclude" ]*: Will completely ignore the vertex and its connected edges
 
-  The result of the SHORTEST_PATH function is a list with the components of the shortest
+  The result of the SHORTEST_PATH function is an array with the components of the shortest
   path. Each component is a document consisting of the following attributes:
   - *vertex*: The vertex at the traversal point
   - *path*: The path history for the traversal point. The path is a document with the
-    attributes *vertices* and *edges*, which are both lists. Note that *path* is only present
+    attributes *vertices* and *edges*, which are both arrays. Note that *path* is only present
     in the result if the *paths* attribute is set in the *options*. 
 
 *Examples*
@@ -304,7 +304,7 @@ If you have created a graph in the general-graph module you may want to use
       }, false);
 
 - *EDGES(edgecollection, startvertex, direction, edgeexamples)*:
-  Return all edges connected to the vertex *startvertex* as a list. The possible values for
+  Return all edges connected to the vertex *startvertex* as an array. The possible values for
   *direction* are:
   - *outbound*: Return all outbound edges
   - *inbound*: Return all inbound edges
@@ -325,7 +325,7 @@ If you have created a graph in the general-graph module you may want to use
 [Graph operations](../Aql/GraphOperations.md) instead.
 
 - *NEIGHBORS(vertexcollection, edgecollection, startvertex, direction, edgeexamples)*:
-  Return all neighbors that are directly connected to the vertex *startvertex* as a list. 
+  Return all neighbors that are directly connected to the vertex *startvertex* as an array. 
   The possible values for *direction* are:
   - *outbound*: Return all outbound edges
   - *inbound*: Return all inbound edges

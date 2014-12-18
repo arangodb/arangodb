@@ -51,7 +51,7 @@ var aqlfunctions = require("org/arangodb/aql/functions");
 /// @RESTDESCRIPTION
 /// Returns all registered AQL user functions.
 ///
-/// The call will return a JSON list with all user functions found. Each user
+/// The call will return a JSON array with all user functions found. Each user
 /// function will at least have the following attributes:
 ///
 /// - *name*: The fully qualified name of the user function
@@ -66,13 +66,13 @@ var aqlfunctions = require("org/arangodb/aql/functions");
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestAqlfunctionsGetAll}
-///     var url = "/_api/aqlfunction";
+///   var url = "/_api/aqlfunction";
 ///
-///     var response = logCurlRequest('GET', url);
+///   var response = logCurlRequest('GET', url);
 ///
-///     assert(response.code === 200);
+///   assert(response.code === 200);
 ///
-///     logJsonResponse(response);
+///   logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -151,17 +151,17 @@ function get_api_aqlfunction (req, res) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestAqlfunctionCreate}
-///     var url = "/_api/aqlfunction";
-///     var body = '{ ' +
-///       '"name" : "myfunctions::temperature::celsiustofahrenheit", ' +
-///       '"code" : "function (celsius) { return celsius * 1.8 + 32; }" ' +
-///     '}';
+///   var url = "/_api/aqlfunction";
+///   var body = {
+///     name: "myfunctions::temperature::celsiustofahrenheit",
+///     code : "function (celsius) { return celsius * 1.8 + 32; }"
+///   };
 ///
-///     var response = logCurlRequest('POST', url, body);
+///   var response = logCurlRequest('POST', url, JSON.stringify(body));
 ///
-///     assert(response.code === 201);
+///   assert(response.code === 201);
 ///
-///     logJsonResponse(response);
+///   logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -236,27 +236,30 @@ function post_api_aqlfunction (req, res) {
 /// deletes a function:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestAqlfunctionDelete}
-///     var url = "/_api/aqlfunction/square::x::y";
+///   var url = "/_api/aqlfunction/square::x::y";
 ///
-///     var body = '{ "name" : "square::x::y", "code" : "function (x) { return x*x; }" }';
+///   var body = { 
+///     name : "square::x::y", 
+///     code : "function (x) { return x*x; }" 
+///   };
 ///
-///     db._connection.POST("/_api/aqlfunction", body);
-///     var response = logCurlRequest('DELETE', url);
+///   db._connection.POST("/_api/aqlfunction", JSON.stringify(body));
+///   var response = logCurlRequest('DELETE', url);
 ///
-///     assert(response.code === 200);
+///   assert(response.code === 200);
 ///
-///     logJsonResponse(response);
+///   logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// function not found:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestAqlfunctionDeleteFails}
-///     var url = "/_api/aqlfunction/myfunction::x::y";
-///     var response = logCurlRequest('DELETE', url);
+///   var url = "/_api/aqlfunction/myfunction::x::y";
+///   var response = logCurlRequest('DELETE', url);
 ///
-///     assert(response.code === 404);
+///   assert(response.code === 404);
 ///
-///     logJsonResponse(response);
+///   logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////

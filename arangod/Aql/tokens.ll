@@ -363,7 +363,7 @@ namespace triagens {
   return T_INTEGER;
 }
 
-(0|[1-9][0-9]*)(\.[0-9]+([eE]([\-\+])?[0-9]+)?) {  
+(0|[1-9][0-9]*)((\.[0-9]+)?([eE][\-\+]?[0-9]+)?) { 
   /* a numeric double value */
   yylval->strval = yyextra->query()->registerString(yytext, yyleng, false); 
   return T_DOUBLE;

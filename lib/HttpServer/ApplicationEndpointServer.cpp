@@ -422,7 +422,7 @@ bool ApplicationEndpointServer::loadEndpoints () {
 
   std::map<std::string, std::vector<std::string> > endpoints;
 
-  if (! TRI_IsArrayJson(json)) {
+  if (! TRI_IsObjectJson(json)) {
     TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     return false;
   }
@@ -432,7 +432,7 @@ bool ApplicationEndpointServer::loadEndpoints () {
     TRI_json_t const* e = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
     TRI_json_t const* v = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i + 1));
 
-    if (! TRI_IsStringJson(e) || ! TRI_IsListJson(v)) {
+    if (! TRI_IsStringJson(e) || ! TRI_IsArrayJson(v)) {
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
       return false;
     }
@@ -479,7 +479,7 @@ bool ApplicationEndpointServer::loadEndpoints () {
 bool ApplicationEndpointServer::saveEndpoints () {
   const std::map<std::string, std::vector<std::string> > endpoints = _endpointList.getAll();
 
-  TRI_json_t* json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+  TRI_json_t* json = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE);
 
   if (json == nullptr) {
     return false;
@@ -488,7 +488,7 @@ bool ApplicationEndpointServer::saveEndpoints () {
   std::map<std::string, std::vector<std::string> >::const_iterator it;
 
   for (it = endpoints.begin(); it != endpoints.end(); ++it) {
-    TRI_json_t* list = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
+    TRI_json_t* list = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
     if (list == nullptr) {
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
@@ -498,10 +498,10 @@ bool ApplicationEndpointServer::saveEndpoints () {
     for (size_t i = 0; i < (*it).second.size(); ++i) {
       const string e = (*it).second.at(i);
 
-      TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, list, TRI_CreateString2CopyJson(TRI_CORE_MEM_ZONE, e.c_str(), e.size()));
+      TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, list, TRI_CreateString2CopyJson(TRI_CORE_MEM_ZONE, e.c_str(), e.size()));
     }
 
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, (*it).first.c_str(), list);
+    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, (*it).first.c_str(), list);
   }
 
   const string filename = getEndpointsFilename();

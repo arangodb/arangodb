@@ -56,7 +56,7 @@ var ERRORS = require("internal").errors;
 ///   allowed to generate. Setting this attribute to a low value allows to put a
 ///   cap on the amount of work the optimizer does.
 ///
-/// - *optimizer.rules*: a list of to-be-included or to-be-excluded optimizer rules
+/// - *optimizer.rules*: an array of to-be-included or to-be-excluded optimizer rules
 ///   can be put into this attribute, telling the optimizer to include or exclude
 ///   specific rules. To disable a rule, prefix its name with a `-`, to enable a rule, prefix it
 ///   with a `+`. There is also a pseudo-rule `all`, which will match all optimizer rules.
@@ -81,23 +81,23 @@ var ERRORS = require("internal").errors;
 /// all plans created by the optimizer. The plans will then be returned in the 
 /// attribute *plans*.
 ///
-/// The result will also contain an attribute *warnings*, which is a list of 
+/// The result will also contain an attribute *warnings*, which is an array of 
 /// warnings that occurred during optimization or execution plan creation. Additionally,
 /// a *stats* attribute is contained in the result with some optimizer statistics.
 /// 
 /// Each plan in the result is a JSON object with the following attributes:
-/// - *nodes*: the list of execution nodes of the plan. The list of available node types
+/// - *nodes*: the array of execution nodes of the plan. The array of available node types
 ///   can be found [here](../Aql/Optimizer.html)
 ///
 /// - *estimatedCost*: the total estimated cost for the plan. If there are multiple
 ///   plans, the optimizer will choose the plan with the lowest total cost.
 ///
-/// - *collections*: a list of collections used in the query
+/// - *collections*: an array of collections used in the query
 ///
-/// - *rules*: a list of rules the optimizer applied. The list of rules can be 
-///   found [here](../Aql/Optimizer.html)
+/// - *rules*: an array of rules the optimizer applied. An overview of the
+///   available rules can be found [here](../Aql/Optimizer.html)
 ///
-/// - *variables*: list of variables used in the query (note: this may contain
+/// - *variables*: array of variables used in the query (note: this may contain
 ///   internal variables created by the optimizer)
 ///
 /// @RESTRETURNCODES
@@ -105,7 +105,7 @@ var ERRORS = require("internal").errors;
 /// @RESTRETURNCODE{200}
 /// If the query is valid, the server will respond with *HTTP 200* and
 /// return the optimal execution plan in the *plan* attribute of the response.
-/// If option *allPlans* was set in the request, a list of plans will be returned
+/// If option *allPlans* was set in the request, an array of plans will be returned
 /// in the *allPlans* attribute instead.
 ///
 /// @RESTRETURNCODE{400}

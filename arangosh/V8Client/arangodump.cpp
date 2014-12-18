@@ -696,7 +696,7 @@ static int RunDump (string& errorMsg) {
 
   delete response;
 
-  if (! JsonHelper::isArray(json)) {
+  if (! JsonHelper::isObject(json)) {
     if (json != 0) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
@@ -706,9 +706,9 @@ static int RunDump (string& errorMsg) {
     return TRI_ERROR_INTERNAL;
   }
 
-  TRI_json_t const* collections = JsonHelper::getArrayElement(json, "collections");
+  TRI_json_t const* collections = JsonHelper::getObjectElement(json, "collections");
 
-  if (! JsonHelper::isList(collections)) {
+  if (! JsonHelper::isArray(collections)) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     errorMsg = "got malformed JSON response from server";
 
@@ -746,16 +746,16 @@ static int RunDump (string& errorMsg) {
   for (size_t i = 0; i < n; ++i) {
     TRI_json_t const* collection = (TRI_json_t const*) TRI_AtVector(&collections->_value._objects, i);
 
-    if (! JsonHelper::isArray(collection)) {
+    if (! JsonHelper::isObject(collection)) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       errorMsg = "got malformed JSON response from server";
 
       return TRI_ERROR_INTERNAL;
     }
 
-    TRI_json_t const* parameters = JsonHelper::getArrayElement(collection, "parameters");
+    TRI_json_t const* parameters = JsonHelper::getObjectElement(collection, "parameters");
 
-    if (! JsonHelper::isArray(parameters)) {
+    if (! JsonHelper::isObject(parameters)) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       errorMsg = "got malformed JSON response from server";
 
@@ -1032,7 +1032,7 @@ static int RunClusterDump (string& errorMsg) {
 
   delete response;
 
-  if (! JsonHelper::isArray(json)) {
+  if (! JsonHelper::isObject(json)) {
     if (json != 0) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
@@ -1042,9 +1042,9 @@ static int RunClusterDump (string& errorMsg) {
     return TRI_ERROR_INTERNAL;
   }
 
-  TRI_json_t const* collections = JsonHelper::getArrayElement(json, "collections");
+  TRI_json_t const* collections = JsonHelper::getObjectElement(json, "collections");
 
-  if (! JsonHelper::isList(collections)) {
+  if (! JsonHelper::isArray(collections)) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     errorMsg = "got malformed JSON response from server";
 
@@ -1063,16 +1063,16 @@ static int RunClusterDump (string& errorMsg) {
   for (size_t i = 0; i < n; ++i) {
     TRI_json_t const* collection = (TRI_json_t const*) TRI_AtVector(&collections->_value._objects, i);
 
-    if (! JsonHelper::isArray(collection)) {
+    if (! JsonHelper::isObject(collection)) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       errorMsg = "got malformed JSON response from server";
 
       return TRI_ERROR_INTERNAL;
     }
 
-    TRI_json_t const* parameters = JsonHelper::getArrayElement(collection, "parameters");
+    TRI_json_t const* parameters = JsonHelper::getObjectElement(collection, "parameters");
 
-    if (! JsonHelper::isArray(parameters)) {
+    if (! JsonHelper::isObject(parameters)) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       errorMsg = "got malformed JSON response from server";
 
@@ -1151,7 +1151,7 @@ static int RunClusterDump (string& errorMsg) {
       // save the actual data
 
       // First we have to go through all the shards, what are they?
-      TRI_json_t const* shards = JsonHelper::getArrayElement(parameters,
+      TRI_json_t const* shards = JsonHelper::getObjectElement(parameters,
                                                              "shards");
       map<string, string> shardTab = JsonHelper::stringObject(shards);
       // This is now a map from shardIDs to DBservers
@@ -1271,7 +1271,7 @@ int main (int argc, char* argv[]) {
 
   if (TickStart < TickEnd) {
     cerr << "invalid values for --tick-start or --tick-end" << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   // .............................................................................
@@ -1286,12 +1286,12 @@ int main (int argc, char* argv[]) {
   if (OutputDirectory == "" ||
       (TRI_ExistsFile(OutputDirectory.c_str()) && ! isDirectory)) {
     cerr << "cannot write to output directory '" << OutputDirectory << "'" << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   if (isDirectory && ! Overwrite) {
     cerr << "output directory '" << OutputDirectory << "' already exists. use --overwrite to overwrite data in in it" << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   // .............................................................................
@@ -1332,7 +1332,7 @@ int main (int argc, char* argv[]) {
     cerr << "Could not connect to endpoint '" << BaseClient.endpointString()
          << "', database: '" << BaseClient.databaseName() << "', username: '" << BaseClient.username() << "'" << endl;
     cerr << "Error message: '" << Client->getErrorMessage() << "'" << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   // successfully connected
@@ -1344,7 +1344,7 @@ int main (int argc, char* argv[]) {
 
   if (sscanf(versionString.c_str(), "%d.%d", &major, &minor) != 2) {
     cerr << "invalid server version '" << versionString << "'" << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   if (major < 1 ||
@@ -1353,7 +1353,7 @@ int main (int argc, char* argv[]) {
     // we can connect to 1.4, 2.0 and higher only
     cerr << "got incompatible server version '" << versionString << "'" << endl;
     if (! Force) {
-      TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
     }
   }
 
@@ -1363,7 +1363,7 @@ int main (int argc, char* argv[]) {
     if (clusterMode) {
       if (TickStart != 0 || TickEnd != 0) {
         cerr << "cannot use tick-start or tick-end on a cluster" << endl;
-        TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+        TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
       }
     }
   }
@@ -1372,7 +1372,7 @@ int main (int argc, char* argv[]) {
     cerr << "Lost connection to endpoint '" << BaseClient.endpointString()
          << "', database: '" << BaseClient.databaseName() << "', username: '" << BaseClient.username() << "'" << endl;
     cerr << "Error message: '" << Client->getErrorMessage() << "'" << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   if (! isDirectory) {
@@ -1380,7 +1380,7 @@ int main (int argc, char* argv[]) {
 
     if (res != TRI_ERROR_NO_ERROR) {
       cerr << "unable to create output directory '" << OutputDirectory << "': " << string(TRI_errno_string(res)) << endl;
-      TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+      TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
     }
   }
 

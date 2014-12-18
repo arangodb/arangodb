@@ -58,7 +58,7 @@ being executable:
 
 * added AQL TRANSLATE function
 
-  This function can be used to perform lookups from static lists, e.g.
+  This function can be used to perform lookups from static objects, e.g.
 
       LET countryNames = { US: "United States", UK: "United Kingdom", FR: "France" }
       RETURN TRANSLATE("FR", countryNames) 

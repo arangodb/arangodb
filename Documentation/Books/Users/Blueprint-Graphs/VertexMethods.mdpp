@@ -65,7 +65,7 @@ Examples
 
 `vertex.edges()`
 
-Returns a list of in- or outbound edges of the vertex.
+Returns an array of in- or outbound edges of the vertex.
 
 *Examples*
 
@@ -98,7 +98,7 @@ Returns the identifier of the vertex. If the vertex was deleted, then undefined 
 
 `vertex.getInEdges( label, ...)`
 
-Returns a list of inbound edges of the vertex with given label(s).
+Returns an array of inbound edges of the vertex with given label(s).
 
 *Examples*
 
@@ -128,7 +128,7 @@ Returns a list of inbound edges of the vertex with given label(s).
 
 `vertex.getOutEdges( label, ...)`
 
-Returns a list of outbound edges of the vertex with given label(s).
+Returns an array of outbound edges of the vertex with given label(s).
 
 *Examples*
 
@@ -158,7 +158,7 @@ Returns a list of outbound edges of the vertex with given label(s).
 
 `vertex.getEdges( label, ...)`
 
-Returns a list of in- or outbound edges of the vertex with given label(s).
+Returns an array of in- or outbound edges of the vertex with given label(s).
 
 `vertex.getProperty( name)`
 

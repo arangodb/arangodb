@@ -228,14 +228,14 @@ static int ReadServerId (char const* filename) {
 
   TRI_json_t* json = TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename, nullptr);
 
-  if (! TRI_IsArrayJson(json)) {
+  if (! TRI_IsObjectJson(json)) {
     if (json != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
     return TRI_ERROR_INTERNAL;
   }
 
-  idString = TRI_LookupArrayJson(json, "serverId");
+  idString = TRI_LookupObjectJson(json, "serverId");
 
   if (! TRI_IsStringJson(idString)) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -271,7 +271,7 @@ static int WriteServerId (char const* filename) {
   TRI_ASSERT(filename != nullptr);
 
   // create a json object
-  TRI_json_t* json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+  TRI_json_t* json = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE);
 
   if (json == nullptr) {
     // out of memory
@@ -282,13 +282,13 @@ static int WriteServerId (char const* filename) {
   TRI_ASSERT(ServerId != 0);
 
   idString = TRI_StringUInt64((uint64_t) ServerId);
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "serverId", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, idString));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "serverId", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, idString));
   TRI_FreeString(TRI_CORE_MEM_ZONE, idString);
 
   tt = time(0);
   TRI_gmtime(tt, &tb);
   len = strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tb);
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "createdTime", TRI_CreateString2CopyJson(TRI_CORE_MEM_ZONE, buffer, len));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "createdTime", TRI_CreateString2CopyJson(TRI_CORE_MEM_ZONE, buffer, len));
 
   // save json info to file
   LOG_DEBUG("Writing server id to file '%s'", filename);
@@ -613,7 +613,7 @@ static int OpenDatabases (TRI_server_t* server,
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, parametersFile);
 
-    deletedJson = TRI_LookupArrayJson(json, "deleted");
+    deletedJson = TRI_LookupObjectJson(json, "deleted");
 
     if (TRI_IsBooleanJson(deletedJson)) {
       if (deletedJson->_value._boolean) {
@@ -632,7 +632,7 @@ static int OpenDatabases (TRI_server_t* server,
       }
     }
 
-    idJson = TRI_LookupArrayJson(json, "id");
+    idJson = TRI_LookupObjectJson(json, "id");
 
     if (! TRI_IsStringJson(idJson)) {
       LOG_ERROR("database directory '%s' does not contain a valid parameters file",
@@ -646,7 +646,7 @@ static int OpenDatabases (TRI_server_t* server,
 
     id = (TRI_voc_tick_t) TRI_UInt64String(idJson->_value._string.data);
 
-    nameJson = TRI_LookupArrayJson(json, "name");
+    nameJson = TRI_LookupObjectJson(json, "name");
 
     if (! TRI_IsStringJson(nameJson)) {
       LOG_ERROR("database directory '%s' does not contain a valid parameters file",
@@ -669,7 +669,7 @@ static int OpenDatabases (TRI_server_t* server,
     // use defaults and blend them with parameters found in file
     TRI_GetDatabaseDefaultsServer(server, &defaults);
     // TODO: decide which parameter from the command-line should win vs. parameter.json
-    // TRI_FromJsonVocBaseDefaults(&defaults, TRI_LookupArrayJson(json, "properties"));
+    // TRI_FromJsonVocBaseDefaults(&defaults, TRI_LookupObjectJson(json, "properties"));
 
     TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
@@ -1072,7 +1072,7 @@ static int SaveDatabaseParameters (TRI_voc_tick_t id,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  TRI_json_t* json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+  TRI_json_t* json = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE);
 
   if (json == nullptr) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
@@ -1094,11 +1094,11 @@ static int SaveDatabaseParameters (TRI_voc_tick_t id,
   }
   */
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "id", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, tickString));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "name", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, name));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "deleted", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, deleted));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "id", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, tickString));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "name", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, name));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "deleted", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, deleted));
   // TODO: save properties later when it is clear what they will be used
-  // TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "properties", properties);
+  // TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "properties", properties);
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
 
@@ -2192,9 +2192,9 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
   TRI_ASSERT(vocbase != nullptr);
   
   char* tickString = TRI_StringUInt64(databaseId);
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "id", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, tickString));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "id", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, tickString));
   TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "name", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, name));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "name", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, name));
 
 
   // create application directories

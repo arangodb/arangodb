@@ -262,7 +262,6 @@ int triagens::aql::removeCollectIntoRule (Optimizer* opt,
                                           ExecutionPlan* plan, 
                                           Optimizer::Rule const* rule) {
   bool modified = false;
-  std::unordered_set<ExecutionNode*> toUnlink;
   // should we enter subqueries??
   std::vector<ExecutionNode*> nodes = plan->findNodesOfType(EN::AGGREGATE, true);
   
@@ -1350,7 +1349,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                 == varsUsed.end()) {
               // Found a multiple attribute access of a variable and an
               // expression which does not involve that variable:
-              if (rhs->type == NODE_TYPE_LIST) {
+              if (rhs->type == NODE_TYPE_ARRAY) {
                 for (size_t i = 0; i < rhs->numMembers(); i++) {
                   RangeInfo ri(enumCollVar->name, 
                                attr.substr(0, attr.size() - 1), 

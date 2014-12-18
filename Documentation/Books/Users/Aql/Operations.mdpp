@@ -2,16 +2,16 @@
 
 !SUBSECTION FOR
 
-The *FOR* keyword can be to iterate over all elements of a list.
+The *FOR* keyword can be to iterate over all elements of an array.
 The general syntax is:
 
 ```
 FOR variable-name IN expression
 ```
 
-Each list element returned by *expression* is visited exactly once. It is
-required that *expression* returns a list in all cases. The empty list is
-allowed, too. The current list element is made available for further processing 
+Each array element returned by *expression* is visited exactly once. It is
+required that *expression* returns an array in all cases. The empty array is
+allowed, too. The current array element is made available for further processing 
 in the variable specified by *variable-name*.
 
 ```
@@ -19,19 +19,19 @@ FOR u IN users
   RETURN u
 ```
 
-This will iterate over all elements from the list *users* (note: this list
+This will iterate over all elements from the array *users* (note: this array
 consists of all documents from the collection named "users" in this case) and
-make the current list element available in variable *u*. *u* is not modified in
+make the current array element available in variable *u*. *u* is not modified in
 this example but simply pushed into the result using the *RETURN* keyword.
 
-Note: When iterating over collection-based lists as shown here, the order of
+Note: When iterating over collection-based arrays as shown here, the order of
 documents is undefined unless an explicit sort order is defined using a *SORT*
 statement.
 
 The variable introduced by *FOR* is available until the scope the *FOR* is
 placed in is closed.
 
-Another example that uses a statically declared list of values to iterate over:
+Another example that uses a statically declared array of values to iterate over:
 
 ```
 FOR year IN [ 2011, 2012, 2013 ]
@@ -39,7 +39,7 @@ FOR year IN [ 2011, 2012, 2013 ]
 ```
 
 Nesting of multiple *FOR* statements is allowed, too. When *FOR* statements are
-nested, a cross product of the list elements returned by the individual *FOR*
+nested, a cross product of the array elements returned by the individual *FOR*
 statements will be created.
 
 ```
@@ -48,9 +48,9 @@ FOR u IN users
     RETURN { "user" : u, "location" : l }
 ```
 
-In this example, there are two list iterations: an outer iteration over the list
-*users* plus an inner iteration over the list *locations*.  The inner list is
-traversed as many times as there are elements in the outer list.  For each
+In this example, there are two array iterations: an outer iteration over the array
+*users* plus an inner iteration over the arry *locations*.  The inner array is
+traversed as many times as there are elements in the outer array.  For each
 iteration, the current values of *users* and *locations* are made available for
 further processing in the variable *u* and *l*.
 
@@ -68,8 +68,8 @@ RETURN expression
 
 The *expression* returned by *RETURN* is produced for each iteration the
 *RETURN* statement is placed in. That means the result of a *RETURN* statement
-is always a list (this includes the empty list).  To return all elements from
-the currently iterated list without modification, the following simple form can
+is always an array (this includes the empty array).  To return all elements from
+the currently iterated array without modification, the following simple form can
 be used:
 
 ```
@@ -104,7 +104,7 @@ FOR u IN users
   RETURN u
 ```
 
-In the above example, all list elements from *users* will be included that have
+In the above example, all array elements from *users* will be included that have
 an attribute *active* with value *true* and that have an attribute *age* with a
 value less than *39* (including *null* ones). All other elements from *users* 
 will be skipped and not be included the result produced by *RETURN*.
@@ -123,7 +123,7 @@ FOR u IN users
 
 !SUBSECTION SORT 
 
-The *SORT* statement will force a sort of the list of already produced
+The *SORT* statement will force a sort of the array of already produced
 intermediate results in the current block. *SORT* allows specifying one or
 multiple sort criteria and directions.  The general syntax is:
 
@@ -136,7 +136,7 @@ sort is the ascending order. To explicitly specify the sort direction, the
 keywords *ASC* (ascending) and *DESC* can be used. Multiple sort criteria can be
 separated using commas.
 
-Note: when iterating over collection-based lists, the order of documents is
+Note: when iterating over collection-based arrays, the order of documents is
 always undefined unless an explicit sort order is defined using *SORT*.
 
 ```
@@ -146,7 +146,7 @@ FOR u IN users
 ```
 !SUBSECTION LIMIT
 
-The *LIMIT* statement allows slicing the list of result documents using an
+The *LIMIT* statement allows slicing the result array using an
 offset and a count. It reduces the number of elements in the result to at most
 the specified number.  Two general forms of *LIMIT* are followed:
 
@@ -213,7 +213,7 @@ FOR u IN users
 
 !SUBSECTION COLLECT
 
-The *COLLECT* keyword can be used to group a list by one or multiple group
+The *COLLECT* keyword can be used to group an array by one or multiple group
 criteria.  The two general syntaxes for *COLLECT* are:
 
 ```
@@ -228,8 +228,8 @@ contains the group value.
 
 The second form does the same as the first form, but additionally introduces a
 variable (specified by *groups*) that contains all elements that fell into the
-group. This works as follows: The *groups* variable is a list containing 
-as many elements as there are in the group. Each member of that list is
+group. This works as follows: The *groups* variable is an array containing 
+as many elements as there are in the group. Each member of that array is
 a JSON object in which the value of every variable that is defined in the 
 AQL query is bound to the corresponding attribute. Note that this considers
 all variables that are defined before the *COLLECT* statement, but not those on
@@ -244,9 +244,9 @@ FOR u IN users
   RETURN { "city" : city, "users" : groups }
 ```
 
-In the above example, the list of *users* will be grouped by the attribute
-*city*. The result is a new list of documents, with one element per distinct
-*city* value. The elements from the original list (here: *users*) per city are
+In the above example, the array *users* will be grouped by the attribute
+*city*. The result is a new array of documents, with one element per distinct
+*city* value. The elements from the original array (here: *users*) per city are
 made available in the variable *g*. This is due to the *INTO* clause.
 
 *COLLECT* also allows specifying multiple group criteria. Individual group
@@ -258,7 +258,7 @@ FOR u IN users
   RETURN { "first" : first, "age" : age, "numUsers" : LENGTH(groups) }
 ```
 
-In the above example, the list of *users* is grouped by first names and ages
+In the above example, the array *users* is grouped by first names and ages
 first, and for each distinct combination of first name and age, the number of
 users found is returned.
 

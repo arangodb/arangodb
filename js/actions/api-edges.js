@@ -55,7 +55,7 @@ var API = "/_api/edges";
 /// returned.
 ///
 /// @RESTDESCRIPTION
-/// Returns the list of edges starting or ending in the vertex identified by
+/// Returns an array of edges starting or ending in the vertex identified by
 /// *vertex-handle*.
 ///
 /// @EXAMPLES

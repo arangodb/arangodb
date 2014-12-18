@@ -55,7 +55,7 @@ var ArangoError = arangodb.ArangoError;
 /// @RESTRETURNCODE{200}
 /// If the query is valid, the server will respond with *HTTP 200* and
 /// return the names of the bind parameters it found in the query (if any) in
-/// the *bindVars* attribute of the response. It will also return a list
+/// the *bindVars* attribute of the response. It will also return an array
 /// of the collections used in the query in the *collections* attribute. 
 /// If a query can be parsed successfully, the *ast* attribute of the returned
 /// JSON will contain the abstract syntax tree representation of the query.

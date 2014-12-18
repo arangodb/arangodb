@@ -45,7 +45,7 @@ var API = "_api/simple/";
 ///
 /// RESTHEADER{PUT /_api/simple/by-example-hash, Hash index}
 ///
-/// **Note**: This is only used internally and should not be accesible by the user.
+/// **Note**: This is only used internally and should not be accessible by the user.
 ///
 /// RESTBODYPARAM{query,string,required}
 /// Contains the query specification.
@@ -517,8 +517,8 @@ actions.defineHttp({
 /// @RESTDESCRIPTION
 ///
 /// The default will find at most 100 documents near the given coordinate.  The
-/// returned list is sorted according to the distance, with the nearest document
-/// being first in the list. If there are near documents of equal distance, documents
+/// returned array is sorted according to the distance, with the nearest document
+/// being first in the return array. If there are near documents of equal distance, documents
 /// are chosen randomly from this set until the limit is reached.
 ///
 /// In order to use the *near* operator, a geo index must be defined for the
@@ -1434,8 +1434,8 @@ actions.defineHttp({
 ///
 /// This will return the first document(s) from the collection, in the order of
 /// insertion/update time. When the *count* argument is supplied, the result
-/// will be a list of documents, with the "oldest" document being first in the
-/// result list.
+/// will be an array of documents, with the "oldest" document being first in the
+/// result array.
 /// If the *count* argument is not supplied, the result is the "oldest" document
 /// of the collection, or *null* if the collection is empty.
 ///
@@ -1552,8 +1552,8 @@ actions.defineHttp({
 ///
 /// This will return the last documents from the collection, in the order of
 /// insertion/update time. When the *count* argument is supplied, the result
-/// will be a list of documents, with the "latest" document being first in the
-/// result list.
+/// will be an array of documents, with the "latest" document being first in the
+/// result array.
 ///
 /// The request body must be a JSON object with the following attributes:
 /// - *collection*: the name of the collection
@@ -1818,9 +1818,6 @@ actions.defineHttp({
 ///
 /// Note: the *limit* attribute is not supported on sharded collections.
 /// Using it will result in an error.
-/// The options attributes waitForSync and limit can given yet without
-/// an ecapsulation into a json object. but this may be deprecated in future
-/// versions of arango
 ///
 /// Returns the number of documents that were deleted.
 ///
@@ -1986,9 +1983,6 @@ actions.defineHttp({
 ///
 /// Note: the *limit* attribute is not supported on sharded collections.
 /// Using it will result in an error.
-/// The options attributes waitForSync and limit can given yet without
-/// an ecapsulation into a json object. but this may be deprecated in future
-/// versions of arango
 ///
 /// Returns the number of documents that were replaced.
 ///

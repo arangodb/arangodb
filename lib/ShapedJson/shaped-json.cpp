@@ -493,7 +493,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
   char* ptr;
 
   // sanity checks
-  TRI_ASSERT(json->_type == TRI_JSON_LIST);
+  TRI_ASSERT(json->_type == TRI_JSON_ARRAY);
 
   // check for special case "empty list"
   n = json->_value._objects._length;
@@ -801,7 +801,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
   char* ptr;
 
   // sanity checks
-  TRI_ASSERT(json->_type == TRI_JSON_ARRAY);
+  TRI_ASSERT(json->_type == TRI_JSON_OBJECT);
   TRI_ASSERT(json->_value._objects._length % 2 == 0);
 
   // number of attributes
@@ -1045,10 +1045,10 @@ static bool FillShapeValueJson (TRI_shaper_t* shaper,
     case TRI_JSON_STRING_REFERENCE:
       return FillShapeValueString(shaper, dst, json);
 
-    case TRI_JSON_ARRAY:
+    case TRI_JSON_OBJECT:
       return FillShapeValueArray(shaper, dst, json, level, create);
 
-    case TRI_JSON_LIST:
+    case TRI_JSON_ARRAY:
       return FillShapeValueList(shaper, dst, json, level, create);
   }
 
@@ -1158,7 +1158,7 @@ static TRI_json_t* JsonShapeDataArray (TRI_shaper_t* shaper,
   n = f + v;
 
   // create an array with the appropriate size
-  array = TRI_CreateArray2Json(shaper->_memoryZone, (size_t) n);
+  array = TRI_CreateObject2Json(shaper->_memoryZone, (size_t) n);
 
   if (array == nullptr) {
     return nullptr;
@@ -1216,7 +1216,7 @@ static TRI_json_t* JsonShapeDataArray (TRI_shaper_t* shaper,
       continue;
     }
 
-    TRI_Insert2ArrayJson(shaper->_memoryZone, array, name, element);
+    TRI_Insert2ObjectJson(shaper->_memoryZone, array, name, element);
     TRI_Free(shaper->_memoryZone, element);
   }
 
@@ -1260,7 +1260,7 @@ static TRI_json_t* JsonShapeDataArray (TRI_shaper_t* shaper,
       continue;
     }
 
-    TRI_Insert2ArrayJson(shaper->_memoryZone, array, name, element);
+    TRI_Insert2ObjectJson(shaper->_memoryZone, array, name, element);
     TRI_Free(shaper->_memoryZone, element);
   }
 
@@ -1292,7 +1292,7 @@ static TRI_json_t* JsonShapeDataList (TRI_shaper_t* shaper,
   l = * (TRI_shape_length_list_t const*) ptr;
 
   // create a list with the appropriate size
-  TRI_json_t* list = TRI_CreateList2Json(shaper->_memoryZone, (size_t) l);
+  TRI_json_t* list = TRI_CreateArray2Json(shaper->_memoryZone, (size_t) l);
 
   if (list == nullptr) {
     return nullptr;
@@ -1336,7 +1336,7 @@ static TRI_json_t* JsonShapeDataList (TRI_shaper_t* shaper,
       continue;
     }
 
-    TRI_PushBack2ListJson(list, element);
+    TRI_PushBack2ArrayJson(list, element);
     TRI_Free(shaper->_memoryZone, element);
   }
 
@@ -1379,7 +1379,7 @@ static TRI_json_t* JsonShapeDataHomogeneousList (TRI_shaper_t* shaper,
   l = * (TRI_shape_length_list_t const*) ptr;
 
   // create a list with the appropriate size
-  TRI_json_t* list = TRI_CreateList2Json(shaper->_memoryZone, (size_t) l);
+  TRI_json_t* list = TRI_CreateArray2Json(shaper->_memoryZone, (size_t) l);
 
   if (list == nullptr) {
     return nullptr;
@@ -1401,7 +1401,7 @@ static TRI_json_t* JsonShapeDataHomogeneousList (TRI_shaper_t* shaper,
       continue;
     }
 
-    TRI_PushBack2ListJson(list, element);
+    TRI_PushBack2ArrayJson(list, element);
     TRI_Free(shaper->_memoryZone, element);
   }
 
@@ -1445,7 +1445,7 @@ static TRI_json_t* JsonShapeDataHomogeneousSizedList (TRI_shaper_t* shaper,
   l = * (TRI_shape_length_list_t const*) ptr;
 
   // create a list with the appropriate size
-  TRI_json_t* list = TRI_CreateList2Json(shaper->_memoryZone, (size_t) l);
+  TRI_json_t* list = TRI_CreateArray2Json(shaper->_memoryZone, (size_t) l);
 
   if (list == nullptr) {
     return nullptr;
@@ -1464,7 +1464,7 @@ static TRI_json_t* JsonShapeDataHomogeneousSizedList (TRI_shaper_t* shaper,
       continue;
     }
 
-    TRI_PushBack2ListJson(list, element);
+    TRI_PushBack2ArrayJson(list, element);
     TRI_Free(shaper->_memoryZone, element);
   }
 
@@ -2348,7 +2348,7 @@ bool TRI_StringifyAugmentedShapedJson (TRI_shaper_t* shaper,
     return false;
   }
 
-  if (augment == nullptr || augment->_type != TRI_JSON_ARRAY || shape->_type != TRI_SHAPE_ARRAY) {
+  if (augment == nullptr || augment->_type != TRI_JSON_OBJECT || shape->_type != TRI_SHAPE_ARRAY) {
     return StringifyJsonShapeData(shaper, buffer, shape, shaped->_data.data, shaped->_data.length);
   }
 

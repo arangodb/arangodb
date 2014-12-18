@@ -90,15 +90,15 @@ HttpHandler::status_t RestDebugHelperHandler::execute () {
 
   RequestStatisticsAgentSetIgnore(this);
 
-  TRI_InitArray2Json(TRI_CORE_MEM_ZONE, &result, 3);
+  TRI_InitObject2Json(TRI_CORE_MEM_ZONE, &result, 3);
 
   TRI_json_t server;
   TRI_InitStringJson(&server, TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, "arango"));
-  TRI_Insert2ArrayJson(TRI_CORE_MEM_ZONE, &result, "server", &server);
+  TRI_Insert2ObjectJson(TRI_CORE_MEM_ZONE, &result, "server", &server);
 
   TRI_json_t version;
   TRI_InitStringJson(&version, TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, TRI_VERSION));
-  TRI_Insert2ArrayJson(TRI_CORE_MEM_ZONE, &result, "version", &version);
+  TRI_Insert2ObjectJson(TRI_CORE_MEM_ZONE, &result, "version", &version);
 
   bool found;
   char const* sleepStr = _request->value("sleep", found);
@@ -121,11 +121,11 @@ HttpHandler::status_t RestDebugHelperHandler::execute () {
 
   TRI_json_t sleepNumber;
   TRI_InitNumberJson(&sleepNumber, s / 1000000.0);
-  TRI_Insert2ArrayJson(TRI_CORE_MEM_ZONE, &result, "sleep", &sleepNumber);
+  TRI_Insert2ObjectJson(TRI_CORE_MEM_ZONE, &result, "sleep", &sleepNumber);
 
   TRI_json_t blockFlag;
   TRI_InitBooleanJson(&blockFlag, block);
-  TRI_Insert2ArrayJson(TRI_CORE_MEM_ZONE, &result, "block", &blockFlag);
+  TRI_Insert2ObjectJson(TRI_CORE_MEM_ZONE, &result, "block", &blockFlag);
 
   generateResult(&result);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);

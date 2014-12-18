@@ -54,14 +54,14 @@ namespace triagens {
         int64_t plansCreated  = 1; // 1 for the initial plan
 
         TRI_json_t* toJson (TRI_memory_zone_t* zone) const {
-          TRI_json_t* stats = TRI_CreateArrayJson(zone);
+          TRI_json_t* stats = TRI_CreateObjectJson(zone);
           if (stats == nullptr) {
             return nullptr;
           }
 
-          TRI_Insert3ArrayJson(zone, stats, "rulesExecuted", TRI_CreateNumberJson(zone, static_cast<double>(rulesExecuted)));
-          TRI_Insert3ArrayJson(zone, stats, "rulesSkipped", TRI_CreateNumberJson(zone, static_cast<double>(rulesSkipped)));
-          TRI_Insert3ArrayJson(zone, stats, "plansCreated", TRI_CreateNumberJson(zone, static_cast<double>(plansCreated)));
+          TRI_Insert3ObjectJson(zone, stats, "rulesExecuted", TRI_CreateNumberJson(zone, static_cast<double>(rulesExecuted)));
+          TRI_Insert3ObjectJson(zone, stats, "rulesSkipped", TRI_CreateNumberJson(zone, static_cast<double>(rulesSkipped)));
+          TRI_Insert3ObjectJson(zone, stats, "plansCreated", TRI_CreateNumberJson(zone, static_cast<double>(plansCreated)));
 
           return stats;
         }

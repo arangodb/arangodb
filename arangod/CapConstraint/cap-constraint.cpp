@@ -162,8 +162,8 @@ static TRI_json_t* JsonCapConstraint (TRI_index_t const* idx) {
     return nullptr;
   }
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "size",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) cap->_count));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "byteSize",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) cap->_size));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "size",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) cap->_count));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "byteSize",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) cap->_size));
 
   return json;
 }

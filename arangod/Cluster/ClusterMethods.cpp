@@ -60,13 +60,13 @@ static T ExtractFigure (TRI_json_t const* json,
                         char const* group,
                         char const* name) {
 
-  TRI_json_t const* g = TRI_LookupArrayJson(json, group);
+  TRI_json_t const* g = TRI_LookupObjectJson(json, group);
 
-  if (! TRI_IsArrayJson(g)) {
+  if (! TRI_IsObjectJson(g)) {
     return static_cast<T>(0);
   }
 
-  TRI_json_t const* value = TRI_LookupArrayJson(g, name);
+  TRI_json_t const* value = TRI_LookupObjectJson(g, name);
 
   if (! TRI_IsNumberJson(value)) {
     return static_cast<T>(0);
@@ -142,7 +142,7 @@ bool shardKeysChanged (std::string const& dbname,
   TRI_json_t nullJson;
   TRI_InitNullJson(&nullJson);
 
-  if (! TRI_IsArrayJson(oldJson) || ! TRI_IsArrayJson(newJson)) {
+  if (! TRI_IsObjectJson(oldJson) || ! TRI_IsObjectJson(newJson)) {
     // expecting two arrays. everything else is an error
     return true;
   }
@@ -156,14 +156,14 @@ bool shardKeysChanged (std::string const& dbname,
       continue;
     }
 
-    TRI_json_t const* n = TRI_LookupArrayJson(newJson, shardKeys[i].c_str());
+    TRI_json_t const* n = TRI_LookupObjectJson(newJson, shardKeys[i].c_str());
 
     if (n == nullptr && isPatch) {
       // attribute not set in patch document. this means no update
       continue;
     }
 
-    TRI_json_t const* o = TRI_LookupArrayJson(oldJson, shardKeys[i].c_str());
+    TRI_json_t const* o = TRI_LookupObjectJson(oldJson, shardKeys[i].c_str());
 
     if (o == nullptr) {
       // if attribute is undefined, use "null" instead
@@ -202,7 +202,7 @@ int usersOnCoordinator (std::string const& dbname,
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  result = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+  result = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
 
   if (result == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -243,15 +243,15 @@ int usersOnCoordinator (std::string const& dbname,
           res->answer_code == triagens::rest::HttpResponse::CREATED) {
         TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, res->answer->body());
 
-        if (JsonHelper::isArray(json)) {
-          TRI_json_t const* r = TRI_LookupArrayJson(json, "result");
+        if (JsonHelper::isObject(json)) {
+          TRI_json_t const* r = TRI_LookupObjectJson(json, "result");
 
-          if (TRI_IsListJson(r)) {
+          if (TRI_IsArrayJson(r)) {
             for (size_t i = 0; i < r->_value._objects._length; ++i) {
-              TRI_json_t const* p = TRI_LookupListJson(r, i);
+              TRI_json_t const* p = TRI_LookupArrayJson(r, i);
 
-              if (TRI_IsArrayJson(p)) {
-                TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, result, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, p));
+              if (TRI_IsObjectJson(p)) {
+                TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, result, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, p));
               }
             }
           }
@@ -322,8 +322,8 @@ int revisionOnCoordinator (std::string const& dbname,
       if (res->answer_code == triagens::rest::HttpResponse::OK) {
         TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, res->answer->body());
 
-        if (JsonHelper::isArray(json)) {
-          TRI_json_t const* r = TRI_LookupArrayJson(json, "revision");
+        if (JsonHelper::isObject(json)) {
+          TRI_json_t const* r = TRI_LookupObjectJson(json, "revision");
 
           if (TRI_IsStringJson(r)) {
             TRI_voc_rid_t cmp = StringUtils::uint64(r->_value._string.data);
@@ -405,10 +405,10 @@ int figuresOnCoordinator (string const& dbname,
       if (res->answer_code == triagens::rest::HttpResponse::OK) {
         TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, res->answer->body());
 
-        if (JsonHelper::isArray(json)) {
-          TRI_json_t const* figures = TRI_LookupArrayJson(json, "figures");
+        if (JsonHelper::isObject(json)) {
+          TRI_json_t const* figures = TRI_LookupObjectJson(json, "figures");
 
-          if (TRI_IsArrayJson(figures)) {
+          if (TRI_IsObjectJson(figures)) {
             // add to the total
             result->_numberAlive          += ExtractFigure<TRI_voc_ssize_t>(figures, "alive", "count");
             result->_numberDead           += ExtractFigure<TRI_voc_ssize_t>(figures, "dead", "count");
@@ -499,7 +499,7 @@ int countOnCoordinator (
       if (res->answer_code == triagens::rest::HttpResponse::OK) {
         TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, res->answer->body());
 
-        if (JsonHelper::isArray(json)) {
+        if (JsonHelper::isObject(json)) {
           // add to the total
           result += JsonHelper::getNumericValue<uint64_t>(json, "count", 0);
           nrok++;
@@ -557,14 +557,14 @@ int createDocumentOnCoordinator (
   // cluster-wide unique number. Note that we only know the sharding
   // attributes a bit further down the line when we have determined
   // the responsible shard.
-  TRI_json_t* subjson = TRI_LookupArrayJson(json, "_key");
+  TRI_json_t* subjson = TRI_LookupObjectJson(json, "_key");
   bool userSpecifiedKey = false;
   string _key;
   if (subjson == nullptr) {
     // The user did not specify a key, let's create one:
     uint64_t uid = ci->uniqid();
     _key = triagens::basics::StringUtils::itoa(uid);
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
                          TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE,
                                                         _key.c_str(), _key.size()));
   }
@@ -661,11 +661,11 @@ int deleteDocumentOnCoordinator (
   // document. Otherwise we have to contact all shards and ask them to
   // delete the document. All but one will not know it.
   // Now find the responsible shard:
-  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  TRI_json_t* json = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
   if (json == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
                        TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE,
                                  key.c_str(), key.size()));
   bool usesDefaultShardingAttributes;
@@ -852,11 +852,11 @@ int getDocumentOnCoordinator (
   // document. Otherwise we have to contact all shards and ask them to
   // delete the document. All but one will not know it.
   // Now find the responsible shard:
-  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  TRI_json_t* json = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
   if (json == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
                        TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE,
                                  key.c_str(), key.size()));
   bool usesDefaultShardingAttributes;
@@ -1251,14 +1251,14 @@ int createEdgeOnCoordinator (
   // cluster-wide unique number. Note that we only know the sharding
   // attributes a bit further down the line when we have determined
   // the responsible shard.
-  TRI_json_t* subjson = TRI_LookupArrayJson(json, "_key");
+  TRI_json_t* subjson = TRI_LookupObjectJson(json, "_key");
   bool userSpecifiedKey = false;
   string _key;
   if (subjson == nullptr) {
     // The user did not specify a key, let's create one:
     uint64_t uid = ci->uniqid();
     _key = triagens::basics::StringUtils::itoa(uid);
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
                          TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE,
                                                         _key.c_str(), _key.size()));
   }
@@ -1343,12 +1343,12 @@ TRI_vector_pointer_t* getIndexesCoordinator (string const& databaseName,
 
   TRI_json_t const* json = (*c).getIndexes();
 
-  if (TRI_IsListJson(json)) {
+  if (TRI_IsArrayJson(json)) {
     for (size_t i = 0;  i < json->_value._objects._length; ++i) {
-      TRI_json_t const* v = TRI_LookupListJson(json, i);
+      TRI_json_t const* v = TRI_LookupArrayJson(json, i);
 
-      if (TRI_IsArrayJson(v)) {
-        TRI_json_t const* value = TRI_LookupArrayJson(v, "type");
+      if (TRI_IsObjectJson(v)) {
+        TRI_json_t const* value = TRI_LookupObjectJson(v, "type");
 
         if (! TRI_IsStringJson(value)) {
           continue;
@@ -1357,13 +1357,13 @@ TRI_vector_pointer_t* getIndexesCoordinator (string const& databaseName,
         TRI_idx_type_e type = TRI_TypeIndex(value->_value._string.data);
 
         bool unique = false;
-        value = TRI_LookupArrayJson(v, "unique");
+        value = TRI_LookupObjectJson(v, "unique");
         if (TRI_IsBooleanJson(value)) {
           unique = value->_value._boolean;
         }
 
         TRI_idx_iid_t iid = 0;
-        value = TRI_LookupArrayJson(v, "id");
+        value = TRI_LookupObjectJson(v, "id");
         if (TRI_IsStringJson(value)) {
           iid = TRI_UInt64String2(value->_value._string.data, value->_value._string.length - 1);
         }
@@ -1380,11 +1380,11 @@ TRI_vector_pointer_t* getIndexesCoordinator (string const& databaseName,
 
         TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 
-        value = TRI_LookupArrayJson(v, "fields");
+        value = TRI_LookupObjectJson(v, "fields");
 
-        if (TRI_IsListJson(value)) {
+        if (TRI_IsArrayJson(value)) {
           for (size_t j = 0; j < value->_value._objects._length; ++j) {
-            TRI_json_t const* f = TRI_LookupListJson(value, j);
+            TRI_json_t const* f = TRI_LookupArrayJson(value, j);
 
             if (TRI_IsStringJson(f)) {
               char* fieldName = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE,

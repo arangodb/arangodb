@@ -1788,7 +1788,7 @@ static bool OpenIndexIterator (char const* filename,
   TRI_json_t* json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, nullptr);
 
   // json must be a index description
-  if (! TRI_IsArrayJson(json)) {
+  if (! TRI_IsObjectJson(json)) {
     LOG_ERROR("cannot read index definition from '%s'", filename);
 
     if (json != nullptr) {
@@ -2509,14 +2509,14 @@ int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t* document,
                                          TRI_json_t const* json,
                                          TRI_index_t** idx) {
   TRI_ASSERT(json != nullptr);
-  TRI_ASSERT(json->_type == TRI_JSON_ARRAY);
+  TRI_ASSERT(json->_type == TRI_JSON_OBJECT);
 
   if (idx != nullptr) {
     *idx = nullptr;
   }
 
   // extract the type
-  TRI_json_t const* type = TRI_LookupArrayJson(json, "type");
+  TRI_json_t const* type = TRI_LookupObjectJson(json, "type");
 
   if (! TRI_IsStringJson(type)) {
     return TRI_ERROR_INTERNAL;
@@ -2525,7 +2525,7 @@ int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t* document,
   char const* typeStr = type->_value._string.data;
 
   // extract the index identifier
-  TRI_json_t const* iis = TRI_LookupArrayJson(json, "id");
+  TRI_json_t const* iis = TRI_LookupObjectJson(json, "id");
 
   TRI_idx_iid_t iid;
   if (iis != nullptr && iis->_type == TRI_JSON_NUMBER) {
@@ -2889,9 +2889,9 @@ pid_name_t;
 static TRI_json_t* ExtractFields (TRI_json_t const* json,
                                   size_t* fieldCount,
                                   TRI_idx_iid_t iid) {
-  TRI_json_t* fld = TRI_LookupArrayJson(json, "fields");
+  TRI_json_t* fld = TRI_LookupObjectJson(json, "fields");
 
-  if (! TRI_IsListJson(fld)) {
+  if (! TRI_IsArrayJson(fld)) {
     LOG_ERROR("ignoring index %llu, 'fields' must be a list", (unsigned long long) iid);
 
     TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
@@ -3114,7 +3114,7 @@ static int PathBasedIndexFromJson (TRI_document_collection_t* document,
   }
 
   // determine if the hash index is unique or non-unique
-  bv = TRI_LookupArrayJson(definition, "unique");
+  bv = TRI_LookupObjectJson(definition, "unique");
 
   if (! TRI_IsBooleanJson(bv)) {
     LOG_ERROR("ignoring index %llu, could not determine if unique or non-unique", (unsigned long long) iid);
@@ -3493,8 +3493,8 @@ static int CapConstraintFromJson (TRI_document_collection_t* document,
     *dst = nullptr;
   }
 
-  TRI_json_t const* val1 = TRI_LookupArrayJson(definition, "size");
-  TRI_json_t const* val2 = TRI_LookupArrayJson(definition, "byteSize");
+  TRI_json_t const* val1 = TRI_LookupObjectJson(definition, "size");
+  TRI_json_t const* val2 = TRI_LookupObjectJson(definition, "byteSize");
 
   if (! TRI_IsNumberJson(val1) && ! TRI_IsNumberJson(val2)) {
     LOG_ERROR("ignoring cap constraint %llu, 'size' and 'byteSize' missing",
@@ -3742,7 +3742,7 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
     *dst = nullptr;
   }
 
-  type = TRI_LookupArrayJson(definition, "type");
+  type = TRI_LookupObjectJson(definition, "type");
 
   if (! TRI_IsStringJson(type)) {
     return TRI_ERROR_INTERNAL;
@@ -3760,14 +3760,14 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
   // extract unique
   unique = false;
   // first try "unique" attribute
-  bv = TRI_LookupArrayJson(definition, "unique");
+  bv = TRI_LookupObjectJson(definition, "unique");
 
   if (bv != nullptr && bv->_type == TRI_JSON_BOOLEAN) {
     unique = bv->_value._boolean;
   }
   else {
     // then "constraint"
-    bv = TRI_LookupArrayJson(definition, "constraint");
+    bv = TRI_LookupObjectJson(definition, "constraint");
 
     if (TRI_IsBooleanJson(bv)) {
       unique = bv->_value._boolean;
@@ -3776,7 +3776,7 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
 
   // extract ignore null
   ignoreNull = false;
-  bv = TRI_LookupArrayJson(definition, "ignoreNull");
+  bv = TRI_LookupObjectJson(definition, "ignoreNull");
 
   if (TRI_IsBooleanJson(bv)) {
     ignoreNull = bv->_value._boolean;
@@ -3788,7 +3788,7 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
 
     // extract geo json
     geoJson = false;
-    bv = TRI_LookupArrayJson(definition, "geoJson");
+    bv = TRI_LookupObjectJson(definition, "geoJson");
 
     if (TRI_IsBooleanJson(bv)) {
       geoJson = bv->_value._boolean;
@@ -4575,14 +4575,14 @@ static int FulltextIndexFromJson (TRI_document_collection_t* document,
   attributeName = attribute->_value._string.data;
 
   // 2013-01-17: deactivated substring indexing
-  // indexSubstrings = TRI_LookupArrayJson(definition, "indexSubstrings");
+  // indexSubstrings = TRI_LookupObjectJson(definition, "indexSubstrings");
 
   doIndexSubstrings = false;
   // if (indexSubstrings != nullptr && indexSubstrings->_type == TRI_JSON_BOOLEAN) {
   //  doIndexSubstrings = indexSubstrings->_value._boolean;
   // }
 
-  minWordLength = TRI_LookupArrayJson(definition, "minLength");
+  minWordLength = TRI_LookupObjectJson(definition, "minLength");
   minWordLengthValue = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
 
   if (minWordLength != nullptr && minWordLength->_type == TRI_JSON_NUMBER) {

@@ -210,7 +210,7 @@ std::string VariableGenerator::nextName () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 triagens::basics::Json VariableGenerator::toJson (TRI_memory_zone_t* zone) const {
-  Json jsonAllVariablesList(Json::List, _variables.size());
+  Json jsonAllVariablesList(Json::Array, _variables.size());
   for (auto oneVariable: _variables) {
     jsonAllVariablesList(oneVariable.second->toJson());
   }
@@ -223,7 +223,7 @@ triagens::basics::Json VariableGenerator::toJson (TRI_memory_zone_t* zone) const
 
 void VariableGenerator::fromJson (Json const& query) {
   Json jsonAllVariablesList = query.get("variables");
-  if (! jsonAllVariablesList.isList()) {
+  if (! jsonAllVariablesList.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "variables needs to be a list");
   }
   

@@ -24,7 +24,7 @@ db.e.inEdges('v/world').forEach(function(edge) {
 ```
 
 *inEdges* will give us all ingoing edges for the specified vertex *v/world*. The result
-is a JavaScript list, that we can iterate over and print the results:
+is a JavaScript array that we can iterate over and print the results:
 
 ```js
 v/continent-africa -> is-in -> v/world
@@ -35,7 +35,7 @@ v/continent-europe -> is-in -> v/world
 v/continent-north-america -> is-in -> v/world
 ```
 
-**Note**: *edges*, *inEdges*, and *outEdges* return a list of edges. If we want to retrieve
+**Note**: *edges*, *inEdges*, and *outEdges* return an array of edges. If we want to retrieve
 the linked vertices, we can use each edges' *_from* and *_to* attributes as follows:
 
 ```js

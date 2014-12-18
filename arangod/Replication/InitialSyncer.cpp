@@ -188,7 +188,7 @@ int InitialSyncer::run (string& errorMsg) {
     TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE,
                                       response->getBody().c_str());
 
-    if (JsonHelper::isArray(json)) {
+    if (JsonHelper::isObject(json)) {
       res = handleInventoryResponse(json, errorMsg);
 
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -406,7 +406,7 @@ int InitialSyncer::applyCollectionDump (TRI_transaction_collection_t* trxCollect
 
     TRI_json_t* json = TRI_JsonString(TRI_CORE_MEM_ZONE, line.c_str());
 
-    if (! JsonHelper::isArray(json)) {
+    if (! JsonHelper::isObject(json)) {
       if (json != nullptr) {
         TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
       }
@@ -455,7 +455,7 @@ int InitialSyncer::applyCollectionDump (TRI_transaction_collection_t* trxCollect
       }
 
       else if (TRI_EqualString(attributeName, "data")) {
-        if (JsonHelper::isArray(value)) {
+        if (JsonHelper::isObject(value)) {
           doc = value;
         }
       }
@@ -637,7 +637,7 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
     return TRI_ERROR_NO_ERROR;
   }
 
-  TRI_json_t const* masterId = JsonHelper::getArrayElement(parameters, "cid");
+  TRI_json_t const* masterId = JsonHelper::getObjectElement(parameters, "cid");
 
   if (! JsonHelper::isString(masterId)) {
     errorMsg = "collection id is missing in response";
@@ -884,9 +884,9 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
 
 int InitialSyncer::handleInventoryResponse (TRI_json_t const* json,
                                             string& errorMsg) {
-  TRI_json_t* collections = JsonHelper::getArrayElement(json, "collections");
+  TRI_json_t* collections = JsonHelper::getObjectElement(json, "collections");
 
-  if (! JsonHelper::isList(collections)) {
+  if (! JsonHelper::isArray(collections)) {
     errorMsg = "collections section is missing from response";
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -945,23 +945,23 @@ int InitialSyncer::iterateCollections (TRI_json_t const* collections,
   for (size_t i = 0; i < n; ++i) {
     TRI_json_t const* collection = static_cast<TRI_json_t const*>(TRI_AtVector(&collections->_value._objects, i));
 
-    if (! JsonHelper::isArray(collection)) {
+    if (! JsonHelper::isObject(collection)) {
       errorMsg = "collection declaration is invalid in response";
 
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
 
-    TRI_json_t const* parameters = JsonHelper::getArrayElement(collection, "parameters");
+    TRI_json_t const* parameters = JsonHelper::getObjectElement(collection, "parameters");
 
-    if (! JsonHelper::isArray(parameters)) {
+    if (! JsonHelper::isObject(parameters)) {
       errorMsg = "collection parameters declaration is invalid in response";
 
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
 
-    TRI_json_t const* indexes = JsonHelper::getArrayElement(collection, "indexes");
+    TRI_json_t const* indexes = JsonHelper::getObjectElement(collection, "indexes");
 
-    if (! JsonHelper::isList(indexes)) {
+    if (! JsonHelper::isArray(indexes)) {
       errorMsg = "collection indexes declaration is invalid in response";
 
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;

@@ -36,10 +36,10 @@ with an error.
   *polygon* parameter. The result is undefined (may be `true` or `false`) if the specified point
   is exactly on a boundary of the polygon.
 
-  *latitude* can alternatively be specified as a list with two values. By default,
-  the first list element will be interpreted as the latitude value and the second list element
+  *latitude* can alternatively be specified as an array with two values. By default,
+  the first array element will be interpreted as the latitude value and the second array element
   as the longitude value. This can be changed by setting the 3rd parameter to `true`.
-  *polygon* needs to be a list of points, with each point being a list with two values. The
+  *polygon* needs to be an array of points, with each point being an array with two values. The
   first value of each point is considered to be the latitude value and the second to be the
   longitude value, unless the 3rd parameter has a value of `true`. That means latitude and
   longitude need to be specified in the same order in the *points* parameter as they are in

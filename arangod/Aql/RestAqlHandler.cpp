@@ -164,7 +164,7 @@ void RestAqlHandler::createQueryFromJson () {
 
   _response = createResponse(triagens::rest::HttpResponse::ACCEPTED);
   _response->setContentType("application/json; charset=utf-8");
-  Json answerBody(Json::Array, 2);
+  Json answerBody(Json::Object, 2);
   answerBody("queryId", Json(StringUtils::itoa(_qId)))
             ("ttl",     Json(ttl));
 
@@ -205,14 +205,14 @@ void RestAqlHandler::parseQuery () {
   }
 
   // Now prepare the answer:
-  Json answerBody(Json::Array, 4);
+  Json answerBody(Json::Object, 4);
   answerBody("parsed", Json(true));
-  Json collections(Json::List, res.collectionNames.size());
+  Json collections(Json::Array, res.collectionNames.size());
   for (auto const& c : res.collectionNames) {
     collections(Json(c));
   }
   answerBody("collections", collections);
-  Json bindVars(Json::List, res.bindParameters.size());
+  Json bindVars(Json::Array, res.bindParameters.size());
   for (auto const& p : res.bindParameters) {
     bindVars(Json(p));
   }
@@ -263,7 +263,7 @@ void RestAqlHandler::explainQuery () {
   }
 
   // Now prepare the answer:
-  Json answerBody(Json::Array, 1);
+  Json answerBody(Json::Object, 1);
   if (res.json != nullptr) {
     if (query->allPlans()) {
       answerBody("plans", Json(res.zone, res.json));
@@ -348,7 +348,7 @@ void RestAqlHandler::createQueryFromString () {
 
   _response = createResponse(triagens::rest::HttpResponse::ACCEPTED);
   _response->setContentType("application/json; charset=utf-8");
-  Json answerBody(Json::Array, 2);
+  Json answerBody(Json::Object, 2);
   answerBody("queryId", Json(StringUtils::itoa(_qId)))
             ("ttl",     Json(ttl));
   _response->body().appendText(answerBody.toString());
@@ -493,7 +493,7 @@ void RestAqlHandler::getInfoQuery (std::string const& operation,
 
   TRI_ASSERT(_qId > 0);
 
-  Json answerBody(Json::Array, 2);
+  Json answerBody(Json::Object, 2);
 
   TRI_ASSERT(query->engine() != nullptr);
 
@@ -718,7 +718,7 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
     shardId = shardIdCharP;
   }
 
-  Json answerBody(Json::Array, 3);
+  Json answerBody(Json::Object, 3);
 
   if (operation == "getSome") {
     auto atLeast = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
@@ -906,7 +906,7 @@ TRI_json_t* RestAqlHandler::parseJsonBody () {
 
   TRI_ASSERT(errmsg == nullptr);
 
-  if (! TRI_IsArrayJson(json)) {
+  if (! TRI_IsObjectJson(json)) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     LOG_ERROR("body of request must be a JSON array");
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,

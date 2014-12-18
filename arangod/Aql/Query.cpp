@@ -101,7 +101,7 @@ void Profile::enter (ExecutionState state) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* Profile::toJson (TRI_memory_zone_t*) {
-  triagens::basics::Json result(triagens::basics::Json::Array);
+  triagens::basics::Json result(triagens::basics::Json::Object);
   for (auto& it : results) {
     result.set(StateNames[static_cast<int>(it.first)].c_str(), triagens::basics::Json(it.second));
   }
@@ -584,7 +584,7 @@ QueryResult Query::execute (QueryRegistry* registry) {
       return res;
     }
 
-    triagens::basics::Json jsonResult(triagens::basics::Json::List, 16);
+    triagens::basics::Json jsonResult(triagens::basics::Json::Array, 16);
     triagens::basics::Json stats;
 
     AqlItemBlock* value;
@@ -782,7 +782,7 @@ QueryResult Query::explain () {
     QueryRegistry localRegistry;
 
     if (allPlans()) {
-      triagens::basics::Json out(Json::List);
+      triagens::basics::Json out(Json::Array);
 
       auto plans = opt.getPlans();
       for (auto it : plans) {
@@ -958,11 +958,11 @@ triagens::basics::Json Query::getStats() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Query::getBooleanOption (char const* option, bool defaultValue) const {  
-  if (! TRI_IsArrayJson(_options)) {
+  if (! TRI_IsObjectJson(_options)) {
     return defaultValue;
   }
 
-  TRI_json_t const* valueJson = TRI_LookupArrayJson(_options, option);
+  TRI_json_t const* valueJson = TRI_LookupObjectJson(_options, option);
   if (! TRI_IsBooleanJson(valueJson)) {
     return defaultValue;
   }
@@ -980,17 +980,17 @@ TRI_json_t* Query::warningsToJson (TRI_memory_zone_t* zone) const {
   }
 
   size_t const n = _warnings.size();
-  TRI_json_t* json = TRI_CreateList2Json(zone, n);
+  TRI_json_t* json = TRI_CreateArray2Json(zone, n);
 
   if (json != nullptr) {
     for (size_t i = 0; i < n; ++i) {
-      TRI_json_t* error = TRI_CreateArray2Json(zone, 2);
+      TRI_json_t* error = TRI_CreateObject2Json(zone, 2);
 
       if (error != nullptr) {
-        TRI_Insert3ArrayJson(zone, error, "code", TRI_CreateNumberJson(zone, static_cast<double>(_warnings[i].first)));
-        TRI_Insert3ArrayJson(zone, error, "message", TRI_CreateString2CopyJson(zone, _warnings[i].second.c_str(), _warnings[i].second.size()));
+        TRI_Insert3ObjectJson(zone, error, "code", TRI_CreateNumberJson(zone, static_cast<double>(_warnings[i].first)));
+        TRI_Insert3ObjectJson(zone, error, "message", TRI_CreateString2CopyJson(zone, _warnings[i].second.c_str(), _warnings[i].second.size()));
 
-        TRI_PushBack3ListJson(zone, json, error);
+        TRI_PushBack3ArrayJson(zone, json, error);
       }
     }
   }
@@ -1007,11 +1007,11 @@ TRI_json_t* Query::warningsToJson (TRI_memory_zone_t* zone) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 double Query::getNumericOption (char const* option, double defaultValue) const {  
-  if (! TRI_IsArrayJson(_options)) {
+  if (! TRI_IsObjectJson(_options)) {
     return defaultValue;
   }
 
-  TRI_json_t const* valueJson = TRI_LookupArrayJson(_options, option);
+  TRI_json_t const* valueJson = TRI_LookupObjectJson(_options, option);
   if (! TRI_IsNumberJson(valueJson)) {
     return defaultValue;
   }
@@ -1043,17 +1043,17 @@ QueryResult Query::transactionError (int errorCode) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Query::inspectSimplePlans () const {
-  if (! TRI_IsArrayJson(_options)) {
+  if (! TRI_IsObjectJson(_options)) {
     return true; // default
   }
   
-  TRI_json_t const* optJson = TRI_LookupArrayJson(_options, "optimizer");
+  TRI_json_t const* optJson = TRI_LookupObjectJson(_options, "optimizer");
 
-  if (! TRI_IsArrayJson(optJson)) {
+  if (! TRI_IsObjectJson(optJson)) {
     return true; // default
   }
   
-  TRI_json_t const* j = TRI_LookupArrayJson(optJson, "inspectSimplePlans");
+  TRI_json_t const* j = TRI_LookupObjectJson(optJson, "inspectSimplePlans");
   if (TRI_IsBooleanJson(j)) {
     return j->_value._boolean;
   }
@@ -1067,23 +1067,23 @@ bool Query::inspectSimplePlans () const {
 std::vector<std::string> Query::getRulesFromOptions () const {
   std::vector<std::string> rules;
 
-  if (! TRI_IsArrayJson(_options)) {
+  if (! TRI_IsObjectJson(_options)) {
     return rules;
   }
   
-  TRI_json_t const* optJson = TRI_LookupArrayJson(_options, "optimizer");
+  TRI_json_t const* optJson = TRI_LookupObjectJson(_options, "optimizer");
 
-  if (! TRI_IsArrayJson(optJson)) {
+  if (! TRI_IsObjectJson(optJson)) {
     return rules;
   }
   
-  TRI_json_t const* rulesJson = TRI_LookupArrayJson(optJson, "rules");
+  TRI_json_t const* rulesJson = TRI_LookupObjectJson(optJson, "rules");
 
-  if (! TRI_IsListJson(rulesJson)) {
+  if (! TRI_IsArrayJson(rulesJson)) {
     return rules;
   }
         
-  size_t const n = TRI_LengthListJson(rulesJson);
+  size_t const n = TRI_LengthArrayJson(rulesJson);
 
   for (size_t i = 0; i < n; ++i) {
     TRI_json_t const* rule = static_cast<TRI_json_t const*>(TRI_AtVector(&rulesJson->_value._objects, i));
