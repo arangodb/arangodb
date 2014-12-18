@@ -2797,9 +2797,8 @@ bool TRI_MSync (int fd,
 
   char* b = (char*)( (p / g) * g );
   char* e = (char*)( ((q + g - 1) / g) * g );
-  int res;
 
-  res = TRI_FlushMMFile(fd, &mmHandle, b, e - b, MS_SYNC);
+  int res = TRI_FlushMMFile(fd, &mmHandle, b, e - b, MS_SYNC);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
