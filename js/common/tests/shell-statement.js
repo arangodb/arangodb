@@ -250,6 +250,29 @@ function StatementSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test explain method
+////////////////////////////////////////////////////////////////////////////////
+
+    testExplainAllPlansWithOptions : function () {
+      var st = db._createStatement({ query : "FOR i IN 1..10 RETURN i", options: { allPlans: true } });
+      var result = st.explain();
+
+      assertEqual([ ], result.warnings);
+      assertFalse(result.hasOwnProperty("plan"));
+      assertTrue(result.hasOwnProperty("plans"));
+
+      assertEqual(1, result.plans.length);
+      var plan = result.plans[0];
+      assertTrue(plan.hasOwnProperty("estimatedCost"));
+      assertTrue(plan.hasOwnProperty("rules"));
+      assertEqual([ ], plan.rules);
+      assertTrue(plan.hasOwnProperty("nodes"));
+      assertTrue(plan.hasOwnProperty("collections"));
+      assertEqual([ ], plan.collections);
+      assertTrue(plan.hasOwnProperty("variables"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test explain method, bind variables
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -345,6 +368,20 @@ function StatementSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test explain
+////////////////////////////////////////////////////////////////////////////////
+
+    testExplainWithOptions : function () {
+      var st = db._createStatement({ query : "for i in _users for j in _users return i", options: { allPlans: true, maxNumberOfPlans: 1 } });
+      var result = st.explain();
+      
+      assertEqual([ ], result.warnings);
+      assertFalse(result.hasOwnProperty("plan"));
+      assertTrue(result.hasOwnProperty("plans"));
+      assertEqual(1, result.plans.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test execute method
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -400,7 +437,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExecuteExtra : function () {
-      var st = db._createStatement({ query : "for i in 1..50 limit 1,2 return i", count: true, options: { fullCount: true } });
+      var st = db._createStatement({ query : "for i in 1..50 limit 1, 2 return i", count: true, options: { fullCount: true } });
       var result = st.execute();
 
       assertEqual(2, result.count());

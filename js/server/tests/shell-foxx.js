@@ -634,11 +634,8 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes[0].docs.parameters[0].name, "a");
       assertEqual(routes[0].docs.parameters[0].description, "The value of an a");
       assertEqual(routes[0].docs.parameters[0].dataType, "integer");
-      print(0)
-      assertEqual(routes[0].docs.parameters[0].required, true);
-      print(1)
-      assertEqual(routes[0].docs.parameters[0].allowMultiple, true);
-      print(2)
+      assertEqual(routes[0].docs.parameters[0].required, true, "param required not equal?");
+      assertEqual(routes[0].docs.parameters[0].allowMultiple, true, "allows multiple parameters?");
       assertEqual(context.constraints.queryParams, {
         a: constraint
         .description("The value of an a")

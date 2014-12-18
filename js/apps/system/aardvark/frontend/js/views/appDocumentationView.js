@@ -8,7 +8,7 @@
 
   window.AppDocumentationView = Backbone.View.extend({
 
-    el: '#content',
+    el: 'body',
     template: templateEngine.createTemplate("appDocumentationView.ejs"),
 
     initialize: function() {

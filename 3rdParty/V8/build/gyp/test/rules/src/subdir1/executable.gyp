@@ -21,7 +21,7 @@
             '../copy-file.py',
           ],
           'outputs': [
-            # TODO:  fix SCons and Make to support generated files not
+            # TODO:  fix Make to support generated files not
             # in a variable-named path like <(INTERMEDIATE_DIR)
             #'<(RULE_INPUT_ROOT).c',
             '<(INTERMEDIATE_DIR)/<(RULE_INPUT_ROOT).c',

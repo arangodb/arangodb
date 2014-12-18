@@ -172,7 +172,8 @@ namespace triagens {
 /// @return v8::Value                          a V8 JavaScript object
 ////////////////////////////////////////////////////////////////////////////////
 
-        v8::Handle<v8::Value> getData (std::string const& location,
+        v8::Handle<v8::Value> getData (v8::Isolate* isolate,
+                                       std::string const& location,
                                        std::map<std::string, std::string> const& headerFields,
                                        bool raw);
 
@@ -186,7 +187,8 @@ namespace triagens {
 /// @return v8::Value                          a V8 JavaScript object
 ////////////////////////////////////////////////////////////////////////////////
 
-        v8::Handle<v8::Value> deleteData (std::string const& location,
+        v8::Handle<v8::Value> deleteData (v8::Isolate* isolate,
+                                          std::string const& location,
                                           std::map<std::string, std::string> const& headerFields,
                                           bool raw);
 
@@ -200,7 +202,8 @@ namespace triagens {
 /// @return v8::Value                          a V8 JavaScript object
 ////////////////////////////////////////////////////////////////////////////////
 
-        v8::Handle<v8::Value> headData (std::string const& location,
+        v8::Handle<v8::Value> headData (v8::Isolate* isolate,
+                                        std::string const& location,
                                         std::map<std::string, std::string> const& headerFields,
                                         bool raw);
 
@@ -215,7 +218,8 @@ namespace triagens {
 /// @return v8::Value                          a V8 JavaScript object
 ////////////////////////////////////////////////////////////////////////////////
 
-        v8::Handle<v8::Value> optionsData (std::string const& location,
+        v8::Handle<v8::Value> optionsData (v8::Isolate* isolate,
+                                           std::string const& location,
                                            std::string const& body,
                                            std::map<std::string, std::string> const& headerFields,
                                            bool raw);
@@ -231,12 +235,14 @@ namespace triagens {
 /// @return v8::Value                          a V8 JavaScript object
 ////////////////////////////////////////////////////////////////////////////////
 
-        v8::Handle<v8::Value> postData (std::string const& location,
+        v8::Handle<v8::Value> postData (v8::Isolate* isolate,
+                                        std::string const& location,
                                         std::string const& body,
                                         std::map<std::string, std::string> const& headerFields,
                                         bool raw);
 
-        v8::Handle<v8::Value> postData (std::string const& location,
+        v8::Handle<v8::Value> postData (v8::Isolate* isolate,
+                                        std::string const& location,
                                         const char* body,
                                         const size_t bodySize,
                                         std::map<std::string, std::string> const& headerFields);
@@ -252,7 +258,8 @@ namespace triagens {
 /// @return v8::Value                          a V8 JavaScript object
 ////////////////////////////////////////////////////////////////////////////////
 
-        v8::Handle<v8::Value> putData (std::string const& location,
+        v8::Handle<v8::Value> putData (v8::Isolate* isolate,
+                                       std::string const& location,
                                        std::string const& body,
                                        std::map<std::string, std::string> const& headerFields,
                                        bool raw);
@@ -268,7 +275,8 @@ namespace triagens {
 /// @return v8::Value                          a V8 JavaScript object
 ////////////////////////////////////////////////////////////////////////////////
 
-        v8::Handle<v8::Value> patchData (std::string const& location,
+        v8::Handle<v8::Value> patchData (v8::Isolate* isolate,
+                                         std::string const& location,
                                          std::string const& body,
                                          std::map<std::string, std::string> const& headerFields,
                                          bool raw);
@@ -283,7 +291,8 @@ namespace triagens {
 /// @brief executes a request
 ////////////////////////////////////////////////////////////////////////////////
 
-      v8::Handle<v8::Value> requestData (rest::HttpRequest::HttpRequestType method,
+        v8::Handle<v8::Value> requestData (v8::Isolate* isolate,
+                                           rest::HttpRequest::HttpRequestType method,
                                          std::string const& location,
                                          const char* body,
                                          const size_t bodySize,
@@ -293,7 +302,8 @@ namespace triagens {
 /// @brief executes a request
 ////////////////////////////////////////////////////////////////////////////////
 
-      v8::Handle<v8::Value> requestData (rest::HttpRequest::HttpRequestType method,
+      v8::Handle<v8::Value> requestData (v8::Isolate* isolate,
+                                         rest::HttpRequest::HttpRequestType method,
                                          std::string const& location,
                                          std::string const& body,
                                          std::map<std::string, std::string> const& headerFields);
@@ -302,13 +312,14 @@ namespace triagens {
 /// @brief handles a result
 ////////////////////////////////////////////////////////////////////////////////
 
-      v8::Handle<v8::Value> handleResult ();
+      v8::Handle<v8::Value> handleResult (v8::Isolate* isolate);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a request and returns raw response
 ////////////////////////////////////////////////////////////////////////////////
 
-      v8::Handle<v8::Value> requestDataRaw (rest::HttpRequest::HttpRequestType method,
+      v8::Handle<v8::Value> requestDataRaw (v8::Isolate* isolate,
+                                            rest::HttpRequest::HttpRequestType method,
                                             std::string const& location,
                                             std::string const& body,
                                             std::map<std::string, std::string> const& headerFields);

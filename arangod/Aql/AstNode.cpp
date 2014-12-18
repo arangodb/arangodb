@@ -118,7 +118,9 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
   { static_cast<int>(NODE_TYPE_FCALL),                    "function call" },
   { static_cast<int>(NODE_TYPE_FCALL_USER),               "user function call" },
   { static_cast<int>(NODE_TYPE_RANGE),                    "range" },
-  { static_cast<int>(NODE_TYPE_NOP),                      "no-op" }
+  { static_cast<int>(NODE_TYPE_NOP),                      "no-op" },
+  { static_cast<int>(NODE_TYPE_COLLECT_COUNT),            "collect count" },
+  { static_cast<int>(NODE_TYPE_COLLECT_EXPRESSION),       "collect expression" }
 };
 
 std::unordered_map<int, std::string const> const AstNode::valueTypeNames{
@@ -245,11 +247,31 @@ int triagens::aql::CompareAstNodes (AstNode const* lhs,
   auto rType = GetNodeCompareType(rhs);
 
   if (lType != rType) {
-    return static_cast<int>(lType) - static_cast<int>(rType);
+    int diff = static_cast<int>(lType) - static_cast<int>(rType);
+    TRI_ASSERT_EXPENSIVE(diff != 0);
+
+    if (diff < 0) {
+      return -1;
+    }
+    else if (diff > 0) {
+      return 1;
+    }
+    TRI_ASSERT(false);
+    return 0;
   }
 
-  if (lType == TRI_JSON_BOOLEAN) {
-    return static_cast<int>(lhs->getIntValue() - rhs->getIntValue());
+  if (lType == TRI_JSON_NULL) {
+    return 0;
+  }
+  else if (lType == TRI_JSON_BOOLEAN) {
+    int diff = static_cast<int>(lhs->getIntValue() - rhs->getIntValue());
+    if (diff != 0) {
+      if (diff < 0) {
+        return -1; 
+      }
+      return 1; 
+    }
+    return 0;
   }
   else if (lType == TRI_JSON_NUMBER) {
     double d = lhs->getDoubleValue() - rhs->getDoubleValue();
@@ -470,6 +492,8 @@ AstNode::AstNode (Ast* ast,
     case NODE_TYPE_UPDATE:
     case NODE_TYPE_REPLACE:
     case NODE_TYPE_COLLECT:
+    case NODE_TYPE_COLLECT_COUNT:
+    case NODE_TYPE_COLLECT_EXPRESSION:
     case NODE_TYPE_SORT:
     case NODE_TYPE_SORT_ELEMENT:
     case NODE_TYPE_LIMIT:

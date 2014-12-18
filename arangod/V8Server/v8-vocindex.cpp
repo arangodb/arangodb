@@ -38,6 +38,7 @@
 #include "Utils/V8TransactionContext.h"
 
 #include "CapConstraint/cap-constraint.h"
+#include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 
 using namespace std;
@@ -49,12 +50,13 @@ using namespace triagens::rest;
 /// @brief extract the unique flag from the data
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ExtractBoolFlag (v8::Handle<v8::Object> const obj,
-                      char const* name,
+bool ExtractBoolFlag (v8::Isolate* isolate,
+                      v8::Handle<v8::Object> const obj,
+                      v8::Handle<v8::String> name,
                       bool defaultValue) {
   // extract unique flag
-  if (obj->Has(TRI_V8_SYMBOL(name))) {
-    return TRI_ObjectToBoolean(obj->Get(TRI_V8_SYMBOL(name)));
+  if (obj->Has(name)) {
+    return TRI_ObjectToBoolean(obj->Get(name));
   }
 
   return defaultValue;
@@ -106,32 +108,34 @@ static bool IsIndexHandle (v8::Handle<v8::Value> const arg,
 /// @brief returns the index representation
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> IndexRep (string const& collectionName,
+static v8::Handle<v8::Value> IndexRep (v8::Isolate* isolate,
+                                       string const& collectionName,
                                        TRI_json_t const* idx) {
-  v8::HandleScope scope;
-
+  v8::EscapableHandleScope scope(isolate);
   TRI_ASSERT(idx != nullptr);
 
-  v8::Handle<v8::Object> rep = TRI_ObjectJson(idx)->ToObject();
+  v8::Handle<v8::Object> rep = TRI_ObjectJson(isolate, idx)->ToObject();
 
-  string iid = TRI_ObjectToString(rep->Get(TRI_V8_SYMBOL("id")));
+  string iid = TRI_ObjectToString(rep->Get(TRI_V8_ASCII_STRING("id")));
   string const id = collectionName + TRI_INDEX_HANDLE_SEPARATOR_STR + iid;
-  rep->Set(TRI_V8_SYMBOL("id"), v8::String::New(id.c_str(), (int) id.size()));
+  rep->Set(TRI_V8_ASCII_STRING("id"), TRI_V8_STD_STRING(id));
 
-  return scope.Close(rep);
+  return scope.Escape<v8::Value>(rep);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief process the fields list and add them to the json
 ////////////////////////////////////////////////////////////////////////////////
 
-int ProcessIndexFields (v8::Handle<v8::Object> const obj,
+int ProcessIndexFields (v8::Isolate* isolate,
+                        v8::Handle<v8::Object> const obj,
                         TRI_json_t* json,
                         int numFields,
                         bool create) {
+  v8::HandleScope scope(isolate);
   set<string> fields;
 
-  v8::Handle<v8::String> fieldsString = v8::String::New("fields");
+  v8::Handle<v8::String> fieldsString = TRI_V8_ASCII_STRING("fields");
   if (obj->Has(fieldsString) && obj->Get(fieldsString)->IsArray()) {
     // "fields" is a list of fields
     v8::Handle<v8::Array> fieldList = v8::Handle<v8::Array>::Cast(obj->Get(fieldsString));
@@ -164,7 +168,7 @@ int ProcessIndexFields (v8::Handle<v8::Object> const obj,
     return TRI_ERROR_BAD_PARAMETER;
   }
 
-  TRI_json_t* fieldJson = TRI_ObjectToJson(obj->Get(TRI_V8_SYMBOL("fields")));
+  TRI_json_t* fieldJson = TRI_ObjectToJson(isolate, obj->Get(TRI_V8_ASCII_STRING("fields")));
 
   if (fieldJson == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -178,9 +182,11 @@ int ProcessIndexFields (v8::Handle<v8::Object> const obj,
 /// @brief process the geojson flag and add it to the json
 ////////////////////////////////////////////////////////////////////////////////
 
-int ProcessIndexGeoJsonFlag (v8::Handle<v8::Object> const obj,
-                            TRI_json_t* json) {
-  bool geoJson = ExtractBoolFlag(obj, "geoJson", false);
+int ProcessIndexGeoJsonFlag (v8::Isolate* isolate,
+                             v8::Handle<v8::Object> const obj,
+                             TRI_json_t* json) {
+  v8::HandleScope scope(isolate);
+  bool geoJson = ExtractBoolFlag(isolate, obj, TRI_V8_ASCII_STRING("geoJson"), false);
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "geoJson", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, geoJson));
 
   return TRI_ERROR_NO_ERROR;
@@ -190,10 +196,12 @@ int ProcessIndexGeoJsonFlag (v8::Handle<v8::Object> const obj,
 /// @brief process the unique flag and add it to the json
 ////////////////////////////////////////////////////////////////////////////////
 
-int ProcessIndexUniqueFlag (v8::Handle<v8::Object> const obj,
+int ProcessIndexUniqueFlag (v8::Isolate* isolate,
+                            v8::Handle<v8::Object> const obj,
                             TRI_json_t* json,
                             bool fillConstraint = false) {
-  bool unique = ExtractBoolFlag(obj, "unique", false);
+  v8::HandleScope scope(isolate);
+  bool unique = ExtractBoolFlag(isolate, obj, TRI_V8_ASCII_STRING("unique"), false);
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, unique));
   if (fillConstraint) {
     TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "constraint", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, unique));
@@ -206,9 +214,11 @@ int ProcessIndexUniqueFlag (v8::Handle<v8::Object> const obj,
 /// @brief process the ignoreNull flag and add it to the json
 ////////////////////////////////////////////////////////////////////////////////
 
-int ProcessIndexIgnoreNullFlag (v8::Handle<v8::Object> const obj,
+int ProcessIndexIgnoreNullFlag (v8::Isolate* isolate,
+                                v8::Handle<v8::Object> const obj,
                                 TRI_json_t* json) {
-  bool ignoreNull = ExtractBoolFlag(obj, "ignoreNull", false);
+  v8::HandleScope scope(isolate);
+  bool ignoreNull = ExtractBoolFlag(isolate, obj, TRI_V8_ASCII_STRING("ignoreNull"), false);
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, ignoreNull));
 
   return TRI_ERROR_NO_ERROR;
@@ -218,9 +228,11 @@ int ProcessIndexIgnoreNullFlag (v8::Handle<v8::Object> const obj,
 /// @brief process the undefined flag and add it to the json
 ////////////////////////////////////////////////////////////////////////////////
 
-int ProcessIndexUndefinedFlag (v8::Handle<v8::Object> const obj,
+int ProcessIndexUndefinedFlag (v8::Isolate* isolate,
+                               v8::Handle<v8::Object> const obj,
                                TRI_json_t* json) {
-  bool undefined = ExtractBoolFlag(obj, "undefined", false);
+  v8::HandleScope scope(isolate);
+  bool undefined = ExtractBoolFlag(isolate, obj, TRI_V8_ASCII_STRING("undefined"), false);
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "undefined", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, undefined));
 
   return TRI_ERROR_NO_ERROR;
@@ -230,13 +242,14 @@ int ProcessIndexUndefinedFlag (v8::Handle<v8::Object> const obj,
 /// @brief enhances the json of a geo1 index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int EnhanceJsonIndexGeo1 (v8::Handle<v8::Object> const obj,
+static int EnhanceJsonIndexGeo1 (v8::Isolate* isolate,
+                                 v8::Handle<v8::Object> const obj,
                                  TRI_json_t* json,
                                  bool create) {
-  int res = ProcessIndexFields(obj, json, 1, create);
-  ProcessIndexUniqueFlag(obj, json, true);
-  ProcessIndexIgnoreNullFlag(obj, json);
-  ProcessIndexGeoJsonFlag(obj, json);
+  int res = ProcessIndexFields(isolate, obj, json, 1, create);
+  ProcessIndexUniqueFlag(isolate, obj, json, true);
+  ProcessIndexIgnoreNullFlag(isolate, obj, json);
+  ProcessIndexGeoJsonFlag(isolate, obj, json);
   return res;
 }
 
@@ -244,12 +257,13 @@ static int EnhanceJsonIndexGeo1 (v8::Handle<v8::Object> const obj,
 /// @brief enhances the json of a geo2 index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int EnhanceJsonIndexGeo2 (v8::Handle<v8::Object> const obj,
+static int EnhanceJsonIndexGeo2 (v8::Isolate* isolate,
+                                 v8::Handle<v8::Object> const obj,
                                  TRI_json_t* json,
                                  bool create) {
-  int res = ProcessIndexFields(obj, json, 2, create);
-  ProcessIndexUniqueFlag(obj, json, true);
-  ProcessIndexIgnoreNullFlag(obj, json);
+  int res = ProcessIndexFields(isolate, obj, json, 2, create);
+  ProcessIndexUniqueFlag(isolate, obj, json, true);
+  ProcessIndexIgnoreNullFlag(isolate, obj, json);
   return res;
 }
 
@@ -257,11 +271,12 @@ static int EnhanceJsonIndexGeo2 (v8::Handle<v8::Object> const obj,
 /// @brief enhances the json of a hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int EnhanceJsonIndexHash (v8::Handle<v8::Object> const obj,
+static int EnhanceJsonIndexHash (v8::Isolate* isolate,
+                                 v8::Handle<v8::Object> const obj,
                                  TRI_json_t* json,
                                  bool create) {
-  int res = ProcessIndexFields(obj, json, 0, create);
-  ProcessIndexUniqueFlag(obj, json);
+  int res = ProcessIndexFields(isolate, obj, json, 0, create);
+  ProcessIndexUniqueFlag(isolate, obj, json);
   return res;
 }
 
@@ -269,11 +284,12 @@ static int EnhanceJsonIndexHash (v8::Handle<v8::Object> const obj,
 /// @brief enhances the json of a skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int EnhanceJsonIndexSkiplist (v8::Handle<v8::Object> const obj,
+static int EnhanceJsonIndexSkiplist (v8::Isolate* isolate,
+                                     v8::Handle<v8::Object> const obj,
                                      TRI_json_t* json,
                                      bool create) {
-  int res = ProcessIndexFields(obj, json, 0, create);
-  ProcessIndexUniqueFlag(obj, json);
+  int res = ProcessIndexFields(isolate, obj, json, 0, create);
+  ProcessIndexUniqueFlag(isolate, obj, json);
   return res;
 }
 
@@ -281,15 +297,16 @@ static int EnhanceJsonIndexSkiplist (v8::Handle<v8::Object> const obj,
 /// @brief enhances the json of a fulltext index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int EnhanceJsonIndexFulltext (v8::Handle<v8::Object> const obj,
+static int EnhanceJsonIndexFulltext (v8::Isolate* isolate,
+                                     v8::Handle<v8::Object> const obj,
                                      TRI_json_t* json,
                                      bool create) {
-  int res = ProcessIndexFields(obj, json, 1, create);
+  int res = ProcessIndexFields(isolate, obj, json, 1, create);
 
   // handle "minLength" attribute
   int minWordLength = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
-  if (obj->Has(TRI_V8_SYMBOL("minLength")) && obj->Get(TRI_V8_SYMBOL("minLength"))->IsNumber()) {
-    minWordLength = (int) TRI_ObjectToInt64(obj->Get(TRI_V8_SYMBOL("minLength")));
+  if (obj->Has(TRI_V8_ASCII_STRING("minLength")) && obj->Get(TRI_V8_ASCII_STRING("minLength"))->IsNumber()) {
+    minWordLength = (int) TRI_ObjectToInt64(obj->Get(TRI_V8_ASCII_STRING("minLength")));
   }
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "minLength", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, minWordLength));
 
@@ -300,12 +317,13 @@ static int EnhanceJsonIndexFulltext (v8::Handle<v8::Object> const obj,
 /// @brief enhances the json of a cap constraint
 ////////////////////////////////////////////////////////////////////////////////
 
-static int EnhanceJsonIndexCap (v8::Handle<v8::Object> const obj,
+static int EnhanceJsonIndexCap (v8::Isolate* isolate,
+                                v8::Handle<v8::Object> const obj,
                                 TRI_json_t* json) {
   // handle "size" attribute
   size_t count = 0;
-  if (obj->Has(TRI_V8_SYMBOL("size")) && obj->Get(TRI_V8_SYMBOL("size"))->IsNumber()) {
-    int64_t value = TRI_ObjectToInt64(obj->Get(TRI_V8_SYMBOL("size")));
+  if (obj->Has(TRI_V8_ASCII_STRING("size")) && obj->Get(TRI_V8_ASCII_STRING("size"))->IsNumber()) {
+    int64_t value = TRI_ObjectToInt64(obj->Get(TRI_V8_ASCII_STRING("size")));
 
     if (value < 0 || value > UINT32_MAX) {
       return TRI_ERROR_BAD_PARAMETER;
@@ -315,8 +333,8 @@ static int EnhanceJsonIndexCap (v8::Handle<v8::Object> const obj,
 
   // handle "byteSize" attribute
   int64_t byteSize = 0;
-  if (obj->Has(TRI_V8_SYMBOL("byteSize")) && obj->Get(TRI_V8_SYMBOL("byteSize"))->IsNumber()) {
-    byteSize = TRI_ObjectToInt64(obj->Get(TRI_V8_SYMBOL("byteSize")));
+  if (obj->Has(TRI_V8_ASCII_STRING("byteSize")) && obj->Get(TRI_V8_ASCII_STRING("byteSize"))->IsNumber()) {
+    byteSize = TRI_ObjectToInt64(obj->Get(TRI_V8_ASCII_STRING("byteSize")));
   }
 
   if (count == 0 && byteSize <= 0) {
@@ -337,16 +355,19 @@ static int EnhanceJsonIndexCap (v8::Handle<v8::Object> const obj,
 /// @brief enhances the json of an index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int EnhanceIndexJson (v8::Arguments const& argv,
+static int EnhanceIndexJson (const v8::FunctionCallbackInfo<v8::Value>& args,
                              TRI_json_t*& json,
                              bool create) {
-  v8::Handle<v8::Object> obj = argv[0].As<v8::Object>();
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  v8::Handle<v8::Object> obj = args[0].As<v8::Object>();
 
   // extract index type
   TRI_idx_type_e type = TRI_IDX_TYPE_UNKNOWN;
 
-  if (obj->Has(TRI_V8_SYMBOL("type")) && obj->Get(TRI_V8_SYMBOL("type"))->IsString()) {
-    TRI_Utf8ValueNFC typeString(TRI_UNKNOWN_MEM_ZONE, obj->Get(TRI_V8_SYMBOL("type")));
+  if (obj->Has(TRI_V8_ASCII_STRING("type")) && obj->Get(TRI_V8_ASCII_STRING("type"))->IsString()) {
+    TRI_Utf8ValueNFC typeString(TRI_UNKNOWN_MEM_ZONE, obj->Get(TRI_V8_ASCII_STRING("type")));
 
     if (*typeString == 0) {
       return TRI_ERROR_OUT_OF_MEMORY;
@@ -357,8 +378,8 @@ static int EnhanceIndexJson (v8::Arguments const& argv,
     if (t == "geo") {
       t = "geo1";
 
-      if (obj->Has(TRI_V8_SYMBOL("fields")) && obj->Get(TRI_V8_SYMBOL("fields"))->IsArray()) {
-        v8::Handle<v8::Array> f = v8::Handle<v8::Array>::Cast(obj->Get(TRI_V8_SYMBOL("fields")));
+      if (obj->Has(TRI_V8_ASCII_STRING("fields")) && obj->Get(TRI_V8_ASCII_STRING("fields"))->IsArray()) {
+        v8::Handle<v8::Array> f = v8::Handle<v8::Array>::Cast(obj->Get(TRI_V8_ASCII_STRING("fields")));
         if (f->Length() == 2) {
           t = "geo2";
         }
@@ -386,8 +407,8 @@ static int EnhanceIndexJson (v8::Arguments const& argv,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  if (obj->Has(TRI_V8_SYMBOL("id"))) {
-    uint64_t id = TRI_ObjectToUInt64(obj->Get(TRI_V8_SYMBOL("id")), true);
+  if (obj->Has(TRI_V8_ASCII_STRING("id"))) {
+    uint64_t id = TRI_ObjectToUInt64(obj->Get(TRI_V8_ASCII_STRING("id")), true);
     if (id > 0) {
       char* idString = TRI_StringUInt64(id);
       TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "id", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, idString));
@@ -416,22 +437,22 @@ static int EnhanceIndexJson (v8::Arguments const& argv,
     }
 
     case TRI_IDX_TYPE_GEO1_INDEX:
-      res = EnhanceJsonIndexGeo1(obj, json, create);
+      res = EnhanceJsonIndexGeo1(isolate, obj, json, create);
       break;
     case TRI_IDX_TYPE_GEO2_INDEX:
-      res = EnhanceJsonIndexGeo2(obj, json, create);
+      res = EnhanceJsonIndexGeo2(isolate, obj, json, create);
       break;
     case TRI_IDX_TYPE_HASH_INDEX:
-      res = EnhanceJsonIndexHash(obj, json, create);
+      res = EnhanceJsonIndexHash(isolate, obj, json, create);
       break;
     case TRI_IDX_TYPE_SKIPLIST_INDEX:
-      res = EnhanceJsonIndexSkiplist(obj, json, create);
+      res = EnhanceJsonIndexSkiplist(isolate, obj, json, create);
       break;
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
-      res = EnhanceJsonIndexFulltext(obj, json, create);
+      res = EnhanceJsonIndexFulltext(isolate, obj, json, create);
       break;
     case TRI_IDX_TYPE_CAP_CONSTRAINT:
-      res = EnhanceJsonIndexCap(obj, json);
+      res = EnhanceJsonIndexCap(isolate, obj, json);
       break;
   }
 
@@ -442,10 +463,13 @@ static int EnhanceIndexJson (v8::Arguments const& argv,
 /// @brief ensures an index, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> EnsureIndexCoordinator (TRI_vocbase_col_t const* collection,
-                                                     TRI_json_t const* json,
-                                                     bool create) {
-  v8::HandleScope scope;
+static void EnsureIndexCoordinator (const v8::FunctionCallbackInfo<v8::Value>& args,
+                                    TRI_vocbase_col_t const* collection,
+                                    TRI_json_t const* json,
+                                    bool create) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
 
   TRI_ASSERT(collection != 0);
   TRI_ASSERT(json != 0);
@@ -467,39 +491,44 @@ static v8::Handle<v8::Value> EnsureIndexCoordinator (TRI_vocbase_col_t const* co
                                                             360.0);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, errorMsg);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(res, errorMsg);
   }
 
   if (resultJson == 0) {
     if (! create) {
       // did not find a suitable index
-      return scope.Close(v8::Null());
+      TRI_V8_RETURN_NULL();
     }
 
-    TRI_V8_EXCEPTION_MEMORY(scope);
+    TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
-  v8::Handle<v8::Value> ret = IndexRep(collectionName, resultJson);
+  v8::Handle<v8::Value> ret = IndexRep(isolate, collectionName, resultJson);
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, resultJson);
 
-  return scope.Close(ret);
+  TRI_V8_RETURN(ret);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures an index, locally
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collection,
-                                               TRI_json_t const* json,
-                                               bool create) {
-  v8::HandleScope scope;
+static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
+                              TRI_vocbase_col_t const* collection,
+                              TRI_json_t const* json,
+                              bool create) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
 
   TRI_ASSERT(collection != nullptr);
   TRI_ASSERT(json != nullptr);
 
   // extract type
   TRI_json_t* value = TRI_LookupArrayJson(json, "type");
-  TRI_ASSERT(TRI_IsStringJson(value));
+  if (! TRI_IsStringJson(value)) {
+    TRI_V8_THROW_EXCEPTION_MEMORY();
+  }
 
   TRI_idx_type_e type = TRI_TypeIndex(value->_value._string.data);
 
@@ -532,8 +561,14 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
     for (size_t i = 0; i < value->_value._objects._length; ++i) {
       TRI_json_t const* v = static_cast<TRI_json_t const*>(TRI_AtVector(&value->_value._objects, i));
 
-      TRI_ASSERT(TRI_IsStringJson(v));
-      TRI_PushBackVectorPointer(&attributes, v->_value._string.data);
+      if (TRI_IsStringJson(v)) {
+        TRI_PushBackVectorPointer(&attributes, v->_value._string.data);
+      }
+    }
+
+    // check if copying was successful
+    if (value->_value._objects._length != TRI_LengthVectorPointer(&attributes)) {
+      TRI_V8_THROW_EXCEPTION_MEMORY();
     }
   }
 
@@ -544,7 +579,7 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_DestroyVectorPointer(&values);
     TRI_DestroyVectorPointer(&attributes);
-    TRI_V8_EXCEPTION(scope, res);
+    TRI_V8_THROW_EXCEPTION(res);
   }
 
 
@@ -555,7 +590,7 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
   if (! TRI_IsSystemNameCollection(collectionName.c_str()) 
       && create
       && TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_READ_ONLY);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
   }
 
   bool created = false;
@@ -568,10 +603,14 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
     case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX: 
     case TRI_IDX_TYPE_BITARRAY_INDEX: {
       // these indexes cannot be created directly
-      TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
 
     case TRI_IDX_TYPE_GEO1_INDEX: {
+      if (attributes._length != 1) {
+        TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
+
       TRI_ASSERT(attributes._length == 1);
 
       bool ignoreNull = false;
@@ -606,6 +645,10 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
     }
 
     case TRI_IDX_TYPE_GEO2_INDEX: {
+      if (attributes._length != 2) {
+        TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
+      
       TRI_ASSERT(attributes._length == 2);
 
       bool ignoreNull = false;
@@ -634,6 +677,10 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
     }
 
     case TRI_IDX_TYPE_HASH_INDEX: {
+      if (attributes._length == 0) {
+        TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
+
       TRI_ASSERT(attributes._length > 0);
 
       if (create) {
@@ -653,6 +700,10 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
     }
 
     case TRI_IDX_TYPE_SKIPLIST_INDEX: {
+      if (attributes._length == 0) {
+        TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
+
       TRI_ASSERT(attributes._length > 0);
 
       if (create) {
@@ -671,6 +722,10 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
     }
 
     case TRI_IDX_TYPE_FULLTEXT_INDEX: {
+      if (attributes._length != 1) {
+        TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
+
       TRI_ASSERT(attributes._length == 1);
 
       int minWordLength = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
@@ -729,7 +784,7 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
     TRI_DestroyVectorPointer(&values);
     TRI_DestroyVectorPointer(&attributes);
 
-    TRI_V8_EXCEPTION(scope, res);
+    TRI_V8_THROW_EXCEPTION(res);
   }
 
   TRI_DestroyVectorPointer(&values);
@@ -738,49 +793,51 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
 
   if (idx == 0 && ! create) {
     // no index found
-    return scope.Close(v8::Null());
+    TRI_V8_RETURN_NULL();
   }
 
   // found some index to return
   TRI_json_t* indexJson = idx->json(idx);
 
   if (indexJson == 0) {
-    TRI_V8_EXCEPTION_MEMORY(scope);
+    TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
-  v8::Handle<v8::Value> ret = IndexRep(collectionName, indexJson);
+  v8::Handle<v8::Value> ret = IndexRep(isolate, collectionName, indexJson);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, indexJson);
 
   if (ret->IsObject()) {
-    ret->ToObject()->Set(v8::String::New("isNewlyCreated"), v8::Boolean::New(create && created));
+    ret->ToObject()->Set(TRI_V8_ASCII_STRING("isNewlyCreated"), v8::Boolean::New(isolate, create && created));
   }
 
-  return scope.Close(ret);
+  TRI_V8_RETURN(ret);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures an index
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> EnsureIndex (v8::Arguments const& argv,
-                                          bool create,
-                                          char const* functionName) {
-  v8::HandleScope scope;
+static void EnsureIndex (const v8::FunctionCallbackInfo<v8::Value>& args,
+                         bool create,
+                         char const* functionName) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+
+  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == nullptr) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  if (argv.Length() != 1 || ! argv[0]->IsObject()) {
+  if (args.Length() != 1 ||  ! args[0]->IsObject()) {
     string name(functionName);
     name.append("(<description>)");
-    TRI_V8_EXCEPTION_USAGE(scope, name.c_str());
+    TRI_V8_THROW_EXCEPTION_USAGE(name.c_str());
   }
 
   TRI_json_t* json = nullptr;
-  int res = EnhanceIndexJson(argv, json, create);
+  int res = EnhanceIndexJson(args, json, create);
 
 
   if (res == TRI_ERROR_NO_ERROR &&
@@ -791,7 +848,7 @@ static v8::Handle<v8::Value> EnsureIndex (v8::Arguments const& argv,
     shared_ptr<CollectionInfo> const& c = ClusterInfo::instance()->getCollection(dbname, collname);
 
     if (c->empty()) {
-      TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     }
 
     // check if there is an attempt to create a unique index on non-shard keys
@@ -834,42 +891,38 @@ static v8::Handle<v8::Value> EnsureIndex (v8::Arguments const& argv,
     if (json != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
-    TRI_V8_EXCEPTION(scope, res);
+    TRI_V8_THROW_EXCEPTION(res);
   }
 
   TRI_ASSERT(json != nullptr);
 
-  v8::Handle<v8::Value> ret;
-
   // ensure an index, coordinator case
   if (ServerState::instance()->isCoordinator()) {
-    ret = EnsureIndexCoordinator(collection, json, create);
+    EnsureIndexCoordinator(args, collection, json, create);
   }
   else {
-    ret = EnsureIndexLocal(collection, json, create);
+    EnsureIndexLocal(args, collection, json, create);
   }
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-
-  return scope.Close(ret);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a collection on the coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> CreateCollectionCoordinator (
-                                  v8::Arguments const& argv,
-                                  TRI_col_type_e collectionType,
-                                  std::string const& databaseName,
-                                  TRI_col_info_t& parameter,
-                                  TRI_vocbase_t* vocbase) {
-  v8::HandleScope scope;
+static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Value>& args,
+                                         TRI_col_type_e collectionType,
+                                         std::string const& databaseName,
+                                         TRI_col_info_t& parameter,
+                                         TRI_vocbase_t* vocbase) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  string const name = TRI_ObjectToString(argv[0]);
+  string const name = TRI_ObjectToString(args[0]);
 
   if (! TRI_IsAllowedNameCollection(parameter._isSystem, name.c_str())) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_ILLEGAL_NAME);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
   bool allowUserKeys = true;
@@ -881,41 +934,40 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
 
   string distributeShardsLike;
 
-  if (2 <= argv.Length()) {
-    if (! argv[1]->IsObject()) {
-      TRI_V8_TYPE_ERROR(scope, "<properties> must be an object");
+  if (2 <= args.Length()) {
+    if (! args[1]->IsObject()) {
+      TRI_V8_THROW_TYPE_ERROR("<properties> must be an object");
     }
 
-    v8::Handle<v8::Object> p = argv[1]->ToObject();
+    v8::Handle<v8::Object> p = args[1]->ToObject();
 
-    if (p->Has(TRI_V8_SYMBOL("keyOptions")) && p->Get(TRI_V8_SYMBOL("keyOptions"))->IsObject()) {
-      v8::Handle<v8::Object> o = v8::Handle<v8::Object>::Cast(p->Get(TRI_V8_SYMBOL("keyOptions")));
+    if (p->Has(TRI_V8_ASCII_STRING("keyOptions")) && p->Get(TRI_V8_ASCII_STRING("keyOptions"))->IsObject()) {
+      v8::Handle<v8::Object> o = v8::Handle<v8::Object>::Cast(p->Get(TRI_V8_ASCII_STRING("keyOptions")));
 
-      if (o->Has(TRI_V8_SYMBOL("type"))) {
-        string const type = TRI_ObjectToString(o->Get(TRI_V8_SYMBOL("type")));
+      if (o->Has(TRI_V8_ASCII_STRING("type"))) {
+        string const type = TRI_ObjectToString(o->Get(TRI_V8_ASCII_STRING("type")));
 
         if (type != "" && type != "traditional") {
           // invalid key generator
-          TRI_V8_EXCEPTION_MESSAGE(scope,
-                                   TRI_ERROR_CLUSTER_UNSUPPORTED,
+          TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_UNSUPPORTED,
                                    "non-traditional key generators are not supported for sharded collections");
         }
       }
 
-      if (o->Has(TRI_V8_SYMBOL("allowUserKeys"))) {
-        allowUserKeys = TRI_ObjectToBoolean(o->Get(TRI_V8_SYMBOL("allowUserKeys")));
+      if (o->Has(TRI_V8_ASCII_STRING("allowUserKeys"))) {
+        allowUserKeys = TRI_ObjectToBoolean(o->Get(TRI_V8_ASCII_STRING("allowUserKeys")));
       }
     }
 
-    if (p->Has(TRI_V8_SYMBOL("numberOfShards"))) {
-      numberOfShards = TRI_ObjectToUInt64(p->Get(TRI_V8_SYMBOL("numberOfShards")), false);
+    if (p->Has(TRI_V8_ASCII_STRING("numberOfShards"))) {
+      numberOfShards = TRI_ObjectToUInt64(p->Get(TRI_V8_ASCII_STRING("numberOfShards")), false);
     }
 
-    if (p->Has(TRI_V8_SYMBOL("shardKeys"))) {
+    if (p->Has(TRI_V8_ASCII_STRING("shardKeys"))) {
       shardKeys.clear();
 
-      if (p->Get(TRI_V8_SYMBOL("shardKeys"))->IsArray()) {
-        v8::Handle<v8::Array> k = v8::Handle<v8::Array>::Cast(p->Get(TRI_V8_SYMBOL("shardKeys")));
+      if (p->Get(TRI_V8_ASCII_STRING("shardKeys"))->IsArray()) {
+        v8::Handle<v8::Array> k = v8::Handle<v8::Array>::Cast(p->Get(TRI_V8_ASCII_STRING("shardKeys")));
 
         for (uint32_t i = 0 ; i < k->Length(); ++i) {
           v8::Handle<v8::Value> v = k->Get(i);
@@ -931,19 +983,19 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
       }
     }
 
-    if (p->Has(TRI_V8_SYMBOL("distributeShardsLike")) &&
-        p->Get(TRI_V8_SYMBOL("distributeShardsLike"))->IsString()) {
+    if (p->Has(TRI_V8_ASCII_STRING("distributeShardsLike")) &&
+        p->Get(TRI_V8_ASCII_STRING("distributeShardsLike"))->IsString()) {
       distributeShardsLike
-        = TRI_ObjectToString(p->Get(TRI_V8_SYMBOL("distributeShardsLike")));
+        = TRI_ObjectToString(p->Get(TRI_V8_ASCII_STRING("distributeShardsLike")));
     }
   }
 
   if (numberOfShards == 0 || numberOfShards > 1000) {
-    TRI_V8_EXCEPTION_PARAMETER(scope, "invalid number of shards");
+    TRI_V8_THROW_EXCEPTION_PARAMETER("invalid number of shards");
   }
 
   if (shardKeys.empty() || shardKeys.size() > 8) {
-    TRI_V8_EXCEPTION_PARAMETER(scope, "invalid number of shard keys");
+    TRI_V8_THROW_EXCEPTION_PARAMETER("invalid number of shard keys");
   }
 
   ClusterInfo* ci = ClusterInfo::instance();
@@ -961,7 +1013,7 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
     dbServers = ci->getCurrentDBServers();
 
     if (dbServers.empty()) {
-      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "no database servers found in cluster");
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no database servers found in cluster");
     }
 
     random_shuffle(dbServers.begin(), dbServers.end());
@@ -995,17 +1047,17 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
   TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
 
   if (json == nullptr) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_OUT_OF_MEMORY);
+    TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "id", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, cid.c_str(), cid.size()));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "name", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, name.c_str(), name.size()));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (int) collectionType));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "status", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (int) TRI_VOC_COL_STATUS_LOADED));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "deleted", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameter._deleted));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "doCompact", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameter._doCompact));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "isSystem", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameter._isSystem));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "isVolatile", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameter._isVolatile));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "id",          TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, cid.c_str(), cid.size()));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "name",        TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, name.c_str(), name.size()));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type",        TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (int) collectionType));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "status",      TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (int) TRI_VOC_COL_STATUS_LOADED));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "deleted",     TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameter._deleted));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "doCompact",   TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameter._doCompact));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "isSystem",    TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameter._isSystem));
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "isVolatile",  TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameter._isVolatile));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "waitForSync", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameter._waitForSync));
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "journalSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, parameter._maximalSize));
 
@@ -1024,7 +1076,7 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
 
   if (indexes == 0) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_OUT_OF_MEMORY);
+    TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
   // create a dummy primary index
@@ -1033,7 +1085,7 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
   if (idx == 0) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, indexes);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_OUT_OF_MEMORY);
+    TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
   TRI_json_t* idxJson = idx->json(idx);
@@ -1049,7 +1101,7 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
     if (idx == 0) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, indexes);
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-      TRI_V8_EXCEPTION(scope, TRI_ERROR_OUT_OF_MEMORY);
+      TRI_V8_THROW_EXCEPTION_MEMORY();
     }
 
     idxJson = idx->json(idx);
@@ -1072,13 +1124,13 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   if (myerrno != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, myerrno, errorMsg);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(myerrno, errorMsg);
   }
   ci->loadPlannedCollections();
 
   shared_ptr<CollectionInfo> const& c = ci->getCollection(databaseName, cid);
   TRI_vocbase_col_t* newcoll = CoordinatorCollection(vocbase, *c);
-  return scope.Close(WrapCollection(newcoll));
+  TRI_V8_RETURN(WrapCollection(isolate, newcoll));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1122,30 +1174,34 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_EnsureIndexVocbaseCol (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_EnsureIndexVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  PREVENT_EMBEDDED_TRANSACTION(scope);
+  PREVENT_EMBEDDED_TRANSACTION();
 
-  return scope.Close(EnsureIndex(argv, true, "ensureIndex"));
+  EnsureIndex(args, true, "ensureIndex");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an index
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_LookupIndexVocbaseCol (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_LookupIndexVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  return scope.Close(EnsureIndex(argv, false, "lookupIndex"));
+  EnsureIndex(args, false, "lookupIndex");
 }
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an index, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> DropIndexCoordinator (TRI_vocbase_col_t const* collection,
-                                                   v8::Handle<v8::Value> const val) {
-  v8::HandleScope scope;
+static void DropIndexCoordinator (const v8::FunctionCallbackInfo<v8::Value>& args,
+                                  TRI_vocbase_col_t const* collection,
+                                  v8::Handle<v8::Value> const val) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
   string collectionName;
   TRI_idx_iid_t iid = 0;
@@ -1153,19 +1209,20 @@ static v8::Handle<v8::Value> DropIndexCoordinator (TRI_vocbase_col_t const* coll
   // extract the index identifier from a string
   if (val->IsString() || val->IsStringObject() || val->IsNumber()) {
     if (! IsIndexHandle(val, collectionName, iid)) {
-      TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
     }
   }
 
   // extract the index identifier from an object
   else if (val->IsObject()) {
-    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+    TRI_GET_GLOBALS();
 
     v8::Handle<v8::Object> obj = val->ToObject();
-    v8::Handle<v8::Value> iidVal = obj->Get(v8g->IdKey);
+    TRI_GET_GLOBAL_STRING(IdKey);
+    v8::Handle<v8::Value> iidVal = obj->Get(IdKey);
 
     if (! IsIndexHandle(iidVal, collectionName, iid)) {
-      TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
     }
   }
 
@@ -1173,7 +1230,7 @@ static v8::Handle<v8::Value> DropIndexCoordinator (TRI_vocbase_col_t const* coll
     CollectionNameResolver resolver(collection->_vocbase);
 
     if (! EqualCollection(&resolver, collectionName, collection)) {
-      TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST);
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST);
     }
   }
 
@@ -1184,7 +1241,12 @@ static v8::Handle<v8::Value> DropIndexCoordinator (TRI_vocbase_col_t const* coll
 
   int res = ClusterInfo::instance()->dropIndexCoordinator(databaseName, cid, iid, errorMsg, 0.0);
 
-  return scope.Close(v8::Boolean::New(res == TRI_ERROR_NO_ERROR));
+  if (res == TRI_ERROR_NO_ERROR) {
+    TRI_V8_RETURN_TRUE();
+  }
+  else {
+    TRI_V8_RETURN_FALSE();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1226,23 +1288,26 @@ static v8::Handle<v8::Value> DropIndexCoordinator (TRI_vocbase_col_t const* coll
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_DropIndexVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  PREVENT_EMBEDDED_TRANSACTION(scope);
 
-  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+  PREVENT_EMBEDDED_TRANSACTION();
+
+  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == nullptr) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  if (argv.Length() != 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "dropIndex(<index-handle>)");
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("dropIndex(<index-handle>)");
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    return scope.Close(DropIndexCoordinator(collection, argv[0]));
+    DropIndexCoordinator(args, collection, args[0]);
+    return;
   }
 
   SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), collection->_vocbase, collection->_cid);
@@ -1250,30 +1315,24 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION(scope, res);
+    TRI_V8_THROW_EXCEPTION(res);
   }
 
   TRI_document_collection_t* document = trx.documentCollection();
 
-  v8::Handle<v8::Object> err;
-  TRI_index_t* idx = TRI_LookupIndexByHandle(trx.resolver(), collection, argv[0], true, &err);
+  TRI_index_t* idx = TRI_LookupIndexByHandle(isolate, trx.resolver(), collection, args[0], true);
 
   if (idx == nullptr) {
-    if (err.IsEmpty()) {
-      return scope.Close(v8::False());
-    }
-    else {
-      return scope.Close(v8::ThrowException(err));
-    }
+    return;
   }
 
   if (idx->_iid == 0) {
-    return scope.Close(v8::False());
+    TRI_V8_RETURN_FALSE();
   }
 
   if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX ||
       idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_FORBIDDEN);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
   // .............................................................................
@@ -1286,15 +1345,23 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
   // outside a write transaction
   // .............................................................................
 
-  return scope.Close(v8::Boolean::New(ok));
+  if (ok) {
+    TRI_V8_RETURN_TRUE();
+  }
+  else {
+    TRI_V8_RETURN_FALSE();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the indexes, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> GetIndexesCoordinator (TRI_vocbase_col_t const* collection) {
-  v8::HandleScope scope;
+static void GetIndexesCoordinator (const v8::FunctionCallbackInfo<v8::Value>& args,
+                                   TRI_vocbase_col_t const* collection) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
 
   string const databaseName(collection->_dbName);
   string const cid = StringUtils::itoa(collection->_cid);
@@ -1303,10 +1370,10 @@ static v8::Handle<v8::Value> GetIndexesCoordinator (TRI_vocbase_col_t const* col
   shared_ptr<CollectionInfo> c = ClusterInfo::instance()->getCollection(databaseName, cid);
 
   if ((*c).empty()) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
 
-  v8::Handle<v8::Array> ret = v8::Array::New();
+  v8::Handle<v8::Array> ret = v8::Array::New(isolate);
 
   TRI_json_t const* json = (*c).getIndexes();
   if (TRI_IsListJson(json)) {
@@ -1316,12 +1383,12 @@ static v8::Handle<v8::Value> GetIndexesCoordinator (TRI_vocbase_col_t const* col
       TRI_json_t const* v = TRI_LookupListJson(json, i);
 
       if (v != nullptr) {
-        ret->Set(j++, IndexRep(collectionName, v));
+        ret->Set(j++, IndexRep(isolate, collectionName, v));
       }
     }
   }
 
-  return scope.Close(ret);
+  TRI_V8_RETURN(ret);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1364,17 +1431,20 @@ static v8::Handle<v8::Value> GetIndexesCoordinator (TRI_vocbase_col_t const* col
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_GetIndexesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+
+  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == nullptr) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    return scope.Close(GetIndexesCoordinator(collection));
+    GetIndexesCoordinator(args, collection);
+    return;
   }
 
   SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true), collection->_vocbase, collection->_cid);
@@ -1382,7 +1452,7 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION(scope, res);
+    TRI_V8_THROW_EXCEPTION(res);
   }
 
   // READ-LOCK start
@@ -1398,10 +1468,10 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
   // READ-LOCK end
 
   if (indexes == nullptr) {
-    TRI_V8_EXCEPTION_MEMORY(scope);
+    TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
-  v8::Handle<v8::Array> result = v8::Array::New();
+  v8::Handle<v8::Array> result = v8::Array::New(isolate);
 
   uint32_t n = (uint32_t) indexes->_length;
 
@@ -1409,14 +1479,14 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
     TRI_json_t* idx = static_cast<TRI_json_t*>(indexes->_buffer[i]);
 
     if (idx != nullptr) {
-      result->Set(j++, IndexRep(collectionName, idx));
+      result->Set(j++, IndexRep(isolate, collectionName, idx));
       TRI_FreeJson(TRI_CORE_MEM_ZONE, idx);
     }
   }
 
   TRI_FreeVectorPointer(TRI_CORE_MEM_ZONE, indexes);
 
-  return scope.Close(result);
+  TRI_V8_RETURN(result);
 }
 
 
@@ -1424,11 +1494,11 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
 /// @brief looks up an index identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_t* TRI_LookupIndexByHandle (CollectionNameResolver const* resolver,
+TRI_index_t* TRI_LookupIndexByHandle (v8::Isolate* isolate,
+                                      triagens::arango::CollectionNameResolver const* resolver,
                                       TRI_vocbase_col_t const* collection,
                                       v8::Handle<v8::Value> const val,
-                                      bool ignoreNotFound,
-                                      v8::Handle<v8::Object>* err) {
+                                      bool ignoreNotFound) {
   // reset the collection identifier
   string collectionName;
   TRI_idx_iid_t iid = 0;
@@ -1440,20 +1510,21 @@ TRI_index_t* TRI_LookupIndexByHandle (CollectionNameResolver const* resolver,
   // extract the index identifier from a string
   if (val->IsString() || val->IsStringObject() || val->IsNumber()) {
     if (! IsIndexHandle(val, collectionName, iid)) {
-      *err = TRI_CreateErrorObject(__FILE__, __LINE__, TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
+      TRI_V8_SET_EXCEPTION(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
       return nullptr;
     }
   }
 
   // extract the index identifier from an object
   else if (val->IsObject()) {
-    TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+    TRI_GET_GLOBALS();
 
     v8::Handle<v8::Object> obj = val->ToObject();
-    v8::Handle<v8::Value> iidVal = obj->Get(v8g->IdKey);
+    TRI_GET_GLOBAL_STRING(IdKey);
+    v8::Handle<v8::Value> iidVal = obj->Get(IdKey);
 
     if (! IsIndexHandle(iidVal, collectionName, iid)) {
-      *err = TRI_CreateErrorObject(__FILE__, __LINE__, TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
+      TRI_V8_SET_EXCEPTION(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
       return nullptr;
     }
   }
@@ -1462,7 +1533,7 @@ TRI_index_t* TRI_LookupIndexByHandle (CollectionNameResolver const* resolver,
     if (! EqualCollection(resolver, collectionName, collection)) {
       // I wish this error provided me with more information!
       // e.g. 'cannot access index outside the collection it was defined in'
-      *err = TRI_CreateErrorObject(__FILE__, __LINE__, TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST);
+      TRI_V8_SET_EXCEPTION(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST);
       return nullptr;
     }
   }
@@ -1471,7 +1542,8 @@ TRI_index_t* TRI_LookupIndexByHandle (CollectionNameResolver const* resolver,
 
   if (idx == nullptr) {
     if (! ignoreNotFound) {
-      *err = TRI_CreateErrorObject(__FILE__, __LINE__, TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
+      TRI_V8_SET_EXCEPTION(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
+      return nullptr;
     }
   }
 
@@ -1483,55 +1555,58 @@ TRI_index_t* TRI_LookupIndexByHandle (CollectionNameResolver const* resolver,
 /// @brief create a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
-                                            TRI_col_type_e collectionType) {
-  v8::HandleScope scope;
+static void CreateVocBase (const v8::FunctionCallbackInfo<v8::Value>& args,
+                           TRI_col_type_e collectionType) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
+
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   // ...........................................................................
   // We require exactly 1 or exactly 2 arguments -- anything else is an error
   // ...........................................................................
 
-  if (argv.Length() < 1 || argv.Length() > 2) {
-    TRI_V8_EXCEPTION_USAGE(scope, "_create(<name>, <properties>)");
+  if (args.Length() < 1 || args.Length() > 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("_create(<name>, <properties>)");
   }
 
   if (TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_READ_ONLY);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
   }
 
 
-  PREVENT_EMBEDDED_TRANSACTION(scope);
+  PREVENT_EMBEDDED_TRANSACTION();
 
 
   // set default journal size
   TRI_voc_size_t effectiveSize = vocbase->_settings.defaultMaximalSize;
 
   // extract the name
-  string const name = TRI_ObjectToString(argv[0]);
+  string const name = TRI_ObjectToString(args[0]);
 
   // extract the parameters
   TRI_col_info_t parameter;
   TRI_voc_cid_t cid = 0;
 
-  if (2 <= argv.Length()) {
-    if (! argv[1]->IsObject()) {
-      TRI_V8_TYPE_ERROR(scope, "<properties> must be an object");
+  if (2 <= args.Length()) {
+    if (! args[1]->IsObject()) {
+      TRI_V8_THROW_TYPE_ERROR("<properties> must be an object");
     }
 
-    v8::Handle<v8::Object> p = argv[1]->ToObject();
-    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+    v8::Handle<v8::Object> p = args[1]->ToObject();
+    TRI_GET_GLOBALS();
 
-    if (p->Has(v8g->JournalSizeKey)) {
-      double s = TRI_ObjectToDouble(p->Get(v8g->JournalSizeKey));
+    TRI_GET_GLOBAL_STRING(JournalSizeKey);
+    if (p->Has(JournalSizeKey)) {
+      double s = TRI_ObjectToDouble(p->Get(JournalSizeKey));
 
       if (s < TRI_JOURNAL_MINIMAL_SIZE) {
-        TRI_V8_EXCEPTION_PARAMETER(scope, "<properties>.journalSize is too small");
+        TRI_V8_THROW_EXCEPTION_PARAMETER("<properties>.journalSize is too small");
       }
 
       // overwrite journal size with user-specified value
@@ -1540,8 +1615,9 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
 
     // get optional values
     TRI_json_t* keyOptions = nullptr;
-    if (p->Has(v8g->KeyOptionsKey)) {
-      keyOptions = TRI_ObjectToJson(p->Get(v8g->KeyOptionsKey));
+    TRI_GET_GLOBAL_STRING(KeyOptionsKey);
+    if (p->Has(KeyOptionsKey)) {
+      keyOptions = TRI_ObjectToJson(isolate, p->Get(KeyOptionsKey));
     }
 
     // TRI_InitCollectionInfo will copy keyOptions
@@ -1551,44 +1627,49 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
     }
 
-    if (p->Has(v8::String::New("planId"))) {
-      parameter._planId = TRI_ObjectToUInt64(p->Get(v8::String::New("planId")), true);
+    if (p->Has(TRI_V8_ASCII_STRING("planId"))) {
+      parameter._planId = TRI_ObjectToUInt64(p->Get(TRI_V8_ASCII_STRING("planId")), true);
     }
 
-    if (p->Has(v8g->WaitForSyncKey)) {
-      parameter._waitForSync = TRI_ObjectToBoolean(p->Get(v8g->WaitForSyncKey));
+    TRI_GET_GLOBAL_STRING(WaitForSyncKey);
+    if (p->Has(WaitForSyncKey)) {
+      parameter._waitForSync = TRI_ObjectToBoolean(p->Get(WaitForSyncKey));
     }
 
-    if (p->Has(v8g->DoCompactKey)) {
-      parameter._doCompact = TRI_ObjectToBoolean(p->Get(v8g->DoCompactKey));
+    TRI_GET_GLOBAL_STRING(DoCompactKey);
+    if (p->Has(DoCompactKey)) {
+      parameter._doCompact = TRI_ObjectToBoolean(p->Get(DoCompactKey));
     }
     else {
       // default value for compaction
       parameter._doCompact = true;
     }
 
-    if (p->Has(v8g->IsSystemKey)) {
-      parameter._isSystem = TRI_ObjectToBoolean(p->Get(v8g->IsSystemKey));
+    TRI_GET_GLOBAL_STRING(IsSystemKey);
+    if (p->Has(IsSystemKey)) {
+      parameter._isSystem = TRI_ObjectToBoolean(p->Get(IsSystemKey));
     }
 
-    if (p->Has(v8g->IsVolatileKey)) {
+    TRI_GET_GLOBAL_STRING(IsVolatileKey);
+    if (p->Has(IsVolatileKey)) {
 #ifdef TRI_HAVE_ANONYMOUS_MMAP
-      parameter._isVolatile = TRI_ObjectToBoolean(p->Get(v8g->IsVolatileKey));
+      parameter._isVolatile = TRI_ObjectToBoolean(p->Get(IsVolatileKey));
 #else
       TRI_FreeCollectionInfoOptions(&parameter);
-      TRI_V8_EXCEPTION_PARAMETER(scope, "volatile collections are not supported on this platform");
+      TRI_V8_THROW_EXCEPTION_PARAMETER("volatile collections are not supported on this platform");
 #endif
     }
 
     if (parameter._isVolatile && parameter._waitForSync) {
       // the combination of waitForSync and isVolatile makes no sense
       TRI_FreeCollectionInfoOptions(&parameter);
-      TRI_V8_EXCEPTION_PARAMETER(scope, "volatile collections do not support the waitForSync option");
+      TRI_V8_THROW_EXCEPTION_PARAMETER("volatile collections do not support the waitForSync option");
     }
     
-    if (p->Has(v8g->IdKey)) {
+    TRI_GET_GLOBAL_STRING(IdKey);
+    if (p->Has(IdKey)) {
       // specify collection id - used for testing only
-      cid = TRI_ObjectToUInt64(p->Get(v8g->IdKey), true);
+      cid = TRI_ObjectToUInt64(p->Get(IdKey), true);
     }
 
   }
@@ -1598,10 +1679,10 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
 
 
   if (ServerState::instance()->isCoordinator()) {
-    v8::Handle<v8::Value> result = CreateCollectionCoordinator(argv, collectionType, vocbase->_name, parameter, vocbase);
+    CreateCollectionCoordinator(args, collectionType, vocbase->_name, parameter, vocbase);
     TRI_FreeCollectionInfoOptions(&parameter);
 
-    return scope.Close(result);
+    return;
   }
 
   TRI_vocbase_col_t const* collection = TRI_CreateCollectionVocBase(vocbase,
@@ -1612,16 +1693,16 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
   TRI_FreeCollectionInfoOptions(&parameter);
 
   if (collection == nullptr) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "cannot create collection");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), "cannot create collection");
   }
 
-  v8::Handle<v8::Value> result = WrapCollection(collection);
+  v8::Handle<v8::Value> result = WrapCollection(isolate, collection);
 
   if (result.IsEmpty()) {
-    TRI_V8_EXCEPTION_MEMORY(scope);
+    TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
-  return scope.Close(result);
+  TRI_V8_RETURN(result);
 }
 
 
@@ -1750,8 +1831,8 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_CreateVocbase (v8::Arguments const& argv) {
-  return CreateVocBase(argv, TRI_COL_TYPE_DOCUMENT);
+static void JS_CreateVocbase (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  CreateVocBase(args, TRI_COL_TYPE_DOCUMENT);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1764,8 +1845,8 @@ static v8::Handle<v8::Value> JS_CreateVocbase (v8::Arguments const& argv) {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_CreateDocumentCollectionVocbase (v8::Arguments const& argv) {
-  return CreateVocBase(argv, TRI_COL_TYPE_DOCUMENT);
+static void JS_CreateDocumentCollectionVocbase (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  CreateVocBase(args, TRI_COL_TYPE_DOCUMENT);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1791,36 +1872,26 @@ static v8::Handle<v8::Value> JS_CreateDocumentCollectionVocbase (v8::Arguments c
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_CreateEdgeCollectionVocbase (v8::Arguments const& argv) {
-  return CreateVocBase(argv, TRI_COL_TYPE_EDGE);
+static void JS_CreateEdgeCollectionVocbase (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  CreateVocBase(args, TRI_COL_TYPE_EDGE);
 }
 
-void TRI_InitV8indexArangoDB (v8::Handle<v8::Context> context,
-                              TRI_server_t* server,
-                              TRI_vocbase_t* vocbase,
-                              JSLoader* loader,
-                              const size_t threadNumber,
-                              TRI_v8_global_t* v8g,
+void TRI_InitV8indexArangoDB (v8::Isolate* isolate,
                               v8::Handle<v8::ObjectTemplate> rt){
 
-  TRI_AddMethodVocbase(rt, "_create", JS_CreateVocbase, true);
-  TRI_AddMethodVocbase(rt, "_createEdgeCollection", JS_CreateEdgeCollectionVocbase);
-  TRI_AddMethodVocbase(rt, "_createDocumentCollection", JS_CreateDocumentCollectionVocbase);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("_create"), JS_CreateVocbase, true);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("_createEdgeCollection"), JS_CreateEdgeCollectionVocbase);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("_createDocumentCollection"), JS_CreateDocumentCollectionVocbase);
 
 }
 
 
-void TRI_InitV8indexCollection (v8::Handle<v8::Context> context,
-                                TRI_server_t* server,
-                                TRI_vocbase_t* vocbase,
-                                JSLoader* loader,
-                                const size_t threadNumber,
-                                TRI_v8_global_t* v8g,
+void TRI_InitV8indexCollection (v8::Isolate* isolate,
                                 v8::Handle<v8::ObjectTemplate> rt){
 
-  TRI_AddMethodVocbase(rt, "dropIndex", JS_DropIndexVocbaseCol);
-  TRI_AddMethodVocbase(rt, "ensureIndex", JS_EnsureIndexVocbaseCol);
-  TRI_AddMethodVocbase(rt, "lookupIndex", JS_LookupIndexVocbaseCol);
-  TRI_AddMethodVocbase(rt, "getIndexes", JS_GetIndexesVocbaseCol);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("dropIndex"), JS_DropIndexVocbaseCol);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("ensureIndex"), JS_EnsureIndexVocbaseCol);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("lookupIndex"), JS_LookupIndexVocbaseCol);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("getIndexes"), JS_GetIndexesVocbaseCol);
 
 }

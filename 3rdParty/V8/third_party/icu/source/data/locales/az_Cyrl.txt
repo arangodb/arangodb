@@ -1,0 +1,149 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/az_Cyrl.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/az_Cyrl.xml
+ */
+az_Cyrl{
+    %%Parent{"root"}
+    AuxExemplarCharacters{"[ц щ ъ ь э ю я]"}
+    ExemplarCharacters{"[а ә б в г ғ д е ж з и й ј к ҝ л м н о ө п р с т у ү ф х һ ч ҹ ш ы]"}
+    LocaleScript{
+        "Cyrl",
+    }
+    NumberElements{
+        latn{
+            patterns{
+                currencyFormat{"¤ #,##0.00"}
+            }
+            symbols{
+                decimal{","}
+                exponential{"E"}
+                group{"."}
+                infinity{"∞"}
+                list{";"}
+                minusSign{"-"}
+                nan{"NaN"}
+                perMille{"‰"}
+                percentSign{"%"}
+                plusSign{"+"}
+            }
+        }
+    }
+    Version{"2.0.92.87"}
+    calendar{
+        generic{
+            DateTimePatterns{
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "EEEE, d, MMMM, y G",
+                "d MMMM, y G",
+                "d MMM, y G",
+                "dd.MM.y GGGGG",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            availableFormats{
+                MEd{"E, dd.MM"}
+                MMM{"LLL"}
+                MMMEd{"E, d, MMM"}
+                MMMd{"d MMM"}
+                Md{"dd.MM"}
+                yyyyM{"MM.y G"}
+                yyyyMEd{"E, dd.MM.y G"}
+                yyyyMMM{"MMM, y G"}
+                yyyyMMMEd{"E, d, MMM, y G"}
+                yyyyMMMd{"d MMM, y G"}
+                yyyyMd{"dd.MM.y G"}
+            }
+        }
+        gregorian{
+            DateTimePatterns{
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "EEEE, d, MMMM, y",
+                "d MMMM, y",
+                "d MMM, y",
+                "dd.MM.yy",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            availableFormats{
+                MEd{"E, dd.MM"}
+                MMM{"LLL"}
+                MMMEd{"E, d, MMM"}
+                MMMd{"d MMM"}
+                Md{"dd.MM"}
+                yM{"MM.y"}
+                yMEd{"E, dd.MM.y"}
+                yMMM{"MMM, y"}
+                yMMMEd{"E, d, MMM, y"}
+                yMMMd{"d MMM, y"}
+                yMd{"dd.MM.y"}
+            }
+            dayNames{
+                format{
+                    wide{
+                        "базар",
+                        "базар ертәси",
+                        "чәршәнбә ахшамы",
+                        "чәршәнбә",
+                        "ҹүмә ахшамы",
+                        "ҹүмә",
+                        "шәнбә",
+                    }
+                }
+                stand-alone{
+                    narrow{
+                        "7",
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                    }
+                }
+            }
+            monthNames{
+                format{
+                    wide{
+                        "јанвар",
+                        "феврал",
+                        "март",
+                        "апрел",
+                        "май",
+                        "ијун",
+                        "ијул",
+                        "август",
+                        "сентјабр",
+                        "октјабр",
+                        "нојабр",
+                        "декабр",
+                    }
+                }
+            }
+        }
+    }
+    delimiters{
+        alternateQuotationEnd{"›"}
+        alternateQuotationStart{"‹"}
+        quotationEnd{"»"}
+        quotationStart{"«"}
+    }
+}

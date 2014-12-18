@@ -205,10 +205,9 @@ function parseBodyForCreateCollection (req, res) {
 ///   collection. Setting this option will make the resulting collection be
 ///   slightly faster than regular collections because ArangoDB does not
 ///   enforce any synchronisation to disk and does not calculate any CRC
-///   checksums for datafiles (as there are no datafiles).
-///
-///   This option should threrefore be used for cache-type collections only,
-///   and not for data that cannot be re-created otherwise.
+///   checksums for datafiles (as there are no datafiles). This option 
+///   should threrefore be used for cache-type collections only, and not 
+///   for data that cannot be re-created otherwise.
 ///
 /// - *keyOptions* (optional) additional options for key generation. If
 ///   specified, then *keyOptions* should be a JSON array containing the
@@ -446,6 +445,8 @@ function get_api_collections (req, res) {
 ///   - 2: document collection (normal case)
 ///   - 3: edges collection
 ///
+/// - *isSystem*: If *true* then the collection is a system collection.
+///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{404}
@@ -477,6 +478,15 @@ function get_api_collections (req, res) {
 /// - *journalSize*: The maximal size setting for journals / datafiles
 ///   in bytes.
 ///
+/// - *keyOptions*: JSON object which contains key generation options:
+///   - *type*: specifies the type of the key generator. The currently
+///     available generators are *traditional* and *autoincrement*.
+///   - *allowUserKeys*: if set to *true*, then it is allowed to supply
+///     own key values in the *_key* attribute of a document. If set to
+///     *false*, then the key generator is solely responsible for
+///     generating keys and supplying own key values in the *_key* attribute
+///     of documents is considered an error.
+///
 /// - *isVolatile*: If *true* then the collection data will be
 ///   kept in memory only and ArangoDB will not write or sync the data
 ///   to disk.
@@ -486,6 +496,7 @@ function get_api_collections (req, res) {
 ///
 /// - *shardKeys*: contains the names of document attributes that are used to
 ///   determine the target shard for documents.
+///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{400}
@@ -1002,7 +1013,7 @@ function get_api_collection (req, res) {
 /// @RESTDESCRIPTION
 /// Loads a collection into memory. Returns the collection on success.
 ///
-/// The request might optionally contain the following attribute:
+/// The request body object might optionally contain the following attribute:
 ///
 /// - *count*: If set, this controls whether the return value should include
 ///   the number of documents in the collection. Setting *count* to
@@ -1024,6 +1035,8 @@ function get_api_collection (req, res) {
 /// - *type*: The collection type. Valid types are:
 ///   - 2: document collection
 ///   - 3: edges collection
+///
+/// - *isSystem*: If *true* then the collection is a system collection.
 ///
 /// @RESTRETURNCODES
 ///
@@ -1098,6 +1111,8 @@ function put_api_collection_load (req, res, collection) {
 /// - *type*: The collection type. Valid types are:
 ///   - 2: document collection
 ///   - 3: edges collection
+///
+/// - *isSystem*: If *true* then the collection is a system collection.
 ///
 /// @RESTRETURNCODES
 ///
@@ -1208,7 +1223,7 @@ function put_api_collection_truncate (req, res, collection) {
 ///   additional journals or datafiles that are created. Already
 ///   existing journals or datafiles will not be affected.
 ///
-/// If returns an object with the attributes
+/// On success an object with the following attributes is returned:
 ///
 /// - *id*: The identifier of the collection.
 ///
@@ -1223,6 +1238,23 @@ function put_api_collection_truncate (req, res, collection) {
 /// - *type*: The collection type. Valid types are:
 ///   - 2: document collection
 ///   - 3: edges collection
+///
+/// - *isSystem*: If *true* then the collection is a system collection.
+///
+/// - *isVolatile*: If *true* then the collection data will be
+///   kept in memory only and ArangoDB will not write or sync the data
+///   to disk.
+///
+/// - *doCompact*: Whether or not the collection will be compacted.
+///
+/// - *keyOptions*: JSON object which contains key generation options:
+///   - *type*: specifies the type of the key generator. The currently
+///     available generators are *traditional* and *autoincrement*.
+///   - *allowUserKeys*: if set to *true*, then it is allowed to supply
+///     own key values in the *_key* attribute of a document. If set to
+///     *false*, then the key generator is solely responsible for
+///     generating keys and supplying own key values in the *_key* attribute
+///     of documents is considered an error.
 ///
 /// **Note**: some other collection properties, such as *type*, *isVolatile*,
 /// *numberOfShards* or *shardKeys* cannot be changed once a collection is
@@ -1292,6 +1324,8 @@ function put_api_collection_properties (req, res, collection) {
 /// - *type*: The collection type. Valid types are:
 ///   - 2: document collection
 ///   - 3: edges collection
+///
+/// - *isSystem*: If *true* then the collection is a system collection.
 ///
 /// @EXAMPLES
 ///
@@ -1367,7 +1401,7 @@ function put_api_collection_rename (req, res, collection) {
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{400}
-/// If the collection currently has no journal, *HTTP 500* is returned.
+/// If the collection currently has no journal, *HTTP 400* is returned.
 ///
 /// @RESTRETURNCODE{404}
 /// If the *collection-name* is unknown, then a *HTTP 404* is returned.

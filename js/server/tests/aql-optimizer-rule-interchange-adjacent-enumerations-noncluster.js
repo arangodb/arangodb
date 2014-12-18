@@ -199,6 +199,54 @@ function optimizerRuleTestSuite () {
         assertTrue(withRule > 0);
 
       });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test many permutations
+////////////////////////////////////////////////////////////////////////////////
+
+    testManyPermutations : function () {
+      var query = "FOR i IN " + collectionName + " " +
+                  "FOR j IN " + collectionName + " " + 
+                  "FOR k IN " + collectionName + " " + 
+                  "FOR l IN " + collectionName + " RETURN 1";
+
+      var explain = AQL_EXPLAIN(query);
+      assertEqual(24, explain.stats.plansCreated); // faculty of 4 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test too many permutations
+////////////////////////////////////////////////////////////////////////////////
+
+    testTooManyPermutations : function () {
+      var query = "FOR i IN " + collectionName + " " +
+                  "FOR j IN " + collectionName + " " + 
+                  "FOR k IN " + collectionName + " " + 
+                  "FOR l IN " + collectionName + " " + 
+                  "FOR m IN " + collectionName + " " + 
+                  "FOR n IN " + collectionName + " " + 
+                  "FOR o IN " + collectionName + " RETURN 1";
+
+      var explain = AQL_EXPLAIN(query);
+      assertEqual(256, explain.stats.plansCreated); // default limit enforced by optimizer
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test too many permutations
+////////////////////////////////////////////////////////////////////////////////
+
+    testTooManyPermutationsUnlimited : function () {
+      var query = "FOR i IN " + collectionName + " " +
+                  "FOR j IN " + collectionName + " " + 
+                  "FOR k IN " + collectionName + " " + 
+                  "FOR l IN " + collectionName + " " + 
+                  "FOR m IN " + collectionName + " " + 
+                  "FOR n IN " + collectionName + " " + 
+                  "FOR o IN " + collectionName + " RETURN 1";
+
+      var explain = AQL_EXPLAIN(query, null, { maxNumberOfPlans: 9999999 });
+      assertEqual(5040, explain.stats.plansCreated); // faculty of 7 
     }
 
   };

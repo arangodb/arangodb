@@ -224,7 +224,8 @@ namespace triagens {
                         TRI_UNKNOWN_MEM_ZONE,
                         ProcessCsvBegin,
                         ProcessCsvAdd,
-                        ProcessCsvEnd);
+                        ProcessCsvEnd,
+                        nullptr);
 
       TRI_SetSeparatorCsvParser(&parser, separator[0]);
       TRI_UseBackslashCsvParser(&parser, _useBackslash);

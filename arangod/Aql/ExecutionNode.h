@@ -349,6 +349,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execution Node clone utility to be called by derives
 ////////////////////////////////////////////////////////////////////////////////
+
         void CloneHelper (ExecutionNode *Other,
                           ExecutionPlan* plan,
                           bool withDependencies,
@@ -429,7 +430,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const {
+        virtual std::vector<Variable const*> getVariablesUsedHere () const  {
           return std::vector<Variable const*>();
         }
 
@@ -1025,7 +1026,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const {
+        virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
           std::vector<Variable const*> v;
           v.push_back(_inVariable);
           return v;
@@ -1175,7 +1176,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const;
+        virtual std::vector<Variable const*> getVariablesUsedHere () const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief estimateCost
@@ -1195,6 +1196,14 @@ namespace triagens {
 
         void reverse (bool value) {
           _reverse = value;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getIndex, hand out the index used
+////////////////////////////////////////////////////////////////////////////////
+
+        Index const* getIndex () {
+          return _index;
         }
 
 // -----------------------------------------------------------------------------
@@ -1267,6 +1276,7 @@ namespace triagens {
             _offset(offset), 
             _limit(limit),
             _fullCount(false) {
+
         }
 
         LimitNode (ExecutionPlan* plan,
@@ -1276,6 +1286,7 @@ namespace triagens {
             _offset(0), 
             _limit(limit),
             _fullCount(false) {
+
         }
         
         LimitNode (ExecutionPlan*, triagens::basics::Json const& base);
@@ -1302,10 +1313,13 @@ namespace triagens {
 
         virtual ExecutionNode* clone (ExecutionPlan* plan,
                                       bool withDependencies,
-                                      bool withProperties) const {
+                                      bool withProperties) const override final {
           auto c = new LimitNode(plan, _id, _offset, _limit);
+          if (_fullCount) {
+            c->setFullCount();
+          }
 
-          CloneHelper (c, plan, withDependencies, withProperties);
+          CloneHelper(c, plan, withDependencies, withProperties);
 
           return static_cast<ExecutionNode*>(c);
         }
@@ -1441,11 +1455,13 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const {
+        virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
           std::unordered_set<Variable*> vars = _expression->variables();
           std::vector<Variable const*> v;
+          v.reserve(vars.size());
+
           for (auto vv : vars) {
-            v.push_back(vv);
+            v.emplace_back(vv);
           }
           return v;
         }
@@ -1575,7 +1591,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const;
+        virtual std::vector<Variable const*> getVariablesUsedHere () const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getVariablesSetHere
@@ -1686,7 +1702,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const {
+        virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
           std::vector<Variable const*> v;
           v.push_back(_inVariable);
           return v;
@@ -1844,7 +1860,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const {
+        virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
           std::vector<Variable const*> v;
           for (auto p : _elements) {
             v.push_back(p.first);
@@ -1913,21 +1929,30 @@ namespace triagens {
 
         AggregateNode (ExecutionPlan* plan,
                        size_t id,
-                       std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables,
+                       std::vector<std::pair<Variable const*, Variable const*>> const& aggregateVariables,
+                       Variable const* expressionVariable,
                        Variable const* outVariable,
-                       std::unordered_map<VariableId, std::string const> const& variableMap)
+                       std::vector<Variable const*> const& keepVariables,
+                       std::unordered_map<VariableId, std::string const> const& variableMap,
+                       bool countOnly)
           : ExecutionNode(plan, id), 
             _aggregateVariables(aggregateVariables), 
+            _expressionVariable(expressionVariable),
             _outVariable(outVariable),
-            _variableMap(variableMap) {
+            _keepVariables(keepVariables),
+            _variableMap(variableMap),
+            _countOnly(countOnly) {
           // outVariable can be a nullptr
         }
         
         AggregateNode (ExecutionPlan*,
                        triagens::basics::Json const& base,
+                       Variable const* expressionVariable,
                        Variable const* outVariable,
+                       std::vector<Variable const*> const& keepVariables,
                        std::unordered_map<VariableId, std::string const> const& variableMap,
-                       std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables);
+                       std::vector<std::pair<Variable const*, Variable const*>> const& aggregateVariables,
+                       bool countOnly);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -1968,10 +1993,27 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the out variable
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* outVariable () const {
+          return _outVariable;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clear the out variable
+////////////////////////////////////////////////////////////////////////////////
+
+        void clearOutVariable () {
+          TRI_ASSERT(_outVariable != nullptr);
+          _outVariable = nullptr;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const;
+        virtual std::vector<Variable const*> getVariablesUsedHere () const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getVariablesSetHere
@@ -1979,6 +2021,9 @@ namespace triagens {
 
         virtual std::vector<Variable const*> getVariablesSetHere () const {
           std::vector<Variable const*> v;
+          size_t const n = _aggregateVariables.size() + (_outVariable == nullptr ? 0 : 1);
+          v.reserve(n);
+
           for (auto p : _aggregateVariables) {
             v.push_back(p.first);
           }
@@ -2001,10 +2046,22 @@ namespace triagens {
         std::vector<std::pair<Variable const*, Variable const*>> _aggregateVariables;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief input expression variable (might be null)
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* _expressionVariable;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief output variable to write to (might be null)
 ////////////////////////////////////////////////////////////////////////////////
 
         Variable const* _outVariable;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief list of variables to keep if INTO is used
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<Variable const*> _keepVariables;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief map of all variable ids and names (needed to construct group data)
@@ -2012,8 +2069,12 @@ namespace triagens {
                        
         std::unordered_map<VariableId, std::string const> const _variableMap;
 
-    };
+////////////////////////////////////////////////////////////////////////////////
+/// @brief COUNT node?
+////////////////////////////////////////////////////////////////////////////////
 
+        bool const _countOnly;
+    };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class ReturnNode
@@ -2080,7 +2141,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const {
+        virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
           std::vector<Variable const*> v;
           v.push_back(_inVariable);
           return v;
@@ -2267,7 +2328,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const {
+        virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
           std::vector<Variable const*> v;
           v.push_back(_inVariable);
           return v;
@@ -2370,7 +2431,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const {
+        virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
           std::vector<Variable const*> v;
           v.push_back(_inVariable);
           return v;
@@ -2476,7 +2537,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const {
+        virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
           std::vector<Variable const*> v;
           v.push_back(_inDocVariable);
 
@@ -2592,7 +2653,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const {
+        virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
           std::vector<Variable const*> v;
           v.push_back(_inDocVariable);
 
@@ -3163,7 +3224,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const {
+        virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
           std::vector<Variable const*> v;
           for (auto p : _elements) {
             v.push_back(p.first);

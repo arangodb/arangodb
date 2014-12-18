@@ -1,0 +1,1926 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/de.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/de.xml
+ */
+de{
+    Currencies{
+        ADP{
+            "ADP",
+            "Andorranische Pesete",
+        }
+        AED{
+            "AED",
+            "VAE-Dirham",
+        }
+        AFN{
+            "AFN",
+            "Afghanischer Afghani",
+        }
+        ALL{
+            "ALL",
+            "Albanischer Lek",
+        }
+        AMD{
+            "AMD",
+            "Armenischer Dram",
+        }
+        ANG{
+            "ANG",
+            "Niederländische-Antillen-Gulden",
+        }
+        AOA{
+            "AOA",
+            "Angolanischer Kwanza",
+        }
+        ARA{
+            "ARA",
+            "Argentinischer Austral",
+        }
+        ARS{
+            "ARS",
+            "Argentinischer Peso",
+        }
+        ATS{
+            "öS",
+            "Österreichischer Schilling",
+        }
+        AUD{
+            "AU$",
+            "Australischer Dollar",
+        }
+        AWG{
+            "AWG",
+            "Aruba-Florin",
+        }
+        AZN{
+            "AZN",
+            "Aserbaidschan-Manat",
+        }
+        BAM{
+            "BAM",
+            "Bosnien und Herzegowina Konvertierbare Mark",
+        }
+        BBD{
+            "BBD",
+            "Barbados-Dollar",
+        }
+        BDT{
+            "BDT",
+            "Bangladesch-Taka",
+        }
+        BEC{
+            "BEC",
+            "Belgischer Franc (konvertibel)",
+        }
+        BEF{
+            "BEF",
+            "Belgischer Franc",
+        }
+        BEL{
+            "BEL",
+            "Belgischer Finanz-Franc",
+        }
+        BGL{
+            "BGL",
+            "Bulgarische Lew (1962–1999)",
+        }
+        BGN{
+            "BGN",
+            "Bulgarischer Lew",
+        }
+        BHD{
+            "BHD",
+            "Bahrain-Dinar",
+        }
+        BIF{
+            "BIF",
+            "Burundi-Franc",
+        }
+        BMD{
+            "BMD",
+            "Bermuda-Dollar",
+        }
+        BND{
+            "BND",
+            "Brunei-Dollar",
+        }
+        BOB{
+            "BOB",
+            "Bolivanischer Boliviano",
+        }
+        BOP{
+            "BOP",
+            "Bolivianischer Peso",
+        }
+        BOV{
+            "BOV",
+            "Boliviansiche Mvdol",
+        }
+        BRL{
+            "R$",
+            "Brasilianischer Real",
+        }
+        BSD{
+            "BSD",
+            "Bahama-Dollar",
+        }
+        BTN{
+            "BTN",
+            "Bhutan-Ngultrum",
+        }
+        BUK{
+            "BUK",
+            "Birmanischer Kyat",
+        }
+        BWP{
+            "BWP",
+            "Botswanischer Pula",
+        }
+        BYR{
+            "BYR",
+            "Belarus-Rubel",
+        }
+        BZD{
+            "BZD",
+            "Belize-Dollar",
+        }
+        CAD{
+            "CA$",
+            "Kanadischer Dollar",
+        }
+        CDF{
+            "CDF",
+            "Kongo-Franc",
+        }
+        CHE{
+            "CHE",
+            "WIR-Euro",
+        }
+        CHF{
+            "CHF",
+            "Schweizer Franken",
+        }
+        CHW{
+            "CHW",
+            "WIR Franken",
+        }
+        CLF{
+            "CLF",
+            "Chilenische Unidades de Fomento",
+        }
+        CLP{
+            "CLP",
+            "Chilenischer Peso",
+        }
+        CNY{
+            "CN¥",
+            "Renminbi Yuan",
+        }
+        COP{
+            "COP",
+            "Kolumbianischer Peso",
+        }
+        CRC{
+            "CRC",
+            "Costa-Rica-Colón",
+        }
+        CSD{
+            "CSD",
+            "Serbischer Dinar (2002–2006)",
+        }
+        CSK{
+            "CSK",
+            "Tschechoslowakische Krone",
+        }
+        CUC{
+            "CUC",
+            "Kubanischer Peso (konvertibel)",
+        }
+        CUP{
+            "CUP",
+            "Kubanischer Peso",
+        }
+        CVE{
+            "CVE",
+            "Kap-Verde-Escudo",
+        }
+        CYP{
+            "CYP",
+            "Zypern-Pfund",
+        }
+        CZK{
+            "CZK",
+            "Tschechische Krone",
+        }
+        DDM{
+            "DDM",
+            "Mark der DDR",
+        }
+        DEM{
+            "DEM",
+            "Deutsche Mark",
+        }
+        DJF{
+            "DJF",
+            "Dschibuti-Franc",
+        }
+        DKK{
+            "DKK",
+            "Dänische Krone",
+        }
+        DOP{
+            "DOP",
+            "Dominikanischer Peso",
+        }
+        DZD{
+            "DZD",
+            "Algerischer Dinar",
+        }
+        ECS{
+            "ECS",
+            "Ecuadorianischer Sucre",
+        }
+        ECV{
+            "ECV",
+            "Verrechnungseinheit für Ecuador",
+        }
+        EEK{
+            "EEK",
+            "Estnische Krone",
+        }
+        EGP{
+            "EGP",
+            "Ägyptisches Pfund",
+        }
+        ERN{
+            "ERN",
+            "Eritreischer Nakfa",
+        }
+        ESA{
+            "ESA",
+            "Spanische Peseta (A–Konten)",
+        }
+        ESB{
+            "ESB",
+            "Spanische Peseta (konvertibel)",
+        }
+        ESP{
+            "ESP",
+            "Spanische Peseta",
+        }
+        ETB{
+            "ETB",
+            "Äthiopischer Birr",
+        }
+        EUR{
+            "€",
+            "Euro",
+        }
+        FIM{
+            "FIM",
+            "Finnische Mark",
+        }
+        FJD{
+            "FJD",
+            "Fidschi-Dollar",
+        }
+        FKP{
+            "FKP",
+            "Falkland-Pfund",
+        }
+        FRF{
+            "FRF",
+            "Französischer Franc",
+        }
+        GBP{
+            "£",
+            "Britisches Pfund Sterling",
+        }
+        GEK{
+            "GEK",
+            "Georgischer Kupon Larit",
+        }
+        GEL{
+            "GEL",
+            "Georgischer Lari",
+        }
+        GHS{
+            "GHS",
+            "Ghanaischer Cedi",
+        }
+        GIP{
+            "GIP",
+            "Gibraltar-Pfund",
+        }
+        GMD{
+            "GMD",
+            "Gambia-Dalasi",
+        }
+        GNF{
+            "GNF",
+            "Guinea-Franc",
+        }
+        GNS{
+            "GNS",
+            "Guineischer Syli",
+        }
+        GQE{
+            "GQE",
+            "Äquatorialguinea-Ekwele",
+        }
+        GRD{
+            "GRD",
+            "Griechische Drachme",
+        }
+        GTQ{
+            "GTQ",
+            "Guatemaltekischer Quetzal",
+        }
+        GWE{
+            "GWE",
+            "Portugiesisch Guinea Escudo",
+        }
+        GWP{
+            "GWP",
+            "Guinea-Bissau Peso",
+        }
+        GYD{
+            "GYD",
+            "Guyana-Dollar",
+        }
+        HKD{
+            "HK$",
+            "Hongkong-Dollar",
+        }
+        HNL{
+            "HNL",
+            "Honduras-Lempira",
+        }
+        HRD{
+            "HRD",
+            "Kroatischer Dinar",
+        }
+        HRK{
+            "HRK",
+            "Kroatischer Kuna",
+        }
+        HTG{
+            "HTG",
+            "Haitianische Gourde",
+        }
+        HUF{
+            "HUF",
+            "Ungarischer Forint",
+        }
+        IDR{
+            "IDR",
+            "Indonesische Rupiah",
+        }
+        IEP{
+            "IEP",
+            "Irisches Pfund",
+        }
+        ILP{
+            "ILP",
+            "Israelisches Pfund",
+        }
+        ILS{
+            "₪",
+            "Israelischer Neuer Schekel",
+        }
+        INR{
+            "₹",
+            "Indische Rupie",
+        }
+        IQD{
+            "IQD",
+            "Irakischer Dinar",
+        }
+        IRR{
+            "IRR",
+            "Iranischer Rial",
+        }
+        ISK{
+            "ISK",
+            "Isländische Krone",
+        }
+        ITL{
+            "ITL",
+            "Italienische Lira",
+        }
+        JMD{
+            "JMD",
+            "Jamaika-Dollar",
+        }
+        JOD{
+            "JOD",
+            "Jordanischer Dinar",
+        }
+        JPY{
+            "¥",
+            "Japanischer Yen",
+        }
+        KES{
+            "KES",
+            "Kenia-Schilling",
+        }
+        KGS{
+            "KGS",
+            "Kirgisischer Som",
+        }
+        KHR{
+            "KHR",
+            "Kambodschanischer Riel",
+        }
+        KMF{
+            "KMF",
+            "Komoren-Franc",
+        }
+        KPW{
+            "KPW",
+            "Nordkoreanischer Won",
+        }
+        KRW{
+            "₩",
+            "Südkoreanischer Won",
+        }
+        KWD{
+            "KWD",
+            "Kuwait-Dinar",
+        }
+        KYD{
+            "KYD",
+            "Kaiman-Dollar",
+        }
+        KZT{
+            "KZT",
+            "Kasachischer Tenge",
+        }
+        LAK{
+            "LAK",
+            "Laotischer Kip",
+        }
+        LBP{
+            "LBP",
+            "Libanesisches Pfund",
+        }
+        LKR{
+            "LKR",
+            "Sri-Lanka-Rupie",
+        }
+        LRD{
+            "LRD",
+            "Liberianischer Dollar",
+        }
+        LSL{
+            "LSL",
+            "Loti",
+        }
+        LTL{
+            "LTL",
+            "Litauischer Litas",
+        }
+        LTT{
+            "LTT",
+            "Litauischer Talonas",
+        }
+        LUC{
+            "LUC",
+            "Luxemburgischer Franc (konvertibel)",
+        }
+        LUF{
+            "LUF",
+            "Luxemburgischer Franc",
+        }
+        LUL{
+            "LUL",
+            "Luxemburgischer Finanz-Franc",
+        }
+        LVL{
+            "LVL",
+            "Lettischer Lats",
+        }
+        LVR{
+            "LVR",
+            "Lettischer Rubel",
+        }
+        LYD{
+            "LYD",
+            "Libyscher Dinar",
+        }
+        MAD{
+            "MAD",
+            "Marokkanischer Dirham",
+        }
+        MAF{
+            "MAF",
+            "Marokkanischer Franc",
+        }
+        MDL{
+            "MDL",
+            "Moldau-Leu",
+        }
+        MGA{
+            "MGA",
+            "Madagaskar-Ariary",
+        }
+        MGF{
+            "MGF",
+            "Madagaskar-Franc",
+        }
+        MKD{
+            "MKD",
+            "Mazedonischer Denar",
+        }
+        MLF{
+            "MLF",
+            "Malischer Franc",
+        }
+        MMK{
+            "MMK",
+            "Myanmarischer Kyat",
+        }
+        MNT{
+            "MNT",
+            "Mongolischer Tögrög",
+        }
+        MOP{
+            "MOP",
+            "Macao-Pataca",
+        }
+        MRO{
+            "MRO",
+            "Mauretanischer Ouguiya",
+        }
+        MTL{
+            "MTL",
+            "Maltesische Lira",
+        }
+        MTP{
+            "MTP",
+            "Maltesisches Pfund",
+        }
+        MUR{
+            "MUR",
+            "Mauritius-Rupie",
+        }
+        MVR{
+            "MVR",
+            "Malediven-Rupie",
+        }
+        MWK{
+            "MWK",
+            "Malawi-Kwacha",
+        }
+        MXN{
+            "MX$",
+            "Mexikanischer Peso",
+        }
+        MXV{
+            "MXV",
+            "Mexicanischer Unidad de Inversion (UDI)",
+        }
+        MYR{
+            "MYR",
+            "Malaysischer Ringgit",
+        }
+        MZE{
+            "MZE",
+            "Mosambikanischer Escudo",
+        }
+        MZN{
+            "MZN",
+            "Mosambikanischer Metical",
+        }
+        NAD{
+            "NAD",
+            "Namibia-Dollar",
+        }
+        NGN{
+            "NGN",
+            "Nigerianischer Naira",
+        }
+        NIO{
+            "NIO",
+            "Nicaragua-Cordoba",
+        }
+        NLG{
+            "NLG",
+            "Niederländischer Gulden",
+        }
+        NOK{
+            "NOK",
+            "Norwegische Krone",
+        }
+        NPR{
+            "NPR",
+            "Nepalesische Rupie",
+        }
+        NZD{
+            "NZ$",
+            "Neuseeland-Dollar",
+        }
+        OMR{
+            "OMR",
+            "Omanischer Rial",
+        }
+        PAB{
+            "PAB",
+            "Panamaischer Balboa",
+        }
+        PEI{
+            "PEI",
+            "Peruanischer Inti",
+        }
+        PEN{
+            "PEN",
+            "Peruanischer Neuer Sol",
+        }
+        PGK{
+            "PGK",
+            "Papua-Neuguineischer Kina",
+        }
+        PHP{
+            "PHP",
+            "Philippinischer Peso",
+        }
+        PKR{
+            "PKR",
+            "Pakistanische Rupie",
+        }
+        PLN{
+            "PLN",
+            "Polnischer Złoty",
+        }
+        PTE{
+            "PTE",
+            "Portugiesischer Escudo",
+        }
+        PYG{
+            "PYG",
+            "Paraguayischer Guaraní",
+        }
+        QAR{
+            "QAR",
+            "Katar-Riyal",
+        }
+        RHD{
+            "RHD",
+            "Rhodesischer Dollar",
+        }
+        RON{
+            "RON",
+            "Rumänischer Leu",
+        }
+        RSD{
+            "RSD",
+            "Serbischer Dinar",
+        }
+        RUB{
+            "RUB",
+            "Russischer Rubel",
+        }
+        RWF{
+            "RWF",
+            "Ruanda-Franc",
+        }
+        SAR{
+            "SAR",
+            "Saudi-Rial",
+        }
+        SBD{
+            "SBD",
+            "Salomonen-Dollar",
+        }
+        SCR{
+            "SCR",
+            "Seychellen-Rupie",
+        }
+        SDG{
+            "SDG",
+            "Sudanesisches Pfund",
+        }
+        SEK{
+            "SEK",
+            "Schwedische Krone",
+        }
+        SGD{
+            "SGD",
+            "Singapur-Dollar",
+        }
+        SHP{
+            "SHP",
+            "St. Helena-Pfund",
+        }
+        SIT{
+            "SIT",
+            "Slowenischer Tolar",
+        }
+        SKK{
+            "SKK",
+            "Slowakische Krone",
+        }
+        SLL{
+            "SLL",
+            "Sierra-leonischer Leone",
+        }
+        SOS{
+            "SOS",
+            "Somalia-Schilling",
+        }
+        SRD{
+            "SRD",
+            "Suriname-Dollar",
+        }
+        SRG{
+            "SRG",
+            "Suriname Gulden",
+        }
+        SSP{
+            "SSP",
+            "Südsudanesisches Pfund",
+        }
+        STD{
+            "STD",
+            "São-toméischer Dobra",
+        }
+        SUR{
+            "SUR",
+            "Sowjetischer Rubel",
+        }
+        SVC{
+            "SVC",
+            "El Salvador Colon",
+        }
+        SYP{
+            "SYP",
+            "Syrisches Pfund",
+        }
+        SZL{
+            "SZL",
+            "Swasiländischer Lilangeni",
+        }
+        THB{
+            "฿",
+            "Thailändischer Baht",
+        }
+        TJR{
+            "TJR",
+            "Tadschikistan Rubel",
+        }
+        TJS{
+            "TJS",
+            "Tadschikistan-Somoni",
+        }
+        TMT{
+            "TMT",
+            "Turkmenistan-Manat",
+        }
+        TND{
+            "TND",
+            "Tunesischer Dinar",
+        }
+        TOP{
+            "TOP",
+            "Tongaischer Paʻanga",
+        }
+        TPE{
+            "TPE",
+            "Timor-Escudo",
+        }
+        TRY{
+            "TRY",
+            "Türkische Lira",
+        }
+        TTD{
+            "TTD",
+            "Trinidad und Tobago-Dollar",
+        }
+        TWD{
+            "NT$",
+            "Neuer Taiwan-Dollar",
+        }
+        TZS{
+            "TZS",
+            "Tansania-Schilling",
+        }
+        UAH{
+            "UAH",
+            "Ukrainische Hrywnja",
+        }
+        UAK{
+            "UAK",
+            "Ukrainischer Karbovanetz",
+        }
+        UGX{
+            "UGX",
+            "Uganda-Schilling",
+        }
+        USD{
+            "$",
+            "US-Dollar",
+        }
+        USN{
+            "USN",
+            "US Dollar (Nächster Tag)",
+        }
+        USS{
+            "USS",
+            "US Dollar (Gleicher Tag)",
+        }
+        UYU{
+            "UYU",
+            "Uruguayischer Peso",
+        }
+        UZS{
+            "UZS",
+            "Usbekistan-Sum",
+        }
+        VEF{
+            "VEF",
+            "Venezolanischer Bolívar",
+        }
+        VND{
+            "₫",
+            "Vietnamesischer Dong",
+        }
+        VUV{
+            "VUV",
+            "Vanuatu-Vatu",
+        }
+        WST{
+            "WST",
+            "Samoanischer Tala",
+        }
+        XAF{
+            "FCFA",
+            "CFA-Franc (BEAC)",
+        }
+        XAG{
+            "XAG",
+            "Unze Silber",
+        }
+        XAU{
+            "XAU",
+            "Unze Gold",
+        }
+        XBA{
+            "XBA",
+            "Europäische Rechnungseinheit",
+        }
+        XBB{
+            "XBB",
+            "Europäische Währungseinheit (XBB)",
+        }
+        XBC{
+            "XBC",
+            "Europäische Rechnungseinheit (XBC)",
+        }
+        XBD{
+            "XBD",
+            "Europäische Rechnungseinheit (XBD)",
+        }
+        XCD{
+            "EC$",
+            "Ostkaribischer Dollar",
+        }
+        XDR{
+            "XDR",
+            "Sonderziehungsrechte",
+        }
+        XEU{
+            "XEU",
+            "Europäische Währungseinheit (XEU)",
+        }
+        XFO{
+            "XFO",
+            "Französischer Gold-Franc",
+        }
+        XFU{
+            "XFU",
+            "Französischer UIC-Franc",
+        }
+        XOF{
+            "CFA",
+            "CFA-Franc (BCEAO)",
+        }
+        XPD{
+            "XPD",
+            "Unze Palladium",
+        }
+        XPF{
+            "CFPF",
+            "CFP-Franc",
+        }
+        XPT{
+            "XPT",
+            "Unze Platin",
+        }
+        XRE{
+            "XRE",
+            "RINET Funds",
+        }
+        XTS{
+            "XTS",
+            "Testwährung",
+        }
+        XXX{
+            "XXX",
+            "Unbekannte Währung",
+        }
+        YDD{
+            "YDD",
+            "Jemen-Dinar",
+        }
+        YER{
+            "YER",
+            "Jemen-Rial",
+        }
+        ZAL{
+            "ZAL",
+            "Südafrikanischer Rand (Finanz)",
+        }
+        ZAR{
+            "ZAR",
+            "Südafrikanischer Rand",
+        }
+        ZMW{
+            "ZMW",
+            "Kwacha",
+        }
+        ZWL{
+            "ZWL",
+            "Simbabwe-Dollar (2009)",
+        }
+        ZWR{
+            "ZWR",
+            "Simbabwe-Dollar (2008)",
+        }
+    }
+    CurrencyPlurals{
+        ADP{
+            one{"Andorranische Pesete"}
+            other{"Andorranische Peseten"}
+        }
+        AED{
+            one{"VAE-Dirham"}
+            other{"VAE-Dirham"}
+        }
+        AFN{
+            one{"Afghanischer Afghani"}
+            other{"Afghanische Afghani"}
+        }
+        ALL{
+            one{"Albanischer Lek"}
+            other{"Albanische Lek"}
+        }
+        AMD{
+            one{"Armenischer Dram"}
+            other{"Armenische Dram"}
+        }
+        ANG{
+            one{"Niederländische-Antillen-Gulden"}
+            other{"Niederländische-Antillen-Gulden"}
+        }
+        AOA{
+            one{"Angolanischer Kwanza"}
+            other{"Angolanische Kwanza"}
+        }
+        ARA{
+            one{"Argentinischer Austral"}
+            other{"Argentinische Austral"}
+        }
+        ARS{
+            one{"Argentinischer Peso"}
+            other{"Argentinische Pesos"}
+        }
+        ATS{
+            one{"Österreichischer Schilling"}
+            other{"Österreichische Schilling"}
+        }
+        AUD{
+            one{"Australischer Dollar"}
+            other{"Australische Dollar"}
+        }
+        AWG{
+            one{"Aruba-Florin"}
+            other{"Aruba-Florin"}
+        }
+        AZN{
+            one{"Aserbaidschan-Manat"}
+            other{"Aserbaidschan-Manat"}
+        }
+        BAM{
+            one{"Bosnien und Herzegowina Konvertierbare Mark"}
+            other{"Bosnien und Herzegowina Konvertierbare Mark"}
+        }
+        BBD{
+            one{"Barbados-Dollar"}
+            other{"Barbados-Dollar"}
+        }
+        BDT{
+            one{"Bangladesch-Taka"}
+            other{"Bangladesch-Taka"}
+        }
+        BEC{
+            one{"Belgischer Franc (konvertibel)"}
+            other{"Belgische Franc (konvertibel)"}
+        }
+        BEF{
+            one{"Belgischer Franc"}
+            other{"Belgische Franc"}
+        }
+        BEL{
+            one{"Belgischer Finanz-Franc"}
+            other{"Belgische Finanz-Franc"}
+        }
+        BGL{
+            one{"Bulgarische Lew (1962–1999)"}
+            other{"Bulgarische Lew (1962–1999)"}
+        }
+        BGN{
+            one{"Bulgarischer Lew"}
+            other{"Bulgarische Lew"}
+        }
+        BHD{
+            one{"Bahrain-Dinar"}
+            other{"Bahrain-Dinar"}
+        }
+        BIF{
+            one{"Burundi-Franc"}
+            other{"Burundi-Franc"}
+        }
+        BMD{
+            one{"Bermuda-Dollar"}
+            other{"Bermuda-Dollar"}
+        }
+        BND{
+            one{"Brunei-Dollar"}
+            other{"Brunei-Dollar"}
+        }
+        BOB{
+            one{"Bolivanischer Boliviano"}
+            other{"Bolivanische Boliviano"}
+        }
+        BOP{
+            one{"Bolivianischer Peso"}
+            other{"Bolivianische Peso"}
+        }
+        BOV{
+            one{"Boliviansiche Mvdol"}
+            other{"Bolivianische Mvdol"}
+        }
+        BRL{
+            one{"Brasilianischer Real"}
+            other{"Brasilianische Real"}
+        }
+        BSD{
+            one{"Bahama-Dollar"}
+            other{"Bahama-Dollar"}
+        }
+        BTN{
+            one{"Bhutan-Ngultrum"}
+            other{"Bhutan-Ngultrum"}
+        }
+        BUK{
+            one{"Birmanischer Kyat"}
+            other{"Birmanische Kyat"}
+        }
+        BWP{
+            one{"Botswanischer Pula"}
+            other{"Botswanische Pula"}
+        }
+        BYR{
+            one{"Belarus-Rubel"}
+            other{"Belarus-Rubel"}
+        }
+        BZD{
+            one{"Belize-Dollar"}
+            other{"Belize-Dollar"}
+        }
+        CAD{
+            one{"Kanadischer Dollar"}
+            other{"Kanadische Dollar"}
+        }
+        CDF{
+            one{"Kongo-Franc"}
+            other{"Kongo-Franc"}
+        }
+        CHE{
+            one{"WIR-Euro"}
+            other{"WIR-Euro"}
+        }
+        CHF{
+            one{"Schweizer Franken"}
+            other{"Schweizer Franken"}
+        }
+        CHW{
+            one{"WIR Franken"}
+            other{"WIR Franken"}
+        }
+        CLF{
+            one{"Chilenische Unidades de Fomento"}
+            other{"Chilenische Unidades de Fomento"}
+        }
+        CLP{
+            one{"Chilenischer Peso"}
+            other{"Chilenische Pesos"}
+        }
+        CNY{
+            one{"Renminbi Yuan"}
+            other{"Renminbi Yuan"}
+        }
+        COP{
+            one{"Kolumbianischer Peso"}
+            other{"Kolumbianische Pesos"}
+        }
+        CRC{
+            one{"Costa-Rica-Colón"}
+            other{"Costa-Rica-Colón"}
+        }
+        CSD{
+            one{"Serbischer Dinar (2002–2006)"}
+            other{"Serbische Dinar (2002–2006)"}
+        }
+        CSK{
+            one{"Tschechoslowakische Kronen"}
+            other{"Tschechoslowakische Kronen"}
+        }
+        CUC{
+            one{"Kubanischer Peso (konvertibel)"}
+            other{"Kubanische Pesos (konvertibel)"}
+        }
+        CUP{
+            one{"Kubanischer Peso"}
+            other{"Kubanische Pesos"}
+        }
+        CVE{
+            one{"Kap-Verde-Escudo"}
+            other{"Kap-Verde-Escudos"}
+        }
+        CYP{
+            one{"Zypern Pfund"}
+            other{"Zypern Pfund"}
+        }
+        CZK{
+            one{"Tschechische Krone"}
+            other{"Tschechische Kronen"}
+        }
+        DDM{
+            one{"Mark der DDR"}
+            other{"Mark der DDR"}
+        }
+        DEM{
+            one{"Deutsche Mark"}
+            other{"Deutsche Mark"}
+        }
+        DJF{
+            one{"Dschibuti-Franc"}
+            other{"Dschibuti-Franc"}
+        }
+        DKK{
+            one{"Dänische Krone"}
+            other{"Dänische Kronen"}
+        }
+        DOP{
+            one{"Dominikanischer Peso"}
+            other{"Dominikanische Pesos"}
+        }
+        DZD{
+            one{"Algerischer Dinar"}
+            other{"Algerische Dinar"}
+        }
+        ECS{
+            one{"Ecuadorianischer Sucre"}
+            other{"Ecuadorianische Sucre"}
+        }
+        ECV{
+            one{"Verrechnungseinheiten für Ecuador"}
+            other{"Verrechnungseinheiten für Ecuador"}
+        }
+        EEK{
+            one{"Estnische Krone"}
+            other{"Estnische Kronen"}
+        }
+        EGP{
+            one{"Ägyptisches Pfund"}
+            other{"Ägyptische Pfund"}
+        }
+        ERN{
+            one{"Eritreischer Nakfa"}
+            other{"Eritreische Nakfa"}
+        }
+        ESA{
+            one{"Spanische Peseta (A–Konten)"}
+            other{"Spanische Peseten (A–Konten)"}
+        }
+        ESB{
+            one{"Spanische Peseta (konvertibel)"}
+            other{"Spanische Peseten (konvertibel)"}
+        }
+        ESP{
+            one{"Spanische Peseta"}
+            other{"Spanische Peseten"}
+        }
+        ETB{
+            one{"Äthiopischer Birr"}
+            other{"Äthiopische Birr"}
+        }
+        EUR{
+            one{"Euro"}
+            other{"Euro"}
+        }
+        FIM{
+            one{"Finnische Mark"}
+            other{"Finnische Mark"}
+        }
+        FJD{
+            one{"Fidschi-Dollar"}
+            other{"Fidschi-Dollar"}
+        }
+        FKP{
+            one{"Falkland-Pfund"}
+            other{"Falkland-Pfund"}
+        }
+        FRF{
+            one{"Französischer Franc"}
+            other{"Französische Franc"}
+        }
+        GBP{
+            one{"Britisches Pfund Sterling"}
+            other{"Britische Pfund Sterling"}
+        }
+        GEK{
+            one{"Georgischer Kupon Larit"}
+            other{"Georgische Kupon Larit"}
+        }
+        GEL{
+            one{"Georgischer Lari"}
+            other{"Georgische Lari"}
+        }
+        GHS{
+            one{"Ghanaischer Cedi"}
+            other{"Ghanaische Cedi"}
+        }
+        GIP{
+            one{"Gibraltar-Pfund"}
+            other{"Gibraltar Pfund"}
+        }
+        GMD{
+            one{"Gambia-Dalasi"}
+            other{"Gambia-Dalasi"}
+        }
+        GNF{
+            one{"Guinea-Franc"}
+            other{"Guinea-Franc"}
+        }
+        GNS{
+            one{"Guineischer Syli"}
+            other{"Guineische Syli"}
+        }
+        GQE{
+            one{"Äquatorialguinea-Ekwele"}
+            other{"Äquatorialguinea-Ekwele"}
+        }
+        GRD{
+            one{"Griechische Drachme"}
+            other{"Griechische Drachmen"}
+        }
+        GTQ{
+            one{"Guatemaltekischer Quetzal"}
+            other{"Guatemaltekische Quetzales"}
+        }
+        GWE{
+            one{"Portugiesisch Guinea Escudo"}
+            other{"Portugiesisch Guinea Escudo"}
+        }
+        GWP{
+            one{"Guinea-Bissau Peso"}
+            other{"Guinea-Bissau Pesos"}
+        }
+        GYD{
+            one{"Guyana-Dollar"}
+            other{"Guyana-Dollar"}
+        }
+        HKD{
+            one{"Hongkong-Dollar"}
+            other{"Hongkong-Dollar"}
+        }
+        HNL{
+            one{"Honduras-Lempira"}
+            other{"Honduras-Lempira"}
+        }
+        HRD{
+            one{"Kroatischer Dinar"}
+            other{"Kroatische Dinar"}
+        }
+        HRK{
+            one{"Kroatischer Kuna"}
+            other{"Kroatische Kuna"}
+        }
+        HTG{
+            one{"Haitianische Gourde"}
+            other{"Haitianische Gourdes"}
+        }
+        HUF{
+            one{"Ungarischer Forint"}
+            other{"Ungarische Forint"}
+        }
+        IDR{
+            one{"Indonesische Rupiah"}
+            other{"Indonesische Rupiah"}
+        }
+        IEP{
+            one{"Irisches Pfund"}
+            other{"Irische Pfund"}
+        }
+        ILP{
+            one{"Israelisches Pfund"}
+            other{"Israelische Pfund"}
+        }
+        ILS{
+            one{"Israelischer Neuer Schekel"}
+            other{"Israelische Neue Schekel"}
+        }
+        INR{
+            one{"Indische Rupie"}
+            other{"Indische Rupien"}
+        }
+        IQD{
+            one{"Irakischer Dinar"}
+            other{"Irakische Dinar"}
+        }
+        IRR{
+            one{"Iranischer Rial"}
+            other{"Iranische Rial"}
+        }
+        ISK{
+            one{"Isländische Krone"}
+            other{"Isländische Kronen"}
+        }
+        ITL{
+            one{"Italienische Lira"}
+            other{"Italienische Lire"}
+        }
+        JMD{
+            one{"Jamaika-Dollar"}
+            other{"Jamaika-Dollar"}
+        }
+        JOD{
+            one{"Jordanischer Dinar"}
+            other{"Jordanische Dinar"}
+        }
+        JPY{
+            one{"Japanischer Yen"}
+            other{"Japanische Yen"}
+        }
+        KES{
+            one{"Kenia-Schilling"}
+            other{"Kenia-Schilling"}
+        }
+        KGS{
+            one{"Kirgisischer Som"}
+            other{"Kirgisische Som"}
+        }
+        KHR{
+            one{"Kambodschanischer Riel"}
+            other{"Kambodschanische Riel"}
+        }
+        KMF{
+            one{"Komoren-Franc"}
+            other{"Komoren-Franc"}
+        }
+        KPW{
+            one{"Nordkoreanischer Won"}
+            other{"Nordkoreanische Won"}
+        }
+        KRW{
+            one{"Südkoreanischer Won"}
+            other{"Südkoreanische Won"}
+        }
+        KWD{
+            one{"Kuwait-Dinar"}
+            other{"Kuwait-Dinar"}
+        }
+        KYD{
+            one{"Kaiman-Dollar"}
+            other{"Kaiman-Dollar"}
+        }
+        KZT{
+            one{"Kasachischer Tenge"}
+            other{"Kasachische Tenge"}
+        }
+        LAK{
+            one{"Laotischer Kip"}
+            other{"Laotische Kip"}
+        }
+        LBP{
+            one{"Libanesisches Pfund"}
+            other{"Libanesische Pfund"}
+        }
+        LKR{
+            one{"Sri-Lanka-Rupie"}
+            other{"Sri-Lanka-Rupien"}
+        }
+        LRD{
+            one{"Liberianischer Dollar"}
+            other{"Liberianische Dollar"}
+        }
+        LSL{
+            one{"Loti"}
+            other{"Loti"}
+        }
+        LTL{
+            one{"Litauischer Litas"}
+            other{"Litauische Litas"}
+        }
+        LTT{
+            one{"Litauische Talonas"}
+            other{"Litauische Talonas"}
+        }
+        LUC{
+            one{"Luxemburgische Franc (konvertibel)"}
+            other{"Luxemburgische Franc (konvertibel)"}
+        }
+        LUF{
+            one{"Luxemburgische Franc"}
+            other{"Luxemburgische Franc"}
+        }
+        LUL{
+            one{"Luxemburgische Finanz-Franc"}
+            other{"Luxemburgische Finanz-Franc"}
+        }
+        LVL{
+            one{"Lettischer Lats"}
+            other{"Lettische Lats"}
+        }
+        LVR{
+            one{"Lettische Rubel"}
+            other{"Lettische Rubel"}
+        }
+        LYD{
+            one{"Libyscher Dinar"}
+            other{"Libysche Dinar"}
+        }
+        MAD{
+            one{"Marokkanischer Dirham"}
+            other{"Marokkanische Dirham"}
+        }
+        MAF{
+            one{"Marokkanische Franc"}
+            other{"Marokkanische Franc"}
+        }
+        MDL{
+            one{"Moldau-Leu"}
+            other{"Moldau-Leu"}
+        }
+        MGA{
+            one{"Madagaskar-Ariary"}
+            other{"Madagaskar-Ariary"}
+        }
+        MGF{
+            one{"Madagaskar-Franc"}
+            other{"Madagaskar-Franc"}
+        }
+        MKD{
+            one{"Mazedonischer Denar"}
+            other{"Mazedonische Denari"}
+        }
+        MLF{
+            one{"Malische Franc"}
+            other{"Malische Franc"}
+        }
+        MMK{
+            one{"Myanmarischer Kyat"}
+            other{"Myanmarische Kyat"}
+        }
+        MNT{
+            one{"Mongolischer Tögrög"}
+            other{"Mongolische Tögrög"}
+        }
+        MOP{
+            one{"Macao-Pataca"}
+            other{"Macao-Pataca"}
+        }
+        MRO{
+            one{"Mauretanischer Ouguiya"}
+            other{"Mauretanische Ouguiya"}
+        }
+        MTL{
+            one{"Maltesische Lira"}
+            other{"Maltesische Lira"}
+        }
+        MTP{
+            one{"Maltesische Pfund"}
+            other{"Maltesische Pfund"}
+        }
+        MUR{
+            one{"Mauritius-Rupie"}
+            other{"Mauritius-Rupien"}
+        }
+        MVR{
+            one{"Malediven-Rupie"}
+            other{"Malediven-Rupien"}
+        }
+        MWK{
+            one{"Malawi-Kwacha"}
+            other{"Malawi-Kwacha"}
+        }
+        MXN{
+            one{"Mexikanischer Peso"}
+            other{"Mexikanische Pesos"}
+        }
+        MXV{
+            one{"Mexicanischer Unidad de Inversion (UDI)"}
+            other{"Mexikanische Unidad de Inversion (UDI)"}
+        }
+        MYR{
+            one{"Malaysischer Ringgit"}
+            other{"Malaysische Ringgit"}
+        }
+        MZE{
+            one{"Mozambikanische Escudo"}
+            other{"Mozambikanische Escudo"}
+        }
+        MZN{
+            one{"Mosambikanischer Metical"}
+            other{"Mosambikanische Meticais"}
+        }
+        NAD{
+            one{"Namibia-Dollar"}
+            other{"Namibia-Dollar"}
+        }
+        NGN{
+            one{"Nigerianischer Naira"}
+            other{"Nigerianische Naira"}
+        }
+        NIO{
+            one{"Nicaragua-Cordoba"}
+            other{"Nicaragua-Cordoba"}
+        }
+        NLG{
+            one{"Niederländischer Gulden"}
+            other{"Niederländische Gulden"}
+        }
+        NOK{
+            one{"Norwegische Krone"}
+            other{"Norwegische Kronen"}
+        }
+        NPR{
+            one{"Nepalesische Rupie"}
+            other{"Nepalesische Rupien"}
+        }
+        NZD{
+            one{"Neuseeland-Dollar"}
+            other{"Neuseeland-Dollar"}
+        }
+        OMR{
+            one{"Omanischer Rial"}
+            other{"Omanische Rials"}
+        }
+        PAB{
+            one{"Panamaischer Balboa"}
+            other{"Panamaische Balboas"}
+        }
+        PEI{
+            one{"Peruanische Inti"}
+            other{"Peruanische Inti"}
+        }
+        PEN{
+            one{"Peruanischer Neuer Sol"}
+            other{"Peruanische Neue Sol"}
+        }
+        PGK{
+            one{"Papua-Neuguineischer Kina"}
+            other{"Papua-Neuguineische Kina"}
+        }
+        PHP{
+            one{"Philippinischer Peso"}
+            other{"Philippinische Pesos"}
+        }
+        PKR{
+            one{"Pakistanische Rupie"}
+            other{"Pakistanische Rupien"}
+        }
+        PLN{
+            one{"Polnischer Złoty"}
+            other{"Polnische Złoty"}
+        }
+        PTE{
+            one{"Portugiesische Escudo"}
+            other{"Portugiesische Escudo"}
+        }
+        PYG{
+            one{"Paraguayischer Guaraní"}
+            other{"Paraguayische Guaraníes"}
+        }
+        QAR{
+            one{"Katar-Riyal"}
+            other{"Katar-Riyal"}
+        }
+        RHD{
+            one{"Rhodesische Dollar"}
+            other{"Rhodesische Dollar"}
+        }
+        RON{
+            one{"Rumänischer Leu"}
+            other{"Rumänische Leu"}
+        }
+        RSD{
+            one{"Serbischer Dinar"}
+            other{"Serbische Dinaren"}
+        }
+        RUB{
+            one{"Russischer Rubel"}
+            other{"Russische Rubel"}
+        }
+        RWF{
+            one{"Ruanda-Franc"}
+            other{"Ruanda-Franc"}
+        }
+        SAR{
+            one{"Saudi-Rial"}
+            other{"Saudi-Rial"}
+        }
+        SBD{
+            one{"Salomonen-Dollar"}
+            other{"Salomonen-Dollar"}
+        }
+        SCR{
+            one{"Seychellen-Rupie"}
+            other{"Seychellen-Rupien"}
+        }
+        SDG{
+            one{"Sudanesisches Pfund"}
+            other{"Sudanesische Pfund"}
+        }
+        SEK{
+            one{"Schwedische Krone"}
+            other{"Schwedische Kronen"}
+        }
+        SGD{
+            one{"Singapur-Dollar"}
+            other{"Singapur-Dollar"}
+        }
+        SHP{
+            one{"St. Helena-Pfund"}
+            other{"St. Helena-Pfund"}
+        }
+        SIT{
+            one{"Slowenischer Tolar"}
+            other{"Slowenische Tolar"}
+        }
+        SKK{
+            one{"Slowakische Kronen"}
+            other{"Slowakische Kronen"}
+        }
+        SLL{
+            one{"Sierra-leonischer Leone"}
+            other{"Sierra-leonische Leones"}
+        }
+        SOS{
+            one{"Somalia-Schilling"}
+            other{"Somalia-Schilling"}
+        }
+        SRD{
+            one{"Suriname-Dollar"}
+            other{"Suriname-Dollar"}
+        }
+        SRG{
+            one{"Suriname-Gulden"}
+            other{"Suriname-Gulden"}
+        }
+        SSP{
+            one{"Südsudanesisches Pfund"}
+            other{"Südsudanesische Pfund"}
+        }
+        STD{
+            one{"São-toméischer Dobra"}
+            other{"São-toméische Dobra"}
+        }
+        SUR{
+            one{"Sowjetische Rubel"}
+            other{"Sowjetische Rubel"}
+        }
+        SVC{
+            one{"El Salvador-Colon"}
+            other{"El Salvador-Colon"}
+        }
+        SYP{
+            one{"Syrisches Pfund"}
+            other{"Syrische Pfund"}
+        }
+        SZL{
+            one{"Swasiländischer Lilangeni"}
+            other{"Swasiländische Emalangeni"}
+        }
+        THB{
+            one{"Thailändischer Baht"}
+            other{"Thailändische Baht"}
+        }
+        TJR{
+            one{"Tadschikistan-Rubel"}
+            other{"Tadschikistan-Rubel"}
+        }
+        TJS{
+            one{"Tadschikistan-Somoni"}
+            other{"Tadschikistan-Somoni"}
+        }
+        TMT{
+            one{"Turkmenistan-Manat"}
+            other{"Turkmenistan-Manat"}
+        }
+        TND{
+            one{"Tunesischer Dinar"}
+            other{"Tunesische Dinar"}
+        }
+        TOP{
+            one{"Tongaischer Paʻanga"}
+            other{"Tongaische Paʻanga"}
+        }
+        TPE{
+            one{"Timor-Escudo"}
+            other{"Timor-Escudo"}
+        }
+        TRY{
+            one{"Türkische Lira"}
+            other{"Türkische Lira"}
+        }
+        TTD{
+            one{"Trinidad und Tobago-Dollar"}
+            other{"Trinidad und Tobago-Dollar"}
+        }
+        TWD{
+            one{"Neuer Taiwan-Dollar"}
+            other{"Neue Taiwan-Dollar"}
+        }
+        TZS{
+            one{"Tansania-Schilling"}
+            other{"Tansania-Schilling"}
+        }
+        UAH{
+            one{"Ukrainische Hrywnja"}
+            other{"Ukrainische Hrywen"}
+        }
+        UAK{
+            one{"Ukrainische Karbovanetz"}
+            other{"Ukrainische Karbovanetz"}
+        }
+        UGX{
+            one{"Uganda-Schilling"}
+            other{"Uganda-Schilling"}
+        }
+        USD{
+            one{"US-Dollar"}
+            other{"US-Dollar"}
+        }
+        USN{
+            one{"US-Dollar (Nächster Tag)"}
+            other{"US-Dollar (Nächster Tag)"}
+        }
+        USS{
+            one{"US-Dollar (Gleicher Tag)"}
+            other{"US-Dollar (Gleicher Tag)"}
+        }
+        UYU{
+            one{"Uruguayischer Peso"}
+            other{"Uruguayische Pesos"}
+        }
+        UZS{
+            one{"Usbekistan-Sum"}
+            other{"Usbekistan-Sum"}
+        }
+        VEF{
+            one{"Venezolanischer Bolívar"}
+            other{"Venezolanische Bolívares"}
+        }
+        VND{
+            one{"Vietnamesischer Dong"}
+            other{"Vietnamesische Dong"}
+        }
+        VUV{
+            one{"Vanuatu-Vatu"}
+            other{"Vanuatu-Vatu"}
+        }
+        WST{
+            one{"Samoanischer Tala"}
+            other{"Samoanische Tala"}
+        }
+        XAF{
+            one{"CFA-Franc (BEAC)"}
+            other{"CFA-Franc (BEAC)"}
+        }
+        XAG{
+            one{"Unze Silber"}
+            other{"Unzen Silber"}
+        }
+        XAU{
+            one{"Unze Gold"}
+            other{"Unzen Gold"}
+        }
+        XBA{
+            one{"Europäische Rechnungseinheiten"}
+            other{"Europäische Rechnungseinheiten"}
+        }
+        XBB{
+            one{"Europäische Währungseinheiten (XBB)"}
+            other{"Europäische Währungseinheiten (XBB)"}
+        }
+        XBC{
+            one{"Europäische Rechnungseinheiten (XBC)"}
+            other{"Europäische Rechnungseinheiten (XBC)"}
+        }
+        XBD{
+            one{"Europäische Rechnungseinheiten (XBD)"}
+            other{"Europäische Rechnungseinheiten (XBD)"}
+        }
+        XCD{
+            one{"Ostkaribischer Dollar"}
+            other{"Ostkaribische Dollar"}
+        }
+        XDR{
+            one{"Sonderziehungsrechte"}
+            other{"Sonderziehungsrechte"}
+        }
+        XEU{
+            one{"Europäische Währungseinheiten (XEU)"}
+            other{"Europäische Währungseinheiten (XEU)"}
+        }
+        XFO{
+            one{"Französische Gold-Franc"}
+            other{"Französische Gold-Franc"}
+        }
+        XFU{
+            one{"Französische UIC-Franc"}
+            other{"Französische UIC-Franc"}
+        }
+        XOF{
+            one{"CFA-Franc (BCEAO)"}
+            other{"CFA-Franc (BCEAO)"}
+        }
+        XPD{
+            one{"Unze Palladium"}
+            other{"Unzen Palladium"}
+        }
+        XPF{
+            one{"CFP-Franc"}
+            other{"CFP-Franc"}
+        }
+        XPT{
+            one{"Unze Platin"}
+            other{"Unzen Platin"}
+        }
+        XRE{
+            one{"RINET Funds"}
+            other{"RINET Funds"}
+        }
+        XTS{
+            one{"Testwährung"}
+            other{"Testwährung"}
+        }
+        XXX{
+            one{"Unbekannte Währung"}
+            other{"Unbekannte Währung"}
+        }
+        YDD{
+            one{"Jemen-Dinar"}
+            other{"Jemen-Dinar"}
+        }
+        YER{
+            one{"Jemen-Rial"}
+            other{"Jemen-Rial"}
+        }
+        ZAL{
+            one{"Südafrikanischer Rand (Finanz)"}
+            other{"Südafrikanischer Rand (Finanz)"}
+        }
+        ZAR{
+            one{"Südafrikanischer Rand"}
+            other{"Südafrikanische Rand"}
+        }
+        ZMW{
+            one{"Kwacha"}
+            other{"Kwacha"}
+        }
+        ZWL{
+            one{"Simbabwe-Dollar (2009)"}
+            other{"Simbabwe-Dollar (2009)"}
+        }
+        ZWR{
+            one{"Simbabwe-Dollar (2008)"}
+            other{"Simbabwe-Dollar (2008)"}
+        }
+    }
+    CurrencyUnitPatterns{
+        one{"{0} {1}"}
+        other{"{0} {1}"}
+    }
+    Version{"2.0.92.87"}
+}

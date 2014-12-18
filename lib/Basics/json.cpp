@@ -669,7 +669,7 @@ void TRI_FreeJson (TRI_memory_zone_t* zone, TRI_json_t* object) {
 /// @brief returns a user printeable string
 ////////////////////////////////////////////////////////////////////////////////
 
-const char *TRI_GetTypeString(TRI_json_t* object) {
+char const* TRI_GetTypeString(TRI_json_t* object) {
   switch (object->_type) {
     case TRI_JSON_UNUSED:
       return "unused";

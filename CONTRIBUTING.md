@@ -21,7 +21,7 @@ Getting started
 * For feature requests: please clearly describe the proposed feature, additional
   configuration options, and side effects.
 
-* Please let us know if you plan to work an a ticket. This way we can make sure
+* Please let us know if you plan to work on a ticket. This way we can make sure
   we avoid redundant work.
 
 * Create a fork of our repository. You can use GitHub to do this.
@@ -29,13 +29,13 @@ Getting started
 * Clone the fork to your development box and pull the latest changes from the
   ArangoDB repository. Please make sure to use the appropriate branch:
 
-  * the "devel" branch is normally used for new features 
+  * the **devel** branch is normally used for new features 
 
-  * bug fixes should be done in the "devel" branch first, before being applied to
+  * bug fixes should be done in the **devel** branch first, before being applied to
     master or other branches.
 
 * If missing, install the required prerequisites. They are listed
-  [in the manual](https://www.arangodb.org/manuals/current/Compiling.html).
+  [in the manual](https://docs.arangodb.com/Installing/Compiling.html).
 
 * configure and make your local clone. If you intend to modify the parser files,
   please make sure to activate the --enable-maintainer-mode configure option. In
@@ -72,7 +72,7 @@ Making Changes
 
 * When finished, push the changes to your GitHub repository and send a pull
   request from your fork to the ArangoDB repository. Please make sure to select
-  the appropriate branches there. This will most likely be "devel".
+  the appropriate branches there. This will most likely be **devel**.
 
 * You must use the Apache License for your changes.
 
@@ -88,7 +88,7 @@ configuration.  This will help us reproducing and finding bugs.
 Additional Resources
 --------------------
 
-* [ArangoDB website](https://www.arangodb.org/)
+* [ArangoDB website](https://www.arangodb.com/)
 
 * [ArangoDB on Twitter](https://twitter.com/arangodb)
 

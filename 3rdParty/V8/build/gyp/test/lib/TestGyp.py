@@ -6,6 +6,8 @@
 TestGyp.py:  a testing framework for GYP integration tests.
 """
 
+import collections
+import itertools
 import os
 import re
 import shutil
@@ -14,6 +16,7 @@ import subprocess
 import sys
 import tempfile
 
+import TestCmd
 import TestCommon
 from TestCommon import __all__
 
@@ -92,6 +95,7 @@ class TestGypBase(TestCommon.TestCommon):
         else:
           gyp = 'gyp'
     self.gyp = os.path.abspath(gyp)
+    self.no_parallel = False
 
     self.initialize_build_tool()
 
@@ -153,6 +157,13 @@ class TestGypBase(TestCommon.TestCommon):
     match the specified contents.
     """
     return self.must_not_match(self.built_file_path(name, **kw), contents)
+
+  def built_file_must_not_contain(self, name, contents, **kw):
+    """
+    Fails the test if the specified built file name contains the specified
+    contents.
+    """
+    return self.must_not_contain(self.built_file_path(name, **kw), contents)
 
   def copy_test_configuration(self, source_dir, dest_dir):
     """
@@ -222,7 +233,7 @@ class TestGypBase(TestCommon.TestCommon):
 
     This provides common reporting for formats that have complicated
     conditions for checking whether a build is up-to-date.  Formats
-    that expect exact output from the command (make, scons) can
+    that expect exact output from the command (make) can
     just set stdout= when they call the run_build() method.
     """
     print "Build is not up-to-date:"
@@ -246,6 +257,8 @@ class TestGypBase(TestCommon.TestCommon):
     # TODO:  --depth=. works around Chromium-specific tree climbing.
     depth = kw.pop('depth', '.')
     run_args = ['--depth='+depth, '--format='+self.format, gyp_file]
+    if self.no_parallel:
+      run_args += ['--no-parallel']
     run_args.extend(self.extra_args)
     run_args.extend(args)
     return self.run(program=self.gyp, arguments=run_args, **kw)
@@ -348,6 +361,11 @@ class TestGypGypd(TestGypBase):
   internal data structure as pretty-printed Python).
   """
   format = 'gypd'
+  def __init__(self, gyp=None, *args, **kw):
+    super(TestGypGypd, self).__init__(*args, **kw)
+    # gypd implies the use of 'golden' files, so parallelizing conflicts as it
+    # causes ordering changes.
+    self.no_parallel = True
 
 
 class TestGypCustom(TestGypBase):
@@ -383,7 +401,7 @@ class TestGypAndroid(TestGypBase):
   ALL = 'gyp_all_modules'
 
   def __init__(self, gyp=None, *args, **kw):
-    # Android requires build and test output to be outside its source tree.
+    # Android requires build and test output to be inside its source tree.
     # We use the following working directory for the test's source, but the
     # test's build output still goes to $ANDROID_PRODUCT_OUT.
     # Note that some tests explicitly set format='gypd' to invoke the gypd
@@ -400,7 +418,6 @@ class TestGypAndroid(TestGypBase):
     out_dir = os.environ['ANDROID_PRODUCT_OUT']
     obj_dir = os.path.join(out_dir, 'obj')
     shutil.rmtree(os.path.join(obj_dir, 'GYP'), ignore_errors = True)
-    shutil.rmtree(os.path.join(obj_dir, 'NONE'), ignore_errors = True)
     for x in ['EXECUTABLES', 'STATIC_LIBRARIES', 'SHARED_LIBRARIES']:
       for d in os.listdir(os.path.join(obj_dir, x)):
         if d.endswith('_gyp_intermediates'):
@@ -494,7 +511,7 @@ class TestGypAndroid(TestGypBase):
     status = None
     if os.path.exists(self.built_file_path(name)):
       status = 1
-    self._complete(None, None, None, None, status, self.match)
+    self._complete(None, None, None, None, status, match)
 
   def match_single_line(self, lines = None, expected_line = None):
     """
@@ -516,6 +533,108 @@ class TestGypAndroid(TestGypBase):
     # exact stdout string.
     kw['match'] = self.match_single_line
     return self.build(gyp_file, target, **kw)
+
+
+class TestGypCMake(TestGypBase):
+  """
+  Subclass for testing the GYP CMake generator, using cmake's ninja backend.
+  """
+  format = 'cmake'
+  build_tool_list = ['cmake']
+  ALL = 'all'
+
+  def cmake_build(self, gyp_file, target=None, **kw):
+    arguments = kw.get('arguments', [])[:]
+
+    self.build_tool_list = ['cmake']
+    self.initialize_build_tool()
+
+    chdir = os.path.join(kw.get('chdir', '.'),
+                         'out',
+                         self.configuration_dirname())
+    kw['chdir'] = chdir
+
+    arguments.append('-G')
+    arguments.append('Ninja')
+
+    kw['arguments'] = arguments
+
+    stderr = kw.get('stderr', None)
+    if stderr:
+      kw['stderr'] = stderr.split('$$$')[0]
+
+    self.run(program=self.build_tool, **kw)
+
+  def ninja_build(self, gyp_file, target=None, **kw):
+    arguments = kw.get('arguments', [])[:]
+
+    self.build_tool_list = ['ninja']
+    self.initialize_build_tool()
+
+    # Add a -C output/path to the command line.
+    arguments.append('-C')
+    arguments.append(os.path.join('out', self.configuration_dirname()))
+
+    if target not in (None, self.DEFAULT):
+      arguments.append(target)
+
+    kw['arguments'] = arguments
+
+    stderr = kw.get('stderr', None)
+    if stderr:
+      stderrs = stderr.split('$$$')
+      kw['stderr'] = stderrs[1] if len(stderrs) > 1 else ''
+
+    return self.run(program=self.build_tool, **kw)
+
+  def build(self, gyp_file, target=None, status=0, **kw):
+    # Two tools must be run to build, cmake and the ninja.
+    # Allow cmake to succeed when the overall expectation is to fail.
+    if status is None:
+      kw['status'] = None
+    else:
+      if not isinstance(status, collections.Iterable): status = (status,)
+      kw['status'] = list(itertools.chain((0,), status))
+    self.cmake_build(gyp_file, target, **kw)
+    kw['status'] = status
+    self.ninja_build(gyp_file, target, **kw)
+
+  def run_built_executable(self, name, *args, **kw):
+    # Enclosing the name in a list avoids prepending the original dir.
+    program = [self.built_file_path(name, type=self.EXECUTABLE, **kw)]
+    if sys.platform == 'darwin':
+      configuration = self.configuration_dirname()
+      os.environ['DYLD_LIBRARY_PATH'] = os.path.join('out', configuration)
+    return self.run(program=program, *args, **kw)
+
+  def built_file_path(self, name, type=None, **kw):
+    result = []
+    chdir = kw.get('chdir')
+    if chdir:
+      result.append(chdir)
+    result.append('out')
+    result.append(self.configuration_dirname())
+    if type == self.STATIC_LIB:
+      if sys.platform != 'darwin':
+        result.append('obj.target')
+    elif type == self.SHARED_LIB:
+      if sys.platform != 'darwin' and sys.platform != 'win32':
+        result.append('lib.target')
+    subdir = kw.get('subdir')
+    if subdir and type != self.SHARED_LIB:
+      result.append(subdir)
+    result.append(self.built_file_basename(name, type, **kw))
+    return self.workpath(*result)
+
+  def up_to_date(self, gyp_file, target=None, **kw):
+    result = self.ninja_build(gyp_file, target, **kw)
+    if not result:
+      stdout = self.stdout()
+      if 'ninja: no work to do' not in stdout:
+        self.report_not_up_to_date()
+        self.fail_test()
+    return result
+
 
 class TestGypMake(TestGypBase):
   """
@@ -620,9 +739,12 @@ def FindVisualStudioInstallation():
   search %PATH% and %PATHEXT% for a devenv.{exe,bat,...} executable.
   Failing that, we search for likely deployment paths.
   """
-  possible_roots = ['C:\\Program Files (x86)', 'C:\\Program Files',
-                    'E:\\Program Files (x86)', 'E:\\Program Files']
+  possible_roots = ['%s:\\Program Files%s' % (chr(drive), suffix)
+                    for drive in range(ord('C'), ord('Z') + 1)
+                    for suffix in ['', ' (x86)']]
   possible_paths = {
+      '2013': r'Microsoft Visual Studio 12.0\Common7\IDE\devenv.com',
+      '2012': r'Microsoft Visual Studio 11.0\Common7\IDE\devenv.com',
       '2010': r'Microsoft Visual Studio 10.0\Common7\IDE\devenv.com',
       '2008': r'Microsoft Visual Studio 9.0\Common7\IDE\devenv.com',
       '2005': r'Microsoft Visual Studio 8\Common7\IDE\devenv.com'}
@@ -783,13 +905,15 @@ class TestGypMSVS(TestGypOnMSToolchain):
     super(TestGypMSVS, self).initialize_build_tool()
     self.build_tool = self.devenv_path
 
-  def build(self, gyp_file, target=None, rebuild=False, **kw):
+  def build(self, gyp_file, target=None, rebuild=False, clean=False, **kw):
     """
     Runs a Visual Studio build using the configuration generated
     from the specified gyp_file.
     """
     configuration = self.configuration_buildname()
-    if rebuild:
+    if clean:
+      build = '/Clean'
+    elif rebuild:
       build = '/Rebuild'
     else:
       build = '/Build'
@@ -862,78 +986,6 @@ class TestGypMSVS(TestGypOnMSToolchain):
     return self.workpath(*result)
 
 
-class TestGypSCons(TestGypBase):
-  """
-  Subclass for testing the GYP SCons generator.
-  """
-  format = 'scons'
-  build_tool_list = ['scons', 'scons.py']
-  ALL = 'all'
-  def build(self, gyp_file, target=None, **kw):
-    """
-    Runs a scons build using the SCons configuration generated from the
-    specified gyp_file.
-    """
-    arguments = kw.get('arguments', [])[:]
-    dirname = os.path.dirname(gyp_file)
-    if dirname:
-      arguments.extend(['-C', dirname])
-    if self.configuration:
-      arguments.append('--mode=' + self.configuration)
-    if target not in (None, self.DEFAULT):
-      arguments.append(target)
-    kw['arguments'] = arguments
-    return self.run(program=self.build_tool, **kw)
-  def up_to_date(self, gyp_file, target=None, **kw):
-    """
-    Verifies that a build of the specified SCons target is up to date.
-    """
-    if target in (None, self.DEFAULT):
-      up_to_date_targets = 'all'
-    else:
-      up_to_date_targets = target
-    up_to_date_lines = []
-    for arg in up_to_date_targets.split():
-      up_to_date_lines.append("scons: `%s' is up to date.\n" % arg)
-    kw['stdout'] = ''.join(up_to_date_lines)
-    arguments = kw.get('arguments', [])[:]
-    arguments.append('-Q')
-    kw['arguments'] = arguments
-    return self.build(gyp_file, target, **kw)
-  def run_built_executable(self, name, *args, **kw):
-    """
-    Runs an executable built by scons.
-    """
-    configuration = self.configuration_dirname()
-    os.environ['LD_LIBRARY_PATH'] = os.path.join(configuration, 'lib')
-    # Enclosing the name in a list avoids prepending the original dir.
-    program = [self.built_file_path(name, type=self.EXECUTABLE, **kw)]
-    return self.run(program=program, *args, **kw)
-  def built_file_path(self, name, type=None, **kw):
-    """
-    Returns a path to the specified file name, of the specified type,
-    as built by Scons.
-
-    Built files are in a subdirectory that matches the configuration
-    name.  The default is 'Default'.
-
-    A chdir= keyword argument specifies the source directory
-    relative to which  the output subdirectory can be found.
-
-    "type" values of STATIC_LIB or SHARED_LIB append the necessary
-    prefixes and suffixes to a platform-independent library base name.
-    """
-    result = []
-    chdir = kw.get('chdir')
-    if chdir:
-      result.append(chdir)
-    result.append(self.configuration_dirname())
-    if type in (self.STATIC_LIB, self.SHARED_LIB):
-      result.append('lib')
-    result.append(self.built_file_basename(name, type, **kw))
-    return self.workpath(*result)
-
-
 class TestGypXcode(TestGypBase):
   """
   Subclass for testing the GYP Xcode generator.
@@ -960,6 +1012,8 @@ class TestGypXcode(TestGypBase):
   up_to_date_endings = (
     'Checking Dependencies...\n** BUILD SUCCEEDED **\n', # Xcode 3.0/3.1
     'Check dependencies\n** BUILD SUCCEEDED **\n\n',     # Xcode 3.2
+    'Check dependencies\n\n\n** BUILD SUCCEEDED **\n\n', # Xcode 4.2
+    'Check dependencies\n\n** BUILD SUCCEEDED **\n\n',   # Xcode 5.0
   )
 
   def build(self, gyp_file, target=None, **kw):
@@ -981,6 +1035,20 @@ class TestGypXcode(TestGypBase):
     if symroot:
       arguments.append('SYMROOT='+symroot)
     kw['arguments'] = arguments
+
+    # Work around spurious stderr output from Xcode 4, http://crbug.com/181012
+    match = kw.pop('match', self.match)
+    def match_filter_xcode(actual, expected):
+      if actual:
+        if not TestCmd.is_List(actual):
+          actual = actual.split('\n')
+        if not TestCmd.is_List(expected):
+          expected = expected.split('\n')
+        actual = [a for a in actual
+                    if 'No recorder, buildTask: <Xcode3BuildTask:' not in a]
+      return match(actual, expected)
+    kw['match'] = match_filter_xcode
+
     return self.run(program=self.build_tool, **kw)
   def up_to_date(self, gyp_file, target=None, **kw):
     """
@@ -1031,10 +1099,10 @@ class TestGypXcode(TestGypBase):
 format_class_list = [
   TestGypGypd,
   TestGypAndroid,
+  TestGypCMake,
   TestGypMake,
   TestGypMSVS,
   TestGypNinja,
-  TestGypSCons,
   TestGypXcode,
 ]
 

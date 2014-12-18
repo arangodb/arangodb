@@ -23,7 +23,7 @@ test.built_file_must_exist('a', type=test.STATIC_LIB)
 
 # TODO(bradnelson/mark):
 # On linux and windows a library target will at least pull its link dependencies
-# into the generated sln/_main.scons, since not doing so confuses users.
+# into the generated project, since not doing so confuses users.
 # This is not currently implemented on mac, which has the opposite behavior.
 if sys.platform == 'darwin':
   if test.format == 'xcode':

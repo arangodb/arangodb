@@ -78,12 +78,39 @@ Repository = function (collection, opts) {
   this.collection = collection;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_repository_modelPrototype
-/// The prototype of the according model.
+/// @startDocuBlock JSF_foxx_repository_model
+/// The model of this repository. Formerly called "modelPrototype".
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  this.modelPrototype = this.options.model || Model;
+  this.model = this.options.model || Model;
+  Object.defineProperty(this, 'modelPrototype', {
+    configurable: true,
+    enumerable: true,
+    get: function () {
+      require('console').log('Repository#modelPrototype is deprecated, use Repository#model instead');
+      return this.model;
+    },
+    set: function (val) {
+      require('console').log('Repository#modelPrototype is deprecated, use Repository#model instead');
+      this.model = val;
+      return this.model;
+    }
+  });
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_repository_modelSchema
+/// The schema of this repository's model.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+  Object.defineProperty(this, 'modelSchema', {
+    configurable: false,
+    enumerable: true,
+    get: function () {
+      return this.model.prototype.schema;
+    }
+  });
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_prefix
@@ -147,20 +174,23 @@ _.extend(Repository.prototype, {
 /// @startDocuBlock JSF_foxx_repository_byId
 /// `FoxxRepository#byId(id)`
 ///
-/// Returns the model for the given ID.
+/// Returns the model for the given ID ("collection/key") or "key".
 ///
 /// @EXAMPLES
 ///
 /// ```javascript
-/// var myModel = repository.byId('test/12411');
-/// myModel.get('name');
+/// var byIdModel = repository.byId('test/12411');
+/// byIdModel.get('name');
+///
+/// var byKeyModel = repository.byId('12412');
+/// byKeyModel.get('name');
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   byId: function (id) {
     'use strict';
     var data = this.collection.document(id);
-    return (new this.modelPrototype(data));
+    return (new this.model(data));
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -181,7 +211,7 @@ _.extend(Repository.prototype, {
     'use strict';
     var rawDocuments = this.collection.byExample(example).toArray();
     return _.map(rawDocuments, function (rawDocument) {
-      return (new this.modelPrototype(rawDocument));
+      return (new this.model(rawDocument));
     }, this);
   },
 
@@ -202,7 +232,7 @@ _.extend(Repository.prototype, {
   firstExample: function (example) {
     'use strict';
     var rawDocument = this.collection.firstExample(example);
-    return (new this.modelPrototype(rawDocument));
+    return (new this.model(rawDocument));
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -242,8 +272,30 @@ _.extend(Repository.prototype, {
       rawDocuments = rawDocuments.limit(options.limit);
     }
     return _.map(rawDocuments.toArray(), function (rawDocument) {
-      return (new this.modelPrototype(rawDocument));
+      return (new this.model(rawDocument));
     }, this);
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_repository_any
+/// `FoxxRepository#any()`
+///
+/// Returns a random model from this repository (or null if there is none).
+///
+/// @EXAMPLES
+///
+/// ```javascript
+/// repository.any();
+/// ```
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+  any: function () {
+    'use strict';
+    var data = this.collection.any();
+    if (!data) {
+      return null;
+    }
+    return (new this.model(data));
   },
 
 // -----------------------------------------------------------------------------
@@ -277,13 +329,14 @@ _.extend(Repository.prototype, {
 /// @startDocuBlock JSF_foxx_repository_removeById
 /// `FoxxRepository#removeById(id)`
 ///
-/// Remove the document with the given ID.
-/// Expects an ID of an existing document.
+/// Remove the document with the given ID ("collection/key") or "key".
+/// Expects an ID or key of an existing document.
 ///
 /// @EXAMPLES
 ///
 /// ```javascript
 /// repository.removeById('test/12121');
+/// repository.removeById('12122');
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -343,8 +396,8 @@ _.extend(Repository.prototype, {
 /// @startDocuBlock JSF_foxx_repository_replaceById
 /// `FoxxRepository#replaceById(id, object)`
 ///
-/// Find the item in the database by the given ID and replace it with the
-/// given object's attributes.
+/// Find the item in the database by the given ID  ("collection/key") or "key"
+/// and replace it with the given object's attributes.
 ///
 /// If the object is a model, updates the model's revision and returns the model.
 ///
@@ -352,6 +405,7 @@ _.extend(Repository.prototype, {
 ///
 /// ```javascript
 /// repository.replaceById('test/123345', myNewModel);
+/// repository.replaceById('123346', myNewModel);
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -420,7 +474,8 @@ _.extend(Repository.prototype, {
 /// @startDocuBlock JSF_foxx_repository_updateById
 /// `FoxxRepository#updateById(id, object)`
 ///
-/// Find an item by ID and update it with the attributes in the provided object.
+/// Find an item by ID ("collection/key") or "key" and update it with the
+/// attributes in the provided object.
 ///
 /// If the object is a model, updates the model's revision and returns the model.
 ///
@@ -428,6 +483,7 @@ _.extend(Repository.prototype, {
 ///
 /// ```javascript
 /// repository.updateById('test/12131', { newAttribute: 'awesome' });
+/// repository.updateById('12132', { newAttribute: 'awesomer' });
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -514,7 +570,7 @@ var indexPrototypes = {
       'use strict';
       var rawDocuments = this.collection.range(attribute, left, right).toArray();
       return _.map(rawDocuments, function (rawDocument) {
-        return (new this.modelPrototype(rawDocument));
+        return (new this.model(rawDocument));
       }, this);
     }
   },
@@ -567,7 +623,7 @@ var indexPrototypes = {
         rawDocuments = rawDocuments.limit(options.limit);
       }
       return _.map(rawDocuments.toArray(), function (rawDocument) {
-        var model = (new this.modelPrototype(rawDocument)),
+        var model = (new this.model(rawDocument)),
           distance;
         if (options.distance) {
           delete model.attributes._distance;
@@ -627,7 +683,7 @@ var indexPrototypes = {
         rawDocuments = rawDocuments.limit(options.limit);
       }
       return _.map(rawDocuments.toArray(), function (rawDocument) {
-        var model = (new this.modelPrototype(rawDocument)),
+        var model = (new this.model(rawDocument)),
           distance;
         if (options.distance) {
           delete model.attributes._distance;
@@ -676,7 +732,7 @@ var indexPrototypes = {
         rawDocuments = rawDocuments.limit(options.limit);
       }
       return _.map(rawDocuments.toArray(), function (rawDocument) {
-        return (new this.modelPrototype(rawDocument));
+        return (new this.model(rawDocument));
       }, this);
     }
   }

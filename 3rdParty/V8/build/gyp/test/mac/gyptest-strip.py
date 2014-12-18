@@ -39,15 +39,15 @@ if sys.platform == 'darwin':
 
   # The actual numbers here are not interesting, they just need to be the same
   # in both the xcode and the make build.
-  CheckNsyms(OutPath('no_postprocess'), 11)
-  CheckNsyms(OutPath('no_strip'), 11)
+  CheckNsyms(OutPath('no_postprocess'), 29)
+  CheckNsyms(OutPath('no_strip'), 29)
   CheckNsyms(OutPath('strip_all'), 0)
-  CheckNsyms(OutPath('strip_nonglobal'), 2)
-  CheckNsyms(OutPath('strip_debugging'), 3)
+  CheckNsyms(OutPath('strip_nonglobal'), 6)
+  CheckNsyms(OutPath('strip_debugging'), 7)
   CheckNsyms(OutPath('strip_all_custom_flags'), 0)
   CheckNsyms(test.built_file_path(
       'strip_all_bundle.framework/Versions/A/strip_all_bundle', chdir='strip'),
       0)
-  CheckNsyms(OutPath('strip_save'), 3)
+  CheckNsyms(OutPath('strip_save'), 7)
 
   test.pass_test()

@@ -45,7 +45,7 @@ using namespace triagens::arango;
 
 V8TransactionContext::V8TransactionContext (bool embeddable) 
   : TransactionContext(),
-     _sharedTransactionContext(static_cast<V8TransactionContext*>(static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData())->_transactionContext)),
+     _sharedTransactionContext(static_cast<V8TransactionContext*>(static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData(V8DataSlot))->_transactionContext)),
     _resolver(nullptr),
     _currentTransaction(nullptr),
     _ownResolver(false),
@@ -150,7 +150,7 @@ void V8TransactionContext::deleteResolver () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool V8TransactionContext::IsEmbedded () {
-  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData(V8DataSlot));
   if (v8g->_transactionContext == nullptr) {
     return false;
   }

@@ -1,14 +1,36 @@
 {
   "name": "aardvark",
   "description": "ArangoDB Admin Web Interface",
-  "author": "Heiko Kernbach, Michael Hackstein, moonglum",
+  "author": "ArangoDB GmbH",
   "version": "1.0",
+  "license": "Apache License, Version 2.0",
   "isSystem": true,
+
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/triAGENS/ArangoDB.git"
+  },
+
+  "contributors": [
+    {
+      "name": "Heiko Kernbach",
+      "email": "h.kernbach@triagens.de"
+    },
+    {
+      "name": "Michael Hackstein",
+      "email": "m.hackstein@arangodb.com"
+    },
+    {
+      "name": "Lucas Dohmen",
+      "email": "lucas@arangodb.com"
+    }
+  ],
 
   "controllers": {
     "/": "aardvark.js",
     "/cluster": "cluster.js",
-    "/statistics": "statistics.js"
+    "/statistics": "statistics.js",
+    "/templates": "foxxTemplates.js"
   },
 
   "assets": {
@@ -26,6 +48,8 @@
         "frontend/js/templates/apiView.ejs",
         "frontend/js/templates/appDocumentationView.ejs",
         "frontend/js/templates/applicationsView.ejs",
+        "frontend/js/templates/applicationDetailView.ejs",
+        "frontend/js/templates/applicationListView.ejs",
         "frontend/js/templates/arangoTabbar.ejs",
         "frontend/js/templates/arangoTable.ejs",
         "frontend/js/templates/collectionsItemView.ejs",
@@ -37,17 +61,19 @@
         "frontend/js/templates/editListEntryView.ejs",
         "frontend/js/templates/footerView.ejs",
         "frontend/js/templates/foxxActiveView.ejs",
-        "frontend/js/templates/foxxInstalledView.ejs",
         "frontend/js/templates/graphManagementView.ejs",
         "frontend/js/templates/graphViewGroupByEntry.ejs",
         "frontend/js/templates/lineChartDetailView.ejs",
         "frontend/js/templates/loginView.ejs",
         "frontend/js/templates/modalBase.ejs",
+        "frontend/js/templates/modalApplicationMount.ejs",
         "frontend/js/templates/modalCollectionInfo.ejs",
+        "frontend/js/templates/modalDownloadFoxx.ejs",
+        "frontend/js/templates/modalFoxxDevPath.ejs",
         "frontend/js/templates/modalGraph.ejs",
+        "frontend/js/templates/modalGraphTable.ejs",
         "frontend/js/templates/modalNewVersion.ejs",
         "frontend/js/templates/modalTable.ejs",
-        "frontend/js/templates/modalGraphTable.ejs",
         "frontend/js/templates/edgeDefinitionTable.ejs",
         "frontend/js/templates/modalHotkeys.ejs",
         "frontend/js/templates/navigationView.ejs",
@@ -62,6 +88,8 @@
         "frontend/js/templates/testView.ejs",
         "frontend/js/templates/userBarView.ejs",
         "frontend/js/templates/userManagementView.ejs",
+        "frontend/js/templates/tableView.ejs",
+        "frontend/js/templates/loadingTableView.ejs",
         "frontend/html/body.html.part",
         "frontend/html/scripts.html.part",
         "frontend/html/end.html.part"
@@ -136,9 +164,11 @@
         "frontend/js/collections/notificationCollection.js",
         "frontend/js/collections/arangoQueries.js",
         "frontend/js/views/_paginationView.js",
+        "frontend/js/views/tableView.js",
         "frontend/js/views/apiView.js",
         "frontend/js/views/appDocumentationView.js",
         "frontend/js/views/applicationsView.js",
+        "frontend/js/views/applicationDetailView.js",
         "frontend/js/views/collectionsItemView.js",
         "frontend/js/views/collectionsView.js",
         "frontend/js/views/databaseView.js",
@@ -182,12 +212,12 @@
     "libs.js": {
       "files": [
         "frontend/js/lib/jquery-ui-1.9.2.custom.js",
-        "frontend/js/lib/jquery.dataTables.js",
         "frontend/js/lib/jquery.snippet.js",
         "frontend/js/lib/jquery.slideto.min.js",
         "frontend/js/lib/jquery.wiggle.min.js",
         "frontend/js/lib/jquery.contextmenu.js",
         "frontend/js/lib/jquery.hotkeys.js",
+        "frontend/js/lib/jquery.uploadfile.js",
         "frontend/js/lib/select2.min.js",
         "frontend/js/lib/handlebars-1.0.rc.1.js",
         "frontend/js/lib/underscore.js",
@@ -198,7 +228,6 @@
         "frontend/js/lib/strftime-min.js",
         "frontend/js/lib/dygraph-combined.js",
         "frontend/js/lib/d3.fisheye.js",
-        "frontend/js/lib/ColVis.js",
         "frontend/js/lib/bootstrap-pagination.js",
         "frontend/js/lib/jqconsole.min.js",
         "frontend/js/lib/swagger.js",

@@ -147,8 +147,8 @@ class KeySpace {
       return count;
     }
 
-    v8::Handle<v8::Value> keyspaceRemove () {
-      v8::HandleScope scope;
+    v8::Handle<v8::Value> keyspaceRemove (v8::Isolate* isolate) {
+      v8::EscapableHandleScope scope(isolate);
 
       WRITE_LOCKER(_lock);
 
@@ -166,12 +166,12 @@ class KeySpace {
       }
       _hash._nrUsed = 0;
 
-      return scope.Close(v8::Number::New(static_cast<int>(deleted))); 
+      return scope.Escape<v8::Value>(v8::Number::New(isolate, static_cast<int>(deleted)));
     }
 
-    v8::Handle<v8::Value> keyspaceRemove (std::string const& prefix) {
-      v8::HandleScope scope;
-
+    v8::Handle<v8::Value> keyspaceRemove (v8::Isolate* isolate,
+                                          std::string const& prefix) {
+      v8::EscapableHandleScope scope(isolate);
       WRITE_LOCKER(_lock);
 
       uint32_t const n = _hash._nrAlloc;
@@ -193,61 +193,58 @@ class KeySpace {
         ++i;
       }
 
-      return scope.Close(v8::Number::New(static_cast<int>(deleted))); 
+      return scope.Escape<v8::Value>(v8::Number::New(isolate, static_cast<int>(deleted)));
     }
 
-    v8::Handle<v8::Value> keyspaceKeys () {
-      v8::HandleScope scope;
-
+    v8::Handle<v8::Value> keyspaceKeys (v8::Isolate* isolate) {
+      v8::EscapableHandleScope scope(isolate);
       v8::Handle<v8::Array> result;
       {
         READ_LOCKER(_lock);
 
         uint32_t const n = _hash._nrAlloc;
         uint32_t count = 0;
-        result = v8::Array::New(static_cast<int>(_hash._nrUsed));
+        result = v8::Array::New(isolate, static_cast<int>(_hash._nrUsed));
 
         for (uint32_t i = 0; i < n; ++i) {
           auto element = static_cast<KeySpaceElement*>(_hash._table[i]);
 
           if (element != nullptr) {
-            result->Set(count++, v8::String::New(element->key));
+            result->Set(count++, TRI_V8_STRING(element->key));
           }
         }
       }
 
-      return scope.Close(result); 
+      return scope.Escape<v8::Value>(result);
     }
 
-    v8::Handle<v8::Value> keyspaceKeys (std::string const& prefix) {
-      v8::HandleScope scope;
-
+   v8::Handle<v8::Value> keyspaceKeys (v8::Isolate* isolate, std::string const& prefix) {
+     v8::EscapableHandleScope scope(isolate);
       v8::Handle<v8::Array> result;
       {
         READ_LOCKER(_lock);
 
         uint32_t const n = _hash._nrAlloc;
         uint32_t count = 0;
-        result = v8::Array::New();
+        result = v8::Array::New(isolate);
 
         for (uint32_t i = 0; i < n; ++i) {
           auto element = static_cast<KeySpaceElement*>(_hash._table[i]);
 
           if (element != nullptr) {
             if (TRI_IsPrefixString(element->key, prefix.c_str())) {
-              result->Set(count++, v8::String::New(element->key));
+              result->Set(count++, TRI_V8_STRING(element->key));
             }
           }
         }
       }
 
-      return scope.Close(result); 
+      return scope.Escape<v8::Value>(result);
     }
 
-    v8::Handle<v8::Value> keyspaceGet () {
-      v8::HandleScope scope;
-
-      v8::Handle<v8::Object> result = v8::Object::New();
+    v8::Handle<v8::Value> keyspaceGet (v8::Isolate* isolate) {
+      v8::EscapableHandleScope scope(isolate);
+      v8::Handle<v8::Object> result = v8::Object::New(isolate);
       {
         READ_LOCKER(_lock);
 
@@ -257,18 +254,17 @@ class KeySpace {
           auto element = static_cast<KeySpaceElement*>(_hash._table[i]);
 
           if (element != nullptr) {
-            result->Set(v8::String::New(element->key), TRI_ObjectJson(element->json));
+            result->Set(TRI_V8_STRING(element->key), TRI_ObjectJson(isolate, element->json));
           }
         }
       }
 
-      return scope.Close(result); 
+      return scope.Escape<v8::Value>(result);
     }
 
-    v8::Handle<v8::Value> keyspaceGet (std::string const& prefix) {
-      v8::HandleScope scope;
-
-      v8::Handle<v8::Object> result = v8::Object::New();
+    v8::Handle<v8::Value> keyspaceGet (v8::Isolate* isolate, std::string const& prefix) {
+      v8::EscapableHandleScope scope(isolate);
+      v8::Handle<v8::Object> result = v8::Object::New(isolate);
       {
         READ_LOCKER(_lock);
 
@@ -279,16 +275,14 @@ class KeySpace {
 
           if (element != nullptr) {
             if (TRI_IsPrefixString(element->key, prefix.c_str())) {
-              result->Set(v8::String::New(element->key), TRI_ObjectJson(element->json));
+              result->Set(TRI_V8_STRING(element->key), TRI_ObjectJson(isolate, element->json));
             }
           }
         }
       }
 
-      return scope.Close(result); 
+      return scope.Escape<v8::Value>(result);
     }
-
-
 
     bool keyCount (std::string const& key, 
                    uint32_t& result) {
@@ -313,9 +307,7 @@ class KeySpace {
       return false;
     }
 
-    v8::Handle<v8::Value> keyGet (std::string const& key) {
-      v8::HandleScope scope;
-
+    v8::Handle<v8::Value> keyGet (v8::Isolate* isolate, std::string const& key) {
       v8::Handle<v8::Value> result;
       {
         READ_LOCKER(_lock);
@@ -323,20 +315,21 @@ class KeySpace {
         auto found = static_cast<KeySpaceElement*>(TRI_LookupByKeyAssociativePointer(&_hash, key.c_str()));
 
         if (found == nullptr) {
-          result = v8::Undefined();
+          result = v8::Undefined(isolate);
         }
         else {
-          result = TRI_ObjectJson(found->json);
+          result = TRI_ObjectJson(isolate, found->json);
         }
       }
 
-      return scope.Close(result); 
+      return result; 
     }
 
-    bool keySet (std::string const& key,
+    bool keySet (v8::Isolate* isolate,
+                 std::string const& key,
                  v8::Handle<v8::Value> const& value,
                  bool replace) {
-      auto element = new KeySpaceElement(key.c_str(), key.size(), TRI_ObjectToJson(value));
+      auto element = new KeySpaceElement(key.c_str(), key.size(), TRI_ObjectToJson(isolate, value));
       KeySpaceElement* found = nullptr;
 
       {
@@ -353,16 +346,17 @@ class KeySpace {
         delete found;
         return true;
       }
-        
+
       delete element;
       return false;
     }
 
-    int keyCas (std::string const& key,
+    int keyCas (v8::Isolate* isolate,
+                std::string const& key,
                 v8::Handle<v8::Value> const& value,
                 v8::Handle<v8::Value> const& compare,
                 bool& match) {
-      auto element = new KeySpaceElement(key.c_str(), key.size(), TRI_ObjectToJson(value));
+      auto element = new KeySpaceElement(key.c_str(), key.size(), TRI_ObjectToJson(isolate, value));
 
       WRITE_LOCKER(_lock);
  
@@ -380,7 +374,7 @@ class KeySpace {
         return TRI_ERROR_NO_ERROR;
       }
 
-      TRI_json_t* other = TRI_ObjectToJson(compare);
+      TRI_json_t* other = TRI_ObjectToJson(isolate, compare);
 
       if (other == nullptr) {
         delete element;
@@ -457,7 +451,8 @@ class KeySpace {
       return TRI_ERROR_NO_ERROR;
     }
 
-    int keyPush (std::string const& key,
+    int keyPush (v8::Isolate* isolate,
+                 std::string const& key,
                  v8::Handle<v8::Value> const& value) {
       WRITE_LOCKER(_lock);
 
@@ -470,7 +465,7 @@ class KeySpace {
           return TRI_ERROR_OUT_OF_MEMORY;
         }
 
-        if (TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, list, TRI_ObjectToJson(value)) != TRI_ERROR_NO_ERROR) {
+        if (TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, list, TRI_ObjectToJson(isolate, value)) != TRI_ERROR_NO_ERROR) {
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, list);
           return TRI_ERROR_OUT_OF_MEMORY;
         }
@@ -490,7 +485,7 @@ class KeySpace {
           return TRI_ERROR_INTERNAL;
         }
 
-        if (TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, current, TRI_ObjectToJson(value)) != TRI_ERROR_NO_ERROR) {
+        if (TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, current, TRI_ObjectToJson(isolate, value)) != TRI_ERROR_NO_ERROR) {
           return TRI_ERROR_OUT_OF_MEMORY;
         }
       }
@@ -498,64 +493,66 @@ class KeySpace {
       return TRI_ERROR_NO_ERROR;
     }
 
-    v8::Handle<v8::Value> keyPop (std::string const& key) {
-      v8::HandleScope scope;
-
+    void keyPop (const v8::FunctionCallbackInfo<v8::Value>& args, std::string const& key) {
+      v8::Isolate* isolate = args.GetIsolate();
+      v8::HandleScope scope(isolate);
       WRITE_LOCKER(_lock);
 
       auto found = static_cast<KeySpaceElement*>(TRI_LookupByKeyAssociativePointer(&_hash, key.c_str()));
 
       if (found == nullptr) {
         // TODO: change error code
-        TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL); 
+        TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL); 
       }
         
       TRI_json_t* current = found->json;
 
       if (! TRI_IsListJson(current)) {
         // TODO: change error code
-        TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL); 
+        TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL); 
       }
 
       size_t const n = TRI_LengthVector(&current->_value._objects);
 
       if (n == 0) {
-        return scope.Close(v8::Undefined());
+        TRI_V8_RETURN_UNDEFINED();
       }
 
       TRI_json_t* item = static_cast<TRI_json_t*>(TRI_AtVector(&current->_value._objects, n - 1));
       // hack: decrease the vector size
       --current->_value._objects._length;
 
-      v8::Handle<v8::Value> result = TRI_ObjectJson(item);
+      v8::Handle<v8::Value> result = TRI_ObjectJson(isolate, item);
       TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, item);
 
-      return scope.Close(result);
+      TRI_V8_RETURN(result);
     }
 
-    v8::Handle<v8::Value> keyTransfer (std::string const& keyFrom,
-                                       std::string const& keyTo) {
-      v8::HandleScope scope;
+    void keyTransfer (const v8::FunctionCallbackInfo<v8::Value>& args,
+                      std::string const& keyFrom,
+                      std::string const& keyTo) {
+      v8::Isolate* isolate = args.GetIsolate();
+      v8::HandleScope scope(isolate);
 
       WRITE_LOCKER(_lock);
 
       auto source = static_cast<KeySpaceElement*>(TRI_LookupByKeyAssociativePointer(&_hash, keyFrom.c_str()));
 
       if (source == nullptr) {
-        return scope.Close(v8::Undefined());
+        TRI_V8_RETURN_UNDEFINED();
       }
         
       TRI_json_t* current = source->json;
 
       if (! TRI_IsListJson(current)) {
         // TODO: change error code
-        TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL); 
+        TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL); 
       }
 
       size_t const n = TRI_LengthVector(&source->json->_value._objects);
 
       if (n == 0) {
-        return scope.Close(v8::Undefined());
+        TRI_V8_RETURN_UNDEFINED();
       }
 
       TRI_json_t* sourceItem = static_cast<TRI_json_t*>(TRI_AtVector(&source->json->_value._objects, n - 1));
@@ -566,7 +563,7 @@ class KeySpace {
         TRI_json_t* list = TRI_CreateList2Json(TRI_UNKNOWN_MEM_ZONE, 1);
 
         if (list == nullptr) {
-          TRI_V8_EXCEPTION_MEMORY(scope);
+          TRI_V8_THROW_EXCEPTION_MEMORY();
         }
 
         TRI_PushBack2ListJson(list, sourceItem);
@@ -577,16 +574,16 @@ class KeySpace {
           // hack: decrease the vector size
           --current->_value._objects._length;
         
-          return TRI_ObjectJson(sourceItem);
+          TRI_V8_RETURN(TRI_ObjectJson(isolate, sourceItem));
         }
         catch (...) {
-          TRI_V8_EXCEPTION_MEMORY(scope);
+          TRI_V8_THROW_EXCEPTION_MEMORY();
         }
       }
 
       if (! TRI_IsListJson(dest->json)) {
         // TODO: change error code
-        TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL); 
+        TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL); 
       }
 
       TRI_PushBack2ListJson(dest->json, sourceItem);
@@ -594,12 +591,10 @@ class KeySpace {
       // hack: decrease the vector size
       --current->_value._objects._length;
 
-      return TRI_ObjectJson(sourceItem);
+      TRI_V8_RETURN(TRI_ObjectJson(isolate, sourceItem));
     }
 
-    v8::Handle<v8::Value> keyKeys (std::string const& key) {
-      v8::HandleScope scope;
-
+    v8::Handle<v8::Value> keyKeys (v8::Isolate* isolate, std::string const& key) {
       v8::Handle<v8::Value> result;
       {
         READ_LOCKER(_lock);
@@ -607,19 +602,19 @@ class KeySpace {
         auto found = static_cast<KeySpaceElement*>(TRI_LookupByKeyAssociativePointer(&_hash, key.c_str()));
 
         if (found == nullptr) {
-          result = v8::Undefined();
+          result = v8::Undefined(isolate);
         }
         else {
-          result = TRI_KeysJson(found->json);
+          result = TRI_KeysJson(isolate, found->json);
         }
       }
 
-      return scope.Close(result); 
+      return result;
     }
 
-    v8::Handle<v8::Value> keyValues (std::string const& key) {
-      v8::HandleScope scope;
-
+    v8::Handle<v8::Value> keyValues (v8::Isolate* isolate,
+                                     std::string const& key) {
+      v8::EscapableHandleScope scope(isolate);
       v8::Handle<v8::Value> result;
       {
         READ_LOCKER(_lock);
@@ -627,19 +622,21 @@ class KeySpace {
         auto found = static_cast<KeySpaceElement*>(TRI_LookupByKeyAssociativePointer(&_hash, key.c_str()));
 
         if (found == nullptr) {
-          result = v8::Undefined();
+          result = v8::Undefined(isolate);
         }
         else {
-          result = TRI_ValuesJson(found->json);
+          result = TRI_ValuesJson(isolate, found->json);
         }
       }
 
-      return scope.Close(result); 
+      return scope.Escape<v8::Value>(result);
     }
 
-    v8::Handle<v8::Value> keyGetAt (std::string const& key,
-                                    int64_t index) {
-      v8::HandleScope scope;
+    void keyGetAt (const v8::FunctionCallbackInfo<v8::Value>& args,
+                   std::string const& key,
+                   int64_t index) {
+      v8::Isolate* isolate = args.GetIsolate();
+      v8::HandleScope scope(isolate);
 
       v8::Handle<v8::Value> result;
       {
@@ -648,12 +645,12 @@ class KeySpace {
         auto found = static_cast<KeySpaceElement*>(TRI_LookupByKeyAssociativePointer(&_hash, key.c_str()));
 
         if (found == nullptr) {
-          result = v8::Undefined();
+          result = v8::Undefined(isolate);
         }
         else {
           if (! TRI_IsListJson(found->json)) {
             // TODO: change error code
-            TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL); 
+            TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL); 
           }
 
           size_t const n = found->json->_value._objects._length;
@@ -662,19 +659,20 @@ class KeySpace {
           }
 
           if (index >= static_cast<int64_t>(n)) {
-            result = v8::Undefined();
+            result = v8::Undefined(isolate);
           }
           else {
             auto item = static_cast<TRI_json_t const*>(TRI_AtVector(&found->json->_value._objects, static_cast<size_t>(index)));
-            result = TRI_ObjectJson(item);
+            result = TRI_ObjectJson(isolate, item);
           }
         }
       }
 
-      return scope.Close(result); 
+      TRI_V8_RETURN(result);
     }
     
-    bool keySetAt (std::string const& key,
+    bool keySetAt (v8::Isolate* isolate,
+                   std::string const& key,
                    int64_t index,
                    v8::Handle<v8::Value> const& value) {
       WRITE_LOCKER(_lock);
@@ -697,7 +695,7 @@ class KeySpace {
           return false;
         }
 
-        auto json = TRI_ObjectToJson(value);
+        auto json = TRI_ObjectToJson(isolate, value);
         if (json == nullptr) {
           // TODO: change error code
           return false;
@@ -754,14 +752,16 @@ class KeySpace {
       return "undefined";
     }
 
-    v8::Handle<v8::Value> keyMerge (std::string const& key,
-                                    v8::Handle<v8::Value> const& value,
-                                    bool nullMeansRemove) {
-      v8::HandleScope scope;
+    void keyMerge (const v8::FunctionCallbackInfo<v8::Value>& args,
+                   std::string const& key,
+                   v8::Handle<v8::Value> const& value,
+                   bool nullMeansRemove) {
+      v8::Isolate* isolate = args.GetIsolate();
+      v8::HandleScope scope(isolate);
 
       if (! value->IsObject() || value->IsArray()) {
         // TODO: change error code
-        TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+        TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
       }
 
       WRITE_LOCKER(_lock);
@@ -769,33 +769,33 @@ class KeySpace {
       auto found = static_cast<KeySpaceElement*>(TRI_LookupByKeyAssociativePointer(&_hash, key.c_str()));
    
       if (found == nullptr) {
-        auto element = new KeySpaceElement(key.c_str(), key.size(), TRI_ObjectToJson(value));
+        auto element = new KeySpaceElement(key.c_str(), key.size(), TRI_ObjectToJson(isolate, value));
         TRI_InsertKeyAssociativePointer(&_hash, element->key, element, false);
 
-        return scope.Close(value);
+        TRI_V8_RETURN(value);
       }
 
       if (! TRI_IsArrayJson(found->json)) {
         // TODO: change error code
-        TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+        TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
       }
 
-      TRI_json_t* other = TRI_ObjectToJson(value);
+      TRI_json_t* other = TRI_ObjectToJson(isolate, value);
 
       if (other == nullptr) {
-        TRI_V8_EXCEPTION(scope, TRI_ERROR_OUT_OF_MEMORY);
+        TRI_V8_THROW_EXCEPTION_MEMORY();
       }
 
-      TRI_json_t* merged = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, found->json, other, nullMeansRemove); 
+      TRI_json_t* merged = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, found->json, other, nullMeansRemove, false); 
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, other);
 
       if (merged == nullptr) {
-        TRI_V8_EXCEPTION(scope, TRI_ERROR_OUT_OF_MEMORY);
+        TRI_V8_THROW_EXCEPTION_MEMORY();
       }
 
       found->setValue(merged);
  
-      return scope.Close(TRI_ObjectJson(merged));
+      TRI_V8_RETURN(TRI_ObjectJson(isolate, merged));
     }
 
   private:
@@ -825,8 +825,8 @@ struct UserStructures {
 /// @brief get the vocbase pointer from the current V8 context
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline TRI_vocbase_t* GetContextVocBase () {
-  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+static inline TRI_vocbase_t* GetContextVocBase (v8::Isolate* isolate) {
+  TRI_GET_GLOBALS();
 
   TRI_ASSERT_EXPENSIVE(v8g->_vocbase != nullptr);
   return static_cast<TRI_vocbase_t*>(v8g->_vocbase);
@@ -852,32 +852,34 @@ static KeySpace* GetKeySpace (TRI_vocbase_t* vocbase,
 /// @brief creates a keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_KeyspaceCreate (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_KeyspaceCreate (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  if (argv.Length() < 1 || ! argv[0]->IsString()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "KEYSPACE_CREATE(<name>, <size>, <ignoreExisting>)");
+
+  if (args.Length() < 1 || ! args[0]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("KEYSPACE_CREATE(<name>, <size>, <ignoreExisting>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(argv[0]);
+  std::string const&& name = TRI_ObjectToString(args[0]);
   int64_t size = 0;
 
-  if (argv.Length() > 1) {
-    size = TRI_ObjectToInt64(argv[1]);
+  if (args.Length() > 1) {
+    size = TRI_ObjectToInt64(args[1]);
     if (size < 0 || size > static_cast<decltype(size)>(UINT32_MAX)) {
-      TRI_V8_EXCEPTION_PARAMETER(scope, "invalid value for <size>");
+      TRI_V8_THROW_EXCEPTION_PARAMETER("invalid value for <size>");
     }
   }
 
   bool ignoreExisting = false;
-  if (argv.Length() > 2) {
-    ignoreExisting = TRI_ObjectToBoolean(argv[2]);
+  if (args.Length() > 2) {
+    ignoreExisting = TRI_ObjectToBoolean(args[2]);
   }
 
   std::unique_ptr<KeySpace> ptr(new KeySpace(static_cast<uint32_t>(size)));
@@ -891,7 +893,7 @@ static v8::Handle<v8::Value> JS_KeyspaceCreate (v8::Arguments const& argv) {
     if (hash != nullptr) {
       if (! ignoreExisting) {
         // TODO: change error code
-        TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "hash already exists");
+        TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "hash already exists");
       }
     }
    
@@ -899,31 +901,33 @@ static v8::Handle<v8::Value> JS_KeyspaceCreate (v8::Arguments const& argv) {
       h->data.emplace(std::make_pair(name, ptr.release()));
     }
     catch (...) {
-      TRI_V8_EXCEPTION_MEMORY(scope);
+      TRI_V8_THROW_EXCEPTION_MEMORY();
     }
   }
 
-  return scope.Close(v8::True());
+  TRI_V8_RETURN_TRUE();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops a keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_KeyspaceDrop (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_KeyspaceDrop (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  if (argv.Length() != 1 || ! argv[0]->IsString()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "KEYSPACE_DROP(<name>)");
+
+  if (args.Length() != 1 || ! args[0]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("KEYSPACE_DROP(<name>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(argv[0]);
+  std::string const&& name = TRI_ObjectToString(args[0]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   {
@@ -933,34 +937,36 @@ static v8::Handle<v8::Value> JS_KeyspaceDrop (v8::Arguments const& argv) {
 
     if (it == h->data.end()) {
       // TODO: change error code
-      TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
 
     delete (*it).second;
     h->data.erase(it);
   }
 
-  return scope.Close(v8::True());
+  TRI_V8_RETURN_TRUE();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the number of items in the keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_KeyspaceCount (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_KeyspaceCount (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  if (argv.Length() < 1 || ! argv[0]->IsString()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "KEYSPACE_COUNT(<name>, <prefix>)");
+
+  if (args.Length() < 1 || ! args[0]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("KEYSPACE_COUNT(<name>, <prefix>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(argv[0]);
+  std::string const&& name = TRI_ObjectToString(args[0]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   uint32_t count; 
@@ -971,11 +977,11 @@ static v8::Handle<v8::Value> JS_KeyspaceCount (v8::Arguments const& argv) {
 
     if (hash == nullptr) {
       // TODO: change error code
-      TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
   
-    if (argv.Length() > 1) {
-      std::string const&& prefix = TRI_ObjectToString(argv[1]);
+    if (args.Length() > 1) {
+      std::string const&& prefix = TRI_ObjectToString(args[1]);
       count = hash->keyspaceCount(prefix);
     }
     else {
@@ -983,54 +989,63 @@ static v8::Handle<v8::Value> JS_KeyspaceCount (v8::Arguments const& argv) {
     }
   }
 
-  return scope.Close(v8::Number::New(static_cast<int>(count)));
+  TRI_V8_RETURN(v8::Number::New(isolate, static_cast<int>(count)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns whether a keyspace exists
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_KeyspaceExists (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_KeyspaceExists (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  if (argv.Length() != 1 || ! argv[0]->IsString()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "KEYSPACE_EXISTS(<name>)");
+
+  if (args.Length() != 1 || ! args[0]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("KEYSPACE_EXISTS(<name>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(argv[0]);
+  std::string const&& name = TRI_ObjectToString(args[0]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
    
   READ_LOCKER(h->lock);
   auto hash = GetKeySpace(vocbase, name);
 
-  return scope.Close(v8::Boolean::New(hash != nullptr));
+  if (hash != nullptr) {
+    TRI_V8_RETURN_TRUE();
+  }
+  else {
+    TRI_V8_RETURN_FALSE();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all keys of the keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_KeyspaceKeys (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_KeyspaceKeys (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  if (argv.Length() < 1 || ! argv[0]->IsString()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "KEYSPACE_KEYS(<name>, <prefix>)");
+
+  if (args.Length() < 1 || ! args[0]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("KEYSPACE_KEYS(<name>, <prefix>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(argv[0]);
+  std::string const&& name = TRI_ObjectToString(args[0]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   READ_LOCKER(h->lock);
@@ -1039,35 +1054,37 @@ static v8::Handle<v8::Value> JS_KeyspaceKeys (v8::Arguments const& argv) {
 
   if (hash == nullptr) {
     // TODO: change error code
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  if (argv.Length() > 1) {
-    std::string const&& prefix = TRI_ObjectToString(argv[1]);
-    return scope.Close(hash->keyspaceKeys(prefix));
+  if (args.Length() > 1) {
+    std::string const&& prefix = TRI_ObjectToString(args[1]);
+    TRI_V8_RETURN(hash->keyspaceKeys(isolate, prefix));
   }
 
-  return scope.Close(hash->keyspaceKeys());
+  TRI_V8_RETURN(hash->keyspaceKeys(isolate));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all data of the keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_KeyspaceGet (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_KeyspaceGet (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  if (argv.Length() < 1 || ! argv[0]->IsString()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "KEYSPACE_GET(<name>, <prefix>)");
+
+  if (args.Length() < 1 || ! args[0]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("KEYSPACE_GET(<name>, <prefix>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(argv[0]);
+  std::string const&& name = TRI_ObjectToString(args[0]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   READ_LOCKER(h->lock);
@@ -1076,15 +1093,15 @@ static v8::Handle<v8::Value> JS_KeyspaceGet (v8::Arguments const& argv) {
 
   if (hash == nullptr) {
     // TODO: change error code
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  if (argv.Length() > 1) {
-    std::string const&& prefix = TRI_ObjectToString(argv[1]);
-    return scope.Close(hash->keyspaceGet(prefix));
+  if (args.Length() > 1) {
+    std::string const&& prefix = TRI_ObjectToString(args[1]);
+    TRI_V8_RETURN(hash->keyspaceGet(isolate, prefix));
   }
 
-  return scope.Close(hash->keyspaceGet());
+  TRI_V8_RETURN(hash->keyspaceGet(isolate));
 }
 
 
@@ -1092,20 +1109,22 @@ static v8::Handle<v8::Value> JS_KeyspaceGet (v8::Arguments const& argv) {
 /// @brief removes all keys from the keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_KeyspaceRemove (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_KeyspaceRemove (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  if (argv.Length() < 1 || ! argv[0]->IsString()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "KEYSPACE_REMOVE(<name>, <prefix>)");
+
+  if (args.Length() < 1 || ! args[0]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("KEYSPACE_REMOVE(<name>, <prefix>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(argv[0]);
+  std::string const&& name = TRI_ObjectToString(args[0]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   READ_LOCKER(h->lock);
@@ -1114,15 +1133,15 @@ static v8::Handle<v8::Value> JS_KeyspaceRemove (v8::Arguments const& argv) {
 
   if (hash == nullptr) {
     // TODO: change error code
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  if (argv.Length() > 1) {
-    std::string const&& prefix = TRI_ObjectToString(argv[1]);
-    return scope.Close(hash->keyspaceRemove(prefix));
+  if (args.Length() > 1) {
+    std::string const&& prefix = TRI_ObjectToString(args[1]);
+    TRI_V8_RETURN(hash->keyspaceRemove(isolate, prefix));
   }
 
-  return scope.Close(hash->keyspaceRemove());
+  TRI_V8_RETURN(hash->keyspaceRemove(isolate));
 }
 
 
@@ -1130,21 +1149,23 @@ static v8::Handle<v8::Value> JS_KeyspaceRemove (v8::Arguments const& argv) {
 /// @brief returns the value for a key in the keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_KeyGet (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_KeyGet (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  if (argv.Length() < 2 || ! argv[0]->IsString() || ! argv[1]->IsString()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "KEY_GET(<name>, <key>)");
+
+  if (args.Length() < 2 || ! args[0]->IsString() || ! args[1]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("KEY_GET(<name>, <key>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(argv[0]);
-  std::string const&& key  = TRI_ObjectToString(argv[1]);
+  std::string const&& name = TRI_ObjectToString(args[0]);
+  std::string const&& key  = TRI_ObjectToString(args[1]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   v8::Handle<v8::Value> result;
@@ -1155,38 +1176,40 @@ static v8::Handle<v8::Value> JS_KeyGet (v8::Arguments const& argv) {
 
     if (hash == nullptr) {
       // TODO: change error code
-      TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
 
-    result = hash->keyGet(key);
+    result = hash->keyGet(isolate, key);
   }
 
-  return scope.Close(result);
+  TRI_V8_RETURN(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the value for a key in the keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_KeySet (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_KeySet (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  if (argv.Length() < 3 || ! argv[0]->IsString() || ! argv[1]->IsString()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "KEY_SET(<name>, <key>, <value>, <replace>)");
+
+  if (args.Length() < 3 || ! args[0]->IsString() || ! args[1]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("KEY_SET(<name>, <key>, <value>, <replace>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(argv[0]);
-  std::string const&& key  = TRI_ObjectToString(argv[1]);
+  std::string const&& name = TRI_ObjectToString(args[0]);
+  std::string const&& key  = TRI_ObjectToString(args[1]);
   bool replace = true;
 
-  if (argv.Length() > 3) {
-    replace = TRI_ObjectToBoolean(argv[3]);
+  if (args.Length() > 3) {
+    replace = TRI_ObjectToBoolean(args[3]);
   }
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
@@ -1198,38 +1221,45 @@ static v8::Handle<v8::Value> JS_KeySet (v8::Arguments const& argv) {
 
     if (hash == nullptr) {
       // TODO: change error code
-      TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
 
-    result = hash->keySet(key, argv[2], replace);
+    result = hash->keySet(isolate, key, args[2], replace);
   }
 
-  return scope.Close(result ? v8::True() : v8::False());
+  if (result) {
+    TRI_V8_RETURN_TRUE();
+  }
+  else {
+    TRI_V8_RETURN_FALSE();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief conditionally set the value for a key in the keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_KeySetCas (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_KeySetCas (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  if (argv.Length() < 4 || ! argv[0]->IsString() || ! argv[1]->IsString()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "KEY_SET_CAS(<name>, <key>, <value>, <compare>)");
+
+  if (args.Length() < 4 || ! args[0]->IsString() || ! args[1]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("KEY_SET_CAS(<name>, <key>, <value>, <compare>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(argv[0]);
-  std::string const&& key  = TRI_ObjectToString(argv[1]);
+  std::string const&& name = TRI_ObjectToString(args[0]);
+  std::string const&& key  = TRI_ObjectToString(args[1]);
 
-  if (argv[2]->IsUndefined()) {
+  if (args[2]->IsUndefined()) {
     // TODO: change error code
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
@@ -1242,38 +1272,45 @@ static v8::Handle<v8::Value> JS_KeySetCas (v8::Arguments const& argv) {
 
     if (hash == nullptr) {
       // TODO: change error code
-      TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
 
-    res = hash->keyCas(key, argv[2], argv[3], match);
+    res = hash->keyCas(isolate, key, args[2], args[3], match);
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION(scope, res);
+    TRI_V8_THROW_EXCEPTION(res);
   }
 
-  return scope.Close(v8::Boolean::New(match));
+  if (match) {
+    TRI_V8_RETURN_TRUE();
+  }
+  else {
+    TRI_V8_RETURN_FALSE();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove the value for a key in the keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_KeyRemove (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_KeyRemove (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  if (argv.Length() < 2 || ! argv[0]->IsString() || ! argv[1]->IsString()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "KEY_REMOVE(<name>, <key>)");
+
+  if (args.Length() < 2 || ! args[0]->IsString() || ! args[1]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("KEY_REMOVE(<name>, <key>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
   
-  std::string const&& name = TRI_ObjectToString(argv[0]);
-  std::string const&& key  = TRI_ObjectToString(argv[1]);
+  std::string const&& name = TRI_ObjectToString(args[0]);
+  std::string const&& key  = TRI_ObjectToString(args[1]);
  
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   bool result; 
@@ -1284,34 +1321,41 @@ static v8::Handle<v8::Value> JS_KeyRemove (v8::Arguments const& argv) {
 
     if (hash == nullptr) {
       // TODO: change error code
-      TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
 
     result = hash->keyRemove(key);
   }
 
-  return v8::Boolean::New(result);
+  if (result) {
+    TRI_V8_RETURN_TRUE();
+  }
+  else {
+    TRI_V8_RETURN_FALSE();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if a key exists in the keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_KeyExists (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_KeyExists (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  if (argv.Length() < 2 || ! argv[0]->IsString() || ! argv[1]->IsString()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "KEY_EXISTS(<name>, <key>)");
+
+  if (args.Length() < 2 || ! args[0]->IsString() || ! args[1]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("KEY_EXISTS(<name>, <key>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
   
-  std::string const&& name = TRI_ObjectToString(argv[0]);
-  std::string const&& key  = TRI_ObjectToString(argv[1]);
+  std::string const&& name = TRI_ObjectToString(args[0]);
+  std::string const&& key  = TRI_ObjectToString(args[1]);
  
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   bool result; 
@@ -1322,43 +1366,50 @@ static v8::Handle<v8::Value> JS_KeyExists (v8::Arguments const& argv) {
 
     if (hash == nullptr) {
       // TODO: change error code
-      TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
 
     result = hash->keyExists(key);
   }
 
-  return v8::Boolean::New(result);
+  if (result) {
+    TRI_V8_RETURN_TRUE();
+  }
+  else {
+    TRI_V8_RETURN_FALSE();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief increase or decrease the value for a key in a keyspace
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_KeyIncr (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_KeyIncr (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  if (argv.Length() < 2 || ! argv[0]->IsString() || ! argv[1]->IsString()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "KEY_INCR(<name>, <key>, <value>)");
+
+  if (args.Length() < 2 || ! args[0]->IsString() || ! args[1]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("KEY_INCR(<name>, <key>, <value>)");
   }
 
-  if (argv.Length() >= 3 && ! argv[2]->IsNumber()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "KEY_INCR(<name>, <key>, <value>)");
+  if (args.Length() >= 3 && ! args[2]->IsNumber()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("KEY_INCR(<name>, <key>, <value>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(argv[0]);
-  std::string const&& key  = TRI_ObjectToString(argv[1]);
+  std::string const&& name = TRI_ObjectToString(args[0]);
+  std::string const&& key  = TRI_ObjectToString(args[1]);
 
   double incr = 1.0;
 
-  if (argv.Length() >= 3) {
-    incr = TRI_ObjectToDouble(argv[2]);
+  if (args.Length() >= 3) {
+    incr = TRI_ObjectToDouble(args[2]);
   }
 
   double result;
@@ -1370,42 +1421,44 @@ static v8::Handle<v8::Value> JS_KeyIncr (v8::Arguments const& argv) {
 
     if (hash == nullptr) {
       // TODO: change error code
-      TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
 
     int res = hash->keyIncr(key, incr, result);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_EXCEPTION(scope, res);
+      TRI_V8_THROW_EXCEPTION(res);
     }
   }
 
-  return scope.Close(v8::Number::New(result));
+  TRI_V8_RETURN(v8::Number::New(isolate, result));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief merges an object into the object with the specified key
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_KeyUpdate (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_KeyUpdate (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  if (argv.Length() < 3 || ! argv[0]->IsString() || ! argv[1]->IsString()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "KEY_UPDATE(<name>, <key>, <object>, <nullMeansRemove>)");
+
+  if (args.Length() < 3 || ! args[0]->IsString() || ! args[1]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("KEY_UPDATE(<name>, <key>, <object>, <nullMeansRemove>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(argv[0]);
-  std::string const&& key  = TRI_ObjectToString(argv[1]);
+  std::string const&& name = TRI_ObjectToString(args[0]);
+  std::string const&& key  = TRI_ObjectToString(args[1]);
 
   bool nullMeansRemove = false;
-  if (argv.Length() > 3) {
-    nullMeansRemove = TRI_ObjectToBoolean(argv[3]);
+  if (args.Length() > 3) {
+    nullMeansRemove = TRI_ObjectToBoolean(args[3]);
   }
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
@@ -1415,31 +1468,33 @@ static v8::Handle<v8::Value> JS_KeyUpdate (v8::Arguments const& argv) {
 
   if (hash == nullptr) {
     // TODO: change error code
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  return scope.Close(hash->keyMerge(key, argv[2], nullMeansRemove));
+  hash->keyMerge(args, key, args[2], nullMeansRemove);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all keys of the key
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_KeyKeys (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_KeyKeys (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  if (argv.Length() < 2 || ! argv[0]->IsString() || ! argv[1]->IsString()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "KEY_KEYS(<name>, <key>)");
+
+  if (args.Length() < 2 || ! args[0]->IsString() || ! args[1]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("KEY_KEYS(<name>, <key>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(argv[0]);
-  std::string const&& key  = TRI_ObjectToString(argv[1]);
+  std::string const&& name = TRI_ObjectToString(args[0]);
+  std::string const&& key  = TRI_ObjectToString(args[1]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   READ_LOCKER(h->lock);
@@ -1448,31 +1503,33 @@ static v8::Handle<v8::Value> JS_KeyKeys (v8::Arguments const& argv) {
 
   if (hash == nullptr) {
     // TODO: change error code
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  return scope.Close(hash->keyKeys(key));
+  TRI_V8_RETURN(hash->keyKeys(isolate, key));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all value of the hash array
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_KeyValues (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_KeyValues (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  if (argv.Length() < 2 || ! argv[0]->IsString() || ! argv[1]->IsString()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "KEY_VALUES(<name>, <key>)");
+
+  if (args.Length() < 2 || ! args[0]->IsString() || ! args[1]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("KEY_VALUES(<name>, <key>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(argv[0]);
-  std::string const&& key  = TRI_ObjectToString(argv[1]);
+  std::string const&& name = TRI_ObjectToString(args[0]);
+  std::string const&& key  = TRI_ObjectToString(args[1]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   READ_LOCKER(h->lock);
@@ -1481,31 +1538,33 @@ static v8::Handle<v8::Value> JS_KeyValues (v8::Arguments const& argv) {
 
   if (hash == nullptr) {
     // TODO: change error code
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  return scope.Close(hash->keyValues(key));
+  TRI_V8_RETURN(hash->keyValues(isolate, key));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief right-pushes an element into a list value
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_KeyPush (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_KeyPush (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  if (argv.Length() < 3 || ! argv[0]->IsString() || ! argv[1]->IsString()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "KEY_PUSH(<name>, <key>, <value>)");
+
+  if (args.Length() < 3 || ! args[0]->IsString() || ! args[1]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("KEY_PUSH(<name>, <key>, <value>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(argv[0]);
-  std::string const&& key  = TRI_ObjectToString(argv[1]);
+  std::string const&& name = TRI_ObjectToString(args[0]);
+  std::string const&& key  = TRI_ObjectToString(args[1]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   READ_LOCKER(h->lock);
@@ -1514,37 +1573,39 @@ static v8::Handle<v8::Value> JS_KeyPush (v8::Arguments const& argv) {
 
   if (hash == nullptr) {
     // TODO: change error code
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  int res = hash->keyPush(key, argv[2]);
+  int res = hash->keyPush(isolate, key, args[2]);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION(scope, res);
+    TRI_V8_THROW_EXCEPTION(res);
   }
 
-  return scope.Close(v8::True());
+  TRI_V8_RETURN_TRUE();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief pops an element from a list value
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_KeyPop (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_KeyPop (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  if (argv.Length() < 2 || ! argv[0]->IsString() || ! argv[1]->IsString()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "KEY_POP(<name>, <key>)");
+
+  if (args.Length() < 2 || ! args[0]->IsString() || ! args[1]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("KEY_POP(<name>, <key>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(argv[0]);
-  std::string const&& key  = TRI_ObjectToString(argv[1]);
+  std::string const&& name = TRI_ObjectToString(args[0]);
+  std::string const&& key  = TRI_ObjectToString(args[1]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   READ_LOCKER(h->lock);
@@ -1553,32 +1614,34 @@ static v8::Handle<v8::Value> JS_KeyPop (v8::Arguments const& argv) {
 
   if (hash == nullptr) {
     // TODO: change error code
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  return scope.Close(hash->keyPop(key));
+  hash->keyPop(args, key);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief transfer an element from a list value into another
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_KeyTransfer (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_KeyTransfer (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  if (argv.Length() < 3 || ! argv[0]->IsString() || ! argv[1]->IsString()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "KEY_TRANSFER(<name>, <key-from>, <key-to>)");
+
+  if (args.Length() < 3 || ! args[0]->IsString() || ! args[1]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("KEY_TRANSFER(<name>, <key-from>, <key-to>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name    = TRI_ObjectToString(argv[0]);
-  std::string const&& keyFrom = TRI_ObjectToString(argv[1]);
-  std::string const&& keyTo   = TRI_ObjectToString(argv[2]);
+  std::string const&& name    = TRI_ObjectToString(args[0]);
+  std::string const&& keyFrom = TRI_ObjectToString(args[1]);
+  std::string const&& keyTo   = TRI_ObjectToString(args[2]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   READ_LOCKER(h->lock);
@@ -1587,32 +1650,34 @@ static v8::Handle<v8::Value> JS_KeyTransfer (v8::Arguments const& argv) {
 
   if (hash == nullptr) {
     // TODO: change error code
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  return scope.Close(hash->keyTransfer(keyFrom, keyTo));
+  hash->keyTransfer(args, keyFrom, keyTo);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get an element at a specific list position
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_KeyGetAt (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_KeyGetAt (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  if (argv.Length() < 3 || ! argv[0]->IsString() || ! argv[1]->IsString()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "KEY_GET_AT(<name>, <key>, <index>)");
+
+  if (args.Length() < 3 || ! args[0]->IsString() || ! args[1]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("KEY_GET_AT(<name>, <key>, <index>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(argv[0]);
-  std::string const&& key  = TRI_ObjectToString(argv[1]);
-  int64_t offset = TRI_ObjectToInt64(argv[2]);
+  std::string const&& name = TRI_ObjectToString(args[0]);
+  std::string const&& key  = TRI_ObjectToString(args[1]);
+  int64_t offset = TRI_ObjectToInt64(args[2]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   READ_LOCKER(h->lock);
@@ -1621,32 +1686,34 @@ static v8::Handle<v8::Value> JS_KeyGetAt (v8::Arguments const& argv) {
 
   if (hash == nullptr) {
     // TODO: change error code
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  return scope.Close(hash->keyGetAt(key, offset));
+  hash->keyGetAt(args, key, offset);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set an element at a specific list position
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_KeySetAt (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_KeySetAt (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  if (argv.Length() < 4 || ! argv[0]->IsString() || ! argv[1]->IsString()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "KEY_SET_AT(<name>, <key>, <index>, <value>)");
+
+  if (args.Length() < 4 || ! args[0]->IsString() || ! args[1]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("KEY_SET_AT(<name>, <key>, <index>, <value>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
 
-  std::string const&& name = TRI_ObjectToString(argv[0]);
-  std::string const&& key  = TRI_ObjectToString(argv[1]);
-  int64_t offset = TRI_ObjectToInt64(argv[2]);
+  std::string const&& name = TRI_ObjectToString(args[0]);
+  std::string const&& key  = TRI_ObjectToString(args[1]);
+  int64_t offset = TRI_ObjectToInt64(args[2]);
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   READ_LOCKER(h->lock);
@@ -1655,36 +1722,38 @@ static v8::Handle<v8::Value> JS_KeySetAt (v8::Arguments const& argv) {
 
   if (hash == nullptr) {
     // TODO: change error code
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  int res = hash->keySetAt(key, offset, argv[3]);
+  int res = hash->keySetAt(isolate, key, offset, args[3]);
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION(scope, res);
+    TRI_V8_THROW_EXCEPTION(res);
   }
 
-  return scope.Close(v8::True());
+  TRI_V8_RETURN_TRUE();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the type of the value for a key
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_KeyType (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_KeyType (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  if (argv.Length() < 2 || ! argv[0]->IsString() || ! argv[1]->IsString()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "KEY_TYPE(<name>, <key>)");
+
+  if (args.Length() < 2 || ! args[0]->IsString() || ! args[1]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("KEY_TYPE(<name>, <key>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
   
-  std::string const&& name = TRI_ObjectToString(argv[0]);
-  std::string const&& key  = TRI_ObjectToString(argv[1]);
+  std::string const&& name = TRI_ObjectToString(args[0]);
+  std::string const&& key  = TRI_ObjectToString(args[1]);
  
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   char const* result; 
@@ -1695,34 +1764,36 @@ static v8::Handle<v8::Value> JS_KeyType (v8::Arguments const& argv) {
 
     if (hash == nullptr) {
       // TODO: change error code
-      TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
 
     result = hash->keyType(key);
   }
 
-  return scope.Close(v8::String::New(result));
+  TRI_V8_RETURN_STRING(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the number of items in a compound value
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_KeyCount (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_KeyCount (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  if (argv.Length() < 2 || ! argv[0]->IsString() || ! argv[1]->IsString()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "KEY_COUNT(<name>, <key>)");
+
+  if (args.Length() < 2 || ! args[0]->IsString() || ! args[1]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("KEY_COUNT(<name>, <key>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract vocbase");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract vocbase");
   }
   
-  std::string const&& name = TRI_ObjectToString(argv[0]);
-  std::string const&& key  = TRI_ObjectToString(argv[1]);
+  std::string const&& name = TRI_ObjectToString(args[0]);
+  std::string const&& key  = TRI_ObjectToString(args[1]);
  
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   uint32_t result; 
@@ -1734,17 +1805,17 @@ static v8::Handle<v8::Value> JS_KeyCount (v8::Arguments const& argv) {
 
     if (hash == nullptr) {
       // TODO: change error code
-      TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
 
     valid = hash->keyCount(key, result);
   }
 
   if (valid) {
-    return scope.Close(v8::Number::New(result));
+    TRI_V8_RETURN(v8::Number::New(isolate, result));
   }
 
-  return scope.Close(v8::Undefined());
+  TRI_V8_RETURN_UNDEFINED();
 }
 
 // -----------------------------------------------------------------------------
@@ -1782,39 +1853,41 @@ void TRI_FreeUserStructuresVocBase (TRI_vocbase_t* vocbase) {
 /// @brief creates the user structures functions
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8UserStructures (v8::Handle<v8::Context> context) {
-  v8::HandleScope scope;
+void TRI_InitV8UserStructures (v8::Isolate* isolate,
+                               v8::Handle<v8::Context> context) {
+  v8::HandleScope scope(isolate);
+
 
   // NOTE: the following functions are all experimental and might 
   // change without further notice
-  TRI_AddGlobalFunctionVocbase(context, "KEYSPACE_CREATE", JS_KeyspaceCreate, true);
-  TRI_AddGlobalFunctionVocbase(context, "KEYSPACE_DROP", JS_KeyspaceDrop, true);
-  TRI_AddGlobalFunctionVocbase(context, "KEYSPACE_COUNT", JS_KeyspaceCount, true);
-  TRI_AddGlobalFunctionVocbase(context, "KEYSPACE_EXISTS", JS_KeyspaceExists, true);
-  TRI_AddGlobalFunctionVocbase(context, "KEYSPACE_KEYS", JS_KeyspaceKeys, true);
-  TRI_AddGlobalFunctionVocbase(context, "KEYSPACE_REMOVE", JS_KeyspaceRemove, true);
-  TRI_AddGlobalFunctionVocbase(context, "KEYSPACE_GET", JS_KeyspaceGet, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("KEYSPACE_CREATE"), JS_KeyspaceCreate, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("KEYSPACE_DROP"), JS_KeyspaceDrop, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("KEYSPACE_COUNT"), JS_KeyspaceCount, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("KEYSPACE_EXISTS"), JS_KeyspaceExists, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("KEYSPACE_KEYS"), JS_KeyspaceKeys, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("KEYSPACE_REMOVE"), JS_KeyspaceRemove, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("KEYSPACE_GET"), JS_KeyspaceGet, true);
 
-  TRI_AddGlobalFunctionVocbase(context, "KEY_SET", JS_KeySet, true);
-  TRI_AddGlobalFunctionVocbase(context, "KEY_SET_CAS", JS_KeySetCas, true);
-  TRI_AddGlobalFunctionVocbase(context, "KEY_GET", JS_KeyGet, true);
-  TRI_AddGlobalFunctionVocbase(context, "KEY_REMOVE", JS_KeyRemove, true);
-  TRI_AddGlobalFunctionVocbase(context, "KEY_EXISTS", JS_KeyExists, true);
-  TRI_AddGlobalFunctionVocbase(context, "KEY_TYPE", JS_KeyType, true);
-  
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("KEY_SET"), JS_KeySet, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("KEY_SET_CAS"), JS_KeySetCas, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("KEY_GET"), JS_KeyGet, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("KEY_REMOVE"), JS_KeyRemove, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("KEY_EXISTS"), JS_KeyExists, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("KEY_TYPE"), JS_KeyType, true);
+
   // numeric functions
-  TRI_AddGlobalFunctionVocbase(context, "KEY_INCR", JS_KeyIncr, true);
-  
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("KEY_INCR"), JS_KeyIncr, true);
+
   // list / array functions
-  TRI_AddGlobalFunctionVocbase(context, "KEY_UPDATE", JS_KeyUpdate, true);
-  TRI_AddGlobalFunctionVocbase(context, "KEY_KEYS", JS_KeyKeys, true);
-  TRI_AddGlobalFunctionVocbase(context, "KEY_VALUES", JS_KeyValues, true);
-  TRI_AddGlobalFunctionVocbase(context, "KEY_COUNT", JS_KeyCount, true);
-  TRI_AddGlobalFunctionVocbase(context, "KEY_PUSH", JS_KeyPush, true);
-  TRI_AddGlobalFunctionVocbase(context, "KEY_POP", JS_KeyPop, true);
-  TRI_AddGlobalFunctionVocbase(context, "KEY_TRANSFER", JS_KeyTransfer, true);
-  TRI_AddGlobalFunctionVocbase(context, "KEY_GET_AT", JS_KeyGetAt, true);
-  TRI_AddGlobalFunctionVocbase(context, "KEY_SET_AT", JS_KeySetAt, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("KEY_UPDATE"), JS_KeyUpdate, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("KEY_KEYS"), JS_KeyKeys, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("KEY_VALUES"), JS_KeyValues, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("KEY_COUNT"), JS_KeyCount, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("KEY_PUSH"), JS_KeyPush, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("KEY_POP"), JS_KeyPop, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("KEY_TRANSFER"), JS_KeyTransfer, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("KEY_GET_AT"), JS_KeyGetAt, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("KEY_SET_AT"), JS_KeySetAt, true);
 }
 
 // -----------------------------------------------------------------------------

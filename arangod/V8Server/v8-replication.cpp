@@ -49,47 +49,49 @@ using namespace triagens::rest;
 /// @brief get the state of the replication logger
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_StateLoggerReplication (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_StateLoggerReplication (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
   triagens::wal::LogfileManagerState s = triagens::wal::LogfileManager::instance()->state();
 
-  v8::Handle<v8::Object> result = v8::Object::New();
+  v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-  v8::Handle<v8::Object> state = v8::Object::New();
-  state->Set(TRI_V8_STRING("running"), v8::True());
-  state->Set(TRI_V8_STRING("lastLogTick"), V8TickId(s.lastTick));
-  state->Set(TRI_V8_STRING("totalEvents"), v8::Number::New((double) s.numEvents));
-  state->Set(TRI_V8_STRING("time"), v8::String::New(s.timeString.c_str(), (int) s.timeString.size()));
-  result->Set(TRI_V8_STRING("state"), state);
+  v8::Handle<v8::Object> state = v8::Object::New(isolate);
+  state->Set(TRI_V8_ASCII_STRING("running"),     v8::True(isolate));
+  state->Set(TRI_V8_ASCII_STRING("lastLogTick"), V8TickId(isolate, s.lastTick));
+  state->Set(TRI_V8_ASCII_STRING("totalEvents"), v8::Number::New(isolate, (double) s.numEvents));
+  state->Set(TRI_V8_ASCII_STRING("time"),        TRI_V8_STD_STRING(s.timeString));
+  result->Set(TRI_V8_ASCII_STRING("state"),      state);
 
-  v8::Handle<v8::Object> server = v8::Object::New();
-  server->Set(TRI_V8_STRING("version"), v8::String::New(TRI_VERSION));
-  server->Set(TRI_V8_STRING("serverId"), v8::String::New(StringUtils::itoa(TRI_GetIdServer()).c_str()));
-  result->Set(TRI_V8_STRING("server"), server);
+  v8::Handle<v8::Object> server = v8::Object::New(isolate);
+  server->Set(TRI_V8_ASCII_STRING("version"),  TRI_V8_ASCII_STRING(TRI_VERSION));
+  server->Set(TRI_V8_ASCII_STRING("serverId"), TRI_V8_STD_STRING(StringUtils::itoa(TRI_GetIdServer()))); /// TODO
+  result->Set(TRI_V8_ASCII_STRING("server"), server);
   
-  v8::Handle<v8::Object> clients = v8::Object::New();
-  result->Set(TRI_V8_STRING("clients"), clients);
+  v8::Handle<v8::Object> clients = v8::Object::New(isolate);
+  result->Set(TRI_V8_ASCII_STRING("clients"), clients);
 
-  return scope.Close(result);
+  TRI_V8_RETURN(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the configuration of the replication logger
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_ConfigureLoggerReplication (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_ConfigureLoggerReplication (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
   // the replication logger is actually non-existing in ArangoDB 2.2 and higher
   // as there is the WAL. To be downwards-compatible, we'll return dummy values
-  v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(TRI_V8_STRING("autoStart"), v8::True());
-  result->Set(TRI_V8_STRING("logRemoteChanges"), v8::True());
-  result->Set(TRI_V8_STRING("maxEvents"), v8::Number::New(0));
-  result->Set(TRI_V8_STRING("maxEventsSize"), v8::Number::New(0));
+  v8::Handle<v8::Object> result = v8::Object::New(isolate);
+  result->Set(TRI_V8_ASCII_STRING("autoStart"),        v8::True(isolate));
+  result->Set(TRI_V8_ASCII_STRING("logRemoteChanges"), v8::True(isolate));
+  result->Set(TRI_V8_ASCII_STRING("maxEvents"),        v8::Number::New(isolate, 0));
+  result->Set(TRI_V8_ASCII_STRING("maxEventsSize"),    v8::Number::New(isolate, 0));
 
-  return scope.Close(result);
+  TRI_V8_RETURN(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -97,39 +99,40 @@ static v8::Handle<v8::Value> JS_ConfigureLoggerReplication (v8::Arguments const&
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-static v8::Handle<v8::Value> JS_LastLoggerReplication (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_LastLoggerReplication (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
   
-  TRI_vocbase_t* vocbase = GetContextVocBase();
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  if (argv.Length() != 2) {
-    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_LOGGER_LAST(<fromTick>, <toTick>)");
+  if (args.Length() != 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("REPLICATION_LOGGER_LAST(<fromTick>, <toTick>)");
   }
 
-  TRI_replication_dump_t dump(vocbase, 0); 
-  TRI_voc_tick_t tickStart = TRI_ObjectToUInt64(argv[0], true);
-  TRI_voc_tick_t tickEnd = TRI_ObjectToUInt64(argv[1], true);
+  TRI_replication_dump_t dump(vocbase, 0, true); 
+  TRI_voc_tick_t tickStart = TRI_ObjectToUInt64(args[0], true);
+  TRI_voc_tick_t tickEnd = TRI_ObjectToUInt64(args[1], true);
 
   int res = TRI_DumpLogReplication(&dump, tickStart, tickEnd, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION(scope, res);
+    TRI_V8_THROW_EXCEPTION(res);
   }
 
   TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, dump._buffer->_buffer);
 
   if (json == nullptr) {
-    TRI_V8_EXCEPTION_MEMORY(scope);
+    TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
-  v8::Handle<v8::Value> result = TRI_ObjectJson(json);
+  v8::Handle<v8::Value> result = TRI_ObjectJson(isolate, json);
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   
-  return scope.Close(result);
+  TRI_V8_RETURN(result);
 }
 #endif
 
@@ -137,48 +140,49 @@ static v8::Handle<v8::Value> JS_LastLoggerReplication (v8::Arguments const& argv
 /// @brief sync data from a remote master
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_SynchroniseReplication (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_SynchroniseReplication (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  if (argv.Length() != 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_SYNCHRONISE(<config>)");
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("REPLICATION_SYNCHRONISE(<config>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   // treat the argument as an object from now on
-  v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(argv[0]);
+  v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(args[0]);
 
   string endpoint;
-  if (object->Has(TRI_V8_SYMBOL("endpoint"))) {
-    endpoint = TRI_ObjectToString(object->Get(TRI_V8_SYMBOL("endpoint")));
+  if (object->Has(TRI_V8_ASCII_STRING("endpoint"))) {
+    endpoint = TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("endpoint")));
   }
 
   string database;
-  if (object->Has(TRI_V8_SYMBOL("database"))) {
-    database = TRI_ObjectToString(object->Get(TRI_V8_SYMBOL("database")));
+  if (object->Has(TRI_V8_ASCII_STRING("database"))) {
+    database = TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("database")));
   }
   else {
     database = string(vocbase->_name);
   }
 
   string username;
-  if (object->Has(TRI_V8_SYMBOL("username"))) {
-    username = TRI_ObjectToString(object->Get(TRI_V8_SYMBOL("username")));
+  if (object->Has(TRI_V8_ASCII_STRING("username"))) {
+    username = TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("username")));
   }
 
   string password;
-  if (object->Has(TRI_V8_SYMBOL("password"))) {
-    password = TRI_ObjectToString(object->Get(TRI_V8_SYMBOL("password")));
+  if (object->Has(TRI_V8_ASCII_STRING("password"))) {
+    password = TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("password")));
   }
 
-  map<string, bool> restrictCollections;
-  if (object->Has(TRI_V8_SYMBOL("restrictCollections")) && object->Get(TRI_V8_SYMBOL("restrictCollections"))->IsArray()) {
-    v8::Handle<v8::Array> a = v8::Handle<v8::Array>::Cast(object->Get(TRI_V8_SYMBOL("restrictCollections")));
+  std::unordered_map<std::string, bool> restrictCollections;
+  if (object->Has(TRI_V8_ASCII_STRING("restrictCollections")) && object->Get(TRI_V8_ASCII_STRING("restrictCollections"))->IsArray()) {
+    v8::Handle<v8::Array> a = v8::Handle<v8::Array>::Cast(object->Get(TRI_V8_ASCII_STRING("restrictCollections")));
 
     const uint32_t n = a->Length();
 
@@ -186,29 +190,29 @@ static v8::Handle<v8::Value> JS_SynchroniseReplication (v8::Arguments const& arg
       v8::Handle<v8::Value> cname = a->Get(i);
 
       if (cname->IsString()) {
-        restrictCollections.insert(pair<string, bool>(TRI_ObjectToString(cname), true));
+        restrictCollections.emplace(std::make_pair(TRI_ObjectToString(cname), true));
       }
     }
   }
 
-  string restrictType;
-  if (object->Has(TRI_V8_SYMBOL("restrictType"))) {
-    restrictType = TRI_ObjectToString(object->Get(TRI_V8_SYMBOL("restrictType")));
+  std::string restrictType;
+  if (object->Has(TRI_V8_ASCII_STRING("restrictType"))) {
+    restrictType = TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("restrictType")));
   }
 
   bool verbose = true;
-  if (object->Has(TRI_V8_SYMBOL("verbose"))) {
-    verbose = TRI_ObjectToBoolean(object->Get(TRI_V8_SYMBOL("verbose")));
+  if (object->Has(TRI_V8_ASCII_STRING("verbose"))) {
+    verbose = TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING("verbose")));
   }
 
   if (endpoint.empty()) {
-    TRI_V8_EXCEPTION_PARAMETER(scope, "<endpoint> must be a valid endpoint")
+    TRI_V8_THROW_EXCEPTION_PARAMETER("<endpoint> must be a valid endpoint");
   }
 
   if ((restrictType.empty() && ! restrictCollections.empty()) ||
       (! restrictType.empty() && restrictCollections.empty()) ||
       (! restrictType.empty() && restrictType != "include" && restrictType != "exclude")) {
-    TRI_V8_EXCEPTION_PARAMETER(scope, "invalid value for <restrictCollections> or <restrictType>");
+    TRI_V8_THROW_EXCEPTION_PARAMETER("invalid value for <restrictCollections> or <restrictType>");
   }
 
   TRI_replication_applier_configuration_t config;
@@ -218,9 +222,15 @@ static v8::Handle<v8::Value> JS_SynchroniseReplication (v8::Arguments const& arg
   config._username = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, username.c_str(), username.size());
   config._password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, password.c_str(), password.size());
 
-  if (object->Has(TRI_V8_SYMBOL("chunkSize"))) {
-    if (object->Get(TRI_V8_SYMBOL("chunkSize"))->IsNumber()) {
-      config._chunkSize = TRI_ObjectToUInt64(object->Get(TRI_V8_SYMBOL("chunkSize")), true);
+  if (object->Has(TRI_V8_ASCII_STRING("chunkSize"))) {
+    if (object->Get(TRI_V8_ASCII_STRING("chunkSize"))->IsNumber()) {
+      config._chunkSize = TRI_ObjectToUInt64(object->Get(TRI_V8_ASCII_STRING("chunkSize")), true);
+    }
+  }
+ 
+  if (object->Has(TRI_V8_ASCII_STRING("includeSystem"))) {
+    if (object->Get(TRI_V8_ASCII_STRING("includeSystem"))->IsBoolean()) {
+      config._includeSystem = TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING("includeSystem")));
     }
   }
 
@@ -229,69 +239,71 @@ static v8::Handle<v8::Value> JS_SynchroniseReplication (v8::Arguments const& arg
   TRI_DestroyConfigurationReplicationApplier(&config);
 
   int res = TRI_ERROR_NO_ERROR;
-  v8::Handle<v8::Object> result = v8::Object::New();
+  v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
   try {
     res = syncer.run(errorMsg);
 
-    result->Set(v8::String::New("lastLogTick"), V8TickId(syncer.getLastLogTick()));
+    result->Set(TRI_V8_ASCII_STRING("lastLogTick"), V8TickId(isolate, syncer.getLastLogTick()));
 
     map<TRI_voc_cid_t, string>::const_iterator it;
     map<TRI_voc_cid_t, string> const& c = syncer.getProcessedCollections();
 
     uint32_t j = 0;
-    v8::Handle<v8::Array> collections = v8::Array::New();
+    v8::Handle<v8::Array> collections = v8::Array::New(isolate);
     for (it = c.begin(); it != c.end(); ++it) {
       const string cidString = StringUtils::itoa((*it).first);
 
-      v8::Handle<v8::Object> ci = v8::Object::New();
-      ci->Set(TRI_V8_SYMBOL("id"), v8::String::New(cidString.c_str(), (int) cidString.size()));
-      ci->Set(TRI_V8_SYMBOL("name"), v8::String::New((*it).second.c_str(), (int) (*it).second.size()));
+      v8::Handle<v8::Object> ci = v8::Object::New(isolate);
+      ci->Set(TRI_V8_ASCII_STRING("id"),   TRI_V8_STD_STRING(cidString));
+      ci->Set(TRI_V8_ASCII_STRING("name"), TRI_V8_STD_STRING((*it).second));
 
       collections->Set(j++, ci);
     }
 
-    result->Set(v8::String::New("collections"), collections);
+    result->Set(TRI_V8_ASCII_STRING("collections"), collections);
   }
   catch (...) {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot sync from remote endpoint: " + errorMsg);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot sync from remote endpoint: " + errorMsg);
   }
 
-  return scope.Close(result);
+  TRI_V8_RETURN(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the server's id
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_ServerIdReplication (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_ServerIdReplication (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
   const string serverId = StringUtils::itoa(TRI_GetIdServer());
-  return scope.Close(v8::String::New(serverId.c_str(), (int) serverId.size()));
+  TRI_V8_RETURN_STD_STRING(serverId);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief configure the replication applier manually
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_ConfigureApplierReplication (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_ConfigureApplierReplication (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   if (vocbase->_replicationApplier == nullptr) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  if (argv.Length() == 0) {
+  if (args.Length() == 0) {
     // no argument: return the current configuration
 
     TRI_replication_applier_configuration_t config;
@@ -304,21 +316,21 @@ static v8::Handle<v8::Value> JS_ConfigureApplierReplication (v8::Arguments const
     TRI_json_t* json = TRI_JsonConfigurationReplicationApplier(&config);
     TRI_DestroyConfigurationReplicationApplier(&config);
 
-    if (json == 0) {
-      TRI_V8_EXCEPTION_MEMORY(scope);
+    if (json == nullptr) {
+      TRI_V8_THROW_EXCEPTION_MEMORY();
     }
 
-    v8::Handle<v8::Value> result = TRI_ObjectJson(json);
+    v8::Handle<v8::Value> result = TRI_ObjectJson(isolate, json);
     TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
-    return scope.Close(result);
+    TRI_V8_RETURN(result);
   }
 
   else {
     // set the configuration
 
-    if (argv.Length() != 1 || ! argv[0]->IsObject()) {
-      TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_APPLIER_CONFIGURE(<configuration>)");
+    if (args.Length() != 1 || ! args[0]->IsObject()) {
+      TRI_V8_THROW_EXCEPTION_USAGE("REPLICATION_APPLIER_CONFIGURE(<configuration>)");
     }
 
     TRI_replication_applier_configuration_t config;
@@ -331,126 +343,158 @@ static v8::Handle<v8::Value> JS_ConfigureApplierReplication (v8::Arguments const
 
 
     // treat the argument as an object from now on
-    v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(argv[0]);
+    v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(args[0]);
 
-    if (object->Has(TRI_V8_SYMBOL("endpoint"))) {
-      if (object->Get(TRI_V8_SYMBOL("endpoint"))->IsString()) {
-        string endpoint = TRI_ObjectToString(object->Get(TRI_V8_SYMBOL("endpoint")));
+    if (object->Has(TRI_V8_ASCII_STRING("endpoint"))) {
+      if (object->Get(TRI_V8_ASCII_STRING("endpoint"))->IsString()) {
+        string endpoint = TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("endpoint")));
 
-        if (config._endpoint != 0) {
+        if (config._endpoint != nullptr) {
           TRI_Free(TRI_CORE_MEM_ZONE, config._endpoint);
         }
         config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
       }
     }
 
-    if (object->Has(TRI_V8_SYMBOL("database"))) {
-      if (object->Get(TRI_V8_SYMBOL("database"))->IsString()) {
-        string database = TRI_ObjectToString(object->Get(TRI_V8_SYMBOL("database")));
+    if (object->Has(TRI_V8_ASCII_STRING("database"))) {
+      if (object->Get(TRI_V8_ASCII_STRING("database"))->IsString()) {
+        string database = TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("database")));
 
-        if (config._database != 0) {
+        if (config._database != nullptr) {
           TRI_Free(TRI_CORE_MEM_ZONE, config._database);
         }
         config._database = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, database.c_str(), database.size());
       }
     }
     else {
-      if (config._database == 0) {
+      if (config._database == nullptr) {
         // no database set, use current
         config._database = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, vocbase->_name);
       }
     }
 
-    TRI_ASSERT(config._database != 0);
+    TRI_ASSERT(config._database != nullptr);
 
-    if (object->Has(TRI_V8_SYMBOL("username"))) {
-      if (object->Get(TRI_V8_SYMBOL("username"))->IsString()) {
-        string username = TRI_ObjectToString(object->Get(TRI_V8_SYMBOL("username")));
+    if (object->Has(TRI_V8_ASCII_STRING("username"))) {
+      if (object->Get(TRI_V8_ASCII_STRING("username"))->IsString()) {
+        string username = TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("username")));
 
-        if (config._username != 0) {
+        if (config._username != nullptr) {
           TRI_Free(TRI_CORE_MEM_ZONE, config._username);
         }
         config._username = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, username.c_str(), username.size());
       }
     }
 
-    if (object->Has(TRI_V8_SYMBOL("password"))) {
-      if (object->Get(TRI_V8_SYMBOL("password"))->IsString()) {
-        string password = TRI_ObjectToString(object->Get(TRI_V8_SYMBOL("password")));
+    if (object->Has(TRI_V8_ASCII_STRING("password"))) {
+      if (object->Get(TRI_V8_ASCII_STRING("password"))->IsString()) {
+        string password = TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("password")));
 
-        if (config._password != 0) {
+        if (config._password != nullptr) {
           TRI_Free(TRI_CORE_MEM_ZONE, config._password);
         }
         config._password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, password.c_str(), password.size());
       }
     }
 
-    if (object->Has(TRI_V8_SYMBOL("requestTimeout"))) {
-      if (object->Get(TRI_V8_SYMBOL("requestTimeout"))->IsNumber()) {
-        config._requestTimeout = TRI_ObjectToDouble(object->Get(TRI_V8_SYMBOL("requestTimeout")));
+    if (object->Has(TRI_V8_ASCII_STRING("requestTimeout"))) {
+      if (object->Get(TRI_V8_ASCII_STRING("requestTimeout"))->IsNumber()) {
+        config._requestTimeout = TRI_ObjectToDouble(object->Get(TRI_V8_ASCII_STRING("requestTimeout")));
       }
     }
 
-    if (object->Has(TRI_V8_SYMBOL("connectTimeout"))) {
-      if (object->Get(TRI_V8_SYMBOL("connectTimeout"))->IsNumber()) {
-        config._connectTimeout = TRI_ObjectToDouble(object->Get(TRI_V8_SYMBOL("connectTimeout")));
+    if (object->Has(TRI_V8_ASCII_STRING("connectTimeout"))) {
+      if (object->Get(TRI_V8_ASCII_STRING("connectTimeout"))->IsNumber()) {
+        config._connectTimeout = TRI_ObjectToDouble(object->Get(TRI_V8_ASCII_STRING("connectTimeout")));
       }
     }
 
-    if (object->Has(TRI_V8_SYMBOL("ignoreErrors"))) {
-      if (object->Get(TRI_V8_SYMBOL("ignoreErrors"))->IsNumber()) {
-        config._ignoreErrors = TRI_ObjectToUInt64(object->Get(TRI_V8_SYMBOL("ignoreErrors")), false);
+    if (object->Has(TRI_V8_ASCII_STRING("ignoreErrors"))) {
+      if (object->Get(TRI_V8_ASCII_STRING("ignoreErrors"))->IsNumber()) {
+        config._ignoreErrors = TRI_ObjectToUInt64(object->Get(TRI_V8_ASCII_STRING("ignoreErrors")), false);
       }
     }
 
-    if (object->Has(TRI_V8_SYMBOL("maxConnectRetries"))) {
-      if (object->Get(TRI_V8_SYMBOL("maxConnectRetries"))->IsNumber()) {
-        config._maxConnectRetries = TRI_ObjectToUInt64(object->Get(TRI_V8_SYMBOL("maxConnectRetries")), false);
+    if (object->Has(TRI_V8_ASCII_STRING("maxConnectRetries"))) {
+      if (object->Get(TRI_V8_ASCII_STRING("maxConnectRetries"))->IsNumber()) {
+        config._maxConnectRetries = TRI_ObjectToUInt64(object->Get(TRI_V8_ASCII_STRING("maxConnectRetries")), false);
       }
     }
 
-    if (object->Has(TRI_V8_SYMBOL("sslProtocol"))) {
-      if (object->Get(TRI_V8_SYMBOL("sslProtocol"))->IsNumber()) {
-        config._sslProtocol = (uint32_t) TRI_ObjectToUInt64(object->Get(TRI_V8_SYMBOL("sslProtocol")), false);
+    if (object->Has(TRI_V8_ASCII_STRING("sslProtocol"))) {
+      if (object->Get(TRI_V8_ASCII_STRING("sslProtocol"))->IsNumber()) {
+        config._sslProtocol = (uint32_t) TRI_ObjectToUInt64(object->Get(TRI_V8_ASCII_STRING("sslProtocol")), false);
       }
     }
 
-    if (object->Has(TRI_V8_SYMBOL("chunkSize"))) {
-      if (object->Get(TRI_V8_SYMBOL("chunkSize"))->IsNumber()) {
-        config._chunkSize = TRI_ObjectToUInt64(object->Get(TRI_V8_SYMBOL("chunkSize")), true);
+    if (object->Has(TRI_V8_ASCII_STRING("chunkSize"))) {
+      if (object->Get(TRI_V8_ASCII_STRING("chunkSize"))->IsNumber()) {
+        config._chunkSize = TRI_ObjectToUInt64(object->Get(TRI_V8_ASCII_STRING("chunkSize")), true);
       }
     }
 
-    if (object->Has(TRI_V8_SYMBOL("autoStart"))) {
-      if (object->Get(TRI_V8_SYMBOL("autoStart"))->IsBoolean()) {
-        config._autoStart = TRI_ObjectToBoolean(object->Get(TRI_V8_SYMBOL("autoStart")));
+    if (object->Has(TRI_V8_ASCII_STRING("autoStart"))) {
+      if (object->Get(TRI_V8_ASCII_STRING("autoStart"))->IsBoolean()) {
+        config._autoStart = TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING("autoStart")));
       }
     }
 
-    if (object->Has(TRI_V8_SYMBOL("adaptivePolling"))) {
-      if (object->Get(TRI_V8_SYMBOL("adaptivePolling"))->IsBoolean()) {
-        config._adaptivePolling = TRI_ObjectToBoolean(object->Get(TRI_V8_SYMBOL("adaptivePolling")));
+    if (object->Has(TRI_V8_ASCII_STRING("adaptivePolling"))) {
+      if (object->Get(TRI_V8_ASCII_STRING("adaptivePolling"))->IsBoolean()) {
+        config._adaptivePolling = TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING("adaptivePolling")));
       }
+    }
+    
+    if (object->Has(TRI_V8_ASCII_STRING("includeSystem"))) {
+      if (object->Get(TRI_V8_ASCII_STRING("includeSystem"))->IsBoolean()) {
+        config._includeSystem = TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING("includeSystem")));
+      }
+    }
+  
+    if (object->Has(TRI_V8_ASCII_STRING("restrictCollections")) && object->Get(TRI_V8_ASCII_STRING("restrictCollections"))->IsArray()) {
+      config._restrictCollections.clear();
+      v8::Handle<v8::Array> a = v8::Handle<v8::Array>::Cast(object->Get(TRI_V8_ASCII_STRING("restrictCollections")));
+
+      uint32_t const n = a->Length();
+
+      for (uint32_t i = 0; i < n; ++i) {
+        v8::Handle<v8::Value> cname = a->Get(i);
+
+        if (cname->IsString()) {
+          config._restrictCollections.insert(pair<string, bool>(TRI_ObjectToString(cname), true));
+        }
+      }
+    }
+    
+    if (object->Has(TRI_V8_ASCII_STRING("restrictType"))) {
+      config._restrictType = TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("restrictType")));
+    }
+  
+    if ((config._restrictType.empty() && ! config._restrictCollections.empty()) ||
+        (! config._restrictType.empty() && config._restrictCollections.empty()) ||
+        (! config._restrictType.empty() && config._restrictType != "include" && config._restrictType != "exclude")) {
+      TRI_DestroyConfigurationReplicationApplier(&config);
+      TRI_V8_THROW_EXCEPTION_PARAMETER("invalid value for <restrictCollections> or <restrictType>");
     }
 
     int res = TRI_ConfigureReplicationApplier(vocbase->_replicationApplier, &config);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_DestroyConfigurationReplicationApplier(&config);
-      TRI_V8_EXCEPTION(scope, res);
+      TRI_V8_THROW_EXCEPTION(res);
     }
 
     TRI_json_t* json = TRI_JsonConfigurationReplicationApplier(&config);
     TRI_DestroyConfigurationReplicationApplier(&config);
 
-    if (json == 0) {
-      TRI_V8_EXCEPTION_MEMORY(scope);
+    if (json == nullptr) {
+      TRI_V8_THROW_EXCEPTION_MEMORY();
     }
 
-    v8::Handle<v8::Value> result = TRI_ObjectJson(json);
+    v8::Handle<v8::Value> result = TRI_ObjectJson(isolate, json);
     TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
-    return scope.Close(result);
+    TRI_V8_RETURN(result);
   }
 }
 
@@ -458,28 +502,29 @@ static v8::Handle<v8::Value> JS_ConfigureApplierReplication (v8::Arguments const
 /// @brief start the replication applier manually
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_StartApplierReplication (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_StartApplierReplication (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   if (vocbase->_replicationApplier == nullptr) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  if (argv.Length() > 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_APPLIER_START(<from>)");
+  if (args.Length() > 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("REPLICATION_APPLIER_START(<from>)");
   }
 
   TRI_voc_tick_t initialTick = 0;
   bool useTick = false;
 
-  if (argv.Length() == 1) {
-    initialTick = TRI_ObjectToUInt64(argv[0], true);
+  if (args.Length() == 1) {
+    initialTick = TRI_ObjectToUInt64(args[0], true);
     useTick = true;
   }
 
@@ -488,108 +533,112 @@ static v8::Handle<v8::Value> JS_StartApplierReplication (v8::Arguments const& ar
                                         useTick);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot start replication applier");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot start replication applier");
   }
 
-  return scope.Close(v8::True());
+  TRI_V8_RETURN_TRUE();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shuts down the replication applier manually
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_ShutdownApplierReplication (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_ShutdownApplierReplication (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  if (argv.Length() != 0) {
-    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_APPLIER_SHUTDOWN()");
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("REPLICATION_APPLIER_SHUTDOWN()");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   if (vocbase->_replicationApplier == nullptr) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
   int res = TRI_ShutdownReplicationApplier(vocbase->_replicationApplier);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot shut down replication applier");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot shut down replication applier");
   }
 
-  return scope.Close(v8::True());
+  TRI_V8_RETURN_TRUE();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the state of the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_StateApplierReplication (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_StateApplierReplication (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  if (argv.Length() != 0) {
-    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_APPLIER_STATE()");
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("REPLICATION_APPLIER_STATE()");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   if (vocbase->_replicationApplier == nullptr) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
   TRI_json_t* json = TRI_JsonReplicationApplier(vocbase->_replicationApplier);
 
-  if (json == 0) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_OUT_OF_MEMORY);
+  if (json == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
-  v8::Handle<v8::Value> result = TRI_ObjectJson(json);
+  v8::Handle<v8::Value> result = TRI_ObjectJson(isolate, json);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
-  return scope.Close(result);
+  TRI_V8_RETURN(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stop the replication applier and "forget" all state
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_ForgetApplierReplication (v8::Arguments const& argv) {
-  v8::HandleScope scope;
+static void JS_ForgetApplierReplication (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
 
-  if (argv.Length() != 0) {
-    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_APPLIER_FORGET()");
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("REPLICATION_APPLIER_FORGET()");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase();
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   if (vocbase->_replicationApplier == nullptr) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
   int res = TRI_ForgetReplicationApplier(vocbase->_replicationApplier);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION(scope, res);
+    TRI_V8_THROW_EXCEPTION(res);
   }
 
-  return scope.Close(v8::True());
+  TRI_V8_RETURN_TRUE();
 }
 
 
 
-void TRI_InitV8replication (v8::Handle<v8::Context> context,
+void TRI_InitV8replication (v8::Isolate* isolate,
+                            v8::Handle<v8::Context> context,
                             TRI_server_t* server,
                             TRI_vocbase_t* vocbase,
                             JSLoader* loader,
@@ -597,16 +646,16 @@ void TRI_InitV8replication (v8::Handle<v8::Context> context,
                             TRI_v8_global_t* v8g){
 
   // replication functions. not intended to be used by end users
-  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_STATE", JS_StateLoggerReplication, true);
-  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_CONFIGURE", JS_ConfigureLoggerReplication, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("REPLICATION_LOGGER_STATE"), JS_StateLoggerReplication, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("REPLICATION_LOGGER_CONFIGURE"), JS_ConfigureLoggerReplication, true);
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_LAST", JS_LastLoggerReplication, true);
-#endif  
-  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_SYNCHRONISE", JS_SynchroniseReplication, true);
-  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_SERVER_ID", JS_ServerIdReplication, true);
-  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_CONFIGURE", JS_ConfigureApplierReplication, true);
-  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_START", JS_StartApplierReplication, true);
-  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_SHUTDOWN", JS_ShutdownApplierReplication, true);
-  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_STATE", JS_StateApplierReplication, true);
-  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_FORGET", JS_ForgetApplierReplication, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("REPLICATION_LOGGER_LAST"), JS_LastLoggerReplication, true);
+#endif
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("REPLICATION_SYNCHRONISE"), JS_SynchroniseReplication, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("REPLICATION_SERVER_ID"), JS_ServerIdReplication, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("REPLICATION_APPLIER_CONFIGURE"), JS_ConfigureApplierReplication, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("REPLICATION_APPLIER_START"), JS_StartApplierReplication, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("REPLICATION_APPLIER_SHUTDOWN"), JS_ShutdownApplierReplication, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("REPLICATION_APPLIER_STATE"), JS_StateApplierReplication, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("REPLICATION_APPLIER_FORGET"), JS_ForgetApplierReplication, true);
 }

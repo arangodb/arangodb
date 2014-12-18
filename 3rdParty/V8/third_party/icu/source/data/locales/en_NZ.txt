@@ -1,0 +1,206 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2013 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/en_NZ.xml
+// *
+// ***************************************************************************
+en_NZ{
+    %%Parent{"en_GB"}
+    Version{"2.0.90.61"}
+    calendar{
+        generic{
+            DateTimePatterns{
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
+                "EEEE, d MMMM y G",
+                "d MMMM y G",
+                "d/MM/y G",
+                "d/MM/y GGGGG",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            availableFormats{
+                MMMEd{"E, d MMM"}
+                Md{"d/M"}
+                yyyyMd{"d/MM/y G"}
+            }
+            intervalFormats{
+                M{
+                    M{"M-M"}
+                }
+                MEd{
+                    M{"E, d/MM - E, d/MM"}
+                    d{"E, d/MM - E, d/MM"}
+                }
+                MMM{
+                    M{"MMM-MMM"}
+                }
+                MMMEd{
+                    M{"E, d MMM - E, d MMM"}
+                    d{"E, d - E, d MMM"}
+                }
+                MMMd{
+                    M{"d MMM - d MMM"}
+                    d{"d-d MMM"}
+                }
+                Md{
+                    M{"d/MM - d/MM"}
+                    d{"d/MM - d/MM"}
+                }
+                d{
+                    d{"d-d"}
+                }
+                fallback{"{0} - {1}"}
+                h{
+                    a{"h a - h a"}
+                    h{"h-h a"}
+                }
+                hm{
+                    a{"h:mm a - h:mm a"}
+                    h{"h:mm-h:mm a"}
+                    m{"h:mm-h:mm a"}
+                }
+                hmv{
+                    a{"h:mm a - h:mm a v"}
+                    h{"h:mm-h:mm a v"}
+                    m{"h:mm-h:mm a v"}
+                }
+                hv{
+                    a{"h a - h a v"}
+                    h{"h-h a v"}
+                }
+                yM{
+                    M{"MM/y - MM/y G"}
+                    y{"MM/y - MM/y G"}
+                }
+                yMEd{
+                    M{"E, d/MM/y - E, d/MM/y G"}
+                    d{"E, d/MM/y - E, d/MM/y G"}
+                    y{"E, d/MM/y - E, d/MM/y G"}
+                }
+                yMMM{
+                    M{"MMM-MMM y G"}
+                    y{"MMM y - MMM y G"}
+                }
+                yMMMEd{
+                    M{"E, d MMM - E, d MMM y G"}
+                    d{"E, d - E, d MMM y G"}
+                    y{"E, d MMM y - E, d MMM y G"}
+                }
+                yMMMd{
+                    M{"d MMM - d MMM y G"}
+                    d{"d-d MMM y G"}
+                    y{"d MMM y - d MMM y G"}
+                }
+                yMd{
+                    M{"d/MM/y - d/MM/y G"}
+                    d{"d/MM/y - d/MM/y G"}
+                    y{"d/MM/y - d/MM/y G"}
+                }
+            }
+        }
+        gregorian{
+            DateTimePatterns{
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
+                "EEEE, d MMMM y",
+                "d MMMM y",
+                "d/MM/y",
+                "d/MM/yy",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            availableFormats{
+                MMMEd{"E, d MMM"}
+                Md{"d/M"}
+                yMd{"d/MM/y"}
+            }
+            intervalFormats{
+                M{
+                    M{"M-M"}
+                }
+                MEd{
+                    M{"E, d/MM - E, d/MM"}
+                    d{"E, d/MM - E, d/MM"}
+                }
+                MMM{
+                    M{"MMM-MMM"}
+                }
+                MMMEd{
+                    M{"E, d MMM - E, d MMM"}
+                    d{"E, d - E, d MMM"}
+                }
+                MMMd{
+                    M{"d MMM - d MMM"}
+                    d{"d-d MMM"}
+                }
+                Md{
+                    M{"d/MM - d/MM"}
+                    d{"d/MM - d/MM"}
+                }
+                d{
+                    d{"d-d"}
+                }
+                fallback{"{0} - {1}"}
+                h{
+                    a{"h a - h a"}
+                    h{"h-h a"}
+                }
+                hm{
+                    a{"h:mm a - h:mm a"}
+                    h{"h:mm-h:mm a"}
+                    m{"h:mm-h:mm a"}
+                }
+                hmv{
+                    a{"h:mm a - h:mm a v"}
+                    h{"h:mm-h:mm a v"}
+                    m{"h:mm-h:mm a v"}
+                }
+                hv{
+                    a{"h a - h a v"}
+                    h{"h-h a v"}
+                }
+                yM{
+                    M{"MM/y - MM/y"}
+                    y{"MM/y - MM/y"}
+                }
+                yMEd{
+                    M{"E, d/MM/y - E, d/MM/y"}
+                    d{"E, d/MM/y - E, d/MM/y"}
+                    y{"E, d/MM/y - E, d/MM/y"}
+                }
+                yMMM{
+                    M{"MMM-MMM y"}
+                    y{"MMM y - MMM y"}
+                }
+                yMMMEd{
+                    M{"E, d MMM - E, d MMM y"}
+                    d{"E, d - E, d MMM y"}
+                    y{"E, d MMM y - E, d MMM y"}
+                }
+                yMMMd{
+                    M{"d MMM - d MMM y"}
+                    d{"d-d MMM y"}
+                    y{"d MMM y - d MMM y"}
+                }
+                yMd{
+                    M{"d/MM/y - d/MM/y"}
+                    d{"d/MM/y - d/MM/y"}
+                    y{"d/MM/y - d/MM/y"}
+                }
+            }
+        }
+    }
+}

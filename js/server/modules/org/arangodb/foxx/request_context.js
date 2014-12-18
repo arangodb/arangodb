@@ -138,9 +138,9 @@ extend(SwaggerDocs.prototype, {
     this.docs.nickname = internal.constructNickname(httpMethod, match);
   },
 
-  addPathParam: function (paramName, description, dataType) {
+  addPathParam: function (paramName, description, dataType, required) {
     'use strict';
-    this.docs.parameters.push(internal.constructPathParamDoc(paramName, description, dataType));
+    this.docs.parameters.push(internal.constructPathParamDoc(paramName, description, dataType, required));
   },
 
   addQueryParam: function (paramName, description, dataType, required, allowMultiple) {
@@ -228,7 +228,7 @@ extend(RequestContext.prototype, {
 /// ```js
 /// app.get("/foxx/:id", function {
 ///   // Do something
-/// }).pathParam("id", type: joi.number().integer().required().description("Id of the Foxx"));
+/// }).pathParam("id", joi.number().integer().required().description("Id of the Foxx"));
 /// ```
 ///
 /// You can also pass in a configuration object instead:
@@ -279,7 +279,7 @@ extend(RequestContext.prototype, {
       } else {
         type = cfg.type;
       }
-      required = Boolean(cfg.flags && cfg.flags.presense === 'required');
+      required = Boolean(cfg.flags && cfg.flags.presence === 'required');
       description = cfg.description;
       if (
         type === 'number' &&
@@ -302,7 +302,7 @@ extend(RequestContext.prototype, {
       throw new Error("Illegal attribute type: " + regexType);
     }
     this.route.url = internal.constructUrlObject(url.match, urlConstraint, url.methods[0]);
-    this.docs.addPathParam(paramName, description, type);
+    this.docs.addPathParam(paramName, description, type, required);
     return this;
   },
 
@@ -490,8 +490,8 @@ extend(RequestContext.prototype, {
 
   summary: function (summary) {
     'use strict';
-    if (summary.length > 60) {
-      throw new Error("Summary can't be longer than 60 characters");
+    if (summary.length > 8192) {
+      throw new Error("Summary can't be longer than 8192 characters");
     }
     this.docs.addSummary(summary);
     return this;
@@ -587,7 +587,7 @@ extend(RequestContext.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_RequestContext_onlyIfAuthenticated
 ///
-/// `FoxxController#onlyIf(code, reason)`
+/// `FoxxController#onlyIfAuthenticated(code, reason)`
 ///
 /// Please activate sessions for this app if you want to use this function.
 /// Or activate authentication (deprecated).

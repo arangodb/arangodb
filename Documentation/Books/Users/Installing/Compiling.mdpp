@@ -1,25 +1,25 @@
 !CHAPTER Compiling ArangoDB from scratch
 
 The following sections describe how to compile and build the ArangoDB from
-scratch. The ArangoDB will compile on most Linux and Mac OS X systems. It
-assumes that you use the GNU C/C++ compiler or clang/clang++ to compile the 
+scratch. The ArangoDB will compile on most Linux and Mac OS X systems. We
+assume that you use the GNU C/C++ compiler or clang/clang++ to compile the 
 source. ArangoDB has been tested with the GNU C/C++ compiler and clang/clang++, 
-but should be able to compile with any Posix-compliant compiler. 
+but should be able to compile with any Posix-compliant, C++11-enabled compiler. 
 Please let us know whether you successfully compiled it with another C/C++ 
 compiler.
 
 There are the following possibilities:
 
-* all-in-one: this version contains the source code of the ArangoDB, all 
+* **all-in-one**: this version contains the source code of the ArangoDB, all 
  generated files from the autotools, FLEX, and BISON as well 
  as a version of V8, libev, and ICU.
 
-* devel: this version contains the development version of the ArangoDB.
+* **devel**: this version contains the development version of the ArangoDB.
   Use this branch if you want to make changes to the ArangoDB 
   source.
 
-The devel version requires a complete development environment, while the
-all-in-one version allows you to compile the ArangoDB without installing all the
+The **devel** version requires a complete development environment, while the
+**all-in-one** version allows you to compile the ArangoDB without installing all the
 prerequisites. The disadvantage is that it takes longer to compile and you
 cannot make changes to the flex or bison files.
 
@@ -43,11 +43,11 @@ Note: there are separate instructions for the **devel** version in the next sect
 
 Verify that your system contains:
 
-* the GNU C/C++ compilers "gcc" and "g++" and the standard C/C++ libraries. You will 
+* the GNU C/C++ compilers "gcc" and "g++" and the standard C/C++ libraries. You will need 
   compiler and library support for C++11. To be on the safe side with gcc/g++, you will
   need version number 4.8.1 or higher. For "clang" and "clang++", you will need at least
   version 3.4.
-* the GNU make
+* GNU make
 
 In addition you will need the following libraries:
 
@@ -159,53 +159,47 @@ parameter once to perform required upgrade or initialisation tasks.
 
 !SECTION Devel Version
 
+Note: a seperate [blog article](http://jsteemann.github.io/blog/2014/10/16/how-to-compile-arangodb-from-source/)
+is available that describes how to compile ArangoDB from source on Ubuntu.
+
 !SUBSECTION Basic System Requirements
 
 Verify that your system contains
 
-* the GNU C/C++ compilers "gcc" and "g++" and the standard C/C++ libraries. You will 
-* compiler and library support for C++11. To be on the safe side with gcc/g++, you will
-* need version number 4.8.1 or higher. For "clang" and "clang++", you will need at least
-* version 3.4.
+* the GNU C/C++ compilers "gcc" and "g++" and the standard C/C++ libraries, with support
+  for C++11. You will need version gcc number 4.8.1 or higher. For "clang" and "clang++", 
+  you will need at least version 3.4.
 * the GNU autotools (autoconf, automake)
-* the GNU make
+* GNU make
 * the GNU scanner generator FLEX, at least version 2.3.35
 * the GNU parser generator BISON, at least version 2.4
 * Python, version 2 or 3
+* the OpenSSL library, version 1.0.1g or higher (development package)
+* the GNU readline library (development package)
 * Go, version 1.2.2
 
-In addition you will need the following libraries
+Most Linux systems already supply RPMs or DPKGs for these packages. 
+Some distributions, for example Ubuntu 12.04 or Centos 5, provide only very out-dated 
+versions of compilers, FLEX, BISON, and/or the V8 engine. In that case you need to compile 
+newer versions of the programs and/or libraries.
 
-* libev in version 3 or 4 (only when configured with `--disable-all-in-one-libev`)
-* Google's V8 engine (only when configured with `--disable-all-in-one-v8`)
-* the ICU library (only when not configured with `--enable-all-in-one-icu`)
-* the GNU readline library
-* the OpenSSL library
-* the Boost test framework library (boost_unit_test_framework)
+When compiling with special configure options, you may need the following extra libraries:
 
-To compile Google V8 yourself, you will also need Python 2 and SCons.
+* libev in version 3 or 4 (only when using configure option `--disable-all-in-one-libev`,
+  available from http://software.schmorp.de/pkg/libev.html) 
+* Google's V8 engine, version 3.16.14 (only when using configure option
+  `--disable-all-in-one-v8`, available from http://code.google.com/p/v8)
+* SCons for compiling V8 (only when using configure option
+  `--disable-all-in-one-v8`, see http://www.scons.org)
+* the ICU library (only when not using configure option `--enable-all-in-one-icu`)
+* the Boost test framework library (only when using configure option `--enable-maintainer-mode`) 
 
-Some distributions, for example Centos 5, provide only very out-dated versions
-of compilers, FLEX, BISON, and the V8 engine. In that case you need to compile newer
-versions of the programs and/or libraries.
-
-If necessary, install or download the prerequisites:
-
-* GNU C/C++ 4.8.1 or higher (see http://gcc.gnu.org) 
-* Google's V8 engine (see http://code.google.com/p/v8)
-* SCons for compiling V8 (see http://www.scons.org)
-* libev (see http://software.schmorp.de/pkg/libev.html) 
-* OpenSSL (http://openssl.org/)
-* Go (http://golang.org/)
-
-Most linux systems already supply RPM or DEP for these
-packages. Please note that you have to install the development packages.
 
 !SUBSECTION Download the Source
 
-Download the latest source using GIT:
+Download the latest ArangoDB source using *git*:
 
-    git clone git://github.com/triAGENS/ArangoDB.git
+    git clone -b devel git://github.com/triAGENS/ArangoDB.git
 
 !SUBSECTION Setup
 

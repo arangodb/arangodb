@@ -1,36 +1,13 @@
 // Copyright 2012 the V8 project authors. All rights reserved.
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-//     * Redistributions of source code must retain the above copyright
-//       notice, this list of conditions and the following disclaimer.
-//     * Redistributions in binary form must reproduce the above
-//       copyright notice, this list of conditions and the following
-//       disclaimer in the documentation and/or other materials provided
-//       with the distribution.
-//     * Neither the name of Google Inc. nor the names of its
-//       contributors may be used to endorse or promote products derived
-//       from this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
 
 #ifndef V8_DATE_H_
 #define V8_DATE_H_
 
-#include "allocation.h"
-#include "globals.h"
-#include "platform.h"
+#include "src/allocation.h"
+#include "src/base/platform/platform.h"
+#include "src/globals.h"
 
 
 namespace v8 {
@@ -62,11 +39,14 @@ class DateCache {
   // It is an invariant of DateCache that cache stamp is non-negative.
   static const int kInvalidStamp = -1;
 
-  DateCache() : stamp_(0) {
+  DateCache() : stamp_(0), tz_cache_(base::OS::CreateTimezoneCache()) {
     ResetDateCache();
   }
 
-  virtual ~DateCache() {}
+  virtual ~DateCache() {
+    base::OS::DisposeTimezoneCache(tz_cache_);
+    tz_cache_ = NULL;
+  }
 
 
   // Clears cached timezone information and increments the cache stamp.
@@ -113,7 +93,7 @@ class DateCache {
     if (time_ms < 0 || time_ms > kMaxEpochTimeInMs) {
       time_ms = EquivalentTime(time_ms);
     }
-    return OS::LocalTimezone(static_cast<double>(time_ms));
+    return base::OS::LocalTimezone(static_cast<double>(time_ms), tz_cache_);
   }
 
   // ECMA 262 - 15.9.5.26
@@ -123,14 +103,22 @@ class DateCache {
   }
 
   // ECMA 262 - 15.9.1.9
+  // LocalTime(t) = t + LocalTZA + DaylightSavingTA(t)
+  // ECMA 262 assumes that DaylightSavingTA is computed using UTC time,
+  // but we fetch DST from OS using local time, therefore we need:
+  // LocalTime(t) = t + LocalTZA + DaylightSavingTA(t + LocalTZA).
   int64_t ToLocal(int64_t time_ms) {
-    return time_ms + LocalOffsetInMs() + DaylightSavingsOffsetInMs(time_ms);
+    time_ms += LocalOffsetInMs();
+    return time_ms + DaylightSavingsOffsetInMs(time_ms);
   }
 
   // ECMA 262 - 15.9.1.9
+  // UTC(t) = t - LocalTZA - DaylightSavingTA(t - LocalTZA)
+  // ECMA 262 assumes that DaylightSavingTA is computed using UTC time,
+  // but we fetch DST from OS using local time, therefore we need:
+  // UTC(t) = t - LocalTZA - DaylightSavingTA(t).
   int64_t ToUTC(int64_t time_ms) {
-    time_ms -= LocalOffsetInMs();
-    return time_ms - DaylightSavingsOffsetInMs(time_ms);
+    return time_ms - LocalOffsetInMs() - DaylightSavingsOffsetInMs(time_ms);
   }
 
 
@@ -182,12 +170,13 @@ class DateCache {
   // These functions are virtual so that we can override them when testing.
   virtual int GetDaylightSavingsOffsetFromOS(int64_t time_sec) {
     double time_ms = static_cast<double>(time_sec * 1000);
-    return static_cast<int>(OS::DaylightSavingsOffset(time_ms));
+    return static_cast<int>(
+        base::OS::DaylightSavingsOffset(time_ms, tz_cache_));
   }
 
   virtual int GetLocalOffsetFromOS() {
-    double offset = OS::LocalTimeOffset();
-    ASSERT(offset < kInvalidLocalOffsetInMs);
+    double offset = base::OS::LocalTimeOffset(tz_cache_);
+    DCHECK(offset < kInvalidLocalOffsetInMs);
     return static_cast<int>(offset);
   }
 
@@ -253,6 +242,8 @@ class DateCache {
   int ymd_year_;
   int ymd_month_;
   int ymd_day_;
+
+  base::TimezoneCache* tz_cache_;
 };
 
 } }   // namespace v8::internal

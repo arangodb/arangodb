@@ -34,7 +34,7 @@ var PersonModel = Foxx.Model.extend({
     }
 });
 
-exports.model = TodoModel;
+exports.model = PersonModel;
 ```
 
 This has two effects: On the one hand it provides documentation. If you annotated

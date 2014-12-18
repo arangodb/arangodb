@@ -20,14 +20,12 @@ invalid_configuration_keys = [
   'libraries',
   'link_settings',
   'sources',
+  'standalone_static_library',
   'target_name',
   'type',
 ]
 
 test = TestGyp.TestGyp()
-
-if test.format == 'scons':
-  test.skip_test('TODO: http://code.google.com/p/gyp/issues/detail?id=176\n')
 
 for test_key in invalid_configuration_keys:
   test.run_gyp('%s.gyp' % test_key, status=1, stderr=None)

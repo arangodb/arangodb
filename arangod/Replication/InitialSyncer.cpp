@@ -78,7 +78,7 @@ static inline void mylocalgetline (char const*& p,
 
 InitialSyncer::InitialSyncer (TRI_vocbase_t* vocbase,
                               TRI_replication_applier_configuration_t const* configuration,
-                              map<string, bool> const& restrictCollections,
+                              std::unordered_map<string, bool> const& restrictCollections,
                               string const& restrictType,
                               bool verbose) :
   Syncer(vocbase, configuration),
@@ -89,8 +89,10 @@ InitialSyncer::InitialSyncer (TRI_vocbase_t* vocbase,
   _batchId(0),
   _batchUpdateTime(0),
   _batchTtl(180),
+  _includeSystem(false),
   _chunkSize(),
-  _verbose(verbose) {
+  _verbose(verbose),
+  _hasFlushed(false) {
 
   uint64_t c = configuration->_chunkSize;
   if (c == 0) {
@@ -100,6 +102,8 @@ InitialSyncer::InitialSyncer (TRI_vocbase_t* vocbase,
   TRI_ASSERT(c > 0);
 
   _chunkSize = StringUtils::itoa(c);
+
+  _includeSystem = configuration->_includeSystem;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -145,7 +149,10 @@ int InitialSyncer::run (string& errorMsg) {
 
 
   map<string, string> headers;
-  string const url = BaseUrl + "/inventory?serverId=" + _localServerIdString;
+  string url = BaseUrl + "/inventory?serverId=" + _localServerIdString;
+  if (_includeSystem) {
+    url += "&includeSystem=true";
+  }
 
   // send request
   string const progress = "fetching master inventory from " + url;
@@ -476,16 +483,27 @@ int InitialSyncer::applyCollectionDump (TRI_transaction_collection_t* trxCollect
 /// @brief incrementally fetch data from a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int InitialSyncer::handleCollectionDump (TRI_transaction_collection_t* trxCollection,
+int InitialSyncer::handleCollectionDump (string const& cid,
+                                         TRI_transaction_collection_t* trxCollection,
                                          string const& collectionName,
                                          TRI_voc_tick_t maxTick,
                                          string& errorMsg) {
 
-  string const cid = StringUtils::itoa(trxCollection->_cid);
+  std::string appendix;
+
+  if (_hasFlushed) {
+    appendix = "&flush=false";
+  }
+  else {
+    // only flush WAL once
+    appendix = "&flush=true";
+    _hasFlushed = true;
+  }
 
   string const baseUrl = BaseUrl +
                          "/dump?collection=" + cid +
-                         "&chunkSize=" + _chunkSize;
+                         "&chunkSize=" + _chunkSize + 
+                         appendix;
 
   map<string, string> headers;
 
@@ -536,7 +554,7 @@ int InitialSyncer::handleCollectionDump (TRI_transaction_collection_t* trxCollec
       return TRI_ERROR_REPLICATION_MASTER_ERROR;
     }
 
-    int res;
+    int res = TRI_ERROR_NO_ERROR;  // Just to please the compiler
     bool checkMore = false;
     bool found;
     TRI_voc_tick_t tick;
@@ -609,7 +627,7 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  if (TRI_ExcludeCollectionReplication(masterName.c_str())) {
+  if (TRI_ExcludeCollectionReplication(masterName.c_str(), _includeSystem)) {
     // we're not interested in this collection
     return TRI_ERROR_NO_ERROR;
   }
@@ -627,12 +645,11 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  TRI_voc_cid_t cid = StringUtils::uint64(masterId->_value._string.data, masterId->_value._string.length - 1);
+  TRI_voc_cid_t const cid = StringUtils::uint64(masterId->_value._string.data, masterId->_value._string.length - 1);
   string const collectionMsg = "collection '" + masterName + "', id " + StringUtils::itoa(cid);
 
-
   if (! _restrictType.empty()) {
-    map<string, bool>::const_iterator it = _restrictCollections.find(masterName);
+    auto const it = _restrictCollections.find(masterName);
 
     bool found = (it != _restrictCollections.end());
 
@@ -667,15 +684,56 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
     }
 
     if (col != nullptr) {
-      string const progress = "dropping " + collectionMsg;
-      setProgress(progress.c_str());
+      bool truncate = false;
 
-      int res = TRI_DropCollectionVocBase(_vocbase, col, true);
+      if (col->_name[0] == '_' && 
+          TRI_EqualString(col->_name, TRI_COL_NAME_USERS)) {
+        // better not throw away the _users collection. otherwise it is gone and this may be a problem if the
+        // server crashes in-between.
+        truncate = true;
+      }
 
-      if (res != TRI_ERROR_NO_ERROR) {
-        errorMsg = "unable to drop " + collectionMsg + ": " + TRI_errno_string(res);
+      if (truncate) {
+        // system collection
+        setProgress("truncating " + collectionMsg);
+     
+        SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, col->_cid);
 
-        return res;
+        int res = trx.begin();
+
+        if (res != TRI_ERROR_NO_ERROR) {
+          errorMsg = "unable to truncate " + collectionMsg + ": " + TRI_errno_string(res);
+ 
+          return res;
+        }
+
+        res = trx.truncate(false);
+ 
+        if (res != TRI_ERROR_NO_ERROR) {
+          errorMsg = "unable to truncate " + collectionMsg + ": " + TRI_errno_string(res);
+ 
+          return res;
+        }
+
+        res = trx.commit();
+        
+        if (res != TRI_ERROR_NO_ERROR) {
+          errorMsg = "unable to truncate " + collectionMsg + ": " + TRI_errno_string(res);
+ 
+          return res;
+        }
+      }
+      else {
+        // regular collection
+        setProgress("dropping " + collectionMsg);
+      
+        int res = TRI_DropCollectionVocBase(_vocbase, col, true);
+
+        if (res != TRI_ERROR_NO_ERROR) {
+          errorMsg = "unable to drop " + collectionMsg + ": " + TRI_errno_string(res);
+
+          return res;
+        }
       }
     }
 
@@ -708,11 +766,24 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
   else if (phase == PHASE_DUMP) {
     string const progress = "syncing data for " + collectionMsg;
     setProgress(progress.c_str());
+    
+    TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
+
+    if (col == nullptr && ! masterName.empty()) {
+      // not found, try name next
+      col = TRI_LookupCollectionByNameVocBase(_vocbase, masterName.c_str());
+    }
+
+    if (col == nullptr) {
+      errorMsg = "cannot dump: " + collectionMsg + " not found";
+
+      return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    }
 
     int res = TRI_ERROR_INTERNAL;
 
     {
-      SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, cid);
+      SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, col->_cid);
 
       res = trx.begin();
 
@@ -729,7 +800,7 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
         errorMsg = "unable to start transaction: " + string(TRI_errno_string(res));
       }
       else {
-        res = handleCollectionDump(trxCollection, masterName, _masterInfo._lastLogTick, errorMsg);
+        res = handleCollectionDump(StringUtils::itoa(cid), trxCollection, masterName, _masterInfo._lastLogTick, errorMsg);
       }
 
       res = trx.finish(res);
@@ -746,7 +817,7 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
         TRI_ReadLockReadWriteLock(&_vocbase->_inventoryLock);
 
         try {
-          triagens::arango::CollectionGuard guard(_vocbase, cid, false);
+          triagens::arango::CollectionGuard guard(_vocbase, col->_cid, false);
           TRI_vocbase_col_t* col = guard.collection();
 
           if (col == nullptr) {

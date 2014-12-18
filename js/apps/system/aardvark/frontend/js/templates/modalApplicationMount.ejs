@@ -1,0 +1,107 @@
+<script id="modalApplicationMount.ejs" type="text/template">
+  <ul id="infoTab" class="nav nav-tabs">
+    <li class="active"><a href="#newApp" data-toggle="tab">New App</a></li>
+    <li><a href="#appstore" data-toggle="tab">App Store</a></li>
+    <li><a href="#github" data-toggle="tab">Github</a></li>
+    <li><a href="#zip" data-toggle="tab">Zip</a></li>
+  </ul>
+
+  <div class="tab-content" id="tab-content-application-info">
+
+    <div class="tab-pane active" id="newApp">
+      <table id="new-app-information">
+        <tr class="tableRow">
+          <th class="collectionInfoTh">
+            Author*:
+          </th>
+          <th class="collectionInfoTh">
+            <input type="text" id="new-app-author" value="" placeholder="Your Name">
+          </th>
+        </tr>
+        <tr class="tableRow">
+          <th class="collectionInfoTh">
+            Name*:
+          </th>
+          <th class="collectionInfoTh">
+            <input type="text" id="new-app-name" value="" placeholder="Name of the App">
+          </th>
+        </tr>
+        <tr class="tableRow">
+          <th class="collectionInfoTh">
+            Description*:
+          </th>
+          <th class="collectionInfoTh">
+            <input type="text" id="new-app-description" value="" placeholder="Please describe your App here">
+          </th>
+        </tr>
+        <tr class="tableRow">
+          <th class="collectionInfoTh">
+            License*:
+          </th>
+          <th class="collectionInfoTh">
+            <input type="text" id="new-app-license" value="" placeholder="Apache 2"></input>
+          </th>
+        </tr>
+        <tr class="tableRow">
+          <th class="collectionInfoTh">
+            Authentication*:
+          </th>
+          <th class="collectionInfoTh">
+            <input type="checkbox" id="new-app-authenticate" checked></input>
+          </th>
+        </tr>
+        <tr class="tableRow">
+          <th class="collectionInfoTh">
+            Collections*:
+          </th>
+          <th class="collectionInfoTh">
+            <input type="hidden" id="new-app-collections" value="" placeholder="Collections"></input>
+          </th>
+        </tr>
+      </table>
+    </div>
+
+    <div class="tab-pane" id="appstore">
+      <table id="appstore-content">
+      </table>
+    </div>
+
+    <div class="tab-pane" id="github">
+      <div>
+        Download a foxx application from a public <a href="https://www.github.com">github.com</a> repository. In order to define a version please add a <a href="https://git-scm.com/book/en/v2/Git-Basics-Tagging">git tag</a> to your repository using the following format: "v1.2.3". To connect to github your username and the name of the repository are sufficient.
+      </div>
+      <div>
+        <table>
+          <tr class="tableRow">
+            <th class="collectionInfoTh">
+              Repository*:
+            </th>
+            <th class="collectionInfoTh">
+              <input type="text" id="repository" value="" placeholder="username/repository">
+            </th>
+          </tr>
+          <tr class="tableRow">
+            <th class="collectionInfoTh">
+              Version*:
+            </th>
+            <th class="collectionInfoTh">
+              <input type="text" id="tag" value="" placeholder="master">
+            </th>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="tab-pane" id="zip">
+      <div>
+        <p>
+          Upload a ZIP-packed foxx application to ArangoDB.
+          The ZIP file has to be created from the folder containing the manifest.json file of your App, do not include the databases folder structure created by ArangoDB.
+          This is also compatible with the download format for ZIP files on <a href="https://www.github.com">github.com</a>.
+          Remember to change to a new version number in the manifest.json when uploading an update.
+        </p>
+      </div>
+      <div id="upload-foxx-zip">Upload Foxx.zip</div>
+    </div>
+  </div>
+</script>

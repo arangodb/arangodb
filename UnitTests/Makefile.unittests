@@ -470,6 +470,7 @@ SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/shell-foxx-repository-spec.js \
                @top_srcdir@/js/server/tests/shell-foxx-query-spec.js \
                @top_srcdir@/js/server/tests/shell-foxx-model.js \
+               @top_srcdir@/js/server/tests/shell-foxx-model-events-spec.js \
                @top_srcdir@/js/server/tests/shell-foxx-base-middleware.js \
                @top_srcdir@/js/server/tests/shell-foxx-template-middleware.js \
                @top_srcdir@/js/server/tests/shell-foxx-format-middleware.js \
@@ -539,6 +540,7 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-edges-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-escaping.js \
 			@top_srcdir@/js/server/tests/aql-explain-noncluster.js \
+			@top_srcdir@/js/server/tests/aql-fullcount.js \
 			@top_srcdir@/js/server/tests/aql-functions.js \
 			@top_srcdir@/js/server/tests/aql-functions-date.js \
 			@top_srcdir@/js/server/tests/aql-functions-list.js \
@@ -554,17 +556,26 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-modify-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-modify-noncluster-serializetest.js \
 			@top_srcdir@/js/server/tests/aql-operators.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-collect-into.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-count.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-dynamic-bounds.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-filters.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-indexes.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-keep.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-interchange-adjacent-enumerations-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-move-calculations-up.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-move-filters-up.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-collect-into.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-filter-covered-by-index.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-redundant-calculations.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-redundant-or.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-redundant-sorts.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-unnecessary-calculations.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-unnecessary-filters.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-replace-or-with-in.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-rule-use-index-range.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-use-index-for-sort.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-stats-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-parse.js \
 			@top_srcdir@/js/server/tests/aql-primary-index-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-queries-collection.js \
@@ -672,7 +683,7 @@ SHELL_CLIENT_ONLY = \
 	       @top_srcdir@/js/client/tests/shell-fm.js \
 	       @top_srcdir@/js/client/tests/shell-client.js
 
-SHELL_CLIENT = $(SHELL_COMMON)
+SHELL_CLIENT = $(SHELL_COMMON) $(SHELL_CLIENT_ONLY)
 
 .PHONY: unittests-shell-client
 UNITTESTS_CLIENT = $(addprefix --javascript.unit-tests ,$(SHELL_CLIENT))

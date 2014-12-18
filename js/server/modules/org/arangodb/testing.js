@@ -454,6 +454,7 @@ function cleanupDBDirectories(options) {
         // print("deleted " + cleanupDirectories[i]);
       }
     }
+    cleanupDirectories = [];
   }
 }
 
@@ -565,26 +566,52 @@ function runThere (options, instanceInfo, file) {
     else {
       var jasmineReportFormat = options.jasmineReportFormat || 'progress';
       t = 'var executeTestSuite = require("jasmine").executeTestSuite; '+
-          'return executeTestSuite([' + JSON.stringify(file) + '],{"format": '+
-          JSON.stringify(jasmineReportFormat) + '});';
+          'return { status: executeTestSuite([' + JSON.stringify(file) + '],{"format": '+
+          JSON.stringify(jasmineReportFormat) + '}) };';
     }
     var o = makeAuthorisationHeaders(options);
     o.method = "POST";
     o.timeout = 24*3600;
     o.returnBodyOnError = true;
-    r = download(instanceInfo.url+"/_admin/execute?returnAsJSON=true",t,o);
+    r = download(instanceInfo.url + "/_admin/execute?returnAsJSON=true",t,o);
     if (!r.error && r.code === 200) {
       r = JSON.parse(r.body);
     }
     if (file.indexOf("-spec") !== -1) {
       // remoting a jasmine suite... 
-      r = {status: r, message: ''};
+      r = {status: r.status, message: ''};
     }
   }
   catch (err) {
     r = err;
   }
   return r;
+}
+
+
+function runHere (options, instanceInfo, file) {
+  var result;
+  try {
+    if (file.indexOf("-spec") === -1) {
+      var runTest = require("jsunity").runTest; 
+      result = runTest(file);
+    }
+    else {
+      var jasmineReportFormat = options.jasmineReportFormat || 'progress';
+      var executeTestSuite = require("jasmine").executeTestSuite; 
+      result = executeTestSuite([ file ], { format: jasmineReportFormat });
+    }
+    if (file.indexOf("-spec") !== -1) {
+      result = {
+        status: result, 
+        message: ''
+      };
+    }
+ }
+  catch (err) {
+    result = err;
+  }
+  return result;
 }
 
 function executeAndWait (cmd, args) {
@@ -649,8 +676,11 @@ function runArangoshCmd (options, instanceInfo, cmds) {
   return executeAndWait(arangosh, args);
 }
 
-function performTests(options, testList, testname) {
-  var instanceInfo = startInstance("tcp", options, [], testname);
+function performTests(options, testList, testname, remote) {
+  var instanceInfo;
+  if (remote) {
+    instanceInfo = startInstance("tcp", options, [], testname);
+  }
   var results = {};
   var i;
   var te;
@@ -661,31 +691,45 @@ function performTests(options, testList, testname) {
     te = testList[i];
     if (filterTestcaseByOptions(te, options, filtered)) {
       if (!continueTesting) {
+        print('oops!');
         print("Skipping, " + te + " server is gone.");
         results[te] = {status: false, message: instanceInfo.exitStatus};
         instanceInfo.exitStatus = "server is gone.";
         continue;
       }
 
-      print("\nTrying",te,"...");
-      var r = runThere(options, instanceInfo, te);
+      print("\narangod: Trying",te,"...");
+      var r;
+      if (remote) {
+        r = runThere(options, instanceInfo, te);
+      }
+      else {
+        r = runHere(options, instanceInfo, te);
+      }
       if (r.hasOwnProperty('status')) {
         results[te] = r;
+        if (!r.status && ! options.force) {
+          break;
+        }
       }
       else {
         results[te] = {status: false, message: r};
+        if (!options.force) {
+          break;
+        }
       }
-      if (r !== true && !options.force) {
-        break;
+      if (remote) {
+        continueTesting = checkInstanceAlive(instanceInfo, options);
       }
-      continueTesting = checkInstanceAlive(instanceInfo, options);
     }
     else {
       print("Skipped " + te + " because of " + filtered.filter);
     }
   }
-  print("Shutting down...");
-  shutdownInstance(instanceInfo,options);
+  if (remote) {
+    print("Shutting down...");
+    shutdownInstance(instanceInfo,options);
+  }
   print("done.");
   return results;
 }
@@ -711,7 +755,7 @@ testFuncs.single_server = function (options) {
   if (options.test !== undefined) {
     var instanceInfo = startInstance("tcp", options, [], "single_server");
     var te = options.test;
-    print("\nTrying",te,"on server...");
+    print("\narangod: Trying",te,"...");
     result = {};
     result[te] = runThere(options, instanceInfo, makePath(te));
     print("Shutting down...");
@@ -730,7 +774,7 @@ testFuncs.single_client = function (options) {
   if (options.test !== undefined) {
     var instanceInfo = startInstance("tcp", options, [], "single_client");
     var te = options.test;
-    print("\nTrying ",te," on client...");
+    print("\narangosh: Trying ",te,"...");
     result[te] = runInArangosh(options, instanceInfo, te);
     print("Shutting down...");
     shutdownInstance(instanceInfo,options);
@@ -747,19 +791,21 @@ testFuncs.shell_server_perf = function(options) {
   findTests();
   return performTests(options,
                       tests_shell_server_aql_performance,
-                      'shell_server_perf');
+                      'shell_server_perf',
+                      true);
 };
 
 testFuncs.shell_server = function (options) {
   findTests();
-  return performTests(options, tests_shell_server, 'shell_server');
+  return performTests(options, tests_shell_server, 'shell_server', true);
 };
 
 testFuncs.shell_server_only = function (options) {
   findTests();
   return performTests(options,
                       tests_shell_server_only,
-                      'shell_server_only');
+                      'shell_server_only',
+                      true);
 };
 
 testFuncs.shell_server_ahuacatl = function(options) {
@@ -768,13 +814,15 @@ testFuncs.shell_server_ahuacatl = function(options) {
     if (options.skipRanges) {
       return performTests(options,
                           tests_shell_server_ahuacatl,
-                          'shell_server_ahuacatl_skipranges');
+                          'shell_server_ahuacatl_skipranges',
+                          true);
     }
     else {
       return performTests(options,
                           tests_shell_server_ahuacatl.concat(
                             tests_shell_server_ahuacatl_extended),
-                          'shell_server_ahuacatl');
+                          'shell_server_ahuacatl',
+                          true);
     }
   }
   return "skipped";
@@ -786,16 +834,43 @@ testFuncs.shell_server_aql = function(options) {
     if (options.skipRanges) {
       return performTests(options,
                           tests_shell_server_aql,
-                          'shell_server_aql_skipranges');
+                          'shell_server_aql_skipranges',
+                          true);
     }
     else {
       return performTests(options,
                           tests_shell_server_aql.concat(
                             tests_shell_server_aql_extended),
-                          'shell_server_aql');
+                          'shell_server_aql',
+                          true);
     }
   }
   return "skipped";
+};
+
+testFuncs.shell_server_aql_local = function(options) {
+  if (!options.hasOwnProperty('cluster')) {
+    print('need to specify whether this is a coordinator or not! Add "Cluster":true/false to the options.');
+    return;
+  }
+  findTests();
+  if (! options.skipAql) {
+    if (options.skipRanges) {
+      unitTestPrettyPrintResults(
+        performTests(options,
+                     tests_shell_server_aql,
+                     'shell_server_aql_skipranges',
+                     false));
+    }
+    else {
+      unitTestPrettyPrintResults(
+        performTests(options,
+                     tests_shell_server_aql.concat(
+                       tests_shell_server_aql_extended),
+                     'shell_server_aql',
+                     false));
+    }
+  }
 };
 
 testFuncs.shell_client = function(options) {
@@ -818,11 +893,11 @@ testFuncs.shell_client = function(options) {
         continue;
       }
 
-      print("\nTrying",te,"...");
+      print("\narangosh: Trying",te,"...");
 
       var r = runInArangosh(options, instanceInfo, te);
       results[te] = r;
-      if (r !== 0 && !options.force) {
+      if (r.status !== true && !options.force) {
         break;
       }
 
@@ -1022,6 +1097,8 @@ var impTodo = [
    coll: "UnitTestsImportJson3", type: "json", create: undefined},
   {id: "json4", data: makePath("UnitTests/import-4.json"),
    coll: "UnitTestsImportJson4", type: "json", create: undefined},
+  {id: "json5", data: makePath("UnitTests/import-5.json"),
+   coll: "UnitTestsImportJson5", type: "json", create: undefined},
   {id: "csv1", data: makePath("UnitTests/import-1.csv"),
    coll: "UnitTestsImportCsv1", type: "csv", create: "true"},
   {id: "csv2", data: makePath("UnitTests/import-2.csv"),
@@ -1030,6 +1107,8 @@ var impTodo = [
    coll: "UnitTestsImportCsv3", type: "csv", create: "true"},
   {id: "csv4", data: makePath("UnitTests/import-4.csv"),
    coll: "UnitTestsImportCsv4", type: "csv", create: "true", separator: ";", backslash: true},
+  {id: "csv5", data: makePath("UnitTests/import-5.csv"),
+   coll: "UnitTestsImportCsv5", type: "csv", create: "true", separator: ";", backslash: true},
   {id: "tsv1", data: makePath("UnitTests/import-1.tsv"),
    coll: "UnitTestsImportTsv1", type: "tsv", create: "true"},
   {id: "tsv2", data: makePath("UnitTests/import-2.tsv"),
@@ -1041,7 +1120,8 @@ var impTodo = [
 testFuncs.importing = function (options) {
   if (options.cluster) {
     print("Skipped because of cluster.");
-    return {"ok":true, "skipped":0};
+    return {"importing": {"status":true, "skipped":true, 
+                          "message": "skipped because of cluster"}};
   }
 
   var instanceInfo = startInstance("tcp", options, [ ], "importing");
@@ -1051,14 +1131,14 @@ testFuncs.importing = function (options) {
     var r = runInArangosh(options, instanceInfo,
                           makePath("js/server/tests/import-setup.js"));
     result.setup = r;
-    if (r !== 0) {
+    if (r.status !== true) {
       throw "banana";
     }
     var i;
     for (i = 0; i < impTodo.length; i++) {
       r = runArangoImp(options, instanceInfo, impTodo[i]);
       result[impTodo[i].id] = r;
-      if (r !== 0 && !options.force) {
+      if (r.status !== true && !options.force) {
         throw "banana";
       }
     }
@@ -1123,7 +1203,7 @@ testFuncs.foxx_manager = function (options) {
                                   ["--configuration",
                                    "etc/relative/foxx-manager.conf",
                                    "update"]);
-  if (results.update === 0 || options.force) {
+  if (results.update.status === true || options.force) {
     results.search = runArangoshCmd(options, instanceInfo,
                                     ["--configuration",
                                      "etc/relative/foxx-manager.conf",
@@ -1149,7 +1229,7 @@ testFuncs.dump = function (options) {
   var results = {};
   results.setup = runInArangosh(options, instanceInfo,
        makePath("js/server/tests/dump-setup"+cluster+".js"));
-  if (results.setup === 0) {
+  if (results.setup.status === true) {
     results.dump = runArangoDumpRestore(options, instanceInfo, "dump",
                                         "UnitTestsDumpSrc");
     results.restore = runArangoDumpRestore(options, instanceInfo, "restore",
@@ -1212,7 +1292,7 @@ testFuncs.arangob = function (options) {
 
       continueTesting = checkInstanceAlive(instanceInfo, options);
 
-      if (r !== 0 && !options.force) {
+      if (r.status !== true && !options.force) {
         break;
       }
     }
@@ -1483,6 +1563,7 @@ function UnitTest (which, options) {
   else {
     var r;
     results[which] = r = testFuncs[which](options);
+    print("Testresult:", r);
     ok = true;
     for (i in r) {
       if (r.hasOwnProperty(i) &&
@@ -1513,6 +1594,7 @@ function UnitTest (which, options) {
   }
 }
 
+exports.testFuncs = testFuncs;
 exports.UnitTest = UnitTest;
 exports.unitTestPrettyPrintResults = unitTestPrettyPrintResults;
 // -----------------------------------------------------------------------------

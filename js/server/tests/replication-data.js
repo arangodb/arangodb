@@ -38,7 +38,6 @@ var internal = require("internal");
 var masterEndpoint = arango.getEndpoint();
 var slaveEndpoint = masterEndpoint.replace(/:3(\d+)$/, ':4$1');
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 replication tests
 // -----------------------------------------------------------------------------
@@ -104,11 +103,30 @@ function ReplicationSuite () {
 
     internal.wait(1, false);
 
+    var includeSystem = true;
+    var restrictType = "";
+    var restrictCollections = [ ];
+    
+    if (typeof applierConfiguration === 'object') {
+      if (applierConfiguration.hasOwnProperty("includeSystem")) {
+        includeSystem = applierConfiguration.includeSystem;
+      }
+      if (applierConfiguration.hasOwnProperty("restrictType")) {
+        restrictType = applierConfiguration.restrictType;
+      }
+      if (applierConfiguration.hasOwnProperty("restrictCollections")) {
+        restrictCollections = applierConfiguration.restrictCollections;
+      }
+    }
+
     var syncResult = replication.sync({
       endpoint: masterEndpoint,
       username: replicatorUser,
       password: replicatorPassword,
-      verbose: true
+      verbose: true,
+      includeSystem: includeSystem,
+      restrictType: restrictType,
+      restrictCollections: restrictCollections
     });
 
     assertTrue(syncResult.hasOwnProperty('lastLogTick'));
@@ -166,6 +184,7 @@ function ReplicationSuite () {
 
       db._drop(cn);
       db._drop(cn2);
+      db._drop("_test");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -177,11 +196,13 @@ function ReplicationSuite () {
 
       db._drop(cn);
       db._drop(cn2);
+      db._drop("_test");
 
       connectToSlave();
       replication.applier.stop();
       db._drop(cn);
       db._drop(cn2);
+      db._drop("_test");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1342,6 +1363,133 @@ function ReplicationSuite () {
           assertEqual("skiplist", state.idx.type);
           assertTrue(state.idx.unique);
           assertEqual([ "a" ], state.idx.fields);
+        }
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test system collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testSystemCollectionWithDefaults : function () {
+      compare(
+        function (state) {
+          var c = db._create("_test", { isSystem: true });
+          c.save({ _key: "UnitTester", testValue: 42 });
+        },
+        function (state) {
+          var doc = db._test.document("UnitTester");
+          assertEqual(42, doc.testValue);
+        }
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test system collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testSystemCollectionExcludeSystem : function () {
+      compare(
+        function (state) {
+          var c = db._create("_test", { isSystem: true });
+          c.save({ _key: "UnitTester", testValue: 42 });
+        },
+        function (state) {
+          assertNull(db._collection("_test"));
+        },
+        {
+          includeSystem: false
+        }
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test system collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testSystemCollectionExcludeCollection : function () {
+      compare(
+        function (state) {
+          var c = db._create("_test", { isSystem: true });
+          c.save({ _key: "UnitTester", testValue: 42 });
+        },
+        function (state) {
+          assertNull(db._collection("_test"));
+        },
+        {
+          includeSystem: true,
+          restrictType: "exclude",
+          restrictCollections: [ "_test" ]
+        }
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test system collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testSystemCollectionIncludeCollection : function () {
+      compare(
+        function (state) {
+          var c = db._create("_test", { isSystem: true });
+          c.save({ _key: "UnitTester", testValue: 42 });
+        },
+        function (state) {
+          var doc = db._test.document("UnitTester");
+          assertEqual(42, doc.testValue);
+        },
+        {
+          includeSystem: true,
+          restrictType: "include",
+          restrictCollections: [ "_test" ]
+        }
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test include/exclude collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testCollectionIncludeCollection : function () {
+      compare(
+        function (state) {
+          var c1 = db._create(cn);
+          var c2 = db._create(cn2);
+          c1.save({ _key: "UnitTester", testValue: 42 });
+          c2.save({ _key: "UnitTester", testValue: 23 });
+        },
+        function (state) {
+          var doc = db[cn].document("UnitTester");
+          assertEqual(42, doc.testValue);
+          assertNull(db._collection(cn2));
+        },
+        {
+          restrictType: "include",
+          restrictCollections: [ cn ]
+        }
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test include/exclude collection
+////////////////////////////////////////////////////////////////////////////////
+
+    testCollectionExcludeCollection : function () {
+      compare(
+        function (state) {
+          var c1 = db._create(cn);
+          var c2 = db._create(cn2);
+          c1.save({ _key: "UnitTester", testValue: 42 });
+          c2.save({ _key: "UnitTester", testValue: 23 });
+        },
+        function (state) {
+          var doc = db[cn].document("UnitTester");
+          assertEqual(42, doc.testValue);
+          assertNull(db._collection(cn2));
+        },
+        {
+          restrictType: "exclude",
+          restrictCollections: [ cn2 ]
         }
       );
     }

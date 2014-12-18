@@ -53,7 +53,7 @@ int fileno(FILE *stream);
 #define FLEX_SCANNER
 #define YY_FLEX_MAJOR_VERSION 2
 #define YY_FLEX_MINOR_VERSION 5
-#define YY_FLEX_SUBMINOR_VERSION 37
+#define YY_FLEX_SUBMINOR_VERSION 39
 #if YY_FLEX_SUBMINOR_VERSION > 0
 #define FLEX_BETA
 #endif
@@ -203,7 +203,15 @@ typedef void* yyscan_t;
 
 /* Size of default input buffer. */
 #ifndef YY_BUF_SIZE
+#ifdef __ia64__
+/* On IA-64, the buffer size is 16k, not 8k.
+ * Moreover, YY_BUF_SIZE is 2*YY_READ_BUF_SIZE in the general case.
+ * Ditto for the __ia64__ case accordingly.
+ */
+#define YY_BUF_SIZE 32768
+#else
 #define YY_BUF_SIZE 16384
+#endif /* __ia64__ */
 #endif
 
 /* The state buf must be large enough to hold one state per character in the main buffer.
@@ -225,6 +233,7 @@ typedef size_t yy_size_t;
 #define EOB_ACT_LAST_MATCH 2
 
     #define YY_LESS_LINENO(n)
+    #define YY_LINENO_REWIND_TO(ptr)
     
 /* Return all but the first "n" matched characters back to the input stream. */
 #define yyless(n) \
@@ -407,9 +416,9 @@ static yyconst flex_int16_t yy_accept[45] =
     {   0,
        13,   13,   16,   14,   13,   13,   14,   14,   11,    6,
         6,   12,   14,   14,   14,    9,   10,    7,    8,   13,
-        0,    0,    4,    0,    6,    6,    0,    6,    0,    0,
-        0,    5,    6,    0,    0,    0,    0,    0,    2,    3,
-        0,    6,    1,    0
+        0,    0,    4,    0,    6,    6,    0,    0,    6,    0,
+        0,    0,    5,    6,    0,    6,    0,    0,    0,    0,
+        2,    3,    1,    0
     } ;
 
 static yyconst flex_int32_t yy_ec[256] =
@@ -454,11 +463,11 @@ static yyconst flex_int32_t yy_meta[37] =
 
 static yyconst flex_int16_t yy_base[47] =
     {   0,
-        0,    0,  110,  115,   35,   38,   42,   35,  115,   99,
-       39,  115,   38,   31,   36,  115,  115,  115,  115,   54,
-       48,   78,  115,  104,   96,   49,   51,   58,   54,   56,
-       52,  115,   76,   62,   72,   77,   86,   81,  115,  115,
-       64,   88,  115,  115,  104,   89
+        0,    0,  119,  131,   35,   38,   42,   35,  131,   40,
+       41,  131,   35,   35,   39,  131,  131,  131,  131,   60,
+       48,   78,  131,   93,   61,   79,   48,   86,   89,   56,
+       57,   53,  131,   96,   71,   98,   83,   88,   97,  103,
+      131,  131,  131,  131,   91,   64
     } ;
 
 static yyconst flex_int16_t yy_def[47] =
@@ -470,46 +479,48 @@ static yyconst flex_int16_t yy_def[47] =
        44,   44,   44,    0,   44,   44
     } ;
 
-static yyconst flex_int16_t yy_nxt[152] =
+static yyconst flex_int16_t yy_nxt[168] =
     {   0,
         4,    5,    6,    5,    4,    7,    8,    9,    8,    4,
        10,   11,   12,    4,    4,   13,    4,   14,    4,    4,
        15,    4,   16,    4,   17,    4,    4,   13,    4,   14,
         4,    4,   15,    4,   18,   19,   20,   20,   20,   20,
-       20,   20,   21,   21,   21,   25,   26,   23,   27,   28,
-       28,   29,   30,   32,   31,   20,   20,   20,   27,   28,
-       28,   33,   33,   29,   30,   24,   31,   27,   28,   28,
-       34,   24,   35,   36,   42,   42,   21,   21,   21,   21,
-       21,   38,   34,   23,   35,   36,   33,   33,   39,   21,
-       37,   40,   41,   38,   41,   43,   42,   42,   42,   42,
+       20,   20,   21,   21,   21,   25,   26,   23,   30,   27,
+       27,   29,   29,   33,   28,   28,   31,   32,   34,   34,
+       30,   20,   20,   20,   21,   24,   28,   28,   31,   32,
+       27,   24,   37,   38,   39,   28,   21,   21,   21,   21,
+       21,   36,   36,   23,   37,   38,   39,   28,   27,   29,
+       29,   22,   35,   28,   35,   44,   36,   36,   27,   29,
 
-       39,   24,   37,   40,   22,   27,   44,   43,   27,   44,
-       44,   44,   21,   21,    3,   44,   44,   44,   44,   44,
+       29,   24,   40,   28,   41,   28,   34,   34,   36,   36,
+       28,   42,   21,   21,   40,   28,   41,   43,   44,   44,
+       44,   44,   28,   42,   44,   44,   44,   44,   44,   43,
+        3,   44,   44,   44,   44,   44,   44,   44,   44,   44,
        44,   44,   44,   44,   44,   44,   44,   44,   44,   44,
        44,   44,   44,   44,   44,   44,   44,   44,   44,   44,
-       44,   44,   44,   44,   44,   44,   44,   44,   44,   44,
-       44
+       44,   44,   44,   44,   44,   44,   44
     } ;
 
-static yyconst flex_int16_t yy_chk[152] =
+static yyconst flex_int16_t yy_chk[168] =
     {   0,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    5,    5,    5,    6,
-        6,    6,    7,    7,    7,    8,    8,    7,   11,   11,
-       11,   13,   14,   21,   15,   20,   20,   20,   26,   26,
-       26,   27,   27,   13,   14,    7,   15,   28,   28,   28,
-       29,   21,   30,   31,   41,   41,    7,    7,   22,   22,
-       22,   34,   29,   22,   30,   31,   33,   33,   35,   46,
-       33,   36,   37,   34,   37,   38,   37,   37,   42,   42,
+        6,    6,    7,    7,    7,    8,    8,    7,   13,   10,
+       11,   11,   11,   21,   10,   11,   14,   15,   27,   27,
+       13,   20,   20,   20,   46,    7,   10,   11,   14,   15,
+       25,   21,   30,   31,   32,   25,    7,    7,   22,   22,
+       22,   35,   35,   22,   30,   31,   32,   25,   26,   26,
+       26,   45,   28,   26,   28,   24,   28,   28,   29,   29,
 
-       35,   22,   33,   36,   45,   25,   24,   38,   10,    3,
-        0,    0,   22,   22,   44,   44,   44,   44,   44,   44,
+       29,   22,   37,   29,   38,   26,   34,   34,   36,   36,
+       34,   39,   22,   22,   37,   29,   38,   40,    3,    0,
+        0,    0,   34,   39,    0,    0,    0,    0,    0,   40,
        44,   44,   44,   44,   44,   44,   44,   44,   44,   44,
        44,   44,   44,   44,   44,   44,   44,   44,   44,   44,
        44,   44,   44,   44,   44,   44,   44,   44,   44,   44,
-       44
+       44,   44,   44,   44,   44,   44,   44
     } ;
 
 /* The intent behind this definition is that it'll catch
@@ -668,7 +679,12 @@ static int input (yyscan_t yyscanner );
 
 /* Amount of stuff to slurp up with each read. */
 #ifndef YY_READ_BUF_SIZE
+#ifdef __ia64__
+/* On IA-64, the buffer size is 16k, not 8k */
+#define YY_READ_BUF_SIZE 16384
+#else
 #define YY_READ_BUF_SIZE 8192
+#endif /* __ia64__ */
 #endif
 
 /* Copy whatever the last rule matched to the standard output. */
@@ -770,10 +786,6 @@ YY_DECL
 	int yy_act;
     struct yyguts_t * yyg = (struct yyguts_t*)yyscanner;
 
- /* -----------------------------------------------------------------------------
-  * keywords
-  * ----------------------------------------------------------------------------- */
-
 	if ( !yyg->yy_init )
 		{
 		yyg->yy_init = 1;
@@ -800,6 +812,12 @@ YY_DECL
 		tri_jsp__load_buffer_state(yyscanner );
 		}
 
+	{
+
+ /* -----------------------------------------------------------------------------
+  * keywords
+  * ----------------------------------------------------------------------------- */
+
 	while ( 1 )		/* loops until end-of-file is reached */
 		{
 		yy_cp = yyg->yy_c_buf_p;
@@ -816,7 +834,7 @@ YY_DECL
 yy_match:
 		do
 			{
-			YY_CHAR yy_c = yy_ec[YY_SC_TO_UI(*yy_cp)];
+			YY_CHAR yy_c = yy_ec[YY_SC_TO_UI(*yy_cp)] ;
 			if ( yy_accept[yy_current_state] )
 				{
 				yyg->yy_last_accepting_state = yy_current_state;
@@ -1087,6 +1105,7 @@ case YY_STATE_EOF(INITIAL):
 			"fatal flex scanner internal error--no action found" );
 	} /* end of action switch */
 		} /* end of scanning one token */
+	} /* end of user's declarations */
 } /* end of tri_jsp_lex */
 
 /* yy_get_next_buffer - try to read in a new buffer
@@ -1697,7 +1716,7 @@ YY_BUFFER_STATE tri_jsp__scan_bytes  (yyconst char * yybytes, yy_size_t  _yybyte
 	YY_BUFFER_STATE b;
 	char *buf;
 	yy_size_t n;
-	int i;
+	yy_size_t i;
     
 	/* Get memory for full buffer, including space for trailing EOB's. */
 	n = _yybytes_len + 2;
@@ -1705,7 +1724,7 @@ YY_BUFFER_STATE tri_jsp__scan_bytes  (yyconst char * yybytes, yy_size_t  _yybyte
 	if ( ! buf )
 		YY_FATAL_ERROR( "out of dynamic memory in tri_jsp__scan_bytes()" );
 
-	for ( i = 0; i < (int) _yybytes_len; ++i )
+	for ( i = 0; i < _yybytes_len; ++i )
 		buf[i] = yybytes[i];
 
 	buf[_yybytes_len] = buf[_yybytes_len+1] = YY_END_OF_BUFFER_CHAR;

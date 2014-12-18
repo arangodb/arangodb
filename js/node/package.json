@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "aqb": "1.4.0",
+    "aqb": "1.4.1",
     "buster-format": "0.5.6",
     "cheerio": "0.17.0",
     "coffee-script": "1.7.1",
@@ -9,7 +9,7 @@
     "foxx_generator": "0.5.1",
     "htmlparser2": "3.7.2",
     "iced-coffee-script": "1.7.1-f",
-    "joi": "4.6.1",
+    "joi": "4.9.0",
     "jshint": "2.5.5",
     "marked": "0.3.2",
     "moment": "2.6.0",

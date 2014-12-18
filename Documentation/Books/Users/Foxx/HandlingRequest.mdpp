@@ -78,7 +78,7 @@ like any other collection with the db object, e.g.
 ```
 
 Of course you still use any collection directly with the db object even 
-from Foxx. To access an collection called "movies" this could be one solution: 
+from Foxx. To access a collection called "movies" this could be one solution: 
 
 ```js
 app.get("/all", function(req, res) { 
@@ -95,7 +95,7 @@ Then there are Foxx repositories. These are objects that you can create
 to hide the internals of the database access from the application so 
 that the application will just use the repository but not the database. 
 
-A repository is an object that wrap access to a collection (or multiple 
+A repository is an object that wraps access to a collection (or multiple 
 collections if you want), whereas controller.collection returns the 
 collection itself. That's the main difference. 
 
@@ -103,9 +103,9 @@ To return a list of users from a controller using a repository, you
 could use it like this: 
 
 ```js
-    var foxx = require("org/arangodb/foxx"); 
+    var Foxx = require("org/arangodb/foxx"); 
     var db = require("org/arangodb").db; 
-    var usersRepo = new foxx.Repository(db._collection("users")); 
+    var usersRepo = new Foxx.Repository(db._collection("users")); 
     app.get("/all", function(req, res) { 
        res.json({ users: usersRepo.collection.toArray() }); 
     }); 

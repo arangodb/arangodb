@@ -224,7 +224,8 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(200)
         doc.parsed_response['id'].should eq(@cid)
         doc.parsed_response['name'].should eq(@cn)
-        [2,4].include?(doc.parsed_response['status']).should be_true
+        p doc.parsed_response['status']
+        [2, 4].include?(doc.parsed_response['status'].to_i).should eq(true)
       end
 
       # get
@@ -251,7 +252,7 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(200)
         doc.parsed_response['id'].should eq(@cid)
         doc.parsed_response['name'].should eq(@cn)
-        [2,4].include?(doc.parsed_response['status']).should be_true
+        [2, 4].include?(doc.parsed_response['status'].to_i).should eq(true)
       end
 
       # get count
@@ -751,7 +752,7 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(200)
         doc.parsed_response['id'].should eq(cid)
         doc.parsed_response['name'].should eq(@cn)
-              [2,4].include?(doc.parsed_response['status']).should be_true
+        [2, 4].include?(doc.parsed_response['status'].to_i).should eq(true)
 
         ArangoDB.drop_collection(@cn)
       end
@@ -769,7 +770,7 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(200)
         doc.parsed_response['id'].should eq(cid)
         doc.parsed_response['name'].should eq(@cn)
-        [2,4].include?(doc.parsed_response['status']).should be_true
+        [2, 4].include?(doc.parsed_response['status'].to_i).should eq(true)
 
         ArangoDB.drop_collection(@cn)
       end
@@ -797,7 +798,7 @@ describe ArangoDB do
           doc = ArangoDB.post(cmd, :body => body)
         end
 
-        ArangoDB.size_collection(@cid).should eq(10)
+        ArangoDB.size_collection(@cid).to_i.should eq(10)
 
         cmd = api + "/" + @cn + "/truncate"
         doc = ArangoDB.log_put("#{prefix}-identifier-truncate", cmd)
