@@ -70,12 +70,6 @@
 # -*- mode: Makefile; -*-
 
 ################################################################################
-### @brief ICU
-################################################################################
-
-# -*- mode: Makefile; -*-
-
-################################################################################
 ### @brief libev
 ################################################################################
 
@@ -194,7 +188,6 @@ DIST_COMMON = $(srcdir)/lib/Makefile.files \
 	$(srcdir)/Documentation/Makefile.files \
 	$(srcdir)/js/Makefile.files $(srcdir)/mr/Makefile.mruby \
 	$(srcdir)/lib/Makefile.flex \
-	$(srcdir)/3rdParty/Makefile.all-in-one-icu \
 	$(srcdir)/3rdParty/Makefile.all-in-one-libev \
 	$(srcdir)/3rdParty/Makefile.all-in-one-mruby \
 	$(srcdir)/3rdParty/Makefile.all-in-one-v8 \
@@ -282,37 +275,31 @@ DIST_COMMON = $(srcdir)/lib/Makefile.files \
 @ENABLE_MAINTAINER_MODE_TRUE@am__append_15 = $(FLEX_FILES) \
 @ENABLE_MAINTAINER_MODE_TRUE@	$(FLEXXX_FILES) $(BISON_FILES) \
 @ENABLE_MAINTAINER_MODE_TRUE@	$(BISONXX_FILES)
-@ENABLE_ALL_IN_ONE_ICU_TRUE@am__append_16 = @ICU_BUILT@
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@am__append_16 = @LIBEV_LIBS@
 
 ################################################################################
 ### @brief additional files to remove
 ################################################################################
-@ENABLE_ALL_IN_ONE_ICU_TRUE@am__append_17 = clean-icu
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@am__append_18 = @LIBEV_LIBS@
-
-################################################################################
-### @brief additional files to remove
-################################################################################
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@am__append_19 = clean-libev
-@ENABLE_MRUBY_TRUE@am__append_20 = @MRUBY_LIBS@
+@ENABLE_ALL_IN_ONE_LIBEV_TRUE@am__append_17 = clean-libev
+@ENABLE_MRUBY_TRUE@am__append_18 = @MRUBY_LIBS@
 
 ################################################################################
 ### @brief additional files to remove
 ###
 ### "clean" in mruby is broken
 ################################################################################
-@ENABLE_MRUBY_TRUE@am__append_21 = clean-mruby
-@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_22 = @V8_LIBS@
+@ENABLE_MRUBY_TRUE@am__append_19 = clean-mruby
+@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_20 = @V8_LIBS@
 
 ################################################################################
 ### @brief additional files to remove
 ################################################################################
-@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_23 = clean-v8
+@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_21 = clean-v8
 
 ################################################################################
 ### @brief additional files to remove
 ################################################################################
-@ENABLE_ALL_IN_ONE_ETCD_TRUE@am__append_24 = clean-etcd
+@ENABLE_ALL_IN_ONE_ETCD_TRUE@am__append_22 = clean-etcd
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
@@ -325,7 +312,7 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
 	$(top_srcdir)/m4/configure.documentation \
 	$(top_srcdir)/m4/configure.coverage \
 	$(top_srcdir)/m4/configure.maintainer \
-	$(top_srcdir)/m4/external.math \
+	$(top_srcdir)/m4/clock_gettime $(top_srcdir)/m4/external.math \
 	$(top_srcdir)/m4/external.readline \
 	$(top_srcdir)/m4/external.openssl \
 	$(top_srcdir)/m4/all-in-one.zlib \
@@ -694,8 +681,7 @@ lib_libarango_mruby_a_OBJECTS = $(am_lib_libarango_mruby_a_OBJECTS)
 lib_libarango_v8_a_AR = $(AR) $(ARFLAGS)
 lib_libarango_v8_a_LIBADD =
 am_lib_libarango_v8_a_OBJECTS = lib/V8/JSLoader.$(OBJEXT) \
-	lib/V8/V8LineEditor.$(OBJEXT) \
-	lib/V8/V8StringConverter.$(OBJEXT) lib/V8/v8-buffer.$(OBJEXT) \
+	lib/V8/V8LineEditor.$(OBJEXT) lib/V8/v8-buffer.$(OBJEXT) \
 	lib/V8/v8-conv.$(OBJEXT) lib/V8/v8-globals.$(OBJEXT) \
 	lib/V8/v8-json.$(OBJEXT) lib/V8/v8-shell.$(OBJEXT) \
 	lib/V8/v8-utils.$(OBJEXT) \
@@ -1008,7 +994,6 @@ GO = @GO@
 GREP = @GREP@
 HAVE_CXX11 = @HAVE_CXX11@
 HTML2TEXT_EXEC = @HTML2TEXT_EXEC@
-ICU_BUILT = @ICU_BUILT@
 ICU_CPPFLAGS = @ICU_CPPFLAGS@
 ICU_LDFLAGS = @ICU_LDFLAGS@
 ICU_LIBS = @ICU_LIBS@
@@ -1029,8 +1014,8 @@ LIBOBJS = @LIBOBJS@
 ################################################################################
 ### @brief libraries
 ################################################################################
-LIBS = @LIBEV_LIBS@ @MATH_LIBS@ @OPENSSL_LIBS@ @ICU_LIBS@ @ZLIB_LIBS@ \
-	@READLINE_LIBS@ $(am__append_2)
+LIBS = @RT_LIBS@ @LIBEV_LIBS@ @MATH_LIBS@ @OPENSSL_LIBS@ @ICU_LIBS@ \
+	@ZLIB_LIBS@ @READLINE_LIBS@ $(am__append_2)
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
 MAINT = @MAINT@
@@ -1062,6 +1047,7 @@ RANLIB = @RANLIB@
 READLINE_CPPFLAGS = @READLINE_CPPFLAGS@
 READLINE_LDFLAGS = @READLINE_LDFLAGS@
 READLINE_LIBS = @READLINE_LIBS@
+RT_LIBS = @RT_LIBS@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 STRIP = @STRIP@
@@ -1071,6 +1057,7 @@ TRI_CONFIGURE_FLAGS = @TRI_CONFIGURE_FLAGS@
 TRI_CONFIGURE_OPTIONS = @TRI_CONFIGURE_OPTIONS@
 TRI_REPOSITORY_VERSION = @TRI_REPOSITORY_VERSION@
 V8_CPPFLAGS = @V8_CPPFLAGS@
+V8_DIR = @V8_DIR@
 V8_LDFLAGS = @V8_LDFLAGS@
 V8_LIBS = @V8_LIBS@
 V8_TARGET = @V8_TARGET@
@@ -1158,7 +1145,7 @@ BUILT_SOURCES = build.h etc/arangodb/arango-dfdb$(PROGRAM_SUFFIX).conf \
 	$(am__append_13) $(JAVASCRIPT_BROWSER) \
 	@builddir@/.setup-js-directories $(am__append_14) \
 	$(am__append_15) $(am__append_16) $(am__append_18) \
-	$(am__append_20) $(am__append_22) @ZLIB_LIBS@
+	$(am__append_20) @ZLIB_LIBS@
 
 ################################################################################
 ### @brief man pages to install
@@ -1186,7 +1173,7 @@ CLEANUP = $(am__append_6) $(am__append_11)
 ### @brief additional files to remove
 ################################################################################
 CLEANUP_3RD = $(am__append_17) $(am__append_19) $(am__append_21) \
-	$(am__append_23) clean-zlib $(am__append_24)
+	clean-zlib $(am__append_22)
 
 ################################################################################
 ### @brief flex files
@@ -1438,7 +1425,6 @@ lib_libarango_fe_a_SOURCES = \
 lib_libarango_v8_a_SOURCES = \
 	lib/V8/JSLoader.cpp \
 	lib/V8/V8LineEditor.cpp \
-	lib/V8/V8StringConverter.cpp \
 	lib/V8/v8-buffer.cpp \
 	lib/V8/v8-conv.cpp \
 	lib/V8/v8-globals.cpp \
@@ -1874,6 +1860,7 @@ SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/shell-foxx-repository-spec.js \
                @top_srcdir@/js/server/tests/shell-foxx-query-spec.js \
                @top_srcdir@/js/server/tests/shell-foxx-model.js \
+               @top_srcdir@/js/server/tests/shell-foxx-model-events-spec.js \
                @top_srcdir@/js/server/tests/shell-foxx-base-middleware.js \
                @top_srcdir@/js/server/tests/shell-foxx-template-middleware.js \
                @top_srcdir@/js/server/tests/shell-foxx-format-middleware.js \
@@ -1897,6 +1884,7 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-edges-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-escaping.js \
 			@top_srcdir@/js/server/tests/aql-explain-noncluster.js \
+			@top_srcdir@/js/server/tests/aql-fullcount.js \
 			@top_srcdir@/js/server/tests/aql-functions.js \
 			@top_srcdir@/js/server/tests/aql-functions-date.js \
 			@top_srcdir@/js/server/tests/aql-functions-list.js \
@@ -1912,17 +1900,26 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-modify-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-modify-noncluster-serializetest.js \
 			@top_srcdir@/js/server/tests/aql-operators.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-collect-into.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-count.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-dynamic-bounds.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-filters.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-indexes.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-keep.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-interchange-adjacent-enumerations-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-move-calculations-up.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-move-filters-up.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-collect-into.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-filter-covered-by-index.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-redundant-calculations.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-redundant-or.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-redundant-sorts.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-unnecessary-calculations.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-unnecessary-filters.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-replace-or-with-in.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-rule-use-index-range.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-use-index-for-sort.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-stats-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-parse.js \
 			@top_srcdir@/js/server/tests/aql-primary-index-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-queries-collection.js \
@@ -1979,7 +1976,7 @@ SHELL_CLIENT_ONLY = \
 	       @top_srcdir@/js/client/tests/shell-fm.js \
 	       @top_srcdir@/js/client/tests/shell-client.js
 
-SHELL_CLIENT = $(SHELL_COMMON)
+SHELL_CLIENT = $(SHELL_COMMON) $(SHELL_CLIENT_ONLY)
 UNITTESTS_CLIENT = $(addprefix --javascript.unit-tests ,$(SHELL_CLIENT))
 
 ################################################################################
@@ -2059,7 +2056,6 @@ JAVASCRIPT_JSLINT = \
 	\
 	@srcdir@/js/apps/system/aardvark/frontend/js/shell/browser.js
 
-@ENABLE_ALL_IN_ONE_ICU_TRUE@ICUDIR = @abs_top_srcdir@/3rdParty/icu/BUILD
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
@@ -2067,7 +2063,7 @@ all: $(BUILT_SOURCES)
 .SUFFIXES: .c .cpp .o .obj
 am--refresh: Makefile
 	@:
-$(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am $(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/etc/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/UnitTests/Makefile.unittests $(srcdir)/Documentation/Makefile.files $(srcdir)/js/Makefile.files $(srcdir)/mr/Makefile.mruby $(srcdir)/lib/Makefile.flex $(srcdir)/3rdParty/Makefile.all-in-one-icu $(srcdir)/3rdParty/Makefile.all-in-one-libev $(srcdir)/3rdParty/Makefile.all-in-one-mruby $(srcdir)/3rdParty/Makefile.all-in-one-v8 $(srcdir)/3rdParty/Makefile.zlib $(srcdir)/3rdParty/Makefile.etcd $(am__configure_deps)
+$(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am $(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/etc/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/UnitTests/Makefile.unittests $(srcdir)/Documentation/Makefile.files $(srcdir)/js/Makefile.files $(srcdir)/mr/Makefile.mruby $(srcdir)/lib/Makefile.flex $(srcdir)/3rdParty/Makefile.all-in-one-libev $(srcdir)/3rdParty/Makefile.all-in-one-mruby $(srcdir)/3rdParty/Makefile.all-in-one-v8 $(srcdir)/3rdParty/Makefile.zlib $(srcdir)/3rdParty/Makefile.etcd $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -2090,7 +2086,7 @@ Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	    echo ' cd $(top_builddir) && $(SHELL) ./config.status $@ $(am__depfiles_maybe)'; \
 	    cd $(top_builddir) && $(SHELL) ./config.status $@ $(am__depfiles_maybe);; \
 	esac;
-$(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/etc/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/UnitTests/Makefile.unittests $(srcdir)/Documentation/Makefile.files $(srcdir)/js/Makefile.files $(srcdir)/mr/Makefile.mruby $(srcdir)/lib/Makefile.flex $(srcdir)/3rdParty/Makefile.all-in-one-icu $(srcdir)/3rdParty/Makefile.all-in-one-libev $(srcdir)/3rdParty/Makefile.all-in-one-mruby $(srcdir)/3rdParty/Makefile.all-in-one-v8 $(srcdir)/3rdParty/Makefile.zlib $(srcdir)/3rdParty/Makefile.etcd:
+$(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/etc/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/UnitTests/Makefile.unittests $(srcdir)/Documentation/Makefile.files $(srcdir)/js/Makefile.files $(srcdir)/mr/Makefile.mruby $(srcdir)/lib/Makefile.flex $(srcdir)/3rdParty/Makefile.all-in-one-libev $(srcdir)/3rdParty/Makefile.all-in-one-mruby $(srcdir)/3rdParty/Makefile.all-in-one-v8 $(srcdir)/3rdParty/Makefile.zlib $(srcdir)/3rdParty/Makefile.etcd:
 
 $(top_builddir)/config.status: $(top_srcdir)/configure $(CONFIG_STATUS_DEPENDENCIES)
 	$(SHELL) ./config.status --recheck
@@ -3105,8 +3101,6 @@ lib/V8/JSLoader.$(OBJEXT): lib/V8/$(am__dirstamp) \
 	lib/V8/$(DEPDIR)/$(am__dirstamp)
 lib/V8/V8LineEditor.$(OBJEXT): lib/V8/$(am__dirstamp) \
 	lib/V8/$(DEPDIR)/$(am__dirstamp)
-lib/V8/V8StringConverter.$(OBJEXT): lib/V8/$(am__dirstamp) \
-	lib/V8/$(DEPDIR)/$(am__dirstamp)
 lib/V8/v8-buffer.$(OBJEXT): lib/V8/$(am__dirstamp) \
 	lib/V8/$(DEPDIR)/$(am__dirstamp)
 lib/V8/v8-conv.$(OBJEXT): lib/V8/$(am__dirstamp) \
@@ -3835,7 +3829,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Utilities/$(DEPDIR)/lib_libarango_a-ShellImplementation.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/V8/$(DEPDIR)/JSLoader.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/V8/$(DEPDIR)/V8LineEditor.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/V8/$(DEPDIR)/V8StringConverter.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/V8/$(DEPDIR)/v8-buffer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/V8/$(DEPDIR)/v8-conv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/V8/$(DEPDIR)/v8-globals.Po@am__quote@
@@ -9387,42 +9380,6 @@ js/apps/system/aardvark/frontend/js/modules/underscore.js: @srcdir@/js/node/node
 @ENABLE_MAINTAINER_MODE_TRUE@%.cpp: %.yy
 @ENABLE_MAINTAINER_MODE_TRUE@	@top_srcdir@/utils/bison-c++.sh $(BISON) $@ $<
 
-@ENABLE_ALL_IN_ONE_ICU_TRUE@@ICU_LIBS@: @srcdir@/.icu-build-@TRI_BITS@
-
-@ENABLE_ALL_IN_ONE_ICU_TRUE@@srcdir@/.icu-build-@TRI_BITS@:
-@ENABLE_ALL_IN_ONE_ICU_TRUE@	@echo
-@ENABLE_ALL_IN_ONE_ICU_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_ALL_IN_ONE_ICU_TRUE@	@echo "BUILDING ICU"
-@ENABLE_ALL_IN_ONE_ICU_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_ALL_IN_ONE_ICU_TRUE@	@echo
-
-@ENABLE_ALL_IN_ONE_ICU_TRUE@	cd @top_srcdir@/3rdParty/icu/source \
-@ENABLE_ALL_IN_ONE_ICU_TRUE@		&& ./configure \
-@ENABLE_ALL_IN_ONE_ICU_TRUE@			--enable-static \
-@ENABLE_ALL_IN_ONE_ICU_TRUE@			--disable-shared \
-@ENABLE_ALL_IN_ONE_ICU_TRUE@			--disable-tests \
-@ENABLE_ALL_IN_ONE_ICU_TRUE@			--disable-samples \
-@ENABLE_ALL_IN_ONE_ICU_TRUE@			--disable-extras \
-@ENABLE_ALL_IN_ONE_ICU_TRUE@			--prefix=$(ICUDIR) \
-@ENABLE_ALL_IN_ONE_ICU_TRUE@			--libdir=$(ICUDIR)/libs \
-@ENABLE_ALL_IN_ONE_ICU_TRUE@			CC=${CC} \
-@ENABLE_ALL_IN_ONE_ICU_TRUE@			CXX=${CXX}
-
-@ENABLE_ALL_IN_ONE_ICU_TRUE@	cd @top_srcdir@/3rdParty/icu/source && $(MAKE) install
-
-@ENABLE_ALL_IN_ONE_ICU_TRUE@	touch @srcdir@/.icu-build-@TRI_BITS@
-
-@ENABLE_ALL_IN_ONE_ICU_TRUE@	@echo
-@ENABLE_ALL_IN_ONE_ICU_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_ALL_IN_ONE_ICU_TRUE@	@echo "BUILD ICU FINISHED"
-@ENABLE_ALL_IN_ONE_ICU_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_ALL_IN_ONE_ICU_TRUE@	@echo
-
-@ENABLE_ALL_IN_ONE_ICU_TRUE@clean-icu:
-@ENABLE_ALL_IN_ONE_ICU_TRUE@	cd @top_srcdir@/3rdParty/icu/source && ( $(MAKE) clean || true )
-@ENABLE_ALL_IN_ONE_ICU_TRUE@	rm -f @srcdir@/.icu-build-@TRI_BITS@
-@ENABLE_ALL_IN_ONE_ICU_TRUE@	rm -rf $(ICUDIR)
-
 @ENABLE_ALL_IN_ONE_LIBEV_TRUE@@LIBEV_LIBS@: @srcdir@/.libev-build-@TRI_BITS@
 
 @ENABLE_ALL_IN_ONE_LIBEV_TRUE@@srcdir@/.libev-build-@TRI_BITS@:
@@ -9483,11 +9440,28 @@ js/apps/system/aardvark/frontend/js/modules/underscore.js: @srcdir@/js/node/node
 @ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_TRUE@	cd @top_srcdir@/3rdParty/V8 \
 @ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_TRUE@		&& CFLAGS="-O2 -g -fsigned-char" \
 @ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_TRUE@		   CXXFLAGS="-O2 -g -fsigned-char" \
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_TRUE@		   $(MAKE) CXX=$(CXX) LINK=$(CXX) library=static strictaliasing=off snapshot=off werror=no hardfp=on @V8_TARGET@
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@	cd @top_srcdir@/3rdParty/V8 \
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@		&& CFLAGS="-O2 -g" \
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@		   CXXFLAGS="-O2 -g" \
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@		   $(MAKE) CXX=$(CXX) LINK=$(CXX) library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
+@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_TRUE@		   $(MAKE) \
+@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_TRUE@			CXX=$(CXX) \
+@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_TRUE@			LINK=$(CXX) \
+@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_TRUE@			GYPFLAGS="-Dstandalone_static_library=1" \
+@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_TRUE@			library=static strictaliasing=off snapshot=off werror=no hardfp=on @V8_TARGET@
+@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@	cd @top_srcdir@/3rdParty/V8 \
+@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@		&& LDFLAGS="-lc++" \
+@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@                   CFLAGS="-O2 -g" \
+@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@		   CXXFLAGS="-O2 -g" \
+@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@		   $(MAKE) \
+@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@			CXX=$(CXX) \
+@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@			LINK=$(CXX) \
+@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@			GYPFLAGS="-Dstandalone_static_library=1" \
+@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@			library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
+@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@	cd @top_srcdir@/3rdParty/V8 \
+@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@		&& CFLAGS="-O2 -g" \
+@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@		   CXXFLAGS="-O2 -g" \
+@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@		   $(MAKE) \
+@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@			CXX=$(CXX) \
+@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@			LINK=$(CXX) \
+@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@			GYPFLAGS="-Dstandalone_static_library=1" \
+@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@			library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 
 @ENABLE_ALL_IN_ONE_V8_TRUE@	touch @srcdir@/.v8-build-@TRI_BITS@
 
@@ -9500,10 +9474,8 @@ js/apps/system/aardvark/frontend/js/modules/underscore.js: @srcdir@/js/node/node
 @ENABLE_ALL_IN_ONE_V8_TRUE@clean-v8:
 @ENABLE_ALL_IN_ONE_V8_TRUE@	rm -f @srcdir@/.v8-build-@TRI_BITS@
 @ENABLE_ALL_IN_ONE_V8_TRUE@	cd @top_srcdir@/3rdParty/V8 && ( $(MAKE) clean || true )
+@ENABLE_ALL_IN_ONE_V8_TRUE@	find @top_srcdir@/3rdParty/V8 -name "*.pyc" -exec rm "{}" ";"
 @ENABLE_ALL_IN_ONE_V8_TRUE@	rm -rf @top_srcdir@/3rdParty/V8/out
-@ENABLE_ALL_IN_ONE_V8_TRUE@	rm -rf @top_srcdir@/3rdParty/V8/tools/*.pyc
-@ENABLE_ALL_IN_ONE_V8_TRUE@	rm -rf @top_srcdir@/3rdParty/V8/build/gyp/pylib/gyp/*.pyc
-@ENABLE_ALL_IN_ONE_V8_TRUE@	rm -rf @top_srcdir@/3rdParty/V8/build/gyp/pylib/gyp/*/*.pyc
 
 @ZLIB_LIBS@: @srcdir@/.zlib-build-@TRI_BITS@
 
@@ -9555,10 +9527,6 @@ clean-zlib:
 @ENABLE_ALL_IN_ONE_ETCD_TRUE@clean-etcd:
 @ENABLE_ALL_IN_ONE_ETCD_TRUE@	cd @top_srcdir@/3rdParty/etcd && ./clean
 @ENABLE_ALL_IN_ONE_ETCD_TRUE@	rm -f @top_srcdir@/bin/etcd-arango
-
-################################################################################
-### @brief ICU
-################################################################################
 
 ################################################################################
 ### @brief libev

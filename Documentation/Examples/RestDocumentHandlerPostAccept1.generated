@@ -1,0 +1,14 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/document?collection=products
+{ "Hello": "World" }
+
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
+etag: "1721871087"
+location: /_db/_system/_api/document/products/1721871087
+
+{ 
+  "error" : false, 
+  "_id" : "products/1721871087", 
+  "_rev" : "1721871087", 
+  "_key" : "1721871087" 
+}

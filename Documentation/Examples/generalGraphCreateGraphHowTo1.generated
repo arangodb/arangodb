@@ -1,0 +1,4 @@
+arangosh> var graph_module = require("org/arangodb/general-graph");
+arangosh> var graph = graph_module._create("myGraph");
+arangosh> graph;
+[ Graph myGraph EdgeDefinitions: [ ] VertexCollections: [ ] ]

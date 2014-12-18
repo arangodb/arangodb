@@ -1,0 +1,12 @@
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var graph = examples.loadGraph("routeplanner");
+arangosh> graph._absoluteCloseness({});
+[ 
+  { 
+    "germanCity/Berlin" : 4, 
+    "germanCity/Hamburg" : 4, 
+    "germanCity/Cologne" : 4, 
+    "frenchCity/Paris" : 4, 
+    "frenchCity/Lyon" : 4 
+  } 
+]

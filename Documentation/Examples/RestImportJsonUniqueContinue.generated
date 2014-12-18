@@ -1,0 +1,16 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=products&type=documents&details=true
+{ "_key": "abc", "value1": 25, "value2": "test" }
+{ "_key": "abc", "value1": "bar", "value2": "baz" }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : false, 
+  "created" : 1, 
+  "errors" : 1, 
+  "empty" : 0, 
+  "details" : [ 
+    "at position 2: creating document failed with error 'unique constraint violated', offending document: {\"_key\":\"abc\",\"value1\":\"bar\",\"value2\":\"baz\"}" 
+  ] 
+}

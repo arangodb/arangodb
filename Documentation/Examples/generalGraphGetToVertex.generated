@@ -1,0 +1,9 @@
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var graph = examples.loadGraph("social");
+arangosh> graph._toVertex("relation/aliceAndBob")
+{ 
+  "name" : "Bob", 
+  "_id" : "male/bob", 
+  "_rev" : "126528239", 
+  "_key" : "bob" 
+}

@@ -1,0 +1,47 @@
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/near
+{ "collection": "products", "latitude" : 0, "longitude" : 0, "skip" : 1, "limit" : 3, "distance" : "distance", "radius" : 300 }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "products/1509665519", 
+      "_key" : "1509665519", 
+      "_rev" : "1509665519", 
+      "name" : "Name/-0.002/", 
+      "loc" : [ 
+        -0.002, 
+        0 
+      ], 
+      "distance" : 222.38985328911744 
+    }, 
+    { 
+      "_id" : "products/1510058735", 
+      "_key" : "1510058735", 
+      "_rev" : "1510058735", 
+      "name" : "Name/0.002/", 
+      "loc" : [ 
+        0.002, 
+        0 
+      ], 
+      "distance" : 222.38985328911744 
+    }, 
+    { 
+      "_id" : "products/1509468911", 
+      "_key" : "1509468911", 
+      "_rev" : "1509468911", 
+      "name" : "Name/-0.004/", 
+      "loc" : [ 
+        -0.004, 
+        0 
+      ], 
+      "distance" : 444.779706578235 
+    } 
+  ], 
+  "hasMore" : false, 
+  "count" : 3, 
+  "error" : false, 
+  "code" : 201 
+}

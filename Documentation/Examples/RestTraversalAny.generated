@@ -1,0 +1,281 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/traversal
+{"startVertex":"persons/alice","graphName":"knows_graph","direction":"any","uniqueness":{"vertices":"none","edges":"global"}}
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : { 
+    "visited" : { 
+      "vertices" : [ 
+        { 
+          "_id" : "persons/alice", 
+          "_key" : "alice", 
+          "_rev" : "1560652527", 
+          "name" : "Alice" 
+        }, 
+        { 
+          "_id" : "persons/eve", 
+          "_key" : "eve", 
+          "_rev" : "1561504495", 
+          "name" : "Eve" 
+        }, 
+        { 
+          "_id" : "persons/bob", 
+          "_key" : "bob", 
+          "_rev" : "1560849135", 
+          "name" : "Bob" 
+        }, 
+        { 
+          "_id" : "persons/alice", 
+          "_key" : "alice", 
+          "_rev" : "1560652527", 
+          "name" : "Alice" 
+        }, 
+        { 
+          "_id" : "persons/charlie", 
+          "_key" : "charlie", 
+          "_rev" : "1561111279", 
+          "name" : "Charlie" 
+        }, 
+        { 
+          "_id" : "persons/dave", 
+          "_key" : "dave", 
+          "_rev" : "1561307887", 
+          "name" : "Dave" 
+        } 
+      ], 
+      "paths" : [ 
+        { 
+          "edges" : [ ], 
+          "vertices" : [ 
+            { 
+              "_id" : "persons/alice", 
+              "_key" : "alice", 
+              "_rev" : "1560652527", 
+              "name" : "Alice" 
+            } 
+          ] 
+        }, 
+        { 
+          "edges" : [ 
+            { 
+              "_id" : "knows/1562356463", 
+              "_key" : "1562356463", 
+              "_rev" : "1562356463", 
+              "_from" : "persons/eve", 
+              "_to" : "persons/alice" 
+            } 
+          ], 
+          "vertices" : [ 
+            { 
+              "_id" : "persons/alice", 
+              "_key" : "alice", 
+              "_rev" : "1560652527", 
+              "name" : "Alice" 
+            }, 
+            { 
+              "_id" : "persons/eve", 
+              "_key" : "eve", 
+              "_rev" : "1561504495", 
+              "name" : "Eve" 
+            } 
+          ] 
+        }, 
+        { 
+          "edges" : [ 
+            { 
+              "_id" : "knows/1562356463", 
+              "_key" : "1562356463", 
+              "_rev" : "1562356463", 
+              "_from" : "persons/eve", 
+              "_to" : "persons/alice" 
+            }, 
+            { 
+              "_id" : "knows/1562553071", 
+              "_key" : "1562553071", 
+              "_rev" : "1562553071", 
+              "_from" : "persons/eve", 
+              "_to" : "persons/bob" 
+            } 
+          ], 
+          "vertices" : [ 
+            { 
+              "_id" : "persons/alice", 
+              "_key" : "alice", 
+              "_rev" : "1560652527", 
+              "name" : "Alice" 
+            }, 
+            { 
+              "_id" : "persons/eve", 
+              "_key" : "eve", 
+              "_rev" : "1561504495", 
+              "name" : "Eve" 
+            }, 
+            { 
+              "_id" : "persons/bob", 
+              "_key" : "bob", 
+              "_rev" : "1560849135", 
+              "name" : "Bob" 
+            } 
+          ] 
+        }, 
+        { 
+          "edges" : [ 
+            { 
+              "_id" : "knows/1562356463", 
+              "_key" : "1562356463", 
+              "_rev" : "1562356463", 
+              "_from" : "persons/eve", 
+              "_to" : "persons/alice" 
+            }, 
+            { 
+              "_id" : "knows/1562553071", 
+              "_key" : "1562553071", 
+              "_rev" : "1562553071", 
+              "_from" : "persons/eve", 
+              "_to" : "persons/bob" 
+            }, 
+            { 
+              "_id" : "knows/1561766639", 
+              "_key" : "1561766639", 
+              "_rev" : "1561766639", 
+              "_from" : "persons/alice", 
+              "_to" : "persons/bob" 
+            } 
+          ], 
+          "vertices" : [ 
+            { 
+              "_id" : "persons/alice", 
+              "_key" : "alice", 
+              "_rev" : "1560652527", 
+              "name" : "Alice" 
+            }, 
+            { 
+              "_id" : "persons/eve", 
+              "_key" : "eve", 
+              "_rev" : "1561504495", 
+              "name" : "Eve" 
+            }, 
+            { 
+              "_id" : "persons/bob", 
+              "_key" : "bob", 
+              "_rev" : "1560849135", 
+              "name" : "Bob" 
+            }, 
+            { 
+              "_id" : "persons/alice", 
+              "_key" : "alice", 
+              "_rev" : "1560652527", 
+              "name" : "Alice" 
+            } 
+          ] 
+        }, 
+        { 
+          "edges" : [ 
+            { 
+              "_id" : "knows/1562356463", 
+              "_key" : "1562356463", 
+              "_rev" : "1562356463", 
+              "_from" : "persons/eve", 
+              "_to" : "persons/alice" 
+            }, 
+            { 
+              "_id" : "knows/1562553071", 
+              "_key" : "1562553071", 
+              "_rev" : "1562553071", 
+              "_from" : "persons/eve", 
+              "_to" : "persons/bob" 
+            }, 
+            { 
+              "_id" : "knows/1561963247", 
+              "_key" : "1561963247", 
+              "_rev" : "1561963247", 
+              "_from" : "persons/bob", 
+              "_to" : "persons/charlie" 
+            } 
+          ], 
+          "vertices" : [ 
+            { 
+              "_id" : "persons/alice", 
+              "_key" : "alice", 
+              "_rev" : "1560652527", 
+              "name" : "Alice" 
+            }, 
+            { 
+              "_id" : "persons/eve", 
+              "_key" : "eve", 
+              "_rev" : "1561504495", 
+              "name" : "Eve" 
+            }, 
+            { 
+              "_id" : "persons/bob", 
+              "_key" : "bob", 
+              "_rev" : "1560849135", 
+              "name" : "Bob" 
+            }, 
+            { 
+              "_id" : "persons/charlie", 
+              "_key" : "charlie", 
+              "_rev" : "1561111279", 
+              "name" : "Charlie" 
+            } 
+          ] 
+        }, 
+        { 
+          "edges" : [ 
+            { 
+              "_id" : "knows/1562356463", 
+              "_key" : "1562356463", 
+              "_rev" : "1562356463", 
+              "_from" : "persons/eve", 
+              "_to" : "persons/alice" 
+            }, 
+            { 
+              "_id" : "knows/1562553071", 
+              "_key" : "1562553071", 
+              "_rev" : "1562553071", 
+              "_from" : "persons/eve", 
+              "_to" : "persons/bob" 
+            }, 
+            { 
+              "_id" : "knows/1562159855", 
+              "_key" : "1562159855", 
+              "_rev" : "1562159855", 
+              "_from" : "persons/bob", 
+              "_to" : "persons/dave" 
+            } 
+          ], 
+          "vertices" : [ 
+            { 
+              "_id" : "persons/alice", 
+              "_key" : "alice", 
+              "_rev" : "1560652527", 
+              "name" : "Alice" 
+            }, 
+            { 
+              "_id" : "persons/eve", 
+              "_key" : "eve", 
+              "_rev" : "1561504495", 
+              "name" : "Eve" 
+            }, 
+            { 
+              "_id" : "persons/bob", 
+              "_key" : "bob", 
+              "_rev" : "1560849135", 
+              "name" : "Bob" 
+            }, 
+            { 
+              "_id" : "persons/dave", 
+              "_key" : "dave", 
+              "_rev" : "1561307887", 
+              "name" : "Dave" 
+            } 
+          ] 
+        } 
+      ] 
+    } 
+  }, 
+  "error" : false, 
+  "code" : 200 
+}

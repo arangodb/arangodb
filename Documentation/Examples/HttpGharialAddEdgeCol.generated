@@ -1,0 +1,49 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/gharial/social/edge
+{ 
+  "collection" : "lives_in", 
+  "from" : [ 
+    "female", 
+    "male" 
+  ], 
+  "to" : [ 
+    "city" 
+  ] 
+}
+
+HTTP/1.1 201 Created
+content-type: application/json
+etag: 1662954223
+
+{ 
+  "error" : false, 
+  "code" : 201, 
+  "graph" : { 
+    "name" : "social", 
+    "edgeDefinitions" : [ 
+      { 
+        "collection" : "relation", 
+        "from" : [ 
+          "female", 
+          "male" 
+        ], 
+        "to" : [ 
+          "female", 
+          "male" 
+        ] 
+      }, 
+      { 
+        "collection" : "lives_in", 
+        "from" : [ 
+          "female", 
+          "male" 
+        ], 
+        "to" : [ 
+          "city" 
+        ] 
+      } 
+    ], 
+    "orphanCollections" : [ ], 
+    "_id" : "_graphs/social", 
+    "_rev" : "1662954223" 
+  } 
+}

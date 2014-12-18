@@ -1,0 +1,66 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/traversal
+{ "startVertex": "persons/alice", "graphName" : "knows_graph", "direction" : "outbound", "filter" : "if (vertex.name === \"Bob\") {return \"prune\";}return;"}
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : { 
+    "visited" : { 
+      "vertices" : [ 
+        { 
+          "_id" : "persons/alice", 
+          "_key" : "alice", 
+          "_rev" : "1570286319", 
+          "name" : "Alice" 
+        }, 
+        { 
+          "_id" : "persons/bob", 
+          "_key" : "bob", 
+          "_rev" : "1570482927", 
+          "name" : "Bob" 
+        } 
+      ], 
+      "paths" : [ 
+        { 
+          "edges" : [ ], 
+          "vertices" : [ 
+            { 
+              "_id" : "persons/alice", 
+              "_key" : "alice", 
+              "_rev" : "1570286319", 
+              "name" : "Alice" 
+            } 
+          ] 
+        }, 
+        { 
+          "edges" : [ 
+            { 
+              "_id" : "knows/1571400431", 
+              "_key" : "1571400431", 
+              "_rev" : "1571400431", 
+              "_from" : "persons/alice", 
+              "_to" : "persons/bob" 
+            } 
+          ], 
+          "vertices" : [ 
+            { 
+              "_id" : "persons/alice", 
+              "_key" : "alice", 
+              "_rev" : "1570286319", 
+              "name" : "Alice" 
+            }, 
+            { 
+              "_id" : "persons/bob", 
+              "_key" : "bob", 
+              "_rev" : "1570482927", 
+              "name" : "Bob" 
+            } 
+          ] 
+        } 
+      ] 
+    } 
+  }, 
+  "error" : false, 
+  "code" : 200 
+}

@@ -1,0 +1,15 @@
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var graph = examples.loadGraph("social");
+arangosh> graph.relation.save("female/alice", "female/diana", {_key: "aliceAndDiana"});
+{ 
+  "error" : false, 
+  "_id" : "relation/aliceAndDiana", 
+  "_rev" : "651930351", 
+  "_key" : "aliceAndDiana" 
+}
+arangosh> db._exists("relation/aliceAndDiana")
+true
+arangosh> graph.relation.remove("relation/aliceAndDiana")
+true
+arangosh> db._exists("relation/aliceAndDiana")
+false

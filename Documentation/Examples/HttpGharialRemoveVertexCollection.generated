@@ -1,0 +1,29 @@
+shell> curl -X DELETE --data-binary @- --dump - http://localhost:8529/_api/gharial/social/vertex/otherVertices
+
+HTTP/1.1 200 OK
+content-type: application/json
+etag: 1652533999
+
+{ 
+  "error" : false, 
+  "code" : 200, 
+  "graph" : { 
+    "name" : "social", 
+    "edgeDefinitions" : [ 
+      { 
+        "collection" : "relation", 
+        "from" : [ 
+          "female", 
+          "male" 
+        ], 
+        "to" : [ 
+          "female", 
+          "male" 
+        ] 
+      } 
+    ], 
+    "orphanCollections" : [ ], 
+    "_id" : "_graphs/social", 
+    "_rev" : "1652533999" 
+  } 
+}

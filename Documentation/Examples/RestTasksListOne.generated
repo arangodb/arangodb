@@ -1,0 +1,16 @@
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/tasks/statistics-average-collector
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "id" : "statistics-average-collector", 
+  "name" : "statistics-average-collector", 
+  "type" : "periodic", 
+  "period" : 900, 
+  "created" : 1418914218.007134, 
+  "command" : "require('org/arangodb/statistics').historianAverage();", 
+  "database" : "_system", 
+  "error" : false, 
+  "code" : 200 
+}

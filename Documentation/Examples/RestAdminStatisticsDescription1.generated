@@ -1,0 +1,292 @@
+shell> curl --data-binary @- --dump - http://localhost:8529/_admin/statistics-description
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "groups" : [ 
+    { 
+      "group" : "system", 
+      "name" : "Process Statistics", 
+      "description" : "Statistics about the ArangoDB process" 
+    }, 
+    { 
+      "group" : "client", 
+      "name" : "Client Connection Statistics", 
+      "description" : "Statistics about the connections." 
+    }, 
+    { 
+      "group" : "http", 
+      "name" : "HTTP Request Statistics", 
+      "description" : "Statistics about the HTTP requests." 
+    }, 
+    { 
+      "group" : "server", 
+      "name" : "Server Statistics", 
+      "description" : "Statistics about the ArangoDB server" 
+    } 
+  ], 
+  "figures" : [ 
+    { 
+      "group" : "system", 
+      "identifier" : "userTime", 
+      "name" : "User Time", 
+      "description" : "Amount of time that this process has been scheduled in user mode, measured in seconds.", 
+      "type" : "accumulated", 
+      "units" : "seconds" 
+    }, 
+    { 
+      "group" : "system", 
+      "identifier" : "systemTime", 
+      "name" : "System Time", 
+      "description" : "Amount of time that this process has been scheduled in kernel mode, measured in seconds.", 
+      "type" : "accumulated", 
+      "units" : "seconds" 
+    }, 
+    { 
+      "group" : "system", 
+      "identifier" : "numberOfThreads", 
+      "name" : "Number of Threads", 
+      "description" : "Number of threads in the arangod process.", 
+      "type" : "current", 
+      "units" : "number" 
+    }, 
+    { 
+      "group" : "system", 
+      "identifier" : "residentSize", 
+      "name" : "Resident Set Size", 
+      "description" : "The total size of the number of pages the process has in real memory. This is just the pages which count toward text, data, or stack space. This does not include pages which have not been demand-loaded in, or which are swapped out. The resident set size is reported in bytes.", 
+      "type" : "current", 
+      "units" : "bytes" 
+    }, 
+    { 
+      "group" : "system", 
+      "identifier" : "residentSizePercent", 
+      "name" : "Resident Set Size", 
+      "description" : "The percentage of physical memory used by the process as resident set size.", 
+      "type" : "current", 
+      "units" : "percent" 
+    }, 
+    { 
+      "group" : "system", 
+      "identifier" : "virtualSize", 
+      "name" : "Virtual Memory Size", 
+      "description" : "On Windows, this figure contains the total amount of memory that the memory manager has committed for the arangod process. On other systems, this figure contains The size of the virtual memory the process is using.", 
+      "type" : "current", 
+      "units" : "bytes" 
+    }, 
+    { 
+      "group" : "system", 
+      "identifier" : "minorPageFaults", 
+      "name" : "Minor Page Faults", 
+      "description" : "The number of minor faults the process has made which have not required loading a memory page from disk. This figure is not reported on Windows.", 
+      "type" : "accumulated", 
+      "units" : "number" 
+    }, 
+    { 
+      "group" : "system", 
+      "identifier" : "majorPageFaults", 
+      "name" : "Major Page Faults", 
+      "description" : "On Windows, this figure contains the total number of page faults. On other system, this figure contains the number of major faults the process has made which have required loading a memory page from disk.", 
+      "type" : "accumulated", 
+      "units" : "number" 
+    }, 
+    { 
+      "group" : "client", 
+      "identifier" : "httpConnections", 
+      "name" : "Client Connections", 
+      "description" : "The number of connections that are currently open.", 
+      "type" : "current", 
+      "units" : "number" 
+    }, 
+    { 
+      "group" : "client", 
+      "identifier" : "totalTime", 
+      "name" : "Total Time", 
+      "description" : "Total time needed to answer a request.", 
+      "type" : "distribution", 
+      "cuts" : [ 
+        0.01, 
+        0.05, 
+        0.1, 
+        0.2, 
+        0.5, 
+        1 
+      ], 
+      "units" : "seconds" 
+    }, 
+    { 
+      "group" : "client", 
+      "identifier" : "requestTime", 
+      "name" : "Request Time", 
+      "description" : "Request time needed to answer a request.", 
+      "type" : "distribution", 
+      "cuts" : [ 
+        0.01, 
+        0.05, 
+        0.1, 
+        0.2, 
+        0.5, 
+        1 
+      ], 
+      "units" : "seconds" 
+    }, 
+    { 
+      "group" : "client", 
+      "identifier" : "queueTime", 
+      "name" : "Queue Time", 
+      "description" : "Queue time needed to answer a request.", 
+      "type" : "distribution", 
+      "cuts" : [ 
+        0.01, 
+        0.05, 
+        0.1, 
+        0.2, 
+        0.5, 
+        1 
+      ], 
+      "units" : "seconds" 
+    }, 
+    { 
+      "group" : "client", 
+      "identifier" : "bytesSent", 
+      "name" : "Bytes Sent", 
+      "description" : "Bytes sents for a request.", 
+      "type" : "distribution", 
+      "cuts" : [ 
+        250, 
+        1000, 
+        2000, 
+        5000, 
+        10000 
+      ], 
+      "units" : "bytes" 
+    }, 
+    { 
+      "group" : "client", 
+      "identifier" : "bytesReceived", 
+      "name" : "Bytes Received", 
+      "description" : "Bytes receiveds for a request.", 
+      "type" : "distribution", 
+      "cuts" : [ 
+        250, 
+        1000, 
+        2000, 
+        5000, 
+        10000 
+      ], 
+      "units" : "bytes" 
+    }, 
+    { 
+      "group" : "client", 
+      "identifier" : "connectionTime", 
+      "name" : "Connection Time", 
+      "description" : "Total connection time of a client.", 
+      "type" : "distribution", 
+      "cuts" : [ 
+        0.1, 
+        1, 
+        60 
+      ], 
+      "units" : "seconds" 
+    }, 
+    { 
+      "group" : "http", 
+      "identifier" : "requestsTotal", 
+      "name" : "Total requests", 
+      "description" : "Total number of HTTP requests.", 
+      "type" : "accumulated", 
+      "units" : "number" 
+    }, 
+    { 
+      "group" : "http", 
+      "identifier" : "requestsAsync", 
+      "name" : "Async requests", 
+      "description" : "Number of asynchronously executed HTTP requests.", 
+      "type" : "accumulated", 
+      "units" : "number" 
+    }, 
+    { 
+      "group" : "http", 
+      "identifier" : "requestsGet", 
+      "name" : "HTTP GET requests", 
+      "description" : "Number of HTTP GET requests.", 
+      "type" : "accumulated", 
+      "units" : "number" 
+    }, 
+    { 
+      "group" : "http", 
+      "identifier" : "requestsHead", 
+      "name" : "HTTP HEAD requests", 
+      "description" : "Number of HTTP HEAD requests.", 
+      "type" : "accumulated", 
+      "units" : "number" 
+    }, 
+    { 
+      "group" : "http", 
+      "identifier" : "requestsPost", 
+      "name" : "HTTP POST requests", 
+      "description" : "Number of HTTP POST requests.", 
+      "type" : "accumulated", 
+      "units" : "number" 
+    }, 
+    { 
+      "group" : "http", 
+      "identifier" : "requestsPut", 
+      "name" : "HTTP PUT requests", 
+      "description" : "Number of HTTP PUT requests.", 
+      "type" : "accumulated", 
+      "units" : "number" 
+    }, 
+    { 
+      "group" : "http", 
+      "identifier" : "requestsPatch", 
+      "name" : "HTTP PATCH requests", 
+      "description" : "Number of HTTP PATCH requests.", 
+      "type" : "accumulated", 
+      "units" : "number" 
+    }, 
+    { 
+      "group" : "http", 
+      "identifier" : "requestsDelete", 
+      "name" : "HTTP DELETE requests", 
+      "description" : "Number of HTTP DELETE requests.", 
+      "type" : "accumulated", 
+      "units" : "number" 
+    }, 
+    { 
+      "group" : "http", 
+      "identifier" : "requestsOptions", 
+      "name" : "HTTP OPTIONS requests", 
+      "description" : "Number of HTTP OPTIONS requests.", 
+      "type" : "accumulated", 
+      "units" : "number" 
+    }, 
+    { 
+      "group" : "http", 
+      "identifier" : "requestsOther", 
+      "name" : "other HTTP requests", 
+      "description" : "Number of other HTTP requests.", 
+      "type" : "accumulated", 
+      "units" : "number" 
+    }, 
+    { 
+      "group" : "server", 
+      "identifier" : "uptime", 
+      "name" : "Server Uptime", 
+      "description" : "Number of seconds elapsed since server start.", 
+      "type" : "current", 
+      "units" : "seconds" 
+    }, 
+    { 
+      "group" : "server", 
+      "identifier" : "physicalMemory", 
+      "name" : "Physical Memory", 
+      "description" : "Physical memory in bytes.", 
+      "type" : "current", 
+      "units" : "bytes" 
+    } 
+  ], 
+  "error" : false, 
+  "code" : 200 
+}

@@ -1,0 +1,26 @@
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/range
+{ "collection": "products", "attribute" : "i", "left" : 2, "right" : 4 }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "products/1532668655", 
+      "_key" : "1532668655", 
+      "_rev" : "1532668655", 
+      "i" : 2 
+    }, 
+    { 
+      "_id" : "products/1532865263", 
+      "_key" : "1532865263", 
+      "_rev" : "1532865263", 
+      "i" : 3 
+    } 
+  ], 
+  "hasMore" : false, 
+  "count" : 2, 
+  "error" : false, 
+  "code" : 201 
+}

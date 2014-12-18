@@ -1,0 +1,14 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/explain
+{ 
+  "query" : "FOR p IN products FILTER p.id == @id LIMIT 2 RETURN p.n" 
+}
+
+HTTP/1.1 400 Bad Request
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "code" : 400, 
+  "errorNum" : 1551, 
+  "errorMessage" : "no value specified for declared bind parameter 'id' (while parsing)" 
+}

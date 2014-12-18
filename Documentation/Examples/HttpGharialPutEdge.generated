@@ -1,0 +1,19 @@
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/gharial/social/edge/relation/aliceAndBob
+{ 
+  "type" : "divorced" 
+}
+
+HTTP/1.1 202 Accepted
+content-type: application/json
+etag: 1711516399
+
+{ 
+  "error" : false, 
+  "code" : 202, 
+  "edge" : { 
+    "_id" : "relation/aliceAndBob", 
+    "_rev" : "1711516399", 
+    "_oldRev" : "1710205679", 
+    "_key" : "aliceAndBob" 
+  } 
+}

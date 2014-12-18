@@ -1,0 +1,66 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/traversal
+{ "startVertex": "persons/alice", "graphName" : "knows_graph", "direction" : "outbound", "maxDepth" : 1}
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : { 
+    "visited" : { 
+      "vertices" : [ 
+        { 
+          "_id" : "persons/alice", 
+          "_key" : "alice", 
+          "_rev" : "1579395823", 
+          "name" : "Alice" 
+        }, 
+        { 
+          "_id" : "persons/bob", 
+          "_key" : "bob", 
+          "_rev" : "1579592431", 
+          "name" : "Bob" 
+        } 
+      ], 
+      "paths" : [ 
+        { 
+          "edges" : [ ], 
+          "vertices" : [ 
+            { 
+              "_id" : "persons/alice", 
+              "_key" : "alice", 
+              "_rev" : "1579395823", 
+              "name" : "Alice" 
+            } 
+          ] 
+        }, 
+        { 
+          "edges" : [ 
+            { 
+              "_id" : "knows/1580509935", 
+              "_key" : "1580509935", 
+              "_rev" : "1580509935", 
+              "_from" : "persons/alice", 
+              "_to" : "persons/bob" 
+            } 
+          ], 
+          "vertices" : [ 
+            { 
+              "_id" : "persons/alice", 
+              "_key" : "alice", 
+              "_rev" : "1579395823", 
+              "name" : "Alice" 
+            }, 
+            { 
+              "_id" : "persons/bob", 
+              "_key" : "bob", 
+              "_rev" : "1579592431", 
+              "name" : "Bob" 
+            } 
+          ] 
+        } 
+      ] 
+    } 
+  }, 
+  "error" : false, 
+  "code" : 200 
+}

@@ -1,0 +1,14 @@
+shell> curl -X PUT --header 'If-Match: "1731046127"' --data-binary @- --dump - http://localhost:8529/_api/document/products/1730718447?policy=last
+{}
+
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
+etag: "1731308271"
+location: /_db/_system/_api/document/products/1730718447
+
+{ 
+  "error" : false, 
+  "_id" : "products/1730718447", 
+  "_rev" : "1731308271", 
+  "_key" : "1730718447" 
+}

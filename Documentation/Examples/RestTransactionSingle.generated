@@ -1,0 +1,16 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/transaction
+{ 
+  "collections" : { 
+    "write" : "products" 
+  }, 
+  "action" : "function () { var db = require('internal').db; db.products.save({});  return db.products.count(); }" 
+}
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : 1, 
+  "error" : false, 
+  "code" : 200 
+}

@@ -1,0 +1,25 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/graph/edge
+{ 
+  "_key" : "edge1", 
+  "_from" : "vert2", 
+  "_to" : "vert1", 
+  "optional1" : "val1" 
+}
+
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
+etag: 1462545135
+
+{ 
+  "edge" : { 
+    "_id" : "edges/edge1", 
+    "_key" : "edge1", 
+    "_rev" : "1462545135", 
+    "_from" : "vertices/vert2", 
+    "_to" : "vertices/vert1", 
+    "$label" : null, 
+    "optional1" : "val1" 
+  }, 
+  "error" : false, 
+  "code" : 202 
+}

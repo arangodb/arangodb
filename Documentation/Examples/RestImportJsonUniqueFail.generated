@@ -1,0 +1,13 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=products&type=documents&complete=true
+{ "_key": "abc", "value1": 25, "value2": "test" }
+{ "_key": "abc", "value1": "bar", "value2": "baz" }
+
+HTTP/1.1 409 Conflict
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "errorMessage" : "cannot create document, unique constraint violated", 
+  "code" : 409, 
+  "errorNum" : 1210 
+}

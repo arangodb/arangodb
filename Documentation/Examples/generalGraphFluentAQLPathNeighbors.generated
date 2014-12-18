@@ -1,0 +1,74 @@
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var graph = examples.loadGraph("social");
+arangosh> var query = graph._vertices({name: "Alice"});
+arangosh> query.neighbors().path().toArray();
+[ 
+  [ 
+    { 
+      "_id" : "female/alice", 
+      "_key" : "alice", 
+      "_rev" : "142650095", 
+      "name" : "Alice" 
+    }, 
+    { 
+      "edges" : [ 
+        { 
+          "_id" : "relation/aliceAndBob", 
+          "_key" : "aliceAndBob", 
+          "_rev" : "143698671", 
+          "_from" : "female/alice", 
+          "_to" : "male/bob", 
+          "type" : "married" 
+        } 
+      ], 
+      "vertices" : [ 
+        { 
+          "_id" : "female/alice", 
+          "_key" : "alice", 
+          "_rev" : "142650095", 
+          "name" : "Alice" 
+        }, 
+        { 
+          "_id" : "male/bob", 
+          "_key" : "bob", 
+          "_rev" : "142977775", 
+          "name" : "Bob" 
+        } 
+      ] 
+    } 
+  ], 
+  [ 
+    { 
+      "_id" : "female/alice", 
+      "_key" : "alice", 
+      "_rev" : "142650095", 
+      "name" : "Alice" 
+    }, 
+    { 
+      "edges" : [ 
+        { 
+          "_id" : "relation/aliceAndCharly", 
+          "_key" : "aliceAndCharly", 
+          "_rev" : "143960815", 
+          "_from" : "female/alice", 
+          "_to" : "male/charly", 
+          "type" : "friend" 
+        } 
+      ], 
+      "vertices" : [ 
+        { 
+          "_id" : "female/alice", 
+          "_key" : "alice", 
+          "_rev" : "142650095", 
+          "name" : "Alice" 
+        }, 
+        { 
+          "_id" : "male/charly", 
+          "_key" : "charly", 
+          "_rev" : "143174383", 
+          "name" : "Charly" 
+        } 
+      ] 
+    } 
+  ] 
+]

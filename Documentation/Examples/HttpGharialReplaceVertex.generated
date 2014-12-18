@@ -1,0 +1,20 @@
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/gharial/social/vertex/female/alice
+{ 
+  "name" : "Alice Cooper", 
+  "age" : 26 
+}
+
+HTTP/1.1 202 Accepted
+content-type: application/json
+etag: 1689037551
+
+{ 
+  "error" : false, 
+  "code" : 202, 
+  "vertex" : { 
+    "_id" : "female/alice", 
+    "_rev" : "1689037551", 
+    "_oldRev" : "1686547183", 
+    "_key" : "alice" 
+  } 
+}

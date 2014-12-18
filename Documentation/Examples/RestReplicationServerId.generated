@@ -1,0 +1,8 @@
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/replication/server-id
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "serverId" : "106458331269305" 
+}

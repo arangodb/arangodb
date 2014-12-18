@@ -1,0 +1,265 @@
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("social");
+arangosh> db._query(
+........> "RETURN GRAPH_PATHS('social', {direction : 'inbound', minLength : 1, maxLength :  2})"
+........> ).toArray();
+[ 
+  [ 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "female/diana", 
+          "_key" : "diana", 
+          "_rev" : "789228271", 
+          "name" : "Diana" 
+        }, 
+        { 
+          "_id" : "male/charly", 
+          "_key" : "charly", 
+          "_rev" : "789031663", 
+          "name" : "Charly" 
+        } 
+      ], 
+      "edges" : [ 
+        { 
+          "_id" : "relation/charlyAndDiana", 
+          "_key" : "charlyAndDiana", 
+          "_rev" : "790014703", 
+          "_from" : "male/charly", 
+          "_to" : "female/diana", 
+          "type" : "married" 
+        } 
+      ], 
+      "source" : { 
+        "_id" : "female/diana", 
+        "_key" : "diana", 
+        "_rev" : "789228271", 
+        "name" : "Diana" 
+      }, 
+      "destination" : { 
+        "_id" : "male/charly", 
+        "_key" : "charly", 
+        "_rev" : "789031663", 
+        "name" : "Charly" 
+      } 
+    }, 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "female/diana", 
+          "_key" : "diana", 
+          "_rev" : "789228271", 
+          "name" : "Diana" 
+        }, 
+        { 
+          "_id" : "male/charly", 
+          "_key" : "charly", 
+          "_rev" : "789031663", 
+          "name" : "Charly" 
+        }, 
+        { 
+          "_id" : "female/alice", 
+          "_key" : "alice", 
+          "_rev" : "788507375", 
+          "name" : "Alice" 
+        } 
+      ], 
+      "edges" : [ 
+        { 
+          "_id" : "relation/charlyAndDiana", 
+          "_key" : "charlyAndDiana", 
+          "_rev" : "790014703", 
+          "_from" : "male/charly", 
+          "_to" : "female/diana", 
+          "type" : "married" 
+        }, 
+        { 
+          "_id" : "relation/aliceAndCharly", 
+          "_key" : "aliceAndCharly", 
+          "_rev" : "789818095", 
+          "_from" : "female/alice", 
+          "_to" : "male/charly", 
+          "type" : "friend" 
+        } 
+      ], 
+      "source" : { 
+        "_id" : "female/diana", 
+        "_key" : "diana", 
+        "_rev" : "789228271", 
+        "name" : "Diana" 
+      }, 
+      "destination" : { 
+        "_id" : "female/alice", 
+        "_key" : "alice", 
+        "_rev" : "788507375", 
+        "name" : "Alice" 
+      } 
+    }, 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "female/diana", 
+          "_key" : "diana", 
+          "_rev" : "789228271", 
+          "name" : "Diana" 
+        }, 
+        { 
+          "_id" : "male/bob", 
+          "_key" : "bob", 
+          "_rev" : "788835055", 
+          "name" : "Bob" 
+        } 
+      ], 
+      "edges" : [ 
+        { 
+          "_id" : "relation/bobAndDiana", 
+          "_key" : "bobAndDiana", 
+          "_rev" : "790211311", 
+          "_from" : "male/bob", 
+          "_to" : "female/diana", 
+          "type" : "friend" 
+        } 
+      ], 
+      "source" : { 
+        "_id" : "female/diana", 
+        "_key" : "diana", 
+        "_rev" : "789228271", 
+        "name" : "Diana" 
+      }, 
+      "destination" : { 
+        "_id" : "male/bob", 
+        "_key" : "bob", 
+        "_rev" : "788835055", 
+        "name" : "Bob" 
+      } 
+    }, 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "female/diana", 
+          "_key" : "diana", 
+          "_rev" : "789228271", 
+          "name" : "Diana" 
+        }, 
+        { 
+          "_id" : "male/bob", 
+          "_key" : "bob", 
+          "_rev" : "788835055", 
+          "name" : "Bob" 
+        }, 
+        { 
+          "_id" : "female/alice", 
+          "_key" : "alice", 
+          "_rev" : "788507375", 
+          "name" : "Alice" 
+        } 
+      ], 
+      "edges" : [ 
+        { 
+          "_id" : "relation/bobAndDiana", 
+          "_key" : "bobAndDiana", 
+          "_rev" : "790211311", 
+          "_from" : "male/bob", 
+          "_to" : "female/diana", 
+          "type" : "friend" 
+        }, 
+        { 
+          "_id" : "relation/aliceAndBob", 
+          "_key" : "aliceAndBob", 
+          "_rev" : "789555951", 
+          "_from" : "female/alice", 
+          "_to" : "male/bob", 
+          "type" : "married" 
+        } 
+      ], 
+      "source" : { 
+        "_id" : "female/diana", 
+        "_key" : "diana", 
+        "_rev" : "789228271", 
+        "name" : "Diana" 
+      }, 
+      "destination" : { 
+        "_id" : "female/alice", 
+        "_key" : "alice", 
+        "_rev" : "788507375", 
+        "name" : "Alice" 
+      } 
+    }, 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "male/bob", 
+          "_key" : "bob", 
+          "_rev" : "788835055", 
+          "name" : "Bob" 
+        }, 
+        { 
+          "_id" : "female/alice", 
+          "_key" : "alice", 
+          "_rev" : "788507375", 
+          "name" : "Alice" 
+        } 
+      ], 
+      "edges" : [ 
+        { 
+          "_id" : "relation/aliceAndBob", 
+          "_key" : "aliceAndBob", 
+          "_rev" : "789555951", 
+          "_from" : "female/alice", 
+          "_to" : "male/bob", 
+          "type" : "married" 
+        } 
+      ], 
+      "source" : { 
+        "_id" : "male/bob", 
+        "_key" : "bob", 
+        "_rev" : "788835055", 
+        "name" : "Bob" 
+      }, 
+      "destination" : { 
+        "_id" : "female/alice", 
+        "_key" : "alice", 
+        "_rev" : "788507375", 
+        "name" : "Alice" 
+      } 
+    }, 
+    { 
+      "vertices" : [ 
+        { 
+          "_id" : "male/charly", 
+          "_key" : "charly", 
+          "_rev" : "789031663", 
+          "name" : "Charly" 
+        }, 
+        { 
+          "_id" : "female/alice", 
+          "_key" : "alice", 
+          "_rev" : "788507375", 
+          "name" : "Alice" 
+        } 
+      ], 
+      "edges" : [ 
+        { 
+          "_id" : "relation/aliceAndCharly", 
+          "_key" : "aliceAndCharly", 
+          "_rev" : "789818095", 
+          "_from" : "female/alice", 
+          "_to" : "male/charly", 
+          "type" : "friend" 
+        } 
+      ], 
+      "source" : { 
+        "_id" : "male/charly", 
+        "_key" : "charly", 
+        "_rev" : "789031663", 
+        "name" : "Charly" 
+      }, 
+      "destination" : { 
+        "_id" : "female/alice", 
+        "_key" : "alice", 
+        "_rev" : "788507375", 
+        "name" : "Alice" 
+      } 
+    } 
+  ] 
+]

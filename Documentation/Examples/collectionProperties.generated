@@ -1,0 +1,12 @@
+arangosh> db.example.properties();
+{ 
+  "doCompact" : true, 
+  "journalSize" : 1048576, 
+  "isSystem" : false, 
+  "isVolatile" : false, 
+  "waitForSync" : false, 
+  "keyOptions" : { 
+    "type" : "traditional", 
+    "allowUserKeys" : true 
+  } 
+}

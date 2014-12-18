@@ -1,0 +1,21 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor
+{"query":"REMOVE 'bar' IN products OPTIONS { ignoreErrors: true }"}
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ ], 
+  "hasMore" : false, 
+  "extra" : { 
+    "stats" : { 
+      "writesExecuted" : 0, 
+      "writesIgnored" : 1, 
+      "scannedFull" : 0, 
+      "scannedIndex" : 0 
+    }, 
+    "warnings" : [ ] 
+  }, 
+  "error" : false, 
+  "code" : 201 
+}

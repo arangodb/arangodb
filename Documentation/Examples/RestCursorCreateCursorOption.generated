@@ -1,0 +1,34 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor
+{"query":"FOR i IN 1..1000 FILTER i > 500 LIMIT 10 RETURN i","count":true,"options":{"fullCount":true}}
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    501, 
+    502, 
+    503, 
+    504, 
+    505, 
+    506, 
+    507, 
+    508, 
+    509, 
+    510 
+  ], 
+  "hasMore" : false, 
+  "count" : 10, 
+  "extra" : { 
+    "stats" : { 
+      "writesExecuted" : 0, 
+      "writesIgnored" : 0, 
+      "scannedFull" : 0, 
+      "scannedIndex" : 0, 
+      "fullCount" : 500 
+    }, 
+    "warnings" : [ ] 
+  }, 
+  "error" : false, 
+  "code" : 201 
+}

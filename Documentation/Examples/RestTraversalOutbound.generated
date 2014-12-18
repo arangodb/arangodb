@@ -1,0 +1,154 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/traversal
+{ "startVertex": "persons/alice", "graphName" : "knows_graph", "direction" : "outbound"}
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : { 
+    "visited" : { 
+      "vertices" : [ 
+        { 
+          "_id" : "persons/alice", 
+          "_key" : "alice", 
+          "_rev" : "1551936239", 
+          "name" : "Alice" 
+        }, 
+        { 
+          "_id" : "persons/bob", 
+          "_key" : "bob", 
+          "_rev" : "1552132847", 
+          "name" : "Bob" 
+        }, 
+        { 
+          "_id" : "persons/charlie", 
+          "_key" : "charlie", 
+          "_rev" : "1552394991", 
+          "name" : "Charlie" 
+        }, 
+        { 
+          "_id" : "persons/dave", 
+          "_key" : "dave", 
+          "_rev" : "1552591599", 
+          "name" : "Dave" 
+        } 
+      ], 
+      "paths" : [ 
+        { 
+          "edges" : [ ], 
+          "vertices" : [ 
+            { 
+              "_id" : "persons/alice", 
+              "_key" : "alice", 
+              "_rev" : "1551936239", 
+              "name" : "Alice" 
+            } 
+          ] 
+        }, 
+        { 
+          "edges" : [ 
+            { 
+              "_id" : "knows/1553050351", 
+              "_key" : "1553050351", 
+              "_rev" : "1553050351", 
+              "_from" : "persons/alice", 
+              "_to" : "persons/bob" 
+            } 
+          ], 
+          "vertices" : [ 
+            { 
+              "_id" : "persons/alice", 
+              "_key" : "alice", 
+              "_rev" : "1551936239", 
+              "name" : "Alice" 
+            }, 
+            { 
+              "_id" : "persons/bob", 
+              "_key" : "bob", 
+              "_rev" : "1552132847", 
+              "name" : "Bob" 
+            } 
+          ] 
+        }, 
+        { 
+          "edges" : [ 
+            { 
+              "_id" : "knows/1553050351", 
+              "_key" : "1553050351", 
+              "_rev" : "1553050351", 
+              "_from" : "persons/alice", 
+              "_to" : "persons/bob" 
+            }, 
+            { 
+              "_id" : "knows/1553246959", 
+              "_key" : "1553246959", 
+              "_rev" : "1553246959", 
+              "_from" : "persons/bob", 
+              "_to" : "persons/charlie" 
+            } 
+          ], 
+          "vertices" : [ 
+            { 
+              "_id" : "persons/alice", 
+              "_key" : "alice", 
+              "_rev" : "1551936239", 
+              "name" : "Alice" 
+            }, 
+            { 
+              "_id" : "persons/bob", 
+              "_key" : "bob", 
+              "_rev" : "1552132847", 
+              "name" : "Bob" 
+            }, 
+            { 
+              "_id" : "persons/charlie", 
+              "_key" : "charlie", 
+              "_rev" : "1552394991", 
+              "name" : "Charlie" 
+            } 
+          ] 
+        }, 
+        { 
+          "edges" : [ 
+            { 
+              "_id" : "knows/1553050351", 
+              "_key" : "1553050351", 
+              "_rev" : "1553050351", 
+              "_from" : "persons/alice", 
+              "_to" : "persons/bob" 
+            }, 
+            { 
+              "_id" : "knows/1553443567", 
+              "_key" : "1553443567", 
+              "_rev" : "1553443567", 
+              "_from" : "persons/bob", 
+              "_to" : "persons/dave" 
+            } 
+          ], 
+          "vertices" : [ 
+            { 
+              "_id" : "persons/alice", 
+              "_key" : "alice", 
+              "_rev" : "1551936239", 
+              "name" : "Alice" 
+            }, 
+            { 
+              "_id" : "persons/bob", 
+              "_key" : "bob", 
+              "_rev" : "1552132847", 
+              "name" : "Bob" 
+            }, 
+            { 
+              "_id" : "persons/dave", 
+              "_key" : "dave", 
+              "_rev" : "1552591599", 
+              "name" : "Dave" 
+            } 
+          ] 
+        } 
+      ] 
+    } 
+  }, 
+  "error" : false, 
+  "code" : 200 
+}

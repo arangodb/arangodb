@@ -1,0 +1,22 @@
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/replication/applier-config
+{"endpoint":"tcp://127.0.0.1:8529","username":"replicationApplier","password":"applier1234@foxx","chunkSize":4194304,"autoStart":false,"adaptivePolling":true}
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "endpoint" : "tcp://127.0.0.1:8529", 
+  "database" : "_system", 
+  "username" : "replicationApplier", 
+  "requestTimeout" : 300, 
+  "connectTimeout" : 10, 
+  "ignoreErrors" : 0, 
+  "maxConnectRetries" : 100, 
+  "sslProtocol" : 0, 
+  "chunkSize" : 4194304, 
+  "autoStart" : false, 
+  "adaptivePolling" : true, 
+  "includeSystem" : true, 
+  "restrictType" : "", 
+  "restrictCollections" : [ ] 
+}

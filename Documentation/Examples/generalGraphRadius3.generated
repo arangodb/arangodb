@@ -1,0 +1,8 @@
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("RETURN GRAPH_RADIUS("
+........> + "'routeplanner', {direction : 'outbound', weight : 'distance'})"
+........> ).toArray();
+[ 
+  550 
+]

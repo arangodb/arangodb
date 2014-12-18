@@ -1,0 +1,15 @@
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("FOR e IN GRAPH_EDGES("
+........> +"'routeplanner', {}, {edgeExamples : [{distance: 600}, {distance: 700}]}) RETURN e"
+........> ).toArray();
+[ 
+  { 
+    "_id" : "internationalHighway/661891823", 
+    "_key" : "661891823", 
+    "_rev" : "661891823", 
+    "_from" : "germanCity/Cologne", 
+    "_to" : "frenchCity/Lyon", 
+    "distance" : 700 
+  } 
+]

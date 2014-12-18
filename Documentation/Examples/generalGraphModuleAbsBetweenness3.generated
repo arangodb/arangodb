@@ -1,0 +1,12 @@
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var graph = examples.loadGraph("routeplanner");
+arangosh> graph._absoluteBetweenness({direction : 'outbound', weight : 'distance'});
+[ 
+  { 
+    "germanCity/Berlin" : 0, 
+    "germanCity/Hamburg" : 0, 
+    "germanCity/Cologne" : 1, 
+    "frenchCity/Lyon" : 0, 
+    "frenchCity/Paris" : 0 
+  } 
+]

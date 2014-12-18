@@ -1,0 +1,12 @@
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/document/products/1728686831
+{}
+
+HTTP/1.1 404 Not Found
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "errorMessage" : "document /_api/document/products/1728686831 not found", 
+  "code" : 404, 
+  "errorNum" : 1202 
+}

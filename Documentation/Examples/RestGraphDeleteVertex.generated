@@ -1,0 +1,10 @@
+shell> curl -X DELETE --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertex/v1
+
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
+
+{ 
+  "deleted" : true, 
+  "error" : false, 
+  "code" : 202 
+}
