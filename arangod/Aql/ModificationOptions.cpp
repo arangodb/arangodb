@@ -42,7 +42,7 @@ ModificationOptions::ModificationOptions (Json const& json) {
 void ModificationOptions::toJson (triagens::basics::Json& json,
                                   TRI_memory_zone_t* zone) const {
   Json flags;
-  flags = Json(Json::Array, 3)
+  flags = Json(Json::Object, 3)
     ("ignoreErrors", Json(ignoreErrors))
     ("waitForSync", Json(waitForSync))
     ("nullMeansRemove", Json(nullMeansRemove))

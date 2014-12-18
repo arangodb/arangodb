@@ -266,11 +266,11 @@ bool ContinuousSyncer::excludeCollection (TRI_json_t const* json) const {
     return false;
   }
 
-  if (! TRI_IsArrayJson(json)) {
+  if (! TRI_IsObjectJson(json)) {
     return false;
   }
 
-  TRI_json_t const* name = TRI_LookupArrayJson(json, "cname");
+  TRI_json_t const* name = TRI_LookupObjectJson(json, "cname");
 
   if (TRI_IsStringJson(name)) {
     return excludeCollection(std::string(name->_value._string.data, name->_value._string.length - 1));
@@ -363,7 +363,7 @@ int ContinuousSyncer::processDocument (TRI_replication_operation_e type,
   }
 
   // extract optional "cname"
-  TRI_json_t const* cnameJson = JsonHelper::getArrayElement(json, "cname");
+  TRI_json_t const* cnameJson = JsonHelper::getObjectElement(json, "cname");
 
   if (JsonHelper::isString(cnameJson)) {
     string const cnameString = JsonHelper::getStringValue(json, "cname", "");
@@ -378,7 +378,7 @@ int ContinuousSyncer::processDocument (TRI_replication_operation_e type,
   }
 
   // extract "key"
-  TRI_json_t const* keyJson = JsonHelper::getArrayElement(json, "key");
+  TRI_json_t const* keyJson = JsonHelper::getObjectElement(json, "key");
 
   if (! JsonHelper::isString(keyJson)) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -396,7 +396,7 @@ int ContinuousSyncer::processDocument (TRI_replication_operation_e type,
   }
 
   // extract "data"
-  TRI_json_t const* doc = JsonHelper::getArrayElement(json, "data");
+  TRI_json_t const* doc = JsonHelper::getObjectElement(json, "data");
 
   // extract "tid"
   string const id = JsonHelper::getStringValue(json, "tid", "");
@@ -595,7 +595,7 @@ int ContinuousSyncer::commitTransaction (TRI_json_t const* json) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ContinuousSyncer::renameCollection (TRI_json_t const* json) {
-  TRI_json_t const* collectionJson = TRI_LookupArrayJson(json, "collection");
+  TRI_json_t const* collectionJson = TRI_LookupObjectJson(json, "collection");
   string const name = JsonHelper::getStringValue(collectionJson, "name", "");
 
   if (name.empty()) {
@@ -621,7 +621,7 @@ int ContinuousSyncer::renameCollection (TRI_json_t const* json) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ContinuousSyncer::changeCollection (TRI_json_t const* json) {
-  TRI_json_t const* collectionJson = TRI_LookupArrayJson(json, "collection");
+  TRI_json_t const* collectionJson = TRI_LookupObjectJson(json, "collection");
 
   bool waitForSync = JsonHelper::getBooleanValue(collectionJson, "waitForSync", false);
   bool doCompact   = JsonHelper::getBooleanValue(collectionJson, "doCompact", true);
@@ -665,7 +665,7 @@ int ContinuousSyncer::applyLogMarker (TRI_json_t const* json,
   static const string invalidMsg = "received invalid JSON data";
 
   // check data
-  if (! JsonHelper::isArray(json)) {
+  if (! JsonHelper::isObject(json)) {
     errorMsg = invalidMsg;
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -714,7 +714,7 @@ int ContinuousSyncer::applyLogMarker (TRI_json_t const* json,
   }
 
   else if (type == REPLICATION_COLLECTION_CREATE) {
-    TRI_json_t const* collectionJson = TRI_LookupArrayJson(json, "collection");
+    TRI_json_t const* collectionJson = TRI_LookupObjectJson(json, "collection");
 
     return createCollection(collectionJson, nullptr);
   }

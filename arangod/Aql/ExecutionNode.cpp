@@ -106,7 +106,7 @@ void ExecutionNode::getSortElements(SortElementVector& elements,
                                     triagens::basics::Json const& oneNode,
                                     char const* which) {
   triagens::basics::Json jsonElements = oneNode.get("elements");
-  if (! jsonElements.isList()){
+  if (! jsonElements.isArray()){
     std::string error = std::string("unexpected value for ") +
       std::string(which) + std::string(" elements");
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, error);
@@ -155,13 +155,13 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
       Variable* outVariable = varFromJson(plan->getAst(), oneNode, "outVariable", Optional);
 
       triagens::basics::Json jsonAggregates = oneNode.get("aggregates");
-      if (! jsonAggregates.isList()) {
+      if (! jsonAggregates.isArray()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "missing node type in valueTypeNames"); 
       }
 
       std::vector<Variable const*> keepVariables;
       triagens::basics::Json jsonKeepVariables = oneNode.get("keepVariables");
-      if (jsonKeepVariables.isList()) {
+      if (jsonKeepVariables.isArray()) {
         size_t const n = jsonKeepVariables.size();
         for (size_t i = 0; i < n; i++) {
           triagens::basics::Json keepVariable = jsonKeepVariables.at(static_cast<int>(i));
@@ -246,7 +246,7 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
   _registerPlan->totalNrRegs = JsonHelper::checkAndGetNumericValue<unsigned int>(json.json(), "totalNrRegs"); 
 
   auto jsonVarInfoList = json.get("varInfoList");
-  if (! jsonVarInfoList.isList()) {
+  if (! jsonVarInfoList.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "varInfoList needs to be a json list"); 
   }
  
@@ -255,7 +255,7 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
 
   for (size_t i = 0; i < len; i++) {
     auto jsonVarInfo = jsonVarInfoList.at(i);
-    if (! jsonVarInfo.isArray()) {
+    if (! jsonVarInfo.isObject()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "one varInfoList item needs to be an object"); 
     }
     VariableId variableId = JsonHelper::checkAndGetNumericValue<VariableId>      (jsonVarInfo.json(), "VariableId");
@@ -266,7 +266,7 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
   }
 
   auto jsonNrRegsList = json.get("nrRegs");
-  if (! jsonNrRegsList.isList()) {
+  if (! jsonNrRegsList.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "nrRegs needs to be a json list"); 
   }
 
@@ -278,7 +278,7 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
   }
   
   auto jsonNrRegsHereList = json.get("nrRegsHere");
-  if (! jsonNrRegsHereList.isList()) {
+  if (! jsonNrRegsHereList.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "nrRegsHere needs to be a json list"); 
   }
 
@@ -290,7 +290,7 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
   }
 
   auto jsonRegsToClearList = json.get("regsToClear");
-  if (! jsonRegsToClearList.isList()) {
+  if (! jsonRegsToClearList.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "regsToClear needs to be a json list"); 
   }
 
@@ -304,7 +304,7 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
   auto allVars = plan->getAst()->variables();
 
   auto jsonvarsUsedLater = json.get("varsUsedLater");
-  if (! jsonvarsUsedLater.isList()) {
+  if (! jsonvarsUsedLater.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "varsUsedLater needs to be a json list"); 
   }
 
@@ -324,7 +324,7 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
   }
 
   auto jsonvarsValidList = json.get("varsValid");
-  if (! jsonvarsValidList.isList()) {
+  if (! jsonvarsValidList.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "varsValid needs to be a json list"); 
   }
 
@@ -352,9 +352,9 @@ triagens::basics::Json ExecutionNode::toJson (TRI_memory_zone_t* zone,
   triagens::basics::Json json;
   triagens::basics::Json nodes;
   try {
-    nodes = triagens::basics::Json(triagens::basics::Json::List, 10);
+    nodes = triagens::basics::Json(triagens::basics::Json::Array, 10);
     toJsonHelper(nodes, zone, verbose);
-    json = triagens::basics::Json(triagens::basics::Json::Array, 1)
+    json = triagens::basics::Json(triagens::basics::Json::Object, 1)
              ("nodes", nodes);
   }
   catch (std::exception&) {
@@ -611,21 +611,21 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
 
   triagens::basics::Json json;
 
-  json = triagens::basics::Json(triagens::basics::Json::Array, 2)
+  json = triagens::basics::Json(triagens::basics::Json::Object, 2)
     ("type", triagens::basics::Json(getTypeString()));
 
   if (verbose) {
     json("typeID", triagens::basics::Json(static_cast<int>(getType())));
   }
 
-  triagens::basics::Json deps(triagens::basics::Json::List, n);
+  triagens::basics::Json deps(triagens::basics::Json::Array, n);
   for (size_t i = 0; i < n; i++) {
     deps(triagens::basics::Json(static_cast<double>(_dependencies[i]->id())));
   }
   json("dependencies", deps);
 
   if (verbose) {
-    triagens::basics::Json parents(triagens::basics::Json::List, _parents.size());
+    triagens::basics::Json parents(triagens::basics::Json::Array, _parents.size());
     for (size_t i = 0; i < _parents.size(); i++) {
       parents(triagens::basics::Json(static_cast<double>(_parents[i]->id())));
     }
@@ -641,9 +641,9 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
     json("depth", triagens::basics::Json(static_cast<double>(_depth)));
  
     if (_registerPlan) {
-      triagens::basics::Json jsonVarInfoList(triagens::basics::Json::List, _registerPlan->varInfo.size());
+      triagens::basics::Json jsonVarInfoList(triagens::basics::Json::Array, _registerPlan->varInfo.size());
       for (auto oneVarInfo: _registerPlan->varInfo) {
-        triagens::basics::Json jsonOneVarInfoArray(triagens::basics::Json::Array, 2);
+        triagens::basics::Json jsonOneVarInfoArray(triagens::basics::Json::Object, 2);
         jsonOneVarInfoArray(
                             "VariableId", 
                             triagens::basics::Json(static_cast<double>(oneVarInfo.first)))
@@ -654,13 +654,13 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
       }
       json("varInfoList", jsonVarInfoList);
 
-      triagens::basics::Json jsonNRRegsList(triagens::basics::Json::List, _registerPlan->nrRegs.size());
+      triagens::basics::Json jsonNRRegsList(triagens::basics::Json::Array, _registerPlan->nrRegs.size());
       for (auto oneRegisterID: _registerPlan->nrRegs) {
         jsonNRRegsList(triagens::basics::Json(static_cast<double>(oneRegisterID)));
       }
       json("nrRegs", jsonNRRegsList);
     
-      triagens::basics::Json jsonNRRegsHereList(triagens::basics::Json::List, _registerPlan->nrRegsHere.size());
+      triagens::basics::Json jsonNRRegsHereList(triagens::basics::Json::Array, _registerPlan->nrRegsHere.size());
       for (auto oneRegisterID: _registerPlan->nrRegsHere) {
         jsonNRRegsHereList(triagens::basics::Json(static_cast<double>(oneRegisterID)));
       }
@@ -668,26 +668,26 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
       json("totalNrRegs", triagens::basics::Json(static_cast<double>(_registerPlan->totalNrRegs)));
     }
     else {
-      json("varInfoList", triagens::basics::Json(triagens::basics::Json::List));
-      json("nrRegs", triagens::basics::Json(triagens::basics::Json::List));
-      json("nrRegsHere", triagens::basics::Json(triagens::basics::Json::List));
+      json("varInfoList", triagens::basics::Json(triagens::basics::Json::Array));
+      json("nrRegs", triagens::basics::Json(triagens::basics::Json::Array));
+      json("nrRegsHere", triagens::basics::Json(triagens::basics::Json::Array));
       json("totalNrRegs", triagens::basics::Json(0.0));
     }
 
-    triagens::basics::Json jsonRegsToClearList(triagens::basics::Json::List, _regsToClear.size());
+    triagens::basics::Json jsonRegsToClearList(triagens::basics::Json::Array, _regsToClear.size());
     for (auto oneRegisterID : _regsToClear) {
       jsonRegsToClearList(triagens::basics::Json(static_cast<double>(oneRegisterID)));
     }
     json("regsToClear", jsonRegsToClearList);
 
-    triagens::basics::Json jsonVarsUsedLaterList(triagens::basics::Json::List, _varsUsedLater.size());
+    triagens::basics::Json jsonVarsUsedLaterList(triagens::basics::Json::Array, _varsUsedLater.size());
     for (auto oneVarUsedLater: _varsUsedLater) {
       jsonVarsUsedLaterList.add(oneVarUsedLater->toJson());
     }
 
     json("varsUsedLater", jsonVarsUsedLaterList);
 
-    triagens::basics::Json jsonvarsValidList(triagens::basics::Json::List, _varsValid.size());
+    triagens::basics::Json jsonvarsValidList(triagens::basics::Json::Array, _varsValid.size());
     for (auto oneVarUsedLater: _varsValid) {
       jsonvarsValidList.add(oneVarUsedLater->toJson());
     }
@@ -1289,10 +1289,10 @@ void IndexRangeNode::toJsonHelper (triagens::basics::Json& nodes,
   }
 
   // put together the range info . . .
-  triagens::basics::Json ranges(triagens::basics::Json::List, _ranges.size());
+  triagens::basics::Json ranges(triagens::basics::Json::Array, _ranges.size());
 
   for (auto x : _ranges) {
-    triagens::basics::Json range(triagens::basics::Json::List, x.size());
+    triagens::basics::Json range(triagens::basics::Json::Array, x.size());
     for(auto y : x) {
       range.add(y.toJson());
     }
@@ -1353,10 +1353,10 @@ IndexRangeNode::IndexRangeNode (ExecutionPlan* plan,
     _ranges(),
     _reverse(false) {
 
-  triagens::basics::Json rangeListJson(TRI_UNKNOWN_MEM_ZONE, JsonHelper::checkAndGetListValue(json.json(), "ranges"));
-  for (size_t i = 0; i < rangeListJson.size(); i++) { //loop over the ranges . . .
+  triagens::basics::Json rangeArrayJson(TRI_UNKNOWN_MEM_ZONE, JsonHelper::checkAndGetArrayValue(json.json(), "ranges"));
+  for (size_t i = 0; i < rangeArrayJson.size(); i++) { //loop over the ranges . . .
     _ranges.emplace_back();
-    triagens::basics::Json rangeJson(rangeListJson.at(static_cast<int>(i)));
+    triagens::basics::Json rangeJson(rangeArrayJson.at(static_cast<int>(i)));
     for (size_t j = 0; j < rangeJson.size(); j++) {
       _ranges.at(i).emplace_back(rangeJson.at(static_cast<int>(j)));
     }
@@ -1365,7 +1365,7 @@ IndexRangeNode::IndexRangeNode (ExecutionPlan* plan,
   // now the index . . . 
   // TODO the following could be a constructor method for
   // an Index object when these are actually used
-  auto index = JsonHelper::checkAndGetArrayValue(json.json(), "index");
+  auto index = JsonHelper::checkAndGetObjectValue(json.json(), "index");
   auto iid   = JsonHelper::checkAndGetStringValue(index, "id");
 
   _index = _collection->getIndex(iid);
@@ -1861,9 +1861,9 @@ void SortNode::toJsonHelper (triagens::basics::Json& nodes,
   if (json.isEmpty()) {
     return;
   }
-  triagens::basics::Json values(triagens::basics::Json::List, _elements.size());
+  triagens::basics::Json values(triagens::basics::Json::Array, _elements.size());
   for (auto it = _elements.begin(); it != _elements.end(); ++it) {
-    triagens::basics::Json element(triagens::basics::Json::Array);
+    triagens::basics::Json element(triagens::basics::Json::Object);
     element("inVariable", (*it).first->toJson())
       ("ascending", triagens::basics::Json((*it).second));
     values(element);
@@ -2010,9 +2010,9 @@ void AggregateNode::toJsonHelper (triagens::basics::Json& nodes,
     return;
   }
 
-  triagens::basics::Json values(triagens::basics::Json::List, _aggregateVariables.size());
+  triagens::basics::Json values(triagens::basics::Json::Array, _aggregateVariables.size());
   for (auto it = _aggregateVariables.begin(); it != _aggregateVariables.end(); ++it) {
-    triagens::basics::Json variable(triagens::basics::Json::Array);
+    triagens::basics::Json variable(triagens::basics::Json::Object);
     variable("outVariable", (*it).first->toJson())
             ("inVariable", (*it).second->toJson());
     values(variable);
@@ -2030,9 +2030,9 @@ void AggregateNode::toJsonHelper (triagens::basics::Json& nodes,
   }
 
   if (! _keepVariables.empty()) {
-    triagens::basics::Json values(triagens::basics::Json::List, _keepVariables.size());
+    triagens::basics::Json values(triagens::basics::Json::Array, _keepVariables.size());
     for (auto it = _keepVariables.begin(); it != _keepVariables.end(); ++it) {
-      triagens::basics::Json variable(triagens::basics::Json::Array);
+      triagens::basics::Json variable(triagens::basics::Json::Object);
       variable("variable", (*it)->toJson());
       values(variable);
     }
@@ -2770,9 +2770,9 @@ void GatherNode::toJsonHelper (triagens::basics::Json& nodes,
   json("database", triagens::basics::Json(_vocbase->_name))
       ("collection", triagens::basics::Json(_collection->getName()));
 
-  triagens::basics::Json values(triagens::basics::Json::List, _elements.size());
+  triagens::basics::Json values(triagens::basics::Json::Array, _elements.size());
   for (auto it = _elements.begin(); it != _elements.end(); ++it) {
-    triagens::basics::Json element(triagens::basics::Json::Array);
+    triagens::basics::Json element(triagens::basics::Json::Object);
     element("inVariable", (*it).first->toJson())
            ("ascending", triagens::basics::Json((*it).second));
     values(element);

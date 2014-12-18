@@ -304,7 +304,7 @@ bool RestDocumentHandler::createDocument () {
     return false;
   }
 
-  if (json->_type != TRI_JSON_ARRAY) {
+  if (json->_type != TRI_JSON_OBJECT) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     return false;
@@ -686,13 +686,13 @@ bool RestDocumentHandler::getDocumentCoordinator (
 /// @RESTQUERYPARAM{type,string,optional}
 /// The type of the result. The following values are allowed:
 ///
-/// - *id*: returns a list of document ids (*_id* attributes)
-/// - *key*: returns a list of document keys (*_key* attributes)
-/// - *path*: returns a list of document URI paths. This is the default.
+/// - *id*: returns an array of document ids (*_id* attributes)
+/// - *key*: returns an array of document keys (*_key* attributes)
+/// - *path*: returns an array of document URI paths. This is the default.
 ///
 /// @RESTDESCRIPTION
-/// Returns a list of all keys, ids, or URI paths for all documents in the 
-/// collection identified by *collection*. The type of the result list is
+/// Returns an array of all keys, ids, or URI paths for all documents in the 
+/// collection identified by *collection*. The type of the result array is
 /// determined by the *type* attribute.
 ///
 /// Note that the results have no defined order and thus the order should
@@ -1381,7 +1381,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     return false;
   }
 
-  if (json->_type != TRI_JSON_ARRAY) {
+  if (json->_type != TRI_JSON_OBJECT) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     return false;

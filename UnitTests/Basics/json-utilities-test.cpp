@@ -186,11 +186,11 @@ BOOST_AUTO_TEST_CASE (tst_compare_values_unequal) {
 
 // TODO: add tests for
   // TRI_CheckSameValueJson
-  // TRI_BetweenListJson
-  // TRI_UniquifyListJson
+  // TRI_BetweenArrayJson
+  // TRI_UniquifyArrayJson
   // TRI_UnionizeListsJson
   // TRI_IntersectListsJson
-  // TRI_SortListJson
+  // TRI_SortArrayJson
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test check in list
@@ -200,54 +200,54 @@ BOOST_AUTO_TEST_CASE (tst_check_in_list) {
   TRI_json_t* l;
   TRI_json_t* r;
 
-  JSON_CHECK(true, TRI_CheckInListJson, "null", "[1,2,3,null]");
-  JSON_CHECK(true, TRI_CheckInListJson, "false", "[false]");
-  JSON_CHECK(true, TRI_CheckInListJson, "true", "[false,true]");
-  JSON_CHECK(true, TRI_CheckInListJson, "0", "[0]");
-  JSON_CHECK(true, TRI_CheckInListJson, "0", "[0,1]");
-  JSON_CHECK(true, TRI_CheckInListJson, "0", "[0,1,2]");
-  JSON_CHECK(true, TRI_CheckInListJson, "0", "[2,1,0]");
-  JSON_CHECK(true, TRI_CheckInListJson, "1", "[1,0]");
-  JSON_CHECK(true, TRI_CheckInListJson, "1", "[2,1,0]");
-  JSON_CHECK(true, TRI_CheckInListJson, "1", "[12,12,12,12,1]");
-  JSON_CHECK(true, TRI_CheckInListJson, "12", "[0,9,100,7,12,8]");
-  JSON_CHECK(true, TRI_CheckInListJson, "15", "[12,13,14,16,17,15]");
-  JSON_CHECK(true, TRI_CheckInListJson, "\"\"", "[1,2,3,\"\"]");
-  JSON_CHECK(true, TRI_CheckInListJson, "\"a\"", "[1,2,3,\"a\"]");
-  JSON_CHECK(true, TRI_CheckInListJson, "\"A\"", "[1,2,\"A\"]");
-  JSON_CHECK(true, TRI_CheckInListJson, "\"the fox\"", "[1,\"the fox\"]");
-  JSON_CHECK(true, TRI_CheckInListJson, "[]", "[[]]");
-  JSON_CHECK(true, TRI_CheckInListJson, "[]", "[2,3,[]]");
-  JSON_CHECK(true, TRI_CheckInListJson, "[null]", "[[null]]");
-  JSON_CHECK(true, TRI_CheckInListJson, "[false]", "[[false]]");
-  JSON_CHECK(true, TRI_CheckInListJson, "[true]", "[[true]]");
-  JSON_CHECK(true, TRI_CheckInListJson, "[true]", "[[false],[true]]");
-  JSON_CHECK(true, TRI_CheckInListJson, "[0]", "[1,2,3,[0]]");
-  JSON_CHECK(true, TRI_CheckInListJson, "[\"a\"]", "[\"b\",\"\",[\"a\"]]");
+  JSON_CHECK(true, TRI_CheckInArrayJson, "null", "[1,2,3,null]");
+  JSON_CHECK(true, TRI_CheckInArrayJson, "false", "[false]");
+  JSON_CHECK(true, TRI_CheckInArrayJson, "true", "[false,true]");
+  JSON_CHECK(true, TRI_CheckInArrayJson, "0", "[0]");
+  JSON_CHECK(true, TRI_CheckInArrayJson, "0", "[0,1]");
+  JSON_CHECK(true, TRI_CheckInArrayJson, "0", "[0,1,2]");
+  JSON_CHECK(true, TRI_CheckInArrayJson, "0", "[2,1,0]");
+  JSON_CHECK(true, TRI_CheckInArrayJson, "1", "[1,0]");
+  JSON_CHECK(true, TRI_CheckInArrayJson, "1", "[2,1,0]");
+  JSON_CHECK(true, TRI_CheckInArrayJson, "1", "[12,12,12,12,1]");
+  JSON_CHECK(true, TRI_CheckInArrayJson, "12", "[0,9,100,7,12,8]");
+  JSON_CHECK(true, TRI_CheckInArrayJson, "15", "[12,13,14,16,17,15]");
+  JSON_CHECK(true, TRI_CheckInArrayJson, "\"\"", "[1,2,3,\"\"]");
+  JSON_CHECK(true, TRI_CheckInArrayJson, "\"a\"", "[1,2,3,\"a\"]");
+  JSON_CHECK(true, TRI_CheckInArrayJson, "\"A\"", "[1,2,\"A\"]");
+  JSON_CHECK(true, TRI_CheckInArrayJson, "\"the fox\"", "[1,\"the fox\"]");
+  JSON_CHECK(true, TRI_CheckInArrayJson, "[]", "[[]]");
+  JSON_CHECK(true, TRI_CheckInArrayJson, "[]", "[2,3,[]]");
+  JSON_CHECK(true, TRI_CheckInArrayJson, "[null]", "[[null]]");
+  JSON_CHECK(true, TRI_CheckInArrayJson, "[false]", "[[false]]");
+  JSON_CHECK(true, TRI_CheckInArrayJson, "[true]", "[[true]]");
+  JSON_CHECK(true, TRI_CheckInArrayJson, "[true]", "[[false],[true]]");
+  JSON_CHECK(true, TRI_CheckInArrayJson, "[0]", "[1,2,3,[0]]");
+  JSON_CHECK(true, TRI_CheckInArrayJson, "[\"a\"]", "[\"b\",\"\",[\"a\"]]");
 
-  JSON_CHECK(false, TRI_CheckInListJson, "null", "[0,1,2,3,\"\",false,\"null\"]");
-  JSON_CHECK(false, TRI_CheckInListJson, "null", "[[null]]");
-  JSON_CHECK(false, TRI_CheckInListJson, "false", "[0,1,2,3,\"\",\"false\",\"null\"]");
-  JSON_CHECK(false, TRI_CheckInListJson, "false", "[[false]]");
-  JSON_CHECK(false, TRI_CheckInListJson, "true", "[\"true\"]");
-  JSON_CHECK(false, TRI_CheckInListJson, "true", "[[true]]");
-  JSON_CHECK(false, TRI_CheckInListJson, "0", "[null,false,\"\",\" \"]");
-  JSON_CHECK(false, TRI_CheckInListJson, "0", "[[0]]");
-  JSON_CHECK(false, TRI_CheckInListJson, "15", "[12,13,14,16,17]");
-  JSON_CHECK(false, TRI_CheckInListJson, "15", "[[15]]");
-  JSON_CHECK(false, TRI_CheckInListJson, "120", "[12,121,1200]");
-  JSON_CHECK(false, TRI_CheckInListJson, "\"a\"", "[\"A\"]");
-  JSON_CHECK(false, TRI_CheckInListJson, "\"A\"", "[\"a\"]");
-  JSON_CHECK(false, TRI_CheckInListJson, "\"a\"", "[\"abc\"]");
-  JSON_CHECK(false, TRI_CheckInListJson, "\"a\"", "[\"a \"]");
-  JSON_CHECK(false, TRI_CheckInListJson, "\"the fox\"", "[\"the\",\"fox\"]");
-  JSON_CHECK(false, TRI_CheckInListJson, "\"a\"", "[[\"a\"]]");
-  JSON_CHECK(false, TRI_CheckInListJson, "[]", "[]");
-  JSON_CHECK(false, TRI_CheckInListJson, "[]", "[5,4,3,2,1]");
-  JSON_CHECK(false, TRI_CheckInListJson, "[0]", "[0,1,2,3]");
-  JSON_CHECK(false, TRI_CheckInListJson, "[]", "[0,1,2,3]");
-  JSON_CHECK(false, TRI_CheckInListJson, "[false]", "[false,true]");
-  JSON_CHECK(false, TRI_CheckInListJson, "[\"a\"]", "[\"a\"]");
+  JSON_CHECK(false, TRI_CheckInArrayJson, "null", "[0,1,2,3,\"\",false,\"null\"]");
+  JSON_CHECK(false, TRI_CheckInArrayJson, "null", "[[null]]");
+  JSON_CHECK(false, TRI_CheckInArrayJson, "false", "[0,1,2,3,\"\",\"false\",\"null\"]");
+  JSON_CHECK(false, TRI_CheckInArrayJson, "false", "[[false]]");
+  JSON_CHECK(false, TRI_CheckInArrayJson, "true", "[\"true\"]");
+  JSON_CHECK(false, TRI_CheckInArrayJson, "true", "[[true]]");
+  JSON_CHECK(false, TRI_CheckInArrayJson, "0", "[null,false,\"\",\" \"]");
+  JSON_CHECK(false, TRI_CheckInArrayJson, "0", "[[0]]");
+  JSON_CHECK(false, TRI_CheckInArrayJson, "15", "[12,13,14,16,17]");
+  JSON_CHECK(false, TRI_CheckInArrayJson, "15", "[[15]]");
+  JSON_CHECK(false, TRI_CheckInArrayJson, "120", "[12,121,1200]");
+  JSON_CHECK(false, TRI_CheckInArrayJson, "\"a\"", "[\"A\"]");
+  JSON_CHECK(false, TRI_CheckInArrayJson, "\"A\"", "[\"a\"]");
+  JSON_CHECK(false, TRI_CheckInArrayJson, "\"a\"", "[\"abc\"]");
+  JSON_CHECK(false, TRI_CheckInArrayJson, "\"a\"", "[\"a \"]");
+  JSON_CHECK(false, TRI_CheckInArrayJson, "\"the fox\"", "[\"the\",\"fox\"]");
+  JSON_CHECK(false, TRI_CheckInArrayJson, "\"a\"", "[[\"a\"]]");
+  JSON_CHECK(false, TRI_CheckInArrayJson, "[]", "[]");
+  JSON_CHECK(false, TRI_CheckInArrayJson, "[]", "[5,4,3,2,1]");
+  JSON_CHECK(false, TRI_CheckInArrayJson, "[0]", "[0,1,2,3]");
+  JSON_CHECK(false, TRI_CheckInArrayJson, "[]", "[0,1,2,3]");
+  JSON_CHECK(false, TRI_CheckInArrayJson, "[false]", "[false,true]");
+  JSON_CHECK(false, TRI_CheckInArrayJson, "[\"a\"]", "[\"a\"]");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -258,16 +258,16 @@ BOOST_AUTO_TEST_CASE (tst_check_in_list_empty) {
   TRI_json_t* l;
   TRI_json_t* r;
 
-  JSON_CHECK(false, TRI_CheckInListJson, "null", "[]");
-  JSON_CHECK(false, TRI_CheckInListJson, "false", "[]");
-  JSON_CHECK(false, TRI_CheckInListJson, "true", "[]");
-  JSON_CHECK(false, TRI_CheckInListJson, "0", "[]");
-  JSON_CHECK(false, TRI_CheckInListJson, "1", "[]");
-  JSON_CHECK(false, TRI_CheckInListJson, "\"fox\"", "[]");
-  JSON_CHECK(false, TRI_CheckInListJson, "\"\"", "[]");
-  JSON_CHECK(false, TRI_CheckInListJson, "\" \"", "[]");
-  JSON_CHECK(false, TRI_CheckInListJson, "[]", "[]");
-  JSON_CHECK(false, TRI_CheckInListJson, "{}", "[]");
+  JSON_CHECK(false, TRI_CheckInArrayJson, "null", "[]");
+  JSON_CHECK(false, TRI_CheckInArrayJson, "false", "[]");
+  JSON_CHECK(false, TRI_CheckInArrayJson, "true", "[]");
+  JSON_CHECK(false, TRI_CheckInArrayJson, "0", "[]");
+  JSON_CHECK(false, TRI_CheckInArrayJson, "1", "[]");
+  JSON_CHECK(false, TRI_CheckInArrayJson, "\"fox\"", "[]");
+  JSON_CHECK(false, TRI_CheckInArrayJson, "\"\"", "[]");
+  JSON_CHECK(false, TRI_CheckInArrayJson, "\" \"", "[]");
+  JSON_CHECK(false, TRI_CheckInArrayJson, "[]", "[]");
+  JSON_CHECK(false, TRI_CheckInArrayJson, "{}", "[]");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

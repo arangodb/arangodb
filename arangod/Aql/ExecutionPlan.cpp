@@ -114,7 +114,7 @@ void ExecutionPlan::getCollectionsFromJson (Ast *ast,
                                             triagens::basics::Json const& json) {
   Json jsonCollectionList = json.get("collections");
 
-  if (! jsonCollectionList.isList()) {
+  if (! jsonCollectionList.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json node \"collections\" not found or not a list");
   }
 
@@ -165,18 +165,18 @@ triagens::basics::Json ExecutionPlan::toJson (Ast* ast,
   triagens::basics::Json result = _root->toJson(zone, verbose); 
  
   // set up rules 
-  triagens::basics::Json rules(Json::List);
+  triagens::basics::Json rules(Json::Array);
   auto const&& appliedRules = Optimizer::translateRules(_appliedRules);
   for (auto r : appliedRules) {
     rules.add(triagens::basics::Json(r));
   }
   result.set("rules", rules);
 
-  triagens::basics::Json jsonCollectionList(Json::List);
+  triagens::basics::Json jsonCollectionList(Json::Array);
   auto usedCollections = *ast->query()->collections()->collections();
 
   for (auto c : usedCollections) {
-    Json json(Json::Array);
+    Json json(Json::Object);
 
     jsonCollectionList(json("name", Json(c.first))
                            ("type", Json(TRI_TransactionTypeGetStr(c.second->accessType))));
@@ -229,14 +229,14 @@ ModificationOptions ExecutionPlan::createOptions (AstNode const* node) {
 
   // parse the modification options we got
   if (node != nullptr && 
-      node->type == NODE_TYPE_ARRAY) {
+      node->type == NODE_TYPE_OBJECT) {
     size_t n = node->numMembers();
 
     for (size_t i = 0; i < n; ++i) {
       auto member = node->getMember(i);
 
       if (member != nullptr && 
-          member->type == NODE_TYPE_ARRAY_ELEMENT) {
+          member->type == NODE_TYPE_OBJECT_ELEMENT) {
         auto name = member->getStringValue();
         auto value = member->getMember(0);
 
@@ -471,7 +471,7 @@ ExecutionNode* ExecutionPlan::fromNodeSort (ExecutionNode* previous,
   TRI_ASSERT(node->numMembers() == 1);
 
   auto list = node->getMember(0);
-  TRI_ASSERT(list->type == NODE_TYPE_LIST);
+  TRI_ASSERT(list->type == NODE_TYPE_ARRAY);
 
   std::vector<std::pair<Variable const*, bool>> elements;
   std::vector<CalculationNode*> temp;
@@ -625,7 +625,7 @@ ExecutionNode* ExecutionPlan::fromNodeCollect (ExecutionNode* previous,
 
     if (n >= 3) {
       auto vars = node->getMember(2);
-      TRI_ASSERT(vars->type == NODE_TYPE_LIST);
+      TRI_ASSERT(vars->type == NODE_TYPE_ARRAY);
       size_t const keepVarsSize = vars->numMembers();
       keepVariables.reserve(keepVarsSize);
       for (size_t i = 0; i < keepVarsSize; ++i) {
@@ -1470,7 +1470,7 @@ ExecutionNode* ExecutionPlan::fromJson (Json const& json) {
   Json nodes = json.get("nodes");
   //std::cout << nodes.toString() << "\n";
 
-  if (! nodes.isList()) {
+  if (! nodes.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "nodes is not a list");
   }
 
@@ -1481,7 +1481,7 @@ ExecutionNode* ExecutionPlan::fromJson (Json const& json) {
   for (size_t i = 0; i < size; i++) {
     Json oneJsonNode = nodes.at(static_cast<int>(i));
 
-    if (! oneJsonNode.isArray()) {
+    if (! oneJsonNode.isObject()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json node is not an array");
     }
     ret = ExecutionNode::fromJsonFactory(this, oneJsonNode);
@@ -1506,7 +1506,7 @@ ExecutionNode* ExecutionPlan::fromJson (Json const& json) {
   for (size_t i = 0; i < size; i++) {
     Json oneJsonNode = nodes.at(static_cast<int>(i));
 
-    if (! oneJsonNode.isArray()) {
+    if (! oneJsonNode.isObject()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json node is not an array");
     }
    
@@ -1516,7 +1516,7 @@ ExecutionNode* ExecutionPlan::fromJson (Json const& json) {
 
     // now re-link the dependencies
     Json dependencies = oneJsonNode.get("dependencies");
-    if (triagens::basics::JsonHelper::isList(dependencies.json())) {
+    if (triagens::basics::JsonHelper::isArray(dependencies.json())) {
       size_t const nDependencies = dependencies.size();
 
       for (size_t j = 0; j < nDependencies; j ++) {

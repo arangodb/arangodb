@@ -148,9 +148,9 @@ namespace triagens {
       NODE_TYPE_EXPAND                        = 38,
       NODE_TYPE_ITERATOR                      = 39,
       NODE_TYPE_VALUE                         = 40,
-      NODE_TYPE_LIST                          = 41,
-      NODE_TYPE_ARRAY                         = 42,
-      NODE_TYPE_ARRAY_ELEMENT                 = 43,
+      NODE_TYPE_ARRAY                          = 41,
+      NODE_TYPE_OBJECT                         = 42,
+      NODE_TYPE_OBJECT_ELEMENT                 = 43,
       NODE_TYPE_COLLECTION                    = 44,
       NODE_TYPE_REFERENCE                     = 45,
       NODE_TYPE_PARAMETER                     = 46,
@@ -162,8 +162,8 @@ namespace triagens {
       NODE_TYPE_COLLECT_EXPRESSION            = 52
     };
 
-    static_assert(NODE_TYPE_VALUE < NODE_TYPE_LIST, "incorrect node types");
-    static_assert(NODE_TYPE_LIST < NODE_TYPE_ARRAY, "incorrect node types");
+    static_assert(NODE_TYPE_VALUE < NODE_TYPE_ARRAY, "incorrect node types");
+    static_assert(NODE_TYPE_ARRAY < NODE_TYPE_OBJECT, "incorrect node types");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    struct AstNode
@@ -419,16 +419,16 @@ namespace triagens {
 /// @brief whether or not a value node is of list type
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline bool isList () const {
-          return (type == NODE_TYPE_LIST);
+        inline bool isArray () const {
+          return (type == NODE_TYPE_ARRAY);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a value node is of array type
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline bool isArray () const {
-          return (type == NODE_TYPE_ARRAY);
+        inline bool isObject () const {
+          return (type == NODE_TYPE_OBJECT);
         }
 
 ////////////////////////////////////////////////////////////////////////////////

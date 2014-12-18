@@ -1090,8 +1090,8 @@ bool IndexRangeBlock::initRanges () {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
                 "AQL: computed a variable bound and got non-JSON");
           }
-          if (! bound.isList()) {
-            Json json(Json::Array, 3);
+          if (! bound.isArray()) {
+            Json json(Json::Object, 3);
             json("include", Json(l.inclusive()))
                 ("isConstant", Json(true))
                 ("bound", bound.copy());
@@ -1107,7 +1107,7 @@ bool IndexRangeBlock::initRanges () {
           else {
             std::vector<RangeInfo> riv; 
             for (size_t j = 0; j < bound.size(); j++) {
-              Json json(Json::Array, 3);
+              Json json(Json::Object, 3);
               json("include", Json(l.inclusive()))
                   ("isConstant", Json(true))
                   ("bound", bound.at(static_cast<int>(j)).copy());
@@ -1145,8 +1145,8 @@ bool IndexRangeBlock::initRanges () {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
                 "AQL: computed a variable bound and got non-JSON");
           }
-          if (! bound.isList()) {
-            Json json(Json::Array, 3);
+          if (! bound.isArray()) {
+            Json json(Json::Object, 3);
             json("include", Json(h.inclusive()))
                 ("isConstant", Json(true))
                 ("bound", bound.copy());
@@ -1162,7 +1162,7 @@ bool IndexRangeBlock::initRanges () {
           else {
             std::vector<RangeInfo> riv; 
             for (size_t j = 0; j < bound.size(); j++) {
-              Json json(Json::Array, 3);
+              Json json(Json::Object, 3);
               json("include", Json(h.inclusive()))
                   ("isConstant", Json(true))
                   ("bound", bound.at(static_cast<int>(j)).copy());
@@ -1753,7 +1753,7 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
       std::string const lookFor = std::string(name);
 
       for (auto x : ranges[pos]) {
-        if (x._attr == std::string(name)) {    //found attribute
+        if (x._attr == lookFor) {    //found attribute
           auto shaped = TRI_ShapedJsonJson(shaper, x._lowConst.bound().json(), false); 
           // here x->_low->_bound = x->_high->_bound 
           if (shaped == nullptr) {
@@ -1900,7 +1900,7 @@ void IndexRangeBlock::getSkiplistIterator (IndexAndCondition const& ranges) {
 
   TRI_index_operator_t* skiplistOperator = nullptr; 
 
-  Json parameters(Json::List); 
+  Json parameters(Json::Array); 
   size_t i = 0;
   for (; i < ranges.size(); i++) {
     auto range = ranges[i];
@@ -1939,7 +1939,7 @@ void IndexRangeBlock::getSkiplistIterator (IndexAndCondition const& ranges) {
   if (skiplistOperator == nullptr) {      // only have equalities . . .
     if (parameters.size() == 0) {
       // this creates the infinite range (i.e. >= null)
-      Json hass(Json::List);
+      Json hass(Json::Array);
       hass.add(Json(Json::Null));
       skiplistOperator = TRI_CreateIndexOperator(TRI_GE_INDEX_OPERATOR, nullptr,
           nullptr, hass.steal(), shaper, 1);
@@ -1977,9 +1977,8 @@ void IndexRangeBlock::readSkiplistIndex (size_t atMost) {
   
   try {
     size_t nrSent = 0;
-    TRI_skiplist_index_element_t* indexElement;
     while (nrSent < atMost && _skiplistIterator !=nullptr) { 
-      indexElement = _skiplistIterator->next(_skiplistIterator);
+      TRI_skiplist_index_element_t* indexElement = _skiplistIterator->next(_skiplistIterator);
 
       if (indexElement == nullptr) {
         TRI_FreeSkiplistIterator(_skiplistIterator);
@@ -2082,7 +2081,7 @@ AqlItemBlock* EnumerateListBlock::getSome (size_t, size_t atMost) {
     _collection = nullptr;
     switch (inVarReg._type) {
       case AqlValue::JSON: {
-        if (! inVarReg._json->isList()) {
+        if (! inVarReg._json->isArray()) {
           throwListExpectedException();
         }
         sizeInVar = inVarReg._json->size();
@@ -2203,7 +2202,7 @@ size_t EnumerateListBlock::skipSome (size_t atLeast, size_t atMost) {
     // get the size of the thing we are looping over
     switch (inVarReg._type) {
       case AqlValue::JSON: {
-        if (! inVarReg._json->isList()) {
+        if (! inVarReg._json->isArray()) {
           throwListExpectedException();
         }
         sizeInVar = inVarReg._json->size();
@@ -3446,7 +3445,7 @@ AqlItemBlock* ModificationBlock::getSome (size_t atLeast,
 int ModificationBlock::extractKey (AqlValue const& value,
                                    TRI_document_collection_t const* document,
                                    std::string& key) const {
-  if (value.isArray()) {
+  if (value.isObject()) {
     Json member(value.extractArrayMember(_trx, document, TRI_VOC_ATTRIBUTE_KEY));
 
     TRI_json_t const* json = member.json();
@@ -3532,7 +3531,7 @@ void RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
         std::string key;
         int errorCode = TRI_ERROR_NO_ERROR;
 
-        if (a.isArray()) {
+        if (a.isObject()) {
           // value is an array. now extract the _key attribute
           errorCode = extractKey(a, document, key);
         }
@@ -3620,7 +3619,7 @@ void InsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
 
         int errorCode = TRI_ERROR_NO_ERROR;
 
-        if (a.isArray()) {
+        if (a.isObject()) {
           // value is an array
         
           if (isEdgeCollection) {
@@ -3736,7 +3735,7 @@ void UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
         int errorCode = TRI_ERROR_NO_ERROR;
         std::string key;
 
-        if (a.isArray()) {
+        if (a.isObject()) {
           // value is an array
           if (hasKeyVariable) {
             // seperate key specification
@@ -3858,7 +3857,7 @@ void ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
         int errorCode = TRI_ERROR_NO_ERROR;
         std::string key;
 
-        if (a.isArray()) {
+        if (a.isObject()) {
           // value is an array
           if (hasKeyVariable) {
             // seperate key specification
@@ -5029,8 +5028,8 @@ static bool throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
         std::string("': ");
     }
 
-    if (TRI_IsArrayJson(json)) {
-      TRI_json_t const* v = TRI_LookupArrayJson(json, "errorNum");
+    if (TRI_IsObjectJson(json)) {
+      TRI_json_t const* v = TRI_LookupObjectJson(json, "errorNum");
 
       if (TRI_IsNumberJson(v)) {
         if (static_cast<int>(v->_value._number) != TRI_ERROR_NO_ERROR) {
@@ -5040,7 +5039,7 @@ static bool throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
         }
       }
 
-      v = TRI_LookupArrayJson(json, "errorMessage");
+      v = TRI_LookupObjectJson(json, "errorMessage");
       if (TRI_IsStringJson(v)) {
         errorMessage += std::string(v->_value._string.data, v->_value._string.length - 1);
       }
@@ -5162,7 +5161,7 @@ int RemoteBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   ENTER_BLOCK
   // For every call we simply forward via HTTP
 
-  Json body(Json::Array, 4);
+  Json body(Json::Object, 4);
   if (items == nullptr) {
     // first call, items is still a nullptr
     body("exhausted", Json(true))
@@ -5217,13 +5216,13 @@ int RemoteBlock::shutdown (int errorCode) {
                                        responseBodyBuf.begin()));
 
   // read "warnings" attribute if present and add it our query
-  if (responseBodyJson.isArray()) {
+  if (responseBodyJson.isObject()) {
     auto warnings = responseBodyJson.get("warnings");
-    if (warnings.isList()) {
+    if (warnings.isArray()) {
       auto query = _engine->getQuery();
       for (size_t i = 0; i < warnings.size(); ++i) {
         auto warning = warnings.at(i);
-        if (warning.isArray()) {
+        if (warning.isObject()) {
           auto code = warning.get("code");
           auto message = warning.get("message");
           if (code.isNumber() && message.isString()) {
@@ -5249,7 +5248,7 @@ AqlItemBlock* RemoteBlock::getSome (size_t atLeast,
   ENTER_BLOCK
   // For every call we simply forward via HTTP
 
-  Json body(Json::Array, 2);
+  Json body(Json::Object, 2);
   body("atLeast", Json(static_cast<double>(atLeast)))
       ("atMost", Json(static_cast<double>(atMost)));
   std::string bodyString(body.toString());
@@ -5290,7 +5289,7 @@ size_t RemoteBlock::skipSome (size_t atLeast, size_t atMost) {
   ENTER_BLOCK
   // For every call we simply forward via HTTP
 
-  Json body(Json::Array, 2);
+  Json body(Json::Object, 2);
   body("atLeast", Json(static_cast<double>(atLeast)))
       ("atMost", Json(static_cast<double>(atMost)));
   std::string bodyString(body.toString());

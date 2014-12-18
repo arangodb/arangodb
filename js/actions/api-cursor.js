@@ -426,7 +426,7 @@ function post_api_cursor(req, res) {
 /// @RESTDESCRIPTION
 ///
 /// If the cursor is still alive, returns an object with the following
-/// attributes.
+/// attributes:
 ///
 /// - *id*: the *cursor-identifier*
 /// - *result*: a list of documents for the current batch
@@ -541,7 +541,7 @@ function put_api_cursor (req, res) {
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{cursor-identifier,string,required}
-/// The name of the cursor
+/// The id of the cursor
 ///
 /// @RESTDESCRIPTION
 /// Deletes the cursor and frees the resources associated with it.

@@ -504,11 +504,11 @@ AqlItemBlock* AqlItemBlock::concatenate (std::vector<AqlItemBlock*> const& block
 ////////////////////////////////////////////////////////////////////////////////
 
 Json AqlItemBlock::toJson (triagens::arango::AqlTransaction* trx) const {
-  Json json(Json::Array, 6);
+  Json json(Json::Object, 6);
   json("nrItems", Json(static_cast<double>(_nrItems)))
       ("nrRegs", Json(static_cast<double>(_nrRegs)));
-  Json data(Json::List, _data.size());
-  Json raw(Json::List, _data.size() + 2);
+  Json data(Json::Array, _data.size());
+  Json raw(Json::Array, _data.size() + 2);
        raw(Json(Json::Null))
           (Json(Json::Null));  // Two nulls in the beginning such that 
                                // indices start with 2
