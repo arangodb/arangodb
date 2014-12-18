@@ -75,7 +75,7 @@ around in a query.
 
 In previous versions of ArangoDB, AQL queries aborted with an exception in many
 situations and threw a runtime exception. Exceptions were thrown when trying to
-find a value using the `IN` operator in a non-list element, when trying to use
+find a value using the `IN` operator in a non-array element, when trying to use
 non-boolean values with the logical operands `&&` or `||` or `!`, when using non-numeric
 values in arithmetic operations, when passing wrong parameters into functions etc.
 
@@ -83,7 +83,7 @@ In ArangoDB 2.3 this has been changed in many cases to make AQL more user-friend
 and to allow the optimization to perform much more query optimizations.
 
 Here is a summary of changes:
-- when a non-list value is used on the right-hand side of the `IN` operator, the 
+- when a non-array value is used on the right-hand side of the `IN` operator, the 
   result will be `false` in ArangoDB 2.3, and no exception will be thrown.
 - the boolean operators `&&` and `||` do not throw in ArangoDB 2.3 if any of the
   operands is not a boolean value. Instead, they will perform an implicit cast of
@@ -215,7 +215,7 @@ be returned inside the `stats` attribute of the `extra` attribute, and not direc
 as an attribute inside the `extra` attribute as in 2.2. Note that a `fullCount` will
 only be present in `extra`.`stats` if it was requested as an option for the query.
 
-The result in ArangoDB 2.3 will also contain a `warnings` attribute with the list of 
+The result in ArangoDB 2.3 will also contain a `warnings` attribute with the array of 
 warnings that happened during query execution.
 
 
@@ -260,17 +260,17 @@ non-deterministic behavior because queries are not executed linearly.
 
 !SUBSECTION Changed return value of `TO_BOOL`
 
-The AQL function `TO_BOOL` now always returns *true* if its argument is a list or a document.
-In previous versions of ArangoDB, the function returned *false* for empty lists or for
-documents without attributes.
+The AQL function `TO_BOOL` now always returns *true* if its argument is a array or an object.
+In previous versions of ArangoDB, the function returned *false* for empty arrays or for
+objects without attributes.
 
 
 !SUBSECTION Changed return value of `TO_NUMBER`
 
-The AQL function `TO_NUMBER` now returns *null* if its argument is a document or a 
-list with more than one member. In previous version of ArangoDB, the return
-value in these cases was 0. `TO_NUMBER` will return 0 for empty lists, and the numeric
-equivalent of the list member's value for lists with a single member.
+The AQL function `TO_NUMBER` now returns *null* if its argument is an object or an
+array with more than one member. In previous version of ArangoDB, the return
+value in these cases was 0. `TO_NUMBER` will return 0 for empty array, and the numeric
+equivalent of the array member's value for arrays with a single member.
 
 
 !SUBSECTION New AQL keywords

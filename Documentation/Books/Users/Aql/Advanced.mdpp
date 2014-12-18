@@ -34,13 +34,13 @@ Subqueries may also include other subqueries themselves.
 
 !SUBSECTION Variable expansion
 
-In order to access a named attribute from all elements in a list easily, AQL
+In order to access a named attribute from all elements in an array easily, AQL
 offers the shortcut operator <i>[\*]</i> for variable expansion.
 
 Using the <i>[\*]</i> operator with a variable will iterate over all elements in the
 variable thus allowing to access a particular attribute of each element.  It is
-required that the expanded variable is a list.  The result of the <i>[\*]</i>
-operator is again a list.
+required that the expanded variable is an array.  The result of the <i>[\*]</i>
+operator is again an array.
 
 ```js
 FOR u IN users
@@ -48,5 +48,5 @@ FOR u IN users
 ```
 
 In the above example, the attribute *name* is accessed for each element in the
-list *u.friends*. The result is a flat list of friend names, made available as
+array *u.friends*. The result is a flat array of friend names, made available as
 the attribute *friendNames*.

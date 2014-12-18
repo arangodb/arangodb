@@ -1836,9 +1836,9 @@ AstNode* Ast::optimizeFor (AstNode* node) {
 
   if (expression->isConstant() && 
       expression->type != NODE_TYPE_ARRAY) {
-    // right-hand operand to FOR statement is no list
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_LIST_EXPECTED,
-                                   TRI_errno_string(TRI_ERROR_QUERY_LIST_EXPECTED) + std::string(" as operand to FOR loop"));
+    // right-hand operand to FOR statement is no array
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_ARRAY_EXPECTED,
+                                   TRI_errno_string(TRI_ERROR_QUERY_ARRAY_EXPECTED) + std::string(" as operand to FOR loop"));
   }
   
   // no real optimizations will be done here  

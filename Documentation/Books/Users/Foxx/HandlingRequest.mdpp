@@ -99,7 +99,7 @@ A repository is an object that wraps access to a collection (or multiple
 collections if you want), whereas controller.collection returns the 
 collection itself. That's the main difference. 
 
-To return a list of users from a controller using a repository, you 
+To return an array of users from a controller using a repository, you 
 could use it like this: 
 
 ```js

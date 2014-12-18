@@ -47,15 +47,15 @@ namespace triagens {
     struct Functions {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief function IS_NULL
+/// @brief functions
 ////////////////////////////////////////////////////////////////////////////////
 
       static AqlValue IsNull (triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
       static AqlValue IsBool (triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
       static AqlValue IsNumber (triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
       static AqlValue IsString (triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
-      static AqlValue IsList (triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
-      static AqlValue IsDocument (triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue IsArray (triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue IsObject (triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
       static AqlValue Length (triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
     };
 

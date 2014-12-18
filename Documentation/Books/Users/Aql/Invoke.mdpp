@@ -21,7 +21,7 @@ To pass bind parameters into a query, they can be specified as second argument t
     }).toArray();
 
 Data-modifying AQL queries do not return a result, so the *toArray* method will always
-return an empty list. To retrieve statistics for a data-modification query, use the
+return an empty array. To retrieve statistics for a data-modification query, use the
 *getExtra* method:
 
     arangosh> db._query("FOR i IN 1..100 INSERT { _key: CONCAT('test', TO_STRING(i)) } INTO mycollection").getExtra();
@@ -188,17 +188,17 @@ By default, the query optimizer will return what it considers to be the *optimal
 optimal plan will be returned in the `plan` attribute of the result. If `explain` is
 called with option `allPlans` set to `true`, all plans will be returned in the `plans`
 attribute instead. The result object will also contain an attribute *warnings*, which 
-is a list of warnings that occurred during optimization or execution plan creation.
+is an array of warnings that occurred during optimization or execution plan creation.
 
 Each plan in the result is an object with the following attributes:
-- *nodes*: the list of execution nodes of the plan. The list of available node types
+- *nodes*: the array of execution nodes of the plan. The list of available node types
    can be found [here](../Aql/Optimizer.html)
 - *estimatedCost*: the total estimated cost for the plan. If there are multiple
   plans, the optimizer will choose the plan with the lowest total cost.
-- *collections*: a list of collections used in the query
-- *rules*: a list of rules the optimizer applied. The list of rules can be 
+- *collections*: an array of collections used in the query
+- *rules*: an array of rules the optimizer applied. The list of rules can be 
   found [here](../Aql/Optimizer.html)
-- *variables*: list of variables used in the query (note: this may contain
+- *variables*: array of variables used in the query (note: this may contain
   internal variables created by the optimizer)
 
 Here is an example for retrieving the execution plan of a simple query:
@@ -333,7 +333,7 @@ arangosh> stmt.explain({ allPlans: true }).plans.map(function(plan) { return for
 
 `explain` will also accept the following additional options:
 - *maxPlans*: limits the maximum number of plans that are created by the AQL query optimizer
-- *optimizer.rules*: a list of to-be-included or to-be-excluded optimizer rules
+- *optimizer.rules*: an array of to-be-included or to-be-excluded optimizer rules
   can be put into this attribute, telling the optimizer to include or exclude
   specific rules. To disable a rule, prefix its name with a `-`, to enable a rule, prefix it
   with a `+`. There is also a pseudo-rule `all`, which will match all optimizer rules.

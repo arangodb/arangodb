@@ -79,23 +79,23 @@ AqlValue Functions::IsString (triagens::arango::AqlTransaction* trx,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief function IS_LIST
+/// @brief function IS_ARRAY
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::IsList (triagens::arango::AqlTransaction* trx,
-                            TRI_document_collection_t const* collection,
-                            AqlValue const parameters) {
+AqlValue Functions::IsArray (triagens::arango::AqlTransaction* trx,
+                             TRI_document_collection_t const* collection,
+                             AqlValue const parameters) {
   Json j(parameters.extractListMember(trx, collection, 0, false));
   return AqlValue(new Json(j.isArray()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief function IS_DOCUMENT
+/// @brief function IS_OBJECT
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue Functions::IsDocument (triagens::arango::AqlTransaction* trx,
-                                TRI_document_collection_t const* collection,
-                                AqlValue const parameters) {
+AqlValue Functions::IsObject (triagens::arango::AqlTransaction* trx,
+                              TRI_document_collection_t const* collection,
+                              AqlValue const parameters) {
   Json j(parameters.extractListMember(trx, collection, 0, false));
   return AqlValue(new Json(j.isObject()));
 }

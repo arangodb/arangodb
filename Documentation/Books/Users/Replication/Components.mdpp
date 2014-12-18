@@ -24,7 +24,7 @@ renaming and changing collections and indexes.
 When the replication logger was used, it logged all these write operations for the
 database in its own event log, which was a system collection named *_replication*.
 
-Reading the events sequentially from the *_replication* collection provided a list of 
+Reading the events sequentially from the *_replication* collection provides a list of 
 all write operations carried out in the master database. Replication clients could then
 request these events from the logger and apply them on their own.
 
@@ -359,7 +359,7 @@ Any local instances of the collections and all their data are removed! Only exec
 command if you are sure you want to remove the local data!
 
 As *sync* does a full synchronization, it might take a while to execute.
-When *sync* completes successfully, it show a list of collections it has synchronized in its
+When *sync* completes successfully, it returns an array of collections it has synchronized in its
 *collections* attribute. It will also return the master database's last log tick value 
 at the time the *sync* was started on the master. The tick value is contained in the *lastLogTick*
 attribute of the *sync* command: 
