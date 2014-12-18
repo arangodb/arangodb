@@ -348,9 +348,10 @@ SIMPLE_CLIENT_COULD_NOT_READ,2003,"could not read from server","Will be raised w
 ## Foxx Manager
 ################################################################################
 
-MALFORMED_MANIFEST_FILE,3000,"malformed manifest file","The Manifest file is malformed. It is not in a valid JSON format."
-MANIFEST_FILE_ATTRIBUTE_MISSING,3001,"missing manifest attribute","The Manifest file is incomplete. A required attribute is missing."
-
+ERROR_MALFORMED_MANIFEST_FILE,3000,"malformed manifest file","The manifest file is malformed. It is not in a valid JSON format."
+ERROR_INVALID_APPLICATION_MANIFEST,3001,"manifest file is invalid","The manifest file of this application is invalid."
+ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING,3002,"missing manifest attribute","The manifest file is incomplete. A required attribute is missing."
+ERROR_CANNOT_EXTRACT_APPLICATION_ROOT,3003,"unable to extract app root path","The root path of the application could not be found."
 
 ################################################################################
 ## results, which are not errors
