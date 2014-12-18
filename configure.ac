@@ -18,6 +18,8 @@ AC_CONFIG_MACRO_DIR([m4])
 CURRENT_DIR=`pwd`
 
 AC_MSG_NOTICE([configure started in '$CURRENT_DIR])
+AC_MSG_NOTICE([with CC='$CC'])
+AC_MSG_NOTICE([with CXX='$CXX'])
 AC_MSG_NOTICE([with CPPFLAGS='$CPPFLAGS'])
 AC_MSG_NOTICE([with CFLAGS='$CFLAGS'])
 AC_MSG_NOTICE([with CXXFLAGS='$CXXFLAGS'])
@@ -147,9 +149,9 @@ dnl ============================================================================
 dnl ----------------------------------------------------------------------------
 dnl -lrt
 dnl ----------------------------------------------------------------------------
+
 m4_include([m4/clock_gettime])
 AC_CLOCK()
-
 
 dnl ----------------------------------------------------------------------------
 dnl MATH
@@ -170,38 +172,43 @@ dnl ----------------------------------------------------------------------------
 m4_include([m4/external.openssl])
 
 dnl ----------------------------------------------------------------------------
-dnl ZLIB
-dnl ----------------------------------------------------------------------------
-
-m4_include([m4/all-in-one.zlib])
-
-dnl ----------------------------------------------------------------------------
 dnl MRUBY
 dnl ----------------------------------------------------------------------------
 
-m4_include([m4/all-in-one.mruby])
+MRUBY_CPPFLAGS=""
+MRUBY_LDLAGS=""
+MRUBY_LIBSLAGS=""
 
-dnl ----------------------------------------------------------------------------
-dnl LIBEV
-dnl ----------------------------------------------------------------------------
+AC_ARG_ENABLE(mruby,
+  AS_HELP_STRING([--enable-mruby], [enable MRUBY (default: no)]),
+  [tr_MRUBY="${enableval:-yes}"],
+  [tr_MRUBY=no]
+)
 
-LIBEV_VERSION="4.11"
+if test "x$tr_MRUBY" = "xyes";  then
+  MRUBY_VERSION="2013-08-22 (aa099f7f7d1f8c61db936fb7c39a3c734175af16)"
 
-LIBEV_CPPFLAGS="-I${srcdir}/3rdParty/libev -DTRI_LIBEV_VERSION='\"${LIBEV_VERSION}\"'"
-LIBEV_CPPFLAGS="${LIBEV_CPPFLAGS}"
-LIBEV_LDFLAGS=""
-LIBEV_LIBS="${srcdir}/3rdParty/libev/BUILD/.libs/libev.a"
+  MRUBY_CPPFLAGS="-I${srcdir}/3rdParty/mruby/include -DTRI_MRUBY_VERSION='\"${MRUBY_VERSION}\"'"
+  MRUBY_LDFLAGS=""
+  MRUBY_LIBS="${srcdir}/3rdParty/mruby/build/host/lib/libmruby.a"
+fi
 
-AC_SUBST(LIBEV_CPPFLAGS)
-AC_SUBST(LIBEV_LDFLAGS)
-AC_SUBST(LIBEV_LIBS)
+AM_CONDITIONAL(ENABLE_MRUBY, test "x$tr_MRUBY" = "xyes")
 
-LIB_INFO="$LIB_INFO|LIBEV: 3rdParty version"
-LIB_INFO="$LIB_INFO|LIBEV VERSION: ${LIBEV_VERSION}"
+AC_SUBST(MRUBY_CPPFLAGS)
+AC_SUBST(MRUBY_LDFLAGS)
+AC_SUBST(MRUBY_LIBS)
 
-LIB_INFO="$LIB_INFO|LIBEV_CPPFLAGS: ${LIBEV_CPPFLAGS}"
-LIB_INFO="$LIB_INFO|LIBEV_LDFLAGS:  ${LIBEV_LDFLAGS}"
-LIB_INFO="$LIB_INFO|LIBEV_LIBS:     ${LIBEV_LIBS}"
+if test "x$tr_MRUBY" = "xyes";  then
+  LIB_INFO="$LIB_INFO|MRUBY: 3rdParty version"
+  LIB_INFO="$LIB_INFO|MRUBY VERSION: ${TRI_MRUBY_VERSION}"
+
+  LIB_INFO="$LIB_INFO|MRUBY_CPPFLAGS: ${MRUBY_CPPFLAGS}"
+  LIB_INFO="$LIB_INFO|MRUBY_LDFLAGS:  ${MRUBY_LDFLAGS}"
+  LIB_INFO="$LIB_INFO|MRUBY_LIBS:     ${MRUBY_LIBS}"
+else
+  LIB_INFO="$LIB_INFO|MRUBY: disabled"
+fi
 
 LIB_INFO="$LIB_INFO|."
 
@@ -268,7 +275,6 @@ dnl ----------------------------------------------------------------------------
 ICU_VERSION="52.2"
 ICU_CPPFLAGS="-D_REENTRANT -I${srcdir}/3rdParty/V8/third_party/icu/source/common -I${srcdir}/3rdParty/V8/third_party/icu/source/i18n -I${srcdir}/3rdParty/V8/third_party/icu/source/io -DTRI_ICU_VERSION='\"${ICU_VERSION}\"'"
 ICU_LDFLAGS=""
-ICU_LIBS="-ldl -lm ${icu_lib_dir}/libicui18n.a ${icu_lib_dir}/libicuuc.a ${icu_lib_dir}/libicudata.a -ldl -lm"
 
 if test "x$tr_DARWIN" = xyes; then
   icu_lib_dir="${srcdir}/3rdParty/V8/out/$V8_TARGET"
@@ -276,13 +282,14 @@ else
   icu_lib_dir="${srcdir}/3rdParty/V8/out/$V8_TARGET/obj.target/third_party/icu"
 fi
 
+ICU_LIBS="-ldl -lm ${icu_lib_dir}/libicui18n.a ${icu_lib_dir}/libicuuc.a ${icu_lib_dir}/libicudata.a -ldl -lm"
+
 AC_SUBST(ICU_CPPFLAGS)
 AC_SUBST(ICU_LDFLAGS)
 AC_SUBST(ICU_LIBS)
 
 ICU_CPPFLAGS="${ICU_CPPFLAGS}"
 
-LIB_INFO="$LIB_INFO|."
 LIB_INFO="$LIB_INFO|ICU: 3rdParty version"
 LIB_INFO="$LIB_INFO|ICU VERSION: ${ICU_VERSION}"
 
@@ -291,6 +298,51 @@ LIB_INFO="$LIB_INFO|ICU_LDFLAGS:  ${ICU_LDFLAGS}"
 LIB_INFO="$LIB_INFO|ICU_LIBS:     ${ICU_LIBS}"
 
 LIB_INFO="$LIB_INFO|."
+
+dnl ----------------------------------------------------------------------------
+dnl LIBEV
+dnl ----------------------------------------------------------------------------
+
+LIBEV_VERSION="4.11"
+
+LIBEV_CPPFLAGS="-I${srcdir}/3rdParty/libev -DTRI_LIBEV_VERSION='\"${LIBEV_VERSION}\"'"
+LIBEV_CPPFLAGS="${LIBEV_CPPFLAGS}"
+LIBEV_LDFLAGS=""
+LIBEV_LIBS="${srcdir}/3rdParty/libev/BUILD/.libs/libev.a"
+
+AC_SUBST(LIBEV_CPPFLAGS)
+AC_SUBST(LIBEV_LDFLAGS)
+AC_SUBST(LIBEV_LIBS)
+
+LIB_INFO="$LIB_INFO|LIBEV: 3rdParty version"
+LIB_INFO="$LIB_INFO|LIBEV VERSION: ${LIBEV_VERSION}"
+
+LIB_INFO="$LIB_INFO|LIBEV_CPPFLAGS: ${LIBEV_CPPFLAGS}"
+LIB_INFO="$LIB_INFO|LIBEV_LDFLAGS:  ${LIBEV_LDFLAGS}"
+LIB_INFO="$LIB_INFO|LIBEV_LIBS:     ${LIBEV_LIBS}"
+
+LIB_INFO="$LIB_INFO|."
+
+dnl ----------------------------------------------------------------------------
+dnl ZLIB
+dnl ----------------------------------------------------------------------------
+
+ZLIB_VERSION="1.2.7"
+
+ZLIB_CPPFLAGS=""
+ZLIB_LDFLAGS=""
+ZLIB_LIBS="${srcdir}/3rdParty/zlib-${ZLIB_VERSION}/libz.a"
+
+AC_SUBST(ZLIB_CPPFLAGS)
+AC_SUBST(ZLIB_LDFLAGS)
+AC_SUBST(ZLIB_LIBS)
+
+LIB_INFO="$LIB_INFO|ZLIB: 3rdParty version"
+LIB_INFO="$LIB_INFO|ZLIB VERSION: ${ZLIB_VERSION}"
+
+LIB_INFO="$LIB_INFO|ZLIB_CPPFLAGS: ${ZLIB_CPPFLAGS}"
+LIB_INFO="$LIB_INFO|ZLIB_LDFLAGS:  ${ZLIB_LDFLAGS}"
+LIB_INFO="$LIB_INFO|ZLIB_LIBS:     ${ZLIB_LIBS}"
 
 dnl ============================================================================
 dnl --SECTION--                                                   GENERATE FILES
