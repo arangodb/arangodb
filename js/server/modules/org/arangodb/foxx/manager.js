@@ -171,8 +171,8 @@ function checkManifest (filename, mf) {
 
   if (failed) {
     throw new ArangoError({
-      errorNum: errors.MANIFEST_FILE_ATTRIBUTE_MISSING.code,
-      errorMessage: errors.MANIFEST_FILE_ATTRIBUTE_MISSING.message
+      errorNum: errors.ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING.code,
+      errorMessage: errors.ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING.message
     });
   }
 
@@ -1596,80 +1596,55 @@ exports.developmentRoutes = function () {
 
   for (j = 0;  j < files.length;  ++j) {
     m = fs.join(root, files[j], "manifest.json");
+    mf = validateManifestFile(m);
+    if (mf !== undefined) {
 
-    if (fs.exists(m)) {
-      try {
-        mf = JSON.parse(fs.read(m));
-      } catch (err) {
-        console.errorLines(
-          "Cannot parse app manifest '%s': %s", m, String(err));
-        continue;
-      }
-      try {
-        checkManifest(m, mf);
-      } catch (err) {
-        console.errorLines(
-          "Manifest file '%s' invalid: %s", m, String(err));
-        continue;
-      }
       appId = "dev:" + mf.name + ":" + files[j];
       mount = "/dev/" + files[j];
       options = {
         collectionPrefix : prefixFromMount(mount)
       };
+      app = createApp(appId, options, mf.name, m);
+      if (app !== undefined) {
+        try {
+          setupApp(app, mount, options.collectionPrefix);
+        } catch (err) {
+          console.errorLines(
+            "Setup of App '%s' with manifest '%s' failed: %s", mf.name, m, String(err));
+          continue;
+        }
 
-      try {
-        app = module.createApp(appId, options);
-      } catch (err) {
-        console.errorLines(
-          "Failed to create App '%s' with manifest '%s': %s", mf.name, m, String(err));
-        continue;
+        try {
+          r = routingAalApp(app, mount, options);
+        } catch (err) {
+          console.errorLines(
+            "Unable to properly route the App '%s': %s", mf.name, String(err.stack || err)
+          );
+          continue;
+        }
+        if (r === null) {
+          console.errorLines("Cannot compute the routing table for Foxx application '%s'" , app._id);
+          continue;
+        }
+        routes.push(r);
+        var desc =  {
+          _id: "dev/" + app._id,
+          _key: app._id,
+          type: "mount",
+          app: app._id,
+          name: app._name,
+          description: app._manifest.description,
+          repository: app._manifest.repository,
+          license: app._manifest.license,
+          author: app._manifest.author,
+          mount: mount,
+          active: true,
+          collectionPrefix: options.collectionPrefix,
+          isSystem: app._manifest.isSystem || false,
+          options: options
+        };
+        mounts.push(desc);
       }
-      if (app === null) {
-        console.errorLines(
-          "Cannot find application '%s'", appId);
-        continue;
-      }
-
-      try {
-        // TODO check
-        setupApp(app, mount, options.collectionPrefix);
-      } catch (err) {
-        console.errorLines(
-          "Setup of App '%s' with manifest '%s' failed: %s", m, String(err));
-        continue;
-      }
-
-      try {
-        r = routingAalApp(app, mount, options);
-      } catch (err) {
-        console.errorLines(
-          "Unable to properly route the App '%s': %s", mf.name, String(err.stack || err)
-        );
-        continue;
-      }
-      if (r === null) {
-        console.errorLines("Cannot compute the routing table for Foxx application '%s'" , app._id);
-        continue;
-      }
-      routes.push(r);
-      var desc =  {
-        _id: "dev/" + app._id,
-        _key: app._id,
-        type: "mount",
-        app: app._id,
-        name: app._name,
-        description: app._manifest.description,
-        repository: app._manifest.repository,
-        license: app._manifest.license,
-        author: app._manifest.author,
-        mount: mount,
-        active: true,
-        collectionPrefix: options.collectionPrefix,
-        isSystem: app._manifest.isSystem || false,
-        options: options
-      };
-      mounts.push(desc);
     }
   }
 
