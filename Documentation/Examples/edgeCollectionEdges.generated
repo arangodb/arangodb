@@ -1,0 +1,2 @@
+arangosh> db.relation.edges("vertex/1593622");
+[ArangoError 1203: collection not found]

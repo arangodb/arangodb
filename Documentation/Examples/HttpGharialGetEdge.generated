@@ -1,0 +1,18 @@
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/gharial/social/edge/relation/aliceAndBob
+
+HTTP/1.1 200 OK
+content-type: application/json
+etag: 1706011375
+
+{ 
+  "error" : false, 
+  "code" : 200, 
+  "edge" : { 
+    "_id" : "relation/aliceAndBob", 
+    "_key" : "aliceAndBob", 
+    "_rev" : "1706011375", 
+    "_from" : "female/alice", 
+    "_to" : "male/bob", 
+    "type" : "married" 
+  } 
+}

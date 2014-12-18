@@ -1,0 +1,43 @@
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/graph
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "graphs" : [ 
+    { 
+      "_id" : "_graphs/graph2", 
+      "_key" : "graph2", 
+      "_rev" : "1429580527", 
+      "edgeDefinitions" : [ 
+        { 
+          "collection" : "edges2", 
+          "from" : [ 
+            "vertices2" 
+          ], 
+          "to" : [ 
+            "vertices2" 
+          ] 
+        } 
+      ] 
+    }, 
+    { 
+      "_id" : "_graphs/graph1", 
+      "_key" : "graph1", 
+      "_rev" : "1428597487", 
+      "edgeDefinitions" : [ 
+        { 
+          "collection" : "edges1", 
+          "from" : [ 
+            "vertices1" 
+          ], 
+          "to" : [ 
+            "vertices1" 
+          ] 
+        } 
+      ] 
+    } 
+  ], 
+  "error" : false, 
+  "code" : 200 
+}

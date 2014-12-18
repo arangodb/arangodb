@@ -1,0 +1,43 @@
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/tasks
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+[ 
+  { 
+    "id" : "48278255", 
+    "name" : "user-defined task", 
+    "type" : "periodic", 
+    "period" : 1, 
+    "created" : 1418914220.361713, 
+    "command" : "(function () {\n      require('org/arangodb/foxx/queues/manager').manage();\n    })(params)", 
+    "database" : "_system" 
+  }, 
+  { 
+    "id" : "statistics-collector", 
+    "name" : "statistics-collector", 
+    "type" : "periodic", 
+    "period" : 10, 
+    "created" : 1418914218.003884, 
+    "command" : "require('org/arangodb/statistics').historian();", 
+    "database" : "_system" 
+  }, 
+  { 
+    "id" : "statistics-average-collector", 
+    "name" : "statistics-average-collector", 
+    "type" : "periodic", 
+    "period" : 900, 
+    "created" : 1418914218.007134, 
+    "command" : "require('org/arangodb/statistics').historianAverage();", 
+    "database" : "_system" 
+  }, 
+  { 
+    "id" : "statistics-gc", 
+    "name" : "statistics-gc", 
+    "type" : "periodic", 
+    "period" : 450, 
+    "created" : 1418914218.014327, 
+    "command" : "require('org/arangodb/statistics').garbageCollector();", 
+    "database" : "_system" 
+  } 
+]

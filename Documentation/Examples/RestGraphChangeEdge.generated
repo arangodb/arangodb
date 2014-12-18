@@ -1,0 +1,22 @@
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/graph/graph/edge/edge1
+{ 
+  "optional1" : "val2" 
+}
+
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
+etag: 1472572143
+
+{ 
+  "edge" : { 
+    "_id" : "edges/edge1", 
+    "_key" : "edge1", 
+    "_rev" : "1472572143", 
+    "_from" : "vertices/vert1", 
+    "_to" : "vertices/vert2", 
+    "$label" : null, 
+    "optional1" : "val2" 
+  }, 
+  "error" : false, 
+  "code" : 202 
+}

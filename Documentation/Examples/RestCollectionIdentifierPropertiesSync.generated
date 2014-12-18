@@ -1,0 +1,25 @@
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/collection/products/properties
+{ 
+  "waitForSync" : true 
+}
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "id" : "1208462063", 
+  "name" : "products", 
+  "isSystem" : false, 
+  "doCompact" : true, 
+  "isVolatile" : false, 
+  "journalSize" : 1048576, 
+  "keyOptions" : { 
+    "type" : "traditional", 
+    "allowUserKeys" : true 
+  }, 
+  "waitForSync" : true, 
+  "status" : 3, 
+  "type" : 2, 
+  "error" : false, 
+  "code" : 200 
+}

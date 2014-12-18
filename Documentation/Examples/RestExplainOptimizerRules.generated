@@ -1,0 +1,207 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/explain
+{"query":"FOR p IN products LET a = p.id FILTER a == 4 LET name = p.name SORT p.id LIMIT 1 RETURN name"}
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "plan" : { 
+    "nodes" : [ 
+      { 
+        "type" : "SingletonNode", 
+        "dependencies" : [ ], 
+        "id" : 1, 
+        "estimatedCost" : 1, 
+        "estimatedNrItems" : 1 
+      }, 
+      { 
+        "type" : "IndexRangeNode", 
+        "dependencies" : [ 
+          1 
+        ], 
+        "id" : 11, 
+        "estimatedCost" : 11, 
+        "estimatedNrItems" : 10, 
+        "database" : "_system", 
+        "collection" : "products", 
+        "outVariable" : { 
+          "id" : 0, 
+          "name" : "p" 
+        }, 
+        "ranges" : [ 
+          [ ] 
+        ], 
+        "index" : { 
+          "type" : "skiplist", 
+          "id" : "1418898159", 
+          "unique" : false, 
+          "fields" : [ 
+            "id" 
+          ] 
+        }, 
+        "reverse" : false 
+      }, 
+      { 
+        "type" : "CalculationNode", 
+        "dependencies" : [ 
+          11 
+        ], 
+        "id" : 3, 
+        "estimatedCost" : 21, 
+        "estimatedNrItems" : 10, 
+        "expression" : { 
+          "type" : "attribute access", 
+          "name" : "id", 
+          "subNodes" : [ 
+            { 
+              "type" : "reference", 
+              "name" : "p", 
+              "id" : 0 
+            } 
+          ] 
+        }, 
+        "outVariable" : { 
+          "id" : 1, 
+          "name" : "a" 
+        }, 
+        "canThrow" : false 
+      }, 
+      { 
+        "type" : "CalculationNode", 
+        "dependencies" : [ 
+          3 
+        ], 
+        "id" : 6, 
+        "estimatedCost" : 31, 
+        "estimatedNrItems" : 10, 
+        "expression" : { 
+          "type" : "attribute access", 
+          "name" : "name", 
+          "subNodes" : [ 
+            { 
+              "type" : "reference", 
+              "name" : "p", 
+              "id" : 0 
+            } 
+          ] 
+        }, 
+        "outVariable" : { 
+          "id" : 2, 
+          "name" : "name" 
+        }, 
+        "canThrow" : false 
+      }, 
+      { 
+        "type" : "CalculationNode", 
+        "dependencies" : [ 
+          6 
+        ], 
+        "id" : 4, 
+        "estimatedCost" : 41, 
+        "estimatedNrItems" : 10, 
+        "expression" : { 
+          "type" : "compare ==", 
+          "subNodes" : [ 
+            { 
+              "type" : "reference", 
+              "name" : "a", 
+              "id" : 1 
+            }, 
+            { 
+              "type" : "value", 
+              "value" : 4 
+            } 
+          ] 
+        }, 
+        "outVariable" : { 
+          "id" : 3, 
+          "name" : "3" 
+        }, 
+        "canThrow" : false 
+      }, 
+      { 
+        "type" : "FilterNode", 
+        "dependencies" : [ 
+          4 
+        ], 
+        "id" : 5, 
+        "estimatedCost" : 51, 
+        "estimatedNrItems" : 10, 
+        "inVariable" : { 
+          "id" : 3, 
+          "name" : "3" 
+        } 
+      }, 
+      { 
+        "type" : "LimitNode", 
+        "dependencies" : [ 
+          5 
+        ], 
+        "id" : 9, 
+        "estimatedCost" : 52, 
+        "estimatedNrItems" : 1, 
+        "offset" : 0, 
+        "limit" : 1, 
+        "fullCount" : false 
+      }, 
+      { 
+        "type" : "ReturnNode", 
+        "dependencies" : [ 
+          9 
+        ], 
+        "id" : 10, 
+        "estimatedCost" : 53, 
+        "estimatedNrItems" : 1, 
+        "inVariable" : { 
+          "id" : 2, 
+          "name" : "name" 
+        } 
+      } 
+    ], 
+    "rules" : [ 
+      "move-calculations-up", 
+      "remove-redundant-calculations", 
+      "move-calculations-up-2", 
+      "use-index-for-sort", 
+      "remove-unnecessary-calculations-2" 
+    ], 
+    "collections" : [ 
+      { 
+        "name" : "products", 
+        "type" : "read" 
+      } 
+    ], 
+    "variables" : [ 
+      { 
+        "id" : 4, 
+        "name" : "4" 
+      }, 
+      { 
+        "id" : 3, 
+        "name" : "3" 
+      }, 
+      { 
+        "id" : 2, 
+        "name" : "name" 
+      }, 
+      { 
+        "id" : 1, 
+        "name" : "a" 
+      }, 
+      { 
+        "id" : 0, 
+        "name" : "p" 
+      } 
+    ], 
+    "estimatedCost" : 53, 
+    "estimatedNrItems" : 1 
+  }, 
+  "warnings" : [ ], 
+  "stats" : { 
+    "rulesExecuted" : 27, 
+    "rulesSkipped" : 0, 
+    "plansCreated" : 1 
+  }, 
+  "error" : false, 
+  "code" : 200 
+}

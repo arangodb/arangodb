@@ -1,0 +1,12 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=products&createCollection=true&type=list
+[{"id":"12553","active":true},{"id":"4433","active":false},{"id":"55932","count":4334}]
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : false, 
+  "created" : 3, 
+  "errors" : 0, 
+  "empty" : 0 
+}

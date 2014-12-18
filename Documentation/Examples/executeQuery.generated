@@ -1,0 +1,23 @@
+arangosh> result = db.users.all().toArray();
+[ 
+  { 
+    "_id" : "users/776383215", 
+    "_key" : "776383215", 
+    "_rev" : "776383215", 
+    "name" : "Angela" 
+  }, 
+  { 
+    "_id" : "users/775924463", 
+    "_key" : "775924463", 
+    "_rev" : "775924463", 
+    "name" : "Gerhard" 
+  }, 
+  { 
+    "_id" : "users/776186607", 
+    "_key" : "776186607", 
+    "_rev" : "776186607", 
+    "name" : "Helmut" 
+  } 
+]
+arangosh> q = db.users.all(); q.execute(); result = [ ]; while (q.hasNext()) { result.push(q.next()); }
+SimpleQueryAll(users)

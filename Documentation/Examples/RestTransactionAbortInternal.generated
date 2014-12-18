@@ -1,0 +1,17 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/transaction
+{ 
+  "collections" : { 
+    "write" : "products" 
+  }, 
+  "action" : "function () {var db = require('internal').db;db.products.save({ _key: 'abc'});db.products.save({ _key: 'abc'});}" 
+}
+
+HTTP/1.1 400 Bad Request
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "code" : 400, 
+  "errorNum" : 1210, 
+  "errorMessage" : "Error: unique constraint violated\n  at Error (native)\n  at eval (<anonymous>:3:99)\n  at eval (<anonymous>:3:122)\n  at post_api_transaction (js/actions/api-transaction.js:268:16)\n  at Function.actions.defineHttp.callback (js/actions/api-transaction.js:288:11)\n" 
+}

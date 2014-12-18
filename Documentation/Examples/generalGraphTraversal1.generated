@@ -1,0 +1,81 @@
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("FOR e IN GRAPH_TRAVERSAL('routeplanner', 'germanCity/Hamburg'," +
+........> " 'outbound') RETURN e"
+........> ).toArray();
+[ 
+  [ 
+    { 
+      "vertex" : { 
+        "_id" : "germanCity/Hamburg", 
+        "_key" : "Hamburg", 
+        "_rev" : "1082895087", 
+        "isCapital" : false, 
+        "population" : 1000000 
+      } 
+    }, 
+    { 
+      "vertex" : { 
+        "_id" : "germanCity/Cologne", 
+        "_key" : "Cologne", 
+        "_rev" : "1082698479", 
+        "isCapital" : false, 
+        "population" : 1000000 
+      } 
+    }, 
+    { 
+      "vertex" : { 
+        "_id" : "frenchCity/Lyon", 
+        "_key" : "Lyon", 
+        "_rev" : "1083288303", 
+        "isCapital" : false, 
+        "population" : 80000 
+      } 
+    }, 
+    { 
+      "vertex" : { 
+        "_id" : "frenchCity/Paris", 
+        "_key" : "Paris", 
+        "_rev" : "1083484911", 
+        "isCapital" : true, 
+        "population" : 4000000 
+      } 
+    }, 
+    { 
+      "vertex" : { 
+        "_id" : "frenchCity/Lyon", 
+        "_key" : "Lyon", 
+        "_rev" : "1083288303", 
+        "isCapital" : false, 
+        "population" : 80000 
+      } 
+    }, 
+    { 
+      "vertex" : { 
+        "_id" : "frenchCity/Paris", 
+        "_key" : "Paris", 
+        "_rev" : "1083484911", 
+        "isCapital" : true, 
+        "population" : 4000000 
+      } 
+    }, 
+    { 
+      "vertex" : { 
+        "_id" : "frenchCity/Lyon", 
+        "_key" : "Lyon", 
+        "_rev" : "1083288303", 
+        "isCapital" : false, 
+        "population" : 80000 
+      } 
+    }, 
+    { 
+      "vertex" : { 
+        "_id" : "frenchCity/Lyon", 
+        "_key" : "Lyon", 
+        "_rev" : "1083288303", 
+        "isCapital" : false, 
+        "population" : 80000 
+      } 
+    } 
+  ] 
+]

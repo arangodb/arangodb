@@ -1,0 +1,13 @@
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var graph = examples.loadGraph("routeplanner");
+arangosh> graph._getConnectingEdges({isCapital : true}, {isCapital : true});
+[ 
+  { 
+    "_id" : "internationalHighway/1046391535", 
+    "_key" : "1046391535", 
+    "_rev" : "1046391535", 
+    "_from" : "germanCity/Berlin", 
+    "_to" : "frenchCity/Paris", 
+    "distance" : 1200 
+  } 
+]

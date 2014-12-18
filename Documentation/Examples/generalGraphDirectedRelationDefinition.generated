@@ -1,0 +1,13 @@
+arangosh> var graph_module = require("org/arangodb/general-graph");
+arangosh> graph_module._directedRelation("has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]);
+{ 
+  "collection" : "has_bought", 
+  "from" : [ 
+    "Customer", 
+    "Company" 
+  ], 
+  "to" : [ 
+    "Groceries", 
+    "Electronics" 
+  ] 
+}

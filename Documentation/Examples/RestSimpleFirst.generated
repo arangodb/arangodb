@@ -1,0 +1,31 @@
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/first
+{ "collection": "products", "count" : 2 }
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "products/1525918447", 
+      "_key" : "1525918447", 
+      "_rev" : "1525918447", 
+      "i" : 1, 
+      "a" : { 
+        "k" : 1, 
+        "j" : 1 
+      } 
+    }, 
+    { 
+      "_id" : "products/1526246127", 
+      "_key" : "1526246127", 
+      "_rev" : "1526246127", 
+      "i" : 1, 
+      "a" : { 
+        "j" : 1 
+      } 
+    } 
+  ], 
+  "error" : false, 
+  "code" : 200 
+}

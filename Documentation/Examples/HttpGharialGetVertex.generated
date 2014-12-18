@@ -1,0 +1,16 @@
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/gharial/social/vertex/female/alice
+
+HTTP/1.1 200 OK
+content-type: application/json
+etag: 1682221807
+
+{ 
+  "error" : false, 
+  "code" : 200, 
+  "vertex" : { 
+    "_id" : "female/alice", 
+    "_key" : "alice", 
+    "_rev" : "1682221807", 
+    "name" : "Alice" 
+  } 
+}

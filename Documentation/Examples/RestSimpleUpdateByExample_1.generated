@@ -1,0 +1,11 @@
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/update-by-example
+{ "collection": "products", "example" : { "a" : { "j" : 1 } }, "newValue" : { "a" : { "j" : 22 } }, "options" :  { "limit" : 3, "waitForSync": true }  }
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "updated" : 1, 
+  "error" : false, 
+  "code" : 200 
+}

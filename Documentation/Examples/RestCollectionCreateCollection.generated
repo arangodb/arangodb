@@ -1,0 +1,36 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/collection
+{"name":"testCollectionBasics"}
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+location: /_db/_system/_api/collection/testCollectionBasics
+
+{ 
+  "id" : "1183754991", 
+  "name" : "testCollectionBasics", 
+  "waitForSync" : false, 
+  "isVolatile" : false, 
+  "isSystem" : false, 
+  "status" : 3, 
+  "type" : 2, 
+  "error" : false, 
+  "code" : 200 
+}
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/collection
+{"name":"testCollectionEdges","type":3}
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+location: /_db/_system/_api/collection/testCollectionEdges
+
+{ 
+  "id" : "1183886063", 
+  "name" : "testCollectionEdges", 
+  "waitForSync" : false, 
+  "isVolatile" : false, 
+  "isSystem" : false, 
+  "status" : 3, 
+  "type" : 3, 
+  "error" : false, 
+  "code" : 200 
+}

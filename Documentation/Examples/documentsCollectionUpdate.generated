@@ -1,0 +1,52 @@
+arangosh> a1 = db.example.save({"a" : 1});
+{ 
+  "error" : false, 
+  "_id" : "example/556837615", 
+  "_rev" : "556837615", 
+  "_key" : "556837615" 
+}
+arangosh> a2 = db.example.update(a1, {"b" : 2, "c" : 3});
+{ 
+  "error" : false, 
+  "_id" : "example/556837615", 
+  "_rev" : "557230831", 
+  "_key" : "556837615" 
+}
+arangosh> a3 = db.example.update(a1, {"d" : 4});
+[ArangoError 1200: precondition failed]
+arangosh> a4 = db.example.update(a2, {"e" : 5, "f" : 6 });
+{ 
+  "error" : false, 
+  "_id" : "example/556837615", 
+  "_rev" : "557886191", 
+  "_key" : "556837615" 
+}
+arangosh> db.example.document(a4);
+{ 
+  "a" : 1, 
+  "b" : 2, 
+  "c" : 3, 
+  "e" : 5, 
+  "f" : 6, 
+  "_id" : "example/556837615", 
+  "_rev" : "557886191", 
+  "_key" : "556837615" 
+}
+arangosh> a5 = db.example.update(a4, {"a" : 1, c : 9, e : 42 });
+{ 
+  "error" : false, 
+  "_id" : "example/556837615", 
+  "_rev" : "558148335", 
+  "_key" : "556837615" 
+}
+arangosh> db.example.document(a5);
+{ 
+  "a" : 1, 
+  "b" : 2, 
+  "c" : 9, 
+  "e" : 42, 
+  "f" : 6, 
+  "_id" : "example/556837615", 
+  "_rev" : "558148335", 
+  "_key" : "556837615" 
+}

@@ -1,0 +1,20 @@
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/first-example
+{ "collection": "products", "example" :  { "i" : 1 }  }
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "document" : { 
+    "_id" : "products/1522117359", 
+    "_key" : "1522117359", 
+    "_rev" : "1522117359", 
+    "i" : 1, 
+    "a" : { 
+      "k" : 1, 
+      "j" : 1 
+    } 
+  }, 
+  "error" : false, 
+  "code" : 200 
+}

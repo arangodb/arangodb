@@ -1,0 +1,461 @@
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/collection
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "collections" : [ 
+    { 
+      "id" : "1152101103", 
+      "name" : "female", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "1181002479", 
+      "name" : "demo", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "1091611375", 
+      "name" : "Groceries", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "5614319", 
+      "name" : "_statistics15", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "4696815", 
+      "name" : "_aqlfunctions", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "2468591", 
+      "name" : "_modules", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "240367", 
+      "name" : "_configuration", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "4238063", 
+      "name" : "_aal", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "6466287", 
+      "name" : "_jobs", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "24685295", 
+      "name" : "_sessions", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "849193711", 
+      "name" : "better-example", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "1176021743", 
+      "name" : "frenchCity", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "1091480303", 
+      "name" : "Company", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "1152363247", 
+      "name" : "relation", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 3 
+    }, 
+    { 
+      "id" : "2337519", 
+      "name" : "_graphs", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "6335215", 
+      "name" : "_queues", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "1091873519", 
+      "name" : "has_bought", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 3 
+    }, 
+    { 
+      "id" : "1175890671", 
+      "name" : "germanHighway", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 3 
+    }, 
+    { 
+      "id" : "2730735", 
+      "name" : "_cluster_kickstarter_plans", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "1091349231", 
+      "name" : "friend_of", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 3 
+    }, 
+    { 
+      "id" : "1176283887", 
+      "name" : "internationalHighway", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 3 
+    }, 
+    { 
+      "id" : "895658735", 
+      "name" : "geo", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "436975", 
+      "name" : "_users", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "1152232175", 
+      "name" : "male", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "1091742447", 
+      "name" : "Electronics", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "1175759599", 
+      "name" : "germanCity", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "4827887", 
+      "name" : "_statisticsRaw", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "2599663", 
+      "name" : "_routing", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "1091218159", 
+      "name" : "Customer", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "1176152815", 
+      "name" : "frenchHighway", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 3 
+    }, 
+    { 
+      "id" : "5221103", 
+      "name" : "_statistics", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    { 
+      "id" : "1181919983", 
+      "name" : "animals", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 2 
+    } 
+  ], 
+  "names" : { 
+    "female" : { 
+      "id" : "1152101103", 
+      "name" : "female", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "demo" : { 
+      "id" : "1181002479", 
+      "name" : "demo", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "Groceries" : { 
+      "id" : "1091611375", 
+      "name" : "Groceries", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "_statistics15" : { 
+      "id" : "5614319", 
+      "name" : "_statistics15", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "_aqlfunctions" : { 
+      "id" : "4696815", 
+      "name" : "_aqlfunctions", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "_modules" : { 
+      "id" : "2468591", 
+      "name" : "_modules", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "_configuration" : { 
+      "id" : "240367", 
+      "name" : "_configuration", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "_aal" : { 
+      "id" : "4238063", 
+      "name" : "_aal", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "_jobs" : { 
+      "id" : "6466287", 
+      "name" : "_jobs", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "_sessions" : { 
+      "id" : "24685295", 
+      "name" : "_sessions", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "better-example" : { 
+      "id" : "849193711", 
+      "name" : "better-example", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "frenchCity" : { 
+      "id" : "1176021743", 
+      "name" : "frenchCity", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "Company" : { 
+      "id" : "1091480303", 
+      "name" : "Company", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "relation" : { 
+      "id" : "1152363247", 
+      "name" : "relation", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 3 
+    }, 
+    "_graphs" : { 
+      "id" : "2337519", 
+      "name" : "_graphs", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "_queues" : { 
+      "id" : "6335215", 
+      "name" : "_queues", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "has_bought" : { 
+      "id" : "1091873519", 
+      "name" : "has_bought", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 3 
+    }, 
+    "germanHighway" : { 
+      "id" : "1175890671", 
+      "name" : "germanHighway", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 3 
+    }, 
+    "_cluster_kickstarter_plans" : { 
+      "id" : "2730735", 
+      "name" : "_cluster_kickstarter_plans", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "friend_of" : { 
+      "id" : "1091349231", 
+      "name" : "friend_of", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 3 
+    }, 
+    "internationalHighway" : { 
+      "id" : "1176283887", 
+      "name" : "internationalHighway", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 3 
+    }, 
+    "geo" : { 
+      "id" : "895658735", 
+      "name" : "geo", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "_users" : { 
+      "id" : "436975", 
+      "name" : "_users", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "male" : { 
+      "id" : "1152232175", 
+      "name" : "male", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "Electronics" : { 
+      "id" : "1091742447", 
+      "name" : "Electronics", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "germanCity" : { 
+      "id" : "1175759599", 
+      "name" : "germanCity", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "_statisticsRaw" : { 
+      "id" : "4827887", 
+      "name" : "_statisticsRaw", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "_routing" : { 
+      "id" : "2599663", 
+      "name" : "_routing", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "Customer" : { 
+      "id" : "1091218159", 
+      "name" : "Customer", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "frenchHighway" : { 
+      "id" : "1176152815", 
+      "name" : "frenchHighway", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 3 
+    }, 
+    "_statistics" : { 
+      "id" : "5221103", 
+      "name" : "_statistics", 
+      "isSystem" : true, 
+      "status" : 3, 
+      "type" : 2 
+    }, 
+    "animals" : { 
+      "id" : "1181919983", 
+      "name" : "animals", 
+      "isSystem" : false, 
+      "status" : 3, 
+      "type" : 2 
+    } 
+  }, 
+  "error" : false, 
+  "code" : 200 
+}

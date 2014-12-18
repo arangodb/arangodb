@@ -1,0 +1,12 @@
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/document/?collection=products&type=key
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "documents" : [ 
+    "1726327535", 
+    "1725999855", 
+    "1726655215" 
+  ] 
+}

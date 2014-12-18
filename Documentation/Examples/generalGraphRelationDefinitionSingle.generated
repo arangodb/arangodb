@@ -1,0 +1,11 @@
+arangosh> var graph_module = require("org/arangodb/general-graph");
+arangosh> graph_module._relation("has_bought", "Customer", "Product");
+{ 
+  "collection" : "has_bought", 
+  "from" : [ 
+    "Customer" 
+  ], 
+  "to" : [ 
+    "Product" 
+  ] 
+}

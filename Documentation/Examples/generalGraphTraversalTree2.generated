@@ -1,0 +1,41 @@
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("FOR e IN GRAPH_TRAVERSAL_TREE('routeplanner', 'germanCity/Hamburg',"+
+........> " 'outbound', 'connnection', {maxDepth : 1}) RETURN e"
+........> ).toArray();
+[ 
+  [ 
+    [ 
+      { 
+        "_id" : "germanCity/Hamburg", 
+        "_key" : "Hamburg", 
+        "_rev" : "268151535", 
+        "isCapital" : false, 
+        "population" : 1000000, 
+        "connnection" : [ 
+          { 
+            "_id" : "germanCity/Cologne", 
+            "_key" : "Cologne", 
+            "_rev" : "267954927", 
+            "isCapital" : false, 
+            "population" : 1000000 
+          }, 
+          { 
+            "_id" : "frenchCity/Paris", 
+            "_key" : "Paris", 
+            "_rev" : "268741359", 
+            "isCapital" : true, 
+            "population" : 4000000 
+          }, 
+          { 
+            "_id" : "frenchCity/Lyon", 
+            "_key" : "Lyon", 
+            "_rev" : "268544751", 
+            "isCapital" : false, 
+            "population" : 80000 
+          } 
+        ] 
+      } 
+    ] 
+  ] 
+]

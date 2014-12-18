@@ -1,0 +1,34 @@
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/within-rectangle
+{"collection":"products","latitude1":0,"longitude1":0,"latitude2":0.2,"longitude2":0.2,"skip":1,"limit":2}
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "products/1513663215", 
+      "_key" : "1513663215", 
+      "_rev" : "1513663215", 
+      "name" : "Name/0.008/", 
+      "loc" : [ 
+        0.008, 
+        0 
+      ] 
+    }, 
+    { 
+      "_id" : "products/1513466607", 
+      "_key" : "1513466607", 
+      "_rev" : "1513466607", 
+      "name" : "Name/0.006/", 
+      "loc" : [ 
+        0.006, 
+        0 
+      ] 
+    } 
+  ], 
+  "hasMore" : false, 
+  "count" : 2, 
+  "error" : false, 
+  "code" : 201 
+}

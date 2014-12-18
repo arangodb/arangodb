@@ -1,0 +1,77 @@
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> g._shortestPath([{_id: 'germanCity/Cologne'},{_id: 'germanCity/Munich'}], 'frenchCity/Lyon',
+........> {weight : 'distance'});
+[ 
+  [ 
+    { 
+      "vertex" : { 
+        "_id" : "frenchCity/Lyon", 
+        "_key" : "Lyon", 
+        "_rev" : "588819183", 
+        "isCapital" : false, 
+        "population" : 80000 
+      }, 
+      "distance" : 700, 
+      "path" : { 
+        "vertices" : [ 
+          { 
+            "_id" : "germanCity/Cologne", 
+            "_key" : "Cologne", 
+            "_rev" : "588229359", 
+            "isCapital" : false, 
+            "population" : 1000000 
+          }, 
+          { 
+            "_id" : "frenchCity/Lyon", 
+            "_key" : "Lyon", 
+            "_rev" : "588819183", 
+            "isCapital" : false, 
+            "population" : 80000 
+          } 
+        ], 
+        "edges" : [ 
+          { 
+            "_id" : "internationalHighway/591178479", 
+            "_key" : "591178479", 
+            "_rev" : "591178479", 
+            "_from" : "germanCity/Cologne", 
+            "_to" : "frenchCity/Lyon", 
+            "distance" : 700 
+          } 
+        ] 
+      }, 
+      "startVertex" : "germanCity/Cologne", 
+      "paths" : [ 
+        { 
+          "vertices" : [ 
+            { 
+              "_id" : "germanCity/Cologne", 
+              "_key" : "Cologne", 
+              "_rev" : "588229359", 
+              "isCapital" : false, 
+              "population" : 1000000 
+            }, 
+            { 
+              "_id" : "frenchCity/Lyon", 
+              "_key" : "Lyon", 
+              "_rev" : "588819183", 
+              "isCapital" : false, 
+              "population" : 80000 
+            } 
+          ], 
+          "edges" : [ 
+            { 
+              "_id" : "internationalHighway/591178479", 
+              "_key" : "591178479", 
+              "_rev" : "591178479", 
+              "_from" : "germanCity/Cologne", 
+              "_to" : "frenchCity/Lyon", 
+              "distance" : 700 
+            } 
+          ] 
+        } 
+      ] 
+    } 
+  ] 
+]

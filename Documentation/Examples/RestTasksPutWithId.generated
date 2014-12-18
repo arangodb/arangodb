@@ -1,0 +1,17 @@
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/tasks/sampleTask
+{"id":"SampleTask","name":"SampleTask","command":"(function(params) { require('internal').print(params); })(params)","params":{"foo":"bar","bar":"foo"},"period":2}
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "id" : "sampleTask", 
+  "name" : "SampleTask", 
+  "type" : "periodic", 
+  "period" : 2, 
+  "created" : 1418914338.662304, 
+  "command" : "(function(params) { require('internal').print(params); })(params)", 
+  "database" : "_system", 
+  "error" : false, 
+  "code" : 200 
+}

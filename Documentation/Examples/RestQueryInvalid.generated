@@ -1,0 +1,12 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/query
+{ "query" : "FOR p IN products FILTER p.name = @name LIMIT 2 RETURN p.n" }
+
+HTTP/1.1 400 Bad Request
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "code" : 400, 
+  "errorNum" : 1501, 
+  "errorMessage" : "syntax error, unexpected assignment near '= @name LIMIT 2 RETURN p.n' at position 1:33" 
+}

@@ -1,0 +1,18 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/gharial/social/vertex/male
+{ 
+  "name" : "Francis" 
+}
+
+HTTP/1.1 202 Accepted
+content-type: application/json
+etag: 1680255727
+
+{ 
+  "error" : false, 
+  "code" : 202, 
+  "vertex" : { 
+    "_id" : "male/1680255727", 
+    "_rev" : "1680255727", 
+    "_key" : "1680255727" 
+  } 
+}

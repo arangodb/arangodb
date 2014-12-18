@@ -1,0 +1,16 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/index?collection=products
+{"type":"cap","size":10}
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "id" : "products/1489349359", 
+  "type" : "cap", 
+  "unique" : false, 
+  "size" : 10, 
+  "byteSize" : 0, 
+  "isNewlyCreated" : true, 
+  "error" : false, 
+  "code" : 201 
+}

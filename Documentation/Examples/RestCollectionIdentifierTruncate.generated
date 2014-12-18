@@ -1,0 +1,14 @@
+shell> curl -X PUT --dump - http://localhost:8529/_api/collection/products/truncate
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "id" : "1208199919", 
+  "name" : "products", 
+  "isSystem" : false, 
+  "status" : 3, 
+  "type" : 2, 
+  "error" : false, 
+  "code" : 200 
+}

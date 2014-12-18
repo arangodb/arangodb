@@ -1,0 +1,12 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=products&type=list
+{ }
+
+HTTP/1.1 400 Bad Request
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "errorMessage" : "expecting a JSON list in the request", 
+  "code" : 400, 
+  "errorNum" : 400 
+}

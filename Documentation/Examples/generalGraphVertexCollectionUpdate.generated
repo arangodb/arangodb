@@ -1,0 +1,16 @@
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var graph = examples.loadGraph("social");
+arangosh> graph.female.save({name: "Lynda", _key: "linda"});
+{ 
+  "error" : false, 
+  "_id" : "female/linda", 
+  "_rev" : "889367279", 
+  "_key" : "linda" 
+}
+arangosh> graph.female.update("female/linda", {name: "Linda", _key: "linda"});
+{ 
+  "error" : false, 
+  "_id" : "female/linda", 
+  "_rev" : "889563887", 
+  "_key" : "linda" 
+}

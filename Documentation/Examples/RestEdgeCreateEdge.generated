@@ -1,0 +1,30 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/edge/?collection=edges&from=vertices/1&to=vertices/2
+{ 
+  "name" : "Emil" 
+}
+
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
+etag: "1741073135"
+location: /_db/_system/_api/document/edges/1741073135
+
+{ 
+  "error" : false, 
+  "_id" : "edges/1741073135", 
+  "_rev" : "1741073135", 
+  "_key" : "1741073135" 
+}
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/edge/edges/1741073135
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+etag: "1741073135"
+
+{ 
+  "name" : "Emil", 
+  "_id" : "edges/1741073135", 
+  "_rev" : "1741073135", 
+  "_key" : "1741073135", 
+  "_from" : "vertices/1", 
+  "_to" : "vertices/2" 
+}

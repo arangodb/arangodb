@@ -1,0 +1,110 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/explain
+{"query":"FOR p IN products FILTER p.id == 25 RETURN p","options":{"allPlans":true}}
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "plans" : [ 
+    { 
+      "nodes" : [ 
+        { 
+          "type" : "SingletonNode", 
+          "dependencies" : [ ], 
+          "id" : 1, 
+          "estimatedCost" : 1, 
+          "estimatedNrItems" : 1 
+        }, 
+        { 
+          "type" : "IndexRangeNode", 
+          "dependencies" : [ 
+            1 
+          ], 
+          "id" : 6, 
+          "estimatedCost" : 1, 
+          "estimatedNrItems" : 0, 
+          "database" : "_system", 
+          "collection" : "products", 
+          "outVariable" : { 
+            "id" : 0, 
+            "name" : "p" 
+          }, 
+          "ranges" : [ 
+            [ 
+              { 
+                "variable" : "p", 
+                "attr" : "id", 
+                "lowConst" : { 
+                  "bound" : 25, 
+                  "include" : true, 
+                  "isConstant" : true 
+                }, 
+                "highConst" : { 
+                  "bound" : 25, 
+                  "include" : true, 
+                  "isConstant" : true 
+                }, 
+                "lows" : [ ], 
+                "highs" : [ ], 
+                "valid" : true, 
+                "equality" : true 
+              } 
+            ] 
+          ], 
+          "index" : { 
+            "type" : "hash", 
+            "id" : "1424009967", 
+            "unique" : false, 
+            "fields" : [ 
+              "id" 
+            ] 
+          }, 
+          "reverse" : false 
+        }, 
+        { 
+          "type" : "ReturnNode", 
+          "dependencies" : [ 
+            6 
+          ], 
+          "id" : 5, 
+          "estimatedCost" : 1, 
+          "estimatedNrItems" : 0, 
+          "inVariable" : { 
+            "id" : 0, 
+            "name" : "p" 
+          } 
+        } 
+      ], 
+      "rules" : [ 
+        "use-index-range", 
+        "remove-filter-covered-by-index" 
+      ], 
+      "collections" : [ 
+        { 
+          "name" : "products", 
+          "type" : "read" 
+        } 
+      ], 
+      "variables" : [ 
+        { 
+          "id" : 1, 
+          "name" : "1" 
+        }, 
+        { 
+          "id" : 0, 
+          "name" : "p" 
+        } 
+      ], 
+      "estimatedCost" : 1, 
+      "estimatedNrItems" : 0 
+    } 
+  ], 
+  "warnings" : [ ], 
+  "stats" : { 
+    "rulesExecuted" : 18, 
+    "rulesSkipped" : 0, 
+    "plansCreated" : 1 
+  }, 
+  "error" : false, 
+  "code" : 200 
+}
