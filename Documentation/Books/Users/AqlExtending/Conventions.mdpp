@@ -6,7 +6,7 @@ function groups if required.
 
 Examples:
 
-``` js
+```js
 RETURN myfunctions::myfunc()
 
 RETURN myfunctions::math::random()

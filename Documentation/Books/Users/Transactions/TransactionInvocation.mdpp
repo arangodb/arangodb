@@ -202,7 +202,8 @@ db._executeTransaction({
 
 Aborting the transaction by throwing an exception in the *action* function
 will revert all changes, so as if the transaction never happened:
-``` js
+
+```js
 // setup
 db._create("c1");
 
