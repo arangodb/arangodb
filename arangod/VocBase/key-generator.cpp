@@ -71,11 +71,11 @@ KeyGenerator::~KeyGenerator () {
 ////////////////////////////////////////////////////////////////////////////////
 
 KeyGenerator::GeneratorType KeyGenerator::generatorType (TRI_json_t const* parameters) {
-  if (! TRI_IsArrayJson(parameters)) {
+  if (! TRI_IsObjectJson(parameters)) {
     return KeyGenerator::TYPE_TRADITIONAL;
   }
 
-  TRI_json_t const* type = TRI_LookupArrayJson(parameters, "type");
+  TRI_json_t const* type = TRI_LookupObjectJson(parameters, "type");
 
   if (! TRI_IsStringJson(type)) {
     return KeyGenerator::TYPE_TRADITIONAL;
@@ -102,7 +102,7 @@ KeyGenerator::GeneratorType KeyGenerator::generatorType (TRI_json_t const* param
 KeyGenerator* KeyGenerator::factory (TRI_json_t const* options) {
   KeyGenerator::GeneratorType type;
 
-  bool const readOptions = TRI_IsArrayJson(options);
+  bool const readOptions = TRI_IsObjectJson(options);
 
   if (readOptions) {
     type = generatorType(options);
@@ -118,7 +118,7 @@ KeyGenerator* KeyGenerator::factory (TRI_json_t const* options) {
   bool allowUserKeys = true;
 
   if (readOptions) {
-    TRI_json_t* option = TRI_LookupArrayJson(options, "allowUserKeys");
+    TRI_json_t* option = TRI_LookupObjectJson(options, "allowUserKeys");
 
     if (TRI_IsBooleanJson(option)) {
       allowUserKeys = option->_value._boolean;
@@ -136,7 +136,7 @@ KeyGenerator* KeyGenerator::factory (TRI_json_t const* options) {
     if (readOptions) {
       TRI_json_t* option;
 
-      option = TRI_LookupArrayJson(options, "increment");
+      option = TRI_LookupObjectJson(options, "increment");
 
       if (TRI_IsNumberJson(option)) {
         increment = (uint64_t) option->_value._number;
@@ -146,7 +146,7 @@ KeyGenerator* KeyGenerator::factory (TRI_json_t const* options) {
         }
       }
     
-      option = TRI_LookupArrayJson(options, "offset");
+      option = TRI_LookupObjectJson(options, "offset");
 
       if (TRI_IsNumberJson(option)) {
         offset = (uint64_t) option->_value._number;
@@ -288,11 +288,11 @@ void TraditionalKeyGenerator::track (TRI_voc_key_t) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* TraditionalKeyGenerator::toJson (TRI_memory_zone_t* zone) const {
-  TRI_json_t* json = TRI_CreateArrayJson(zone);
+  TRI_json_t* json = TRI_CreateObjectJson(zone);
 
   if (json != nullptr) {
-    TRI_Insert3ArrayJson(zone, json, "type", TRI_CreateStringCopyJson(zone, name().c_str()));
-    TRI_Insert3ArrayJson(zone, json, "allowUserKeys", TRI_CreateBooleanJson(zone, _allowUserKeys));
+    TRI_Insert3ObjectJson(zone, json, "type", TRI_CreateStringCopyJson(zone, name().c_str()));
+    TRI_Insert3ObjectJson(zone, json, "allowUserKeys", TRI_CreateBooleanJson(zone, _allowUserKeys));
   }
 
   return json;
@@ -439,13 +439,13 @@ void AutoIncrementKeyGenerator::track (TRI_voc_key_t key) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* AutoIncrementKeyGenerator::toJson (TRI_memory_zone_t* zone) const {
-  TRI_json_t* json = TRI_CreateArrayJson(zone);
+  TRI_json_t* json = TRI_CreateObjectJson(zone);
 
   if (json != nullptr) {
-    TRI_Insert3ArrayJson(zone, json, "type", TRI_CreateStringCopyJson(zone, name().c_str()));
-    TRI_Insert3ArrayJson(zone, json, "allowUserKeys", TRI_CreateBooleanJson(zone, _allowUserKeys));
-    TRI_Insert3ArrayJson(zone, json, "offset", TRI_CreateNumberJson(zone, (double) _offset));
-    TRI_Insert3ArrayJson(zone, json, "increment", TRI_CreateNumberJson(zone, (double) _increment));
+    TRI_Insert3ObjectJson(zone, json, "type", TRI_CreateStringCopyJson(zone, name().c_str()));
+    TRI_Insert3ObjectJson(zone, json, "allowUserKeys", TRI_CreateBooleanJson(zone, _allowUserKeys));
+    TRI_Insert3ObjectJson(zone, json, "offset", TRI_CreateNumberJson(zone, (double) _offset));
+    TRI_Insert3ObjectJson(zone, json, "increment", TRI_CreateNumberJson(zone, (double) _increment));
   }
 
   return json;

@@ -105,12 +105,12 @@ int DocumentHelper::getKey (TRI_json_t const* json,
   *key = 0;
 
   // check type of json
-  if (! TRI_IsArrayJson(json)) {
+  if (! TRI_IsObjectJson(json)) {
     return TRI_ERROR_NO_ERROR;
   }
 
   // check if _key is there
-  TRI_json_t const* k = TRI_LookupArrayJson(json, TRI_VOC_ATTRIBUTE_KEY);
+  TRI_json_t const* k = TRI_LookupObjectJson(json, TRI_VOC_ATTRIBUTE_KEY);
 
   if (k == nullptr) {
     return TRI_ERROR_NO_ERROR;

@@ -658,7 +658,7 @@ void Executor::generateCodeFunctionCall (AstNode const* node) {
 
   auto args = node->getMember(0);
   TRI_ASSERT(args != nullptr);
-  TRI_ASSERT(args->type == NODE_TYPE_LIST);
+  TRI_ASSERT(args->type == NODE_TYPE_ARRAY);
 
   _buffer->appendText("_AQL.", 5);
   _buffer->appendText(func->internalName);
@@ -710,7 +710,7 @@ void Executor::generateCodeUserFunctionCall (AstNode const* node) {
 
   auto args = node->getMember(0);
   TRI_ASSERT(args != nullptr);
-  TRI_ASSERT(args->type == NODE_TYPE_LIST);
+  TRI_ASSERT(args->type == NODE_TYPE_ARRAY);
 
   _buffer->appendText("_AQL.FCALL_USER(");
   generateCodeString(name);
@@ -833,11 +833,11 @@ void Executor::generateCodeNode (AstNode const* node) {
       node->appendValue(_buffer);
       break;
 
-    case NODE_TYPE_LIST:
+    case NODE_TYPE_ARRAY:
       generateCodeList(node);
       break;
 
-    case NODE_TYPE_ARRAY:
+    case NODE_TYPE_OBJECT:
       generateCodeArray(node);
       break;
     

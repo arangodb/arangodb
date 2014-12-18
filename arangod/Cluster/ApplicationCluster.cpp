@@ -353,13 +353,13 @@ bool ApplicationCluster::open () {
         locker.unlock();
         LOG_FATAL_AND_EXIT("out of memory");
       }
-      TRI_json_t* json = TRI_CreateArray2Json(TRI_UNKNOWN_MEM_ZONE, 1);
+      TRI_json_t* json = TRI_CreateObject2Json(TRI_UNKNOWN_MEM_ZONE, 1);
       if (json == nullptr) {
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, ep);
         locker.unlock();
         LOG_FATAL_AND_EXIT("out of memory");
       }
-      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "endpoint", ep);
+      TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "endpoint", ep);
 
       result = comm.setValue("Current/ServersRegistered/" + _myId, json, 0.0);
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);

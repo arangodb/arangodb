@@ -75,10 +75,10 @@ namespace triagens {
           fields(),
           data(nullptr) {
 
-        TRI_json_t const* f = TRI_LookupArrayJson(json, "fields");
+        TRI_json_t const* f = TRI_LookupObjectJson(json, "fields");
 
-        if (TRI_IsListJson(f)) {
-          size_t const n = TRI_LengthListJson(f);
+        if (TRI_IsArrayJson(f)) {
+          size_t const n = TRI_LengthArrayJson(f);
           fields.reserve(n);
 
           for (size_t i = 0; i < n; ++i) {
@@ -97,13 +97,13 @@ namespace triagens {
   
   
       triagens::basics::Json toJson () const {
-        triagens::basics::Json json(triagens::basics::Json::Array);
+        triagens::basics::Json json(triagens::basics::Json::Object);
 
         json("type", triagens::basics::Json(TRI_TypeNameIndex(type)))
             ("id", triagens::basics::Json(triagens::basics::StringUtils::itoa(id))) 
             ("unique", triagens::basics::Json(unique));
 
-        triagens::basics::Json f(triagens::basics::Json::List);
+        triagens::basics::Json f(triagens::basics::Json::Array);
         for (auto& field : fields) {
           f.add(triagens::basics::Json(field));
         }

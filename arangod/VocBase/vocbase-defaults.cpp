@@ -55,18 +55,18 @@ void TRI_ApplyVocBaseDefaults (TRI_vocbase_t* vocbase,
 
 TRI_json_t* TRI_JsonVocBaseDefaults (TRI_memory_zone_t* zone,
                                      TRI_vocbase_defaults_t const* defaults) {
-  TRI_json_t* json = TRI_CreateArrayJson(zone);
+  TRI_json_t* json = TRI_CreateObjectJson(zone);
 
   if (json == nullptr) {
     return nullptr;
   }
 
-  TRI_Insert3ArrayJson(zone, json, "waitForSync", TRI_CreateBooleanJson(zone, defaults->defaultWaitForSync));
-  TRI_Insert3ArrayJson(zone, json, "requireAuthentication", TRI_CreateBooleanJson(zone, defaults->requireAuthentication));
-  TRI_Insert3ArrayJson(zone, json, "requireAuthenticationUnixSockets", TRI_CreateBooleanJson(zone, defaults->requireAuthenticationUnixSockets));
-  TRI_Insert3ArrayJson(zone, json, "authenticateSystemOnly", TRI_CreateBooleanJson(zone, defaults->authenticateSystemOnly));
-  TRI_Insert3ArrayJson(zone, json, "forceSyncProperties", TRI_CreateBooleanJson(zone, defaults->forceSyncProperties));
-  TRI_Insert3ArrayJson(zone, json, "defaultMaximalSize", TRI_CreateNumberJson(zone, (double) defaults->defaultMaximalSize));
+  TRI_Insert3ObjectJson(zone, json, "waitForSync", TRI_CreateBooleanJson(zone, defaults->defaultWaitForSync));
+  TRI_Insert3ObjectJson(zone, json, "requireAuthentication", TRI_CreateBooleanJson(zone, defaults->requireAuthentication));
+  TRI_Insert3ObjectJson(zone, json, "requireAuthenticationUnixSockets", TRI_CreateBooleanJson(zone, defaults->requireAuthenticationUnixSockets));
+  TRI_Insert3ObjectJson(zone, json, "authenticateSystemOnly", TRI_CreateBooleanJson(zone, defaults->authenticateSystemOnly));
+  TRI_Insert3ObjectJson(zone, json, "forceSyncProperties", TRI_CreateBooleanJson(zone, defaults->forceSyncProperties));
+  TRI_Insert3ObjectJson(zone, json, "defaultMaximalSize", TRI_CreateNumberJson(zone, (double) defaults->defaultMaximalSize));
 
   return json;
 }
@@ -77,42 +77,42 @@ TRI_json_t* TRI_JsonVocBaseDefaults (TRI_memory_zone_t* zone,
 
 void TRI_FromJsonVocBaseDefaults (TRI_vocbase_defaults_t* defaults,
                                   TRI_json_t const* json) {
-  if (! TRI_IsArrayJson(json)) {
+  if (! TRI_IsObjectJson(json)) {
     return;
   }
 
   TRI_json_t* optionJson;
-  optionJson = TRI_LookupArrayJson(json, "waitForSync");
+  optionJson = TRI_LookupObjectJson(json, "waitForSync");
 
   if (TRI_IsBooleanJson(optionJson)) {
     defaults->defaultWaitForSync = optionJson->_value._boolean;
   }
 
-  optionJson = TRI_LookupArrayJson(json, "requireAuthentication");
+  optionJson = TRI_LookupObjectJson(json, "requireAuthentication");
 
   if (TRI_IsBooleanJson(optionJson)) {
     defaults->requireAuthentication = optionJson->_value._boolean;
   }
 
-  optionJson = TRI_LookupArrayJson(json, "requireAuthenticationUnixSockets");
+  optionJson = TRI_LookupObjectJson(json, "requireAuthenticationUnixSockets");
 
   if (TRI_IsBooleanJson(optionJson)) {
     defaults->requireAuthenticationUnixSockets = optionJson->_value._boolean;
   }
 
-  optionJson = TRI_LookupArrayJson(json, "authenticateSystemOnly");
+  optionJson = TRI_LookupObjectJson(json, "authenticateSystemOnly");
 
   if (TRI_IsBooleanJson(optionJson)) {
     defaults->authenticateSystemOnly = optionJson->_value._boolean;
   }
   
-  optionJson = TRI_LookupArrayJson(json, "forceSyncProperties");
+  optionJson = TRI_LookupObjectJson(json, "forceSyncProperties");
 
   if (TRI_IsBooleanJson(optionJson)) {
     defaults->forceSyncProperties = optionJson->_value._boolean;
   }
 
-  optionJson = TRI_LookupArrayJson(json, "defaultMaximalSize");
+  optionJson = TRI_LookupObjectJson(json, "defaultMaximalSize");
 
   if (TRI_IsNumberJson(optionJson)) {
     defaults->defaultMaximalSize = (TRI_voc_size_t) optionJson->_value._number;

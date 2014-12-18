@@ -241,7 +241,7 @@ void Parser::registerWarning (int errorCode,
 
 void Parser::pushList (AstNode* node) {
   auto list = static_cast<AstNode*>(peekStack());
-  TRI_ASSERT(list->type == NODE_TYPE_LIST);
+  TRI_ASSERT(list->type == NODE_TYPE_ARRAY);
   list->addMember(node);
 }
 
@@ -252,7 +252,7 @@ void Parser::pushList (AstNode* node) {
 void Parser::pushArray (char const* attributeName,
                         AstNode* node) {
   auto array = static_cast<AstNode*>(peekStack());
-  TRI_ASSERT(array->type == NODE_TYPE_ARRAY);
+  TRI_ASSERT(array->type == NODE_TYPE_OBJECT);
   auto element = _ast->createNodeArrayElement(attributeName, node);
   array->addMember(element);
 }

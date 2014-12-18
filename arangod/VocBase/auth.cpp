@@ -139,35 +139,35 @@ static void FreeAuthCacheInfo (TRI_vocbase_auth_cache_t* cached) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_vocbase_auth_t* AuthFromJson (TRI_json_t const* json) {
-  if (! TRI_IsArrayJson(json)) {
+  if (! TRI_IsObjectJson(json)) {
     return nullptr;
   }
 
   // extract "user" attribute
-  TRI_json_t const* userJson = TRI_LookupArrayJson(json, "user");
+  TRI_json_t const* userJson = TRI_LookupObjectJson(json, "user");
 
   if (! TRI_IsStringJson(userJson)) {
     LOG_DEBUG("cannot extract username");
     return nullptr;
   }
 
-  TRI_json_t const* authDataJson = TRI_LookupArrayJson(json, "authData");
+  TRI_json_t const* authDataJson = TRI_LookupObjectJson(json, "authData");
 
-  if (! TRI_IsArrayJson(authDataJson)) {
+  if (! TRI_IsObjectJson(authDataJson)) {
     LOG_DEBUG("cannot extract authData");
     return nullptr;
   }
 
-  TRI_json_t const* simpleJson = TRI_LookupArrayJson(authDataJson, "simple");
+  TRI_json_t const* simpleJson = TRI_LookupObjectJson(authDataJson, "simple");
 
-  if (! TRI_IsArrayJson(simpleJson)) {
+  if (! TRI_IsObjectJson(simpleJson)) {
     LOG_DEBUG("cannot extract simple");
     return nullptr;
   }
 
-  TRI_json_t const* methodJson = TRI_LookupArrayJson(simpleJson, "method");
-  TRI_json_t const* saltJson   = TRI_LookupArrayJson(simpleJson, "salt");
-  TRI_json_t const* hashJson   = TRI_LookupArrayJson(simpleJson, "hash");
+  TRI_json_t const* methodJson = TRI_LookupObjectJson(simpleJson, "method");
+  TRI_json_t const* saltJson   = TRI_LookupObjectJson(simpleJson, "salt");
+  TRI_json_t const* hashJson   = TRI_LookupObjectJson(simpleJson, "hash");
 
   if (! TRI_IsStringJson(methodJson) ||
       ! TRI_IsStringJson(saltJson) ||
@@ -178,7 +178,7 @@ static TRI_vocbase_auth_t* AuthFromJson (TRI_json_t const* json) {
 
   // extract "active" attribute
   bool active;
-  TRI_json_t const* activeJson = TRI_LookupArrayJson(authDataJson, "active");
+  TRI_json_t const* activeJson = TRI_LookupObjectJson(authDataJson, "active");
 
   if (! TRI_IsBooleanJson(activeJson)) {
     LOG_DEBUG("cannot extract active flag");
@@ -188,7 +188,7 @@ static TRI_vocbase_auth_t* AuthFromJson (TRI_json_t const* json) {
 
   // extract "changePassword" attribute
   bool mustChange;
-  TRI_json_t const* mustChangeJson = TRI_LookupArrayJson(json, "changePassword");
+  TRI_json_t const* mustChangeJson = TRI_LookupObjectJson(json, "changePassword");
 
   if (TRI_IsBooleanJson(mustChangeJson)) {
     mustChange = mustChangeJson->_value._boolean;
@@ -329,13 +329,13 @@ void TRI_DestroyAuthInfo (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_InsertInitialAuthInfo (TRI_vocbase_t* vocbase) {
-  TRI_json_t* json = TRI_CreateList2Json(TRI_UNKNOWN_MEM_ZONE, 1);
+  TRI_json_t* json = TRI_CreateArray2Json(TRI_UNKNOWN_MEM_ZONE, 1);
 
   if (json == nullptr) {
     return false;
   }
 
-  TRI_json_t* user = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  TRI_json_t* user = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
 
   if (user == nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -343,46 +343,46 @@ bool TRI_InsertInitialAuthInfo (TRI_vocbase_t* vocbase) {
   }
 
   // username
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE,
                        user,
                        "user",
                        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "root"));
 
-  TRI_json_t* authData = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  TRI_json_t* authData = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
 
   if (authData != nullptr) {
     // simple
-    TRI_json_t* simple = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+    TRI_json_t* simple = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
 
     if (simple != nullptr) {
-      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
+      TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE,
                            simple,
                            "method",
                            TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "sha256"));
 
-      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
+      TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE,
                            simple,
                            "salt",
                            TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "c776f5f4"));
 
-      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
+      TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE,
                            simple,
                            "hash",
                            TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "ef74bc6fd59ac713bf5929c5ac2f42233e50d4d58748178132ea46dec433bd5b"));
 
-      TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, authData, "simple", simple);
+      TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, authData, "simple", simple);
     }
 
     // active
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE,
                          authData,
                          "active",
                          TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
 
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, user, "authData", authData);
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, user, "authData", authData);
   }
 
-  TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, json, user);
+  TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, user);
 
   TRI_PopulateAuthInfo(vocbase, json);
 
@@ -450,14 +450,14 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
 
 bool TRI_PopulateAuthInfo (TRI_vocbase_t* vocbase,
                            TRI_json_t const* json) {
-  TRI_ASSERT(TRI_IsListJson(json));
+  TRI_ASSERT(TRI_IsArrayJson(json));
 
   TRI_WriteLockReadWriteLock(&vocbase->_authInfoLock);
   ClearAuthInfo(vocbase);
 
   size_t const n = json->_value._objects._length;
   for (size_t i = 0; i < n; ++i) {
-    TRI_vocbase_auth_t* auth = AuthFromJson(TRI_LookupListJson(json, i));
+    TRI_vocbase_auth_t* auth = AuthFromJson(TRI_LookupArrayJson(json, i));
 
     if (auth == nullptr) {
       continue;

@@ -1110,7 +1110,7 @@ static void JS_ExecuteAqlJson (const v8::FunctionCallbackInfo<v8::Value>& args) 
     TRI_V8_THROW_EXCEPTION_FULL(queryResult.code, queryResult.details);
   }
   
-  if (TRI_LengthListJson(queryResult.json) <= batchSize) {
+  if (TRI_LengthArrayJson(queryResult.json) <= batchSize) {
     // return the array value as it is. this is a performance optimisation
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
     if (queryResult.json != nullptr) {
@@ -1131,21 +1131,21 @@ static void JS_ExecuteAqlJson (const v8::FunctionCallbackInfo<v8::Value>& args) 
     TRI_V8_RETURN(result);
   }
   
-  TRI_json_t* extra = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  TRI_json_t* extra = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
   if (extra == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
   if (queryResult.warnings != nullptr) {
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, extra, "warnings", queryResult.warnings);
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, extra, "warnings", queryResult.warnings);
     queryResult.warnings = nullptr;
   }
   if (queryResult.stats != nullptr) {
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, extra, "stats", queryResult.stats);
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, extra, "stats", queryResult.stats);
     queryResult.stats = nullptr;
   }
   if (queryResult.profile != nullptr) {
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, extra, "profile", queryResult.profile);
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, extra, "profile", queryResult.profile);
     queryResult.profile = nullptr;
   }
 
@@ -1291,21 +1291,21 @@ static void JS_ExecuteAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_RETURN(result);
   }
   
-  TRI_json_t* extra = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  TRI_json_t* extra = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
   if (extra == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
   if (queryResult.warnings != nullptr) {
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, extra, "warnings", queryResult.warnings);
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, extra, "warnings", queryResult.warnings);
     queryResult.warnings = nullptr;
   }
   if (queryResult.stats != nullptr) {
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, extra, "stats", queryResult.stats);
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, extra, "stats", queryResult.stats);
     queryResult.stats = nullptr;
   }
   if (queryResult.profile != nullptr) {
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, extra, "profile", queryResult.profile);
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, extra, "profile", queryResult.profile);
     queryResult.profile = nullptr;
   }
 
@@ -1747,11 +1747,11 @@ static void ListDatabasesCoordinator (const v8::FunctionCallbackInfo<v8::Value>&
           TRI_json_t* json = JsonHelper::fromString(body.c_str());
           delete res;
 
-          if (json != 0 && JsonHelper::isArray(json)) {
-            TRI_json_t const* dotresult = JsonHelper::getArrayElement(json, "result");
+          if (json != 0 && JsonHelper::isObject(json)) {
+            TRI_json_t const* dotresult = JsonHelper::getObjectElement(json, "result");
 
             if (dotresult != 0) {
-              vector<string> list = JsonHelper::stringList(dotresult);
+              vector<string> list = JsonHelper::stringArray(dotresult);
               TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
               v8::Handle<v8::Array> result = v8::Array::New(isolate);
               for (size_t i = 0;  i < list.size();  ++i) {
@@ -1864,7 +1864,7 @@ static void CreateDatabaseCoordinator (const v8::FunctionCallbackInfo<v8::Value>
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
 
-  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  TRI_json_t* json = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
 
   if (nullptr == json) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
@@ -1872,18 +1872,18 @@ static void CreateDatabaseCoordinator (const v8::FunctionCallbackInfo<v8::Value>
 
   uint64_t const id = ClusterInfo::instance()->uniqid();
 
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "id",
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "id",
       TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
                                StringUtils::itoa(id).c_str()));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "name",
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "name",
       TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
                                TRI_ObjectToString(args[0]).c_str()));
   if (args.Length() > 1) {
-    TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "options",
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "options",
                          TRI_ObjectToJson(isolate, args[1]));
   }
 
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "coordinator",
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "coordinator",
       TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, ServerState::instance()->getId().c_str()));
 
   ClusterInfo* ci = ClusterInfo::instance();

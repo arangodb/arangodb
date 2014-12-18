@@ -146,7 +146,7 @@ Ast::~Ast () {
 
 TRI_json_t* Ast::toJson (TRI_memory_zone_t* zone,
                          bool verbose) const {
-  TRI_json_t* json = TRI_CreateListJson(zone);
+  TRI_json_t* json = TRI_CreateArrayJson(zone);
 
   try {
     _root->toJson(json, zone, verbose);
@@ -753,7 +753,7 @@ AstNode* Ast::createNodeValueString (char const* value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::createNodeList () {
-  AstNode* node = createNode(NODE_TYPE_LIST);
+  AstNode* node = createNode(NODE_TYPE_ARRAY);
 
   return node;
 }
@@ -763,7 +763,7 @@ AstNode* Ast::createNodeList () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::createNodeArray () {
-  AstNode* node = createNode(NODE_TYPE_ARRAY);
+  AstNode* node = createNode(NODE_TYPE_OBJECT);
 
   return node;
 }
@@ -778,7 +778,7 @@ AstNode* Ast::createNodeArrayElement (char const* attributeName,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  AstNode* node = createNode(NODE_TYPE_ARRAY_ELEMENT);
+  AstNode* node = createNode(NODE_TYPE_OBJECT_ELEMENT);
   node->setStringValue(attributeName);
   node->addMember(expression);
 
@@ -809,7 +809,7 @@ AstNode* Ast::createNodeFunctionCall (char const* functionName,
     node->setData(static_cast<void const*>(func));
 
     TRI_ASSERT(arguments != nullptr);
-    TRI_ASSERT(arguments->type == NODE_TYPE_LIST);
+    TRI_ASSERT(arguments->type == NODE_TYPE_ARRAY);
   
     // validate number of function call arguments
     size_t const n = arguments->numMembers();
@@ -1115,7 +1115,7 @@ AstNode* Ast::clone (AstNode const* node) {
   if (type == NODE_TYPE_COLLECTION ||
       type == NODE_TYPE_PARAMETER ||
       type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-      type == NODE_TYPE_ARRAY_ELEMENT ||
+      type == NODE_TYPE_OBJECT_ELEMENT ||
       type == NODE_TYPE_FCALL_USER) {
     copy->setStringValue(node->getStringValue());
   }
@@ -1426,7 +1426,7 @@ AstNode* Ast::optimizeBinaryOperatorRelational (AstNode* node) {
   bool const rhsIsConst = rhs->isConstant(); 
 
   if (! lhs->canThrow() &&
-      rhs->type == NODE_TYPE_LIST &&
+      rhs->type == NODE_TYPE_ARRAY &&
       rhs->numMembers() <= 1 &&
       (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
        node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
@@ -1455,7 +1455,7 @@ AstNode* Ast::optimizeBinaryOperatorRelational (AstNode* node) {
     return node;
   }
   
-  if (rhs->type != NODE_TYPE_LIST &&
+  if (rhs->type != NODE_TYPE_ARRAY &&
       (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
        node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
     // right operand of IN or NOT IN must be a list, otherwise we return false
@@ -1835,7 +1835,7 @@ AstNode* Ast::optimizeFor (AstNode* node) {
   }
 
   if (expression->isConstant() && 
-      expression->type != NODE_TYPE_LIST) {
+      expression->type != NODE_TYPE_ARRAY) {
     // right-hand operand to FOR statement is no list
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_LIST_EXPECTED,
                                    TRI_errno_string(TRI_ERROR_QUERY_LIST_EXPECTED) + std::string(" as operand to FOR loop"));
@@ -1865,7 +1865,7 @@ AstNode* Ast::nodeFromJson (TRI_json_t const* json) {
     return createNodeValueString(value);
   }
 
-  if (json->_type == TRI_JSON_LIST) {
+  if (json->_type == TRI_JSON_ARRAY) {
     auto node = createNodeList();
     size_t const n = json->_value._objects._length;
 
@@ -1876,7 +1876,7 @@ AstNode* Ast::nodeFromJson (TRI_json_t const* json) {
     return node;
   }
 
-  if (json->_type == TRI_JSON_ARRAY) {
+  if (json->_type == TRI_JSON_OBJECT) {
     auto node = createNodeArray();
     size_t const n = json->_value._objects._length;
 

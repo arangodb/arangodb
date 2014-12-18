@@ -92,17 +92,17 @@ namespace triagens {
         static std::map<std::string, std::string> stringObject (TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a JSON object from a list of strings
+/// @brief creates a JSON object from an array of strings
 ////////////////////////////////////////////////////////////////////////////////
 
-        static TRI_json_t* stringList (TRI_memory_zone_t*,
+        static TRI_json_t* stringArray (TRI_memory_zone_t*,
                                        std::vector<std::string> const&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a list of strings from a JSON (sub-) object
+/// @brief creates an array of strings from a JSON (sub-) object
 ////////////////////////////////////////////////////////////////////////////////
 
-        static std::vector<std::string> stringList (TRI_json_t const*);
+        static std::vector<std::string> stringArray (TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create JSON from string
@@ -130,19 +130,19 @@ namespace triagens {
         static std::string toString (TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns true for objects
+////////////////////////////////////////////////////////////////////////////////
+
+        static inline bool isObject (TRI_json_t const* json) {
+          return json != nullptr && json->_type == TRI_JSON_OBJECT;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true for arrays
 ////////////////////////////////////////////////////////////////////////////////
 
         static inline bool isArray (TRI_json_t const* json) {
           return json != nullptr && json->_type == TRI_JSON_ARRAY;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns true for lists
-////////////////////////////////////////////////////////////////////////////////
-
-        static inline bool isList (TRI_json_t const* json) {
-          return json != nullptr && json->_type == TRI_JSON_LIST;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -170,10 +170,10 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns an array sub-element
+/// @brief returns an object sub-element
 ////////////////////////////////////////////////////////////////////////////////
 
-        static TRI_json_t* getArrayElement (TRI_json_t const*,
+        static TRI_json_t* getObjectElement (TRI_json_t const*,
                                             char const* name);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -213,7 +213,7 @@ namespace triagens {
         static T getNumericValue (TRI_json_t const* json,
                                   char const* name,
                                   T defaultValue) {
-          TRI_json_t const* sub = getArrayElement(json, name);
+          TRI_json_t const* sub = getObjectElement(json, name);
 
           if (isNumber(sub)) {
             return (T) sub->_value._number;
@@ -246,7 +246,7 @@ namespace triagens {
         template<typename T>     
         static T checkAndGetNumericValue (TRI_json_t const* json,
                                           char const* name) {
-          TRI_json_t const* sub = getArrayElement(json, name);
+          TRI_json_t const* sub = getObjectElement(json, name);
 
           if (! isNumber(sub)) {
             std::string msg = "The attribute '" + std::string(name)  
@@ -265,19 +265,19 @@ namespace triagens {
                                                    char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns an array sub-element, or a throws an exception if the
-/// sub-element does not exist or if it is not an array
+/// @brief returns an object sub-element, or a throws an exception if the
+/// sub-element does not exist or if it is not an object
 ////////////////////////////////////////////////////////////////////////////////
         
-        static TRI_json_t const* checkAndGetArrayValue (TRI_json_t const*, 
+        static TRI_json_t const* checkAndGetObjectValue (TRI_json_t const*, 
                                                         char const*); 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a list sub-element, or a throws an exception if the
-/// sub-element does not exist or if it is not a list
+/// @brief returns an array sub-element, or a throws an exception if the
+/// sub-element does not exist or if it is not an array
 ////////////////////////////////////////////////////////////////////////////////
 
-        static TRI_json_t const* checkAndGetListValue (TRI_json_t const*, 
+        static TRI_json_t const* checkAndGetArrayValue (TRI_json_t const*, 
                                                        char const*); 
     };
 
@@ -328,8 +328,8 @@ namespace triagens {
           Bool,
           Number,
           String,
-          List,
-          Array
+          Array,
+          Object
         };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -361,11 +361,11 @@ namespace triagens {
             case String:
               _json = TRI_CreateString2CopyJson(_zone, "", 0);
               break;
-            case List:
-              _json = TRI_CreateList2Json(_zone, size_hint);
-              break;
             case Array:
-              _json = TRI_CreateArray2Json(_zone, 2 * size_hint);
+              _json = TRI_CreateArray2Json(_zone, size_hint);
+              break;
+            case Object:
+              _json = TRI_CreateObject2Json(_zone, 2 * size_hint);
               break;
           }
           if (_json == nullptr) {
@@ -691,23 +691,23 @@ namespace triagens {
 /// @brief set an attribute value in an array, an exception is thrown
 /// if *this is not a Json array. The pointer managed by sub is
 /// stolen. The purpose of this method is that you can do
-///   Json(Json::Array).set("a",Json(12)).set("b",Json(true))
+///   Json(Json::Object).set("a",Json(12)).set("b",Json(true))
 /// and that this is both legal and efficient.
 ////////////////////////////////////////////////////////////////////////////////
 
         Json& set (char const* name, Json sub) {
-          if (! TRI_IsArrayJson(_json)) {
+          if (! TRI_IsObjectJson(_json)) {
             throw JsonException("Json is no array");
           }
-          TRI_Insert3ArrayJson(_zone, _json, name, sub.steal());
+          TRI_Insert3ObjectJson(_zone, _json, name, sub.steal());
           return *this;
         }
         
         Json& set (std::string const& name, Json sub) {
-          if (! TRI_IsArrayJson(_json)) {
+          if (! TRI_IsObjectJson(_json)) {
             throw JsonException("Json is no array");
           }
-          TRI_Insert3ArrayJson(_zone, _json, name.c_str(), sub.steal());
+          TRI_Insert3ObjectJson(_zone, _json, name.c_str(), sub.steal());
           return *this;
         }
 
@@ -722,14 +722,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set an attribute value in an array, an exception is thrown if
 /// *this is not a Json array. The pointer sub is integrated into the
-/// list and will be freed if and only if the main thing is freed.
+/// array and will be freed if and only if the main thing is freed.
 ////////////////////////////////////////////////////////////////////////////////
 
         Json& set (char const* name, TRI_json_t* sub) {
-          if (! TRI_IsArrayJson(_json)) {
-            throw JsonException("Json is no array");
+          if (! TRI_IsObjectJson(_json)) {
+            throw JsonException("Json is no object");
           }
-          TRI_Insert3ArrayJson(_zone, _json, name, sub);
+          TRI_Insert3ObjectJson(_zone, _json, name, sub);
           return *this;
         }
 
@@ -742,28 +742,28 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief append a Json value to the end of a Json list, an exception
-/// is thrown if *this is not a Json list. The pointer managed by sub is
+/// @brief append a Json value to the end of a Json array, an exception
+/// is thrown if *this is not a Json array. The pointer managed by sub is
 /// stolen. The purpose of this method is that you can do
-///   Json(Json::List).add(Json(12)).add(Json(13))
+///   Json(Json::Object).add(Json(12)).add(Json(13))
 /// and that this is both legal and efficient.
 ////////////////////////////////////////////////////////////////////////////////
 
         Json& add (Json sub) {
-          if (! TRI_IsListJson(_json)) {
-            throw JsonException("Json is no list");
+          if (! TRI_IsArrayJson(_json)) {
+            throw JsonException("Json is no object");
           }
-          TRI_PushBack3ListJson(_zone, _json, sub.steal());
+          TRI_PushBack3ArrayJson(_zone, _json, sub.steal());
           return *this;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reserve space for n additional items in a list
+/// @brief reserve space for n additional items in an array
 ////////////////////////////////////////////////////////////////////////////////
 
         Json& reserve (size_t n) {
-          if (! TRI_IsListJson(_json)) {
-            throw JsonException("Json is no list");
+          if (! TRI_IsArrayJson(_json)) {
+            throw JsonException("Json is no array");
           }
 
           if (TRI_ReserveVector(&_json->_value._objects, n) != TRI_ERROR_NO_ERROR) {
@@ -781,17 +781,17 @@ namespace triagens {
         }
  
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief append a TRI_json_t value to the end of a Json list, an exception
-/// is thrown if *this is not a Json list. The pointer sub is integrated
-/// into the list and will be freed if and only if the main thing is
+/// @brief append a TRI_json_t value to the end of a Json array, an exception
+/// is thrown if *this is not a Json array. The pointer sub is integrated
+/// into the array and will be freed if and only if the main thing is
 /// freed.
 ////////////////////////////////////////////////////////////////////////////////
 
         Json& add (TRI_json_t* sub) {
-          if (! TRI_IsListJson(_json)) {
-            throw JsonException("Json is no list");
+          if (! TRI_IsArrayJson(_json)) {
+            throw JsonException("Json is no array");
           }
-          TRI_PushBack3ListJson(_zone, _json, sub);
+          TRI_PushBack3ArrayJson(_zone, _json, sub);
           return *this;
         }
 
@@ -804,8 +804,8 @@ namespace triagens {
         }
  
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief this gets an attribute value of a Json array. An exception is
-/// thrown if *this is not a Json array. The resulting TRI_json_t* is
+/// @brief this gets an attribute value of a Json object. An exception is
+/// thrown if *this is not a Json object. The resulting TRI_json_t* is
 /// wrapped in a NOFREE Json to allow things like
 ///   j.get("a").get("b")
 /// to access j.a.b. The ownership of the whole structure remains with
@@ -813,15 +813,15 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         Json get (char const* name) const {
-          if (! TRI_IsArrayJson(_json)) {
-            throw JsonException("Json is no array");
+          if (! TRI_IsObjectJson(_json)) {
+            throw JsonException("Json is no object");
           }
-          return Json(_zone, TRI_LookupArrayJson(_json, name), NOFREE);
+          return Json(_zone, TRI_LookupObjectJson(_json, name), NOFREE);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief this gets a list entry of a Json list. An exception is
-/// thrown if *this is not a Json list. The resulting TRI_json_t* is
+/// @brief this gets an array entry of a Json array. An exception is
+/// thrown if *this is not a Json array. The resulting TRI_json_t* is
 /// wrapped in a NOFREE Json to allow things like
 ///   j.at(0).at(1)
 /// to access j[0][1]. The ownership of the whole structure remains with
@@ -834,12 +834,12 @@ namespace triagens {
         }
 
         Json at (int pos) const {
-          if (! TRI_IsListJson(_json)) {
-            throw JsonException("Json is no list");
+          if (! TRI_IsArrayJson(_json)) {
+            throw JsonException("Json is no array");
           }
           TRI_json_t* j;
           if (pos >= 0) {
-            j = TRI_LookupListJson(_json, pos);
+            j = TRI_LookupArrayJson(_json, pos);
             if (j != nullptr) {
               return Json(_zone, j, NOFREE);
             }
@@ -853,7 +853,7 @@ namespace triagens {
             if (pos2 > len) {
               return Json(_zone, Json::Null, AUTOFREE);
             }
-            j = TRI_LookupListJson(_json, len-pos2);
+            j = TRI_LookupArrayJson(_json, len-pos2);
             if (j != nullptr) {
               return Json(_zone, j, NOFREE);
             }
@@ -907,6 +907,14 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether *this is an object Json.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isObject () const throw() {
+          return TRI_IsObjectJson(_json);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether *this is an array Json.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -915,20 +923,12 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks whether *this is a list Json.
-////////////////////////////////////////////////////////////////////////////////
-
-        bool isList () const throw() {
-          return TRI_IsListJson(_json);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the length of the list
+/// @brief returns the length of the array
 ////////////////////////////////////////////////////////////////////////////////
 
         size_t size () const {
-          if (! TRI_IsListJson(_json)) {
-            throw JsonException("Json is no list");
+          if (! TRI_IsArrayJson(_json)) {
+            throw JsonException("Json is no array");
           }
           return _json->_value._objects._length;
         }

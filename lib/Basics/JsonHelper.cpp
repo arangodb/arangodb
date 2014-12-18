@@ -85,17 +85,17 @@ uint64_t JsonHelper::stringUInt64 (TRI_json_t const* json,
     return 0;
   }
 
-  TRI_json_t const* element = TRI_LookupArrayJson(json, name);
+  TRI_json_t const* element = TRI_LookupObjectJson(json, name);
   return stringUInt64(element);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a JSON key/value object from a list of strings
+/// @brief creates a JSON key/value object from a key/value of strings
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* JsonHelper::stringObject (TRI_memory_zone_t* zone,
                                       std::map<std::string, std::string> const& values) {
-  TRI_json_t* json = TRI_CreateArray2Json(zone, values.size());
+  TRI_json_t* json = TRI_CreateObject2Json(zone, values.size());
 
   if (json == nullptr) {
     return nullptr;
@@ -108,7 +108,7 @@ TRI_json_t* JsonHelper::stringObject (TRI_memory_zone_t* zone,
 
     TRI_json_t* v = TRI_CreateString2CopyJson(zone, value.c_str(), value.size());
     if (v != nullptr) {
-      TRI_Insert3ArrayJson(zone, json, key.c_str(), v);
+      TRI_Insert3ObjectJson(zone, json, key.c_str(), v);
     }
   }
 
@@ -122,7 +122,7 @@ TRI_json_t* JsonHelper::stringObject (TRI_memory_zone_t* zone,
 std::map<std::string, std::string> JsonHelper::stringObject (TRI_json_t const* json) {
   std::map<std::string, std::string> result;
 
-  if (isArray(json)) {
+  if (isObject(json)) {
     for (size_t i = 0, n = json->_value._objects._length; i < n; i += 2) {
       TRI_json_t const* k = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i);
       TRI_json_t const* v = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i + 1);
@@ -139,12 +139,12 @@ std::map<std::string, std::string> JsonHelper::stringObject (TRI_json_t const* j
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a JSON object from a list of strings
+/// @brief creates a JSON object from an array of strings
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* JsonHelper::stringList (TRI_memory_zone_t* zone,
+TRI_json_t* JsonHelper::stringArray (TRI_memory_zone_t* zone,
                                     std::vector<std::string> const& values) {
-  TRI_json_t* json = TRI_CreateList2Json(zone, values.size());
+  TRI_json_t* json = TRI_CreateArray2Json(zone, values.size());
 
   if (json == nullptr) {
     return nullptr;
@@ -153,7 +153,7 @@ TRI_json_t* JsonHelper::stringList (TRI_memory_zone_t* zone,
   for (size_t i = 0, n = values.size(); i < n; ++i) {
     TRI_json_t* v = TRI_CreateString2CopyJson(zone, values[i].c_str(), values[i].size());
     if (v != nullptr) {
-      TRI_PushBack3ListJson(zone, json, v);
+      TRI_PushBack3ArrayJson(zone, json, v);
     }
   }
 
@@ -161,18 +161,18 @@ TRI_json_t* JsonHelper::stringList (TRI_memory_zone_t* zone,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a list of strings from a JSON (sub-) object
+/// @brief creates an array of strings from a JSON (sub-) object
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<std::string> JsonHelper::stringList (TRI_json_t const* json) {
+std::vector<std::string> JsonHelper::stringArray (TRI_json_t const* json) {
   std::vector<std::string> result;
 
-  if (isList(json)) {
+  if (isArray(json)) {
     for (size_t i = 0, n = json->_value._objects._length; i < n; ++i) {
-      TRI_json_t const* v = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i);
+      TRI_json_t const* v = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
 
       if (isString(v)) {
-        result.push_back(std::string(v->_value._string.data, v->_value._string.length - 1));
+        result.emplace_back(std::string(v->_value._string.data, v->_value._string.length - 1));
       }
     }
   }
@@ -232,16 +232,16 @@ std::string JsonHelper::toString (TRI_json_t const* json) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns an array sub-element
+/// @brief returns an object sub-element
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* JsonHelper::getArrayElement (TRI_json_t const* json,
+TRI_json_t* JsonHelper::getObjectElement (TRI_json_t const* json,
                                          char const* name) {
-  if (! isArray(json)) {
+  if (! isObject(json)) {
     return nullptr;
   }
 
-  return TRI_LookupArrayJson(json, name);
+  return TRI_LookupObjectJson(json, name);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -263,7 +263,7 @@ std::string JsonHelper::getStringValue (TRI_json_t const* json,
 std::string JsonHelper::getStringValue (TRI_json_t const* json,
                                         char const* name,
                                         std::string const& defaultValue) {
-  TRI_json_t const* sub = getArrayElement(json, name);
+  TRI_json_t const* sub = getObjectElement(json, name);
 
   if (isString(sub)) {
     return string(sub->_value._string.data, sub->_value._string.length - 1);
@@ -278,7 +278,7 @@ std::string JsonHelper::getStringValue (TRI_json_t const* json,
 bool JsonHelper::getBooleanValue (TRI_json_t const* json,
                                   char const* name,
                                   bool defaultValue) {
-  TRI_json_t const* sub = getArrayElement(json, name);
+  TRI_json_t const* sub = getObjectElement(json, name);
 
   if (isBoolean(sub)) {
     return sub->_value._boolean;
@@ -294,7 +294,7 @@ bool JsonHelper::getBooleanValue (TRI_json_t const* json,
 
 bool JsonHelper::checkAndGetBooleanValue (TRI_json_t const* json,
                                          char const* name) {
-  TRI_json_t const* sub = getArrayElement(json, name);
+  TRI_json_t const* sub = getObjectElement(json, name);
 
   if (! isBoolean(sub)) { 
     std::string msg = "The attribute '" + std::string(name) 
@@ -312,7 +312,7 @@ bool JsonHelper::checkAndGetBooleanValue (TRI_json_t const* json,
 
 std::string JsonHelper::checkAndGetStringValue (TRI_json_t const* json,
                                                 char const* name) {
-  TRI_json_t const* sub = getArrayElement(json, name);
+  TRI_json_t const* sub = getObjectElement(json, name);
 
   if (! isString(sub)) {
     std::string msg = "The attribute '" + std::string(name)  
@@ -324,16 +324,16 @@ std::string JsonHelper::checkAndGetStringValue (TRI_json_t const* json,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns an array sub-element, or throws an exception if the
-/// sub-element does not exist or if it is not an array
+/// sub-element does not exist or if it is not an object
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t const* JsonHelper::checkAndGetArrayValue (TRI_json_t const* json,
+TRI_json_t const* JsonHelper::checkAndGetObjectValue (TRI_json_t const* json,
                                                      char const* name) {
-  TRI_json_t const* sub = getArrayElement(json, name);
+  TRI_json_t const* sub = getObjectElement(json, name);
 
-  if (! isArray(sub)) {
+  if (! isObject(sub)) {
     std::string msg = "The attribute '" + std::string(name)
-      + "' was not found or is not an array.";
+      + "' was not found or is not an object.";
     THROW_INTERNAL_ERROR(msg);
   }
 
@@ -342,16 +342,16 @@ TRI_json_t const* JsonHelper::checkAndGetArrayValue (TRI_json_t const* json,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a list sub-element, or throws an exception if the
-/// sub-element does not exist or if it is not a lsit
+/// sub-element does not exist or if it is not an array
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t const* JsonHelper::checkAndGetListValue (TRI_json_t const* json,
+TRI_json_t const* JsonHelper::checkAndGetArrayValue (TRI_json_t const* json,
                                                     char const* name) {
-  TRI_json_t const* sub = getArrayElement(json, name);
+  TRI_json_t const* sub = getObjectElement(json, name);
 
-  if (! isList(sub)) {
+  if (! isArray(sub)) {
     std::string msg = "The attribute '" + std::string(name)
-      + "' was not found or is not a list.";
+      + "' was not found or is not an array.";
     THROW_INTERNAL_ERROR(msg);
   }
 

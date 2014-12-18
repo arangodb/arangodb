@@ -226,7 +226,7 @@ void Scheduler::shutdown () {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* Scheduler::getUserTasks () {
-  TRI_json_t* json = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
 
   if (json == nullptr) {
     return nullptr;
@@ -243,7 +243,7 @@ TRI_json_t* Scheduler::getUserTasks () {
         TRI_json_t* obj = task->toJson();
 
         if (obj != nullptr) {
-          TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, json, obj);
+          TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, obj);
         }
       }
 

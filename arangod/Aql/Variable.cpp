@@ -68,7 +68,7 @@ Variable::~Variable () {
 ////////////////////////////////////////////////////////////////////////////////
 
 triagens::basics::Json Variable::toJson () const {
-  triagens::basics::Json json(triagens::basics::Json::Array, 2);
+  triagens::basics::Json json(triagens::basics::Json::Object, 2);
   json("id", triagens::basics::Json(static_cast<double>(id)))
       ("name", triagens::basics::Json(name));
 

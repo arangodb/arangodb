@@ -282,7 +282,7 @@ static TRI_index_operator_t* SetupConditionsSkiplist (v8::Isolate* isolate,
   size_t numEq = 0;
   size_t lastNonEq = 0;
 
-  TRI_json_t* parameters = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+  TRI_json_t* parameters = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
 
   if (parameters == nullptr) {
     return nullptr;
@@ -342,7 +342,7 @@ static TRI_index_operator_t* SetupConditionsSkiplist (v8::Isolate* isolate,
           goto MEM_ERROR;
         }
 
-        TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, parameters, json);
+        TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, parameters, json);
         // creation of equality operator is deferred until it is finally needed
         ++numEq;
         break;
@@ -383,7 +383,7 @@ static TRI_index_operator_t* SetupConditionsSkiplist (v8::Isolate* isolate,
           goto MEM_ERROR;
         }
 
-        TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, cloned, json);
+        TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, cloned, json);
 
         if (numEq) {
           // create equality operator if one is in queue
@@ -487,7 +487,7 @@ static TRI_index_operator_t* SetupExampleSkiplist (v8::Isolate* isolate,
                                                    TRI_index_t* idx,
                                                    TRI_shaper_t* shaper,
                                                    v8::Handle<v8::Object> example) {
-  TRI_json_t* parameters = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
+  TRI_json_t* parameters = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
 
   if (parameters == nullptr) {
     return nullptr;
@@ -510,7 +510,7 @@ static TRI_index_operator_t* SetupExampleSkiplist (v8::Isolate* isolate,
       return nullptr;
     }
 
-    TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, parameters, json);
+    TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, parameters, json);
   }
 
   if (parameters->_value._objects._length > 0) {

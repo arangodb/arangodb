@@ -428,15 +428,15 @@ TRI_json_t* TRI_JsonIndex (TRI_memory_zone_t* zone,
                            TRI_index_t const* idx) {
   TRI_json_t* json;
 
-  json = TRI_CreateArrayJson(zone);
+  json = TRI_CreateObjectJson(zone);
 
   if (json != nullptr) {
     char* number;
 
     number = TRI_StringUInt64(idx->_iid);
-    TRI_Insert3ArrayJson(zone, json, "id", TRI_CreateStringCopyJson(zone, number));
-    TRI_Insert3ArrayJson(zone, json, "type", TRI_CreateStringCopyJson(zone, TRI_TypeNameIndex(idx->_type)));
-    TRI_Insert3ArrayJson(zone, json, "unique", TRI_CreateBooleanJson(zone, idx->_unique));
+    TRI_Insert3ObjectJson(zone, json, "id", TRI_CreateStringCopyJson(zone, number));
+    TRI_Insert3ObjectJson(zone, json, "type", TRI_CreateStringCopyJson(zone, TRI_TypeNameIndex(idx->_type)));
+    TRI_Insert3ObjectJson(zone, json, "unique", TRI_CreateBooleanJson(zone, idx->_unique));
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, number);
   }
@@ -540,9 +540,9 @@ static TRI_json_t* JsonPrimary (TRI_index_t const* idx) {
     return nullptr;
   }
 
-  TRI_json_t* fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
-  TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRI_VOC_ATTRIBUTE_KEY));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
+  TRI_json_t* fields = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+  TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRI_VOC_ATTRIBUTE_KEY));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
 
   return json;
 }
@@ -935,10 +935,10 @@ static TRI_json_t* JsonEdge (TRI_index_t const* idx) {
     return nullptr;
   }
 
-  TRI_json_t* fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
-  TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRI_VOC_ATTRIBUTE_FROM));
-  TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRI_VOC_ATTRIBUTE_TO));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
+  TRI_json_t* fields = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+  TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRI_VOC_ATTRIBUTE_FROM));
+  TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRI_VOC_ATTRIBUTE_TO));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
 
   return json;
 }
@@ -1115,7 +1115,7 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator,
           TRI_json_t const* jsonObject = static_cast<TRI_json_t* const>(TRI_AtVector(&(relationOperator->_parameters->_value._objects), j));
 
           // find out if the search value is a list or an array
-          if ((TRI_IsListJson(jsonObject) || TRI_IsArrayJson(jsonObject)) &&
+          if ((TRI_IsArrayJson(jsonObject) || TRI_IsObjectJson(jsonObject)) &&
               slOperator->_type != TRI_EQ_INDEX_OPERATOR) {
             // non-equality operator used on list or array data type, this is disallowed
             // because we need to shape these objects first. however, at this place (index lookup)
@@ -1408,12 +1408,12 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t const* idx) {
   // ..........................................................................
 
   TRI_json_t* json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
-  TRI_json_t* fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
+  TRI_json_t* fields = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
   for (size_t j = 0; j < skiplistIndex->_paths._length; ++j) {
-    TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, fieldList[j]));
+    TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, fieldList[j]));
   }
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
 
   TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);
 
@@ -1729,11 +1729,11 @@ static TRI_json_t* JsonFulltextIndex (TRI_index_t const* idx) {
 
   json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "minLength", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) fulltextIndex->_minWordLength));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "minLength", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) fulltextIndex->_minWordLength));
 
-  fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
-  TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, attributeName));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
+  fields = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+  TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, attributeName));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
 
   return json;
 }
@@ -1867,11 +1867,11 @@ void TRI_FreeFulltextIndex (TRI_index_t* idx) {
 
 bool IndexComparator (TRI_json_t const* lhs,
                       TRI_json_t const* rhs) {
-  TRI_json_t* typeJson = TRI_LookupArrayJson(lhs, "type");
+  TRI_json_t* typeJson = TRI_LookupObjectJson(lhs, "type");
   TRI_ASSERT(TRI_IsStringJson(typeJson));
 
   // type must be identical
-  if (! TRI_CheckSameValueJson(typeJson, TRI_LookupArrayJson(rhs, "type"))) {
+  if (! TRI_CheckSameValueJson(typeJson, TRI_LookupObjectJson(rhs, "type"))) {
     return false;
   }
 
@@ -1879,9 +1879,9 @@ bool IndexComparator (TRI_json_t const* lhs,
 
 
   // unique must be identical if present
-  TRI_json_t* value = TRI_LookupArrayJson(lhs, "unique");
+  TRI_json_t* value = TRI_LookupObjectJson(lhs, "unique");
   if (TRI_IsBooleanJson(value)) {
-    if (! TRI_CheckSameValueJson(value, TRI_LookupArrayJson(rhs, "unique"))) {
+    if (! TRI_CheckSameValueJson(value, TRI_LookupObjectJson(rhs, "unique"))) {
       return false;
     }
   }
@@ -1889,73 +1889,73 @@ bool IndexComparator (TRI_json_t const* lhs,
 
   if (type == TRI_IDX_TYPE_GEO1_INDEX) {
     // geoJson must be identical if present
-    value = TRI_LookupArrayJson(lhs, "geoJson");
+    value = TRI_LookupObjectJson(lhs, "geoJson");
     if (TRI_IsBooleanJson(value)) {
-      if (! TRI_CheckSameValueJson(value, TRI_LookupArrayJson(rhs, "geoJson"))) {
+      if (! TRI_CheckSameValueJson(value, TRI_LookupObjectJson(rhs, "geoJson"))) {
         return false;
       }
     }
-    value = TRI_LookupArrayJson(lhs, "ignoreNull");
+    value = TRI_LookupObjectJson(lhs, "ignoreNull");
     if (TRI_IsBooleanJson(value)) {
-      if (! TRI_CheckSameValueJson(value, TRI_LookupArrayJson(rhs, "ignoreNull"))) {
+      if (! TRI_CheckSameValueJson(value, TRI_LookupObjectJson(rhs, "ignoreNull"))) {
         return false;
       }
     }
   }
   else if (type == TRI_IDX_TYPE_GEO2_INDEX) {
-    value = TRI_LookupArrayJson(lhs, "ignoreNull");
+    value = TRI_LookupObjectJson(lhs, "ignoreNull");
     if (TRI_IsBooleanJson(value)) {
-      if (! TRI_CheckSameValueJson(value, TRI_LookupArrayJson(rhs, "ignoreNull"))) {
+      if (! TRI_CheckSameValueJson(value, TRI_LookupObjectJson(rhs, "ignoreNull"))) {
         return false;
       }
     }
   }
   else if (type == TRI_IDX_TYPE_FULLTEXT_INDEX) {
     // minLength
-    value = TRI_LookupArrayJson(lhs, "minLength");
+    value = TRI_LookupObjectJson(lhs, "minLength");
     if (TRI_IsNumberJson(value)) {
-      if (! TRI_CheckSameValueJson(value, TRI_LookupArrayJson(rhs, "minLength"))) {
+      if (! TRI_CheckSameValueJson(value, TRI_LookupObjectJson(rhs, "minLength"))) {
         return false;
       }
     }
   }
   else if (type == TRI_IDX_TYPE_CAP_CONSTRAINT) {
     // size, byteSize
-    value = TRI_LookupArrayJson(lhs, "size");
+    value = TRI_LookupObjectJson(lhs, "size");
     if (TRI_IsNumberJson(value)) {
-      if (! TRI_CheckSameValueJson(value, TRI_LookupArrayJson(rhs, "size"))) {
+      if (! TRI_CheckSameValueJson(value, TRI_LookupObjectJson(rhs, "size"))) {
         return false;
       }
     }
 
-    value = TRI_LookupArrayJson(lhs, "byteSize");
+    value = TRI_LookupObjectJson(lhs, "byteSize");
     if (TRI_IsNumberJson(value)) {
-      if (! TRI_CheckSameValueJson(value, TRI_LookupArrayJson(rhs, "byteSize"))) {
+      if (! TRI_CheckSameValueJson(value, TRI_LookupObjectJson(rhs, "byteSize"))) {
         return false;
       }
     }
   }
 
   // other index types: fields must be identical if present
-  value = TRI_LookupArrayJson(lhs, "fields");
+  value = TRI_LookupObjectJson(lhs, "fields");
 
-  if (TRI_IsListJson(value)) {
+  if (TRI_IsArrayJson(value)) {
     if (type == TRI_IDX_TYPE_HASH_INDEX) {
       // compare fields in arbitrary order
-      TRI_json_t const* r = TRI_LookupArrayJson(rhs, "fields");
+      TRI_json_t const* r = TRI_LookupObjectJson(rhs, "fields");
 
-      if (! TRI_IsListJson(r) ||
+      if (! TRI_IsArrayJson(r) ||
           value->_value._objects._length != r->_value._objects._length) {
         return false;
       }
 
       for (size_t i = 0; i < value->_value._objects._length; ++i) {
-        TRI_json_t const* v = TRI_LookupListJson(value, i);
+        TRI_json_t const* v = TRI_LookupArrayJson(value, i);
 
         bool found = false;
 
         for (size_t j = 0; j < r->_value._objects._length; ++j) {
-          if (TRI_CheckSameValueJson(v, TRI_LookupListJson(r, j))) {
+          if (TRI_CheckSameValueJson(v, TRI_LookupArrayJson(r, j))) {
             found = true;
             break;
           }
@@ -1967,7 +1967,7 @@ bool IndexComparator (TRI_json_t const* lhs,
       }
     }
     else {
-      if (! TRI_CheckSameValueJson(value, TRI_LookupArrayJson(rhs, "fields"))) {
+      if (! TRI_CheckSameValueJson(value, TRI_LookupObjectJson(rhs, "fields"))) {
         return false;
       }
     }

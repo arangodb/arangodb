@@ -118,7 +118,7 @@ mrb_value MR_ObjectJson (mrb_state* mrb, TRI_json_t const* json) {
       // same for STRING and STRING_REFERENCE
       return mrb_str_new(mrb, json->_value._string.data, json->_value._string.length - 1);
 
-    case TRI_JSON_ARRAY: {
+    case TRI_JSON_OBJECT: {
       size_t n;
       size_t i;
       mrb_value a;
@@ -145,7 +145,7 @@ mrb_value MR_ObjectJson (mrb_state* mrb, TRI_json_t const* json) {
       return a;
     }
 
-    case TRI_JSON_LIST: {
+    case TRI_JSON_ARRAY: {
       size_t n;
       size_t i;
       mrb_value a;

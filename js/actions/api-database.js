@@ -401,7 +401,7 @@ function post_api_database (req, res) {
 /// The name of the database
 ///
 /// @RESTDESCRIPTION
-/// Deletes the database along with all data stored in it.
+/// Drops the database along with all data stored in it.
 ///
 /// **Note**: dropping a database is only possible from within the *_system* database.
 /// The *_system* database itself cannot be dropped.
