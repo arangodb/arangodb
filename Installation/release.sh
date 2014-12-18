@@ -46,6 +46,8 @@ make || exit 1
 make examples || exit 1
 make swagger || exit 1
 
+git add -f Documentation/Examples/*.generated
+
 if [ "$TAG" == "1" ];  then
   git commit -m "release version $VERSION" -a
   git push
