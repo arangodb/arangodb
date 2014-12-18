@@ -45,9 +45,11 @@ AC_MSG_NOTICE([LDFLAGS: ${LDFLAGS}])
 AC_MSG_NOTICE([LIBS: ${LIBS}])
 
 CC_VERSION=`${CC} --version 2>&1`
-AC_MSG_NOTICE([CC: ${CC_VERSION}])
+AC_MSG_NOTICE([CC: ${CC}])
+AC_MSG_NOTICE([CC VERSION: ${CC_VERSION}])
 CXX_VERSION=`${CXX} --version 2>&1`
-AC_MSG_NOTICE([CXX: ${CXX_VERSION}])
+AC_MSG_NOTICE([CXX: ${CXX}])
+AC_MSG_NOTICE([CXX VERSION: ${CXX_VERSION}])
 
 echo $FLAG_INFO | tr "|" "\n" | while read a; do
   if test "x$a" != "x";  then
