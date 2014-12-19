@@ -1,6 +1,10 @@
 v2.4.0 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #1168: Aardvark: pagination buttons jumping
+
+* fixed issue #1161: Aardvark: Click on Import JSON imports previously uploaded file
+
 * removed enable-all-in-one-v8, enable-all-in-one-icu and enable-all-in-one-libev
 
 * global internal rename to fix naming incompatibility with JSON:
