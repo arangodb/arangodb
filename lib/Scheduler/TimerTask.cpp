@@ -61,8 +61,8 @@ TimerTask::~TimerTask () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TimerTask::getDescription (TRI_json_t* json) {
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "timed"));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "offset", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, seconds));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "timed"));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "offset", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, seconds));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

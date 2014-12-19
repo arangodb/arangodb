@@ -20,7 +20,7 @@ Lists all graph names stored in this database.ssss
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-Returned if  the module is available and the graphs could be listed.
+Is returned if the module is available and the graphs could be listed.
 
 @EXAMPLES
 
@@ -39,15 +39,15 @@ The creation of a graph requires the name of the graph and a definition of its e
 Name of the graph.
 
 @RESTPARAM{edgeDefinitions, string, optional}
-A list of definitions for the edges, see [edge definitions](../General-Graphs/Management.md#edge_definitions).
+An array of definitions for the edges, see [edge definitions](../General-Graphs/Management.md#edge_definitions).
 
 @RESTPARAM{orphanCollections, string, optional}
-A list of additional vertex collections.
+An array of additional vertex collections.
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{201}
-Returned if the graph could be listed created.
+Is returned if the graph could be created.
 The body contains the graph configuration that has been stored.
 
 @RESTRETURNCODE{409}
@@ -126,7 +126,7 @@ The name of the graph.
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-Returned if the collections could be listed.
+Is returned if the collections could be listed.
 
 @RESTRETURNCODE{404}
 Returned if no graph with this name could be found.
@@ -212,7 +212,7 @@ The name of the graph.
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-Returned if the collections could be listed.
+Is returned if the edge definitions could be listed.
 
 @RESTRETURNCODE{404}
 Returned if no graph with this name could be found.
@@ -227,8 +227,8 @@ Returned if no graph with this name could be found.
 
 @RESTDESCRIPTION
 Adds an additional edge definition to the graph.
-This edge definition has to contain a *collection* a list of each *from* and *to* vertex collections.
-A edge definition can only be added if this definition is either not used in any other graph, or it is used with exactly the same definition.
+This edge definition has to contain a *collection* and an array of each *from* and *to* vertex collections.
+An edge definition can only be added if this definition is either not used in any other graph, or it is used with exactly the same definition.
 It is not possible to store a definition "e" from "v1" to "v2" in the one graph, and "e" from "v2" to "v1" in the other graph.
 
 @RESTURLPARAMS

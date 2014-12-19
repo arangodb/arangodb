@@ -440,7 +440,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
       TRI_json_t const* options = (*it).second._json;
 
       TRI_voc_tick_t id = 0;
-      TRI_json_t const* v = TRI_LookupArrayJson(options, "id");
+      TRI_json_t const* v = TRI_LookupObjectJson(options, "id");
       if (TRI_IsStringJson(v)) {
         id = triagens::basics::StringUtils::uint64(v->_value._string.data);
       }
@@ -637,7 +637,7 @@ bool HeartbeatThread::fetchUsers (TRI_vocbase_t* vocbase) {
   
   if (res == TRI_ERROR_NO_ERROR) {
     // we were able to read from the _users collection
-    TRI_ASSERT(TRI_IsListJson(json));
+    TRI_ASSERT(TRI_IsArrayJson(json));
 
     if (json->_value._objects._length == 0) {
       // no users found, now insert initial default user

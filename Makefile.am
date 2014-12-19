@@ -516,25 +516,21 @@ endif
 ### @brief libev
 ################################################################################
 
-if ENABLE_ALL_IN_ONE_LIBEV
-include 3rdParty/Makefile.all-in-one-libev
-endif
+include 3rdParty/Makefile.libev
 
 ################################################################################
 ### @brief mruby
 ################################################################################
 
 if ENABLE_MRUBY
-include 3rdParty/Makefile.all-in-one-mruby
+include 3rdParty/Makefile.mruby
 endif
 
 ################################################################################
 ### @brief V8
 ################################################################################
 
-if ENABLE_ALL_IN_ONE_V8
-include 3rdParty/Makefile.all-in-one-v8
-endif
+include 3rdParty/Makefile.v8
 
 ################################################################################
 ### @brief zlib

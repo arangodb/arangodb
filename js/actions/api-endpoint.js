@@ -44,28 +44,28 @@ var internal = require("internal");
 /// @RESTHEADER{GET /_api/endpoint, Return list of all endpoints}
 ///
 /// @RESTDESCRIPTION
-/// Returns a list of all configured endpoints the server is listening on. For
-/// each endpoint, the list of allowed databases is returned too if set.
+/// Returns an array of all configured endpoints the server is listening on. For
+/// each endpoint, the array of allowed databases is returned too if set.
 ///
-/// The result is a JSON hash which has the endpoints as keys, and the list of
+/// The result is a JSON object which has the endpoints as keys, and an array of
 /// mapped database names as values for each endpoint.
 ///
-/// If a list of mapped databases is empty, it means that all databases can be
-/// accessed via the endpoint. If a list of mapped databases contains more than
+/// If an array of mapped databases is empty, it means that all databases can be
+/// accessed via the endpoint. If an array of mapped databases contains more than
 /// one database name, this means that any of the databases might be accessed
-/// via the endpoint, and the first database in the list will be treated as
+/// via the endpoint, and the first database in the arry will be treated as
 /// the default database for the endpoint. The default database will be used
 /// when an incoming request does not specify a database name in the request
 /// explicitly.
 ///
-/// **Note**: retrieving the list of all endpoints is allowed in the system database
+/// **Note**: retrieving the array of all endpoints is allowed in the system database
 /// only. Calling this action in any other database will make the server return
 /// an error.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// is returned when the list of endpoints can be determined successfully.
+/// is returned when the array of endpoints can be determined successfully.
 ///
 /// @RESTRETURNCODE{400}
 /// is returned if the action is not carried out in the system database.
@@ -104,19 +104,19 @@ var internal = require("internal");
 /// A JSON object describing the endpoint.
 ///
 /// @RESTDESCRIPTION
-/// The request body must be JSON hash with the following attributes:
+/// The request body must be JSON object with the following attributes:
 ///
 /// - *endpoint*: the endpoint specification, e.g. *tcp://127.0.0.1:8530*
 ///
 /// - *databases*: a list of database names the endpoint is responsible for.
 ///
-/// If *databases* is an empty list, all databases present in the server will
+/// If *databases* is an empty array, all databases present in the server will
 /// become accessible via the endpoint, with the *_system* database being the
 /// default database.
 ///
 /// If *databases* is non-empty, only the specified databases will become
 /// available via the endpoint. The first database name in the *databases*
-/// list will also become the default database for the endpoint. The default
+/// array will also become the default database for the endpoint. The default
 /// database will always be used if a request coming in on the endpoint does
 /// not specify the database name explicitly.
 ///
@@ -219,7 +219,7 @@ var internal = require("internal");
 /// The endpoint to delete, e.g. *tcp://127.0.0.1:8529*.
 ///
 /// @RESTDESCRIPTION
-/// This operation deletes an existing endpoint from the list of all endpoints,
+/// This operation deletes an existing endpoint from the array of all endpoints,
 /// and makes the server stop listening on the endpoint.
 ///
 /// **Note**: deleting and disconnecting an endpoint is allowed in the system

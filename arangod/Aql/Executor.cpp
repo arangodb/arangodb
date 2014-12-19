@@ -85,8 +85,8 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   // n = number
   // s = string
   // p = primitive
-  // l = list
-  // a = (hash) array/document
+  // l = array
+  // a = object / document
   // r = regex (a string with a special format). note: the regex type is mutually exclusive with all other types
 
   // type check functions
@@ -94,13 +94,19 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "IS_BOOL",                     Function("IS_BOOL",                     "AQL_IS_BOOL", ".", true, false, true, &Functions::IsBool) },
   { "IS_NUMBER",                   Function("IS_NUMBER",                   "AQL_IS_NUMBER", ".", true, false, true, &Functions::IsNumber) },
   { "IS_STRING",                   Function("IS_STRING",                   "AQL_IS_STRING", ".", true, false, true, &Functions::IsString) },
-  { "IS_LIST",                     Function("IS_LIST",                     "AQL_IS_LIST", ".", true, false, true, &Functions::IsList) },
-  { "IS_DOCUMENT",                 Function("IS_DOCUMENT",                 "AQL_IS_DOCUMENT", ".", true, false, true, &Functions::IsDocument) },
+  { "IS_ARRAY",                    Function("IS_ARRAY",                    "AQL_IS_ARRAY", ".", true, false, true, &Functions::IsArray) },
+  // IS_LIST is an alias for IS_ARRAY
+  { "IS_LIST",                     Function("IS_LIST",                     "AQL_IS_LIST", ".", true, false, true, &Functions::IsArray) },
+  { "IS_OBJECT",                   Function("IS_OBJECT",                   "AQL_IS_OBJECT", ".", true, false, true, &Functions::IsObject) },
+  // IS_DOCUMENT is an alias for IS_OBJECT
+  { "IS_DOCUMENT",                 Function("IS_DOCUMENT",                 "AQL_IS_DOCUMENT", ".", true, false, true, &Functions::IsObject) }, 
   
   // type cast functions
   { "TO_NUMBER",                   Function("TO_NUMBER",                   "AQL_TO_NUMBER", ".", true, false, true) },
   { "TO_STRING",                   Function("TO_STRING",                   "AQL_TO_STRING", ".", true, false, true) },
   { "TO_BOOL",                     Function("TO_BOOL",                     "AQL_TO_BOOL", ".", true, false, true) },
+  { "TO_ARRAY",                    Function("TO_ARRAY",                    "AQL_TO_ARRAY", ".", true, false, true) },
+  // TO_LIST is an alias for TO_ARRAY
   { "TO_LIST",                     Function("TO_LIST",                     "AQL_TO_LIST", ".", true, false, true) },
   
   // string functions
@@ -658,7 +664,7 @@ void Executor::generateCodeFunctionCall (AstNode const* node) {
 
   auto args = node->getMember(0);
   TRI_ASSERT(args != nullptr);
-  TRI_ASSERT(args->type == NODE_TYPE_LIST);
+  TRI_ASSERT(args->type == NODE_TYPE_ARRAY);
 
   _buffer->appendText("_AQL.", 5);
   _buffer->appendText(func->internalName);
@@ -710,7 +716,7 @@ void Executor::generateCodeUserFunctionCall (AstNode const* node) {
 
   auto args = node->getMember(0);
   TRI_ASSERT(args != nullptr);
-  TRI_ASSERT(args->type == NODE_TYPE_LIST);
+  TRI_ASSERT(args->type == NODE_TYPE_ARRAY);
 
   _buffer->appendText("_AQL.FCALL_USER(");
   generateCodeString(name);
@@ -833,11 +839,11 @@ void Executor::generateCodeNode (AstNode const* node) {
       node->appendValue(_buffer);
       break;
 
-    case NODE_TYPE_LIST:
+    case NODE_TYPE_ARRAY:
       generateCodeList(node);
       break;
 
-    case NODE_TYPE_ARRAY:
+    case NODE_TYPE_OBJECT:
       generateCodeArray(node);
       break;
     

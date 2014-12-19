@@ -24,18 +24,18 @@ Wait until edge has been sync to disk.
 
 `edge (json,required)`
 
-The call expects a JSON hash array as body with the edge properties:
+The call expects a JSON object as body with the edge properties:
 !SUBSECTION Description
 
 Creates an edge in a graph.
-The call expects a JSON hash array as body with the edge properties:
+The call expects a JSON object as body with the edge properties:
 
 * _key: The name of the edge (optional, if [edge collection](../Glossary/README.html#edge_collection) allows user defined keys).
 * _from: The name of the from vertex.
 * _to: The name of the to vertex.
 * $label: A label for the edge (optional).
 
-Returns an object with an attribute edge containing the list of all edge properties.
+Returns an object with an attribute edge containing the array of all edge properties.
 
 !SUBSECTION Return codes
 
@@ -99,7 +99,7 @@ if-match (string,optional)
 If the "If-Match" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision ad the given etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the etag in an attribute rev in the URL.
 !SUBSECTION Description
 
-Returns an object with an attribute edge containing a list of all edge properties.
+Returns an object with an attribute edge containing an array of all edge properties.
 
 !SUBSECTION Return codes
 
@@ -169,7 +169,7 @@ Revision of an edge
 
 `edge (json,required)`
 
-The call expects a JSON hash array as body with the new edge properties.
+The call expects a JSON object as body with the new edge properties.
 
 !SUBSECTION HTTP header parameters
 
@@ -179,9 +179,9 @@ If the "If-Match" header is given, then it must contain exactly one etag. The do
 !SUBSECTION Description
 
 Replaces the optional edge properties.
-The call expects a JSON hash array as body with the new edge properties.
+The call expects a JSON object as body with the new edge properties.
 
-Returns an object with an attribute edge containing a list of all edge properties.
+Returns an object with an attribute edge containing an array of all edge properties.
 
 !SUBSECTION Return codes
 
@@ -255,7 +255,7 @@ Modify the behavior of the patch command to remove any attribute
 
 `edge-properties (json,required)`
 
-The call expects a JSON hash array as body with the properties to patch.
+The call expects a JSON object as body with the properties to patch.
 
 !SUBSECTION HTTP header parameters
 
@@ -268,7 +268,7 @@ If the "If-Match" header is given, then it must contain exactly one etag. The do
 Partially updates the edge properties.
 Setting an attribute value to null in the patch document will cause a value of null be saved for the attribute by default. If the intention is to delete existing attributes with the patch command, the URL parameter keepNull can be used with a value of false. This will modify the behavior of the patch command to remove any attributes from the existing document that are contained in the patch document with an attribute value of null.
 
-Returns an object with an attribute edge containing a list of all edge properties.
+Returns an object with an attribute edge containing an array of all edge properties.
 
 !SUBSECTION Return codes
 
@@ -392,12 +392,12 @@ The name of the graph
 
 `graph (json,required)`
 
-The call expects a JSON hash array as body to filter the result:
+The call expects a JSON object as body to filter the result:
 
 !SUBSECTION Description
 
 Returns a cursor.
-The call expects a JSON hash array as body to filter the result:
+The call expects a JSON object as body to filter the result:
 
 * batchSize: the batch size of the returned cursor
 * limit: limit the result size
@@ -500,13 +500,13 @@ The name of the vertex
 
 `edge-properties (json,required)`
 
-The call expects a JSON hash array as body to filter the result:
+The call expects a JSON object as body to filter the result:
 
 !SUBSECTION Description
 
 Returns a cursor.
 
-The call expects a JSON hash array as body to filter the result:
+The call expects a JSON object as body to filter the result:
 
 * batchSize: the batch size of the returned cursor
 * limit: limit the result size

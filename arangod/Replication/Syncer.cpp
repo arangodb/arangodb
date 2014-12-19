@@ -189,11 +189,11 @@ string Syncer::rewriteLocation (void* data, const string& location) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_voc_cid_t Syncer::getCid (TRI_json_t const* json) const {
-  if (! JsonHelper::isArray(json)) {
+  if (! JsonHelper::isObject(json)) {
     return 0;
   }
 
-  TRI_json_t const* id = JsonHelper::getArrayElement(json, "cid");
+  TRI_json_t const* id = JsonHelper::getObjectElement(json, "cid");
 
   if (JsonHelper::isString(id)) {
     // string cid, e.g. "9988488"
@@ -344,7 +344,7 @@ int Syncer::createCollection (TRI_json_t const* json,
     *dst = nullptr;
   }
 
-  if (! JsonHelper::isArray(json)) {
+  if (! JsonHelper::isObject(json)) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
@@ -377,8 +377,8 @@ int Syncer::createCollection (TRI_json_t const* json,
 
   TRI_json_t* keyOptions = nullptr;
 
-  if (JsonHelper::isArray(JsonHelper::getArrayElement(json, "keyOptions"))) {
-    keyOptions = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, JsonHelper::getArrayElement(json, "keyOptions"));
+  if (JsonHelper::isObject(JsonHelper::getObjectElement(json, "keyOptions"))) {
+    keyOptions = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, JsonHelper::getObjectElement(json, "keyOptions"));
   }
 
   TRI_col_info_t params;
@@ -465,9 +465,9 @@ int Syncer::dropCollection (TRI_json_t const* json,
 ////////////////////////////////////////////////////////////////////////////////
 
 int Syncer::createIndex (TRI_json_t const* json) {
-  TRI_json_t const* indexJson = JsonHelper::getArrayElement(json, "index");
+  TRI_json_t const* indexJson = JsonHelper::getObjectElement(json, "index");
 
-  if (! JsonHelper::isArray(indexJson)) {
+  if (! JsonHelper::isObject(indexJson)) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
@@ -588,7 +588,7 @@ int Syncer::getMasterState (string& errorMsg) {
     TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE,
                                       response->getBody().c_str());
 
-    if (JsonHelper::isArray(json)) {
+    if (JsonHelper::isObject(json)) {
       res = handleStateResponse(json, errorMsg);
 
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -615,16 +615,16 @@ int Syncer::handleStateResponse (TRI_json_t const* json,
   string const endpointString = " from endpoint '" + string(_masterInfo._endpoint) + "'";
 
   // process "state" section
-  TRI_json_t const* state = JsonHelper::getArrayElement(json, "state");
+  TRI_json_t const* state = JsonHelper::getObjectElement(json, "state");
 
-  if (! JsonHelper::isArray(state)) {
+  if (! JsonHelper::isObject(state)) {
     errorMsg = "state section is missing in response" + endpointString;
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
   // state."lastLogTick"
-  TRI_json_t const* tick = JsonHelper::getArrayElement(state, "lastLogTick");
+  TRI_json_t const* tick = JsonHelper::getObjectElement(state, "lastLogTick");
 
   if (! JsonHelper::isString(tick)) {
     errorMsg = "lastLogTick is missing in response" + endpointString;
@@ -638,16 +638,16 @@ int Syncer::handleStateResponse (TRI_json_t const* json,
   bool running = JsonHelper::getBooleanValue(state, "running", false);
 
   // process "server" section
-  TRI_json_t const* server = JsonHelper::getArrayElement(json, "server");
+  TRI_json_t const* server = JsonHelper::getObjectElement(json, "server");
 
-  if (! JsonHelper::isArray(server)) {
+  if (! JsonHelper::isObject(server)) {
     errorMsg = "server section is missing in response" + endpointString;
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
   // server."version"
-  TRI_json_t const* version = JsonHelper::getArrayElement(server, "version");
+  TRI_json_t const* version = JsonHelper::getObjectElement(server, "version");
 
   if (! JsonHelper::isString(version)) {
     errorMsg = "server version is missing in response" + endpointString;
@@ -656,7 +656,7 @@ int Syncer::handleStateResponse (TRI_json_t const* json,
   }
 
   // server."serverId"
-  TRI_json_t const* serverId = JsonHelper::getArrayElement(server, "serverId");
+  TRI_json_t const* serverId = JsonHelper::getObjectElement(server, "serverId");
 
   if (! JsonHelper::isString(serverId)) {
     errorMsg = "server id is missing in response" + endpointString;

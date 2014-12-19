@@ -523,11 +523,6 @@ unittests-shell-server-only:
 	@echo
 
 
-.PHONY: unittests-shell-server-ahuacatl
-
-unittests-shell-server-ahuacatl:
-	@echo "I am deprecated!!! Please do not call me anymore!"
-
 ################################################################################
 ### @brief SHELL SERVER TESTS (AQL)
 ################################################################################

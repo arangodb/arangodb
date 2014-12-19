@@ -182,8 +182,8 @@ function parseBodyForCreateCollection (req, res) {
 /// - *name*: The name of the collection.
 ///
 /// - *waitForSync* (optional, default: false): If *true* then
-///   the data is synchronised to disk before returning from a create or
-///   update of a document.
+///   the data is synchronised to disk before returning from a document create,
+///   update, replace or removal operation.
 ///
 /// - *doCompact* (optional, default is *true*): whether or not the collection
 ///   will be compacted.
@@ -358,9 +358,9 @@ function post_api_collection (req, res) {
 /// Whether or not system collections should be excluded from the result.
 ///
 /// @RESTDESCRIPTION
-/// Returns an object with an attribute *collections* containing a
-/// list of all collection descriptions. The same information is also
-/// available in the *names* as hash map with the collection names
+/// Returns an object with an attribute *collections* containing an
+/// array of all collection descriptions. The same information is also
+/// available in the *names* as an object with the collection names
 /// as keys.
 ///
 /// By providing the optional URL parameter *excludeSystem* with a value of
@@ -438,6 +438,7 @@ function get_api_collections (req, res) {
 ///  - 3: loaded
 ///  - 4: in the process of being unloaded
 ///  - 5: deleted
+///  - 6: loading
 ///
 /// Every other status indicates a corrupted collection.
 ///
@@ -470,8 +471,8 @@ function get_api_collections (req, res) {
 /// *waitForSync*, *doCompact*, *journalSize*, and *isVolatile* attributes.
 /// This is achieved by forcing a load of the underlying collection.
 ///
-/// - *waitForSync*: If *true* then creating or changing a
-///   document will wait until the data has been synchronised to disk.
+/// - *waitForSync*: If *true* then creating, changing or removing
+///   documents will wait until the data has been synchronised to disk.
 ///
 /// - *doCompact*: Whether or not the collection will be compacted.
 ///
@@ -1505,24 +1506,24 @@ function put_api_collection (req, res) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_delete_api_collection
-/// @brief deletes a collection
+/// @brief drops a collection
 ///
-/// @RESTHEADER{DELETE /_api/collection/{collection-name}, Delete collection}
+/// @RESTHEADER{DELETE /_api/collection/{collection-name}, Drops collection}
 ///
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{collection-name,string,required}
-/// The name of the collection to delete.
+/// The name of the collection to drop.
 ///
 /// @RESTDESCRIPTION
-/// Deletes a collection identified by *collection-name*.
+/// Drops the collection identified by *collection-name*.
 ///
-/// If the collection was successfully deleted then, an object is returned with
+/// If the collection was successfully dropped, an object is returned with
 /// the following attributes:
 ///
 /// - *error*: *false*
 ///
-/// - *id*: The identifier of the deleted collection.
+/// - *id*: The identifier of the dropped collection.
 ///
 /// @RESTRETURNCODES
 ///

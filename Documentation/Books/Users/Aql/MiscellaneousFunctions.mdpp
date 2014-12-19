@@ -5,8 +5,8 @@ AQL offers the following functions to let the user control the flow of operation
 - *NOT_NULL(alternative, ...)*: Returns the first alternative that is not *null*, 
   and *null* if all alternatives are *null* themselves
 
-- *FIRST_LIST(alternative, ...)*: Returns the first alternative that is a list, and
-  *null* if none of the alternatives is a list
+- *FIRST_LIST(alternative, ...)*: Returns the first alternative that is an array, and
+  *null* if none of the alternatives is an array
 
 - *FIRST_DOCUMENT(alternative, ...)*: Returns the first alternative that is a document,
   and *null* if none of the alternatives is a document
@@ -16,7 +16,7 @@ AQL offers the following functions to let the user control the flow of operation
 Finally, AQL supports the following functions that do not belong to any of the other
 function categories:
 
-- *COLLECTIONS()*: Returns a list of collections. Each collection is returned as a document
+- *COLLECTIONS()*: Returns an array of collections. Each collection is returned as a document
   with attributes *name* and *_id*
 
 - *CURRENT_USER()*: Returns the name of the current user. The current user is the user 
@@ -29,8 +29,8 @@ function categories:
   in the specified collection. If there is a mismatch between the *collection* passed and
   the collection specified in *id*, then *null* will be returned. Additionally, if the
   *collection* matches the collection value specified in *id* but the document cannot be
-  found, *null* will be returned. This function also allows *id* to be a list of ids.
-  In this case, the function will return a list of all documents that could be found. 
+  found, *null* will be returned. This function also allows *id* to be an array of ids.
+  In this case, the function will return an array of all documents that could be found. 
 
 *Examples*
   
@@ -44,7 +44,7 @@ function categories:
   a single parameter *id* as follows:
 
 - *DOCUMENT(id)*: In this case, *id* must either be a document handle string
-  (consisting of collection name and document key) or a list of document handle strings, e.g.
+  (consisting of collection name and document key) or an array of document handle strings, e.g.
 
       DOCUMENT("users/john")
       DOCUMENT([ "users/john", "users/amy" ])

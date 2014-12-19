@@ -111,8 +111,8 @@ Handler::status_t RestUploadHandler::execute() {
 
   TRI_json_t json;
 
-  TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &json);
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "filename", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, fullName));
+  TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &json);
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &json, "filename", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, fullName));
 
   generateResult(HttpResponse::CREATED, &json);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);

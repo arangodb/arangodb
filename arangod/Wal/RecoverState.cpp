@@ -1110,7 +1110,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       char const* properties = reinterpret_cast<char const*>(m) + sizeof(collection_change_marker_t);
       TRI_json_t* json = triagens::basics::JsonHelper::fromString(properties);
 
-      if (! TRI_IsArrayJson(json)) {
+      if (! TRI_IsObjectJson(json)) {
         if (json != nullptr) {
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
         }
@@ -1127,17 +1127,17 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       parameters._waitForSync = vocbase->_settings.defaultWaitForSync;
       parameters._maximalSize = vocbase->_settings.defaultMaximalSize; 
 
-      value = TRI_LookupArrayJson(json, "doCompact");
+      value = TRI_LookupObjectJson(json, "doCompact");
       if (TRI_IsBooleanJson(value)) {
         parameters._doCompact = value->_value._boolean;
       }
       
-      value = TRI_LookupArrayJson(json, "waitForSync");
+      value = TRI_LookupObjectJson(json, "waitForSync");
       if (TRI_IsBooleanJson(value)) {
         parameters._waitForSync = value->_value._boolean;
       }
       
-      value = TRI_LookupArrayJson(json, "maximalSize");
+      value = TRI_LookupObjectJson(json, "maximalSize");
       if (TRI_IsNumberJson(value)) {
         parameters._maximalSize = static_cast<TRI_voc_size_t>(value->_value._number);
       }
@@ -1194,7 +1194,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       char const* properties = reinterpret_cast<char const*>(m) + sizeof(index_create_marker_t);
       TRI_json_t* json = triagens::basics::JsonHelper::fromString(properties);
       
-      if (! TRI_IsArrayJson(json)) {
+      if (! TRI_IsObjectJson(json)) {
         if (json != nullptr) {
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
         }
@@ -1205,7 +1205,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         return state->canContinue();
       }
 
-      if (! TRI_IsArrayJson(json)) {
+      if (! TRI_IsObjectJson(json)) {
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
         LOG_WARNING("cannot unpack index properties for index %llu, collection %llu in database %llu", 
                     (unsigned long long) indexId, 
@@ -1278,7 +1278,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       char const* properties = reinterpret_cast<char const*>(m) + sizeof(collection_create_marker_t);
       TRI_json_t* json = triagens::basics::JsonHelper::fromString(properties);
         
-      if (! TRI_IsArrayJson(json)) {
+      if (! TRI_IsObjectJson(json)) {
         if (json != nullptr) {
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
         }
@@ -1289,7 +1289,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       }
 
       // check if there is another collection with the same name as the one that we attempt to create
-      TRI_json_t const* name = TRI_LookupArrayJson(json, "name");
+      TRI_json_t const* name = TRI_LookupObjectJson(json, "name");
 
       if (TRI_IsStringJson(name)) {
         collection = TRI_LookupCollectionByNameVocBase(vocbase, name->_value._string.data);
@@ -1359,7 +1359,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       char const* properties = reinterpret_cast<char const*>(m) + sizeof(database_create_marker_t);
       TRI_json_t* json = triagens::basics::JsonHelper::fromString(properties);
         
-      if (! TRI_IsArrayJson(json)) {
+      if (! TRI_IsObjectJson(json)) {
         if (json != nullptr) {
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
         }
@@ -1367,7 +1367,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         return state->canContinue();
       }
 
-      TRI_json_t const* nameValue = TRI_LookupArrayJson(json, "name");
+      TRI_json_t const* nameValue = TRI_LookupObjectJson(json, "name");
 
       if (! TRI_IsStringJson(nameValue)) {
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);

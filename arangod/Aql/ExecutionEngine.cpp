@@ -508,7 +508,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
                               std::string const& shardId, 
                               TRI_json_t* jsonPlan) {
     // create a JSON representation of the plan
-    Json result(Json::Array);
+    Json result(Json::Object);
 
     // inject the current shard id into the collection
     collection->setCurrentShard(shardId);
@@ -516,8 +516,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     Json jsonNodesList(TRI_UNKNOWN_MEM_ZONE, jsonPlan, Json::NOFREE);
     
     // add the collection
-    Json jsonCollectionsList(Json::List);
-    Json json(Json::Array);
+    Json jsonCollectionsList(Json::Array);
+    Json json(Json::Object);
     jsonCollectionsList(json("name", Json(collection->getName()))
                             ("type", Json(TRI_TransactionTypeGetStr(collection->accessType))));
 
@@ -532,10 +532,10 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       result.set("part", Json("dependent"));
     }
 
-    Json optimizerOptionsRules(Json::List);
-    Json optimizerOptions(Json::Array);
+    Json optimizerOptionsRules(Json::Array);
+    Json optimizerOptions(Json::Object);
 
-    Json options(Json::Array);
+    Json options(Json::Object);
     optimizerOptionsRules.add(Json("-all"));
     optimizerOptions.set("rules", optimizerOptionsRules);
     options.set("optimizer", optimizerOptions);

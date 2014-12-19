@@ -207,12 +207,12 @@ void Collection::fillIndexes () const {
 
     TRI_json_t const* json = (*collectionInfo).getIndexes();
 
-    if (TRI_IsListJson(json)) {
-      size_t const n = TRI_LengthListJson(json);
+    if (TRI_IsArrayJson(json)) {
+      size_t const n = TRI_LengthArrayJson(json);
       indexes.reserve(n);
 
       for (size_t i = 0; i < n; ++i) {
-        TRI_json_t const* v = TRI_LookupListJson(json, i);
+        TRI_json_t const* v = TRI_LookupArrayJson(json, i);
         if (v != nullptr) {
           indexes.emplace_back(new Index(v));
         }
@@ -231,19 +231,19 @@ void Collection::fillIndexes () const {
     }
 
     TRI_json_t const* json = (*collectionInfo).getIndexes();
-    if (! TRI_IsListJson(json)) {
+    if (! TRI_IsArrayJson(json)) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected index list format");
     }
 
-    size_t const n = TRI_LengthListJson(json);
+    size_t const n = TRI_LengthArrayJson(json);
     indexes.reserve(n);
       
     // register indexes
     for (size_t i = 0; i < n; ++i) {
-      TRI_json_t const* v = TRI_LookupListJson(json, i);
-      if (TRI_IsArrayJson(v)) {
+      TRI_json_t const* v = TRI_LookupArrayJson(json, i);
+      if (TRI_IsObjectJson(v)) {
         // lookup index id
-        TRI_json_t const* id = TRI_LookupArrayJson(v, "id");
+        TRI_json_t const* id = TRI_LookupObjectJson(v, "id");
         if (! TRI_IsStringJson(id)) {
           continue;
         }

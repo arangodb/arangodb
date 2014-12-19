@@ -399,9 +399,9 @@
 ///   operation.
 /// - 1562: @LIT{division by zero}
 ///   Will be raised when there is an attempt to divide by zero.
-/// - 1563: @LIT{list expected}
-///   Will be raised when a non-list operand is used for an operation that
-///   expects a list argument operand.
+/// - 1563: @LIT{array expected}
+///   Will be raised when a non-array operand is used for an operation that
+///   expects an array argument operand.
 /// - 1569: @LIT{FAIL(\%s) called}
 ///   Will be raised when the function FAIL() is called from inside a query.
 /// - 1570: @LIT{no suitable geo index found for geo restriction on '\%s'}
@@ -2248,15 +2248,15 @@ void TRI_InitialiseErrorMessages ();
 #define TRI_ERROR_QUERY_DIVISION_BY_ZERO                                  (1562)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1563: ERROR_QUERY_LIST_EXPECTED
+/// @brief 1563: ERROR_QUERY_ARRAY_EXPECTED
 ///
-/// list expected
+/// array expected
 ///
-/// Will be raised when a non-list operand is used for an operation that
-/// expects a list argument operand.
+/// Will be raised when a non-array operand is used for an operation that
+/// expects an array argument operand.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_ERROR_QUERY_LIST_EXPECTED                                     (1563)
+#define TRI_ERROR_QUERY_ARRAY_EXPECTED                                    (1563)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1569: ERROR_QUERY_FAIL_CALLED

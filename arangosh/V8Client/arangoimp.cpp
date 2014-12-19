@@ -279,7 +279,7 @@ int main (int argc, char* argv[]) {
 
   if (BaseClient.endpointServer() == nullptr) {
     cerr << "invalid value for --server.endpoint ('" << BaseClient.endpointString() << "')" << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   ClientConnection = new V8ClientConnection(BaseClient.endpointServer(),
@@ -297,7 +297,7 @@ int main (int argc, char* argv[]) {
     cerr << "Could not connect to endpoint '" << BaseClient.endpointServer()->getSpecification()
          << "', database: '" << BaseClient.databaseName() << "'" << endl;
     cerr << "Error message: '" << ClientConnection->getErrorMessage() << "'" << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   // successfully connected
@@ -337,7 +337,7 @@ int main (int argc, char* argv[]) {
   }
   else {
     cerr << "Wrong length of quote character." << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   // separator
@@ -346,19 +346,19 @@ int main (int argc, char* argv[]) {
   }
   else {
     cerr << "Separator must be exactly one character." << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   // collection name
   if (CollectionName == "") {
     cerr << "Collection name is missing." << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   // filename
   if (FileName == "") {
     cerr << "File name is missing." << endl;
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   if (FileName != "-" && ! FileUtils::isRegularFile(FileName)) {

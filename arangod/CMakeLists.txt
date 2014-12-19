@@ -102,7 +102,7 @@ add_executable(
     RestServer/ArangoServer.cpp
     RestServer/ConsoleThread.cpp
     RestServer/VocbaseContext.cpp
-    RestServer/arango.cpp
+    RestServer/arangod.cpp
     SkipLists/skiplistIndex.cpp
     Utils/DocumentHelper.cpp
     Utils/Exception.cpp

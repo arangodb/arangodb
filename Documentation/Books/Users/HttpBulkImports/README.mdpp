@@ -9,10 +9,10 @@ import the data:
 * self-contained JSON documents: in this case, each document contains all 
   attribute names and values. Attribute names may be completely different
   among the documents uploaded
-* attribute names plus document data: in this case, the first document must 
-  be a JSON list containing the attribute names of the documents that follow.
-  The following documents must be lists containing only the document data.
-  Data will be mapped to the attribute names by attribute positions.
+* attribute names plus document data: in this case, the first array must 
+  contain the attribute names of the documents that follow. The following arrays
+  containing only the attribute values. Attribute values will be mapped to the 
+  attribute names by positions.
 
 The endpoint address is */_api/import* for both input mechanisms. Data must be
 sent to this URL using an HTTP POST request. The data to import must be
@@ -38,6 +38,6 @@ might have been imported.
 
 The *details* URL parameter can be set to *true* to make the import API return
 details about documents that could not be imported. If *details* is *true*, then
-the result will also contain a *details* attribute which is a list of detailed
+the result will also contain a *details* attribute which is an array of detailed
 error messages. If the *details* is set to *false* or omitted, no details will be
 returned.
