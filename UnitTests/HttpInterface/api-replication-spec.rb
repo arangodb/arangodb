@@ -37,7 +37,6 @@ describe ArangoDB do
       end
 
       after do
-        ArangoDB.put(api + "/logger-stop", :body => "")
       end
 
 ################################################################################
@@ -64,96 +63,6 @@ describe ArangoDB do
         server = all['server']
         server['serverId'].should match(/^\d+$/)
         server.should have_key('version')
-      end
-
-################################################################################
-## start
-################################################################################
-      
-      it "starting the logger" do
-        cmd = api + "/logger-start"
-        doc = ArangoDB.log_put("#{prefix}-logger-start", cmd, :body => "")
-
-        doc.code.should eq(200)
-        doc.parsed_response['running'].should eq(true)
-
-        # restart
-        cmd = api + "/logger-start"
-        doc = ArangoDB.log_put("#{prefix}-logger-start", cmd, :body => "")
-
-        doc.code.should eq(200)
-        doc.parsed_response['running'].should eq(true)
-
-        # fetch state
-        cmd = api + "/logger-state"
-        doc = ArangoDB.log_get("#{prefix}-logger-start", cmd, :body => "")
-
-        doc.code.should eq(200)
-        all = doc.parsed_response
-        all.should have_key('state')
-        all.should have_key('server')
-        all.should have_key('clients')
-
-        state = all['state']
-        state['running'].should eq(true)
-        state['lastLogTick'].should match(/^\d+$/)
-        state['time'].should match(/^\d+-\d+-\d+T\d+:\d+:\d+Z$/)
-
-        server = all['server']
-        server['serverId'].should match(/^\d+$/)
-        server.should have_key('version')
-      end
-
-################################################################################
-## start / stop
-################################################################################
-      
-      it "starting and stopping the logger" do
-        cmd = api + "/logger-start"
-        doc = ArangoDB.log_put("#{prefix}-logger-startstop", cmd, :body => "")
-
-        doc.code.should eq(200)
-        doc.parsed_response['running'].should eq(true)
-
-        # stop
-        cmd = api + "/logger-stop"
-        doc = ArangoDB.log_put("#{prefix}-logger-startstop", cmd, :body => "")
-
-        doc.code.should eq(200)
-        doc.parsed_response['running'].should eq(true)
-        
-        # fetch state
-        cmd = api + "/logger-state"
-        doc = ArangoDB.log_get("#{prefix}-logger-startstop", cmd, :body => "")
-
-        doc.code.should eq(200)
-        all = doc.parsed_response
-        all.should have_key('state')
-        all.should have_key('server')
-        all.should have_key('clients')
-
-        state = all['state']
-        state['running'].should eq(true)
-        state['lastLogTick'].should match(/^\d+$/)
-        state['time'].should match(/^\d+-\d+-\d+T\d+:\d+:\d+Z$/)
-
-        server = all['server']
-        server['serverId'].should match(/^\d+$/)
-        server.should have_key('version')
-        
-        # stop again
-        cmd = api + "/logger-stop"
-        doc = ArangoDB.log_put("#{prefix}-logger-startstop", cmd, :body => "")
-
-        doc.code.should eq(200)
-        doc.parsed_response['running'].should eq(true)
-
-        # start after stop
-        cmd = api + "/logger-start"
-        doc = ArangoDB.log_put("#{prefix}-logger-startstop", cmd, :body => "")
-
-        doc.code.should eq(200)
-        doc.parsed_response['running'].should eq(true)
       end
 
 ################################################################################

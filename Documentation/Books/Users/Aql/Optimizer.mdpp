@@ -383,12 +383,23 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
 
 The following optimizer rules may appear in the `rules` attribute of cluster plans:
 
-* `scatter-in-cluster`: to be documented soon 
-* `distribute-in-cluster`: to be documented soon
-* `distribute-filtercalc-to-cluster`: to be documented soon
-* `distribute-sort-to-cluster`: to be documented soon
-* `remove-unnecessary-remote-scatter`: to be documented soon
-* `undistribute-remove-after-enum-coll`: to be documented soon
+* `distribute-in-cluster`: will appear when query parts get distributed in a cluster.
+  This is not an optimization rule, and it cannot be turned off. 
+* `scatter-in-cluster`: will appear when scatter, gatter, and remote nodes are inserted
+  into a distributed query. This is not an optimization rule, and it cannot be turned off.
+* `distribute-filtercalc-to-cluster`: will appear when filters are moved up in a 
+  distributed execution plan. Filters are moved as far up in the plan as possible to 
+  make result sets as small as possible as early as possible.
+* `distribute-sort-to-cluster`: will appear if sorts are moved up in a distributed query.
+  Sorts are moved as far up in the plan as possible to make result sets as small as possible 
+  as early as possible.
+* `remove-unnecessary-remote-scatter`: will appear if a RemoteNode is followed by a
+  ScatterNode, and the ScatterNode is only followed by calculations or the SingletonNode.
+  In this case, there is no need to distribute the calculation, and it will be handled
+  centrally.
+* `undistribute-remove-after-enum-coll`: will appear if a RemoveNode can be pushed into
+  the same query part that enumerates over the documents of a collection. This saves
+  inter-cluster roundtrips between the EnumerateCollectionNode and the RemoveNode.
 
 Note that some rules may appear multiple times in the list, with number suffixes. 
 This is due to the same rule being applied multiple times, at different positions 

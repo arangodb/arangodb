@@ -113,7 +113,6 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      replication.logger.properties({ maxEvents: 1048576 });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -121,59 +120,8 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-      replication.logger.properties({ maxEvents: 1048576 });
       db._drop(cn);
       db._drop(cn2);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief start logger
-////////////////////////////////////////////////////////////////////////////////
-
-    testStartLogger : function () {
-      var actual, state;
-
-      // start
-      actual = replication.logger.start();
-      assertTrue(actual);
-
-      state = replication.logger.state().state;
-      assertTrue(state.running);
-      assertTrue(typeof state.lastLogTick === 'string');
-      assertMatch(/^\d+$/, state.lastLogTick);
-      assertTrue(state.totalEvents >= 0);
-
-      // start again
-      actual = replication.logger.start();
-      assertTrue(actual);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stop logger
-////////////////////////////////////////////////////////////////////////////////
-
-    testStopLogger : function () {
-      var actual, state;
-
-      // start
-      actual = replication.logger.start();
-      assertTrue(actual);
-
-      state = replication.logger.state().state;
-      assertTrue(state.running);
-      assertTrue(typeof state.lastLogTick === 'string');
-      assertMatch(/^\d+$/, state.lastLogTick);
-      assertTrue(state.totalEvents >= 0);
-
-      // stop
-      actual = replication.logger.stop();
-      assertTrue(actual);
-
-      state = replication.logger.state().state;
-      assertTrue(state.running);
-      assertTrue(typeof state.lastLogTick === 'string');
-      assertMatch(/^\d+$/, state.lastLogTick);
-      assertTrue(state.totalEvents >= 1);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -247,8 +195,6 @@ function ReplicationLoggerSuite () {
       events = state.totalEvents;
       assertTrue(state.totalEvents >= 0);
 
-      replication.logger.start();
-
       // do something that will cause logging
       var c = db._create(cn);
       c.save({ "test" : 1 });
@@ -262,21 +208,6 @@ function ReplicationLoggerSuite () {
       assertNotEqual(tick, state.lastLogTick);
       assertEqual(1, compareTicks(state.lastLogTick, tick));
       assertTrue(state.totalEvents > events);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test logger properties
-////////////////////////////////////////////////////////////////////////////////
-
-    testPropertiesLogger : function () {
-      var properties;
-
-      properties = replication.logger.properties();
-      assertTrue(typeof properties === 'object');
-      assertTrue(properties.hasOwnProperty('autoStart'));
-      assertTrue(properties.hasOwnProperty('logRemoteChanges'));
-      assertTrue(properties.hasOwnProperty('maxEvents'));
-      assertTrue(properties.hasOwnProperty('maxEventsSize'));
     },
 
 ////////////////////////////////////////////////////////////////////////////////

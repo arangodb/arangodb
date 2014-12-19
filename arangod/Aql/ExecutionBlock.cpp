@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/ExecutionBlock.h"
+#include "Aql/CollectionScanner.h"
 #include "Aql/ExecutionEngine.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
@@ -54,6 +55,7 @@ using StringBuffer = triagens::basics::StringBuffer;
 #define ENTER_BLOCK
 #define LEAVE_BLOCK
 #endif
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            struct AggregatorGroup
@@ -665,16 +667,28 @@ EnumerateCollectionBlock::EnumerateCollectionBlock (ExecutionEngine* engine,
                                                     EnumerateCollectionNode const* ep)
   : ExecutionBlock(engine, ep),
     _collection(ep->_collection),
-    _totalCount(0),
+    _scanner(nullptr),
     _posInDocuments(0),
-    _atBeginning(false) {
+    _atBeginning(false),
+    _random(ep->_random) {
+
+  if (_random) {
+    // random scan
+    _scanner = new RandomCollectionScanner(_trx, _trx->trxCollection(_collection->cid()));
+  }
+  else {
+    // default: linear scan
+    _scanner = new LinearCollectionScanner(_trx, _trx->trxCollection(_collection->cid()));
+  }
 }
 
 EnumerateCollectionBlock::~EnumerateCollectionBlock () {
+  if (_scanner != nullptr) {
+    delete _scanner;
+  }
 }
 
 bool EnumerateCollectionBlock::moreDocuments (size_t hint) {
-
   if (hint < DefaultBatchSize) {
     hint = DefaultBatchSize;
   }
@@ -683,27 +697,21 @@ bool EnumerateCollectionBlock::moreDocuments (size_t hint) {
 
   newDocs.reserve(hint);
 
-  int res = _trx->readIncremental(_trx->trxCollection(_collection->cid()),
-                                  newDocs,
-                                  _internalSkip,
-                                  static_cast<TRI_voc_size_t>(hint),
-                                  0,
-                                  TRI_QRY_NO_LIMIT,
-                                  &_totalCount);
+  int res = _scanner->scan(newDocs, hint);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
   
-  _engine->_stats.scannedFull += static_cast<int64_t>(newDocs.size());
-
   if (newDocs.empty()) {
     return false;
   }
 
+  _engine->_stats.scannedFull += static_cast<int64_t>(newDocs.size());
+
   _documents.swap(newDocs);
 
-  _atBeginning = _internalSkip == 0;
+  _atBeginning = false; 
   _posInDocuments = 0;
 
   return true;
@@ -757,7 +765,6 @@ AqlItemBlock* EnumerateCollectionBlock::getSome (size_t, // atLeast,
   // Get more documents from collection if _documents is empty:
   if (_posInDocuments >= _documents.size()) {
     if (! moreDocuments(atMost)) {
-      TRI_ASSERT(_totalCount == 0);
       _done = true;
       return nullptr;
     }
@@ -838,7 +845,6 @@ size_t EnumerateCollectionBlock::skipSome (size_t atLeast, size_t atMost) {
     // Get more documents from collection if _documents is empty:
     if (_posInDocuments >= _documents.size()) {
       if (! moreDocuments(atMost)) {
-        TRI_ASSERT(_totalCount == 0);
         _done = true;
         return skipped;
       }

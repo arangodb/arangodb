@@ -21,6 +21,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/AstNode.cpp \
 	arangod/Aql/BindParameters.cpp \
 	arangod/Aql/Collection.cpp \
+	arangod/Aql/CollectionScanner.cpp \
 	arangod/Aql/ExecutionBlock.cpp \
 	arangod/Aql/ExecutionEngine.cpp \
 	arangod/Aql/ExecutionNode.cpp \
