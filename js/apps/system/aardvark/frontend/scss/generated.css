@@ -4447,16 +4447,16 @@ div.breadcrumb a.disabledBread {
     margin-left: 10px;
     opacity: .7;
     padding-bottom: 5px; }
-  .modal-body .icon-info-sign:hover {
-    opacity: 1; }
+    .modal-body .icon-info-sign:hover {
+      opacity: 1; }
   .modal-body .icon_arangodb_info {
     color: #736b68;
     font-size: 18px;
     margin-top: -10px;
     position: absolute;
     right: 12px; }
-  .modal-body .icon_arangodb_info:hover {
-    color: #000; }
+    .modal-body .icon_arangodb_info:hover {
+      color: #000; }
   .modal-body .collapse {
     margin-right: -14px;
     position: relative; }
@@ -4481,12 +4481,19 @@ div.breadcrumb a.disabledBread {
     height: 55px; }
   .modal-body .tab-content {
     min-height: 200px; }
+    .modal-body .tab-content .tab-pane {
+      border-top: 1px solid #888 !important;
+      margin-left: 0 !important;
+      padding-top: 10px; }
   .modal-body .errorMessage {
     color: #f00;
     font-size: 9pt;
     margin-bottom: 5px;
     margin-top: -9px;
     position: absolute; }
+  .modal-body .nav img.tab-icon {
+    width: 20px;
+    margin-right: 5px; }
 
 .modal-text {
   font-weight: 300;
@@ -5771,13 +5778,6 @@ input.gv-radio-button {
 #collectionTab .active > a {
   background-color: #fff;
   border-color: #888 #888 transparent !important; }
-
-#tab-content-collection-info #info,
-#tab-content-collection-info .collection-info-figures,
-#tab-content-collection-info #index {
-  border-top: 1px solid #888 !important;
-  margin-left: 0 !important;
-  padding-top: 10px; }
 
 #confirmCreateEdge {
   margin-left: 20px; }
