@@ -5,7 +5,7 @@ content-type: application/json; charset=utf-8
 location: /_db/_system/_api/collection/products/figures
 
 { 
-  "id" : "1200204278", 
+  "id" : "1199783548", 
   "name" : "products", 
   "isSystem" : false, 
   "doCompact" : true, 
@@ -55,7 +55,7 @@ location: /_db/_system/_api/collection/products/figures
       "count" : 1, 
       "size" : 2008 
     }, 
-    "lastTick" : "1200597494", 
+    "lastTick" : "1200176764", 
     "uncollectedLogfileEntries" : 0 
   }, 
   "status" : 3, 

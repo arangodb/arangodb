@@ -2,7 +2,7 @@ shell> curl --data-binary @- --dump - http://localhost:8529/_api/gharial/social/
 
 HTTP/1.1 200 OK
 content-type: application/json
-etag: 1657448950
+etag: 1676754556
 
 { 
   "error" : false, 
@@ -10,7 +10,7 @@ etag: 1657448950
   "edge" : { 
     "_id" : "relation/aliceAndBob", 
     "_key" : "aliceAndBob", 
-    "_rev" : "1657448950", 
+    "_rev" : "1676754556", 
     "_from" : "female/alice", 
     "_to" : "male/bob", 
     "type" : "married" 

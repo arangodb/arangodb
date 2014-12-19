@@ -3,12 +3,12 @@ shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/documen
 
 HTTP/1.1 202 Accepted
 content-type: application/json; charset=utf-8
-etag: "1673243126"
-location: /_db/_system/_api/document/products/1673243126
+etag: "1692548732"
+location: /_db/_system/_api/document/products/1692548732
 
 { 
   "error" : false, 
-  "_id" : "products/1673243126", 
-  "_rev" : "1673243126", 
-  "_key" : "1673243126" 
+  "_id" : "products/1692548732", 
+  "_rev" : "1692548732", 
+  "_key" : "1692548732" 
 }

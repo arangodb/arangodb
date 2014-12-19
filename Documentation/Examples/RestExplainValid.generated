@@ -27,7 +27,8 @@ content-type: application/json; charset=utf-8
         "outVariable" : { 
           "id" : 0, 
           "name" : "p" 
-        } 
+        }, 
+        "random" : false 
       }, 
       { 
         "type" : "ReturnNode", 
