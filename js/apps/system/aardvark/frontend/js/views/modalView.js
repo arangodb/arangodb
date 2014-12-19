@@ -56,6 +56,7 @@
 
   window.ModalView = Backbone.View.extend({
 
+    _validators: [],
     baseTemplate: templateEngine.createTemplate("modalBase.ejs"),
     tableTemplate: templateEngine.createTemplate("modalTable.ejs"),
     el: "#modalPlaceholder",
@@ -234,6 +235,7 @@
         events) {
       var self = this, lastBtn, closeButtonFound = false;
       buttons = buttons || [];
+      this._validators = [];
       // Insert close as second from right
       if (buttons.length > 0) {
         buttons.forEach(function (b) {
@@ -309,67 +311,8 @@
       });//handle select2
 
       self.testInput = (function(){
-        _.each(completeTableContent,function(r){
-
-          if(r.validateInput !== undefined) {
-            //catch result of validation and act
-            $('#' + r.id).on('keyup focusout', function(e){
-
-              var validation = r.validateInput($('#' + r.id));
-              var error = false, msg;
-
-              _.each(validation, function(validator) {
-
-                var schema = Joi.object().keys({
-                  toCheck: validator.rule
-                });
-
-                var valueToCheck = $('#' + r.id).val();
-
-                if (valueToCheck === '' && e.type === "keyup") {
-                  return;
-                }
-
-                Joi.validate({
-                  toCheck: valueToCheck
-                },
-                schema,
-                function (err) {
-                  if (err) {
-                    msg = validator.msg;
-                    error = true;
-                  }
-                });
-              });
-              var errorElement = $('#'+r.id).next()[0];
-
-              if(error === true){
-                // if validation throws an error
-                $('#' + r.id).addClass('invalid-input');
-                $('.modal-footer .button-success').prop('disabled', true);
-                $('.modal-footer .button-success').addClass('disabled');
-
-                if (errorElement) {
-                  //error element available
-                  $(errorElement).text(msg);
-                }
-                else {
-                  //error element not available
-                  $('#' + r.id).after('<p class="errorMessage">' + msg+ '</p>');
-                }
-
-              }
-              else {
-                //validation throws success
-                $('#' + r.id).removeClass('invalid-input');
-                $('.modal-footer .button-success').prop('disabled', false);
-                $('.modal-footer .button-success').removeClass('disabled');
-                if (errorElement) {
-                  $(errorElement).remove();
-                }
-              }
-            });
-          }
+        _.each(completeTableContent, function(r){
+          self.modalBindValidation(r);
         });
       }());
       if (events) {
@@ -396,7 +339,84 @@
 
     },
 
+    modalBindValidation: function(entry) {
+      var self = this;
+      if (entry.hasOwnProperty("id")
+        && entry.hasOwnProperty("validateInput")) {
+        var validCheck = function() {
+          var $el = $("#" + entry.id);
+          var validation = entry.validateInput($el);
+          var error = false, msg;
+          _.each(validation, function(validator) {
+            var schema = Joi.object().keys({
+              toCheck: validator.rule
+            });
+            var valueToCheck = $el.val();
+            Joi.validate(
+              {
+                toCheck: valueToCheck
+              },
+              schema,
+              function (err) {
+                if (err) {
+                  msg = validator.msg;
+                  error = true;
+                }
+              }
+            );
+          });
+          if (error) {
+            return msg;
+          }
+        };
+        var $el = $('#' + entry.id);
+        // catch result of validation and act
+        $el.on('keyup focusout', function() {
+          var msg = validCheck();
+          var errorElement = $el.next()[0];
+          if (msg !== undefined) {
+            $el.addClass('invalid-input');
+            if (errorElement) {
+              //error element available
+              $(errorElement).text(msg);
+            }
+            else {
+              //error element not available
+              $el.after('<p class="errorMessage">' + msg+ '</p>');
+            }
+            $('.modal-footer .button-success')
+              .prop('disabled', true)
+              .addClass('disabled');
+          } else {
+            $el.removeClass('invalid-input');
+            if (errorElement) {
+              $(errorElement).remove();
+            }
+            self.modalTestAll();
+          }
+        });
+        this._validators.push(validCheck);
+      }
+      
+    },
+
+    modalTestAll: function() {
+      var tests = _.map(this._validators, function(v) {
+        return v();
+      });
+      if (_.any(tests)) {
+        $('.modal-footer .button-success')
+          .prop('disabled', true)
+          .addClass('disabled');
+      } else {
+        $('.modal-footer .button-success')
+          .prop('disabled', false)
+          .removeClass('disabled');
+      }
+    },
+
     hide: function() {
+      this._validators = [];
       $("#modal-dialog").modal("hide");
     }
   });
