@@ -42,36 +42,6 @@ var logger  = { };
 var applier = { };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief starts the replication logger
-////////////////////////////////////////////////////////////////////////////////
-
-logger.start = function () {
-  'use strict';
-
-  var db = internal.db;
-
-  var requestResult = db._connection.PUT("/_api/replication/logger-start", "");
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stops the replication logger
-////////////////////////////////////////////////////////////////////////////////
-
-logger.stop = function () {
-  'use strict';
-
-  var db = internal.db;
-
-  var requestResult = db._connection.PUT("/_api/replication/logger-stop", "");
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult;
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the replication logger state
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -81,29 +51,6 @@ logger.state = function () {
   var db = internal.db;
 
   var requestResult = db._connection.GET("/_api/replication/logger-state");
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief configures the replication logger
-////////////////////////////////////////////////////////////////////////////////
-
-logger.properties = function (config) {
-  'use strict';
-
-  var db = internal.db;
-
-  var requestResult;
-  if (config === undefined) {
-    requestResult = db._connection.GET("/_api/replication/logger-config");
-  }
-  else {
-    requestResult = db._connection.PUT("/_api/replication/logger-config",
-      JSON.stringify(config));
-  }
-
   arangosh.checkRequestResult(requestResult);
 
   return requestResult;

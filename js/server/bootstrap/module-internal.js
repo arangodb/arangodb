@@ -2,7 +2,7 @@
 /*global require, db, ArangoCollection, ArangoDatabase, ArangoCursor, ShapedJson,
   RELOAD_AUTH, SYS_DEFINE_ACTION, SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION,
   WAL_FLUSH, WAL_PROPERTIES,
-  REPLICATION_LOGGER_STATE, REPLICATION_LOGGER_CONFIGURE, REPLICATION_SERVER_ID,
+  REPLICATION_LOGGER_STATE, REPLICATION_SERVER_ID,
   REPLICATION_APPLIER_CONFIGURE, REPLICATION_APPLIER_START, REPLICATION_APPLIER_SHUTDOWN,
   REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_STATE, REPLICATION_SYNCHRONISE,
   ENABLE_STATISTICS, DISPATCHER_THREADS, SYS_CREATE_NAMED_QUEUE, SYS_ADD_JOB,
@@ -226,15 +226,6 @@
   if (typeof REPLICATION_LOGGER_STATE !== "undefined") {
     internal.getStateReplicationLogger = REPLICATION_LOGGER_STATE;
     delete REPLICATION_LOGGER_STATE;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief configureReplicationLogger
-////////////////////////////////////////////////////////////////////////////////
-
-  if (typeof REPLICATION_LOGGER_CONFIGURE !== "undefined") {
-    internal.configureReplicationLogger = REPLICATION_LOGGER_CONFIGURE;
-    delete REPLICATION_LOGGER_CONFIGURE;
   }
 
 ////////////////////////////////////////////////////////////////////////////////

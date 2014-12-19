@@ -122,11 +122,11 @@ static void ExtractSkipAndLimit (const v8::FunctionCallbackInfo<v8::Value>& args
   limit = TRI_QRY_NO_LIMIT;
 
   if (pos < (size_t) args.Length() && ! args[(int) pos]->IsNull() && ! args[(int) pos]->IsUndefined()) {
-    skip = (TRI_voc_size_t) TRI_ObjectToDouble(args[(int) pos]);
+    skip = (TRI_voc_ssize_t) TRI_ObjectToDouble(args[(int) pos]);
   }
 
   if (pos + 1 < (size_t) args.Length() && ! args[(int) pos + 1]->IsNull() && ! args[(int) pos + 1]->IsUndefined()) {
-    limit = (TRI_voc_ssize_t) TRI_ObjectToDouble(args[(int) pos + 1]);
+    limit = (TRI_voc_size_t) TRI_ObjectToDouble(args[(int) pos + 1]);
   }
 }
 

@@ -80,7 +80,7 @@ Switch into the ArangoDB directory
 
 In order to configure the build environment execute
 
-    ./configure --enable-all-in-one-v8 --enable-all-in-one-libev --enable-all-in-one-icu
+    ./configure 
 
 to setup the makefiles. This will check the various system characteristics and
 installed libraries.
@@ -103,16 +103,16 @@ Create an empty directory
 
 Check the binary by starting it using the command line.
 
-    unix> ./bin/arangod -c etc/relative/arangod.conf --server.endpoint tcp://127.0.0.1:12345 --server.disable-authentication true /tmp/database-dir
+    unix> ./bin/arangod -c etc/relative/arangod.conf --server.endpoint tcp://127.0.0.1:8529 /tmp/database-dir
 
-This will start up the ArangoDB and listen for HTTP requests on port 12345 bound
+This will start up the ArangoDB and listen for HTTP requests on port 8529 bound
 to IP address 127.0.0.1. You should see the startup messages similar to the following:
 
 ```
-2013-10-14T12:47:29Z [29266] INFO ArangoDB xxx ... </br>
-2013-10-14T12:47:29Z [29266] INFO using endpoint 'tcp://127.0.0.1.12345' for non-encrypted requests </br>
-2013-10-14T12:47:30Z [29266] INFO Authentication is turned off </br>
-2013-10-14T12:47:30Z [29266] INFO ArangoDB (version xxx) is ready for business. Have fun! </br>
+2013-10-14T12:47:29Z [29266] INFO ArangoDB xxx ... 
+2013-10-14T12:47:29Z [29266] INFO using endpoint 'tcp://127.0.0.1.8529' for non-encrypted requests
+2013-10-14T12:47:30Z [29266] INFO Authentication is turned off
+2013-10-14T12:47:30Z [29266] INFO ArangoDB (version xxx) is ready for business. Have fun!
 ```
 
 If it fails with a message about the database directory, please make sure the
@@ -120,7 +120,7 @@ database directory you specified exists and can be written into.
 
 Use your favorite browser to access the URL
 
-    http://127.0.0.1:12345/_api/version
+    http://127.0.0.1:8529/_api/version
 
 This should produce a JSON object like
 
@@ -155,7 +155,7 @@ The ArangoShell will be installed in
 
 When upgrading from a previous version of ArangoDB, please make sure you inspect ArangoDB's
 log file after an upgrade. It may also be necessary to start ArangoDB with the *--upgrade*
-parameter once to perform required upgrade or initialisation tasks.
+parameter once to perform required upgrade or initialization tasks.
 
 !SECTION Devel Version
 
@@ -185,13 +185,6 @@ newer versions of the programs and/or libraries.
 
 When compiling with special configure options, you may need the following extra libraries:
 
-* libev in version 3 or 4 (only when using configure option `--disable-all-in-one-libev`,
-  available from http://software.schmorp.de/pkg/libev.html) 
-* Google's V8 engine, version 3.16.14 (only when using configure option
-  `--disable-all-in-one-v8`, available from http://code.google.com/p/v8)
-* SCons for compiling V8 (only when using configure option
-  `--disable-all-in-one-v8`, see http://www.scons.org)
-* the ICU library (only when not using configure option `--enable-all-in-one-icu`)
 * the Boost test framework library (only when using configure option `--enable-maintainer-mode`) 
 
 
@@ -218,7 +211,7 @@ This will call aclocal, autoheader, automake, and autoconf in the correct order.
 
 In order to configure the build environment please execute
 
-    unix> ./configure --enable-all-in-one-v8 --enable-all-in-one-libev --enable-all-in-one-icu 
+    unix> ./configure
 
 to setup the makefiles. This will check for the various system characteristics
 and installed libraries.
@@ -251,38 +244,6 @@ When used, you can start ArangoDB using this command:
 
 ArangoDB will then automatically use the configuration from file *etc/relative/arangod.conf*.
 
-`--enable-all-in-one-libev` 
-
-This tells the build system to use the bundled version
-of libev instead of using the system version.
-
-`--disable-all-in-one-libev` 
-
-This tells the build system to use the installed
-system version of libev instead of compiling the supplied version from the
-3rdParty directory in the make run.
-
-`--enable-all-in-one-v8` 
-
-This tells the build system to use the bundled version of
-V8 instead of using the system version.
-
-`--disable-all-in-one-v8` 
-
-This tells the build system to use the installed system
-version of V8 instead of compiling the supplied version from the 3rdParty
-directory in the make run.
-
-`--enable-all-in-one-icu` 
-
-This tells the build system to use the bundled version of
-ICU instead of using the system version.
-
-`--disable-all-in-one-icu` 
-
-This tells the build system to use the bundled version of
-Boost header files. This is the default and recommended.
-
 `--enable-all-in-one-etcd` 
 
 This tells the build system to use the bundled version 
@@ -293,6 +254,11 @@ of ETCD. This is the default and recommended.
 This tells the build system to use Go binaries located in the
 3rdParty directory. Note that ArangoDB does not ship with Go binaries, and that
 the Go binaries must be copied into this directory manually.
+
+`--enable-mruby`
+
+This will also build `arangoirb`, and interactive MRuby REPL shell. This is an
+experimental feature.
 
 `--enable-maintainer-mode` 
 
@@ -338,10 +304,7 @@ version of go into the ArangoDB source directory and build it:
       ./all.bash
 
     # now that go is installed, run your configure with --enable-internal-go
-    ./configure\
-      --enable-all-in-one-v8 \
-      --enable-all-in-one-libev \
-      --enable-internal-go
+    ./configure --enable-internal-go
 
 
 !SUBSECTION Re-building ArangoDB after an update
@@ -367,4 +330,3 @@ If you forgot your previous configure options, you can look them up with
 
     head config.log
     
- 

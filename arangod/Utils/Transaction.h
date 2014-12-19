@@ -45,6 +45,7 @@
 #include "VocBase/voc-shaper.h"
 #include "VocBase/voc-types.h"
 
+#include "Basics/gcd.h"
 #include "Basics/logging.h"
 #include "Basics/random.h"
 #include "Basics/tri-strings.h"
@@ -400,6 +401,7 @@ namespace triagens {
             this->unlock(trxCollection, TRI_TRANSACTION_READ);
 
             // READ-LOCK END
+            *total = 0;
             return TRI_ERROR_NO_ERROR;
           }
 
@@ -434,6 +436,82 @@ namespace triagens {
               }
             }
           }
+
+          this->unlock(trxCollection, TRI_TRANSACTION_READ);
+          // READ-LOCK END
+
+          return TRI_ERROR_NO_ERROR;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read all master pointers, using skip and limit and an internal
+/// offset into the primary index. this can be used for incremental access to
+/// the documents without restarting the index scan at the begin
+////////////////////////////////////////////////////////////////////////////////
+
+        int readRandom (TRI_transaction_collection_t* trxCollection,
+                        std::vector<TRI_doc_mptr_copy_t>& docs,
+                        uint32_t& initialPosition,
+                        uint32_t& position,
+                        TRI_voc_size_t batchSize,
+                        uint32_t* step,
+                        uint32_t* total) {
+          if (initialPosition > 0 && position == initialPosition) {
+            // already read all documents
+            return TRI_ERROR_NO_ERROR;
+          }
+
+          TRI_document_collection_t* document = documentCollection(trxCollection);
+
+          // READ-LOCK START
+          int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
+
+          if (document->_primaryIndex._nrUsed == 0) {
+            // nothing to do
+            this->unlock(trxCollection, TRI_TRANSACTION_READ);
+
+            // READ-LOCK END
+            *total = 0;
+            return TRI_ERROR_NO_ERROR;
+          }
+
+          if (orderBarrier(trxCollection) == nullptr) {
+            return TRI_ERROR_OUT_OF_MEMORY;
+          }
+
+          *total = (uint32_t) document->_primaryIndex._nrAlloc;
+          if (*step == 0) {
+            TRI_ASSERT(initialPosition == 0);
+
+            // find a co-prime for total
+            while (true) {
+              *step = TRI_UInt32Random() % *total;
+              if (*step > 10 && triagens::basics::binaryGcd<uint32_t>(*total, *step) == 1) {
+                while (initialPosition == 0) {
+                  initialPosition = TRI_UInt32Random() % *total;
+                }
+                position = initialPosition;
+                break;
+              }
+            }
+          }
+
+          TRI_voc_size_t numRead = 0;
+          do {
+            TRI_doc_mptr_t* d = (TRI_doc_mptr_t*) document->_primaryIndex._table[position];
+            if (d != nullptr) {
+              docs.emplace_back(*d);
+              ++numRead;
+            }
+
+            position += *step;
+            position = position % *total;
+          }
+          while (numRead < batchSize && position != initialPosition);
 
           this->unlock(trxCollection, TRI_TRANSACTION_READ);
           // READ-LOCK END
@@ -766,7 +844,7 @@ namespace triagens {
             uint32_t pos = TRI_UInt32Random() % total;
             void** beg = document->_primaryIndex._table;
 
-            while (beg[pos] == 0) {
+            while (beg[pos] == nullptr) {
               pos = TRI_UInt32Random() % total;
             }
 
