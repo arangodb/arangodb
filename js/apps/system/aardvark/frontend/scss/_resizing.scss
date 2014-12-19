@@ -474,6 +474,31 @@ div.resizecontainer {
       height: $dashboard-height / 2;
       width: $legend-width / 2;
     }
+
+    .application-detail-view {
+
+      section.info {
+        @if $i < 3 {
+          width: $content-size;
+
+          .header_right {
+            width: $content-size - 170px;
+          }
+        } @else {
+          width: $content-size - 200px;
+
+          .header_right {
+            width: $content-size - 370px;
+          }
+        }
+      }
+
+      @if $i < 3 {
+        aside.meta {
+          display: none;
+        }
+      }
+    }
   }
 }
 
