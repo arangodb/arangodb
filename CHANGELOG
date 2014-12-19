@@ -1,6 +1,8 @@
 v2.4.0 (XXXX-XX-XX)
 -------------------
 
+* Upgraded V8 version from 3.16.14 to 3.29.59
+
 * Added Foxx generator for building Hypermedia APIs
 
   A more detailed description is [here](https://www.arangodb.com/2014/12/08/building-hypermedia-apis-foxxgenerator)
@@ -45,9 +47,12 @@ v2.4.0 (XXXX-XX-XX)
 
 * fixed issue #1161: Aardvark: Click on Import JSON imports previously uploaded file
 
-* removed enable-all-in-one-v8, enable-all-in-one-icu and enable-all-in-one-libev
+* fixed issue #500: AQL parentheses issue
 
-* global internal rename to fix naming incompatibility with JSON:
+* removed configure options `--enable-all-in-one-v8`, `--enable-all-in-one-icu`,
+  and `--enable-all-in-one-libev`.
+
+* global internal rename to fix naming incompatibilities with JSON:
  
   Internal functions with names containing `array` have been renamed to `object`, 
   internal functions with names containing `list` have been renamed to `array`.
@@ -60,7 +65,36 @@ v2.4.0 (XXXX-XX-XX)
   * `IS_LIST` now is an alias of the new `IS_ARRAY`
   * `IS_DOCUMENT` now is an alias of the new `IS_OBJECT`
 
+  The changed also renamed the option `mergeArrays` to `mergeObjects` for AQL 
+  data-modification query options and HTTP document modification API
+
+* AQL: added optimizer rule "remove-filter-covered-by-index"
+  
+  This rule removes FilterNodes and CalculationNodes from an execution plan if the
+  filter is already covered by a previous IndexRangeNode. Removing the CalculationNode
+  and the FilterNode will speed up query execution as computation is saved.
+
 * AQL: range optimizations for IN and OR
+
+  This change enables usage of indexes for several additional cases. Filters containing
+  the `IN` operator can now make use of indexes, and multiple OR- or AND-combined filter
+  conditions can now also use indexes if the filters are accessing the same indexed
+  attribute.
+
+  Here are a few examples of queries that can now use indexes but couldn't before:
+
+    FOR doc IN collection
+      FILTER doc.indexedAttribute == 1 || doc.indexedAttribute > 99
+      RETURN doc
+    
+    FOR doc IN collection
+      FILTER doc.indexedAttribute IN [ 3, 42 ] || doc.indexedAttribute > 99
+      RETURN doc
+
+    FOR doc IN collection
+      FILTER (doc.indexedAttribute > 2 && doc.indexedAttribute < 10) ||
+             (doc.indexedAttribute > 23 && doc.indexedAttribute < 42)
+      RETURN doc
 
 * fixed missing makeDirectory when fetching a Foxx application from a zip file
 
@@ -74,6 +108,12 @@ v2.4.0 (XXXX-XX-XX)
       FOR doc IN collection
         COLLECT age = doc.age WITH COUNT INTO length 
         RETURN { age: age, count: length }
+
+  A count-only query is also possible:
+      
+      FOR doc IN collection
+        COLLECT WITH COUNT INTO length 
+        RETURN length
 
 * fixed issue #1134: Change the default endpoint to localhost
 
@@ -113,9 +153,6 @@ v2.4.0 (XXXX-XX-XX)
 
   The HTTP API methods for fetching the replication inventory and for dumping collections
   also support the `includeSystem` control flag via a URL parameter.
-
-* renamed option `mergeArrays` to `mergeObjects` for AQL data-modification query options
-  and HTTP document modification API
 
 
 v2.3.3 (XXXX-XX-XX)
