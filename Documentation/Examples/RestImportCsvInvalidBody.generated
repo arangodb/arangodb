@@ -6,7 +6,7 @@ content-type: application/json; charset=utf-8
 
 { 
   "error" : true, 
-  "errorMessage" : "no JSON list found in second line", 
+  "errorMessage" : "no JSON array found in second line", 
   "code" : 400, 
   "errorNum" : 400 
 }

@@ -4,9 +4,9 @@ arangosh> db._query("RETURN GRAPH_ABSOLUTE_BETWEENNESS("
 ........> +"'routeplanner', {weight : 'distance'})").toArray();
 [ 
   { 
-    "germanCity/Berlin" : 0, 
-    "germanCity/Cologne" : 2, 
     "germanCity/Hamburg" : 0, 
+    "germanCity/Cologne" : 2, 
+    "germanCity/Berlin" : 0, 
     "frenchCity/Paris" : 0, 
     "frenchCity/Lyon" : 0 
   } 

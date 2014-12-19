@@ -9,7 +9,7 @@ content-type: application/json; charset=utf-8
     { 
       "_id" : "edges/edge1", 
       "_key" : "edge1", 
-      "_rev" : "1486203631", 
+      "_rev" : "1431104267", 
       "_from" : "vertices/v1", 
       "_to" : "vertices/v2", 
       "$label" : null, 
@@ -18,7 +18,7 @@ content-type: application/json; charset=utf-8
     { 
       "_id" : "edges/edge3", 
       "_key" : "edge3", 
-      "_rev" : "1487252207", 
+      "_rev" : "1432152843", 
       "_from" : "vertices/v2", 
       "_to" : "vertices/v4", 
       "$label" : null, 

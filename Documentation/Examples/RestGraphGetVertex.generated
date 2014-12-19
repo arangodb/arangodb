@@ -2,13 +2,13 @@ shell> curl --data-binary @- --dump - http://localhost:8529/_api/graph/graph/ver
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
-etag: 1435937519
+etag: 1381624587
 
 { 
   "vertex" : { 
     "_id" : "vertices/v1", 
     "_key" : "v1", 
-    "_rev" : "1435937519", 
+    "_rev" : "1381624587", 
     "optional1" : "val1" 
   }, 
   "error" : false, 

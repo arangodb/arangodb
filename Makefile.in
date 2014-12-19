@@ -187,10 +187,9 @@ DIST_COMMON = $(srcdir)/lib/Makefile.files \
 	$(srcdir)/UnitTests/Makefile.unittests \
 	$(srcdir)/Documentation/Makefile.files \
 	$(srcdir)/js/Makefile.files $(srcdir)/mr/Makefile.mruby \
-	$(srcdir)/lib/Makefile.flex \
-	$(srcdir)/3rdParty/Makefile.all-in-one-libev \
-	$(srcdir)/3rdParty/Makefile.all-in-one-mruby \
-	$(srcdir)/3rdParty/Makefile.all-in-one-v8 \
+	$(srcdir)/lib/Makefile.flex $(srcdir)/3rdParty/Makefile.libev \
+	$(srcdir)/3rdParty/Makefile.mruby \
+	$(srcdir)/3rdParty/Makefile.v8 \
 	$(srcdir)/3rdParty/Makefile.zlib \
 	$(srcdir)/3rdParty/Makefile.etcd $(srcdir)/Makefile.in \
 	$(srcdir)/Makefile.am $(top_srcdir)/configure \
@@ -275,35 +274,22 @@ DIST_COMMON = $(srcdir)/lib/Makefile.files \
 @ENABLE_MAINTAINER_MODE_TRUE@am__append_15 = $(FLEX_FILES) \
 @ENABLE_MAINTAINER_MODE_TRUE@	$(FLEXXX_FILES) $(BISON_FILES) \
 @ENABLE_MAINTAINER_MODE_TRUE@	$(BISONXX_FILES)
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@am__append_16 = @LIBEV_LIBS@
-
-################################################################################
-### @brief additional files to remove
-################################################################################
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@am__append_17 = clean-libev
-@ENABLE_MRUBY_TRUE@am__append_18 = @MRUBY_LIBS@
+@ENABLE_MRUBY_TRUE@am__append_16 = @MRUBY_LIBS@
 
 ################################################################################
 ### @brief additional files to remove
 ###
 ### "clean" in mruby is broken
 ################################################################################
-@ENABLE_MRUBY_TRUE@am__append_19 = clean-mruby
-@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_20 = @V8_LIBS@
+@ENABLE_MRUBY_TRUE@am__append_17 = clean-mruby
 
 ################################################################################
 ### @brief additional files to remove
 ################################################################################
-@ENABLE_ALL_IN_ONE_V8_TRUE@am__append_21 = clean-v8
-
-################################################################################
-### @brief additional files to remove
-################################################################################
-@ENABLE_ALL_IN_ONE_ETCD_TRUE@am__append_22 = clean-etcd
+@ENABLE_ALL_IN_ONE_ETCD_TRUE@am__append_18 = clean-etcd
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
-	$(top_srcdir)/m4/ax_cxx_check_lib.m4 \
 	$(top_srcdir)/m4/ax_cxx_compile_stdcxx_11.m4 \
 	$(top_srcdir)/m4/configure.basics \
 	$(top_srcdir)/m4/configure.logging \
@@ -315,12 +301,6 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/acx_pthread.m4 \
 	$(top_srcdir)/m4/clock_gettime $(top_srcdir)/m4/external.math \
 	$(top_srcdir)/m4/external.readline \
 	$(top_srcdir)/m4/external.openssl \
-	$(top_srcdir)/m4/all-in-one.zlib \
-	$(top_srcdir)/m4/all-in-one.libev \
-	$(top_srcdir)/m4/external.libev \
-	$(top_srcdir)/m4/all-in-one.mruby \
-	$(top_srcdir)/m4/all-in-one.v8 $(top_srcdir)/m4/external.v8 \
-	$(top_srcdir)/m4/all-in-one.icu $(top_srcdir)/m4/external.icu \
 	$(top_srcdir)/m4/configure.information \
 	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
@@ -413,7 +393,7 @@ am_arangod_libarangod_a_OBJECTS =  \
 	arangod/RestServer/arangod_libarangod_a-ArangoServer.$(OBJEXT) \
 	arangod/RestServer/arangod_libarangod_a-ConsoleThread.$(OBJEXT) \
 	arangod/RestServer/arangod_libarangod_a-VocbaseContext.$(OBJEXT) \
-	arangod/RestServer/arangod_libarangod_a-arango.$(OBJEXT) \
+	arangod/RestServer/arangod_libarangod_a-arangod.$(OBJEXT) \
 	arangod/SkipLists/arangod_libarangod_a-skiplistIndex.$(OBJEXT) \
 	arangod/Utils/arangod_libarangod_a-DocumentHelper.$(OBJEXT) \
 	arangod/Utils/arangod_libarangod_a-Exception.$(OBJEXT) \
@@ -762,7 +742,7 @@ am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
 bin_arangob_DEPENDENCIES = lib/libarango_client.a lib/libarango.a \
 	$(am__DEPENDENCIES_2)
 am_bin_arangod_OBJECTS =  \
-	arangod/RestServer/bin_arangod-arango.$(OBJEXT)
+	arangod/RestServer/bin_arangod-arangod.$(OBJEXT)
 bin_arangod_OBJECTS = $(am_bin_arangod_OBJECTS)
 @ENABLE_MRUBY_TRUE@am__DEPENDENCIES_3 = lib/libarango_mruby.a
 bin_arangod_DEPENDENCIES = arangod/libarangod.a lib/libarango_fe.a \
@@ -964,14 +944,6 @@ BUILD_H = @BUILD_H@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
-CMAKE_ICU_INCLUDE = @CMAKE_ICU_INCLUDE@
-CMAKE_ICU_LIBS = @CMAKE_ICU_LIBS@
-CMAKE_ICU_LIB_PATH = @CMAKE_ICU_LIB_PATH@
-CMAKE_ICU_VERSION = @CMAKE_ICU_VERSION@
-CMAKE_LIBEV_INCLUDE = @CMAKE_LIBEV_INCLUDE@
-CMAKE_LIBEV_LIBS = @CMAKE_LIBEV_LIBS@
-CMAKE_LIBEV_LIB_PATH = @CMAKE_LIBEV_LIB_PATH@
-CMAKE_LIBEV_VERSION = @CMAKE_LIBEV_VERSION@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CXX = @CXX@
@@ -1057,7 +1029,6 @@ TRI_CONFIGURE_FLAGS = @TRI_CONFIGURE_FLAGS@
 TRI_CONFIGURE_OPTIONS = @TRI_CONFIGURE_OPTIONS@
 TRI_REPOSITORY_VERSION = @TRI_REPOSITORY_VERSION@
 V8_CPPFLAGS = @V8_CPPFLAGS@
-V8_DIR = @V8_DIR@
 V8_LDFLAGS = @V8_LDFLAGS@
 V8_LIBS = @V8_LIBS@
 V8_TARGET = @V8_TARGET@
@@ -1144,8 +1115,8 @@ BUILT_SOURCES = build.h etc/arangodb/arango-dfdb$(PROGRAM_SUFFIX).conf \
 	etc/arangodb/foxx-manager$(PROGRAM_SUFFIX).conf \
 	$(am__append_13) $(JAVASCRIPT_BROWSER) \
 	@builddir@/.setup-js-directories $(am__append_14) \
-	$(am__append_15) $(am__append_16) $(am__append_18) \
-	$(am__append_20) @ZLIB_LIBS@
+	$(am__append_15) @LIBEV_LIBS@ $(am__append_16) @V8_LIBS@ \
+	@ZLIB_LIBS@ $(am__empty)
 
 ################################################################################
 ### @brief man pages to install
@@ -1172,8 +1143,16 @@ CLEANUP = $(am__append_6) $(am__append_11)
 ################################################################################
 ### @brief additional files to remove
 ################################################################################
-CLEANUP_3RD = $(am__append_17) $(am__append_19) $(am__append_21) \
-	clean-zlib $(am__append_22)
+
+################################################################################
+### @brief additional files to remove
+################################################################################
+
+################################################################################
+### @brief additional files to remove
+################################################################################
+CLEANUP_3RD = clean-libev $(am__append_17) clean-v8 clean-zlib \
+	$(am__append_18)
 
 ################################################################################
 ### @brief flex files
@@ -1522,7 +1501,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/RestServer/ArangoServer.cpp \
 	arangod/RestServer/ConsoleThread.cpp \
 	arangod/RestServer/VocbaseContext.cpp \
-	arangod/RestServer/arango.cpp \
+	arangod/RestServer/arangod.cpp \
 	arangod/SkipLists/skiplistIndex.cpp \
 	arangod/Utils/DocumentHelper.cpp \
 	arangod/Utils/Exception.cpp \
@@ -1593,7 +1572,7 @@ bin_arangod_LDADD = arangod/libarangod.a lib/libarango_fe.a \
 	lib/libarango_v8.a lib/libarango.a $(LIBS) @V8_LIBS@ \
 	$(am__append_10)
 bin_arangod_SOURCES = \
-	arangod/RestServer/arango.cpp
+	arangod/RestServer/arangod.cpp
 
 bin_arangob_CPPFLAGS = \
 	-I@top_srcdir@/arangosh \
@@ -2063,7 +2042,7 @@ all: $(BUILT_SOURCES)
 .SUFFIXES: .c .cpp .o .obj
 am--refresh: Makefile
 	@:
-$(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am $(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/etc/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/UnitTests/Makefile.unittests $(srcdir)/Documentation/Makefile.files $(srcdir)/js/Makefile.files $(srcdir)/mr/Makefile.mruby $(srcdir)/lib/Makefile.flex $(srcdir)/3rdParty/Makefile.all-in-one-libev $(srcdir)/3rdParty/Makefile.all-in-one-mruby $(srcdir)/3rdParty/Makefile.all-in-one-v8 $(srcdir)/3rdParty/Makefile.zlib $(srcdir)/3rdParty/Makefile.etcd $(am__configure_deps)
+$(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am $(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/etc/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/UnitTests/Makefile.unittests $(srcdir)/Documentation/Makefile.files $(srcdir)/js/Makefile.files $(srcdir)/mr/Makefile.mruby $(srcdir)/lib/Makefile.flex $(srcdir)/3rdParty/Makefile.libev $(srcdir)/3rdParty/Makefile.mruby $(srcdir)/3rdParty/Makefile.v8 $(srcdir)/3rdParty/Makefile.zlib $(srcdir)/3rdParty/Makefile.etcd $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -2086,7 +2065,7 @@ Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	    echo ' cd $(top_builddir) && $(SHELL) ./config.status $@ $(am__depfiles_maybe)'; \
 	    cd $(top_builddir) && $(SHELL) ./config.status $@ $(am__depfiles_maybe);; \
 	esac;
-$(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/etc/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/UnitTests/Makefile.unittests $(srcdir)/Documentation/Makefile.files $(srcdir)/js/Makefile.files $(srcdir)/mr/Makefile.mruby $(srcdir)/lib/Makefile.flex $(srcdir)/3rdParty/Makefile.all-in-one-libev $(srcdir)/3rdParty/Makefile.all-in-one-mruby $(srcdir)/3rdParty/Makefile.all-in-one-v8 $(srcdir)/3rdParty/Makefile.zlib $(srcdir)/3rdParty/Makefile.etcd:
+$(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/etc/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/UnitTests/Makefile.unittests $(srcdir)/Documentation/Makefile.files $(srcdir)/js/Makefile.files $(srcdir)/mr/Makefile.mruby $(srcdir)/lib/Makefile.flex $(srcdir)/3rdParty/Makefile.libev $(srcdir)/3rdParty/Makefile.mruby $(srcdir)/3rdParty/Makefile.v8 $(srcdir)/3rdParty/Makefile.zlib $(srcdir)/3rdParty/Makefile.etcd:
 
 $(top_builddir)/config.status: $(top_srcdir)/configure $(CONFIG_STATUS_DEPENDENCIES)
 	$(SHELL) ./config.status --recheck
@@ -2400,7 +2379,7 @@ arangod/RestServer/arangod_libarangod_a-ConsoleThread.$(OBJEXT):  \
 arangod/RestServer/arangod_libarangod_a-VocbaseContext.$(OBJEXT):  \
 	arangod/RestServer/$(am__dirstamp) \
 	arangod/RestServer/$(DEPDIR)/$(am__dirstamp)
-arangod/RestServer/arangod_libarangod_a-arango.$(OBJEXT):  \
+arangod/RestServer/arangod_libarangod_a-arangod.$(OBJEXT):  \
 	arangod/RestServer/$(am__dirstamp) \
 	arangod/RestServer/$(DEPDIR)/$(am__dirstamp)
 arangod/SkipLists/$(am__dirstamp):
@@ -3325,7 +3304,7 @@ bin/$(am__dirstamp):
 bin/arangob$(EXEEXT): $(bin_arangob_OBJECTS) $(bin_arangob_DEPENDENCIES) $(EXTRA_bin_arangob_DEPENDENCIES) bin/$(am__dirstamp)
 	@rm -f bin/arangob$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(bin_arangob_OBJECTS) $(bin_arangob_LDADD) $(LIBS)
-arangod/RestServer/bin_arangod-arango.$(OBJEXT):  \
+arangod/RestServer/bin_arangod-arangod.$(OBJEXT):  \
 	arangod/RestServer/$(am__dirstamp) \
 	arangod/RestServer/$(DEPDIR)/$(am__dirstamp)
 
@@ -3621,8 +3600,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestServer/$(DEPDIR)/arangod_libarangod_a-ArangoServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestServer/$(DEPDIR)/arangod_libarangod_a-ConsoleThread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestServer/$(DEPDIR)/arangod_libarangod_a-VocbaseContext.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/RestServer/$(DEPDIR)/arangod_libarangod_a-arango.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/RestServer/$(DEPDIR)/bin_arangod-arango.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/RestServer/$(DEPDIR)/arangod_libarangod_a-arangod.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/RestServer/$(DEPDIR)/bin_arangod-arangod.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/SkipLists/$(DEPDIR)/arangod_libarangod_a-skiplistIndex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Utils/$(DEPDIR)/arangod_libarangod_a-DocumentHelper.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Utils/$(DEPDIR)/arangod_libarangod_a-Exception.Po@am__quote@
@@ -4879,19 +4858,19 @@ arangod/RestServer/arangod_libarangod_a-VocbaseContext.obj: arangod/RestServer/V
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestServer/arangod_libarangod_a-VocbaseContext.obj `if test -f 'arangod/RestServer/VocbaseContext.cpp'; then $(CYGPATH_W) 'arangod/RestServer/VocbaseContext.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestServer/VocbaseContext.cpp'; fi`
 
-arangod/RestServer/arangod_libarangod_a-arango.o: arangod/RestServer/arango.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestServer/arangod_libarangod_a-arango.o -MD -MP -MF arangod/RestServer/$(DEPDIR)/arangod_libarangod_a-arango.Tpo -c -o arangod/RestServer/arangod_libarangod_a-arango.o `test -f 'arangod/RestServer/arango.cpp' || echo '$(srcdir)/'`arangod/RestServer/arango.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestServer/$(DEPDIR)/arangod_libarangod_a-arango.Tpo arangod/RestServer/$(DEPDIR)/arangod_libarangod_a-arango.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/RestServer/arango.cpp' object='arangod/RestServer/arangod_libarangod_a-arango.o' libtool=no @AMDEPBACKSLASH@
+arangod/RestServer/arangod_libarangod_a-arangod.o: arangod/RestServer/arangod.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestServer/arangod_libarangod_a-arangod.o -MD -MP -MF arangod/RestServer/$(DEPDIR)/arangod_libarangod_a-arangod.Tpo -c -o arangod/RestServer/arangod_libarangod_a-arangod.o `test -f 'arangod/RestServer/arangod.cpp' || echo '$(srcdir)/'`arangod/RestServer/arangod.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestServer/$(DEPDIR)/arangod_libarangod_a-arangod.Tpo arangod/RestServer/$(DEPDIR)/arangod_libarangod_a-arangod.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/RestServer/arangod.cpp' object='arangod/RestServer/arangod_libarangod_a-arangod.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestServer/arangod_libarangod_a-arango.o `test -f 'arangod/RestServer/arango.cpp' || echo '$(srcdir)/'`arangod/RestServer/arango.cpp
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestServer/arangod_libarangod_a-arangod.o `test -f 'arangod/RestServer/arangod.cpp' || echo '$(srcdir)/'`arangod/RestServer/arangod.cpp
 
-arangod/RestServer/arangod_libarangod_a-arango.obj: arangod/RestServer/arango.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestServer/arangod_libarangod_a-arango.obj -MD -MP -MF arangod/RestServer/$(DEPDIR)/arangod_libarangod_a-arango.Tpo -c -o arangod/RestServer/arangod_libarangod_a-arango.obj `if test -f 'arangod/RestServer/arango.cpp'; then $(CYGPATH_W) 'arangod/RestServer/arango.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestServer/arango.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestServer/$(DEPDIR)/arangod_libarangod_a-arango.Tpo arangod/RestServer/$(DEPDIR)/arangod_libarangod_a-arango.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/RestServer/arango.cpp' object='arangod/RestServer/arangod_libarangod_a-arango.obj' libtool=no @AMDEPBACKSLASH@
+arangod/RestServer/arangod_libarangod_a-arangod.obj: arangod/RestServer/arangod.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestServer/arangod_libarangod_a-arangod.obj -MD -MP -MF arangod/RestServer/$(DEPDIR)/arangod_libarangod_a-arangod.Tpo -c -o arangod/RestServer/arangod_libarangod_a-arangod.obj `if test -f 'arangod/RestServer/arangod.cpp'; then $(CYGPATH_W) 'arangod/RestServer/arangod.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestServer/arangod.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestServer/$(DEPDIR)/arangod_libarangod_a-arangod.Tpo arangod/RestServer/$(DEPDIR)/arangod_libarangod_a-arangod.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/RestServer/arangod.cpp' object='arangod/RestServer/arangod_libarangod_a-arangod.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestServer/arangod_libarangod_a-arango.obj `if test -f 'arangod/RestServer/arango.cpp'; then $(CYGPATH_W) 'arangod/RestServer/arango.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestServer/arango.cpp'; fi`
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestServer/arangod_libarangod_a-arangod.obj `if test -f 'arangod/RestServer/arangod.cpp'; then $(CYGPATH_W) 'arangod/RestServer/arangod.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestServer/arangod.cpp'; fi`
 
 arangod/SkipLists/arangod_libarangod_a-skiplistIndex.o: arangod/SkipLists/skiplistIndex.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/SkipLists/arangod_libarangod_a-skiplistIndex.o -MD -MP -MF arangod/SkipLists/$(DEPDIR)/arangod_libarangod_a-skiplistIndex.Tpo -c -o arangod/SkipLists/arangod_libarangod_a-skiplistIndex.o `test -f 'arangod/SkipLists/skiplistIndex.cpp' || echo '$(srcdir)/'`arangod/SkipLists/skiplistIndex.cpp
@@ -7329,19 +7308,19 @@ arangosh/Benchmark/bin_arangob-arangob.obj: arangosh/Benchmark/arangob.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangob_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangosh/Benchmark/bin_arangob-arangob.obj `if test -f 'arangosh/Benchmark/arangob.cpp'; then $(CYGPATH_W) 'arangosh/Benchmark/arangob.cpp'; else $(CYGPATH_W) '$(srcdir)/arangosh/Benchmark/arangob.cpp'; fi`
 
-arangod/RestServer/bin_arangod-arango.o: arangod/RestServer/arango.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestServer/bin_arangod-arango.o -MD -MP -MF arangod/RestServer/$(DEPDIR)/bin_arangod-arango.Tpo -c -o arangod/RestServer/bin_arangod-arango.o `test -f 'arangod/RestServer/arango.cpp' || echo '$(srcdir)/'`arangod/RestServer/arango.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestServer/$(DEPDIR)/bin_arangod-arango.Tpo arangod/RestServer/$(DEPDIR)/bin_arangod-arango.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/RestServer/arango.cpp' object='arangod/RestServer/bin_arangod-arango.o' libtool=no @AMDEPBACKSLASH@
+arangod/RestServer/bin_arangod-arangod.o: arangod/RestServer/arangod.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestServer/bin_arangod-arangod.o -MD -MP -MF arangod/RestServer/$(DEPDIR)/bin_arangod-arangod.Tpo -c -o arangod/RestServer/bin_arangod-arangod.o `test -f 'arangod/RestServer/arangod.cpp' || echo '$(srcdir)/'`arangod/RestServer/arangod.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestServer/$(DEPDIR)/bin_arangod-arangod.Tpo arangod/RestServer/$(DEPDIR)/bin_arangod-arangod.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/RestServer/arangod.cpp' object='arangod/RestServer/bin_arangod-arangod.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestServer/bin_arangod-arango.o `test -f 'arangod/RestServer/arango.cpp' || echo '$(srcdir)/'`arangod/RestServer/arango.cpp
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestServer/bin_arangod-arangod.o `test -f 'arangod/RestServer/arangod.cpp' || echo '$(srcdir)/'`arangod/RestServer/arangod.cpp
 
-arangod/RestServer/bin_arangod-arango.obj: arangod/RestServer/arango.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestServer/bin_arangod-arango.obj -MD -MP -MF arangod/RestServer/$(DEPDIR)/bin_arangod-arango.Tpo -c -o arangod/RestServer/bin_arangod-arango.obj `if test -f 'arangod/RestServer/arango.cpp'; then $(CYGPATH_W) 'arangod/RestServer/arango.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestServer/arango.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestServer/$(DEPDIR)/bin_arangod-arango.Tpo arangod/RestServer/$(DEPDIR)/bin_arangod-arango.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/RestServer/arango.cpp' object='arangod/RestServer/bin_arangod-arango.obj' libtool=no @AMDEPBACKSLASH@
+arangod/RestServer/bin_arangod-arangod.obj: arangod/RestServer/arangod.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestServer/bin_arangod-arangod.obj -MD -MP -MF arangod/RestServer/$(DEPDIR)/bin_arangod-arangod.Tpo -c -o arangod/RestServer/bin_arangod-arangod.obj `if test -f 'arangod/RestServer/arangod.cpp'; then $(CYGPATH_W) 'arangod/RestServer/arangod.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestServer/arangod.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestServer/$(DEPDIR)/bin_arangod-arangod.Tpo arangod/RestServer/$(DEPDIR)/bin_arangod-arangod.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/RestServer/arangod.cpp' object='arangod/RestServer/bin_arangod-arangod.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestServer/bin_arangod-arango.obj `if test -f 'arangod/RestServer/arango.cpp'; then $(CYGPATH_W) 'arangod/RestServer/arango.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestServer/arango.cpp'; fi`
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangod_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestServer/bin_arangod-arangod.obj `if test -f 'arangod/RestServer/arangod.cpp'; then $(CYGPATH_W) 'arangod/RestServer/arangod.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestServer/arangod.cpp'; fi`
 
 arangosh/ArangoShell/bin_arangodump-ArangoClient.o: arangosh/ArangoShell/ArangoClient.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(bin_arangodump_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangosh/ArangoShell/bin_arangodump-ArangoClient.o -MD -MP -MF arangosh/ArangoShell/$(DEPDIR)/bin_arangodump-ArangoClient.Tpo -c -o arangosh/ArangoShell/bin_arangodump-ArangoClient.o `test -f 'arangosh/ArangoShell/ArangoClient.cpp' || echo '$(srcdir)/'`arangosh/ArangoShell/ArangoClient.cpp
@@ -8711,11 +8690,6 @@ unittests-shell-server-only:
 	@rm -rf "$(VOCDIR)"
 	@echo
 
-.PHONY: unittests-shell-server-ahuacatl
-
-unittests-shell-server-ahuacatl:
-	@echo "I am deprecated!!! Please do not call me anymore!"
-
 .PHONY: unittests-shell-server-aql
 
 unittests-shell-server-aql:
@@ -9380,30 +9354,30 @@ js/apps/system/aardvark/frontend/js/modules/underscore.js: @srcdir@/js/node/node
 @ENABLE_MAINTAINER_MODE_TRUE@%.cpp: %.yy
 @ENABLE_MAINTAINER_MODE_TRUE@	@top_srcdir@/utils/bison-c++.sh $(BISON) $@ $<
 
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@@LIBEV_LIBS@: @srcdir@/.libev-build-@TRI_BITS@
+@LIBEV_LIBS@: @srcdir@/.libev-build-@TRI_BITS@
 
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@@srcdir@/.libev-build-@TRI_BITS@:
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo "BUILDING libev"
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo
+@srcdir@/.libev-build-@TRI_BITS@:
+	@echo
+	@echo "--------------------------------------------------------------------------------"
+	@echo "BUILDING libev"
+	@echo "--------------------------------------------------------------------------------"
+	@echo
 
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	mkdir @top_srcdir@/3rdParty/libev/BUILD || true
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	cd @top_srcdir@/3rdParty/libev/BUILD && CC="" CFLAGS="" ../configure --disable-shared
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	cd @top_srcdir@/3rdParty/libev/BUILD && $(MAKE) CFLAGS="-D EV_CHILD_ENABLE=0"
+	mkdir @top_srcdir@/3rdParty/libev/BUILD || true
+	cd @top_srcdir@/3rdParty/libev/BUILD && CC="$(CC)" CFLAGS="" ../configure --disable-shared
+	cd @top_srcdir@/3rdParty/libev/BUILD && $(MAKE) CFLAGS="-D EV_CHILD_ENABLE=0"
 
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	touch @srcdir@/.libev-build-@TRI_BITS@
+	touch @srcdir@/.libev-build-@TRI_BITS@
 
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo "BUILD libev FINISHED"
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	@echo
+	@echo
+	@echo "--------------------------------------------------------------------------------"
+	@echo "BUILD libev FINISHED"
+	@echo "--------------------------------------------------------------------------------"
+	@echo
 
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@clean-libev:
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	rm -f @srcdir@/.libev-build-@TRI_BITS@
-@ENABLE_ALL_IN_ONE_LIBEV_TRUE@	rm -rf @top_srcdir@/3rdParty/libev/BUILD
+clean-libev:
+	rm -f @srcdir@/.libev-build-@TRI_BITS@
+	rm -rf @top_srcdir@/3rdParty/libev/BUILD
 
 @ENABLE_MRUBY_TRUE@@MRUBY_LIBS@: @srcdir@/.mruby-build-@TRI_BITS@
 
@@ -9428,54 +9402,57 @@ js/apps/system/aardvark/frontend/js/modules/underscore.js: @srcdir@/js/node/node
 @ENABLE_MRUBY_TRUE@	rm -f @srcdir@/.mruby-build-@TRI_BITS@
 @ENABLE_MRUBY_TRUE@	cd @top_srcdir@/3rdParty/MRUBY && ( $(MAKE) -k clean || true )
 
-@ENABLE_ALL_IN_ONE_V8_TRUE@@V8_LIBS@: @srcdir@/.v8-build-@TRI_BITS@
+@V8_LIBS@: @srcdir@/.v8-build-@TRI_BITS@
 
-@ENABLE_ALL_IN_ONE_V8_TRUE@@srcdir@/.v8-build-@TRI_BITS@:
-@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo
-@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo "BUILDING V8"
-@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo
+@srcdir@/.v8-build-@TRI_BITS@:
+	@echo
+	@echo "--------------------------------------------------------------------------------"
+	@echo "BUILDING V8"
+	@echo "--------------------------------------------------------------------------------"
+	@echo
 
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_TRUE@	cd @top_srcdir@/3rdParty/V8 \
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_TRUE@		&& CFLAGS="-O2 -g -fsigned-char" \
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_TRUE@		   CXXFLAGS="-O2 -g -fsigned-char" \
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_TRUE@		   $(MAKE) \
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_TRUE@			CXX=$(CXX) \
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_TRUE@			LINK=$(CXX) \
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_TRUE@			GYPFLAGS="-Dstandalone_static_library=1" \
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_TRUE@			library=static strictaliasing=off snapshot=off werror=no hardfp=on @V8_TARGET@
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@	cd @top_srcdir@/3rdParty/V8 \
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@		&& LDFLAGS="-lc++" \
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@                   CFLAGS="-O2 -g" \
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@		   CXXFLAGS="-O2 -g" \
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@		   $(MAKE) \
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@			CXX=$(CXX) \
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@			LINK=$(CXX) \
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@			GYPFLAGS="-Dstandalone_static_library=1" \
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@			library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@	cd @top_srcdir@/3rdParty/V8 \
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@		&& CFLAGS="-O2 -g" \
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@		   CXXFLAGS="-O2 -g" \
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@		   $(MAKE) \
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@			CXX=$(CXX) \
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@			LINK=$(CXX) \
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@			GYPFLAGS="-Dstandalone_static_library=1" \
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@			library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
+@ENABLE_ARM_TRUE@	cd @top_srcdir@/3rdParty/V8 \
+@ENABLE_ARM_TRUE@		&& CFLAGS="-O2 -g -fsigned-char" \
+@ENABLE_ARM_TRUE@		   CXXFLAGS="-O2 -g -fsigned-char" \
+@ENABLE_ARM_TRUE@		   CC=$(CC) \
+@ENABLE_ARM_TRUE@		   CXX=$(CXX) \
+@ENABLE_ARM_TRUE@		   LINK=$(CXX) \
+@ENABLE_ARM_TRUE@		   GYPFLAGS="-Dstandalone_static_library=1" \
+@ENABLE_ARM_TRUE@		   $(MAKE) \
+@ENABLE_ARM_TRUE@			library=static strictaliasing=off snapshot=off werror=no hardfp=on @V8_TARGET@
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@	cd @top_srcdir@/3rdParty/V8 \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@		&& LDFLAGS="-lc++" \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@                   CFLAGS="-O2 -g" \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@		   CXXFLAGS="-O2 -g" \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@		   CC=$(CC) \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@		   CXX=$(CXX) \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@		   LINK=$(CXX) \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@		   GYPFLAGS="-Dstandalone_static_library=1" \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@		   $(MAKE) \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@			library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@	cd @top_srcdir@/3rdParty/V8 \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@		&& CFLAGS="-O2 -g" \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@		   CXXFLAGS="-O2 -g" \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@		   CC=$(CC) \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@		   CXX=$(CXX) \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@		   LINK=$(CXX) \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@		   GYPFLAGS="-Dstandalone_static_library=1" \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@		   $(MAKE) \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@			library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 
-@ENABLE_ALL_IN_ONE_V8_TRUE@	touch @srcdir@/.v8-build-@TRI_BITS@
+	touch @srcdir@/.v8-build-@TRI_BITS@
 
-@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo
-@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo "BUILD V8 FINISHED"
-@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo "--------------------------------------------------------------------------------"
-@ENABLE_ALL_IN_ONE_V8_TRUE@	@echo
+	@echo
+	@echo "--------------------------------------------------------------------------------"
+	@echo "BUILD V8 FINISHED"
+	@echo "--------------------------------------------------------------------------------"
+	@echo
 
-@ENABLE_ALL_IN_ONE_V8_TRUE@clean-v8:
-@ENABLE_ALL_IN_ONE_V8_TRUE@	rm -f @srcdir@/.v8-build-@TRI_BITS@
-@ENABLE_ALL_IN_ONE_V8_TRUE@	cd @top_srcdir@/3rdParty/V8 && ( $(MAKE) clean || true )
-@ENABLE_ALL_IN_ONE_V8_TRUE@	find @top_srcdir@/3rdParty/V8 -name "*.pyc" -exec rm "{}" ";"
-@ENABLE_ALL_IN_ONE_V8_TRUE@	rm -rf @top_srcdir@/3rdParty/V8/out
+clean-v8:
+	rm -f @srcdir@/.v8-build-@TRI_BITS@
+	cd @top_srcdir@/3rdParty/V8 && ( $(MAKE) clean || true )
+	find @top_srcdir@/3rdParty/V8 -name "*.pyc" -exec rm "{}" ";"
+	rm -rf @top_srcdir@/3rdParty/V8/out
 
 @ZLIB_LIBS@: @srcdir@/.zlib-build-@TRI_BITS@
 

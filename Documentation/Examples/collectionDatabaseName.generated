@@ -1,2 +1,2 @@
 arangosh> db._collection("demo");
-[ArangoCollection 105622255, "demo" (type document, status loaded)]
+[ArangoCollection 105507595, "demo" (type document, status loaded)]

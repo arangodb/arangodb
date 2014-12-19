@@ -1,20 +1,20 @@
-shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/document/products/1732946671
+shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/document/products/1685908235
 { 
   "hello" : "world" 
 }
 
 HTTP/1.1 202 Accepted
 content-type: application/json; charset=utf-8
-etag: "1733274351"
-location: /_db/_system/_api/document/products/1732946671
+etag: "1686235915"
+location: /_db/_system/_api/document/products/1685908235
 
 { 
   "error" : false, 
-  "_id" : "products/1732946671", 
-  "_rev" : "1733274351", 
-  "_key" : "1732946671" 
+  "_id" : "products/1685908235", 
+  "_rev" : "1686235915", 
+  "_key" : "1685908235" 
 }
-shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/document/products/1732946671
+shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/document/products/1685908235
 { 
   "numbers" : { 
     "one" : 1, 
@@ -26,20 +26,20 @@ shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/docume
 
 HTTP/1.1 202 Accepted
 content-type: application/json; charset=utf-8
-etag: "1733864175"
-location: /_db/_system/_api/document/products/1732946671
+etag: "1686825739"
+location: /_db/_system/_api/document/products/1685908235
 
 { 
   "error" : false, 
-  "_id" : "products/1732946671", 
-  "_rev" : "1733864175", 
-  "_key" : "1732946671" 
+  "_id" : "products/1685908235", 
+  "_rev" : "1686825739", 
+  "_key" : "1685908235" 
 }
-shell> curl --data-binary @- --dump - http://localhost:8529/_api/document/products/1732946671
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/document/products/1685908235
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
-etag: "1733864175"
+etag: "1686825739"
 
 { 
   "one" : "world", 
@@ -50,11 +50,11 @@ etag: "1733864175"
     "two" : 2, 
     "three" : 3 
   }, 
-  "_id" : "products/1732946671", 
-  "_rev" : "1733864175", 
-  "_key" : "1732946671" 
+  "_id" : "products/1685908235", 
+  "_rev" : "1686825739", 
+  "_key" : "1685908235" 
 }
-shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/document/products/1732946671?keepNull=false
+shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/document/products/1685908235?keepNull=false
 { 
   "hello" : null, 
   "numbers" : { 
@@ -64,20 +64,20 @@ shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/docume
 
 HTTP/1.1 202 Accepted
 content-type: application/json; charset=utf-8
-etag: "1734322927"
-location: /_db/_system/_api/document/products/1732946671
+etag: "1687284491"
+location: /_db/_system/_api/document/products/1685908235
 
 { 
   "error" : false, 
-  "_id" : "products/1732946671", 
-  "_rev" : "1734322927", 
-  "_key" : "1732946671" 
+  "_id" : "products/1685908235", 
+  "_rev" : "1687284491", 
+  "_key" : "1685908235" 
 }
-shell> curl --data-binary @- --dump - http://localhost:8529/_api/document/products/1732946671
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/document/products/1685908235
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
-etag: "1734322927"
+etag: "1687284491"
 
 { 
   "one" : "world", 
@@ -88,7 +88,7 @@ etag: "1734322927"
     "three" : 3, 
     "four" : 4 
   }, 
-  "_id" : "products/1732946671", 
-  "_rev" : "1734322927", 
-  "_key" : "1732946671" 
+  "_id" : "products/1685908235", 
+  "_rev" : "1687284491", 
+  "_key" : "1685908235" 
 }
