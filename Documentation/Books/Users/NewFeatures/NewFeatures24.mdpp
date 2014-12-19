@@ -2,7 +2,7 @@
 
 The following list shows in detail which features have been added or improved in
 ArangoDB 2.4. ArangoDB 2.4 also contains several bugfixes that are not listed
-here. For a list of bugfixes, please consult the CHANGELOG.
+here. For a list of bugfixes, please consult the [CHANGELOG](https://github.com/triAGENS/ArangoDB/blob/devel/CHANGELOG).
 
 
 !SECTION V8 version upgrade
