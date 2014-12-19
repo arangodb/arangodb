@@ -28,11 +28,12 @@
 #ifndef ARANGODB_AQL_EXECUTION_BLOCK_H
 #define ARANGODB_AQL_EXECUTION_BLOCK_H 1
 
-#include <Basics/JsonHelper.h>
-#include <ShapedJson/shaped-json.h>
+#include "Basics/JsonHelper.h"
+#include "ShapedJson/shaped-json.h"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Collection.h"
+#include "Aql/CollectionScanner.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Range.h"
 #include "Aql/WalkerWorker.h"
@@ -44,6 +45,8 @@
 
 namespace triagens {
   namespace aql {
+
+    struct CollectionScanner;
 
     class ExecutionEngine;
 
@@ -441,8 +444,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void initializeDocuments () {
-          _internalSkip = 0;
-          if (!_atBeginning) {
+          _scanner->reset();
+          if (! _atBeginning) {
             _documents.clear();
           }
           _posInDocuments = 0;
@@ -493,16 +496,10 @@ namespace triagens {
         Collection* _collection;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief total number of documents in the collection
+/// @brief collection scanner
 ////////////////////////////////////////////////////////////////////////////////
 
-        uint32_t _totalCount;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief internal skip value
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_voc_size_t _internalSkip;
+        CollectionScanner* _scanner;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document buffer
@@ -520,7 +517,13 @@ namespace triagens {
 /// @brief current position in _documents
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool _atBeginning;
+        bool _atBeginning; // TODO: check if we can remove this
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not we're doing random iteration
+////////////////////////////////////////////////////////////////////////////////
+
+        bool const _random;
     };
 
 // -----------------------------------------------------------------------------
@@ -1136,6 +1139,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         class OurLessThan {
+
           public:
             OurLessThan (triagens::arango::AqlTransaction* trx,
                          std::deque<AqlItemBlock*>& buffer,

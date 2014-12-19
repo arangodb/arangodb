@@ -2309,7 +2309,14 @@ div.resizecontainer {
     display: none;
     font-size: 10px;
     height: 100px;
-    width: 0; } }
+    width: 0; }
+
+  .application-detail-view section.info {
+    width: 228px; }
+    .application-detail-view section.info .header_right {
+      width: 58px; }
+  .application-detail-view aside.meta {
+    display: none; } }
 @media (min-width: 490px) and (max-width: 729px) {
   div.resizecontainer {
     width: 468px; }
@@ -2490,7 +2497,14 @@ div.resizecontainer {
     display: none;
     font-size: 10px;
     height: 100px;
-    width: 0; } }
+    width: 0; }
+
+  .application-detail-view section.info {
+    width: 468px; }
+    .application-detail-view section.info .header_right {
+      width: 298px; }
+  .application-detail-view aside.meta {
+    display: none; } }
 @media (min-width: 730px) and (max-width: 969px) {
   div.resizecontainer {
     width: 708px; }
@@ -2671,7 +2685,12 @@ div.resizecontainer {
     display: none;
     font-size: 10px;
     height: 100px;
-    width: 0; } }
+    width: 0; }
+
+  .application-detail-view section.info {
+    width: 508px; }
+    .application-detail-view section.info .header_right {
+      width: 338px; } }
 @media (min-width: 970px) and (max-width: 1209px) {
   div.resizecontainer {
     width: 948px; }
@@ -2849,7 +2868,12 @@ div.resizecontainer {
   .dashboard-half-height-legend {
     font-size: 11px;
     height: 117.5px;
-    width: 60px; } }
+    width: 60px; }
+
+  .application-detail-view section.info {
+    width: 748px; }
+    .application-detail-view section.info .header_right {
+      width: 578px; } }
 @media (min-width: 1210px) and (max-width: 1449px) {
   div.resizecontainer {
     width: 1188px; }
@@ -3027,7 +3051,12 @@ div.resizecontainer {
   .dashboard-half-height-legend {
     font-size: 12px;
     height: 135px;
-    width: 65px; } }
+    width: 65px; }
+
+  .application-detail-view section.info {
+    width: 988px; }
+    .application-detail-view section.info .header_right {
+      width: 818px; } }
 @media (min-width: 1450px) and (max-width: 1689px) {
   div.resizecontainer {
     width: 1428px; }
@@ -3205,7 +3234,12 @@ div.resizecontainer {
   .dashboard-half-height-legend {
     font-size: 13px;
     height: 150px;
-    width: 70px; } }
+    width: 70px; }
+
+  .application-detail-view section.info {
+    width: 1228px; }
+    .application-detail-view section.info .header_right {
+      width: 1058px; } }
 @media (min-width: 1690px) and (max-width: 1929px) {
   div.resizecontainer {
     width: 1668px; }
@@ -3383,7 +3417,12 @@ div.resizecontainer {
   .dashboard-half-height-legend {
     font-size: 14px;
     height: 170px;
-    width: 80px; } }
+    width: 80px; }
+
+  .application-detail-view section.info {
+    width: 1468px; }
+    .application-detail-view section.info .header_right {
+      width: 1298px; } }
 @media (min-width: 1930px) and (max-width: 2169px) {
   div.resizecontainer {
     width: 1908px; }
@@ -3561,7 +3600,12 @@ div.resizecontainer {
   .dashboard-half-height-legend {
     font-size: 15px;
     height: 200px;
-    width: 85px; } }
+    width: 85px; }
+
+  .application-detail-view section.info {
+    width: 1708px; }
+    .application-detail-view section.info .header_right {
+      width: 1538px; } }
 @media (min-width: 2170px) and (max-width: 2409px) {
   div.resizecontainer {
     width: 2148px; }
@@ -3739,7 +3783,12 @@ div.resizecontainer {
   .dashboard-half-height-legend {
     font-size: 15px;
     height: 150px;
-    width: 70px; } }
+    width: 70px; }
+
+  .application-detail-view section.info {
+    width: 1948px; }
+    .application-detail-view section.info .header_right {
+      width: 1778px; } }
 @media (min-width: 2410px) and (max-width: 2649px) {
   div.resizecontainer {
     width: 2388px; }
@@ -3917,7 +3966,12 @@ div.resizecontainer {
   .dashboard-half-height-legend {
     font-size: 15px;
     height: 150px;
-    width: 70px; } }
+    width: 70px; }
+
+  .application-detail-view section.info {
+    width: 2188px; }
+    .application-detail-view section.info .header_right {
+      width: 2018px; } }
 @media (min-width: 2650px) and (max-width: 2889px) {
   div.resizecontainer {
     width: 2628px; }
@@ -4095,7 +4149,12 @@ div.resizecontainer {
   .dashboard-half-height-legend {
     font-size: 15px;
     height: 150px;
-    width: 70px; } }
+    width: 70px; }
+
+  .application-detail-view section.info {
+    width: 2428px; }
+    .application-detail-view section.info .header_right {
+      width: 2258px; } }
 div.centralRow {
   margin-top: 65px;
   margin-bottom: 65px; }
@@ -4447,16 +4506,16 @@ div.breadcrumb a.disabledBread {
     margin-left: 10px;
     opacity: .7;
     padding-bottom: 5px; }
-  .modal-body .icon-info-sign:hover {
-    opacity: 1; }
+    .modal-body .icon-info-sign:hover {
+      opacity: 1; }
   .modal-body .icon_arangodb_info {
     color: #736b68;
     font-size: 18px;
     margin-top: -10px;
     position: absolute;
     right: 12px; }
-  .modal-body .icon_arangodb_info:hover {
-    color: #000; }
+    .modal-body .icon_arangodb_info:hover {
+      color: #000; }
   .modal-body .collapse {
     margin-right: -14px;
     position: relative; }
@@ -4481,12 +4540,19 @@ div.breadcrumb a.disabledBread {
     height: 55px; }
   .modal-body .tab-content {
     min-height: 200px; }
+    .modal-body .tab-content .tab-pane {
+      border-top: 1px solid #888 !important;
+      margin-left: 0 !important;
+      padding-top: 10px; }
   .modal-body .errorMessage {
     color: #f00;
     font-size: 9pt;
     margin-bottom: 5px;
     margin-top: -9px;
     position: absolute; }
+  .modal-body .nav img.tab-icon {
+    width: 20px;
+    margin-right: 5px; }
 
 .modal-text {
   font-weight: 300;
@@ -5772,13 +5838,6 @@ input.gv-radio-button {
   background-color: #fff;
   border-color: #888 #888 transparent !important; }
 
-#tab-content-collection-info #info,
-#tab-content-collection-info .collection-info-figures,
-#tab-content-collection-info #index {
-  border-top: 1px solid #888 !important;
-  margin-left: 0 !important;
-  padding-top: 10px; }
-
 #confirmCreateEdge {
   margin-left: 20px; }
 
@@ -5912,23 +5971,34 @@ input.gv-radio-button {
   margin-left: 10px;
   margin-top: 7px; }
 
-.applicationDetailView section {
-  float: left;
-  width: 900px; }
-  .applicationDetailView section .header {
+.application-detail-view section.info {
+  float: left; }
+  .application-detail-view section.info .header {
     float: left;
-    margin-bottom: 10px; }
-    .applicationDetailView section .header .header_left {
-      float: left;
+    height: 200px;
+    margin-bottom: 10px;
+    position: relative; }
+    .application-detail-view section.info .header .header_left {
+      position: absolute;
       width: 170px;
       text-align: center; }
-      .applicationDetailView section .header .header_left img {
-        margin: 0px 0px 4px; }
-    .applicationDetailView section .header .header_right {
-      float: left;
-      clear: right;
+      .application-detail-view section.info .header .header_left div.header-icon-container {
+        height: 160px;
+        margin: 0px 0px 4px;
+        width: 160px; }
+        .application-detail-view section.info .header .header_left div.header-icon-container img.icon {
+          height: auto;
+          max-height: 160px;
+          max-width: 160px;
+          width: auto; }
+    .application-detail-view section.info .header .header_right {
+      position: relative;
+      left: 170px;
       padding: 5px; }
-      .applicationDetailView section .header .header_right .license, .applicationDetailView section .header .header_right .version {
+      .application-detail-view section.info .header .header_right h3 {
+        padding-right: 5px;
+        float: left; }
+      .application-detail-view section.info .header .header_right .license, .application-detail-view section.info .header .header_right .version {
         -webkit-border-radius: 6px;
         -moz-border-radius: 6px;
         border-radius: 6px;
@@ -5938,10 +6008,12 @@ input.gv-radio-button {
         font-size: 0.6em;
         position: relative;
         top: -2px; }
-  .applicationDetailView section .swagger iframe {
+      .application-detail-view section.info .header .header_right .description {
+        clear: left; }
+  .application-detail-view section.info .swagger iframe {
     width: 100%;
     height: 600px; }
-.applicationDetailView aside {
+.application-detail-view aside.meta {
   float: left;
   clear: right;
   width: 200px; }

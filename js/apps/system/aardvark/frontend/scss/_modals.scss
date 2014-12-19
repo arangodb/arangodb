@@ -101,11 +101,12 @@
     margin-left: 10px;
     opacity: .7;
     padding-bottom: 5px;
+
+    &:hover {
+      opacity: 1;
+    }
   }
 
-  .icon-info-sign:hover {
-    opacity: 1;
-  }
 
   .icon_arangodb_info {
     color: $c-neutral-hover;
@@ -113,10 +114,10 @@
     margin-top: -10px;
     position: absolute;
     right: 12px;
-  }
 
-  .icon_arangodb_info:hover {
-    color: $c-black;
+    &:hover {
+      color: $c-black;
+    }
   }
 
   .collapse {
@@ -169,6 +170,12 @@
 
   .tab-content {
     min-height: 200px;
+
+    .tab-pane {
+      border-top: 1px solid $c-collection-tab-border-bottom !important;
+      margin-left: 0 !important;
+      padding-top: 10px;
+    }
   }
 
   .errorMessage {
@@ -177,6 +184,11 @@
     margin-bottom: 5px;
     margin-top: -9px;
     position: absolute;
+  }
+
+  .nav img.tab-icon {
+    width: 20px;
+    margin-right: 5px;
   }
 
 }
