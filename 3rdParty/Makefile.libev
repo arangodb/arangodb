@@ -20,7 +20,7 @@ BUILT_SOURCES += @LIBEV_LIBS@
 	@echo
 
 	mkdir @top_srcdir@/3rdParty/libev/BUILD || true
-	cd @top_srcdir@/3rdParty/libev/BUILD && CC="" CFLAGS="" ../configure --disable-shared
+	cd @top_srcdir@/3rdParty/libev/BUILD && CC="$(CC)" CFLAGS="" ../configure --disable-shared
 	cd @top_srcdir@/3rdParty/libev/BUILD && $(MAKE) CFLAGS="-D EV_CHILD_ENABLE=0"
 
 	touch @srcdir@/.libev-build-@TRI_BITS@

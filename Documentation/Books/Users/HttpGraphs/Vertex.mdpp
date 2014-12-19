@@ -24,14 +24,14 @@ Wait until document has been sync to disk.
 
 `vertex (json,required)`
 
-The call expects a JSON hash array as body with the vertex properties:
+The call expects a JSON object as body with the vertex properties:
 _key: The name of the vertex (optional).
 further optional attributes.
 
 !SUBSECTION Description
 
 Creates a vertex in a graph.
-Returns an object with an attribute vertex containing a list of all vertex properties.
+Returns an object with an attribute *vertex* containing a array of all vertex properties.
 
 !SUBSECTION Return codes
 
@@ -95,7 +95,7 @@ If the "If-Match" header is given, then it must contain exactly one etag. The do
 
 !SUBSECTION Description
 
-Returns an object with an attribute vertex containing a list of all vertex properties.
+Returns an object with an attribute *vertex* containing an array of all vertex properties.
 
 !SUBSECTION Return codes
 
@@ -164,7 +164,7 @@ Revision of a vertex
 
 `vertex (json,required)`
 
-The call expects a JSON hash array as body with the new vertex properties.
+The call expects a JSON object as body with the new vertex properties.
 
 !SUBSECTION HTTP header parameters
 
@@ -175,7 +175,7 @@ If the "If-Match" header is given, then it must contain exactly one etag. The do
 !SUBSECTION Description
 
 Replaces the vertex properties.
-Returns an object with an attribute vertex containing a list of all vertex properties.
+Returns an object with an attribute *vertex* containing an array of all vertex properties.
 
 !SUBSECTION Return codes
 
@@ -247,7 +247,7 @@ Modify the behavior of the patch command to remove any attribute
 
 `graph (json,required)`
 
-The call expects a JSON hash array as body with the properties to patch.
+The call expects a JSON object as body with the properties to patch.
 
 !SUBSECTION HTTP header parameters
 
@@ -260,7 +260,7 @@ If the "If-Match" header is given, then it must contain exactly one etag. The do
 Partially updates the vertex properties.
 Setting an attribute value to null in the patch document will cause a value of null be saved for the attribute by default. If the intention is to delete existing attributes with the patch command, the URL parameter keepNull can be used with a value of false. This will modify the behavior of the patch command to remove any attributes from the existing document that are contained in the patch document with an attribute value of null.
 
-Returns an object with an attribute vertex containing a list of all vertex properties.
+Returns an object with an attribute *vertex* containing an array of all vertex properties.
 
 !SUBSECTION Return codes
 

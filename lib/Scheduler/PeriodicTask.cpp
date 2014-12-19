@@ -73,8 +73,8 @@ void PeriodicTask::resetTimer (double offset, double interval) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void PeriodicTask::getDescription (TRI_json_t* json) {
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "periodic"));
-  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "period", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, interval));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "periodic"));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "period", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, interval));
 }
 
 bool PeriodicTask::setup (Scheduler* scheduler, EventLoop loop) {

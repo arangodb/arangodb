@@ -3571,7 +3571,7 @@ void TRI_AugmentObject (v8::Isolate* isolate, v8::Handle<v8::Value> value, TRI_j
     return;
   }
 
-  if (json->_type != TRI_JSON_ARRAY) {
+  if (json->_type != TRI_JSON_OBJECT) {
     return;
   }
 

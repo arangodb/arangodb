@@ -66,7 +66,7 @@ bool TRI_CheckSameValueJson (TRI_json_t const*,
 /// @brief checks if a json value is contained in a json list
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CheckInListJson (TRI_json_t const*, 
+bool TRI_CheckInArrayJson (TRI_json_t const*, 
                           TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -81,7 +81,7 @@ bool TRI_CheckInListJson (TRI_json_t const*,
 /// whether the bounds values are part of the range (true) or not (false)
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_BetweenListJson (TRI_json_t const*,
+TRI_json_t* TRI_BetweenArrayJson (TRI_json_t const*,
                                  TRI_json_t const*,
                                  bool,
                                  TRI_json_t const*,
@@ -94,7 +94,7 @@ TRI_json_t* TRI_BetweenListJson (TRI_json_t const*,
 /// otherwise the result is unpredictable.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_UniquifyListJson (TRI_json_t const*);
+TRI_json_t* TRI_UniquifyArrayJson (TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the union of two sorted json lists into a new list
@@ -122,7 +122,7 @@ TRI_json_t* TRI_IntersectListsJson (TRI_json_t const*,
 /// @brief sorts a json list in place
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_SortListJson (TRI_json_t*);
+TRI_json_t* TRI_SortArrayJson (TRI_json_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if a JSON struct has duplicate attribute names

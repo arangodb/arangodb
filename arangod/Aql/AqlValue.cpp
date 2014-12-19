@@ -53,7 +53,7 @@ bool AqlValue::isTrue () const {
       // the trailing NULL bytes counts, too...
       return true;
     }
-    else if (TRI_IsListJson(json) || TRI_IsArrayJson(json)) {
+    else if (TRI_IsArrayJson(json) || TRI_IsObjectJson(json)) {
       return true;
     }
   }
@@ -245,11 +245,11 @@ bool AqlValue::isBoolean () const {
 /// @brief whether or not the AqlValue contains a list value
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AqlValue::isList () const {
+bool AqlValue::isArray () const {
   switch (_type) {
     case JSON: {
       TRI_json_t const* json = _json->json();
-      return TRI_IsListJson(json);
+      return TRI_IsArrayJson(json);
     }
 
     case SHAPED: {
@@ -273,11 +273,11 @@ bool AqlValue::isList () const {
 /// @brief whether or not the AqlValue contains an array value
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AqlValue::isArray () const {
+bool AqlValue::isObject () const {
   switch (_type) {
     case JSON: {
       TRI_json_t const* json = _json->json();
-      return TRI_IsArrayJson(json);
+      return TRI_IsObjectJson(json);
     }
 
     case SHAPED: {
@@ -302,8 +302,8 @@ size_t AqlValue::listSize () const {
   switch (_type) {
     case JSON: {
       TRI_json_t const* json = _json->json();
-      if (TRI_IsListJson(json)) {
-        return TRI_LengthListJson(json);
+      if (TRI_IsArrayJson(json)) {
+        return TRI_LengthArrayJson(json);
       }
       return 0;
     }
@@ -527,7 +527,7 @@ Json AqlValue::toJson (triagens::arango::AqlTransaction* trx,
       }
 
       // allocate the result list
-      Json json(Json::List, static_cast<size_t>(totalSize));
+      Json json(Json::Array, static_cast<size_t>(totalSize));
 
       for (auto it = _vector->begin(); it != _vector->end(); ++it) {
         auto current = (*it);
@@ -546,7 +546,7 @@ Json AqlValue::toJson (triagens::arango::AqlTransaction* trx,
 
       // allocate the buffer for the result
       size_t const n = _range->size();
-      Json json(Json::List, n);
+      Json json(Json::Array, n);
 
       for (size_t i = 0; i < n; ++i) {
         // is it safe to use a double here (precision loss)?
@@ -577,8 +577,8 @@ Json AqlValue::extractArrayMember (triagens::arango::AqlTransaction* trx,
       TRI_ASSERT(_json != nullptr);
       TRI_json_t const* json = _json->json();
 
-      if (TRI_IsArrayJson(json)) {
-        TRI_json_t const* found = TRI_LookupArrayJson(json, name);
+      if (TRI_IsObjectJson(json)) {
+        TRI_json_t const* found = TRI_LookupObjectJson(json, name);
 
         if (found != nullptr) {
           return Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, found));
@@ -675,8 +675,8 @@ Json AqlValue::extractListMember (triagens::arango::AqlTransaction* trx,
       TRI_ASSERT(_json != nullptr);
       TRI_json_t const* json = _json->json();
 
-      if (TRI_IsListJson(json)) {
-        size_t const length = TRI_LengthListJson(json);
+      if (TRI_IsArrayJson(json)) {
+        size_t const length = TRI_LengthArrayJson(json);
         if (position < 0) {
           // a negative position is allowed
           position = static_cast<int64_t>(length) + position; 
@@ -684,7 +684,7 @@ Json AqlValue::extractListMember (triagens::arango::AqlTransaction* trx,
         
         if (position >= 0 && position < static_cast<int64_t>(length)) {
           // only look up the value if it is within list bounds
-          TRI_json_t const* found = TRI_LookupListJson(json, static_cast<size_t>(position));
+          TRI_json_t const* found = TRI_LookupArrayJson(json, static_cast<size_t>(position));
 
           if (found != nullptr) {
             if (copy) {
@@ -757,7 +757,7 @@ AqlValue AqlValue::CreateFromBlocks (triagens::arango::AqlTransaction* trx,
     totalSize += (*it)->size();
   }
 
-  std::unique_ptr<Json> json(new Json(Json::List, totalSize));
+  std::unique_ptr<Json> json(new Json(Json::Array, totalSize));
 
   for (auto it = src.begin(); it != src.end(); ++it) {
     auto current = (*it);
@@ -772,7 +772,7 @@ AqlValue AqlValue::CreateFromBlocks (triagens::arango::AqlTransaction* trx,
     }
 
     for (size_t i = 0; i < current->size(); ++i) {
-      Json values(Json::Array, registers.size());
+      Json values(Json::Object, registers.size());
 
       // only enumerate the registers that are left
       for (auto const& reg : registers) {
@@ -799,7 +799,7 @@ AqlValue AqlValue::CreateFromBlocks (triagens::arango::AqlTransaction* trx,
     totalSize += (*it)->size();
   }
 
-  std::unique_ptr<Json> json(new Json(Json::List, totalSize));
+  std::unique_ptr<Json> json(new Json(Json::Array, totalSize));
 
   for (auto it = src.begin(); it != src.end(); ++it) {
     auto current = (*it);

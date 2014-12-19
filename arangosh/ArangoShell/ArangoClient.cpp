@@ -77,7 +77,7 @@ bool _newLine () {
         // Fill the bottom row with green blanks.
         chiFill.Attributes = BACKGROUND_GREEN | FOREGROUND_RED;
       }
-      ScrollConsoleScreenBuffer(GetStdHandle(STD_OUTPUT_HANDLE), &srctScrollRect, NULL, coordDest, &chiFill);
+      ScrollConsoleScreenBuffer(GetStdHandle(STD_OUTPUT_HANDLE), &srctScrollRect, nullptr, coordDest, &chiFill);
       pos.Y = bufferInfo.dwCursorPosition.Y;
       pos.X = 0;
       SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), pos);
@@ -397,7 +397,7 @@ void ArangoClient::parse (ProgramOptions& options,
     cout << description.usage(help) << endl;
 
     // --help always returns success
-    TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
+    TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
   }
 
 

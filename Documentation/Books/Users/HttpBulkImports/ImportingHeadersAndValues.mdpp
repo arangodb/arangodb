@@ -2,9 +2,9 @@
 
 When using this type of import, the attribute names of the documents to be
 imported are specified separate from the actual document value data.  The first
-line of the HTTP POST request body must be a JSON list containing the attribute
+line of the HTTP POST request body must be a JSON array containing the attribute
 names for the documents that follow.  The following lines are interpreted as the
-document data. Each document must be a JSON list of values. No attribute names
+document data. Each document must be a JSON array of values. No attribute names
 are needed or allowed in this data section.
 
 *Examples*
@@ -30,8 +30,8 @@ returned in the *errors* attribute. The number of empty lines in the input file
 will be returned in the *empty* attribute.
 
 If the *details* parameter was set to *true* in the request, the response will 
-also contain an attribute *details* which is a list of details about errors that
-occurred on the server side during the import. This list might be empty if no
+also contain an attribute *details* which is an array of details about errors that
+occurred on the server side during the import. This array might be empty if no
 errors occurred.
 
 !SECTION Importing into Edge Collections

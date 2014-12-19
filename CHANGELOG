@@ -13,6 +13,21 @@ v2.4.0-alpha2 (2014-11-28)
 v2.4.0-alpha1 (2014-11-25)
 --------------------------
 
+* removed enable-all-in-one-v8, enable-all-in-one-icu and enable-all-in-one-libev
+
+* global internal rename to fix naming incompatibility with JSON:
+ 
+  Internal functions with names containing `array` have been renamed to `object`, 
+  internal functions with names containing `list` have been renamed to `array`.
+  The renaming was mainly done in the C++ parts. The documentation has also been
+  adjusted so that the correct JSON type names are used in most places.
+  
+  The change also led to the addition of a few function aliases in AQL:
+
+  * `TO_LIST` now is an alias of the new `TO_ARRAY`
+  * `IS_LIST` now is an alias of the new `IS_ARRAY`
+  * `IS_DOCUMENT` now is an alias of the new `IS_OBJECT`
+
 * AQL: range optimizations for IN and OR
 
 * fixed missing makeDirectory when fetching a Foxx application from a zip file

@@ -167,7 +167,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
                                              bool isEdgeCollection,
                                              bool waitForSync,
                                              size_t i) {
-  if (! TRI_IsArrayJson(json)) {
+  if (! TRI_IsObjectJson(json)) {
     errorMsg = positionise(i) + "invalid JSON type (expecting array)";
 
     return TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
@@ -239,8 +239,8 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 /// @RESTHEADER{POST /_api/import,imports documents from JSON}
 ///
 /// @RESTBODYPARAM{documents,string,required}
-/// The body must either be a JSON-encoded list of documents or a string with
-/// multiple JSON documents separated by newlines.
+/// The body must either be a JSON-encoded array of objects or a string with
+/// multiple JSON object separated by newlines.
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -248,10 +248,10 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 /// Determines how the body of the request will be interpreted. `type` can have
 /// the following values:
 /// - `documents`: when this type is used, each line in the request body is
-///   expected to be an individual JSON-encoded document. Multiple JSON documents
+///   expected to be an individual JSON-encoded document. Multiple JSON objects
 ///   in the request body need to be separated by newlines.
 /// - `list`: when this type is used, the request body must contain a single
-///   JSON-encoded list of individual documents to import.
+///   JSON-encoded array of individual objects to import.
 /// - `auto`: if set, this will automatically determine the body type (either
 ///   `documents` or `list`).
 ///
@@ -284,7 +284,8 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 /// Creates documents in the collection identified by `collection-name`.
 /// The JSON representations of the documents must be passed as the body of the
 /// POST request. The request body can either consist of multiple lines, with
-/// each line being a single stand-alone JSON document, or a JSON list.
+/// each line being a single stand-alone JSON object, or a singe JSON array with
+/// sub-objects.
 ///
 /// The response is a JSON object with the following attributes:
 ///
@@ -296,7 +297,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///   value greater zero for types `documents` or `auto`).
 ///
 /// - `details`: if URL parameter `details` is set to true, the result will
-///   contain a `details` attribute which is a list with more detailed
+///   contain a `details` attribute which is an array with more detailed
 ///   information about which documents could not be inserted.
 ///
 /// @RESTRETURNCODES
@@ -323,7 +324,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///
 /// @EXAMPLES
 ///
-/// Importing documents with heterogenous attributes from a JSON list:
+/// Importing documents with heterogenous attributes from a JSON array:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestImportJsonList}
 ///     db._flushCache();
@@ -399,7 +400,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Importing documents into a new collection from a JSON list:
+/// Importing documents into a new collection from a JSON array:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestImportJsonCreate}
 ///     db._flushCache();
@@ -716,14 +717,14 @@ bool RestImportHandler::createFromJson (string const& type) {
     // the entire request body is one JSON document
     TRI_json_t* documents = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, _request->body(), nullptr);
 
-    if (! TRI_IsListJson(documents)) {
+    if (! TRI_IsArrayJson(documents)) {
       if (documents != nullptr) {
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, documents);
       }
 
       generateError(HttpResponse::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "expecting a JSON list in the request");
+                    "expecting a JSON array in the request");
       return false;
     }
 
@@ -773,15 +774,15 @@ bool RestImportHandler::createFromJson (string const& type) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief imports documents from JSON-encoded key-value lists
+/// @brief imports documents from JSON-encoded lists
 ///
 /// @RESTHEADER{POST /_api/import,imports document values}
 ///
 /// @RESTBODYPARAM{documents,string,required}
-/// The body must consist of JSON-encoded lists of attribute values, with one
-/// line per per document. The first row of the request must be a JSON-encoded
-/// list of attribute names. These attribute names are used for the data in the
-/// subsequent rows.
+/// The body must consist of JSON-encoded arrays of attribute values, with one
+/// line per document. The first row of the request must be a JSON-encoded
+/// array of attribute names. These attribute names are used for the data in the
+/// subsequent lines.
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -812,10 +813,10 @@ bool RestImportHandler::createFromJson (string const& type) {
 ///
 /// @RESTDESCRIPTION
 /// Creates documents in the collection identified by `collection-name`.
-/// The first line of the request body must contain a JSON-encoded list of
+/// The first line of the request body must contain a JSON-encoded array of
 /// attribute names. All following lines in the request body must contain
-/// JSON-encoded lists of attribute values. Each line is interpreted as a
-/// separate document, and the values specified will be mapped to the list
+/// JSON-encoded arrays of attribute values. Each line is interpreted as a
+/// separate document, and the values specified will be mapped to the array
 /// of attribute names specified in the first header line.
 ///
 /// The response is a JSON object with the following attributes:
@@ -828,7 +829,7 @@ bool RestImportHandler::createFromJson (string const& type) {
 ///   value greater zero for types `documents` or `auto`).
 ///
 /// - `details`: if URL parameter `details` is set to true, the result will
-///   contain a `details` attribute which is a list with more detailed
+///   contain a `details` attribute which is an array with more detailed
 ///   information about which documents could not be inserted.
 ///
 /// @RESTRETURNCODES
@@ -1061,7 +1062,7 @@ bool RestImportHandler::createFromKeyValueList () {
   if (next == nullptr) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "no JSON list found in second line");
+                  "no JSON array found in second line");
     return false;
   }
   
@@ -1083,10 +1084,10 @@ bool RestImportHandler::createFromKeyValueList () {
   TRI_json_t* keys = parseJsonLine(lineStart, lineEnd);
 
   if (! checkKeys(keys)) {
-    LOG_WARNING("no JSON string list in first line found");
+    LOG_WARNING("no JSON string array found in first line");
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "no JSON string list in first line found");
+                  "no JSON string array found in first line");
 
     if (keys != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
@@ -1162,7 +1163,7 @@ bool RestImportHandler::createFromKeyValueList () {
     TRI_json_t* values = parseJsonLine(lineStart, lineEnd);
 
     if (values != nullptr) {
-      // build the json object from the list
+      // build the json object from the array
       string errorMsg;
 
       TRI_json_t* json = createJsonObject(keys, values, errorMsg, i);
@@ -1228,24 +1229,24 @@ void RestImportHandler::generateDocumentsCreated (RestImportResult const& result
 
   TRI_json_t json;
 
-  TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &json);
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "error", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, false));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "created", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) result._numCreated));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "errors", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) result._numErrors));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "empty", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) result._numEmpty));
+  TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &json);
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &json, "error", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, false));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &json, "created", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) result._numCreated));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &json, "errors", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) result._numErrors));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &json, "empty", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) result._numEmpty));
 
   bool found;
   char const* detailsStr = _request->value("details", found);
 
   // include failure details?
   if (found && StringUtils::boolean(detailsStr)) {
-    TRI_json_t* messages = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
+    TRI_json_t* messages = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
     for (size_t i = 0, n = result._errors.size(); i < n; ++i) {
       string const& msg = result._errors[i];
-      TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, messages, TRI_CreateString2CopyJson(TRI_CORE_MEM_ZONE, msg.c_str(), msg.size()));
+      TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, messages, TRI_CreateString2CopyJson(TRI_CORE_MEM_ZONE, msg.c_str(), msg.size()));
     }
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, &json, "details", messages);
+    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &json, "details", messages);
   }
 
   generateResult(HttpResponse::CREATED, &json);
@@ -1285,8 +1286,8 @@ TRI_json_t* RestImportHandler::createJsonObject (TRI_json_t const* keys,
                                                  string& errorMsg,
                                                  size_t lineNumber) {
 
-  if (values->_type != TRI_JSON_LIST) {
-    errorMsg = positionise(lineNumber) + "no valid JSON list data";
+  if (values->_type != TRI_JSON_ARRAY) {
+    errorMsg = positionise(lineNumber) + "no valid JSON array data";
     return nullptr;
   }
 
@@ -1297,7 +1298,7 @@ TRI_json_t* RestImportHandler::createJsonObject (TRI_json_t const* keys,
     return nullptr;
   }
 
-  TRI_json_t* result = TRI_CreateArray2Json(TRI_UNKNOWN_MEM_ZONE, n);
+  TRI_json_t* result = TRI_CreateObject2Json(TRI_UNKNOWN_MEM_ZONE, n);
 
   if (result == nullptr) {
     LOG_ERROR("out of memory");
@@ -1310,7 +1311,7 @@ TRI_json_t* RestImportHandler::createJsonObject (TRI_json_t const* keys,
     TRI_json_t const* value = static_cast<TRI_json_t const*>(TRI_AtVector(&values->_value._objects, i));
 
     if (JsonHelper::isString(key) && value->_type > TRI_JSON_NULL) {
-      TRI_InsertArrayJson(TRI_UNKNOWN_MEM_ZONE, result, key->_value._string.data, value);
+      TRI_InsertObjectJson(TRI_UNKNOWN_MEM_ZONE, result, key->_value._string.data, value);
     }
   }
 
@@ -1322,7 +1323,7 @@ TRI_json_t* RestImportHandler::createJsonObject (TRI_json_t const* keys,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestImportHandler::checkKeys (TRI_json_t const* keys) const {
-  if (! TRI_IsListJson(keys)) {
+  if (! TRI_IsArrayJson(keys)) {
     return false;
   }
 

@@ -83,7 +83,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/RestServer/ArangoServer.cpp \
 	arangod/RestServer/ConsoleThread.cpp \
 	arangod/RestServer/VocbaseContext.cpp \
-	arangod/RestServer/arango.cpp \
+	arangod/RestServer/arangod.cpp \
 	arangod/SkipLists/skiplistIndex.cpp \
 	arangod/Utils/DocumentHelper.cpp \
 	arangod/Utils/Exception.cpp \
@@ -163,7 +163,7 @@ bin_arangod_LDADD = \
 	@V8_LIBS@ 
 
 bin_arangod_SOURCES = \
-	arangod/RestServer/arango.cpp
+	arangod/RestServer/arangod.cpp
 
 if ENABLE_MRUBY
 

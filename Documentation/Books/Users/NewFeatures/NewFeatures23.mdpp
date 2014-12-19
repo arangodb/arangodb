@@ -76,22 +76,22 @@ The following AQL string functions have been added:
    of a search string
 - `FIND_LAST(value, search, start, end)`: finds the last occurence of a 
    search string
-- `SPLIT(value, separator, limit) `: splits a string into a list, 
+- `SPLIT(value, separator, limit) `: splits a string into an array, 
    using a separator
 - `SUBSTITUTE(value, search, replace, limit)`: replaces characters 
    or strings inside another
 
 The following other AQL functions have been added:
 
-- `VALUES(document)`: returns the values of a document as a list (this is 
+- `VALUES(document)`: returns the values of an object as a array (this is 
    the counterpart to the already existing `ATTRIBUTES` function)
-- `ZIP(attributes, values)`: returns a document constructed from attributes
+- `ZIP(attributes, values)`: returns an object constructed from attributes
    and values passed in separate parameters
 - `PERCENTILE(values, n, method)`: returns the nths percentile of the
    values provided, using rank or interpolation method
 
 The already existing functions `CONCAT` and `CONCAT_SEPARATOR` now support
-list arguments, e.g.:
+array arguments, e.g.:
 
     /* "foobarbaz" */
     CONCAT([ 'foo', 'bar', 'baz'])
@@ -104,7 +104,7 @@ list arguments, e.g.:
 
 In previous versions of ArangoDB, AQL queries aborted with an exception in many
 situations and threw a runtime exception. For example, exceptions were thrown when 
-trying to find a value using the `IN` operator in a non-list element, when trying 
+trying to find a value using the `IN` operator in a non-array element, when trying 
 to use non-boolean values with the logical operands `&&` or `||` or `!`, when using 
 non-numeric values in arithmetic operations, when passing wrong parameters into 
 functions etc. 
@@ -130,7 +130,7 @@ query optimizer to perform much more transformations in the query without
 changing its overall result.
 
 Here is a summary of changes:
-- when a non-list value is used on the right-hand side of the `IN` operator, the 
+- when a non-array value is used on the right-hand side of the `IN` operator, the 
   result will be `false` in ArangoDB 2.3, and no exception will be thrown.
 - the boolean operators `&&` and `||` do not throw in ArangoDB 2.3 if any of the
   operands is not a boolean value. Instead, they will perform an implicit cast of

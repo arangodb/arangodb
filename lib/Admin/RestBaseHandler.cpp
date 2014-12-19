@@ -97,19 +97,19 @@ void RestBaseHandler::generateResult (HttpResponse::HttpResponseCode code,
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestBaseHandler::generateCanceled () {
-  TRI_json_t* json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+  TRI_json_t* json = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE);
   char* msg = TRI_DuplicateString("request canceled");
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json,
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json,
                        "error", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json,
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json,
                        "code", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (int32_t) HttpResponse::REQUEST_TIMEOUT));
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json,
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json,
                        "errorNum", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (int32_t) TRI_ERROR_REQUEST_CANCELED));
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json,
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json,
                        "errorMessage", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, msg));
 
   generateResult(HttpResponse::REQUEST_TIMEOUT, json);

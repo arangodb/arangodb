@@ -140,15 +140,15 @@ HttpHandler::status_t RestVersionHandler::execute () {
 
   RequestStatisticsAgentSetIgnore(this);
 
-  TRI_InitArray2Json(TRI_CORE_MEM_ZONE, &result, 3);
+  TRI_InitObject2Json(TRI_CORE_MEM_ZONE, &result, 3);
 
   TRI_json_t server;
   TRI_InitStringJson(&server, TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, "arango"));
-  TRI_Insert2ArrayJson(TRI_CORE_MEM_ZONE, &result, "server", &server);
+  TRI_Insert2ObjectJson(TRI_CORE_MEM_ZONE, &result, "server", &server);
 
   TRI_json_t version;
   TRI_InitStringJson(&version, TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, TRI_VERSION));
-  TRI_Insert2ArrayJson(TRI_CORE_MEM_ZONE, &result, "version", &version);
+  TRI_Insert2ObjectJson(TRI_CORE_MEM_ZONE, &result, "version", &version);
 
   bool found;
   char const* detailsStr = _request->value("details", found);
@@ -156,10 +156,10 @@ HttpHandler::status_t RestVersionHandler::execute () {
   if (found && StringUtils::boolean(detailsStr)) {
     TRI_json_t details;
 
-    TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &details);
+    TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &details);
 
     Version::getJson(TRI_CORE_MEM_ZONE, &details);
-    TRI_Insert2ArrayJson(TRI_CORE_MEM_ZONE, &result, "details", &details);
+    TRI_Insert2ObjectJson(TRI_CORE_MEM_ZONE, &result, "details", &details);
   }
 
   generateResult(&result);

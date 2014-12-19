@@ -264,17 +264,17 @@ static TRI_json_t* JsonGeo1Index (TRI_index_t const* idx) {
     return nullptr;
   }
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "geoJson", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, geo->_geoJson));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "geoJson", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, geo->_geoJson));
 
   // "constraint" and "unique" are identical for geo indexes.
   // we return "constraint" just for downwards-compatibility
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "constraint", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, idx->_unique));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "constraint", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, idx->_unique));
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, idx->_ignoreNull));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, idx->_ignoreNull));
 
-  fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
-  TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, location));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
+  fields = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+  TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, location));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
 
   return json;
 }
@@ -320,14 +320,14 @@ static TRI_json_t* JsonGeo2Index (TRI_index_t const* idx) {
 
   // "constraint" and "unique" are identical for geo indexes.
   // we return "constraint" just for downwards-compatibility
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "constraint", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, idx->_unique));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "constraint", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, idx->_unique));
 
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, geo->base._ignoreNull));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, geo->base._ignoreNull));
 
-  fields = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
-  TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, latitude));
-  TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, longitude));
-  TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
+  fields = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+  TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, latitude));
+  TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, longitude));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
 
   return json;
 }

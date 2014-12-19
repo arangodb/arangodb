@@ -543,7 +543,7 @@ struct jsonData {
   do {                             \
     LOG_DEBUG("v8-json: %s", (a)); \
     if (false) {                   \
-      yy_fatal_error(a, NULL);     \
+      yy_fatal_error(a, nullptr);  \
     }                              \
   }                                \
   while (0)
@@ -2070,8 +2070,8 @@ void tri_v8_free (void * ptr , yyscan_t yyscanner)
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-static v8::Handle<v8::Value> ParseArray (v8::Isolate* isolate, yyscan_t scanner);
-static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate, yyscan_t scanner, int c);
+static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate, yyscan_t scanner);
+static v8::Handle<v8::Value> ParseValue (v8::Isolate* isolate, yyscan_t scanner, int c);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -2081,7 +2081,7 @@ static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate, yyscan_t scanner
 /// @brief parses a list
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ParseList (v8::Isolate* isolate,
+static v8::Handle<v8::Value> ParseArray (v8::Isolate* isolate,
                                         yyscan_t scanner) {
   v8::EscapableHandleScope scope(isolate);
 
@@ -2110,7 +2110,7 @@ static v8::Handle<v8::Value> ParseList (v8::Isolate* isolate,
       comma = true;
     }
 
-    v8::Handle<v8::Value> sub = ParseObject(isolate, scanner, c);
+    v8::Handle<v8::Value> sub = ParseValue(isolate, scanner, c);
 
     if (sub->IsUndefined()) {
       return scope.Escape<v8::Value>(v8::Undefined(isolate));
@@ -2130,7 +2130,7 @@ static v8::Handle<v8::Value> ParseList (v8::Isolate* isolate,
 /// @brief parses an array
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ParseArray (v8::Isolate* isolate,
+static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate,
                                          yyscan_t scanner) {
   v8::EscapableHandleScope scope(isolate);
 
@@ -2172,7 +2172,7 @@ static v8::Handle<v8::Value> ParseArray (v8::Isolate* isolate,
     len = yyleng;
     name = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, ptr + 1, len - 2, &outLength);
 
-    if (name == NULL) {
+    if (name == nullptr) {
       yyextra._message = "out-of-memory";
       return scope.Escape<v8::Value>(v8::Undefined(isolate));
     }
@@ -2188,7 +2188,7 @@ static v8::Handle<v8::Value> ParseArray (v8::Isolate* isolate,
 
     // fallowed by an object
     c = tri_v8_lex(scanner);
-    v8::Handle<v8::Value> sub = ParseObject(isolate, scanner, c);
+    v8::Handle<v8::Value> sub = ParseValue(isolate, scanner, c);
 
     if (sub->IsUndefined()) {
       TRI_FreeString(yyextra._memoryZone, name);
@@ -2210,7 +2210,7 @@ static v8::Handle<v8::Value> ParseArray (v8::Isolate* isolate,
 /// @brief parses an object
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate,
+static v8::Handle<v8::Value> ParseValue (v8::Isolate* isolate,
                                           yyscan_t scanner, int c) {
   v8::EscapableHandleScope scope(isolate);
   struct yyguts_t * yyg = (struct yyguts_t*) scanner;
@@ -2275,7 +2275,7 @@ static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate,
         // string is not empty
         ptr = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength);
 
-        if (ptr == NULL || outLength == 0) {
+        if (ptr == nullptr || outLength == 0) {
           yyextra._message = "out-of-memory";
           return scope.Escape<v8::Value>(v8::Undefined(isolate));
         }
@@ -2290,29 +2290,29 @@ static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate,
       return scope.Escape<v8::Value>(str);
 
     case OPEN_BRACE:
-      return scope.Escape<v8::Value>(ParseArray(isolate, scanner));
+      return scope.Escape<v8::Value>(ParseObject(isolate, scanner));
 
     case CLOSE_BRACE:
-      yyextra._message = "expected object, got '}'";
+      yyextra._message = "expected value, got '}'";
       return scope.Escape<v8::Value>(v8::Undefined(isolate));
 
     case OPEN_BRACKET:
-      return scope.Escape<v8::Value>(ParseList(isolate, scanner));
+      return scope.Escape<v8::Value>(ParseArray(isolate, scanner));
 
     case CLOSE_BRACKET:
-      yyextra._message = "expected object, got ']'";
+      yyextra._message = "expected value, got ']'";
       return scope.Escape<v8::Value>(v8::Undefined(isolate));
 
     case COMMA:
-      yyextra._message = "expected object, got ','";
+      yyextra._message = "expected value, got ','";
       return scope.Escape<v8::Value>(v8::Undefined(isolate));
 
     case COLON:
-      yyextra._message = "expected object, got ':'";
+      yyextra._message = "expected value, got ':'";
       return scope.Escape<v8::Value>(v8::Undefined(isolate));
 
     case UNQUOTED_STRING:
-      yyextra._message = "expected object, got unquoted string";
+      yyextra._message = "expected value, got unquoted string";
       return scope.Escape<v8::Value>(v8::Undefined(isolate));
   }
 
@@ -2333,7 +2333,7 @@ v8::Handle<v8::Value> TRI_FromJsonString (v8::Isolate* isolate,
                                           char** error) {
   v8::EscapableHandleScope scope(isolate);
 
-  v8::Handle<v8::Value> object = v8::Undefined(isolate);
+  v8::Handle<v8::Value> value = v8::Undefined(isolate);
   YY_BUFFER_STATE buf;
   int c;
   struct yyguts_t * yyg;
@@ -2346,33 +2346,33 @@ v8::Handle<v8::Value> TRI_FromJsonString (v8::Isolate* isolate,
   buf = tri_v8__scan_string(text,scanner);
 
   c = tri_v8_lex(scanner);
-  object = ParseObject(isolate, scanner, c);
+  value = ParseValue(isolate, scanner, c);
 
-  if (object->IsUndefined()) {
-    LOG_DEBUG("failed to parse json object: '%s'", yyextra._message);
+  if (value->IsUndefined()) {
+    LOG_DEBUG("failed to parse json value: '%s'", yyextra._message);
   }
   else {
     c = tri_v8_lex(scanner);
 
     if (c != END_OF_FILE) {
-      object = v8::Undefined(isolate);
-      LOG_DEBUG("failed to parse json object: expecting EOF");
+      value = v8::Undefined(isolate);
+      LOG_DEBUG("failed to parse json value: expecting EOF");
     }
   }
 
-  if (error != NULL) {
-    if (yyextra._message != 0) {
+  if (error != nullptr) {
+    if (yyextra._message != nullptr) {
       *error = TRI_DuplicateString(yyextra._message);
     }
     else {
-      *error = NULL;
+      *error = nullptr;
     }
   }
 
   tri_v8__delete_buffer(buf,scanner);
   tri_v8_lex_destroy(scanner);
 
-  return scope.Escape<v8::Value>(object);
+  return scope.Escape<v8::Value>(value);
 }
 
 // -----------------------------------------------------------------------------

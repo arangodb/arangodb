@@ -98,9 +98,6 @@ pack-dmg:
 
 	./configure \
 		--prefix=/opt/arangodb \
-		--enable-all-in-one-icu \
-		--enable-all-in-one-v8 \
-		--enable-all-in-one-libev \
 		--enable-mruby
 
 	${MAKE} pack-dmg-cmake
@@ -118,7 +115,6 @@ pack-dmg-cmake:
 
 	${MAKE} .libev-build-64
 	${MAKE} .zlib-build-64
-	${MAKE} .icu-build-64
 	${MAKE} .v8-build-64
 	${MAKE} .mruby-build-64
 
@@ -143,9 +139,6 @@ pack-macosx:
 
 	./configure \
 		--prefix=/opt/arangodb \
-		--enable-all-in-one-icu \
-		--enable-all-in-one-v8 \
-		--enable-all-in-one-libev \
 		--enable-mruby
 
 	${MAKE} pack-macosx-cmake
@@ -163,7 +156,6 @@ pack-macosx-cmake:
 
 	${MAKE} .libev-build-64
 	${MAKE} .zlib-build-64
-	${MAKE} .icu-build-64
 	${MAKE} .v8-build-64
 	${MAKE} .mruby-build-64
 

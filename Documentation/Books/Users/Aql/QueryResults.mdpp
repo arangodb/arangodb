@@ -2,8 +2,8 @@
 
 !SUBSECTION Result sets
 
-The result of an AQL query is a list of values. The individual values in the
-result list may or may not have a homogeneous structure, depending on what is
+The result of an AQL query is an array of values. The individual values in the
+result array may or may not have a homogeneous structure, depending on what is
 actually queried.
 
 For example, when returning data from a collection with inhomogeneous documents
@@ -30,7 +30,7 @@ still a document:
       { "id" : 3, "name" : "Amy" } ]
 
 It is also possible to query just scalar values. In this case, the result set
-is a list of scalars, and each result value is a scalar value:
+is an array of scalars, and each result value is a scalar value:
 
     FOR u IN users
       RETURN u.id
@@ -38,7 +38,7 @@ is a list of scalars, and each result value is a scalar value:
     [ 1, 2, 3 ]
 
 If a query does not produce any results because no matching data can be
-found, it will produce an empty result list:
+found, it will produce an empty result array:
 
     [ ]
 

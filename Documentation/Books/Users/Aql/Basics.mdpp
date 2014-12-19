@@ -46,7 +46,7 @@ AQL supports two types of comments:
 !SUBSECTION Keywords
 
 On the top level, AQL offers the following operations:
-- `FOR`: list iteration
+- `FOR`: array iteration
 - `RETURN`: results projection
 - `FILTER`: results filtering
 - `SORT`: result sorting
@@ -189,8 +189,8 @@ available:
   - number: Signed (real) number
   - string: UTF-8 encoded text value
 - Compound types: Consisting of multiple values
-  - list: Sequence of values, referred to by their positions
-  - document: Sequence of values, referred to by their names
+  - array: Sequence of values, referred to by their positions
+  - object / document: Sequence of values, referred to by their names
 
 !SUBSUBSECTION Numeric literals
 
@@ -232,65 +232,65 @@ arbitrary binary data if it is not UTF-8 encoded. A workaround to use binary
 data is to encode the data using base64 or other algorithms on the application
 side before storing, and decoding it on application side after retrieval.
 
-!SUBSUBSECTION Lists
+!SUBSUBSECTION Arrays
 
 AQL supports two compound types:
 
-- lists: A composition of unnamed values, each accessible by their positions
-- documents: A composition of named values, each accessible by their names
+- arrays: A composition of unnamed values, each accessible by their positions
+- objects / documents: A composition of named values, each accessible by their names
 
-The first supported compound type is the list type. Lists are effectively
-sequences of (unnamed/anonymous) values. Individual list elements can be
-accessed by their positions. The order of elements in a list is important.
+The first supported compound type is the array type. Arrays are effectively
+sequences of (unnamed / anonymous) values. Individual array elements can be
+accessed by their positions. The order of elements in an array is important.
 
-A *list-declaration* starts with the *[* symbol and ends with the *]* symbol. A
-*list-declaration* contains zero or many *expression*s, separated from each
+An *array-declaration* starts with the *[* symbol and ends with the *]* symbol. An
+*array-declaration* contains zero or many *expression*s, separated from each
 other with the *,* symbol.
 
-In the easiest case, a list is empty and thus looks like:
+In the easiest case, an array is empty and thus looks like:
 
     [ ]
 
-List elements can be any legal *expression* values. Nesting of lists is
+Array elements can be any legal *expression* values. Nesting of arrays is
 supported.
 
     [ 1, 2, 3 ]
     [ -99, "yikes!", [ true, [ "no"], [ ] ], 1 ]
     [ [ "fox", "marshal" ] ] 
 
-Individual list values can later be accesses by their positions using the *[]*
+Individual array values can later be accesses bd their positions using the *[]*
 accessor. The position of the accessed element must be a numeric
 value. Positions start at 0.  It is also possible to use negative index values
-to access list values starting from the end of the list. This is convenient if
-the length of the list is unknown and access to elements at the end of the list
+to access array values starting from the end of the array. This is convenient if
+the length of the array is unknown and access to elements at the end of the array
 is required.
 
-    // access 1st list element (element start at index 0)
+    // access 1st array element (element start at index 0)
     u.friends[0]
 
-    // access 3rd list element
+    // access 3rd array element
     u.friends[2]
 
-    // access last list element 
+    // access last array element 
     u.friends[-1]
 
-    // access second last list element 
+    // access second last array element 
     u.friends[-2]
 
-!SUBSUBSECTION Documents
+!SUBSUBSECTION Objects / Documents
 
-The other supported compound type is the document type. Documents are a
+The other supported compound type is the object (or document) type. Objects are a
 composition of zero to many attributes. Each attribute is a name/value pair.
-Document attributes can be accessed individually by their names.
+Object attributes can be accessed individually by their names.
 
-Document declarations start with the *{* symbol and end with the *}* symbol. A
-document contains zero to many attribute declarations, separated from each other
-with the *,* symbol.  In the simplest case, a document is empty. Its
+Object declarations start with the *{* symbol and end with the *}* symbol. An
+object contains zero to many attribute declarations, separated from each other
+with the *,* symbol.  In the simplest case, an object is empty. Its
 declaration would then be:
 
     { }
 
-Each attribute in a document is a name/value pair. Name and value of an
+Each attribute in an object is a name / value pair. Name and value of an
 attribute are separated using the *:* symbol.
 
 The attribute name is mandatory and must be specified as a quoted or unquoted
@@ -298,13 +298,13 @@ string. If a keyword is to be used as an attribute name, the name must be
 quoted.
 
 Any valid expression can be used as an attribute value. That also means nested
-documents can be used as attribute values
+objects can be used as attribute values:
 
     { name : "Peter" }
     { "name" : "Vanessa", "age" : 15 }
     { "name" : "John", likes : [ "Swimming", "Skiing" ], "address" : { "street" : "Cucumber lane", "zip" : "94242" } }
 
-Individual document attributes can later be accesses by their names using the
+Individual object attributes can later be accessed by their names using the
 *.* accessor. If a non-existing attribute is accessed, the result is *null*.
 
     u.address.city.name
@@ -353,14 +353,14 @@ data values if the operands have the same data types.
 
 The following type order is used when comparing data types:
 
-    null < bool  < number < string < list < document
+    null < bool  < number < string < array < object / document
 
 This means *null* is the smallest type in AQL and *document* is the type with
 the highest order. If the compared operands have a different type, then the
 comparison result is determined and the comparison is finished.
 
 For example, the boolean *true* value will always be less than any numeric or
-string value, any list (even an empty list) or any document. Additionally, any
+string value, any array (even an empty array) or any object / document. Additionally, any
 string value (even an empty string) will always be greater than any numeric
 value, a boolean value, *true* or *false*.
 
@@ -420,17 +420,17 @@ itself, without the result being converted into *null* automatically.
 
 For compound, types the following special rules are applied:
 
-Two list values are compared by comparing their individual elements position by
+Two array values are compared by comparing their individual elements position by
 position, starting at the first element. For each position, the element types
 are compared first. If the types are not equal, the comparison result is
 determined, and the comparison is finished. If the types are equal, then the
-values of the two elements are compared.  If one of the lists is finished and
-the other list still has an element at a compared position, then *null* will be
-used as the element value of the fully traversed list.
+values of the two elements are compared.  If one of the arrays is finished and
+the other array still has an element at a compared position, then *null* will be
+used as the element value of the fully traversed array.
 
-If a list element is itself a compound value (a list or a document), then the
+If an array element is itself a compound value (an array or an object / document), then the
 comparison algorithm will check the element's sub values recursively. The element's
-sub elements are compared recursively.
+sub-elements are compared recursively.
 
     [ ] < [ 0 ]
     [ 1 ] < [ 2 ]
@@ -439,21 +439,21 @@ sub elements are compared recursively.
     [ false ] < [ true ]
     [ false, 1 ] < [ false, '' ]
 
-Two documents operands are compared by checking attribute names and value. The
+Two object / documents operands are compared by checking attribute names and value. The
 attribute names are compared first. Before attribute names are compared, a
-combined list of all attribute names from both operands is created and sorted
+combined array of all attribute names from both operands is created and sorted
 lexicographically.  This means that the order in which attributes are declared
-in a document is not relevant when comparing two documents.
+in an object / document is not relevant when comparing two objects / documents.
 
-The combined and sorted list of attribute names is then traversed, and the
+The combined and sorted array of attribute names is then traversed, and the
 respective attributes from the two compared operands are then looked up. If one
-of the documents does not have an attribute with the sought name, its attribute
+of the objects / documents does not have an attribute with the sought name, its attribute
 value is considered to be *null*.  Finally, the attribute value of both
-documents is compared using the before mentioned data type and value comparison.
-The comparisons are performed for all document attributes until there is an
+objects / documents is compared using the before mentioned data type and value comparison.
+The comparisons are performed for all object / document attributes until there is an
 unambiguous comparison result. If an unambiguous comparison result is found, the
 comparison is finished. If there is no unambiguous comparison result, the two
-compared documents are considered equal.
+compared objects / documents are considered equal.
 
     { } < { "a" : 1 }
     { } < { "a" : null }
@@ -467,7 +467,7 @@ compared documents are considered equal.
 !SUBSECTION Accessing data from collections
 
 Collection data can be accessed by specifying a collection name in a query.  A
-collection can be understood as a list of documents, and that is how they are
+collection can be understood as an array of documents, and that is how they are
 treated in AQL. Documents from collections are normally accessing using the
 *FOR* keyword. Note that when iterating over documents from a collection, the
 order of documents is undefined. To traverse documents in an explicit and

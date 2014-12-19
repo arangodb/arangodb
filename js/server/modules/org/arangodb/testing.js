@@ -44,7 +44,8 @@ var functionsDocumentation = {
   "single_client"     : "run one test suite isolated via the arangosh; options required\n" +
     "            Run without to get more detail",
   "single_server"     : "run one test suite on the server; options required\n" + 
-    "            Run without to get more detail"
+    "            Run without to get more detail",
+  "single_localserver": "run on this very instance of arangod, don't fork a new one.\n"
 };
 
 var optionsDocumentation = [
@@ -56,7 +57,6 @@ var optionsDocumentation = [
   '   - `force`: if set to true the tests are continued even if one fails',
   '   - `skipBoost`: if set to true the boost unittests are skipped',
   '   - `skipGeo`: if set to true the geo index tests are skipped',
-  '   - `skipAhuacatl`: if set to true the ahuacatl tests are skipped',
   '   - `skipAql`: if set to true the AQL tests are skipped',
   '   - `skipRanges`: if set to true the ranges tests are skipped',
   '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
@@ -104,7 +104,6 @@ var optionsDefaults = { "cluster": false,
                         "force": true,
                         "skipBoost": false,
                         "skipGeo": false,
-                        "skipAhuacatl": false,
                         "skipTimeCritical": false,
                         "skipAql": false,
                         "skipRanges": false,
@@ -125,7 +124,6 @@ var allTests =
     "config",
     "boost",
     "shell_server",
-    "shell_server_ahuacatl",
     "shell_server_aql",
     "http_server",
     "ssl_server",
@@ -469,8 +467,6 @@ var tests_shell_server_only;
 var tests_shell_client_only;
 var tests_shell_server;
 var tests_shell_client;
-var tests_shell_server_ahuacatl;
-var tests_shell_server_ahuacatl_extended;
 var tests_shell_server_aql;
 var tests_shell_server_aql_extended;
 var tests_shell_server_aql_performance;
@@ -502,25 +498,6 @@ function findTests () {
             }).map(
             function(x) {
               return fs.join(makePath("js/client/tests"),x);
-            }).sort();
-  tests_shell_server_ahuacatl = _.filter(fs.list(makePath("js/server/tests")),
-            function (p) {
-              return p.substr(0,9) === "ahuacatl-" &&
-                     p.substr(-3) === ".js" &&
-                     p.indexOf("ranges-combined") === -1;
-            }).map(
-            function(x) {
-              return fs.join(makePath("js/server/tests"),x);
-            }).sort();
-  tests_shell_server_ahuacatl_extended =
-            _.filter(fs.list(makePath("js/server/tests")),
-            function (p) {
-              return p.substr(0,9) === "ahuacatl-" &&
-                     p.substr(-3) === ".js" &&
-                     p.indexOf("ranges-combined") !== -1;
-            }).map(
-            function(x) {
-              return fs.join(makePath("js/server/tests"),x);
             }).sort();
   tests_shell_server_aql = _.filter(fs.list(makePath("js/server/tests")),
             function (p) {
@@ -687,6 +664,11 @@ function performTests(options, testList, testname, remote) {
   var continueTesting = true;
   var filtered = {};
 
+  if (testList.length === 0) {
+    print("Testsuite is empty!");
+    return {};
+  }
+
   for (i = 0; i < testList.length; i++) {
     te = testList[i];
     if (filterTestcaseByOptions(te, options, filtered)) {
@@ -769,6 +751,22 @@ testFuncs.single_server = function (options) {
   }
 };
 
+testFuncs.single_localserver = function (options) {
+  var result = { };
+  if (options.test !== undefined) {
+    var instanceInfo;
+    var te = options.test;
+    print("\nArangod: Trying",te,"...");
+    result = {};
+    result[te] = runHere(options, instanceInfo, makePath(te));
+    return result;
+  }
+  else {
+    findTests();
+    return single_usage("localserver", tests_shell_server);
+  }
+};
+
 testFuncs.single_client = function (options) {
   var result = { };
   if (options.test !== undefined) {
@@ -806,26 +804,6 @@ testFuncs.shell_server_only = function (options) {
                       tests_shell_server_only,
                       'shell_server_only',
                       true);
-};
-
-testFuncs.shell_server_ahuacatl = function(options) {
-  findTests();
-  if (! options.skipAhuacatl) {
-    if (options.skipRanges) {
-      return performTests(options,
-                          tests_shell_server_ahuacatl,
-                          'shell_server_ahuacatl_skipranges',
-                          true);
-    }
-    else {
-      return performTests(options,
-                          tests_shell_server_ahuacatl.concat(
-                            tests_shell_server_ahuacatl_extended),
-                          'shell_server_ahuacatl',
-                          true);
-    }
-  }
-  return "skipped";
 };
 
 testFuncs.shell_server_aql = function(options) {
@@ -1463,12 +1441,12 @@ function unitTestPrettyPrintResults(r) {
         for (test in  r[testrun]) {
           if (r[testrun].hasOwnProperty(test) && (test !== 'ok')) {
             if (r[testrun][test].status) {
-              print("     " + test + ": Success");
+              print("     [Success] " + test);
             }
             else {
               testSuiteFail++;
               if (r[testrun][test].hasOwnProperty('message')) {
-                print("     " + test + ": Fail - Whole testsuite failed!");
+                print("    [  Fail ] " + test + ": Whole testsuite failed!");
                 if (typeof r[testrun][test].message === "object" &&
                     r[testrun][test].message.hasOwnProperty('body')) {
                   print(r[testrun][test].message.body);
@@ -1478,7 +1456,7 @@ function unitTestPrettyPrintResults(r) {
                 }
               }
               else {
-                print("     " + test + ": Fail");
+                print("    [  Fail ] " + test);
                 for (oneTest in r[testrun][test]) {
                   if ((r[testrun][test].hasOwnProperty(oneTest)) && 
                       (internalMembers.indexOf(oneTest) === -1) &&

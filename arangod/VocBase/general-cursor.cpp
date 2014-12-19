@@ -88,7 +88,7 @@ static TRI_general_cursor_length_t GetLength (TRI_general_cursor_result_t const*
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_general_cursor_result_t* TRI_CreateResultGeneralCursor (TRI_json_t* data) {
-  if (data == nullptr || data->_type != TRI_JSON_LIST) {
+  if (data == nullptr || data->_type != TRI_JSON_ARRAY) {
     return nullptr;
   }
 
@@ -103,7 +103,7 @@ TRI_general_cursor_result_t* TRI_CreateResultGeneralCursor (v8::Isolate* isolate
                                                             v8::Handle<v8::Array> const data) {
   TRI_json_t* json = TRI_ObjectToJson(isolate, data);
 
-  if (! TRI_IsListJson(json)) {
+  if (! TRI_IsArrayJson(json)) {
     return nullptr;
   }
 

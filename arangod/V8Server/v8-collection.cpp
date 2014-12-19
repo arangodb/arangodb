@@ -361,7 +361,7 @@ static void DocumentVocbaseColCoordinator (TRI_vocbase_col_t const* collection,
     json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str());
   }
   if (responseCode >= triagens::rest::HttpResponse::BAD) {
-    if (! TRI_IsArrayJson(json)) {
+    if (! TRI_IsObjectJson(json)) {
       if (generateDocument) {
         if (nullptr != json) {
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -376,11 +376,11 @@ static void DocumentVocbaseColCoordinator (TRI_vocbase_col_t const* collection,
       int errorNum = 0;
       string errorMessage;
       if (nullptr != json) {
-        TRI_json_t* subjson = TRI_LookupArrayJson(json, "errorNum");
+        TRI_json_t* subjson = TRI_LookupObjectJson(json, "errorNum");
         if (nullptr != subjson && TRI_IsNumberJson(subjson)) {
           errorNum = static_cast<int>(subjson->_value._number);
         }
-        subjson = TRI_LookupArrayJson(json, "errorMessage");
+        subjson = TRI_LookupObjectJson(json, "errorMessage");
         if (nullptr != subjson && TRI_IsStringJson(subjson)) {
           errorMessage = string(subjson->_value._string.data,
                                 subjson->_value._string.length - 1);
@@ -713,7 +713,7 @@ static void ModifyVocbaseColCoordinator (TRI_vocbase_col_t const* collection,
   }
 
   TRI_json_t* json = TRI_ObjectToJson(isolate, args[1]);
-  if (! TRI_IsArrayJson(json)) {
+  if (! TRI_IsObjectJson(json)) {
     if (json != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
@@ -738,19 +738,19 @@ static void ModifyVocbaseColCoordinator (TRI_vocbase_col_t const* collection,
   // 400/404
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str());
   if (responseCode >= triagens::rest::HttpResponse::BAD) {
-    if (! TRI_IsArrayJson(json)) {
+    if (! TRI_IsObjectJson(json)) {
       if (nullptr != json) {
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       }
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
     int errorNum = 0;
-    TRI_json_t* subjson = TRI_LookupArrayJson(json, "errorNum");
+    TRI_json_t* subjson = TRI_LookupObjectJson(json, "errorNum");
     if (TRI_IsNumberJson(subjson)) {
       errorNum = static_cast<int>(subjson->_value._number);
     }
     string errorMessage;
-    subjson = TRI_LookupArrayJson(json, "errorMessage");
+    subjson = TRI_LookupObjectJson(json, "errorMessage");
     if (TRI_IsStringJson(subjson)) {
       errorMessage = string(subjson->_value._string.data,
                             subjson->_value._string.length-1);
@@ -1325,19 +1325,19 @@ static void RemoveVocbaseColCoordinator (TRI_vocbase_col_t const* collection,
   // 404/412
   TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str());
   if (responseCode >= triagens::rest::HttpResponse::BAD) {
-    if (! TRI_IsArrayJson(json)) {
+    if (! TRI_IsObjectJson(json)) {
       if (nullptr != json) {
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       }
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
     int errorNum = 0;
-    TRI_json_t* subjson = TRI_LookupArrayJson(json, "errorNum");
+    TRI_json_t* subjson = TRI_LookupObjectJson(json, "errorNum");
     if (TRI_IsNumberJson(subjson)) {
       errorNum = static_cast<int>(subjson->_value._number);
     }
     string errorMessage;
-    subjson = TRI_LookupArrayJson(json, "errorMessage");
+    subjson = TRI_LookupObjectJson(json, "errorMessage");
     if (TRI_IsStringJson(subjson)) {
       errorMessage = string(subjson->_value._string.data,
                             subjson->_value._string.length - 1);
@@ -2800,7 +2800,7 @@ static void InsertVocbaseColCoordinator (TRI_vocbase_col_t* collection,
   }
 
   TRI_json_t* json = TRI_ObjectToJson(isolate, args[0]);
-  if (! TRI_IsArrayJson(json)) {
+  if (! TRI_IsObjectJson(json)) {
     if (json != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
@@ -2824,20 +2824,20 @@ static void InsertVocbaseColCoordinator (TRI_vocbase_col_t* collection,
   // 400/404
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str());
   if (responseCode >= triagens::rest::HttpResponse::BAD) {
-    if (! TRI_IsArrayJson(json)) {
+    if (! TRI_IsObjectJson(json)) {
       if (json != nullptr) {
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       }
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
     int errorNum = 0;
-    TRI_json_t* subjson = TRI_LookupArrayJson(json, "errorNum");
+    TRI_json_t* subjson = TRI_LookupObjectJson(json, "errorNum");
     if (nullptr != subjson && TRI_IsNumberJson(subjson)) {
       errorNum = static_cast<int>(subjson->_value._number);
     }
 
     string errorMessage;
-    subjson = TRI_LookupArrayJson(json, "errorMessage");
+    subjson = TRI_LookupObjectJson(json, "errorMessage");
     if (nullptr != subjson && TRI_IsStringJson(subjson)) {
       errorMessage = string(subjson->_value._string.data,
                             subjson->_value._string.length-1);
@@ -2918,7 +2918,7 @@ static string GetId (const v8::FunctionCallbackInfo<v8::Value>& args, int which)
 ////////////////////////////////////////////////////////////////////////////////
 
 static void InsertEdgeCol (TRI_vocbase_col_t* col,
-                                            const v8::FunctionCallbackInfo<v8::Value>& args) {
+                           const v8::FunctionCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -3069,7 +3069,7 @@ static void InsertEdgeColCoordinator (TRI_vocbase_col_t* collection,
 
   TRI_json_t* json = TRI_ObjectToJson(isolate, args[2]);
 
-  if (! TRI_IsArrayJson(json)) {
+  if (! TRI_IsObjectJson(json)) {
     if (json != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
@@ -3109,19 +3109,19 @@ static void InsertEdgeColCoordinator (TRI_vocbase_col_t* collection,
   // 400/404
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str());
   if (responseCode >= triagens::rest::HttpResponse::BAD) {
-    if (! TRI_IsArrayJson(json)) {
+    if (! TRI_IsObjectJson(json)) {
       if (nullptr != json) {
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       }
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
     int errorNum = 0;
-    TRI_json_t* subjson = TRI_LookupArrayJson(json, "errorNum");
+    TRI_json_t* subjson = TRI_LookupObjectJson(json, "errorNum");
     if (nullptr != subjson && TRI_IsNumberJson(subjson)) {
       errorNum = static_cast<int>(subjson->_value._number);
     }
     string errorMessage;
-    subjson = TRI_LookupArrayJson(json, "errorMessage");
+    subjson = TRI_LookupObjectJson(json, "errorMessage");
     if (nullptr != subjson && TRI_IsStringJson(subjson)) {
       errorMessage = string(subjson->_value._string.data,
                             subjson->_value._string.length-1);

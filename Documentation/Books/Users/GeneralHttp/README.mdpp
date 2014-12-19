@@ -190,8 +190,8 @@ ArangoDB will automatically handle CORS requests as follows:
   body. ArangoDB will return the following headers in the response:
   * *access-control-allow-origin*: will contain the value that the client
     provided in the *Origin* header of the request
-  * *access-control-allow-methods*: will contain a list of all HTTP methods
-    generally supported by ArangoDB. This list does not depend on the URL the 
+  * *access-control-allow-methods*: will contain an array of all HTTP methods
+    generally supported by ArangoDB. This array does not depend on the URL the 
     client requested and is the same for all CORS requests. 
   * *access-control-allow-headers*: will contain exactly the value that
     the client has provided in the *Access-Control-Request-Header* header 

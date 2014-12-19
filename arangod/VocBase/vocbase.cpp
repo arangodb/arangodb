@@ -1194,7 +1194,7 @@ static int FilterCollectionIndex (TRI_vocbase_col_t* collection,
   }
 
   // compare index id with tick value
-  TRI_json_t* id = TRI_LookupArrayJson(indexJson, "id");
+  TRI_json_t* id = TRI_LookupObjectJson(indexJson, "id");
 
   // index id is numeric
   if (TRI_IsNumberJson(id)) {
@@ -1208,7 +1208,7 @@ static int FilterCollectionIndex (TRI_vocbase_col_t* collection,
       // convert "id" to string
       char* idString = TRI_StringUInt64(iid);
       TRI_InitStringJson(id, idString);
-      TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, ij->_list, indexJson);
+      TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, ij->_list, indexJson);
     }
   }
 
@@ -1221,7 +1221,7 @@ static int FilterCollectionIndex (TRI_vocbase_col_t* collection,
       TRI_FreeJson(TRI_CORE_MEM_ZONE, indexJson);
     }
     else {
-      TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, ij->_list, indexJson);
+      TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, ij->_list, indexJson);
     }
   }
 
@@ -1688,7 +1688,7 @@ TRI_json_t* TRI_InventoryCollectionsVocBase (TRI_vocbase_t* vocbase,
   TRI_json_t* json;
   size_t i, n;
 
-  json = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
+  json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
   if (json == nullptr) {
     return nullptr;
@@ -1732,15 +1732,15 @@ TRI_json_t* TRI_InventoryCollectionsVocBase (TRI_vocbase_t* vocbase,
       continue;
     }
 
-    TRI_json_t* result = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 2);
+    TRI_json_t* result = TRI_CreateObject2Json(TRI_CORE_MEM_ZONE, 2);
 
     if (result != nullptr) {
       TRI_json_t* collectionInfo = TRI_ReadJsonCollectionInfo(collection);
 
       if (collectionInfo != nullptr) {
-        TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, result, "parameters", collectionInfo);
+        TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, result, "parameters", collectionInfo);
 
-        TRI_json_t* indexesInfo = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
+        TRI_json_t* indexesInfo = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
         if (indexesInfo != nullptr) {
           index_json_helper_t ij;
@@ -1748,11 +1748,11 @@ TRI_json_t* TRI_InventoryCollectionsVocBase (TRI_vocbase_t* vocbase,
           ij._maxTick = maxTick;
 
           TRI_IterateJsonIndexesCollectionInfo(collection, &FilterCollectionIndex, &ij);
-          TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, result, "indexes", indexesInfo);
+          TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, result, "indexes", indexesInfo);
         }
       }
 
-      TRI_PushBack3ListJson(TRI_CORE_MEM_ZONE, json, result);
+      TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, json, result);
     }
 
     TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);

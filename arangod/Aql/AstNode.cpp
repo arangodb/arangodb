@@ -109,9 +109,9 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
   { static_cast<int>(NODE_TYPE_EXPAND),                   "expand" },
   { static_cast<int>(NODE_TYPE_ITERATOR),                 "iterator" },
   { static_cast<int>(NODE_TYPE_VALUE),                    "value" },
-  { static_cast<int>(NODE_TYPE_LIST),                     "list" },
-  { static_cast<int>(NODE_TYPE_ARRAY),                    "array" },
-  { static_cast<int>(NODE_TYPE_ARRAY_ELEMENT),            "array element" },
+  { static_cast<int>(NODE_TYPE_ARRAY),                     "list" },
+  { static_cast<int>(NODE_TYPE_OBJECT),                    "array" },
+  { static_cast<int>(NODE_TYPE_OBJECT_ELEMENT),            "array element" },
   { static_cast<int>(NODE_TYPE_COLLECTION),               "collection" },
   { static_cast<int>(NODE_TYPE_REFERENCE),                "reference" },
   { static_cast<int>(NODE_TYPE_PARAMETER),                "parameter" },
@@ -157,12 +157,12 @@ static AstNode const* ResolveAttribute (AstNode const* node) {
     TRI_ASSERT(! attributeNames.empty());
 
     TRI_ASSERT(node->type == NODE_TYPE_VALUE ||
-               node->type == NODE_TYPE_LIST ||
-               node->type == NODE_TYPE_ARRAY);
+               node->type == NODE_TYPE_ARRAY ||
+               node->type == NODE_TYPE_OBJECT);
 
     bool found = false;
 
-    if (node->type == NODE_TYPE_ARRAY) {
+    if (node->type == NODE_TYPE_OBJECT) {
       char const* attributeName = attributeNames.back().c_str();
       attributeNames.pop_back();
 
@@ -216,11 +216,11 @@ static TRI_json_type_e GetNodeCompareType (AstNode const* node) {
         return TRI_JSON_STRING;
     }
   }
-  else if (node->type == NODE_TYPE_LIST) {
-    return TRI_JSON_LIST;
-  }
   else if (node->type == NODE_TYPE_ARRAY) {
     return TRI_JSON_ARRAY;
+  }
+  else if (node->type == NODE_TYPE_OBJECT) {
+    return TRI_JSON_OBJECT;
   }
 
   // we should never get here
@@ -285,7 +285,7 @@ int triagens::aql::CompareAstNodes (AstNode const* lhs,
   else if (lType == TRI_JSON_STRING) {
     return TRI_compare_utf8(lhs->getStringValue(), rhs->getStringValue());
   }
-  else if (lType == TRI_JSON_LIST) {
+  else if (lType == TRI_JSON_ARRAY) {
     size_t const numLhs = lhs->numMembers();
     size_t const numRhs = rhs->numMembers();
     size_t const n = ((numLhs > numRhs) ? numRhs : numLhs);
@@ -303,7 +303,7 @@ int triagens::aql::CompareAstNodes (AstNode const* lhs,
       return 1;
     }
   }
-  else if (lType == TRI_JSON_ARRAY) {
+  else if (lType == TRI_JSON_OBJECT) {
     // this is a rather exceptional case, so we can
     // afford the inefficiency to convert to node to
     // JSON for comparison
@@ -477,11 +477,11 @@ AstNode::AstNode (Ast* ast,
       setData(query->executor()->getFunctionByName(JsonHelper::getStringValue(json.json(), "name", "")));
       break;
     }
-    case NODE_TYPE_ARRAY_ELEMENT: {
+    case NODE_TYPE_OBJECT_ELEMENT: {
       setStringValue(query->registerString(JsonHelper::getStringValue(json.json(), "name", ""), false));
       break;
     }
-    case NODE_TYPE_ARRAY:
+    case NODE_TYPE_OBJECT:
     case NODE_TYPE_ROOT:
     case NODE_TYPE_FOR:
     case NODE_TYPE_LET:
@@ -522,14 +522,14 @@ AstNode::AstNode (Ast* ast,
     case NODE_TYPE_INDEXED_ACCESS:
     case NODE_TYPE_EXPAND:
     case NODE_TYPE_ITERATOR:
-    case NODE_TYPE_LIST:
+    case NODE_TYPE_ARRAY:
     case NODE_TYPE_RANGE:
     case NODE_TYPE_NOP:
       break;
     }
 
   Json subNodes = json.get("subNodes");
-  if (subNodes.isList()) {
+  if (subNodes.isArray()) {
     size_t const len = subNodes.size();
     for (size_t i = 0; i < len; i++) {
       Json subNode(subNodes.at(static_cast<int>(i)));
@@ -581,7 +581,7 @@ TRI_json_t* AstNode::computeJson () const {
 ////////////////////////////////////////////////////////////////////////////////
   
 void AstNode::sort () {
-  TRI_ASSERT(type == NODE_TYPE_LIST);
+  TRI_ASSERT(type == NODE_TYPE_ARRAY);
   TRI_ASSERT_EXPENSIVE(isConstant());
 
   auto const ptr = members._buffer;
@@ -678,9 +678,9 @@ TRI_json_t* AstNode::toJsonValue (TRI_memory_zone_t* zone) const {
     }
   }
   
-  if (type == NODE_TYPE_LIST) {
+  if (type == NODE_TYPE_ARRAY) {
     size_t const n = numMembers();
-    TRI_json_t* list = TRI_CreateList2Json(zone, n);
+    TRI_json_t* list = TRI_CreateArray2Json(zone, n);
 
     if (list == nullptr) {
       return nullptr;
@@ -693,16 +693,16 @@ TRI_json_t* AstNode::toJsonValue (TRI_memory_zone_t* zone) const {
         TRI_json_t* j = member->toJsonValue(zone);
 
         if (j != nullptr) {
-          TRI_PushBack3ListJson(zone, list, j);
+          TRI_PushBack3ArrayJson(zone, list, j);
         }
       }
     }
     return list;
   }
   
-  if (type == NODE_TYPE_ARRAY) {
+  if (type == NODE_TYPE_OBJECT) {
     size_t const n = numMembers();
-    TRI_json_t* array = TRI_CreateArray2Json(zone, n);
+    TRI_json_t* array = TRI_CreateObject2Json(zone, n);
 
     for (size_t i = 0; i < n; ++i) {
       auto member = getMember(i);
@@ -711,7 +711,7 @@ TRI_json_t* AstNode::toJsonValue (TRI_memory_zone_t* zone) const {
         TRI_json_t* j = member->getMember(0)->toJsonValue(zone);
 
         if (j != nullptr) {
-          TRI_Insert3ArrayJson(zone, array, member->getStringValue(), j);
+          TRI_Insert3ObjectJson(zone, array, member->getStringValue(), j);
         }
       }
     }
@@ -723,8 +723,8 @@ TRI_json_t* AstNode::toJsonValue (TRI_memory_zone_t* zone) const {
     TRI_json_t* j = getMember(0)->toJsonValue(zone);
 
     if (j != nullptr) {
-      if (TRI_IsArrayJson(j)) {
-        TRI_json_t* v = TRI_LookupArrayJson(j, getStringValue());
+      if (TRI_IsObjectJson(j)) {
+        TRI_json_t* v = TRI_LookupObjectJson(j, getStringValue());
         if (v != nullptr) {
           TRI_json_t* copy = TRI_CopyJson(zone, v);
           TRI_FreeJson(zone, j);
@@ -746,7 +746,7 @@ TRI_json_t* AstNode::toJsonValue (TRI_memory_zone_t* zone) const {
 
 TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone,
                              bool verbose) const {
-  TRI_json_t* node = TRI_CreateArrayJson(zone);
+  TRI_json_t* node = TRI_CreateObjectJson(zone);
 
   if (node == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -760,29 +760,29 @@ TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  TRI_Insert2ArrayJson(zone, node, "type", &json); 
+  TRI_Insert2ObjectJson(zone, node, "type", &json); 
 
   // add typeId
   if (verbose) {
-    TRI_Insert3ArrayJson(zone, node, "typeID", TRI_CreateNumberJson(zone, static_cast<int>(type)));
+    TRI_Insert3ObjectJson(zone, node, "typeID", TRI_CreateNumberJson(zone, static_cast<int>(type)));
   }
 
   if (type == NODE_TYPE_COLLECTION ||
       type == NODE_TYPE_PARAMETER ||
       type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-      type == NODE_TYPE_ARRAY_ELEMENT ||
+      type == NODE_TYPE_OBJECT_ELEMENT ||
       type == NODE_TYPE_FCALL_USER) {
     // dump "name" of node
     if (TRI_InitStringCopyJson(zone, &json, getStringValue()) != TRI_ERROR_NO_ERROR) {
       TRI_FreeJson(zone, node);
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
-    TRI_Insert2ArrayJson(zone, node, "name", &json);
+    TRI_Insert2ObjectJson(zone, node, "name", &json);
   }
 
   if (type == NODE_TYPE_FCALL) {
     auto func = static_cast<Function*>(getData());
-    TRI_Insert3ArrayJson(zone, node, "name", TRI_CreateStringCopyJson(zone, func->externalName.c_str()));
+    TRI_Insert3ObjectJson(zone, node, "name", TRI_CreateStringCopyJson(zone, func->externalName.c_str()));
     // arguments are exported via node members
   }
 
@@ -795,11 +795,11 @@ TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
     
-    TRI_Insert3ArrayJson(zone, node, "value", v);
+    TRI_Insert3ObjectJson(zone, node, "value", v);
 
     if (verbose) {
-      TRI_Insert3ArrayJson(zone, node, "vType", TRI_CreateStringCopyJson(zone, getValueTypeString().c_str()));
-      TRI_Insert3ArrayJson(zone, node, "vTypeID", TRI_CreateNumberJson(zone, static_cast<int>(value.type)));
+      TRI_Insert3ObjectJson(zone, node, "vType", TRI_CreateStringCopyJson(zone, getValueTypeString().c_str()));
+      TRI_Insert3ObjectJson(zone, node, "vTypeID", TRI_CreateNumberJson(zone, static_cast<int>(value.type)));
     }
   }
 
@@ -809,15 +809,15 @@ TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone,
 
     TRI_ASSERT(variable != nullptr);
 
-    TRI_Insert3ArrayJson(zone, node, "name", TRI_CreateStringCopyJson(zone, variable->name.c_str()));
-    TRI_Insert3ArrayJson(zone, node, "id", TRI_CreateNumberJson(zone, static_cast<double>(variable->id)));
+    TRI_Insert3ObjectJson(zone, node, "name", TRI_CreateStringCopyJson(zone, variable->name.c_str()));
+    TRI_Insert3ObjectJson(zone, node, "id", TRI_CreateNumberJson(zone, static_cast<double>(variable->id)));
   }
   
   // dump sub-nodes 
   size_t const n = members._length;
 
   if (n > 0) {
-    TRI_json_t* subNodes = TRI_CreateList2Json(zone, n);
+    TRI_json_t* subNodes = TRI_CreateArray2Json(zone, n);
 
     if (subNodes == nullptr) {
       TRI_FreeJson(zone, node);
@@ -838,7 +838,7 @@ TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
     
-    TRI_Insert3ArrayJson(zone, node, "subNodes", subNodes);
+    TRI_Insert3ObjectJson(zone, node, "subNodes", subNodes);
   }
 
   return node;
@@ -852,8 +852,8 @@ TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone,
 
 AstNode* AstNode::castToBool (Ast* ast) {
   TRI_ASSERT(type == NODE_TYPE_VALUE || 
-             type == NODE_TYPE_LIST || 
-             type == NODE_TYPE_ARRAY);
+             type == NODE_TYPE_ARRAY || 
+             type == NODE_TYPE_OBJECT);
 
   if (type == NODE_TYPE_VALUE) {
     switch (value.type) {
@@ -874,10 +874,10 @@ AstNode* AstNode::castToBool (Ast* ast) {
     }
     // fall-through intentional
   }
-  else if (type == NODE_TYPE_LIST) {
+  else if (type == NODE_TYPE_ARRAY) {
     return ast->createNodeValueBool(true);
   }
-  else if (type == NODE_TYPE_ARRAY) {
+  else if (type == NODE_TYPE_OBJECT) {
     return ast->createNodeValueBool(true);
   }
 
@@ -892,8 +892,8 @@ AstNode* AstNode::castToBool (Ast* ast) {
 
 AstNode* AstNode::castToNumber (Ast* ast) {
   TRI_ASSERT(type == NODE_TYPE_VALUE || 
-             type == NODE_TYPE_LIST || 
-             type == NODE_TYPE_ARRAY);
+             type == NODE_TYPE_ARRAY || 
+             type == NODE_TYPE_OBJECT);
 
   if (type == NODE_TYPE_VALUE) {
     switch (value.type) {
@@ -924,7 +924,7 @@ AstNode* AstNode::castToNumber (Ast* ast) {
     }
     // fall-through intentional
   }
-  else if (type == NODE_TYPE_LIST) {
+  else if (type == NODE_TYPE_ARRAY) {
     size_t const n = numMembers();
     if (n == 0) {
       // [ ] => 0
@@ -937,7 +937,7 @@ AstNode* AstNode::castToNumber (Ast* ast) {
     }
     // fall-through intentional
   }
-  else if (type == NODE_TYPE_ARRAY) {
+  else if (type == NODE_TYPE_OBJECT) {
     // fall-through intentional
   }
 
@@ -952,8 +952,8 @@ AstNode* AstNode::castToNumber (Ast* ast) {
 
 AstNode* AstNode::castToString (Ast* ast) {
   TRI_ASSERT(type == NODE_TYPE_VALUE || 
-             type == NODE_TYPE_LIST || 
-             type == NODE_TYPE_ARRAY);
+             type == NODE_TYPE_ARRAY || 
+             type == NODE_TYPE_OBJECT);
 
   if (type == NODE_TYPE_VALUE && value.type == VALUE_TYPE_STRING) {
     // already a string
@@ -979,7 +979,7 @@ AstNode* AstNode::castToString (Ast* ast) {
 void AstNode::toJson (TRI_json_t* json,
                       TRI_memory_zone_t* zone,
                       bool verbose) const {
-  TRI_ASSERT(TRI_IsListJson(json));
+  TRI_ASSERT(TRI_IsArrayJson(json));
 
   TRI_json_t* node = toJson(zone, verbose);
 
@@ -987,7 +987,7 @@ void AstNode::toJson (TRI_json_t* json,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  TRI_PushBack3ListJson(zone, json, node);
+  TRI_PushBack3ArrayJson(zone, json, node);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1053,8 +1053,8 @@ bool AstNode::isTrue () const {
         return (*value.value._string != '\0');
     }
   }
-  else if (type == NODE_TYPE_LIST ||
-           type == NODE_TYPE_ARRAY) {
+  else if (type == NODE_TYPE_ARRAY ||
+           type == NODE_TYPE_OBJECT) {
     return true;
   }
   else if (type == NODE_TYPE_OPERATOR_BINARY_OR) {
@@ -1098,8 +1098,8 @@ bool AstNode::isFalse () const {
         return (*value.value._string == '\0');
     }
   }
-  else if (type == NODE_TYPE_LIST ||
-           type == NODE_TYPE_ARRAY) {
+  else if (type == NODE_TYPE_ARRAY ||
+           type == NODE_TYPE_OBJECT) {
     return false;
   }
   else if (type == NODE_TYPE_OPERATOR_BINARY_OR) {
@@ -1141,8 +1141,8 @@ bool AstNode::isSimple () const {
     return true;
   }
 
-  if (type == NODE_TYPE_LIST ||
-      type == NODE_TYPE_ARRAY) {
+  if (type == NODE_TYPE_ARRAY ||
+      type == NODE_TYPE_OBJECT) {
     size_t const n = numMembers();
     for (size_t i = 0; i < n; ++i) {
       auto member = getMember(i);
@@ -1155,7 +1155,7 @@ bool AstNode::isSimple () const {
     return true;
   }
 
-  if (type == NODE_TYPE_ARRAY_ELEMENT || 
+  if (type == NODE_TYPE_OBJECT_ELEMENT || 
       type == NODE_TYPE_ATTRIBUTE_ACCESS ||
       type == NODE_TYPE_OPERATOR_UNARY_NOT) {
     TRI_ASSERT(numMembers() == 1);
@@ -1229,7 +1229,7 @@ bool AstNode::isConstant () const {
     return true;
   }
 
-  if (type == NODE_TYPE_LIST) {
+  if (type == NODE_TYPE_ARRAY) {
     size_t const n = numMembers();
 
     for (size_t i = 0; i < n; ++i) {
@@ -1247,7 +1247,7 @@ bool AstNode::isConstant () const {
     return true;
   }
 
-  if (type == NODE_TYPE_ARRAY) {
+  if (type == NODE_TYPE_OBJECT) {
     size_t const n = numMembers();
 
     for (size_t i = 0; i < n; ++i) {
@@ -1430,7 +1430,7 @@ AstNode* AstNode::clone (Ast* ast) const {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief append a string representation of the node to a string buffer
 /// the string representation does not need to be JavaScript-compatible 
-/// except for node types NODE_TYPE_VALUE, NODE_TYPE_LIST and NODE_TYPE_ARRAY
+/// except for node types NODE_TYPE_VALUE, NODE_TYPE_ARRAY and NODE_TYPE_OBJECT
 ////////////////////////////////////////////////////////////////////////////////
 
 void AstNode::stringify (triagens::basics::StringBuffer* buffer,
@@ -1441,7 +1441,7 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
     return;
   }
 
-  if (type == NODE_TYPE_LIST) {
+  if (type == NODE_TYPE_ARRAY) {
     // must be JavaScript-compatible!
     size_t const n = numMembers();
     if (verbose || n > 0) {
@@ -1465,7 +1465,7 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
     return;
   }
 
-  if (type == NODE_TYPE_ARRAY) {
+  if (type == NODE_TYPE_OBJECT) {
     // must be JavaScript-compatible!
     if (verbose) {
       buffer->appendChar('{');
@@ -1477,7 +1477,7 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
 
         AstNode* member = getMember(i);
         if (member != nullptr) {
-          TRI_ASSERT(member->type == NODE_TYPE_ARRAY_ELEMENT);
+          TRI_ASSERT(member->type == NODE_TYPE_OBJECT_ELEMENT);
           TRI_ASSERT(member->numMembers() == 1);
 
           buffer->appendChar('"');

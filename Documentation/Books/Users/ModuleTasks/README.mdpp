@@ -147,7 +147,7 @@ Note that unregistering a non-existing task will throw an exception.
 
 To get an overview of which tasks are registered, there is the *get* 
 method. If the *get* method is called without any arguments, it will
-return a list of all tasks:
+return an array of all tasks:
 
 ```js
 var tasks = require("org/arangodb/tasks");
