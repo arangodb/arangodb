@@ -64,6 +64,14 @@ v2.4.0 (XXXX-XX-XX)
 
 * fixed issue #1134: Change the default endpoint to localhost
 
+  This change will modify the ip address ArangoDB listens on to 127.0.0.1 by default.
+  This will make new ArangoDB installations unaccessible from clients other than
+  localhost unless changed. This is a security feature. 
+
+  To make ArangoDB accessible from any client, change the server's configuration 
+  (`--server.endpoint`) to either `tcp://0.0.0.0:8529` or the server's publicly
+  visible IP address.
+
 * deprecated `Repository#modelPrototype`. Use `Repository#model` instead.
 
 * IMPORTANT CHANGE: by default, system collections are included in replication and all
