@@ -8,13 +8,13 @@ shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/g
 
 HTTP/1.1 202 Accepted
 content-type: application/json; charset=utf-8
-etag: 1407576843
+etag: 1416014326
 
 { 
   "edge" : { 
     "_id" : "edges/edge1", 
     "_key" : "edge1", 
-    "_rev" : "1407576843", 
+    "_rev" : "1416014326", 
     "_from" : "vertices/vert2", 
     "_to" : "vertices/vert1", 
     "$label" : null, 

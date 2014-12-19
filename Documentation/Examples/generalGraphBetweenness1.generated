@@ -6,7 +6,7 @@ arangosh> db._query("RETURN GRAPH_BETWEENNESS('routeplanner')").toArray();
     "germanCity/Berlin" : null, 
     "germanCity/Cologne" : null, 
     "germanCity/Hamburg" : null, 
-    "frenchCity/Lyon" : null, 
-    "frenchCity/Paris" : null 
+    "frenchCity/Paris" : null, 
+    "frenchCity/Lyon" : null 
   } 
 ]

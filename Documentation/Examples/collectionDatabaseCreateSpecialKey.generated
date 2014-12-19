@@ -1,18 +1,18 @@
 arangosh> db._create("users", { keyOptions: { allowUserKeys: false } });
-[ArangoCollection 865266443, "users" (type document, status loaded)]
+[ArangoCollection 865642998, "users" (type document, status loaded)]
 arangosh> db.users.save({ name: "user 1" });
 { 
   "error" : false, 
-  "_id" : "users/865594123", 
-  "_rev" : "865594123", 
-  "_key" : "865594123" 
+  "_id" : "users/865970678", 
+  "_rev" : "865970678", 
+  "_key" : "865970678" 
 }
 arangosh> db.users.save({ name: "user 2", _key: "myuser" });
 [ArangoError 1222: collection does not allow using user-defined keys]
 arangosh> db.users.save({ name: "user 3" });
 { 
   "error" : false, 
-  "_id" : "users/865921803", 
-  "_rev" : "865921803", 
-  "_key" : "865921803" 
+  "_id" : "users/866298358", 
+  "_rev" : "866298358", 
+  "_key" : "866298358" 
 }

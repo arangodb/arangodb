@@ -20,15 +20,9 @@ arangosh> db._query("FOR e IN GRAPH_SHORTEST_PATH("
     1 
   ], 
   [ 
-    "germanCity/Hamburg", 
-    "frenchCity/Paris", 
-    900, 
-    1 
-  ], 
-  [ 
-    "germanCity/Hamburg", 
+    "germanCity/Cologne", 
     "frenchCity/Lyon", 
-    1200, 
+    700, 
     1 
   ], 
   [ 
@@ -38,9 +32,15 @@ arangosh> db._query("FOR e IN GRAPH_SHORTEST_PATH("
     1 
   ], 
   [ 
-    "germanCity/Cologne", 
+    "germanCity/Hamburg", 
+    "frenchCity/Paris", 
+    900, 
+    1 
+  ], 
+  [ 
+    "germanCity/Hamburg", 
     "frenchCity/Lyon", 
-    700, 
+    1200, 
     1 
   ] 
 ]
