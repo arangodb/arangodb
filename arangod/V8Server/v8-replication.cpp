@@ -76,25 +76,6 @@ static void JS_StateLoggerReplication (const v8::FunctionCallbackInfo<v8::Value>
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the configuration of the replication logger
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_ConfigureLoggerReplication (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
-  v8::HandleScope scope(isolate);
-
-  // the replication logger is actually non-existing in ArangoDB 2.2 and higher
-  // as there is the WAL. To be downwards-compatible, we'll return dummy values
-  v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("autoStart"),        v8::True(isolate));
-  result->Set(TRI_V8_ASCII_STRING("logRemoteChanges"), v8::True(isolate));
-  result->Set(TRI_V8_ASCII_STRING("maxEvents"),        v8::Number::New(isolate, 0));
-  result->Set(TRI_V8_ASCII_STRING("maxEventsSize"),    v8::Number::New(isolate, 0));
-
-  TRI_V8_RETURN(result);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the last WAL entries
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -647,7 +628,6 @@ void TRI_InitV8replication (v8::Isolate* isolate,
 
   // replication functions. not intended to be used by end users
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("REPLICATION_LOGGER_STATE"), JS_StateLoggerReplication, true);
-  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("REPLICATION_LOGGER_CONFIGURE"), JS_ConfigureLoggerReplication, true);
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("REPLICATION_LOGGER_LAST"), JS_LastLoggerReplication, true);
 #endif
