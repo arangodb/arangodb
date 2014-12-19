@@ -5,15 +5,15 @@ HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
 
 { 
-  "id" : "1491921675", 
+  "id" : "1500293622", 
   "name" : "SampleTask", 
   "type" : "periodic", 
   "period" : 2, 
-  "created" : 1418979956.757703, 
+  "created" : 1418986612.952894, 
   "command" : "(function(params) { require('internal').print(params); })(params)", 
   "database" : "_system", 
   "error" : false, 
   "code" : 200 
 }
-shell> curl -X DELETE --data-binary @- --dump - http://localhost:8529/_api/tasks/1491921675
+shell> curl -X DELETE --data-binary @- --dump - http://localhost:8529/_api/tasks/1500293622
 
