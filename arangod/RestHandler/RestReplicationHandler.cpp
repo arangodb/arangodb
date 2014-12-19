@@ -99,43 +99,11 @@ Handler::status_t RestReplicationHandler::execute() {
   if (len >= 1) {
     const string& command = suffix[0];
 
-    if (command == "logger-start") {
-      if (type != HttpRequest::HTTP_REQUEST_PUT) {
-        goto BAD_CALL;
-      }
-
-      if (isCoordinatorError()) {
-        return status_t(Handler::HANDLER_DONE);
-      }
-      handleCommandLoggerStart();
-    }
-    else if (command == "logger-stop") {
-      if (type != HttpRequest::HTTP_REQUEST_PUT) {
-        goto BAD_CALL;
-      }
-
-      if (isCoordinatorError()) {
-        return status_t(Handler::HANDLER_DONE);
-      }
-
-      handleCommandLoggerStop();
-    }
-    else if (command == "logger-state") {
+    if (command == "logger-state") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
         goto BAD_CALL;
       }
       handleCommandLoggerState();
-    }
-    else if (command == "logger-config") {
-      if (type == HttpRequest::HTTP_REQUEST_GET) {
-        handleCommandLoggerGetConfig();
-      }
-      else {
-        if (type != HttpRequest::HTTP_REQUEST_PUT) {
-          goto BAD_CALL;
-        }
-        handleCommandLoggerSetConfig();
-      }
     }
     else if (command == "logger-follow") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
@@ -416,40 +384,6 @@ uint64_t RestReplicationHandler::determineChunkSize () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief starts the replication logger
-/// this method does nothing and is deprecated since ArangoDB 2.2
-////////////////////////////////////////////////////////////////////////////////
-
-void RestReplicationHandler::handleCommandLoggerStart () {
-  // the logger in ArangoDB 2.2 is now the WAL...
-  // so the logger cannot be started but is always running
-  TRI_json_t result;
-
-  TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &result);
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &result, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
-
-  generateResult(&result);
-  TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stops the replication logger
-/// this method does nothing and is deprecated since ArangoDB 2.2
-////////////////////////////////////////////////////////////////////////////////
-
-void RestReplicationHandler::handleCommandLoggerStop () {
-  // the logger in ArangoDB 2.2 is now the WAL...
-  // so the logger cannot be stopped
-  TRI_json_t result;
-
-  TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &result);
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &result, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
-
-  generateResult(&result);
-  TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_get_api_replication_logger_return_state
 /// @brief returns the state of the replication logger
 ///
@@ -565,37 +499,6 @@ void RestReplicationHandler::handleCommandLoggerState () {
 
   generateResult(json);
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the configuration of the replication logger
-/// this method does nothing and is deprecated since ArangoDB 2.2
-////////////////////////////////////////////////////////////////////////////////
-
-void RestReplicationHandler::handleCommandLoggerGetConfig () {
-  TRI_json_t* json = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
-
-  if (json == nullptr) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
-    return;
-  }
-
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "autoStart", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "logRemoteChanges", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "maxEvents", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, 0));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "maxEventsSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, 0));
-
-  generateResult(json);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set the configuration of the replication logger
-/// this method does nothing and is deprecated since ArangoDB 2.2
-////////////////////////////////////////////////////////////////////////////////
-
-void RestReplicationHandler::handleCommandLoggerSetConfig () {
-  handleCommandLoggerGetConfig();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

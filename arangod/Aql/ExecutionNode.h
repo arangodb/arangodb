@@ -829,11 +829,13 @@ namespace triagens {
                                  size_t id,
                                  TRI_vocbase_t* vocbase, 
                                  Collection* collection,
-                                 Variable const* outVariable)
+                                 Variable const* outVariable,
+                                 bool random)
           : ExecutionNode(plan, id), 
             _vocbase(vocbase), 
             _collection(collection),
-            _outVariable(outVariable){
+            _outVariable(outVariable),  
+            _random(random) {
           TRI_ASSERT(_vocbase != nullptr);
           TRI_ASSERT(_collection != nullptr);
           TRI_ASSERT(_outVariable != nullptr);
@@ -955,6 +957,11 @@ namespace triagens {
 
         Variable const* _outVariable;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not we want random iteration
+////////////////////////////////////////////////////////////////////////////////
+
+        bool const _random;
     };
 
 // -----------------------------------------------------------------------------

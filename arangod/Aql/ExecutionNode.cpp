@@ -1035,7 +1035,8 @@ EnumerateCollectionNode::EnumerateCollectionNode (ExecutionPlan* plan,
   : ExecutionNode(plan, base),
     _vocbase(plan->getAst()->query()->vocbase()),
     _collection(plan->getAst()->query()->collections()->get(JsonHelper::checkAndGetStringValue(base.json(), "collection"))),
-    _outVariable(varFromJson(plan->getAst(), base, "outVariable")) {
+    _outVariable(varFromJson(plan->getAst(), base, "outVariable")),
+    _random(JsonHelper::checkAndGetBooleanValue(base.json(), "random")) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1054,7 +1055,8 @@ void EnumerateCollectionNode::toJsonHelper (triagens::basics::Json& nodes,
   // Now put info about vocbase and cid in there
   json("database", triagens::basics::Json(_vocbase->_name))
       ("collection", triagens::basics::Json(_collection->getName()))
-      ("outVariable", _outVariable->toJson());
+      ("outVariable", _outVariable->toJson())
+      ("random", triagens::basics::Json(_random));
 
   // And add it:
   nodes(json);
@@ -1072,7 +1074,7 @@ ExecutionNode* EnumerateCollectionNode::clone (ExecutionPlan* plan,
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
     TRI_ASSERT(outVariable != nullptr);
   }
-  auto c = new EnumerateCollectionNode(plan, _id, _vocbase, _collection, outVariable);
+  auto c = new EnumerateCollectionNode(plan, _id, _vocbase, _collection, outVariable, _random);
 
   CloneHelper(c, plan, withDependencies, withProperties);
 
@@ -1200,8 +1202,9 @@ double EnumerateCollectionNode::estimateCost (size_t& nrItems) const {
   double depCost = _dependencies.at(0)->getCost(incoming);
   size_t count = _collection->count();
   nrItems = incoming * count;
-  return depCost + count * incoming; 
   // We do a full collection scan for each incoming item.
+  // random iteration is slightly more expensive than linear iteration
+  return depCost + nrItems * (_random ? 1.005 : 1.0);
 }
 
 // -----------------------------------------------------------------------------

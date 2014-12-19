@@ -1,5 +1,5 @@
 # config file for arangoimp
 
 [server]
-endpoint = tcp://localhost:8529
+endpoint = tcp://127.0.0.1:8529
 disable-authentication = true
