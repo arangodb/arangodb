@@ -1,6 +1,11 @@
 v2.4.0 (XXXX-XX-XX)
 -------------------
 
+* removed DEPRECATED methods:
+  * `replication.logger.start()`
+  * `replication.logger.stop()`
+  * `replication.logger.properties()`
+
 * New `Applications` tab in web interface:
 
   The `applications` tab got a complete redesign. 
