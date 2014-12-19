@@ -1,10 +1,18 @@
 v2.4.0 (XXXX-XX-XX)
 -------------------
 
-* removed DEPRECATED methods:
+* Added Foxx generator for building Hypermedia APIs
+
+  A more detailed description is [here](https://www.arangodb.com/2014/12/08/building-hypermedia-apis-foxxgenerator)
+
+* removed DEPRECATED replication methods:
   * `replication.logger.start()`
   * `replication.logger.stop()`
   * `replication.logger.properties()`
+  * HTTP PUT `/_api/replication/logger-start` 
+  * HTTP PUT `/_api/replication/logger-stop` 
+  * HTTP GET `/_api/replication/logger-config` 
+  * HTTP PUT `/_api/replication/logger-config` 
 
 * New `Applications` tab in web interface:
 
