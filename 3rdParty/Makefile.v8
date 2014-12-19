@@ -21,36 +21,42 @@ BUILT_SOURCES += @V8_LIBS@
 
 if ENABLE_ARM
 	cd @top_srcdir@/3rdParty/V8 \
-		&& CFLAGS="-O2 -g -fsigned-char" \
-		   CXXFLAGS="-O2 -g -fsigned-char" \
-		   CC=$(CC) \
-		   CXX=$(CXX) \
-		   LINK=$(CXX) \
-		   GYPFLAGS="-Dstandalone_static_library=1" \
-		   $(MAKE) \
-			library=static strictaliasing=off snapshot=off werror=no hardfp=on @V8_TARGET@
+	  && $(MAKE) \
+		CFLAGS="-O2 -g -fsigned-char" \
+		CXXFLAGS="-O2 -g -fsigned-char" \
+		CC=$(CC) \
+		CC.host=$(CC) \
+		CXX=$(CXX) \
+		CXX.host=$(CXX) \
+		LINK=$(CXX) \
+		GYPFLAGS="-Dstandalone_static_library=1" \
+		library=static strictaliasing=off snapshot=off werror=no hardfp=on @V8_TARGET@
 else
 if ENABLE_DARWIN
 	cd @top_srcdir@/3rdParty/V8 \
-		&& LDFLAGS="-lc++" \
-                   CFLAGS="-O2 -g" \
-		   CXXFLAGS="-O2 -g" \
-		   CC=$(CC) \
-		   CXX=$(CXX) \
-		   LINK=$(CXX) \
-		   GYPFLAGS="-Dstandalone_static_library=1" \
-		   $(MAKE) \
-			library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
+	  && $(MAKE) \
+		LDFLAGS="-lc++" \
+                CFLAGS="-O2 -g" \
+		CXXFLAGS="-O2 -g" \
+		CC=$(CC) \
+		CC.host=$(CC) \
+		CXX=$(CXX) \
+		CXX.host=$(CXX) \
+		LINK=$(CXX) \
+		GYPFLAGS="-Dstandalone_static_library=1" \
+		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 else
 	cd @top_srcdir@/3rdParty/V8 \
-		&& CFLAGS="-O2 -g" \
-		   CXXFLAGS="-O2 -g" \
-		   CC=$(CC) \
-		   CXX=$(CXX) \
-		   LINK=$(CXX) \
-		   GYPFLAGS="-Dstandalone_static_library=1" \
-		   $(MAKE) \
-			library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
+	  && $(MAKE) \
+		CFLAGS="-O2 -g" \
+		CXXFLAGS="-O2 -g" \
+		CC=$(CC) \
+		CC.host=$(CC) \
+		CXX=$(CXX) \
+		CXX.host=$(CXX) \
+		LINK=$(CXX) \
+		GYPFLAGS="-Dstandalone_static_library=1" \
+		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 endif
 endif
 
