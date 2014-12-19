@@ -758,7 +758,7 @@ static uint64_t HashBlock (uint64_t hash, char const* buffer, size_t length) {
   nMagicPrime = 0x00000100000001b3ULL;
 
   for (j = 0; j < length; ++j) {
-    hash ^= buffer[j];
+    hash ^= ((int8_t const*) buffer)[j];
     hash *= nMagicPrime;
   }
   return hash;
