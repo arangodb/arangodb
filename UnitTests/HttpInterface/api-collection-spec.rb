@@ -224,7 +224,6 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(200)
         doc.parsed_response['id'].should eq(@cid)
         doc.parsed_response['name'].should eq(@cn)
-        p doc.parsed_response['status']
         [2, 4].include?(doc.parsed_response['status'].to_i).should eq(true)
       end
 
