@@ -1,6 +1,33 @@
 v2.4.0 (XXXX-XX-XX)
 -------------------
 
+* New `Applications` tab in web interface:
+
+  The `applications` tab got a complete redesign. 
+  It will now only show applications that are currently running on ArangoDB. 
+  For a selected application, a new detailed view has been created.
+  This view provides a better overview of the app: 
+  * author
+  * license
+  * version
+  * contributors
+  * download links
+  * API documentation
+
+  To install a new application, a new dialogue is now available. 
+  It provides the features already available in the console application `foxx-manager` plus some more: 
+  * install an application from Github
+  * install an application from a zip fileBut now also allows to install Applications directly from ArangoDBs App store.
+  * create a new application from scratch: this feature uses a generator to
+    create a Foxx application with pre-defined CRUD methods for a given list
+    of collections. The generated foxx app can either be downloaded as a zip file or 
+    be installed on the server. Starting with a new Foxx app has never been easier.
+
+* fixed issue #1102: Aardvark: Layout bug in documents overview 
+
+  The documents overview was entirely destroyed in some situations on Firefox. 
+  We replaced the plugin we used there.
+
 * fixed issue #1168: Aardvark: pagination buttons jumping
 
 * fixed issue #1161: Aardvark: Click on Import JSON imports previously uploaded file
