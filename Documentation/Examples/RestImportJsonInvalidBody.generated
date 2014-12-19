@@ -6,7 +6,7 @@ content-type: application/json; charset=utf-8
 
 { 
   "error" : true, 
-  "errorMessage" : "expecting a JSON list in the request", 
+  "errorMessage" : "expecting a JSON array in the request", 
   "code" : 400, 
   "errorNum" : 400 
 }

@@ -11,31 +11,31 @@ content-type: application/json; charset=utf-8
     { 
       "_id" : "vertices/v3", 
       "_key" : "v3", 
-      "_rev" : "1446816495", 
+      "_rev" : "1391913739", 
       "optional1" : "val1" 
     }, 
     { 
       "_id" : "vertices/v2", 
       "_key" : "v2", 
-      "_rev" : "1446423279", 
+      "_rev" : "1391520523", 
       "optional1" : "val1" 
     }, 
     { 
       "_id" : "vertices/v5", 
       "_key" : "v5", 
-      "_rev" : "1447602927", 
+      "_rev" : "1392700171", 
       "optional1" : "val1" 
     }, 
     { 
       "_id" : "vertices/v4", 
       "_key" : "v4", 
-      "_rev" : "1447209711", 
+      "_rev" : "1392306955", 
       "optional1" : "val1" 
     }, 
     { 
       "_id" : "vertices/v1", 
       "_key" : "v1", 
-      "_rev" : "1446030063", 
+      "_rev" : "1391127307", 
       "optional1" : "val1" 
     } 
   ], 

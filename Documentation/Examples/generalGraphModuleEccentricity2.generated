@@ -4,8 +4,8 @@ arangosh> graph._eccentricity();
 [ 
   { 
     "germanCity/Berlin" : 1, 
-    "germanCity/Cologne" : 1, 
     "germanCity/Hamburg" : 1, 
+    "germanCity/Cologne" : 1, 
     "frenchCity/Paris" : 1, 
     "frenchCity/Lyon" : 1 
   } 

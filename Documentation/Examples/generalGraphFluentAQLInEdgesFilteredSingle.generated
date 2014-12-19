@@ -6,7 +6,7 @@ arangosh> query.inEdges({type: "married"}).toArray();
   { 
     "_id" : "relation/aliceAndBob", 
     "_key" : "aliceAndBob", 
-    "_rev" : "153594607", 
+    "_rev" : "153611019", 
     "_from" : "female/alice", 
     "_to" : "male/bob", 
     "type" : "married" 
