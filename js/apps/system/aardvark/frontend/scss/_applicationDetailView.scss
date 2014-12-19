@@ -1,26 +1,42 @@
-.applicationDetailView {
-  section {
+.application-detail-view {
+  section.info {
     float: left;
-    width: 900px;
 
     .header {
       float: left;
+      height: 200px;
       margin-bottom: 10px;
+      position: relative;
 
       .header_left {
-        float: left;
+        position: absolute;
         width: 170px;
         text-align: center;
 
-        img {
+        div.header-icon-container {
+          height: 160px;
           margin: 0px 0px 4px;
+          width: 160px;
+
+          img.icon {
+            height: auto;
+            max-height: 160px;
+            max-width: 160px;
+            width: auto;
+          }
+
         }
       }
 
       .header_right {
-        float: left;
-        clear: right;
+        position: relative;
+        left: 170px;
         padding: 5px;
+
+        h3 {
+          padding-right: 5px;
+          float: left;
+        }
 
         .license, .version {
           -webkit-border-radius: 6px;
@@ -33,6 +49,10 @@
           position: relative;
           top: -2px;
         }
+
+        .description {
+          clear: left;
+        }
       }
     }
 
@@ -44,7 +64,7 @@
     }
   }
 
-  aside {
+  aside.meta {
     float: left;
     clear: right;
     width: 200px;

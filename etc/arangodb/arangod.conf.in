@@ -44,7 +44,7 @@ threads = 4
 [scheduler]
 
 # number of threads used for I/O
-threads = 1
+threads = 2
 
 [javascript]
 startup-directory = @PKGDATADIR@/js

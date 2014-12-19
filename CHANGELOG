@@ -13,9 +13,48 @@ v2.4.0-alpha2 (2014-11-28)
 v2.4.0-alpha1 (2014-11-25)
 --------------------------
 
-* removed enable-all-in-one-v8, enable-all-in-one-icu and enable-all-in-one-libev
+* Upgraded V8 version from 3.16.14 to 3.29.59
 
-* global internal rename to fix naming incompatibility with JSON:
+* Added Foxx generator for building Hypermedia APIs
+
+  A more detailed description is [here](https://www.arangodb.com/2014/12/08/building-hypermedia-apis-foxxgenerator)
+
+* New `Applications` tab in web interface:
+
+  The `applications` tab got a complete redesign. 
+  It will now only show applications that are currently running on ArangoDB. 
+  For a selected application, a new detailed view has been created.
+  This view provides a better overview of the app: 
+  * author
+  * license
+  * version
+  * contributors
+  * download links
+  * API documentation
+
+  To install a new application, a new dialogue is now available. 
+  It provides the features already available in the console application `foxx-manager` plus some more: 
+  * install an application from Github
+  * install an application from a zip file
+  * install an application from ArangoDB's application store
+  * create a new application from scratch: this feature uses a generator to
+    create a Foxx application with pre-defined CRUD methods for a given list
+    of collections. The generated Foxx app can either be downloaded as a zip file or 
+    be installed on the server. Starting with a new Foxx app has never been easier.
+
+* fixed issue #1102: Aardvark: Layout bug in documents overview 
+
+  The documents overview was entirely destroyed in some situations on Firefox. 
+  We replaced the plugin we used there.
+
+* fixed issue #1168: Aardvark: pagination buttons jumping
+
+* fixed issue #1161: Aardvark: Click on Import JSON imports previously uploaded file
+
+* removed configure options `--enable-all-in-one-v8`, `--enable-all-in-one-icu`,
+  and `--enable-all-in-one-libev`.
+
+* global internal rename to fix naming incompatibilities with JSON:
  
   Internal functions with names containing `array` have been renamed to `object`, 
   internal functions with names containing `list` have been renamed to `array`.
@@ -28,11 +67,41 @@ v2.4.0-alpha1 (2014-11-25)
   * `IS_LIST` now is an alias of the new `IS_ARRAY`
   * `IS_DOCUMENT` now is an alias of the new `IS_OBJECT`
 
+  The changed also renamed the option `mergeArrays` to `mergeObjects` for AQL 
+  data-modification query options and HTTP document modification API
+
+* AQL: added optimizer rule "remove-filter-covered-by-index"
+  
+  This rule removes FilterNodes and CalculationNodes from an execution plan if the
+  filter is already covered by a previous IndexRangeNode. Removing the CalculationNode
+  and the FilterNode will speed up query execution because the query requires less
+  computation.
+
 * AQL: range optimizations for IN and OR
 
-* fixed missing makeDirectory when fetching a Foxx application from a zip file
+  This change enables usage of indexes for several additional cases. Filters containing
+  the `IN` operator can now make use of indexes, and multiple OR- or AND-combined filter
+  conditions can now also use indexes if the filters are accessing the same indexed
+  attribute.
 
-* allow passing subqueries as AQL function parameters without using
+  Here are a few examples of queries that can now use indexes but couldn't before:
+
+    FOR doc IN collection
+      FILTER doc.indexedAttribute == 1 || doc.indexedAttribute > 99
+      RETURN doc
+    
+    FOR doc IN collection
+      FILTER doc.indexedAttribute IN [ 3, 42 ] || doc.indexedAttribute > 99
+      RETURN doc
+
+    FOR doc IN collection
+      FILTER (doc.indexedAttribute > 2 && doc.indexedAttribute < 10) ||
+             (doc.indexedAttribute > 23 && doc.indexedAttribute < 42)
+      RETURN doc
+
+* fixed issue #500: AQL parentheses issue
+
+  This change allows passing subqueries as AQL function parameters without using
   duplicate brackets (e.g. `FUNC(query)` instead of `FUNC((query))`
 
 * added optional `COUNT` clause to AQL `COLLECT`
@@ -43,7 +112,23 @@ v2.4.0-alpha1 (2014-11-25)
         COLLECT age = doc.age WITH COUNT INTO length 
         RETURN { age: age, count: length }
 
+  A count-only query is also possible:
+      
+      FOR doc IN collection
+        COLLECT WITH COUNT INTO length 
+        RETURN length
+
+* fixed missing makeDirectory when fetching a Foxx application from a zip file
+
 * fixed issue #1134: Change the default endpoint to localhost
+
+  This change will modify the ip address ArangoDB listens on to 127.0.0.1 by default.
+  This will make new ArangoDB installations unaccessible from clients other than
+  localhost unless changed. This is a security feature. 
+
+  To make ArangoDB accessible from any client, change the server's configuration 
+  (`--server.endpoint`) to either `tcp://0.0.0.0:8529` or the server's publicly
+  visible IP address.
 
 * deprecated `Repository#modelPrototype`. Use `Repository#model` instead.
 
@@ -74,11 +159,17 @@ v2.4.0-alpha1 (2014-11-25)
   The HTTP API methods for fetching the replication inventory and for dumping collections
   also support the `includeSystem` control flag via a URL parameter.
 
-* renamed option `mergeArrays` to `mergeObjects` for AQL data-modification query options
-  and HTTP document modification API
+* removed DEPRECATED replication methods:
+  * `replication.logger.start()`
+  * `replication.logger.stop()`
+  * `replication.logger.properties()`
+  * HTTP PUT `/_api/replication/logger-start` 
+  * HTTP PUT `/_api/replication/logger-stop` 
+  * HTTP GET `/_api/replication/logger-config` 
+  * HTTP PUT `/_api/replication/logger-config` 
 
 
-v2.3.3 (XXXX-XX-XX)
+v2.3.3 (2014-12-17)
 -------------------
 
 * fixed error handling in instanciation of distributed AQL queries, this 

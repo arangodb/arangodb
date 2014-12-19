@@ -139,7 +139,12 @@ KeyGenerator* KeyGenerator::factory (TRI_json_t const* options) {
       option = TRI_LookupObjectJson(options, "increment");
 
       if (TRI_IsNumberJson(option)) {
-        increment = (uint64_t) option->_value._number;
+        if (option->_value._number <= 0.0) {
+          // negative or 0 offset is not allowed
+          return nullptr;
+        }
+
+        increment = static_cast<uint64_t>(option->_value._number);
 
         if (increment == 0 || increment >= (1ULL << 16)) {
           return nullptr;
@@ -149,7 +154,11 @@ KeyGenerator* KeyGenerator::factory (TRI_json_t const* options) {
       option = TRI_LookupObjectJson(options, "offset");
 
       if (TRI_IsNumberJson(option)) {
-        offset = (uint64_t) option->_value._number;
+        if (option->_value._number < 0.0) {
+          return nullptr;
+        }
+       
+        offset = static_cast<uint64_t>(option->_value._number);
 
         if (offset >= UINT64_MAX) {
           return nullptr;

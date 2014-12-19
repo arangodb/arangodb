@@ -110,8 +110,8 @@
       //fetch needed information, need client side verification
       //remove name handling on server side because not needed
       name = "";
-      url = $('#repository').val();
-      version = $('#tag').val();
+      url = window.arangoHelper.escapeHtml($('#repository').val());
+      version = window.arangoHelper.escapeHtml($('#tag').val());
 
       if (version === '') {
         version = "master";
@@ -431,13 +431,19 @@
       //fetch needed information, need client side verification
       //remove name handling on server side because not needed
       name = "";
-      url = $('#repository').val();
-      version = $('#tag').val();
+      url = window.arangoHelper.escapeHtml($('#repository').val());
+      version = window.arangoHelper.escapeHtml($('#tag').val());
 
       if (version === '') {
         version = "master";
       }
 
+      try {
+        Joi.assert(url, Joi.string().regex(/^[a-zA-Z0-9_\-]+\/[a-zA-Z0-9_\-]+$/));
+      } catch (e) {
+        console.log(e.message);
+        return;
+      }
       //send server req through collection
       result = this.collection.installFoxxFromGithub(url, name, version);
       if (result.error === false) {
@@ -542,7 +548,7 @@
       try {
         _.each(config, function(opt, key) {
           var $el = $("#app_config_" + key);
-          var val = $el.val();
+          var val = window.arangoHelper.escapeHtml($el.val());
           if (opt.type === "boolean") {
             cfg[key] = $el.is(":checked");
             return;
@@ -586,7 +592,7 @@
       }
       var self = this;
       this.collection.create({
-        mount: $("#mount-point").val(),
+        mount: window.arangoHelper.escapeHtml($("#mount-point").val()),
         name: name,
         version: version,
         options: {
@@ -651,12 +657,14 @@
 
     generateNewFoxxApp: function() {
       var info = {
-        name: $("#new-app-name").val(),
-        collectionNames: _.pluck($('#new-app-collections').select2("data"), "text"),
-        authenticated: $("#new-app-name").val(),
-        author: $("#new-app-author").val(),
-        license: $("#new-app-license").val(),
-        description: $("#new-app-description").val()
+        name: window.arangoHelper.escapeHtml($("#new-app-name").val()),
+        collectionNames: _.map($('#new-app-collections').select2("data"), function(d) {
+          return window.arangoHelper.escapeHtml(d.text);
+        }),
+        authenticated: window.arangoHelper.escapeHtml($("#new-app-name").val()),
+        author: window.arangoHelper.escapeHtml($("#new-app-author").val()),
+        license: window.arangoHelper.escapeHtml($("#new-app-license").val()),
+        description: window.arangoHelper.escapeHtml($("#new-app-description").val())
       },
         self = this;
       $.post("templates/generate", JSON.stringify(info), function(a) {
@@ -689,19 +697,89 @@
       }
     },
 
+    setGithubValidators: function() {
+      window.modalView.modalBindValidation({
+        id: "repository",
+        validateInput: function() {
+          return [
+            {
+              rule: Joi.string().required().regex(/^[a-zA-Z0-9_\-]+\/[a-zA-Z0-9_\-]+$/),
+              msg: "No valid github account and repository."
+            }
+          ];
+        }
+      });
+    },
+
+    setNewAppValidators: function() {
+      window.modalView.modalBindValidation({
+        id: "new-app-author",
+        validateInput: function() {
+          return [
+            {
+              rule: Joi.string().required().min(1),
+              msg: "Has to be non empty."
+            }
+          ];
+        }
+      });
+
+      window.modalView.modalBindValidation({
+        id: "new-app-name",
+        validateInput: function() {
+          return [
+            {
+              rule: Joi.string().required().regex(/^[a-zA-Z]+$/),
+              msg: "Can only contain a to z or A to Z."
+            }
+          ];
+        }
+      });
+
+      window.modalView.modalBindValidation({
+        id: "new-app-description",
+        validateInput: function() {
+          return [
+            {
+              rule: Joi.string().required().min(1),
+              msg: "Has to be non empty."
+            }
+          ];
+        }
+      });
+
+      window.modalView.modalBindValidation({
+        id: "new-app-license",
+        validateInput: function() {
+          return [
+            {
+              rule: Joi.string().required().regex(/^[a-zA-Z]+$/),
+              msg: "Has to be non empty."
+            }
+          ];
+        }
+      });
+    },
+
     switchModalButton: function(event) {
+      window.modalView.clearValidators();
       var openTab = $(event.currentTarget).attr("href").substr(1);
       var button = $("#modalButton1");
       switch (openTab) {
         case "newApp":
           button.html("Generate");
           button.prop("disabled", false);
+          this.setNewAppValidators();
           break;
         case "appstore":
           button.html("Install");
           button.prop("disabled", true);
           break;
         case "github":
+          this.setGithubValidators();
+          button.html("Install");
+          button.prop("disabled", false);
+          break;
         case "zip":
           button.html("Install");
           button.prop("disabled", false);
@@ -746,6 +824,7 @@
           table.append(listTempl.render(app));
         });
       });
+      this.setNewAppValidators();
     }
 
   });
