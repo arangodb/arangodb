@@ -1,17 +1,7 @@
-v2.4.0-alpha5 (2014-12-18)
---------------------------
-
-* switch to new V8 engine 3.29.59
-
-
-v2.4.0-alpha2 (2014-11-28)
+v2.4.0-alpha6 (2014-12-18)
 --------------------------
 
 * fixed superstates in FoxxGenerator
-
-
-v2.4.0-alpha1 (2014-11-25)
---------------------------
 
 * Upgraded V8 version from 3.16.14 to 3.29.59
 

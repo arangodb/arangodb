@@ -1,14 +1,14 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/document/products/1679141366
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/document/products/1698446972
 {"Hello": "you"}
 
 HTTP/1.1 202 Accepted
 content-type: application/json; charset=utf-8
-etag: "1679469046"
-location: /_db/_system/_api/document/products/1679141366
+etag: "1698774652"
+location: /_db/_system/_api/document/products/1698446972
 
 { 
   "error" : false, 
-  "_id" : "products/1679141366", 
-  "_rev" : "1679469046", 
-  "_key" : "1679141366" 
+  "_id" : "products/1698446972", 
+  "_rev" : "1698774652", 
+  "_key" : "1698446972" 
 }

@@ -331,6 +331,7 @@ am_arangod_libarangod_a_OBJECTS =  \
 	arangod/Aql/arangod_libarangod_a-AstNode.$(OBJEXT) \
 	arangod/Aql/arangod_libarangod_a-BindParameters.$(OBJEXT) \
 	arangod/Aql/arangod_libarangod_a-Collection.$(OBJEXT) \
+	arangod/Aql/arangod_libarangod_a-CollectionScanner.$(OBJEXT) \
 	arangod/Aql/arangod_libarangod_a-ExecutionBlock.$(OBJEXT) \
 	arangod/Aql/arangod_libarangod_a-ExecutionEngine.$(OBJEXT) \
 	arangod/Aql/arangod_libarangod_a-ExecutionNode.$(OBJEXT) \
@@ -1439,6 +1440,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/AstNode.cpp \
 	arangod/Aql/BindParameters.cpp \
 	arangod/Aql/Collection.cpp \
+	arangod/Aql/CollectionScanner.cpp \
 	arangod/Aql/ExecutionBlock.cpp \
 	arangod/Aql/ExecutionEngine.cpp \
 	arangod/Aql/ExecutionNode.cpp \
@@ -2137,6 +2139,9 @@ arangod/Aql/arangod_libarangod_a-BindParameters.$(OBJEXT):  \
 	arangod/Aql/$(am__dirstamp) \
 	arangod/Aql/$(DEPDIR)/$(am__dirstamp)
 arangod/Aql/arangod_libarangod_a-Collection.$(OBJEXT):  \
+	arangod/Aql/$(am__dirstamp) \
+	arangod/Aql/$(DEPDIR)/$(am__dirstamp)
+arangod/Aql/arangod_libarangod_a-CollectionScanner.$(OBJEXT):  \
 	arangod/Aql/$(am__dirstamp) \
 	arangod/Aql/$(DEPDIR)/$(am__dirstamp)
 arangod/Aql/arangod_libarangod_a-ExecutionBlock.$(OBJEXT):  \
@@ -3537,6 +3542,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-AstNode.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-BindParameters.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-Collection.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-CollectionScanner.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-ExecutionBlock.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-ExecutionEngine.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-ExecutionNode.Po@am__quote@
@@ -3989,6 +3995,20 @@ arangod/Aql/arangod_libarangod_a-Collection.obj: arangod/Aql/Collection.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Aql/Collection.cpp' object='arangod/Aql/arangod_libarangod_a-Collection.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Aql/arangod_libarangod_a-Collection.obj `if test -f 'arangod/Aql/Collection.cpp'; then $(CYGPATH_W) 'arangod/Aql/Collection.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Aql/Collection.cpp'; fi`
+
+arangod/Aql/arangod_libarangod_a-CollectionScanner.o: arangod/Aql/CollectionScanner.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Aql/arangod_libarangod_a-CollectionScanner.o -MD -MP -MF arangod/Aql/$(DEPDIR)/arangod_libarangod_a-CollectionScanner.Tpo -c -o arangod/Aql/arangod_libarangod_a-CollectionScanner.o `test -f 'arangod/Aql/CollectionScanner.cpp' || echo '$(srcdir)/'`arangod/Aql/CollectionScanner.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Aql/$(DEPDIR)/arangod_libarangod_a-CollectionScanner.Tpo arangod/Aql/$(DEPDIR)/arangod_libarangod_a-CollectionScanner.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Aql/CollectionScanner.cpp' object='arangod/Aql/arangod_libarangod_a-CollectionScanner.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Aql/arangod_libarangod_a-CollectionScanner.o `test -f 'arangod/Aql/CollectionScanner.cpp' || echo '$(srcdir)/'`arangod/Aql/CollectionScanner.cpp
+
+arangod/Aql/arangod_libarangod_a-CollectionScanner.obj: arangod/Aql/CollectionScanner.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Aql/arangod_libarangod_a-CollectionScanner.obj -MD -MP -MF arangod/Aql/$(DEPDIR)/arangod_libarangod_a-CollectionScanner.Tpo -c -o arangod/Aql/arangod_libarangod_a-CollectionScanner.obj `if test -f 'arangod/Aql/CollectionScanner.cpp'; then $(CYGPATH_W) 'arangod/Aql/CollectionScanner.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Aql/CollectionScanner.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Aql/$(DEPDIR)/arangod_libarangod_a-CollectionScanner.Tpo arangod/Aql/$(DEPDIR)/arangod_libarangod_a-CollectionScanner.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Aql/CollectionScanner.cpp' object='arangod/Aql/arangod_libarangod_a-CollectionScanner.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Aql/arangod_libarangod_a-CollectionScanner.obj `if test -f 'arangod/Aql/CollectionScanner.cpp'; then $(CYGPATH_W) 'arangod/Aql/CollectionScanner.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Aql/CollectionScanner.cpp'; fi`
 
 arangod/Aql/arangod_libarangod_a-ExecutionBlock.o: arangod/Aql/ExecutionBlock.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Aql/arangod_libarangod_a-ExecutionBlock.o -MD -MP -MF arangod/Aql/$(DEPDIR)/arangod_libarangod_a-ExecutionBlock.Tpo -c -o arangod/Aql/arangod_libarangod_a-ExecutionBlock.o `test -f 'arangod/Aql/ExecutionBlock.cpp' || echo '$(srcdir)/'`arangod/Aql/ExecutionBlock.cpp
@@ -9412,33 +9432,39 @@ clean-libev:
 	@echo
 
 @ENABLE_ARM_TRUE@	cd @top_srcdir@/3rdParty/V8 \
-@ENABLE_ARM_TRUE@		&& CFLAGS="-O2 -g -fsigned-char" \
-@ENABLE_ARM_TRUE@		   CXXFLAGS="-O2 -g -fsigned-char" \
-@ENABLE_ARM_TRUE@		   CC=$(CC) \
-@ENABLE_ARM_TRUE@		   CXX=$(CXX) \
-@ENABLE_ARM_TRUE@		   LINK=$(CXX) \
-@ENABLE_ARM_TRUE@		   GYPFLAGS="-Dstandalone_static_library=1" \
-@ENABLE_ARM_TRUE@		   $(MAKE) \
-@ENABLE_ARM_TRUE@			library=static strictaliasing=off snapshot=off werror=no hardfp=on @V8_TARGET@
+@ENABLE_ARM_TRUE@	  && $(MAKE) \
+@ENABLE_ARM_TRUE@		CFLAGS="-O2 -g -fsigned-char" \
+@ENABLE_ARM_TRUE@		CXXFLAGS="-O2 -g -fsigned-char" \
+@ENABLE_ARM_TRUE@		CC=$(CC) \
+@ENABLE_ARM_TRUE@		CC.host=$(CC) \
+@ENABLE_ARM_TRUE@		CXX=$(CXX) \
+@ENABLE_ARM_TRUE@		CXX.host=$(CXX) \
+@ENABLE_ARM_TRUE@		LINK=$(CXX) \
+@ENABLE_ARM_TRUE@		GYPFLAGS="-Dstandalone_static_library=1" \
+@ENABLE_ARM_TRUE@		library=static strictaliasing=off snapshot=off werror=no hardfp=on @V8_TARGET@
 @ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@	cd @top_srcdir@/3rdParty/V8 \
-@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@		&& LDFLAGS="-lc++" \
-@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@                   CFLAGS="-O2 -g" \
-@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@		   CXXFLAGS="-O2 -g" \
-@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@		   CC=$(CC) \
-@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@		   CXX=$(CXX) \
-@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@		   LINK=$(CXX) \
-@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@		   GYPFLAGS="-Dstandalone_static_library=1" \
-@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@		   $(MAKE) \
-@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@			library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@	  && $(MAKE) \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@		LDFLAGS="-lc++" \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@                CFLAGS="-O2 -g" \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@		CXXFLAGS="-O2 -g" \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@		CC=$(CC) \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@		CC.host=$(CC) \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@		CXX=$(CXX) \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@		CXX.host=$(CXX) \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@		LINK=$(CXX) \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@		GYPFLAGS="-Dstandalone_static_library=1" \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 @ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@	cd @top_srcdir@/3rdParty/V8 \
-@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@		&& CFLAGS="-O2 -g" \
-@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@		   CXXFLAGS="-O2 -g" \
-@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@		   CC=$(CC) \
-@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@		   CXX=$(CXX) \
-@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@		   LINK=$(CXX) \
-@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@		   GYPFLAGS="-Dstandalone_static_library=1" \
-@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@		   $(MAKE) \
-@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@			library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@	  && $(MAKE) \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@		CFLAGS="-O2 -g" \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@		CXXFLAGS="-O2 -g" \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@		CC=$(CC) \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@		CC.host=$(CC) \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@		CXX=$(CXX) \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@		CXX.host=$(CXX) \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@		LINK=$(CXX) \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@		GYPFLAGS="-Dstandalone_static_library=1" \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 
 	touch @srcdir@/.v8-build-@TRI_BITS@
 
