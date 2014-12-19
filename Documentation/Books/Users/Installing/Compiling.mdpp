@@ -255,6 +255,11 @@ This tells the build system to use Go binaries located in the
 3rdParty directory. Note that ArangoDB does not ship with Go binaries, and that
 the Go binaries must be copied into this directory manually.
 
+`--enable-mruby`
+
+This will also build `arangoirb`, and interactive MRuby REPL shell. This is an
+experimental feature.
+
 `--enable-maintainer-mode` 
 
 This tells the build system to use BISON and FLEX to
