@@ -29,6 +29,12 @@ case $target in
     tr_FREEBSD="yes"
     ;;
 
+  armv7l-*-linux-gnueabihf)
+    tr_ARM="yes"
+    CFLAGS="$CFLAGS -marm"
+    CPPFLAGS="$CPPFLAGS -marm"
+    ;;
+
   armv6l-*-linux-gnueabihf)
     tr_ARM="yes"
     ;;
