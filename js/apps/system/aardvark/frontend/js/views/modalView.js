@@ -57,6 +57,7 @@
   window.ModalView = Backbone.View.extend({
 
     _validators: [],
+    _validateWatchers: [],
     baseTemplate: templateEngine.createTemplate("modalBase.ejs"),
     tableTemplate: templateEngine.createTemplate("modalTable.ejs"),
     el: "#modalPlaceholder",
@@ -235,7 +236,7 @@
         events) {
       var self = this, lastBtn, closeButtonFound = false;
       buttons = buttons || [];
-      this._validators = [];
+      this.clearValidators();
       // Insert close as second from right
       if (buttons.length > 0) {
         buttons.forEach(function (b) {
@@ -396,6 +397,7 @@
           }
         });
         this._validators.push(validCheck);
+        this._validateWatchers.push($el);
       }
       
     },
@@ -415,8 +417,16 @@
       }
     },
 
-    hide: function() {
+    clearValidators: function() {
       this._validators = [];
+      _.each(this._validateWatchers, function(w) {
+        w.unbind('keyup focusout');
+      });
+      this._validateWatchers = [];
+    },
+
+    hide: function() {
+      this.clearValidators();
       $("#modal-dialog").modal("hide");
     }
   });
