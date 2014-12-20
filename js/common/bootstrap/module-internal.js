@@ -1244,7 +1244,6 @@
 
         context.output += "undefined";
 
-
         if (useColor) {
           context.output += colors.COLOR_RESET;
         }
@@ -1294,6 +1293,17 @@
         }
 
         context.output += String(value);
+
+        if (useColor) {
+          context.output += colors.COLOR_RESET;
+        }
+      }
+      else if (typeof(value) === "symbol") {
+        if (useColor) {
+          context.output += colors.COLOR_NULL;
+        }
+
+        context.output += value.toString();
 
         if (useColor) {
           context.output += colors.COLOR_RESET;
