@@ -1032,7 +1032,7 @@ bool ApplicationV8::prepare () {
   }
 
   // add v8 options
-  if (_v8Options.size() > 0) {
+  if (! _v8Options.empty()) {
     LOG_INFO("using V8 options '%s'", _v8Options.c_str());
     v8::V8::SetFlagsFromString(_v8Options.c_str(), (int) _v8Options.size());
   }
