@@ -1,5 +1,5 @@
-/*jshint strict: false, unused: false, -W051: true */
-/*global require, module, Module, ArangoError, SleepAndRequeue,
+/*jshint esnext: true, strict: false, unused: false, -W051: true */
+/*global Symbol, require, module, Module, ArangoError, SleepAndRequeue,
   CONFIGURE_ENDPOINT, REMOVE_ENDPOINT, LIST_ENDPOINTS, STARTUP_PATH,
   SYS_BASE64DECODE, SYS_BASE64ENCODE, SYS_DEBUG_SEGFAULT,
   SYS_DEBUG_CAN_USE_FAILAT, SYS_DEBUG_SET_FAILAT, SYS_DEBUG_REMOVE_FAILAT, SYS_DEBUG_CLEAR_FAILAT,
@@ -1062,7 +1062,14 @@
 
     context.level = newLevel;
 
-    var keys = Object.keys(object);
+    var keys;
+    try {
+      keys = Object.keys(object);
+    }
+    catch (err) {
+      // ES6 proxy objects don't support key enumeration
+      keys = [ ];
+    }
     var i, n = keys.length;
 
     for (i = 0; i < n; ++i) {
@@ -1168,7 +1175,35 @@
           value.toString === Object.prototype.toString
           || (typeof value === 'object' && Object.getPrototypeOf(value) === null)
         ) {
-          printObject(value, context);
+          var values, i;
+          if (value instanceof Set) {
+            // ES6 Set
+            context.output += "[object Set ";
+            values = [ ];
+            for (i of value) {
+              values.push(i);
+            }
+            printArray(values, context);
+            context.output += "]";
+          }
+          else if (value instanceof Map) {
+            // ES6 Map
+            context.output += "[object Map ";
+            values = { };
+            for (i of value) {
+              values[i[0]] = i[1];
+            }
+            printObject(values, context);
+            context.output += "]";
+          }
+          else if (typeof value[Symbol.iterator] === "function") {
+            // ES6 iterators
+            context.output += value.toString();
+          }
+          else {
+            // all other objects
+            printObject(value, context);
+          }
 
           if (context.emit && context.output.length >= context.emit) {
             exports.output(context.output);
@@ -1176,7 +1211,6 @@
           }
         }
         else if (typeof value === "function") {
-
           // it's possible that toString() throws, and this looks quite ugly
           try {
             var s = value.toString();
@@ -1298,7 +1332,10 @@
           context.output += colors.COLOR_RESET;
         }
       }
+      /* jshint notypeof: true */
       else if (typeof(value) === "symbol") {
+      /* jshint notypeof: false */
+        // handle ES6 symbols
         if (useColor) {
           context.output += colors.COLOR_NULL;
         }
