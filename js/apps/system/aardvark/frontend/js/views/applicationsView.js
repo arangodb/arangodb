@@ -441,7 +441,6 @@
       try {
         Joi.assert(url, Joi.string().regex(/^[a-zA-Z0-9_\-]+\/[a-zA-Z0-9_\-]+$/));
       } catch (e) {
-        console.log(e.message);
         return;
       }
       //send server req through collection
