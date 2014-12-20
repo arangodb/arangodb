@@ -42,14 +42,6 @@
       $('#'+clicked).click();
     },
 
-    /*
-    uploadSetup: function (e) {
-      console.log("Set allowed true");
-      var files = e.target.files || e.dataTransfer.files;
-      this.file = files[0];
-      this.allowUpload = true;
-    },
-    */
     sorting: function() {
       if ($('#appsDesc').is(":checked")) {
         this.collection.setSortingDesc(true);
@@ -822,6 +814,9 @@
         _.each(_.sortBy(list, "name"), function(app) {
           table.append(listTempl.render(app));
         });
+      }).fail(function() {
+        var table = $("#appstore-content");
+        table.append("<tr><td>Store is not available. ArangoDB is not able to connect to github.com</td></tr>");
       });
       this.setNewAppValidators();
     }

@@ -352,7 +352,8 @@ controller.get('/foxxes/fishbowl', function (req, res) {
   FoxxManager.update();
   res.json(FoxxManager.availableJson());
 }).summary("List of all foxx apps submitted to the fishbowl store.")
-  .notes("This function contacts the fishbowl and reports which apps are available for install");
+.notes("This function contacts the fishbowl and reports which apps are available for install")
+.errorResponse(ArangoError, 503, "Could not connect to store.");
 
 /** List available Documentation
  *
