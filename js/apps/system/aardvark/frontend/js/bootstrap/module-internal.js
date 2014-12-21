@@ -1175,32 +1175,40 @@
           value.toString === Object.prototype.toString
           || (typeof value === 'object' && Object.getPrototypeOf(value) === null)
         ) {
-          var values, i;
-          if (value instanceof Set) {
-            // ES6 Set
-            context.output += "[object Set ";
-            values = [ ];
-            for (i of value) {
-              values.push(i);
+          var values, i, handled = false;
+          try {
+            if (value instanceof Set) {
+              // ES6 Set
+              values = [ ];
+              for (i of value) {
+                values.push(i);
+              }
+              context.output += "[object Set ";
+              printArray(values, context);
+              context.output += "]";
+              handled = true;
             }
-            printArray(values, context);
-            context.output += "]";
-          }
-          else if (value instanceof Map) {
-            // ES6 Map
-            context.output += "[object Map ";
-            values = { };
-            for (i of value) {
-              values[i[0]] = i[1];
+            else if (value instanceof Map) {
+              // ES6 Map
+              values = { };
+              for (i of value) {
+                values[i[0]] = i[1];
+              }
+              context.output += "[object Map ";
+              printObject(values, context);
+              context.output += "]";
+              handled = true;
             }
-            printObject(values, context);
-            context.output += "]";
+            else if (typeof value[Symbol.iterator] === "function") {
+              // ES6 iterators
+              context.output += value.toString();
+              handled = true;
+            }
           }
-          else if (typeof value[Symbol.iterator] === "function") {
-            // ES6 iterators
-            context.output += value.toString();
+          catch (err) {
           }
-          else {
+
+          if (! handled) {
             // all other objects
             printObject(value, context);
           }
