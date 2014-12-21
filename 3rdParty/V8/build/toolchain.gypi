@@ -809,7 +809,7 @@
             'conditions': [
               # TODO(crbug.com/272548): Avoid -O3 in NaCl
               ['nacl_target_arch=="none"', {
-                'cflags': ['-O3'],
+                'cflags': ['-O2'],
                 'cflags!': ['-O2'],
                 }, {
                 'cflags': ['-O2'],
@@ -900,7 +900,7 @@
               }],
               # TODO(crbug.com/272548): Avoid -O3 in NaCl
               ['nacl_target_arch=="none"', {
-                'cflags': ['-O3'],
+                'cflags': ['-O2'],
                 'cflags!': ['-O2'],
               }, {
                 'cflags': ['-O2'],
