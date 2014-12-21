@@ -29,7 +29,7 @@ if ENABLE_ARM
 		CXX=$(CXX) \
 		CXX.host=$(CXX) \
 		LINK=$(CXX) \
-		GYPFLAGS="-Dstandalone_static_library=1" \
+		GYPFLAGS="-Darm_fpu=vfp -Darm_version=6 -Dstandalone_static_library=1" \
 		library=static strictaliasing=off snapshot=off werror=no hardfp=on @V8_TARGET@
 else
 if ENABLE_DARWIN
