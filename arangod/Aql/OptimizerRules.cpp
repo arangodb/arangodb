@@ -297,6 +297,144 @@ int triagens::aql::removeCollectIntoRule (Optimizer* opt,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief remove SORT RAND() if appropriate
+////////////////////////////////////////////////////////////////////////////////
+    
+int triagens::aql::removeSortRandRule (Optimizer* opt, 
+                                       ExecutionPlan* plan, 
+                                       Optimizer::Rule const* rule) {
+  bool modified = false;
+  // should we enter subqueries??
+  std::vector<ExecutionNode*> nodes = plan->findNodesOfType(EN::SORT, true);
+  
+  for (auto n : nodes) {
+    auto node = static_cast<SortNode*>(n);
+    auto const& elements = node->getElements();
+    if (elements.size() != 1) {
+      // we're looking for "SORT RAND()", which has just one sort criterion
+      continue;
+    }
+
+    auto const variable = elements[0].first;
+    TRI_ASSERT(variable != nullptr);
+
+    auto setter = plan->getVarSetBy(variable->id);
+    if (setter == nullptr || setter->getType() != EN::CALCULATION) {
+      continue;
+    }
+    auto cn = static_cast<CalculationNode*>(setter);
+    auto const expression = cn->expression();
+
+    if (expression == nullptr ||
+        expression->node() == nullptr ||
+        expression->node()->type != NODE_TYPE_FCALL) {
+      // not the right type of expression
+      // we're looking for "RAND([])", which is a function call
+      // with an empty list as parameter
+      continue;
+    }
+
+    triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
+    try {
+      expression->stringify(&buffer);
+    }
+    catch (...) {
+      // stringification is not supported for all node types
+      // just ignore that and also ignore this node
+      continue;
+    }
+
+    if (std::string(buffer.c_str(), buffer.length()) != "RAND([])") {
+      continue;
+    }
+
+    // we found what we were looking for!
+    // now check if the dependencies qualify
+    auto deps = n->getDependencies();
+    if (deps.size() != 1) {
+      break;
+    }
+
+    auto current = deps[0];
+    ExecutionNode* collectionNode = nullptr;
+
+    while (current != nullptr) {
+      if (current->canThrow()) {
+        // we shouldn't bypass a node that can throw
+        collectionNode = nullptr;
+        break;
+      }
+
+      switch (current->getType()) {
+        case EN::SORT: 
+        case EN::AGGREGATE: 
+        case EN::FILTER: 
+        case EN::SUBQUERY:
+        case EN::ENUMERATE_LIST:
+        case EN::INDEX_RANGE: {
+          // if we found another SortNode, an AggregateNode, FilterNode, a SubqueryNode, 
+          // an EnumerateListNode or an IndexRangeNode
+          // this means we cannot apply our optimization
+          collectionNode = nullptr;
+          current = nullptr;
+          continue; // this will exit the while loop
+        }
+
+        case EN::ENUMERATE_COLLECTION: {
+          if (collectionNode == nullptr) {
+            // note this node
+            collectionNode = current;
+            break;
+          }
+          else {
+            // we already found another collection node before. this means we
+            // should not apply our optimization
+            collectionNode = nullptr;
+            current = nullptr;
+            continue; // this will exit the while loop
+          }
+          // cannot get here
+          TRI_ASSERT(false);
+        }
+
+        default: {
+          // ignore all other nodes
+        }
+      }
+
+      auto deps = current->getDependencies();
+      if (deps.size() != 1) {
+        break;
+      }
+          
+      current = deps[0];
+    }
+
+    if (collectionNode != nullptr) {
+      // we found a node to modify!
+      TRI_ASSERT(collectionNode->getType() == EN::ENUMERATE_COLLECTION);
+      // set the random iteration flag for the EnumerateCollectionNode
+      static_cast<EnumerateCollectionNode*>(collectionNode)->setRandom();
+
+      // remove the SortNode
+      // note: the CalculationNode will be removed by "remove-unnecessary-calculations"
+      // rule if not used
+
+      plan->unlinkNode(n);
+      modified = true;
+    }
+  }
+  
+  if (modified) {
+    plan->findVarUsage();
+  }
+  
+  opt->addPlan(plan, rule->level, modified);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief move calculations up in the plan
 /// this rule modifies the plan in place
 /// it aims to move up calculations as far up in the plan as possible, to 
@@ -825,6 +963,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
   std::unordered_set<VariableId> _varIds;
   bool _modified;
   bool _canThrow; 
+  bool _mustNotUseRanges;
   // The following maps ids of EnumerateCollectionNodes in the original
   // plan to an index in the (outer vector) of the _changes container.
   std::unordered_map<size_t, size_t>& _changesPlaces;
@@ -845,6 +984,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         _varIds(),
         _modified(false),
         _canThrow(false),
+        _mustNotUseRanges(false),
         _changesPlaces(changesPlaces),
         _changes(changes) {
 
@@ -860,7 +1000,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
     bool modified () const {
       return _modified;
     }
-
+    
     bool before (ExecutionNode* en) override final {
       _canThrow = (_canThrow || en->canThrow()); // can any node walked over throw?
 
@@ -881,6 +1021,12 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             else {
               _rangeInfoMapVec = andCombineRangeInfoMapVecs(_rangeInfoMapVec,
                   buildRangeInfo(node->expression()->node(), enumCollVar, attr));
+            }
+
+            if (_rangeInfoMapVec != nullptr && _mustNotUseRanges) {
+              // it is unsafe to use the ranges found. throw them away immediately
+              delete _rangeInfoMapVec;
+              _rangeInfoMapVec = nullptr;
             }
           }
           break;
@@ -1387,6 +1533,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       }
 
       // default case
+      _mustNotUseRanges = true;
       attr.clear();
       enumCollVar = nullptr;
       return nullptr;
