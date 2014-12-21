@@ -567,6 +567,34 @@ FOR u IN users
 The above query will remove the *notNeeded* attribute from the documents and update
 the *foobar* attribute normally.
 
+There is also the option *mergeObjects* that controls whether object contents will be
+merged if an object attribute is merged if it is present in both the *UPDATE* query
+and in the to-be-updated document.
+
+The following query will set the updated document's *name* attribute to the exact
+same value that is specified in the query. This is due to the *mergeObjects* option
+being set to *false*:
+
+```
+FOR u IN users
+  UPDATE u WITH { name: { first: "foo", middle: "b.", last: "baz" } } IN users OPTIONS { mergeObjects: false }
+```
+
+Contrary, the following query will merge the contents of the *name* attribute in the
+original document with the value specified in the query:
+
+```
+FOR u IN users
+  UPDATE u WITH { name: { first: "foo", middle: "b.", last: "baz" } } IN users OPTIONS { mergeObjects: true }
+```
+
+Attributes in *name* that are present in the to-be-updated document but not in the
+query will now be preserved. Attributes that are present in both will be overwritten
+with the values specified in the query.
+
+Note: the default value for *mergeObjects* is *true*, so there is no need to specify it
+explicitly.
+
 To make sure data are durable when an update query returns, there is the *waitForSync* 
 query option:
 
