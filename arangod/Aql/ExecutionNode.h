@@ -910,6 +910,14 @@ namespace triagens {
         std::vector<IndexMatch> getIndicesOrdered (IndexMatchVec const& attrs) const;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief enable random iteration of documents in collection
+////////////////////////////////////////////////////////////////////////////////
+
+        void setRandom () {
+          _random = true;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the database
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -961,7 +969,7 @@ namespace triagens {
 /// @brief whether or not we want random iteration
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool const _random;
+        bool _random;
     };
 
 // -----------------------------------------------------------------------------
@@ -1879,7 +1887,7 @@ namespace triagens {
 /// @brief get Variables Used Here including ASC/DESC
 ////////////////////////////////////////////////////////////////////////////////
 
-        SortElementVector const & getElements () const {
+        SortElementVector const& getElements () const {
           return _elements;
         }
 

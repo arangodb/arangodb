@@ -65,6 +65,12 @@ v2.4.0 (XXXX-XX-XX)
   and the FilterNode will speed up query execution because the query requires less
   computation.
 
+* AQL: added optimizer rule "remove-sort-rand"
+  
+  This rule removes a `SORT RAND()` expression from a query and moves the random
+  iteration into the appropriate `EnumerateCollectionNode`. This is more efficient
+  than individually enumerating and then sorting randomly.
+
 * AQL: range optimizations for IN and OR
 
   This change enables usage of indexes for several additional cases. Filters containing
