@@ -141,6 +141,12 @@ static string StartupPath = "";
 static bool UseCurrentModulePath = true;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief options to pass to V8
+////////////////////////////////////////////////////////////////////////////////
+
+static std::string V8Options;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief javascript files to execute
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -287,14 +293,14 @@ static void JS_ImportCsvFile (const v8::FunctionCallbackInfo<v8::Value>& args) {
   // extract the filename
   v8::String::Utf8Value filename(args[0]);
 
-  if (*filename == 0) {
-    TRI_V8_THROW_TYPE_ERROR("<filename> must be an UTF-8 filename");
+  if (*filename == nullptr) {
+    TRI_V8_THROW_TYPE_ERROR("<filename> must be a UTF-8 filename");
   }
 
   v8::String::Utf8Value collection(args[1]);
 
-  if (*collection == 0) {
-    TRI_V8_THROW_TYPE_ERROR("<collection> must be an UTF-8 filename");
+  if (*collection == nullptr) {
+    TRI_V8_THROW_TYPE_ERROR("<collection> must be a UTF-8 filename");
   }
 
   // extract the options
@@ -365,14 +371,14 @@ static void JS_ImportJsonFile (const v8::FunctionCallbackInfo<v8::Value>& args) 
   // extract the filename
   v8::String::Utf8Value filename(args[0]);
 
-  if (*filename == 0) {
-    TRI_V8_THROW_TYPE_ERROR("<filename> must be an UTF-8 filename");
+  if (*filename == nullptr) {
+    TRI_V8_THROW_TYPE_ERROR("<filename> must be a UTF-8 filename");
   }
 
   v8::String::Utf8Value collection(args[1]);
 
-  if (*collection == 0) {
-    TRI_V8_THROW_TYPE_ERROR("<collection> must be an UTF8 filename");
+  if (*collection == nullptr) {
+    TRI_V8_THROW_TYPE_ERROR("<collection> must be a UTF-8 filename");
   }
 
 
@@ -446,6 +452,7 @@ enum WRAP_CLASS_TYPES {WRAP_TYPE_CONNECTION = 1};
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses the program options
 ////////////////////////////////////////////////////////////////////////////////
+
 typedef enum __eRunMode {
   eInteractive,
   eExecuteScript,
@@ -467,6 +474,7 @@ static vector<string> ParseProgramOptions (int argc, char* args[], eRunMode *run
     ("javascript.startup-directory", &StartupPath, "startup paths containing the JavaScript files")
     ("javascript.unit-tests", &UnitTests, "do not start as shell, run unit tests instead")
     ("javascript.current-module-directory", &UseCurrentModulePath, "add current directory to module path")
+    ("javascript.v8-options", &V8Options, "options to pass to v8")
     ("jslint", &JsLint, "do not start as shell, run jslint instead")
   ;
 
@@ -511,9 +519,6 @@ static vector<string> ParseProgramOptions (int argc, char* args[], eRunMode *run
   conf += ".conf";
 
   BaseClient.parse(options, description, "<options>", argc, args, conf);
-
-  // set V8 options
-  v8::V8::SetFlagsFromCommandLine(&argc, args, true);
 
   // derive other paths from `--javascript.directory`
   StartupModules = StartupPath + TRI_DIR_SEPARATOR_STR + "client" + TRI_DIR_SEPARATOR_STR + "modules;" +
@@ -2276,6 +2281,15 @@ int run(v8::Isolate *isolate, eRunMode runMode, bool promptError) {
   return (ok)? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
+class BufferAllocator : public v8::ArrayBuffer::Allocator {
+ public:
+  virtual void* Allocate(size_t length) {
+    void* data = AllocateUninitialized(length);
+    return data == nullptr ? data : memset(data, 0, length);
+  }
+  virtual void* AllocateUninitialized(size_t length) { return malloc(length); }
+  virtual void Free(void* data, size_t) { free(data); }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief main
@@ -2335,7 +2349,21 @@ int main (int argc, char* args[]) {
 
   v8::V8::InitializeICU();
   v8::Platform* platform = v8::platform::CreateDefaultPlatform();
+
   v8::V8::InitializePlatform(platform);
+  // set V8 options
+  if (! V8Options.empty()) {
+    // explicit option --javascript.v8-options used
+    v8::V8::SetFlagsFromString(V8Options.c_str(), (int) V8Options.size());
+  }
+  else {
+    // no explicit option used, now pass all command-line arguments to v8
+    v8::V8::SetFlagsFromCommandLine(&argc, args, true);
+  }
+
+  BufferAllocator bufferAllocator;
+  v8::V8::SetArrayBufferAllocator(&bufferAllocator);
+
   v8::Isolate* isolate = v8::Isolate::New();
   isolate->Enter();
   {
