@@ -487,6 +487,12 @@ ExecutionNode* ExecutionPlan::fromNodeSort (ExecutionNode* previous,
       TRI_ASSERT(element->numMembers() == 2);
 
       auto expression = element->getMember(0);
+
+      if (expression->isConstant()) {
+        // expression is constant, so sorting with not provide any benefit 
+        continue;
+      }
+
       auto ascending = element->getMember(1);
 
       // get sort order
@@ -541,6 +547,15 @@ ExecutionNode* ExecutionPlan::fromNodeSort (ExecutionNode* previous,
     throw;
   }
 
+
+  if (elements.empty()) {
+    // no sort criterion remained - this can only happen if all sort
+    // criteria were constants 
+    return previous;
+  }
+
+
+  // at least one sort criterion remained 
   TRI_ASSERT(! elements.empty());
 
   // properly link the temporary calculations in the plan
