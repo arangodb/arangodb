@@ -1,5 +1,5 @@
 /*jshint strict: false, maxlen: 500 */
-/*global require, assertTrue, assertEqual, AQL_EXECUTE */
+/*global require, assertTrue, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for COLLECT w/ COUNT
@@ -86,6 +86,10 @@ function optimizerCountTestSuite () {
       var results = AQL_EXECUTE(query);
       assertEqual(1, results.json.length);
       assertEqual(1000, results.json[0]);
+       
+      var plan = AQL_EXPLAIN(query).plan;
+      // must not have a SortNode
+      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -98,6 +102,10 @@ function optimizerCountTestSuite () {
       var results = AQL_EXECUTE(query);
       assertEqual(1, results.json.length);
       assertEqual(100, results.json[0]);
+
+      var plan = AQL_EXPLAIN(query).plan;
+      // must not have a SortNode
+      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -110,6 +118,10 @@ function optimizerCountTestSuite () {
       var results = AQL_EXECUTE(query);
       assertEqual(1, results.json.length);
       assertEqual(300, results.json[0]);
+
+      var plan = AQL_EXPLAIN(query).plan;
+      // must not have a SortNode
+      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -122,6 +134,10 @@ function optimizerCountTestSuite () {
       var results = AQL_EXECUTE(query);
       assertEqual(1, results.json.length);
       assertEqual(0, results.json[0]);
+
+      var plan = AQL_EXPLAIN(query).plan;
+      // must not have a SortNode
+      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -142,6 +158,10 @@ function optimizerCountTestSuite () {
       var results = AQL_EXECUTE(query);
       assertEqual(1, results.json.length);
       assertEqual(125 * 30, results.json[0]);
+
+      var plan = AQL_EXPLAIN(query).plan;
+      // must not have a SortNode
+      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,6 +174,10 @@ function optimizerCountTestSuite () {
       var results = AQL_EXECUTE(query);
       assertEqual(1, results.json.length);
       assertEqual(2000, results.json[0]);
+
+      var plan = AQL_EXPLAIN(query).plan;
+      // must not have a SortNode
+      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -171,6 +195,10 @@ function optimizerCountTestSuite () {
         assertEqual("test" + i, group[0]);
         assertEqual(100, group[1]);
       }
+
+      var plan = AQL_EXPLAIN(query).plan;
+      // must have a SortNode
+      assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -188,6 +216,10 @@ function optimizerCountTestSuite () {
         assertEqual("test" + (i + 1), group[0]);
         assertEqual(100, group[1]);
       }
+
+      var plan = AQL_EXPLAIN(query).plan;
+      // must have a SortNode
+      assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -199,6 +231,10 @@ function optimizerCountTestSuite () {
 
       var results = AQL_EXECUTE(query);
       assertEqual(0, results.json.length);
+
+      var plan = AQL_EXPLAIN(query).plan;
+      // must have a SortNode
+      assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -224,6 +260,10 @@ function optimizerCountTestSuite () {
         assertEqual(20 + i, group[0]);
         assertEqual(125, group[1]);
       }
+
+      var plan = AQL_EXPLAIN(query).plan;
+      // must have a SortNode
+      assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -244,6 +284,10 @@ function optimizerCountTestSuite () {
           assertEqual(100, group[2]);
         }
       }
+
+      var plan = AQL_EXPLAIN(query).plan;
+      // must have a SortNode
+      assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
     }
 
   };

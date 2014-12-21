@@ -208,27 +208,63 @@ FOR u IN users
     FILTER u.id == m.userId
       RETURN m
   )
-  RETURN { "user" : u, "friends" : friends, "numFriends" : LENGTH(friends), "memberShips" : memberships }
+  RETURN { 
+    "user" : u, 
+    "friends" : friends, 
+    "numFriends" : LENGTH(friends), 
+    "memberShips" : memberships 
+  }
 ```
 
 !SUBSECTION COLLECT
 
 The *COLLECT* keyword can be used to group an array by one or multiple group
-criteria.  The two general syntaxes for *COLLECT* are:
+criteria.  
+
+The *COLLECT* statement will eliminate all local variables in the current
+scope. After *COLLECT* only the variables introduced by *COLLECT* itself are
+available.
+
+The general syntaxes for *COLLECT* are:
 
 ```
 COLLECT variable-name = expression
-COLLECT variable-name = expression INTO groups
+COLLECT variable-name = expression INTO groups-variable
+COLLECT variable-name = expression INTO groups-variable = projection-expression
+COLLECT variable-name = expression INTO groups-variable KEEP keep-variable
+COLLECT variable-name = expression WITH COUNT INTO count-variable
+COLLECT WITH COUNT INTO count-variable
 ```
 
-The first form only groups the result by the defined group criteria defined by
-*expression*. In order to further process the results produced by *COLLECT*, a
-new variable (specified by *variable-name*) is introduced. This variable
-contains the group value.
+Note: the first four forms of *COLLECT* require their input be sorted by
+the group criteria. To ensure correctness of the result, the AQL optimizer 
+will automatically insert a *SORT* statement into the query in front of the 
+*COLLECT* statement. The optimizer can optimize away the *SORT* statement
+later if a sorted index is present on the group criteria. This will make
+*COLLECT* operations more efficient.
+
+
+!SUBSUBSECTION Grouping syntaxes
+
+The first syntax form of *COLLECT* only groups the result by the defined group 
+criteria specified in *expression*. In order to further process the results 
+produced by *COLLECT*, a new variable (specified by *variable-name*) is introduced. 
+This variable contains the group value.
+
+Here's an example query that find the distinct values in *u.city* and makes
+them available in variable *city*:
+
+```
+FOR u IN users
+  COLLECT city = u.city
+  RETURN { 
+    "city" : city 
+  }
+```
 
 The second form does the same as the first form, but additionally introduces a
-variable (specified by *groups*) that contains all elements that fell into the
-group. This works as follows: The *groups* variable is an array containing 
+variable (specified by *groups-variable*) that contains all elements that fell into the
+group. This works as follows: The *groups-variable* variable is an array containing 
 as many elements as there are in the group. Each member of that array is
 a JSON object in which the value of every variable that is defined in the 
 AQL query is bound to the corresponding attribute. Note that this considers
@@ -241,66 +277,134 @@ statements to improve performance.
 ```
 FOR u IN users
   COLLECT city = u.city INTO groups
-  RETURN { "city" : city, "users" : groups }
+  RETURN { 
+    "city" : city, 
+    "usersInCity" : groups 
+  }
 ```
 
 In the above example, the array *users* will be grouped by the attribute
 *city*. The result is a new array of documents, with one element per distinct
-*city* value. The elements from the original array (here: *users*) per city are
-made available in the variable *g*. This is due to the *INTO* clause.
+*u.city* value. The elements from the original array (here: *users*) per city are
+made available in the variable *groups*. This is due to the *INTO* clause.
 
 *COLLECT* also allows specifying multiple group criteria. Individual group
-criteria can be separated by commas.
+criteria can be separated by commas:
 
 ```
 FOR u IN users
-  COLLECT first = u.firstName, age = u.age INTO groups
-  RETURN { "first" : first, "age" : age, "numUsers" : LENGTH(groups) }
+  COLLECT country = u.country, city = u.city INTO groups
+  RETURN { 
+    "country" : country, 
+    "city" : city, 
+    "usersInCity" : groups 
+  }
 ```
 
-In the above example, the array *users* is grouped by first names and ages
-first, and for each distinct combination of first name and age, the number of
-users found is returned.
+In the above example, the array *users* is grouped by country first and then
+by city, and for each distinct combination of country and city, the users
+will be returned.
 
-Note: The *COLLECT* statement eliminates all local variables in the current
-scope. After *COLLECT* only the variables introduced by *COLLECT* itself are
-available.
 
 !SUBSUBSECTION Discarding obsolete variables
 
-*COLLECT* also provides an optional *KEEP* clause that can be used to control
-which variables will be copied into the variable created by `INTO`. If no 
-*KEEP* clause is specified, all variables will be copied into the *groups* 
-variable. This is safe but can have a negative impact on performance if there 
-are many variables in scope or the variables contain massive amounts of data. 
-
-The following example limits the variables that copied into the *groups* variable
-to `age`. The variables `u` and `someCalculation` are also in scope of the
-*COLLECT* statement, but are not copied into *groups*:
+The third form of *COLLECT* allows rewriting the contents of the *groups-variable* 
+using an arbitrary *projection-expression*:
 
 ```
 FOR u IN users
-  LET age = u.age
+  COLLECT country = u.country, city = u.city INTO groups = u.name
+  RETURN { 
+    "country" : country, 
+    "city" : city, 
+    "userNames" : groups 
+  }
+```
+
+In the above example, only the *projection-expression* is *u.name*. Therefore,
+only this attribute is copied into the *groups-variable* for each document. 
+This is probably much more efficient than copying all variables from the scope into 
+the *groups-variable* as it would happen without a *projection-expression*.
+
+The expression following *INTO* can also be used for arbitrary computations:
+
+```
+FOR u IN users
+  COLLECT country = u.country, city = u.city INTO groups = { 
+    "name" : u.name, 
+    "isActive" : u.status == "active"
+  }
+  RETURN { 
+    "country" : country, 
+    "city" : city, 
+    "usersInCity" : groups 
+  }
+```
+
+*COLLECT* also provides an optional *KEEP* clause that can be used to control
+which variables will be copied into the variable created by `INTO`. If no 
+*KEEP* clause is specified, all variables from the scope will be copied as 
+sub-attributes into the *groups-variable*. 
+This is safe but can have a negative impact on performance if there 
+are many variables in scope or the variables contain massive amounts of data. 
+
+The following example limits the variables that are copied into the *groups-variable*
+to just *name*. The variables *u* and *someCalculation* also present in the scope
+will not be copied into *groups-variable* because they are not listed in the *KEEP* clause:
+
+```
+FOR u IN users
+  LET name = u.name
   LET someCalculation = u.value1 + u.value2
-  COLLECT first = u.firstName INTO groups KEEP age 
-  RETURN { "first" : first, "ages" : groups[*].age }
+  COLLECT city = u.city INTO groups KEEP name 
+  RETURN { 
+    "city" : city, 
+    "userNames" : groups[*].name 
+  }
 ```
 
 *KEEP* is only valid in combination with *INTO*. Only valid variable names can
-be used in the *KEEP* clause.
+be used in the *KEEP* clause. *KEEP* supports the specification of multiple 
+variable names.
+
 
 !SUBSUBSECTION Group length calculation
 
 *COLLECT* also provides a special *WITH COUNT* clause that can be used to 
-determine the number of group members efficiently:
+determine the number of group members efficiently.
+
+The simplest form just returns the number of items that made it into the
+*COLLECT*:
+
+```
+FOR u IN users
+  COLLECT WITH COUNT INTO length
+  RETURN length
+```
+
+The above is equivalent to, but more efficient than:
+
+```
+RETURN LENGTH(
+  FOR u IN users
+    RETURN length
+)
+```
+
+The *WITH COUNT* clause can also be used to efficiently count the number
+of items in each group:
 
 ```
 FOR u IN users
   COLLECT age = u.age WITH COUNT INTO length
-  RETURN { "age" : age, "count" : length }
+  RETURN { 
+    "age" : age, 
+    "count" : length 
+  }
 ```
 
-The *WITH COUNT* clause can only be used together with an *INTO* clause.
+Note: the *WITH COUNT* clause can only be used together with an *INTO* clause.
+
 
 !SUBSECTION REMOVE
 

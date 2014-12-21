@@ -63,6 +63,12 @@ namespace triagens {
     int removeCollectIntoRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief remove SORT RAND() if appropriate
+////////////////////////////////////////////////////////////////////////////////
+    
+    int removeSortRandRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief move calculations up in the plan
 /// this rule modifies the plan in place
 /// it aims to move up calculations as far up in the plan as possible, to 
