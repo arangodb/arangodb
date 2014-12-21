@@ -22,8 +22,9 @@ BUILT_SOURCES += @V8_LIBS@
 if ENABLE_ARM
 	cd @top_srcdir@/3rdParty/V8 \
 	  && $(MAKE) \
-		CFLAGS="-O2 -g -fsigned-char" \
-		CXXFLAGS="-O2 -g -fsigned-char" \
+		CFLAGS="-O2 -g -fsigned-char -march=armv6" \
+		CXXFLAGS="-O2 -g -fsigned-char -march=armv6" \
+		LDFLAGS="-march=armv6" \
 		CC=$(CC) \
 		CC.host=$(CC) \
 		CXX=$(CXX) \
