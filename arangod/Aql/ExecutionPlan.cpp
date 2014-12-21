@@ -787,9 +787,14 @@ ExecutionNode* ExecutionPlan::fromNodeCollectCount (ExecutionNode* previous,
 
   // inject a sort node for all expressions / variables that we just picked up...
   // note that this sort is stable
-  auto sort = registerNode(new SortNode(this, nextId(), sortElements, true));
-  sort->addDependency(previous);
-  previous = sort;
+  if (numVars > 0) {
+    // a SortNode is only required if we have grouping criteria.
+    // for example, COLLECT x = ... WITH COUNT INTO g has grouping criteria x = ...
+    // but the following statement doesn't have any: COLLECT WITH COUNT INTO g
+    auto sort = registerNode(new SortNode(this, nextId(), sortElements, true));
+    sort->addDependency(previous);
+    previous = sort;
+  }
 
   // output variable
   auto v = node->getMember(1);

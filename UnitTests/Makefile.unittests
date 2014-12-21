@@ -551,8 +551,8 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-modify-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-modify-noncluster-serializetest.js \
 			@top_srcdir@/js/server/tests/aql-operators.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-collect-count.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-collect-into.js \
-			@top_srcdir@/js/server/tests/aql-optimizer-count.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-dynamic-bounds.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-filters.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-indexes.js \
@@ -568,6 +568,7 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-unnecessary-calculations.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-unnecessary-filters.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-replace-or-with-in.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-sort-rand.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-use-index-range.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-use-index-for-sort.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-stats-noncluster.js \

@@ -1,5 +1,5 @@
 /*jshint strict: false, maxlen: 500 */
-/*global require, assertEqual, assertTrue, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE */
+/*global require, assertEqual, assertTrue, assertFalse, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -30,18 +30,20 @@
 
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
-var isEqual = helper.isEqual;
+var db = require("org/arangodb").db;
+var removeAlwaysOnClusterRules = helper.removeAlwaysOnClusterRules;
+var removeClusterNodes = helper.removeClusterNodes;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 function optimizerRuleTestSuite () {
-  var ruleName = "remove-collect-into";
+  var ruleName = "remove-sort-rand";
   // various choices to control the optimizer: 
   var paramNone     = { optimizer: { rules: [ "-all" ] } };
-  var paramEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
-  var paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
+  var paramEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName, "+remove-unnecessary-calculations-2" ] } };
+  var c;
 
   return {
 
@@ -50,6 +52,12 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
+      db._drop("UnitTestsCollection");
+      c = db._create("UnitTestsCollection");
+
+      for (var i = 0; i < 1000; ++i) {
+        c.save({ value: i });
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -57,6 +65,7 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
+      db._drop("UnitTestsCollection");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -65,14 +74,13 @@ function optimizerRuleTestSuite () {
 
     testRuleDisabled : function () {
       var queries = [ 
-        "FOR i IN 1..10 COLLECT a = i INTO group RETURN a",
-        "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group RETURN a",
-        "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group RETURN { a: a, b : b }"
+        "FOR i IN " + c.name() + " SORT RAND() RETURN i",
+        "FOR i IN " + c.name() + " SORT RAND() LIMIT 1 RETURN i"
       ];
 
       queries.forEach(function(query) {
         var result = AQL_EXPLAIN(query, { }, paramNone);
-        assertEqual([ ], result.plan.rules);
+        assertEqual([ ], removeAlwaysOnClusterRules(result.plan.rules));
       });
     },
 
@@ -81,15 +89,23 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRuleNoEffect : function () {
+      c.ensureSkiplist("value");
+
       var queries = [ 
-        "FOR i IN 1..10 COLLECT a = i RETURN a",
-        "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j RETURN a",
-        "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group RETURN { a: a, b : b, group: group }"
+        "FOR i IN 1..10 SORT RAND() RETURN i",  // no collection
+        "FOR i IN " + c.name() + " SORT i.value, RAND() RETURN i", // more than one sort criterion
+        "FOR i IN " + c.name() + " SORT RAND(), i.value RETURN i", // more than one sort criterion
+        "FOR i IN " + c.name() + " FOR j IN " + c.name() + " SORT RAND() RETURN i", // more than one collection
+        "FOR i IN " + c.name() + " LET a = FAIL(1) SORT RAND() RETURN [ i, a ]", // may throw
+        "FOR i IN " + c.name() + " FILTER i.value > 10 SORT RAND() RETURN i", // uses an IndexRangeNode
+        "FOR i IN " + c.name() + " FILTER i.what == 2 SORT RAND() RETURN i", // contains FilterNode
+        "FOR i IN " + c.name() + " COLLECT v = i.value SORT RAND() RETURN v", // contains CollectNode
+        "FOR i IN " + c.name() + " LET x = (FOR j IN 1..1 RETURN i.value) SORT RAND() RETURN x" // contains SubqueryNode
       ];
 
       queries.forEach(function(query) {
         var result = AQL_EXPLAIN(query, { }, paramEnabled);
-        assertTrue(result.plan.rules.indexOf(ruleName) === -1, query);
+        assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
       });
     },
 
@@ -98,15 +114,24 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRuleHasEffect : function () {
+      c.ensureSkiplist("value");
+
       var queries = [ 
-        "FOR i IN 1..10 COLLECT a = i INTO group RETURN a",
-        "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group RETURN a",
-        "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group RETURN { a: a, b : b }"
+        "FOR i IN " + c.name() + " SORT RAND() RETURN i", 
+        "FOR i IN " + c.name() + " SORT RAND() ASC RETURN i", 
+        "FOR i IN " + c.name() + " SORT RAND() DESC RETURN i", 
+        "FOR i IN " + c.name() + " SORT RAND() LIMIT 2 RETURN i", 
+        "FOR i IN " + c.name() + " LIMIT 1 SORT RAND() RETURN i", 
+        "FOR i IN " + c.name() + " LET x = i.value + 1 SORT RAND() RETURN x", 
+        "FOR i IN " + c.name() + " SORT RAND() FILTER i.value > 10 RETURN i", // does not use an IndexRangeNode
       ];
 
       queries.forEach(function(query) {
         var result = AQL_EXPLAIN(query, { }, paramEnabled);
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+        var collectionNode = result.plan.nodes.map(function(node) { return node.type; }).indexOf("EnumerateCollectionNode");
+        assertEqual("EnumerateCollectionNode", result.plan.nodes[collectionNode].type);
+        assertTrue(result.plan.nodes[collectionNode].random); // check for random iteration flag
       });
     },
 
@@ -114,18 +139,21 @@ function optimizerRuleTestSuite () {
 /// @brief test generated plans
 ////////////////////////////////////////////////////////////////////////////////
 
-
     testPlans : function () {
       var plans = [ 
-        [ "FOR i IN 1..10 COLLECT a = i INTO group RETURN a", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "SortNode", "AggregateNode", "ReturnNode" ] ],
-        [ "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group RETURN a", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "EnumerateListNode", "SortNode", "AggregateNode", "ReturnNode" ] ],
-        [ "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group RETURN { a: a, b : b }", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "EnumerateListNode", "SortNode", "AggregateNode", "CalculationNode", "ReturnNode" ] ]
+        [ "FOR i IN " + c.name() + " SORT RAND() RETURN i", [ "SingletonNode", "EnumerateCollectionNode", "ReturnNode" ] ],
+        [ "FOR i IN " + c.name() + " LET x = i.value + 1 SORT RAND() RETURN x", [ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "ReturnNode" ] ],
+        [ "FOR i IN " + c.name() + " SORT RAND() LIMIT 1 RETURN i", [ "SingletonNode", "EnumerateCollectionNode", "LimitNode", "ReturnNode" ] ],
+        [ "FOR i IN " + c.name() + " LIMIT 1 SORT RAND() RETURN i", [ "SingletonNode", "EnumerateCollectionNode", "LimitNode", "ReturnNode" ] ]
       ];
 
       plans.forEach(function(plan) {
         var result = AQL_EXPLAIN(plan[0], { }, paramEnabled);
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), plan[0]);
-        assertEqual(plan[1], helper.getCompactPlan(result).map(function(node) { return node.type; }), plan[0]);
+        assertEqual(plan[1], removeClusterNodes(helper.getCompactPlan(result).map(function(node) { return node.type; })), plan[0]);
+        var collectionNode = result.plan.nodes.map(function(node) { return node.type; }).indexOf("EnumerateCollectionNode");
+        assertEqual("EnumerateCollectionNode", result.plan.nodes[collectionNode].type);
+        assertTrue(result.plan.nodes[collectionNode].random); // check for random iteration flag
       });
     },
 
@@ -134,25 +162,18 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testResults : function () {
-      var queries = [ 
-        [ "FOR i IN 1..10 COLLECT a = i INTO group RETURN a", [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] ],
-        [ "FOR i IN 1..2 FOR j IN 1..2 COLLECT a = i, b = j INTO group RETURN [ a, b ]", [ [ 1, 1 ], [ 1, 2 ], [ 2, 1 ], [ 2, 2 ] ] ]
-      ];
+      var result = AQL_EXECUTE("FOR i IN 1..5 LET values = (FOR j IN " + c.name() + " SORT RAND() RETURN j) RETURN values").json;
 
-      queries.forEach(function(query) {
-        var planDisabled   = AQL_EXPLAIN(query[0], { }, paramDisabled);
-        var planEnabled    = AQL_EXPLAIN(query[0], { }, paramEnabled);
-        var resultDisabled = AQL_EXECUTE(query[0], { }, paramDisabled).json;
-        var resultEnabled  = AQL_EXECUTE(query[0], { }, paramEnabled).json;
+      assertEqual(5, result.length);
 
-        assertTrue(isEqual(resultDisabled, resultEnabled), query[0]);
-
-        assertEqual(-1, planDisabled.plan.rules.indexOf(ruleName), query[0]);
-        assertNotEqual(-1, planEnabled.plan.rules.indexOf(ruleName), query[0]);
-
-        assertEqual(resultDisabled, query[1]);
-        assertEqual(resultEnabled, query[1]);
-      });
+      // assert all random results are unique
+      var hasSeen = { };
+      for (var i = 0; i < result.length; ++i) {
+        assertEqual(1000, result[i].length);
+        var key = JSON.stringify(result[i]);
+        assertFalse(hasSeen.hasOwnProperty(key));
+        hasSeen[key] = 1;
+      }
     }
 
   };

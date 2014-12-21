@@ -57,6 +57,10 @@ plan if the filter condition is already covered by a previous IndexRangeNode.
 Removing the filter's CalculationNode and the FilterNode itself will speed
 up query execution because the query requires less computation.
 
+Furthermore, the new optimizer rule `remove-sort-rand` will remove a `SORT RAND()`
+statement and move the random iteration into the appropriate `EnumerateCollectionNode`.
+This is usually more efficient than individually enumerating and sorting.
+
 
 !SUBSECTION Language improvements
 
@@ -69,9 +73,9 @@ In previous versions of ArangoDB one had to write the following to count
 documents:
 
     RETURN LENGTH (
-        FOR doc IN collection
-        FILTER ...some condition...
-        RETURN doc
+      FOR doc IN collection
+      FILTER ...some condition...
+      RETURN doc
     )
 
 With the `COUNT` clause, the query can be modified to
@@ -109,6 +113,18 @@ compared to copying `doc` completely:
       FILTER ...some condition...
       COLLECT group = doc.group INTO dates = doc.dateRegistered
       return { group: group, maxDate: MAX(dates) }
+
+Compare this to the following variant of the query, which was the only way
+to achieve the same result in previous versions of ArangoDB:
+
+    FOR doc IN collection
+      FILTER ...some condition...
+      COLLECT group = doc.group INTO dates
+      return { group: group, maxDate: MAX(dates[*].doc.dateRegistered) }
+
+The above query will need to copy the full `doc` attribute into the `lengths`
+variable, whereas the new variant will only copy the `dateRegistered`
+attribute of each `doc`.
 
 
 !SUBSUBSECTION Subquery syntax
