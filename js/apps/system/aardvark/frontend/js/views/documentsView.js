@@ -195,13 +195,11 @@
           this.showSpinner();
         result = this.collection.uploadDocuments(this.file);
         if (result !== true) {
-            this.hideSpinner();
-            if (result.substr(0, 5 ) === "Error") {
-                this.hideImportModal();
-                this.resetView();
-            }
-            arangoHelper.arangoError(result);
-            return;
+          this.hideSpinner();
+          this.hideImportModal();
+          this.resetView();
+          arangoHelper.arangoError(result);
+          return;
         }
         this.hideSpinner();
         this.hideImportModal();
