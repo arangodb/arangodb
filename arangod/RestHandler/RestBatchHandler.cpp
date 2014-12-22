@@ -184,7 +184,7 @@ RestBatchHandler::~RestBatchHandler () {
 /// @END_EXAMPLE_ARANGOSH_RUN
 ////////////////////////////////////////////////////////////////////////////////
 
-Handler::status_t RestBatchHandler::execute() {
+Handler::status_t RestBatchHandler::execute () {
   // extract the request type
   const HttpRequest::HttpRequestType type = _request->requestType();
 
@@ -304,6 +304,7 @@ Handler::status_t RestBatchHandler::execute() {
     Handler::status_t status(Handler::HANDLER_FAILED);
 
     do {
+      handler->prepareExecute();
       try {
         status = handler->execute();
       }
@@ -319,6 +320,7 @@ Handler::status_t RestBatchHandler::execute() {
         triagens::basics::InternalError err("executeDirectHandler", __FILE__, __LINE__);
         handler->handleError(err);
       }
+      handler->finalizeExecute();
     }
     while (status.status == Handler::HANDLER_REQUEUE);
 

@@ -70,7 +70,7 @@ const std::string RestAqlHandler::QUEUE_NAME = "STANDARD";
 RestAqlHandler::RestAqlHandler (triagens::rest::HttpRequest* request,
                                 std::pair<ApplicationV8*, 
                                 QueryRegistry*>* pair)
-  : RestBaseHandler(request),
+  : RestVocbaseBaseHandler(request),
     _applicationV8(pair->first),
     _context(static_cast<VocbaseContext*>(request->getRequestContext())),
     _vocbase(_context->getVocbase()),
@@ -357,7 +357,7 @@ void RestAqlHandler::createQueryFromString () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief PUT method for /_api/aql/<operation>/<queryId>, this is using 
 /// the part of the cursor API with side effects.
-/// <operation>: can be "getSome" or "skip" or "initializeCursor" or 
+/// <operation>: can be "lock" or "getSome" or "skip" or "initializeCursor" or 
 /// "shutdown".
 /// The body must be a Json with the following attributes:
 /// For the "getSome" operation one has to give:
@@ -397,8 +397,8 @@ void RestAqlHandler::createQueryFromString () {
 ///   "items": This is a serialised AqlItemBlock with usually only one row 
 ///            and the correct number of columns.
 ///   "pos":   The number of the row in "items" to take, usually 0.
-/// For the "shutdown" operation no additional arguments are required and
-/// an empty JSON object in the body is OK.
+/// For the "shutdown" and "lock" operations no additional arguments are
+/// required and an empty JSON object in the body is OK.
 /// All operations allow to set the HTTP header "Shard-ID:". If this is
 /// set, then the root block of the stored query must be a ScatterBlock
 /// and the shard ID is given as an additional argument to the ScatterBlock's
@@ -596,7 +596,6 @@ triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
   // extract the sub-request type
   HttpRequest::HttpRequestType type = _request->requestType();
 
-
   // execute one of the CRUD methods
   switch (type) {
     case HttpRequest::HTTP_REQUEST_POST: {
@@ -720,7 +719,21 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
 
   Json answerBody(Json::Object, 3);
 
-  if (operation == "getSome") {
+  if (operation == "lock") {
+    int res = TRI_ERROR_INTERNAL;
+    try {
+      res = query->trx()->lockCollections();
+    }
+    catch (...) {
+      LOG_ERROR("lock lead to an exception");
+      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                    "lock lead to an exception");
+      return;
+    }
+    answerBody("error", res == TRI_ERROR_NO_ERROR ? Json(false) : Json(true))
+              ("code", Json(static_cast<double>(res)));
+  }
+  else if (operation == "getSome") {
     auto atLeast = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
                                                          "atLeast", 1);
     auto atMost = JsonHelper::getNumericValue<uint64_t>(queryJson.json(),
