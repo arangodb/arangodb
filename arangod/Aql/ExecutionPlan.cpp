@@ -667,9 +667,7 @@ ExecutionNode* ExecutionPlan::fromNodeCollectExpression (ExecutionNode* previous
                                                          AstNode const* node) {
   TRI_ASSERT(node != nullptr && 
              node->type == NODE_TYPE_COLLECT_EXPRESSION);
-  size_t const n = node->numMembers();
-
-  TRI_ASSERT(n == 3);
+  TRI_ASSERT(node->numMembers() == 3);
 
   auto list = node->getMember(0);
   size_t const numVars = list->numMembers();
@@ -756,9 +754,7 @@ ExecutionNode* ExecutionPlan::fromNodeCollectCount (ExecutionNode* previous,
                                                     AstNode const* node) {
   TRI_ASSERT(node != nullptr && 
              node->type == NODE_TYPE_COLLECT_COUNT);
-  size_t const n = node->numMembers();
-
-  TRI_ASSERT(n == 2);
+  TRI_ASSERT(node->numMembers() == 2);
 
   auto list = node->getMember(0);
   size_t const numVars = list->numMembers();

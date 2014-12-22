@@ -35,6 +35,7 @@
 #include "Admin/RestBaseHandler.h"
 #include "V8Server/ApplicationV8.h"
 #include "RestServer/VocbaseContext.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/types.h"
 
@@ -55,7 +56,7 @@ namespace triagens {
 /// @brief shard control request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-    class RestAqlHandler : public admin::RestBaseHandler {
+    class RestAqlHandler : public arango::RestVocbaseBaseHandler {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
