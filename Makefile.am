@@ -397,7 +397,7 @@ clean-local:
 	rm -rf `find -name \*.gcno`
 	rm -rf `find -name \*.gcda`
 
-superclean: clean
+superclean: distclean
 	rm -rf arangod/*/.deps lib/*/.deps Makefile
 
 ################################################################################
