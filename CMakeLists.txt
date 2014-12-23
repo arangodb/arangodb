@@ -103,7 +103,14 @@ endif ()
 
 math(EXPR BITS "8*${CMAKE_SIZEOF_VOID_P}")
 add_definitions("-DTRI_BITS=${BITS}")
-add_definitions("-DTRI_ENABLE_CLUSTER=1")
+
+################################################################################
+### @brief raspberry pi
+################################################################################
+
+if (BUILD_PACKAGE STREQUAL "raspbian")
+  add_definitions("-DTRI_FORCE_ARMV6")
+endif ()
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                           OPTIONS
