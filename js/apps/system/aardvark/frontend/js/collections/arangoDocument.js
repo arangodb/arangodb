@@ -50,18 +50,29 @@ window.arangoDocument = Backbone.Collection.extend({
     }
     return returnval;
   },
-  addDocument: function (collectionID) {
+  addDocument: function (collectionID, key) {
+  console.log("adding document");
     var self = this;
-    self.createTypeDocument(collectionID);
+    self.createTypeDocument(collectionID, key);
   },
-  createTypeEdge: function (collectionID, from, to) {
-    var result = false;
+  createTypeEdge: function (collectionID, from, to, key) {
+    var result = false, newEdge;
+
+    if (key) {
+      newEdge = JSON.stringify({
+        _key: key
+      });
+    }
+    else {
+      newEdge = JSON.stringify({});
+    }
+
     $.ajax({
       cache: false,
       type: "POST",
       async: false,
       url: "/_api/edge?collection=" + collectionID + "&from=" + from + "&to=" + to,
-      data: JSON.stringify({}),
+      data: newEdge,
       contentType: "application/json",
       processData: false,
       success: function(data) {
@@ -73,14 +84,24 @@ window.arangoDocument = Backbone.Collection.extend({
     });
     return result;
   },
-  createTypeDocument: function (collectionID) {
-    var result = false;
+  createTypeDocument: function (collectionID, key) {
+    var result = false, newDocument;
+
+    if (key) {
+      newDocument = JSON.stringify({
+        _key: key
+      });
+    }
+    else {
+      newDocument = JSON.stringify({});
+    }
+
     $.ajax({
       cache: false,
       type: "POST",
       async: false,
-      url: "/_api/document?collection=" + collectionID,
-      data: JSON.stringify({}),
+      url: "/_api/document?collection=" + encodeURIComponent(collectionID),
+      data: newDocument,
       contentType: "application/json",
       processData: false,
       success: function(data) {
