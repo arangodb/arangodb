@@ -2623,7 +2623,7 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
     }
     else if (nodeType == ExecutionNode::REPLACE) {
       std::vector<Variable const*> v = node->getVariablesUsedHere();
-      if (defaultSharding) {
+      if (defaultSharding || v.size() > 1) {
         // We only look into _inKeyVariable
         distNode = new DistributeNode(plan, plan->nextId(), 
             vocbase, collection, v[1]->id);
@@ -2636,10 +2636,18 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
     }
     else {   // if (nodeType == ExecutionNode::UPDATE)
       std::vector<Variable const*> v = node->getVariablesUsedHere();
-      distNode = new DistributeNode(plan, plan->nextId(), 
-          vocbase, collection, v[1]->id);
-      // This is the _inKeyVariable! This works, since we use a ScatterNode
-      // for non-default-sharding attributes.
+      if (v.size() > 1) {
+        // If there is a key variable:
+        distNode = new DistributeNode(plan, plan->nextId(), 
+            vocbase, collection, v[1]->id);
+        // This is the _inKeyVariable! This works, since we use a ScatterNode
+        // for non-default-sharding attributes.
+      }
+      else {
+        // was only UPDATE <doc> IN <collection>
+        distNode = new DistributeNode(plan, plan->nextId(), 
+            vocbase, collection, v[0]->id);
+      }
     }
     plan->registerNode(distNode);
     distNode->addDependency(deps[0]);
