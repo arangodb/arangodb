@@ -490,11 +490,10 @@
 
     addDocumentModal: function () {
       var collid  = window.location.hash.split("/")[1],
+      buttons = [], tableContent = [],
       // second parameter is "true" to disable caching of collection type
       doctype = arangoHelper.collectionApiType(collid, true);
       if (doctype === 'edge') {
-
-        var buttons = [], tableContent = [];
 
         tableContent.push(
           window.modalView.createTextEntry(
@@ -558,8 +557,6 @@
         return;
       }
       else {
-        var buttons = [], tableContent = [];
-
         tableContent.push(
           window.modalView.createTextEntry(
             'new-document-key-attr',
@@ -633,8 +630,8 @@
     },
 
     moveSelectedDocs: function() {
-      var buttons = [], tableContent = [];
-      var toDelete = this.getSelectedDocs();
+      var buttons = [], tableContent = [],
+      toDelete = this.getSelectedDocs();
 
       if (toDelete.length === 0) {
         return;
