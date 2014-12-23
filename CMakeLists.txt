@@ -528,15 +528,12 @@ endif ()
 
 if (MSVC)
   set(OPENSSL_LIBS ssleay;libeay CACHE string "OPENSSL libraries")
-  set(OPENSSL_VERSION "OpenSSL 1.0.1e" CACHE string "OPENSSL version")
 elseif (BUILD_PACKAGE STREQUAL "raspbian")
   set(OPENSSL_LIBS ssl;crypto CACHE string "OPENSSL libraries")
-  set(OPENSSL_VERSION "OpenSSL 0.9.8r 8 Feb 2011" CACHE string "OPENSSL version")
 else ()
   set(OPENSSL_INCLUDE "" CACHE path "OPENSSL include path")
   set(OPENSSL_LIB_PATH "" CACHE path "OPENSSL library path")
   set(OPENSSL_LIBS ssl;crypto CACHE string "OPENSSL libraries")
-  set(OPENSSL_VERSION "OpenSSL 0.9.8r 8 Feb 2011" CACHE string "OPENSSL version")
 endif ()
 
 if (OPENSSL_INCLUDE)
@@ -546,8 +543,6 @@ endif ()
 if (OPENSSL_LIB_PATH)
   link_directories(${OPENSSL_LIB_PATH})
 endif ()
-
-add_definitions("-DTRI_OPENSSL_VERSION=\"${OPENSSL_VERSION}\"")
 
 ################################################################################
 ### @brief READLINE or LINENOISE
