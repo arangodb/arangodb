@@ -952,7 +952,7 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
         for (auto& q : inst.get()->queryIds) {
           std::string theId = q.first;
           std::string queryId = q.second;
-          std::cout << "queryIds: " << theId << " : " << queryId << std::endl;
+          // std::cout << "queryIds: " << theId << " : " << queryId << std::endl;
           auto pos = theId.find(':');
           if (pos != std::string::npos) {
             // So this is a remote one on a DBserver:
@@ -970,17 +970,17 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
         for (auto& q : inst.get()->queryIds) {
           std::string theId = q.first;
           std::string queryId = q.second;
-          std::cout << "queryIds: " << theId << " : " << queryId << std::endl;
+          // std::cout << "queryIds: " << theId << " : " << queryId << std::endl;
           auto pos = theId.find('/');
           if (pos != std::string::npos) {
-            std::cout << "Setting lockedShards for query ID "
-                      << queryId << std::endl;
+            // std::cout << "Setting lockedShards for query ID "
+            //          << queryId << std::endl;
             QueryId qId = triagens::basics::StringUtils::uint64(queryId);
             TRI_vocbase_t* vocbase = query->vocbase();
             Query* q = queryRegistry->open(vocbase, qId);
             q->engine()->setLockedShards(new std::unordered_set<std::string>(*engine->_lockedShards));
             queryRegistry->close(vocbase, qId);
-            std::cout << "Setting lockedShards done." << std::endl;
+            // std::cout << "Setting lockedShards done." << std::endl;
           }
         }
         // Now lock them all in the right order:
