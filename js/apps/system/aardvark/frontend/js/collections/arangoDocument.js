@@ -51,7 +51,6 @@ window.arangoDocument = Backbone.Collection.extend({
     return returnval;
   },
   addDocument: function (collectionID, key) {
-  console.log("adding document");
     var self = this;
     self.createTypeDocument(collectionID, key);
   },
