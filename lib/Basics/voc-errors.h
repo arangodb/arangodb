@@ -344,6 +344,10 @@
 /// - 1474: @LIT{error in cluster internal communication for AQL}
 ///   Will be raised if the internal communication of the cluster for AQL
 ///   produces an error.
+/// - 1475: @LIT{document not found or sharding attributes changed}
+///   Will be raised when a document with a given identifier or handle is
+///   unknown, or if the sharding attributes have been changed in a REPLACE
+///   operation in the cluster.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -2017,6 +2021,18 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CLUSTER_AQL_COMMUNICATION                               (1474)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1475: ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED
+///
+/// document not found or sharding attributes changed
+///
+/// Will be raised when a document with a given identifier or handle is
+/// unknown, or if the sharding attributes have been changed in a REPLACE
+/// operation in the cluster.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED (1475)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED

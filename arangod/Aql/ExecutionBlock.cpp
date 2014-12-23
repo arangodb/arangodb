@@ -3560,6 +3560,14 @@ void RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
                                    0, 
                                    nullptr,
                                    ep->_options.waitForSync);
+          if (ExecutionEngine::isDBServer() &&
+              errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+            auto* node = static_cast<RemoveNode const*>(getPlanNode());
+            if (node->getOptions().ignoreDocumentNotFound) {
+              // Ignore document not found on the DBserver:
+              errorCode = TRI_ERROR_NO_ERROR;
+            }
+          }
         }
         
         handleResult(errorCode, ep->_options.ignoreErrors); 
@@ -3795,6 +3803,14 @@ void UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
               errorCode = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
             }
           }
+          if (ExecutionEngine::isDBServer() &&
+              errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+            auto* node = static_cast<UpdateNode const*>(getPlanNode());
+            if (node->getOptions().ignoreDocumentNotFound) {
+              // Ignore document not found on the DBserver:
+              errorCode = TRI_ERROR_NO_ERROR;
+            }
+          }
         }
 
         handleResult(errorCode, ep->_options.ignoreErrors, &errorMessage); 
@@ -3884,6 +3900,16 @@ void ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
           
           // all exceptions are caught in _trx->update()
           errorCode = _trx->update(trxCollection, key, 0, &mptr, json.json(), TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, ep->_options.waitForSync);
+          if (ExecutionEngine::isDBServer() &&
+              errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+            auto* node = static_cast<ReplaceNode const*>(getPlanNode());
+            if (node->getOptions().ignoreDocumentNotFound) {
+              errorCode = TRI_ERROR_NO_ERROR;
+            }
+            else {
+              errorCode = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED;
+            }
+          }
         }
 
         handleResult(errorCode, ep->_options.ignoreErrors); 
