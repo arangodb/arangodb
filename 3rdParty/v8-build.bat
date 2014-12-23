@@ -24,6 +24,7 @@ set MSPLATFORM=%3
 
 :: 64 or 32
 set SUFFIX=%4
+
 :: ========================================================================================================
 :: ==== <BUILD> 
 :: ========================================================================================================
@@ -36,7 +37,6 @@ set CMD=%CMD% -Dcomponent=static_library
 set CMD=%CMD% -Dmode=release
 set CMD=%CMD% -Dlibrary=static_library
 set CMD=%CMD% -Dv8_use_snapshot=false
-set CMD=%CMD% -Dwerror=
 
 echo %CMD%
 
@@ -46,10 +46,28 @@ third_party\python_26\python build\gyp_v8 %CMD%
 
 cd build
 
+:: DEBUG
+
 msbuild All.sln /t:v8 /p:Configuration=Debug /p:Platform=%MSPLATFORM%
+
+cd ..\third_party\icu
+msbuild icu.sln /t:icudata /p:Configuration=Debug /p:Platform=%MSPLATFORM%
+msbuild icu.sln /t:icui18n /p:Configuration=Debug /p:Platform=%MSPLATFORM%
+msbuild icu.sln /t:icuuc /p:Configuration=Debug /p:Platform=%MSPLATFORM%
+cd ..\..\build
+
 ren Debug Debug%SUFFIX%
 
+:: RELEASE
+
 msbuild All.sln /t:v8 /p:Configuration=Release /p:Platform=%MSPLATFORM%
+
+cd ..\third_party\icu
+msbuild icu.sln /t:icudata /p:Configuration=Release /p:Platform=%MSPLATFORM%
+msbuild icu.sln /t:icui18n /p:Configuration=Release /p:Platform=%MSPLATFORM%
+msbuild icu.sln /t:icuuc /p:Configuration=Release /p:Platform=%MSPLATFORM%
+cd ..\..\build
+
 ren Release Release%SUFFIX%
 
 cd ..
