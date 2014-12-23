@@ -1,0 +1,6 @@
+# created by tools/tclZIC.tcl - do not edit
+
+set TZData(:Africa/Mbabane) {
+    {-9223372036854775808 7464 0 LMT}
+    {-2109290664 7200 0 SAST}
+}
