@@ -930,14 +930,6 @@ static int EndWrite (TRI_document_collection_t* document) {
 static int BeginReadTimed (TRI_document_collection_t* document,
                            uint64_t timeout,
                            uint64_t sleepPeriod) {
-  if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
-    std::string collName(document->_info._name);
-    auto it = triagens::arango::Transaction::_makeNolockHeaders->find(collName);
-    if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
-      // do not lock by command
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
   uint64_t waited = 0;
 
   while (! TRI_TRY_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document)) {
@@ -964,14 +956,6 @@ static int BeginReadTimed (TRI_document_collection_t* document,
 static int BeginWriteTimed (TRI_document_collection_t* document,
                             uint64_t timeout,
                             uint64_t sleepPeriod) {
-  if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
-    std::string collName(document->_info._name);
-    auto it = triagens::arango::Transaction::_makeNolockHeaders->find(collName);
-    if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
-      // do not lock by command
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
   uint64_t waited = 0;
 
   while (! TRI_TRY_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document)) {
