@@ -589,7 +589,7 @@ void RestAqlHandler::getInfoQuery (std::string const& operation,
 ////////////////////////////////////////////////////////////////////////////////
 
 triagens::rest::HttpHandler::status_t RestAqlHandler::execute () {
-  // std::cout << "GOT INCOMING REQUEST: " << triagens::rest::HttpRequest::translateMethod(_request->requestType()) << ", " << triagens::arango::ServerState::instance()->getId() << ": " << _request->fullUrl() << ": " << _request->body() << "\n";
+  // std::cout << "GOT INCOMING REQUEST: " << triagens::rest::HttpRequest::translateMethod(_request->requestType()) << ", " << triagens::arango::ServerState::instance()->getId() << ": " << _request->fullUrl() << ": " << _request->body() << "\n\n";
 
   std::vector<std::string> const& suffix = _request->suffix();
 

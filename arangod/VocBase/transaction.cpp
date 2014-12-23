@@ -348,6 +348,8 @@ static int LockCollection (TRI_transaction_collection_t* trxCollection,
     auto it = triagens::arango::Transaction::_makeNolockHeaders->find(collName);
     if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
       // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "LockCollection blocked: " << collName << std::endl;
       return TRI_ERROR_NO_ERROR;
     }
   }
@@ -411,6 +413,8 @@ static int UnlockCollection (TRI_transaction_collection_t* trxCollection,
     auto it = triagens::arango::Transaction::_makeNolockHeaders->find(collName);
     if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
       // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "UnlockCollection blocked: " << collName << std::endl;
       return TRI_ERROR_NO_ERROR;
     }
   }
