@@ -1,5 +1,4 @@
-/* jshint globalstrict: true, es3: true */
-/* globals require: false, exports: false */
+/*jshint browserify: true */
 'use strict';
 exports.keywords = [
   'asc',
