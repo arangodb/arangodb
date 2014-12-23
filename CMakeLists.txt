@@ -394,8 +394,8 @@ find_package(Threads)
 ################################################################################
 
 if (MSVC)
-  set(MSVC_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty-Windows/${BITS}/include CACHE path "MSVC 3rd party include path")
-  set(MSVC_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty-Windows/${BITS}/lib CACHE path "MSVC 3rd party library path")
+  set(MSVC_INCLUDE ${PROJECT_SOURCE_DIR}/WindowsLibraries/${BITS}/include CACHE path "MSVC 3rd party include path")
+  set(MSVC_LIB_PATH ${PROJECT_SOURCE_DIR}/WindowsLibraries/${BITS}/lib CACHE path "MSVC 3rd party library path")
 endif ()
 
 if (MSVC_INCLUDE)
@@ -427,23 +427,22 @@ endif ()
 ### @brief ICU
 ################################################################################
 
+set(ICU_VERSION "52.1" CACHE string "ICU version")
+
 if (MSVC)
-  set(ICU_LIBS "sicudt;sicuin;sicuio;sicule;siculx;sicutu;sicuuc" CACHE path "ICU libraries")
-  set(ICU_VERSION "52.1" CACHE string "ICU version")
+  set(ICU_LIBS "icui18n;icuuc;icudata" CACHE path "ICU libraries")
 
   add_definitions("-DU_STATIC_IMPLEMENTATION=1")
 elseif (BUILD_PACKAGE STREQUAL "raspbian")
   set(ICU_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty-ARM/icu/include CACHE path "ICU include path")
   set(ICU_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty-ARM/icu/lib CACHE path "ICU library path")
   set(ICU_LIBS icui18n;icuuc;icudata;pthread;dl;m CACHE path "ICU libraries")
-  set(ICU_VERSION "52.1" CACHE string "ICU version")
 else ()
   set(ICU_INCLUDE1 ${PROJECT_SOURCE_DIR}/3rdParty/V8/third_party/icu/source/common CACHE path "ICU include path")
   set(ICU_INCLUDE2 ${PROJECT_SOURCE_DIR}/3rdParty/V8/third_party/icu/source/i18n CACHE path "ICU include path")
   set(ICU_INCLUDE3 ${PROJECT_SOURCE_DIR}/3rdParty/V8/third_party/icu/source/io CACHE path "ICU include path")
   set(ICU_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/V8/out/$V8_TARGET CACHE path "ICU library path")
   set(ICU_LIBS icui18n;icuuc;icudata;pthread;dl;m CACHE path "ICU libraries")
-  set(ICU_VERSION "52.1" CACHE string "ICU version")
 endif ()
 
 if (ICU_INCLUDE)
@@ -571,14 +570,14 @@ add_definitions("-DTRI_READLINE_VERSION=\"${READLINE_VERSION}\"")
 ### @brief V8
 ################################################################################
 
+set(V8_VERSION "3.29.59" CACHE string "V8 version")
+
 if (MSVC OR (BUILD_PACKAGE STREQUAL "raspbian"))
-  set(V8_LIBS v8_base v8_libbase v8_libplatform v8_nosnapshot CACHE string "V8 libraries")
-  set(V8_VERSION "3.16.14" CACHE string "V8 version")
+  set(V8_LIBS v8_base;v8_nosnapshot CACHE string "V8 libraries")
 else ()
   set(V8_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/V8/include CACHE path "V8 include path")
   set(V8_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/V8/out/x64.release CACHE path "V8 library path")
-  set(V8_LIBS v8_base v8_libbase v8_libplatform v8_nosnapshot CACHE string "V8 libraries")
-  set(V8_VERSION "3.16.14" CACHE string "V8 version")
+  set(V8_LIBS v8_base;v8_libbase;v8_libplatform v8_nosnapshot CACHE string "V8 libraries")
 endif ()
 
 if (V8_INCLUDE)
@@ -838,10 +837,10 @@ if (MSVC)
   ##############################################################################
 
   if(CMAKE_CL_64)
-    install(PROGRAMS 3rdParty-Windows/64/bin/etcd-arango.exe
+    install(PROGRAMS WindowsLibraries/64/bin/etcd-arango.exe
             DESTINATION ${TRI_SBINDIR_INSTALL})
   else()
-    install(PROGRAMS 3rdParty-Windows/32/bin/etcd-arango.exe
+    install(PROGRAMS WindowsLibraries/32/bin/etcd-arango.exe
             DESTINATION ${TRI_SBINDIR_INSTALL})
   endif()
 
