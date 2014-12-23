@@ -2623,7 +2623,7 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
     }
     else if (nodeType == ExecutionNode::REPLACE) {
       std::vector<Variable const*> v = node->getVariablesUsedHere();
-      if (defaultSharding || v.size() > 1) {
+      if (defaultSharding && v.size() > 1) {
         // We only look into _inKeyVariable
         distNode = new DistributeNode(plan, plan->nextId(), 
             vocbase, collection, v[1]->id);
