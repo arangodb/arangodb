@@ -1,0 +1,28 @@
+# Index created by AutoSplit for ../../lib/Storable.pm
+#    (file acts as timestamp)
+package Storable;
+sub logcroak  ;
+sub logcarp  ;
+sub CAN_FLOCK ;
+sub show_file_magic  ;
+sub file_magic  ;
+sub read_magic  ;
+sub BIN_VERSION_NV  ;
+sub BIN_WRITE_VERSION_NV  ;
+sub store  ;
+sub nstore  ;
+sub lock_store  ;
+sub lock_nstore  ;
+sub _store  ;
+sub store_fd  ;
+sub nstore_fd  ;
+sub _store_fd  ;
+sub freeze  ;
+sub nfreeze  ;
+sub _freeze  ;
+sub retrieve  ;
+sub lock_retrieve  ;
+sub _retrieve  ;
+sub fd_retrieve  ;
+sub thaw  ;
+1;

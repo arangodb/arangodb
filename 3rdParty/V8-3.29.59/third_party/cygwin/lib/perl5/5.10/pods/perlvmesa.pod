@@ -1,0 +1,131 @@
+
+This document is written in pod format hence there are punctuation
+characters in odd places.  Do not worry, you've apparently got
+the ASCII->EBCDIC translation worked out correctly.  You can read
+more about pod in pod/perlpod.pod or the short summary in the
+INSTALL file.
+
+=head1 NAME
+
+README.vmesa - building and installing Perl for VM/ESA.
+
+=head1 SYNOPSIS
+
+This document will help you Configure, build, test and install Perl
+on VM/ESA.
+
+=head1 DESCRIPTION
+
+This is a fully ported perl for VM/ESA 2.3.0.  It may work on
+other versions, but that's the one we've tested it on.
+
+If you've downloaded the binary distribution, it needs to be
+installed below /usr/local.  Source code distributions have an
+automated "make install" step that means you do not need to extract
+the source code below /usr/local (though that is where it will be
+installed by default).  You may need to worry about the networking
+configuration files discussed in the last bullet below.
+
+=head2 Unpacking Perl Distribution on VM/ESA
+
+To extract an ASCII tar archive on VM/ESA, try this:
+
+   pax -o to=IBM-1047,from=ISO8859-1 -r < latest.tar
+
+=head2 Setup Perl and utilities on VM/ESA
+
+GNU make for VM/ESA, which may be required for the build of perl,
+is available from:
+
+  http://vm.marist.edu/~neale/vmoe.html
+
+=head2 Configure Perl on VM/ESA
+
+Once you've unpacked the distribution, run Configure (see INSTALL for
+full discussion of the Configure options), and then run make, then
+"make test" then "make install" (this last step may require UID=0
+privileges).
+
+There is a "hints" file for vmesa that specifies the correct values
+for most things.  Some things to watch out for are:
+
+=over 4
+
+=item *
+
+this port does support dynamic loading but it's not had much testing
+
+=item *
+
+Don't turn on the compiler optimization flag "-O".  There's
+a bug in the compiler (APAR PQ18812) that generates some bad code
+the optimizer is on.
+
+=item *
+
+As VM/ESA doesn't fully support the fork() API programs relying on
+this call will not work. I've replaced fork()/exec() with spawn()
+and the standalone exec() with spawn(). This has a side effect when
+opening unnamed pipes in a shell script: there is no child process
+generated under.
+
+=item *
+
+At the moment the hints file for VM/ESA basically bypasses all of the
+automatic configuration process.  This is because Configure relies on:
+1. The header files living in the Byte File System (you could put the
+there if you want); 2. The C preprocessor including the #include 
+statements in the preprocessor output (.i) file.
+
+=back
+
+=head2 Testing Anomalies of Perl on VM/ESA
+
+The "make test" step runs a Perl Verification Procedure, usually before
+installation.  As the 5.6.1 kit was being assembled
+the following "failures" were known to appear on some machines
+during "make test" (mostly due to ASCII vs. EBCDIC conflicts),
+your results may differ:
+
+[the list of failures being compiled]
+
+=head2 Usage Hints for Perl on VM/ESA
+
+When using perl on VM/ESA please keep in mind that the EBCDIC and ASCII
+character sets are different.  Perl builtin functions that may behave
+differently under EBCDIC are mentioned in the perlport.pod document.
+
+OpenEdition (UNIX System Services) does not (yet) support the #! means
+of script invocation.
+See:
+
+    head `whence perldoc`
+
+for an example of how to use the "eval exec" trick to ask the shell to
+have perl run your scripts for you.
+
+=head1 AUTHORS
+
+Neale Ferguson.
+
+=head1 SEE ALSO
+
+L<INSTALL>, L<perlport>, L<perlebcdic>.
+
+=head2 Mailing list for Perl on VM/ESA
+
+If you are interested in the VM/ESA, z/OS (formerly known as OS/390)
+and POSIX-BC (BS2000) ports of Perl then see the perl-mvs mailing list.
+To subscribe, send an empty message to perl-mvs-subscribe@perl.org.
+
+See also:
+
+    http://lists.perl.org/showlist.cgi?name=perl-mvs
+
+There are web archives of the mailing list at:
+
+    http://www.xray.mpe.mpg.de/mailing-lists/perl-mvs/
+    http://archive.develooper.com/perl-mvs@perl.org/
+
+=cut
+

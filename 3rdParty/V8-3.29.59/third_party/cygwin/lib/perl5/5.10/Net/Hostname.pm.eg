@@ -1,0 +1,14 @@
+#
+
+package Sys::Hostname;
+
+use Net::Domain qw(hostname);
+use Carp;
+
+require Exporter;
+@ISA = qw(Exporter);
+@EXPORT = qw(hostname);
+
+carp "deprecated package 'Sys::Hostname', use Net::Domain" if $^W;
+
+1;
