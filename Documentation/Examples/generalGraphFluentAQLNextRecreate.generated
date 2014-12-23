@@ -1,0 +1,23 @@
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var graph = examples.loadGraph("social");
+arangosh> var query = graph._vertices();
+arangosh> query.next();
+{ 
+  "_id" : "female/diana", 
+  "_key" : "diana", 
+  "_rev" : "720837448", 
+  "name" : "Diana" 
+}
+arangosh> query.edges();
+[ GraphAQL social
+.vertices()
+.edges() ] 
+arangosh> query.next();
+{ 
+  "_id" : "relation/charlyAndDiana", 
+  "_key" : "charlyAndDiana", 
+  "_rev" : "721623880", 
+  "_from" : "male/charly", 
+  "_to" : "female/diana", 
+  "type" : "married" 
+}

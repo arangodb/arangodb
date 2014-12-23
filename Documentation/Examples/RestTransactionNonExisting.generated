@@ -1,0 +1,17 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/transaction
+{ 
+  "collections" : { 
+    "read" : "products" 
+  }, 
+  "action" : "function () { return true; }" 
+}
+
+HTTP/1.1 404 Not Found
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "code" : 404, 
+  "errorNum" : 1203, 
+  "errorMessage" : "Error: collection not found\n  at post_api_transaction (js/actions/api-transaction.js:268:16)\n  at Function.actions.defineHttp.callback (js/actions/api-transaction.js:288:11)\n" 
+}

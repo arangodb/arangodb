@@ -1,0 +1,11 @@
+shell> curl -X DELETE --data-binary @- --dump - http://localhost:8529/_api/gharial/social/vertex/male
+
+HTTP/1.1 400 Bad Request
+content-type: application/json
+
+{ 
+  "error" : true, 
+  "code" : 400, 
+  "errorNum" : 1928, 
+  "errorMessage" : "not in orphan collection" 
+}

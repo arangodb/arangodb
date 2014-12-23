@@ -1,0 +1,14 @@
+arangosh> c = db._create("users", { waitForSync : true, journalSize : 1024 * 1204 });
+[ArangoCollection 732371784, "users" (type document, status loaded)]
+arangosh> c.properties();
+{ 
+  "doCompact" : true, 
+  "journalSize" : 1232896, 
+  "isSystem" : false, 
+  "isVolatile" : false, 
+  "waitForSync" : true, 
+  "keyOptions" : { 
+    "type" : "traditional", 
+    "allowUserKeys" : true 
+  } 
+}

@@ -1,0 +1,12 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/traversal
+{"startVertex":"persons/alice","graphName":"knows_graph","direction":"any","uniqueness":{"vertices":"none","edges":"none"},"maxIterations":5}
+
+HTTP/1.1 500 Internal Error
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "code" : 500, 
+  "errorNum" : 1909, 
+  "errorMessage" : "too many iterations" 
+}

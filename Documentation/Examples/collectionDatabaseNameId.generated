@@ -1,0 +1,2 @@
+arangosh> db._collection(26859402);
+null

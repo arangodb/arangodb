@@ -1,0 +1,8 @@
+arangosh> v1 = example.addVertex("1");
+ReferenceError: example is not defined
+arangosh> v2 = g.addVertex("2");
+ReferenceError: g is not defined
+arangosh> e = g.addEdge(v1, v2, "1->2", "knows");
+ReferenceError: g is not defined
+arangosh> e.getPeerVertex(v1);
+ReferenceError: e is not defined

@@ -1,0 +1,39 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/traversal
+{ "startVertex": "persons/alice", "graphName" : "knows_graph", "direction" : "outbound", "init" : "result.visited = 0; result.myVertices = [ ];", "visitor" : "result.visited++; result.myVertices.push(vertex);"}
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : { 
+    "visited" : 4, 
+    "myVertices" : [ 
+      { 
+        "_id" : "persons/alice", 
+        "_key" : "alice", 
+        "_rev" : "1548819272", 
+        "name" : "Alice" 
+      }, 
+      { 
+        "_id" : "persons/bob", 
+        "_key" : "bob", 
+        "_rev" : "1549015880", 
+        "name" : "Bob" 
+      }, 
+      { 
+        "_id" : "persons/charlie", 
+        "_key" : "charlie", 
+        "_rev" : "1549278024", 
+        "name" : "Charlie" 
+      }, 
+      { 
+        "_id" : "persons/dave", 
+        "_key" : "dave", 
+        "_rev" : "1549474632", 
+        "name" : "Dave" 
+      } 
+    ] 
+  }, 
+  "error" : false, 
+  "code" : 200 
+}

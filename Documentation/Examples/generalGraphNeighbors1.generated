@@ -1,0 +1,83 @@
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
+........> +"'routeplanner', {}, {edgeExamples : [{distance: 600}, {distance: 700}]}) RETURN e"
+........> ).toArray();
+[ 
+  { 
+    "vertex" : { 
+      "_id" : "frenchCity/Lyon", 
+      "_key" : "Lyon", 
+      "_rev" : "558701384", 
+      "isCapital" : false, 
+      "population" : 80000 
+    }, 
+    "path" : { 
+      "edges" : [ 
+        { 
+          "_id" : "internationalHighway/561060680", 
+          "_key" : "561060680", 
+          "_rev" : "561060680", 
+          "_from" : "germanCity/Cologne", 
+          "_to" : "frenchCity/Lyon", 
+          "distance" : 700 
+        } 
+      ], 
+      "vertices" : [ 
+        { 
+          "_id" : "germanCity/Cologne", 
+          "_key" : "Cologne", 
+          "_rev" : "558111560", 
+          "isCapital" : false, 
+          "population" : 1000000 
+        }, 
+        { 
+          "_id" : "frenchCity/Lyon", 
+          "_key" : "Lyon", 
+          "_rev" : "558701384", 
+          "isCapital" : false, 
+          "population" : 80000 
+        } 
+      ] 
+    }, 
+    "startVertex" : "germanCity/Cologne" 
+  }, 
+  { 
+    "vertex" : { 
+      "_id" : "germanCity/Cologne", 
+      "_key" : "Cologne", 
+      "_rev" : "558111560", 
+      "isCapital" : false, 
+      "population" : 1000000 
+    }, 
+    "path" : { 
+      "edges" : [ 
+        { 
+          "_id" : "internationalHighway/561060680", 
+          "_key" : "561060680", 
+          "_rev" : "561060680", 
+          "_from" : "germanCity/Cologne", 
+          "_to" : "frenchCity/Lyon", 
+          "distance" : 700 
+        } 
+      ], 
+      "vertices" : [ 
+        { 
+          "_id" : "frenchCity/Lyon", 
+          "_key" : "Lyon", 
+          "_rev" : "558701384", 
+          "isCapital" : false, 
+          "population" : 80000 
+        }, 
+        { 
+          "_id" : "germanCity/Cologne", 
+          "_key" : "Cologne", 
+          "_rev" : "558111560", 
+          "isCapital" : false, 
+          "population" : 1000000 
+        } 
+      ] 
+    }, 
+    "startVertex" : "frenchCity/Lyon" 
+  } 
+]

@@ -1,0 +1,16 @@
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/collection/products/checksum?withRevisions=false&withData=true
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "id" : "1196038984", 
+  "name" : "products", 
+  "isSystem" : false, 
+  "status" : 3, 
+  "type" : 2, 
+  "checksum" : 2991630879, 
+  "revision" : "1196366664", 
+  "error" : false, 
+  "code" : 200 
+}

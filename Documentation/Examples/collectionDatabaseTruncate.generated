@@ -1,0 +1,14 @@
+arangosh> col = db.example;
+[ArangoCollection 110828360, "example" (type document, status loaded)]
+arangosh> col.save({ "Hello" : "World" });
+{ 
+  "error" : false, 
+  "_id" : "example/111156040", 
+  "_rev" : "111156040", 
+  "_key" : "111156040" 
+}
+arangosh> col.count();
+1
+arangosh> db._truncate(col);
+arangosh> col.count();
+0

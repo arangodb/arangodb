@@ -1,0 +1,27 @@
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/edges/edges?vertex=vertices/1&direction=in
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "edges" : [ 
+    { 
+      "_id" : "edges/6", 
+      "_key" : "6", 
+      "_rev" : "1359485768", 
+      "_from" : "vertices/2", 
+      "_to" : "vertices/1", 
+      "$label" : "v2 -> v1" 
+    }, 
+    { 
+      "_id" : "edges/7", 
+      "_key" : "7", 
+      "_rev" : "1360010056", 
+      "_from" : "vertices/4", 
+      "_to" : "vertices/1", 
+      "$label" : "v4 -> v1" 
+    } 
+  ], 
+  "error" : false, 
+  "code" : 200 
+}

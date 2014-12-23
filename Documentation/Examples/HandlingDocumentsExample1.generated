@@ -1,0 +1,17 @@
+arangosh>   db.demo.document("demo/schlonz")
+{ 
+  "firstName" : "Hugo", 
+  "lastName" : "Schlonz", 
+  "address" : { 
+    "city" : "Hier", 
+    "street" : "Strasse 1" 
+  }, 
+  "hobbies" : [ 
+    "swimming", 
+    "biking", 
+    "programming" 
+  ], 
+  "_id" : "demo/schlonz", 
+  "_rev" : "25083335", 
+  "_key" : "schlonz" 
+}

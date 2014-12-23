@@ -1,0 +1,18 @@
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/replication/logger-state
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "state" : { 
+    "running" : true, 
+    "lastLogTick" : "1718164296", 
+    "totalEvents" : 9446, 
+    "time" : "2014-12-23T10:09:42Z" 
+  }, 
+  "server" : { 
+    "version" : "2.3.4", 
+    "serverId" : "90049345261679" 
+  }, 
+  "clients" : [ ] 
+}

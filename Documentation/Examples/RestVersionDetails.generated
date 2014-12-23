@@ -1,0 +1,23 @@
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/version?details=true
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "server" : "arango", 
+  "version" : "2.3.4", 
+  "details" : { 
+    "architecture" : "64bit", 
+    "build-date" : "2014-12-23 10:54:43", 
+    "configure" : "'./configure' '--enable-all-in-one-v8' '--enable-all-in-one-libev' '--enable-all-in-one-icu' '--enable-maintainer-mode' '--disable-mruby'", 
+    "icu-version" : "52.1", 
+    "libev-version" : "4.11", 
+    "maintainer-mode" : "true", 
+    "openssl-version" : "OpenSSL 0.9.8za 5 Jun 2014", 
+    "repository-version" : "heads/2.3-0-gcfd41ca4e95e367c2cfbe0e20f000d4b190dfbc3-dirty", 
+    "server-version" : "2.3.4", 
+    "sizeof int" : "4", 
+    "sizeof void*" : "8", 
+    "v8-version" : "3.16.14" 
+  } 
+}

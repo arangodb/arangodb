@@ -1,0 +1,9 @@
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/version
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "server" : "arango", 
+  "version" : "2.3.4" 
+}

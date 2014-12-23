@@ -1,0 +1,120 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/explain
+{ "query" : "FOR i IN [ 1, 2, 3 ] FILTER 1 == 2 RETURN i" }
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "plan" : { 
+    "nodes" : [ 
+      { 
+        "type" : "SingletonNode", 
+        "dependencies" : [ ], 
+        "id" : 1, 
+        "estimatedCost" : 1, 
+        "estimatedNrItems" : 1 
+      }, 
+      { 
+        "type" : "CalculationNode", 
+        "dependencies" : [ 
+          1 
+        ], 
+        "id" : 2, 
+        "estimatedCost" : 2, 
+        "estimatedNrItems" : 1, 
+        "expression" : { 
+          "type" : "list", 
+          "subNodes" : [ 
+            { 
+              "type" : "value", 
+              "value" : 1 
+            }, 
+            { 
+              "type" : "value", 
+              "value" : 2 
+            }, 
+            { 
+              "type" : "value", 
+              "value" : 3 
+            } 
+          ] 
+        }, 
+        "outVariable" : { 
+          "id" : 1, 
+          "name" : "1" 
+        }, 
+        "canThrow" : false 
+      }, 
+      { 
+        "type" : "NoResultsNode", 
+        "dependencies" : [ 
+          2 
+        ], 
+        "id" : 7, 
+        "estimatedCost" : 0.5, 
+        "estimatedNrItems" : 0 
+      }, 
+      { 
+        "type" : "EnumerateListNode", 
+        "dependencies" : [ 
+          7 
+        ], 
+        "id" : 3, 
+        "estimatedCost" : 0.5, 
+        "estimatedNrItems" : 0, 
+        "inVariable" : { 
+          "id" : 1, 
+          "name" : "1" 
+        }, 
+        "outVariable" : { 
+          "id" : 0, 
+          "name" : "i" 
+        } 
+      }, 
+      { 
+        "type" : "ReturnNode", 
+        "dependencies" : [ 
+          3 
+        ], 
+        "id" : 6, 
+        "estimatedCost" : 0.5, 
+        "estimatedNrItems" : 0, 
+        "inVariable" : { 
+          "id" : 0, 
+          "name" : "i" 
+        } 
+      } 
+    ], 
+    "rules" : [ 
+      "move-calculations-up", 
+      "move-filters-up", 
+      "remove-unnecessary-filters", 
+      "remove-unnecessary-calculations" 
+    ], 
+    "collections" : [ ], 
+    "variables" : [ 
+      { 
+        "id" : 2, 
+        "name" : "2" 
+      }, 
+      { 
+        "id" : 1, 
+        "name" : "1" 
+      }, 
+      { 
+        "id" : 0, 
+        "name" : "i" 
+      } 
+    ], 
+    "estimatedCost" : 0.5, 
+    "estimatedNrItems" : 0 
+  }, 
+  "warnings" : [ ], 
+  "stats" : { 
+    "rulesExecuted" : 17, 
+    "rulesSkipped" : 0, 
+    "plansCreated" : 1 
+  }, 
+  "error" : false, 
+  "code" : 200 
+}

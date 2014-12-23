@@ -1,0 +1,33 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/index?collection=products
+{ "type" : "bitarray", "unique" : false, "fields" : [ "x", [0,1,[]], "y", ["a","b",[]] ] }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "id" : "products/1084030244", 
+  "type" : "bitarray", 
+  "unique" : false, 
+  "fields" : [ 
+    [ 
+      "x", 
+      [ 
+        0, 
+        1, 
+        [ ] 
+      ] 
+    ], 
+    [ 
+      "y", 
+      [ 
+        "a", 
+        "b", 
+        [ ] 
+      ] 
+    ] 
+  ], 
+  "undefined" : false, 
+  "isNewlyCreated" : true, 
+  "error" : false, 
+  "code" : 201 
+}

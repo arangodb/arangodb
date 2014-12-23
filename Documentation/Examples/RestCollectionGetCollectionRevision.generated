@@ -1,0 +1,15 @@
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/collection/products/revision
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "id" : "1195187016", 
+  "name" : "products", 
+  "isSystem" : false, 
+  "status" : 3, 
+  "type" : 2, 
+  "revision" : "0", 
+  "error" : false, 
+  "code" : 200 
+}

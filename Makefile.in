@@ -694,8 +694,7 @@ lib_libarango_mruby_a_OBJECTS = $(am_lib_libarango_mruby_a_OBJECTS)
 lib_libarango_v8_a_AR = $(AR) $(ARFLAGS)
 lib_libarango_v8_a_LIBADD =
 am_lib_libarango_v8_a_OBJECTS = lib/V8/JSLoader.$(OBJEXT) \
-	lib/V8/V8LineEditor.$(OBJEXT) \
-	lib/V8/V8StringConverter.$(OBJEXT) lib/V8/v8-buffer.$(OBJEXT) \
+	lib/V8/V8LineEditor.$(OBJEXT) lib/V8/v8-buffer.$(OBJEXT) \
 	lib/V8/v8-conv.$(OBJEXT) lib/V8/v8-globals.$(OBJEXT) \
 	lib/V8/v8-json.$(OBJEXT) lib/V8/v8-shell.$(OBJEXT) \
 	lib/V8/v8-utils.$(OBJEXT) \
@@ -1438,7 +1437,6 @@ lib_libarango_fe_a_SOURCES = \
 lib_libarango_v8_a_SOURCES = \
 	lib/V8/JSLoader.cpp \
 	lib/V8/V8LineEditor.cpp \
-	lib/V8/V8StringConverter.cpp \
 	lib/V8/v8-buffer.cpp \
 	lib/V8/v8-conv.cpp \
 	lib/V8/v8-globals.cpp \
@@ -3112,8 +3110,6 @@ lib/V8/JSLoader.$(OBJEXT): lib/V8/$(am__dirstamp) \
 	lib/V8/$(DEPDIR)/$(am__dirstamp)
 lib/V8/V8LineEditor.$(OBJEXT): lib/V8/$(am__dirstamp) \
 	lib/V8/$(DEPDIR)/$(am__dirstamp)
-lib/V8/V8StringConverter.$(OBJEXT): lib/V8/$(am__dirstamp) \
-	lib/V8/$(DEPDIR)/$(am__dirstamp)
 lib/V8/v8-buffer.$(OBJEXT): lib/V8/$(am__dirstamp) \
 	lib/V8/$(DEPDIR)/$(am__dirstamp)
 lib/V8/v8-conv.$(OBJEXT): lib/V8/$(am__dirstamp) \
@@ -3842,7 +3838,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Utilities/$(DEPDIR)/lib_libarango_a-ShellImplementation.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/V8/$(DEPDIR)/JSLoader.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/V8/$(DEPDIR)/V8LineEditor.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/V8/$(DEPDIR)/V8StringConverter.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/V8/$(DEPDIR)/v8-buffer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/V8/$(DEPDIR)/v8-conv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/V8/$(DEPDIR)/v8-globals.Po@am__quote@

@@ -1,0 +1,65 @@
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/collection/products/figures
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+location: /_db/_system/_api/collection/products/figures
+
+{ 
+  "id" : "1194203976", 
+  "name" : "products", 
+  "isSystem" : false, 
+  "doCompact" : true, 
+  "isVolatile" : false, 
+  "journalSize" : 1048576, 
+  "keyOptions" : { 
+    "type" : "traditional", 
+    "allowUserKeys" : true 
+  }, 
+  "waitForSync" : false, 
+  "count" : 1, 
+  "figures" : { 
+    "alive" : { 
+      "count" : 1, 
+      "size" : 88 
+    }, 
+    "dead" : { 
+      "count" : 0, 
+      "size" : 0, 
+      "deletion" : 0 
+    }, 
+    "datafiles" : { 
+      "count" : 0, 
+      "fileSize" : 0 
+    }, 
+    "journals" : { 
+      "count" : 1, 
+      "fileSize" : 1048576 
+    }, 
+    "compactors" : { 
+      "count" : 0, 
+      "fileSize" : 0 
+    }, 
+    "shapefiles" : { 
+      "count" : 0, 
+      "fileSize" : 0 
+    }, 
+    "shapes" : { 
+      "count" : 1, 
+      "size" : 104 
+    }, 
+    "attributes" : { 
+      "count" : 1, 
+      "size" : 48 
+    }, 
+    "indexes" : { 
+      "count" : 1, 
+      "size" : 2008 
+    }, 
+    "lastTick" : "1194597192", 
+    "uncollectedLogfileEntries" : 0 
+  }, 
+  "status" : 3, 
+  "type" : 2, 
+  "error" : false, 
+  "code" : 200 
+}

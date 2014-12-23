@@ -1,0 +1,15 @@
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/database/current
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : { 
+    "name" : "_system", 
+    "id" : "72520", 
+    "path" : "/tmp/vocdir.24503/databases/database-72520", 
+    "isSystem" : true 
+  }, 
+  "error" : false, 
+  "code" : 200 
+}

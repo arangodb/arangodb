@@ -1,0 +1,3 @@
+arangosh> var graph = require("org/arangodb/general-graph");
+arangosh> graph._drop("social");
+true

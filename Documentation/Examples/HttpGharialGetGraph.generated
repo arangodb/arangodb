@@ -1,0 +1,27 @@
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/gharial/myGraph
+
+HTTP/1.1 200 OK
+content-type: application/json
+etag: 1600002888
+
+{ 
+  "error" : false, 
+  "code" : 200, 
+  "graph" : { 
+    "name" : "myGraph", 
+    "edgeDefinitions" : [ 
+      { 
+        "collection" : "edges", 
+        "from" : [ 
+          "startVertices" 
+        ], 
+        "to" : [ 
+          "endVertices" 
+        ] 
+      } 
+    ], 
+    "orphanCollections" : [ ], 
+    "_id" : "_graphs/myGraph", 
+    "_rev" : "1600002888" 
+  } 
+}

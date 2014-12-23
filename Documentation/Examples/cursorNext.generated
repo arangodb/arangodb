@@ -1,0 +1,7 @@
+arangosh> db.five.all().next();
+{ 
+  "_id" : "five/314121032", 
+  "_key" : "314121032", 
+  "_rev" : "314121032", 
+  "name" : "four" 
+}

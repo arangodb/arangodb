@@ -1,0 +1,15 @@
+unix> curl -X POST --header 'x-arango-async: store' --data-binary @- --dump - http://localhost:8529/_api/collection
+{"name":" this name is invalid "}
+
+HTTP/1.1 202 Accepted
+content-type: text/plain; charset=utf-8
+x-arango-async-id: 280301834
+
+unix> curl -X PUT --dump - http://localhost:8529/_api/job/280301834
+
+HTTP/1.1 400 Bad Request
+content-type: application/json; charset=utf-8
+x-arango-async-id: 280301834
+
+{"error":true,"code":400,"errorNum":1208,"errorMessage":"cannot create collection: illegal name"}
+

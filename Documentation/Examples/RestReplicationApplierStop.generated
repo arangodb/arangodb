@@ -1,0 +1,33 @@
+shell> curl -X PUT --dump - http://localhost:8529/_api/replication/applier-stop
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "state" : { 
+    "running" : false, 
+    "lastAppliedContinuousTick" : null, 
+    "lastProcessedContinuousTick" : null, 
+    "lastAvailableContinuousTick" : null, 
+    "progress" : { 
+      "time" : "2014-12-23T10:09:47Z", 
+      "message" : "fetching master state information", 
+      "failedConnects" : 1 
+    }, 
+    "totalRequests" : 2, 
+    "totalFailedConnects" : 2, 
+    "totalEvents" : 0, 
+    "lastError" : { 
+      "time" : "2014-12-23T10:09:47Z", 
+      "errorMessage" : "could not connect to master at tcp://127.0.0.1:8529: Could not connect", 
+      "errorNum" : 1412 
+    }, 
+    "time" : "2014-12-23T10:09:47Z" 
+  }, 
+  "server" : { 
+    "version" : "2.3.4", 
+    "serverId" : "90049345261679" 
+  }, 
+  "endpoint" : "tcp://127.0.0.1:8529", 
+  "database" : "_system" 
+}

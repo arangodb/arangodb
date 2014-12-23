@@ -1,0 +1,22 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/endpoint
+{"endpoint":"tcp://127.0.0.1:8533","databases":[]}
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : true, 
+  "error" : false, 
+  "code" : 200 
+}
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/endpoint
+{"endpoint":"tcp://127.0.0.1:8533","databases":[],"database":["testdb1","testdb2","testdb3"]}
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : true, 
+  "error" : false, 
+  "code" : 200 
+}

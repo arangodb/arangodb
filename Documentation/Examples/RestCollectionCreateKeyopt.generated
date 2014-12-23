@@ -1,0 +1,18 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/collection
+{"name":"testCollectionUsers","keyOptions":{"type":"autoincrement","increment":5,"allowUserKeys":true}}
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+location: /_db/_system/_api/collection/testCollectionUsers
+
+{ 
+  "id" : "1173494600", 
+  "name" : "testCollectionUsers", 
+  "waitForSync" : false, 
+  "isVolatile" : false, 
+  "isSystem" : false, 
+  "status" : 3, 
+  "type" : 2, 
+  "error" : false, 
+  "code" : 200 
+}

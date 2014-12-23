@@ -1,0 +1,14 @@
+unix> curl --header 'x-arango-async: store' --dump - http://localhost:8529/_api/version
+
+HTTP/1.1 202 Accepted
+content-type: text/plain; charset=utf-8
+x-arango-async-id: 280236298
+
+unix> curl -X PUT --dump - http://localhost:8529/_api/job/280236298
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+x-arango-async-id: 280236298
+
+{"server":"arango","version":"2.2.0-devel"}
+

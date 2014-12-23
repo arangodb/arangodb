@@ -1,0 +1,15 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=links&type=list&details=true
+[{"name":"some name"}]
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : false, 
+  "created" : 0, 
+  "errors" : 1, 
+  "empty" : 0, 
+  "details" : [ 
+    "at position 1: missing '_from' or '_to' attribute" 
+  ] 
+}
