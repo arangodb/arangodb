@@ -9,6 +9,7 @@
     el: '#content',
     id: '#customsDiv',
     tabArray: [],
+    cachedQuery: "",
 
     initialize: function () {
       this.getAQL();
@@ -140,6 +141,7 @@
 
     clearInput: function () {
       var inputEditor = ace.edit("aqlEditor");
+      this.setCachedQuery(inputEditor.getValue());
       inputEditor.setValue('');
     },
 
@@ -178,6 +180,7 @@
     table: templateEngine.createTemplate("arangoTable.ejs"),
 
     render: function () {
+      var self = this;
       this.$el.html(this.template.render({}));
       this.$(this.id).html(this.table.render({content: this.tableDescription}));
       // fill select box with # of results
@@ -210,6 +213,12 @@
         multiSelectAction: "forEach"
       });
 
+      //get cached query if available
+      var query = this.getCachedQuery();
+      if (query !== null && query !== undefined && query !== "") {
+        inputEditor.setValue(query);
+      }
+
       inputEditor.getSession().selection.on('changeCursor', function (e) {
         var inputEditor = ace.edit("aqlEditor");
         var session = inputEditor.getSession();
@@ -228,6 +237,8 @@
             .attr("data-original-title", "Comment");
           }
         }
+        //cache query in localstorage
+        self.setCachedQuery(inputEditor.getValue());
       });
       $('#queryOutput').resizable({
         handles: "s",
@@ -264,6 +275,17 @@
 
       this.switchTab('query-switch');
       return this;
+    },
+
+    getCachedQuery: function() {
+      var query =  JSON.parse(localStorage.getItem("cachedQuery"));
+      return query;
+    },
+
+    setCachedQuery: function(query) {
+      if(typeof(Storage) !== "undefined") {
+        localStorage.setItem("cachedQuery", JSON.stringify(query));
+      }
     },
 
     initQueryImport: function () {

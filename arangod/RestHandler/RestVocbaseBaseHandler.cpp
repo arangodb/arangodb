@@ -105,7 +105,8 @@ const string RestVocbaseBaseHandler::QUEUE_NAME = "STANDARD";
 RestVocbaseBaseHandler::RestVocbaseBaseHandler (HttpRequest* request)
   : RestBaseHandler(request),
     _context(static_cast<VocbaseContext*>(request->getRequestContext())),
-    _vocbase(_context->getVocbase()) {
+    _vocbase(_context->getVocbase()),
+    _nolockHeaderSet(nullptr) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -654,6 +655,32 @@ int RestVocbaseBaseHandler::parseDocumentId (CollectionNameResolver const* resol
   key = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, pos + 1, end - pos - 1);
 
   return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prepareExecute, to react to X-Arango-Nolock header
+////////////////////////////////////////////////////////////////////////////////
+
+void RestVocbaseBaseHandler::prepareExecute () {
+  bool found;
+  char const* shardId = _request->header("x-arango-nolock", found);
+  if (found) {
+    _nolockHeaderSet = new std::unordered_set<std::string>();
+    _nolockHeaderSet->insert(std::string(shardId));
+    triagens::arango::Transaction::_makeNolockHeaders = _nolockHeaderSet;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finalizeExecute, to react to X-Arango-Nolock header
+////////////////////////////////////////////////////////////////////////////////
+
+void RestVocbaseBaseHandler::finalizeExecute () {
+  if (_nolockHeaderSet != nullptr) {
+    triagens::arango::Transaction::_makeNolockHeaders = nullptr;
+    delete _nolockHeaderSet;
+    _nolockHeaderSet = nullptr;
+  }
 }
 
 // -----------------------------------------------------------------------------
