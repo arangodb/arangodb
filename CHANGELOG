@@ -1,6 +1,10 @@
 v2.4.0 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #1065: Aardvark: added creation of documents and edges with _key property
+
+* fixed issue #1198: Aardvark: current aql editor query is now cached
+
 * Upgraded V8 version from 3.16.14 to 3.29.59
 
 * Added Foxx generator for building Hypermedia APIs
