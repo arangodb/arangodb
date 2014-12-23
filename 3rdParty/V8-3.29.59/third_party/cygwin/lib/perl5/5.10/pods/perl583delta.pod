@@ -1,0 +1,210 @@
+=head1 NAME
+
+perl583delta - what is new for perl v5.8.3
+
+=head1 DESCRIPTION
+
+This document describes differences between the 5.8.2 release and
+the 5.8.3 release.
+
+If you are upgrading from an earlier release such as 5.6.1, first read
+the L<perl58delta>, which describes differences between 5.6.0 and
+5.8.0, and the L<perl581delta> and L<perl582delta>, which describe differences
+between 5.8.0, 5.8.1 and 5.8.2
+
+=head1 Incompatible Changes
+
+There are no changes incompatible with 5.8.2.
+
+=head1 Core Enhancements
+
+A C<SCALAR> method is now available for tied hashes. This is called when
+a tied hash is used in scalar context, such as
+
+    if (%tied_hash) {
+	...
+    }
+
+
+The old behaviour was that %tied_hash would return whatever would have been
+returned for that hash before the hash was tied (so usually 0). The new
+behaviour in the absence of a SCALAR method is to return TRUE if in the
+middle of an C<each> iteration, and otherwise call FIRSTKEY to check if the
+hash is empty (making sure that a subsequent C<each> will also begin by
+calling FIRSTKEY). Please see L<perltie/SCALAR> for the full details and
+caveats.
+
+=head1 Modules and Pragmata
+
+=over 4
+
+=item CGI
+
+=item Cwd
+
+=item Digest
+
+=item Digest::MD5
+
+=item Encode
+
+=item File::Spec
+
+=item FindBin
+
+A function C<again> is provided to resolve problems where modules in different
+directories wish to use FindBin.
+
+=item List::Util
+
+You can now weaken references to read only values.
+
+=item Math::BigInt
+
+=item PodParser
+
+=item Pod::Perldoc
+
+=item POSIX
+
+=item Unicode::Collate
+
+=item Unicode::Normalize
+
+=item Test::Harness
+
+=item threads::shared
+
+C<cond_wait> has a new two argument form. C<cond_timedwait> has been added.
+
+=back
+
+=head1 Utility Changes
+
+C<find2perl> now assumes C<-print> as a default action. Previously, it
+needed to be specified explicitly.
+
+A new utility, C<prove>, makes it easy to run an individual regression test
+at the command line. C<prove> is part of Test::Harness, which users of earlier
+Perl versions can install from CPAN.
+
+=head1 New Documentation
+
+The documentation has been revised in places to produce more standard manpages.
+
+The documentation for the special code blocks (BEGIN, CHECK, INIT, END)
+has been improved.
+
+=head1 Installation and Configuration Improvements
+
+Perl now builds on OpenVMS I64
+
+=head1 Selected Bug Fixes
+
+Using substr() on a UTF8 string could cause subsequent accesses on that
+string to return garbage. This was due to incorrect UTF8 offsets being
+cached, and is now fixed.
+
+join() could return garbage when the same join() statement was used to
+process 8 bit data having earlier processed UTF8 data, due to the flags
+on that statement's temporary workspace not being reset correctly. This
+is now fixed.
+
+C<$a .. $b> will now work as expected when either $a or $b is C<undef>
+
+Using Unicode keys with tied hashes should now work correctly.
+
+Reading $^E now preserves $!. Previously, the C code implementing $^E
+did not preserve C<errno>, so reading $^E could cause C<errno> and therefore
+C<$!> to change unexpectedly.
+
+Reentrant functions will (once more) work with C++. 5.8.2 introduced a bugfix
+which accidentally broke the compilation of Perl extensions written in C++
+
+=head1 New or Changed Diagnostics
+
+The fatal error "DESTROY created new reference to dead object" is now
+documented in L<perldiag>.
+
+=head1 Changed Internals
+
+The hash code has been refactored to reduce source duplication. The
+external interface is unchanged, and aside from the bug fixes described
+above, there should be no change in behaviour.
+
+C<hv_clear_placeholders> is now part of the perl API
+
+Some C macros have been tidied. In particular macros which create temporary
+local variables now name these variables more defensively, which should
+avoid bugs where names clash.
+
+<signal.h> is now always included.
+
+=head1 Configuration and Building
+
+C<Configure> now invokes callbacks regardless of the value of the variable
+they are called for. Previously callbacks were only invoked in the
+C<case $variable $define)> branch. This change should only affect platform
+maintainers writing configuration hints files.
+
+=head1 Platform Specific Problems
+
+The regression test ext/threads/shared/t/wait.t fails on early RedHat 9
+and HP-UX 10.20 due to bugs in their threading implementations.
+RedHat users should see https://rhn.redhat.com/errata/RHBA-2003-136.html
+and consider upgrading their glibc.
+
+=head1 Known Problems
+
+Detached threads aren't supported on Windows yet, as they may lead to 
+memory access violation problems.
+
+There is a known race condition opening scripts in C<suidperl>. C<suidperl>
+is neither built nor installed by default, and has been deprecated since
+perl 5.8.0. You are advised to replace use of suidperl with tools such
+as sudo ( http://www.courtesan.com/sudo/ )
+
+We have a backlog of unresolved bugs. Dealing with bugs and bug reports
+is unglamorous work; not something ideally suited to volunteer labour,
+but that is all that we have.
+
+The perl5 development team are implementing changes to help address this
+problem, which should go live in early 2004.
+
+=head1 Future Directions
+
+Code freeze for the next maintenance release (5.8.4) is on March 31st 2004,
+with release expected by mid April. Similarly 5.8.5's freeze will be at
+the end of June, with release by mid July.
+
+=head1 Obituary
+
+Iain 'Spoon' Truskett, Perl hacker, author of L<perlreref> and
+contributor to CPAN, died suddenly on 29th December 2003, aged 24.
+He will be missed.
+
+=head1 Reporting Bugs
+
+If you find what you think is a bug, you might check the articles
+recently posted to the comp.lang.perl.misc newsgroup and the perl
+bug database at http://bugs.perl.org.  There may also be
+information at http://www.perl.org, the Perl Home Page.
+
+If you believe you have an unreported bug, please run the B<perlbug>
+program included with your release.  Be sure to trim your bug down
+to a tiny but sufficient test case.  Your bug report, along with the
+output of C<perl -V>, will be sent off to perlbug@perl.org to be
+analysed by the Perl porting team.  You can browse and search
+the Perl 5 bugs at http://bugs.perl.org/
+
+=head1 SEE ALSO
+
+The F<Changes> file for exhaustive details on what changed.
+
+The F<INSTALL> file for how to build Perl.
+
+The F<README> file for general stuff.
+
+The F<Artistic> and F<Copying> files for copyright information.
+
+=cut

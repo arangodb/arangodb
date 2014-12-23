@@ -20,7 +20,7 @@ BUILT_SOURCES += @V8_LIBS@
 	@echo
 
 if ENABLE_ARM
-	cd @top_srcdir@/3rdParty/V8 \
+	cd @top_srcdir@/3rdParty/V8-3.29.59 \
 	  && $(MAKE) \
 		CFLAGS="-O2 -g -fsigned-char -march=armv6" \
 		CXXFLAGS="-O2 -g -fsigned-char -march=armv6" \
@@ -34,7 +34,7 @@ if ENABLE_ARM
 		library=static strictaliasing=off snapshot=off werror=no hardfp=on @V8_TARGET@
 else
 if ENABLE_DARWIN
-	cd @top_srcdir@/3rdParty/V8 \
+	cd @top_srcdir@/3rdParty/V8-3.29.59 \
 	  && $(MAKE) \
 		LDFLAGS="-lc++" \
                 CFLAGS="-O2 -g" \
@@ -47,7 +47,7 @@ if ENABLE_DARWIN
 		GYPFLAGS="-Dstandalone_static_library=1" \
 		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
 else
-	cd @top_srcdir@/3rdParty/V8 \
+	cd @top_srcdir@/3rdParty/V8-3.29.59 \
 	  && $(MAKE) \
 		CFLAGS="-O2 -g" \
 		CXXFLAGS="-O2 -g" \
@@ -77,9 +77,9 @@ CLEANUP_3RD += clean-v8
 
 clean-v8:
 	rm -f @srcdir@/.v8-build-@TRI_BITS@
-	cd @top_srcdir@/3rdParty/V8 && ( $(MAKE) clean || true )
-	find @top_srcdir@/3rdParty/V8 -name "*.pyc" -exec rm "{}" ";"
-	rm -rf @top_srcdir@/3rdParty/V8/out
+	cd @top_srcdir@/3rdParty/V8-3.29.59 && ( $(MAKE) clean || true )
+	find @top_srcdir@/3rdParty/V8-3.29.59 -name "*.pyc" -exec rm "{}" ";"
+	rm -rf @top_srcdir@/3rdParty/V8-3.29.59/out
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

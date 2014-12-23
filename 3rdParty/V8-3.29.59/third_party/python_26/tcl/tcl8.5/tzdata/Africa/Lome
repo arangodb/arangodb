@@ -1,0 +1,6 @@
+# created by tools/tclZIC.tcl - do not edit
+
+set TZData(:Africa/Lome) {
+    {-9223372036854775808 292 0 LMT}
+    {-2429827492 0 0 GMT}
+}

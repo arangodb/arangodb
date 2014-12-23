@@ -1,0 +1,9 @@
+# created by tools/tclZIC.tcl - do not edit
+
+set TZData(:Asia/Phnom_Penh) {
+    {-9223372036854775808 25180 0 LMT}
+    {-2005973980 25580 0 SMT}
+    {-1855983920 25200 0 ICT}
+    {-1819954800 28800 0 ICT}
+    {-1220428800 25200 0 ICT}
+}

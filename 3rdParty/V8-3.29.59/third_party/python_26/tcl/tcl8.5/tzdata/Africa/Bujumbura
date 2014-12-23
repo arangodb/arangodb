@@ -1,0 +1,6 @@
+# created by tools/tclZIC.tcl - do not edit
+
+set TZData(:Africa/Bujumbura) {
+    {-9223372036854775808 7048 0 LMT}
+    {-2524528648 7200 0 CAT}
+}

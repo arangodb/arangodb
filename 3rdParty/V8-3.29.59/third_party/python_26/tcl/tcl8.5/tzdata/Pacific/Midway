@@ -1,0 +1,10 @@
+# created by tools/tclZIC.tcl - do not edit
+
+set TZData(:Pacific/Midway) {
+    {-9223372036854775808 -42568 0 LMT}
+    {-2177410232 -39600 0 NST}
+    {-428504400 -36000 1 NDT}
+    {-420645600 -39600 0 NST}
+    {-86878800 -39600 0 BST}
+    {439038000 -39600 0 SST}
+}
