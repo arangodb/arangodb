@@ -425,13 +425,13 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
      // this map allows to find the queries which are the parts of the big
      // query. There are two cases, the first is for the remote queries on
      // the DBservers, for these, the key is:
-     //   itoa(ID of RemoteNode in original plan) + "_" + shardId
+     //   itoa(ID of RemoteNode in original plan) + ":" + shardId
      // and the value is the
      //   queryId on DBserver
      // with a * appended, if it is a PART_MAIN query.
      // The second case is a query, which lives on the coordinator but is not
      // the main query. For these, we store
-     //   itoa(ID of RemoteNode in original plan)
+     //   itoa(ID of RemoteNode in original plan) + "/" + <name of vocbase>
      // and the value is the
      //   queryId used in the QueryRegistry
      // this is built up when we instanciate the various engines on the
@@ -603,7 +603,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           // std::cout << "DB SERVER ANSWERED WITHOUT ERROR: " << res->answer->body() << ", REMOTENODEID: " << info.idOfRemoteNode << " SHARDID:"  << res->shardID << ", QUERYID: " << queryId << "\n";
           std::string theID
             = triagens::basics::StringUtils::itoa(info.idOfRemoteNode)
-            + "_" + res->shardID;
+            + ":" + res->shardID;
           if (info.part == triagens::aql::PART_MAIN) {
             queryIds.emplace(theID, queryId+"*");
           }
@@ -736,7 +736,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           for (auto const& shardId : shardIds) {
             std::string theId 
               = triagens::basics::StringUtils::itoa(remoteNode->id())
-              + "_" + shardId;
+              + ":" + shardId;
             auto it = queryIds.find(theId);
             if (it == queryIds.end()) {
               THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not find query id in list");
@@ -952,7 +952,8 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
         for (auto& q : inst.get()->queryIds) {
           std::string theId = q.first;
           std::string queryId = q.second;
-          auto pos = theId.find('_');
+          std::cout << "queryIds: " << theId << " : " << queryId << std::endl;
+          auto pos = theId.find(':');
           if (pos != std::string::npos) {
             // So this is a remote one on a DBserver:
             if (queryId.back() == '*') {  // only the PART_MAIN one!
@@ -961,6 +962,25 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
               engine->_lockedShards->insert(shardId);
               forLocking.emplace(shardId, queryId);
             }
+          }
+        }
+        // Second round, this time we deal with the coordinator pieces
+        // and tell them the lockedShards as well, we need to copy, since
+        // they want to delete independently:
+        for (auto& q : inst.get()->queryIds) {
+          std::string theId = q.first;
+          std::string queryId = q.second;
+          std::cout << "queryIds: " << theId << " : " << queryId << std::endl;
+          auto pos = theId.find('/');
+          if (pos != std::string::npos) {
+            std::cout << "Setting lockedShards for query ID "
+                      << queryId << std::endl;
+            QueryId qId = triagens::basics::StringUtils::uint64(queryId);
+            TRI_vocbase_t* vocbase = query->vocbase();
+            Query* q = queryRegistry->open(vocbase, qId);
+            q->engine()->setLockedShards(new std::unordered_set<std::string>(*engine->_lockedShards));
+            queryRegistry->close(vocbase, qId);
+            std::cout << "Setting lockedShards done." << std::endl;
           }
         }
         // Now lock them all in the right order:
@@ -998,7 +1018,7 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
         for (auto& q : inst.get()->queryIds) {
           std::string theId = q.first;
           std::string queryId = q.second;
-          auto pos = theId.find('_');
+          auto pos = theId.find(':');
           if (pos != std::string::npos) {
             // So this is a remote one on a DBserver:
             std::string shardId = theId.substr(pos+1);

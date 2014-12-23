@@ -138,6 +138,7 @@ void QueryRegistry::insert (QueryId id,
 Query* QueryRegistry::open (TRI_vocbase_t* vocbase, 
                             QueryId id) {
 
+  // std::cout << "Taking out query with ID " << id << std::endl;
   WRITE_LOCKER(_lock);
 
   auto m = _queries.find(vocbase->_name);
@@ -161,6 +162,7 @@ Query* QueryRegistry::open (TRI_vocbase_t* vocbase,
   // If we had set _makeNolockHeaders, we need to reset it:
   if (qi->_query->engine()->lockedShards() != nullptr) {
     if (Transaction::_makeNolockHeaders == nullptr) {
+      // std::cout << "Setting _makeNolockHeaders\n";
       Transaction::_makeNolockHeaders = qi->_query->engine()->lockedShards();
     }
     else {
@@ -177,6 +179,7 @@ Query* QueryRegistry::open (TRI_vocbase_t* vocbase,
         
 void QueryRegistry::close (TRI_vocbase_t* vocbase, QueryId id, double ttl) {
 
+  // std::cout << "Returning query with ID " << id << std::endl;
   WRITE_LOCKER(_lock);
 
   auto m = _queries.find(vocbase->_name);
@@ -200,6 +203,7 @@ void QueryRegistry::close (TRI_vocbase_t* vocbase, QueryId id, double ttl) {
   // If we have set _makeNolockHeaders, we need to unset it:
   if (Transaction::_makeNolockHeaders != nullptr) {
     if (Transaction::_makeNolockHeaders == qi->_query->engine()->lockedShards()) {
+      // std::cout << "Resetting _makeNolockHeaders to nullptr\n";
       Transaction::_makeNolockHeaders = nullptr;
     }
     else {

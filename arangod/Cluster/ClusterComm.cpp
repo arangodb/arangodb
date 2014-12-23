@@ -196,8 +196,12 @@ ClusterCommResult* ClusterComm::asyncRequest (
     op->serverID = ClusterInfo::instance()->getResponsibleServer(op->shardID);
     LOG_DEBUG("Responsible server: %s", op->serverID.c_str());
     if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
+      // LOCKING-DEBUG
+      // std::cout << "Found Nolock header\n";
       auto it = triagens::arango::Transaction::_makeNolockHeaders->find(op->shardID);
       if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
+        // LOCKING-DEBUG
+        // std::cout << "Found our shard\n";
         (*headerFields)["X-Arango-Nolock"] = op->shardID;
       }
     }
@@ -239,6 +243,13 @@ ClusterCommResult* ClusterComm::asyncRequest (
   op->callback             = callback;
   op->endTime              = timeout == 0.0 ? TRI_microtime()+24*60*60.0
                                             : TRI_microtime()+timeout;
+
+  // LOCKING-DEBUG
+  // std::cout << "asyncRequest: sending " << triagens::rest::HttpRequest::translateMethod(reqtype) << " request to DB server '" << op->serverID << ":" << path << "\n" << body << "\n";
+  // for (auto& h : *headerFields) {
+  //   std::cout << h.first << ":" << h.second << std::endl;
+  // }
+  // std::cout << std::endl;
 
   ClusterCommResult* res = new ClusterCommResult();
   *res = *static_cast<ClusterCommResult*>(op);
@@ -311,8 +322,12 @@ ClusterCommResult* ClusterComm::syncRequest (
       return res;
     }
     if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
+      // LOCKING-DEBUG
+      // std::cout << "Found Nolock header\n";
       auto it = triagens::arango::Transaction::_makeNolockHeaders->find(res->shardID);
       if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
+        // LOCKING-DEBUG
+        // std::cout << "Found this shard: " << res->shardID << std::endl;
         headersCopy["X-Arango-Nolock"] = res->shardID;
       }
     }
@@ -355,6 +370,12 @@ ClusterCommResult* ClusterComm::syncRequest (
       LOG_DEBUG("sending %s request to DB server '%s': %s",
          triagens::rest::HttpRequest::translateMethod(reqtype).c_str(),
          res->serverID.c_str(), body.c_str());
+      // LOCKING-DEBUG
+      // std::cout << "syncRequest: sending " << triagens::rest::HttpRequest::translateMethod(reqtype) << " request to DB server '" << res->serverID << ":" << path << "\n" << body << "\n";
+      // for (auto& h : headersCopy) {
+      //   std::cout << h.first << ":" << h.second << std::endl;
+      // }
+      // std::cout << std::endl;
       triagens::httpclient::SimpleHttpClient* client
           = new triagens::httpclient::SimpleHttpClient(
                                 connection->connection,
