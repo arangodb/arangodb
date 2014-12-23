@@ -215,6 +215,9 @@ The default endpoint for the ArangoDB server has been changed from `0.0.0.0` to
 than localhost unless the configuration is changed. This is a security precaution
 measure that has been requested as a feature a lot of times.
 
+If you are the development option `--enable-relative`, the endpoint will still
+be `0.0.0.0`.
+
 
 !SUBSECTION System collections in replication
   
