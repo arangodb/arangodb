@@ -2553,7 +2553,7 @@ int triagens::aql::scatterInClusterRule (Optimizer* opt,
 ///
 /// this rule inserts distribute, remote nodes so operations on sharded
 /// collections actually work, this differs from scatterInCluster in that every
-/// incoming row is only set to one shard and not all as in scatterInCluster
+/// incoming row is only sent to one shard and not all as in scatterInCluster
 ///
 /// it will change plans in place
 ////////////////////////////////////////////////////////////////////////////////
