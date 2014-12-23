@@ -102,7 +102,7 @@ Please kindly cite ArangoDB in your publications if it helps your research:
 ```bibtex
 @misc{ArangoDB2014,
    Author = {ArangoDB},
-   Title = { {ArangoDB 2.3}: An Open source, multi-purpose database supporting flexible data models for documents, graphs, and key-values.},
+   Title = { {ArangoDB 2.4}: An Open source, multi-purpose database supporting flexible data models for documents, graphs, and key-values.},
    Year  = {2014},
    Howpublished = {\url{http://arangodb.com/}
 }

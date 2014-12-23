@@ -116,7 +116,7 @@ v2.4.0 (XXXX-XX-XX)
 
 * fixed issue #1134: Change the default endpoint to localhost
 
-  This change will modify the ip address ArangoDB listens on to 127.0.0.1 by default.
+  This change will modify the IP address ArangoDB listens on to 127.0.0.1 by default.
   This will make new ArangoDB installations unaccessible from clients other than
   localhost unless changed. This is a security feature. 
 

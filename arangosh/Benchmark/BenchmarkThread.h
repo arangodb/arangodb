@@ -129,16 +129,16 @@ namespace triagens {
 /// @brief the thread program
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void run () {
+        void run () {
           _connection = httpclient::GeneralClientConnection::factory(_endpoint, _requestTimeout, _connectTimeout, 3, _sslProtocol);
 
-          if (_connection == 0) {
+          if (_connection == nullptr) {
             LOG_FATAL_AND_EXIT("out of memory");
           }
 
           _client = new httpclient::SimpleHttpClient(_connection, _requestTimeout, true);
 
-          if (_client == 0) {
+          if (_client == nullptr) {
             LOG_FATAL_AND_EXIT("out of memory");
           }
 
@@ -150,7 +150,7 @@ namespace triagens {
           // test the connection
           httpclient::SimpleHttpResult* result = _client->request(rest::HttpRequest::HTTP_REQUEST_GET,
                                                       "/_api/version",
-                                                      0,
+                                                      nullptr,
                                                       0,
                                                       _headers);
 
@@ -283,9 +283,9 @@ namespace triagens {
                                                       _headers);
           _time += TRI_microtime() - start;
 
-          if (result == 0 || ! result->isComplete()) {
+          if (result == nullptr || ! result->isComplete()) {
             _operationsCounter->incFailures(numOperations);
-            if (result != 0) {
+            if (result != nullptr) {
               delete result;
             }
             _warningCount++;
@@ -348,9 +348,9 @@ namespace triagens {
             TRI_Free(TRI_UNKNOWN_MEM_ZONE, (void*) payload);
           }
 
-          if (result == 0 || ! result->isComplete()) {
+          if (result == nullptr || ! result->isComplete()) {
             _operationsCounter->incFailures(1);
-            if (result != 0) {
+            if (result != nullptr) {
               delete result;
             }
             _warningCount++;
