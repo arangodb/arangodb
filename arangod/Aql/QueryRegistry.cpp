@@ -28,8 +28,10 @@
 #include "Aql/QueryRegistry.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/ReadLocker.h"
+#include "Aql/ExecutionEngine.h"
 
 using namespace triagens::aql;
+using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           the QueryRegistry class
@@ -112,6 +114,16 @@ void QueryRegistry::insert (QueryId id,
   
     // Also, we need to count down the debugging counters for transactions:
     triagens::arango::TransactionBase::increaseNumbers(-1, -1);
+
+    // If we have set _makeNolockHeaders, we need to unset it:
+    if (Transaction::_makeNolockHeaders != nullptr) {
+      if (Transaction::_makeNolockHeaders == query->engine()->lockedShards()) {
+        Transaction::_makeNolockHeaders = nullptr;
+      }
+      else {
+        LOG_WARNING("Found strange lockedShards in thread!");
+      }
+    }
   }
   else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -146,6 +158,16 @@ Query* QueryRegistry::open (TRI_vocbase_t* vocbase,
   // We need to count up the debugging counters for transactions:
   triagens::arango::TransactionBase::increaseNumbers(1, 1);
 
+  // If we had set _makeNolockHeaders, we need to reset it:
+  if (qi->_query->engine()->lockedShards() != nullptr) {
+    if (Transaction::_makeNolockHeaders == nullptr) {
+      Transaction::_makeNolockHeaders = qi->_query->engine()->lockedShards();
+    }
+    else {
+      LOG_WARNING("Found strange lockedShards in thread, not overwriting!");
+    }
+  }
+
   return qi->_query;
 }
 
@@ -174,6 +196,16 @@ void QueryRegistry::close (TRI_vocbase_t* vocbase, QueryId id, double ttl) {
 
   // We need to count down the debugging counters for transactions:
   triagens::arango::TransactionBase::increaseNumbers(-1, -1);
+
+  // If we have set _makeNolockHeaders, we need to unset it:
+  if (Transaction::_makeNolockHeaders != nullptr) {
+    if (Transaction::_makeNolockHeaders == qi->_query->engine()->lockedShards()) {
+      Transaction::_makeNolockHeaders = nullptr;
+    }
+    else {
+      LOG_WARNING("Found strange lockedShards in thread!");
+    }
+  }
 
   qi->_isOpen = false;
   qi->_expires = TRI_microtime() + qi->_timeToLive;
@@ -205,6 +237,15 @@ void QueryRegistry::destroy (std::string const& vocbase,
   if (! qi->_isOpen) {
     // We need to count up the debugging counters for transactions:
     triagens::arango::TransactionBase::increaseNumbers(1, 1);
+    // If we had set _makeNolockHeaders, we need to reset it:
+    if (qi->_query->engine()->lockedShards() != nullptr) {
+      if (Transaction::_makeNolockHeaders == nullptr) {
+        Transaction::_makeNolockHeaders = qi->_query->engine()->lockedShards();
+      }
+      else {
+        LOG_WARNING("Found strange lockedShards in thread, not overwriting!");
+      }
+    }
   }
 
   if (errorCode == TRI_ERROR_NO_ERROR) {
