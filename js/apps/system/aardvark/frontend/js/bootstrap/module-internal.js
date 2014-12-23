@@ -1175,37 +1175,20 @@
           value.toString === Object.prototype.toString
           || (typeof value === 'object' && Object.getPrototypeOf(value) === null)
         ) {
-          var values, i, handled = false;
+          var handled = false;
           try {
-            if (value instanceof Set) {
-              // ES6 Set
-              values = [ ];
-              for (i of value) {
-                values.push(i);
-              }
-              context.output += "[object Set ";
-              printArray(values, context);
-              context.output += "]";
-              handled = true;
-            }
-            else if (value instanceof Map) {
-              // ES6 Map
-              values = { };
-              for (i of value) {
-                values[i[0]] = i[1];
-              }
-              context.output += "[object Map ";
-              printObject(values, context);
-              context.output += "]";
-              handled = true;
-            }
-            else if (typeof value[Symbol.iterator] === "function") {
+            if (value instanceof Set ||
+                value instanceof Map ||
+                value instanceof WeakSet ||
+                value instanceof WeakMap ||
+                typeof value[Symbol.iterator] === "function") {
               // ES6 iterators
               context.output += value.toString();
               handled = true;
             }
           }
           catch (err) {
+            // ignore any errors thrown above, and simply fall back to normal printing
           }
 
           if (! handled) {
