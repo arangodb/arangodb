@@ -1426,14 +1426,6 @@ namespace triagens {
 
         TransactionContext* _transactionContext;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief makeNolockHeaders
-////////////////////////////////////////////////////////////////////////////////
-
-      public:
-
-        static thread_local std::unordered_set<std::string>* _makeNolockHeaders;
-
     };
 
   }

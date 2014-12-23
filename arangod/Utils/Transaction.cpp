@@ -49,14 +49,6 @@ thread_local int TransactionBase::_numberTrxInScope = 0;
 thread_local int TransactionBase::_numberTrxActive = 0;
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief if this pointer is set to an actual set, then for each request
-/// sent to a shardId using the ClusterComm library, an X-Arango-Nolock
-/// header is generated.
-////////////////////////////////////////////////////////////////////////////////
-
-thread_local std::unordered_set<std::string>* Transaction::_makeNolockHeaders = nullptr;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

@@ -35,7 +35,6 @@
 #include "Basics/StringUtils.h"
 #include "SimpleHttpClient/ConnectionManager.h"
 #include "Dispatcher/DispatcherThread.h"
-#include "Utils/Transaction.h"
 
 #include "VocBase/server.h"
 
@@ -195,12 +194,6 @@ ClusterCommResult* ClusterComm::asyncRequest (
     op->shardID = destination.substr(6);
     op->serverID = ClusterInfo::instance()->getResponsibleServer(op->shardID);
     LOG_DEBUG("Responsible server: %s", op->serverID.c_str());
-    if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
-      auto it = triagens::arango::Transaction::_makeNolockHeaders->find(op->shardID);
-      if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
-        (*headerFields)["X-Arango-Nolock"] = op->shardID;
-      }
-    }
   }
   else if (destination.substr(0,7) == "server:") {
     op->shardID = "";
@@ -287,8 +280,6 @@ ClusterCommResult* ClusterComm::syncRequest (
         map<string, string> const&         headerFields,
         ClusterCommTimeout                 timeout) {
 
-  map<string, string> headersCopy(headerFields);
-
   ClusterCommResult* res = new ClusterCommResult();
   res->clientTransactionID  = clientTransactionID;
   res->coordTransactionID   = coordTransactionID;
@@ -309,12 +300,6 @@ ClusterCommResult* ClusterComm::syncRequest (
     if (res->serverID.empty()) {
       res->status = CL_COMM_ERROR;
       return res;
-    }
-    if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
-      auto it = triagens::arango::Transaction::_makeNolockHeaders->find(res->shardID);
-      if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
-        headersCopy["X-Arango-Nolock"] = res->shardID;
-      }
     }
   }
   else if (destination.substr(0, 7) == "server:") {
@@ -361,7 +346,8 @@ ClusterCommResult* ClusterComm::syncRequest (
                                 endTime - currentTime, false);
       client->keepConnectionOnDestruction(true);
 
-      headersCopy["Authorization"] = ServerState::instance()->getAuthentication();
+      map<string, string> headersCopy(headerFields);
+      headersCopy.emplace(make_pair(string("Authorization"), ServerState::instance()->getAuthentication()));
 #ifdef DEBUG_CLUSTER_COMM
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 #if HAVE_BACKTRACE

@@ -443,7 +443,6 @@ namespace triagens {
           RequestStatisticsAgentSetRequestStart(handler);
 
           try {
-            handler->prepareExecute();
             try {
               status = handler->execute();
             }
@@ -464,7 +463,6 @@ namespace triagens {
               basics::InternalError err("handleRequestDirectly", __FILE__, __LINE__);
               handler->handleError(err);
             }
-            handler->finalizeExecute();
 
             if (status.status == Handler::HANDLER_REQUEUE) {
               handler->RequestStatisticsAgent::transfer(task);

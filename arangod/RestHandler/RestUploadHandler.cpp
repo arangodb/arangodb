@@ -67,7 +67,7 @@ RestUploadHandler::~RestUploadHandler () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-Handler::status_t RestUploadHandler::execute () {
+Handler::status_t RestUploadHandler::execute() {
   // extract the request type
   const HttpRequest::HttpRequestType type = _request->requestType();
 

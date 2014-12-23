@@ -72,7 +72,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        Handler::status_t execute ();
+        Handler::status_t execute();
 
      };
   }

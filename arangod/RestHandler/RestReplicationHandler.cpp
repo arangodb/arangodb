@@ -88,7 +88,7 @@ RestReplicationHandler::~RestReplicationHandler () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-Handler::status_t RestReplicationHandler::execute () {
+Handler::status_t RestReplicationHandler::execute() {
   // extract the request type
   const HttpRequest::HttpRequestType type = _request->requestType();
 

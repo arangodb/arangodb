@@ -37,7 +37,6 @@
 #include "Utils/Exception.h"
 
 using namespace triagens::aql;
-using namespace triagens::arango;
 using Json = triagens::basics::Json;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -163,9 +162,7 @@ ExecutionEngine::ExecutionEngine (Query* query)
     _blocks(),
     _root(nullptr),
     _query(query),
-    _wasShutdown(false),
-    _previouslyLockedShards(nullptr),
-    _lockedShards(nullptr) {
+    _wasShutdown(false) {
 
   _blocks.reserve(8);
 }
@@ -428,7 +425,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
      //   itoa(ID of RemoteNode in original plan) + "_" + shardId
      // and the value is the
      //   queryId on DBserver
-     // with a * appended, if it is a PART_MAIN query.
      // The second case is a query, which lives on the coordinator but is not
      // the main query. For these, we store
      //   itoa(ID of RemoteNode in original plan)
@@ -554,7 +550,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
                           "/_api/aql/instanciate");
 
     auto headers = new std::map<std::string, std::string>;
-    (*headers)["X-Arango-Nolock"] = shardId;   // Prevent locking
     auto res = cc->asyncRequest("", 
                                 coordTransactionID,
                                 "shard:" + shardId,  
@@ -604,12 +599,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           std::string theID
             = triagens::basics::StringUtils::itoa(info.idOfRemoteNode)
             + "_" + res->shardID;
-          if (info.part == triagens::aql::PART_MAIN) {
-            queryIds.emplace(theID, queryId+"*");
-          }
-          else {
-            queryIds.emplace(theID, queryId);
-          }
+          queryIds.emplace(theID, queryId);
         }
         else {
           error += "DB SERVER ANSWERED WITH ERROR: ";
@@ -741,15 +731,12 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
             if (it == queryIds.end()) {
               THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not find query id in list");
             }
-            std::string idThere = it->second;
-            if (idThere.back() == '*') {
-              idThere.pop_back();
-            }
+
             ExecutionBlock* r = new RemoteBlock(engine.get(), 
                                                 remoteNode, 
                                                 "shard:" + shardId, // server
                                                 "",                 // ownName
-                                                idThere);           // queryId
+                                                (*it).second);      // queryId
         
             try {
               engine.get()->addBlock(r);
@@ -939,56 +926,6 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
       try {
         engine = inst.get()->buildEngines(); 
         root = engine->root();
-        // Now find all shards that take part:
-        if (Transaction::_makeNolockHeaders != nullptr) {
-          engine->_lockedShards = new std::unordered_set<std::string>(*Transaction::_makeNolockHeaders);
-          engine->_previouslyLockedShards = Transaction::_makeNolockHeaders;
-        }
-        else {
-          engine->_lockedShards = new std::unordered_set<std::string>();
-          engine->_previouslyLockedShards = nullptr;
-        }
-        std::map<std::string, std::string> forLocking;
-        for (auto& q : inst.get()->queryIds) {
-          std::string theId = q.first;
-          std::string queryId = q.second;
-          auto pos = theId.find('_');
-          if (pos != std::string::npos) {
-            // So this is a remote one on a DBserver:
-            if (queryId.back() == '*') {  // only the PART_MAIN one!
-              queryId.pop_back();
-              std::string shardId = theId.substr(pos+1);
-              engine->_lockedShards->insert(shardId);
-              forLocking.emplace(shardId, queryId);
-            }
-          }
-        }
-        // Now lock them all in the right order:
-        for (auto& p : forLocking) {
-          std::string const& shardId = p.first;
-          std::string const& queryId = p.second;
-          // Lock shard on DBserver:
-          triagens::arango::CoordTransactionID coordTransactionID 
-              = TRI_NewTickServer();
-          auto cc = triagens::arango::ClusterComm::instance();
-          TRI_vocbase_t* vocbase = query->vocbase();
-          std::string const url("/_db/"
-                   + triagens::basics::StringUtils::urlEncode(vocbase->_name)
-                   + "/_api/aql/lock/" + queryId);
-          std::map<std::string, std::string> headers;
-          auto res = cc->syncRequest("", coordTransactionID,
-             "shard:" + shardId,  
-             triagens::rest::HttpRequest::HTTP_REQUEST_PUT, url, "{}", 
-             headers, 30.0);
-          if (res->status != CL_COMM_SENT) {
-            delete res;
-            THROW_ARANGO_EXCEPTION_MESSAGE(
-                TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
-                "could not lock all shards");
-          }
-          delete res;
-        }
-        Transaction::_makeNolockHeaders = engine->_lockedShards;
       }
       catch (...) {
         // We need to destroy all queries that we have built and stuffed
@@ -1006,17 +943,14 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
             triagens::arango::CoordTransactionID coordTransactionID 
                 = TRI_NewTickServer();
             auto cc = triagens::arango::ClusterComm::instance();
-            if (queryId.back() == '*') {
-              queryId.pop_back();
-            }
             std::string const url("/_db/"
                      + triagens::basics::StringUtils::urlEncode(vocbase->_name)
                      + "/_api/aql/shutdown/" + queryId);
             std::map<std::string, std::string> headers;
             auto res = cc->syncRequest("", coordTransactionID,
                "shard:" + shardId,  
-               triagens::rest::HttpRequest::HTTP_REQUEST_PUT, url, 
-                 "{\"code\": 0}", headers, 30.0);
+               triagens::rest::HttpRequest::HTTP_REQUEST_POST, url, "", 
+               headers, 30.0);
             // Ignore result
             delete res;
           }

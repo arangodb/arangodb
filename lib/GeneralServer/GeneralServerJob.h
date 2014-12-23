@@ -163,16 +163,7 @@ namespace triagens {
           }
 
           RequestStatisticsAgentSetRequestStart(_handler);
-          _handler->prepareExecute();
-          Handler::status_t status;
-          try {
-            status = _handler->execute();
-          }
-          catch (...) {
-            _handler->finalizeExecute();
-            throw;
-          }
-          _handler->finalizeExecute();
+          Handler::status_t status = _handler->execute();
           RequestStatisticsAgentSetRequestEnd(_handler);
 
           LOG_TRACE("finished job %p with status %d", (void*) this, (int) status.status);
