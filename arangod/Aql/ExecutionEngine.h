@@ -133,6 +133,19 @@ namespace triagens {
 
         int shutdown (int errorCode) {
           if (_root != nullptr && ! _wasShutdown) {
+
+            // Take care of locking prevention measures in the cluster:
+            if (_lockedShards != nullptr) {
+              if (triagens::arango::Transaction::_makeNolockHeaders == 
+                  _lockedShards) {
+                triagens::arango::Transaction::_makeNolockHeaders 
+                    = _previouslyLockedShards;
+              }
+              delete _lockedShards;
+              _lockedShards = nullptr;
+              _previouslyLockedShards = nullptr;
+            }
+
             // prevent a duplicate shutdown
             int res = _root->shutdown(errorCode);
             _wasShutdown = true;
@@ -218,6 +231,14 @@ namespace triagens {
 
         ExecutionStats               _stats;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _lockedShards
+////////////////////////////////////////////////////////////////////////////////
+
+        std::unordered_set<std::string>* lockedShards () {
+          return _lockedShards;
+        }
+        
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -247,6 +268,20 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool                         _wasShutdown;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _previouslyLockedShards, this is read off at instanciating
+/// time from a thread local variable
+////////////////////////////////////////////////////////////////////////////////
+
+        std::unordered_set<std::string>* _previouslyLockedShards;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _lockedShards, these are the shards we have locked for our query
+////////////////////////////////////////////////////////////////////////////////
+
+        std::unordered_set<std::string>* _lockedShards;
+
     };
 
   }
