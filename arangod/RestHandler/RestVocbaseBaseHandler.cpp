@@ -663,6 +663,13 @@ int RestVocbaseBaseHandler::parseDocumentId (CollectionNameResolver const* resol
 
 void RestVocbaseBaseHandler::prepareExecute () {
   bool found;
+  // LOCKING-DEBUG
+  // std::cout << "REQ coming in: " << _request->requestType() << ": " <<_request->fullUrl() << std::endl;
+  //std::map<std::string, std::string> h = _request->headers();
+  //for (auto& hh : h) {
+  //  std::cout << hh.first << ": " << hh.second << std::endl;
+  //}
+  //std::cout << std::endl;
   char const* shardId = _request->header("x-arango-nolock", found);
   if (found) {
     _nolockHeaderSet = new std::unordered_set<std::string>();
