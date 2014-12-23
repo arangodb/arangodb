@@ -2499,6 +2499,12 @@ int triagens::aql::scatterInClusterRule (Optimizer* opt,
                nodeType == ExecutionNode::REMOVE) {
         vocbase = static_cast<ModificationNode*>(node)->vocbase();
         collection = static_cast<ModificationNode*>(node)->collection();
+        if (nodeType == ExecutionNode::REMOVE ||
+            nodeType == ExecutionNode::UPDATE ||
+            nodeType == ExecutionNode::REPLACE) {
+          auto* modNode = static_cast<ModificationNode*>(node);
+          modNode->getOptions().ignoreDocumentNotFound = true;
+        }
       }
       else {
         TRI_ASSERT(false);
@@ -2571,14 +2577,18 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
     auto const nodeType = node->getType();
     
     if (nodeType != ExecutionNode::INSERT  &&
-        nodeType != ExecutionNode::REMOVE) {
+        nodeType != ExecutionNode::REMOVE  &&
+        nodeType != ExecutionNode::REPLACE &&
+        nodeType != ExecutionNode::UPDATE) {
       opt->addPlan(plan, rule->level, wasModified);
       return TRI_ERROR_NO_ERROR;
     }
     
     Collection const* collection = static_cast<ModificationNode*>(node)->collection();
     
-    if (nodeType == ExecutionNode::REMOVE) {
+    if (nodeType == ExecutionNode::REMOVE ||
+        nodeType == ExecutionNode::UPDATE ||
+        nodeType == ExecutionNode::REPLACE) {
       // check if collection shard keys are only _key
       std::vector<std::string> shardKeys = collection->shardKeys();
       if (shardKeys.size() != 1 || shardKeys[0] != TRI_VOC_ATTRIBUTE_KEY) {
@@ -2586,6 +2596,8 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
         return TRI_ERROR_NO_ERROR;
       }
     }
+
+    // In the INSERT and REPLACE cases we use a DistributeNode...
 
     auto deps = node->getDependencies();
     TRI_ASSERT(deps.size() == 1);
@@ -2597,9 +2609,24 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
     TRI_vocbase_t* vocbase = static_cast<ModificationNode*>(node)->vocbase();
 
     // insert a distribute node
-    TRI_ASSERT(node->getVariablesUsedHere().size() == 1);
-    ExecutionNode* distNode = new DistributeNode(plan, plan->nextId(), 
-        vocbase, collection, node->getVariablesUsedHere()[0]->id);
+    ExecutionNode* distNode = nullptr;
+    if (nodeType == ExecutionNode::INSERT ||
+        nodeType == ExecutionNode::REMOVE) {
+      TRI_ASSERT(node->getVariablesUsedHere().size() == 1);
+      distNode = new DistributeNode(plan, plan->nextId(), 
+          vocbase, collection, node->getVariablesUsedHere()[0]->id);
+    }
+    else if (nodeType == ExecutionNode::REPLACE) {
+      auto replNode = static_cast<ReplaceNode const*>(node);
+      distNode = new DistributeNode(plan, plan->nextId(), 
+          vocbase, collection, replNode->_inKeyVariable);
+      // FIXME: DistributeBlock must look into two places
+    }
+    else    // if (nodeType == ExecutionNode::UPDATE) {
+      auto updNode = static_cast<UpdateNode const*>(node);
+      distNode = new DistributeNode(plan, plan->nextId(), 
+          vocbase, collection, updNode->_inKeyVariable);
+    }
     plan->registerNode(distNode);
     distNode->addDependency(deps[0]);
 
