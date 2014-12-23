@@ -1,4 +1,9 @@
-v2.3.3 (21014-12-17)
+v2.3.4 (2014-12-23)
+-------------------
+
+* fix locking in distributed AQL queries
+
+v2.3.3 (2014-12-17)
 -------------------
 
 * fixed error handling in instanciation of distributed AQL queries, this 
