@@ -2499,6 +2499,12 @@ int triagens::aql::scatterInClusterRule (Optimizer* opt,
                nodeType == ExecutionNode::REMOVE) {
         vocbase = static_cast<ModificationNode*>(node)->vocbase();
         collection = static_cast<ModificationNode*>(node)->collection();
+        if (nodeType == ExecutionNode::REMOVE ||
+            nodeType == ExecutionNode::UPDATE ||
+            nodeType == ExecutionNode::REPLACE) {
+          auto* modNode = static_cast<ModificationNode*>(node);
+          modNode->getOptions().ignoreDocumentNotFound = true;
+        }
       }
       else {
         TRI_ASSERT(false);
@@ -2553,7 +2559,7 @@ int triagens::aql::scatterInClusterRule (Optimizer* opt,
 ///
 /// this rule inserts distribute, remote nodes so operations on sharded
 /// collections actually work, this differs from scatterInCluster in that every
-/// incoming row is only set to one shard and not all as in scatterInCluster
+/// incoming row is only sent to one shard and not all as in scatterInCluster
 ///
 /// it will change plans in place
 ////////////////////////////////////////////////////////////////////////////////
@@ -2571,21 +2577,32 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
     auto const nodeType = node->getType();
     
     if (nodeType != ExecutionNode::INSERT  &&
-        nodeType != ExecutionNode::REMOVE) {
+        nodeType != ExecutionNode::REMOVE  &&
+        nodeType != ExecutionNode::REPLACE &&
+        nodeType != ExecutionNode::UPDATE) {
       opt->addPlan(plan, rule->level, wasModified);
       return TRI_ERROR_NO_ERROR;
     }
     
     Collection const* collection = static_cast<ModificationNode*>(node)->collection();
     
-    if (nodeType == ExecutionNode::REMOVE) {
-      // check if collection shard keys are only _key
-      std::vector<std::string> shardKeys = collection->shardKeys();
-      if (shardKeys.size() != 1 || shardKeys[0] != TRI_VOC_ATTRIBUTE_KEY) {
+    bool defaultSharding = true;
+    // check if collection shard keys are only _key
+    std::vector<std::string> shardKeys = collection->shardKeys();
+    if (shardKeys.size() != 1 || shardKeys[0] != TRI_VOC_ATTRIBUTE_KEY) {
+      defaultSharding = false;
+    }
+
+    if (nodeType == ExecutionNode::REMOVE ||
+        nodeType == ExecutionNode::UPDATE) {
+      if (! defaultSharding) {
+        // We have to use a ScatterNode.
         opt->addPlan(plan, rule->level, wasModified);
         return TRI_ERROR_NO_ERROR;
       }
     }
+
+    // In the INSERT and REPLACE cases we use a DistributeNode...
 
     auto deps = node->getDependencies();
     TRI_ASSERT(deps.size() == 1);
@@ -2597,9 +2614,33 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
     TRI_vocbase_t* vocbase = static_cast<ModificationNode*>(node)->vocbase();
 
     // insert a distribute node
-    TRI_ASSERT(node->getVariablesUsedHere().size() == 1);
-    ExecutionNode* distNode = new DistributeNode(plan, plan->nextId(), 
-        vocbase, collection, node->getVariablesUsedHere()[0]->id);
+    ExecutionNode* distNode = nullptr;
+    if (nodeType == ExecutionNode::INSERT ||
+        nodeType == ExecutionNode::REMOVE) {
+      TRI_ASSERT(node->getVariablesUsedHere().size() == 1);
+      distNode = new DistributeNode(plan, plan->nextId(), 
+          vocbase, collection, node->getVariablesUsedHere()[0]->id);
+    }
+    else if (nodeType == ExecutionNode::REPLACE) {
+      std::vector<Variable const*> v = node->getVariablesUsedHere();
+      if (defaultSharding) {
+        // We only look into _inKeyVariable
+        distNode = new DistributeNode(plan, plan->nextId(), 
+            vocbase, collection, v[1]->id);
+      }
+      else {
+        // We only look into _inDocVariable
+        distNode = new DistributeNode(plan, plan->nextId(), 
+            vocbase, collection, v[0]->id);
+      }
+    }
+    else {   // if (nodeType == ExecutionNode::UPDATE)
+      std::vector<Variable const*> v = node->getVariablesUsedHere();
+      distNode = new DistributeNode(plan, plan->nextId(), 
+          vocbase, collection, v[1]->id);
+      // This is the _inKeyVariable! This works, since we use a ScatterNode
+      // for non-default-sharding attributes.
+    }
     plan->registerNode(distNode);
     distNode->addDependency(deps[0]);
 
