@@ -1,0 +1,6 @@
+# created by tools/tclZIC.tcl - do not edit
+
+set TZData(:America/Montserrat) {
+    {-9223372036854775808 -14932 0 LMT}
+    {-1846266608 -14400 0 AST}
+}

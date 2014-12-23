@@ -1,0 +1,137 @@
+If you read this file _as_is_, just ignore the funny characters you
+see.  It is written in the POD format (see pod/perlpod.pod) which is
+specifically designed to be readable as is.
+
+=head1 NAME
+
+README.irix - Perl version 5 on Irix systems
+
+=head1 DESCRIPTION
+
+This document describes various features of Irix that will affect how Perl
+version 5 (hereafter just Perl) is compiled and/or runs.
+
+=head2 Building 32-bit Perl in Irix
+
+Use
+
+	sh Configure -Dcc='cc -n32'
+
+to compile Perl 32-bit.  Don't bother with -n32 unless you have 7.1
+or later compilers (use cc -version to check).
+
+(Building 'cc -n32' is the default.)
+
+=head2 Building 64-bit Perl in Irix
+
+Use
+
+	sh Configure -Dcc='cc -64' -Duse64bitint
+
+This requires require a 64-bit MIPS CPU (R8000, R10000, ...)
+
+You can also use
+
+	sh Configure -Dcc='cc -64' -Duse64bitall
+
+but that makes no difference compared with the -Duse64bitint because
+of the C<cc -64>.
+
+You can also do
+
+	sh Configure -Dcc='cc -n32' -Duse64bitint
+
+to use long longs for the 64-bit integer type, in case you don't
+have a 64-bit CPU.
+
+If you are using gcc, just
+
+	sh Configure -Dcc=gcc -Duse64bitint
+
+should be enough, the Configure should automatically probe for the
+correct 64-bit settings.
+
+=head2 About Compiler Versions of Irix
+
+Some Irix cc versions, e.g. 7.3.1.1m (try cc -version) have been known
+to have issues (coredumps) when compiling perl.c.  If you've used
+-OPT:fast_io=ON and this happens, try removing it.  If that fails, or
+you didn't use that, then try adjusting other optimization options
+(-LNO, -INLINE, -O3 to -O2, etcetera).  The compiler bug has been
+reported to SGI.  (Allen Smith <easmith@beatrice.rutgers.edu>)
+
+=head2 Linker Problems in Irix
+
+If you get complaints about so_locations then search in the file
+hints/irix_6.sh for "lddflags" and do the suggested adjustments.
+(David Billinghurst <David.Billinghurst@riotinto.com.au>)
+
+=head2 Malloc in Irix
+
+Do not try to use Perl's malloc, this will lead into very mysterious
+errors (especially with -Duse64bitall).
+
+=head2 Building with threads in Irix
+
+Run Configure with -Duseithreads which will configure Perl with
+the Perl 5.8.0 "interpreter threads", see L<threads>.
+
+For Irix 6.2 with perl threads, you have to have the following
+patches installed:
+
+        1404 Irix 6.2 Posix 1003.1b man pages
+        1645 Irix 6.2 & 6.3 POSIX header file updates
+        2000 Irix 6.2 Posix 1003.1b support modules
+        2254 Pthread library fixes
+        2401 6.2 all platform kernel rollup
+
+B<IMPORTANT>: Without patch 2401, a kernel bug in Irix 6.2 will cause
+your machine to panic and crash when running threaded perl.  Irix 6.3
+and later are okay.
+
+    Thanks to Hannu Napari <Hannu.Napari@hut.fi> for the IRIX
+    pthreads patches information.
+
+=head2 Irix 5.3
+
+While running Configure and when building, you are likely to get
+quite a few of these warnings:
+
+  ld:
+  The shared object /usr/lib/libm.so did not resolve any symbols.
+        You may want to remove it from your link line.
+
+Ignore them: in IRIX 5.3 there is no way to quieten ld about this.
+
+During compilation you will see this warning from toke.c:
+
+  uopt: Warning: Perl_yylex: this procedure not optimized because it
+        exceeds size threshold; to optimize this procedure, use -Olimit option
+        with value >= 4252.
+
+Ignore the warning.
+
+In IRIX 5.3 and with Perl 5.8.1 (Perl 5.8.0 didn't compile in IRIX 5.3)
+the following failures are known.
+
+ Failed Test                  Stat Wstat Total Fail  Failed  List of Failed
+ --------------------------------------------------------------------------
+ ../ext/List/Util/t/shuffle.t    0   139    ??   ??       %  ??
+ ../lib/Math/Trig.t            255 65280    29   12  41.38%  24-29
+ ../lib/sort.t                   0   138   119   72  60.50%  48-119
+ 56 tests and 474 subtests skipped.
+ Failed 3/811 test scripts, 99.63% okay. 78/75813 subtests failed, 99.90% okay.
+
+They are suspected to be compiler errors (at least the shuffle.t
+failure is known from some IRIX 6 setups) and math library errors
+(the Trig.t failure), but since IRIX 5 is long since end-of-lifed,
+further fixes for the IRIX are unlikely.  If you can get gcc for 5.3,
+you could try that, too, since gcc in IRIX 6 is a known workaround for
+at least the shuffle.t and sort.t failures.
+
+=head1 AUTHOR
+
+Jarkko Hietaniemi <jhi@iki.fi>
+
+Please report any errors, updates, or suggestions to F<perlbug@perl.org>.
+

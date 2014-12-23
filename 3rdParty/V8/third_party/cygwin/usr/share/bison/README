@@ -1,0 +1,45 @@
+-*- outline -*-
+
+This directory contains Bison skeletons: the general shapes of the
+different parser kinds, that are specialized for specific grammars by
+the bison program.
+
+Currently, there are only three supported skeletons:
+
+- yacc.c
+  It used to be named bison.simple: it corresponds to C Yacc
+  compatible LALR(1) parsers.
+
+- lalr1.cc
+  Produces a C++ parser class.  It is still very experimental, and not
+  yet supported.  Please, subscribe to bison-patches@gnu.org.
+
+- glr.c
+  A Generalized LR C parser based on Bison's LALR(1) tables.
+
+These skeletons are the only ones supported by the Bison team.
+Because the interface between skeletons and the bison program is not
+finished, *we are not bound to it*.  In particular, Bison is not
+mature enough for us to consider that ``foreign skeletons'' are
+supported.
+
+-----
+
+Copyright (C) 2002 Free Software Foundation, Inc.
+
+This file is part of GNU Bison.
+
+GNU Bison is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2, or (at your option)
+any later version.
+
+GNU Bison is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Bison; see the file COPYING.  If not, write to
+the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+Boston, MA 02110-1301, USA.

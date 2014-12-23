@@ -1,0 +1,6 @@
+# created by tools/tclZIC.tcl - do not edit
+
+set TZData(:Africa/Lubumbashi) {
+    {-9223372036854775808 6592 0 LMT}
+    {-2276646592 7200 0 CAT}
+}
