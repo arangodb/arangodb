@@ -177,14 +177,12 @@ pack-arm:
 		--prefix=/usr \
 		--sysconfdir=/etc \
 		--localstatedir=/var \
-		--enable-all-in-one-icu \
-		--enable-all-in-one-v8 \
-		--enable-all-in-one-libev \
 		--with-v8=./3rdParty-ARM \
 		--disable-mruby
 
-	touch .icu-build-32
+	touch .libev-build-32
 	touch .v8-build-32
+	touch .zlib-build-32
 
 	${MAKE} pack-arm-cmake
 
