@@ -133,7 +133,7 @@ function optimizerRuleTestSuite () {
         "FOR d IN " + cn1 + " REPLACE d IN " + cn2, 
         "FOR d IN " + cn1 + " REPLACE d._key WITH d IN " + cn2,
         "FOR d IN " + cn1 + " UPDATE d IN " + cn1, 
-        "FOR d IN " + cn1 + " UPDATE d._key WITH d IN " + cn1,
+        "FOR d IN " + cn1 + " UPDATE d._key WITH d IN " + cn1
       ];
 
       var expectedRules = [
@@ -231,6 +231,87 @@ function optimizerRuleTestSuite () {
                               "DistributeNode",
                               "RemoteNode",
                               "InsertNode",
+                              "RemoteNode",
+                              "GatherNode"
+                            ],
+                            [
+                              "SingletonNode",
+                              "ScatterNode", 
+                              "RemoteNode", 
+                              "EnumerateCollectionNode", 
+                              "RemoteNode", 
+                              "GatherNode",
+                              "DistributeNode",
+                              "RemoteNode",
+                              "ReplaceNode",
+                              "RemoteNode",
+                              "GatherNode"
+                            ],
+                            [
+                              "SingletonNode",
+                              "ScatterNode", 
+                              "RemoteNode", 
+                              "EnumerateCollectionNode", 
+                              "RemoteNode", 
+                              "GatherNode",
+                              "CalculationNode", 
+                              "DistributeNode",
+                              "RemoteNode",
+                              "ReplaceNode",
+                              "RemoteNode",
+                              "GatherNode"
+                            ],
+                            [
+                              "SingletonNode",
+                              "ScatterNode", 
+                              "RemoteNode", 
+                              "EnumerateCollectionNode", 
+                              "RemoteNode", 
+                              "GatherNode",
+                              "DistributeNode",
+                              "RemoteNode",
+                              "ReplaceNode",
+                              "RemoteNode",
+                              "GatherNode"
+                            ],
+                            [
+                              "SingletonNode",
+                              "ScatterNode", 
+                              "RemoteNode", 
+                              "EnumerateCollectionNode", 
+                              "RemoteNode", 
+                              "GatherNode",
+                              "CalculationNode", 
+                              "DistributeNode",
+                              "RemoteNode",
+                              "ReplaceNode",
+                              "RemoteNode",
+                              "GatherNode"
+                            ],
+                            [
+                              "SingletonNode",
+                              "ScatterNode", 
+                              "RemoteNode", 
+                              "EnumerateCollectionNode", 
+                              "RemoteNode", 
+                              "GatherNode",
+                              "DistributeNode",
+                              "RemoteNode",
+                              "UpdateNode",
+                              "RemoteNode",
+                              "GatherNode"
+                            ],
+                            [
+                              "SingletonNode",
+                              "ScatterNode", 
+                              "RemoteNode", 
+                              "EnumerateCollectionNode", 
+                              "RemoteNode", 
+                              "GatherNode",
+                              "CalculationNode", 
+                              "DistributeNode",
+                              "RemoteNode",
+                              "UpdateNode",
                               "RemoteNode",
                               "GatherNode"
                             ]
