@@ -2569,6 +2569,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
+          // Please do not change the order here without adjusting the 
+          // optimizer rule distributeInCluster as well!
           std::vector<Variable const*> v;
           v.push_back(_inDocVariable);
 
@@ -2685,6 +2687,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
+          // Please do not change the order here without adjusting the 
+          // optimizer rule distributeInCluster as well!
           std::vector<Variable const*> v;
           v.push_back(_inDocVariable);
 
@@ -3103,7 +3107,7 @@ namespace triagens {
           : ExecutionNode(plan, id),
             _vocbase(vocbase),
             _collection(collection),
-            _varId(varId){
+            _varId(varId) {
         }
 
         DistributeNode (ExecutionPlan*, 

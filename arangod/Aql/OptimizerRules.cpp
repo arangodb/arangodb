@@ -2586,12 +2586,17 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
     
     Collection const* collection = static_cast<ModificationNode*>(node)->collection();
     
+    bool defaultSharding = true;
+    // check if collection shard keys are only _key
+    std::vector<std::string> shardKeys = collection->shardKeys();
+    if (shardKeys.size() != 1 || shardKeys[0] != TRI_VOC_ATTRIBUTE_KEY) {
+      defaultSharding = false;
+    }
+
     if (nodeType == ExecutionNode::REMOVE ||
-        nodeType == ExecutionNode::UPDATE ||
-        nodeType == ExecutionNode::REPLACE) {
-      // check if collection shard keys are only _key
-      std::vector<std::string> shardKeys = collection->shardKeys();
-      if (shardKeys.size() != 1 || shardKeys[0] != TRI_VOC_ATTRIBUTE_KEY) {
+        nodeType == ExecutionNode::UPDATE) {
+      if (! defaultSharding) {
+        // We have to use a ScatterNode.
         opt->addPlan(plan, rule->level, wasModified);
         return TRI_ERROR_NO_ERROR;
       }
@@ -2617,15 +2622,24 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
           vocbase, collection, node->getVariablesUsedHere()[0]->id);
     }
     else if (nodeType == ExecutionNode::REPLACE) {
-      auto replNode = static_cast<ReplaceNode const*>(node);
-      distNode = new DistributeNode(plan, plan->nextId(), 
-          vocbase, collection, replNode->_inKeyVariable);
-      // FIXME: DistributeBlock must look into two places
+      std::vector<Variable const*> v = node->getVariablesUsedHere();
+      if (defaultSharding) {
+        // We only look into _inKeyVariable
+        distNode = new DistributeNode(plan, plan->nextId(), 
+            vocbase, collection, v[1]->id);
+      }
+      else {
+        // We only look into _inDocVariable
+        distNode = new DistributeNode(plan, plan->nextId(), 
+            vocbase, collection, v[0]->id);
+      }
     }
-    else    // if (nodeType == ExecutionNode::UPDATE) {
-      auto updNode = static_cast<UpdateNode const*>(node);
+    else {   // if (nodeType == ExecutionNode::UPDATE)
+      std::vector<Variable const*> v = node->getVariablesUsedHere();
       distNode = new DistributeNode(plan, plan->nextId(), 
-          vocbase, collection, updNode->_inKeyVariable);
+          vocbase, collection, v[1]->id);
+      // This is the _inKeyVariable! This works, since we use a ScatterNode
+      // for non-default-sharding attributes.
     }
     plan->registerNode(distNode);
     distNode->addDependency(deps[0]);
