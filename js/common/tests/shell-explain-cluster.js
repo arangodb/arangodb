@@ -419,7 +419,7 @@ function ExplainSuite () {
       assertEqual("GatherNode", node.type);
 
       node = nodes[5];
-      assertEqual("ScatterNode", node.type);
+      assertEqual("DistributeNode", node.type);
 
       node = nodes[6];
       assertEqual("RemoteNode", node.type);
@@ -461,7 +461,7 @@ function ExplainSuite () {
       assertEqual("GatherNode", node.type);
 
       node = nodes[5];
-      assertEqual("ScatterNode", node.type);
+      assertEqual("DistributeNode", node.type);
 
       node = nodes[6];
       assertEqual("RemoteNode", node.type);
@@ -500,7 +500,7 @@ function ExplainSuite () {
       assertEqual("GatherNode", node.type);
 
       node = nodes[4];
-      assertEqual("ScatterNode", node.type);
+      assertEqual("DistributeNode", node.type);
 
       node = nodes[5];
       assertEqual("RemoteNode", node.type);
@@ -540,7 +540,7 @@ function ExplainSuite () {
       assertEqual("GatherNode", node.type);
 
       node = nodes[4];
-      assertEqual("ScatterNode", node.type);
+      assertEqual("DistributeNode", node.type);
 
       node = nodes[5];
       assertEqual("RemoteNode", node.type);
@@ -582,7 +582,7 @@ function ExplainSuite () {
       assertEqual("GatherNode", node.type);
 
       node = nodes[5];
-      assertEqual("ScatterNode", node.type);
+      assertEqual("DistributeNode", node.type);
 
       node = nodes[6];
       assertEqual("RemoteNode", node.type);
@@ -625,7 +625,7 @@ function ExplainSuite () {
       assertEqual("GatherNode", node.type);
 
       node = nodes[5];
-      assertEqual("ScatterNode", node.type);
+      assertEqual("DistributeNode", node.type);
 
       node = nodes[6];
       assertEqual("RemoteNode", node.type);
@@ -664,7 +664,7 @@ function ExplainSuite () {
       assertEqual("GatherNode", node.type);
 
       node = nodes[4];
-      assertEqual("ScatterNode", node.type);
+      assertEqual("DistributeNode", node.type);
 
       node = nodes[5];
       assertEqual("RemoteNode", node.type);
@@ -703,7 +703,7 @@ function ExplainSuite () {
       assertEqual("GatherNode", node.type);
 
       node = nodes[4];
-      assertEqual("ScatterNode", node.type);
+      assertEqual("DistributeNode", node.type);
 
       node = nodes[5];
       assertEqual("RemoteNode", node.type);
