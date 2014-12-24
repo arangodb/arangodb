@@ -166,6 +166,14 @@ v2.4.0 (XXXX-XX-XX)
   * HTTP GET `/_api/replication/logger-config` 
   * HTTP PUT `/_api/replication/logger-config` 
 
+* fixed issue #1174, which was due to locking problems in distributed
+  AQL execution
+
+* improved cluster locking for AQL avoiding deadlocks
+
+* use DistributeNode for modifying queries with REPLACE and UPDATE, if
+  possible
+
 
 v2.3.3 (2014-12-17)
 -------------------
