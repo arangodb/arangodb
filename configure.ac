@@ -273,7 +273,7 @@ dnl ICU
 dnl ----------------------------------------------------------------------------
 
 ICU_VERSION="52.2"
-ICU_CPPFLAGS="-D_REENTRANT -I${srcdir}/3rdParty/V8-3.29.59/third_party/icu/source/common -I${srcdir}/3rdParty/V8-3.29.59/third_party/icu/source/i18n -I${srcdir}/3rdParty/V8-3.29.59/third_party/icu/source/io -DTRI_ICU_VERSION='\"${ICU_VERSION}\"'"
+ICU_CPPFLAGS="-D_REENTRANT -I${srcdir}/3rdParty/V8-3.29.59/third_party/icu/source/common -I${srcdir}/3rdParty/V8-3.29.59/third_party/icu/source/i18n -I${srcdir}/3rdParty/V8-3.29.59/third_party/icu/source/io"
 ICU_LDFLAGS=""
 
 if test "x$tr_DARWIN" = xyes; then

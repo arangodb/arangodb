@@ -48,6 +48,7 @@
 #include "Rest/Endpoint.h"
 #include "Rest/InitialiseRest.h"
 #include "Rest/HttpResponse.h"
+#include "Rest/Version.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "V8/JSLoader.h"
@@ -2060,9 +2061,7 @@ bool print_helo(bool useServer, bool promptError) {
     info << ", READLINE " << TRI_READLINE_VERSION;
 #endif
 
-#ifdef TRI_ICU_VERSION
-    info << ", ICU " << TRI_ICU_VERSION;
-#endif
+    info << ", ICU " << Version::getICUVersion();
 
     BaseClient.printLine(info.str(), true);
     BaseClient.printLine("", true);
