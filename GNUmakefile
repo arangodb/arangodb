@@ -177,7 +177,6 @@ pack-arm:
 		--prefix=/usr \
 		--sysconfdir=/etc \
 		--localstatedir=/var \
-		--with-v8=./3rdParty-ARM \
 		--disable-mruby
 
 	touch .libev-build-32
