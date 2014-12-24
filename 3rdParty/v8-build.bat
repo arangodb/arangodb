@@ -48,7 +48,12 @@ cd build
 
 :: DEBUG
 
+rmdir /S /Q Debug
+rmdir /S /Q Debug%SUFFIX%
+
 msbuild All.sln /t:v8 /p:Configuration=Debug /p:Platform=%MSPLATFORM%
+msbuild All.sln /t:v8-libbase /p:Configuration=Debug /p:Platform=%MSPLATFORM%
+msbuild All.sln /t:v8-libplatform /p:Configuration=Debug /p:Platform=%MSPLATFORM%
 
 cd ..\third_party\icu
 msbuild icu.sln /t:icudata /p:Configuration=Debug /p:Platform=%MSPLATFORM%
@@ -60,7 +65,12 @@ ren Debug Debug%SUFFIX%
 
 :: RELEASE
 
+rmdir /S /Q Release
+rmdir /S /Q Release%SUFFIX%
+
 msbuild All.sln /t:v8 /p:Configuration=Release /p:Platform=%MSPLATFORM%
+msbuild All.sln /t:v8-libbase /p:Configuration=Release /p:Platform=%MSPLATFORM%
+msbuild All.sln /t:v8-libplatform /p:Configuration=Release /p:Platform=%MSPLATFORM%
 
 cd ..\third_party\icu
 msbuild icu.sln /t:icudata /p:Configuration=Release /p:Platform=%MSPLATFORM%
