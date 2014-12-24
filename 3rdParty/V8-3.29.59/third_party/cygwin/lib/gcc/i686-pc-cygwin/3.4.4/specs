@@ -1,0 +1,127 @@
+*asm:
+
+
+*asm_debug:
+%{gdwarf-2*:--gdwarf2}%{!gdwarf-2*:%{g*:--gstabs}}
+
+*asm_final:
+
+
+*asm_options:
+%a %Y %{c:%W{o*}%{!o*:-o %w%b%O}}%{!c:-o %d%w%u%O}
+
+*invoke_as:
+%{!S:-o %|.s |
+ as %(asm_options) %m.s %A }
+
+*cpp:
+%(cpp_cpu) %{posix:-D_POSIX_SOURCE}   %{mno-win32:%{mno-cygwin: %emno-cygwin and mno-win32 are not compatible}}   %{mno-cygwin:-D__MSVCRT__ -D__MINGW32__ %{!ansi:%{mthreads:-D_MT}}}  %{!mno-cygwin:-D__CYGWIN32__ -D__CYGWIN__ %{!ansi:-Dunix} -D__unix__ -D__unix }  %{mwin32|mno-cygwin:-DWIN32 -D_WIN32 -D__WIN32 -D__WIN32__ %{!ansi:-DWINNT}}  %{!nostdinc:%{!mno-win32|mno-cygwin:-idirafter ../include/w32api%s -idirafter ../../include/w32api%s}}
+
+*cpp_options:
+%(cpp_unique_options) %1 %{m*} %{std*&ansi&trigraphs} %{W*&pedantic*} %{w} %{f*} %{g*:%{!g0:%{!fno-working-directory:-fworking-directory}}} %{O*} %{undef}
+
+*cpp_debug_options:
+%{d*}
+
+*cpp_unique_options:
+%{C|CC:%{!E:%eGCC does not support -C or -CC without -E}} %{!Q:-quiet} %{nostdinc*} %{C} %{CC} %{v} %{I*} %{P} %I %{MD:-MD %{!o:%b.d}%{o*:%.d%*}} %{MMD:-MMD %{!o:%b.d}%{o*:%.d%*}} %{M} %{MM} %{MF*} %{MG} %{MP} %{MQ*} %{MT*} %{!E:%{!M:%{!MM:%{MD|MMD:%{o*:-MQ %*}}}}} %{remap} %{g3:-dD} %{H} %C %{D*&U*&A*} %{i*} %Z %i %{E|M|MM:%W{o*}}
+
+*trad_capable_cpp:
+cc1 -E %{traditional|ftraditional|traditional-cpp:-traditional-cpp}
+
+*cc1:
+%(cc1_cpu) 
+
+*cc1_options:
+%{pg:%{fomit-frame-pointer:%e-pg and -fomit-frame-pointer are incompatible}} %1 %{!Q:-quiet} -dumpbase %B %{d*} %{m*} %{a*} %{c|S:%{o*:-auxbase-strip %*}%{!o*:-auxbase %b}}%{!c:%{!S:-auxbase %b}} %{g*} %{O*} %{W*&pedantic*} %{w} %{std*&ansi&trigraphs} %{v:-version} %{pg:-p} %{p} %{f*} %{undef} %{Qn:-fno-ident} %{--help:--help} %{--target-help:--target-help} %{!fsyntax-only:%{S:%W{o*}%{!o*:-o %b.s}}} %{fsyntax-only:-o %j} %{-param*}
+
+*cc1plus:
+
+
+*link_gcc_c_sequence:
+%G %L %G
+
+*endfile:
+
+
+*link:
+  %{mwindows:--subsystem windows}   %{mconsole:--subsystem console}   %{shared: %{mdll: %eshared and mdll are not compatible}}   %{shared: --shared} %{mdll:--dll}   %{static:-Bstatic} %{!static:-Bdynamic}   %{shared|mdll: -e     %{mno-cygwin:_DllMainCRTStartup@12}     %{!mno-cygwin:__cygwin_dll_entry@12}}  %{!mno-cygwin:--dll-search-prefix=cyg}
+
+*lib:
+  %{pg:-lgmon}   %{!mno-cygwin:-lcygwin}   %{mno-cygwin:%{mthreads:-lmingwthrd} -lmingw32}   %{mwindows:-lgdi32 -lcomdlg32}   -luser32 -lkernel32 -ladvapi32 -lshell32
+
+*libgcc:
+%{mno-cygwin: %{mthreads:-lmingwthrd} -lmingw32} -lgcc	   %{mno-cygwin:-lmoldname -lmingwex -lmsvcrt}
+
+*startfile:
+  %{shared|mdll: %{mno-cygwin:dllcrt2%O%s}}  %{!shared: %{!mdll: %{!mno-cygwin:crt0%O%s} %{mno-cygwin:crt2%O%s}  %{pg:gcrt0%O%s}}}
+
+*switches_need_spaces:
+
+
+*cross_compile:
+0
+
+*version:
+3.4.4
+
+*multilib:
+. ;
+
+*multilib_defaults:
+
+
+*multilib_extra:
+
+
+*multilib_matches:
+
+
+*multilib_exclusions:
+
+
+*multilib_options:
+
+
+*linker:
+collect2
+
+*link_libgcc:
+%D
+
+*md_exec_prefix:
+
+
+*md_startfile_prefix:
+
+
+*md_startfile_prefix_1:
+
+
+*startfile_prefix_spec:
+
+
+*sysroot_suffix_spec:
+
+
+*sysroot_hdrs_suffix_spec:
+
+
+*cc1_cpu:
+%{!mtune*: %{m386:mtune=i386 %n`-m386' is deprecated. Use `-march=i386' or `-mtune=i386' instead.
+} %{m486:-mtune=i486 %n`-m486' is deprecated. Use `-march=i486' or `-mtune=i486' instead.
+} %{mpentium:-mtune=pentium %n`-mpentium' is deprecated. Use `-march=pentium' or `-mtune=pentium' instead.
+} %{mpentiumpro:-mtune=pentiumpro %n`-mpentiumpro' is deprecated. Use `-march=pentiumpro' or `-mtune=pentiumpro' instead.
+} %{mcpu=*:-mtune=%* %n`-mcpu=' is deprecated. Use `-mtune=' or '-march=' instead.
+}} %<mcpu=* %{mpni:-msse3 %n`-mpni' is deprecated. Use `-msse3' instead.
+} %{mno-pni:-mno-sse3 %n`-mno-pni' is deprecated. Use `-mno-sse3' instead.
+} %{mintel-syntax:-masm=intel %n`-mintel-syntax' is deprecated. Use `-masm=intel' instead.
+} %{mno-intel-syntax:-masm=att %n`-mno-intel-syntax' is deprecated. Use `-masm=att' instead.
+}
+
+*mingw_include_path:
+i686-pc-cygwin
+
+*link_command:
+%{!fsyntax-only:%{!c:%{!M:%{!MM:%{!E:%{!S:    %(linker) %l %{pie:-pie} %X %{o*} %{A} %{d} %{e*} %{m} %{N} %{n} %{r}    %{s} %{t} %{u*} %{x} %{z} %{Z} %{!A:%{!nostdlib:%{!nostartfiles:%S}}}    %{static:} %{L*} %(link_libgcc) %o %{fprofile-arcs|fprofile-generate:-lgcov}    %{!nostdlib:%{!nodefaultlibs:%(link_gcc_c_sequence)}}    %{!A:%{!nostdlib:%{!nostartfiles:%E}}} %{T*} }}}}}}
+

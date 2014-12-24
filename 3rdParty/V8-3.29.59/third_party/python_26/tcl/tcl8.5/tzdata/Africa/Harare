@@ -1,0 +1,6 @@
+# created by tools/tclZIC.tcl - do not edit
+
+set TZData(:Africa/Harare) {
+    {-9223372036854775808 7452 0 LMT}
+    {-2109290652 7200 0 CAT}
+}

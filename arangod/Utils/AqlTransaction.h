@@ -180,6 +180,31 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief lockCollections, this is needed in a corner case in AQL: we need
+/// to lock all shards in a controlled way when we set up a distributed
+/// execution engine. To this end, we prevent the standard mechanism to
+/// lock collections on the DBservers when we instanciate the query. Then,
+/// in a second round, we need to lock the shards in exactly the right
+/// order via an HTTP call. This method is used to implement that HTTP action.
+////////////////////////////////////////////////////////////////////////////////
+
+        int lockCollections () {
+          auto trx = getInternals();
+
+          for (size_t i = 0; i < trx->_collections._length; i++) { 
+            TRI_transaction_collection_t* trxCollection 
+              = static_cast<TRI_transaction_collection_t*>
+                           (TRI_AtVectorPointer(&trx->_collections, i));
+            int res = TRI_LockCollectionTransaction(trxCollection, 
+                                         trxCollection->_accessType, 0);
+            if (res != TRI_ERROR_NO_ERROR) {
+              return res;
+            }
+          }
+          return TRI_ERROR_NO_ERROR;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief keep a copy of the collections, this is needed for the clone 
 /// operation
 ////////////////////////////////////////////////////////////////////////////////

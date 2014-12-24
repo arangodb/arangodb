@@ -180,7 +180,7 @@ Most of the tests can be invoked via the main Makefile:
  - unittests-single
  - unittests-shell-server
  - unittests-shell-server-only
- - unittests-shell-server-ahuacatl
+ - unittests-shell-server-aql
  - unittests-shell-client-readonly
  - unittests-shell-client
  - unittests-http-server

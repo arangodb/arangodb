@@ -365,6 +365,8 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
   into fewer sorts.
 * `remove-collect-into`: will appear if an *INTO* clause was removed from a *COLLECT*
   statement because the result of *INTO* is not used.
+* `remove-sort-rand`: will appear when a *SORT RAND()* expression is removed by
+  moving the random iteration into an *EnumerateCollectionNode*.
 * `interchange-adjacent-enumerations`: will appear if a query contains multiple 
   *FOR* statements whose order were permuted. Permutation of *FOR* statements is
   performed because it may enable further optimizations by other rules.

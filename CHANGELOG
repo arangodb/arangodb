@@ -3,6 +3,10 @@ v2.4.0-alpha6 (2014-12-18)
 
 * fixed superstates in FoxxGenerator
 
+* fixed issue #1065: Aardvark: added creation of documents and edges with _key property
+
+* fixed issue #1198: Aardvark: current aql editor query is now cached
+
 * Upgraded V8 version from 3.16.14 to 3.29.59
 
 * Added Foxx generator for building Hypermedia APIs
@@ -67,6 +71,12 @@ v2.4.0-alpha6 (2014-12-18)
   and the FilterNode will speed up query execution because the query requires less
   computation.
 
+* AQL: added optimizer rule "remove-sort-rand"
+  
+  This rule removes a `SORT RAND()` expression from a query and moves the random
+  iteration into the appropriate `EnumerateCollectionNode`. This is more efficient
+  than individually enumerating and then sorting randomly.
+
 * AQL: range optimizations for IN and OR
 
   This change enables usage of indexes for several additional cases. Filters containing
@@ -112,7 +122,7 @@ v2.4.0-alpha6 (2014-12-18)
 
 * fixed issue #1134: Change the default endpoint to localhost
 
-  This change will modify the ip address ArangoDB listens on to 127.0.0.1 by default.
+  This change will modify the IP address ArangoDB listens on to 127.0.0.1 by default.
   This will make new ArangoDB installations unaccessible from clients other than
   localhost unless changed. This is a security feature. 
 
@@ -157,6 +167,14 @@ v2.4.0-alpha6 (2014-12-18)
   * HTTP PUT `/_api/replication/logger-stop` 
   * HTTP GET `/_api/replication/logger-config` 
   * HTTP PUT `/_api/replication/logger-config` 
+
+* fixed issue #1174, which was due to locking problems in distributed
+  AQL execution
+
+* improved cluster locking for AQL avoiding deadlocks
+
+* use DistributeNode for modifying queries with REPLACE and UPDATE, if
+  possible
 
 
 v2.3.3 (2014-12-17)

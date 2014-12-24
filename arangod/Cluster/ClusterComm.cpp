@@ -35,6 +35,7 @@
 #include "Basics/StringUtils.h"
 #include "SimpleHttpClient/ConnectionManager.h"
 #include "Dispatcher/DispatcherThread.h"
+#include "Utils/Transaction.h"
 
 #include "VocBase/server.h"
 
@@ -194,6 +195,16 @@ ClusterCommResult* ClusterComm::asyncRequest (
     op->shardID = destination.substr(6);
     op->serverID = ClusterInfo::instance()->getResponsibleServer(op->shardID);
     LOG_DEBUG("Responsible server: %s", op->serverID.c_str());
+    if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
+      // LOCKING-DEBUG
+      // std::cout << "Found Nolock header\n";
+      auto it = triagens::arango::Transaction::_makeNolockHeaders->find(op->shardID);
+      if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
+        // LOCKING-DEBUG
+        // std::cout << "Found our shard\n";
+        (*headerFields)["X-Arango-Nolock"] = op->shardID;
+      }
+    }
   }
   else if (destination.substr(0,7) == "server:") {
     op->shardID = "";
@@ -232,6 +243,13 @@ ClusterCommResult* ClusterComm::asyncRequest (
   op->callback             = callback;
   op->endTime              = timeout == 0.0 ? TRI_microtime()+24*60*60.0
                                             : TRI_microtime()+timeout;
+
+  // LOCKING-DEBUG
+  // std::cout << "asyncRequest: sending " << triagens::rest::HttpRequest::translateMethod(reqtype) << " request to DB server '" << op->serverID << ":" << path << "\n" << body << "\n";
+  // for (auto& h : *headerFields) {
+  //   std::cout << h.first << ":" << h.second << std::endl;
+  // }
+  // std::cout << std::endl;
 
   ClusterCommResult* res = new ClusterCommResult();
   *res = *static_cast<ClusterCommResult*>(op);
@@ -280,6 +298,8 @@ ClusterCommResult* ClusterComm::syncRequest (
         map<string, string> const&         headerFields,
         ClusterCommTimeout                 timeout) {
 
+  map<string, string> headersCopy(headerFields);
+
   ClusterCommResult* res = new ClusterCommResult();
   res->clientTransactionID  = clientTransactionID;
   res->coordTransactionID   = coordTransactionID;
@@ -300,6 +320,16 @@ ClusterCommResult* ClusterComm::syncRequest (
     if (res->serverID.empty()) {
       res->status = CL_COMM_ERROR;
       return res;
+    }
+    if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
+      // LOCKING-DEBUG
+      // std::cout << "Found Nolock header\n";
+      auto it = triagens::arango::Transaction::_makeNolockHeaders->find(res->shardID);
+      if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
+        // LOCKING-DEBUG
+        // std::cout << "Found this shard: " << res->shardID << std::endl;
+        headersCopy["X-Arango-Nolock"] = res->shardID;
+      }
     }
   }
   else if (destination.substr(0, 7) == "server:") {
@@ -340,14 +370,19 @@ ClusterCommResult* ClusterComm::syncRequest (
       LOG_DEBUG("sending %s request to DB server '%s': %s",
          triagens::rest::HttpRequest::translateMethod(reqtype).c_str(),
          res->serverID.c_str(), body.c_str());
+      // LOCKING-DEBUG
+      // std::cout << "syncRequest: sending " << triagens::rest::HttpRequest::translateMethod(reqtype) << " request to DB server '" << res->serverID << ":" << path << "\n" << body << "\n";
+      // for (auto& h : headersCopy) {
+      //   std::cout << h.first << ":" << h.second << std::endl;
+      // }
+      // std::cout << std::endl;
       triagens::httpclient::SimpleHttpClient* client
           = new triagens::httpclient::SimpleHttpClient(
                                 connection->connection,
                                 endTime - currentTime, false);
       client->keepConnectionOnDestruction(true);
 
-      map<string, string> headersCopy(headerFields);
-      headersCopy.emplace(make_pair(string("Authorization"), ServerState::instance()->getAuthentication()));
+      headersCopy["Authorization"] = ServerState::instance()->getAuthentication();
 #ifdef DEBUG_CLUSTER_COMM
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 #if HAVE_BACKTRACE

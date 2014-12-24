@@ -1,0 +1,45 @@
+.PHONY: all install
+
+all: build64 build32
+
+
+build64:
+	./v8-build.bat x86_amd64 x64 x64 64 
+
+build32:
+	./v8-build.bat x86 ia32 Win32 32
+
+
+clean: clean32 clean64
+
+clean64:
+	./v8-clean.bat cmd x86_amd64 x64 x64 64
+
+clean32:
+	./v8-clean.bat x86 ia32 Win32 32
+
+
+distclean: distclean32 distclean64
+
+distclean64:
+	./v8-distclean.bat x86_amd64 x64 x64 64
+
+distclean32:
+	./v8-distclean.bat x86 ia32 Win32 32
+
+
+install:
+	$(MAKE) -f Makefile.v8-windows install_bits BITS=32
+	$(MAKE) -f Makefile.v8-windows install_bits BITS=64
+
+install_bits:
+	mkdir -p ../WindowsLibraries/$(BITS)/lib
+	mkdir -p ../WindowsLibraries/$(BITS)/include/unicode
+
+	cp -a V8-3.29.59/build/Release$(BITS)/lib/*.lib ../WindowsLibraries/$(BITS)/lib/Release
+	cp -a V8-3.29.59/build/Debug$(BITS)/lib/*.lib ../WindowsLibraries/$(BITS)/lib/Debug
+	cp -a V8-3.29.59/include/* ../WindowsLibraries/$(BITS)/include
+
+	for f in common i18n io; do \
+	  cp -a V8-3.29.59/third_party/icu/source/$${f}/unicode/* ../WindowsLibraries/$(BITS)/include/unicode/; \
+	done

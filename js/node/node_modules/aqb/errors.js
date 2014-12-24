@@ -1,5 +1,4 @@
-/* jshint globalstrict: true, es3: true */
-/* globals require: false, exports: false */
+/*jshint browserify: true */
 'use strict';
 function AqlError(message) {
   this.message = message;

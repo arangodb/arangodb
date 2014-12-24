@@ -131,8 +131,6 @@ LDFLAGS="$SAVE_LDFLAGS"
 CPPFLAGS="$SAVE_CPPFLAGS"
 LIBS="$SAVE_LIBS"
 
-OPENSSL_CPPFLAGS="${OPENSSL_CPPFLAGS} -DTRI_OPENSSL_VERSION='${TRI_OPENSSL_VERSION}'"
-
 dnl -----------------------------------------------------------------------------------------
 dnl informational output
 dnl -----------------------------------------------------------------------------------------

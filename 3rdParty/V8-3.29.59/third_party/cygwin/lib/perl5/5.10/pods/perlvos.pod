@@ -1,0 +1,163 @@
+If you read this file _as_is_, just ignore the funny characters you
+see. It is written in the POD format (see pod/perlpod.pod) which is
+specially designed to be readable as is.
+
+=head1 NAME
+
+README.vos - Perl for Stratus VOS
+
+=head1 SYNOPSIS
+
+This file contains notes for building perl on the Stratus VOS
+operating system.  Perl is a scripting or macro language that is
+popular on many systems.  See L<perlbook> for a number of good
+books on Perl.
+
+These are instructions for building Perl from source.  Most
+people can simply download a pre-compiled distribution from the
+VOS anonymous FTP site.  This version of Perl is not supported
+on VOS Release 14.2.0 or earlier releases.  If you are running
+VOS Release 14.3.0 or later, download Perl from
+ftp://ftp.stratus.com/pub/vos/posix/ga/ga.html.  Instructions
+for unbundling the Perl distribution file are at
+ftp://ftp.stratus.com/pub/vos/utility/utility.html.
+
+If you are running VOS Release 14.4.1 or later, you can obtain a
+pre-compiled, supported copy of perl by purchasing Release 2.0.1
+(or later) of the VOS GNU C/C++ and GNU Tools product from
+Stratus Technologies.
+
+=head1 BUILDING PERL FOR VOS
+
+To build perl from its source code on the Stratus Continuum
+platform, you must be have VOS Release 14.5.0 or later, the STCP
+product, and the GNU C/C++ and GNU Tools, Release 2.0.1 or
+later.  On the V Series platform you must have VOS Release
+15.0.0 or later, and any version of the GNU C/C++ and GNU Tools
+product.
+
+To build full perl using the supplied Configure script and
+makefiles, change to the "vos" subdirectory and type the command
+"compile_full_perl" or "start_process compile_full_perl".  This
+will configure, build, and test perl.
+
+=head1 INSTALLING PERL IN VOS
+
+=over 4
+
+=item 1
+
+If you have built perl using the Configure script, ensure that
+you have modify and default write permission to C<<
+>system>ported >> and all subdirectories.  Then type
+
+     gmake install
+
+=item 2
+
+While there are currently no architecture-specific
+extensions or modules distributed with perl, the following
+directories can be used to hold such files:
+
+     >system>ported>lib>perl5>5.9.0>7100
+     >system>ported>lib>perl5>5.9.0>8000
+     >system>ported>lib>perl5>5.9.0>i786
+
+=item 3
+
+Site-specific perl extensions and modules can be installed in one of
+two places.  Put architecture-independent files into:
+
+     >system>ported>lib>perl5>site_perl>5.9.0
+
+Put site-specific architecture-dependent files into one of the
+following directories:
+
+     >system>ported>lib>perl5>site_perl>5.9.0>7100
+     >system>ported>lib>perl5>site_perl>5.9.0>8000
+     >system>ported>lib>perl5>site_perl>5.9.0>i786
+
+=item 4
+
+You can examine the @INC variable from within a perl program
+to see the order in which Perl searches these directories.
+
+=back
+
+=head1 USING PERL IN VOS
+
+=head2 Restrictions of Perl on VOS
+
+This port of Perl version 5 to VOS prefers Unix-style,
+slash-separated pathnames over VOS-style greater-than-separated
+pathnames.  VOS-style pathnames should work in most contexts, but
+if you have trouble, replace all greater-than characters by slash
+characters.  Because the slash character is used as a pathname
+delimiter, Perl cannot process VOS pathnames containing a slash
+character in a directory or file name; these must be renamed.
+
+This port of Perl also uses Unix-epoch date values internally.
+As long as you are dealing with ASCII character string
+representations of dates, this should not be an issue.  The
+supported epoch is January 1, 1980 to January 17, 2038.
+
+See the file pod/perlport.pod for more information about the VOS
+port of Perl.
+
+=head2 Handling of underflow and overflow
+
+Prior to VOS Release 14.7.0, VOS does not support automatically
+mapping overflowed floating-point values to +infinity, nor
+automatically mapping underflowed floating-point values to zero,
+unlike many other platforms.  The Perl pack function has been
+modified to perform such mapping in software on VOS.  Performing
+other floating-point computations that underflow or overflow
+will probably result in SIGFPE.  Don't push your luck.
+
+As of VOS Release 14.7.0, the VOS POSIX runtime sets up the
+PA-RISC and IA-32 hardware floating-point status register so
+that the overflow and underflow exceptions do not trap, but
+instead automatically convert the result to infinity or zero, as
+appropriate.  As of this writing, there are still floating-point
+operations that can trap, for example, subtracting two infinite
+values.  This is recorded as suggestion posix-1022, which has
+been fixed in VOS Release 15.2 and higher.
+
+=head1 TEST STATUS
+
+When Perl 5.9.0 is built using the native build process on VOS
+Release 14.7.0 and GNU C++/GNU Tools 2.0.2a, all but nine
+attempted tests either pass or result in TODO (ignored)
+failures.  The tests that fail are:
+
+t/io/dup, test 2
+t/io/tell, test 28
+t/op/pack, test 0
+ext/B/t/bytecode, test 1
+ext/Devel/Peek/t/Peek, test 1
+ext/Encode/t/enc_module, test 1
+ext/IO/t/io_dup, test 2
+lib/ExtUtils/t/MM_Unix, test 94
+lib/Net/ing/t/450_service, test 8
+
+=head1 SUPPORT STATUS
+
+I'm offering this port "as is".  You can ask me questions, but I
+can't guarantee I'll be able to answer them.  There are some
+excellent books available on the Perl language; consult a book
+seller.
+
+If you want a supported version of perl for VOS, purchase the
+VOS GNU C/C++ and GNU Tools Release 2.0.1 (or later) product from
+Stratus Technologies, along with a support contract (or from
+anyone else who will sell you support).
+
+=head1 AUTHOR
+
+Paul Green (Paul.Green@stratus.com)
+
+=head1 LAST UPDATE
+
+February 7, 2008
+
+=cut

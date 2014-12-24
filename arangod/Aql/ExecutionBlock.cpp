@@ -3560,6 +3560,14 @@ void RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
                                    0, 
                                    nullptr,
                                    ep->_options.waitForSync);
+          if (ExecutionEngine::isDBServer() &&
+              errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+            auto* node = static_cast<RemoveNode const*>(getPlanNode());
+            if (node->getOptions().ignoreDocumentNotFound) {
+              // Ignore document not found on the DBserver:
+              errorCode = TRI_ERROR_NO_ERROR;
+            }
+          }
         }
         
         handleResult(errorCode, ep->_options.ignoreErrors); 
@@ -3795,6 +3803,14 @@ void UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
               errorCode = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
             }
           }
+          if (ExecutionEngine::isDBServer() &&
+              errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+            auto* node = static_cast<UpdateNode const*>(getPlanNode());
+            if (node->getOptions().ignoreDocumentNotFound) {
+              // Ignore document not found on the DBserver:
+              errorCode = TRI_ERROR_NO_ERROR;
+            }
+          }
         }
 
         handleResult(errorCode, ep->_options.ignoreErrors, &errorMessage); 
@@ -3884,6 +3900,16 @@ void ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
           
           // all exceptions are caught in _trx->update()
           errorCode = _trx->update(trxCollection, key, 0, &mptr, json.json(), TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, ep->_options.waitForSync);
+          if (ExecutionEngine::isDBServer() &&
+              errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+            auto* node = static_cast<ReplaceNode const*>(getPlanNode());
+            if (node->getOptions().ignoreDocumentNotFound) {
+              errorCode = TRI_ERROR_NO_ERROR;
+            }
+            else {
+              errorCode = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED;
+            }
+          }
         }
 
         handleResult(errorCode, ep->_options.ignoreErrors); 
@@ -4961,17 +4987,29 @@ size_t DistributeBlock::sendToClient (AqlValue val) {
         "DistributeBlock: can only send JSON or SHAPED");
   }
   
+  bool mustFreeJson = false;
+  TRI_json_t* obj = nullptr;
+  if (TRI_IsStringJson(json)) {
+    obj = TRI_CreateObject2Json(TRI_UNKNOWN_MEM_ZONE, 1);
+    TRI_InsertObjectJson(TRI_UNKNOWN_MEM_ZONE, obj, "_key", json);
+    mustFreeJson = true;
+  }
+
   std::string shardId;
   bool usesDefaultShardingAttributes;  
   auto clusterInfo = triagens::arango::ClusterInfo::instance();
   auto const planId = triagens::basics::StringUtils::itoa(_collection->getPlanId());
 
   int res = clusterInfo->getResponsibleShard(planId,
-                                             json,
+                                             mustFreeJson ? obj : json,
                                              true,
                                              shardId,
                                              usesDefaultShardingAttributes);
   
+  if (mustFreeJson) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, obj);
+  }
+
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
