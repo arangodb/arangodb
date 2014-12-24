@@ -569,11 +569,11 @@ add_definitions("-DTRI_READLINE_VERSION=\"${READLINE_VERSION}\"")
 set(V8_VERSION "3.29.59" CACHE string "V8 version")
 
 if (MSVC OR (BUILD_PACKAGE STREQUAL "raspbian"))
-  set(V8_LIBS v8_base;v8_nosnapshot CACHE string "V8 libraries")
+  set(V8_LIBS v8_base;v8_libbase;v8_libplatform;v8_nosnapshot CACHE string "V8 libraries")
 else ()
   set(V8_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/V8/include CACHE path "V8 include path")
   set(V8_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/V8/out/x64.release CACHE path "V8 library path")
-  set(V8_LIBS v8_base;v8_libbase;v8_libplatform v8_nosnapshot CACHE string "V8 libraries")
+  set(V8_LIBS v8_base;v8_libbase;v8_libplatform;v8_nosnapshot CACHE string "V8 libraries")
 endif ()
 
 if (V8_INCLUDE)
