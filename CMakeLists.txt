@@ -434,8 +434,6 @@ endif ()
 ### @brief ICU
 ################################################################################
 
-set(ICU_VERSION "52.1" CACHE string "ICU version")
-
 if (MSVC)
   set(ICU_LIBS "icui18n;icuuc;icudata" CACHE path "ICU libraries")
 
@@ -465,8 +463,6 @@ endif ()
 if (ICU_LIB_PATH)
   link_directories(${ICU_LIB_PATH})
 endif ()
-
-add_definitions("-DTRI_ICU_VERSION=\"${ICU_VERSION}\"")
 
 ################################################################################
 ### @brief LIBEV
