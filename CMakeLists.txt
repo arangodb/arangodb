@@ -418,8 +418,8 @@ endif ()
 ################################################################################
 
 if (BUILD_PACKAGE STREQUAL "raspbian")
-  set(ARM_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty-ARM/include CACHE path "ARM 3rd party include path")
-  set(ARM_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty-ARM/lib CACHE path "ARM 3rd party library path")
+  set(ARM_INCLUDE ${PROJECT_SOURCE_DIR}/ArmLibraries/include CACHE path "ARM 3rd party include path")
+  set(ARM_LIB_PATH ${PROJECT_SOURCE_DIR}/ArmLibraries/lib CACHE path "ARM 3rd party library path")
 endif ()
 
 if (ARM_INCLUDE)
@@ -441,8 +441,6 @@ if (MSVC)
 
   add_definitions("-DU_STATIC_IMPLEMENTATION=1")
 elseif (BUILD_PACKAGE STREQUAL "raspbian")
-  set(ICU_INCLUDE ${PROJECT_SOURCE_DIR}/ArmLibraries/icu/include CACHE path "ICU include path")
-  set(ICU_LIB_PATH ${PROJECT_SOURCE_DIR}/ArmLibraries/icu/lib CACHE path "ICU library path")
   set(ICU_LIBS icui18n;icuuc;icudata;pthread;dl;m CACHE path "ICU libraries")
 else ()
   set(ICU_INCLUDE1 ${PROJECT_SOURCE_DIR}/3rdParty/V8/third_party/icu/source/common CACHE path "ICU include path")
@@ -450,10 +448,6 @@ else ()
   set(ICU_INCLUDE3 ${PROJECT_SOURCE_DIR}/3rdParty/V8/third_party/icu/source/io CACHE path "ICU include path")
   set(ICU_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/V8/out/$V8_TARGET CACHE path "ICU library path")
   set(ICU_LIBS icui18n;icuuc;icudata;pthread;dl;m CACHE path "ICU libraries")
-endif ()
-
-if (ICU_INCLUDE)
-  include_directories(${ICU_INCLUDE})
 endif ()
 
 if (ICU_INCLUDE1)
@@ -528,15 +522,12 @@ endif ()
 
 if (MSVC)
   set(OPENSSL_LIBS ssleay;libeay CACHE string "OPENSSL libraries")
-  set(OPENSSL_VERSION "OpenSSL 1.0.1e" CACHE string "OPENSSL version")
 elseif (BUILD_PACKAGE STREQUAL "raspbian")
   set(OPENSSL_LIBS ssl;crypto CACHE string "OPENSSL libraries")
-  set(OPENSSL_VERSION "OpenSSL 0.9.8r 8 Feb 2011" CACHE string "OPENSSL version")
 else ()
   set(OPENSSL_INCLUDE "" CACHE path "OPENSSL include path")
   set(OPENSSL_LIB_PATH "" CACHE path "OPENSSL library path")
   set(OPENSSL_LIBS ssl;crypto CACHE string "OPENSSL libraries")
-  set(OPENSSL_VERSION "OpenSSL 0.9.8r 8 Feb 2011" CACHE string "OPENSSL version")
 endif ()
 
 if (OPENSSL_INCLUDE)
@@ -546,8 +537,6 @@ endif ()
 if (OPENSSL_LIB_PATH)
   link_directories(${OPENSSL_LIB_PATH})
 endif ()
-
-add_definitions("-DTRI_OPENSSL_VERSION=\"${OPENSSL_VERSION}\"")
 
 ################################################################################
 ### @brief READLINE or LINENOISE
