@@ -1037,6 +1037,11 @@ bool ApplicationV8::prepare () {
     v8::V8::SetFlagsFromString(_v8Options.c_str(), (int) _v8Options.size());
   }
 
+#ifdef TRI_FORCE_ARMV6
+  const string forceARMv6 = "--noenable-armv7";
+  v8::V8::SetFlagsFromString(forceARMv6.c_str(), (int) forceARMv6.size());
+#endif
+
   // use a minimum of 1 second for GC
   if (_gcFrequency < 1) {
     _gcFrequency = 1;

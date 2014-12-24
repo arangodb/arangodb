@@ -394,10 +394,10 @@ distclean-local:
 
 clean-local:
 	rm -rf $(CLEANUP)
-	rm -rf `find -name \*.gcno`
-	rm -rf `find -name \*.gcda`
+	rm -rf `find . -name \*.gcno`
+	rm -rf `find . -name \*.gcda`
 
-superclean: clean
+superclean: distclean
 	rm -rf arangod/*/.deps lib/*/.deps Makefile
 
 ################################################################################

@@ -40,6 +40,7 @@
 #include "VocBase/vocbase.h"
 #include "Wal/DocumentOperation.h"
 #include "Wal/LogfileManager.h"
+#include "Utils/Transaction.h"
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 
@@ -341,6 +342,18 @@ static int LockCollection (TRI_transaction_collection_t* trxCollection,
   }
 
   TRI_ASSERT(trxCollection->_collection != nullptr);
+
+  if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
+    std::string collName(trxCollection->_collection->_name);
+    auto it = triagens::arango::Transaction::_makeNolockHeaders->find(collName);
+    if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "LockCollection blocked: " << collName << std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+
   TRI_ASSERT(trxCollection->_collection->_collection != nullptr);
   TRI_ASSERT(! IsLocked(trxCollection));
 
@@ -394,6 +407,18 @@ static int UnlockCollection (TRI_transaction_collection_t* trxCollection,
   }
 
   TRI_ASSERT(trxCollection->_collection != nullptr);
+
+  if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
+    std::string collName(trxCollection->_collection->_name);
+    auto it = triagens::arango::Transaction::_makeNolockHeaders->find(collName);
+    if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "UnlockCollection blocked: " << collName << std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+
   TRI_ASSERT(trxCollection->_collection->_collection != nullptr);
   TRI_ASSERT(IsLocked(trxCollection));
 

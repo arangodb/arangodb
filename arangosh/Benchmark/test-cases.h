@@ -177,11 +177,100 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
     else if (mod == 1 || mod == 3) {
       *length = 0;
       *mustFree = false;
-      return (const char*) 0;
+      return (const char*) nullptr;
     }
     else {
       TRI_ASSERT(false);
       return 0;
+    }
+  }
+
+};
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                   document CRUD write / read test
+// -----------------------------------------------------------------------------
+
+struct DocumentCrudWriteReadTest : public BenchmarkOperation {
+  DocumentCrudWriteReadTest ()
+    : BenchmarkOperation () {
+  }
+
+  ~DocumentCrudWriteReadTest () {
+  }
+
+  bool setUp (SimpleHttpClient* client) {
+    return DeleteCollection(client, Collection) &&
+           CreateCollection(client, Collection, 2);
+  }
+
+  void tearDown () {
+  }
+
+  std::string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+    const size_t mod = globalCounter % 2;
+
+    if (mod == 0) {
+      return std::string("/_api/document?collection=" + Collection);
+    }
+    else {
+      size_t keyId = (size_t) (globalCounter / 2);
+      const std::string key = "testkey" + StringUtils::itoa(keyId);
+
+      return std::string("/_api/document/" + Collection + "/" + key);
+    }
+  }
+
+  HttpRequest::HttpRequestType type (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+    const size_t mod = globalCounter % 2;
+
+    if (mod == 0) {
+      return HttpRequest::HTTP_REQUEST_POST;
+    }
+    else {
+      return HttpRequest::HTTP_REQUEST_GET;
+    }
+  }
+
+  const char* payload (size_t* length, const int threadNumber, const size_t threadCounter, const size_t globalCounter, bool* mustFree) {
+    const size_t mod = globalCounter % 2;
+
+    if (mod == 0) {
+      const uint64_t n = Complexity;
+      TRI_string_buffer_t* buffer;
+
+      buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
+      TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
+
+      size_t keyId = (size_t) (globalCounter / 2);
+      const std::string key = "testkey" + StringUtils::itoa(keyId);
+      TRI_AppendStringStringBuffer(buffer, key.c_str());
+      TRI_AppendStringStringBuffer(buffer, "\"");
+
+      for (uint64_t i = 1; i <= n; ++i) {
+        TRI_AppendStringStringBuffer(buffer, ",\"value");
+        TRI_AppendUInt64StringBuffer(buffer, i);
+        if (mod == 0) {
+          TRI_AppendStringStringBuffer(buffer, "\":true");
+        }
+        else {
+          TRI_AppendStringStringBuffer(buffer, "\":false");
+        }
+      }
+
+      TRI_AppendCharStringBuffer(buffer, '}');
+
+      *length = TRI_LengthStringBuffer(buffer);
+      *mustFree = true;
+      char* ptr = TRI_StealStringBuffer(buffer);
+      TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+
+      return (const char*) ptr;
+    }
+    else {
+      *length = 0;
+      *mustFree = false;
+      return (const char*) nullptr;
     }
   }
 
@@ -272,7 +361,7 @@ struct ShapesTest : public BenchmarkOperation {
     else {
       *length = 0;
       *mustFree = false;
-      return (const char*) 0;
+      return (const char*) nullptr;
     }
   }
 
@@ -358,7 +447,7 @@ struct ShapesAppendTest : public BenchmarkOperation {
     else {
       *length = 0;
       *mustFree = false;
-      return (const char*) 0;
+      return (const char*) nullptr;
     }
   }
 
@@ -455,7 +544,7 @@ struct RandomShapesTest : public BenchmarkOperation {
     else {
       *length = 0;
       *mustFree = false;
-      return (const char*) 0;
+      return (const char*) nullptr;
     }
   }
 
@@ -559,7 +648,7 @@ struct DocumentCrudTest : public BenchmarkOperation {
     else if (mod == 1 || mod == 3 || mod == 4) {
       *length = 0;
       *mustFree = false;
-      return (const char*) 0;
+      return (const char*) nullptr;
     }
     else {
       TRI_ASSERT(false);
@@ -667,7 +756,7 @@ struct EdgeCrudTest : public BenchmarkOperation {
     else if (mod == 1 || mod == 3 || mod == 4) {
       *length = 0;
       *mustFree = false;
-      return (const char*) 0;
+      return (const char*) nullptr;
     }
     else {
       TRI_ASSERT(false);
@@ -761,7 +850,7 @@ struct SkiplistTest : public BenchmarkOperation {
     else if (mod == 1 || mod == 3 || mod == 4) {
       *length = 0;
       *mustFree = false;
-      return (const char*) 0;
+      return (const char*) nullptr;
     }
     else {
       TRI_ASSERT(false);
@@ -855,7 +944,7 @@ struct HashTest : public BenchmarkOperation {
     else if (mod == 1 || mod == 3 || mod == 4) {
       *length = 0;
       *mustFree = false;
-      return (const char*) 0;
+      return (const char*) nullptr;
     }
     else {
       TRI_ASSERT(false);
@@ -1578,6 +1667,9 @@ static BenchmarkOperation* GetTestCase (const std::string& name) {
   }
   if (name == "crud-append") {
     return new DocumentCrudAppendTest();
+  }
+  if (name == "crud-write-read") {
+    return new DocumentCrudWriteReadTest();
   }
   if (name == "aqltrx") {
     return new TransactionAqlTest();

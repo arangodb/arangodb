@@ -875,7 +875,10 @@ function rangedQuery (collection, attribute, left, right, type, skip, limit) {
       documents = collection.BY_CONDITION_SKIPLIST(idx.id, cond, skip, limit);
     }
     else {
-      throw "not implemented";
+      var err = new ArangoError();
+      err.errorNum = internal.errors.ERROR_ARANGO_NO_INDEX.code;
+      err.errorMessage = internal.errors.ERROR_ARANGO_NO_INDEX.message;
+      throw err;
     }
   }
 

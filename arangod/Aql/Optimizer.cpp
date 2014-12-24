@@ -388,7 +388,6 @@ void Optimizer::setupRules () {
 
   //////////////////////////////////////////////////////////////////////////////
   /// "Pass 2": try to remove redundant or unnecessary nodes
-  ///           use levels between 101 and 199 for this
   //////////////////////////////////////////////////////////////////////////////
 
   // remove filters from the query that are not necessary at all
@@ -424,7 +423,6 @@ void Optimizer::setupRules () {
 
   //////////////////////////////////////////////////////////////////////////////
   // "Pass 4": moving nodes "up" (potentially outside loops) (second try):
-  //           please use levels between 501 and 599 here
   //////////////////////////////////////////////////////////////////////////////
 
   // move calculations up the dependency chain (to pull them out of
@@ -443,7 +441,6 @@ void Optimizer::setupRules () {
   
   //////////////////////////////////////////////////////////////////////////////
   /// "Pass 5": try to remove redundant or unnecessary nodes (second try)
-  ///           use levels between 601 and 699 for this
   //////////////////////////////////////////////////////////////////////////////
 
   // remove filters from the query that are not necessary at all
@@ -454,18 +451,24 @@ void Optimizer::setupRules () {
                removeUnnecessaryFiltersRule_pass5,
                true);
   
+  // remove redundant sort node
+  registerRule("remove-redundant-sorts-2",
+               removeRedundantSortsRule,
+               removeRedundantSortsRule_pass5,
+               true);
+  
+  // SORT RAND() if appropriate
+  registerRule("remove-sort-rand",
+               removeSortRandRule,
+               removeSortRandRule_pass5,
+               true);
+
   // remove calculations that are never necessary
   registerRule("remove-unnecessary-calculations-2", 
                removeUnnecessaryCalculationsRule,
                removeUnnecessaryCalculationsRule_pass5,
                true);
 
-  // remove redundant sort blocks
-  registerRule("remove-redundant-sorts-2",
-               removeRedundantSortsRule,
-               removeRedundantSortsRule_pass5,
-               true);
-  
   // remove INTO from COLLECT
   registerRule("remove-collect-into",
                removeCollectIntoRule,
@@ -474,7 +477,6 @@ void Optimizer::setupRules () {
 
   //////////////////////////////////////////////////////////////////////////////
   /// "Pass 6": use indexes if possible for FILTER and/or SORT nodes
-  ///           use levels between 701 and 799 for this
   //////////////////////////////////////////////////////////////////////////////
   
   // try to replace simple OR conditions with IN

@@ -910,6 +910,14 @@ namespace triagens {
         std::vector<IndexMatch> getIndicesOrdered (IndexMatchVec const& attrs) const;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief enable random iteration of documents in collection
+////////////////////////////////////////////////////////////////////////////////
+
+        void setRandom () {
+          _random = true;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the database
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -961,7 +969,7 @@ namespace triagens {
 /// @brief whether or not we want random iteration
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool const _random;
+        bool _random;
     };
 
 // -----------------------------------------------------------------------------
@@ -1879,7 +1887,7 @@ namespace triagens {
 /// @brief get Variables Used Here including ASC/DESC
 ////////////////////////////////////////////////////////////////////////////////
 
-        SortElementVector const & getElements () const {
+        SortElementVector const& getElements () const {
           return _elements;
         }
 
@@ -2243,6 +2251,22 @@ namespace triagens {
         
         double estimateCost (size_t&) const override final;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getOptions
+////////////////////////////////////////////////////////////////////////////////
+        
+        ModificationOptions const& getOptions () const {
+          return _options;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getOptions
+////////////////////////////////////////////////////////////////////////////////
+        
+        ModificationOptions& getOptions () {
+          return _options;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
 // -----------------------------------------------------------------------------
@@ -2545,6 +2569,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
+          // Please do not change the order here without adjusting the 
+          // optimizer rule distributeInCluster as well!
           std::vector<Variable const*> v;
           v.push_back(_inDocVariable);
 
@@ -2661,6 +2687,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
+          // Please do not change the order here without adjusting the 
+          // optimizer rule distributeInCluster as well!
           std::vector<Variable const*> v;
           v.push_back(_inDocVariable);
 
@@ -3079,7 +3107,7 @@ namespace triagens {
           : ExecutionNode(plan, id),
             _vocbase(vocbase),
             _collection(collection),
-            _varId(varId){
+            _varId(varId) {
         }
 
         DistributeNode (ExecutionPlan*, 

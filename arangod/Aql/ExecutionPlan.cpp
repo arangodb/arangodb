@@ -487,6 +487,12 @@ ExecutionNode* ExecutionPlan::fromNodeSort (ExecutionNode* previous,
       TRI_ASSERT(element->numMembers() == 2);
 
       auto expression = element->getMember(0);
+
+      if (expression->isConstant()) {
+        // expression is constant, so sorting with not provide any benefit 
+        continue;
+      }
+
       auto ascending = element->getMember(1);
 
       // get sort order
@@ -541,6 +547,15 @@ ExecutionNode* ExecutionPlan::fromNodeSort (ExecutionNode* previous,
     throw;
   }
 
+
+  if (elements.empty()) {
+    // no sort criterion remained - this can only happen if all sort
+    // criteria were constants 
+    return previous;
+  }
+
+
+  // at least one sort criterion remained 
   TRI_ASSERT(! elements.empty());
 
   // properly link the temporary calculations in the plan
@@ -652,9 +667,7 @@ ExecutionNode* ExecutionPlan::fromNodeCollectExpression (ExecutionNode* previous
                                                          AstNode const* node) {
   TRI_ASSERT(node != nullptr && 
              node->type == NODE_TYPE_COLLECT_EXPRESSION);
-  size_t const n = node->numMembers();
-
-  TRI_ASSERT(n == 3);
+  TRI_ASSERT(node->numMembers() == 3);
 
   auto list = node->getMember(0);
   size_t const numVars = list->numMembers();
@@ -741,9 +754,7 @@ ExecutionNode* ExecutionPlan::fromNodeCollectCount (ExecutionNode* previous,
                                                     AstNode const* node) {
   TRI_ASSERT(node != nullptr && 
              node->type == NODE_TYPE_COLLECT_COUNT);
-  size_t const n = node->numMembers();
-
-  TRI_ASSERT(n == 2);
+  TRI_ASSERT(node->numMembers() == 2);
 
   auto list = node->getMember(0);
   size_t const numVars = list->numMembers();
@@ -787,9 +798,14 @@ ExecutionNode* ExecutionPlan::fromNodeCollectCount (ExecutionNode* previous,
 
   // inject a sort node for all expressions / variables that we just picked up...
   // note that this sort is stable
-  auto sort = registerNode(new SortNode(this, nextId(), sortElements, true));
-  sort->addDependency(previous);
-  previous = sort;
+  if (numVars > 0) {
+    // a SortNode is only required if we have grouping criteria.
+    // for example, COLLECT x = ... WITH COUNT INTO g has grouping criteria x = ...
+    // but the following statement doesn't have any: COLLECT WITH COUNT INTO g
+    auto sort = registerNode(new SortNode(this, nextId(), sortElements, true));
+    sort->addDependency(previous);
+    previous = sort;
+  }
 
   // output variable
   auto v = node->getMember(1);

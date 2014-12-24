@@ -456,6 +456,12 @@ function removeAlwaysOnClusterRules (rules) {
   return copy;
 }
 
+function removeClusterNodes (nodeTypes) {
+  return nodeTypes.filter(function(nodeType) {
+    return ([ "ScatterNode", "GatherNode", "DistributeNode", "RemoteNode" ].indexOf(nodeType) === -1);
+  });
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    module exports
 // -----------------------------------------------------------------------------
@@ -475,6 +481,7 @@ exports.findExecutionNodes                 = findExecutionNodes;
 exports.findReferencedNodes                = findReferencedNodes;
 exports.getQueryMultiplePlansAndExecutions = getQueryMultiplePlansAndExecutions;
 exports.removeAlwaysOnClusterRules         = removeAlwaysOnClusterRules;
+exports.removeClusterNodes                 = removeClusterNodes;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

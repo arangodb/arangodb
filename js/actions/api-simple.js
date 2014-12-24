@@ -1702,8 +1702,9 @@ actions.defineHttp({
 /// query. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
-/// is returned if the collection specified by *collection* is unknown.  The
-/// response body contains an error document in this case.
+/// is returned if the collection specified by *collection* is unknown or no
+/// suitable index for the range query is present.  The response body contains 
+/// an error document in this case.
 ///
 /// @EXAMPLES
 ///

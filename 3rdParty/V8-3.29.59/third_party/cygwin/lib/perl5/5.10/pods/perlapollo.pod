@@ -1,0 +1,23 @@
+If you read this file _as_is_, just ignore the funny characters you see.
+It is written in the POD format (see pod/perlpod.pod) which is specially
+designed to be readable as is.
+
+=head1 NAME
+
+README.apollo - Perl version 5 on Apollo DomainOS
+
+=head1 DESCRIPTION
+
+The following tests are known to fail as of Perl 5.005_03:
+
+comp/decl..........FAILED at test 0
+op/write...........FAILED at test 0
+lib/filefind.......FAILED at test 2
+lib/io_udp.........FAILED at test 2
+lib/findbin........stat(/ressel/ABT/USER/vta/jk/proj.local/perl/perl5.005_03-MAINT_TRIAL_5/t/lib/): No such file or directory at ../lib/FindBin.pm line 162
+stat(/ressel/ABT/USER/vta/jk/proj.local/perl/perl5.005_03-MAINT_TRIAL_5/t/lib/): No such file or directory at ../lib/FindBin.pm line 163
+FAILED at test 1
+
+=head1 AUTHOR
+
+Johann Klasek <jk@auto.tuwien.ac.at>
