@@ -28,9 +28,15 @@ mr-*.h
 .mruby-build-32
 .setup-mr-directories
 .setup-js-directories
+
 3rdParty/libev/ARCH.x64/
 3rdParty/libev/ARCH.ia32/
 3rdParty/zlib-1.2.7/
+3rdParty/V8-3.29.59/build/Debug*
+3rdParty/V8-3.29.59/build/Release*
+3rdParty/V8-3.29.59/build/all.opensdf
+
+Build*
 
 Makefile
 Makefile.in
