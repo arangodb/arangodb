@@ -468,14 +468,14 @@ endif ()
 ### @brief LIBEV
 ################################################################################
 
+set(LIBEV_VERSION "unknown" CACHE string "LIBEV version")
+
 if (MSVC OR (BUILD_PACKAGE STREQUAL "raspbian")) 
   set(LIBEV_LIBS ev CACHE string "LIBEV libraries")
-  set(LIBEV_VERSION "4.11" CACHE string "LIBEV version")
 else ()
   set(LIBEV_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/libev CACHE path "LIBEV include path")
   set(LIBEV_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/libev/BUILD/.libs CACHE path "LIBEV library path")
   set(LIBEV_LIBS ev CACHE string "LIBEV libraries")
-  set(LIBEV_VERSION "4.11" CACHE string "LIBEV version")
 endif ()
 
 if (LIBEV_INCLUDE)
@@ -545,7 +545,7 @@ else ()
   set(READLINE_INCLUDE "" CACHE path "READLINE include path")
   set(READLINE_LIB_PATH "" CACHE path "READLINE library path")
   set(READLINE_LIBS readline CACHE string "READLINE libraries")
-  set(READLINE_VERSION "0x0402.hex" CACHE string "READLINE version")
+  set(READLINE_VERSION "unknown" CACHE string "READLINE version")
 endif ()
 
 if (READLINE_INCLUDE)
@@ -562,7 +562,7 @@ add_definitions("-DTRI_READLINE_VERSION=\"${READLINE_VERSION}\"")
 ### @brief V8
 ################################################################################
 
-set(V8_VERSION "3.29.59" CACHE string "V8 version")
+set(V8_VERSION "unknown" CACHE string "V8 version")
 
 if (MSVC OR (BUILD_PACKAGE STREQUAL "raspbian"))
   set(V8_LIBS v8_base;v8_nosnapshot CACHE string "V8 libraries")
@@ -586,14 +586,14 @@ add_definitions("-DTRI_V8_VERSION=\"${V8_VERSION}\"")
 ### @brief ZLIB
 ################################################################################
 
+set(ZLIB_VERSION "unknown" CACHE string "ZLIB version")
+
 if (MSVC OR (BUILD_PACKAGE STREQUAL "raspbian"))
   set(ZLIB_LIBS z CACHE string "ZLIB libraries")
-  set(ZLIB_VERSION "1.2.7" CACHE string "ZLIB version")
 else ()
   set(ZLIB_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/zlib-1.2.7 CACHE path "ZLIB include path")
   set(ZLIB_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/zlib-1.2.7 CACHE path "ZLIB library path")
   set(ZLIB_LIBS z CACHE string "ZLIB libraries")
-  set(ZLIB_VERSION "1.2.7" CACHE string "ZLIB version")
 endif ()
 
 if (ZLIB_INCLUDE)
