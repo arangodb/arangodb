@@ -4987,17 +4987,29 @@ size_t DistributeBlock::sendToClient (AqlValue val) {
         "DistributeBlock: can only send JSON or SHAPED");
   }
   
+  bool mustFreeJson = false;
+  TRI_json_t* obj = nullptr;
+  if (TRI_IsStringJson(json)) {
+    obj = TRI_CreateObject2Json(TRI_UNKNOWN_MEM_ZONE, 1);
+    TRI_InsertObjectJson(TRI_UNKNOWN_MEM_ZONE, obj, "_key", json);
+    mustFreeJson = true;
+  }
+
   std::string shardId;
   bool usesDefaultShardingAttributes;  
   auto clusterInfo = triagens::arango::ClusterInfo::instance();
   auto const planId = triagens::basics::StringUtils::itoa(_collection->getPlanId());
 
   int res = clusterInfo->getResponsibleShard(planId,
-                                             json,
+                                             mustFreeJson ? obj : json,
                                              true,
                                              shardId,
                                              usesDefaultShardingAttributes);
   
+  if (mustFreeJson) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, obj);
+  }
+
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
