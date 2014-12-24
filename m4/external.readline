@@ -115,20 +115,20 @@ _ACEOF
 
   AC_MSG_CHECKING([READLINE version])
   eval "$ac_cpp conftest.$ac_ext" | fgrep "long sdnhg36ed" | awk '{print $4 "." $5}' > conftest.output
-  TRI_READLINE_VERSION=`cat conftest.output`
+  READLINE_VERSION=`cat conftest.output`
 
-  if test -z "$TRI_READLINE_VERSION"; then
+  if test -z "$READLINE_VERSION"; then
     AC_MSG_ERROR([Readline support is not working. Please re-install readline support])
   fi
 
-  AC_MSG_RESULT([$TRI_READLINE_VERSION])
+  AC_MSG_RESULT([$READLINE_VERSION])
   rm -f conftest*
 
 elif test "x$tr_READLINE" = xlinenoise;  then
-  TRI_READLINE_VERSION="linenoise"
+  READLINE_VERSION="linenoise"
 
   AC_MSG_CHECKING([READLINE version])
-  AC_MSG_RESULT([$TRI_READLINE_VERSION])
+  AC_MSG_RESULT([$READLINE_VERSION])
 fi
 
 dnl ----------------------------------------------------------------------------
@@ -141,10 +141,10 @@ CPPFLAGS="$SAVE_CPPFLAGS"
 
 if test "x$tr_READLINE" = xyes;  then
   CPPFLAGS="$CPPFLAGS -DHAVE_READLINE=1"
-  READLINE_CPPFLAGS="${READLINE_CPPFLAGS} -DTRI_READLINE_VERSION='\"${TRI_READLINE_VERSION}\"'"
+  READLINE_CPPFLAGS="${READLINE_CPPFLAGS} -DTRI_READLINE_VERSION='\"${READLINE_VERSION}\"'"
 
 elif test "x$tr_READLINE" = xlinenoise;  then
-  READLINE_CPPFLAGS="${READLINE_CPPFLAGS} -DTRI_HAVE_LINENOISE -DTRI_READLINE_VERSION='\"${TRI_READLINE_VERSION}\"'"
+  READLINE_CPPFLAGS="${READLINE_CPPFLAGS} -DTRI_HAVE_LINENOISE -DTRI_READLINE_VERSION='\"${READLINE_VERSION}\"'"
 fi
 
 dnl ----------------------------------------------------------------------------
@@ -163,6 +163,7 @@ if test "x$tr_READLINE" = xlinenoise;  then
   AC_DEFINE_UNQUOTED(TRI_HAVE_LINENOISE, 1, [true if linenoise is used])
 fi
 
+AC_SUBST(READLINE_VERSION)
 AC_SUBST(READLINE_CPPFLAGS)
 AC_SUBST(READLINE_LDFLAGS)
 AC_SUBST(READLINE_LIBS)
@@ -172,14 +173,14 @@ dnl informational output
 dnl ----------------------------------------------------------------------------
 
 if test "x$tr_READLINE" = xyes;  then
-  LIB_INFO="$LIB_INFO|READLINE VERSION:  ${TRI_READLINE_VERSION}"
+  LIB_INFO="$LIB_INFO|READLINE VERSION:  ${READLINE_VERSION}"
 
   LIB_INFO="$LIB_INFO|READLINE_CPPFLAGS: ${READLINE_CPPFLAGS}"
   LIB_INFO="$LIB_INFO|READLINE_LDLIBS:   ${READLINE_LDLIBS}"
   LIB_INFO="$LIB_INFO|READLINE_LIBS:     ${READLINE_LIBS}"
 
 elif test "x$tr_READLINE" = xlinenoise;  then
-  LIB_INFO="$LIB_INFO|LINENOISE VERSION:  ${TRI_READLINE_VERSION}"
+  LIB_INFO="$LIB_INFO|LINENOISE VERSION:  ${READLINE_VERSION}"
 
   LIB_INFO="$LIB_INFO|LINENOISE_CPPFLAGS: ${READLINE_CPPFLAGS}"
   LIB_INFO="$LIB_INFO|LINENOISE_LDLIBS:   ${READLINE_LDLIBS}"
