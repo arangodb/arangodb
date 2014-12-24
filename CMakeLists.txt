@@ -42,6 +42,17 @@ set(TEST_BASICS_SUITE basics_suite)
 set(TEST_GEO_SUITE    geo_suite)
 
 ################################################################################
+### @brief BUILD_PACKAGE
+###
+### Posible options are:
+### - dmg-cli: Mac OS X shell client application
+### - debian: debian package
+### - raspbian: raspberry debian package
+################################################################################
+
+set(BUILD_PACKAGE "unknown" CACHE path "Package type to build")
+
+################################################################################
 ### @brief GNU C/C++ compiler
 ################################################################################
 
@@ -110,7 +121,21 @@ add_definitions("-DTRI_BITS=${BITS}")
 
 if (BUILD_PACKAGE STREQUAL "raspbian")
   add_definitions("-DTRI_FORCE_ARMV6")
+  option(RASPBIAN "Building for Raspberry PI" ON)
+else ()
+  option(RASPBIAN "Building for Raspberry PI" OFF)
 endif ()
+
+################################################################################
+### @brief darwin
+################################################################################
+
+if (BUILD_PACKAGE STREQUAL "dmg-cli")
+  option(DARWIN "Building for MacOS" ON)
+else ()
+  option(DARWIN "Building for MacOS" OF)
+endif ()
+
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                           OPTIONS
@@ -121,17 +146,6 @@ endif ()
 ################################################################################
 
 set(ARANGODB_VERSION "1.x.y-rc1" CACHE path "ArangoDB version")
-
-################################################################################
-### @brief BUILD_PACKAGE
-###
-### Posible options are:
-### - dmg-cli: Mac OS X shell client application
-### - debian: debian package
-### - raspbian: raspberry debian package
-################################################################################
-
-set(BUILD_PACKAGE "unknown" CACHE path "Package type to build")
 
 ################################################################################
 ### @brief MRUBY
@@ -306,7 +320,7 @@ macro (generate_path_config name)
   STRING(REPLACE "@LOCALSTATEDIR@" "${VARDIR_NATIVE}" 
          FileContent "${FileContent}")
 
-  if ((${name} STREQUAL "arangod") AND (BUILD_PACKAGE STREQUAL "raspbian"))
+  if ((${name} STREQUAL "arangod") AND RASPBIAN)
     STRING(REGEX REPLACE "[\r\n]threads =[^\r\n]*" "\nthreads = 1" 
            FileContent "${FileContent}")
   endif ()
@@ -319,7 +333,7 @@ endmacro ()
 ################################################################################
 
 macro (install_config name)
-  if (MSVC OR (BUILD_PACKAGE STREQUAL "dmg-cli"))
+  if (MSVC OR DARWIN)
     generate_root_config(${name})
   else ()
     generate_path_config(${name})
@@ -417,7 +431,7 @@ endif ()
 ### @brief raspberry pi
 ################################################################################
 
-if (BUILD_PACKAGE STREQUAL "raspbian")
+if (RASPBIAN)
   set(ARM_INCLUDE ${PROJECT_SOURCE_DIR}/ArmLibraries/include CACHE path "ARM 3rd party include path")
   set(ARM_LIB_PATH ${PROJECT_SOURCE_DIR}/ArmLibraries/lib CACHE path "ARM 3rd party library path")
 endif ()
@@ -438,26 +452,16 @@ if (MSVC)
   set(ICU_LIBS "icui18n;icuuc;icudata" CACHE path "ICU libraries")
 
   add_definitions("-DU_STATIC_IMPLEMENTATION=1")
-elseif (BUILD_PACKAGE STREQUAL "raspbian")
+elseif (RASPBIAN)
   set(ICU_LIBS icui18n;icuuc;icudata;pthread;dl;m CACHE path "ICU libraries")
 else ()
-  set(ICU_INCLUDE1 ${PROJECT_SOURCE_DIR}/3rdParty/V8/third_party/icu/source/common CACHE path "ICU include path")
-  set(ICU_INCLUDE2 ${PROJECT_SOURCE_DIR}/3rdParty/V8/third_party/icu/source/i18n CACHE path "ICU include path")
-  set(ICU_INCLUDE3 ${PROJECT_SOURCE_DIR}/3rdParty/V8/third_party/icu/source/io CACHE path "ICU include path")
-  set(ICU_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/V8/out/$V8_TARGET CACHE path "ICU library path")
+  set(ICU_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/V8-3.29.59/third_party/icu/source/common;${PROJECT_SOURCE_DIR}/3rdParty/V8-3.29.59/third_party/icu/source/i18n;${PROJECT_SOURCE_DIR}/3rdParty/V8-3.29.59/third_party/icu/source/io CACHE path "ICU include path")
+  set(ICU_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/V8/out/x64.release CACHE path "ICU library path")
   set(ICU_LIBS icui18n;icuuc;icudata;pthread;dl;m CACHE path "ICU libraries")
 endif ()
 
-if (ICU_INCLUDE1)
-  include_directories(${ICU_INCLUDE1})
-endif ()
-
-if (ICU_INCLUDE2)
-  include_directories(${ICU_INCLUDE2})
-endif ()
-
-if (ICU_INCLUDE3)
-  include_directories(${ICU_INCLUDE3})
+if (ICU_INCLUDE)
+  include_directories(${ICU_INCLUDE})
 endif ()
 
 if (ICU_LIB_PATH)
@@ -470,7 +474,7 @@ endif ()
 
 set(LIBEV_VERSION "unknown" CACHE string "LIBEV version")
 
-if (MSVC OR (BUILD_PACKAGE STREQUAL "raspbian")) 
+if (MSVC OR RASPBIAN) 
   set(LIBEV_LIBS ev CACHE string "LIBEV libraries")
 else ()
   set(LIBEV_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/libev CACHE path "LIBEV include path")
@@ -492,7 +496,7 @@ add_definitions("-DTRI_LIBEV_VERSION=\"${LIBEV_VERSION}\"")
 ### @brief MRUBY
 ################################################################################
 
-if (MSVC OR (BUILD_PACKAGE STREQUAL "raspbian"))
+if (MSVC OR RASPBIAN)
 else ()
   set(MRUBY_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/mruby/include CACHE path "MRUBY include path")
   set(MRUBY_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/mruby/build/host/lib CACHE path "MRUBY library path")
@@ -518,7 +522,7 @@ endif ()
 
 if (MSVC)
   set(OPENSSL_LIBS ssleay;libeay CACHE string "OPENSSL libraries")
-elseif (BUILD_PACKAGE STREQUAL "raspbian")
+elseif (RASPBIAN)
   set(OPENSSL_LIBS ssl;crypto CACHE string "OPENSSL libraries")
 else ()
   set(OPENSSL_INCLUDE "" CACHE path "OPENSSL include path")
@@ -564,11 +568,11 @@ add_definitions("-DTRI_READLINE_VERSION=\"${READLINE_VERSION}\"")
 
 set(V8_VERSION "unknown" CACHE string "V8 version")
 
-if (MSVC OR (BUILD_PACKAGE STREQUAL "raspbian"))
+if (MSVC OR RASPBIAN)
   set(V8_LIBS v8_base;v8_libbase;v8_libplatform;v8_nosnapshot CACHE string "V8 libraries")
 else ()
-  set(V8_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/V8/include CACHE path "V8 include path")
-  set(V8_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/V8/out/x64.release CACHE path "V8 library path")
+  set(V8_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/V8-3.29.59/include CACHE path "V8 include path")
+  set(V8_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/V8-3.29.59/out/x64.release CACHE path "V8 library path")
   set(V8_LIBS v8_base;v8_libbase;v8_libplatform;v8_nosnapshot CACHE string "V8 libraries")
 endif ()
 
@@ -588,7 +592,7 @@ add_definitions("-DTRI_V8_VERSION=\"${V8_VERSION}\"")
 
 set(ZLIB_VERSION "unknown" CACHE string "ZLIB version")
 
-if (MSVC OR (BUILD_PACKAGE STREQUAL "raspbian"))
+if (MSVC OR RASPBIAN)
   set(ZLIB_LIBS z CACHE string "ZLIB libraries")
 else ()
   set(ZLIB_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/zlib-1.2.7 CACHE path "ZLIB include path")
@@ -694,7 +698,7 @@ else ()
   set(CPACK_SET_DESTDIR ON)
 endif ()
 
-set(CPACK_PACKAGE_VENDOR  "triAGENS GmbH")
+set(CPACK_PACKAGE_VENDOR  "ArangoDB GmbH")
 set(CPACK_PACKAGE_CONTACT "info@arangodb.org")
 set(CPACK_PACKAGE_VERSION "${ARANGODB_VERSION}")
 
@@ -702,9 +706,9 @@ set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
 
 set(CPACK_STRIP_FILES "ON")
 
-if (BUILD_PACKAGE STREQUAL "dmg-cli")
+if (DARWIN)
   set(CPACK_PACKAGE_NAME "ArangoDB-CLI")
-elseif (BUILD_PACKAGE STREQUAL "raspbian")
+elseif (RASPBIAN)
   set(CPACK_PACKAGE_NAME "arangodb")
 elseif (BUILD_PACKAGE STREQUAL "debian")
   set(CPACK_PACKAGE_NAME "arangodb")
@@ -716,8 +720,8 @@ endif ()
 ### @brief debian package
 ################################################################################
 
-if ((BUILD_PACKAGE STREQUAL "debian") OR (BUILD_PACKAGE STREQUAL "raspbian"))
-  if (BUILD_PACKAGE STREQUAL "raspbian")
+if ((BUILD_PACKAGE STREQUAL "debian") OR RASPBIAN)
+  if (RASPBIAN)
     set(CPACK_SYSTEM_NAME "raspbian")
   endif ()
 
@@ -744,7 +748,7 @@ endif ()
 ### @brief MacOSX bundle
 ################################################################################
 
-if (BUILD_PACKAGE STREQUAL "dmg-cli")
+if (DARWIN)
   set(CPACK_BUNDLE_NAME            "${CPACK_PACKAGE_NAME}")
   set(CPACK_BUNDLE_PLIST           "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/Info.plist")
   set(CPACK_BUNDLE_ICON            "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/icon.icns")
