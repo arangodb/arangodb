@@ -119,7 +119,7 @@ content-type: application/json; charset=utf-8
     } 
   ], 
   "stats" : { 
-    "rulesExecuted" : 18, 
+    "rulesExecuted" : 19, 
     "rulesSkipped" : 0, 
     "plansCreated" : 1 
   }, 

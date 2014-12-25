@@ -3,9 +3,9 @@ arangosh> var graph = examples.loadGraph("routeplanner");
 arangosh> graph._getConnectingEdges({isCapital : true}, {isCapital : true});
 [ 
   { 
-    "_id" : "internationalHighway/1041448572", 
-    "_key" : "1041448572", 
-    "_rev" : "1041448572", 
+    "_id" : "internationalHighway/1043710583", 
+    "_key" : "1043710583", 
+    "_rev" : "1043710583", 
     "_from" : "germanCity/Berlin", 
     "_to" : "frenchCity/Paris", 
     "distance" : 1200 

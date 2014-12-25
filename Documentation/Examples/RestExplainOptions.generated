@@ -34,7 +34,7 @@ content-type: application/json; charset=utf-8
           ], 
           "index" : { 
             "type" : "skiplist", 
-            "id" : "1385315964", 
+            "id" : "1378009719", 
             "unique" : false, 
             "fields" : [ 
               "id" 
@@ -222,7 +222,7 @@ content-type: application/json; charset=utf-8
   "warnings" : [ ], 
   "stats" : { 
     "rulesExecuted" : 4, 
-    "rulesSkipped" : 23, 
+    "rulesSkipped" : 25, 
     "plansCreated" : 1 
   }, 
   "error" : false, 

@@ -9,8 +9,8 @@ arangosh> db._query("FOR e IN GRAPH_DISTANCE_TO("
 [ 
   [ 
     "frenchCity/Paris", 
-    "germanCity/Berlin", 
-    1200 
+    "germanCity/Hamburg", 
+    900 
   ], 
   [ 
     "frenchCity/Paris", 
@@ -19,13 +19,13 @@ arangosh> db._query("FOR e IN GRAPH_DISTANCE_TO("
   ], 
   [ 
     "frenchCity/Paris", 
-    "germanCity/Hamburg", 
-    900 
+    "germanCity/Berlin", 
+    1200 
   ], 
   [ 
     "frenchCity/Lyon", 
-    "germanCity/Hamburg", 
-    1200 
+    "germanCity/Cologne", 
+    700 
   ], 
   [ 
     "frenchCity/Lyon", 
@@ -34,7 +34,7 @@ arangosh> db._query("FOR e IN GRAPH_DISTANCE_TO("
   ], 
   [ 
     "frenchCity/Lyon", 
-    "germanCity/Cologne", 
-    700 
+    "germanCity/Hamburg", 
+    1200 
   ] 
 ]

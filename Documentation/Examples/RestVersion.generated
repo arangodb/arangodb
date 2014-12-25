@@ -5,5 +5,5 @@ content-type: application/json; charset=utf-8
 
 { 
   "server" : "arango", 
-  "version" : "2.4.0-alpha6" 
+  "version" : "2.4.0-alpha7" 
 }
